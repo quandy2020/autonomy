@@ -20,7 +20,10 @@ namespace autonomy {
 namespace commsgs {
 namespace map_msgs {
 
+struct OccupancyGrid
+{
 
+};
 
 }  // namespace map_msgs
 }  // namespace commsgs
