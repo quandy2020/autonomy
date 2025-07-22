@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/common/planner_interface.hpp"
+#include "autonomy/commsgs/visualization_msgs.hpp"
 
 namespace autonomy {
-namespace planning {
+namespace commsgs {
+namespace visualization_msgs {
 
-}  // namespace planning
+
+
+}  // namespace visualization_msgs
+}  // namespace commsgs
 }  // namespace autonomy

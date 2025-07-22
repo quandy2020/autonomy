@@ -14,10 +14,22 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/common/planner_interface.hpp"
+#pragma once 
 
 namespace autonomy {
-namespace planning {
+namespace tasks {
+namespace behavior_tree {
 
-}  // namespace planning
+class BtNavigator 
+{
+public:
+    BtNavigator();
+    ~BtNavigator();
+
+private:
+
+};
+
+}  // namespace behavior_tree
+}  // namespace tasks
 }  // namespace autonomy
