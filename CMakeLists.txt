@@ -16,23 +16,39 @@ cmake_minimum_required(VERSION 3.5)
 
 project(autonomy)
 
-set(AUTONOMY_MAJOR_VERSION 1)
+set(AUTONOMY_MAJOR_VERSION 0)
 set(AUTONOMY_MINOR_VERSION 0)
-set(AUTONOMY_PATCH_VERSION 0)
+set(AUTONOMY_PATCH_VERSION 1)
 set(AUTONOMY_VERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION}.${AUTONOMY_PATCH_VERSION})
 set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
-option(BUILD_GRPC "build AUTONOMY gRPC support" false)
+
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
-option(BUILD_PROMETHEUS "build Prometheus monitoring support" false)
+option(BUILD_GRPC "Build autonomy gRPC support" false)
+option(BUILD_DOCS "Build autonomy docs support" false)
+option(BUILD_TOOLS "Build autonomy tools support" false)
+option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
+option(BUILD_TEST "Build autonomy unit test" true)
+
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 google_initialize_cartographer_project()
 google_enable_testing()
 
+# Set a default install prefix if not specified by the user
+if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
+endif()
+
 find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(PCL REQUIRED)
+find_package(OMPL REQUIRED)
+# find_package(OpenCV REQUIRED)
 # find_package(LuaGoogle REQUIRED)
 find_package(glog REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
@@ -70,7 +86,105 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
 
+if (NOT ${BUILD_GRPC})
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_FILES})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_GRPC_FILES})
+  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${ALL_GRPC_FILES})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_GRPC_FILES})
+  list(REMOVE_ITEM ALL_TESTS ${ALL_GRPC_FILES})
+  list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_GRPC_FILES})
+endif()
+if (NOT ${BUILD_PROMETHEUS})
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_PROMETHEUS_FILES})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_PROMETHEUS_FILES})
+  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${ALL_PROMETHEUS_FILES})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_PROMETHEUS_FILES})
+  list(REMOVE_ITEM ALL_TESTS ${ALL_PROMETHEUS_FILES})
+  list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_PROMETHEUS_FILES})
+endif()
+
+set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
+file(GLOB_RECURSE INTERNAL_HDRS "cartographer/*/internal/*.h")
+list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
+
+file(GLOB_RECURSE ALL_PROTOS "autonomy/*.proto")
+file(GLOB_RECURSE ALL_GRPC_SERVICES "autonomy/*_service.proto")
+list(REMOVE_ITEM ALL_PROTOS ALL_GRPC_SERVICES)
+if (NOT ${BUILD_GRPC})
+  list(REMOVE_ITEM ALL_PROTOS ${ALL_GRPC_FILES})
+endif()
+
+# TODO(cschuet): Move proto compilation to separate function.
+set(ALL_PROTO_SRCS)
+set(ALL_PROTO_HDRS)
+foreach(ABS_FIL ${ALL_PROTOS})
+  file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
+  get_filename_component(DIR ${REL_FIL} DIRECTORY)
+  get_filename_component(FIL_WE ${REL_FIL} NAME_WE)
+
+  list(APPEND ALL_PROTO_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc")
+  list(APPEND ALL_PROTO_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h")
+
+  add_custom_command(
+    OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc"
+           "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h"
+    COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
+    ARGS --cpp_out  ${PROJECT_BINARY_DIR} -I
+      ${PROJECT_SOURCE_DIR} ${ABS_FIL}
+    DEPENDS ${ABS_FIL}
+    COMMENT "Running C++ protocol buffer compiler on ${ABS_FIL}"
+    VERBATIM
+  )
+endforeach()
+set_source_files_properties(${ALL_PROTO_SRCS} ${ALL_PROTO_HDRS} PROPERTIES GENERATED TRUE)
+list(APPEND ALL_LIBRARY_HDRS ${ALL_PROTO_HDRS})
+list(APPEND ALL_LIBRARY_SRCS ${ALL_PROTO_SRCS})
+
+if(${BUILD_GRPC})
+  set(ALL_GRPC_SERVICE_SRCS)
+  set(ALL_GRPC_SERVICE_HDRS)
+  foreach(ABS_FIL ${ALL_GRPC_SERVICES})
+    file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
+    get_filename_component(DIR ${REL_FIL} DIRECTORY)
+    get_filename_component(FIL_WE ${REL_FIL} NAME_WE)
+
+    list(APPEND ALL_GRPC_SERVICE_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc")
+    list(APPEND ALL_GRPC_SERVICE_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h")
+
+    add_custom_command(
+      OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc"
+             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h"
+      COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
+      ARGS --cpp_out  ${PROJECT_BINARY_DIR}
+        -I ${PROJECT_SOURCE_DIR}
+        ${ABS_FIL}
+      DEPENDS ${ABS_FIL}
+      COMMENT "Running C++ protocol buffer compiler on ${ABS_FIL}"
+      VERBATIM
+    )
+  endforeach()
+  set_source_files_properties(${ALL_GRPC_SERVICE_SRCS} ${ALL_GRPC_SERVICE_HDRS} PROPERTIES GENERATED TRUE)
+  list(APPEND ALL_LIBRARY_HDRS ${ALL_GRPC_SERVICE_HDRS})
+  list(APPEND ALL_LIBRARY_SRCS ${ALL_GRPC_SERVICE_SRCS})
+endif()
+set(INSTALL_GENERATED_HDRS ${ALL_PROTO_HDRS} ${ALL_GRPC_SERVICE_HDRS})
+
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY} 
+  absl::algorithm
+  absl::base
+  absl::debugging
+  absl::flat_hash_map
+  absl::memory
+  absl::meta
+  absl::numeric
+  absl::str_format
+  absl::strings
+  absl::synchronization
+  absl::time
+  absl::utility 
+)
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
@@ -87,9 +201,19 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${GLOG_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
+
+# target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
+# target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
+
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
+
+
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
-# autonomy_tasks_navigator
+# autonomy.tasks.navigator
 google_binary(autonomy.tasks.navigator
   SRCS
     autonomy/tasks/navigator_main.cpp
@@ -131,12 +255,46 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 install(
   TARGETS ${PROJECT_NAME}
+  EXPORT AutonomyExport
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
 
+foreach(HDR ${INSTALL_SOURCE_HDRS})
+  file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})
+  get_filename_component(DIR ${REL_FIL} DIRECTORY)
+  install(
+    FILES ${HDR}
+    DESTINATION include/${DIR}
+  )
+endforeach()
 
+foreach(HDR ${INSTALL_GENERATED_HDRS})
+  file(RELATIVE_PATH REL_FIL ${PROJECT_BINARY_DIR} ${HDR})
+  get_filename_component(DIR ${REL_FIL} DIRECTORY)
+  install(
+    FILES ${HDR}
+    DESTINATION include/${DIR}
+  )
+endforeach()
 
+set(AUTONOMY_CMAKE_DIR share/autonomy/cmake)
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  autonomy-config.cmake.in
+  ${PROJECT_BINARY_DIR}/cmake/autonomy/autonomy-config.cmake
+  PATH_VARS AUTONOMY_CMAKE_DIR
+  INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/share/autonomy
+)
 
+install(
+  EXPORT AutonomyExport
+  DESTINATION share/autonomy/cmake/
+  FILE AutonomyTargets.cmake
+)
 
+install(
+  FILES ${PROJECT_BINARY_DIR}/cmake/autonomy/autonomy-config.cmake
+  DESTINATION share/autonomy/
+)

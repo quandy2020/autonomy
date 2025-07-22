@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/common/planner_interface.hpp"
+#include "autonomy/commsgs/pcl_msgs.hpp"
 
 namespace autonomy {
-namespace planning {
+namespace commsgs {
+namespace pcl_msgs {
 
-}  // namespace planning
+
+
+}  // namespace pcl_msgs
+}  // namespace commsgs
 }  // namespace autonomy
