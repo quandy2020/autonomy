@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include <glog/logging.h>
+
+#include "autonomy/common/version.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -22,6 +25,7 @@ namespace {
 
 void Run()
 {
+    autonomy::common::ShowVersion();
     LOG(INFO) << "Autonomy starting !!!";
 }
 
