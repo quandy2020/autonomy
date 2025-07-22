@@ -16,6 +16,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(autonomy)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 set(AUTONOMY_MAJOR_VERSION 0)
 set(AUTONOMY_MINOR_VERSION 0)
 set(AUTONOMY_PATCH_VERSION 1)
@@ -49,7 +53,7 @@ find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OMPL REQUIRED)
 # find_package(OpenCV REQUIRED)
-# find_package(LuaGoogle REQUIRED)
+find_package(LuaGoogle REQUIRED)
 find_package(glog REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
 
@@ -62,6 +66,13 @@ find_package(Sphinx)
 if(SPHINX_FOUND)
   add_subdirectory("docs")
 endif()
+
+set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
+  CACHE PATH ".lua configuration files directory")
+
+install(DIRECTORY config DESTINATION share/autonomy/)
+install(DIRECTORY cmake DESTINATION share/autonomy/)
+
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
@@ -169,6 +180,20 @@ if(${BUILD_GRPC})
 endif()
 set(INSTALL_GENERATED_HDRS ${ALL_PROTO_HDRS} ${ALL_GRPC_SERVICE_HDRS})
 
+configure_file(
+  ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake
+  ${PROJECT_BINARY_DIR}/autonomy/common/config.hpp)
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/autonomy-config-version.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake @ONLY)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake"
+      DESTINATION "share/autonomy")
+
+# Generate source file with version definitions.
+include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
+
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY} 
@@ -192,8 +217,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
 
-# target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
-# target_link_libraries(${PROJECT_NAME} PUBLIC ${LUA_LIBRARIES})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${LUA_LIBRARIES})
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Boost_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
@@ -211,6 +236,8 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 
 
+set(GLOG_LIBRARY glog)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
 # autonomy.tasks.navigator
