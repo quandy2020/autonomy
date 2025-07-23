@@ -17,4 +17,87 @@ syntax = "proto3";
 package autonomy.commsgs.proto.map_msgs;
 
 import "autonomy/commsgs/proto/std_msgs.proto";
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "autonomy/commsgs/proto/geometry_msgs.proto";
 
+// An array of cells in a 2D grid
+message GridCells
+{
+    std_msgs.Header header = 1;
+
+    // Width of each cell
+    float cell_width = 2;
+
+    // Height of each cell
+    float cell_height = 3;
+
+    // Each cell is represented by the Point at the center of the cell
+    repeated geometry_msgs.Point cells = 4;
+}
+
+// This hold basic information about the characteristics of the OccupancyGrid
+message MapMetaData
+{
+    // The time at which the map was loaded
+    builtin_interfaces.Time map_load_time = 1;
+    
+    // The map resolution [m/cell]
+    float resolution = 2;
+    
+    // Map width [cells]
+    uint32 width = 3;
+    
+    // Map height [cells]
+    uint32 height = 4;
+    
+    // The origin of the map [m, m, rad].  This is the real-world pose of the
+    // bottom left corner of cell (0,0) in the map.
+    geometry_msgs.Pose origin = 5;
+}
+
+message OccupancyGrid
+{
+    // This represents a 2-D grid map
+    std_msgs.Header header = 1;
+
+    // MetaData for the map
+    MapMetaData info = 2;
+
+    // The map data, in row-major order, starting with (0,0). 
+    // Cell (1, 0) will be listed second, representing the next cell in the x direction. 
+    // Cell (0, 1) will be at the index equal to info.width, followed by (1, 1).
+    // The values inside are application dependent, but frequently, 
+    // 0 represents unoccupied, 1 represents definitely occupied, and
+    // -1 represents unknown. 
+    repeated int32 data = 3;
+}
+
+message Octomap
+{
+    // A 3D map in binary format, as Octree
+    std_msgs.Header header = 1;
+
+    // Flag to denote a binary (only free/occupied) or full occupancy octree (.bt/.ot file)
+    bool binary = 2;
+
+    // Class id of the contained octree 
+    string id = 3;
+
+    // Resolution (in m) of the smallest octree nodes
+    double resolution = 4;
+
+    // binary serialization of octree, use conversions.h to read and write octrees
+    repeated int32 data = 5 [packed=true];
+}
+
+message OctomapWithPose
+{
+    // A 3D map in binary format, as Octree
+    std_msgs.Header header = 1;
+
+    // The pose of the octree with respect to the header frame 
+    geometry_msgs.Pose origin = 2;
+
+    // The actual octree msg
+    Octomap octomap = 3;
+}

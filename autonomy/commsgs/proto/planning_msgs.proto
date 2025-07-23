@@ -17,4 +17,34 @@ syntax = "proto3";
 package autonomy.commsgs.proto.planning_msgs;
 
 import "autonomy/commsgs/proto/std_msgs.proto";
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "autonomy/commsgs/proto/geometry_msgs.proto";
 
+// An array of poses that represents a Path for a robot to follow.
+message Path 
+{
+    // Indicates the frame_id of the path.
+    std_msgs.Header header = 1;
+
+    // Array of poses to follow.
+    repeated geometry_msgs.PoseStamped poses = 2;
+}
+
+message Odometry
+{
+    // This represents an estimate of a position and velocity in free space.
+    // The pose in this message should be specified in the coordinate frame given by header.frame_id
+    // The twist in this message should be specified in the coordinate frame given by the child_frame_id
+
+    // Includes the frame id of the pose parent.
+    std_msgs.Header header = 1;
+
+    // Frame id the pose points to. The twist is in this coordinate frame.
+    string child_frame_id = 2;
+
+    // Estimated pose that is typically relative to a fixed world frame.
+    geometry_msgs.PoseWithCovariance pose = 3;
+
+    // Estimated linear and angular velocity relative to child_frame_id.
+    geometry_msgs.TwistWithCovariance twist = 4;
+}
