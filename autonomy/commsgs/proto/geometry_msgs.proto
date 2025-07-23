@@ -14,7 +14,319 @@
 
 syntax = "proto3";
 
-package autonomy.commsgs.proto.diagnostic_msgs;
+package autonomy.commsgs.proto.geometry_msgs;
 
 import "autonomy/commsgs/proto/std_msgs.proto";
 
+// This expresses acceleration in free space broken into its linear and angular parts.
+message Accel 
+{
+    Vector3 linear = 1;
+    Vector3 angular = 2;
+}
+
+// This expresses acceleration in free space broken into its linear and angular parts.
+message AccelStamped 
+{
+    //  An accel with reference coordinate frame and timestamp
+    std_msgs.Header header = 1;
+    Accel accel = 2;
+}
+
+// This expresses acceleration in free space with uncertainty.
+message AccelWithCovariance
+{
+    Accel accel = 1;
+    // Row-major representation of the 6x6 covariance matrix
+    // The orientation parameters use a fixed-axis representation.
+    // In order, the parameters are:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+    repeated float covariance = 2 [packed=true];
+}
+
+// This represents an estimated accel with reference coordinate frame and timestamp.
+message AccelWithCovarianceStamped
+{
+    std_msgs.Header header = 1;
+    AccelWithCovariance accel = 2;
+}
+
+message Inertia
+{
+    // Mass [kg]
+    float m = 1;
+
+    // Center of mass [m]
+    Vector3 com = 2;
+
+    // Inertia Tensor [kg-m^2]
+    //     | ixx ixy ixz |
+    // I = | ixy iyy iyz |
+    //     | ixz iyz izz |
+    float ixx = 3;
+    float ixy = 4;
+    float ixz = 5;
+    float iyy = 6;
+    float iyz = 7;
+    float izz = 8;
+}
+
+// An Inertia with a time stamp and reference frame.
+message InertiaStamped
+{
+    std_msgs.Header header = 1;
+    Inertia inertia = 2;
+}
+
+// This contains the position of a point in free space
+message Point
+{
+    double x = 1;
+    double y = 2;
+    double z = 3;
+}
+
+// A point in the map reference frame. The map defines an origin, whose
+// coordinate is (0, 0, 0).
+// Most openbot, including localization, perception, and prediction, generate
+// results based on the map reference frame.
+// Currently, the map uses Universal Transverse Mercator (UTM) projection. See
+// the link below for the definition of map origin.
+//   https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system
+// The z field of PointENU can be omitted. If so, it is a 2D location and we do
+// not care its height.
+message PointENU {
+    double x = 1;  // East from the origin, in meters.
+    double y = 2;  // North from the origin, in meters.
+    double z = 3;  // Up from the WGS-84 ellipsoid, in
+                                            // meters.
+}
+
+// A point in the global reference frame. Similar to PointENU, PointLLH allows
+// omitting the height field for representing a 2D location.
+message PointLLH {
+    // Longitude in degrees, ranging from -180 to 180.
+    double lon = 1;
+    // Latitude in degrees, ranging from -90 to 90.
+    double lat = 2;
+    // WGS-84 ellipsoid height in meters.
+    double height = 3;
+}
+
+// This represents a Point with reference coordinate frame and timestamp
+message PointStamped
+{
+    std_msgs.Header header = 1;
+    Point point = 2;
+}
+
+// This contains the position of a point in free space(with 32 bits of precision).
+// It is recommended to use Point wherever possible instead of Point32.
+//
+// This recommendation is to promote interoperability.
+//
+// This message is designed to take up less space when sending
+// lots of points at once, as in the case of a PointCloud.
+message Point32
+{
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+// A specification of a polygon where the first and last points are assumed to be connected
+message Polygon
+{
+    repeated Point32 points = 1;
+}
+
+// This represents a Polygon with reference coordinate frame and timestamp
+message PolygonStamped
+{
+    std_msgs.Header header = 1;
+    Polygon polygon = 2;
+}
+
+// Deprecated as of Foxy and will potentially be removed in any following release.
+// Please use the full 3D pose.
+
+// In general our recommendation is to use a full 3D representation of everything and for 2D specific applications make the appropriate projections into the plane for their calculations but optimally will preserve the 3D information during processing.
+
+// If we have parallel copies of 2D datatypes every UI and other pipeline will end up needing to have dual interfaces to plot everything. And you will end up with not being able to use 3D tools for 2D use cases even if they're completely valid, as you'd have to reimplement it with different inputs and outputs. It's not particularly hard to plot the 2D pose or compute the yaw error for the Pose message and there are already tools and libraries that can do this for you.// This expresses a position and orientation on a 2D manifold.
+
+message Pose2D
+{
+    double x = 1;
+    double y = 2;
+    double theta = 3;
+}
+
+// A representation of pose in free space, composed of position and orientation.
+message Pose
+{
+    Point position = 1;
+    Quaternion orientation = 2;
+}
+
+// An array of poses with a header for global reference.
+message PoseArray
+{
+    std_msgs.Header header = 1;
+    repeated Pose poses = 2;
+}
+
+// A Pose with reference coordinate frame and timestamp
+message PoseStamped
+{
+    std_msgs.Header header = 1;
+    Pose pose = 2;
+}
+
+// This represents a pose in free space with uncertainty.
+message PoseWithCovariance
+{
+    Pose pose = 1;
+
+    // Row-major representation of the 6x6 covariance matrix
+    // The orientation parameters use a fixed-axis representation.
+    // In order, the parameters are:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+    repeated double covariance = 2 [packed = true];
+}
+
+// This expresses an estimated pose with a reference coordinate frame and timestamp
+message PoseWithCovarianceStamped 
+{
+    std_msgs.Header header = 1;
+    PoseWithCovariance pose = 2;
+}
+
+// This represents an orientation in free space in quaternion form.
+message Quaternion
+{
+    double x = 1;
+    double y = 2;
+    double z = 3;
+    double w = 4;
+}
+
+// This represents an orientation with reference coordinate frame and timestamp.
+message QuaternionStamped
+{
+    std_msgs.Header header = 1;
+    Quaternion quaternion = 2;
+}
+
+// This represents the transform between two coordinate frames in free space.
+message Transform
+{
+    Vector3 translation = 1;
+    Quaternion rotation = 2;
+}
+
+message TransformStamped
+{
+    // This expresses a transform from coordinate frame header.frame_id
+    // to the coordinate frame child_frame_id at the time of header.stamp
+    //
+    // This message is mostly used by the
+    // <a href="https://index.ros.org/p/tf2/">tf2</a> package.
+    // See its documentation for more information.
+    //
+    // The child_frame_id is necessary in addition to the frame_id
+    // in the Header to communicate the full reference for the transform
+    // in a self contained message.
+
+    // The frame id in the header is used as the reference frame of this transform.
+    std_msgs.Header header = 1;
+
+    // The frame id of the child frame to which this transform points.
+    string child_frame_id = 2;
+
+    // Translation and rotation in 3-dimensions of child_frame_id from header.frame_id.
+    Transform transform = 3;
+}
+
+message TransformStampeds 
+{
+    std_msgs.Header header = 1;
+    repeated TransformStamped transforms = 2;
+}
+
+// This expresses velocity in free space broken into its linear and angular parts.
+message Twist
+{
+    Vector3 linear = 1;
+    Vector3 angular = 2;
+}
+
+// A twist with reference coordinate frame and timestamp
+message TwistStamped
+{
+    std_msgs.Header header = 1;
+    Twist twist = 2;
+}
+
+// This expresses velocity in free space with uncertainty.
+message TwistWithCovariance
+{
+    Twist twist = 1;
+
+    // Row-major representation of the 6x6 covariance matrix
+    // The orientation parameters use a fixed-axis representation.
+    // In order, the parameters are:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
+    repeated double covariance = 2 [packed=true];
+}
+
+// This represents an estimated twist with reference coordinate frame and timestamp.
+message TwistWithCovarianceStamped
+{
+    std_msgs.Header header = 1;
+    TwistWithCovariance twist = 2;
+}
+
+// This represents a vector in free space.
+message Vector3 
+{
+    // This is semantically different than a point.
+    // A vector is always anchored at the origin.
+    // When a transform is applied to a vector, only the rotational component is applied.
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+// This represents a Vector3 with reference coordinate frame and timestamp
+message Vector3Stamped
+{
+    // Note that this follows vector semantics with it always anchored at the origin,
+    // so the rotational elements of a transform are the only parts applied when transforming.
+    std_msgs.Header header = 1;
+    Vector3 vector = 2;
+}
+
+// This represents force in free space, separated into its linear and angular parts.
+message Wrench
+{
+    Vector3 force = 1;
+    Vector3 torque = 2;
+}
+
+// A wrench with reference coordinate frame and timestamp
+message WrenchStamped
+{
+    std_msgs.Header header = 1;
+    Wrench wrench = 2;
+}
+
+message VelocityStamped
+{
+    // This expresses the timestamped velocity vector of a frame 'body_frame_id' in the reference frame 'reference_frame_id' expressed from arbitrary observation frame 'header.frame_id'.
+    // - If the 'body_frame_id' and 'header.frame_id' are identical, the velocity is observed and defined in the local coordinates system of the body
+    //   which is the usual use-case in mobile robotics and is also known as a body twist.
+    std_msgs.Header header = 1;
+    string body_frame_id = 2;
+    string reference_frame_id = 3;
+    Twist velocity = 4;
+}

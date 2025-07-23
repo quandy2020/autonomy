@@ -17,4 +17,32 @@ syntax = "proto3";
 package autonomy.commsgs.proto.pcl_msgs;
 
 import "autonomy/commsgs/proto/std_msgs.proto";
+import "autonomy/commsgs/proto/sensor_msgs.proto";
 
+message Vertices 
+{
+    // List of point indices
+    repeated uint32 vertices = 1;
+}
+
+message ModelCoefficients 
+{
+    std_msgs.Header header = 1;
+    repeated float values = 2;
+}
+
+message PointIndices 
+{
+    std_msgs.Header header = 1;
+    repeated int32 indices = 2;    
+}
+
+message PolygonMesh 
+{
+    // Separate header for the polygonal surface
+    std_msgs.Header header = 1;
+    // Vertices of the mesh as a point cloud
+    sensor_msgs.PointCloud2 cloud = 2;
+    // List of polygons
+    repeated Vertices polygons = 3;
+}

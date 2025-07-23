@@ -14,7 +14,44 @@
 
 syntax = "proto3";
 
-package autonomy.commsgs.proto.builtin_interfaces;
+package autonomy.commsgs.proto.diagnostic_msgs;
 
 import "autonomy/commsgs/proto/std_msgs.proto";
 
+message KeyValue
+{
+    // What to label this value when viewing.
+    string key = 1;
+    // A value to track over time.
+    string value = 2;
+}
+
+// This message holds the status of an individual component of the robot.
+message DiagnosticStatus
+{
+    // // Possible levels of operations.
+    // byte OK=0
+    // byte WARN=1
+    // byte ERROR=2
+    // byte STALE=3
+    // Level of operation enumerated above.
+    bytes level = 1;
+    // A description of the test/component reporting.
+    string name = 2;
+    // A description of the status.
+    string message = 3;
+    // A hardware unique string.
+    string hardware_id = 4;
+    // An array of values associated with the status.
+    repeated KeyValue values = 5;
+}
+
+// This message is used to send diagnostic information about the state of the robot.
+message DiagnosticArray
+{
+    // for timestamp
+    std_msgs.Header header = 1;
+
+    // an array of components being reported on
+    repeated DiagnosticStatus status = 2;
+}
