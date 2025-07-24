@@ -14,46 +14,29 @@
  * limitations under the License.
  */
 
-#pragma once 
-
-#include <string>
-#include <memory>
-#include <functional>
+#pragma once
 
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
 namespace map {
-    
-/**
- * @class autonomy::map::MapServer
- * @brief Parses the map yaml file and creates a service and a publisher that
- * provides occupancy grid
- */
-class MapServer
+
+class MapInterface
 {
 public:
-    /**
-     * Define MapServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(MapServer)
 
     /**
-     * @brief A constructor for nav2_map_server::MapServer
-     * @param options Additional options to control creation of the node.
+     * Define MapInterface::SharedPtr type
      */
-    explicit MapServer();
+    AUTONOMY_SMART_PTR_DEFINITIONS(MapInterface)
 
-    /**
-     * @brief A Destructor for nav2_map_server::MapServer
-     */
-    ~MapServer();
+    MapInterface() {}
+    virtual ~MapInterface() {}
 
-protected:
-
-  // true if msg_ was initialized
-  bool map_available_;
+    MapInterface(const MapInterface&) = delete;
+    MapInterface& operator=(const MapInterface&) = delete;
 };
+
 
 }  // namespace map
 }  // namespace autonomy
