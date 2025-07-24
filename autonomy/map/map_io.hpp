@@ -71,9 +71,7 @@ void loadMapFromFile(
  * @param map Output loaded map
  * @return status of map loaded
  */
-LOAD_MAP_STATUS loadMapFromYaml(
-  const std::string & yaml_file,
-  commsgs::map_msgs::OccupancyGrid & map);
+LOAD_MAP_STATUS loadMapFromYaml(const std::string & yaml_file, commsgs::map_msgs::OccupancyGrid & map);
 
 
 /* Map output part */
