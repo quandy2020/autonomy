@@ -52,7 +52,9 @@ find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OMPL REQUIRED)
-# find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(GRAPHICSMAGICKCPP REQUIRED)
 find_package(LuaGoogle REQUIRED)
 find_package(glog REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
@@ -64,13 +66,13 @@ endif()
 # Only build the documentation if we can find Sphinx.
 find_package(Sphinx)
 if(SPHINX_FOUND)
-  add_subdirectory("docs")
+  # add_subdirectory("docs")
 endif()
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
   CACHE PATH ".lua configuration files directory")
 
-install(DIRECTORY config DESTINATION share/autonomy/)
+install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
 
@@ -194,6 +196,13 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake"
 # Generate source file with version definitions.
 include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
+
+# # Thirdparty library
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
+
+# Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY} 
@@ -229,16 +238,22 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
 
-# target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
-# target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
+
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${YAML_CPP_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp)
+
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${GRAPHICSMAGICKCPP_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
 
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 
-
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
+target_link_libraries(${PROJECT_NAME} PUBLIC tf2)
 
 # autonomy.tasks.navigator
 google_binary(autonomy.tasks.navigator
@@ -310,7 +325,7 @@ set(AUTONOMY_CMAKE_DIR share/autonomy/cmake)
 include(CMakePackageConfigHelpers)
 configure_package_config_file(
   autonomy-config.cmake.in
-  ${PROJECT_BINARY_DIR}/cmake/autonomy/autonomy-config.cmake
+  ${PROJECT_BINARY_DIR}/autonomy-config.cmake
   PATH_VARS AUTONOMY_CMAKE_DIR
   INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/share/autonomy
 )
@@ -322,6 +337,6 @@ install(
 )
 
 install(
-  FILES ${PROJECT_BINARY_DIR}/cmake/autonomy/autonomy-config.cmake
+  FILES ${PROJECT_BINARY_DIR}/autonomy-config.cmake
   DESTINATION share/autonomy/
 )

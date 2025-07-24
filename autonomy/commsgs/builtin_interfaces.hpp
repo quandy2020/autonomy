@@ -16,10 +16,36 @@
 
 #pragma once 
 
+#include <vector>
+#include <string>
+
+#include "autonomy/common/port.hpp"
+
 namespace autonomy {
 namespace commsgs {
 namespace builtin_interfaces {
 
+
+struct Time 
+{
+    // The seconds component, valid over all int32 values.
+    int32 sec;
+
+    // The nanoseconds component, valid in the range [0, 10e9).
+    uint32 nanosec;
+};
+    
+// Standard metadata for higher-level stamped data types.
+// This is generally used to communicate timestamped data
+// in a particular coordinate frame.
+struct Duration 
+{
+    // Two-integer timestamp that is expressed as seconds and nanoseconds.
+    Time stamp;
+
+    // Transform frame with which this data is associated.
+    std::string frame_id;
+};
 
 
 }  // namespace builtin_interfaces

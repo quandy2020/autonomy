@@ -16,11 +16,26 @@
 
 #pragma once 
 
+#include <vector>
+#include <string>
+
+#include "autonomy/commsgs/builtin_interfaces.hpp"
+
 namespace autonomy {
 namespace commsgs {
 namespace std_msgs {
 
+// Standard metadata for higher-level stamped data types.
+// This is generally used to communicate timestamped data
+// in a particular coordinate frame.
+struct Header 
+{
+    // Two-integer timestamp that is expressed as seconds and nanoseconds.
+    builtin_interfaces::Time stamp;
 
+    // Transform frame with which this data is associated.
+    std::string frame_id;
+};
 
 }  // namespace std_msgs
 }  // namespace commsgs
