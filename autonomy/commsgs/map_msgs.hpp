@@ -16,6 +16,8 @@
 
 #pragma once 
 
+#include "autonomy/commsgs/proto/map_msgs.pb.h"
+
 namespace autonomy {
 namespace commsgs {
 namespace map_msgs {
@@ -24,6 +26,12 @@ struct OccupancyGrid
 {
 
 };
+
+// Converts 'range_data' to a proto::OccupancyGrid.
+proto::map_msgs::OccupancyGrid ToProto(const OccupancyGrid& data);
+
+// Converts 'proto' to OccupancyGrid.
+OccupancyGrid FromProto(const proto::map_msgs::OccupancyGrid& proto);
 
 }  // namespace map_msgs
 }  // namespace commsgs
