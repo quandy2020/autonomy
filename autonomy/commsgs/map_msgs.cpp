@@ -20,6 +20,17 @@ namespace autonomy {
 namespace commsgs {
 namespace map_msgs {
 
+proto::map_msgs::OccupancyGrid ToProto(const OccupancyGrid& data)
+{
+    proto::map_msgs::OccupancyGrid proto;
+    return proto;
+}
+
+OccupancyGrid FromProto(const proto::map_msgs::OccupancyGrid& proto)
+{
+    OccupancyGrid data;
+    return data;
+}
 
 
 }  // namespace map_msgs

@@ -62,7 +62,7 @@ LoadParameters loadMapYaml(const std::string & yaml_filename);
  */
 void loadMapFromFile(
   const LoadParameters & load_parameters,
-  commsgs::OccupancyGrid & map);
+  commsgs::map_msgs::OccupancyGrid & map);
 
 /**
  * @brief Load the map YAML, image from map file and
@@ -73,7 +73,7 @@ void loadMapFromFile(
  */
 LOAD_MAP_STATUS loadMapFromYaml(
   const std::string & yaml_file,
-  commsgs::OccupancyGrid & map);
+  commsgs::map_msgs::OccupancyGrid & map);
 
 
 /* Map output part */
@@ -94,7 +94,7 @@ struct SaveParameters
  * @return true or false
  */
 bool saveMapToFile(
-  const commsgs::OccupancyGrid & map,
+  const commsgs::map_msgs::OccupancyGrid & map,
   const SaveParameters & save_parameters);
 
 /**
