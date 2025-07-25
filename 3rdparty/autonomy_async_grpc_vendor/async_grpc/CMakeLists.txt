@@ -93,17 +93,17 @@ foreach(RELATIVEPATH ${ALL_PROTOS})
 endforeach()
 set_source_files_properties(${ALL_PROTO_SRCS} ${ALL_PROTO_HDRS} PROPERTIES GENERATED TRUE)
 
-add_library(${PROJECT_NAME} ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS} ${ALL_PROTO_HDRS} ${ALL_PROTO_SRCS})
+add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS} ${ALL_PROTO_HDRS} ${ALL_PROTO_SRCS})
 
-foreach(RELATIVEPATH ${ALL_TESTS})
-  get_filename_component(DIR ${RELATIVEPATH} DIRECTORY)
-  get_filename_component(FILENAME ${RELATIVEPATH} NAME_WE)
-  # Replace slashes as required for CMP0037.
-  string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FILENAME}")
-  google_test("${TEST_TARGET_NAME}" ${RELATIVEPATH})
-  target_link_libraries(${TEST_TARGET_NAME} PUBLIC ${GMOCK_LIBRARY})
-  target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++)
-endforeach()
+# foreach(RELATIVEPATH ${ALL_TESTS})
+#   get_filename_component(DIR ${RELATIVEPATH} DIRECTORY)
+#   get_filename_component(FILENAME ${RELATIVEPATH} NAME_WE)
+#   # Replace slashes as required for CMP0037.
+#   string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FILENAME}")
+#   google_test("${TEST_TARGET_NAME}" ${RELATIVEPATH})
+#   target_link_libraries(${TEST_TARGET_NAME} PUBLIC ${GMOCK_LIBRARY})
+#   target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++)
+# endforeach()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)

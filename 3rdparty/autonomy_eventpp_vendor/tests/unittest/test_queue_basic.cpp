@@ -24,7 +24,7 @@ TEST_CASE("EventQueue, std::string, void (const std::string &)")
 	queue.appendListener("event1", [&a](const std::string &) {
 		a = 2;
 	});
-	queue.appendListener("event1", [&b](const std::string &) {
+	queue.appendListener("event1", eraseArgs1([&b]() {
 		b = 8;
 	}));
 
