@@ -60,7 +60,7 @@ enum class MapMode
  * @return String identifier of the given map mode
  * @throw std::invalid_argument if the given value is not a defined map mode
  */
-const char * map_mode_to_string(MapMode map_mode);
+const char* map_mode_to_string(MapMode map_mode);
 
 /**
  * @brief Convert the name of a map mode to a MapMode enum

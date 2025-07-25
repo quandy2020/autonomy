@@ -20,11 +20,11 @@
 
 namespace autonomy {
 namespace map {
+namespace common {
 
 class MapInterface
 {
 public:
-
     /**
      * Define MapInterface::SharedPtr type
      */
@@ -35,8 +35,12 @@ public:
 
     MapInterface(const MapInterface&) = delete;
     MapInterface& operator=(const MapInterface&) = delete;
+
+
+
 };
 
 
+}  // namespace common
 }  // namespace map
 }  // namespace autonomy

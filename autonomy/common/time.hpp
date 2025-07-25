@@ -22,6 +22,9 @@
 #include <ratio>
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
+
+using Time = ::autonomy::commsgs::builtin_interfaces::Time;
 
 namespace autonomy {
 namespace common {

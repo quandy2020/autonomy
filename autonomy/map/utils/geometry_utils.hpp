@@ -14,4 +14,32 @@
  * limitations under the License.
  */
 
- #pragma once 
+#pragma once 
+
+#include "tf2/convert.h"
+#include "tf2/LinearMath/Quaternion.h"
+#include "tf2/LinearMath/Transform.h"
+#include "tf2/LinearMath/Vector3.h"
+
+#include "autonomy/commsgs/geometry_msgs.hpp"
+
+namespace autonomy {
+namespace map {
+namespace utils {
+
+ /**
+ * @brief Get a geometry_msgs Quaternion from a yaw angle
+ * @param angle Yaw angle to generate a quaternion from
+ * @return geometry_msgs Quaternion
+ */
+inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle)
+{
+    tf2::Quaternion q;
+    q.setRPY(0, 0, angle);  // void returning function
+    return {q.x(), q.y(), q.z(), q.w()};
+}
+
+
+}  // namespace utils
+}  // namespace map
+}  // namespace autonomy

@@ -19,6 +19,8 @@
 
 namespace autonomy {
 namespace map {
+namespace common {
 
+}  // namespace common
 }  // namespace map
 }  // namespace autonomy

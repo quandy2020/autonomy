@@ -26,9 +26,38 @@ namespace autonomy {
 namespace commsgs {
 namespace builtin_interfaces {
 
-
 struct Time 
 {
+    Time();
+
+    Time(int32_t seconds, uint32_t nanoseconds);
+
+    Time(const Time& rhs) = default;
+
+    Time& operator=(const Time& rhs)  = default;
+
+    bool operator==(const Time& rhs) const;
+
+    bool operator!=(const Time& rhs) const;
+
+    bool operator<(const Time& rhs) const;
+
+    bool operator<=(const Time& rhs) const;
+
+    bool operator>=(const Time& rhs) const;
+
+    bool operator>(const Time& rhs) const;
+
+    uint32 Nanoseconds() const;
+
+    static Time Min();
+
+    static Time Max();
+
+    static Time Now();
+
+    double Seconds() const;
+
     // The seconds component, valid over all int32 values.
     int32 sec;
 
@@ -63,4 +92,5 @@ Duration FromProto(const proto::builtin_interfaces::Duration& proto);
 
 }  // namespace builtin_interfaces
 }  // namespace commsgs
+
 }  // namespace autonomy

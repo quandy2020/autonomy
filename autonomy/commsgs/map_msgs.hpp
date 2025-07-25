@@ -21,6 +21,7 @@
 
 #include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/proto/map_msgs.pb.h"
 
 namespace autonomy {
@@ -28,20 +29,20 @@ namespace commsgs {
 namespace map_msgs {
 
 
-// // An array of cells in a 2D grid
-// struct GridCells
-// {
-//     std_msgs::Header header;
+// An array of cells in a 2D grid
+struct GridCells
+{
+    std_msgs::Header header;
 
-//     // Width of each cell
-//     float cell_width;
+    // Width of each cell
+    float cell_width;
 
-//     // Height of each cell
-//     float cell_height;
+    // Height of each cell
+    float cell_height;
 
-//     // Each cell is represented by the Point at the center of the cell
-//     std::vector<geometry_msgs::Point>;
-// };
+    // Each cell is represented by the Point at the center of the cell
+    std::vector<geometry_msgs::Point> cells;
+};
 
 // This hold basic information about the characteristics of the OccupancyGrid
 struct MapMetaData
@@ -58,9 +59,9 @@ struct MapMetaData
     // Map height [cells]
     uint32 height;
     
-    // // The origin of the map [m, m, rad].  This is the real-world pose of the
-    // // bottom left corner of cell (0,0) in the map.
-    // geometry_msgs::Pose origin;
+    // The origin of the map [m, m, rad].  This is the real-world pose of the
+    // bottom left corner of cell (0,0) in the map.
+    geometry_msgs::Pose origin;
 };
 
 struct OccupancyGrid
@@ -98,17 +99,17 @@ struct Octomap
     std::vector<int32> data;
 };
 
-// struct OctomapWithPose
-// {
-//     // A 3D map in binary format, as Octree
-//     std_msgs::Header header;
+struct OctomapWithPose
+{
+    // A 3D map in binary format, as Octree
+    std_msgs::Header header;
 
-//     // The pose of the octree with respect to the header frame 
-//     geometry_msgs::Pose origin;
+    // The pose of the octree with respect to the header frame 
+    geometry_msgs::Pose origin;
 
-//     // The actual octree msg
-//     Octomap octomap;
-// };
+    // The actual octree msg
+    Octomap octomap;
+};
 
 // Converts 'range_data' to a proto::OccupancyGrid.
 proto::map_msgs::OccupancyGrid ToProto(const OccupancyGrid& data);
