@@ -57,10 +57,3 @@ set(PKGCONFIG_LIBS
   ${Poco_LIBRARIES}
 )
 
-# Prepare and install necessary files to support finding of the library
-# using pkg-config
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/${TARGET_NAME}.pc.in
-  ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.pc @ONLY)
-
-install(FILES ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.pc DESTINATION lib/pkgconfig)
-
