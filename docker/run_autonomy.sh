@@ -16,7 +16,7 @@
 # limitations under the License.
 ###############################################################################
 
-xhost +
+# xhost +
 
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $ROOT/scripts/print_color.sh
@@ -34,18 +34,18 @@ else
     platform_arch=$1
 fi
 
-if [ "$platform_arch" == "x86_64" ]; then
-    print_info "This system is running on a 64-bit x86 architecture."
-    BASE_NAME="openbot.platform.x86_64:latest"
-elif [ "$platform_arch" == "aarch64" ]; then
-    print_info "This system is running on a 64-bit ARM architecture."
-    BASE_NAME="openbot.platform.nvidia.aarch64.orin:latest"
-else
-    print_info "This system is running on a different architecture: $platform_arch"
-    BASE_NAME="unknown"
-    print_error "Error: Unsupported platform architecture: $platform_arch"
-    exit 1
-fi
+# if [ "$platform_arch" == "x86_64" ]; then
+#     print_info "This system is running on a 64-bit x86 architecture."
+#     BASE_NAME="openbot.platform.x86_64:latest"
+# elif [ "$platform_arch" == "aarch64" ]; then
+#     print_info "This system is running on a 64-bit ARM architecture."
+#     BASE_NAME="openbot.platform.nvidia.aarch64.orin:latest"
+# else
+#     print_info "This system is running on a different architecture: $platform_arch"
+#     BASE_NAME="unknown"
+#     print_error "Error: Unsupported platform architecture: $platform_arch"
+#     exit 1
+# fi
 
 # print current docker image
 print_info "Running $BASE_NAME"
@@ -60,14 +60,14 @@ if [[ $(id -u) -eq 0 ]]; then
     exit 1
 fi
 
-# Check if user can run docker without root.
-RE="\<docker\>"
-if [[ ! $(groups $USER) =~ $RE ]]; then
-    print_error "User |$USER| is not a member of the 'docker' group and cannot run docker commands without sudo."
-    print_error "Run 'sudo usermod -aG docker \$USER && newgrp docker' to add user to 'docker' group, then re-run this script."
-    print_error "See: https://docs.docker.com/engine/install/linux-postinstall/"
-    exit 1
-fi
+# # Check if user can run docker without root.
+# RE="\<docker\>"
+# if [[ ! $(groups $USER) =~ $RE ]]; then
+#     print_error "User |$USER| is not a member of the 'docker' group and cannot run docker commands without sudo."
+#     print_error "Run 'sudo usermod -aG docker \$USER && newgrp docker' to add user to 'docker' group, then re-run this script."
+#     print_error "See: https://docs.docker.com/engine/install/linux-postinstall/"
+#     exit 1
+# fi
 
 # Check if able to run docker commands.
 if [[ -z "$(docker ps)" ]] ;  then
@@ -130,7 +130,15 @@ function main() {
     #     $BASE_NAME \
     #     /bin/bash
 
-    docker run -it --name SpaceHero --privileged=true --network host --ipc=host ${DOCKER_ARGS[@]} -v $OPENBOT_DEV_DIR:/workspace/openbot -v /dev/*:/dev/* -v /etc/localtime:/etc/localtime:ro  --workdir /workspace $@ $BASE_NAME /bin/bash
+    docker run -it          \
+        --name SpaceHero    \
+        --privileged=true   \
+        ${DOCKER_ARGS[@]}   \
+        -v /Users/quandy/Workspace/project/autonomy:/workspace/autonomy \
+        -v /dev/*:/dev/* -v /etc/localtime:/etc/localtime:ro            \
+        --workdir /workspace                                            \
+        $@ $BASE_NAME                                                   \
+        /bin/bash
 }
 
 
