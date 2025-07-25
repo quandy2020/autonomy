@@ -198,10 +198,14 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
 
 # # Thirdparty library
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
 
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
 
@@ -258,6 +262,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 target_link_libraries(${PROJECT_NAME} PUBLIC tf2) 
 target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
+target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
 
 # autonomy.tasks.navigator
 google_binary(autonomy.tasks.navigator
