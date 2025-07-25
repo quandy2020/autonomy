@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/commsgs/proto/builtin_interfaces.pb.h"
 
 namespace autonomy {
 namespace commsgs {
@@ -47,6 +48,18 @@ struct Duration
     std::string frame_id;
 };
 
+
+// Converts 'data' to a proto::builtin_interfaces::Time.
+proto::builtin_interfaces::Time ToProto(const Time& data);
+
+// Converts 'proto' to Time.
+Time FromProto(const proto::builtin_interfaces::Time& proto);
+
+// Converts 'data' to a proto::builtin_interfaces::Duration.
+proto::builtin_interfaces::Duration ToProto(const Duration& Duration);
+
+// Converts 'proto' to Time.
+Duration FromProto(const proto::builtin_interfaces::Duration& proto);
 
 }  // namespace builtin_interfaces
 }  // namespace commsgs

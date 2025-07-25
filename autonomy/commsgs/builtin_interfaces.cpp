@@ -22,6 +22,31 @@ namespace commsgs {
 namespace builtin_interfaces {
 
 
+proto::builtin_interfaces::Time ToProto(const Time& data)
+{
+    proto::builtin_interfaces::Time proto;
+    return proto;
+}
+
+Time FromProto(const proto::builtin_interfaces::Time& proto)
+{
+    Time data;
+    return data;
+}
+
+
+proto::builtin_interfaces::Duration ToProto(const Duration& Duration)
+{
+    proto::builtin_interfaces::Duration proto;
+    return proto;
+}
+
+
+Duration FromProto(const proto::builtin_interfaces::Duration& proto)
+{
+    Duration data;
+    return data;
+}
 
 }  // namespace builtin_interfaces
 }  // namespace commsgs
