@@ -21,6 +21,9 @@
 #include <functional>
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/map/common/map_interface.hpp"
+
+#include "eventpp/eventqueue.h"
 
 namespace autonomy {
 namespace map {
@@ -30,7 +33,7 @@ namespace map {
  * @brief Parses the map yaml file and creates a service and a publisher that
  * provides occupancy grid
  */
-class MapServer
+class MapServer : public common::MapInterface
 {
 public:
     /**
@@ -51,8 +54,8 @@ public:
 
 protected:
 
-  // true if msg_ was initialized
-  bool map_available_;
+    // true if msg_ was initialized
+    bool map_available_;
 };
 
 }  // namespace map

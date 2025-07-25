@@ -78,11 +78,11 @@ LOAD_MAP_STATUS loadMapFromYaml(const std::string & yaml_file, commsgs::map_msgs
 
 struct SaveParameters
 {
-  std::string map_file_name{""};
-  std::string image_format{""};
-  double free_thresh{0.0};
-  double occupied_thresh{0.0};
-  MapMode mode{MapMode::Trinary};
+    std::string map_file_name{""};
+    std::string image_format{""};
+    double free_thresh{0.0};
+    double occupied_thresh{0.0};
+    MapMode mode{MapMode::Trinary};
 };
 
 /**

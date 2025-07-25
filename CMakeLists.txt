@@ -198,9 +198,12 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
 
 # # Thirdparty library
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
+
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -253,7 +256,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
-target_link_libraries(${PROJECT_NAME} PUBLIC tf2)
+target_link_libraries(${PROJECT_NAME} PUBLIC tf2) 
+target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
 
 # autonomy.tasks.navigator
 google_binary(autonomy.tasks.navigator

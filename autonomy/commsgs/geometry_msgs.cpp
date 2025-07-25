@@ -21,7 +21,6 @@ namespace commsgs {
 namespace geometry_msgs {
 
 
-
 }  // namespace geometry_msgs
 }  // namespace commsgs
 }  // namespace autonomy
