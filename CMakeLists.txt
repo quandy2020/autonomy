@@ -27,7 +27,7 @@ set(AUTONOMY_VERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION}.${AUTON
 set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
-option(BUILD_GRPC "Build autonomy gRPC support" false)
+option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_DOCS "Build autonomy docs support" false)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
@@ -60,13 +60,15 @@ find_package(glog REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
 
 if (${BUILD_GRPC})
-  find_package(async_grpc REQUIRED)
+  find_package(gRPC REQUIRED)
 endif()
 
 # Only build the documentation if we can find Sphinx.
-find_package(Sphinx)
-if(SPHINX_FOUND)
-  # add_subdirectory("docs")
+if (${BUILD_DOCS})
+  find_package(Sphinx)
+  if(SPHINX_FOUND)
+    add_subdirectory("docs")
+  endif()
 endif()
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
@@ -209,7 +211,7 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/as
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -266,6 +268,20 @@ target_link_libraries(${PROJECT_NAME} PUBLIC tf2)
 target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
 target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
 # target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json)
+
+if(${BUILD_GRPC})
+  # google_binary(cartographer_grpc_server
+  #   SRCS
+  #     cartographer/cloud/map_builder_server_main.cc
+  # )
+  target_link_libraries(${PROJECT_NAME} PUBLIC grpc++)
+  target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
+  # if(${BUILD_PROMETHEUS})
+  #   target_link_libraries(cartographer_grpc_server PUBLIC ${ZLIB_LIBRARIES})
+  #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-core)
+  #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-pull)
+  # endif()
+endif()
 
 # autonomy.tasks.navigator
 google_binary(autonomy.tasks.navigator

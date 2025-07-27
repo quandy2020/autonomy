@@ -38,9 +38,11 @@
 #include <string>
 #include <vector>
 
-#include "console_bridge/console.h"
+// #include "console_bridge/console.h"
 #include "class_loader/class_loader.hpp"
 #include "class_loader/visibility_control.hpp"
+
+using CONSOLE_BRIDGE_logDebug = printf
 
 namespace class_loader
 {

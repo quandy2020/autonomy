@@ -41,7 +41,7 @@
 #include <string>
 #include <vector>
 
-#include "console_bridge/console.h"
+// #include "console_bridge/console.h"
 
 #include "class_loader/class_loader_core.hpp"
 #include "class_loader/register_macro.hpp"
