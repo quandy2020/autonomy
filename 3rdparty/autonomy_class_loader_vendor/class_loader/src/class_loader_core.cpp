@@ -208,11 +208,11 @@ allMetaObjectsForLibraryOwnedBy(const std::string & library_path, const ClassLoa
 
 void insertMetaObjectIntoGraveyard(AbstractMetaObjectBase * meta_obj)
 {
-  CONSOLE_BRIDGE_logDebug(
-    "class_loader.impl: "
-    "Inserting MetaObject (class = %s, base_class = %s, ptr = %p) into graveyard",
-    meta_obj->className().c_str(), meta_obj->baseClassName().c_str(),
-    reinterpret_cast<void *>(meta_obj));
+  // CONSOLE_BRIDGE_logDebug(
+  //   "class_loader.impl: "
+  //   "Inserting MetaObject (class = %s, base_class = %s, ptr = %p) into graveyard",
+  //   meta_obj->className().c_str(), meta_obj->baseClassName().c_str(),
+  //   reinterpret_cast<void *>(meta_obj));
   getMetaObjectGraveyard().push_back(meta_obj);
 }
 
@@ -254,11 +254,11 @@ void destroyMetaObjectsForLibrary(const std::string & library_path, const ClassL
 {
   boost::recursive_mutex::scoped_lock lock(getPluginBaseToFactoryMapMapMutex());
 
-  CONSOLE_BRIDGE_logDebug(
-    "class_loader.impl: "
-    "Removing MetaObjects associated with library %s and class loader %p from global "
-    "plugin-to-factorymap map.\n",
-    library_path.c_str(), reinterpret_cast<const void *>(loader));
+  // CONSOLE_BRIDGE_logDebug(
+  //   "class_loader.impl: "
+  //   "Removing MetaObjects associated with library %s and class loader %p from global "
+  //   "plugin-to-factorymap map.\n",
+  //   library_path.c_str(), reinterpret_cast<const void *>(loader));
 
   // We have to walk through all FactoryMaps to be sure
   BaseToFactoryMapMap & factory_map_map = getGlobalPluginBaseToFactoryMapMap();
@@ -266,7 +266,7 @@ void destroyMetaObjectsForLibrary(const std::string & library_path, const ClassL
     destroyMetaObjectsForLibrary(library_path, it.second, loader);
   }
 
-  CONSOLE_BRIDGE_logDebug("%s", "class_loader.impl: Metaobjects removed.");
+  // CONSOLE_BRIDGE_logDebug("%s", "class_loader.impl: Metaobjects removed.");
 }
 
 bool areThereAnyExistingMetaObjectsForLibrary(const std::string & library_path)
@@ -335,14 +335,14 @@ void addClassLoaderOwnerForAllExistingMetaObjectsForLibrary(
 {
   MetaObjectVector all_meta_objs = allMetaObjectsForLibrary(library_path);
   for (auto & meta_obj : all_meta_objs) {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader.impl: "
-      "Tagging existing MetaObject %p (base = %s, derived = %s) with "
-      "class loader %p (library path = %s).",
-      reinterpret_cast<void *>(meta_obj), meta_obj->baseClassName().c_str(),
-      meta_obj->className().c_str(),
-      reinterpret_cast<void *>(loader),
-      nullptr == loader ? loader->getLibraryPath().c_str() : "NULL");
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader.impl: "
+    //   "Tagging existing MetaObject %p (base = %s, derived = %s) with "
+    //   "class loader %p (library path = %s).",
+    //   reinterpret_cast<void *>(meta_obj), meta_obj->baseClassName().c_str(),
+    //   meta_obj->className().c_str(),
+    //   reinterpret_cast<void *>(loader),
+    //   nullptr == loader ? loader->getLibraryPath().c_str() : "NULL");
     meta_obj->addOwningClassLoader(loader);
   }
 }
@@ -355,13 +355,13 @@ void revivePreviouslyCreateMetaobjectsFromGraveyard(
 
   for (auto & obj : graveyard) {
     if (obj->getAssociatedLibraryPath() == library_path) {
-      CONSOLE_BRIDGE_logDebug(
-        "class_loader.impl: "
-        "Resurrected factory metaobject from graveyard, class = %s, base_class = %s ptr = %p..."
-        "bound to ClassLoader %p (library path = %s)",
-        obj->className().c_str(), obj->baseClassName().c_str(), reinterpret_cast<void *>(obj),
-        reinterpret_cast<void *>(loader),
-        nullptr == loader ? loader->getLibraryPath().c_str() : "NULL");
+      // CONSOLE_BRIDGE_logDebug(
+      //   "class_loader.impl: "
+      //   "Resurrected factory metaobject from graveyard, class = %s, base_class = %s ptr = %p..."
+      //   "bound to ClassLoader %p (library path = %s)",
+      //   obj->className().c_str(), obj->baseClassName().c_str(), reinterpret_cast<void *>(obj),
+      //   reinterpret_cast<void *>(loader),
+      //   nullptr == loader ? loader->getLibraryPath().c_str() : "NULL");
 
       obj->addOwningClassLoader(loader);
       assert(obj->typeidBaseClassName() != "UNSET");
@@ -384,31 +384,31 @@ void purgeGraveyardOfMetaobjects(
   while (itr != graveyard.end()) {
     AbstractMetaObjectBase * obj = *itr;
     if (obj->getAssociatedLibraryPath() == library_path) {
-      CONSOLE_BRIDGE_logDebug(
-        "class_loader.impl: "
-        "Purging factory metaobject from graveyard, class = %s, base_class = %s ptr = %p.."
-        ".bound to ClassLoader %p (library path = %s)",
-        obj->className().c_str(), obj->baseClassName().c_str(), reinterpret_cast<void *>(obj),
-        reinterpret_cast<void *>(loader),
-        nullptr == loader ? loader->getLibraryPath().c_str() : "NULL");
+      // CONSOLE_BRIDGE_logDebug(
+      //   "class_loader.impl: "
+      //   "Purging factory metaobject from graveyard, class = %s, base_class = %s ptr = %p.."
+      //   ".bound to ClassLoader %p (library path = %s)",
+      //   obj->className().c_str(), obj->baseClassName().c_str(), reinterpret_cast<void *>(obj),
+      //   reinterpret_cast<void *>(loader),
+      //   nullptr == loader ? loader->getLibraryPath().c_str() : "NULL");
 
       bool is_address_in_graveyard_same_as_global_factory_map =
         std::find(all_meta_objs.begin(), all_meta_objs.end(), *itr) != all_meta_objs.end();
       itr = graveyard.erase(itr);
       if (delete_objs) {
         if (is_address_in_graveyard_same_as_global_factory_map) {
-          CONSOLE_BRIDGE_logDebug("%s",
-            "class_loader.impl: "
-            "Newly created metaobject factory in global factory map map has same address as "
-            "one in graveyard -- metaobject has been purged from graveyard but not deleted.");
+          // CONSOLE_BRIDGE_logDebug("%s",
+          //   "class_loader.impl: "
+          //   "Newly created metaobject factory in global factory map map has same address as "
+          //   "one in graveyard -- metaobject has been purged from graveyard but not deleted.");
         } else {
           assert(hasANonPurePluginLibraryBeenOpened() == false);
-          CONSOLE_BRIDGE_logDebug(
-            "class_loader.impl: "
-            "Also destroying metaobject %p (class = %s, base_class = %s, library_path = %s) "
-            "in addition to purging it from graveyard.",
-            reinterpret_cast<void *>(obj), obj->className().c_str(), obj->baseClassName().c_str(),
-            obj->getAssociatedLibraryPath().c_str());
+          // CONSOLE_BRIDGE_logDebug(
+          //   "class_loader.impl: "
+          //   "Also destroying metaobject %p (class = %s, base_class = %s, library_path = %s) "
+          //   "in addition to purging it from graveyard.",
+          //   reinterpret_cast<void *>(obj), obj->className().c_str(), obj->baseClassName().c_str(),
+          //   obj->getAssociatedLibraryPath().c_str());
 #ifndef _WIN32
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdelete-non-virtual-dtor"
@@ -428,18 +428,18 @@ void purgeGraveyardOfMetaobjects(
 void loadLibrary(const std::string & library_path, ClassLoader * loader)
 {
   static boost::recursive_mutex loader_mutex;
-  CONSOLE_BRIDGE_logDebug(
-    "class_loader.impl: "
-    "Attempting to load library %s on behalf of ClassLoader handle %p...\n",
-    library_path.c_str(), reinterpret_cast<void *>(loader));
+  // CONSOLE_BRIDGE_logDebug(
+  //   "class_loader.impl: "
+  //   "Attempting to load library %s on behalf of ClassLoader handle %p...\n",
+  //   library_path.c_str(), reinterpret_cast<void *>(loader));
   boost::recursive_mutex::scoped_lock loader_lock(loader_mutex);
 
   // If it's already open, just update existing metaobjects to have an additional owner.
   if (isLibraryLoadedByAnybody(library_path)) {
     boost::recursive_mutex::scoped_lock lock(getPluginBaseToFactoryMapMapMutex());
-    CONSOLE_BRIDGE_logDebug("%s",
-      "class_loader.impl: "
-      "Library already in memory, but binding existing MetaObjects to loader if necesesary.\n");
+    // CONSOLE_BRIDGE_logDebug("%s",
+    //   "class_loader.impl: "
+    //   "Library already in memory, but binding existing MetaObjects to loader if necesesary.\n");
     addClassLoaderOwnerForAllExistingMetaObjectsForLibrary(library_path, loader);
     return;
   }
@@ -473,28 +473,28 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
   }
 
   assert(library_handle != nullptr);
-  CONSOLE_BRIDGE_logDebug(
-    "class_loader.impl: "
-    "Successfully loaded library %s into memory (Poco::SharedLibrary handle = %p).",
-    library_path.c_str(), reinterpret_cast<void *>(library_handle));
+  // CONSOLE_BRIDGE_logDebug(
+  //   "class_loader.impl: "
+  //   "Successfully loaded library %s into memory (Poco::SharedLibrary handle = %p).",
+  //   library_path.c_str(), reinterpret_cast<void *>(library_handle));
 
   // Graveyard scenario
   size_t num_lib_objs = allMetaObjectsForLibrary(library_path).size();
   if (0 == num_lib_objs) {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader.impl: "
-      "Though the library %s was just loaded, it seems no factory metaobjects were registered. "
-      "Checking factory graveyard for previously loaded metaobjects...",
-      library_path.c_str());
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader.impl: "
+    //   "Though the library %s was just loaded, it seems no factory metaobjects were registered. "
+    //   "Checking factory graveyard for previously loaded metaobjects...",
+    //   library_path.c_str());
     revivePreviouslyCreateMetaobjectsFromGraveyard(library_path, loader);
     // Note: The 'false' indicates we don't want to invoke delete on the metaobject
     purgeGraveyardOfMetaobjects(library_path, loader, false);
   } else {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader.impl: "
-      "Library %s generated new factory metaobjects on load. "
-      "Destroying graveyarded objects from previous loads...",
-      library_path.c_str());
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader.impl: "
+    //   "Library %s generated new factory metaobjects on load. "
+    //   "Destroying graveyarded objects from previous loads...",
+    //   library_path.c_str());
     purgeGraveyardOfMetaobjects(library_path, loader, true);
   }
 
@@ -508,20 +508,20 @@ void loadLibrary(const std::string & library_path, ClassLoader * loader)
 void unloadLibrary(const std::string & library_path, ClassLoader * loader)
 {
   if (hasANonPurePluginLibraryBeenOpened()) {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader.impl: "
-      "Cannot unload %s or ANY other library as a non-pure plugin library was opened. "
-      "As class_loader has no idea which libraries class factories were exported from, "
-      "it can safely close any library without potentially unlinking symbols that are still "
-      "actively being used. "
-      "You must refactor your plugin libraries to be made exclusively of plugins "
-      "in order for this error to stop happening.",
-      library_path.c_str());
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader.impl: "
+    //   "Cannot unload %s or ANY other library as a non-pure plugin library was opened. "
+    //   "As class_loader has no idea which libraries class factories were exported from, "
+    //   "it can safely close any library without potentially unlinking symbols that are still "
+    //   "actively being used. "
+    //   "You must refactor your plugin libraries to be made exclusively of plugins "
+    //   "in order for this error to stop happening.",
+    //   library_path.c_str());
   } else {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader.impl: "
-      "Unloading library %s on behalf of ClassLoader %p...",
-      library_path.c_str(), reinterpret_cast<void *>(loader));
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader.impl: "
+    //   "Unloading library %s on behalf of ClassLoader %p...",
+    //   library_path.c_str(), reinterpret_cast<void *>(loader));
     boost::recursive_mutex::scoped_lock lock(getLoadedLibraryVectorMutex());
     LibraryVector & open_libraries = getLoadedLibraryVector();
     LibraryVector::iterator itr = findLoadedLibrary(library_path);
@@ -533,21 +533,21 @@ void unloadLibrary(const std::string & library_path, ClassLoader * loader)
 
         // Remove from loaded library list as well if no more factories associated with said library
         if (!areThereAnyExistingMetaObjectsForLibrary(library_path)) {
-          CONSOLE_BRIDGE_logDebug(
-            "class_loader.impl: "
-            "There are no more MetaObjects left for %s so unloading library and "
-            "removing from loaded library vector.\n",
-            library_path.c_str());
+          // CONSOLE_BRIDGE_logDebug(
+          //   "class_loader.impl: "
+          //   "There are no more MetaObjects left for %s so unloading library and "
+          //   "removing from loaded library vector.\n",
+          //   library_path.c_str());
           library->unload();
           assert(library->isLoaded() == false);
           delete (library);
           itr = open_libraries.erase(itr);
         } else {
-          CONSOLE_BRIDGE_logDebug(
-            "class_loader.impl: "
-            "MetaObjects still remain in memory meaning other ClassLoaders are still using library"
-            ", keeping library %s open.",
-            library_path.c_str());
+          // CONSOLE_BRIDGE_logDebug(
+          //   "class_loader.impl: "
+          //   "MetaObjects still remain in memory meaning other ClassLoaders are still using library"
+          //   ", keeping library %s open.",
+          //   library_path.c_str());
         }
         return;
       } catch (const Poco::RuntimeException & e) {

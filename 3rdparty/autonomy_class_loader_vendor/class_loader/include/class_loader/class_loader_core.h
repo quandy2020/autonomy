@@ -43,7 +43,4 @@ include <class_loader/class_loader_core.hpp> instead.
 
 #include "./class_loader_core.hpp"
 
-
-using CONSOLE_BRIDGE_logDebug = printf
-
 #endif  // CLASS_LOADER__CLASS_LOADER_CORE_H_

@@ -28,7 +28,7 @@ set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" true)
-option(BUILD_DOCS "Build autonomy docs support" false)
+option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" true)

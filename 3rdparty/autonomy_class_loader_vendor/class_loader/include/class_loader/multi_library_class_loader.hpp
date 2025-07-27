@@ -38,11 +38,8 @@
 #include <string>
 #include <vector>
 
-// #include "console_bridge/console.h"
 #include "class_loader/class_loader.hpp"
 #include "class_loader/visibility_control.hpp"
-
-using CONSOLE_BRIDGE_logDebug = printf
 
 namespace class_loader
 {
@@ -79,10 +76,10 @@ public:
   template<class Base>
   std::shared_ptr<Base> createSharedInstance(const std::string & class_name)
   {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader::MultiLibraryClassLoader: "
-      "Attempting to create instance of class type %s.",
-      class_name.c_str());
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader::MultiLibraryClassLoader: "
+    //   "Attempting to create instance of class type %s.",
+    //   class_name.c_str());
     ClassLoader * loader = getClassLoaderForClass<Base>(class_name);
     if (nullptr == loader) {
       throw class_loader::CreateClassException(
@@ -124,10 +121,10 @@ public:
   template<class Base>
   boost::shared_ptr<Base> createInstance(const std::string & class_name)
   {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader::MultiLibraryClassLoader: "
-      "Attempting to create instance of class type %s.",
-      class_name.c_str());
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader::MultiLibraryClassLoader: "
+    //   "Attempting to create instance of class type %s.",
+    //   class_name.c_str());
     ClassLoader * loader = getClassLoaderForClass<Base>(class_name);
     if (nullptr == loader) {
       throw class_loader::CreateClassException(
@@ -165,9 +162,9 @@ public:
   template<class Base>
   ClassLoader::UniquePtr<Base> createUniqueInstance(const std::string & class_name)
   {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader::MultiLibraryClassLoader: Attempting to create instance of class type %s.",
-      class_name.c_str());
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader::MultiLibraryClassLoader: Attempting to create instance of class type %s.",
+    //   class_name.c_str());
     ClassLoader * loader = getClassLoaderForClass<Base>(class_name);
     if (nullptr == loader) {
       throw class_loader::CreateClassException(

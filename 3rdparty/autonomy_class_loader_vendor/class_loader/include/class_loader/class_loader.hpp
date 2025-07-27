@@ -240,9 +240,9 @@ private:
   template<class Base>
   void onPluginDeletion(Base * obj)
   {
-    CONSOLE_BRIDGE_logDebug(
-      "class_loader::ClassLoader: Calling onPluginDeletion() for obj ptr = %p.\n",
-      reinterpret_cast<void *>(obj));
+    // CONSOLE_BRIDGE_logDebug(
+    //   "class_loader::ClassLoader: Calling onPluginDeletion() for obj ptr = %p.\n",
+    //   reinterpret_cast<void *>(obj));
     if (nullptr == obj) {
       return;
     }
@@ -254,12 +254,12 @@ private:
       if (!ClassLoader::hasUnmanagedInstanceBeenCreated()) {
         unloadLibraryInternal(false);
       } else {
-        CONSOLE_BRIDGE_logWarn(
-          "class_loader::ClassLoader: "
-          "Cannot unload library %s even though last shared pointer went out of scope. "
-          "This is because createUnmanagedInstance was used within the scope of this process,"
-          " perhaps by a different ClassLoader. Library will NOT be closed.",
-          getLibraryPath().c_str());
+        // CONSOLE_BRIDGE_logWarn(
+        //   "class_loader::ClassLoader: "
+        //   "Cannot unload library %s even though last shared pointer went out of scope. "
+        //   "This is because createUnmanagedInstance was used within the scope of this process,"
+        //   " perhaps by a different ClassLoader. Library will NOT be closed.",
+        //   getLibraryPath().c_str());
       }
     }
   }
@@ -286,13 +286,13 @@ private:
       ClassLoader::hasUnmanagedInstanceBeenCreated() &&
       isOnDemandLoadUnloadEnabled())
     {
-      CONSOLE_BRIDGE_logInform("%s",
-        "class_loader::ClassLoader: "
-        "An attempt is being made to create a managed plugin instance (i.e. boost::shared_ptr), "
-        "however an unmanaged instance was created within this process address space. "
-        "This means libraries for the managed instances will not be shutdown automatically on "
-        "final plugin destruction if on demand (lazy) loading/unloading mode is used."
-      );
+      // CONSOLE_BRIDGE_logInform("%s",
+      //   "class_loader::ClassLoader: "
+      //   "An attempt is being made to create a managed plugin instance (i.e. boost::shared_ptr), "
+      //   "however an unmanaged instance was created within this process address space. "
+      //   "This means libraries for the managed instances will not be shutdown automatically on "
+      //   "final plugin destruction if on demand (lazy) loading/unloading mode is used."
+      // );
     }
     if (!isLibraryLoaded()) {
       loadLibrary();
