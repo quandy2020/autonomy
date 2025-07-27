@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "autonomy/common/port.hpp"
 namespace autonomy {
 namespace common {
 

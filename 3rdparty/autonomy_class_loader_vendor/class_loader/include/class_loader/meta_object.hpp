@@ -35,7 +35,7 @@
 #ifndef CLASS_LOADER__META_OBJECT_HPP_
 #define CLASS_LOADER__META_OBJECT_HPP_
 
-#include <console_bridge/console.h>
+// #include <console_bridge/console.h>
 #include "class_loader/visibility_control.hpp"
 
 #include <typeinfo>

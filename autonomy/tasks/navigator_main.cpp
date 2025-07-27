@@ -26,7 +26,7 @@ namespace {
 void Run()
 {
     autonomy::common::ShowVersion();
-    LOG(INFO) << "Autonomy starting !!!";
+    LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 }
 
 } // namespace 

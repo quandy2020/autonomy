@@ -89,8 +89,8 @@ Time Time::Now()
     const int64_t total_ns = duration.count();
      
      return Time{
-         .sec      = static_cast<int32_t>(total_ns / 1'000'000'000),
-         .nanosec  = static_cast<uint32_t>(total_ns % 1'000'000'000)
+        static_cast<int32_t>(total_ns / 1'000'000'000),
+        static_cast<uint32_t>(total_ns % 1'000'000'000)
      };
 }
 
