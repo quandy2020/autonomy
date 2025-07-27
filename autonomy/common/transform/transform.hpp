@@ -22,6 +22,8 @@
 #include "Eigen/Core"
 #include "Eigen/Geometry"
 #include "autonomy/common/math/math.hpp"
+#include "autonomy/common/transform/rigid_transform.hpp"
+
 // #include "autonomy/transform/proto/transform.pb.h"
 // #include "autonomy/transform/rigid_transform.h"
 
@@ -29,13 +31,13 @@ namespace autonomy {
 namespace common {
 namespace transform {
 
-// // Returns the non-negative rotation angle in radians of the 3D transformation
-// // 'transform'.
-// template <typename FloatType>
-// FloatType GetAngle(const Rigid3<FloatType>& transform) {
-//   return FloatType(2) * std::atan2(transform.rotation().vec().norm(),
-//                                    std::abs(transform.rotation().w()));
-// }
+// Returns the non-negative rotation angle in radians of the 3D transformation
+// 'transform'.
+template <typename FloatType>
+FloatType GetAngle(const Rigid3<FloatType>& transform) {
+  return FloatType(2) * std::atan2(transform.rotation().vec().norm(),
+                                   std::abs(transform.rotation().w()));
+}
 
 // Returns the yaw component in radians of the given 3D 'rotation'. Assuming
 // 'rotation' is composed of three rotations around X, then Y, then Z, returns
@@ -47,12 +49,12 @@ T GetYaw(const Eigen::Quaternion<T>& rotation) {
   return atan2(direction.y(), direction.x());
 }
 
-// // Returns the yaw component in radians of the given 3D transformation
-// // 'transform'.
-// template <typename T>
-// T GetYaw(const Rigid3<T>& transform) {
-//   return GetYaw(transform.rotation());
-// }
+// Returns the yaw component in radians of the given 3D transformation
+// 'transform'.
+template <typename T>
+T GetYaw(const Rigid3<T>& transform) {
+  return GetYaw(transform.rotation());
+}
 
 // Returns an angle-axis vector (a vector with the length of the rotation angle
 // pointing to the direction of the rotation axis) representing the same
@@ -99,21 +101,21 @@ Eigen::Quaternion<T> AngleAxisVectorToRotationQuaternion(
                               quaternion_xyz.z());
 }
 
-// // Projects 'transform' onto the XY plane.
-// template <typename T>
-// Rigid2<T> Project2D(const Rigid3<T>& transform) {
-//   return Rigid2<T>(transform.translation().template head<2>(),
-//                    GetYaw(transform));
-// }
+// Projects 'transform' onto the XY plane.
+template <typename T>
+Rigid2<T> Project2D(const Rigid3<T>& transform) {
+  return Rigid2<T>(transform.translation().template head<2>(),
+                   GetYaw(transform));
+}
 
-// // Embeds 'transform' into 3D space in the XY plane.
-// template <typename T>
-// Rigid3<T> Embed3D(const Rigid2<T>& transform) {
-//   return Rigid3<T>(
-//       {transform.translation().x(), transform.translation().y(), T(0)},
-//       Eigen::AngleAxis<T>(transform.rotation().angle(),
-//                           Eigen::Matrix<T, 3, 1>::UnitZ()));
-// }
+// Embeds 'transform' into 3D space in the XY plane.
+template <typename T>
+Rigid3<T> Embed3D(const Rigid2<T>& transform) {
+  return Rigid3<T>(
+      {transform.translation().x(), transform.translation().y(), T(0)},
+      Eigen::AngleAxis<T>(transform.rotation().angle(),
+                          Eigen::Matrix<T, 3, 1>::UnitZ()));
+}
 
 // // Conversions between Eigen and proto.
 // Rigid2d ToRigid2(const proto::Rigid2d& transform);
