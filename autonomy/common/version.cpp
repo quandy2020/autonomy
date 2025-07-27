@@ -25,7 +25,7 @@ namespace common {
 namespace {
 
 const char* AUTONOMY_VERSION = "0.0.1";
-const char* AUTONOMY_COMMIT_ID = "507bfa1";
+const char* AUTONOMY_COMMIT_ID = "44672ff";
 const char* AUTONOMY_COMMIT_DATE = "2025-07-27";
 
 }  // namespace
@@ -49,6 +49,7 @@ void ShowVersion()
     LOG(INFO) << "-- Autonomy for robotics develop everyone -- ";
     LOG(INFO) << "  [ version ]: " << common::GetVersionInfo().c_str() ;
     LOG(INFO) << "  [ develop ]: " << common::GetBuildInfo().c_str();
+    LOG(INFO) << "  [ contact ]: " << "quandy2020@126.com";
 }
 
 }  // namespace common

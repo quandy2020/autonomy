@@ -14,11 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
-
-#include "autonomy/common/macros.hpp"
-#include "autonomy/common/port.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/planning/utils/robot_information.hpp"
 
 namespace autonomy {
 namespace planning {

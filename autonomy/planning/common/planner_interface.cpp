@@ -18,6 +18,10 @@
 
 namespace autonomy {
 namespace planning {
+namespace common {
 
+
+    
+}  // namespace common
 }  // namespace planning
 }  // namespace autonomy
