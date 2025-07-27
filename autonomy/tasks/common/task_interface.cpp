@@ -14,30 +14,13 @@
  * limitations under the License.
  */
 
-#pragma once 
-
-#include "autonomy/common/macros.hpp"
+#include "autonomy/tasks/common/task_interface.hpp"
 
 namespace autonomy {
-namespace planning {
-namespace planner {
+namespace tasks {
+namespace common { 
 
-class PlannerServer 
-{
-public:
-   /**
-    * Define TaskBridge::SharedPtr type
-    */
-    AUTONOMY_SMART_PTR_DEFINITIONS(PlannerServer)
-
-    PlannerServer();
     
-    ~PlannerServer();
-
-private:
-
-};
-
-}  // namespace planner
-}  // namespace planning
-}  // namespace autonomy
+}   // namespace common 
+}   // namespace tasks
+}   // namespace autonomy

@@ -14,19 +14,36 @@
  * limitations under the License.
  */
 
-#include <iostream>
 #include <glog/logging.h>
+#include <signal.h>
 
 #include "autonomy/common/version.hpp"
+#include "autonomy/tasks/task_bridge.hpp"
 
 namespace autonomy {
 namespace tasks {
 namespace {
 
+void SigintHandler(int sig)
+{
+    LOG(INFO) << "Shutdown autonomy navigation.";
+    // if ()
+    // {
+    // }
+}
+
 void Run()
 {
+    // Show autonomu app version
     autonomy::common::ShowVersion();
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
+
+    // Run tasks
+    auto task_node = std::make_shared<TaskBridge>();
+    task_node->Shutdown();
+
+    // 'Crtl + C' sign handler
+    signal(SIGINT, SigintHandler);
 }
 
 } // namespace 
@@ -38,9 +55,9 @@ int main(int argc, char **argv)
     FLAGS_alsologtostderr = 1;
     FLAGS_colorlogtostderr = true;
     FLAGS_log_prefix = true;  
-
 	google::InitGoogleLogging(argv[0]);
     autonomy::tasks::Run();
     google::ShutdownGoogleLogging();  
-    return 0;
+    return EXIT_SUCCESS;
 }
+
