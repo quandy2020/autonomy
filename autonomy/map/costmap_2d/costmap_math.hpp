@@ -35,14 +35,13 @@
  * Author: Eitan Marder-Eppstein
  *         David V. Lu!!
  *********************************************************************/
-#ifndef NAV2_COSTMAP_2D__COSTMAP_MATH_HPP_
-#define NAV2_COSTMAP_2D__COSTMAP_MATH_HPP_
+#pragma once
 
 #include <math.h>
 #include <algorithm>
 #include <vector>
 
-#include "geometry_msgs/msg/point.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 
 namespace autonomy {
 namespace map {
