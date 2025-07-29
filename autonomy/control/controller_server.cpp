@@ -14,22 +14,20 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/planner/planner_server.hpp"
+#include "autonomy/control/controller_server.hpp"
 
 namespace autonomy {
-namespace planning {
-namespace planner {
+namespace control {
 
-PlannerServer::PlannerServer()
+ControllerServer::ControllerServer()
 {
 
 }
 
-PlannerServer::~PlannerServer()
+ControllerServer::~ControllerServer()
 {
 
 }
 
-}  // namespace planner
-}  // namespace planning
+}  // namespace control
 }  // namespace autonomy

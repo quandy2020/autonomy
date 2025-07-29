@@ -20,7 +20,8 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/map/map_server.hpp"
-#include "autonomy/planning/planner/planner_server.hpp"
+#include "autonomy/control/controller_server.hpp"
+#include "autonomy/planning/planner_server.hpp"
 
 
 namespace autonomy {
@@ -55,11 +56,12 @@ private:
 
     // costmap
     map::MapServer::SharedPtr map_server_{nullptr};
-    
-    // controller
 
+    // controller
+    control::ControllerServer::SharedPtr controller_server_{nullptr};
+    
     // planner
-    planning::planner::PlannerServer::SharedPtr planner_server_{nullptr};
+    planning::PlannerServer::SharedPtr planner_server_{nullptr};
 };
 
 }   // namespace tasks
