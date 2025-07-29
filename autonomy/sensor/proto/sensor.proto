@@ -1,0 +1,80 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.sensor.proto;
+
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+
+message RangefinderPoint 
+{
+    commsgs.proto.geometry_msgs.Vector3 position = 1;
+}
+
+message TimedRangefinderPoint 
+{
+    commsgs.proto.geometry_msgs.Vector3 position = 1;
+    float time = 2;
+}
+
+// Compressed collection of a 3D point cloud.
+message CompressedPointCloud 
+{
+    int32 num_points = 1;
+    repeated int32 point_data = 3;
+}
+
+// Proto representation of ::cartographer::sensor::TimedPointCloudData.
+message TimedPointCloudData 
+{
+    commsgs.proto.builtin_interfaces.Time timestamp = 1;
+    commsgs.proto.geometry_msgs.Vector3 origin = 2;
+    // repeated transform.proto.Vector4f point_data_legacy = 3;
+    repeated TimedRangefinderPoint point_data = 4;
+    repeated float intensities = 5;
+}
+
+// Proto representation of ::cartographer::sensor::RangeData.
+message RangeData 
+{
+    commsgs.proto.geometry_msgs.Vector3 origin = 1;
+    repeated commsgs.proto.geometry_msgs.Vector3 returns_legacy = 2;
+    repeated commsgs.proto.geometry_msgs.Vector3 misses_legacy = 3;
+    repeated RangefinderPoint returns = 4;
+    repeated RangefinderPoint misses = 5;
+}
+
+// Proto representation of ::cartographer::sensor::ImuData.
+message ImuData 
+{
+    commsgs.proto.builtin_interfaces.Time timestamp = 1;
+    commsgs.proto.geometry_msgs.Vector3 linear_acceleration = 2;
+    commsgs.proto.geometry_msgs.Vector3 angular_velocity = 3;
+}
+
+// Proto representation of ::cartographer::sensor::OdometryData.
+message OdometryData 
+{
+    commsgs.proto.builtin_interfaces.Time timestamp = 1;
+//   transform.proto.Rigid3d pose = 2;
+}
+
+// Proto representation of ::cartographer::sensor::FixedFramePoseData.
+message FixedFramePoseData 
+{
+    commsgs.proto.builtin_interfaces.Time timestamp = 1;
+    // transform.proto.Rigid3d pose = 2;
+}

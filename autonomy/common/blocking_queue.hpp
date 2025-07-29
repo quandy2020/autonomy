@@ -21,14 +21,13 @@
 #include <memory>
 
 #include "absl/synchronization/mutex.h"
-#include "openbot/common/port.hpp"
-#include "openbot/common/utils/time.hpp"
+#include "autonomy/common/port.hpp"
+#include "autonomy/common/time.hpp"
 
 #include "glog/logging.h"
 
-namespace openbot {
+namespace autonomy {
 namespace common {
-namespace utils {
 
 // A thread-safe blocking queue that is useful for producer/consumer patterns.
 // 'T' must be movable.
@@ -165,6 +164,5 @@ class BlockingQueue {
   std::deque<T> deque_;
 };
 
-}  // namespace utils 
 }  // namespace common
-}  // namespace cartographer
+}  // namespace autonomy
