@@ -41,7 +41,7 @@ public:
 
     // Adds a costmap to produce sorted sensor output for. Calls 'callback'
     // for each collated sensor data.
-    virtual void AddCostmap(
+    virtual void AddToCostmap(
         const absl::flat_hash_set<std::string>& expected_sensor_ids,
         const Callback& callback) = 0;
 
