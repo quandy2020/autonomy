@@ -22,7 +22,8 @@
 #include <vector>
 
 #include "common/mutex.h"
-#include "grpc++/grpc++.h"
+// #include "grpc++/grpc++.h"
+#include "grpcpp/grpcpp.h"
 
 namespace async_grpc {
 

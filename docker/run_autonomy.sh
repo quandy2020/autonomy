@@ -23,7 +23,7 @@ source $ROOT/scripts/print_color.sh
 
 
 # defualt
-BASE_NAME="openbot.platform.x86_64:latest"
+BASE_NAME="openbot:latest"
 
 # platform
 if [ $# -eq 0 ]; then
