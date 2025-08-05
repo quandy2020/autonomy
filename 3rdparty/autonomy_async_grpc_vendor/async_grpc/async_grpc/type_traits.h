@@ -17,7 +17,8 @@
 #ifndef CPP_GRPC_TYPE_TRAITS_H_
 #define CPP_GRPC_TYPE_TRAITS_H_
 
-#include <grpc++/grpc++.h>
+// #include <grpc++/grpc++.h>
+#include "grpcpp/grpcpp.h"
 
 #include <cstdint>
 #include <type_traits>

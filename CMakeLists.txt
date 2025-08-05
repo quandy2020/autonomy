@@ -27,9 +27,8 @@ set(AUTONOMY_VERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION}.${AUTON
 set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
-option(BUILD_GRPC "Build autonomy gRPC support" true)
+option(BUILD_GRPC "Build autonomy gRPC support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
-option(BUILD_CYBER "Build autonomy cyberRT support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" true)
@@ -201,23 +200,21 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
 
 # # Thirdparty library
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
+
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
 
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
-
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
 
-if (${BUILD_CYBER})
-  add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_cyber_vendor/CyberRT)
-  include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_cyber_vendor/CyberRT/include)
+if(${BUILD_GRPC})
+  add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
+  include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
 endif()
 
 # Autonomy library
@@ -273,13 +270,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 target_link_libraries(${PROJECT_NAME} PUBLIC tf2) 
 target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
-target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
 # target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json)
-
-if (${BUILD_CYBER})
-  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
-  target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
-endif()
 
 if(${BUILD_GRPC})
   # google_binary(cartographer_grpc_server
