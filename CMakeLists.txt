@@ -29,6 +29,7 @@ set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_DOCS "Build autonomy docs support" true)
+option(BUILD_CYBER "Build autonomy cyberRT support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" true)
@@ -209,9 +210,15 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
+
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
+
+if (${BUILD_CYBER})
+  add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_cyber_vendor/CyberRT)
+  include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_cyber_vendor/CyberRT/include)
+endif()
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -268,6 +275,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC tf2)
 target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
 target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
 # target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json)
+
+if (${BUILD_CYBER})
+  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
+endif()
 
 if(${BUILD_GRPC})
   # google_binary(cartographer_grpc_server
