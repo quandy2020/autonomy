@@ -15,3 +15,8 @@
 syntax = "proto3";
 
 package autonomy.bridge.proto;
+
+message BridgeOptions
+{
+
+}
