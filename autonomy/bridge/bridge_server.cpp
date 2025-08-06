@@ -14,28 +14,25 @@
  * limitations under the License.
  */
 
-#include "autonomy/tasks/task_bridge.hpp"
+#include "autonomy/bridge/bridge_server.hpp"
 
 namespace autonomy {
-namespace tasks {
+namespace bridge {
 
-TaskBridge::TaskBridge()
+BridgeServer::BridgeServer()
 {
-    bridge_server_ = std::make_shared<bridge::BridgeServer>();
-    map_server_ = std::make_shared<map::MapServer>();
-    controller_server_ = std::make_shared<control::ControllerServer>();
-    planner_server_ = std::make_shared<planning::PlannerServer>();
+
 }
 
-TaskBridge::~TaskBridge()
+BridgeServer::~BridgeServer()
 {
     
 }
 
-void TaskBridge::Shutdown()
+void BridgeServer::Shutdown()
 {
 
 }
     
-}   // namespace tasks
+}   // namespace bridge
 }   // namespace autonomy
