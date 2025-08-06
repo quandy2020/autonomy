@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2025 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-#include "autonomy/map/costmap_2d/costmap_2d.hpp"
+#pragma once 
 
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/port.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 namespace autonomy {
-namespace map {
-namespace costmap_2d {
+namespace planning {
+namespace common {
 
-Costmap2D::Costmap2D()
+class PlannerServerInterface
 {
+public:
+    virtual ~PlannerServerInterface();
+};
 
-}
-
-Costmap2D::~Costmap2D()
-{
-
-}
-
-}  // namespace costmap_2d
-}  // namespace map
+}  // namespace common
+}  // namespace planning
 }  // namespace autonomy

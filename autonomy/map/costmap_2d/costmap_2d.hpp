@@ -16,10 +16,36 @@
 
 #pragma once
 
+#include "autonomy/map/proto/map_options.pb.h"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/map/common/map_interface.hpp"
+
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
+class Costmap2D : common::MapInterface
+{
+public:
+    /**
+     * Define Costmap2D::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(Costmap2D)
+
+    /**
+     * @brief A constructor for nautonomy::map::costmap_2d::Costmap2D
+     * @param options Additional options to control creation of the node.
+     */
+    explicit Costmap2D();
+
+    /**
+     * @brief A Destructor for autonomy::map::costmap_2d::Costmap2D
+     */
+    ~Costmap2D();
+
+private:
+    proto::Costmap2DOptions options_;
+};
 
 }  // namespace costmap_2d
 }  // namespace map

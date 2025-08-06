@@ -17,25 +17,47 @@
 #pragma once 
 
 // #include "cyber/cyber.h"
+#include <string>
+#include <unordered_map>
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/map/map_server.hpp"
+#include "autonomy/planning/common/planner_interface.hpp"
+#include "autonomy/planning/common/planner_server_interface.hpp"
+
 namespace autonomy {
 namespace planning {
 
-class PlannerServer 
+class PlannerServer : common::PlannerServerInterface
 {
 public:
-   /**
-    * Define TaskBridge::SharedPtr type
-    */
+    using PlannerMap = std::unordered_map<std::string, common::PlannerInterface::SharedPtr>;
+
+    /**
+     * Define TaskBridge::SharedPtr type
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(PlannerServer)
 
-    PlannerServer();
-    
+    /**
+     * @brief A constructor for autonomy::planning::PlannerServer
+     * @param options Additional options to control creation of the node.
+     */
+    explicit PlannerServer();
+
+    /**
+     * @brief
+     */
+    explicit PlannerServer(map::common::MapInterface::SharedPtr map);
+
+    /**
+     * @brief A Destructor for autonomy::planning::PlannerServer
+     */
     ~PlannerServer();
 
 private:
 
+    // All planners
+    PlannerMap planners_;
 };
 
 }  // namespace planning
