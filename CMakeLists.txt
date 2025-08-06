@@ -334,6 +334,12 @@ google_binary(autonomy.tasks.navigator
     autonomy/tasks/navigator_main.cpp
 )
 
+# visualization_server_main
+google_binary(autonomy.visualization.visualizer
+  SRCS
+    autonomy/visualization/visualization_server_main.cpp
+)
+
 # set(TEST_LIB autonomy_test_library)
 # add_library(${TEST_LIB} ${TEST_LIBRARY_HDRS} ${TEST_LIBRARY_SRCS})
 # target_include_directories(${TEST_LIB} SYSTEM PRIVATE "${GMOCK_INCLUDE_DIRS}")
