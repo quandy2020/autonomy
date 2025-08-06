@@ -50,6 +50,7 @@ find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(CyberRT REQUIRED)
+find_package(FastRTPS REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OMPL REQUIRED)
@@ -244,6 +245,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
 # CyberRT
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CYBERRT_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CYBERRT_LIBRARY})
+
+# FastRTPS
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${FastRTPS_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${FastRTPS_LIBRARY})
 
 # Lua5.3
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
