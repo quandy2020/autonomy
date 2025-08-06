@@ -20,25 +20,7 @@
 
 namespace autonomy {
 namespace bridge { 
-namespace common {
 
 
-class BridgeInterface
-{
-public:
-
-    BridgeInterface();
-
-    virtual ~BridgeInterface();
-
-
-    bool SendMessages();
-
-    bool WriteMessages();
-
-
-};
-
-}  // namespace common
 }   // namespace bridge
 }   // namespace autonomy
