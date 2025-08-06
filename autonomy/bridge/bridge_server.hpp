@@ -14,28 +14,45 @@
  * limitations under the License.
  */
 
-#include "autonomy/tasks/task_bridge.hpp"
+#pragma once
+
+#include <unordered_map>
+
+#include "autonomy/common/macros.hpp"
+#include "autonomy/bridge/bridge_server.hpp"
 
 namespace autonomy {
-namespace tasks {
+namespace bridge { 
 
-TaskBridge::TaskBridge()
+class BridgeServer
 {
-    bridge_server_ = std::make_shared<bridge::BridgeServer>();
-    map_server_ = std::make_shared<map::MapServer>();
-    controller_server_ = std::make_shared<control::ControllerServer>();
-    planner_server_ = std::make_shared<planning::PlannerServer>();
-}
+public:
+    /**
+     * Define BridgeServer::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
 
-TaskBridge::~TaskBridge()
-{
-    
-}
+    /**
+     * @brief A constructor for autonomy::bridge::BridgeServer
+     * @param options Additional options to control creation of the node.
+     */
+    explicit BridgeServer();
 
-void TaskBridge::Shutdown()
-{
+    /**
+     * @brief A Destructor for autonomy::bridge::BridgeServer
+     */
+    ~BridgeServer();
 
-}
-    
-}   // namespace tasks
+    /**
+     * @brief Shutdown 
+     */
+    void Shutdown();
+
+private:
+
+
+
+};
+
+}   // namespace bridge
 }   // namespace autonomy

@@ -19,8 +19,15 @@
 namespace autonomy {
 namespace map {
 
+MapServer::MapServer()
+{
 
+}
 
+MapServer::~MapServer()
+{
+
+}
 
 }  // namespace map
 }  // namespace autonomy
