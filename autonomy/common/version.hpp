@@ -25,6 +25,10 @@ std::string GetVersionInfo();
 
 std::string GetBuildInfo();
 
+std::string GetGitCommitID();
+
+std::string GetCudaInfo();
+
 void ShowVersion();
 
 }  // namespace common
