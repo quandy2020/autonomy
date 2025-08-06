@@ -20,10 +20,11 @@
 #include <memory>
 #include <functional>
 
+#include "eventpp/eventqueue.h"
+
+#include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/map/common/map_interface.hpp"
-
-#include "eventpp/eventqueue.h"
 
 namespace autonomy {
 namespace map {
@@ -53,9 +54,14 @@ public:
     ~MapServer();
 
 protected:
+    // Costmap 2D or 3D
+    common::MapInterface::SharedPtr costmap_{nullptr};
 
     // true if msg_ was initialized
     bool map_available_;
+
+    // Map configuration options
+    proto::MapOptions options_;
 };
 
 }  // namespace map

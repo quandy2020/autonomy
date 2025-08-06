@@ -37,7 +37,6 @@ public:
     MapInterface& operator=(const MapInterface&) = delete;
 
 
-
 };
 
 

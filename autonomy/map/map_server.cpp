@@ -15,13 +15,17 @@
  */
 
 #include "autonomy/map/map_server.hpp"
-
+#include "autonomy/common/logging.hpp"
 namespace autonomy {
 namespace map {
 
 MapServer::MapServer()
 {
-
+    if (options_.use_costmap_2d()) {
+        LOG(INFO) << "Use costmap 2D map env as input";
+    } else if (options_.use_costmap_3d()) {
+        LOG(INFO) << "Use costmap 3D map env as input";
+    }
 }
 
 MapServer::~MapServer()
