@@ -15,12 +15,12 @@
 # Locate the CyberRT library
 find_path(CYBERRT_INCLUDE_DIR
   NAMES cyber/cyber.h
-  PATHS /opt/cyber/include
+  PATHS /usr/local/include
 )
 
 find_library(CYBERRT_LIBRARY
   NAMES cyber
-  PATHS /opt/cyber/lib
+  PATHS /usr/local/lib
 )
 
 # Set the results

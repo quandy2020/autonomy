@@ -1,6 +1,8 @@
 recommonmark
+breathe
 myst_parser
-sphinx-rtd-theme 
+sphinx
+sphinx-rtd-theme    
 sphinxcontrib-applehelp 
 sphinxcontrib-devhelp 
 sphinxcontrib-htmlhelp 
