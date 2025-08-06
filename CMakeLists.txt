@@ -28,6 +28,7 @@ set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" true)
+option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
@@ -49,8 +50,6 @@ endif()
 find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
-find_package(CyberRT REQUIRED)
-find_package(FastRTPS REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OMPL REQUIRED)
@@ -71,6 +70,12 @@ if (${BUILD_DOCS})
   if(SPHINX_FOUND)
     add_subdirectory("docs")
   endif()
+endif()
+
+# Use with CyberRT library
+if (${BUILD_CYBER})
+  find_package(CyberRT REQUIRED)
+  find_package(FastRTPS REQUIRED)
 endif()
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
@@ -243,8 +248,10 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}"
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
 
 # CyberRT
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CYBERRT_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${CYBERRT_LIBRARY})
+if (${BUILD_CYBER})
+  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CYBERRT_INCLUDE_DIR}")
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${CYBERRT_LIBRARY})
+endif()
 
 # FastRTPS
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${FastRTPS_INCLUDE_DIR}")
@@ -303,7 +310,8 @@ set(ABSL_LIBRARY
   absl::strings
   absl::synchronization
   absl::time
-  absl::utility)
+  absl::utility
+  bvar)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ABSL_LIBRARY})
 
 if(${BUILD_GRPC})
