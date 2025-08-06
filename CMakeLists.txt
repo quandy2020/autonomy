@@ -27,7 +27,7 @@ set(AUTONOMY_VERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION}.${AUTON
 set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
-option(BUILD_GRPC "Build autonomy gRPC support" false)
+option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
@@ -49,6 +49,7 @@ endif()
 find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(CyberRT REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OMPL REQUIRED)
@@ -184,10 +185,12 @@ if(${BUILD_GRPC})
 endif()
 set(INSTALL_GENERATED_HDRS ${ALL_PROTO_HDRS} ${ALL_GRPC_SERVICE_HDRS})
 
+# configuration files
 configure_file(
   ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake
   ${PROJECT_BINARY_DIR}/autonomy/common/config.hpp)
 
+# autonomy version
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/autonomy-config-version.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake @ONLY)
@@ -198,20 +201,26 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake"
 # Generate source file with version definitions.
 include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
-
-# # Thirdparty library
-
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor)
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json)
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
-
+# Thirdparty library
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+
+# Thirdparty: class_loader
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
+
+# Thirdparty: eventpp
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
+
+# Thirdparty: nlohmann
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json/include)
+
+# Thirdparty: tf2
+add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
 
+# gRPC
 if(${BUILD_GRPC})
   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
@@ -219,8 +228,65 @@ endif()
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
+
+# protobuf
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY} 
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY})
+
+# Eigen3
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${EIGEN3_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
+
+# Ceres solver
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
+
+# CyberRT
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CYBERRT_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${CYBERRT_LIBRARY})
+
+# Lua5.3
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${LUA_LIBRARIES})
+
+# Boost
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Boost_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
+
+# Glog
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${GLOG_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
+
+# PCL
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
+
+# OpenCV
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
+
+# Yaml-cpp
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${YAML_CPP_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp)
+
+# graphicsmagick++
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${GRAPHICSMAGICKCPP_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
+
+# ompl
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
+
+# glog
+set(GLOG_LIBRARY glog)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
+target_link_libraries(${PROJECT_NAME} PUBLIC tf2) 
+target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
+# target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json)
+
+# abseil-cpp
+set(ABSL_LIBRARY
   absl::algorithm
   absl::base
   absl::debugging
@@ -232,45 +298,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY}
   absl::strings
   absl::synchronization
   absl::time
-  absl::utility 
-)
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${EIGEN3_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${LUA_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Boost_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${GLOG_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${YAML_CPP_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp)
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${GRAPHICSMAGICKCPP_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
-
-set(GLOG_LIBRARY glog)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
-target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
-target_link_libraries(${PROJECT_NAME} PUBLIC tf2) 
-target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
-# target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json)
+  absl::utility)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${ABSL_LIBRARY})
 
 if(${BUILD_GRPC})
   # google_binary(cartographer_grpc_server

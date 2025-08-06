@@ -16,8 +16,9 @@
 
 #pragma once 
 
-#include "autonomy/common/macros.hpp"
+#include "cyber/cyber.h"
 
+#include "autonomy/common/macros.hpp"
 namespace autonomy {
 namespace planning {
 
