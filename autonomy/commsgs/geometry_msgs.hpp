@@ -267,7 +267,6 @@ struct TransformStamped
     // Translation and rotation in 3-dimensions of child_frame_id from header.frame_id.
     Transform transform;
 };
-
 struct TransformStampeds 
 {
     std_msgs::Header header;

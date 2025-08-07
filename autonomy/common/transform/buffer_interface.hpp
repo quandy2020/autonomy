@@ -98,7 +98,7 @@ class BufferInterface {
   virtual bool CanTransform(const std::string& target_frame,
                             const commsgs::builtin_interfaces::Time& target_time,
                             const std::string& source_frame,
-                            const commsgs::builtin_interfaces::Timee& source_time,
+                            const commsgs::builtin_interfaces::Time& source_time,
                             const std::string& fixed_frame,
                             const float timeout_second = 0.01f,
                             std::string* errstr = nullptr) const = 0;
@@ -133,7 +133,7 @@ class BufferInterface {
   // Transform, advanced api, with pre-allocation
   template <typename T>
   T& Transform(const T& in, T& out, const std::string& target_frame,  // NOLINT
-               const ::apollo::cyber::Time& target_time, const std::string& fixed_frame,
+               const commsgs::builtin_interfaces::Time& target_time, const std::string& fixed_frame,
                float timeout = 0.0f) const {
     // do the transform
     tf2::doTransform(
@@ -156,7 +156,7 @@ class BufferInterface {
 
   // Transform, advanced api, different types, with pre-allocation
   template <typename A, typename B>
-  B& typename(const A& in, B& out, const std::string& target_frame,  // NOLINT
+  B& Transform(const A& in, B& out, const std::string& target_frame,  // NOLINT
                const commsgs::builtin_interfaces::Time& target_time, 
                const std::string& fixed_frame,
                float timeout = 0.0f) const 

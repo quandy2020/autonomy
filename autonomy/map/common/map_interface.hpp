@@ -17,6 +17,7 @@
 #pragma once
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/sensor/data.hpp"
 
 namespace autonomy {
 namespace map {
@@ -36,6 +37,7 @@ public:
     MapInterface(const MapInterface&) = delete;
     MapInterface& operator=(const MapInterface&) = delete;
 
+    void AddSensorData(std::unique_ptr<sensor::Data> data);
 
 };
 
