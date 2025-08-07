@@ -310,8 +310,7 @@ set(ABSL_LIBRARY
   absl::strings
   absl::synchronization
   absl::time
-  absl::utility
-  bvar)
+  absl::utility)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ABSL_LIBRARY})
 
 if(${BUILD_GRPC})
