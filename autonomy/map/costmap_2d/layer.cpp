@@ -20,6 +20,24 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
+Layer::Layer()
+: layered_costmap_(nullptr),
+    name_(),
+    current_(false),
+    enabled_(false) {}
+
+
+void Layer::initialize(LayeredCostmap* parent, std::string name)
+{
+    layered_costmap_ = parent;
+    name_ = name;
+    onInitialize();
+}
+
+// const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const
+// {
+//   return layered_costmap_->getFootprint();
+// }
 
 }  // namespace costmap_2d
 }  // namespace map

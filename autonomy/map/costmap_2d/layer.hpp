@@ -20,6 +20,7 @@
 #include <vector>
 #include <unordered_set>
 
+#include "autonomy//commsgs/geometry_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 
@@ -49,9 +50,7 @@ public:
     /**
      * @brief Initialization process of layer on startup
      */
-    void initialize(
-        LayeredCostmap * parent,
-        std::string name);
+    void initialize(LayeredCostmap* parent, std::string name);
 
     /**
      * @brief Reset this costmap
@@ -81,7 +80,7 @@ public:
      * @brief Actually update the underlying costmap, only within the bounds
      *        calculated during UpdateBounds().
      */
-    // virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) = 0;
+    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) = 0;
 
     /** 
      * @brief Implement this to make this layer match the size of the parent costmap. 
@@ -103,8 +102,36 @@ public:
         return name_;
     }
 
+    /**
+     * @brief Check to make sure all the data in the layer is up to date.
+     *        If the layer is not up to date, then it may be unsafe to
+     *        plan using the data from this layer, and the planner may
+     *        need to know.
+     *
+     *        A layer's current state should be managed by the protected
+     *        variable current_.
+     * @return Whether the data in the layer is up to date.
+     */
+    bool isCurrent() const
+    {
+        return current_;
+    }
+
+    /**@brief Gets whether the layer is enabled. */
+    bool isEnabled() const
+    {
+        return enabled_;
+    }
+
+    /** 
+     * @brief  Convenience function for layered_costmap_->getFootprint(). 
+     */
+    const std::vector<commsgs::geometry_msgs::Point>& getFootprint() const;
+
+
 protected:
-    LayeredCostmap * layered_costmap_;
+    LayeredCostmap* layered_costmap_; 
+    
     std::string name_;
     
     /** 
@@ -116,9 +143,13 @@ protected:
     virtual void onInitialize() {}
 
     bool current_;
+
     // Currently this var is managed by subclasses.
     // TODO(bpwilcox): make this managed by this class and/or container class.
     bool enabled_;
+
+private:
+    std::vector<commsgs::geometry_msgs::Point> footprint_spec_;
 };
 
 }  // namespace costmap_2d
