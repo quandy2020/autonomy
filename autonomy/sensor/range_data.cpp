@@ -14,37 +14,10 @@
  * limitations under the License.
  */
 
-#pragma once 
-
-#include "absl/memory/memory.h"
-
-#include "autonomy/common/time.hpp"
-#include "autonomy/sensor/point_cloud.hpp"
 #include "autonomy/sensor/range_data.hpp"
 
 namespace autonomy {
-
-namespace map {
-namespace common {
-    class MapInterface;
-}   // namespace common
-}   // namespace map 
-
 namespace sensor {
-
-class Data 
-{
-public:
-    explicit Data(const std::string &sensor_id) : sensor_id_(sensor_id) {}
-    virtual ~Data() {}
-
-    virtual Time GetTime() const = 0;
-    const std::string &GetSensorId() const { return sensor_id_; }
-    virtual void AddToCostmap(map::common::MapInterface *costmap_builder) = 0;
-
-protected:
-    const std::string sensor_id_;
-};
 
 }  // namespace sensor
 }  // namespace autonomy

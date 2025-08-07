@@ -35,12 +35,12 @@ public:
      * @brief A constructor for autonomy::planning::common::PlannerInterface
      * @param options Additional options to control creation of the node.
      */
-    explicit PlannerInterface();
+    PlannerInterface() = default;
 
     /**
      * @brief A Destructor for autonomy::planning::common::PlannerInterface
      */
-    virtual ~PlannerInterface();
+    virtual ~PlannerInterface() = default;
 
     /**
      * @brief Given a goal pose in the world, compute a plan
