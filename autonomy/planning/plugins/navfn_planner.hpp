@@ -21,6 +21,7 @@
 #include <memory>
 #include <vector>
 
+#include "class_loader/class_loader.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/common/transform/buffer.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"

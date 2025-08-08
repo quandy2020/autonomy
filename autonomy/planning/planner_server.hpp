@@ -20,6 +20,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "class_loader/class_loader.hpp"
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/transform/buffer.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -124,7 +126,8 @@ protected:
 
     // All planners
     PlannerMap planners_;
-    // pluginlib::ClassLoader<nav2_core::GlobalPlanner> gp_loader_;
+    std::unique_ptr<class_loader::ClassLoader> gp_loader_{nullptr};
+
     std::vector<std::string> default_ids_;
     std::vector<std::string> default_types_;
     std::vector<std::string> planner_ids_;
