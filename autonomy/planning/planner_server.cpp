@@ -15,6 +15,20 @@
  */
 
 #include "autonomy/planning/planner_server.hpp"
+#include <absl/strings/str_cat.h>
+
+#include <chrono>
+#include <cmath>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <iterator>
+#include <memory>
+#include <string>
+#include <vector>
+#include <utility>
+
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace planning {
@@ -28,6 +42,75 @@ PlannerServer::~PlannerServer()
 {
 
 }
+
+commsgs::planning_msgs::Path PlannerServer::GetPlan(
+    const commsgs::geometry_msgs::PoseStamped& start,
+    const commsgs::geometry_msgs::PoseStamped& goal,
+    const std::string& planner_id,
+    std::function<bool()> cancel_checker)
+{
+    commsgs::planning_msgs::Path path;
+
+    return path;
+}
+
+void PlannerServer::WaitForCostmap()
+{
+    // // Don't compute a plan until costmap is valid (after clear costmap)
+    // rclcpp::Rate r(100);
+    // auto waiting_start = now();
+    // while (!costmap_ros_->isCurrent()) {
+    //     if (now() - waiting_start > costmap_update_timeout_) {
+    //         throw nav2_core::PlannerTimedOut("Costmap timed out waiting for update");
+    //     }
+    //     r.sleep();
+    // }
+}
+
+bool PlannerServer::TransformPosesToGlobalFrame(
+    commsgs::geometry_msgs::PoseStamped& curr_start,
+    commsgs::geometry_msgs::PoseStamped& curr_goal)
+{
+    // if (!costmap_->transformPoseToGlobalFrame(curr_start, curr_start) ||
+    //     !costmap_->transformPoseToGlobalFrame(curr_goal, curr_goal))
+    // {
+    //     return false;
+    // }
+
+    return true;
+}
+
+bool PlannerServer::ValidatePath(
+    const commsgs::geometry_msgs::PoseStamped& curr_goal,
+    const commsgs::planning_msgs::Path& path,
+    const std::string& planner_id)
+{
+    return true;
+}
+
+void PlannerServer::ComputePlan()
+{
+    WaitForCostmap();
+
+    
+}
+
+void PlannerServer::ComputePlanThroughPoses()
+{
+
+}
+
+void PlannerServer::ExceptionWarning(
+    const commsgs::geometry_msgs::PoseStamped& start,
+    const commsgs::geometry_msgs::PoseStamped& goal,
+    const std::string & planner_id,
+    const std::exception & ex)
+{
+    LOG(WARNING) << absl::StrCat(planner_id, " plugin failed to plan from (", 
+        start.pose.position.x, start.pose.position.y, ") to (", 
+        goal.pose.position.x, goal.pose.position.y, "): ", ex.what());
+}
+
 
 }  // namespace planning
 }  // namespace autonomy
