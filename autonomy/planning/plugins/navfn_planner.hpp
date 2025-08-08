@@ -86,8 +86,8 @@ protected:
      * @return true if can find the path
      */
     bool makePlan(
-        const commsgs::geometry_msgs::Pose & start,
-        const commsgs::geometry_msgs::Pose & goal, 
+        const commsgs::geometry_msgs::Pose& start,
+        const commsgs::geometry_msgs::Pose& goal, 
         double tolerance,
         std::function<bool()> cancel_checker,
         commsgs::planning_msgs::Path& plan);
