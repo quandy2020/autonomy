@@ -29,6 +29,8 @@
 #include <utility>
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/time.hpp"
+#include "autonomy/planning/common/planner_exceptions.hpp"
 
 namespace autonomy {
 namespace planning {
@@ -90,9 +92,43 @@ bool PlannerServer::ValidatePath(
 
 void PlannerServer::ComputePlan()
 {
+
+    auto start_time = Time::Now();
     WaitForCostmap();
 
-    
+    commsgs::geometry_msgs::PoseStamped start_pose;
+    commsgs::geometry_msgs::PoseStamped goal_pose;
+
+    auto cancel_checker = [this]() {
+        // return action_server_pose_->is_cancel_requested();
+        return true;
+    };
+
+    try {
+        GetPlan(start_pose, goal_pose, "", cancel_checker);
+    } 
+    catch (common::InvalidPlanner& ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::StartOccupied& ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::GoalOccupied& ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::NoValidPathCouldBeFound & ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::PlannerTimedOut& ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::StartOutsideMapBounds & ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::GoalOutsideMapBounds & ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::PlannerTFError& ex) {
+        ExceptionWarning(start_pose, goal_pose, "", ex);
+    } catch (common::PlannerCancelled&) {
+        
+    } catch (std::exception& ex) {
+        
+    }
+
 }
 
 void PlannerServer::ComputePlanThroughPoses()
