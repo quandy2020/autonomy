@@ -340,3 +340,8 @@ void NavfnPlanner::clearRobotCell(unsigned int mx, unsigned int my)
 }  // namespace plugins
 }  // namespace planning
 }  // namespace autonomy
+
+// // Plugins
+// CLASS_LOADER_REGISTER_CLASS(
+//   autonomy::planning::plugins::NavfnPlanner, 
+//   autonomy::planning::common::PlannerInterface)
