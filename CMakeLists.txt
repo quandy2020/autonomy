@@ -244,10 +244,15 @@ if(${BUILD_TOOLS})
   include(FetchContent)
   FetchContent_Declare(
       foxglove
-      GIT_REPOSITORY https://github.com/foxglove/foxglove-sdk.git
-      GIT_TAG main
+      URL https://github.com/foxglove/foxglove-sdk/archive/refs/tags/typescript/schemas/v1.7.3.zip
+      URL_HASH SHA256=cade7ddcbe728078333babbe18cdf4b9676640fb3f91d7f7ac6535b1d52117ae
+      UPDATE_DISCONNECTED ON
   )
   FetchContent_MakeAvailable(foxglove)
+
+  file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
+    "${foxglove_SOURCE_DIR}/src/*.cpp"
+    "${foxglove_SOURCE_DIR}/src/server/*.cpp")
 endif()
 
 # Autonomy library
@@ -344,6 +349,18 @@ if(${BUILD_GRPC})
   #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-core)
   #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-pull)
   # endif()
+endif()
+
+if(${BUILD_TOOLS})
+  # Add include directory for Foxglove SDK
+  target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/include)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/include/foxglove)
+
+  # Add Foxglove SDK source files
+  target_sources(${PROJECT_NAME} PRIVATE ${FOXGLOVE_SOURCES})
+
+  # Link against libfoxglove.a
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.a)
 endif()
 
 # autonomy.tasks.navigator
