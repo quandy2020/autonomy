@@ -30,7 +30,7 @@ set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
-option(BUILD_TOOLS "Build autonomy tools support" false)
+option(BUILD_TOOLS "Build autonomy tools support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" true)
 
@@ -90,6 +90,8 @@ file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/mock_*.hpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/mock_*.cpp")
 file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
+file(GLOB_RECURSE ALL_TOOLS_HRRS "autonomy/tools/*.hpp")
+file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp")
 file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*_main.cpp")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
@@ -123,6 +125,10 @@ if (NOT ${BUILD_PROMETHEUS})
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_PROMETHEUS_FILES})
   list(REMOVE_ITEM ALL_TESTS ${ALL_PROMETHEUS_FILES})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_PROMETHEUS_FILES})
+endif()
+if (NOT ${BUILD_TOOLS})
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_TOOLS_HRRS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TOOLS_SRCS})
 endif()
 
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
@@ -230,6 +236,18 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
 if(${BUILD_GRPC})
   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
+endif()
+
+# include tools
+if(${BUILD_TOOLS})
+  # Fetch Foxglove SDK
+  include(FetchContent)
+  FetchContent_Declare(
+      foxglove
+      GIT_REPOSITORY https://github.com/foxglove/foxglove-sdk.git
+      GIT_TAG main
+  )
+  FetchContent_MakeAvailable(foxglove)
 endif()
 
 # Autonomy library
