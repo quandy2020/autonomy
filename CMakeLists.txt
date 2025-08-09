@@ -265,15 +265,16 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
 
-# CyberRT
+# DDS(CyberRT & FastRTPS)
 if (${BUILD_CYBER})
+  # CyberRT
   target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CYBERRT_INCLUDE_DIR}")
   target_link_libraries(${PROJECT_NAME} PUBLIC ${CYBERRT_LIBRARY})
-endif()
 
-# FastRTPS
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${FastRTPS_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${FastRTPS_LIBRARY})
+  # FastRTPS
+  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${FastRTPS_INCLUDE_DIR}")
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${FastRTPS_LIBRARY})
+endif()
 
 # Lua5.3
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
@@ -307,7 +308,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 
-# glog
+# glog & tf2 & eventpp & nlohmann_json
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
