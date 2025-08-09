@@ -19,17 +19,19 @@
 #include <unordered_map>
 
 #include "autonomy/tasks/proto/task_options.pb.h"
+#include "autonomy/visualization/proto/visualization_options.pb.h"
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/bridge/bridge_server.hpp"
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
+#include "autonomy/visualization/common/visualization_interface.hpp"
 
 namespace autonomy {
 namespace visualization { 
 
-class VisualizationServer
+class VisualizationServer : public common::VisualizationInterface
 {
 public:
     /**

@@ -34,13 +34,12 @@ public:
      * @brief A constructor for autonomy::visualization::common::VisualizationInterface
      * @param options Additional options to control creation of the node.
      */
-    VisualizationInterface();
+    VisualizationInterface() = default;
 
     /**
      * @brief A Destructor for autonomy::visualization::common::VisualizationInterface
      */
-    virtual ~VisualizationInterface();
-
+    virtual ~VisualizationInterface() = default;
 };
 
 }   // namespace common 
