@@ -13,8 +13,6 @@
 -- limitations under the License.
 
 
-
-AUTONOMY_BRIDGE = {
-
+AUTONOMY_VISUALIZATION = {
 
 }
