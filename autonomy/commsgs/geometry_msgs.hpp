@@ -21,6 +21,8 @@
 
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/commsgs/proto/std_msgs.pb.h"
+#include "autonomy/commsgs/proto/builtin_interfaces.pb.h"
+#include "autonomy/commsgs/proto/geometry_msgs.pb.h"
 
 namespace autonomy {
 namespace commsgs {
@@ -339,6 +341,66 @@ struct VelocityStamped
     std::string reference_frame_id;
     Twist velocity;
 };
+
+// Converts 'data' to a proto::geometry_msgs::Vector3.
+proto::geometry_msgs::Vector3 ToProto(const Vector3& data);
+
+// Converts 'proto' to Vector3.
+Vector3 FromProto(const proto::geometry_msgs::Vector3& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Accel.
+proto::geometry_msgs::Accel ToProto(const Accel& data);
+
+// Converts 'proto' to Accel.
+Accel FromProto(const proto::geometry_msgs::Accel& proto);
+
+// Converts 'data' to a proto::geometry_msgs::AccelStamped.
+proto::geometry_msgs::AccelStamped ToProto(const AccelStamped& data);
+
+// Converts 'proto' to AccelStamped.
+AccelStamped FromProto(const proto::geometry_msgs::AccelStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::AccelWithCovariance.
+proto::geometry_msgs::AccelWithCovariance ToProto(const AccelWithCovariance& data);
+
+// Converts 'proto' to AccelWithCovariance.
+AccelWithCovariance FromProto(const proto::geometry_msgs::AccelWithCovariance& proto);
+
+// Converts 'data' to a proto::geometry_msgs::AccelWithCovarianceStamped.
+proto::geometry_msgs::AccelWithCovarianceStamped ToProto(const AccelWithCovarianceStamped& data);
+
+// Converts 'proto' to AccelWithCovarianceStamped.
+AccelWithCovarianceStamped FromProto(const proto::geometry_msgs::AccelWithCovarianceStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Inertia.
+proto::geometry_msgs::Inertia ToProto(const Inertia& data);
+
+// Converts 'proto' to Inertia.
+Inertia FromProto(const proto::geometry_msgs::Inertia& proto);
+
+// Converts 'data' to a proto::geometry_msgs::InertiaStamped.
+proto::geometry_msgs::InertiaStamped ToProto(const InertiaStamped& data);
+
+// Converts 'proto' to InertiaStamped.
+InertiaStamped FromProto(const proto::geometry_msgs::InertiaStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Point.
+proto::geometry_msgs::Point ToProto(const Point& data);
+
+// Converts 'proto' to Point.
+Point FromProto(const proto::geometry_msgs::Point& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PointENU.
+proto::geometry_msgs::PointENU ToProto(const PointENU& data);
+
+// Converts 'proto' to PointENU.
+PointENU FromProto(const proto::geometry_msgs::PointENU& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PointLLH.
+proto::geometry_msgs::PointLLH ToProto(const PointLLH& data);
+
+// Converts 'proto' to PointLLH.
+PointLLH FromProto(const proto::geometry_msgs::PointLLH& proto);
 
 
 }  // namespace geometry_msgs

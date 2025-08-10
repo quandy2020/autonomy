@@ -97,26 +97,32 @@ Time Time::Now()
 proto::builtin_interfaces::Time ToProto(const Time& data)
 {
     proto::builtin_interfaces::Time proto;
+    proto.set_sec(data.sec);
+    proto.set_nanosec(data.nanosec);
     return proto;
 }
 
 Time FromProto(const proto::builtin_interfaces::Time& proto)
 {
-    Time data;
-    return data;
+    return {
+        proto.sec(),
+        proto.nanosec()
+    };
 }
 
-
-proto::builtin_interfaces::Duration ToProto(const Duration& Duration)
+proto::builtin_interfaces::Duration ToProto(const Duration& data)
 {
     proto::builtin_interfaces::Duration proto;
+    *proto.mutable_stamp() = ToProto(data.stamp);
+    proto.set_frame_id(data.frame_id);
     return proto;
 }
-
 
 Duration FromProto(const proto::builtin_interfaces::Duration& proto)
 {
     Duration data;
+    data.stamp = FromProto(proto.stamp());
+    data.frame_id = proto.frame_id();
     return data;
 }
 
