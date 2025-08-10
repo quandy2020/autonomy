@@ -55,6 +55,13 @@ int main(int argc, char **argv)
     FLAGS_colorlogtostderr = true;
     FLAGS_log_prefix = true;  
 	google::InitGoogleLogging(argv[0]);
+    google::ParseCommandLineFlags(&argc, &argv, true);
+
+    CHECK(!autonomy::system::FLAGS_configuration_directory.empty())
+      << "-configuration_directory is missing.";
+    CHECK(!autonomy::system::FLAGS_configuration_basename.empty())
+      << "-configuration_basename is missing.";
+
     autonomy::system::Run();
     google::ShutdownGoogleLogging();  
     return EXIT_SUCCESS;
