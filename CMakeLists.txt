@@ -31,6 +31,7 @@ option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" true)
+option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" true)
 
@@ -84,7 +85,6 @@ set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonom
 install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
-
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/mock_*.hpp")
@@ -92,6 +92,8 @@ file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helper
 file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
 file(GLOB_RECURSE ALL_TOOLS_HRRS "autonomy/tools/*.hpp")
 file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp")
+file(GLOB_RECURSE ALL_FOXGLOVE_HRRS "autonomy/visualization/*.hpp")
+file(GLOB_RECURSE ALL_FOXGLOVE_SRCS "autonomy/visualization/*.cpp")
 file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*_main.cpp")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
@@ -130,6 +132,11 @@ if (NOT ${BUILD_TOOLS})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_TOOLS_HRRS})
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TOOLS_SRCS})
 endif()
+if (NOT ${BUILD_FOXGLOVE})
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_FOXGLOVE_HRRS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_FOXGLOVE_SRCS})
+endif()
+
 
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
 file(GLOB_RECURSE INTERNAL_HDRS "cartographer/*/internal/*.h")
@@ -238,21 +245,54 @@ if(${BUILD_GRPC})
   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
 endif()
 
-# include tools
-if(${BUILD_TOOLS})
-  # Fetch Foxglove SDK
+# include visualization
+if(${BUILD_FOXGLOVE})
+  # # Fetch Foxglove SDK
+  # include(FetchContent)
+  # FetchContent_Declare(
+  #     foxglove
+  #     URL https://github.com/foxglove/foxglove-sdk/archive/refs/tags/typescript/schemas/v1.7.3.zip
+  #     URL_HASH SHA256=cade7ddcbe728078333babbe18cdf4b9676640fb3f91d7f7ac6535b1d52117ae
+  #     UPDATE_DISCONNECTED ON
+  # )
+  # FetchContent_MakeAvailable(foxglove)
+
+  # file(GLOB FOXGLOVE_SRCS CONFIGURE_DEPENDS "${foxglove_SOURCE_DIR}/cpp/foxglove/*.cpp")
+  # file(GLOB FOXGLOVE_HDRS CONFIGURE_DEPENDS "${foxglove_SOURCE_DIR}/cpp/foxglove/*.hpp")
+
+  # list(APPEND ALL_LIBRARY_HDRS ${FOXGLOVE_HDRS})
+  list(APPEND ALL_LIBRARY_SRCS ${FOXGLOVE_SRCS})
+
+  if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-aarch64-unknown-linux-gnu.zip" "81e2379e3a08160c023779eab0fe5c5764ace3b30c8727b0030ac7dc8b415016")
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-x86_64-unknown-linux-gnu.zip" "209d34a8703d44a129c559493e1a3fb215888b4d5973622750ac28b1c345946c")
+  else()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}")
+  endif()
+
+  list(GET FOXGLOVE_SDK_RELEASES 0 url)
+  list(GET FOXGLOVE_SDK_RELEASES 1 hash)
+
+  # Download Foxglove SDK shared lib
   include(FetchContent)
   FetchContent_Declare(
-      foxglove
-      URL https://github.com/foxglove/foxglove-sdk/archive/refs/tags/typescript/schemas/v1.7.3.zip
-      URL_HASH SHA256=cade7ddcbe728078333babbe18cdf4b9676640fb3f91d7f7ac6535b1d52117ae
-      UPDATE_DISCONNECTED ON
+    foxglove_sdk
+    URL ${url}
+    URL_HASH SHA256=${hash}
   )
-  FetchContent_MakeAvailable(foxglove)
+  FetchContent_MakeAvailable(foxglove_sdk)
 
-  file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
-    "${foxglove_SOURCE_DIR}/src/*.cpp"
-    "${foxglove_SOURCE_DIR}/src/server/*.cpp")
+  add_library(foxglove_sdk STATIC)
+  target_include_directories(foxglove_sdk SYSTEM
+    PUBLIC
+      $<BUILD_INTERFACE:${foxglove_sdk_SOURCE_DIR}/include>
+      $<INSTALL_INTERFACE:include>
+  )
+  file(GLOB_RECURSE FOXGLOVE_SDK_SOURCES CONFIGURE_DEPENDS "${foxglove_sdk_SOURCE_DIR}/src/*.cpp")
+  target_sources(foxglove_sdk PRIVATE ${FOXGLOVE_SDK_SOURCES})
+  set_target_properties(foxglove_sdk PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  target_link_libraries(foxglove_sdk PRIVATE ${foxglove_sdk_SOURCE_DIR}/lib/libfoxglove.a)
 endif()
 
 # Autonomy library
@@ -351,28 +391,22 @@ if(${BUILD_GRPC})
   # endif()
 endif()
 
-if(${BUILD_TOOLS})
+if(${BUILD_FOXGLOVE})
   # Add include directory for Foxglove SDK
-  target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/include)
-  target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/include/foxglove)
-
-  # Add Foxglove SDK source files
-  target_sources(${PROJECT_NAME} PRIVATE ${FOXGLOVE_SOURCES})
-
-  # Link against libfoxglove.a
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.a)
+  target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/cpp/foxglove/include)
+  target_link_libraries(${PROJECT_NAME} PRIVATE foxglove_sdk)
 endif()
+
+# autonomy.system.launcher
+google_binary(autonomy.system.launcher
+  SRCS
+    autonomy/system/autonomy_main.cpp
+)
 
 # autonomy.tasks.navigator
 google_binary(autonomy.tasks.navigator
   SRCS
     autonomy/tasks/navigator_main.cpp
-)
-
-# visualization_server_main
-google_binary(autonomy.visualization.visualizer
-  SRCS
-    autonomy/visualization/visualization_server_main.cpp
 )
 
 # set(TEST_LIB autonomy_test_library)

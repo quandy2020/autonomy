@@ -18,15 +18,16 @@
 #include <signal.h>
 
 #include "autonomy/common/version.hpp"
-#include "autonomy/visualization/visualization_server.hpp"
+#include "autonomy/system/gflags.hpp"
+#include "autonomy/system/system.hpp"
 
 namespace autonomy {
-namespace visualization {
+namespace system {
 namespace {
 
 void SigintHandler(int sig)
 {
-    LOG(INFO) << "Shutdown autonomy visualization.";
+    LOG(INFO) << "Shutdown autonomy system all tasks.";
     // if ()
     // {
     // }
@@ -38,16 +39,14 @@ void Run()
     autonomy::common::ShowVersion();
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
-    // Run visualizer server
-    auto visualizer = std::make_shared<VisualizationServer>();
-    visualizer->Shutdown();
+    auto autonomy = std::make_shared<AutonomyNode>();
 
     // 'Crtl + C' sign handler
     signal(SIGINT, SigintHandler);
 }
 
 } // namespace 
-} // namespace visualization
+} // namespace system
 } // namespace autonomy
 
 int main(int argc, char **argv)
@@ -56,7 +55,8 @@ int main(int argc, char **argv)
     FLAGS_colorlogtostderr = true;
     FLAGS_log_prefix = true;  
 	google::InitGoogleLogging(argv[0]);
-    autonomy::visualization::Run();
+    autonomy::system::Run();
     google::ShutdownGoogleLogging();  
     return EXIT_SUCCESS;
 }
+
