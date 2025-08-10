@@ -488,3 +488,7 @@ install(
   FILES ${PROJECT_BINARY_DIR}/autonomy-config.cmake
   DESTINATION share/autonomy/
 )
+
+install(
+  DIRECTORY ${PROJECT_SOURCE_DIR}/autonomy/launch 
+  DESTINATION launch)
