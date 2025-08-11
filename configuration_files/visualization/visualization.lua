@@ -15,4 +15,7 @@
 
 AUTONOMY_VISUALIZATION = {
 
+    foxglove = {
+        log_level = "info",     -- info, debug
+    },
 }
