@@ -27,7 +27,7 @@ set(AUTONOMY_VERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION}.${AUTON
 set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
-option(BUILD_GRPC "Build autonomy gRPC support" true)
+option(BUILD_GRPC "Build autonomy gRPC support" false)
 option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
@@ -43,10 +43,10 @@ include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 google_initialize_cartographer_project()
 google_enable_testing()
 
-# Set a default install prefix if not specified by the user
-if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
-endif()
+# # Set a default install prefix if not specified by the user
+# if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+#   set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
+# endif()
 
 find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
@@ -85,7 +85,7 @@ set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonom
 install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
-file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
+file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp", "autonomy/*.h")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/mock_*.hpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/mock_*.cpp")
@@ -227,23 +227,11 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
 
-# Thirdparty: eventpp
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_eventpp_vendor/include)
-
-# Thirdparty: nlohmann
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_nlohmann_vendor/json/include)
-
-# Thirdparty: tf2
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_tf2_vendor/include)
-
-# gRPC
-if(${BUILD_GRPC})
-  add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
-  include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
-endif()
+# # gRPC
+# if(${BUILD_GRPC})
+#   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
+#   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
+# endif()
 
 # # include visualization
 # if(${BUILD_FOXGLOVE})
@@ -340,9 +328,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
-target_link_libraries(${PROJECT_NAME} PUBLIC tf2) 
-target_link_libraries(${PROJECT_NAME} PUBLIC eventpp)
-# target_link_libraries(${PROJECT_NAME} PUBLIC nlohmann_json)
 
 # abseil-cpp
 set(ABSL_LIBRARY
