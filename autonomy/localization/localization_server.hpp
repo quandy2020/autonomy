@@ -36,5 +36,5 @@ public:
 
 };
 
-}  // namespace control
+}  // namespace localization
 }  // namespace autonomy

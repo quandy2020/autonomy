@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-#pragma once 
-
-#include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+#include "autonomy/sensor/laser_data.hpp"
 
 namespace autonomy {
 namespace sensor {
 
-using RangeData = commsgs::sensor_msgs::Range;
-using RangeProto = commsgs::proto::sensor_msgs::Range;
+LaserScanProto ToProto(const LaserScanData& data)
+{
+    return commsgs::sensor_msgs::ToProto(data);
+}
 
-// Converts 'data' to a proto::sensor_msgs::Range.
-RangeProto ToProto(const RangeData& data);
-
-// Converts 'proto' to RangeData.
-RangeData FromProto(const RangeProto& proto);
-
+LaserScanData FromProto(const LaserScanProto& proto)
+{
+    return commsgs::sensor_msgs::FromProto(proto);
+}
 
 }  // namespace sensor
 }  // namespace autonomy

@@ -16,8 +16,22 @@
 
 #pragma once 
 
+#include "autonomy/common/time.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+
 namespace autonomy {
 namespace sensor {
+
+using IMUData = commsgs::sensor_msgs::Imu;
+using IMUProto = commsgs::proto::sensor_msgs::Imu;
+
+// Converts 'data' to a proto::sensor_msgs::IMU.
+IMUProto ToProto(const IMUData& data);
+
+// Converts 'proto' to IMU.
+IMUData FromProto(const IMUProto& proto);
+
 
 }  // namespace sensor
 }  // namespace autonomy
