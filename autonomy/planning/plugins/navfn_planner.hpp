@@ -23,7 +23,7 @@
 
 #include "class_loader/class_loader.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/common/transform/buffer.hpp"
+#include "autonomy/transform/buffer.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/planning/plugins/navfn.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
@@ -36,7 +36,7 @@ class NavfnPlanner : public common::PlannerInterface
 {
 public:
 
-    using Buffer = autonomy::common::transform::Buffer;
+    using Buffer = autonomy::transform::Buffer;
     /**
      * @brief constructor
      */

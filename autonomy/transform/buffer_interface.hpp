@@ -23,7 +23,6 @@
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 
 namespace autonomy {
-namespace common {
 namespace transform {
 
 // extend the TFCore class and the TFCpp class
@@ -169,5 +168,4 @@ class BufferInterface {
 };  // class
 
 }  // namespace transform
-}  // namespace common
 }  // namespace autonomy

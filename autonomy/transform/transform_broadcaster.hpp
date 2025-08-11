@@ -23,7 +23,6 @@
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 
 namespace autonomy {
-namespace common {
 namespace transform {
 
 /** 
@@ -53,5 +52,4 @@ public:
 };
 
 }  // namespace transform
-}  // namespace common
 }  // namespace autonomy

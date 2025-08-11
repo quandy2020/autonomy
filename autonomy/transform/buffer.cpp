@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/transform/static_transform_component.hpp"
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace common {

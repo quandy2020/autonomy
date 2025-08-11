@@ -23,7 +23,7 @@
 #include "class_loader/class_loader.hpp"
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/transform/buffer.hpp"
+#include "autonomy/transform/buffer.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/map_server.hpp"
@@ -37,7 +37,7 @@ namespace planning {
 class PlannerServer : common::PlannerServerInterface
 {
 public:
-    using TfBuffer = autonomy::common::transform::Buffer;
+    using TfBuffer = autonomy::transform::Buffer;
     using PlannerMap = std::unordered_map<std::string, common::PlannerInterface::SharedPtr>;
 
     /**
