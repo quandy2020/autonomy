@@ -31,7 +31,7 @@ option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
-option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" true)
+option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" false)
 
@@ -245,39 +245,38 @@ if(${BUILD_GRPC})
   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
 endif()
 
-# include visualization
-if(${BUILD_FOXGLOVE})
-  if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-    set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-aarch64-unknown-linux-gnu.zip" "81e2379e3a08160c023779eab0fe5c5764ace3b30c8727b0030ac7dc8b415016")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
-    set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-x86_64-unknown-linux-gnu.zip" "209d34a8703d44a129c559493e1a3fb215888b4d5973622750ac28b1c345946c")
-  else()
-    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}")
-  endif()
+# # include visualization
+# if(${BUILD_FOXGLOVE})
+#   if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+#     set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-aarch64-unknown-linux-gnu.zip" "81e2379e3a08160c023779eab0fe5c5764ace3b30c8727b0030ac7dc8b415016")
+#   elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+#     set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-x86_64-unknown-linux-gnu.zip" "209d34a8703d44a129c559493e1a3fb215888b4d5973622750ac28b1c345946c")
+#   else()
+#     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_PROCESSOR}-${CMAKE_SYSTEM_NAME}")
+#   endif()
 
-  list(GET FOXGLOVE_SDK_RELEASES 0 url)
-  list(GET FOXGLOVE_SDK_RELEASES 1 hash)
+#   list(GET FOXGLOVE_SDK_RELEASES 0 url)
+#   list(GET FOXGLOVE_SDK_RELEASES 1 hash)
 
-  # Download Foxglove SDK shared lib
-  include(FetchContent)
-  FetchContent_Declare(
-    foxglove_sdk
-    URL ${url}
-    URL_HASH SHA256=${hash}
-  )
-  FetchContent_MakeAvailable(foxglove_sdk)
+#   # Download Foxglove SDK shared lib
+#   include(FetchContent)
+#   FetchContent_Declare(
+#     foxglove_sdk
+#     URL ${url}
+#     URL_HASH SHA256=${hash}
+#   )
+#   FetchContent_MakeAvailable(foxglove_sdk)
 
-  add_library(foxglove_sdk STATIC)
-  target_include_directories(foxglove_sdk SYSTEM
-    PUBLIC
-      $<BUILD_INTERFACE:${foxglove_sdk_SOURCE_DIR}/include>
-      $<INSTALL_INTERFACE:include>
-  )
-  file(GLOB_RECURSE FOXGLOVE_SDK_SOURCES CONFIGURE_DEPENDS "${foxglove_sdk_SOURCE_DIR}/src/*.cpp")
-  target_sources(foxglove_sdk PRIVATE ${FOXGLOVE_SDK_SOURCES})
-  set_target_properties(foxglove_sdk PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  target_link_libraries(foxglove_sdk PRIVATE ${foxglove_sdk_SOURCE_DIR}/lib/libfoxglove.a)
-endif()
+#   add_library(foxglove_sdk STATIC)
+#   target_include_directories(foxglove_sdk SYSTEM PUBLIC
+#       $<BUILD_INTERFACE:${foxglove_sdk_SOURCE_DIR}/include>
+#       $<INSTALL_INTERFACE:include>
+#   )
+#   file(GLOB_RECURSE FOXGLOVE_SDK_SOURCES CONFIGURE_DEPENDS "${foxglove_sdk_SOURCE_DIR}/src/*.cpp")
+#   target_sources(foxglove_sdk PUBLIC ${FOXGLOVE_SDK_SOURCES})
+#   set_target_properties(foxglove_sdk PROPERTIES POSITION_INDEPENDENT_CODE ON)
+#   target_link_libraries(foxglove_sdk PUBLIC ${foxglove_sdk_SOURCE_DIR}/lib/libfoxglove.a)
+# endif()
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -375,11 +374,10 @@ if(${BUILD_GRPC})
   # endif()
 endif()
 
-if(${BUILD_FOXGLOVE})
-  # Add include directory for Foxglove SDK
-  target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/cpp/foxglove/include)
-  target_link_libraries(${PROJECT_NAME} PRIVATE foxglove_sdk)
-endif()
+# if(${BUILD_FOXGLOVE})
+#   target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_sdk_SOURCE_DIR}/include)
+#   target_link_libraries(${PROJECT_NAME} PRIVATE foxglove_sdk)
+# endif()
 
 # autonomy.system.launcher
 google_binary(autonomy.system.launcher

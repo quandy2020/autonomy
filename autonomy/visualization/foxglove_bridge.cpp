@@ -17,22 +17,25 @@
 
 #include "autonomy/visualization/foxglove_bridge.hpp"
 
+#include "autonomy/common/logging.hpp"
+
+
 namespace autonomy {
 namespace visualization { 
 
 FoxgloveBridge::FoxgloveBridge()
 {
-    // This doesn't affect what gets logged to the MCAP file, this is for troubleshooting the SDK integration
-    foxglove::setLogLevel(foxglove::LogLevel::Debug);
+    // // This doesn't affect what gets logged to the MCAP file, this is for troubleshooting the SDK integration
+    // foxglove::setLogLevel(foxglove::LogLevel::Debug);
 
-    foxglove::McapWriterOptions mcap_options = {};
-    mcap_options.path = "quickstart-cpp.mcap";
-    auto writerResult = foxglove::McapWriter::create(mcap_options);
-    if (!writerResult.has_value()) {
-        std::cerr << "Failed to create writer: " << foxglove::strerror(writerResult.error()) << '\n';
-        return;
-    }
-    auto writer = std::move(writerResult.value());
+    // foxglove::McapWriterOptions mcap_options = {};
+    // mcap_options.path = "quickstart-cpp.mcap";
+    // auto writerResult = foxglove::McapWriter::create(mcap_options);
+    // if (!writerResult.has_value()) {
+    //     LOG(ERROR) << "Failed to create writer: " << foxglove::strerror(writerResult.error());
+    //     return;
+    // }
+    // auto writer = std::move(writerResult.value());
 }
 
 FoxgloveBridge::~FoxgloveBridge()
