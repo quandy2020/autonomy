@@ -111,11 +111,35 @@ struct OctomapWithPose
     Octomap octomap;
 };
 
+// Converts 'data' to a proto::GridCells.
+proto::map_msgs::GridCells ToProto(const GridCells& data);
+
+// Converts 'proto' to GridCells.
+GridCells FromProto(const proto::map_msgs::GridCells& proto);
+
+// Converts 'data' to a proto::MapMetaData.
+proto::map_msgs::MapMetaData ToProto(const MapMetaData& data);
+
+// Converts 'proto' to MapMetaData.
+MapMetaData FromProto(const proto::map_msgs::MapMetaData& proto);
+
 // Converts 'range_data' to a proto::OccupancyGrid.
 proto::map_msgs::OccupancyGrid ToProto(const OccupancyGrid& data);
 
 // Converts 'proto' to OccupancyGrid.
 OccupancyGrid FromProto(const proto::map_msgs::OccupancyGrid& proto);
+
+// Converts 'range_data' to a proto::Octomap.
+proto::map_msgs::Octomap ToProto(const Octomap& data);
+
+// Converts 'proto' to Octomap.
+Octomap FromProto(const proto::map_msgs::Octomap& proto);
+
+// Converts 'range_data' to a proto::OctomapWithPose.
+proto::map_msgs::OctomapWithPose ToProto(const OctomapWithPose& data);
+
+// Converts 'proto' to OctomapWithPose.
+OctomapWithPose FromProto(const proto::map_msgs::OctomapWithPose& proto);
 
 }  // namespace map_msgs
 }  // namespace commsgs

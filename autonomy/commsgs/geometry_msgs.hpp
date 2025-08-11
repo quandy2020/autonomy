@@ -232,7 +232,6 @@ struct PoseWithCovarianceStamped
     PoseWithCovariance pose;
 };
 
-
 // This represents an orientation with reference coordinate frame and timestamp.
 struct QuaternionStamped
 {
@@ -402,6 +401,143 @@ proto::geometry_msgs::PointLLH ToProto(const PointLLH& data);
 // Converts 'proto' to PointLLH.
 PointLLH FromProto(const proto::geometry_msgs::PointLLH& proto);
 
+// Converts 'data' to a proto::geometry_msgs::PointStamped.
+proto::geometry_msgs::PointStamped ToProto(const PointStamped& data);
+
+// Converts 'proto' to PointStamped.
+PointStamped FromProto(const proto::geometry_msgs::PointStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Point32.
+proto::geometry_msgs::Point32 ToProto(const Point32& data);
+
+// Converts 'proto' to Point32.
+Point32 FromProto(const proto::geometry_msgs::Point32& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Quaternion.
+proto::geometry_msgs::Quaternion ToProto(const Quaternion& data);
+
+// Converts 'proto' to Quaternion.
+Quaternion FromProto(const proto::geometry_msgs::Quaternion& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Polygon.
+proto::geometry_msgs::Polygon ToProto(const Polygon& data);
+
+// Converts 'proto' to Polygon.
+Polygon FromProto(const proto::geometry_msgs::Polygon& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PolygonStamped.
+proto::geometry_msgs::PolygonStamped ToProto(const PolygonStamped& data);
+
+// Converts 'proto' to PolygonStamped.
+PolygonStamped FromProto(const proto::geometry_msgs::PolygonStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Pose2D.
+proto::geometry_msgs::Pose2D ToProto(const Pose2D& data);
+
+// Converts 'proto' to Pose2D.
+Pose2D FromProto(const proto::geometry_msgs::Pose2D& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Pose.
+proto::geometry_msgs::Pose ToProto(const Pose& data);
+
+// Converts 'proto' to Pose.
+Pose FromProto(const proto::geometry_msgs::Pose& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PoseArray.
+proto::geometry_msgs::PoseArray ToProto(const PoseArray& data);
+
+// Converts 'proto' to PoseArray.
+PoseArray FromProto(const proto::geometry_msgs::PoseArray& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PoseStamped.
+proto::geometry_msgs::PoseStamped ToProto(const PoseStamped& data);
+
+// Converts 'proto' to PoseStamped.
+PoseStamped FromProto(const proto::geometry_msgs::PoseStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PoseWithCovariance.
+proto::geometry_msgs::PoseWithCovariance ToProto(const PoseWithCovariance& data);
+
+// Converts 'proto' to PoseWithCovariance.
+PoseWithCovariance FromProto(const proto::geometry_msgs::PoseWithCovariance& proto);
+
+// Converts 'data' to a proto::geometry_msgs::PoseWithCovarianceStamped.
+proto::geometry_msgs::PoseWithCovarianceStamped ToProto(const PoseWithCovarianceStamped& data);
+
+// Converts 'proto' to PoseWithCovarianceStamped.
+PoseWithCovarianceStamped FromProto(const proto::geometry_msgs::PoseWithCovarianceStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::QuaternionStamped.
+proto::geometry_msgs::QuaternionStamped ToProto(const QuaternionStamped& data);
+
+// Converts 'proto' to QuaternionStamped.
+QuaternionStamped FromProto(const proto::geometry_msgs::QuaternionStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Transform.
+proto::geometry_msgs::Transform ToProto(const Transform& data);
+
+// Converts 'proto' to Transform.
+Transform FromProto(const proto::geometry_msgs::Transform& proto);
+
+// Converts 'data' to a proto::geometry_msgs::TransformStamped.
+proto::geometry_msgs::TransformStamped ToProto(const TransformStamped& data);
+
+// Converts 'proto' to TransformStamped.
+TransformStamped FromProto(const proto::geometry_msgs::TransformStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::TransformStampeds.
+proto::geometry_msgs::TransformStampeds ToProto(const TransformStampeds& data);
+
+// Converts 'proto' to TransformStampeds.
+TransformStampeds FromProto(const proto::geometry_msgs::TransformStampeds& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Twist.
+proto::geometry_msgs::Twist ToProto(const Twist& data);
+
+// Converts 'proto' to Twist.
+Twist FromProto(const proto::geometry_msgs::Twist& proto);
+
+// Converts 'data' to a proto::geometry_msgs::TwistStamped.
+proto::geometry_msgs::TwistStamped ToProto(const TwistStamped& data);
+
+// Converts 'proto' to TwistStamped.
+TwistStamped FromProto(const proto::geometry_msgs::TwistStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::TwistWithCovariance.
+proto::geometry_msgs::TwistWithCovariance ToProto(const TwistWithCovariance& data);
+
+// Converts 'proto' to TwistWithCovariance.
+TwistWithCovariance FromProto(const proto::geometry_msgs::TwistWithCovariance& proto);
+
+// Converts 'data' to a proto::geometry_msgs::TwistWithCovarianceStamped.
+proto::geometry_msgs::TwistWithCovarianceStamped ToProto(const TwistWithCovarianceStamped& data);
+
+// Converts 'proto' to TwistWithCovarianceStamped.
+TwistWithCovarianceStamped FromProto(const proto::geometry_msgs::TwistWithCovarianceStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Vector3Stamped.
+proto::geometry_msgs::Vector3Stamped ToProto(const Vector3Stamped& data);
+
+// Converts 'proto' to Vector3Stamped.
+Vector3Stamped FromProto(const proto::geometry_msgs::Vector3Stamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::Wrench.
+proto::geometry_msgs::Wrench ToProto(const Wrench& data);
+
+// Converts 'proto' to Wrench.
+Wrench FromProto(const proto::geometry_msgs::Wrench& proto);
+
+// Converts 'data' to a proto::geometry_msgs::WrenchStamped.
+proto::geometry_msgs::WrenchStamped ToProto(const WrenchStamped& data);
+
+// Converts 'proto' to WrenchStamped.
+WrenchStamped FromProto(const proto::geometry_msgs::WrenchStamped& proto);
+
+// Converts 'data' to a proto::geometry_msgs::VelocityStamped.
+proto::geometry_msgs::VelocityStamped ToProto(const VelocityStamped& data);
+
+// Converts 'proto' to VelocityStamped.
+VelocityStamped FromProto(const proto::geometry_msgs::VelocityStamped& proto);
 
 }  // namespace geometry_msgs
 }  // namespace commsgs
