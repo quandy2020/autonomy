@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/transform/transform_broadcaster.hpp"
+#include "autonomy/transform/transform_broadcaster.hpp"
 
 namespace autonomy {
-namespace common {
 namespace transform {
 
 void TransformBroadcaster::SendTransform(const commsgs::geometry_msgs::TransformStamped& transform) 
@@ -35,5 +34,4 @@ void TransformBroadcaster::SendTransform(const std::vector<commsgs::geometry_msg
 }
 
 }  // namespace transform
-}  // namespace common
 }  // namespace autonomy

@@ -14,12 +14,32 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/transform/buffer.hpp"
+#pragma once
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "autonomy/commsgs/geometry_msgs.hpp"
 
 namespace autonomy {
-namespace common {
 namespace transform {
 
+class StaticTransformComponent
+{
+public:
+    StaticTransformComponent() = default;
+    ~StaticTransformComponent() = default;
+
+private:
+    void SendTransforms();
+    void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
+    bool ParseFromYaml(const std::string& file_path, commsgs::geometry_msgs::TransformStamped* transform);
+
+    // openbot::static_transform::Conf conf_;
+    // std::shared_ptr<apollo::cyber::Writer<common::geometry_msgs::TransformStampeds>> writer_;
+    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
+};
+
 }  // namespace transform
-}  // namespace common
 }  // namespace autonomy

@@ -19,6 +19,8 @@
 #include <vector>
 #include <string>
 
+#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+
 #include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -473,6 +475,86 @@ struct Joy
     // The buttons measurements from a joystick.
     std::vector<int32> buttons;
 };
+
+// Converts 'data' to a proto::sensor_msgs::RegionOfInterest.
+proto::sensor_msgs::RegionOfInterest ToProto(const RegionOfInterest& data);
+
+// Converts 'proto' to RegionOfInterest.
+RegionOfInterest FromProto(const proto::sensor_msgs::RegionOfInterest& proto);
+
+// Converts 'data' to a proto::sensor_msgs::CameraInfo.
+proto::sensor_msgs::CameraInfo ToProto(const CameraInfo& data);
+
+// Converts 'proto' to CameraInfo.
+CameraInfo FromProto(const proto::sensor_msgs::CameraInfo& proto);
+
+// Converts 'data' to a proto::sensor_msgs::ChannelFloat32.
+proto::sensor_msgs::ChannelFloat32 ToProto(const ChannelFloat32& data);
+
+// Converts 'proto' to ChannelFloat32.
+ChannelFloat32 FromProto(const proto::sensor_msgs::ChannelFloat32& proto);
+
+// Converts 'data' to a proto::sensor_msgs::CompressedImage.
+proto::sensor_msgs::CompressedImage ToProto(const CompressedImage& data);
+
+// Converts 'proto' to CompressedImage.
+CompressedImage FromProto(const proto::sensor_msgs::CompressedImage& proto);
+
+// Converts 'data' to a proto::sensor_msgs::Illuminance.
+proto::sensor_msgs::Illuminance ToProto(const Illuminance& data);
+
+// Converts 'proto' to Illuminance.
+Illuminance FromProto(const proto::sensor_msgs::Illuminance& proto);
+
+// Converts 'data' to a proto::sensor_msgs::Image.
+proto::sensor_msgs::Image ToProto(const Image& data);
+
+// Converts 'proto' to Image.
+Image FromProto(const proto::sensor_msgs::Image& proto);
+
+// Converts 'data' to a proto::sensor_msgs::Imu.
+proto::sensor_msgs::Imu ToProto(const Imu& data);
+
+// Converts 'proto' to Imu.
+Imu FromProto(const proto::sensor_msgs::Imu& proto);
+
+// Converts 'data' to a proto::sensor_msgs::LaserScan.
+proto::sensor_msgs::LaserScan ToProto(const LaserScan& data);
+
+// Converts 'proto' to LaserScan.
+LaserScan FromProto(const proto::sensor_msgs::LaserScan& proto);
+
+// Converts 'data' to a proto::sensor_msgs::PointCloud.
+proto::sensor_msgs::PointCloud ToProto(const PointCloud& data);
+
+// Converts 'proto' to PointCloud.
+PointCloud FromProto(const proto::sensor_msgs::PointCloud& proto);
+
+// Converts 'data' to a proto::sensor_msgs::PointField.
+proto::sensor_msgs::PointField ToProto(const PointField& data);
+
+// Converts 'proto' to PointField.
+PointField FromProto(const proto::sensor_msgs::PointField& proto);
+
+// Converts 'data' to a proto::sensor_msgs::PointCloud2.
+proto::sensor_msgs::PointCloud2 ToProto(const PointCloud2& data);
+
+// Converts 'proto' to PointCloud2.
+PointCloud2 FromProto(const proto::sensor_msgs::PointCloud2& proto);
+
+// Converts 'data' to a proto::sensor_msgs::Range.
+proto::sensor_msgs::Range ToProto(const Range& data);
+
+// Converts 'proto' to Range.
+Range FromProto(const proto::sensor_msgs::Range& proto);
+
+// Converts 'data' to a proto::sensor_msgs::Joy.
+proto::sensor_msgs::Joy ToProto(const Joy& data);
+
+// Converts 'proto' to Joy.
+Joy FromProto(const proto::sensor_msgs::Joy& proto);
+
+
 
 }  // namespace sensor_msgs
 }  // namespace commsgs

@@ -24,10 +24,9 @@
 #include "tf2/convert.h"
 
 #include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/common/transform/buffer_interface.hpp"
+#include "autonomy/transform/buffer_interface.hpp"
 
 namespace autonomy {
-namespace common {
 namespace transform {
 
 
@@ -145,5 +144,4 @@ private:
 };  // class
 
 }  // namespace transform
-}  // namespace common
 }  // namespace autonomy

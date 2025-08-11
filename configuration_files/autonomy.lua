@@ -17,14 +17,17 @@ include "control/controller.lua"
 include "map/map.lua"
 include "planner/planner.lua"
 include "tasks/navigator.lua"
+include "transform/transform.lua"
 include "visualization/visualization.lua"
 
+-- all lua config
 options = {
   bridge = AUTONOMY_BRIDGE,                 -- bridge options
   control = AUTONOMY_CONTROLLER,            -- controller options
   map = AUTONOMY_MAP,                       -- map options
   planner = AUTONOMY_PLANNER,               -- planner options
   tasks = AUTONOMY_TASKS,                   -- task options
+  transform = AUTONOMY_TRANSFORM,           -- transform options
   visualization = AUTONOMY_VISUALIZATION,   -- visualization options
 }
 
