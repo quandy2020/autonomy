@@ -30,10 +30,10 @@ set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
-option(BUILD_TOOLS "Build autonomy tools support" true)
-option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" false)
+option(BUILD_TOOLS "Build autonomy tools support" false)
+option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
-option(BUILD_TEST "Build autonomy unit test" true)
+option(BUILD_TEST "Build autonomy unit test" false)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -247,22 +247,6 @@ endif()
 
 # include visualization
 if(${BUILD_FOXGLOVE})
-  # # Fetch Foxglove SDK
-  # include(FetchContent)
-  # FetchContent_Declare(
-  #     foxglove
-  #     URL https://github.com/foxglove/foxglove-sdk/archive/refs/tags/typescript/schemas/v1.7.3.zip
-  #     URL_HASH SHA256=cade7ddcbe728078333babbe18cdf4b9676640fb3f91d7f7ac6535b1d52117ae
-  #     UPDATE_DISCONNECTED ON
-  # )
-  # FetchContent_MakeAvailable(foxglove)
-
-  # file(GLOB FOXGLOVE_SRCS CONFIGURE_DEPENDS "${foxglove_SOURCE_DIR}/cpp/foxglove/*.cpp")
-  # file(GLOB FOXGLOVE_HDRS CONFIGURE_DEPENDS "${foxglove_SOURCE_DIR}/cpp/foxglove/*.hpp")
-
-  # list(APPEND ALL_LIBRARY_HDRS ${FOXGLOVE_HDRS})
-  list(APPEND ALL_LIBRARY_SRCS ${FOXGLOVE_SRCS})
-
   if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
     set(FOXGLOVE_SDK_RELEASES "https://github.com/foxglove/foxglove-sdk/releases/download/sdk%2Fv0.10.0/foxglove-v0.10.0-cpp-aarch64-unknown-linux-gnu.zip" "81e2379e3a08160c023779eab0fe5c5764ace3b30c8727b0030ac7dc8b415016")
   elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")

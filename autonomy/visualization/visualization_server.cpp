@@ -21,7 +21,7 @@ namespace visualization {
 
 VisualizationServer::VisualizationServer()
 {
-
+    foxglove_bridge_ = std::make_shared<FoxgloveBridge>();
 }
 
 VisualizationServer::~VisualizationServer()
