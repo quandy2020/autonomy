@@ -23,15 +23,14 @@
 namespace autonomy {
 namespace sensor {
 
-using RangeData = commsgs::sensor_msgs::Range;
-using RangeProto = commsgs::proto::sensor_msgs::Range;
+using LaserScanData = commsgs::sensor_msgs::LaserScan;
+using LaserScanProto = commsgs::proto::sensor_msgs::LaserScan;
 
-// Converts 'data' to a proto::sensor_msgs::Range.
-RangeProto ToProto(const RangeData& data);
+// Converts 'data' to a proto::sensor_msgs::LaserScan.
+LaserScanProto ToProto(const LaserScanData& data);
 
-// Converts 'proto' to RangeData.
-RangeData FromProto(const RangeProto& proto);
-
+// Converts 'proto' to LaserScanData.
+LaserScanData FromProto(const LaserScanProto& proto);
 
 }  // namespace sensor
 }  // namespace autonomy

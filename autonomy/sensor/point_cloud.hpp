@@ -16,8 +16,30 @@
 
 #pragma once 
 
+#include "autonomy/common/time.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+
 namespace autonomy {
 namespace sensor {
+
+using PointCloudData = commsgs::sensor_msgs::PointCloud;
+using PointCloudProto = commsgs::proto::sensor_msgs::PointCloud;
+using PointCloud2Data = commsgs::sensor_msgs::PointCloud2;
+using PointCloud2Proto = commsgs::proto::sensor_msgs::PointCloud2;
+
+// Converts 'data' to a proto::sensor_msgs::PointCloud.
+PointCloudProto ToProto(const PointCloudData& data);
+
+// Converts 'proto' to PointCloud.
+PointCloudData FromProto(const PointCloudProto& proto);
+
+// Converts 'data' to a proto::sensor_msgs::IMU.
+PointCloud2Proto ToProto(const PointCloud2Data& data);
+
+// Converts 'proto' to PointCloud2Data.
+PointCloud2Data FromProto(const PointCloud2Proto& proto);
+
 
 }  // namespace sensor
 }  // namespace autonomy
