@@ -16,10 +16,10 @@
 
 #pragma once 
 
-#include "tf2/convert.h"
-#include "tf2/LinearMath/Quaternion.h"
-#include "tf2/LinearMath/Transform.h"
-#include "tf2/LinearMath/Vector3.h"
+#include "autonomy/transform/tf2/convert.h"
+#include "autonomy/transform/tf2/LinearMath/Quaternion.h"
+#include "autonomy/transform/tf2/LinearMath/Transform.h"
+#include "autonomy/transform/tf2/LinearMath/Vector3.h"
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 

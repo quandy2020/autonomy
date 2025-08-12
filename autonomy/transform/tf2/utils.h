@@ -15,9 +15,9 @@
 #ifndef TF2_UTILS_H
 #define TF2_UTILS_H
 
-#include <tf2/LinearMath/Transform.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/impl/utils.h>
+#include <autonomy/transform/tf2/LinearMath/Transform.h>
+#include <autonomy/transform/tf2/LinearMath/Quaternion.h>
+#include <autonomy/transform/tf2/impl/utils.h>
 
 namespace tf2 {
 
