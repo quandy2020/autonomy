@@ -14,4 +14,21 @@
 
 syntax = "proto3";
 
-package autonomy.tasks.proto;
+package autonomy.system.proto;
+
+import "autonomy/bridge/proto/bridge_options.proto"; 
+import "autonomy/control/proto/controller_options.proto";
+import "autonomy/planning/proto/planning_options.proto";
+import "autonomy/map/proto/map_options.proto"; 
+import "autonomy/tasks/proto/task_options.proto"; 
+
+message AutonomyOptions
+{
+    bridge.proto.BridgeOptions bridge_options = 1;
+    control.proto.ControllerOptions controller_options = 2;
+    planning.proto.PlannerOptions planner_options = 3;
+    autonomy.map.proto.MapOptions map_options = 4;
+    tasks.proto.TaskOptions task_options = 5;
+}
+
+

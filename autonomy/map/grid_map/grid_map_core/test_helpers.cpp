@@ -6,7 +6,7 @@
  *      Institute: ETH Zurich, Robotic Systems Lab
  */
 
-#include "autonomy/map/grid_map/test_helpers.hpp"
+#include "autonomy/map/grid_map/grid_map_core/test_helpers.hpp"
 
 #include "autonomy/map/grid_map/grid_map_core/grid_map.hpp"
 #include "autonomy/map/grid_map/grid_map_core/iterators/grid_map_iterator.hpp"
