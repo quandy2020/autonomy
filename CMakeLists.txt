@@ -85,10 +85,10 @@ set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonom
 install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
-file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp", "autonomy/*.h")
+file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp" "autonomy/*.h")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
-file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/mock_*.hpp")
-file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/mock_*.cpp")
+file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
+file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/*test*.cpp" "autonomy/mock_*.cpp")
 file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
 file(GLOB_RECURSE ALL_TOOLS_HRRS "autonomy/tools/*.hpp")
 file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp")
