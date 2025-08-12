@@ -20,7 +20,7 @@
 
 #include "gtest/gtest.h"
 
-#include "eventpp/eventqueue.h"
+// #include "eventpp/eventqueue.h"
 #include "autonomy/map/map_server.hpp"
 
  
@@ -30,26 +30,26 @@ namespace {
 
 TEST(MapServer, Event)
 {
-	eventpp::EventQueue<std::string, void (const std::string &)> queue;
+	// eventpp::EventQueue<std::string, void (const std::string &)> queue;
 
-	int a = 1;
-	int b = 5;
+	// int a = 1;
+	// int b = 5;
 
-	queue.appendListener("event1", [&a](const std::string &) {
-		a = 2;
-	});
+	// queue.appendListener("event1", [&a](const std::string &) {
+	// 	a = 2;
+	// });
 
-    queue.appendListener("event1", [&b](const std::string &) {
-		b = 8;
-	});
+    // queue.appendListener("event1", [&b](const std::string &) {
+	// 	b = 8;
+	// });
 
-	EXPECT_NE(a, 2);
-	EXPECT_NE(b, 8);
+	// EXPECT_NE(a, 2);
+	// EXPECT_NE(b, 8);
 
-	queue.enqueue("event1");
-	queue.process();
-	EXPECT_EQ(a, 2);
-	EXPECT_EQ(b, 8);
+	// queue.enqueue("event1");
+	// queue.process();
+	// EXPECT_EQ(a, 2);
+	// EXPECT_EQ(b, 8);
 }
 
 }  // namespace

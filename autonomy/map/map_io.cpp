@@ -27,8 +27,8 @@
 
 #include "Magick++.h"
 #include "yaml-cpp/yaml.h"
-#include "tf2/LinearMath/Matrix3x3.h"
-#include "tf2/LinearMath/Quaternion.h"
+#include "autonomy/transform/tf2/LinearMath/Matrix3x3.h"
+#include "autonomy/transform/tf2/LinearMath/Quaternion.h"
 
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"

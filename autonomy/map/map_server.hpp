@@ -20,8 +20,6 @@
 #include <memory>
 #include <functional>
 
-#include "eventpp/eventqueue.h"
-
 #include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/map/common/map_interface.hpp"
