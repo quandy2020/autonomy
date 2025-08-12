@@ -14,4 +14,12 @@
 
 syntax = "proto3";
 
-package autonomy.tasks.proto;
+package autonomy.control.proto;
+
+message ControllerOptions
+{
+    
+
+}
+
+
