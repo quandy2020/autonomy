@@ -17,6 +17,8 @@
 #pragma once 
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/localization/proto/localization_options.pb.h"
 
 namespace autonomy {
 namespace localization {
@@ -35,6 +37,10 @@ public:
 
 
 };
+
+
+proto::LocalizationOptions CreateLocalizationOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace localization
 }  // namespace autonomy

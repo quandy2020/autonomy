@@ -14,18 +14,32 @@
  * limitations under the License.
  */
 
-#include "autonomy/localization/localization_server.hpp"
+#pragma once 
+
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/perception/proto/perception_options.pb.h"
 
 namespace autonomy {
-namespace localization {
+namespace perception {
 
-
-proto::LocalizationOptions CreateLocalizationOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+class PerceptionServer 
 {
-    proto::LocalizationOptions options;
-    return options;
-}
+public:
+   /**
+    * Define PerceptionServer::SharedPtr type
+    */
+    AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
 
-}  // namespace localization
+    PerceptionServer();
+    
+    ~PerceptionServer();
+
+};
+
+
+proto::PerceptionOptions CreatePerceptionOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+
+}  // namespace perception
 }  // namespace autonomy
