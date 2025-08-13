@@ -36,15 +36,8 @@
 #include <autonomy/transform/tf2/LinearMath/Quaternion.h>
 
 #include <autonomy/transform/geometry_msgs/transform_stamped.h>
+// #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/transform/tf2/time.h"
-// #include <ros/message_forward.h>
-// #include <ros/time.h>
-// #include <ros/types.h>
-
-// namespace geometry_msgs
-// {
-// ROS_DECLARE_MESSAGE(TransformStamped);
-// }
 
 namespace autonomy {
 namespace transform {

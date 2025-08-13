@@ -40,7 +40,7 @@
 // #include <console_bridge/console.h>
 #include <boost/foreach.hpp>
 #include "autonomy/transform/tf2/LinearMath/Transform.h"
-#include "autonomy/transform/tf2_msgs/tf2_error.h"
+#include "autonomy/transform/tf2/tf2_error.h"
 
 namespace autonomy {
 namespace transform {
