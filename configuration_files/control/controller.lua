@@ -14,4 +14,28 @@
 
 AUTONOMY_CONTROLLER = {
 
+    -- -- dwb controller
+    -- dwb_controller = {
+
+    -- },
+
+    -- -- graceful controller
+    -- graceful_controller = {
+
+    -- },
+
+    -- -- MMPI controller
+    -- mppi_controller = {
+
+    -- },
+
+    -- -- pure_pursuit controller
+    -- pure_pursuit_controller = {
+
+    -- },
+
+    -- -- ROS TEB Local planner 
+    -- teb_controller = {
+
+    -- }
 }

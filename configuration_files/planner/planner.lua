@@ -15,4 +15,15 @@
 
 AUTONOMY_PLANNER = {
 
+    -- astar_planner = {
+
+    -- },
+
+    -- dijkstra_planner = {
+
+    -- },
+
+    -- navfn_planner = {
+
+    -- }
 }
