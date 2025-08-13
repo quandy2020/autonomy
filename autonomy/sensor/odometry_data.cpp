@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-#include "autonomy/sensor/imu_data.hpp"
+ #include "autonomy/sensor/odometry_data.hpp"
 
-namespace autonomy {
-namespace sensor {
+ namespace autonomy {
+ namespace sensor {
+ 
+// OdometryProto ToProto(const OdometryData& data)
+// {
+//     return commsgs::planning_msgs::ToProto(data);
+// }
 
-ImuProto ToProto(const ImuData& data)
-{
-    return commsgs::sensor_msgs::ToProto(data);
-}
-
-ImuData FromProto(const ImuProto& proto)
-{
-    return commsgs::sensor_msgs::FromProto(proto);
-}
-
-}  // namespace sensor
-}  // namespace autonomy
+// OdometryData FromProto(const OdometryProto& proto)
+// {
+//     return commsgs::planning_msgs::FromProto(proto);
+// }
+ 
+ }  // namespace sensor
+ }  // namespace autonomy

@@ -1,10 +1,10 @@
-# What openbot_ros
+# What autonomy_ros
 
 ![](images/openbot_framework.png)
 
 ## 1  简介
 
-> **<font color='green'>openbot_ros</font>** 依赖 **<font color='red'>openbot</font>** 的机器人框架应用，使用ROS2可视化调试。
+> **<font color='green'>autonomy_ros</font>** 依赖 **<font color='red'>autonomy</font>** 的机器人框架应用，使用ROS2可视化调试。
 
 
 

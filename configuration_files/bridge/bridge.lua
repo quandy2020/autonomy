@@ -26,6 +26,7 @@ AUTONOMY_BRIDGE = {
         host = "127.0.0.1",
         port = 12345,
     },
+    
     use_grpc = true,
     use_mqtt = false
 }

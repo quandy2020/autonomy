@@ -96,37 +96,29 @@ sudo make install
 * docker安装
 
 ```bash
-cd openbot/docker/scripts
+cd autonomy/docker/scripts
 sudo ./install_docker.sh
 ```
 
 * 构造镜像
 
 ```bash
-cd openbot/docker
-./build_docker.sh -f openbot.x86_64.dockerfile 
+cd autonomy/docker
+./build_docker.sh -f autonomy.x86_64.dockerfile 
 ```
 
 * 运行docker
 
-在openbot的docker容器中配置.bashrc环境变量如下
+在autonomy的docker容器中配置.bashrc环境变量如下
 
 ```bash
 ### ROS2 ###
-export OPENBOT_ENV=/home/quandy/workspace/project/openbot/ # 根据自己的目录修改
-export CYBER_PATH=/usr/local/share/
 export GLOG_logtostderr=1
 export GLOG_alsologtostderr=0
 export GLOG_colorlogtostderr=1
 export GLOG_minloglevel=0
 
-export OPENBOT_MODEL=waffle                                                                                          
-export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/home/quandy/workspace/project/openbot/src/openbot_ros/openbot_simulator/models  # 根据自己的目录修改
-
-### Openbot ###
-alias openbot_build='colcon build --symlink-install --packages-up-to openbot_ros'
-
-./run_openbot.sh 
+./run_autonomy.sh 
 ```
 
 
@@ -134,7 +126,7 @@ alias openbot_build='colcon build --symlink-install --packages-up-to openbot_ros
 ## 3 代码编译
 
 ```bash
-cd openbot
-colcon build --symlink-install --packages-up-to openbot_ros
+cd autonomy
+colcon build --symlink-install --packages-up-to autonomy_ros
 ```
 
