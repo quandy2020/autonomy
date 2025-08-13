@@ -22,6 +22,7 @@
 
 #include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/map/common/map_interface.hpp"
 
 namespace autonomy {
@@ -61,6 +62,9 @@ protected:
     // Map configuration options
     proto::MapOptions options_;
 };
+
+proto::MapOptions CreateMapOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace map
 }  // namespace autonomy

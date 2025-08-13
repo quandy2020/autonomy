@@ -15,6 +15,7 @@
  */
 
 #include "autonomy/planning/planner_server.hpp"
+
 #include <absl/strings/str_cat.h>
 
 #include <chrono>
@@ -35,6 +36,20 @@
 namespace autonomy {
 namespace planning {
 
+// proto::PlannerOptions CreatePlannerOptions(
+//     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+// {
+//     proto::PlannerOption options;
+//     return options;
+// }
+
+proto::PlannerOptions CreatePlannerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::PlannerOptions options;
+    return options;
+}
+    
 PlannerServer::PlannerServer()
 {
 

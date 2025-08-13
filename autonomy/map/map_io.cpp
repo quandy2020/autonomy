@@ -438,7 +438,7 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid & map, const SaveP
       std::ofstream yaml(mapmetadatafile);
   
       commsgs::geometry_msgs::Quaternion orientation = map.info.origin.orientation;
-      tf2::Matrix3x3 mat(tf2::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
+      transform::tf2::Matrix3x3 mat(transform::tf2::Quaternion(orientation.x, orientation.y, orientation.z, orientation.w));
       double yaw, pitch, roll;
       mat.getEulerYPR(yaw, pitch, roll);
   

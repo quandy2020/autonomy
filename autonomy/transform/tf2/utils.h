@@ -19,6 +19,8 @@
 #include <autonomy/transform/tf2/LinearMath/Quaternion.h>
 #include <autonomy/transform/tf2/impl/utils.h>
 
+namespace autonomy {
+namespace transform {
 namespace tf2 {
 
 /** Return the yaw, pitch, roll of anything that can be converted to a tf2::Quaternion
@@ -62,6 +64,8 @@ template <class A>
     return a;
   }
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_UTILS_H

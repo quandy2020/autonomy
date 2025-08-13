@@ -39,6 +39,8 @@
 
 #include "geometry_msgs/transform_stamped.h"
 
+namespace autonomy {
+namespace transform {
 namespace tf2 {
 
 TransformStorage::TransformStorage()
@@ -315,6 +317,8 @@ void TimeCache::pruneList()
   }
 
   // std::cout << "max_storage_time:" << max_storage_time_ <<", time cache list size:" << storage_.size() << std::endl;
-  
-} // namespace tf2
 }
+
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy

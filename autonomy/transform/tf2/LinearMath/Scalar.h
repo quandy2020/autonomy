@@ -13,8 +13,7 @@ subject to the following restrictions:
 */
 
 
-#ifndef TF2_SCALAR_H
-#define TF2_SCALAR_H
+#pragma once 
 
 #ifdef TF2_MANAGED_CODE
 //Aligned data types not supported in managed code
@@ -28,6 +27,12 @@ subject to the following restrictions:
 #include <cfloat>
 #include <float.h>
 
+
+namespace autonomy {
+namespace transform {
+namespace tf2 {
+
+		
 #if defined(DEBUG) || defined (_DEBUG)
 #define TF2_DEBUG
 #endif
@@ -413,4 +418,7 @@ struct tf2TypedObject
 		return m_objectType;
 	}
 };
-#endif //TF2SIMD___SCALAR_H
+
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy

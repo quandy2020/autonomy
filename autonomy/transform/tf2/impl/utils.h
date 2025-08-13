@@ -19,6 +19,8 @@
 #include <autonomy/transform/tf2/transform_datatypes.h>
 #include <autonomy/transform/tf2/LinearMath/Quaternion.h>
 
+namespace autonomy {
+namespace transform {
 namespace tf2 {
 namespace impl {
 /** Function needed for the generalization of toQuaternion
@@ -146,7 +148,9 @@ double getYaw(const tf2::Quaternion& q)
   return yaw;
 };
 
-}
-}
+}  // namespace impl
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_IMPL_UTILS_H

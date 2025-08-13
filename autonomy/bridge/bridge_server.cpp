@@ -34,5 +34,12 @@ void BridgeServer::Shutdown()
 
 }
     
+proto::BridgeOptions CreateBridgeOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::BridgeOptions options;
+    return options;
+}
+
 }   // namespace bridge
 }   // namespace autonomy

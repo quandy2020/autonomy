@@ -23,8 +23,10 @@ subject to the following restrictions:
 #include <altivec.h>
 #endif
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
+
 /**@brief The QuadWord class is base class for Vector3 and Quaternion. 
  * Some issues under PS3 Linux with IBM 2.1 SDK, gcc compiler prevent from using aligned quadword.
  */
@@ -178,5 +180,9 @@ protected:
 
 };
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
+
+
 #endif //TF2SIMD_QUADWORD_H

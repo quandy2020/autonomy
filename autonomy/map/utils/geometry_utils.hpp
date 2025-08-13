@@ -34,7 +34,7 @@ namespace utils {
  */
 inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle)
 {
-    tf2::Quaternion q;
+    transform::tf2::Quaternion q;
     q.setRPY(0, 0, angle);  // void returning function
     return {q.x(), q.y(), q.z(), q.w()};
 }
@@ -43,3 +43,4 @@ inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle)
 }  // namespace utils
 }  // namespace map
 }  // namespace autonomy
+

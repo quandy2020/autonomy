@@ -39,6 +39,8 @@
 #include <autonomy/transform/tf2/impl/convert.h>
 #include <autonomy/transform/tf2/time.h>
 
+namespace autonomy {
+namespace transform {
 namespace tf2 {
 
 /**\brief The templated function expected to be able to do a transform
@@ -127,5 +129,7 @@ template <class A>
 
 
 }
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_CONVERT_H

@@ -33,5 +33,12 @@ MapServer::~MapServer()
 
 }
 
+proto::MapOptions CreateMapOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::MapOptions options;
+    return options;
+}
+
 }  // namespace map
 }  // namespace autonomy

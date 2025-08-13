@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
  *
@@ -14,16 +15,21 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "gflags/gflags.h"
-#include "autonomy/common/macros.hpp"
+#include "autonomy/tasks/task_server.hpp"
 
 namespace autonomy {
-namespace system { 
+namespace tasks {
 
-// DECLARE_string(configuration_directory);
-// DECLARE_string(configuration_basename);
+     
+proto::TaskOptions CreateTaskOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::TaskOptions options;
+    return options;
+}
 
-}   // namespace system
+}   // namespace tasks
 }   // namespace autonomy
+
+
+

@@ -16,7 +16,9 @@
 
 #pragma once 
 
+#include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
 namespace control {
@@ -36,6 +38,9 @@ public:
 private:
 
 };
+
+proto::ControllerOptions CreateControllerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace control
 }  // namespace autonomy

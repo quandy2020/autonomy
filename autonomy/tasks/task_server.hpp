@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
  *
@@ -16,14 +17,18 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+ 
+#include "autonomy/tasks/proto/task_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
-namespace system { 
+namespace tasks { 
 
-// DECLARE_string(configuration_directory);
-// DECLARE_string(configuration_basename);
 
-}   // namespace system
+proto::TaskOptions CreateTaskOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+
+}   // namespace tasks
 }   // namespace autonomy

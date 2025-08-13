@@ -220,12 +220,12 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake"
 # Generate source file with version definitions.
 include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
-# Thirdparty library
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+# # Thirdparty library
+# include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 
-# Thirdparty: class_loader
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
+# # Thirdparty: class_loader
+# add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
+# include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
 
 # # gRPC
 # if(${BUILD_GRPC})

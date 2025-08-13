@@ -20,8 +20,9 @@ subject to the following restrictions:
 #include "autonomy/transform/tf2/LinearMath/Vector3.h"
 #include "autonomy/transform/tf2/LinearMath/QuadWord.h"
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 /**@brief The Quaternion implements quaternion to perform linear algebra rotations in combination with Matrix3x3, Vector3 and Transform. */
 class Quaternion : public QuadWord {
@@ -466,7 +467,10 @@ shortestArcQuatNormalize2(Vector3& v0,Vector3& v1)
 	return shortestArcQuat(v0,v1);
 }
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
+
 #endif
 
 
