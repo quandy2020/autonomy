@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#include "autonomy/localization/localization_server.hpp"
+#include "autonomy/perception/perception_server.hpp"
 
 namespace autonomy {
-namespace localization {
+namespace perception {
 
 
-proto::LocalizationOptions CreateLocalizationOptions(
+proto::PerceptionOptions CreatePerceptionOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
 {
-    proto::LocalizationOptions options;
+    proto::PerceptionOptions options;
     return options;
 }
 
-}  // namespace localization
+}  // namespace perception
 }  // namespace autonomy
