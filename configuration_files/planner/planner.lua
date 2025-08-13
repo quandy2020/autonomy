@@ -15,6 +15,13 @@
 
 AUTONOMY_PLANNER = {
 
+    -- planner plugins
+    -- plugins = {
+    --     "astar_planner", 
+    --     "dijkstra_planner", 
+    --     "navfn_planner"
+    -- }, 
+
     -- astar_planner = {
 
     -- },
