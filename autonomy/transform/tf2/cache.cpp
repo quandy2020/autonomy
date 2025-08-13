@@ -37,7 +37,7 @@
 #include <autonomy/transform/tf2/LinearMath/Transform.h>
 #include <assert.h>
 
-#include "geometry_msgs/transform_stamped.h"
+#include "autonomy/transform/geometry_msgs/transform_stamped.h"
 
 namespace autonomy {
 namespace transform {
