@@ -14,20 +14,26 @@
  * limitations under the License.
  */
 
-#include "autonomy/sensor/imu_data.hpp"
+ #pragma once 
+
+#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+#include "autonomy/commsgs/proto/planning_msgs.pb.h"
+
+#include "autonomy/common/time.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
 namespace sensor {
+ 
+using OdometryData = commsgs::planning_msgs::Odometry;
+using OdometryProto = commsgs::proto::planning_msgs::Odometry;
+ 
+// Converts 'data' to a proto::planning_msgs::Odometry.
+OdometryProto ToProto(const OdometryData& data);
 
-ImuProto ToProto(const ImuData& data)
-{
-    return commsgs::sensor_msgs::ToProto(data);
-}
-
-ImuData FromProto(const ImuProto& proto)
-{
-    return commsgs::sensor_msgs::FromProto(proto);
-}
+// Converts 'proto' to OdometryData.
+OdometryData FromProto(const OdometryProto& proto);
 
 }  // namespace sensor
 }  // namespace autonomy

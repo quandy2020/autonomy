@@ -23,14 +23,14 @@
 namespace autonomy {
 namespace sensor {
 
-using IMUData = commsgs::sensor_msgs::Imu;
-using IMUProto = commsgs::proto::sensor_msgs::Imu;
+using ImuData = commsgs::sensor_msgs::Imu;
+using ImuProto = commsgs::proto::sensor_msgs::Imu;
 
 // Converts 'data' to a proto::sensor_msgs::IMU.
-IMUProto ToProto(const IMUData& data);
+ImuProto ToProto(const ImuData& data);
 
 // Converts 'proto' to IMU.
-IMUData FromProto(const IMUProto& proto);
+ImuData FromProto(const ImuProto& proto);
 
 
 }  // namespace sensor
