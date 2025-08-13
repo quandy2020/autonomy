@@ -35,8 +35,9 @@
 #include "autonomy/transform/tf2/LinearMath/Transform.h"
 
 
-using namespace tf2;
-
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 bool StaticCache::getData(Time time, TransformStorage & data_out, std::string* error_str) //returns false if data not available
 {
@@ -81,3 +82,7 @@ Time StaticCache::getOldestTimestamp()
   return Time();
 };
 
+
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy

@@ -30,6 +30,8 @@
 #ifndef TF2_IMPL_CONVERT_H
 #define TF2_IMPL_CONVERT_H
 
+namespace autonomy {
+namespace transform {
 namespace tf2 {
 namespace impl {
 
@@ -74,6 +76,9 @@ inline void Converter<false, false>::convert(const A& a, B& b)
 }
 
 }
-}
+
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_IMPL_CONVERT_H

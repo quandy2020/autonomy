@@ -19,13 +19,13 @@
 namespace autonomy {
 namespace system { 
 
-DEFINE_string(configuration_directory, "",
-              "First directory in which configuration files are searched, "
-              "second is always the Autonomy installation to allow "
-              "including files from there.");
-DEFINE_string(configuration_basename, "",
-              "Basename, i.e. not containing any directory prefix, of the "
-              "configuration file.");
+// DEFINE_string(configuration_directory, "",
+//               "First directory in which configuration files are searched, "
+//               "second is always the Autonomy installation to allow "
+//               "including files from there.");
+// DEFINE_string(configuration_basename, "",
+//               "Basename, i.e. not containing any directory prefix, of the "
+//               "configuration file.");
 
 
 }   // namespace tasks

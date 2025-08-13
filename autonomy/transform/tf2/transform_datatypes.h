@@ -35,6 +35,8 @@
 #include <string>
 #include "autonomy/transform/tf2/time.h"
 
+namespace autonomy {
+namespace transform {
 namespace tf2
 {
 
@@ -71,4 +73,8 @@ bool operator==(const Stamped<T> &a, const Stamped<T> &b) {
 
 
 }
+
+}  // namespace transform
+}  // namespace autonomy
+
 #endif //TF2_TRANSFORM_DATATYPES_H

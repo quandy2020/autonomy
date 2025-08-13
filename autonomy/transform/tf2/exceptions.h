@@ -34,6 +34,8 @@
 
 #include <stdexcept>
 
+namespace autonomy {
+namespace transform {
 namespace tf2{
 
 /** \brief A base class for all tf2 exceptions 
@@ -103,7 +105,8 @@ public:
 };
 
 
-}
-
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_EXCEPTIONS_H

@@ -30,6 +30,10 @@
 #ifndef TF2_MSGS_TF2_ERROR_H
 #define TF2_MSGS_TF2_ERROR_H
 
+namespace autonomy {
+namespace transform {
+namespace tf2 {
+  
 namespace tf2_msgs {
 namespace TF2Error {
   const uint8_t NO_ERROR = 0;
@@ -41,4 +45,9 @@ namespace TF2Error {
   const uint8_t TRANSFORM_ERROR = 6;
 }
 }
+
+}  // namespace tf2 
+}  // namespace transform
+}  // namespace autonomy
+
 #endif

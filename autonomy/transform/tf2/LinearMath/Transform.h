@@ -20,8 +20,9 @@ subject to the following restrictions:
 #include "autonomy/transform/tf2/LinearMath/Matrix3x3.h"
 
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 #define TransformData TransformDoubleData
 
@@ -293,7 +294,10 @@ TF2SIMD_FORCE_INLINE	void	Transform::deSerializeDouble(const TransformDoubleData
 	m_origin.deSerializeDouble(dataIn.m_origin);
 }
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
+
 
 #endif
 

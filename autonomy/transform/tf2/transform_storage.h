@@ -46,8 +46,9 @@
 // ROS_DECLARE_MESSAGE(TransformStamped);
 // }
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 typedef uint32_t CompactFrameID;
 
@@ -82,7 +83,9 @@ public:
   CompactFrameID child_frame_id_;
 };
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif // TF2_TRANSFORM_STORAGE_H
 

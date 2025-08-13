@@ -18,7 +18,9 @@
 
 #include <unordered_map>
 
+#include "autonomy/bridge/proto/bridge_options.pb.h"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/bridge/bridge_server.hpp"
 
 namespace autonomy {
@@ -53,6 +55,9 @@ private:
 
 
 };
+
+proto::BridgeOptions CreateBridgeOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }   // namespace bridge
 }   // namespace autonomy

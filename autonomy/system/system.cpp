@@ -20,6 +20,31 @@ namespace autonomy {
 namespace system { 
 
 
+AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
+{
+    
+}
+
+proto::AutonomyOptions CreateAutonomyOptions(common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::AutonomyOptions options;
+    *options.mutable_bridge_options() = bridge::CreateBridgeOptions(
+        parameter_dictionary->GetDictionary("bridge_options").get());
+    *options.mutable_controller_options() = control::CreateControllerOptions(
+        parameter_dictionary->GetDictionary("controller_options").get());
+    *options.mutable_planner_options() = planning::CreatePlannerOptions(
+        parameter_dictionary->GetDictionary("planner_options").get());
+    *options.mutable_map_options() = map::CreateMapOptions(
+        parameter_dictionary->GetDictionary("map_options").get());
+    *options.mutable_task_options() = tasks::CreateTaskOptions(
+        parameter_dictionary->GetDictionary("task_options").get());
+    return options;
+}
+
+AutonomyNode::UniquePtr CreateAutonomyBuilder(const proto::AutonomyOptions& options)
+{
+    return std::make_unique<AutonomyNode>(options);
+}
 
 
 }   // namespace tasks

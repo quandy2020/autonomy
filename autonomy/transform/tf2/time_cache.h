@@ -48,6 +48,9 @@
 // ROS_DECLARE_MESSAGE(TransformStamped);
 // }
 //
+
+namespace autonomy {
+namespace transform {
 namespace tf2
 {
 
@@ -158,5 +161,7 @@ private:
 };
 
 }
+}  // namespace transform
+}  // namespace autonomy
 
 #endif // TF2_TIME_CACHE_H

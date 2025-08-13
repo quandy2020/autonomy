@@ -51,8 +51,9 @@
 #include <boost/function.hpp>
 #include <boost/shared_ptr.hpp>
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 typedef std::pair<Time, CompactFrameID> P_TimeAndFrameID;
 typedef uint32_t TransformableCallbackHandle;
@@ -415,8 +416,8 @@ private:
 };
 
 
-
-
-};
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_CORE_H

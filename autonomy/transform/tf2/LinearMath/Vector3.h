@@ -20,8 +20,9 @@ subject to the following restrictions:
 #include "autonomy/transform/tf2/LinearMath/Scalar.h"
 #include "autonomy/transform/tf2/LinearMath/MinMax.h"
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 #define Vector3Data Vector3DoubleData
 #define Vector3DataName "Vector3DoubleData"
@@ -724,6 +725,8 @@ TF2SIMD_FORCE_INLINE void	Vector3::deSerialize(const struct	Vector3Data& dataIn)
 		m_floats[i] = dataIn.m_floats[i];
 }
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
 
 #endif //TF2_VECTOR3_H

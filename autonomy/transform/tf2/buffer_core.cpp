@@ -42,6 +42,8 @@
 #include "autonomy/transform/tf2/LinearMath/Transform.h"
 #include "autonomy/transform/tf2_msgs/tf2_error.h"
 
+namespace autonomy {
+namespace transform {
 namespace tf2 {
 
 // Tolerance for acceptable quaternion normalization
@@ -1596,3 +1598,5 @@ void BufferCore::_chainAsVector(const std::string& target_frame,
 }
 
 }  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy

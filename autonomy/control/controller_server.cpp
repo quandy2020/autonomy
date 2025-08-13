@@ -29,5 +29,12 @@ ControllerServer::~ControllerServer()
 
 }
 
+proto::ControllerOptions CreateControllerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::ControllerOptions options;
+    return options;
+}
+
 }  // namespace control
 }  // namespace autonomy

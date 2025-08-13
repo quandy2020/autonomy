@@ -22,7 +22,10 @@
 
 #include "class_loader/class_loader.hpp"
 
+#include "autonomy/planning/proto/planning_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
@@ -34,6 +37,9 @@
 namespace autonomy {
 namespace planning {
 
+proto::PlannerOptions CreatePlannerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+    
 class PlannerServer : common::PlannerServerInterface
 {
 public:
@@ -141,6 +147,7 @@ protected:
     // Global Costmap
     autonomy::map::costmap_2d::Costmap2D* costmap_{nullptr};
 };
+
 
 }  // namespace planning
 }  // namespace autonomy

@@ -19,8 +19,9 @@ subject to the following restrictions:
 #include "autonomy/transform/tf2/LinearMath/Vector3.h"
 #include "autonomy/transform/tf2/LinearMath/Quaternion.h"
 
-namespace tf2
-{
+namespace autonomy {
+namespace transform {
+namespace tf2 {
 
 #define Matrix3x3Data	Matrix3x3DoubleData 
 
@@ -688,6 +689,9 @@ TF2SIMD_FORCE_INLINE	void	Matrix3x3::deSerializeDouble(const struct	Matrix3x3Dou
 		m_el[i].deSerializeDouble(dataIn.m_el[i]);
 }
 
-}
+}  // namespace tf2
+}  // namespace transform
+}  // namespace autonomy
+
 #endif //TF2_MATRIX3x3_H
 
