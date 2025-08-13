@@ -14,28 +14,11 @@
 
 syntax = "proto3";
 
-package autonomy.bridge.proto;
+package autonomy.transform.proto;
 
-
-message GrpcOptions
+message TransformOptions
 {
-    string host = 1;
-    uint32 port = 2;
-    uint32 thread_num = 3;
-    uint32 event_num = 4;
+  
 }
 
 
-message MqttOptions
-{
-    string host = 1;
-    uint32 port = 2;
-}
-
-message BridgeOptions
-{
-    bool use_grpc = 1;
-    bool use_mqtt = 2;
-    GrpcOptions grpc = 3;
-    MqttOptions mqtt = 4;
-}

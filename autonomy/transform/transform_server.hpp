@@ -16,48 +16,16 @@
 
 #pragma once
 
-#include <unordered_map>
 
-#include "autonomy/bridge/proto/bridge_options.pb.h"
-#include "autonomy/common/macros.hpp"
+#include "autonomy/transform/proto/transform_options.pb.h"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
-#include "autonomy/bridge/bridge_option.hpp"
 
 namespace autonomy {
-namespace bridge { 
-
-class BridgeServer
-{
-public:
-    /**
-     * Define BridgeServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
-
-    /**
-     * @brief A constructor for autonomy::bridge::BridgeServer
-     * @param options Additional options to control creation of the node.
-     */
-    explicit BridgeServer();
-
-    /**
-     * @brief A Destructor for autonomy::bridge::BridgeServer
-     */
-    ~BridgeServer();
-
-    /**
-     * @brief Shutdown 
-     */
-    void Shutdown();
-
-private:
+namespace transform {
 
 
-
-};
-
-proto::BridgeOptions CreateBridgeOptions(
+proto::TransformOptions CreateTransformOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-
-}   // namespace bridge
-}   // namespace autonomy
+    
+}  // namespace transform
+}  // namespace autonomy

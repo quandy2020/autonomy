@@ -28,16 +28,25 @@ AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
 proto::AutonomyOptions CreateAutonomyOptions(common::LuaParameterDictionary* const parameter_dictionary)
 {
     proto::AutonomyOptions options;
+    // auto code = parameter_dictionary->GetDictionary("autonomy").get();
+
     *options.mutable_bridge_options() = bridge::CreateBridgeOptions(
-        parameter_dictionary->GetDictionary("bridge_options").get());
+        parameter_dictionary->GetDictionary("bridge").get());
     *options.mutable_controller_options() = control::CreateControllerOptions(
-        parameter_dictionary->GetDictionary("controller_options").get());
+        parameter_dictionary->GetDictionary("control").get());
     *options.mutable_planner_options() = planning::CreatePlannerOptions(
-        parameter_dictionary->GetDictionary("planner_options").get());
+        parameter_dictionary->GetDictionary("planning").get());
     *options.mutable_map_options() = map::CreateMapOptions(
-        parameter_dictionary->GetDictionary("map_options").get());
+        parameter_dictionary->GetDictionary("map").get());
     *options.mutable_task_options() = tasks::CreateTaskOptions(
-        parameter_dictionary->GetDictionary("task_options").get());
+        parameter_dictionary->GetDictionary("tasks").get());
+    *options.mutable_transform_options() = transform::CreateTransformOptions(
+        parameter_dictionary->GetDictionary("transform").get());
+
+    // *options.mutable_task_options() = visualization::CreateVisualizationOptions(
+    //     parameter_dictionary->GetDictionary("visualization").get());
+
+
     return options;
 }
 

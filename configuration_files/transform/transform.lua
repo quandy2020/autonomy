@@ -14,7 +14,45 @@
 
 
 AUTONOMY_TRANSFORM = {
+    -- -- lidar
+    -- velodyne128 = {
+    --     frame_id = "velodyne128",
+    --     child_frame_id = "front_6mm",
+    --     transform = {
+    --         translation = {
+    --             x = 0.580393,
+    --             y = 0.0727572,
+    --             z = -0.211861,
+    --         },
+    --         rotation = {
+    --             x = -0.502988,
+    --             y = 0.496432,
+    --             z = -0.507426,
+    --             w = 0.493029,
+    --         }
+    --     },
+    --     enable = true,
+    -- },
 
+    -- -- RGB-D Realsense435i
+    -- realsense435i = {
+    --     frame_id = "camera_link",
+    --     child_frame_id = "base_link",
+    --     transform = {
+    --         translation = {
+    --             x = 0.580393,
+    --             y = 0.0727572,
+    --             z = -0.211861,
+    --         },
+    --         rotation = {
+    --             x = -0.502988,
+    --             y = 0.496432,
+    --             z = -0.507426,
+    --             w = 0.493029,
+    --         }
+    --     },
+    --     enable = true,
+    -- },
 }
 
 
