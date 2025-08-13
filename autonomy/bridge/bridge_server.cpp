@@ -15,6 +15,10 @@
  */
 
 #include "autonomy/bridge/bridge_server.hpp"
+#include <autonomy/common/port.hpp>
+#include "autonomy//common/logging.hpp"
+#include "autonomy/bridge/bridge_option.hpp"
+#include "autonomy/common/json_util.hpp"
 
 namespace autonomy {
 namespace bridge {
@@ -38,8 +42,14 @@ proto::BridgeOptions CreateBridgeOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
 {
     proto::BridgeOptions options;
+    options.set_use_grpc(parameter_dictionary->GetBool("use_grpc"));
+    options.set_use_mqtt(parameter_dictionary->GetBool("use_mqtt"));
+    *options.mutable_grpc() = CreateGrpcOptions(parameter_dictionary->GetDictionary("grpc").get());
+    *options.mutable_mqtt() = CreateMqttOptions(parameter_dictionary->GetDictionary("mqtt").get());
+    // LOG(INFO) << "bridge config: " << common::JsonUtil::ProtoToJson(options);
     return options;
 }
 
 }   // namespace bridge
 }   // namespace autonomy
+

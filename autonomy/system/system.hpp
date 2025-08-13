@@ -25,7 +25,8 @@
 #include "autonomy/bridge/bridge_server.hpp"
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
- #include "autonomy/tasks/task_server.hpp"
+#include "autonomy/tasks/task_server.hpp"
+#include "autonomy/transform/transform_server.hpp"
 
 namespace autonomy {
 namespace system { 
