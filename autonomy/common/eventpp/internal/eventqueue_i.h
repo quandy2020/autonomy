@@ -4,8 +4,9 @@
 #include <array>
 #include <cassert>
 
+namespace autonomy {
+namespace common {
 namespace eventpp {
-
 namespace internal_ {
 
 template <size_t ...Indexes>
@@ -165,9 +166,10 @@ private:
 };
 
 
-} //namespace internal_
-
-} //namespace eventpp
+}   // namespace internal_
+}   // namespace eventpp  
+}   // namespace common
+}   // namespace autonomy
 
 
 #endif

@@ -21,6 +21,11 @@
 
 #include <iostream>
 
+namespace autonomy {
+namespace common {
+namespace eventpp {
+namespace {
+
 TEST(eventpp, tutorial01_basic)
 {
 	std::cout << std::endl << "CallbackList tutorial 1, basic" << std::endl;
@@ -130,3 +135,9 @@ TEST(eventpp, tutorial04_foreach)
 	// The "Got callback 2" callback should not be triggered.
 	callbackList();
 }
+
+}   //  namespace 
+}   // namespace eventpp  
+}   // namespace common
+}   // namespace autonomy
+  
