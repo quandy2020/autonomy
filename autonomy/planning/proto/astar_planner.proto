@@ -16,14 +16,9 @@ syntax = "proto3";
 
 package autonomy.planning.proto;
 
-import "autonomy/planning/proto/astar_planner.proto";
-import "autonomy/planning/proto/dijkstra_planner.proto";
-import "autonomy/planning/proto/navfn_planner.proto";
-
-message PlannerOptions
-{
-    AStarPlanner astar = 1;
-    DijkstraPlanner dijkstra = 2;
-    NavFnPlanner navfn = 3;
+message AStarPlanner
+{ 
+    double tolerance = 1;
+    double max_its = 2;
+    bool allow_unknown = 3;
 }
-

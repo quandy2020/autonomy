@@ -55,7 +55,7 @@ public:
      * @brief A constructor for autonomy::planning::PlannerServer
      * @param options Additional options to control creation of the node.
      */
-    explicit PlannerServer();
+    explicit PlannerServer(const proto::PlannerOptions& options);
 
     /**
      * @brief
@@ -129,6 +129,9 @@ protected:
         const commsgs::geometry_msgs::PoseStamped& goal,
         const std::string& planner_id,
         const std::exception& ex);
+
+    // Options planners
+    proto::PlannerOptions options_;
 
     // All planners
     PlannerMap planners_;

@@ -50,7 +50,8 @@ proto::PlannerOptions CreatePlannerOptions(
     return options;
 }
     
-PlannerServer::PlannerServer()
+PlannerServer::PlannerServer(const proto::PlannerOptions& options)
+    : options_{options}
 {
 
 }

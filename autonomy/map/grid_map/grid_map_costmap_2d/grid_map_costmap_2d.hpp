@@ -8,5 +8,5 @@
 
 #pragma once
 
-#include <grid_map_core/grid_map_core.hpp>
-#include <grid_map_costmap_2d/Costmap2DConverter.hpp>
+#include "autonomy/map/grid_map/grid_map_core/grid_map_core.hpp"
+#include "autonomy/map/grid_map/grid_map_costmap_2d/costmap_2d_converter.hpp"

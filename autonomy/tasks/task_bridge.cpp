@@ -21,10 +21,6 @@ namespace tasks {
 
 TaskBridge::TaskBridge()
 {
-    bridge_server_ = std::make_shared<bridge::BridgeServer>();
-    map_server_ = std::make_shared<map::MapServer>();
-    controller_server_ = std::make_shared<control::ControllerServer>();
-    planner_server_ = std::make_shared<planning::PlannerServer>();
 }
 
 TaskBridge::~TaskBridge()

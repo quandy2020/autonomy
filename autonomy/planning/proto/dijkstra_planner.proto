@@ -14,4 +14,12 @@
 
 syntax = "proto3";
 
-package autonomy.planning.proto.nav_msgs;
+package autonomy.planning.proto;
+
+message DijkstraPlanner
+{ 
+    double tolerance = 1;
+    double max_its = 2;
+    bool allow_unknown = 3;
+}
+

@@ -30,4 +30,7 @@ message MapOptions
 {
     bool use_costmap_2d = 1;
     bool use_costmap_3d = 2;
+    Costmap2DOptions costmap2d_options = 3;
+    Costmap3DOptions costmap3d_options = 4;
+
 }

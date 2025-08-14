@@ -21,10 +21,6 @@
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/map/map_server.hpp"
-#include "autonomy/bridge/bridge_server.hpp"
-#include "autonomy/control/controller_server.hpp"
-#include "autonomy/planning/planner_server.hpp"
 
 namespace autonomy {
 namespace tasks { 
@@ -60,47 +56,7 @@ public:
      */
     bool HandleNavigationCommands();
 
-    /**
-     * @brief Get bridge_server
-     * 
-     * @return bridge::BridgeServer pointer
-     */
-    bridge::BridgeServer* bridge_server() { return bridge_server_.get(); }
-
-    /**
-     * @brief Get map_server
-     * 
-     * @return pointer
-     */
-    map::MapServer* map_server() { return map_server_.get(); }
-
-    /**
-     * @brief Get controller_server
-     * 
-     * @return control::ControllerServer pointer
-     */
-    control::ControllerServer* controller_server() { return controller_server_.get(); }
-
-    /**
-     * @brief Get planner_server
-     * 
-     * @return planning::PlannerServer pointer
-     */
-    planning::PlannerServer* planner_server() { return planner_server_.get();}
-
 private:
-
-    // bridge
-    bridge::BridgeServer::SharedPtr bridge_server_{nullptr};
-
-    // costmap
-    map::MapServer::SharedPtr map_server_{nullptr};
-
-    // controller
-    control::ControllerServer::SharedPtr controller_server_{nullptr};
-    
-    // planner
-    planning::PlannerServer::SharedPtr planner_server_{nullptr};
 
     // tasks options
     const proto::TaskOptions options_;
