@@ -15,4 +15,14 @@
 
 AUTONOMY_MAP = {
 
+    use_costmap_2d = true,
+    use_costmap_3d = false,
+ 
+    costmap2d = {
+
+    },
+
+    costmap3d = {
+
+    }
 }
