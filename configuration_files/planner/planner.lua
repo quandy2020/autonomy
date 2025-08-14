@@ -22,15 +22,17 @@ AUTONOMY_PLANNER = {
     --     "navfn_planner"
     -- }, 
 
-    -- astar_planner = {
+    astar_planner = {
 
-    -- },
+    },
 
-    -- dijkstra_planner = {
+    dijkstra_planner = {
 
-    -- },
+    },
 
-    -- navfn_planner = {
-
-    -- }
+    navfn_planner = {
+        tolerance = 0.02,
+        max_its = 100,
+        allow_unknown = true,
+    }
 }

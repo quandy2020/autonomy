@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 
+#include "autonomy/planning/plugins/astar_planner.hpp"
 
 namespace autonomy {
 namespace planning {
 namespace plugins {
 
+
+proto::AStarPlanner CreateAStarPlannerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::AStarPlanner options;
+    return options;
+}
 
 }  // namespace plugins
 }  // namespace planning

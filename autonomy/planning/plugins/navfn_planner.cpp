@@ -337,6 +337,17 @@ void NavfnPlanner::clearRobotCell(unsigned int mx, unsigned int my)
     costmap_->setCost(mx, my, map::costmap_2d::FREE_SPACE);
 }
 
+
+proto::NavFnPlanner CreateNavFnPlannerOptions(
+  ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::NavFnPlanner options;
+    options.set_tolerance(parameter_dictionary->GetDouble("tolerance"));
+    options.set_max_its(parameter_dictionary->GetDouble("max_its"));
+    options.set_allow_unknown(parameter_dictionary->GetBool("allow_unknown"));
+    return options;
+}
+
 }  // namespace plugins
 }  // namespace planning
 }  // namespace autonomy

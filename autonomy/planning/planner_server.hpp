@@ -33,6 +33,9 @@
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/common/planner_server_interface.hpp"
+#include "autonomy/planning/plugins/astar_planner.hpp"
+#include "autonomy/planning/plugins/dijkstra_planner.hpp"
+#include "autonomy/planning/plugins/navfn_planner.hpp"
 
 namespace autonomy {
 namespace planning {
