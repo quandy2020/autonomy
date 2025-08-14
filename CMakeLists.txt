@@ -54,6 +54,7 @@ find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OMPL REQUIRED)
+find_package(octomap REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(GRAPHICSMAGICKCPP REQUIRED)
@@ -220,6 +221,9 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake"
 # Generate source file with version definitions.
 include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 
+## Define Eigen addons. 
+include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
+
 # Thirdparty library
 include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 
@@ -308,6 +312,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
 
+# octomap
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OCTOMAP_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OCTOMAP_LIBRARIES})
+
 # OpenCV
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
@@ -376,12 +384,11 @@ google_binary(autonomy.tasks.navigator
     autonomy/tasks/navigator_main.cpp
 )
 
-# set(TEST_LIB autonomy_test_library)
-# add_library(${TEST_LIB} ${TEST_LIBRARY_HDRS} ${TEST_LIBRARY_SRCS})
-# target_include_directories(${TEST_LIB} SYSTEM PRIVATE "${GMOCK_INCLUDE_DIRS}")
-# target_link_libraries(${TEST_LIB} PUBLIC ${GMOCK_LIBRARY})
-# target_link_libraries(${TEST_LIB} PUBLIC ${PROJECT_NAME})
-# set_target_properties(${TEST_LIB} PROPERTIES COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
+set(TEST_LIB autonomy_test_library)
+add_library(${TEST_LIB} ${TEST_LIBRARY_HDRS} ${TEST_LIBRARY_SRCS})
+target_include_directories(${TEST_LIB} SYSTEM PRIVATE "${GMOCK_INCLUDE_DIRS}")
+target_link_libraries(${TEST_LIB} PUBLIC ${GMOCK_LIBRARY})
+target_link_libraries(${TEST_LIB} PUBLIC ${PROJECT_NAME})
 
 foreach(ABS_FIL ${ALL_TESTS})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
@@ -399,7 +406,7 @@ foreach(ABS_FIL ${ALL_TESTS})
     target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-core)
     target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-pull)
   endif()
-#   target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${TEST_LIB})
+  target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${TEST_LIB})
 endforeach()
 
 # Add the binary directory first, so that port.h is included after it has
