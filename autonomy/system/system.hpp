@@ -24,6 +24,7 @@
 #include "autonomy/bridge/bridge_server.hpp"
 #include "autonomy/localization/localization_server.hpp"
 #include "autonomy/map/map_server.hpp"
+#include "autonomy/prediction/prediction_server.hpp"
 #include "autonomy/perception/perception_server.hpp"
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/planning/planner_server.hpp"

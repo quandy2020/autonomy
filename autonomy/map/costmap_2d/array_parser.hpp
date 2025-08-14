@@ -45,7 +45,8 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
- /** @brief Parse a vector of vectors of floats from a string.
+/** 
+ * @brief Parse a vector of vectors of floats from a string.
  * @param error_return If no error, error_return is set to "".  If
  *        error, error_return will describe the error.
  * Syntax is [[1.0, 2.0], [3.3, 4.4, 5.5], ...]

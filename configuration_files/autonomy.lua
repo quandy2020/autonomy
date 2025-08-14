@@ -15,6 +15,7 @@
 include "bridge/bridge.lua"
 include "control/controller.lua"
 include "map/map.lua"
+include "prediction/prediction.lua"
 include "perception/perception.lua"
 include "localization/localization.lua"
 include "planner/planner.lua"
@@ -28,6 +29,7 @@ AUTONOMY = {
   control = AUTONOMY_CONTROLLER,            -- controller options
   localization = AUTONOMY_LOCALIZATION,     -- localization options
   map = AUTONOMY_MAP,                       -- map options
+  prediction = AUTONOMY_PREDICTION,         -- prediction options
   perception = AUTONOMY_PERCEPTION,         -- perception options
   planning = AUTONOMY_PLANNER,              -- planner options
   tasks = AUTONOMY_TASKS,                   -- task options
