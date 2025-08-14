@@ -18,6 +18,7 @@
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
+
 namespace autonomy {
 namespace map {
 
