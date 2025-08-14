@@ -101,3 +101,47 @@ message OctomapWithPose
     // The actual octree msg
     Octomap octomap = 3;
 }
+
+
+message GridMapInfo
+{
+    // Header (time and frame)
+    std_msgs.Header header = 1;
+
+    // Resolution of the grid [m/cell].
+    float resolution = 2;
+
+    // Length in x-direction [m].
+    float length_x = 3;
+
+    // Length in y-direction [m].
+    float length_y = 4;
+
+    // Pose of the grid map center in the frame defined in `header` [m].
+    geometry_msgs.Pose pose = 5;
+}
+
+message GridMap
+{
+    // Grid map header
+    GridMapInfo info = 1;
+
+    // Grid map layer names.
+    repeated string layers = 2;
+
+    // Grid map basic layer names (optional). The basic layers
+    // determine which layers from `layers` need to be valid
+    // in order for a cell of the grid map to be valid.
+    repeated string basic_layers = 3;
+
+    // Grid map data.
+    repeated std_msgs.Float32MultiArray data = 4;
+
+    // Row start index (default 0).
+    uint32 outer_start_index = 5;
+
+    // Column start index (default 0).
+    uint32 inner_start_index = 6;
+}
+
+

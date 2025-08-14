@@ -111,6 +111,47 @@ struct OctomapWithPose
     Octomap octomap;
 };
 
+struct GridMapInfo
+{
+    // Header (time and frame)
+    std_msgs::Header header ;
+
+    // Resolution of the grid [m/cell].
+    float resolution;
+
+    // Length in x-direction [m].
+    float length_x;
+
+    // Length in y-direction [m].
+    float length_y;
+
+    // Pose of the grid map center in the frame defined in `header` [m].
+    geometry_msgs::Pose pose;
+};
+
+struct GridMap
+{
+    // Grid map header
+    GridMapInfo info;
+
+    // Grid map layer names.
+    std::vector<std::string> layers;
+
+    // Grid map basic layer names (optional). The basic layers
+    // determine which layers from `layers` need to be valid
+    // in order for a cell of the grid map to be valid.
+    std::vector<std::string> basic_layers;
+
+    // Grid map data.
+    std::vector<std_msgs::Float32MultiArray> data;
+
+    // Row start index (default 0).
+    uint32 outer_start_index;
+
+    // Column start index (default 0).
+    uint32 inner_start_index;
+};
+
 // Converts 'data' to a proto::GridCells.
 proto::map_msgs::GridCells ToProto(const GridCells& data);
 

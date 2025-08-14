@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2025 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,32 @@
  * limitations under the License.
  */
 
+#include "autonomy/map/grid_map/grid_map_msgs/grid_map.hpp"
 
-#pragma once
+namespace grid_map {
 
-#include "autonomy/map/grid_map/grid_map_core/grid_map_core.hpp"
-#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv_converter.hpp"
-#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv_converter.hpp"
+GridMapInfoProto ToProto(const GridMapInfoData& data)
+{
+    GridMapInfoProto proto;
+    return proto;
+}
+
+GridMapInfoData FromProto(const GridMapInfoProto& proto)
+{
+    GridMapInfoData data;
+    return data;
+}
+
+GridMapProto ToProto(const GridMapData& data)
+{
+    GridMapProto proto;
+    return proto;
+}
+
+GridMapData FromProto(const GridMapProto& proto)
+{
+    GridMapData data;
+    return data;
+}
+
+}  // namespace grid_map
