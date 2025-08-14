@@ -31,6 +31,14 @@ Costmap3DWrapper::~Costmap3DWrapper()
 
 }
 
+
+proto::Costmap3DOptions CreateCostmap3DOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::Costmap3DOptions options;
+    return options;
+}
+
 }  // namespace costmap_3d
 }  // namespace map
 }  // namespace autonomy

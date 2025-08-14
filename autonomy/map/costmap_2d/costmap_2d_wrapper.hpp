@@ -42,6 +42,7 @@
 
 #include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/map/common/map_interface.hpp"
@@ -73,8 +74,11 @@ public:
 protected:
     // options for costmap 2D
     proto::Costmap2DOptions options_;
-    
+
 };
+
+proto::Costmap2DOptions CreateCostmap2DOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace costmap_2d
 }  // namespace map

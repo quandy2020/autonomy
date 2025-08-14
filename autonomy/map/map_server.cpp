@@ -42,8 +42,17 @@ proto::MapOptions CreateMapOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
 {
     proto::MapOptions options;
+    options.set_use_costmap_2d(parameter_dictionary->GetBool("use_costmap_2d"));
+    options.set_use_costmap_3d(parameter_dictionary->GetBool("use_costmap_3d"));
+    *options.mutable_costmap2d_options() = 
+        costmap_2d::CreateCostmap2DOptions(parameter_dictionary->GetDictionary("costmap2d").get());
+    *options.mutable_costmap3d_options() = 
+        costmap_3d::CreateCostmap3DOptions(parameter_dictionary->GetDictionary("costmap3d").get());
     return options;
 }
 
 }  // namespace map
 }  // namespace autonomy
+
+
+    

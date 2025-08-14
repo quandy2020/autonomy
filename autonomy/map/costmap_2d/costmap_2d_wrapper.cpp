@@ -52,6 +52,14 @@ Costmap2DWrapper::~Costmap2DWrapper()
 
 }
 
+
+proto::Costmap2DOptions CreateCostmap2DOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::Costmap2DOptions options;
+    return options;
+}
+
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
