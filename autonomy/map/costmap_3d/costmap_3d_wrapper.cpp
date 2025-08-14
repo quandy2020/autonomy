@@ -14,28 +14,23 @@
  * limitations under the License.
  */
 
-#include "autonomy/control/controller_server.hpp"
+#include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
 
 namespace autonomy {
-namespace control {
+namespace map {
+namespace costmap_3d {
 
-ControllerServer::ControllerServer(const proto::ControllerOptions& options)
+Costmap3DWrapper::Costmap3DWrapper(const proto::Costmap3DOptions& options)
     : options_{options}
 {
 
 }
 
-ControllerServer::~ControllerServer()
+Costmap3DWrapper::~Costmap3DWrapper()
 {
 
 }
 
-proto::ControllerOptions CreateControllerOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::ControllerOptions options;
-    return options;
-}
-
-}  // namespace control
+}  // namespace costmap_3d
+}  // namespace map
 }  // namespace autonomy

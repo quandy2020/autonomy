@@ -29,7 +29,6 @@
 
 #include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/map/common/map_interface.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
@@ -44,7 +43,7 @@ struct MapLocation
   unsigned int y;
 };
 
-class Costmap2D : common::MapInterface
+class Costmap2D
 {
 public:
     /**

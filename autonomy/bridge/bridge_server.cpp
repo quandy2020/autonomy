@@ -23,7 +23,8 @@
 namespace autonomy {
 namespace bridge {
 
-BridgeServer::BridgeServer()
+BridgeServer::BridgeServer(const proto::BridgeOptions& options)
+    : options_{options}
 {
 
 }

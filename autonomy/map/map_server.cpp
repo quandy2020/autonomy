@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-#include "autonomy/map/map_server.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/map/map_server.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
 namespace autonomy {
 namespace map {
 
-MapServer::MapServer()
+MapServer::MapServer(const proto::MapOptions& options)
+    : options_{options}
 {
     if (options_.use_costmap_2d()) {
+        costmap_ = std::make_shared<costmap_2d::Costmap2DWrapper>(options_.costmap2d_options());
         LOG(INFO) << "Use costmap 2D map env as input";
     } else if (options_.use_costmap_3d()) {
+        costmap_ = std::make_shared<costmap_3d::Costmap3DWrapper>(options_.costmap3d_options());
         LOG(INFO) << "Use costmap 3D map env as input";
     }
 }

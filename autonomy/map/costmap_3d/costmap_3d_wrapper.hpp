@@ -16,46 +16,43 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <vector>
+#include <string>
 
-#include "autonomy/bridge/proto/bridge_options.pb.h"
+#include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
-#include "autonomy/bridge/bridge_option.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/map/common/map_interface.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace map {
+namespace costmap_3d {
 
-class BridgeServer
+class Costmap3DWrapper : public common::MapInterface
 {
 public:
     /**
-     * Define BridgeServer::SharedPtr type
+     * Define Costmap3DWrapper::SharedPtr type
      */
-    AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
+    AUTONOMY_SMART_PTR_DEFINITIONS(Costmap3DWrapper)
 
     /**
-     * @brief A constructor for autonomy::bridge::BridgeServer
+     * @brief A constructor for nautonomy::map::costmap_2d::Costmap3DWrapper
      * @param options Additional options to control creation of the node.
      */
-    explicit BridgeServer(const proto::BridgeOptions& options);
+    Costmap3DWrapper(const proto::Costmap3DOptions& options);
 
     /**
-     * @brief A Destructor for autonomy::bridge::BridgeServer
+     * @brief A Destructor for autonomy::map::costmap_2d::Costmap3DWrapper
      */
-    ~BridgeServer();
+    ~Costmap3DWrapper();
 
-    /**
-     * @brief Shutdown 
-     */
-    void Shutdown();
-
-private:
-    const proto::BridgeOptions options_;
+protected:
+    // options for costmap 3D
+    proto::Costmap3DOptions options_;
 };
 
-proto::BridgeOptions CreateBridgeOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace costmap_3d
+}  // namespace map
+}  // namespace autonomy

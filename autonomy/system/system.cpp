@@ -21,8 +21,12 @@ namespace system {
 
 
 AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
+   : options_{options}
 {
-    
+    bridge_server_ = std::make_shared<bridge::BridgeServer>(options_.bridge_options());
+    map_server_ = std::make_shared<map::MapServer>(options_.map_options());
+    controller_server_ = std::make_shared<control::ControllerServer>(options_.controller_options());
+    planner_server_ = std::make_shared<planning::PlannerServer>(options_.planner_options());
 }
 
 proto::AutonomyOptions CreateAutonomyOptions(common::LuaParameterDictionary* const parameter_dictionary)

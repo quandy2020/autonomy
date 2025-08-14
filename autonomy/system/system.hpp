@@ -19,10 +19,8 @@
 #include <unordered_map>
 
 #include "autonomy/system/proto/autonomy_options.pb.h"
-
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
-
 #include "autonomy/bridge/bridge_server.hpp"
 #include "autonomy/localization/localization_server.hpp"
 #include "autonomy/map/map_server.hpp"
@@ -60,6 +58,51 @@ public:
      * @brief A Destructor for autonomy::system::AutonomyNode
      */
     ~AutonomyNode() = default;
+
+    /**
+     * @brief Get bridge_server
+     * 
+     * @return bridge::BridgeServer pointer
+     */
+    bridge::BridgeServer* bridge_server() { return bridge_server_.get(); }
+
+    /**
+     * @brief Get map_server
+     * 
+     * @return pointer
+     */
+    map::MapServer* map_server() { return map_server_.get(); }
+
+    /**
+     * @brief Get controller_server
+     * 
+     * @return control::ControllerServer pointer
+     */
+    control::ControllerServer* controller_server() { return controller_server_.get(); }
+
+    /**
+     * @brief Get planner_server
+     * 
+     * @return planning::PlannerServer pointer
+     */
+    planning::PlannerServer* planner_server() { return planner_server_.get();}
+
+private:
+    // Configuration for auronomy options
+    proto::AutonomyOptions options_;
+
+    // bridge
+    bridge::BridgeServer::SharedPtr bridge_server_{nullptr};
+
+    // costmap
+    map::MapServer::SharedPtr map_server_{nullptr};
+
+    // controller
+    control::ControllerServer::SharedPtr controller_server_{nullptr};
+    
+    // planner
+    planning::PlannerServer::SharedPtr planner_server_{nullptr};
+
 };
 
 proto::AutonomyOptions CreateAutonomyOptions(common::LuaParameterDictionary* const parameter_dictionary);

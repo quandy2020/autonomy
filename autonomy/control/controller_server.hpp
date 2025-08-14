@@ -26,17 +26,21 @@ namespace control {
 class ControllerServer 
 {
 public:
-   /**
+    /**
     * Define ControllerServer::SharedPtr type
     */
     AUTONOMY_SMART_PTR_DEFINITIONS(ControllerServer)
 
-    ControllerServer();
+    /**
+     * @brief A constructor for nautonomy::control::ControllerServer
+     * @param options Additional options to control creation of the node.
+     */
+    ControllerServer(const proto::ControllerOptions& options);
     
     ~ControllerServer();
 
 private:
-
+    proto::ControllerOptions options_;
 };
 
 proto::ControllerOptions CreateControllerOptions(

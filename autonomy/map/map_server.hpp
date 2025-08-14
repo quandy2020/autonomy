@@ -42,13 +42,13 @@ public:
     AUTONOMY_SMART_PTR_DEFINITIONS(MapServer)
 
     /**
-     * @brief A constructor for nav2_map_server::MapServer
+     * @brief A constructor for map::MapServer
      * @param options Additional options to control creation of the node.
      */
-    explicit MapServer();
+    MapServer(const proto::MapOptions& options);
 
     /**
-     * @brief A Destructor for nav2_map_server::MapServer
+     * @brief A Destructor for map::MapServer
      */
     ~MapServer();
 
