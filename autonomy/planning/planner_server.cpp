@@ -47,6 +47,9 @@ proto::PlannerOptions CreatePlannerOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
 {
     proto::PlannerOptions options;
+    *options.mutable_astar() = plugins::CreateAStarPlannerOptions(parameter_dictionary->GetDictionary("astar_planner").get());
+    *options.mutable_dijkstra() = plugins::CreateDijkstraPlannerOptions(parameter_dictionary->GetDictionary("dijkstra_planner").get());
+    *options.mutable_navfn() = plugins::CreateNavFnPlannerOptions(parameter_dictionary->GetDictionary("navfn_planner").get());
     return options;
 }
     

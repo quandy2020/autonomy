@@ -26,10 +26,10 @@ MapServer::MapServer(const proto::MapOptions& options)
 {
     if (options_.use_costmap_2d()) {
         costmap_ = std::make_shared<costmap_2d::Costmap2DWrapper>(options_.costmap2d_options());
-        LOG(INFO) << "Use costmap 2D map env as input";
+        LOG(INFO) << "Use costmap 2D map.";
     } else if (options_.use_costmap_3d()) {
         costmap_ = std::make_shared<costmap_3d::Costmap3DWrapper>(options_.costmap3d_options());
-        LOG(INFO) << "Use costmap 3D map env as input";
+        LOG(INFO) << "Use costmap 3D map.";
     }
 }
 

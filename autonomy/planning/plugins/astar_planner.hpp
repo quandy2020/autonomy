@@ -16,7 +16,10 @@
 
 #pragma once 
 
+#include "autonomy/planning/proto/astar_planner.pb.h"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
+
 namespace autonomy {
 namespace planning {
 namespace plugins {
@@ -80,6 +83,10 @@ public:
      */
     virtual bool Cancel() override;
 };
+
+
+proto::AStarPlanner CreateAStarPlannerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace plugins
 }  // namespace planning

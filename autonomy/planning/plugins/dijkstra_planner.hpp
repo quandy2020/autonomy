@@ -14,10 +14,17 @@
  * limitations under the License.
  */
 
+#pragma once
+
+#include "autonomy/planning/proto/dijkstra_planner.pb.h"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+
 namespace autonomy {
 namespace planning {
 namespace plugins {
 
+proto::DijkstraPlanner CreateDijkstraPlannerOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace plugins
 }  // namespace planning
