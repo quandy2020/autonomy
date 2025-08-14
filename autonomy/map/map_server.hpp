@@ -23,7 +23,9 @@
 #include "autonomy/map/proto/map_options.pb.h"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/common/map_interface.hpp"
+#include "autonomy/map/utils/data_loader_utils.hpp"
 
 namespace autonomy {
 namespace map {
@@ -51,6 +53,27 @@ public:
      * @brief A Destructor for map::MapServer
      */
     ~MapServer();
+
+    /**
+     * @brief Load OccupancyGrid map data 
+     * 
+     * @param filename 
+     * @param map_data 
+     * @return true 
+     * @return false 
+     */
+    bool LoadMapData(const std::string& filename, commsgs::map_msgs::OccupancyGrid& map_data);
+
+    /**
+     * @brief Load Octomap map data 
+     * 
+     * @param filename 
+     * @param map_data 
+     * @return true 
+     * @return false 
+     */
+    bool LoadMapData(const std::string& filename, commsgs::map_msgs::Octomap& map_data);
+
 
 protected:
     // Costmap 2D or 3D

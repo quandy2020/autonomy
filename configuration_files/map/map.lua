@@ -19,10 +19,10 @@ AUTONOMY_MAP = {
     use_costmap_3d = false,
  
     costmap2d = {
-
+        map_file = "hdhdh.yaml",
     },
 
     costmap3d = {
-
+        map_file = "dfdgdg.ply",
     }
 }

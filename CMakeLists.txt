@@ -208,7 +208,7 @@ set(INSTALL_GENERATED_HDRS ${ALL_PROTO_HDRS} ${ALL_GRPC_SERVICE_HDRS})
 # configuration files
 configure_file(
   ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake
-  ${PROJECT_BINARY_DIR}/autonomy/common/config.hpp)
+  ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp)
 
 # autonomy version
 configure_file(

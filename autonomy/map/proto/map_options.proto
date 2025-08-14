@@ -18,12 +18,12 @@ package autonomy.map.proto;
 
 message Costmap2DOptions
 {
-
+    string map_file = 1;
 }
 
 message Costmap3DOptions
 {
-
+    string map_file = 1;
 }
 
 message MapOptions

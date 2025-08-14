@@ -57,6 +57,7 @@ proto::Costmap2DOptions CreateCostmap2DOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
 {
     proto::Costmap2DOptions options;
+    options.set_map_file(parameter_dictionary->GetString("map_file"));
     return options;
 }
 
