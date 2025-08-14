@@ -44,17 +44,16 @@ proto::AutonomyOptions CreateAutonomyOptions(common::LuaParameterDictionary* con
         parameter_dictionary->GetDictionary("localization").get());
     *options.mutable_map_options() = map::CreateMapOptions(
         parameter_dictionary->GetDictionary("map").get());
+    *options.mutable_prediction_options() = prediction::CreatePredictionOptions(
+        parameter_dictionary->GetDictionary("prediction").get());
     *options.mutable_perception_options() = perception::CreatePerceptionOptions(
         parameter_dictionary->GetDictionary("perception").get());
     *options.mutable_task_options() = tasks::CreateTaskOptions(
         parameter_dictionary->GetDictionary("tasks").get());
     *options.mutable_transform_options() = transform::CreateTransformOptions(
         parameter_dictionary->GetDictionary("transform").get());
-
     // *options.mutable_task_options() = visualization::CreateVisualizationOptions(
     //     parameter_dictionary->GetDictionary("visualization").get());
-
-
     return options;
 }
 
