@@ -1,15 +1,18 @@
-// eventpp library
-// Copyright (C) 2018 Wang Qi (wqking)
-// Github: https://github.com/wqking/eventpp
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//   http://www.apache.org/licenses/LICENSE-2.0
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright 2024 The OpenRobotic Beginner Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #ifndef ANYDATA_H_320827729782
 #define ANYDATA_H_320827729782
@@ -20,6 +23,8 @@
 #include <cassert>
 #include <memory>
 
+namespace autonomy {
+namespace common {
 namespace eventpp {
 
 namespace anydata_internal_ {
@@ -240,7 +245,10 @@ constexpr std::size_t maxSizeOf()
 	return anydata_internal_::MaxSizeOf<Ts...>::value;
 }
 
-} //namespace eventpp
+}   // namespace eventpp  
+}   // namespace common
+}   // namespace autonomy
+
 
 
 #endif
