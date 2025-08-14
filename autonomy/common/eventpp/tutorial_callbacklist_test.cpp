@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-
-
-
-
 // Include the head
 #include "autonomy/common/eventpp/callbacklist.h"
 
