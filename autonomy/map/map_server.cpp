@@ -19,6 +19,8 @@
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
 
+#include "autonomy/map/map_io.hpp"
+
 namespace autonomy {
 namespace map {
 
@@ -37,6 +39,21 @@ MapServer::MapServer(const proto::MapOptions& options)
 MapServer::~MapServer()
 {
 
+}
+
+bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::OccupancyGrid& map_data)
+{
+    std::string yaml_file = utils::GetMapDataFilesDirectory() + options_.costmap2d_options().map_file();
+    if (loadMapFromYaml(yaml_file, map_data) != LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
+        LOG(ERROR) << "Load yaml file error.";
+        return false;
+    }
+    return true;
+}
+
+bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::Octomap& map_data)
+{
+    return true;
 }
 
 proto::MapOptions CreateMapOptions(

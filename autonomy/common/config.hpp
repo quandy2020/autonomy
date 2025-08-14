@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2016 The Cartographer Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,33 +14,16 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "autonomy/common/macros.hpp"
-#include "autonomy/sensor/data.hpp"
+#ifndef AUTONOMY_COMMON_CONFIG_HPP_
+#define AUTONOMY_COMMON_CONFIG_HPP_
 
 namespace autonomy {
-namespace map {
 namespace common {
 
-class MapInterface
-{
-public:
-    /**
-     * Define MapInterface::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(MapInterface)
-
-    MapInterface() {}
-    virtual ~MapInterface() {}
-
-    MapInterface(const MapInterface&) = delete;
-    MapInterface& operator=(const MapInterface&) = delete;
-
-    void AddSensorData(std::unique_ptr<sensor::Data> data);
-};
-
+constexpr char kConfigurationFilesDirectory[] = "/home/quandy/workspace/github/autonomy/install/autonomy/share/autonomy/configuration_files";
+constexpr char kSourceDirectory[] = "/home/quandy/workspace/github/autonomy/src/autonomy";
 
 }  // namespace common
-}  // namespace map
 }  // namespace autonomy
+
+#endif  // AUTONOMY_COMMON_CONFIG_HPP_

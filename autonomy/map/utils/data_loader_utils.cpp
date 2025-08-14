@@ -14,33 +14,18 @@
  * limitations under the License.
  */
 
-#pragma once
 
-#include "autonomy/common/macros.hpp"
-#include "autonomy/sensor/data.hpp"
+#include "autonomy/map/utils/data_loader_utils.hpp"
 
 namespace autonomy {
 namespace map {
-namespace common {
-
-class MapInterface
+namespace utils {
+    
+std::string GetMapDataFilesDirectory()
 {
-public:
-    /**
-     * Define MapInterface::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(MapInterface)
+    return std::string(common::kConfigurationFilesDirectory) + "/data/";
+}
 
-    MapInterface() {}
-    virtual ~MapInterface() {}
-
-    MapInterface(const MapInterface&) = delete;
-    MapInterface& operator=(const MapInterface&) = delete;
-
-    void AddSensorData(std::unique_ptr<sensor::Data> data);
-};
-
-
-}  // namespace common
+}  // namespace utils
 }  // namespace map
 }  // namespace autonomy
