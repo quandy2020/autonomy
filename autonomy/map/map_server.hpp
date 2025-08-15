@@ -74,10 +74,19 @@ public:
      */
     bool LoadMapData(const std::string& filename, commsgs::map_msgs::Octomap& map_data);
 
+    /**
+     * @brief Get OccupancyGrid map data 2d format
+     * 
+     * @return commsgs::map_msgs::OccupancyGrid* 
+     */
+    commsgs::map_msgs::OccupancyGrid* occupancy_grid_map_data() { return occupancy_grid_map_data_.get(); }
 
 protected:
     // Costmap 2D or 3D
     common::MapInterface::SharedPtr costmap_{nullptr};
+
+    // OccupancyGrid map data
+    commsgs::map_msgs::OccupancyGrid::SharedPtr occupancy_grid_map_data_{nullptr};
 
     // true if msg_ was initialized
     bool map_available_;
