@@ -224,12 +224,12 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-# Thirdparty library
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+# # Thirdparty library
+# include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
 
-# Thirdparty: class_loader
-add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
+# # Thirdparty: class_loader
+# add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
+# include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
 
 # # gRPC
 # if(${BUILD_GRPC})

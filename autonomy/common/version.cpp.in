@@ -20,6 +20,12 @@
 #include "glog/logging.h"
 #include "autonomy/common/version.hpp"
 
+#define RED_INFO(text)    "\033[31m" << text << "\033[0m"
+#define GREEN_INFO(text)  "\033[32m" << text << "\033[0m"
+#define YELLOW_INFO(text) "\033[33m" << text << "\033[0m"
+#define BLUE_INFO(text)   "\033[34m" << text << "\033[0m"
+
+
 namespace autonomy {
 namespace common {
 namespace {
@@ -62,12 +68,12 @@ std::string GetCudaInfo()
 
 void ShowVersion() 
 {
-    LOG(INFO) << "--[ Autonomy for robotics develop everyone ]-- ";
-    LOG(INFO) << "  [ version ]: " << common::GetVersionInfo().c_str() ;
-    LOG(INFO) << "  [ develop ]: " << common::GetGitCommitID().c_str();
-    LOG(INFO) << "  [ cuda    ]: " << common::GetCudaInfo().c_str();
-    LOG(INFO) << "  [ contact ]: " << "quandy2020@126.com";
-    LOG(INFO) << "---------------------------------------------- ";
+    LOG(INFO) << GREEN_INFO("--[ Autonomy for robotics develop everyone ]-- ");
+    LOG(INFO) << GREEN_INFO(absl::StrCat("  [ version ]: ", common::GetVersionInfo().c_str()));
+    LOG(INFO) << GREEN_INFO(absl::StrCat("  [ develop ]: ", common::GetGitCommitID().c_str()));
+    LOG(INFO) << GREEN_INFO(absl::StrCat("  [ cuda    ]: ", common::GetCudaInfo().c_str()));
+    LOG(INFO) << GREEN_INFO("  [ contact ]: " << "quandy2020@126.com");
+    LOG(INFO) << GREEN_INFO("---------------------------------------------- ");
 }
 
 }  // namespace common
