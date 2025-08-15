@@ -1,0 +1,100 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+#include "autonomy/tasks/behavior_tree/decorator/rate_controller.hpp"
+
+namespace autonomy {
+namespace tasks {
+namespace behavior_tree {
+namespace decorator {
+
+RateController::RateController(
+  const std::string& name,
+  const BT::NodeConfiguration& conf)
+    : BT::DecoratorNode(name, conf),
+    first_time_(false),
+    initialized_(false)
+{
+}
+
+void RateController::initialize()
+{
+    double hz = 1.0;
+    getInput("hz", hz);
+    period_ = 1.0 / hz;
+    initialized_ = true;
+}
+
+BT::NodeStatus RateController::tick()
+{
+    if (!initialized_) {
+        initialize();
+    }
+
+    if (!BT::isStatusActive(status())) {
+        // Reset the starting point since we're starting a new iteration of
+        // the rate controller (moving from IDLE to RUNNING)
+        start_ = std::chrono::high_resolution_clock::now();
+        first_time_ = true;
+    }
+
+    setStatus(BT::NodeStatus::RUNNING);
+
+    // Determine how long its been since we've started this iteration
+    auto now = std::chrono::high_resolution_clock::now();
+    auto elapsed = now - start_;
+
+    // Now, get that in seconds
+    typedef std::chrono::duration<float> float_seconds;
+    auto seconds = std::chrono::duration_cast<float_seconds>(elapsed);
+
+    // The child gets ticked the first time through and any time the period has
+    // expired. In addition, once the child begins to run, it is ticked each time
+    // 'til completion
+    if (first_time_ || (child_node_->status() == BT::NodeStatus::RUNNING) || seconds.count() >= period_)
+    {
+        first_time_ = false;
+        const BT::NodeStatus child_state = child_node_->executeTick();
+
+        switch (child_state) {
+        case BT::NodeStatus::SKIPPED:
+        case BT::NodeStatus::RUNNING:
+        case BT::NodeStatus::FAILURE:
+            return child_state;
+
+        case BT::NodeStatus::SUCCESS:
+            start_ = std::chrono::high_resolution_clock::now();  // Reset the timer
+            return BT::NodeStatus::SUCCESS;
+
+        default:
+            return BT::NodeStatus::FAILURE;
+        }
+    }
+
+    return status();
+}
+
+}  // namespace decorator
+}  // namespace behavior_tree
+}  // namespace tasks
+}  // namespace autonomy
+
+#include "behaviortree_cpp/bt_factory.h"
+BT_REGISTER_NODES(factory)
+{
+    factory.registerNodeType<autonomy::tasks::behavior_tree::decorator::RateController>("RateController");
+}
