@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2025 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,26 @@
  * limitations under the License.
  */
 
-#include "autonomy/map/costmap_2d/layer.hpp"
+#pragma once 
+
+#include "autonomy/common/macros.hpp"
+#include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 
 namespace autonomy {
-namespace map {
-namespace costmap_2d {
+namespace tasks {
+namespace navigation {
 
-Layer::Layer()
-: layered_costmap_(nullptr),
-    name_(),
-    current_(false),
-    enabled_(false) {}
-
-
-void Layer::initialize(LayeredCostmap* parent, std::string name)
+class NavigatorTask
 {
-    layered_costmap_ = parent;
-    name_ = name;
-    onInitialize();
-}
+public:
+    NavigatorTask();
+    ~NavigatorTask();
 
-const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const
-{
-  return layered_costmap_->getFootprint();
-}
+private:
+    // behavior_tree engine
+    // behavior_tree::BehaviorTreeEngine::SharedPtr bt_engine_{nullptr};
+};
 
-}  // namespace costmap_2d
-}  // namespace map
+}  // namespace navigation
+}  // namespace tasks
 }  // namespace autonomy

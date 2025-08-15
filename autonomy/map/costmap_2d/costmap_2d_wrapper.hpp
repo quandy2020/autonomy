@@ -50,6 +50,8 @@
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/map/common/map_interface.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d.hpp"
+#include "autonomy/map/costmap_2d/layered_costmap.hpp"
 
 namespace autonomy {
 namespace map {
@@ -134,7 +136,7 @@ public:
      * @return True if the pose was transformed successfully, false otherwise
      */
     bool transformPoseToGlobalFrame(
-        const geometry_msgs::PoseStamped& input_pose,
+        const commsgs::geometry_msgs::PoseStamped& input_pose,
         commsgs::geometry_msgs::PoseStamped& transformed_pose);
 
     /** 
@@ -153,15 +155,15 @@ public:
         return transform_tolerance_;
     }
 
-    /**
-     * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
-     *
-     * Same as calling getLayeredCostmap()->getCostmap().
-     */
-    Costmap2D * getCostmap()
-    {
-        return layered_costmap_->getCostmap();
-    }
+    // /**
+    //  * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
+    //  *
+    //  * Same as calling getLayeredCostmap()->getCostmap().
+    //  */
+    // Costmap2D* getCostmap()
+    // {
+    //     return layered_costmap_->getCostmap();
+    // }
 
     /**
      * @brief  Returns the global frame of the costmap
@@ -218,12 +220,48 @@ public:
      * The footprint initially comes from the rosparam "footprint" but
      * can be overwritten by dynamic reconfigure or by messages received
      * on the "footprint" topic. */
-    std::vector<geometry_msgs::msg::Point> getUnpaddedRobotFootprint()
+    std::vector<commsgs::geometry_msgs::Point> getUnpaddedRobotFootprint()
     {
         return unpadded_footprint_;
     }
 
 protected:
+
+    std::unique_ptr<LayeredCostmap> layered_costmap_{nullptr};
+    std::string name_;
+
+    bool always_send_full_costmap_{false};
+    std::string footprint_;
+    float footprint_padding_{0};
+    std::string global_frame_;                ///< The global frame for the costmap
+    int map_height_meters_{0};
+    double map_publish_frequency_{0};
+    double map_update_frequency_{0};
+    int map_width_meters_{0};
+    double origin_x_{0};
+    double origin_y_{0};
+    std::vector<std::string> default_plugins_;
+    std::vector<std::string> default_types_;
+    std::vector<std::string> plugin_names_;
+    std::vector<std::string> plugin_types_;
+    std::vector<std::string> filter_names_;
+    std::vector<std::string> filter_types_;
+    double resolution_{0};
+    std::string robot_base_frame_;            ///< The frame_id of the robot base
+    double robot_radius_;
+    bool rolling_window_{false};          ///< Whether to use a rolling window version of the costmap
+    bool track_unknown_space_{false};
+    double transform_tolerance_{0};           ///< The timeout before transform errors
+    double initial_transform_timeout_{0};   ///< The timeout before activation of the node errors
+    double map_vis_z_{0};                 ///< The height of map, allows to avoid flickering at -0.008
+
+    bool is_lifecycle_follower_{true};   ///< whether is a child-LifecycleNode or an independent node
+
+    // Derived parameters
+    bool use_radius_{false};
+    std::vector<commsgs::geometry_msgs::Point> unpadded_footprint_;
+    std::vector<commsgs::geometry_msgs::Point> padded_footprint_;
+    
     // options for costmap 2D
     proto::Costmap2DOptions options_;
 

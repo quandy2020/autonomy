@@ -14,31 +14,28 @@
  * limitations under the License.
  */
 
-#include "autonomy/map/costmap_2d/layer.hpp"
+#pragma once
+
+#include <type_traits>
 
 namespace autonomy {
-namespace map {
-namespace costmap_2d {
+namespace tasks {
+namespace navigation {
 
-Layer::Layer()
-: layered_costmap_(nullptr),
-    name_(),
-    current_(false),
-    enabled_(false) {}
+///
+/// @brief      A tag struct used to disambiguate variables from other types.
+///
+struct Task {};
 
+///
+/// @brief      A trait to check if a type is a variable by checking if it inherits from Variable.
+///
+/// @tparam     T     Query type.
+///
+template<typename T>
+struct is_task : std::conditional_t<
+    std::is_base_of<Task, T>::value, std::true_type, std::false_type> {};
 
-void Layer::initialize(LayeredCostmap* parent, std::string name)
-{
-    layered_costmap_ = parent;
-    name_ = name;
-    onInitialize();
-}
-
-const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const
-{
-  return layered_costmap_->getFootprint();
-}
-
-}  // namespace costmap_2d
-}  // namespace map
+}  // namespace navigation
+}  // namespace tasks
 }  // namespace autonomy

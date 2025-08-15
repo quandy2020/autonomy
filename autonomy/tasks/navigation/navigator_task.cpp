@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2025 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,31 +14,24 @@
  * limitations under the License.
  */
 
-#include "autonomy/map/costmap_2d/layer.hpp"
+#include "autonomy/tasks/navigation/navigator_task.hpp"
 
 namespace autonomy {
-namespace map {
-namespace costmap_2d {
-
-Layer::Layer()
-: layered_costmap_(nullptr),
-    name_(),
-    current_(false),
-    enabled_(false) {}
+namespace tasks {
+namespace navigation {
 
 
-void Layer::initialize(LayeredCostmap* parent, std::string name)
+NavigatorTask::NavigatorTask()
 {
-    layered_costmap_ = parent;
-    name_ = name;
-    onInitialize();
+
 }
 
-const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const
+NavigatorTask::~NavigatorTask()
 {
-  return layered_costmap_->getFootprint();
+    
 }
 
-}  // namespace costmap_2d
-}  // namespace map
+
+}  // namespace navigation
+}  // namespace tasks
 }  // namespace autonomy
