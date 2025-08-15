@@ -84,6 +84,9 @@ public:
         const std::string& planner_id,
         std::function<bool()> cancel_checker);
 
+
+    commsgs::planning_msgs::Path* trajectory_plan() { return trajectory_plan_.get(); }
+
 protected:
     /**
      * @brief Wait for costmap to be valid with updated sensor data or repopulate after a
@@ -135,6 +138,8 @@ protected:
 
     // Options planners
     proto::PlannerOptions options_;
+
+    commsgs::planning_msgs::Path::SharedPtr trajectory_plan_{nullptr};
 
     // All planners
     PlannerMap planners_;

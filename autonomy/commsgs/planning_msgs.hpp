@@ -19,6 +19,7 @@
 #include <vector>
 #include <string>
 
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
@@ -29,6 +30,9 @@ namespace planning_msgs {
 // An array of poses that represents a Path for a robot to follow.
 struct Path 
 {
+    // Define Path::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Path)
+
     // Indicates the frame_id of the path.
     std_msgs::Header header;
 
@@ -38,6 +42,9 @@ struct Path
 
 struct Odometry
 {
+    // Define Odometry::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Odometry)
+
     // This represents an estimate of a position and velocity in free space.
     // The pose in this message should be specified in the coordinate frame given by header.frame_id
     // The twist in this message should be specified in the coordinate frame given by the child_frame_id
