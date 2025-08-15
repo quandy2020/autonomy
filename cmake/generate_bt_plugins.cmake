@@ -12,11 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(PACKAGE_VERSION "@AUTONOMY_VERSION@")
-
-if("${PACKAGE_VERSION}" VERSION_EQUAL "${PACKAGE_FIND_VERSION}")
-    set(PACKAGE_VERSION_COMPATIBLE TRUE)
-else()
-    set(PACKAGE_VERSION_COMPATIBLE FALSE)
-endif()
-

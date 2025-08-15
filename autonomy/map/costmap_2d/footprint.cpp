@@ -29,35 +29,35 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-// std::pair<double, double> calculateMinAndMaxDistances(const std::vector<commsgs::geometry_msgs::Point>& footprint)
-// {
-//     double min_dist = std::numeric_limits<double>::max();
-//     double max_dist = 0.0;
+std::pair<double, double> calculateMinAndMaxDistances(const std::vector<commsgs::geometry_msgs::Point>& footprint)
+{
+    double min_dist = std::numeric_limits<double>::max();
+    double max_dist = 0.0;
     
-//     if (footprint.size() <= 2) {
-//         return std::pair<double, double>(min_dist, max_dist);
-//     }
+    if (footprint.size() <= 2) {
+        return std::pair<double, double>(min_dist, max_dist);
+    }
     
-//     for (unsigned int i = 0; i < footprint.size() - 1; ++i) {
-//         // check the distance from the robot center point to the first vertex
-//         double vertex_dist = distance(0.0, 0.0, footprint[i].x, footprint[i].y);
-//         double edge_dist = distanceToLine(
-//         0.0, 0.0, footprint[i].x, footprint[i].y,
-//         footprint[i + 1].x, footprint[i + 1].y);
-//         min_dist = std::min(min_dist, std::min(vertex_dist, edge_dist));
-//         max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
-//     }
+    for (unsigned int i = 0; i < footprint.size() - 1; ++i) {
+        // check the distance from the robot center point to the first vertex
+        double vertex_dist = distance(0.0, 0.0, footprint[i].x, footprint[i].y);
+        double edge_dist = distanceToLine(
+        0.0, 0.0, footprint[i].x, footprint[i].y,
+        footprint[i + 1].x, footprint[i + 1].y);
+        min_dist = std::min(min_dist, std::min(vertex_dist, edge_dist));
+        max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
+    }
     
-//     // we also need to do the last vertex and the first vertex
-//     double vertex_dist = distance(0.0, 0.0, footprint.back().x, footprint.back().y);
-//     double edge_dist = distanceToLine(
-//         0.0, 0.0, footprint.back().x, footprint.back().y,
-//         footprint.front().x, footprint.front().y);
-//     min_dist = std::min(min_dist, std::min(vertex_dist, edge_dist));
-//     max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
+    // we also need to do the last vertex and the first vertex
+    double vertex_dist = distance(0.0, 0.0, footprint.back().x, footprint.back().y);
+    double edge_dist = distanceToLine(
+        0.0, 0.0, footprint.back().x, footprint.back().y,
+        footprint.front().x, footprint.front().y);
+    min_dist = std::min(min_dist, std::min(vertex_dist, edge_dist));
+    max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
     
-//     return std::pair<double, double>(min_dist, max_dist);
-// }
+    return std::pair<double, double>(min_dist, max_dist);
+}
       
 commsgs::geometry_msgs::Point32 toPoint32(commsgs::geometry_msgs::Point pt)
 {

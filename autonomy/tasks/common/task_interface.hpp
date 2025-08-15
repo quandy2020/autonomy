@@ -14,13 +14,30 @@
  * limitations under the License.
  */
 
-#pragma once
+#pragma once 
+
+#include "autonomy/common/macros.hpp"
 
 namespace autonomy {
 namespace tasks {
-namespace common { 
+namespace common {
 
+class TaskInterface 
+{
+public:
+   /**
+    * Define TaskInterface::SharedPtr type
+    */
+    AUTONOMY_SMART_PTR_DEFINITIONS(TaskInterface)
 
-}   // namespace common 
-}   // namespace tasks
-}   // namespace autonomy
+    TaskInterface();
+    
+    virtual ~TaskInterface();
+    
+private:
+
+};
+
+}  // namespace common
+}  // namespace tasks
+}  // namespace autonomy

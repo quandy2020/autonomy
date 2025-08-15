@@ -128,7 +128,6 @@ public:
      */
     const std::vector<commsgs::geometry_msgs::Point>& getFootprint() const;
 
-
 protected:
     LayeredCostmap* layered_costmap_; 
     

@@ -20,7 +20,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "class_loader/class_loader.hpp"
+// #include "class_loader/class_loader.hpp"
 
 #include "autonomy/planning/proto/planning_options.pb.h"
 
@@ -143,7 +143,7 @@ protected:
 
     // All planners
     PlannerMap planners_;
-    std::unique_ptr<class_loader::ClassLoader> gp_loader_{nullptr};
+    // std::unique_ptr<class_loader::ClassLoader> gp_loader_{nullptr};
 
     std::vector<std::string> default_ids_;
     std::vector<std::string> default_types_;

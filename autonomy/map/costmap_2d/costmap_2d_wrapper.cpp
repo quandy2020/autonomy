@@ -41,7 +41,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options)
+Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name)
     : options_{options}
 {
 
