@@ -333,11 +333,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 
+# behaviortree_cpp
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${behaviortree_cpp_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp)
+
 # glog & tf2 & eventpp & nlohmann_json
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
-target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
 
 # abseil-cpp
 set(ABSL_LIBRARY
