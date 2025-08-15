@@ -50,6 +50,7 @@ google_enable_testing()
 
 find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
+find_package(behaviortree_cpp REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
@@ -336,6 +337,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
+target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
 
 # abseil-cpp
 set(ABSL_LIBRARY
