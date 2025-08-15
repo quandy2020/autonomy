@@ -12,8 +12,6 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
-
-
 AUTONOMY_BRIDGE = {
     grpc = {
         host = "127.0.0.1",

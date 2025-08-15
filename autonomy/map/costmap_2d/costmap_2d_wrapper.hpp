@@ -37,10 +37,14 @@
 
 #pragma once
 
-#include <vector>
+#include <atomic>
+#include <memory>
 #include <string>
+#include <vector>
 
+#include "autonomy/transform/tf2/utils.h"
 #include "autonomy/map/proto/map_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
@@ -63,13 +67,161 @@ public:
      * @brief A constructor for nautonomy::map::costmap_2d::Costmap2DWrapper
      * @param options Additional options to control creation of the node.
      */
-    Costmap2DWrapper(const proto::Costmap2DOptions& options);
+    Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name = "");
 
     /**
      * @brief A Destructor for autonomy::map::costmap_2d::Costmap2DWrapper
      */
     ~Costmap2DWrapper();
 
+    /**
+     * @brief Common initialization for constructors
+     */
+    void init();
+
+
+    /**
+     * @brief  Subscribes to sensor topics if necessary and starts costmap
+     * updates, can be called to restart the costmap after calls to either
+     * stop() or pause()
+     */
+    void start();
+
+    /**
+     * @brief  Stops costmap updates and unsubscribes from sensor topics
+     */
+    void stop();
+
+    /**
+     * @brief  Stops the costmap from updating, but sensor data still comes in over the wire
+     */
+    void pause();
+
+    /**
+     * @brief  Resumes costmap updates
+     */
+    void resume();
+
+    /**
+     * @brief Update the map with the layered costmap / plugins
+     */
+    void updateMap();
+
+    /**
+     * @brief Reset each individual layer
+     */
+    void resetLayers();
+
+    /** 
+     * @brief Same as getLayeredCostmap()->isCurrent(). 
+     */
+    bool isCurrent()
+    {
+        return layered_costmap_->isCurrent();
+    }
+
+    /**
+     * @brief Get the pose of the robot in the global frame of the costmap
+     * @param global_pose Will be set to the pose of the robot in the global frame of the costmap
+     * @return True if the pose was set successfully, false otherwise
+     */
+    bool getRobotPose(commsgs::geometry_msgs::PoseStamped& global_pose);
+
+    /**
+     * @brief Transform the input_pose in the global frame of the costmap
+     * @param input_pose pose to be transformed
+     * @param transformed_pose pose transformed
+     * @return True if the pose was transformed successfully, false otherwise
+     */
+    bool transformPoseToGlobalFrame(
+        const geometry_msgs::PoseStamped& input_pose,
+        commsgs::geometry_msgs::PoseStamped& transformed_pose);
+
+    /** 
+     * @brief Returns costmap name 
+     */
+    std::string getName() const
+    {
+        return name_;
+    }
+
+    /** 
+     * @brief Returns the delay in transform (tf) data that is tolerable in seconds 
+     */
+    double getTransformTolerance() const
+    {
+        return transform_tolerance_;
+    }
+
+    /**
+     * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
+     *
+     * Same as calling getLayeredCostmap()->getCostmap().
+     */
+    Costmap2D * getCostmap()
+    {
+        return layered_costmap_->getCostmap();
+    }
+
+    /**
+     * @brief  Returns the global frame of the costmap
+     * @return The global frame of the costmap
+     */
+    std::string getGlobalFrameID()
+    {
+        return global_frame_;
+    }
+
+    /**
+     * @brief  Returns the local frame of the costmap
+     * @return The local frame of the costmap
+     */
+    std::string getBaseFrameID()
+    {
+        return robot_base_frame_;
+    }
+
+    /**
+     * @brief Get the layered costmap object used in the node
+     */
+    LayeredCostmap* getLayeredCostmap()
+    {
+        return layered_costmap_.get();
+    }
+
+    // /** 
+    //  * @brief Returns the current padded footprint as a geometry_msgs::msg::Polygon. 
+    //  */
+    // geometry_msgs::msg::Polygon getRobotFootprintPolygon()
+    // {
+    //     return nav2_costmap_2d::toPolygon(padded_footprint_);
+    // }
+
+    /** 
+     * @brief Return the current footprint of the robot as a vector of points.
+     *
+     * This version of the footprint is padded by the footprint_padding_
+     * distance, set in the rosparam "footprint_padding".
+     *
+     * The footprint initially comes from the rosparam "footprint" but
+     * can be overwritten by dynamic reconfigure or by messages received
+     * on the "footprint" topic. */
+    std::vector<commsgs::geometry_msgs::Point> getRobotFootprint()
+    {
+        return padded_footprint_;
+    }
+
+    /** @brief Return the current unpadded footprint of the robot as a vector of points.
+     *
+     * This is the raw version of the footprint without padding.
+     *
+     * The footprint initially comes from the rosparam "footprint" but
+     * can be overwritten by dynamic reconfigure or by messages received
+     * on the "footprint" topic. */
+    std::vector<geometry_msgs::msg::Point> getUnpaddedRobotFootprint()
+    {
+        return unpadded_footprint_;
+    }
 
 protected:
     // options for costmap 2D
