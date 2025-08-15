@@ -19,9 +19,92 @@ AUTONOMY_MAP = {
  
     costmap2d = {
         map_file = "turtlebot3_house.yaml",
+        -- global_costmap = {
+        --     update_frequency = 5.0,
+        --     global_frame = "map",
+        --     robot_base_frame = "base_link",
+        --     resolution = 0.05,
+        --     robot_radius = 0.22,
+        --     track_unknown_space = true,
+        --     plugins = {"static_layer", "obstacle_layer", "inflation_layer"},
+        --     obstacle_layer = {
+        --         plugin = "nav2_costmap_2d::ObstacleLayer",
+        --         enabled = true,
+        --         observation_sources = {
+        --             sensor_id = "scan"
+        --             max_obstacle_height = 2.0
+        --             clearing = true,
+        --             marking = true,
+        --             data_type = "LaserScan",
+        --             raytrace_max_range = 3.0,
+        --             raytrace_min_range = 0.0,
+        --             obstacle_max_range = 2.5,
+        --             obstacle_min_range = 0.0,
+        --         },
+        --     },
+        --     static_layer = {
+        --         plugin = "nav2_costmap_2d::StaticLayer",
+        --         map_subscribe_transient_local = true,
+        --         always_send_full_costmap = true,
+        --     },
+        --     inflation_layer = {
+        --         plugin = "nav2_costmap_2d::InflationLayer",
+        --         cost_scaling_factor = 3.0,
+        --         inflation_radius = 0.7,
+        --     },
+        --     always_send_full_costmap = true,
+        -- },
+
+        -- local_costmap = {
+        --     update_frequency = 5.0,
+        --     global_frame = "odom",
+        --     robot_base_frame = "base_link",
+        --     rolling_window = true,
+        --     width = 3,
+        --     height = 3,
+        --     resolution = 0.05,
+        --     robot_radius = 0.22,
+        --     plugins = {"voxel_layer", "inflation_layer"},
+        --     inflation_layer = {
+        --         plugin = "nav2_costmap_2d::InflationLayer",
+        --         cost_scaling_factor = 3.0,
+        --         inflation_radius = 0.70,
+        --     }
+               
+        --     voxel_layer = {
+        --         plugin = "nav2_costmap_2d::VoxelLayer",
+        --         enabled = true,
+        --         publish_voxel_map = true,
+        --         origin_z = 0.0,
+        --         z_resolution = 0.05,
+        --         z_voxels = 16,
+        --         max_obstacle_height = 2.0,
+        --         mark_threshold = 0,
+        --         observation_sources = {
+        --             sensor_id = "scan",
+        --             max_obstacle_height = 2.0,
+        --             clearing = true,
+        --             marking = true,
+        --             data_type = "LaserScan",
+        --             raytrace_max_range = 3.0,
+        --             raytrace_min_range = 0.0,
+        --             obstacle_max_range = 2.5,
+        --             obstacle_min_range = 0.0,
+        --         },
+        --     },
+            
+        --     static_layer = {
+        --         plugin = "nav2_costmap_2d::StaticLayer",
+        --         map_subscribe_transient_local = true,
+        --     },
+        --     always_send_full_costmap = true,
+        -- },
     },
 
     costmap3d = {
         map_file = "dfdgdg.ply",
     }
 }
+
+
+
