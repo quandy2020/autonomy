@@ -34,6 +34,11 @@ MapServer::MapServer(const proto::MapOptions& options)
         costmap_ = std::make_shared<costmap_3d::Costmap3DWrapper>(options_.costmap3d_options());
         LOG(INFO) << "Use costmap 3D map.";
     }
+
+
+    std::string yaml_file = utils::GetMapDataFilesDirectory() + options_.costmap2d_options().map_file();
+
+    LOG(INFO) << "map_file: " << yaml_file;
 }
 
 MapServer::~MapServer()
@@ -43,8 +48,7 @@ MapServer::~MapServer()
 
 bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::OccupancyGrid& map_data)
 {
-    std::string yaml_file = utils::GetMapDataFilesDirectory() + options_.costmap2d_options().map_file();
-    if (loadMapFromYaml(yaml_file, map_data) != LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
+    if (loadMapFromYaml(filename, map_data) != LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
         LOG(ERROR) << "Load yaml file error.";
         return false;
     }

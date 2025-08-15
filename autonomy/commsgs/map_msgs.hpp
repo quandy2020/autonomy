@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/proto/map_msgs.pb.h"
@@ -66,6 +67,9 @@ struct MapMetaData
 
 struct OccupancyGrid
 {
+    // Define OccupancyGrid::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(OccupancyGrid)
+
     // This represents a 2-D grid map
     std_msgs::Header header;
 

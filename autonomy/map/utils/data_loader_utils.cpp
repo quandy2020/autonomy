@@ -23,7 +23,7 @@ namespace utils {
     
 std::string GetMapDataFilesDirectory()
 {
-    return std::string(common::kConfigurationFilesDirectory) + "/data/";
+    return std::string(common::kConfigurationFilesDirectory) + "/map/";
 }
 
 }  // namespace utils

@@ -19,7 +19,7 @@ AUTONOMY_MAP = {
     use_costmap_3d = false,
  
     costmap2d = {
-        map_file = "hdhdh.yaml",
+        map_file = "turtlebot3_house.yaml",
     },
 
     costmap3d = {
