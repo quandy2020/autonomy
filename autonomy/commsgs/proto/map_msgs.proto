@@ -72,6 +72,16 @@ message OccupancyGrid
     repeated int32 data = 3;
 }
 
+message OccupancyGridUpdate
+{
+    std_msgs.Header header = 1;
+    int32 x = 2;
+    int32 y = 3;
+    uint32 width = 4;
+    uint32 height = 5;
+    repeated int32 data = 6;
+};
+
 message Octomap
 {
     // A 3D map in binary format, as Octree

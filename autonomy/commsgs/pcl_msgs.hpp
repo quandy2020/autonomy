@@ -16,6 +16,8 @@
 
 #pragma once 
 
+#include "autonomy/common/macros.hpp"
+
 namespace autonomy {
 namespace commsgs {
 namespace pcl_msgs {

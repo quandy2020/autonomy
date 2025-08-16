@@ -22,6 +22,7 @@
 #include "autonomy/commsgs/proto/shape_msgs.pb.h"
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 

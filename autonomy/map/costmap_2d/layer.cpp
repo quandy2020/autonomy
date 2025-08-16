@@ -36,7 +36,12 @@ void Layer::initialize(LayeredCostmap* parent, std::string name)
 
 const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const
 {
-  return layered_costmap_->getFootprint();
+    return layered_costmap_->getFootprint();
+}
+
+std::string Layer::getFullName(const std::string& param_name)
+{
+    return std::string(name_ + "." + param_name);
 }
 
 }  // namespace costmap_2d

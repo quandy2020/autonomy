@@ -19,8 +19,10 @@
 #include <vector>
 #include <string>
 
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/proto/std_msgs.pb.h"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+
 
 namespace autonomy {
 namespace commsgs {

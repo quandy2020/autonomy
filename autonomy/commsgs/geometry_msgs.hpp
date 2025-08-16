@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/proto/std_msgs.pb.h"
 #include "autonomy/commsgs/proto/builtin_interfaces.pb.h"
 #include "autonomy/commsgs/proto/geometry_msgs.pb.h"

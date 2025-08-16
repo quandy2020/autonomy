@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
