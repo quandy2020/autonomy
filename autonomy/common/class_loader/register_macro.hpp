@@ -32,7 +32,7 @@
 
 #include <string>
 
-#include "class_loader/class_loader_core.hpp"
+#include "autonomy/common/class_loader/class_loader_core.hpp"
 
 #define CLASS_LOADER_REGISTER_CLASS_INTERNAL_WITH_MESSAGE(Derived, Base, UniqueID, Message) \
   namespace \

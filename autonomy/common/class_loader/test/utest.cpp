@@ -35,20 +35,25 @@
 #include <thread>
 #include <vector>
 
-#include "class_loader/class_loader.hpp"
-#include "class_loader/multi_library_class_loader.hpp"
+#include "autonomy/common/class_loader/class_loader.hpp"
+#include "autonomy/common/class_loader/multi_library_class_loader.hpp"
 
 #include "gtest/gtest.h"
 
-#include "./base.hpp"
+class Base
+{
+public:
+  virtual ~Base() {}
+  virtual void saySomething() = 0;
+};
 
 const std::string LIBRARY_1 = class_loader::systemLibraryFormat("class_loader_TestPlugins1");  // NOLINT
 const std::string LIBRARY_2 = class_loader::systemLibraryFormat("class_loader_TestPlugins2");  // NOLINT
 
-TEST(ClassLoaderSharedPtrTest, basicLoad) {
+TEST(ClassLoaderTest, basicLoad) {
   try {
     class_loader::ClassLoader loader1(LIBRARY_1, false);
-    loader1.createSharedInstance<Base>("Cat")->saySomething();  // See if lazy load works
+    loader1.createInstance<Base>("Cat")->saySomething();  // See if lazy load works
   } catch (class_loader::ClassLoaderException & e) {
     FAIL() << "ClassLoaderException: " << e.what() << "\n";
   }
@@ -56,7 +61,7 @@ TEST(ClassLoaderSharedPtrTest, basicLoad) {
   SUCCEED();
 }
 
-TEST(ClassLoaderSharedPtrTest, correctNonLazyLoadUnload) {
+TEST(ClassLoaderTest, correctNonLazyLoadUnload) {
   try {
     ASSERT_FALSE(class_loader::impl::isLibraryLoadedByAnybody(LIBRARY_1));
     class_loader::ClassLoader loader1(LIBRARY_1, false);
@@ -73,7 +78,7 @@ TEST(ClassLoaderSharedPtrTest, correctNonLazyLoadUnload) {
   }
 }
 
-TEST(ClassLoaderSharedPtrTest, correctLazyLoadUnload) {
+TEST(ClassLoaderTest, correctLazyLoadUnload) {
   try {
     ASSERT_FALSE(class_loader::impl::isLibraryLoadedByAnybody(LIBRARY_1));
     class_loader::ClassLoader loader1(LIBRARY_1, true);
@@ -81,7 +86,7 @@ TEST(ClassLoaderSharedPtrTest, correctLazyLoadUnload) {
     ASSERT_FALSE(loader1.isLibraryLoaded());
 
     {
-      std::shared_ptr<Base> obj = loader1.createSharedInstance<Base>("Cat");
+      boost::shared_ptr<Base> obj = loader1.createInstance<Base>("Cat");
       ASSERT_TRUE(class_loader::impl::isLibraryLoadedByAnybody(LIBRARY_1));
       ASSERT_TRUE(loader1.isLibraryLoaded());
     }
@@ -96,11 +101,11 @@ TEST(ClassLoaderSharedPtrTest, correctLazyLoadUnload) {
   }
 }
 
-TEST(ClassLoaderSharedPtrTest, nonExistentPlugin) {
+TEST(ClassLoaderTest, nonExistentPlugin) {
   class_loader::ClassLoader loader1(LIBRARY_1, false);
 
   try {
-    std::shared_ptr<Base> obj = loader1.createSharedInstance<Base>("Bear");
+    boost::shared_ptr<Base> obj = loader1.createInstance<Base>("Bear");
     if (nullptr == obj) {
       FAIL() << "Null object being returned instead of exception thrown.";
     }
@@ -116,7 +121,7 @@ TEST(ClassLoaderSharedPtrTest, nonExistentPlugin) {
   FAIL() << "Did not throw exception as expected.\n";
 }
 
-TEST(ClassLoaderSharedPtrTest, nonExistentLibrary) {
+TEST(ClassLoaderTest, nonExistentLibrary) {
   try {
     class_loader::ClassLoader loader1("libDoesNotExist.so", false);
   } catch (const class_loader::LibraryLoadException &) {
@@ -133,7 +138,7 @@ class InvalidBase
 {
 };
 
-TEST(ClassLoaderSharedPtrTest, invalidBase) {
+TEST(ClassLoaderTest, invalidBase) {
   try {
     class_loader::ClassLoader loader1(LIBRARY_1, false);
     if (loader1.isClassAvailable<InvalidBase>("Cat")) {
@@ -160,11 +165,11 @@ void run(class_loader::ClassLoader * loader)
 {
   std::vector<std::string> classes = loader->getAvailableClasses<Base>();
   for (auto & class_ : classes) {
-    loader->createSharedInstance<Base>(class_)->saySomething();
+    loader->createInstance<Base>(class_)->saySomething();
   }
 }
 
-TEST(ClassLoaderSharedPtrTest, threadSafety) {
+TEST(ClassLoaderTest, threadSafety) {
   class_loader::ClassLoader loader1(LIBRARY_1);
   ASSERT_TRUE(loader1.isLibraryLoaded());
 
@@ -195,7 +200,7 @@ TEST(ClassLoaderSharedPtrTest, threadSafety) {
   }
 }
 
-TEST(ClassLoaderSharedPtrTest, loadRefCountingNonLazy) {
+TEST(ClassLoaderTest, loadRefCountingNonLazy) {
   try {
     class_loader::ClassLoader loader1(LIBRARY_1, false);
     ASSERT_TRUE(loader1.isLibraryLoaded());
@@ -229,13 +234,13 @@ TEST(ClassLoaderSharedPtrTest, loadRefCountingNonLazy) {
   FAIL() << "Did not throw exception as expected.\n";
 }
 
-TEST(ClassLoaderSharedPtrTest, loadRefCountingLazy) {
+TEST(ClassLoaderTest, loadRefCountingLazy) {
   try {
     class_loader::ClassLoader loader1(LIBRARY_1, true);
     ASSERT_FALSE(loader1.isLibraryLoaded());
 
     {
-      std::shared_ptr<Base> obj = loader1.createSharedInstance<Base>("Dog");
+      boost::shared_ptr<Base> obj = loader1.createInstance<Base>("Dog");
       ASSERT_TRUE(loader1.isLibraryLoaded());
     }
 
@@ -276,9 +281,9 @@ void testMultiClassLoader(bool lazy)
     loader.loadLibrary(LIBRARY_1);
     loader.loadLibrary(LIBRARY_2);
     for (int i = 0; i < 2; ++i) {
-      loader.createSharedInstance<Base>("Cat")->saySomething();
-      loader.createSharedInstance<Base>("Dog")->saySomething();
-      loader.createSharedInstance<Base>("Robot")->saySomething();
+      loader.createInstance<Base>("Cat")->saySomething();
+      loader.createInstance<Base>("Dog")->saySomething();
+      loader.createInstance<Base>("Robot")->saySomething();
     }
   } catch (class_loader::ClassLoaderException & e) {
     FAIL() << "ClassLoaderException: " << e.what() << "\n";
@@ -298,15 +303,15 @@ TEST(MultiClassLoaderTest, nonLazyLoad) {
 }
 TEST(MultiClassLoaderTest, noWarningOnLazyLoad) {
   try {
-    std::shared_ptr<Base> cat, dog, rob;
+    boost::shared_ptr<Base> cat, dog, rob;
     {
       class_loader::MultiLibraryClassLoader loader(true);
       loader.loadLibrary(LIBRARY_1);
       loader.loadLibrary(LIBRARY_2);
 
-      cat = loader.createSharedInstance<Base>("Cat");
-      dog = loader.createSharedInstance<Base>("Dog");
-      rob = loader.createSharedInstance<Base>("Robot");
+      cat = loader.createInstance<Base>("Cat");
+      dog = loader.createInstance<Base>("Dog");
+      rob = loader.createInstance<Base>("Robot");
     }
     cat->saySomething();
     dog->saySomething();
@@ -316,11 +321,4 @@ TEST(MultiClassLoaderTest, noWarningOnLazyLoad) {
   }
 
   SUCCEED();
-}
-
-// Run all the tests that were declared with TEST()
-int main(int argc, char ** argv)
-{
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
 }

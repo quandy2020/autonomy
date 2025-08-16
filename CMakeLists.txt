@@ -28,7 +28,7 @@ set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" false)
-option(BUILD_CYBER "Build autonomy CyberRT support" false)
+option(BUILD_CYBER "Build autonomy CyberRT support" target_sources)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" false)
 option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" false)
@@ -54,6 +54,7 @@ find_package(behaviortree_cpp REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED)
+find_package(Poco REQUIRED COMPONENTS Foundation)
 find_package(OMPL REQUIRED)
 find_package(octomap REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -225,13 +226,6 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-# # Thirdparty library
-# include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
-
-# # Thirdparty: class_loader
-# add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader)
-# include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_class_loader_vendor/class_loader/include)
-
 # # gRPC
 # if(${BUILD_GRPC})
 #   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
@@ -294,7 +288,7 @@ if (${BUILD_CYBER})
 
   # FastRTPS
   target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${FastRTPS_INCLUDE_DIR}")
-  target_link_libraries(${PROJECT_NAME} PUBLIC ${FastRTPS_LIBRARY})
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${FastRTPS_LIBRARY} bvar)
 endif()
 
 # Lua5.3
@@ -312,6 +306,10 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 # PCL
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
+
+# Poco
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Poco_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${Poco_LIBRARIES})
 
 # octomap
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OCTOMAP_INCLUDE_DIRS}")

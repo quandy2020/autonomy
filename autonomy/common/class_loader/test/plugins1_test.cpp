@@ -1,7 +1,5 @@
 /*
- * Software License Agreement (BSD License)
- *
- * Copyright (c) 2018, Open Source Robotics Foundation, Inc.
+ * Copyright (c) 2012, Willow Garage, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +10,7 @@
  *     * Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- *     * Neither the name of the copyright holders nor the names of its
+ *     * Neither the name of the Willow Garage, Inc. nor the names of its
  *       contributors may be used to endorse or promote products derived from
  *       this software without specific prior written permission.
  *
@@ -29,18 +27,49 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_H_
-#define CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_H_
+#include <iostream>
 
-#ifdef _MSC_VER
-#pragma message("Including header <class_loader/multi_library_class_loader.h> is deprecated,")
-#pragma message("include <class_loader/multi_library_class_loader.h> instead.")
-#else
-// *INDENT-OFF* (prevent uncrustify from adding indention below)
-#warning Including header <class_loader/multi_library_class_loader.h> is deprecated, \
-include <class_loader/multi_library_class_loader.hpp> instead.
-#endif
+#include "autonomy/common/class_loader/class_loader.hpp"
 
-#include "./multi_library_class_loader.hpp"
+class Base
+{
+public:
+  virtual ~Base() {}
+  virtual void saySomething() = 0;
+};
 
-#endif  // CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_H_
+class Dog : public Base
+{
+public:
+  virtual void saySomething() {std::cout << "Bark" << std::endl;}
+};
+
+class Cat : public Base
+{
+public:
+  virtual void saySomething() {std::cout << "Meow" << std::endl;}
+};
+
+class Duck : public Base
+{
+public:
+  virtual void saySomething() {std::cout << "Quack" << std::endl;}
+};
+
+class Cow : public Base
+{
+public:
+  virtual void saySomething() {std::cout << "Moooo" << std::endl;}
+};
+
+class Sheep : public Base
+{
+public:
+  virtual void saySomething() {std::cout << "Baaah" << std::endl;}
+};
+
+// CLASS_LOADER_REGISTER_CLASS(Dog, Base)
+// CLASS_LOADER_REGISTER_CLASS(Cat, Base)
+// CLASS_LOADER_REGISTER_CLASS(Duck, Base)
+// CLASS_LOADER_REGISTER_CLASS(Cow, Base)
+// CLASS_LOADER_REGISTER_CLASS(Sheep, Base)

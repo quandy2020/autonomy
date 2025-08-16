@@ -29,42 +29,41 @@
 
 #include <iostream>
 
-#include "class_loader/class_loader.hpp"
+#include "autonomy/common/class_loader/class_loader.hpp"
 
-#include "./base.hpp"
-
-class Dog : public Base
+class Base
 {
 public:
-  virtual void saySomething() {std::cout << "Bark" << std::endl;}
+  virtual ~Base() {}
+  virtual void saySomething() = 0;
 };
 
-class Cat : public Base
+class Robot : public Base
 {
 public:
-  virtual void saySomething() {std::cout << "Meow" << std::endl;}
+  virtual void saySomething() {std::cout << "Beep boop" << std::endl;}
 };
 
-class Duck : public Base
+class Alien : public Base
 {
 public:
-  virtual void saySomething() {std::cout << "Quack" << std::endl;}
+  virtual void saySomething() {std::cout << "Znornoff!!!" << std::endl;}
 };
 
-class Cow : public Base
+class Monster : public Base
 {
 public:
-  virtual void saySomething() {std::cout << "Moooo" << std::endl;}
+  virtual void saySomething() {std::cout << "BEAAAHHHH" << std::endl;}
 };
 
-class Sheep : public Base
+class Zombie : public Base
 {
 public:
-  virtual void saySomething() {std::cout << "Baaah" << std::endl;}
+  virtual void saySomething() {std::cout << "Brains!!!" << std::endl;}
 };
 
-CLASS_LOADER_REGISTER_CLASS(Dog, Base)
-CLASS_LOADER_REGISTER_CLASS(Cat, Base)
-CLASS_LOADER_REGISTER_CLASS(Duck, Base)
-CLASS_LOADER_REGISTER_CLASS(Cow, Base)
-CLASS_LOADER_REGISTER_CLASS(Sheep, Base)
+
+// CLASS_LOADER_REGISTER_CLASS(Robot, Base)
+// CLASS_LOADER_REGISTER_CLASS(Alien, Base)
+// CLASS_LOADER_REGISTER_CLASS(Monster, Base)
+// CLASS_LOADER_REGISTER_CLASS(Zombie, Base)
