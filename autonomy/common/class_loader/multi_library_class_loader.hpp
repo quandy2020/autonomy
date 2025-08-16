@@ -38,8 +38,8 @@
 #include <string>
 #include <vector>
 
-#include "class_loader/class_loader.hpp"
-#include "class_loader/visibility_control.hpp"
+#include "autonomy/common/class_loader/class_loader.hpp"
+#include "autonomy/common/class_loader/visibility_control.hpp"
 
 namespace class_loader
 {
