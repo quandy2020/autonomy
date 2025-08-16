@@ -29,6 +29,7 @@
 
 #include "autonomy/common/class_loader/class_loader_core.hpp"
 #include "autonomy/common/class_loader/class_loader.hpp"
+#include "autonomy/common/logging.hpp"
 
 #include <Poco/SharedLibrary.h>
 
@@ -36,9 +37,9 @@
 #include <cstddef>
 #include <string>
 #include <vector>
-
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 namespace impl
 {
 
@@ -265,8 +266,6 @@ void destroyMetaObjectsForLibrary(const std::string & library_path, const ClassL
   for (auto & it : factory_map_map) {
     destroyMetaObjectsForLibrary(library_path, it.second, loader);
   }
-
-  // CONSOLE_BRIDGE_logDebug("%s", "class_loader.impl: Metaobjects removed.");
 }
 
 bool areThereAnyExistingMetaObjectsForLibrary(const std::string & library_path)
@@ -602,6 +601,7 @@ void printDebugInfoToScreen()
   printf("*******************************************************************************\n\n");
 }
 
-
 }  // namespace impl
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy

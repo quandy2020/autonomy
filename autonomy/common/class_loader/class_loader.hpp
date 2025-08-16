@@ -47,8 +47,9 @@
 #include "autonomy/common/class_loader/register_macro.hpp"
 #include "autonomy/common/class_loader/visibility_control.hpp"
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 
 /**
  * @brief Returns the default library prefix for the native os
@@ -336,6 +337,8 @@ private:
 };
 
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy
 
 
 #endif  // CLASS_LOADER__CLASS_LOADER_HPP_

@@ -31,6 +31,10 @@
 
 #include "autonomy/common/class_loader/class_loader.hpp"
 
+namespace autonomy {
+namespace common { 
+namespace class_loader {
+
 class Base
 {
 public:
@@ -67,6 +71,10 @@ class Sheep : public Base
 public:
   virtual void saySomething() {std::cout << "Baaah" << std::endl;}
 };
+
+}  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy
 
 // CLASS_LOADER_REGISTER_CLASS(Dog, Base)
 // CLASS_LOADER_REGISTER_CLASS(Cat, Base)

@@ -31,9 +31,11 @@
 
 #include "autonomy/common/class_loader/meta_object.hpp"
 #include "autonomy/common/class_loader/class_loader.hpp"
+#include "autonomy/common/logging.hpp"
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 namespace impl
 {
 
@@ -119,3 +121,5 @@ ClassLoaderVector AbstractMetaObjectBase::getAssociatedClassLoaders()
 
 }  // namespace impl
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy

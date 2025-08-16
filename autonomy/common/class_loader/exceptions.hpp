@@ -35,8 +35,9 @@
 #include <stdexcept>
 #include <string>
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 
 /**
  * @class ClassLoader sException
@@ -99,4 +100,7 @@ public:
 };
 
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy
+
 #endif  // CLASS_LOADER__EXCEPTIONS_HPP_

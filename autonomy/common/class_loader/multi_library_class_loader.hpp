@@ -41,8 +41,9 @@
 #include "autonomy/common/class_loader/class_loader.hpp"
 #include "autonomy/common/class_loader/visibility_control.hpp"
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 
 typedef std::string LibraryPath;
 typedef std::map<LibraryPath, class_loader::ClassLoader *> LibraryToClassLoaderMap;
@@ -359,4 +360,7 @@ private:
 
 
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy
+
 #endif  // CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_HPP_
