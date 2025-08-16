@@ -128,6 +128,9 @@ public:
      */
     const std::vector<commsgs::geometry_msgs::Point>& getFootprint() const;
 
+    /** @brief Convenience functions for declaring ROS parameters */
+    std::string getFullName(const std::string& param_name);
+
 protected:
     LayeredCostmap* layered_costmap_; 
     

@@ -22,6 +22,7 @@
 #include "autonomy/commsgs/proto/sensor_msgs.pb.h"
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
@@ -217,6 +218,9 @@ struct ChannelFloat32
 // This struct contains a compressed image.
 struct CompressedImage
 {
+    // Define CompressedImage::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(CompressedImage)
+
     std_msgs::Header header;  // Header timestamp should be acquisition time of image
                                 // Header frame_id should be optical frame of camera
                                 // origin of frame should be optical center of cameara
@@ -256,6 +260,9 @@ struct Illuminance
 
 struct Image 
 {
+    // Define Image::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Image)
+
     std_msgs::Header header;     // Header timestamp should be acquisition time of image
                                  // Header frame_id should be optical frame of camera
                                  // origin of frame should be optical center of cameara
@@ -304,6 +311,9 @@ struct Image
 // covariance matrix, and disregard the associated estimate.
 struct Imu
 {
+    // Define Imu::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Imu)
+
     std_msgs::Header header;
 
     geometry_msgs::Quaternion orientation;
@@ -326,6 +336,9 @@ struct Imu
 // will make fairly laser-specific assumptions about this data
 struct LaserScan
 {
+    // Define LaserScan::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(LaserScan)
+
     std_msgs::Header header;    // timestamp in the header is the acquisition time of
                                 // the first ray in the scan.
                                 //
@@ -358,6 +371,9 @@ struct LaserScan
 // information about each point.
 struct PointCloud
 {
+    // Define PointCloud::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PointCloud)
+
     // Time of sensor data acquisition, coordinate frame ID.
     std_msgs::Header header;
 
@@ -400,6 +416,8 @@ struct PointField
 // such as stereo or time-of-flight.
 struct PointCloud2
 {
+    // Define PointCloud2::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PointCloud2)
 
     // Time of sensor data acquisition, and the coordinate frame ID (for 3d points).
     std_msgs::Header header;
@@ -432,6 +450,9 @@ struct PointCloud2
 
 struct Range
 {
+    // Define Range::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Range)
+
     std_msgs::Header header; // timestamp in the header is the time the ranger
                                 // returned the distance reading
 

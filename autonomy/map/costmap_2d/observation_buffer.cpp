@@ -183,6 +183,32 @@ void ObservationBuffer::purgeStaleObservations()
     }
 }
 
+bool ObservationBuffer::isCurrent() const
+{
+    // if (expected_update_rate_ == rclcpp::Duration(0.0s)) {
+    //     return true;
+    // }
+
+    // bool current = (clock_->now() - last_updated_) <=
+    //     expected_update_rate_;
+    // if (!current) {
+    //     RCLCPP_WARN(
+    //     logger_,
+    //     "The %s observation buffer has not been updated for %.2f seconds, "
+    //     "and it should be updated every %.2f seconds.",
+    //     topic_name_.c_str(),
+    //     (clock_->now() - last_updated_).seconds(),
+    //     expected_update_rate_.seconds());
+    // }
+    // return current;
+    return true;
+}
+
+void ObservationBuffer::resetLastUpdated()
+{
+    // last_updated_ = clock_->now();
+}
+
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

@@ -84,7 +84,15 @@ struct OccupancyGrid
     // -1 represents unknown. 
     std::vector<uint8> data;
 };
-
+struct OccupancyGridUpdate
+{
+    std_msgs::Header header;
+    int32 x;
+    int32 y;
+    uint32 width;
+    uint32 height;
+    std::vector<int8> data;
+};
 struct Octomap
 {
     // A 3D map in binary format, as Octree

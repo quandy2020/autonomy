@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/proto/builtin_interfaces.pb.h"
 
 namespace autonomy {
