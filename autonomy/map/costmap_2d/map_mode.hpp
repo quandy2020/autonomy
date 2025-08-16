@@ -21,6 +21,7 @@
 
 namespace autonomy {
 namespace map {
+namespace costmap_2d {
 
 /**
  * @enum nav2_map_server::MapMode
@@ -70,6 +71,7 @@ const char* map_mode_to_string(MapMode map_mode);
  */
 MapMode map_mode_from_string(std::string map_mode_name);
 
+}  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
 

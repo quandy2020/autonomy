@@ -21,7 +21,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/transform/tf2/convert.h"
-#include "autonomy/map/utils/validate_messages.hpp"
+#include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 
 namespace autonomy {
 namespace map {
@@ -212,10 +212,10 @@ unsigned char StaticLayer::interpretValue(unsigned char value)
 
 void StaticLayer::incomingMap(const commsgs::map_msgs::OccupancyGrid::SharedPtr new_map)
 {
-    // if (!nav2_util::validateMsg(*new_map)) {
-    //     LOG(DEBUG) << "Received map message is malformed. Rejecting.";
-    //     return;
-    // }
+    if (!utils::validateMsg(*new_map)) {
+        DLOG(INFO) << "Received map message is malformed. Rejecting.";
+        return;
+    }
 
     if (!map_received_) {
         processMap(*new_map);
@@ -226,8 +226,8 @@ void StaticLayer::incomingMap(const commsgs::map_msgs::OccupancyGrid::SharedPtr 
     map_buffer_ = new_map;
 }
 
-// void StaticLayer::incomingUpdate(commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update)
-// {
+void StaticLayer::incomingUpdate(commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update)
+{
 //   std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
 //   if (update->y < static_cast<int32_t>(y_) ||
 //     y_ + height_ < update->y + update->height ||
@@ -262,8 +262,8 @@ void StaticLayer::incomingMap(const commsgs::map_msgs::OccupancyGrid::SharedPtr 
 //     }
 //   }
 
-//   has_updated_data_ = true;
-// }
+    has_updated_data_ = true;
+}
 
 
 void StaticLayer::updateBounds(

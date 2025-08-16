@@ -19,7 +19,7 @@
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
 
-#include "autonomy/map/map_io.hpp"
+#include "autonomy/map/costmap_2d/map_io.hpp"
 
 namespace autonomy {
 namespace map {
@@ -48,7 +48,7 @@ MapServer::~MapServer()
 
 bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::OccupancyGrid& map_data)
 {
-    if (loadMapFromYaml(filename, map_data) != LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
+    if (costmap_2d::loadMapFromYaml(filename, map_data) != costmap_2d::LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
         LOG(ERROR) << "Load yaml file error.";
         return false;
     }

@@ -19,13 +19,13 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/map/map_mode.hpp"
+#include "autonomy/map/costmap_2d/map_mode.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 
 /* Map input part */
 namespace autonomy {
 namespace map {
-  
+namespace costmap_2d {
 
 struct LoadParameters
 {
@@ -106,5 +106,6 @@ std::string expand_user_home_dir_if_needed(
   std::string yaml_filename,
   std::string home_dir);
 
+}  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

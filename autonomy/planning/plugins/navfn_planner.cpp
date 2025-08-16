@@ -27,7 +27,7 @@
 
 #include "absl/strings/str_cat.h"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/map/utils/geometry_utils.hpp"
+#include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 
 using namespace std::chrono_literals;
@@ -202,7 +202,7 @@ bool NavfnPlanner::makePlan(
                     dx = last_pose.x - approach_pose.x;
                     dy = last_pose.y - approach_pose.y;
                     theta = atan2(dy, dx);
-                    plan.poses.back().pose.orientation = map::utils::OrientationAroundZAxis(theta);
+                    plan.poses.back().pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(theta);
                 }
         }
         } else {

@@ -120,11 +120,11 @@ protected:
      */
     void incomingMap(const commsgs::map_msgs::OccupancyGrid::SharedPtr new_map);
 
-    // /**
-    //  * @brief Callback to update the costmap's map from the map_server (or SLAM)
-    //  * with an update in a particular area of the map
-    //  */
-    // void incomingUpdate(map_msgs::msg::OccupancyGridUpdate::ConstSharedPtr update);
+    /**
+     * @brief Callback to update the costmap's map from the map_server (or SLAM)
+     * with an update in a particular area of the map
+     */
+    void incomingUpdate(commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update);
 
     /**
      * @brief Interpret the value in the static map given on the topic to
