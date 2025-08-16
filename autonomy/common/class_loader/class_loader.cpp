@@ -28,13 +28,15 @@
  */
 
 #include "autonomy/common/class_loader/class_loader.hpp"
+#include "autonomy/common/logging.hpp"
 
 #include <string>
 
 #include "Poco/SharedLibrary.h"
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 
 bool ClassLoader::has_unmananged_instance_been_created_ = false;
 
@@ -133,3 +135,5 @@ int ClassLoader::unloadLibraryInternal(bool lock_plugin_ref_count)
 }
 
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy

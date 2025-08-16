@@ -28,13 +28,15 @@
  */
 
 #include "autonomy/common/class_loader/multi_library_class_loader.hpp"
+#include "autonomy/common/logging.hpp"
 
 #include <cstddef>
 #include <string>
 #include <vector>
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 
 MultiLibraryClassLoader::MultiLibraryClassLoader(bool enable_ondemand_loadunload)
 : enable_ondemand_loadunload_(enable_ondemand_loadunload)
@@ -111,3 +113,5 @@ int MultiLibraryClassLoader::unloadLibrary(const std::string & library_path)
 }
 
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy

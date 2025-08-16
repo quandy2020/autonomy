@@ -41,6 +41,10 @@
 #include <thread>
 #include <vector>
 
+namespace autonomy {
+namespace common { 
+namespace class_loader {
+
 class Base
 {
 public:
@@ -234,3 +238,7 @@ TEST(MultiClassLoaderUniquePtrTest, noWarningOnLazyLoad) {
 
   SUCCEED();
 }
+
+}  // namespace 
+}  // namespace commom
+}  // namespace autonomy

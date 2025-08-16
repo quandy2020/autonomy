@@ -41,8 +41,9 @@
 #include <string>
 #include <vector>
 
-namespace class_loader
-{
+namespace autonomy {
+namespace common { 
+namespace class_loader {
 
 class ClassLoader;  // Forward declaration
 
@@ -200,5 +201,7 @@ public:
 
 }  // namespace impl
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy
 
 #endif  // CLASS_LOADER__META_OBJECT_HPP_

@@ -40,6 +40,10 @@
 
 #include "gtest/gtest.h"
 
+namespace autonomy {
+namespace common { 
+namespace class_loader {
+  
 class Base
 {
 public:
@@ -322,3 +326,7 @@ TEST(MultiClassLoaderTest, noWarningOnLazyLoad) {
 
   SUCCEED();
 }
+
+}  // namespace 
+}  // namespace commom
+}  // namespace autonomy

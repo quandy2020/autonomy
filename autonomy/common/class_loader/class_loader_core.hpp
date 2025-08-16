@@ -55,6 +55,8 @@ namespace Poco
  * @note This header file is the internal implementation of the plugin system which is exposed via the ClassLoader class
  */
 
+namespace autonomy {
+namespace common { 
 namespace class_loader
 {
 
@@ -359,5 +361,7 @@ void unloadLibrary(const std::string & library_path, ClassLoader * loader);
 
 }  // namespace impl
 }  // namespace class_loader
+}  // namespace commom
+}  // namespace autonomy
 
 #endif  // CLASS_LOADER__CLASS_LOADER_CORE_HPP_
