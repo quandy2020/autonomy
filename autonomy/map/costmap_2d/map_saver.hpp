@@ -19,10 +19,11 @@
 #include <string>
 #include <memory>
 
-#include "autonomy/map/map_io.hpp"
+#include "autonomy/map/costmap_2d/map_io.hpp"
 
 namespace autonomy {
 namespace map {
+namespace costmap_2d {
 
 /**
  * @class nav2_map_server::MapSaver
@@ -58,5 +59,6 @@ protected:
   double occupied_thresh_default_;
 };
 
+}  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

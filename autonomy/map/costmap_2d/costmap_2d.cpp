@@ -15,8 +15,8 @@
  */
 
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
-#include "autonomy/map/utils/occ_grid_values.hpp"
-#include "autonomy/map/costmap_2d//cost_values.hpp"
+#include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
+#include "autonomy/map/costmap_2d/cost_values.hpp"
 
 namespace autonomy {
 namespace map {

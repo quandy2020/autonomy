@@ -86,6 +86,9 @@ struct OccupancyGrid
 };
 struct OccupancyGridUpdate
 {
+    // Define OccupancyGrid::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(OccupancyGridUpdate)
+
     std_msgs::Header header;
     int32 x;
     int32 y;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/map/map_io.hpp"
+#include "autonomy/map/costmap_2d/map_io.hpp"
 
 #include <libgen.h>
 
@@ -32,13 +32,14 @@
 
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/map/map_mode.hpp"
-#include "autonomy/map/utils/geometry_utils.hpp"
-#include "autonomy/map/utils/occ_grid_values.hpp"
+#include "autonomy/map/costmap_2d/map_mode.hpp"
+#include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
+#include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 #include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace map {
+namespace costmap_2d {
 
 // === Map input part ===
 
@@ -484,5 +485,6 @@ bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid & map, const SaveParam
     return true;
 }
 
+}  // costmap_2d
 }  // namespace map
 }  // namespace autonomy

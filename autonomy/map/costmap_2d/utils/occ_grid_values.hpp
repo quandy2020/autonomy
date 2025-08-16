@@ -14,11 +14,23 @@
  * limitations under the License.
  */
 
- 
-#include "autonomy/map/map_saver.hpp"
+#pragma once 
+
+#include "autonomy/common/port.hpp"
 
 namespace autonomy {
 namespace map {
+namespace costmap_2d {
+namespace utils {
+ 
+/**
+ * @brief OccupancyGrid data constants
+ */
+static constexpr int8 OCC_GRID_UNKNOWN = -1;
+static constexpr int8 OCC_GRID_FREE = 0;
+static constexpr int8 OCC_GRID_OCCUPIED = 100;
 
+}  // namespace utils
+}  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
