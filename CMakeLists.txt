@@ -214,6 +214,9 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
+# # Fetch foxglove 
+# include(${PROJECT_SOURCE_DIR}/cmake/autonomy_foxglove_vendor/foxglove.cmake)
+
 # # gRPC
 # if(${BUILD_GRPC})
 #   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
@@ -289,11 +292,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 # behaviortree_cpp
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${behaviortree_cpp_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp)
-
-# # foxglove sdk (v0.11.0)
-# set(FOXGLOVE_SDK ${PROJECT_SOURCE_DIR}/3rdaprty/autonomy_foxglove_vendor/foxglove/lib/libfoxglove.a)
-# include_directories(${PROJECT_SOURCE_DIR}/3rdaprty/autonomy_foxglove_vendor/foxglove/include)
-# target_link_libraries(${PROJECT_NAME} PUBLIC ${FOXGLOVE_SDK})
 
 # glog & tf2 & eventpp & nlohmann_json
 set(GLOG_LIBRARY glog)
