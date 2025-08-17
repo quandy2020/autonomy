@@ -20,23 +20,23 @@ namespace autonomy {
 namespace common {
 namespace signal_processing {
 
-// geometry_msgs::Twist LowpassFilterTwist::filter(const geometry_msgs::Twist & u)
-// {
-//   if (x_) {
-//     x_->mutable_linear()->set_x(gain_ * x_->linear().x() + (1.0 - gain_) * u.linear().x());
-//     x_->mutable_linear()->set_y(gain_ * x_->linear().y() + (1.0 - gain_) * u.linear().y());
-//     x_->mutable_linear()->set_z(gain_ * x_->linear().z() + (1.0 - gain_) * u.linear().z());
+commsgs::geometry_msgs::Twist LowpassFilterTwist::filter(const commsgs::geometry_msgs::Twist& u)
+{
+  if (x_) {
+    x_->linear.x = gain_ * x_->linear.x + (1.0 - gain_) * u.linear.x;
+    x_->linear.y = gain_ * x_->linear.y + (1.0 - gain_) * u.linear.y;
+    x_->linear.z = gain_ * x_->linear.z + (1.0 - gain_) * u.linear.z;
 
-//     x_->mutable_angular()->set_x(gain_ * x_->angular().x() + (1.0 - gain_) * u.angular().x());
-//     x_->mutable_angular()->set_y(gain_ * x_->angular().y() + (1.0 - gain_) * u.angular().y());
-//     x_->mutable_angular()->set_z(gain_ * x_->angular().z() + (1.0 - gain_) * u.angular().z());
+    x_->angular.x = gain_ * x_->angular.x + (1.0 - gain_) * u.angular.x;
+    x_->angular.y = gain_ * x_->angular.y + (1.0 - gain_) * u.angular.y;
+    x_->angular.z = gain_ * x_->angular.z + (1.0 - gain_) * u.angular.z;
 
-//     return x_.get();
-//   }
+    return x_.get();
+  }
 
-//   x_ = u;
-//   return x_.get();
-// }
+  x_ = u;
+  return x_.get();
+}
 
 }  // namespace signal_processing
 }  // namespace common
