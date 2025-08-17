@@ -14,24 +14,42 @@
  * limitations under the License.
  */
 
-#include "autonomy/visualization/visualization_server.hpp"
+#pragma once
+
+#include <string>
+
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/helper_functions/crtp.hpp"
 
 namespace autonomy {
-namespace visualization {
+namespace tools { 
+namespace god_viewer { 
+namespace channel {
 
-VisualizationServer::VisualizationServer()
+class ChannelBase : public common::helper_functions::crtp<ChannelBase>
 {
-}
+public:
+    /**
+     * Define ChannelBase::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(ChannelBase)
 
-VisualizationServer::~VisualizationServer()
-{
-    
-}
 
-void VisualizationServer::Shutdown()
-{
+    /**
+     * @brief Get channel's name topic
+     */
+    std::string name() { return name_; }
 
-}
-    
-}   // namespace visualization
+    // template <typename M>
+    // virtual bool Send(const M& msgs) = 0;
+
+
+private:
+
+    std::string name_;
+};
+
+}   // namespace channel
+}   // namespace god_viewer
+}   // namespace tools
 }   // namespace autonomy

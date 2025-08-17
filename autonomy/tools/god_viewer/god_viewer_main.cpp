@@ -19,6 +19,7 @@
 #include "gflags/gflags.h"
 #include "autonomy/common/version.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/tools/god_viewer/viewer_bridge.hpp"
 
 namespace autonomy {
 namespace tools {
@@ -28,9 +29,7 @@ namespace {
 void SigintHandler(int sig)
 {
     LOG(INFO) << "Shutdown autonomy system.";
-    // if ()
-    // {
-    // }
+    exit(EXIT_SUCCESS);
 }
 
 void Run()
@@ -42,7 +41,9 @@ void Run()
     autonomy::common::ShowVersion();
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
-    // TODO
+    // Run foxglove viewer for show msgs
+    auto viewer = std::make_shared<ViewerBridge>();
+    viewer->Run();
 }
 
 } // namespace 

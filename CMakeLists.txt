@@ -31,7 +31,6 @@ option(BUILD_GRPC "Build autonomy gRPC support" false)
 option(BUILD_CYBER "Build autonomy CyberRT support" true)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" true)
-option(BUILD_FOXGLOVE "Build autonomy visulization with foxglove support" false)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_TEST "Build autonomy unit test" false)
 
@@ -95,8 +94,6 @@ file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helper
 file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
 file(GLOB_RECURSE ALL_TOOLS_HRRS "autonomy/tools/*.hpp")
 file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp")
-file(GLOB_RECURSE ALL_FOXGLOVE_HRRS "autonomy/visualization/*.hpp")
-file(GLOB_RECURSE ALL_FOXGLOVE_SRCS "autonomy/visualization/*.cpp")
 file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*_main.cpp")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
@@ -114,8 +111,6 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
-list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_TOOLS_HRRS})
-list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TOOLS_SRCS})
 
 if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_FILES})
@@ -133,11 +128,6 @@ if (NOT ${BUILD_PROMETHEUS})
   list(REMOVE_ITEM ALL_TESTS ${ALL_PROMETHEUS_FILES})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_PROMETHEUS_FILES})
 endif()
-if (NOT ${BUILD_FOXGLOVE})
-  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_FOXGLOVE_HRRS})
-  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_FOXGLOVE_SRCS})
-endif()
-
 
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
 file(GLOB_RECURSE INTERNAL_HDRS "cartographer/*/internal/*.h")
@@ -224,15 +214,11 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-# foxglove sdk
-include(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_foxglove_vendor/autonomy_foxglove_vendor.cmake)
-
 # # gRPC
 # if(${BUILD_GRPC})
 #   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
 #   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
 # endif()
-
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -304,6 +290,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${behaviortree_cpp_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp)
 
+# # foxglove sdk (v0.11.0)
+# set(FOXGLOVE_SDK ${PROJECT_SOURCE_DIR}/3rdaprty/autonomy_foxglove_vendor/foxglove/lib/libfoxglove.a)
+# include_directories(${PROJECT_SOURCE_DIR}/3rdaprty/autonomy_foxglove_vendor/foxglove/include)
+# target_link_libraries(${PROJECT_NAME} PUBLIC ${FOXGLOVE_SDK})
+
 # glog & tf2 & eventpp & nlohmann_json
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
@@ -338,11 +329,6 @@ if(${BUILD_GRPC})
   #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-pull)
   # endif()
 endif()
-
-# if(${BUILD_FOXGLOVE})
-#   target_include_directories(${PROJECT_NAME} PRIVATE ${foxglove_sdk_SOURCE_DIR}/include)
-#   target_link_libraries(${PROJECT_NAME} PRIVATE foxglove_sdk)
-# endif()
 
 # autonomy.system.launcher
 google_binary(autonomy.system.launcher

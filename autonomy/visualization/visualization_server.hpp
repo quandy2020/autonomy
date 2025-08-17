@@ -22,7 +22,6 @@
 #include "autonomy/visualization/proto/visualization_options.pb.h"
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/visualization/foxglove_bridge.hpp"
 #include "autonomy/visualization/common/visualization_interface.hpp"
 
 namespace autonomy {
@@ -53,8 +52,6 @@ public:
     void Shutdown();
 
 private:
-    // Foxglove
-    FoxgloveBridge::SharedPtr foxglove_bridge_{nullptr};
 
     // options for config
     proto::VisualizationOptions options_;

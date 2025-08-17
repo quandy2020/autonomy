@@ -18,6 +18,7 @@
 #define AUTONOMY_COMMON_SIGNAL_PROCESSING_LOWPASS_FILTER_HPP_
 
 #include "autonomy/common/signal_processing/lowpass_filter_1d.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 
 namespace autonomy {
 namespace common {
@@ -45,16 +46,16 @@ public:
   virtual T filter(const T & u) = 0;
 };
 
-// class LowpassFilterTwist : public LowpassFilterInterface<geometry_msgs::Twist>
-// {
-// public:
-//   explicit LowpassFilterTwist(const double gain)
-//   : LowpassFilterInterface<geometry_msgs::Twist>(gain)
-//   {
-//   }
+class LowpassFilterTwist : public LowpassFilterInterface<commsgs::geometry_msgs::Twist>
+{
+public:
+    explicit LowpassFilterTwist(const double gain)
+    : LowpassFilterInterface<commsgs::geometry_msgs::Twist>(gain)
+    {
+    }
 
-//   geometry_msgs::Twist filter(const geometry_msgs::Twist& u) override;
-// };
+    commsgs::geometry_msgs::Twist filter(const commsgs::geometry_msgs::Twist& u) override;
+};
 
 }  // namespace signal_processing
 }  // namespace common
