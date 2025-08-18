@@ -52,6 +52,11 @@ void ViewerBridge::Run()
     }
 }
 
+void ViewerBridge::ShutDown()
+{
+    server_->stop();
+}
+
 bool ViewerBridge::InitServer()
 {
     // Start a server to communicate with the Foxglove app.
@@ -65,7 +70,8 @@ bool ViewerBridge::InitServer()
         return false;
     }
     auto server = std::move(server_result.value());
-    LOG(INFO) << "Server listening on port " << server.port();
+    server_ = &server;
+    LOG(INFO) << absl::StrCat("Server: ", ws_options.host, ", port : ", server_->port());
     return true;
 }
 
