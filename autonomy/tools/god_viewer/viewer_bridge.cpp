@@ -56,7 +56,7 @@ bool ViewerBridge::InitServer()
 {
     // Start a server to communicate with the Foxglove app.
     foxglove::WebSocketServerOptions ws_options;
-    ws_options.host = "172.17.0.2";
+    ws_options.host = "0.0.0.0";
     ws_options.port = 8765;
     auto server_result = foxglove::WebSocketServer::create(std::move(ws_options));
     if (!server_result.has_value())
