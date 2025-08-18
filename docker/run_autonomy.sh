@@ -134,11 +134,14 @@ function main() {
         --name SpaceHero    \
         --privileged=true   \
         --network=host      \
+        -p 8765:8765        \
         ${DOCKER_ARGS[@]}   \
         -v /Users/quandy/Workspace/project/autonomy:/workspace/autonomy \
-        -v /dev/*:/dev/* -v /etc/localtime:/etc/localtime:ro            \
+        -v /dev/*:/dev/*                                                \
+        -v /etc/localtime:/etc/localtime:ro                             \
         --workdir /workspace                                            \
-        $@ $BASE_NAME                                                   \
+        $@                                                              \
+        $BASE_NAME                                                      \
         /bin/bash
 }
 

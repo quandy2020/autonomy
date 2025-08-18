@@ -60,6 +60,11 @@ public:
      */
     void Run();
 
+    /**
+     * @brief Shutdown foxglove server
+     */
+    void ShutDown();
+
 private:
 
     /**
@@ -67,10 +72,10 @@ private:
      */
     bool InitServer();
 
+    foxglove::WebSocketServer* server_{nullptr};
+
     // thread_pool
     std::shared_ptr<common::ThreadPool> thread_pool_{nullptr};
-
-
     std::unordered_map<std::string, channel::ChannelBase::SharedPtr> channels_handler_;
 };
 
