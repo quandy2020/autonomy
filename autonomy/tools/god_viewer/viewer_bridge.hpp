@@ -24,8 +24,9 @@
 #include "autonomy/common/eventpp/eventqueue.h"
 #include "autonomy/common/eventpp/callbacklist.h"
 #include "autonomy/common/blocking_queue.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/tools/god_viewer/server_options.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_base.hpp"
-#include "autonomy/tools/god_viewer/channel/channel_path_handler.hpp"
 
 namespace autonomy {
 namespace tools { 
@@ -43,7 +44,7 @@ public:
      * @brief A constructor for ViewerBridge
      * @param options Additional options to control creation of the node.
      */
-    ViewerBridge();
+    ViewerBridge(const std::string& configuration_directory, const std::string& configuration_basename);
 
     /**
      * @brief A Destructor for ViewerBridge
@@ -65,15 +66,16 @@ private:
     /**
      * @brief Init foxglove server
      */
-    bool InitServer();
+    bool LoadOptions(const std::string& configuration_directory, const std::string& configuration_basename);
 
-    foxglove::WebSocketServer* server_{nullptr};
+    // Foxglove server options
+    ServerHander::SharedPtr server_handler_{nullptr};
 
     // thread_pool
     std::shared_ptr<common::ThreadPool> thread_pool_{nullptr};
     std::unordered_map<std::string, channel::ChannelBase::SharedPtr> channels_handler_;
 };
 
-}   // god_viewer
+}   // namespace god_viewer
 }   // namespace tools
 }   // namespace autonomy

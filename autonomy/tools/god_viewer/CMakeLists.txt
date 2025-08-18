@@ -20,19 +20,18 @@ file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
 
 # include 
 include_directories(${foxglove_SOURCE_DIR}/include)
+file(GLOB_RECURSE ALL_GV_SRCS "*.cpp")
 
-set(god_viewer_name autonomy.tools.god_viewer)
 # autonomy.tools.god_viewer
-add_executable(${god_viewer_name}
-  god_viewer_main.cpp
-  viewer_bridge.cpp
-  channel/channel_path_handler.cpp
-  channel/channel_map_handler.cpp
-)
+set(god_viewer_name autonomy.tools.god_viewer)
+add_executable(${god_viewer_name} ${ALL_GV_SRCS})
 
 target_link_libraries(${god_viewer_name} PUBLIC ${PROJECT_NAME})
 target_link_libraries(${god_viewer_name} PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.so) 
 target_sources(${god_viewer_name} PRIVATE ${FOXGLOVE_SOURCES})
+
+# install config lua
+install(DIRECTORY config DESTINATION share/autonomy)
 
 # install
 install(TARGETS

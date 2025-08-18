@@ -18,81 +18,54 @@
 
 #include "absl/strings/str_cat.h"
 #include "autonomy/common/logging.hpp"
-
-#include <thread>
-
+#include "autonomy/common/configuration_file_resolver.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_example_handler.hpp"
 namespace autonomy {
 namespace tools { 
 namespace god_viewer { 
 
-ViewerBridge::ViewerBridge()
+ViewerBridge::ViewerBridge(
+    const std::string& configration_directory,
+    const std::string& configration_basename)
 {
     thread_pool_ = std::make_shared<common::ThreadPool>(4);
-    InitServer();
+    bool init_finihed = LoadOptions(configration_directory, configration_basename);
+    if (init_finihed) {
+        LOG(INFO) << "Foxglove bridge god viewer init successfully !";
+    }
 }  
 
 void ViewerBridge::Run()
 {
-    foxglove::WebSocketServerOptions ws_options;
-    ws_options.host = "127.0.0.1";
-    ws_options.port = 8765;
-    auto server_result = foxglove::WebSocketServer::create(std::move(ws_options));
-    if (!server_result.has_value())
-    {
-        LOG(ERROR) << "Failed to create server: " << foxglove::strerror(server_result.error());
-        return;
-    }
-    auto server = std::move(server_result.value());
-    server_ = &server;
-    LOG(INFO) << absl::StrCat("Server: ", ws_options.host, ", port : ", server_->port());
-
-    // auto channel = foxglove::schemas::LogChannel::create("/hello").value();
-
-
-    channels_handler_["path"] = std::make_shared<channel::Pathhandler>("path");
-
+   auto channel = std::make_shared<channel::LogExampleHandler>("/hello");
     while (true)
     {
-        // const auto now = std::chrono::system_clock::now();
-        // const auto nanos_since_epoch = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-        // const auto seconds_since_epoch = nanos_since_epoch / 1000000000;
-        // const auto remaining_nanos = nanos_since_epoch % 1000000000;
-
-        // foxglove::schemas::Log log;
-        // log.level = foxglove::schemas::Log::LogLevel::INFO;
-        // log.message = "Hello, Foxglove!";
-        // log.timestamp = foxglove::schemas::Timestamp{
-        //     static_cast<uint32_t>(seconds_since_epoch),
-        //     static_cast<uint32_t>(remaining_nanos)};
-
-        // channel.log(log);
+        // channel->Send();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 
 void ViewerBridge::ShutDown()
 {
-    server_->stop();
+    server_handler_->server->stop();
 }
 
-bool ViewerBridge::InitServer()
+bool ViewerBridge::LoadOptions(
+    const std::string& configuration_directory, 
+    const std::string& configuration_basename)
 {
-    // Start a server to communicate with the Foxglove app.
-    // foxglove::WebSocketServerOptions ws_options;
-    // ws_options.host = "127.0.0.1";
-    // ws_options.port = 8765;
-    // auto server_result = foxglove::WebSocketServer::create(std::move(ws_options));
-    // if (!server_result.has_value())
-    // {
-    //     LOG(ERROR) << "Failed to create server: " << foxglove::strerror(server_result.error());
-    //     return false;
-    // }
-    // auto server = std::move(server_result.value());
-    // server_ = &server;
-    // LOG(INFO) << absl::StrCat("Server: ", ws_options.host, ", port : ", server_->port());
+    auto file_resolver = std::make_unique<common::ConfigurationFileResolver>(
+        std::vector<std::string>{configuration_directory});
+    const std::string code = file_resolver->GetFileContentOrDie(configuration_basename);
+    ::autonomy::common::LuaParameterDictionary lua_parameter_dictionary(code, std::move(file_resolver));
+    server_handler_ = CreateFoxgloveViewerOptions(&lua_parameter_dictionary);
+    if (server_handler_  == nullptr) {
+        LOG(ERROR) << "Load foxglove viewer option error, init server_handler is nullptr";
+        return false;
+    }
     return true;
 }
 
-}   // god_viewer
+}   // namespace god_viewer
 }   // namespace tools
 }   // namespace autonomy

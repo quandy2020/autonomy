@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Cartographer Authors
+ * Copyright 2025 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_CONFIG_HPP_
-#define AUTONOMY_COMMON_CONFIG_HPP_
+#pragma once
+
+#include "gflags/gflags.h"
 
 namespace autonomy {
-namespace common {
+namespace tools { 
+namespace god_viewer {
 
-constexpr char kConfigurationFilesDirectory[] = "/usr/local/share/autonomy/configuration_files";
-constexpr char kSourceDirectory[] = "/workspace/autonomy";
+DECLARE_string(foxglove_config_directory);
+DECLARE_string(foxglove_config_basename);
 
-}  // namespace common
-}  // namespace autonomy
-
-#endif  // AUTONOMY_COMMON_CONFIG_HPP_
+}   // namespace god_viewer
+}   // namespace tools
+}   // namespace autonomy

@@ -17,7 +17,6 @@
 #pragma once
 
 #include <memory>
-#include <string>
 
 #include <foxglove/foxglove.hpp>
 #include <foxglove/context.hpp>
@@ -26,40 +25,33 @@
 #include <foxglove/server.hpp>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tools/god_viewer/channel/channel_base.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
 namespace tools { 
-namespace god_viewer { 
-namespace channel {
+namespace god_viewer {
 
-class Pathhandler : public ChannelBase
+struct ServerHander
 {
-public:
+    /**
+     * Define ServerHander::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(ServerHander)
 
     /**
-     * Define Pathhandler::SharedPtr type
+     * @brief WebSocket server options
      */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Pathhandler)
+    foxglove::WebSocketServerOptions ws_options;
 
     /**
-     * @brief Construct a new Pathhandler object
-     * 
-     * @param topic 
+     * @brief foxglove server
      */
-    Pathhandler(const std::string& topic);
-
-
-    bool Send();
-
-
-private:
-    // auto channel = foxglove::schemas::LogChannel::create("/hello").value();
-
-    std::string topic_;
+    std::unique_ptr<foxglove::WebSocketServer> server;
 };
 
-}   // channel
-}   // god_viewer
+ServerHander::SharedPtr CreateFoxgloveViewerOptions(
+    common::LuaParameterDictionary* const parameter_dictionary);
+
+}   // namespace god_viewer
 }   // namespace tools
 }   // namespace autonomy
