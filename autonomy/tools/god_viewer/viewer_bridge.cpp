@@ -20,6 +20,8 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_example_handler.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_path_handler.hpp"
+
 namespace autonomy {
 namespace tools { 
 namespace god_viewer { 
@@ -37,7 +39,8 @@ ViewerBridge::ViewerBridge(
 
 void ViewerBridge::Run()
 {
-   auto channel = std::make_shared<channel::LogExampleHandler>("/hello");
+//    auto channel = std::make_shared<channel::LogExampleHandler>("/hello");
+    auto channel = std::make_shared<channel::Pathhandler>(server_handler_, "/cube");
     while (true)
     {
         // channel->Send();

@@ -47,16 +47,17 @@ public:
      * 
      * @param topic 
      */
-    Pathhandler(const std::string& topic);
+    Pathhandler(ServerHander::SharedPtr options, const std::string& topic);
 
 
     bool Send();
 
 
 private:
-    // auto channel = foxglove::schemas::LogChannel::create("/hello").value();
 
     std::string topic_;
+    std::unique_ptr<foxglove::schemas::SceneUpdateChannel> channel_{nullptr};
+
 };
 
 }   // channel

@@ -16,6 +16,8 @@
 
 #include "autonomy/tools/god_viewer/channel/channel_path_handler.hpp"
 
+#include <chrono>
+
 #include "autonomy/common/logging.hpp"
 
 namespace autonomy {
@@ -23,18 +25,35 @@ namespace tools {
 namespace god_viewer { 
 namespace channel {
 
-Pathhandler::Pathhandler(const std::string& topic)
+Pathhandler::Pathhandler(ServerHander::SharedPtr options, const std::string& topic)
     : topic_{topic}
 {
     LOG(INFO) << "Init Pathhandler";
+
+    channel_ = std::make_unique<foxglove::schemas::SceneUpdateChannel>(
+        foxglove::schemas::SceneUpdateChannel::create(topic_).value());
+
 }
 
 bool Pathhandler::Send()
 {
     foxglove::schemas::LinePrimitive path;
 
+    foxglove::schemas::CubePrimitive cube;
+    cube.size = foxglove::schemas::Vector3{1, 1, 2};
+    cube.color = foxglove::schemas::Color{1, 0, 0, 1};
+
+    foxglove::schemas::SceneEntity entity;
+    entity.id = "box";
+    entity.cubes.push_back(cube);
+
+    foxglove::schemas::SceneUpdate scene_update;
+    scene_update.entities.push_back(entity);
+
+    channel_->log(scene_update);
+
+
     return true;
-    // auto channel = foxglove::schemas::LogChannel::create(topic_).value();
 }
 
 }   // channel
