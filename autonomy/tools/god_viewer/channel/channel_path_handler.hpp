@@ -31,7 +31,6 @@ namespace channel {
 class PathHandler : public ChannelBase
 {
 public:
-
     /**
      * Define PathHandler::SharedPtr type
      */
@@ -51,6 +50,11 @@ public:
      * @brief send path
      */
     bool Send(const commsgs::planning_msgs::Path& msgs);
+
+    /**
+     * @brief demo path
+     */
+    commsgs::planning_msgs::Path GenerateCircularPath(double radius);
 
 private:
 
