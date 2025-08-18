@@ -28,8 +28,7 @@ namespace channel {
 PathHandler::PathHandler(ServerHander::SharedPtr options, const std::string& topic)
     : topic_{topic}
 {
-    LOG(INFO) << "Init Pathhandler";
-
+    LOG(INFO) << "Init path handler topic: " << topic_;
     channel_ = std::make_unique<foxglove::schemas::SceneUpdateChannel>(
         foxglove::schemas::SceneUpdateChannel::create(topic_).value());
 }
