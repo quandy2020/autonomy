@@ -28,7 +28,7 @@ set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" false)
-option(BUILD_CYBER "Build autonomy CyberRT support" true)
+option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
@@ -88,12 +88,12 @@ install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp" "autonomy/*.h")
-file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
+file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp" "autonomy/*.c")
+file(GLOB_RECURSE ALL_TOOLS_HDRS "autonomy/tools/*.hpp" "autonomy/tools/*.h")
+file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp" "autonomy/tools/*.c")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/*test*.cpp" "autonomy/mock_*.cpp")
 file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
-file(GLOB_RECURSE ALL_TOOLS_HRRS "autonomy/tools/*.hpp")
-file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp")
 file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*_main.cpp")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
@@ -111,6 +111,8 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
+list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_TOOLS_HDRS})
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TOOLS_SRCS})
 
 if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_FILES})
@@ -298,13 +300,13 @@ set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
-# Foxglove SDK
-file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
-    "${foxglove_SOURCE_DIR}/src/*.cpp"
-    "${foxglove_SOURCE_DIR}/src/server/*.cpp")
-include_directories(${foxglove_SOURCE_DIR}/include)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${foxglove_SOURCE_DIR}/lib/libfoxglove.so)
-target_sources(${PROJECT_NAME}  PRIVATE ${FOXGLOVE_SOURCES})
+# foxglove SDK
+# file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
+#     "${foxglove_SOURCE_DIR}/src/*.cpp"
+#     "${foxglove_SOURCE_DIR}/src/server/*.cpp")
+# include_directories(${foxglove_SOURCE_DIR}/include)
+# target_link_libraries(autonomy.tools.god_viewer PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.so) 
+# target_sources(autonomy.tools.god_viewer PRIVATE ${FOXGLOVE_SOURCES})
 
 # abseil-cpp
 set(ABSL_LIBRARY
