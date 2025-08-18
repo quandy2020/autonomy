@@ -19,11 +19,11 @@
 #include <memory>
 #include <unordered_map>
 
-// #include <foxglove/foxglove.hpp>
-// #include <foxglove/context.hpp>
-// #include <foxglove/error.hpp>
-// #include <foxglove/mcap.hpp>
-// #include <foxglove/server.hpp>
+#include <foxglove/foxglove.hpp>
+#include <foxglove/context.hpp>
+#include <foxglove/error.hpp>
+#include <foxglove/mcap.hpp>
+#include <foxglove/server.hpp>
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/thread_pool.hpp"

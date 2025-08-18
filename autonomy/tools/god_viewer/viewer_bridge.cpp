@@ -31,44 +31,41 @@ ViewerBridge::ViewerBridge()
 
 void ViewerBridge::Run()
 {
-    // auto channel = foxglove::schemas::LogChannel::create("/hello").value();
+    auto channel = foxglove::schemas::LogChannel::create("/hello").value();
 
     while (true)
     {
-        // const auto now = std::chrono::system_clock::now();
-        // const auto nanos_since_epoch = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-        // const auto seconds_since_epoch = nanos_since_epoch / 1000000000;
-        // const auto remaining_nanos = nanos_since_epoch % 1000000000;
+        const auto now = std::chrono::system_clock::now();
+        const auto nanos_since_epoch = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+        const auto seconds_since_epoch = nanos_since_epoch / 1000000000;
+        const auto remaining_nanos = nanos_since_epoch % 1000000000;
 
-        // foxglove::schemas::Log log;
-        // log.level = foxglove::schemas::Log::LogLevel::INFO;
-        // log.message = "Hello, Foxglove!";
-        // log.timestamp = foxglove::Timestamp{
-        //     static_cast<uint32_t>(seconds_since_epoch),
-        //     static_cast<uint32_t>(remaining_nanos)};
+        foxglove::schemas::Log log;
+        log.level = foxglove::schemas::Log::LogLevel::INFO;
+        log.message = "Hello, Foxglove!";
+        log.timestamp = foxglove::schemas::Timestamp{
+            static_cast<uint32_t>(seconds_since_epoch),
+            static_cast<uint32_t>(remaining_nanos)};
 
-        // channel.log(log);
-        static int count = 0;
-
-        LOG(INFO) << "count = " << count++;
+        channel.log(log);
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
 
 bool ViewerBridge::InitServer()
 {
-    // // Start a server to communicate with the Foxglove app.
-    // foxglove::WebSocketServerOptions ws_options;
-    // ws_options.host = "127.0.0.1";
-    // ws_options.port = 8765;
-    // auto server_result = foxglove::WebSocketServer::create(std::move(ws_options));
-    // if (!server_result.has_value())
-    // {
-    //     LOG(ERROR) << "Failed to create server: " << foxglove::strerror(server_result.error());
-    //     return false;
-    // }
-    // auto server = std::move(server_result.value());
-    // LOG(INFO) << "Server listening on port " << server.port();
+    // Start a server to communicate with the Foxglove app.
+    foxglove::WebSocketServerOptions ws_options;
+    ws_options.host = "172.17.0.2";
+    ws_options.port = 8765;
+    auto server_result = foxglove::WebSocketServer::create(std::move(ws_options));
+    if (!server_result.has_value())
+    {
+        LOG(ERROR) << "Failed to create server: " << foxglove::strerror(server_result.error());
+        return false;
+    }
+    auto server = std::move(server_result.value());
+    LOG(INFO) << "Server listening on port " << server.port();
     return true;
 }
 
