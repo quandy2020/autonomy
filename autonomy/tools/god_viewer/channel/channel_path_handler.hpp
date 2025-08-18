@@ -43,7 +43,9 @@ public:
      */
     PathHandler(ServerHander::SharedPtr options, const std::string& topic);
 
-
+    /**
+     * @brief Demo cube show
+     */
     bool Send();
 
     /**
