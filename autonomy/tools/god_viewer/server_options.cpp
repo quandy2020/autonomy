@@ -37,15 +37,15 @@ ServerHander::SharedPtr CreateFoxgloveViewerOptions(
     LOG(INFO) << absl::StrCat("Server: ", server_options->ws_options.host, ", port : ", server_options->ws_options.port);
 
     // Create a schema for a JSON channel for logging {size: number}
-    server_options->schema->encoding = "jsonschema";
+    server_options->schema.encoding = "jsonschema";
     std::string schema_data = R"({
         "type": "object",
         "properties": {
         "size": { "type": "number" }
         }
     })";
-    server_options->schema->data = reinterpret_cast<const std::byte *>(schema_data.data());
-    server_options->schema->data_len = schema_data.size();
+    server_options->schema.data = reinterpret_cast<const std::byte *>(schema_data.data());
+    server_options->schema.data_len = schema_data.size();
     return server_options;
 }
 

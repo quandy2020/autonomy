@@ -40,10 +40,10 @@ ViewerBridge::ViewerBridge(
 void ViewerBridge::Run()
 {
 //    auto channel = std::make_shared<channel::LogExampleHandler>("/hello");
-    auto channel = std::make_shared<channel::Pathhandler>(server_handler_, "/cube");
+    auto channel = std::make_shared<channel::PathHandler>(server_handler_, "/cube");
     while (true)
     {
-        // channel->Send();
+        channel->Send();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
