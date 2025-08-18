@@ -19,18 +19,13 @@
 #include <memory>
 #include <unordered_map>
 
-#include <foxglove/foxglove.hpp>
-#include <foxglove/context.hpp>
-#include <foxglove/error.hpp>
-#include <foxglove/mcap.hpp>
-#include <foxglove/server.hpp>
-
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/thread_pool.hpp"
 #include "autonomy/common/eventpp/eventqueue.h"
 #include "autonomy/common/eventpp/callbacklist.h"
 #include "autonomy/common/blocking_queue.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_base.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_path_handler.hpp"
 
 namespace autonomy {
 namespace tools { 

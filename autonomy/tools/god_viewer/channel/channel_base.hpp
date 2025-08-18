@@ -43,9 +43,6 @@ public:
     // template <typename M>
     // virtual bool Send(const M& msgs) = 0;
 
-
-private:
-
     std::string name_;
 };
 
