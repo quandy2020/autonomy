@@ -132,8 +132,6 @@ function main() {
 
     docker run -it          \
         --name SpaceHero    \
-        --privileged=true   \
-        --network=host      \
         -p 8765:8765        \
         ${DOCKER_ARGS[@]}   \
         -v /Users/quandy/Workspace/project/autonomy:/workspace/autonomy \

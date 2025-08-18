@@ -19,6 +19,7 @@
 #include "gflags/gflags.h"
 #include "autonomy/common/version.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/tools/god_viewer/viewer_flags.hpp"
 #include "autonomy/tools/god_viewer/viewer_bridge.hpp"
 
 namespace autonomy {
@@ -42,7 +43,8 @@ void Run()
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
     // Run foxglove viewer for show msgs
-    auto viewer = std::make_shared<ViewerBridge>();
+    auto viewer = std::make_shared<ViewerBridge>(
+        FLAGS_foxglove_config_directory, FLAGS_foxglove_config_basename);
     viewer->Run();
 }
 
@@ -58,6 +60,11 @@ int main(int argc, char **argv)
     FLAGS_log_prefix = true;  
 	google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);
+
+    CHECK(!autonomy::tools::god_viewer::FLAGS_foxglove_config_directory.empty())
+      << "-foxglove_config_directory is missing.";
+    CHECK(!autonomy::tools::god_viewer::FLAGS_foxglove_config_basename.empty())
+      << "-foxglove_config_basename is missing.";
 
     ::autonomy::tools::god_viewer::Run();
     google::ShutdownGoogleLogging();  

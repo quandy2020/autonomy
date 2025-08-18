@@ -19,12 +19,6 @@
 #include <memory>
 #include <string>
 
-#include <foxglove/foxglove.hpp>
-#include <foxglove/context.hpp>
-#include <foxglove/error.hpp>
-#include <foxglove/mcap.hpp>
-#include <foxglove/server.hpp>
-
 #include "autonomy/common/macros.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_base.hpp"
 
@@ -33,30 +27,30 @@ namespace tools {
 namespace god_viewer { 
 namespace channel {
 
-class Pathhandler : public ChannelBase
+class LogExampleHandler : public ChannelBase
 {
 public:
 
     /**
-     * Define Pathhandler::SharedPtr type
+     * Define LogExampleHandler::SharedPtr type
      */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Pathhandler)
+    AUTONOMY_SMART_PTR_DEFINITIONS(LogExampleHandler)
 
     /**
-     * @brief Construct a new Pathhandler object
+     * @brief Construct a new LogExampleHandler object
      * 
      * @param topic 
      */
-    Pathhandler(const std::string& topic);
-
+    LogExampleHandler(const std::string& topic);
 
     bool Send();
-
 
 private:
     // auto channel = foxglove::schemas::LogChannel::create("/hello").value();
 
     std::string topic_;
+
+    std::unique_ptr<foxglove::schemas::LogChannel> channel_{nullptr};
 };
 
 }   // channel

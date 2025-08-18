@@ -18,6 +18,12 @@
 
 #include <string>
 
+#include <foxglove/foxglove.hpp>
+#include <foxglove/context.hpp>
+#include <foxglove/error.hpp>
+#include <foxglove/mcap.hpp>
+#include <foxglove/server.hpp>
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/helper_functions/crtp.hpp"
 
