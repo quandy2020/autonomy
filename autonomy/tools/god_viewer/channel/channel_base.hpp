@@ -26,6 +26,7 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/helper_functions/crtp.hpp"
+#include "autonomy/tools/god_viewer/server_options.hpp"
 
 namespace autonomy {
 namespace tools { 

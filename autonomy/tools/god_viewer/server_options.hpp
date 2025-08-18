@@ -17,7 +17,7 @@
 #pragma once
 
 #include <memory>
-
+#include <string>
 #include <foxglove/foxglove.hpp>
 #include <foxglove/context.hpp>
 #include <foxglove/error.hpp>
@@ -47,6 +47,13 @@ struct ServerHander
      * @brief foxglove server
      */
     std::unique_ptr<foxglove::WebSocketServer> server;
+
+
+    /**
+     * @brief schema config
+     */
+    std::unique_ptr<foxglove::Schema> schema;
+
 };
 
 ServerHander::SharedPtr CreateFoxgloveViewerOptions(
