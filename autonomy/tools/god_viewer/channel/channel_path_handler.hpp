@@ -19,13 +19,8 @@
 #include <memory>
 #include <string>
 
-#include <foxglove/foxglove.hpp>
-#include <foxglove/context.hpp>
-#include <foxglove/error.hpp>
-#include <foxglove/mcap.hpp>
-#include <foxglove/server.hpp>
-
 #include "autonomy/common/macros.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_base.hpp"
 
 namespace autonomy {
@@ -33,28 +28,38 @@ namespace tools {
 namespace god_viewer { 
 namespace channel {
 
-class Pathhandler : public ChannelBase
+class PathHandler : public ChannelBase
 {
 public:
 
     /**
-     * Define Pathhandler::SharedPtr type
+     * Define PathHandler::SharedPtr type
      */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Pathhandler)
+    AUTONOMY_SMART_PTR_DEFINITIONS(PathHandler)
 
     /**
      * @brief Construct a new Pathhandler object
      * 
      * @param topic 
      */
-    Pathhandler(ServerHander::SharedPtr options, const std::string& topic);
+    PathHandler(ServerHander::SharedPtr options, const std::string& topic);
 
 
     bool Send();
 
+    /**
+     * @brief send path
+     */
+    bool Send(const commsgs::planning_msgs::Path& msgs);
 
 private:
 
+    /**
+     * @brief convert msgs form commsgs
+     */
+    foxglove::schemas::LinePrimitive FromCommsgs(const commsgs::planning_msgs::Path& msgs);
+
+    // channel topic name 
     std::string topic_;
     std::unique_ptr<foxglove::schemas::SceneUpdateChannel> channel_{nullptr};
 

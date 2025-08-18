@@ -46,10 +46,10 @@ public:
     bool Send();
 
 private:
-    // auto channel = foxglove::schemas::LogChannel::create("/hello").value();
-
+    // channel topic name 
     std::string topic_;
 
+    // channel
     std::unique_ptr<foxglove::schemas::LogChannel> channel_{nullptr};
 };
 

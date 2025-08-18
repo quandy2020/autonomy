@@ -52,8 +52,7 @@ struct ServerHander
     /**
      * @brief schema config
      */
-    std::unique_ptr<foxglove::Schema> schema;
-
+    foxglove::Schema schema;
 };
 
 ServerHander::SharedPtr CreateFoxgloveViewerOptions(

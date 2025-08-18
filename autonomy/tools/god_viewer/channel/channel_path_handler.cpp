@@ -25,20 +25,17 @@ namespace tools {
 namespace god_viewer { 
 namespace channel {
 
-Pathhandler::Pathhandler(ServerHander::SharedPtr options, const std::string& topic)
+PathHandler::PathHandler(ServerHander::SharedPtr options, const std::string& topic)
     : topic_{topic}
 {
     LOG(INFO) << "Init Pathhandler";
 
     channel_ = std::make_unique<foxglove::schemas::SceneUpdateChannel>(
         foxglove::schemas::SceneUpdateChannel::create(topic_).value());
-
 }
 
-bool Pathhandler::Send()
+bool PathHandler::Send()
 {
-    foxglove::schemas::LinePrimitive path;
-
     foxglove::schemas::CubePrimitive cube;
     cube.size = foxglove::schemas::Vector3{1, 1, 2};
     cube.color = foxglove::schemas::Color{1, 0, 0, 1};
@@ -51,9 +48,19 @@ bool Pathhandler::Send()
     scene_update.entities.push_back(entity);
 
     channel_->log(scene_update);
-
-
     return true;
+}
+
+bool PathHandler::Send(const commsgs::planning_msgs::Path& msgs)
+{
+    auto line = FromCommsgs(msgs);
+    return true;
+}
+
+foxglove::schemas::LinePrimitive PathHandler::FromCommsgs(const commsgs::planning_msgs::Path& msgs)
+{
+    foxglove::schemas::LinePrimitive line;
+    return line;
 }
 
 }   // channel
