@@ -133,6 +133,7 @@ function main() {
     docker run -it          \
         --name SpaceHero    \
         --privileged=true   \
+        --network=host      \
         ${DOCKER_ARGS[@]}   \
         -v /Users/quandy/Workspace/project/autonomy:/workspace/autonomy \
         -v /dev/*:/dev/* -v /etc/localtime:/etc/localtime:ro            \
@@ -140,6 +141,5 @@ function main() {
         $@ $BASE_NAME                                                   \
         /bin/bash
 }
-
 
 main "$@"
