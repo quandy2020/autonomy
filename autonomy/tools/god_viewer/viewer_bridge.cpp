@@ -39,11 +39,15 @@ ViewerBridge::ViewerBridge(
 
 void ViewerBridge::Run()
 {
-//    auto channel = std::make_shared<channel::LogExampleHandler>("/hello");
+   auto channel3 = std::make_shared<channel::LogExampleHandler>("/hello");
     auto channel = std::make_shared<channel::PathHandler>(server_handler_, "/cube");
+    auto channel2 = std::make_shared<channel::PathHandler>(server_handler_, "/path");
+
     while (true)
     {
         channel->Send();
+        channel3->Send();
+        channel2->Send(channel2->GenerateCircularPath(5.0));
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
