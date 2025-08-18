@@ -214,8 +214,8 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-# # Fetch foxglove 
-# include(${PROJECT_SOURCE_DIR}/cmake/autonomy_foxglove_vendor/foxglove.cmake)
+# Fetch foxglove 
+include(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_foxglove_vendor/foxglove.cmake)
 
 # # gRPC
 # if(${BUILD_GRPC})
@@ -297,6 +297,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp)
 set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
+
+# Foxglove SDK
+file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
+    "${foxglove_SOURCE_DIR}/src/*.cpp"
+    "${foxglove_SOURCE_DIR}/src/server/*.cpp")
+include_directories(${foxglove_SOURCE_DIR}/include)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${foxglove_SOURCE_DIR}/lib/libfoxglove.so)
+target_sources(${PROJECT_NAME}  PRIVATE ${FOXGLOVE_SOURCES})
 
 # abseil-cpp
 set(ABSL_LIBRARY
