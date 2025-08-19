@@ -9,8 +9,8 @@
  * Author: Qin Tong (qintonguav@gmail.com)
  *******************************************************/
 
-#include "globalOpt.h"
-#include "Factors.h"
+#include "autonomy/localization/vins/global_fusion/global_opt.hpp"
+#include "autonomy/localization/vins/global_fusion/factors.hpp"
 
 GlobalOptimization::GlobalOptimization()
 {
@@ -33,8 +33,6 @@ void GlobalOptimization::GPS2XYZ(double latitude, double longitude, double altit
         initGPS = true;
     }
     geoConverter.Forward(latitude, longitude, altitude, xyz[0], xyz[1], xyz[2]);
-    //printf("la: %f lo: %f al: %f\n", latitude, longitude, altitude);
-    //printf("gps x: %f y: %f z: %f\n", xyz[0], xyz[1], xyz[2]);
 }
 
 void GlobalOptimization::inputOdom(double t, Eigen::Vector3d OdomP, Eigen::Quaterniond OdomQ)
@@ -81,7 +79,6 @@ void GlobalOptimization::inputGPS(double t, double latitude, double longitude, d
 	double xyz[3];
 	GPS2XYZ(latitude, longitude, altitude, xyz);
 	vector<double> tmp{xyz[0], xyz[1], xyz[2], posAccuracy};
-    //printf("new gps: t: %f x: %f y: %f z:%f \n", t, tmp[0], tmp[1], tmp[2]);
 	GPSPositionMap[t] = tmp;
     newGPS = true;
 
@@ -95,7 +92,6 @@ void GlobalOptimization::optimize()
         {
             newGPS = false;
             printf("global optimization\n");
-            TicToc globalOptimizationTime;
 
             ceres::Problem problem;
             ceres::Solver::Options options;
@@ -156,32 +152,6 @@ void GlobalOptimization::optimize()
                                                                                 0.1, 0.01);
                     problem.AddResidualBlock(vio_function, NULL, q_array[i], t_array[i], q_array[i+1], t_array[i+1]);
 
-                    /*
-                    double **para = new double *[4];
-                    para[0] = q_array[i];
-                    para[1] = t_array[i];
-                    para[3] = q_array[i+1];
-                    para[4] = t_array[i+1];
-
-                    double *tmp_r = new double[6];
-                    double **jaco = new double *[4];
-                    jaco[0] = new double[6 * 4];
-                    jaco[1] = new double[6 * 3];
-                    jaco[2] = new double[6 * 4];
-                    jaco[3] = new double[6 * 3];
-                    vio_function->Evaluate(para, tmp_r, jaco);
-
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 6, 1>>(tmp_r).transpose() << std::endl
-                        << std::endl;
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 6, 4, Eigen::RowMajor>>(jaco[0]) << std::endl
-                        << std::endl;
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 6, 3, Eigen::RowMajor>>(jaco[1]) << std::endl
-                        << std::endl;
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 6, 4, Eigen::RowMajor>>(jaco[2]) << std::endl
-                        << std::endl;
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 6, 3, Eigen::RowMajor>>(jaco[3]) << std::endl
-                        << std::endl;
-                    */
 
                 }
                 //gps factor
@@ -193,21 +163,6 @@ void GlobalOptimization::optimize()
                                                                        iterGPS->second[2], iterGPS->second[3]);
                     //printf("inverse weight %f \n", iterGPS->second[3]);
                     problem.AddResidualBlock(gps_function, loss_function, t_array[i]);
-
-                    /*
-                    double **para = new double *[1];
-                    para[0] = t_array[i];
-
-                    double *tmp_r = new double[3];
-                    double **jaco = new double *[1];
-                    jaco[0] = new double[3 * 3];
-                    gps_function->Evaluate(para, tmp_r, jaco);
-
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 3, 1>>(tmp_r).transpose() << std::endl
-                        << std::endl;
-                    std::cout << Eigen::Map<Eigen::Matrix<double, 3, 3, Eigen::RowMajor>>(jaco[0]) << std::endl
-                        << std::endl;
-                    */
                 }
 
             }
@@ -238,7 +193,6 @@ void GlobalOptimization::optimize()
             	}
             }
             updateGlobalPath();
-            //printf("global time %f \n", globalOptimizationTime.toc());
             mPoseMap.unlock();
         }
         std::chrono::milliseconds dura(2000);
