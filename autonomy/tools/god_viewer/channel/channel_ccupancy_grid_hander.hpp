@@ -20,12 +20,51 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_base.hpp"
 
 namespace autonomy {
 namespace tools { 
 namespace god_viewer { 
 namespace channel {
+
+class OccupancyGridHandler : public ChannelBase
+{
+public:
+    /**
+     * Define OccupancyGridHandler::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(OccupancyGridHandler)
+
+    /**
+     * @brief Construct a new Pathhandler object
+     * 
+     * @param topic 
+     */
+    OccupancyGridHandler(ServerHander::SharedPtr options, const std::string& topic);
+
+    /**
+     * @brief Demo show
+     */
+    bool SendTest();
+
+    /**
+     * @brief send path
+     */
+    bool Send(const commsgs::map_msgs::OccupancyGrid& msgs);
+
+private:
+
+    /**
+     * @brief convert msgs form commsgs
+     */
+    foxglove::schemas::Grid FromCommsgs(const commsgs::map_msgs::OccupancyGrid& msgs);
+
+    // channel topic name 
+    std::string topic_;
+    std::unique_ptr<foxglove::schemas::GridChannel> channel_{nullptr};
+
+};
 
 }   // channel
 }   // god_viewer

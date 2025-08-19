@@ -21,6 +21,7 @@
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_example_handler.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_path_handler.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_ccupancy_grid_hander.hpp"
 
 namespace autonomy {
 namespace tools { 
@@ -39,15 +40,17 @@ ViewerBridge::ViewerBridge(
 
 void ViewerBridge::Run()
 {
-   auto channel3 = std::make_shared<channel::LogExampleHandler>("/hello");
-    auto channel = std::make_shared<channel::PathHandler>(server_handler_, "/cube");
+    auto channel0 = std::make_shared<channel::LogExampleHandler>("/hello");
+    auto channel1 = std::make_shared<channel::PathHandler>(server_handler_, "/cube");
     auto channel2 = std::make_shared<channel::PathHandler>(server_handler_, "/path");
+    auto channel3 = std::make_shared<channel::OccupancyGridHandler>(server_handler_, "/map");
 
     while (true)
     {
-        channel->Send();
-        channel3->Send();
+        channel0->Send();
+        channel1->Send();
         channel2->Send(channel2->GenerateCircularPath(5.0));
+        channel3->SendTest();
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 }
