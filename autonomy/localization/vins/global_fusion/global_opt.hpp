@@ -21,7 +21,6 @@
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
 #include "LocalCartesian.hpp"
-#include "tic_toc.h"
 
 using namespace std;
 
@@ -52,5 +51,4 @@ private:
 	Eigen::Vector3d lastP;
 	Eigen::Quaterniond lastQ;
 	std::thread threadOpt;
-
 };
