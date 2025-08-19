@@ -21,7 +21,7 @@ namespace autonomy {
 namespace common {
 
 constexpr char kConfigurationFilesDirectory[] = "/usr/local/share/autonomy/configuration_files";
-constexpr char kSourceDirectory[] = "/home/quandy/workspace/github/autonomy/src/autonomy";
+constexpr char kSourceDirectory[] = "/workspace/autonomy";
 
 }  // namespace common
 }  // namespace autonomy
