@@ -387,6 +387,7 @@ struct PointCloud
     std::vector<ChannelFloat32> channels;
 };
 
+
 // This struct holds the description of one point entry in the
 // PointCloud2 struct format.
 // uint8 INT8   

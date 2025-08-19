@@ -35,7 +35,10 @@ OccupancyGridHandler::OccupancyGridHandler(ServerHander::SharedPtr options, cons
 
 bool OccupancyGridHandler::SendTest()
 {
-    std::string yaml_file = "/workspace/autonomy/configuration_files/map/turtlebot3_house.yaml";
+    // std::string yaml_file = "/workspace/autonomy/configuration_files/map/turtlebot3_house.yaml";
+
+
+    std::string yaml_file = "/home/quandy/workspace/github/autonomy/src/autonomy/configuration_files/map/turtlebot3_house.yaml";
     LOG(INFO) << "map_file: " << yaml_file;
 
     commsgs::map_msgs::OccupancyGrid map_data;
