@@ -20,12 +20,51 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_base.hpp"
 
 namespace autonomy {
 namespace tools { 
 namespace god_viewer { 
 namespace channel {
+
+class PointCloudHandler : public ChannelBase
+{
+public:
+    /**
+     * Define PointCloudHandler::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(PointCloudHandler)
+
+    /**
+     * @brief Construct a new Pathhandler object
+     * 
+     * @param topic 
+     */
+    PointCloudHandler(ServerHander::SharedPtr options, const std::string& topic);
+
+    /**
+     * @brief Demo show
+     */
+    bool SendTest();
+
+    /**
+     * @brief send path
+     */
+    bool Send(const commsgs::sensor_msgs::PointCloud& msgs);
+
+private:
+
+    /**
+     * @brief convert msgs form commsgs
+     */
+    foxglove::schemas::PointCloud FromCommsgs(const commsgs::sensor_msgs::PointCloud& msgs);
+
+    // channel topic name 
+    std::string topic_;
+    std::unique_ptr<foxglove::schemas::PointCloudChannel> channel_{nullptr};
+
+};
 
 }   // channel
 }   // god_viewer
