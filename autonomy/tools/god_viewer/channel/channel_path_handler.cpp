@@ -96,7 +96,7 @@ foxglove::schemas::LinePrimitive PathHandler::FromCommsgs(const commsgs::plannin
 
     foxglove::schemas::LinePrimitive line;
     line.type = foxglove::schemas::LinePrimitive::LineType::LINE_LOOP;
-    line.thickness = 0.8;
+    line.thickness = 0.08;
     line.color = foxglove::schemas::Color{0, 1, 0, 1};
     for (int i = 0; i < msgs.poses.size(); i++) {
         line.points.push_back({
