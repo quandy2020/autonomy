@@ -30,9 +30,20 @@ public:
     */
     AUTONOMY_SMART_PTR_DEFINITIONS(TaskInterface)
 
+    /**
+     * @brief A constructor for autonomy::tasks::TaskInterface
+     * @param options Additional options to control creation of the node.
+     */
     TaskInterface();
     
+    /**
+     * @brief A Destructor for autonomy::tasks::TaskInterface
+     */
     virtual ~TaskInterface();
+
+    bool Start();
+
+    bool Stop();
     
 private:
 
