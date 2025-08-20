@@ -7,7 +7,7 @@
  *
  */
 
-#include "FeatureVector.h"
+#include "autonomy/localization/vins/3rdparty/DBoW/FeatureVector.hpp"
 #include <map>
 #include <vector>
 #include <iostream>

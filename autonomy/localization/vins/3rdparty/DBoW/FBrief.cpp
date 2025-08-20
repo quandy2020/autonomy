@@ -11,7 +11,7 @@
 #include <string>
 #include <sstream>
 
-#include "FBrief.h"
+#include "autonomy/localization/vins/3rdparty/DBoW/FBrief.hpp"
 
 using namespace std;
 

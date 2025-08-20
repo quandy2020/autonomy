@@ -8,8 +8,8 @@
  *
  */
 
-#include "Random.h"
-#include "Timestamp.h"
+#include "autonomy/localization/vins/3rdparty/DUtils/Random.hpp"
+#include "autonomy/localization/vins/3rdparty/DUtils/Timestamp.hpp"
 #include <cstdlib>
 using namespace std;
 

@@ -8,8 +8,8 @@
  */
 
 #include <cfloat>
-#include "TemplatedVocabulary.h"
-#include "BowVector.h"
+#include "autonomy/localization/vins/3rdparty/DBoW/TemplatedVocabulary.hpp"
+#include "autonomy/localization/vins/3rdparty/DBoW/BowVector.hpp"
 
 using namespace DBoW2;
 

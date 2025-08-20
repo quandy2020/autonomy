@@ -18,10 +18,10 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
 #include <ceres/ceres.h>
-#include <nav_msgs/Odometry.h>
-#include <nav_msgs/Path.h>
 
-#include "LocalCartesian.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/localization/vins/3rdparty/GeographicLib/LocalCartesian.hpp"
 
 using namespace std;
 
@@ -33,7 +33,7 @@ public:
 	void inputGPS(double t, double latitude, double longitude, double altitude, double posAccuracy);
 	void inputOdom(double t, Eigen::Vector3d OdomP, Eigen::Quaterniond OdomQ);
 	void getGlobalOdom(Eigen::Vector3d &odomP, Eigen::Quaterniond &odomQ);
-	nav_msgs::Path global_path;
+	autonomy::commsgs::planning_msgs::Path global_path;
 
 private:
 	void GPS2XYZ(double latitude, double longitude, double altitude, double* xyz);
