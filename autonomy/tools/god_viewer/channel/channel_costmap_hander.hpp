@@ -16,45 +16,21 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 
-#include <foxglove/foxglove.hpp>
-#include <foxglove/context.hpp>
-#include <foxglove/error.hpp>
-#include <foxglove/mcap.hpp>
-#include <foxglove/server.hpp>
-
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/helper_functions/crtp.hpp"
-#include "autonomy/tools/god_viewer/channel/channel_id.hpp"
-#include "autonomy/tools/god_viewer/server_options.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_base.hpp"
 
 namespace autonomy {
 namespace tools { 
 namespace god_viewer { 
 namespace channel {
 
-class ChannelBase : public common::helper_functions::crtp<ChannelBase>
-{
-public:
-    /**
-     * Define ChannelBase::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(ChannelBase)
 
 
-    /**
-     * @brief Get channel's name topic
-     */
-    std::string name() { return name_; }
-
-    // template <typename M>
-    // virtual bool Send(const M& msgs) = 0;
-
-    std::string name_;
-};
-
-}   // namespace channel
-}   // namespace god_viewer
+}   // channel
+}   // god_viewer
 }   // namespace tools
 }   // namespace autonomy

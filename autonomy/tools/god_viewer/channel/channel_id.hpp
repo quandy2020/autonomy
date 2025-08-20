@@ -16,45 +16,36 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 
-#include <foxglove/foxglove.hpp>
-#include <foxglove/context.hpp>
-#include <foxglove/error.hpp>
-#include <foxglove/mcap.hpp>
-#include <foxglove/server.hpp>
-
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/helper_functions/crtp.hpp"
-#include "autonomy/tools/god_viewer/channel/channel_id.hpp"
-#include "autonomy/tools/god_viewer/server_options.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_base.hpp"
 
 namespace autonomy {
 namespace tools { 
 namespace god_viewer { 
 namespace channel {
 
-class ChannelBase : public common::helper_functions::crtp<ChannelBase>
+template <typename Type>
+struct ChannelId
 {
-public:
-    /**
-     * Define ChannelBase::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(ChannelBase)
-
-
-    /**
-     * @brief Get channel's name topic
-     */
-    std::string name() { return name_; }
-
-    // template <typename M>
-    // virtual bool Send(const M& msgs) = 0;
-
-    std::string name_;
+    using ChannelType = Type;
+    std::string topic;
+    ChannelType type;
+    std::string description;
+    double frequency;
 };
 
-}   // namespace channel
-}   // namespace god_viewer
+using PathChannel = ChannelId<foxglove::schemas::LinePrimitiveChannel>;
+using MapChannel = ChannelId<foxglove::schemas::GridChannel>;
+using CostmapMapChannel = ChannelId<foxglove::schemas::GridChannel>;
+using PointCloudChannel = ChannelId<foxglove::schemas::PointCloud>;
+using ImageChannel = ChannelId<foxglove::schemas::RawImageChannel>;
+
+
+}   // channel
+}   // god_viewer
 }   // namespace tools
 }   // namespace autonomy

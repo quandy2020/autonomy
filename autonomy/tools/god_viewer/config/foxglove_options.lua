@@ -15,6 +15,34 @@
 options = {
     host = "0.0.0.0",
     port = 8765,
+
+    topics = {
+        {
+            name = "plan",    
+            type = "path",        
+            publish_frequency = 5, -- Hz
+        },
+        {
+            name = "local",    
+            type = "path",        
+            publish_frequency = 30, -- Hz
+        },
+        {
+            name = "map",    
+            type = "map",        
+            publish_frequency = 1, -- Hz
+        },
+        {
+            name = "global_costmap",    
+            type = "costmap",        
+            publish_frequency = 1, -- Hz
+        },
+        {
+            name = "local_costmap",    
+            type = "costmap",        
+            publish_frequency = 1, -- Hz
+        },
+    }
 }
 
 return options
