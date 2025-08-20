@@ -42,6 +42,21 @@ options = {
             type = "costmap",        
             publish_frequency = 1, -- Hz
         },
+        {
+            name = "imu0",    
+            type = "imu",        
+            publish_frequency = 1, -- Hz
+        },
+        {
+            name = "imu1",    
+            type = "imu",        
+            publish_frequency = 1, -- Hz
+        },
+        {
+            name = "imu1",    
+            type = "lidar",        
+            publish_frequency = 1, -- Hz
+        },
     }
 }
 
