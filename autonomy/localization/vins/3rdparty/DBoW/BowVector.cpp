@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "BowVector.h"
+#include "autonomy/localization/vins/3rdparty/DBoW/BowVector.hpp"
 
 namespace DBoW2 {
 

@@ -1,4 +1,5 @@
-#include "VocabularyBinary.hpp"
+#include "autonomy/localization/vins/3rdparty/VocabularyBinary.hpp"
+
 #include <opencv2/core/core.hpp>
 using namespace std;
 

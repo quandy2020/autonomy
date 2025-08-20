@@ -9,7 +9,10 @@
  * Author: Qin Tong (qintonguav@gmail.com)
  *******************************************************/
 
-#include "keyframe.h"
+#include "autonomy/localization/vins/loop_fusion/keyframe.hpp"
+
+
+#include "autonomy/commsgs/sensor_msgs.hpp"
 
 template <typename Derived>
 static void reduceVector(vector<Derived> &v, vector<uchar> status)
@@ -283,31 +286,6 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	matched_id = point_id;
 
 	TicToc t_match;
-	#if 0
-		if (DEBUG_IMAGE)    
-	    {
-	        cv::Mat gray_img, loop_match_img;
-	        cv::Mat old_img = old_kf->image;
-	        cv::hconcat(image, old_img, gray_img);
-	        cvtColor(gray_img, loop_match_img, CV_GRAY2RGB);
-	        for(int i = 0; i< (int)point_2d_uv.size(); i++)
-	        {
-	            cv::Point2f cur_pt = point_2d_uv[i];
-	            cv::circle(loop_match_img, cur_pt, 5, cv::Scalar(0, 255, 0));
-	        }
-	        for(int i = 0; i< (int)old_kf->keypoints.size(); i++)
-	        {
-	            cv::Point2f old_pt = old_kf->keypoints[i].pt;
-	            old_pt.x += COL;
-	            cv::circle(loop_match_img, old_pt, 5, cv::Scalar(0, 255, 0));
-	        }
-	        ostringstream path;
-	        path << "/home/tony-ws1/raw_data/loop_image/"
-	                << index << "-"
-	                << old_kf->index << "-" << "0raw_point.jpg";
-	        cv::imwrite( path.str().c_str(), loop_match_img);
-	    }
-	#endif
 	//printf("search by des\n");
 	searchByBRIEFDes(matched_2d_old, matched_2d_old_norm, status, old_kf->brief_descriptors, old_kf->keypoints, old_kf->keypoints_norm);
 	reduceVector(matched_2d_cur, status);
@@ -318,97 +296,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	reduceVector(matched_id, status);
 	//printf("search by des finish\n");
 
-	#if 0 
-		if (DEBUG_IMAGE)
-	    {
-			int gap = 10;
-        	cv::Mat gap_image(ROW, gap, CV_8UC1, cv::Scalar(255, 255, 255));
-            cv::Mat gray_img, loop_match_img;
-            cv::Mat old_img = old_kf->image;
-            cv::hconcat(image, gap_image, gap_image);
-            cv::hconcat(gap_image, old_img, gray_img);
-            cvtColor(gray_img, loop_match_img, CV_GRAY2RGB);
-	        for(int i = 0; i< (int)matched_2d_cur.size(); i++)
-	        {
-	            cv::Point2f cur_pt = matched_2d_cur[i];
-	            cv::circle(loop_match_img, cur_pt, 5, cv::Scalar(0, 255, 0));
-	        }
-	        for(int i = 0; i< (int)matched_2d_old.size(); i++)
-	        {
-	            cv::Point2f old_pt = matched_2d_old[i];
-	            old_pt.x += (COL + gap);
-	            cv::circle(loop_match_img, old_pt, 5, cv::Scalar(0, 255, 0));
-	        }
-	        for (int i = 0; i< (int)matched_2d_cur.size(); i++)
-	        {
-	            cv::Point2f old_pt = matched_2d_old[i];
-	            old_pt.x +=  (COL + gap);
-	            cv::line(loop_match_img, matched_2d_cur[i], old_pt, cv::Scalar(0, 255, 0), 1, 8, 0);
-	        }
-
-	        ostringstream path, path1, path2;
-	        path <<  "/home/tony-ws1/raw_data/loop_image/"
-	                << index << "-"
-	                << old_kf->index << "-" << "1descriptor_match.jpg";
-	        cv::imwrite( path.str().c_str(), loop_match_img);
-	        /*
-	        path1 <<  "/home/tony-ws1/raw_data/loop_image/"
-	                << index << "-"
-	                << old_kf->index << "-" << "1descriptor_match_1.jpg";
-	        cv::imwrite( path1.str().c_str(), image);
-	        path2 <<  "/home/tony-ws1/raw_data/loop_image/"
-	                << index << "-"
-	                << old_kf->index << "-" << "1descriptor_match_2.jpg";
-	        cv::imwrite( path2.str().c_str(), old_img);	        
-	        */
-	        
-	    }
-	#endif
 	status.clear();
-	/*
-	FundmantalMatrixRANSAC(matched_2d_cur_norm, matched_2d_old_norm, status);
-	reduceVector(matched_2d_cur, status);
-	reduceVector(matched_2d_old, status);
-	reduceVector(matched_2d_cur_norm, status);
-	reduceVector(matched_2d_old_norm, status);
-	reduceVector(matched_3d, status);
-	reduceVector(matched_id, status);
-	*/
-	#if 0
-		if (DEBUG_IMAGE)
-	    {
-			int gap = 10;
-        	cv::Mat gap_image(ROW, gap, CV_8UC1, cv::Scalar(255, 255, 255));
-            cv::Mat gray_img, loop_match_img;
-            cv::Mat old_img = old_kf->image;
-            cv::hconcat(image, gap_image, gap_image);
-            cv::hconcat(gap_image, old_img, gray_img);
-            cvtColor(gray_img, loop_match_img, CV_GRAY2RGB);
-	        for(int i = 0; i< (int)matched_2d_cur.size(); i++)
-	        {
-	            cv::Point2f cur_pt = matched_2d_cur[i];
-	            cv::circle(loop_match_img, cur_pt, 5, cv::Scalar(0, 255, 0));
-	        }
-	        for(int i = 0; i< (int)matched_2d_old.size(); i++)
-	        {
-	            cv::Point2f old_pt = matched_2d_old[i];
-	            old_pt.x += (COL + gap);
-	            cv::circle(loop_match_img, old_pt, 5, cv::Scalar(0, 255, 0));
-	        }
-	        for (int i = 0; i< (int)matched_2d_cur.size(); i++)
-	        {
-	            cv::Point2f old_pt = matched_2d_old[i];
-	            old_pt.x +=  (COL + gap) ;
-	            cv::line(loop_match_img, matched_2d_cur[i], old_pt, cv::Scalar(0, 255, 0), 1, 8, 0);
-	        }
-
-	        ostringstream path;
-	        path <<  "/home/tony-ws1/raw_data/loop_image/"
-	                << index << "-"
-	                << old_kf->index << "-" << "2fundamental_match.jpg";
-	        cv::imwrite( path.str().c_str(), loop_match_img);
-	    }
-	#endif
 	Eigen::Vector3d PnP_T_old;
 	Eigen::Matrix3d PnP_R_old;
 	Eigen::Vector3d relative_t;
@@ -433,7 +321,7 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	            cv::Mat old_img = old_kf->image;
 	            cv::hconcat(image, gap_image, gap_image);
 	            cv::hconcat(gap_image, old_img, gray_img);
-	            cvtColor(gray_img, loop_match_img, CV_GRAY2RGB);
+	            cvtColor(gray_img, loop_match_img, cv::COLOR_GRAY2RGB);
 	            for(int i = 0; i< (int)matched_2d_cur.size(); i++)
 	            {
 	                cv::Point2f cur_pt = matched_2d_cur[i];
@@ -452,9 +340,9 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	                cv::line(loop_match_img, matched_2d_cur[i], old_pt, cv::Scalar(0, 255, 0), 2, 8, 0);
 	            }
 	            cv::Mat notation(50, COL + gap + COL, CV_8UC3, cv::Scalar(255, 255, 255));
-	            putText(notation, "current frame: " + to_string(index) + "  sequence: " + to_string(sequence), cv::Point2f(20, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255), 3);
+	            putText(notation, "current frame: " + to_string(index) + "  sequence: " + to_string(sequence), cv::Point2f(20, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255), 3);
 
-	            putText(notation, "previous frame: " + to_string(old_kf->index) + "  sequence: " + to_string(old_kf->sequence), cv::Point2f(20 + COL + gap, 30), CV_FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255), 3);
+	            putText(notation, "previous frame: " + to_string(old_kf->index) + "  sequence: " + to_string(old_kf->sequence), cv::Point2f(20 + COL + gap, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255), 3);
 	            cv::vconcat(notation, loop_match_img, loop_match_img);
 
 	            /*
@@ -466,15 +354,12 @@ bool KeyFrame::findConnection(KeyFrame* old_kf)
 	            */
 	            if ((int)matched_2d_cur.size() > MIN_LOOP_NUM)
 	            {
-	            	/*
-	            	cv::imshow("loop connection",loop_match_img);  
-	            	cv::waitKey(10);  
-	            	*/
-	            	cv::Mat thumbimage;
-	            	cv::resize(loop_match_img, thumbimage, cv::Size(loop_match_img.cols / 2, loop_match_img.rows / 2));
-	    	    	sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", thumbimage).toImageMsg();
-	                msg->header.stamp = ros::Time(time_stamp);
-	    	    	pub_match_img.publish(msg);
+
+	            	// cv::Mat thumbimage;
+	            	// cv::resize(loop_match_img, thumbimage, cv::Size(loop_match_img.cols / 2, loop_match_img.rows / 2));
+	    	    	// sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", thumbimage).toImageMsg();
+	                // msg->header.stamp = ros::Time(time_stamp);
+	    	    	// pub_match_img.publish(msg);
 	            }
 	        }
 	    #endif

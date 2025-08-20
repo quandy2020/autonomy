@@ -10,8 +10,8 @@
  *
  */
 
-#include "BRIEF.h"
-#include "../DUtils/DUtils.h"
+#include "autonomy/localization/vins/3rdparty/DVision/BRIEF.hpp"
+#include "autonomy/localization/vins/3rdparty/DUtils/DUtils.hpp"
 #include <boost/dynamic_bitset.hpp>
 #include <vector>
 
@@ -50,7 +50,7 @@ void BRIEF::compute(const cv::Mat &image,
     cv::Mat aux;
     if(image.depth() == 3)
     {
-      cv::cvtColor(image, aux, CV_RGB2GRAY);
+      cv::cvtColor(image, aux, cv::COLOR_RGB2GRAY);
     }
     else
     {
