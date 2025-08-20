@@ -57,7 +57,6 @@
 
     bool Send(const cv::Mat& msgs);
 
-
  private:
  
      /**
