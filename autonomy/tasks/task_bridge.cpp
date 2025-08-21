@@ -15,12 +15,26 @@
  */
 
 #include "autonomy/tasks/task_bridge.hpp"
+#include "autonomy/tasks/navigation/navigator_task.hpp"
+#include "autonomy/tasks/constants.hpp"
+#include "autonomy/common/json_util.hpp"
 
 namespace autonomy {
 namespace tasks {
 
 TaskBridge::TaskBridge()
 {
+    std::vector<std::string> kTaskName = {
+        kPlanTaskName,
+        kMappingTaskName,
+        kRelocalizationTaskName
+    };
+
+    for (auto const& name : kTaskName) {
+        if (name == kPlanTaskName) {
+            tasks_[name] = std::make_shared<navigation::NavigatorTask>(name);
+        }
+    }
 }
 
 TaskBridge::~TaskBridge()
@@ -32,6 +46,59 @@ void TaskBridge::Shutdown()
 {
 
 }
+
+bool TaskBridge::HandleCommandMessageCallback(const proto::ExtendCommand& msgs)
+{
+    LOG(INFO) << "Task Bridge handle command msgs: " 
+              << autonomy::common::JsonUtil::ProtoToJson(msgs);
+    switch (msgs.action()) {
+    case proto::ExtendCommand::START:
+        LOG(INFO) << "Exec start action command.";
+        tasks_.at(name(msgs.type()))->Start(msgs);
+        break;
+
+    case proto::ExtendCommand::STOP:
+        LOG(INFO) << "Exec stop action command.";
+        tasks_.at(name(msgs.type()))->Stop();
+        break;
+
+    case proto::ExtendCommand::RESUME:
+        LOG(INFO) << "Exec resume action command.";
+        tasks_.at(name(msgs.type()))->Resume();
+        break;
+
+    case proto::ExtendCommand::CANCEL:
+        LOG(INFO) << "Exec cancel action command.";
+        tasks_.at(name(msgs.type()))->Cancel();
+        break;
+
+    default:
+        break;
+    }
+   return true;
+}
     
+std::string TaskBridge::name(const proto::ExtendCommand::Type& msgs)
+{
+    switch (msgs) {
+    case proto::ExtendCommand::PLAN:
+        return kPlanTaskName;
+        break;
+
+    case proto::ExtendCommand::MAPPING:
+        return kPlanTaskName;
+        break;
+
+    case proto::ExtendCommand::RELOCALIZATION:
+        return kRelocalizationTaskName;
+        break;
+        
+    default:
+        return "";
+        break;
+    }
+    return "";
+}
+
 }   // namespace tasks
 }   // namespace autonomy
