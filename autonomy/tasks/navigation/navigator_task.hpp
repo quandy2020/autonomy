@@ -63,12 +63,43 @@ public:
      * @brief A Destructor for autonomy::tasks::TaskInterface
      */
     ~NavigatorTask();
-
+   
+    /**
+     * @brief Resumes a paused task
+     * @return bool True if the task was successfully resumed, false otherwise
+     */
     bool Resume() override;
+   
+    /**
+     * @brief Cancels the task execution
+     * @return bool True if the task was successfully canceled, false otherwise
+     */
     bool Cancel() override;
+
+    /**
+     * @brief Stops the task execution
+     * @return bool True if the task was successfully stopped, false otherwise
+     */
     bool Stop() override;
+
+    /**
+     * @brief Gets the current state of the task
+     * @return TaskState The current state of the task
+     */
     TaskState GetState() const override;
+
+    /**
+     * @brief Executes the task's callback function
+     * 
+     * This function is typically called periodically or when specific events occur
+     * to execute the main logic of the task.
+     */
     void ExecuteCallback() override;
+
+    /**
+     * @brief Gets the name of the task
+     * @return std::string The name identifier of the task
+     */
     std::string GetName() const override;
 
 private:
@@ -153,8 +184,10 @@ private:
      */
     bool InitializeGoalPose(const commsgs::geometry_msgs::PoseStamped& goal);
 
-
-    // 辅助函数：从 std::any 提取参数
+    /**
+     * @brief Attempts to extract and return a value of type T from a std::any object
+     * Throws std::runtime_error if the contained type doesn't match T
+     */
     template<typename T>
     T GetArgument(const std::any& arg, std::size_t index, const std::string& arg_name) 
     {
@@ -165,8 +198,11 @@ private:
                 " (" + arg_name + ") has wrong type");
         }
     }
-    
-    // 辅助函数：检查参数数量
+
+    /**
+     * @brief Validates that the number of provided arguments matches the expected count
+     * Throws std::runtime_error if the argument count doesn't match expectations
+     */
     void CheckArgumentCount(const std::vector<std::any>& args, 
         std::size_t expected, const std::string& task_name) 
     {
