@@ -143,7 +143,7 @@ bool NavigatorTask::StartImpl(std::vector<std::any>&& args)
 
 void NavigatorTask::OnLoop()
 {
-
+    
 }
 
 std::string NavigatorTask::GetDefaultBTFilepath()
