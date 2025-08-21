@@ -21,18 +21,27 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <mutex>
+#include <thread>
+#include <future>
+
+#include "autonomy/tasks/proto/navigate_to_pose.pb.h"
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/thread_pool.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/tasks/common/task_interface.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 
 namespace autonomy {
 namespace tasks {
 namespace navigation {
 
-class NavigatorTask
+class NavigatorTask : public common::TaskInterface
 {
 public:
+    using TaskState = common::TaskInterface::TaskState;
+
     /**
     * Define NavigatorTask::SharedPtr type
     */
@@ -43,23 +52,33 @@ public:
      * @param options Additional options to control creation of the node.
      */
     NavigatorTask();
-
+    
+    /**
+     * @brief A constructor for autonomy::tasks::NavigatorTask
+     * @param options Additional options to control creation of the node.
+     */
+    NavigatorTask(const std::string& name);
+    
     /**
      * @brief A Destructor for autonomy::tasks::TaskInterface
      */
     ~NavigatorTask();
 
-    /**
-     * @brief Task callback
-     */
-    void ExecuteCallback();
+    bool Resume() override;
+    bool Cancel() override;
+    bool Stop() override;
+    TaskState GetState() const override;
+    void ExecuteCallback() override;
+    std::string GetName() const override;
 
 private:
+
+    bool StartImpl(std::vector<std::any>&& args) override;
 
     /**
      * @brief handle goal for planning A --> B
      */
-    bool HandleGoalReceived(const commsgs::geometry_msgs::PoseStamped& goal);
+    bool HandleGoalReceived(const proto::NavigateToPose::Goal& goal);
 
     /**
      * @brief Replace current BT with another one
@@ -134,6 +153,29 @@ private:
      */
     bool InitializeGoalPose(const commsgs::geometry_msgs::PoseStamped& goal);
 
+
+    // 辅助函数：从 std::any 提取参数
+    template<typename T>
+    T GetArgument(const std::any& arg, std::size_t index, const std::string& arg_name) 
+    {
+        try {
+            return std::any_cast<T>(arg);
+        } catch (const std::bad_any_cast&) {
+            throw std::runtime_error("Argument " + std::to_string(index) + 
+                " (" + arg_name + ") has wrong type");
+        }
+    }
+    
+    // 辅助函数：检查参数数量
+    void CheckArgumentCount(const std::vector<std::any>& args, 
+        std::size_t expected, const std::string& task_name) 
+    {
+        if (args.size() != expected) {
+            throw std::runtime_error("Task " + task_name + " expects " + 
+                std::to_string(expected) + " arguments, got " + std::to_string(args.size()));
+        }
+    }
+
     // Behavior Tree to be executed when goal is received
     BT::Tree tree_;
 
@@ -165,7 +207,13 @@ private:
 
     // should the BT be reloaded even if the same xml filename is requested?
     bool always_reload_bt_xml_ = false;
-    
+
+    // Main task thread handler
+    std::future<void> execution_future_;
+
+    // common::ThreadPool pool_;
+    std::string name_;
+    std::atomic<TaskState> state_;
 };
 
 }  // namespace navigation

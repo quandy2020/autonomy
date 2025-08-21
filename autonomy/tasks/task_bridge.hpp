@@ -16,11 +16,14 @@
 
 #pragma once
 
+#include <vector>
 #include <unordered_map>
 
 #include "autonomy/tasks/proto/task_options.pb.h"
+#include "autonomy/tasks/proto/extend_command.pb.h"
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/tasks/common/task_interface.hpp"
 
 namespace autonomy {
 namespace tasks { 
@@ -54,12 +57,20 @@ public:
      * 
      * @return True or false
      */
-    bool HandleNavigationCommands();
+    bool HandleCommandMessageCallback(const proto::ExtendCommand& msgs);
 
 private:
 
+    /**
+     * @brief Get task type name
+     */
+    std::string name(const proto::ExtendCommand::Type& msgs);
+
     // tasks options
     const proto::TaskOptions options_;
+
+    // Task map(key & value)
+    std::unordered_map<std::string, common::TaskInterface::SharedPtr> tasks_;
 };
 
 }   // namespace tasks
