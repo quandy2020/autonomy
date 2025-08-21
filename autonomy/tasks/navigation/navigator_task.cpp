@@ -97,7 +97,7 @@ std::string NavigatorTask::GetName() const
 void NavigatorTask::ExecuteCallback()
 {
     auto is_canceling = [&]() {
-        return false;
+        return GetState() == TaskState::CANCELED;
     };
 
     auto on_loop = [&]() {
