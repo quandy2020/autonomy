@@ -20,6 +20,7 @@
 #include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
 
 #include "autonomy/map/costmap_2d/map_io.hpp"
+#include "autonomy/map/costmap_3d/map_io.hpp"
 
 namespace autonomy {
 namespace map {
@@ -57,6 +58,21 @@ bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::Occu
 
 bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::Octomap& map_data)
 {
+    return true;
+}
+
+bool MapServer::LoadMapData(const std::string& filename, commsgs::sensor_msgs::PointCloud& map_data)
+{
+    if (!costmap_3d::LoadPlyFile(filename, map_data)) {
+        LOG(ERROR) << "Load PointCloud data error.";
+        return false;
+    }
+    return true;
+}
+
+bool MapServer::LoadMapData(const std::string& filename, commsgs::sensor_msgs::PointCloud2& map_data)
+{
+    
     return true;
 }
 
