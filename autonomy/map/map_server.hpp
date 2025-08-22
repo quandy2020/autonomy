@@ -75,6 +75,26 @@ public:
     bool LoadMapData(const std::string& filename, commsgs::map_msgs::Octomap& map_data);
 
     /**
+     * @brief Load PointCloud map data 
+     * 
+     * @param filename 
+     * @param map_data 
+     * @return true 
+     * @return false 
+     */
+    bool LoadMapData(const std::string& filename, commsgs::sensor_msgs::PointCloud& map_data);
+
+    /**
+     * @brief Load PointCloud map data 
+     * 
+     * @param filename 
+     * @param map_data 
+     * @return true 
+     * @return false 
+     */
+    bool LoadMapData(const std::string& filename, commsgs::sensor_msgs::PointCloud2& map_data);
+
+    /**
      * @brief Get OccupancyGrid map data 2d format
      * 
      * @return commsgs::map_msgs::OccupancyGrid* 
