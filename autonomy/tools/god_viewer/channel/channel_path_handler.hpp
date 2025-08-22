@@ -48,6 +48,13 @@ public:
      */
     bool Send();
 
+
+    /**
+     * @brief Demo cube show
+     */
+    bool SendTest();
+
+
     /**
      * @brief send path
      */
