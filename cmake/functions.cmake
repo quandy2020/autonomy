@@ -64,7 +64,7 @@ function(google_add_flag VAR_NAME FLAG)
   endif()
 endfunction()
 
-macro(google_initialize_cartographer_project)
+macro(google_initialize_autonomy_project)
   if(CARTOGRAPHER_CMAKE_DIR)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
         ${CARTOGRAPHER_CMAKE_DIR}/modules)

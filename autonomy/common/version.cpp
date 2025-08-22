@@ -31,8 +31,8 @@ namespace common {
 namespace {
 
 const char* AUTONOMY_VERSION = "0.0.1";
-const char* AUTONOMY_COMMIT_ID = "a9669dc";
-const char* AUTONOMY_COMMIT_DATE = "2025-08-21";
+const char* AUTONOMY_COMMIT_ID = "f8b1127";
+const char* AUTONOMY_COMMIT_DATE = "2025-08-22";
 
 }  // namespace
 

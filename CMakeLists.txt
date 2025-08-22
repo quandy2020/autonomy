@@ -39,7 +39,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
-google_initialize_cartographer_project()
+google_initialize_autonomy_project()
 google_enable_testing()
 
 # # Set a default install prefix if not specified by the user
@@ -88,7 +88,7 @@ install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp" "autonomy/*.h")
-file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp" "autonomy/*.c")
+file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp" "autonomy/*.c" "autonomy/*.cc")
 file(GLOB_RECURSE ALL_TOOLS_HDRS "autonomy/tools/*.hpp" "autonomy/tools/*.h")
 file(GLOB_RECURSE ALL_TOOLS_SRCS "autonomy/tools/*.cpp" "autonomy/tools/*.c")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
@@ -165,13 +165,9 @@ if(${BUILD_GRPC})
 
     list(APPEND ALL_GRPC_SERVICE_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.cc")
     list(APPEND ALL_GRPC_SERVICE_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.h")
-    list(APPEND ALL_GRPC_SERVICE_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc")
-    list(APPEND ALL_GRPC_SERVICE_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h")
 
     add_custom_command(
-      OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc"
-             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h"
-             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.cc"
+      OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.cc"
              "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.h"
       COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       ARGS --grpc_out=${PROJECT_BINARY_DIR}
@@ -235,12 +231,6 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
 # Fetch foxglove 
 include(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_foxglove_vendor/foxglove.cmake)
-
-# # gRPC
-# if(${BUILD_GRPC})
-#   add_subdirectory(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc)
-#   include_directories(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_async_grpc_vendor/async_grpc/include)
-# endif()
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -317,14 +307,6 @@ set(GLOG_LIBRARY glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARY})
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
-# foxglove SDK
-# file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
-#     "${foxglove_SOURCE_DIR}/src/*.cpp"
-#     "${foxglove_SOURCE_DIR}/src/server/*.cpp")
-# include_directories(${foxglove_SOURCE_DIR}/include)
-# target_link_libraries(autonomy.tools.god_viewer PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.so) 
-# target_sources(autonomy.tools.god_viewer PRIVATE ${FOXGLOVE_SOURCES})
-
 # abseil-cpp
 set(ABSL_LIBRARY
   absl::algorithm
@@ -342,12 +324,7 @@ set(ABSL_LIBRARY
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ABSL_LIBRARY})
 
 if(${BUILD_GRPC})
-  # google_binary(cartographer_grpc_server
-  #   SRCS
-  #     cartographer/cloud/map_builder_server_main.cc
-  # )
-  target_link_libraries(${PROJECT_NAME} PUBLIC grpc++)
-  # target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
+  target_link_libraries(${PROJECT_NAME} PUBLIC gRPC::grpc++ gRPC::grpc)
   # if(${BUILD_PROMETHEUS})
   #   target_link_libraries(cartographer_grpc_server PUBLIC ${ZLIB_LIBRARIES})
   #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-core)
@@ -388,9 +365,9 @@ if (${BUILD_TEST})
     string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FIL_WE}")
     google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
     if(${BUILD_GRPC})
-      target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++)
-      # target_link_libraries("${TEST_TARGET_NAME}" PUBLIC async_grpc)
+      target_link_libraries("${TEST_TARGET_NAME}" PUBLIC gRPC::grpc++ gRPC::grpc ${Protobuf_LIBRARIES})
     endif()
+
     if(${BUILD_PROMETHEUS})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${ZLIB_LIBRARIES})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-core)
