@@ -21,6 +21,7 @@
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_example_handler.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_path_handler.hpp"
+#include "autonomy/tools/god_viewer/channel/channel_point_handler.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_point_cloud_hander.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_image_handler.hpp"
 #include "autonomy/tools/god_viewer/channel/channel_ccupancy_grid_hander.hpp"
@@ -42,21 +43,23 @@ ViewerBridge::ViewerBridge(
 
 void ViewerBridge::Run()
 {
-    auto channel0 = std::make_shared<channel::LogExampleHandler>("/hello");
-    auto channel1 = std::make_shared<channel::PathHandler>(server_handler_, "/cube");
-    auto channel2 = std::make_shared<channel::PathHandler>(server_handler_, "/path");
-    auto channel3 = std::make_shared<channel::OccupancyGridHandler>(server_handler_, "/map");
-    auto channel4 = std::make_shared<channel::PointCloudHandler>(server_handler_, "/point_cloud");
-    auto channel5 = std::make_shared<channel::ImageHandler>(server_handler_, "/image0");
+    // auto channel0 = std::make_shared<channel::LogExampleHandler>("/hello");
+    // auto channel1 = std::make_shared<channel::PathHandler>(server_handler_, "/cube");
+    // auto channel2 = std::make_shared<channel::PathHandler>(server_handler_, "/path");
+    // auto channel3 = std::make_shared<channel::OccupancyGridHandler>(server_handler_, "/map");
+    // auto channel4 = std::make_shared<channel::PointCloudHandler>(server_handler_, "/point_cloud");
+    // auto channel5 = std::make_shared<channel::ImageHandler>(server_handler_, "/image0");
+    auto channel6 = std::make_shared<channel::PointHandler>(server_handler_, "/curve");
 
     while (true)
     {
-        channel0->Send();
-        channel1->Send();
-        channel2->Send(channel2->GenerateCircularPath(5.0));
-        channel3->SendTest();
-        channel4->SendTest();
-        channel5->SendTest();
+        // channel0->Send();
+        // channel1->Send();
+        // channel2->Send(channel2->GenerateCircularPath(5.0));
+        // channel3->SendTest();
+        // channel4->SendTest();
+        // channel5->SendTest();
+        channel6->SendTest();
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 }

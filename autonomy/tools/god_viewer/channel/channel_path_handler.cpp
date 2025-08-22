@@ -51,6 +51,11 @@ bool PathHandler::Send()
     return true;
 }
 
+bool PathHandler::SendTest()
+{
+    return true;
+}
+
 bool PathHandler::Send(const commsgs::planning_msgs::Path& msgs)
 {
     auto line = FromCommsgs(msgs);
