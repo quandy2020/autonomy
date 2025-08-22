@@ -1,2 +1,0 @@
-# make *.bzl files accessible for external repositories
-package(default_visibility = ["//visibility:public"])
