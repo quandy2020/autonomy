@@ -27,7 +27,7 @@ set(AUTONOMY_VERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION}.${AUTON
 set(AUTONOMY_SOVERSION ${AUTONOMY_MAJOR_VERSION}.${AUTONOMY_MINOR_VERSION})
 
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
-option(BUILD_GRPC "Build autonomy gRPC support" false)
+option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_CYBER "Build autonomy CyberRT support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TOOLS "Build autonomy tools support" true)
@@ -145,6 +145,50 @@ endif()
 # TODO(cschuet): Move proto compilation to separate function.
 set(ALL_PROTO_SRCS)
 set(ALL_PROTO_HDRS)
+
+find_program(PROTOBUF_PROTOC_EXECUTABLE protoc)
+if(NOT PROTOBUF_PROTOC_EXECUTABLE)
+  message(STATUS, "protoc not found. Please install protobuf and make sure it's in your PATH.")
+endif()
+
+if(${BUILD_GRPC})
+  find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin)
+  if(NOT GRPC_CPP_PLUGIN)
+    message(FATAL_ERROR "grpc_cpp_plugin not found. Please install gRPC and make sure it's in your PATH.")
+  endif()
+  set(ALL_GRPC_SERVICE_SRCS)
+  set(ALL_GRPC_SERVICE_HDRS)
+  foreach(ABS_FIL ${ALL_GRPC_SERVICES})
+    file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
+    get_filename_component(DIR ${REL_FIL} DIRECTORY)
+    get_filename_component(FIL_WE ${REL_FIL} NAME_WE)
+
+    list(APPEND ALL_GRPC_SERVICE_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.cc")
+    list(APPEND ALL_GRPC_SERVICE_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.h")
+    list(APPEND ALL_GRPC_SERVICE_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc")
+    list(APPEND ALL_GRPC_SERVICE_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h")
+
+    add_custom_command(
+      OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc"
+             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h"
+             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.cc"
+             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.grpc.pb.h"
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+      ARGS --grpc_out=${PROJECT_BINARY_DIR}
+        --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
+        --cpp_out  ${PROJECT_BINARY_DIR}
+        -I ${PROJECT_SOURCE_DIR}
+        ${ABS_FIL}
+      DEPENDS ${ABS_FIL}
+      COMMENT "Running C++ protocol buffer compiler on ${ABS_FIL}"
+      VERBATIM
+    )
+  endforeach()
+  set_source_files_properties(${ALL_GRPC_SERVICE_SRCS} ${ALL_GRPC_SERVICE_HDRS} PROPERTIES GENERATED TRUE)
+  list(APPEND ALL_LIBRARY_HDRS ${ALL_GRPC_SERVICE_HDRS})
+  list(APPEND ALL_LIBRARY_SRCS ${ALL_GRPC_SERVICE_SRCS})
+endif()
+
 foreach(ABS_FIL ${ALL_PROTOS})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
   get_filename_component(DIR ${REL_FIL} DIRECTORY)
@@ -164,37 +208,10 @@ foreach(ABS_FIL ${ALL_PROTOS})
     VERBATIM
   )
 endforeach()
+
 set_source_files_properties(${ALL_PROTO_SRCS} ${ALL_PROTO_HDRS} PROPERTIES GENERATED TRUE)
 list(APPEND ALL_LIBRARY_HDRS ${ALL_PROTO_HDRS})
 list(APPEND ALL_LIBRARY_SRCS ${ALL_PROTO_SRCS})
-
-if(${BUILD_GRPC})
-  set(ALL_GRPC_SERVICE_SRCS)
-  set(ALL_GRPC_SERVICE_HDRS)
-  foreach(ABS_FIL ${ALL_GRPC_SERVICES})
-    file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
-    get_filename_component(DIR ${REL_FIL} DIRECTORY)
-    get_filename_component(FIL_WE ${REL_FIL} NAME_WE)
-
-    list(APPEND ALL_GRPC_SERVICE_SRCS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc")
-    list(APPEND ALL_GRPC_SERVICE_HDRS "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h")
-
-    add_custom_command(
-      OUTPUT "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.cc"
-             "${PROJECT_BINARY_DIR}/${DIR}/${FIL_WE}.pb.h"
-      COMMAND  ${PROTOBUF_PROTOC_EXECUTABLE}
-      ARGS --cpp_out  ${PROJECT_BINARY_DIR}
-        -I ${PROJECT_SOURCE_DIR}
-        ${ABS_FIL}
-      DEPENDS ${ABS_FIL}
-      COMMENT "Running C++ protocol buffer compiler on ${ABS_FIL}"
-      VERBATIM
-    )
-  endforeach()
-  set_source_files_properties(${ALL_GRPC_SERVICE_SRCS} ${ALL_GRPC_SERVICE_HDRS} PROPERTIES GENERATED TRUE)
-  list(APPEND ALL_LIBRARY_HDRS ${ALL_GRPC_SERVICE_HDRS})
-  list(APPEND ALL_LIBRARY_SRCS ${ALL_GRPC_SERVICE_SRCS})
-endif()
 set(INSTALL_GENERATED_HDRS ${ALL_PROTO_HDRS} ${ALL_GRPC_SERVICE_HDRS})
 
 # configuration files
@@ -330,7 +347,7 @@ if(${BUILD_GRPC})
   #     cartographer/cloud/map_builder_server_main.cc
   # )
   target_link_libraries(${PROJECT_NAME} PUBLIC grpc++)
-  target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
+  # target_link_libraries(${PROJECT_NAME} PUBLIC async_grpc)
   # if(${BUILD_PROMETHEUS})
   #   target_link_libraries(cartographer_grpc_server PUBLIC ${ZLIB_LIBRARIES})
   #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-core)
@@ -372,7 +389,7 @@ if (${BUILD_TEST})
     google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
     if(${BUILD_GRPC})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++)
-      target_link_libraries("${TEST_TARGET_NAME}" PUBLIC async_grpc)
+      # target_link_libraries("${TEST_TARGET_NAME}" PUBLIC async_grpc)
     endif()
     if(${BUILD_PROMETHEUS})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${ZLIB_LIBRARIES})
