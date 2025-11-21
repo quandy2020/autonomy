@@ -22,9 +22,7 @@
 namespace autonomy {
 namespace tasks { 
 
-constexpr char kPlanTaskName[] = "PlanTask";
-constexpr char kMappingTaskName[] = "MappingTask";
-constexpr char kRelocalizationTaskName[] = "RelocalizationTask";
+constexpr char kTaskNavigation[] = "TaskNavigation";
 
 }   // namespace tasks
 }   // namespace autonomy

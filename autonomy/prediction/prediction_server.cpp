@@ -19,12 +19,5 @@
 namespace autonomy {
 namespace prediction {
 
-proto::PredictionOptions CreatePredictionOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::PredictionOptions options;
-    return options;
-}
-
 }  // namespace prediction
 }  // namespace autonomy

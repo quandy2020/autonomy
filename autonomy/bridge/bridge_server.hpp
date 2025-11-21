@@ -16,23 +16,28 @@
 
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 
-#include "autonomy/bridge/proto/bridge_options.pb.h"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
-#include "autonomy/bridge/bridge_option.hpp"
+#include "autonomy/bridge/common/bridge_option.hpp"
+#include "autonomy/bridge/plugins/grpc/grpc_bridge.hpp"
 
 namespace autonomy {
 namespace bridge { 
 
-class BridgeServer
+class BridgeServer 
 {
 public:
     /**
      * Define BridgeServer::SharedPtr type
      */
     AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
+
+    /**
+     * @brief A Contructor for autonomy::bridge::BridgeServer
+     */
+    explicit BridgeServer();
 
     /**
      * @brief A constructor for autonomy::bridge::BridgeServer
@@ -43,19 +48,23 @@ public:
     /**
      * @brief A Destructor for autonomy::bridge::BridgeServer
      */
-    ~BridgeServer();
+    ~BridgeServer() = default;
+
+    /**
+     * @brief Starts server
+     */
+    void Start();
 
     /**
      * @brief Shutdown 
      */
-    void Shutdown();
+    void WaitForShutdown();
 
 private:
     const proto::BridgeOptions options_;
+    plugins::grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
 };
 
-proto::BridgeOptions CreateBridgeOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }   // namespace bridge
 }   // namespace autonomy

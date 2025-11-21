@@ -16,18 +16,22 @@ syntax = "proto3";
 
 package autonomy.visualization.proto;
 
-
-message ChannelTopic
+// Topic subscription configuration
+message TopicSubscription
 {
-    string topic_name = 1;
-    string proto_type = 2;
-    double frequency = 3;
+   string topic_name = 1;      // Topic name to subscribe
+   string message_type = 2;    // Message type (e.g., "LaserScan", "OccupancyGrid")
 }
 
 message VisualizationOptions
 {
-    string show_method_type = 1;
-    int32 server_port = 2;
-    repeated ChannelTopic chanels = 3;
+   string host = 1;
+   int32 port = 2;
+   string mcap_filename = 3;
+   bool write_mcap_data = 4;
+   
+   // List of topics to subscribe
+   repeated TopicSubscription subscriptions = 5;
 }
+
 

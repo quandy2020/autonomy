@@ -22,6 +22,8 @@
 #include <memory>
 #include <thread>
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 class CompletionQueueThread {
@@ -43,5 +45,7 @@ class CompletionQueueThread {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_COMMON_COMPLETION_QUEUE_THREAD_H_

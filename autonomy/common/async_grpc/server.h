@@ -33,6 +33,8 @@
 
 #include "grpc++/grpc++.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace {
 
@@ -221,5 +223,7 @@ class Server {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_SERVER_H

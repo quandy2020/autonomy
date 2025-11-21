@@ -1,0 +1,104 @@
+log_level: DEBUG    # log level for autonomy manager
+status_interval: 10 # seconds
+working_dir: ./logs # working directory for log files
+
+# bridge:
+#   binary: /workspace/autonomy/build/bin/autonomy.bridge.launcher
+#   arguments: [
+#     "-configuration_directory": "/workspace/autonomy/configuration_files/map",
+#     "-configuration_basename": "map.lua",
+#   ]
+#   restart_delay: 3
+
+# driver:
+#   binary: /workspace/autonomy/build/bin/autonomy.driver.launcher
+#   arguments: [
+#     "-configuration_directory": "/workspace/autonomy/configuration_files/map",
+#     "-configuration_basename": "map.lua",
+#   ]
+#   restart_delay: 3
+
+# controller:
+#   binary: /workspace/autonomy/build/bin/autonomy.controller_server.launcher
+#   arguments: [
+#     "-configuration_directory": "/workspace/autonomy/configuration_files/map",
+#     "-configuration_basename": "map.lua",
+#   ]
+#   restart_delay: 3
+
+# brief: planner launcher process
+autonomy.planning.launcher:
+  binary: /workspace/autonomy/build/bin/autonomy.planning.launcher
+  arguments: [
+    "-configuration_directory": "/workspace/autonomy/configuration_files/planner",
+    "-configuration_basename": "planner.lua",
+  ]
+  auto_restart: true
+  restart_delay: 3
+
+# brief: map launcher process
+autonomy.map.launcher:
+  binary: /workspace/autonomy/build/bin/autonomy.map.launcher                   
+  arguments: [                                                                  
+    "-configuration_directory": "/workspace/autonomy/configuration_files/map",  
+    "-configuration_basename": "map.lua",                                       
+  ]
+  auto_restart: true                                                            
+  restart_delay: 3                                                              
+
+# perception:
+#   binary: /workspace/autonomy/build/bin/autonomy.perception_server.launcher
+#   arguments: [
+#     "-configuration_directory": "/workspace/autonomy/configuration_files/map",
+#     "-configuration_basename": "map.lua",
+#   ]
+#   auto_restart: true
+#   restart_delay: 3
+
+# prediction:
+#   binary: /workspace/autonomy/build/bin/autonomy.prediction_server.launcher
+#   arguments: [
+#     "-configuration_directory": "/workspace/autonomy/configuration_files/map",
+#     "-configuration_basename": "map.lua",
+#   ]
+#   auto_restart: true
+#   restart_delay: 3
+
+# system:
+#   binary: /workspace/autonomy/build/bin/autonomy.system.launcher
+#   arguments: [
+#     "-configuration_directory": "/workspace/autonomy/configuration_files/map",
+#     "-configuration_basename": "map.lua",
+#   ]
+#   auto_restart: true
+#   restart_delay: 3
+
+simulation:
+  binary: /workspace/autonomy/build/bin/autonomy.simulation.launcher
+  arguments: [
+    "-configuration_directory": "/workspace/autonomy/configuration_files/simulation",
+    "-configuration_basename": " simulation.lua",
+  ]
+  auto_restart: true
+  restart_delay: 3
+
+# brief: transform launcher process
+autonomy.transform.launcher:
+  binary: /workspace/autonomy/build/bin/autonomy.transform.launcher
+  arguments: [
+    "-configuration_directory": "/workspace/autonomy/configuration_files/transform",
+    "-configuration_basename": "transform.lua",
+  ]
+  auto_restart: true
+  restart_delay: 3
+
+# brief: visualization launcher process
+autonomy.visualization.launcher:
+  binary: /workspace/autonomy/build/bin/autonomy.visualization.launcher
+  arguments: [
+    "-configuration_directory": "/workspace/autonomy/configuration_files/visualization",
+    "-configuration_basename": "visualization.lua",
+  ]
+  auto_restart: true
+  restart_delay: 3
+

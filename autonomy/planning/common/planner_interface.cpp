@@ -15,13 +15,24 @@
  */
 
 #include "autonomy/planning/common/planner_interface.hpp"
+#include "autonomy/planning/plugins/dijkstra/dijkstra_planner.hpp"
+#include "autonomy/planning/plugins/navfn/navfn_planner.hpp"
 
 namespace autonomy {
 namespace planning {
 namespace common {
 
+proto::PlannerOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::PlannerOptions options;
+    *options.mutable_dijkstra() = plugins::dijkstra::CreateDijkstraPlannerOptions(parameter_dictionary->GetDictionary("dijkstra_planner").get());
+    *options.mutable_navfn() = plugins::navfn::CreateNavFnPlannerOptions(parameter_dictionary->GetDictionary("navfn_planner").get());
+    return options;
+}
 
-    
 }  // namespace common
 }  // namespace planning
 }  // namespace autonomy
+
+

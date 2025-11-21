@@ -1,0 +1,46 @@
+/**
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <string>
+#include <type_traits>
+
+namespace autolink {
+namespace common {
+
+/**
+ * @brief Hash a string
+ * @param key The string to hash
+ * @return The hash value
+ */
+inline std::size_t Hash(const std::string& key) {
+    return std::hash<std::string>{}(key);
+}
+
+/**
+ * @brief Convert an enum to its underlying type
+ * @tparam Enum The enum type
+ * @param value The enum value
+ * @return The underlying type of the enum
+ */
+template <typename Enum>
+auto ToInt(Enum const value) -> typename std::underlying_type<Enum>::type {
+    return static_cast<typename std::underlying_type<Enum>::type>(value);
+}
+
+}  // namespace common
+}  // namespace autolink

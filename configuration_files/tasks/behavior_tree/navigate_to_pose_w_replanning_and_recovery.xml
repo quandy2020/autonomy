@@ -1,18 +1,10 @@
  <root BTCPP_format="4" >
      <BehaviorTree ID="MainTree">
-        <RecoveryNode number_of_retries="6" name="NavigateRecovery">
-            <PipelineSequence name="NavigateWithReplanning">
-                <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
-                <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased" topic_name="planner_selector"/>
-                <RateController hz="1.0">
-                    <RecoveryNode number_of_retries="1" name="ComputePathToPose">
-                        <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
-                    </RecoveryNode>
-                </RateController>
-                <RecoveryNode number_of_retries="1" name="FollowPath">
-                <FollowPath path="{path}" controller_id="{selected_controller}" error_code_id="{follow_path_error_code}"/>
-        </RecoveryNode>
-      </PipelineSequence>
-        </RecoveryNode>
+        <PipelineSequence name="NavigateWithReplanning">
+            <PlannerSelector selected_planner="{selected_planner}" default_planner="GridBased"/>
+            <RateController hz="10.0">
+                <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
+            </RateController>
+        </PipelineSequence>
      </BehaviorTree>
  </root>

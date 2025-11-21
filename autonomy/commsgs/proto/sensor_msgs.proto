@@ -156,7 +156,7 @@ message CameraInfo
     RegionOfInterest roi = 12;
 }
 
-// This message is used by the PointCloud message to hold optional data
+// This message is used by the PointCloud message to hold data
 // associated with each point in the cloud. The length of the values
 // array should be the same as the length of the points array in the
 // PointCloud, and each value should be associated with the corresponding
@@ -197,7 +197,7 @@ message CompressedImage
                                 //   Acceptable values:
                                 //     jpeg, png, tiff
 
-    repeated uint32 data = 3;   // Compressed image buffer
+    bytes data = 3;   // Compressed image buffer
 }
 
 // Single photometric illuminance measurement.  Light should be assumed to be
@@ -255,7 +255,7 @@ message Image
     uint32 step = 6;
 
     // actual matrix data, size is (step * rows)
-    repeated uint32 data = 7;
+    bytes data = 7;
 }   
 
 // This is a message to hold data from an IMU (Inertial Measurement Unit)
@@ -323,7 +323,7 @@ message LaserScan
 // THIS MESSAGE IS DEPRECATED AS OF FOXY
 // Please use sensor_msgs/PointCloud2
 
-// This message holds a collection of 3d points, plus optional additional
+// This message holds a collection of 3d points, plus additional
 // information about each point.
 message PointCloud
 {
@@ -332,7 +332,8 @@ message PointCloud
 
     // Array of 3d points. Each Point32 should be interpreted as a 3d point
     // in the frame given in the header.
-    repeated geometry_msgs.Point32 points = 2;
+    // repeated geometry_msgs.Point32 points = 2;
+    repeated geometry_msgs.PointXYZIT points = 2;
 
     // Each channel should have the same number of elements as points array,
     // and the data in each channel should correspond 1:1 with each point.
@@ -464,4 +465,58 @@ message Joy
  
     // The buttons measurements from a joystick.
     repeated int32 buttons = 3;
+}
+
+message RadarObstacle 
+{
+  enum Status {
+    NO_TARGET = 0;
+    NEW_TARGET = 1;
+    NEW_UPDATED_TARGET = 2;
+    UPDATED_TARGET = 3;
+    COASTED_TARGET = 4;
+    MERGED_TARGET = 5;
+    INVALID_COASTED_TARGET = 6;
+    NEW_COASTED_TARGET = 7;
+  }
+
+  enum MovingStatus {
+    STATIONARY = 0;
+    NEARING = 1;
+    AWAYING = 2;
+    NONE = 3;
+  }
+
+  // obstacle ID.
+  int32 id = 1;
+  // obstacle position in the sl coordinate system.
+  geometry_msgs.Point2D relative_position = 2;
+
+  // obstacle relative velocity.
+  geometry_msgs.Point2D relative_velocity = 3;
+
+  // radar signal intensity.
+  double rcs = 4;
+
+  // whether this obstacle is able to move.
+  MovingStatus moving_status = 5;
+  double width = 6;
+  double length = 7;
+  double height = 8;
+  double theta = 9;
+  // obstacle position in map coordinate system
+  geometry_msgs.Point2D absolute_position = 10;
+
+  // obstacle position in map coordinate system
+  geometry_msgs.Point2D absolute_velocity = 11;
+
+  int32 count = 12;
+  int32 moving_frames_count = 13;
+  Status status = 14;
+}
+
+message RadarObstacles 
+{
+    map<int32, RadarObstacle> radar_obstacle = 1;  // An array of obstacles
+    std_msgs.Header header = 2;      // Header
 }

@@ -106,5 +106,6 @@ AUTONOMY_MAP = {
     }
 }
 
-
+-- output the map
+return AUTONOMY_MAP
 

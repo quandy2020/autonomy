@@ -18,8 +18,10 @@
 #include <signal.h>
 
 #include "autonomy/common/version.hpp"
-#include "autonomy/system/gflags.hpp"
+#include "autonomy/common/gflags.hpp"
 #include "autonomy/system/system.hpp"
+
+#include "autonomy/system/common/system_interface.hpp"
 
 namespace autonomy {
 namespace system {
@@ -28,21 +30,26 @@ namespace {
 void SigintHandler(int sig)
 {
     LOG(INFO) << "Shutdown autonomy system all tasks.";
-    // if ()
-    // {
-    // }
+    exit(0);
 }
 
 void Run()
 {
+    // 'Crtl + C' sign handler
+    signal(SIGINT, SigintHandler);
+
     // Show autonomu app version
     autonomy::common::ShowVersion();
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
-    auto autonomy = std::make_shared<AutonomyNode>();
+    // Load options
+    auto autonomy = CreateAutonomy(common::CreateOptions(
+        autonomy::common::FLAGS_configuration_directory,
+        autonomy::common::FLAGS_configuration_basename
+    ));
 
-    // 'Crtl + C' sign handler
-    signal(SIGINT, SigintHandler);
+    autonomy->Start();
+    autonomy->WaitForShutdown();
 }
 
 } // namespace 
@@ -51,16 +58,24 @@ void Run()
 
 int main(int argc, char **argv)
 {
-    FLAGS_alsologtostderr = 1;
-    FLAGS_colorlogtostderr = true;
-    FLAGS_log_prefix = true;  
+    google::SetUsageMessage(
+        "\n\n"
+        "\033[31m This program offers autonomy framework development for robot.\033[0m \n"
+        "\033[31m autonomy.system.launcher -configuration_directory /workspace/autonomy/configuration_files -configuration_basename autonomy.lua \033[0m \n");
+
 	google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    // CHECK(!autonomy::system::FLAGS_configuration_directory.empty())
-    //   << "-configuration_directory is missing.";
-    // CHECK(!autonomy::system::FLAGS_configuration_basename.empty())
-    //   << "-configuration_basename is missing.";
+    if(autonomy::common::FLAGS_verbose) {
+        autonomy::common::ShowVersion();
+        exit(0);
+    }
+        
+    if (autonomy::common::FLAGS_configuration_directory.empty() ||
+        autonomy::common::FLAGS_configuration_basename.empty()) {
+        google::ShowUsageWithFlagsRestrict(argv[0], "autonomy");
+        return EXIT_FAILURE;
+    }
 
     autonomy::system::Run();
     google::ShutdownGoogleLogging();  

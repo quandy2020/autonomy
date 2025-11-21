@@ -1,0 +1,56 @@
+/**
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "autolink/proto/classic_conf.pb.h"
+
+#include "autolink/croutine/croutine.hpp"
+#include "autolink/scheduler/scheduler.hpp"
+
+namespace autolink {
+namespace scheduler {
+
+using autolink::croutine::CRoutine;
+using autolink::proto::ClassicConf;
+using autolink::proto::ClassicTask;
+
+class SchedulerClassic : public Scheduler
+{
+public:
+    bool RemoveCRoutine(uint64_t crid) override;
+    bool RemoveTask(const std::string& name) override;
+    bool DispatchTask(const std::shared_ptr<CRoutine>&) override;
+
+private:
+    friend Scheduler* Instance();
+    SchedulerClassic();
+
+    void CreateProcessor();
+    bool NotifyProcessor(uint64_t crid) override;
+
+    std::unordered_map<std::string, ClassicTask> cr_confs_;
+
+    ClassicConf classic_conf_;
+};
+
+}  // namespace scheduler
+}  // namespace autolink

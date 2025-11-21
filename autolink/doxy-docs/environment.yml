@@ -1,0 +1,8 @@
+name: Autolink
+
+channels:
+  - conda-forge
+
+dependencies:
+  - breathe
+  - recommonmark

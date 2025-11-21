@@ -1,0 +1,241 @@
+/**
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "autolink/transport/dispatcher/shm_dispatcher.hpp"
+
+#include "autolink/common/global_data.hpp"
+#include "autolink/common/util.hpp"
+#include "autolink/scheduler/scheduler_factory.hpp"
+#include "autolink/transport/shm/readable_info.hpp"
+
+namespace autolink {
+namespace transport {
+
+using common::GlobalData;
+
+ShmDispatcher::ShmDispatcher() : host_id_(0) {
+    Init();
+}
+
+ShmDispatcher::~ShmDispatcher() {
+    Shutdown();
+}
+
+void ShmDispatcher::Shutdown() {
+    if (is_shutdown_.exchange(true)) {
+        return;
+    }
+
+    if (thread_.joinable()) {
+        thread_.join();
+    }
+
+    {
+        ReadLockGuard<AtomicRWLock> lock(segments_lock_);
+        segments_.clear();
+    }
+}
+
+void ShmDispatcher::AddSegment(const RoleAttributes& self_attr) {
+    uint64_t channel_id = self_attr.channel_id();
+    WriteLockGuard<AtomicRWLock> lock(segments_lock_);
+    if (segments_.count(channel_id) > 0) {
+        return;
+    }
+    auto segment = SegmentFactory::CreateSegment(channel_id);
+    segments_[channel_id] = segment;
+    previous_indexes_[channel_id] = UINT32_MAX;
+    arena_previous_indexes_[channel_id] = UINT32_MAX;
+}
+
+void ShmDispatcher::ReadMessage(uint64_t channel_id, uint32_t block_index) {
+    ADEBUG << "Reading sharedmem message: "
+           << GlobalData::GetChannelById(channel_id)
+           << " from block: " << block_index;
+    auto rb = std::make_shared<ReadableBlock>();
+    rb->index = block_index;
+    if (!segments_[channel_id]->AcquireBlockToRead(rb.get())) {
+        AWARN << "fail to acquire block, channel: "
+              << GlobalData::GetChannelById(channel_id)
+              << " index: " << block_index;
+        return;
+    }
+
+    MessageInfo msg_info;
+    const char* msg_info_addr =
+        reinterpret_cast<char*>(rb->buf) + rb->block->msg_size();
+
+    if (msg_info.DeserializeFrom(msg_info_addr, rb->block->msg_info_size())) {
+        OnMessage(channel_id, rb, msg_info);
+    } else {
+        AERROR << "error msg info of channel:"
+               << GlobalData::GetChannelById(channel_id);
+    }
+    segments_[channel_id]->ReleaseReadBlock(*rb);
+}
+
+void ShmDispatcher::ReadArenaMessage(uint64_t channel_id,
+                                     uint32_t arena_block_index) {
+    ADEBUG << "Reading sharedmem arena message: "
+           << GlobalData::GetChannelById(channel_id)
+           << " from block: " << arena_block_index;
+    auto rb = std::make_shared<ReadableBlock>();
+    rb->index = arena_block_index;
+    if (!segments_[channel_id]->AcquireArenaBlockToRead(rb.get())) {
+        AWARN << "fail to acquire block, channel: "
+              << GlobalData::GetChannelById(channel_id)
+              << " index: " << arena_block_index;
+        return;
+    }
+
+    MessageInfo msg_info;
+    const char* msg_info_addr =
+        reinterpret_cast<char*>(rb->buf) + rb->block->msg_size();
+    if (msg_info.DeserializeFrom(msg_info_addr, rb->block->msg_info_size())) {
+        OnArenaMessage(channel_id, rb, msg_info);
+    } else {
+        AERROR << "error msg info of channel:"
+               << GlobalData::GetChannelById(channel_id);
+    }
+    segments_[channel_id]->ReleaseArenaReadBlock(*rb);
+}
+
+void ShmDispatcher::OnMessage(uint64_t channel_id,
+                              const std::shared_ptr<ReadableBlock>& rb,
+                              const MessageInfo& msg_info) {
+    if (is_shutdown_.load()) {
+        return;
+    }
+    ListenerHandlerBasePtr* handler_base = nullptr;
+    if (msg_listeners_.Get(channel_id, &handler_base)) {
+        auto handler =
+            std::dynamic_pointer_cast<ListenerHandler<ReadableBlock>>(
+                *handler_base);
+        handler->Run(rb, msg_info);
+    } else {
+        if (!arena_msg_listeners_.Get(channel_id, &handler_base)) {
+            AERROR << "Cannot find " << GlobalData::GetChannelById(channel_id)
+                   << "'s handler.";
+        }
+    }
+}
+
+void ShmDispatcher::OnArenaMessage(uint64_t channel_id,
+                                   const std::shared_ptr<ReadableBlock>& rb,
+                                   const MessageInfo& msg_info) {
+    if (is_shutdown_.load()) {
+        return;
+    }
+    ListenerHandlerBasePtr* handler_base = nullptr;
+    if (arena_msg_listeners_.Get(channel_id, &handler_base)) {
+        auto handler =
+            std::dynamic_pointer_cast<ListenerHandler<ReadableBlock>>(
+                *handler_base);
+        handler->Run(rb, msg_info);
+    } else {
+        if (!msg_listeners_.Get(channel_id, &handler_base)) {
+            AERROR << "Cannot find " << GlobalData::GetChannelById(channel_id)
+                   << "'s handler.";
+        }
+    }
+}
+
+void ShmDispatcher::ThreadFunc() {
+    ReadableInfo readable_info;
+    while (!is_shutdown_.load()) {
+        if (!notifier_->Listen(100, &readable_info)) {
+            ADEBUG << "listen failed.";
+            continue;
+        }
+
+        if (readable_info.host_id() != host_id_) {
+            ADEBUG << "shm readable info from other host.";
+            continue;
+        }
+
+        uint64_t channel_id = readable_info.channel_id();
+        int32_t block_index = readable_info.block_index();
+        int32_t arena_block_index = readable_info.arena_block_index();
+
+        {
+            ReadLockGuard<AtomicRWLock> lock(segments_lock_);
+            if (segments_.count(channel_id) == 0) {
+                continue;
+            }
+
+            if (block_index != -1) {
+                // check block index
+                if (previous_indexes_.count(channel_id) == 0) {
+                    previous_indexes_[channel_id] = UINT32_MAX;
+                }
+                uint32_t& previous_index = previous_indexes_[channel_id];
+                if (block_index != 0 && previous_index != UINT32_MAX) {
+                    if (block_index == previous_index) {
+                        ADEBUG << "Receive SAME index " << block_index
+                               << " of channel " << channel_id;
+                    } else if (block_index < previous_index) {
+                        ADEBUG << "Receive PREVIOUS message. last: "
+                               << previous_index << ", now: " << block_index;
+                    } else if (block_index - previous_index > 1) {
+                        ADEBUG
+                            << "Receive JUMP message. last: " << previous_index
+                            << ", now: " << block_index;
+                    }
+                }
+                previous_index = block_index;
+                ReadMessage(channel_id, block_index);
+            }
+
+            if (arena_block_index != -1) {
+                if (arena_previous_indexes_.count(channel_id) == 0) {
+                    arena_previous_indexes_[channel_id] = UINT32_MAX;
+                }
+                uint32_t& arena_previous_index =
+                    arena_previous_indexes_[channel_id];
+                if (arena_block_index != 0 &&
+                    arena_previous_index != UINT32_MAX) {
+                    if (arena_block_index == arena_previous_index) {
+                        ADEBUG << "Receive SAME index " << arena_block_index
+                               << " of channel " << channel_id;
+                    } else if (arena_block_index < arena_previous_index) {
+                        ADEBUG << "Receive PREVIOUS message. last: "
+                               << arena_previous_index
+                               << ", now: " << arena_block_index;
+                    } else if (arena_block_index - arena_previous_index > 1) {
+                        ADEBUG << "Receive JUMP message. last: "
+                               << arena_previous_index
+                               << ", now: " << arena_block_index;
+                    }
+                }
+                arena_previous_index = arena_block_index;
+                ReadArenaMessage(channel_id, arena_block_index);
+            }
+        }
+    }
+}
+
+bool ShmDispatcher::Init() {
+    host_id_ = common::Hash(GlobalData::Instance()->HostIp());
+    notifier_ = NotifierFactory::CreateNotifier();
+    thread_ = std::thread(&ShmDispatcher::ThreadFunc, this);
+    scheduler::Instance()->SetInnerThreadAttr("shm_disp", &thread_);
+    // TODO: CreateSpan method not implemented yet
+    // statistics::Statistics::Instance(true)->CreateSpan("protobuf_parse_time");
+    return true;
+}
+
+}  // namespace transport
+}  // namespace autolink

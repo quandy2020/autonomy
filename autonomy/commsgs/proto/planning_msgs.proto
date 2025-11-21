@@ -48,3 +48,36 @@ message Odometry
     // Estimated linear and angular velocity relative to child_frame_id.
     geometry_msgs.TwistWithCovariance twist = 4;
 }
+
+message CostmapFilterInfo
+{
+    std_msgs.Header header = 1;
+
+    // Type of plugin used (keepout filter, speed limit in m/s, speed limit in percent, etc...)
+    // 0: keepout/lanes filter
+    // 1: speed limit filter in % of maximum speed
+    // 2: speed limit filter in absolute values (m/s)
+    uint32 type = 2;
+
+    // Name of filter mask topic
+    string filter_mask_topic = 3;
+
+    // Multiplier base offset and multiplier coefficient for conversion of OccGrid.
+    // Used to convert OccupancyGrid data values to filter space values.
+    // data -> into some other number space:
+    // space = data * multiplier + base
+    float base = 4;
+    float multiplier = 5;
+}
+
+message SpeedLimit
+{   
+    std_msgs.Header header = 1;
+
+    // Setting speed limit in percentage if true or in absolute values in false case
+    bool percentage = 2;
+
+    // Maximum allowed speed (in percent of maximum robot speed or in m/s depending
+    // on "percentage" value). When no-limit it is set to 0.0
+    float speed_limit = 3;
+}

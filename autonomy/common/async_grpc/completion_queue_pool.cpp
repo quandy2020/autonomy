@@ -21,6 +21,8 @@
 #include "common/make_unique.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace {
 
@@ -109,3 +111,5 @@ void CompletionQueuePool::Initialize() {
 }
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 

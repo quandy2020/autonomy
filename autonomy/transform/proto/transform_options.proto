@@ -16,9 +16,73 @@ syntax = "proto3";
 
 package autonomy.transform.proto;
 
+// Transform Server 配置选项
 message TransformOptions
 {
+  // 静态TF配置文件路径（YAML格式）
+  string static_transform_config_path = 1;
   
+  // TF缓冲区大小（秒）
+  double buffer_cache_time = 2;
+  
+  // TF查询默认超时时间（秒）
+  float default_timeout = 3;
+  
+  // 是否启用调试模式
+  bool debug = 4;
+  
+  // TF发布频率（Hz）
+  double publish_rate = 5;
 }
 
+// 静态变换配置（单个）
+message StaticTransformConfig
+{
+  // 变换名称
+  string name = 1;
+  
+  // 是否启用
+  bool enabled = 2;
+  
+  // 父坐标系
+  string frame_id = 3;
+  
+  // 子坐标系  
+  string child_frame_id = 4;
+  
+  // 平移
+  message Translation {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+  }
+  Translation translation = 5;
+  
+  // 旋转（四元数）
+  message Rotation {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+    double w = 4;
+  }
+  Rotation rotation = 6;
+}
 
+// 静态变换配置列表
+message StaticTransformsConfig
+{
+  // 变换列表
+  repeated StaticTransformConfig transforms = 1;
+  
+  // 发布频率
+  double publish_rate = 2;
+  
+  // TF前缀
+  string tf_prefix = 3;
+  
+  // 是否在启动时打印变换
+  bool print_transforms_on_startup = 4;
+  
+  // 是否验证四元数
+  bool validate_quaternion = 5;
+}

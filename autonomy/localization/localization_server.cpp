@@ -20,12 +20,5 @@ namespace autonomy {
 namespace localization {
 
 
-proto::LocalizationOptions CreateLocalizationOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::LocalizationOptions options;
-    return options;
-}
-
 }  // namespace localization
 }  // namespace autonomy

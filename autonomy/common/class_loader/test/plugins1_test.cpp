@@ -76,8 +76,22 @@ public:
 }  // namespace commom
 }  // namespace autonomy
 
-// CLASS_LOADER_REGISTER_CLASS(Dog, Base)
-// CLASS_LOADER_REGISTER_CLASS(Cat, Base)
-// CLASS_LOADER_REGISTER_CLASS(Duck, Base)
-// CLASS_LOADER_REGISTER_CLASS(Cow, Base)
-// CLASS_LOADER_REGISTER_CLASS(Sheep, Base)
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Dog, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Cat, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Duck, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Cow, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Sheep, 
+  autonomy::common::class_loader::Base)

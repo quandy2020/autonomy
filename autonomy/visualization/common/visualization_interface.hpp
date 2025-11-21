@@ -16,7 +16,10 @@
 
 #pragma once
 
+#include "autonomy/visualization/proto/visualization_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
 namespace visualization {
@@ -41,6 +44,9 @@ public:
      */
     virtual ~VisualizationInterface() = default;
 };
+
+proto::VisualizationOptions LoadOptions(
+    autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }   // namespace common 
 }   // namespace visualization

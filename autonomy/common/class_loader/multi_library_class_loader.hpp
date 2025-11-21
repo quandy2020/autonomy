@@ -360,7 +360,7 @@ private:
 
 
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace common
 }  // namespace autonomy
 
 #endif  // CLASS_LOADER__MULTI_LIBRARY_CLASS_LOADER_HPP_

@@ -26,6 +26,8 @@
 #include "autonomy/common/async_grpc/common/time.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace common {
 
@@ -127,5 +129,7 @@ class BlockingQueue {
 
 }  // namespace common
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_COMMON_BLOCKING_QUEUE_H_

@@ -4,6 +4,8 @@
 #include "autonomy/common/async_grpc/type_traits.h"
 #include "google/protobuf/message.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 DEFINE_HAS_SIGNATURE(has_service_method_name, T::MethodName,
@@ -70,5 +72,7 @@ struct RpcServiceMethodTraits {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_RPC_SERVICE_METHOD_TRAITS_H

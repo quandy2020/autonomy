@@ -28,6 +28,8 @@
 #include "grpc++/grpc++.h"
 #include "gtest/gtest.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace testing {
 
@@ -136,5 +138,7 @@ class RpcHandlerTestServer : public Server {
 
 }  // namespace testing
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_TESTING_RPC_HANDLER_TEST_SERVER_H_

@@ -22,6 +22,8 @@
 
 #include "autonomy/common/async_grpc/common/time.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace common {
 
@@ -96,5 +98,7 @@ using MutexLocker = Mutex::Locker;
 
 }  // namespace common
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_COMMON_MUTEX_H_

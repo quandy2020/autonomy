@@ -293,7 +293,7 @@ struct Image
     uint32 step;
 
     // actual matrix data, size is (step * rows)
-    std::vector<uint32> data;
+    std::vector<uint8> data;
 };
 
 // This is a struct to hold data from an IMU (Inertial Measurement Unit)
@@ -360,7 +360,7 @@ struct LaserScan
 
     std::vector<float> ranges;           // range data [m]
                                          // (Note: values < range_min or > range_max should be discarded)
-    std::vector<float> intensities0;     // intensity data [device-specific units].  If your
+    std::vector<float> intensities;      // intensity data [device-specific units].  If your
                                          // device does not provide intensities, please leave the array empty.
 };
 

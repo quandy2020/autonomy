@@ -30,22 +30,27 @@
 #include <iostream>
 
 #include "autonomy/common/class_loader/class_loader.hpp"
+#include "autonomy/common/class_loader/class_loader_core.hpp"
 
 namespace autonomy {
 namespace common { 
 namespace class_loader {
 
-class Base
+class Base 
 {
 public:
-  virtual ~Base() {}
-  virtual void saySomething() = 0;
+    virtual ~Base() {}
+    virtual void saySomething() = 0;
 };
 
-class Robot : public Base
-{
+class Robot : public Base {
 public:
-  virtual void saySomething() {std::cout << "Beep boop" << std::endl;}
+    Robot() {}
+    virtual ~Robot() {}
+    virtual void saySomething() override 
+    {
+      std::cout << "Robot!!!" << std::endl;
+    }
 };
 
 class Alien : public Base
@@ -67,10 +72,21 @@ public:
 };
 
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace common
 }  // namespace autonomy
 
-// CLASS_LOADER_REGISTER_CLASS(Robot, Base)
-// CLASS_LOADER_REGISTER_CLASS(Alien, Base)
-// CLASS_LOADER_REGISTER_CLASS(Monster, Base)
-// CLASS_LOADER_REGISTER_CLASS(Zombie, Base)
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Robot, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Alien, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Monster, 
+  autonomy::common::class_loader::Base)
+
+CLASS_LOADER_REGISTER_CLASS(
+  autonomy::common::class_loader::Zombie, 
+  autonomy::common::class_loader::Base)

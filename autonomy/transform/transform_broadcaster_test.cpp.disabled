@@ -1,0 +1,506 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "autonomy/transform/transform_broadcaster.hpp"
+
+#include <gtest/gtest.h>
+#include <thread>
+#include <chrono>
+
+namespace autonomy {
+namespace transform {
+namespace {
+
+// ============================================================================
+// 辅助函数
+// ============================================================================
+
+/**
+ * @brief 创建一个测试用的 Node (removed)
+ */
+// {
+// }
+
+/**
+ * @brief 创建一个测试用的 TransformStamped 消息
+ */
+commsgs::geometry_msgs::TransformStamped CreateTestTransform(
+    const std::string& frame_id,
+    const std::string& child_frame_id,
+    double x = 0.0, double y = 0.0, double z = 0.0)
+{
+    commsgs::geometry_msgs::TransformStamped tf;
+    
+    // 设置头部信息
+    tf.header.frame_id = frame_id;
+    tf.header.stamp.sec = 1234567890;
+    tf.header.stamp.nanosec = 123456789;
+    
+    // 设置子坐标系
+    tf.child_frame_id = child_frame_id;
+    
+    // 设置平移
+    tf.transform.translation.x = x;
+    tf.transform.translation.y = y;
+    tf.transform.translation.z = z;
+    
+    // 设置旋转（单位四元数）
+    tf.transform.rotation.x = 0.0;
+    tf.transform.rotation.y = 0.0;
+    tf.transform.rotation.z = 0.0;
+    tf.transform.rotation.w = 1.0;
+    
+    return tf;
+}
+
+/**
+ * @brief 验证 TransformStamped 消息的有效性
+ */
+bool IsValidTransform(const commsgs::geometry_msgs::TransformStamped& tf)
+{
+    if (tf.header.frame_id.empty()) return false;
+    if (tf.child_frame_id.empty()) return false;
+    
+    // 检查四元数范数
+    double qx = tf.transform.rotation.x;
+    double qy = tf.transform.rotation.y;
+    double qz = tf.transform.rotation.z;
+    double qw = tf.transform.rotation.w;
+    double norm = std::sqrt(qx*qx + qy*qy + qz*qz + qw*qw);
+    
+    return std::abs(norm - 1.0) < 0.01; // 允许一定误差
+}
+
+// ============================================================================
+// TransformBroadcaster 基础测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, Construction)
+{
+    // 使用不同的node避免DDS冲突
+    auto node1 = CreateTestNode("test_broadcaster_1");
+    auto node2 = CreateTestNode("test_broadcaster_2");
+    
+    // 默认主题名称
+    TransformBroadcaster broadcaster1(node1);
+    EXPECT_TRUE(broadcaster1.IsInitialized());
+    EXPECT_EQ(broadcaster1.GetTopicName(), "/tf");
+    EXPECT_EQ(broadcaster1.GetPublishedCount(), 0);
+    
+    // 自定义主题名称（使用不同的node）
+    TransformBroadcaster broadcaster2(node2, "/custom_tf");
+    EXPECT_TRUE(broadcaster2.IsInitialized());
+    EXPECT_EQ(broadcaster2.GetTopicName(), "/custom_tf");
+    EXPECT_EQ(broadcaster2.GetPublishedCount(), 0);
+}
+
+TEST(TransformBroadcasterTest, SendSingleTransform)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    auto tf = CreateTestTransform("world", "base_link", 1.0, 2.0, 0.0);
+    EXPECT_TRUE(IsValidTransform(tf));
+    
+    // 发送变换
+    EXPECT_NO_THROW({
+        broadcaster.SendTransform(tf);
+    });
+    
+    // 检查发布计数
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 1);
+}
+
+TEST(TransformBroadcasterTest, SendMultipleTransforms)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
+    transforms.push_back(CreateTestTransform("world", "robot1", 1.0, 0.0, 0.0));
+    transforms.push_back(CreateTestTransform("world", "robot2", 2.0, 0.0, 0.0));
+    transforms.push_back(CreateTestTransform("world", "robot3", 3.0, 0.0, 0.0));
+    
+    // 验证所有变换
+    for (const auto& tf : transforms) {
+        EXPECT_TRUE(IsValidTransform(tf));
+    }
+    
+    // 发送变换
+    EXPECT_NO_THROW({
+        broadcaster.SendTransform(transforms);
+    });
+    
+    // 检查发布计数
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 3);
+}
+
+TEST(TransformBroadcasterTest, SendSequentialTransforms)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    // 连续发送多个变换
+    for (int i = 0; i < 5; ++i) {
+        auto tf = CreateTestTransform("world", "link_" + std::to_string(i), 
+                                       static_cast<double>(i), 0.0, 0.0);
+        broadcaster.SendTransform(tf);
+    }
+    
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 5);
+}
+
+// ============================================================================
+// 边界条件测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, EmptyFrameId)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    auto tf = CreateTestTransform("", "child", 1.0, 0.0, 0.0);
+    
+    // 应该能够调用但会记录警告
+    EXPECT_NO_THROW({
+        broadcaster.SendTransform(tf);
+    });
+}
+
+TEST(TransformBroadcasterTest, EmptyChildFrameId)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    auto tf = CreateTestTransform("parent", "", 1.0, 0.0, 0.0);
+    
+    // 应该能够调用但会记录警告
+    EXPECT_NO_THROW({
+        broadcaster.SendTransform(tf);
+    });
+}
+
+TEST(TransformBroadcasterTest, EmptyTransformVector)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    std::vector<commsgs::geometry_msgs::TransformStamped> empty_transforms;
+    
+    // 发送空向量
+    EXPECT_NO_THROW({
+        broadcaster.SendTransform(empty_transforms);
+    });
+    
+    // 不应增加计数
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 0);
+}
+
+TEST(TransformBroadcasterTest, LargeNumberOfTransforms)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
+    const size_t num_transforms = 100;
+    
+    for (size_t i = 0; i < num_transforms; ++i) {
+        transforms.push_back(
+            CreateTestTransform("world", "link_" + std::to_string(i), 
+                               static_cast<double>(i), 0.0, 0.0)
+        );
+    }
+    
+    EXPECT_NO_THROW({
+        broadcaster.SendTransform(transforms);
+    });
+    
+    EXPECT_EQ(broadcaster.GetPublishedCount(), num_transforms);
+}
+
+// ============================================================================
+// 功能测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, PublishedCountIncrement)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    // 初始计数为0
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 0);
+    
+    // 发送单个变换
+    auto tf1 = CreateTestTransform("world", "link1");
+    broadcaster.SendTransform(tf1);
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 1);
+    
+    // 发送多个变换
+    std::vector<commsgs::geometry_msgs::TransformStamped> tfs;
+    tfs.push_back(CreateTestTransform("world", "link2"));
+    tfs.push_back(CreateTestTransform("world", "link3"));
+    broadcaster.SendTransform(tfs);
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 3);
+}
+
+TEST(TransformBroadcasterTest, ResetPublishedCount)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    // 发送一些变换
+    for (int i = 0; i < 5; ++i) {
+        broadcaster.SendTransform(CreateTestTransform("world", "link"));
+    }
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 5);
+    
+    // 重置计数
+    broadcaster.ResetPublishedCount();
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 0);
+    
+    // 再次发送
+    broadcaster.SendTransform(CreateTestTransform("world", "link"));
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 1);
+}
+
+TEST(TransformBroadcasterTest, TopicNameGetterSetter)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node, "/my_tf_topic");
+    
+    EXPECT_EQ(broadcaster.GetTopicName(), "/my_tf_topic");
+}
+
+TEST(TransformBroadcasterTest, IsInitialized)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    EXPECT_TRUE(broadcaster.IsInitialized());
+}
+
+// ============================================================================
+// 多线程安全测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, ConcurrentSendTransforms)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    const int num_threads = 10;
+    const int transforms_per_thread = 10;
+    
+    std::vector<std::thread> threads;
+    
+    // 创建多个线程同时发送变换
+    for (int i = 0; i < num_threads; ++i) {
+        threads.emplace_back([&broadcaster, i, transforms_per_thread]() {
+            for (int j = 0; j < transforms_per_thread; ++j) {
+                auto tf = CreateTestTransform(
+                    "world", 
+                    "link_" + std::to_string(i) + "_" + std::to_string(j),
+                    static_cast<double>(i), 
+                    static_cast<double>(j), 
+                    0.0
+                );
+                broadcaster.SendTransform(tf);
+            }
+        });
+    }
+    
+    // 等待所有线程完成
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    
+    // 检查总计数
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 
+              static_cast<size_t>(num_threads * transforms_per_thread));
+}
+
+TEST(TransformBroadcasterTest, ConcurrentGetters)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node, "/test_topic");
+    
+    const int num_threads = 10;
+    std::vector<std::thread> threads;
+    std::vector<std::string> topic_names(num_threads);
+    std::vector<size_t> counts(num_threads);
+    
+    // 发送一些变换
+    for (int i = 0; i < 5; ++i) {
+        broadcaster.SendTransform(CreateTestTransform("world", "link"));
+    }
+    
+    // 多线程读取
+    for (int i = 0; i < num_threads; ++i) {
+        threads.emplace_back([&broadcaster, &topic_names, &counts, i]() {
+            topic_names[i] = broadcaster.GetTopicName();
+            counts[i] = broadcaster.GetPublishedCount();
+        });
+    }
+    
+    // 等待所有线程完成
+    for (auto& thread : threads) {
+        thread.join();
+    }
+    
+    // 验证所有读取的值都一致
+    for (int i = 0; i < num_threads; ++i) {
+        EXPECT_EQ(topic_names[i], "/test_topic");
+        EXPECT_EQ(counts[i], 5);
+    }
+}
+
+// ============================================================================
+// 变换内容验证测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, TransformWithTranslation)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    auto tf = CreateTestTransform("world", "robot", 1.5, 2.5, 3.5);
+    
+    EXPECT_DOUBLE_EQ(tf.transform.translation.x, 1.5);
+    EXPECT_DOUBLE_EQ(tf.transform.translation.y, 2.5);
+    EXPECT_DOUBLE_EQ(tf.transform.translation.z, 3.5);
+    
+    broadcaster.SendTransform(tf);
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 1);
+}
+
+TEST(TransformBroadcasterTest, TransformWithRotation)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    auto tf = CreateTestTransform("world", "robot");
+    
+    // 设置旋转（绕Z轴90度）
+    tf.transform.rotation.x = 0.0;
+    tf.transform.rotation.y = 0.0;
+    tf.transform.rotation.z = 0.707107;
+    tf.transform.rotation.w = 0.707107;
+    
+    EXPECT_TRUE(IsValidTransform(tf));
+    
+    broadcaster.SendTransform(tf);
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 1);
+}
+
+TEST(TransformBroadcasterTest, TransformChain)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    // 创建一个变换链: world -> map -> odom -> base_link
+    std::vector<commsgs::geometry_msgs::TransformStamped> chain;
+    chain.push_back(CreateTestTransform("world", "map", 0.0, 0.0, 0.0));
+    chain.push_back(CreateTestTransform("map", "odom", 1.0, 0.0, 0.0));
+    chain.push_back(CreateTestTransform("odom", "base_link", 2.0, 0.0, 0.0));
+    
+    broadcaster.SendTransform(chain);
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 3);
+}
+
+// ============================================================================
+// 集成测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, RealWorldScenario)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node, "/robot/tf");
+    
+    // 模拟真实场景：机器人的多个坐标系
+    std::vector<commsgs::geometry_msgs::TransformStamped> robot_frames;
+    
+    // base_link 相对于 odom
+    robot_frames.push_back(CreateTestTransform("odom", "base_link", 1.0, 0.5, 0.0));
+    
+    // laser 相对于 base_link
+    robot_frames.push_back(CreateTestTransform("base_link", "laser", 0.2, 0.0, 0.3));
+    
+    // camera 相对于 base_link
+    robot_frames.push_back(CreateTestTransform("base_link", "camera", 0.15, 0.0, 0.4));
+    
+    // 发送所有变换
+    broadcaster.SendTransform(robot_frames);
+    
+    EXPECT_EQ(broadcaster.GetPublishedCount(), 3);
+    EXPECT_EQ(broadcaster.GetTopicName(), "/robot/tf");
+}
+
+TEST(TransformBroadcasterTest, HighFrequencyPublishing)
+{
+    auto node = CreateTestNode();
+    TransformBroadcaster broadcaster(node);
+    
+    // 模拟高频发布（如10Hz）
+    const int iterations = 50;
+    for (int i = 0; i < iterations; ++i) {
+        auto tf = CreateTestTransform("world", "moving_object", 
+                                       static_cast<double>(i) * 0.1, 0.0, 0.0);
+        broadcaster.SendTransform(tf);
+    }
+    
+    EXPECT_EQ(broadcaster.GetPublishedCount(), iterations);
+}
+
+// ============================================================================
+// 生命周期测试
+// ============================================================================
+
+TEST(TransformBroadcasterTest, MultipleInstances)
+{
+    // 使用不同的node创建多个broadcaster
+    auto node1 = CreateTestNode("multi_node_1");
+    auto node2 = CreateTestNode("multi_node_2");
+    TransformBroadcaster broadcaster1(node1, "/tf1");
+    TransformBroadcaster broadcaster2(node2, "/tf2");
+    
+    auto tf = CreateTestTransform("world", "link");
+    
+    broadcaster1.SendTransform(tf);
+    broadcaster2.SendTransform(tf);
+    
+    EXPECT_EQ(broadcaster1.GetPublishedCount(), 1);
+    EXPECT_EQ(broadcaster2.GetPublishedCount(), 1);
+    EXPECT_EQ(broadcaster1.GetTopicName(), "/tf1");
+    EXPECT_EQ(broadcaster2.GetTopicName(), "/tf2");
+}
+
+TEST(TransformBroadcasterTest, ScopeLifetime)
+{
+    size_t count = 0;
+    
+    {
+        auto node = CreateTestNode();
+        TransformBroadcaster broadcaster(node);
+        broadcaster.SendTransform(CreateTestTransform("world", "link"));
+        count = broadcaster.GetPublishedCount();
+    } // broadcaster 和 node 被销毁
+    
+    EXPECT_EQ(count, 1);
+}
+
+} // namespace
+} // namespace transform
+} // namespace autonomy

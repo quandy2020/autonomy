@@ -1,0 +1,124 @@
+
+# 所有子模块合并为一个统一的 autolink 库
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("//tools:autolink.bzl", "autolink_proto", "autolink_library", "autolink_binary", "autolink_test", "autolink_tests")
+
+# ============================================================================
+# Configuration files
+# ============================================================================
+filegroup(
+    name = "autolink_conf",
+    srcs = ["conf/autolink.pb.conf"],
+    visibility = ["//visibility:public"],
+)
+
+# ============================================================================
+# Proto library definitions (needed for code generation)
+# ============================================================================
+autolink_proto(
+    proto_files = glob([
+        "proto/*.proto",
+        "commsgs/**/*.proto",
+    ]),
+    examples_proto_files = glob([
+        "examples/proto/*.proto",
+    ]),
+)
+
+# ============================================================================
+# Autolink 统一库 - 使用 autolink_library 宏创建
+# ============================================================================
+autolink_library(
+    name = "autolink",
+    srcs = glob([
+        "**/*.cpp",
+    ], exclude = [
+        "**/*_test.cpp",
+        "**/test/**",
+        "**/example/**",
+        "examples/**",
+        "io/**",  # io module uses Linux-specific epoll API
+        "python/**",  # python module requires Python development libraries
+        "tools/**",  # tools directory contains standalone executables
+    ]),
+    hdrs = glob([
+        "**/*.hpp",
+    ], exclude = [
+        "**/*_test.hpp",
+        "**/test/**",
+        "**/example/**",
+        "examples/**",
+        "io/**",  # io module uses Linux-specific epoll API
+        "python/**",  # python module requires Python development libraries
+        "tools/**",  # tools directory contains standalone executables
+    ]),
+    asms = select({
+        "@platforms//cpu:aarch64": ["croutine/detail/swap_aarch64.S"],
+        "@platforms//cpu:x86_64": ["croutine/detail/swap_x86_64.S"],
+        "//conditions:default": [],
+    }),
+)
+
+# ============================================================================
+# Autolink 共享库（动态库）
+# ============================================================================
+cc_binary(
+    name = "autolink_shared",
+    linkshared = True,
+    linkstatic = False,
+    deps = [
+        ":autolink",
+    ],
+)
+
+# ============================================================================
+# Examples binaries - 使用 autolink_binary 宏简化创建
+# ============================================================================
+autolink_binary(
+    name = "talker",
+    srcs = ["examples/talker.cpp"],
+)
+
+autolink_binary(
+    name = "listener",
+    srcs = ["examples/listener.cpp"],
+)
+
+autolink_binary(
+    name = "talker_reader",
+    srcs = ["examples/talker_reader.cpp"],
+)
+
+autolink_binary(
+    name = "service",
+    srcs = ["examples/service.cpp"],
+)
+
+# ============================================================================
+# Test targets - 使用 autolink_tests() 自动创建所有测试
+# ============================================================================
+
+# 批量创建所有测试，包括需要额外依赖的测试
+autolink_tests(
+    test_files = glob([
+        "**/*_test.cpp",
+    ], exclude = [
+        "io/**",  # io module uses Linux-specific epoll API
+        "class_loader/class_loader_test.cpp",  # requires plugin libraries and special configuration
+        "python/**",  # python module requires Python development libraries
+    ]),
+    test_deps_map = {
+        "data/data_visitor_test.cpp": ["@protobuf//:protobuf"],
+        "logger/async_logger_test.cpp": ["@glog//:glog"],
+        "logger/log_file_object_test.cpp": ["@glog//:glog"],
+        "logger/logger_test.cpp": ["@glog//:glog"],
+        "scheduler/scheduler_test.cpp": ["@protobuf//:protobuf"],
+    },
+    test_data_map = {
+        "transport/transport_shm_talker_test.cpp": [":autolink_conf"],
+        "transport/transport_shm_listener_test.cpp": [":autolink_conf"],
+        "transport/transport_test.cpp": [":autolink_conf"],
+    },
+)

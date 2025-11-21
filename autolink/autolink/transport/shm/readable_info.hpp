@@ -1,0 +1,82 @@
+/**
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+
+namespace autolink {
+namespace transport {
+
+class ReadableInfo;
+using ReadableInfoPtr = std::shared_ptr<ReadableInfo>;
+
+class ReadableInfo
+{
+public:
+    ReadableInfo();
+    ReadableInfo(uint64_t host_id, int32_t block_index, uint64_t channel_id,
+                 int32_t arena_block_index = -1);
+    virtual ~ReadableInfo();
+
+    ReadableInfo& operator=(const ReadableInfo& other);
+
+    bool DeserializeFrom(const std::string& src);
+    bool DeserializeFrom(const char* src, std::size_t len);
+    bool SerializeTo(std::string* dst) const;
+
+    uint64_t host_id() const {
+        return host_id_;
+    }
+    void set_host_id(uint64_t host_id) {
+        host_id_ = host_id;
+    }
+
+    int32_t block_index() const {
+        return block_index_;
+    }
+    void set_block_index(int32_t block_index) {
+        block_index_ = block_index;
+    }
+
+    int32_t arena_block_index() const {
+        return arena_block_index_;
+    }
+    void set_arena_block_index(int32_t arena_block_index) {
+        arena_block_index_ = arena_block_index;
+    }
+
+    uint64_t channel_id() const {
+        return channel_id_;
+    }
+    void set_channel_id(uint64_t channel_id) {
+        channel_id_ = channel_id;
+    }
+
+    static const size_t kSize;
+
+private:
+    uint64_t host_id_;
+    int32_t block_index_;
+    int32_t arena_block_index_;
+    uint64_t channel_id_;
+};
+
+}  // namespace transport
+}  // namespace autolink

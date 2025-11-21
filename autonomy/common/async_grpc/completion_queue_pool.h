@@ -25,6 +25,8 @@
 // #include "grpc++/grpc++.h"
 #include "grpcpp/grpcpp.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 class AsyncClientInterface;
@@ -79,5 +81,7 @@ class CompletionQueuePool {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // ASYNC_GRPC_COMMON_COMPLETION_QUEUE_POOL_H_

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -368,7 +368,7 @@ void RangeSensorLayer::update_cell(
   if (worldToMap(nx, ny, x, y)) {
     double dx = nx - ox, dy = ny - oy;
     double theta = atan2(dy, dx) - ot;
-    theta = common::NormalizeAngleDifference(theta);
+    theta = common::math::NormalizeAngleDifference(theta);
     double phi = sqrt(dx * dx + dy * dy);
     double sensor = 0.0;
     if (!clear) {

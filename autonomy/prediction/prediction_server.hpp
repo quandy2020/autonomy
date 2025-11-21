@@ -16,17 +16,11 @@
 
 #pragma once
 
-#include "autonomy/prediction/proto/prediction_options.pb.h"
-
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/prediction/common/prediction_interface.hpp"
 
 namespace autonomy {
 namespace prediction {
-
-proto::PredictionOptions CreatePredictionOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
     
 class PredictionServer : common::PredictionInterface
 {

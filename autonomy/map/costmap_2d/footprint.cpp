@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,11 +61,11 @@ std::pair<double, double> calculateMinAndMaxDistances(const std::vector<commsgs:
       
 commsgs::geometry_msgs::Point32 toPoint32(commsgs::geometry_msgs::Point pt)
 {
-commsgs::geometry_msgs::Point32 point32;
-point32.x = pt.x;
-point32.y = pt.y;
-point32.z = pt.z;
-return point32;
+    commsgs::geometry_msgs::Point32 point32;
+    point32.x = pt.x;
+    point32.y = pt.y;
+    point32.z = pt.z;
+    return point32;
 }
 
 commsgs::geometry_msgs::Point toPoint(commsgs::geometry_msgs::Point32 pt)

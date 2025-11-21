@@ -1,0 +1,58 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.diagnostic_msgs;
+
+import "autolink/commsgs/builtin_interfaces/builtin_interfaces.proto";
+import "autolink/commsgs/std_msgs/std_msgs.proto";
+
+message KeyValue
+{
+    // What to label this value when viewing.
+    string key = 1;
+    // A value to track over time.
+    string value = 2;
+}
+
+// This message holds the status of an individual component of the robot.
+message DiagnosticStatus
+{
+    // // Possible levels of operations.
+    // byte OK=0
+    // byte WARN=1
+    // byte ERROR=2
+    // byte STALE=3
+    // Level of operation enumerated above.
+    bytes level = 1;
+    // A description of the test/component reporting.
+    string name = 2;
+    // A description of the status.
+    string message = 3;
+    // A hardware unique string.
+    string hardware_id = 4;
+    // An array of values associated with the status.
+    repeated KeyValue values = 5;
+}
+
+// This message is used to send diagnostic information about the state of the robot.
+message DiagnosticArray
+{
+    // for timestamp
+    std_msgs.Header header = 1;
+
+    // an array of components being reported on
+    repeated DiagnosticStatus status = 2;
+}

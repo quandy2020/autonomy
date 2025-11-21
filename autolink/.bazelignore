@@ -1,0 +1,7 @@
+# Bazel 输出目录
+bazel-bin
+bazel-out
+bazel-test
+bazel-testlogs
+bazel-autolink
+

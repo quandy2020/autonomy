@@ -16,9 +16,11 @@
 
 #pragma once 
 
+#include "autonomy/prediction/proto/prediction_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
-
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
 namespace prediction {
@@ -29,6 +31,9 @@ class PredictionInterface
 public:
     virtual ~PredictionInterface();
 };
+
+proto::PredictionOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace prediction

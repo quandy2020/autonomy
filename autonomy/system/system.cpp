@@ -19,49 +19,58 @@
 namespace autonomy {
 namespace system { 
 
-
 AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
    : options_{options}
 {
-    bridge_server_ = std::make_shared<bridge::BridgeServer>(options_.bridge_options());
+    tf_buffer_ = TfBuffer::Instance();
     map_server_ = std::make_shared<map::MapServer>(options_.map_options());
     controller_server_ = std::make_shared<control::ControllerServer>(options_.controller_options());
-    planner_server_ = std::make_shared<planning::PlannerServer>(options_.planner_options());
+    planner_server_ = std::make_shared<planning::PlannerServer>(options_.planner_options(), tf_buffer_);
+    visual_server_ = std::make_shared<visualization::VisualizationServer>(options_.visualization_options());
 }
 
-proto::AutonomyOptions CreateAutonomyOptions(common::LuaParameterDictionary* const parameter_dictionary)
+void AutonomyNode::Start()
 {
-    proto::AutonomyOptions options;
-    // auto code = parameter_dictionary->GetDictionary("autonomy").get();
+    if (map_server_ != nullptr) {
+        map_server_->Start();
+    }
 
-    *options.mutable_bridge_options() = bridge::CreateBridgeOptions(
-        parameter_dictionary->GetDictionary("bridge").get());
-    *options.mutable_controller_options() = control::CreateControllerOptions(
-        parameter_dictionary->GetDictionary("control").get());
-    *options.mutable_planner_options() = planning::CreatePlannerOptions(
-        parameter_dictionary->GetDictionary("planning").get());
-    *options.mutable_localization_options() = localization::CreateLocalizationOptions(
-        parameter_dictionary->GetDictionary("localization").get());
-    *options.mutable_map_options() = map::CreateMapOptions(
-        parameter_dictionary->GetDictionary("map").get());
-    *options.mutable_prediction_options() = prediction::CreatePredictionOptions(
-        parameter_dictionary->GetDictionary("prediction").get());
-    *options.mutable_perception_options() = perception::CreatePerceptionOptions(
-        parameter_dictionary->GetDictionary("perception").get());
-    *options.mutable_task_options() = tasks::CreateTaskOptions(
-        parameter_dictionary->GetDictionary("tasks").get());
-    *options.mutable_transform_options() = transform::CreateTransformOptions(
-        parameter_dictionary->GetDictionary("transform").get());
-    // *options.mutable_task_options() = visualization::CreateVisualizationOptions(
-    //     parameter_dictionary->GetDictionary("visualization").get());
-    return options;
+    if (controller_server_ != nullptr) {
+        controller_server_->Start();
+    }
+
+    if (planner_server_ != nullptr) {
+        planner_server_->Start();
+    }
+
+    if (visual_server_ != nullptr) {
+        visual_server_->Start();
+    }
 }
 
-AutonomyNode::UniquePtr CreateAutonomyBuilder(const proto::AutonomyOptions& options)
+void AutonomyNode::WaitForShutdown()
+{
+    if (map_server_ != nullptr) {
+        map_server_->WaitForShutdown();
+    }
+
+    if (controller_server_ != nullptr) {
+        controller_server_->WaitForShutdown();
+    }
+
+    if (planner_server_ != nullptr) {
+        planner_server_->WaitForShutdown();
+    }
+
+    if (visual_server_ != nullptr) {
+        visual_server_->WaitForShutdown();
+    }
+}
+
+AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options)
 {
     return std::make_unique<AutonomyNode>(options);
 }
-
 
 }   // namespace tasks
 }   // namespace autonomy

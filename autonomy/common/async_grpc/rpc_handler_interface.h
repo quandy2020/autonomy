@@ -23,6 +23,8 @@
 #include "google/protobuf/message.h"
 #include "grpc++/grpc++.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 class Rpc;
@@ -55,5 +57,7 @@ struct RpcHandlerInfo {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_RPC_HANDLER_INTERFACE_H_

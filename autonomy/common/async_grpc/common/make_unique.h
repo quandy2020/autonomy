@@ -22,6 +22,8 @@
 #include <type_traits>
 #include <utility>
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace common {
 
@@ -58,5 +60,7 @@ typename _Unique_if<T>::_Known_bound make_unique(Args&&...) = delete;
 
 }  // namespace common
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_COMMON_MAKE_UNIQUE_H_

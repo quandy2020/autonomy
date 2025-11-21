@@ -1,4 +1,4 @@
-.. Copyright 2024 The OpenRobotic Beginner Authors
+.. Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
 
 .. Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -43,4 +43,6 @@ Contents
   01 Instructions <01_Instructions/what_openbot_ros>
   02 Installation <02_Installation/prerequisite_software_installation_guide>
   03 Running <03_Running/how_to_running_openbot_ros>
+  06 Map Engine <06_Map/map_usage_guide>
+  12 Bridge Server <12_Bridge/bridge_usage>
 

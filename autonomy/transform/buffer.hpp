@@ -20,9 +20,11 @@
 #include <string>
 #include <vector>
 
-#include "tf2/buffer_core.h"
-#include "tf2/convert.h"
+#include "autonomy/transform/tf2/buffer_core.h"
+#include "autonomy/transform/tf2/convert.h"
+#include "autonomy/transform/tf2/utils.h"
 
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/transform/buffer_interface.hpp"
 
@@ -43,104 +45,96 @@ public:
      */
     int Init();
 
-  /** \brief Get the transform between two frames by frame ID.
-   * \param target_frame The frame to which data should be transformed
-   * \param source_frame The frame where the data originated
-   * \param time The time at which the value of the transform is desired. (0
-   *will get the latest)
-   * \param timeout How long to block before failing
-   * \return The transform between the frames
-   *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
-   */
-  virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
-      const std::string& target_frame, const std::string& source_frame,
-      const commsgs::builtin_interfaces::Time& time, 
-      const float timeout_second = 0.01f) const;
+    /** \brief Get the transform between two frames by frame ID.
+     * \param target_frame The frame to which data should be transformed
+     * \param source_frame The frame where the data originated
+     * \param time The time at which the value of the transform is desired. (0
+     *will get the latest)
+    * \param timeout How long to block before failing
+    * \return The transform between the frames
+    *
+    * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
+    * tf2::ExtrapolationException, tf2::InvalidArgumentException
+    */
+    virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
+        const std::string& target_frame, const std::string& source_frame,
+        const commsgs::builtin_interfaces::Time& time, 
+        const float timeout_second = 0.01f) const;
 
-  /** 
-   * \brief Get the transform between two frames by frame ID assuming fixed
-   *frame.
-   * \param target_frame The frame to which data should be transformed
-   * \param target_time The time to which the data should be transformed. (0
-   *will get the latest)
-   * \param source_frame The frame where the data originated
-   * \param source_time The time at which the source_frame should be evaluated.
-   *(0 will get the latest)
-   * \param fixed_frame The frame in which to assume the transform is constant
-   *in time.
-   * \param timeout How long to block before failing
-   * \return The transform between the frames
-   *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
-   */
-  virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
-      const std::string& target_frame, const commsgs::builtin_interfaces::Time& target_time,
-      const std::string& source_frame, const commsgs::builtin_interfaces::Time& source_time,
-      const std::string& fixed_frame, const float timeout_second = 0.01f) const;
+    /** 
+     * \brief Get the transform between two frames by frame ID assuming fixed
+     *frame.
+    * \param target_frame The frame to which data should be transformed
+    * \param target_time The time to which the data should be transformed. (0
+    *will get the latest)
+    * \param source_frame The frame where the data originated
+    * \param source_time The time at which the source_frame should be evaluated.
+    *(0 will get the latest)
+    * \param fixed_frame The frame in which to assume the transform is constant
+    *in time.
+    * \param timeout How long to block before failing
+    * \return The transform between the frames
+    *
+    * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
+    * tf2::ExtrapolationException, tf2::InvalidArgumentException
+    */
+    virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
+        const std::string& target_frame, const commsgs::builtin_interfaces::Time& target_time,
+        const std::string& source_frame, const commsgs::builtin_interfaces::Time& source_time,
+        const std::string& fixed_frame, const float timeout_second = 0.01f) const;
 
-  /** \brief Test if a transform is possible
-   * \param target_frame The frame into which to transform
-   * \param source_frame The frame from which to transform
-   * \param target_time The time at which to transform
-   * \param timeout How long to block before failing
-   * \param errstr A pointer to a string which will be filled with why the
-   * transform failed, if not nullptr
-   * \return True if the transform is possible, false otherwise
-   */
-  virtual bool canTransform(const std::string& target_frame,
-                            const std::string& source_frame,
-                            const commsgs::builtin_interfaces::Time& target_time,
-                            const float timeout_second = 0.01f,
-                            std::string* errstr = nullptr) const;
+    /** \brief Test if a transform is possible
+     * \param target_frame The frame into which to transform
+     * \param source_frame The frame from which to transform
+     * \param time The time at which to transform
+     * \param timeout How long to block before failing
+     * \param errstr A pointer to a string which will be filled with why the
+     * transform failed, if not nullptr
+     * \return True if the transform is possible, false otherwise
+     */
+    virtual bool canTransform(const std::string& target_frame,
+                              const std::string& source_frame,
+                              const commsgs::builtin_interfaces::Time& time,
+                              const float timeout_second = 0.01f,
+                              std::string* errstr = nullptr) const;
 
-  /** \brief Test if a transform is possible
-   * \param target_frame The frame into which to transform
-   * \param target_time The time into which to transform
-   * \param source_frame The frame from which to transform
-   * \param source_time The time from which to transform
-   * \param fixed_frame The frame in which to treat the transform as constant in
-   * time
-   * \param timeout How long to block before failing
-   * \param errstr A pointer to a string which will be filled with why the
-   * transform failed, if not nullptr
-   * \return True if the transform is possible, false otherwise
-   */
-  virtual bool canTransform(const std::string& target_frame,
-                            const commsgs::builtin_interfaces::Time& target_time,
-                            const std::string& source_frame,
-                            const commsgs::builtin_interfaces::Time& source_time,
-                            const std::string& fixed_frame,
-                            const float timeout_second = 0.01f,
-                            std::string* errstr = nullptr) const;
+    /** \brief Test if a transform is possible
+     * \param target_frame The frame into which to transform
+     * \param target_time The time into which to transform
+     * \param source_frame The frame from which to transform
+     * \param source_time The time from which to transform
+     * \param fixed_frame The frame in which to treat the transform as constant in
+     * time
+     * \param timeout How long to block before failing
+     * \param errstr A pointer to a string which will be filled with why the
+     * transform failed, if not nullptr
+     * \return True if the transform is possible, false otherwise
+     */
+    virtual bool canTransform(const std::string& target_frame,
+                              const commsgs::builtin_interfaces::Time& target_time,
+                              const std::string& source_frame,
+                              const commsgs::builtin_interfaces::Time& source_time,
+                              const std::string& fixed_frame,
+                              const float timeout_second = 0.01f,
+                              std::string* errstr = nullptr) const;
 
-//   bool GetLatestStaticTF(const std::string& frame_id,
-//                          const std::string& child_frame_id,
-//                          commsgs::geometry_msgs::ransformStamped* tf);
+    bool GetLatestStaticTF(const std::string& frame_id,
+                          const std::string& child_frame_id,
+                          commsgs::geometry_msgs::TransformStamped* tf);
 
 private:
 //   void SubscriptionCallback(
-//       const std::shared_ptr<const TransformStampeds>& transform);
-//   void StaticSubscriptionCallback(
-//       const std::shared_ptr<const TransformStampeds>& transform);
-//   void SubscriptionCallbackImpl(
-//       const std::shared_ptr<const TransformStampeds>& transform,
-//       bool is_static);
+//       const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>& transform);
 
-//   void TF2MsgToCyber(const geometry_msgs::TransformStamped& tf2_trans_stamped,
-//                      TransformStamped& trans_stamped) const;  // NOLINT
 
-//   std::unique_ptr<commsgs::builtin_interfaces::Node> node_;
-//   std::shared_ptr<commsgs::builtin_interfaces::Reader<TransformStampeds>> message_subscriber_tf_;
-//   std::shared_ptr<commsgs::builtin_interfaces::Reader<TransformStampeds>>
-//       message_subscriber_tf_static_;
+    void TF2MsgToCyber(
+      const commsgs::geometry_msgs::TransformStamped& tf2_trans_stamped,
+      commsgs::geometry_msgs::TransformStamped& trans_stamped) const;  // NOLINT
 
-  commsgs::builtin_interfaces::Time last_update_;
-  std::vector<commsgs::geometry_msgs::TransformStamped> static_msgs_;
+    commsgs::builtin_interfaces::Time last_update_;
+    std::vector<commsgs::geometry_msgs::TransformStamped> static_msgs_;
 
-//   DECLARE_SINGLETON(Buffer)
+    DECLARE_SINGLETON(Buffer)
 };  // class
 
 }  // namespace transform

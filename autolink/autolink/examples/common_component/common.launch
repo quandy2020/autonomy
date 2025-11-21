@@ -1,0 +1,9 @@
+<autolink>
+    <module>
+        <name>common</name>
+        <dag_conf>/autolink/examples/common_component_example/common.dag</dag_conf>
+        <cpuprofile>/autolink/example_cpu.prof</cpuprofile>
+        <memprofile>/autolink/example_mem.prof</memprofile>
+        <process_name>common</process_name>
+    </module>
+</autolink>

@@ -72,6 +72,8 @@
     static const char* MethodName() { return methodName; }               \
   };
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 template <typename Request>
@@ -116,5 +118,7 @@ struct RpcType<Stream<Incoming>, Stream<Outgoing>>
           ::grpc::internal::RpcMethod::BIDI_STREAMING> {};
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_TYPE_TRAITS_H_

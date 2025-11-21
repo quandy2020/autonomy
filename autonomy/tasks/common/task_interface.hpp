@@ -26,8 +26,11 @@
 #include <any>
 #include <utility>
 
+#include "autonomy/tasks/proto/task_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -71,7 +74,8 @@ public:
         COMPLETED,  ///< Task finished successfully
         FAILED,     ///< Task terminated due to error
         CANCELED,   ///< Task was explicitly canceled
-        STOPPED     ///< Task was explicitly stopped
+        STOPPED,    ///< Task was explicitly stopped
+        SHUTDOWN    ///< Task has been shut down
     };
 
     /**
@@ -110,18 +114,19 @@ public:
     virtual bool Stop() = 0;
 
     /**
+     * @brief Shuts down the task
+     * 
+     * This function is responsible for performing any necessary cleanup or resource release
+     * when the task is being shut down. It is typically called when the task is being
+     * stopped or when the program is exiting.
+     */
+    virtual void Shutdown() = 0;
+
+    /**
      * @brief Gets the current state of the task
      * @return TaskState The current state of the task
      */
     virtual TaskState GetState() const = 0;
-
-    /**
-     * @brief Executes the task's callback function
-     * 
-     * This function is typically called periodically or when specific events occur
-     * to execute the main logic of the task.
-     */
-    virtual void ExecuteCallback() = 0;
 
     /**
      * @brief Gets the name of the task
@@ -132,6 +137,9 @@ public:
 protected:
     virtual bool StartImpl(std::vector<std::any>&& args) = 0;
 };
+
+proto::TaskOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace tasks

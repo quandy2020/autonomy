@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Cartographer Authors
+ * Copyright 2024 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,14 @@
 namespace autonomy {
 namespace common {
 
-constexpr char kConfigurationFilesDirectory[] = "/home/quandy/workspace/github/autonomy/install/autonomy/share/autonomy/configuration_files";
-constexpr char kSourceDirectory[] = "/home/quandy/workspace/github/autonomy/src/autonomy";
+constexpr char kConfigurationFilesDirectory[] = "/usr/local/share/autonomy/configuration_files";
+constexpr char kSourceDirectory[] = "/workspace/autonomy";
+
+// Library install dir
+constexpr char kLibraryInstallDir[] = "/usr/local";
+
+// Library build dir
+constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build";
 
 }  // namespace common
 }  // namespace autonomy

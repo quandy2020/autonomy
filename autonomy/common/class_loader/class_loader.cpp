@@ -47,9 +47,6 @@ bool ClassLoader::hasUnmanagedInstanceBeenCreated()
 
 std::string systemLibraryPrefix()
 {
-#ifndef _WIN32
-  return "lib";
-#endif
   return "";
 }
 
@@ -135,5 +132,5 @@ int ClassLoader::unloadLibraryInternal(bool lock_plugin_ref_count)
 }
 
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace commo
 }  // namespace autonomy

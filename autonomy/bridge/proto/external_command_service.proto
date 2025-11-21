@@ -1,0 +1,100 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.bridge.proto;
+
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/commsgs/proto/vehicle_msgs.proto";
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "google/protobuf/empty.proto";
+
+// 导航指令枚举
+enum NavigationCommand {
+  NAV_CMD_UNSPECIFIED = 0;
+  NAV_CMD_START = 1;    // 开始导航
+  NAV_CMD_STOP = 2;     // 停止导航
+  NAV_CMD_CANCEL = 3;   // 取消导航
+  NAV_CMD_RESUME = 4;   // 恢复导航
+  NAV_CMD_PAUSE = 5;    // 暂停导航
+}
+
+// 探索指令枚举
+enum ExplorationCommand {
+  EXPLORATION_CMD_UNSPECIFIED = 0;
+  EXPLORATION_CMD_START = 1;      // 开始探索
+  EXPLORATION_CMD_STOP = 2;       // 停止探索
+  EXPLORATION_CMD_PAUSE = 3;      // 暂停探索
+  EXPLORATION_CMD_RESUME = 4;     // 恢复探索
+  EXPLORATION_CMD_CANCEL = 5;     // 取消探索
+  EXPLORATION_CMD_SAVE_MAP = 6;   // 保存地图（探索相关操作）
+  EXPLORATION_CMD_SET_AREA = 7;   // 设置探索区域
+}
+
+// 探索状态枚举
+enum ExplorationStatus {
+  EXPLORATION_STATUS_UNKNOWN = 0;
+  EXPLORATION_STATUS_IDLE = 1;
+  EXPLORATION_STATUS_EXPLORING = 2;
+  EXPLORATION_STATUS_PAUSED = 3;
+  EXPLORATION_STATUS_COMPLETED = 4;
+}
+
+// 导航指令请求
+message NavigationCommandRequest {
+  commsgs.proto.builtin_interfaces.Time timestamp = 1;
+  NavigationCommand command = 2;  // 指令类型
+  commsgs.proto.geometry_msgs.PoseArray poses = 3;  // 目标点ID (开始导航时使用)
+}
+
+// 导航指令响应
+message NavigationCommandResponse {
+  bool success = 1;               // 指令是否成功接收
+  string message = 2;             // 可选：响应消息
+}
+
+// 探索指令请求
+message ExplorationCommandRequest {
+  commsgs.proto.builtin_interfaces.Time timestamp = 1;
+  ExplorationCommand command = 2;  // 指令类型
+  
+  // 可选参数，根据不同的指令类型使用
+  oneof params {
+    commsgs.proto.geometry_msgs.Polygon area = 3;  // 用于 SET_AREA 指令
+    string map_name = 4;                           // 用于 SAVE_MAP 指令
+  }
+}
+
+// 探索指令响应
+message ExplorationCommandResponse {
+  bool success = 1;               // 指令是否成功执行
+  string message = 2;             // 响应消息或错误信息
+  ExplorationStatus status = 3;   // 当前探索状态
+}
+
+service AutonomyService 
+{
+  // 获取机器人状态信息
+  rpc ReceiveBotStates(google.protobuf.Empty) returns (stream commsgs.proto.vehicle_msgs.RobotState);
+
+  // 获取机器人事件信息
+  rpc ReceiveBotEvents(google.protobuf.Empty) returns (stream commsgs.proto.vehicle_msgs.RobotEvent);
+
+  // 发送导航指令
+  rpc SendNavigationCommand (NavigationCommandRequest) returns (stream NavigationCommandResponse);
+
+  // 发送探索指令
+  rpc SendExplorationCommand (ExplorationCommandRequest) returns (stream ExplorationCommandResponse);
+}

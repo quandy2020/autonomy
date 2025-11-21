@@ -30,11 +30,23 @@ macro(_common_compile_stuff)
 
   target_include_directories(${NAME} PUBLIC ${PROJECT_NAME})
   target_link_libraries(${NAME} PUBLIC ${PROJECT_NAME})
+  
+  # Link FastDDS explicitly for autolink dependency
+  target_link_libraries(${NAME} PRIVATE fastdds fastcdr)
 endmacro(_common_compile_stuff)
 
 function(google_test NAME ARG_SRC)
   add_executable(${NAME} ${ARG_SRC})
   _common_compile_stuff()
+
+  # Set RPATH properties to avoid warnings - use $ORIGIN for relative paths
+  set_target_properties(${NAME} PROPERTIES
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH_USE_LINK_PATH FALSE
+    INSTALL_RPATH "\$ORIGIN/../lib:${CMAKE_INSTALL_PREFIX}/lib"
+    BUILD_RPATH "\$ORIGIN:\$ORIGIN/../lib:${CMAKE_BINARY_DIR}/lib"
+    SKIP_BUILD_RPATH FALSE
+  )
 
   # Make sure that gmock always includes the correct gtest/gtest.h.
   target_include_directories("${NAME}" SYSTEM PRIVATE
@@ -48,6 +60,15 @@ function(google_binary NAME)
   _parse_arguments("${ARGN}")
 
   add_executable(${NAME} ${ARG_SRCS})
+
+  # Set RPATH properties to avoid warnings - use $ORIGIN for relative paths
+  set_target_properties(${NAME} PROPERTIES
+    BUILD_RPATH_USE_ORIGIN TRUE
+    INSTALL_RPATH_USE_LINK_PATH FALSE
+    INSTALL_RPATH "\$ORIGIN/../lib:${CMAKE_INSTALL_PREFIX}/lib"
+    BUILD_RPATH "\$ORIGIN:\$ORIGIN/../lib:${CMAKE_BINARY_DIR}/lib"
+    SKIP_BUILD_RPATH FALSE
+  )
 
   _common_compile_stuff()
 
@@ -65,9 +86,9 @@ function(google_add_flag VAR_NAME FLAG)
 endfunction()
 
 macro(google_initialize_autonomy_project)
-  if(CARTOGRAPHER_CMAKE_DIR)
+  if(AUTONOMY_CMAKE_DIR)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
-        ${CARTOGRAPHER_CMAKE_DIR}/modules)
+        ${AUTONOMY_CMAKE_DIR}/modules)
   else()
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
         ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)

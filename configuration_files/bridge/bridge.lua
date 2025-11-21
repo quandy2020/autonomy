@@ -16,8 +16,8 @@ AUTONOMY_BRIDGE = {
     grpc = {
         host = "127.0.0.1",
         port = 5005,
-        thread_num = 5,
-        event_num = 5,
+        num_grpc_threads = 5,
+        num_event_threads = 5,
     },
 
     mqtt = {
@@ -28,3 +28,5 @@ AUTONOMY_BRIDGE = {
     use_grpc = true,
     use_mqtt = false
 }
+
+

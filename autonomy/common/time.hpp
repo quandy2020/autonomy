@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,6 @@
 #include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 namespace autonomy {
-
-using Time = ::autonomy::commsgs::builtin_interfaces::Time;
 namespace common {
 
 constexpr int64 kUtsEpochOffsetFromUnixEpochInSeconds =

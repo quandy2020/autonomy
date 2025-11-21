@@ -16,9 +16,16 @@
 
 #pragma once 
 
+#include "autonomy/planning/proto/planning_options.pb.h"
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/transform/buffer.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+
 namespace autonomy {
 namespace planning {
 namespace common {
@@ -26,6 +33,12 @@ namespace common {
 class PlannerInterface
 {
 public:
+
+    /**
+     * @details The transform buffer is used to transform poses between frames.
+     */
+    using TfBuffer = autonomy::transform::Buffer;
+
     /**
      * Define PlannerInterface::SharedPtr type
      */
@@ -72,7 +85,7 @@ public:
     virtual uint32 MakePlan(
         const commsgs::geometry_msgs::PoseStamped& start,
         const commsgs::geometry_msgs::PoseStamped& goal, double tolerance,
-        std::vector<commsgs::geometry_msgs::PoseStamped>& plan, double& cost,
+        commsgs::planning_msgs::Path& plan, double& cost,
         std::string& message) = 0;
 
     /**
@@ -81,7 +94,42 @@ public:
      */
     virtual bool Cancel() = 0;
 
+    /**
+     * @brief Configures the planner with the given options
+     * @param options The options to configure the planner with
+     * @return True if the planner was successfully configured, false otherwise
+     */
+    virtual bool Configure(const proto::PlannerOptions& options, const std::string& name, 
+        TfBuffer* tf_buffer, map::costmap_2d::Costmap2DWrapper* costmap_wrapper) = 0;
+
+    /**
+     * @brief Activates the planner
+     * @return True if the planner was successfully activated, false otherwise
+     */
+    virtual bool Activate() = 0;
+
+    /**
+     * @brief Deactivates the planner
+     * @return True if the planner was successfully deactivated, false otherwise
+     */
+    virtual bool Deactivate() = 0;
+
+    /**
+     * @brief Cleans up the planner
+     * @return True if the planner was successfully cleaned up, false otherwise
+     */
+    virtual bool Cleanup() = 0;
+
+    /**
+     * @brief Shutdown the planner
+     * @return True if the planner was successfully shut down, false otherwise
+     */
+    virtual bool Shutdown() = 0;
+
 };
+
+proto::PlannerOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace planning

@@ -17,11 +17,11 @@
 #ifndef CPP_GRPC_RPC_HANDLER_H
 #define CPP_GRPC_RPC_HANDLER_H
 
-#include "async_grpc/execution_context.h"
-#include "async_grpc/rpc.h"
-#include "async_grpc/rpc_handler_interface.h"
-#include "async_grpc/rpc_service_method_traits.h"
-#include "async_grpc/span.h"
+#include "autonomy/common/async_grpc/execution_context.h"
+#include "autonomy/common/async_grpc/rpc.h"
+#include "autonomy/common/async_grpc/rpc_handler_interface.h"
+#include "autonomy/common/async_grpc/rpc_service_method_traits.h"
+#include "autonomy/common/async_grpc/span.h"
 #include "glog/logging.h"
 #include "google/protobuf/message.h"
 #include "grpc++/grpc++.h"
@@ -29,6 +29,8 @@
 #include "async_grpc/opencensus_span.h"
 #endif
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 template <typename RpcServiceMethodConcept>
@@ -114,5 +116,7 @@ class RpcHandler : public RpcHandlerInterface {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_RPC_HANDLER_H

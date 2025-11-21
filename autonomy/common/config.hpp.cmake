@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Cartographer Authors
+ * Copyright 2024 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,12 @@ namespace common {
 
 constexpr char kConfigurationFilesDirectory[] = "@AUTONOMY_CONFIGURATION_FILES_DIRECTORY@";
 constexpr char kSourceDirectory[] = "@PROJECT_SOURCE_DIR@";
+
+// Library install dir
+constexpr char kLibraryInstallDir[] = "@CMAKE_INSTALL_PREFIX@";
+
+// Library build dir
+constexpr char kLibraryBuildDir[] = "@CMAKE_CURRENT_BINARY_DIR@";
 
 }  // namespace common
 }  // namespace autonomy

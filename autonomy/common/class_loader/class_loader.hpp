@@ -29,10 +29,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CLASS_LOADER__CLASS_LOADER_HPP_
-#define CLASS_LOADER__CLASS_LOADER_HPP_
+#pragma once
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <cstddef>
@@ -47,6 +46,7 @@
 #include "autonomy/common/class_loader/register_macro.hpp"
 #include "autonomy/common/class_loader/visibility_control.hpp"
 
+using namespace boost::placeholders;
 namespace autonomy {
 namespace common { 
 namespace class_loader {
@@ -337,8 +337,6 @@ private:
 };
 
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace common
 }  // namespace autonomy
 
-
-#endif  // CLASS_LOADER__CLASS_LOADER_HPP_

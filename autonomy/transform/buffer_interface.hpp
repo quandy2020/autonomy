@@ -39,7 +39,7 @@ class BufferInterface {
    * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
    * tf2::ExtrapolationException, tf2::InvalidArgumentException
    */
-  virtual commsgs::geometry_msgs::TransformStamped LookupTransform(
+  virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
       const std::string& target_frame, 
       const std::string& source_frame,
       const commsgs::builtin_interfaces::Time& time, 
@@ -61,7 +61,7 @@ class BufferInterface {
    * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
    * tf2::ExtrapolationException, tf2::InvalidArgumentException
    */
-  virtual commsgs::geometry_msgs::TransformStamped LookupTransform(
+  virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
       const std::string& target_frame, const commsgs::builtin_interfaces::Time& target_time,
       const std::string& source_frame, const commsgs::builtin_interfaces::Time& source_time,
       const std::string& fixed_frame,
@@ -76,7 +76,7 @@ class BufferInterface {
    * transform failed, if not nullptr
    * \return True if the transform is possible, false otherwise
    */
-  virtual bool CanTransform(const std::string& target_frame,
+  virtual bool canTransform(const std::string& target_frame,
                             const std::string& source_frame,
                             const commsgs::builtin_interfaces::Time& time,
                             const float timeout_second = 0.01f,
@@ -94,7 +94,7 @@ class BufferInterface {
    * transform failed, if not nullptr
    * \return True if the transform is possible, false otherwise
    */
-  virtual bool CanTransform(const std::string& target_frame,
+  virtual bool canTransform(const std::string& target_frame,
                             const commsgs::builtin_interfaces::Time& target_time,
                             const std::string& source_frame,
                             const commsgs::builtin_interfaces::Time& source_time,
@@ -104,64 +104,64 @@ class BufferInterface {
 
   // Transform, simple api, with pre-allocation
   template <typename T>
-  T& Transform(const T& in, T& out, const std::string& target_frame,  // NOLINT
+  T& transform(const T& in, T& out, const std::string& target_frame,  // NOLINT
                float timeout = 0.0f) const {
     // do the transform
-    tf2::doTransform(in, out, LookupTransform(target_frame, tf2::getFrameId(in), 
+    tf2::doTransform(in, out, lookupTransform(target_frame, tf2::getFrameId(in), 
         tf2::getTimestamp(in), timeout));
     return out;
   }
 
   // transform, simple api, no pre-allocation
   template <typename T>
-  T Transform(const T& in, const std::string& target_frame,
+  T transform(const T& in, const std::string& target_frame,
               float timeout = 0.0f) const {
     T out;
-    return Transform(in, out, target_frame, timeout);
+    return transform(in, out, target_frame, timeout);
   }
 
   // transform, simple api, different types, pre-allocation
   template <typename A, typename B>
-  B& Transform(const A& in, B& out, const std::string& target_frame,  // NOLINT
+  B& transform(const A& in, B& out, const std::string& target_frame,  // NOLINT
                float timeout = 0.0f) const {
-    A copy = Transform(in, target_frame, timeout);
+    A copy = transform(in, target_frame, timeout);
     tf2::convert(copy, out);
     return out;
   }
 
   // Transform, advanced api, with pre-allocation
   template <typename T>
-  T& Transform(const T& in, T& out, const std::string& target_frame,  // NOLINT
+  T& transform(const T& in, T& out, const std::string& target_frame,  // NOLINT
                const commsgs::builtin_interfaces::Time& target_time, const std::string& fixed_frame,
                float timeout = 0.0f) const {
     // do the transform
     tf2::doTransform(
         in, out,
-        LookupTransform(target_frame, target_time, tf2::getFrameId(in),
+        lookupTransform(target_frame, target_time, tf2::getFrameId(in),
                         tf2::getTimestamp(in), fixed_frame, timeout));
     return out;
   }
 
   // transform, advanced api, no pre-allocation
   template <typename T>
-  T Transform(const T& in, const std::string& target_frame,
+  T transform(const T& in, const std::string& target_frame,
               const commsgs::builtin_interfaces::Time& target_time, 
               const std::string& fixed_frame,
               float timeout = 0.0f) const 
   {
     T out;
-    return Transform(in, out, target_frame, target_time, fixed_frame, timeout);
+    return transform(in, out, target_frame, target_time, fixed_frame, timeout);
   }
 
   // Transform, advanced api, different types, with pre-allocation
   template <typename A, typename B>
-  B& Transform(const A& in, B& out, const std::string& target_frame,  // NOLINT
+  B& transform(const A& in, B& out, const std::string& target_frame,  // NOLINT
                const commsgs::builtin_interfaces::Time& target_time, 
                const std::string& fixed_frame,
                float timeout = 0.0f) const 
   {
     // do the transform
-    A copy = Transform(in, target_frame, target_time, fixed_frame, timeout);
+    A copy = transform(in, target_frame, target_time, fixed_frame, timeout);
     tf2::convert(copy, out);
     return out;
   }

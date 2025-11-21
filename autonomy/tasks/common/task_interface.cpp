@@ -18,9 +18,15 @@
 
 namespace autonomy {
 namespace tasks {
-namespace common { 
+namespace common {
 
-    
-}   // namespace common 
-}   // namespace tasks
-}   // namespace autonomy
+proto::TaskOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::TaskOptions options;
+    return options;
+}
+
+}  // namespace common
+}  // namespace tasks
+}  // namespace autonomy

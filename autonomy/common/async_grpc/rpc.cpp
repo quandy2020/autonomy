@@ -20,6 +20,8 @@
 #include "autonomy/common/async_grpc/common/make_unique.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace {
 
@@ -386,3 +388,5 @@ std::weak_ptr<Rpc> ActiveRpcs::GetWeakPtr(Rpc* rpc) {
 }
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 

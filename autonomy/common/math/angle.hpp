@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_MATH_MATH_HPP_
-#define AUTONOMY_COMMON_MATH_MATH_HPP_
+#pragma once
 
 #include <cmath>
 #include <vector>
 
 #include "Eigen/Core"
 #include "autonomy/common/port.hpp"
-// #include "ceres/ceres.h"
+#include "ceres/ceres.h"
 
 namespace autonomy {
 namespace common {
+namespace math {
 
 // Clamps 'value' to be in the range ['min', 'max'].
 template <typename T>
@@ -66,10 +66,10 @@ T NormalizeAngleDifference(T difference) {
   return difference;
 }
 
-// template <typename T>
-// T atan2(const Eigen::Matrix<T, 2, 1>& vector) {
-//   return ceres::atan2(vector.y(), vector.x());
-// }
+template <typename T>
+T atan2(const Eigen::Matrix<T, 2, 1>& vector) {
+  return ceres::atan2(vector.y(), vector.x());
+}
 
 template <typename T>
 inline void QuaternionProduct(const double* const z, const T* const w,
@@ -80,7 +80,6 @@ inline void QuaternionProduct(const double* const z, const T* const w,
   zw[3] = z[0] * w[3] + z[1] * w[2] - z[2] * w[1] + z[3] * w[0];
 }
 
+} // namespace math 
 }  // namespace common
 }  // namespace autonomy
-
-#endif  // AUTONOMY_COMMON_MATH_MATH_HPP_

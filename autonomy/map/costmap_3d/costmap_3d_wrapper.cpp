@@ -40,6 +40,25 @@ proto::Costmap3DOptions CreateCostmap3DOptions(
     return options;
 }
 
+void Costmap3DWrapper::Start()
+{
+
+}
+
+void Costmap3DWrapper::Stop()
+{
+
+}
+
+void Costmap3DWrapper::Pause()
+{
+
+}
+
+void Costmap3DWrapper::Resume()
+{
+
+}
 }  // namespace costmap_3d
 }  // namespace map
 }  // namespace autonomy

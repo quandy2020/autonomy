@@ -1,0 +1,289 @@
+/*
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "autonomy/map/costmap_2d/costmap_filters/keepout_filter.hpp"
+
+#include "autonomy/transform/tf2/convert.h"
+#include "autonomy/transform/tf2/LinearMath/Transform.h"
+
+#include "autonomy/common/logging.hpp"
+#include "autonomy/map/costmap_2d/costmap_filters/keepout_filter.hpp"
+#include "autonomy/map/costmap_2d/costmap_filters/filter_values.hpp"
+
+namespace autonomy {
+namespace map {
+namespace costmap_2d {
+
+// KeepoutFilter::KeepoutFilter()
+// : filter_info_sub_(nullptr), mask_sub_(nullptr), filter_mask_(nullptr),
+//   global_frame_("")
+// {
+// }
+
+void KeepoutFilter::initializeFilter(const std::string& filter_info_topic)
+{
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    // rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
+    // if (!node) {
+    //     throw std::runtime_error{"Failed to lock node"};
+    // }
+
+    // filter_info_topic_ = filter_info_topic;
+    // // Setting new costmap filter info subscriber
+    // RCLCPP_INFO(
+    //     logger_,
+    //     "KeepoutFilter: Subscribing to \"%s\" topic for filter info...",
+    //     filter_info_topic_.c_str());
+    // filter_info_sub_ = node->create_subscription<nav2_msgs::msg::CostmapFilterInfo>(
+    //     filter_info_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
+    //     std::bind(&KeepoutFilter::filterInfoCallback, this, std::placeholders::_1));
+
+    global_frame_ = layered_costmap_->getGlobalFrameID();
+}
+
+void KeepoutFilter::filterInfoCallback(const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg)
+{
+    // std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    // rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
+    // if (!node) {
+    //     throw std::runtime_error{"Failed to lock node"};
+    // }
+
+    // if (!mask_sub_) {
+    //     RCLCPP_INFO(
+    //     logger_,
+    //     "KeepoutFilter: Received filter info from %s topic.", filter_info_topic_.c_str());
+    // } else {
+    //     RCLCPP_WARN(
+    //     logger_,
+    //     "KeepoutFilter: New costmap filter info arrived from %s topic. Updating old filter info.",
+    //     filter_info_topic_.c_str());
+    //     // Resetting previous subscriber each time when new costmap filter information arrives
+    //     mask_sub_.reset();
+    // }
+
+    // // Checking that base and multiplier are set to their default values
+    // if (msg->base != BASE_DEFAULT || msg->multiplier != MULTIPLIER_DEFAULT) {
+    //     RCLCPP_ERROR(
+    //     logger_,
+    //     "KeepoutFilter: For proper use of keepout filter base and multiplier"
+    //     " in CostmapFilterInfo message should be set to their default values (%f and %f)",
+    //     BASE_DEFAULT, MULTIPLIER_DEFAULT);
+    // }
+
+    // mask_topic_ = msg->filter_mask_topic;
+
+    // // Setting new filter mask subscriber
+    // RCLCPP_INFO(
+    //     logger_,
+    //     "KeepoutFilter: Subscribing to \"%s\" topic for filter mask...",
+    //     mask_topic_.c_str());
+    // mask_sub_ = node->create_subscription<nav_msgs::msg::OccupancyGrid>(
+    //     mask_topic_, rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
+    //     std::bind(&KeepoutFilter::maskCallback, this, std::placeholders::_1));
+}
+
+void KeepoutFilter::maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg)
+{
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    // rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
+    // if (!node) {
+    //     throw std::runtime_error{"Failed to lock node"};
+    // }
+
+    // if (!filter_mask_) {
+    //     RCLCPP_INFO(
+    //         logger_,
+    //         "KeepoutFilter: Received filter mask from %s topic.", mask_topic_.c_str());
+    // } else {
+    //     RCLCPP_WARN(
+    //         logger_,
+    //         "KeepoutFilter: New filter mask arrived from %s topic. Updating old filter mask.",
+    //     mask_topic_.c_str());
+    //     filter_mask_.reset();
+    // }
+
+    // Store filter_mask_
+    filter_mask_ = msg;
+}
+
+void KeepoutFilter::process(Costmap2D & master_grid,
+  int min_i, int min_j, int max_i, int max_j,
+  const commsgs::geometry_msgs::Pose2D & /*pose*/)
+{
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    if (!filter_mask_) {
+        // Show warning message every 2 seconds to not litter an output
+        LOG(WARNING) << "KeepoutFilter: Filter mask was not received";
+        return;
+    }
+
+    transform::tf2::Transform tf2_transform;
+    tf2_transform.setIdentity();  // initialize by identical transform
+    int mg_min_x, mg_min_y;  // masger_grid indexes of bottom-left window corner
+    int mg_max_x, mg_max_y;  // masger_grid indexes of top-right window corner
+
+    const std::string mask_frame = filter_mask_->header.frame_id;
+
+    if (mask_frame != global_frame_) {
+        // Filter mask and current layer are in different frames:
+        // prepare frame transformation if mask_frame != global_frame_
+        commsgs::geometry_msgs::TransformStamped transform;
+        // try {
+        // transform = tf_->lookupTransform(
+        //     mask_frame, global_frame_, transform::tf2::TimePointZero,
+        //     transform_tolerance_);
+        // } catch (tf2::TransformException & ex) {
+        //     // RCLCPP_ERROR(
+        //     //     logger_,
+        //     //     "KeepoutFilter: Failed to get costmap frame (%s) "
+        //     //     "transformation to mask frame (%s) with error: %s",
+        //     //     global_frame_.c_str(), mask_frame.c_str(), ex.what());
+        //     return;
+        // }
+        // transform::tf2::fromMsg(transform.transform, tf2_transform);
+
+        mg_min_x = min_i;
+        mg_min_y = min_j;
+        mg_max_x = max_i;
+        mg_max_y = max_j;
+    } else {
+        // Filter mask and current layer are in the same frame:
+        // apply the following optimization - iterate only in overlapped
+        // (min_i, min_j)..(max_i, max_j) & filter_mask_ area.
+        //
+        //           filter_mask_
+        //       *----------------------------*
+        //       |                            |
+        //       |                            |
+        //       |      (2)                   |
+        // *-----+-------*                    |
+        // |     |///////|<- overlapped area  |
+        // |     |///////|   to iterate in    |
+        // |     *-------+--------------------*
+        // |    (1)      |
+        // |             |
+        // *-------------*
+        //  master_grid (min_i, min_j)..(max_i, max_j) window
+        //
+        // ToDo: after costmap rotation will be added, this should be re-worked.
+
+        double wx, wy;  // world coordinates
+
+        // Calculating bounds corresponding to bottom-left overlapping (1) corner
+        // filter_mask_ -> master_grid indexes conversion
+        const double half_cell_size = 0.5 * filter_mask_->info.resolution;
+        wx = filter_mask_->info.origin.position.x + half_cell_size;
+        wy = filter_mask_->info.origin.position.y + half_cell_size;
+        master_grid.worldToMapNoBounds(wx, wy, mg_min_x, mg_min_y);
+        // Calculation of (1) corner bounds
+        if (mg_min_x >= max_i || mg_min_y >= max_j) {
+            // There is no overlapping. Do nothing.
+            return;
+        }
+        mg_min_x = std::max(min_i, mg_min_x);
+        mg_min_y = std::max(min_j, mg_min_y);
+
+        // Calculating bounds corresponding to top-right window (2) corner
+        // filter_mask_ -> master_grid intexes conversion
+        wx = filter_mask_->info.origin.position.x +
+        filter_mask_->info.width * filter_mask_->info.resolution + half_cell_size;
+        wy = filter_mask_->info.origin.position.y +
+        filter_mask_->info.height * filter_mask_->info.resolution + half_cell_size;
+        master_grid.worldToMapNoBounds(wx, wy, mg_max_x, mg_max_y);
+        // Calculation of (2) corner bounds
+        if (mg_max_x <= min_i || mg_max_y <= min_j) {
+            // There is no overlapping. Do nothing.
+            return;
+        }
+        mg_max_x = std::min(max_i, mg_max_x);
+        mg_max_y = std::min(max_j, mg_max_y);
+    }
+
+    // unsigned<-signed conversions.
+    unsigned const int mg_min_x_u = static_cast<unsigned int>(mg_min_x);
+    unsigned const int mg_min_y_u = static_cast<unsigned int>(mg_min_y);
+    unsigned const int mg_max_x_u = static_cast<unsigned int>(mg_max_x);
+    unsigned const int mg_max_y_u = static_cast<unsigned int>(mg_max_y);
+
+    unsigned int i, j;  // master_grid iterators
+    unsigned int index;  // corresponding index of master_grid
+    double gl_wx, gl_wy;  // world coordinates in a global_frame_
+    double msk_wx, msk_wy;  // world coordinates in a mask_frame
+    unsigned int mx, my;  // filter_mask_ coordinates
+    unsigned char data, old_data;  // master_grid element data
+
+    // Main master_grid updating loop
+    // Iterate in costmap window by master_grid indexes
+    unsigned char * master_array = master_grid.getCharMap();
+    for (i = mg_min_x_u; i < mg_max_x_u; i++) {
+        for (j = mg_min_y_u; j < mg_max_y_u; j++) {
+            index = master_grid.getIndex(i, j);
+            old_data = master_array[index];
+            // Calculating corresponding to (i, j) point at filter_mask_:
+            // Get world coordinates in global_frame_
+            master_grid.mapToWorld(i, j, gl_wx, gl_wy);
+            if (mask_frame != global_frame_) {
+                // Transform (i, j) point from global_frame_ to mask_frame
+                transform::tf2::Vector3 point(gl_wx, gl_wy, 0);
+                point = tf2_transform * point;
+                msk_wx = point.x();
+                msk_wy = point.y();
+            } else {
+                // In this case master_grid and filter-mask are in the same frame
+                msk_wx = gl_wx;
+                msk_wy = gl_wy;
+            }
+            // Get mask coordinates corresponding to (i, j) point at filter_mask_
+            if (worldToMask(filter_mask_, msk_wx, msk_wy, mx, my)) {
+                data = getMaskCost(filter_mask_, mx, my);
+                // Update if mask_ data is valid and greater than existing master_grid's one
+                if (data == NO_INFORMATION) {
+                    continue;
+                }
+                if (data > old_data || old_data == NO_INFORMATION) {
+                    master_array[index] = data;
+                }
+            }
+        }
+    }
+}
+
+void KeepoutFilter::resetFilter()
+{
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    // filter_info_sub_.reset();
+    // mask_sub_.reset();
+}
+
+bool KeepoutFilter::isActive()
+{
+    std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
+
+    if (filter_mask_) {
+        return true;
+    }
+    return false;
+}
+
+}  // namespace costmap_2d
+}  // namespace map
+}  // namespace autonomy

@@ -23,6 +23,8 @@
 
 #include "autonomy/common/async_grpc/common/port.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace common {
 
@@ -61,5 +63,7 @@ std::ostream& operator<<(std::ostream& os, Time time);
 
 }  // namespace common
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_COMMON_TIME_H_

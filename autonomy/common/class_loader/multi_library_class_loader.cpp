@@ -113,5 +113,5 @@ int MultiLibraryClassLoader::unloadLibrary(const std::string & library_path)
 }
 
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace common
 }  // namespace autonomy

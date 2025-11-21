@@ -1,6 +1,9 @@
 .vscode
 *.DS_Store
-.joycode
+.gitee
+*.__pycache__
+*.pyc
+*.logs
 
 # https://github.com/github/gitignore/blob/main/ROS.gitignore
 devel/

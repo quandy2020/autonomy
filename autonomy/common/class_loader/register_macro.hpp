@@ -32,11 +32,12 @@
 
 #include <string>
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/class_loader/class_loader_core.hpp"
 
 #define CLASS_LOADER_REGISTER_CLASS_INTERNAL_WITH_MESSAGE(Derived, Base, UniqueID, Message) \
-  namespace \
-  { \
+namespace \
+{ \
   struct ProxyExec ## UniqueID \
   { \
     typedef  Derived _derived; \
@@ -44,10 +45,13 @@
     ProxyExec ## UniqueID() \
     { \
       if (!std::string(Message).empty()) { \
+          LOG(INFO) << Message; \
+      } \
+      ::autonomy::common::class_loader::impl::registerPlugin<_derived, _base>(#Derived, #Base); \
     } \
   }; \
   static ProxyExec ## UniqueID g_register_plugin_ ## UniqueID; \
-  }  // namespace
+}  // namespace
 
 #define CLASS_LOADER_REGISTER_CLASS_INTERNAL_HOP1_WITH_MESSAGE(Derived, Base, UniqueID, Message) \
   CLASS_LOADER_REGISTER_CLASS_INTERNAL_WITH_MESSAGE(Derived, Base, UniqueID, Message)

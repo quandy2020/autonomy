@@ -1,0 +1,69 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include "autonomy/simulation/proto/simulation_option.pb.h"
+
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/logging.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/simulation/constants.hpp"
+
+namespace autonomy {
+namespace simulation {
+
+class Simulator
+{
+public:
+    /**
+     * @brief Define Simulator::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(Simulator)
+
+    /**
+     * @brief Constructor
+     */
+    Simulator(const proto::SimulationOption& option);
+
+    /**
+     * @brief Destructor
+     */
+    ~Simulator();
+
+    /**
+     * @brief Start simulator
+     * 
+     * @return true 
+     * @return false 
+     */
+    bool Start();
+
+    /**
+     * @brief Shutdown simulator
+     */
+    void Shutdown();
+
+private:
+    // options
+    proto::SimulationOption options_;
+};
+
+proto::SimulationOption LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+
+} // namespace simulation
+} // namespace autonomy

@@ -1,0 +1,13 @@
+dependency_include_dirs=@DEPENCENCY_INCLUDE_DIRS@
+dependency_lib_dirs=@DEPENCENCY_LIB_DIRS@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+
+Name: @PROJECT_NAME@
+Description: generic autolink library
+Version: @PROJECT_VERSION@
+Requires:
+Libs: -L${libdir} -L${dependency_lib_dirs} -l@PROJECT_NAME@ -l@DEPENCENCY_LIBS@
+Cflags: -I${includedir} -I${dependency_include_dirs}

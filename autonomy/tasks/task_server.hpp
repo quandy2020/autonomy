@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
  *
@@ -17,18 +16,45 @@
 
 #pragma once
 
- 
-#include "autonomy/tasks/proto/task_options.pb.h"
-
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/tasks/task_bridge.hpp"
 
 namespace autonomy {
 namespace tasks { 
 
+class TaskServer
+{
+public:
+    /**
+     * Define TaskServer::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(TaskServer)
 
-proto::TaskOptions CreateTaskOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+    /**
+     * @brief A constructor for TaskServer
+     */
+    explicit TaskServer();
+
+    /**
+     * @brief A Destructor for TaskServer
+     */
+    ~TaskServer() = default;
+
+    /**
+     * @brief Starts autonomy tasks
+     */
+    void Start();
+
+    /**
+     * @brief Shutdown autonomy
+     */
+    void Shutdown();
+
+private:
+    /// @brief  bridge all tasks
+    TaskBridge::SharedPtr task_bridge_{nullptr};
+};
+
 
 }   // namespace tasks
 }   // namespace autonomy

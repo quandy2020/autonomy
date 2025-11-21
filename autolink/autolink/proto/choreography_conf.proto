@@ -1,0 +1,39 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.proto;
+
+message ChoreographyTask 
+{
+    string name = 1;
+    int32 processor = 2;
+    uint32 prio = 3;    // [default = 1];
+}
+
+message ChoreographyConf 
+{
+    uint32 choreography_processor_num = 1;
+    string choreography_affinity = 2;
+    string choreography_processor_policy = 3;
+    int32 choreography_processor_prio = 4;
+    string choreography_cpuset = 5;
+    uint32 pool_processor_num = 6;
+    string pool_affinity = 7;
+    string pool_processor_policy = 8;
+    int32 pool_processor_prio = 9;
+    string pool_cpuset = 10;
+    repeated ChoreographyTask tasks = 11;
+}

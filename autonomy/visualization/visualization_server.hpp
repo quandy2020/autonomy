@@ -18,16 +18,16 @@
 
 #include <unordered_map>
 
-
-#include "autonomy/visualization/proto/visualization_options.pb.h"
-
 #include "autonomy/common/macros.hpp"
+#include "autonomy/visualization/proto/visualization_options.pb.h"
+#include "autonomy/visualization/message_handlers.hpp"
+#include "autonomy/visualization/foxglove_bridge.hpp"
 #include "autonomy/visualization/common/visualization_interface.hpp"
 
 namespace autonomy {
 namespace visualization { 
 
-class VisualizationServer : public common::VisualizationInterface
+class VisualizationServer
 {
 public:
     /**
@@ -39,23 +39,42 @@ public:
      * @brief A constructor for autonomy::visualization::VisualizationServer
      * @param options Additional options to control creation of the node.
      */
-    explicit VisualizationServer();
+    explicit VisualizationServer(const proto::VisualizationOptions& options);
 
     /**
-     * @brief A Destructor for autonomy::visualization::VisualizationServer
+     * @brief Start
      */
-    ~VisualizationServer();
+    void Start();
 
     /**
      * @brief Shutdown 
      */
-    void Shutdown();
+    void WaitForShutdown();
+
+    /**
+     * @brief Publish 'topic' msgs
+     * @param topic The topic to publish the message on.
+     * @param msgs The message to publish.
+     */
+    template <typename M>
+    void Publish(const std::string& topic, M&& msgs) {
+        if (foxglove_bridge_ == nullptr) {
+            LOG(ERROR) << "Server publish msgs error, check foxglove_bridge_ is null ?";
+            return;
+        }
+        foxglove_bridge_->Publish(topic, std::forward<M>(msgs));
+    }
 
 private:
 
     // options for config
     proto::VisualizationOptions options_;
 
+    // foxglove_bridge
+    FoxgloveBridge::SharedPtr foxglove_bridge_{nullptr};
+
+    // message handlers
+    MessageHandlers::SharedPtr message_handlers_{nullptr};
 
 };
 

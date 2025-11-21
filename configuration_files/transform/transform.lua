@@ -12,47 +12,30 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+-- Transform Server 配置
+-- =====================
+-- 该配置文件定义了TF系统的核心参数
 
 AUTONOMY_TRANSFORM = {
-    -- -- lidar
-    -- velodyne128 = {
-    --     frame_id = "velodyne128",
-    --     child_frame_id = "front_6mm",
-    --     transform = {
-    --         translation = {
-    --             x = 0.580393,
-    --             y = 0.0727572,
-    --             z = -0.211861,
-    --         },
-    --         rotation = {
-    --             x = -0.502988,
-    --             y = 0.496432,
-    --             z = -0.507426,
-    --             w = 0.493029,
-    --         }
-    --     },
-    --     enable = true,
-    -- },
-
-    -- -- RGB-D Realsense435i
-    -- realsense435i = {
-    --     frame_id = "camera_link",
-    --     child_frame_id = "base_link",
-    --     transform = {
-    --         translation = {
-    --             x = 0.580393,
-    --             y = 0.0727572,
-    --             z = -0.211861,
-    --         },
-    --         rotation = {
-    --             x = -0.502988,
-    --             y = 0.496432,
-    --             z = -0.507426,
-    --             w = 0.493029,
-    --         }
-    --     },
-    --     enable = true,
-    -- },
+    -- 静态TF配置文件路径（YAML格式）
+    -- 包含所有静态坐标系变换的定义
+    static_transform_config = "configuration_files/transform/static_transform.yaml",
+    
+    -- TF缓冲区大小（秒）
+    -- 定义TF系统保存历史变换的时间长度
+    buffer_cache_time = 10.0,
+    
+    -- TF查询默认超时时间（秒）
+    -- 当查询TF变换时的最大等待时间
+    default_timeout = 0.01,
+    
+    -- 调试模式
+    -- 启用后会输出更详细的TF调试信息
+    debug = false,
+    
+    -- TF发布频率（Hz）
+    -- 静态TF的发布频率
+    publish_rate = 10.0,
 }
 
-
+return AUTONOMY_TRANSFORM

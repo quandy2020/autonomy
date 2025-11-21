@@ -25,6 +25,8 @@
 #include "autonomy/common/async_grpc/span.h"
 #include "opencensus/trace/span.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 // An implementation of the Span interface backed by Opencensus.
@@ -45,6 +47,8 @@ class OpencensusSpan : public Span {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // BUILD_TRACING
 

@@ -49,6 +49,26 @@ public:
      */
     ~Costmap3DWrapper();
 
+    /**
+     * @brief Start costmap updates
+     */
+    void Start() override;
+
+    /**
+     * @brief Stop costmap updates
+     */
+    void Stop() override;
+
+    /**
+     * @brief Pause costmap updates
+     */
+    void Pause() override;
+
+    /**
+     * @brief Resume costmap updates
+     */
+    void Resume() override;
+
 protected:
     // options for costmap 3D
     proto::Costmap3DOptions options_;

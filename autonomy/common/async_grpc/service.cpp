@@ -21,6 +21,8 @@
 #include "glog/logging.h"
 #include "grpc++/impl/codegen/proto_utils.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 Service::Service(const std::string& service_name,
@@ -144,3 +146,5 @@ void Service::RemoveIfNotPending(Rpc* rpc) {
 }
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 

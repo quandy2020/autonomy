@@ -21,6 +21,8 @@
 #include "autonomy/common/async_grpc/retry.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 RetryStrategy CreateRetryStrategy(RetryIndicator retry_indicator,
@@ -117,3 +119,5 @@ bool RetryWithStrategy(RetryStrategy retry_strategy,
 }
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 

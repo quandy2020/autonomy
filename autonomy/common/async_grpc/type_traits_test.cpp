@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace {
 
@@ -39,3 +41,5 @@ TEST(TypeTraitsTest, RpcTypes) {
 
 }  // namespace
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 

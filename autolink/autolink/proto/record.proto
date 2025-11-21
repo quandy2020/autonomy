@@ -1,0 +1,124 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.proto;
+
+enum SectionType {
+    SECTION_HEADER = 0;
+    SECTION_CHUNK_HEADER = 1;
+    SECTION_CHUNK_BODY = 2;
+    SECTION_INDEX = 3;
+    SECTION_CHANNEL = 4;
+  };
+  
+  enum CompressType {
+    COMPRESS_NONE = 0;
+    COMPRESS_BZ2 = 1;
+    COMPRESS_LZ4 = 2;
+  };
+  
+  message SingleIndex {
+    SectionType type = 1;
+    uint64 position = 2;
+    oneof cache {
+      ChannelCache channel_cache = 101;
+      ChunkHeaderCache chunk_header_cache = 102;
+      ChunkBodyCache chunk_body_cache = 103;
+    }
+  }
+  
+  message ChunkHeaderCache {
+    uint64 message_number = 1;
+    uint64 begin_time = 2;
+    uint64 end_time = 3;
+    uint64 raw_size = 4;
+  }
+  
+  message ChunkBodyCache {
+    uint64 message_number = 1;
+  }
+  
+  message ChannelCache {
+    uint64 message_number = 1;
+    string name = 2;
+    string message_type = 3;
+    bytes proto_desc = 4;
+  }
+  
+  message SingleMessage {
+    string channel_name = 1;
+    uint64 time = 2;
+    bytes content = 3;
+  }
+  
+  message MapInfo {
+    string name = 1;
+    string version = 2;
+  }
+  
+  message VehicleInfo {
+    string name = 1;
+  }
+  
+  message Header {
+    uint32 major_version = 1;
+    uint32 minor_version = 2;
+    CompressType compress = 3;
+    uint64 chunk_interval = 4;
+    uint64 segment_interval = 5;
+    uint64 index_position = 6;
+    uint64 chunk_number = 7;
+    uint64 channel_number = 8;
+    uint64 begin_time = 9;
+    uint64 end_time = 10;
+    uint64 message_number = 11;
+    uint64 size = 12;
+    bool is_complete = 13;
+    uint64 chunk_raw_size = 14;
+    uint64 segment_raw_size = 15;
+    MapInfo map_info = 16;
+    VehicleInfo vehicle_info = 17;
+  }
+  
+  message Channel 
+  {
+    string name = 1;
+    string message_type = 2;
+    bytes proto_desc = 3;
+  }
+  
+  message ChunkHeader {
+    uint64 begin_time = 1;
+    uint64 end_time = 2;
+    uint64 message_number = 3;
+    uint64 raw_size = 4;
+  }
+  
+  message ChunkBody {
+    repeated SingleMessage messages = 1;
+  }
+  
+  message Index {
+    repeated SingleIndex indexes = 1;
+  }
+  
+  message RecordInfo {
+    string record_name = 1;
+    double total_time_s = 2;
+    double curr_time_s = 3;
+    double progress = 4;
+  }
+  

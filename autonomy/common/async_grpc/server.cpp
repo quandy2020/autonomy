@@ -22,6 +22,8 @@
 #include "opencensus/trace/trace_config.h"
 #endif
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace {
 
@@ -246,3 +248,5 @@ void Server::SetExecutionContext(
 }
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
