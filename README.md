@@ -8,10 +8,10 @@
 ## :tractor: <font color='blue'>**System Overview**</font>
 
 - [x] **Core Architecture**
-  - [x] Based on CycloneDDS communication framework
+  - [x] Based on autolink communication framework
   - [x] Supports modular dynamic library plugins
 - [x] **Communication Support**
-  - [x] Network communication: MQTT, gRPC, ZMQ, HTTP
+  - [x] Network communication:, gRPC、autolink
   - [x] Message compatibility: Native ROS/ROS2 message formats
 - [ ] **Hardware & Drivers**
   - [ ] LiDAR：
@@ -31,8 +31,7 @@
   - [x] Supports ROS/ROS2 data ecosystem interoperability
   - [x] Docker cross-platform support (x86-64 & Arm64)
   - [x] Local web visualization (Foxglove)
-  - [x] CMake build system
-  - [x] Behavior tree scheduling engine
+  - [x] CMake & Bazel build system 
 - [x] **Documentation**
   - [x] [Comprehensive user manuals and documentation provided](https://openbot-doc.readthedocs.io/en/latest/)
 
