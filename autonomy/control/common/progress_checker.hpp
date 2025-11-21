@@ -41,12 +41,14 @@ public:
     AUTONOMY_SMART_PTR_DEFINITIONS(ProgressChecker)
 
     /**
-     * @brief A constructor for control::common::ProgressChecker
-     * @param options Additional options to control creation of the node.
+     * @brief A Destructor for ProgressChecker
      */
-    ProgressChecker(const std::string& plugin_name) = 0;
-
     virtual ~ProgressChecker() = default;
+
+    /**
+     * @brief Initialize parameters for ProgressChecker
+     */
+    virtual void Initialize(const std::string& plugin_name) = 0;
 
     /**
      * @brief Checks if the robot has moved compare to previous

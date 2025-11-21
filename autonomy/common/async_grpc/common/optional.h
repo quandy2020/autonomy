@@ -22,6 +22,8 @@
 #include "autonomy/common/async_grpc/common/make_unique.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace common {
 
@@ -65,5 +67,7 @@ class optional {
 
 }  // namespace common
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_COMMON_OPTIONAL_H_

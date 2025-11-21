@@ -28,6 +28,8 @@
 #include "grpc++/impl/codegen/async_unary_call.h"
 #include "grpc++/impl/codegen/proto_utils.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 class ClientEvent;
@@ -218,5 +220,7 @@ class AsyncClient<RpcServiceMethodConcept,
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // ASYNC_GRPC_ASYNC_CLIENT_H

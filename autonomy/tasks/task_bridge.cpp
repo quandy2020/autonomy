@@ -23,15 +23,14 @@ namespace autonomy {
 namespace tasks {
 
 TaskBridge::TaskBridge()
+    : thread_pool_(std::thread::hardware_concurrency())
 {
     std::vector<std::string> kTaskName = {
-        kPlanTaskName,
-        kMappingTaskName,
-        kRelocalizationTaskName
+        kTaskNavigation,
     };
 
     for (auto const& name : kTaskName) {
-        if (name == kPlanTaskName) {
+        if (name == kTaskNavigation) {
             tasks_[name] = std::make_shared<navigation::NavigatorTask>(name);
         }
     }
@@ -42,63 +41,74 @@ TaskBridge::~TaskBridge()
     
 }
 
+void TaskBridge::Start()
+{
+    for (auto const& task : tasks_) {
+        task.second->Start();
+    }
+    RunTasks();
+}
+
 void TaskBridge::Shutdown()
 {
-
-}
-
-bool TaskBridge::HandleCommandMessageCallback(const proto::ExtendCommand& msgs)
-{
-    LOG(INFO) << "Task Bridge handle command msgs: " 
-              << autonomy::common::JsonUtil::ProtoToJson(msgs);
-    switch (msgs.action()) {
-    case proto::ExtendCommand::START:
-        LOG(INFO) << "Exec start action command.";
-        tasks_.at(name(msgs.type()))->Start(msgs);
-        break;
-
-    case proto::ExtendCommand::STOP:
-        LOG(INFO) << "Exec stop action command.";
-        tasks_.at(name(msgs.type()))->Stop();
-        break;
-
-    case proto::ExtendCommand::RESUME:
-        LOG(INFO) << "Exec resume action command.";
-        tasks_.at(name(msgs.type()))->Resume();
-        break;
-
-    case proto::ExtendCommand::CANCEL:
-        LOG(INFO) << "Exec cancel action command.";
-        tasks_.at(name(msgs.type()))->Cancel();
-        break;
-
-    default:
-        break;
+    for (auto const& task : tasks_) {
+        task.second->Shutdown();
     }
-   return true;
 }
-    
-std::string TaskBridge::name(const proto::ExtendCommand::Type& msgs)
+
+void TaskBridge::RunTasks()
 {
-    switch (msgs) {
-    case proto::ExtendCommand::PLAN:
-        return kPlanTaskName;
-        break;
-
-    case proto::ExtendCommand::MAPPING:
-        return kPlanTaskName;
-        break;
-
-    case proto::ExtendCommand::RELOCALIZATION:
-        return kRelocalizationTaskName;
-        break;
-        
-    default:
-        return "";
-        break;
+    while (!cmd_queue_.IsFinished()) {
+        cmd_queue_.Flush();
+        LOG(INFO) << "Task Bridge run tasks.";
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    return "";
 }
+
+// bool TaskBridge::HandleCommandMessageCallback(const proto::ExtendCommand& msgs)
+// {
+//     LOG(INFO) << "Task Bridge handle command msgs: " 
+//               << autonomy::common::JsonUtil::ProtoToJson(msgs);
+
+//     auto task = std::make_unique<autonomy::common::Task>();
+//     switch (msgs.action()) {
+//     case proto::ExtendCommand::START:
+//         task->SetWorkItem([this, msgs]() {
+//             LOG(INFO) << "Exec start action command.";
+//             tasks_.at(name(msgs.type()))->Start(msgs);
+//         });
+//         break;
+
+//     case proto::ExtendCommand::STOP:
+//         task->SetWorkItem([this, msgs]() {
+//             LOG(INFO) << "Exec stop action command.";
+//             tasks_.at(name(msgs.type()))->Stop();
+//         });
+//         break;
+
+//     case proto::ExtendCommand::RESUME:
+//         task->SetWorkItem([this, msgs]() {
+//             LOG(INFO) << "Exec resume action command.";
+//             tasks_.at(name(msgs.type()))->Resume();
+//         });
+//         break;
+
+//     case proto::ExtendCommand::CANCEL:
+//         task->SetWorkItem([this, msgs]() {
+//             LOG(INFO) << "Exec cancel action command.";
+//             tasks_.at(name(msgs.type()))->Cancel();
+//         });
+//         break;
+
+//     default:
+//         LOG(INFO) << "Task Bridge unknown command msgs: " 
+//               << autonomy::common::JsonUtil::ProtoToJson(msgs);
+//         break;
+//     }
+
+//     thread_pool_.Schedule(std::move(task));
+//     return true;
+// }
 
 }   // namespace tasks
 }   // namespace autonomy

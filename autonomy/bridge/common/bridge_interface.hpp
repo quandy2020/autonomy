@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include "autonomy/bridge/proto/bridge_options.pb.h"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 
 namespace autonomy {
 namespace bridge { 
@@ -26,19 +28,21 @@ namespace common {
 class BridgeInterface
 {
 public:
+    /**
+     * Define BridgeInterface::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(BridgeInterface)
 
-    BridgeInterface();
-
-    virtual ~BridgeInterface();
-
-
-    bool SendMessages();
-
-    bool WriteMessages();
-
+    /**
+     * @brief A Destructor for BridgeInterface
+     */
+    virtual ~BridgeInterface() = default;
 
 };
 
-}  // namespace common
+proto::BridgeOptions LoadOptions(
+    autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+
+}   // namespace common
 }   // namespace bridge
 }   // namespace autonomy

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -153,6 +153,7 @@ protected:
     unsigned int y_{0};
     unsigned int width_{0};
     unsigned int height_{0};
+
 
     // Parameters
     std::string map_topic_;

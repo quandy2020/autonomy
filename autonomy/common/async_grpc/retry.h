@@ -19,10 +19,12 @@
 
 #include <set>
 
-#include "async_grpc/common/optional.h"
-#include "async_grpc/common/time.h"
+#include "autonomy/common/async_grpc/common/optional.h"
+#include "autonomy/common/async_grpc/common/time.h"
 #include "grpc++/grpc++.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 using common::Duration;
@@ -56,5 +58,7 @@ bool RetryWithStrategy(RetryStrategy retry_strategy,
                        std::function<void()> reset = nullptr);
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_RETRY_H

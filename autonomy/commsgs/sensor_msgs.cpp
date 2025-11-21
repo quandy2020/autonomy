@@ -80,10 +80,10 @@ proto::sensor_msgs::CompressedImage ToProto(const CompressedImage& data)
     proto::sensor_msgs::CompressedImage proto;
     *proto.mutable_header() = std_msgs::ToProto(data.header);
     proto.set_format(data.format);
-    proto.mutable_data()->Reserve(data.data.size());
-    for (auto const& value : data.data) {
-        proto.add_data(value);
-    }
+    // proto.mutable_data()->Reserve(data.data.size());
+    // for (auto const& value : data.data) {
+    //     proto.add_data(value);
+    // }
     return proto;
 }
 
@@ -125,10 +125,10 @@ proto::sensor_msgs::Image ToProto(const Image& data)
     proto.set_encoding(data.encoding);
     proto.set_is_bigendian(data.is_bigendian);
     proto.set_step(data.step);
-    proto.mutable_data()->Reserve(data.data.size());
-    for (auto const& value : data.data) {
-        proto.add_data(value);
-    }
+    // proto.mutable_data()->Reserve(data.data.size());
+    // for (auto const& value : data.data) {
+    //     proto.add_data(value);
+    // }
     return proto;
 }
 

@@ -1,0 +1,61 @@
+# Autolink CMake 配置文件
+# 此文件由 autolink 安装脚本生成
+# 使用方式：find_package(Autolink REQUIRED)
+
+@PACKAGE_INIT@
+
+# 设置 Autolink 的版本
+set(Autolink_VERSION "@VERSION@")
+
+# 设置 Autolink 的安装路径
+set(Autolink_INSTALL_PREFIX "@CMAKE_INSTALL_PREFIX@")
+
+# 设置包含目录
+set(Autolink_INCLUDE_DIRS "${Autolink_INSTALL_PREFIX}/include")
+set(Autolink_INCLUDE_DIR "${Autolink_INCLUDE_DIRS}")
+
+# 设置库目录
+set(Autolink_LIBRARY_DIRS "${Autolink_INSTALL_PREFIX}/lib")
+set(Autolink_LIBRARY_DIR "${Autolink_LIBRARY_DIRS}")
+
+# 查找库文件
+find_library(Autolink_SHARED_LIBRARY
+    NAMES autolink
+    PATHS "${Autolink_LIBRARY_DIRS}"
+    NO_DEFAULT_PATH
+)
+
+find_library(Autolink_STATIC_LIBRARY
+    NAMES autolink
+    PATHS "${Autolink_LIBRARY_DIRS}"
+    NO_DEFAULT_PATH
+)
+
+# 设置库变量
+if(Autolink_SHARED_LIBRARY)
+    set(Autolink_LIBRARIES ${Autolink_SHARED_LIBRARY})
+    set(Autolink_LIBRARY ${Autolink_SHARED_LIBRARY})
+elseif(Autolink_STATIC_LIBRARY)
+    set(Autolink_LIBRARIES ${Autolink_STATIC_LIBRARY})
+    set(Autolink_LIBRARY ${Autolink_STATIC_LIBRARY})
+endif()
+
+# 创建导入目标
+if(NOT TARGET Autolink::Autolink)
+    add_library(Autolink::Autolink SHARED IMPORTED)
+    set_target_properties(Autolink::Autolink PROPERTIES
+        IMPORTED_LOCATION "${Autolink_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${Autolink_INCLUDE_DIRS}"
+    )
+endif()
+
+# 检查是否找到所有必需的组件
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(Autolink
+    REQUIRED_VARS Autolink_LIBRARY Autolink_INCLUDE_DIR
+    VERSION_VAR Autolink_VERSION
+)
+
+# 设置变量供外部使用
+set(Autolink_FOUND TRUE)
+

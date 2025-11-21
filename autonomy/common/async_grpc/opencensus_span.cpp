@@ -18,6 +18,8 @@
 
 #if BUILD_TRACING
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 std::unique_ptr<Span> OpencensusSpan::StartSpan(const std::string& name,
@@ -40,5 +42,7 @@ OpencensusSpan::OpencensusSpan(const std::string& name,
     : span_(opencensus::trace::Span::StartSpan(name, parent ? &parent->span_: nullptr)) {}
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // BUILD_TRACING

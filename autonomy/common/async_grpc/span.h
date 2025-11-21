@@ -22,6 +22,8 @@
 // #include "grpc++/grpc++.h"
 #include <grpcpp/grpcpp.h>
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 // Span represents a trace span. All implementations of the Span interface
@@ -43,5 +45,7 @@ class Span {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_SPAN_H

@@ -1,0 +1,42 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.proto;
+
+import "autolink/proto/qos_profile.proto";
+
+message ReaderOption 
+{
+    string channel = 1;
+    QosProfile qos_profile = 2;    // [depth: used to define capacity of processed messages]
+    uint32 pending_queue_size = 3; // [default = 1]; // [used to define capacity of unprocessed messages]
+}
+
+message ComponentConfig 
+{
+    string name = 1;
+    string config_file_path = 2;
+    string flag_file_path = 3;
+    repeated ReaderOption readers = 4;
+}
+
+message TimerComponentConfig 
+{
+    string name = 1;
+    string config_file_path = 2;
+    string flag_file_path = 3;
+    uint32 interval = 4;  // In milliseconds.
+}

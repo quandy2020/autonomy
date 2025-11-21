@@ -100,7 +100,7 @@ public:
 };
 
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace common
 }  // namespace autonomy
 
 #endif  // CLASS_LOADER__EXCEPTIONS_HPP_

@@ -51,8 +51,8 @@ public:
   virtual void saySomething() = 0;
 };
 
-const std::string LIBRARY_1 = class_loader::systemLibraryFormat("class_loader_TestPlugins1");  // NOLINT
-const std::string LIBRARY_2 = class_loader::systemLibraryFormat("class_loader_TestPlugins2");  // NOLINT
+const std::string LIBRARY_1 = class_loader::systemLibraryFormat("/workspace/autonomy/build/lib/libautonomy_TestPlugins1");  // NOLINT
+const std::string LIBRARY_2 = class_loader::systemLibraryFormat("/workspace/autonomy/build/lib/libautonomy_TestPlugins2");  // NOLINT
 
 TEST(ClassLoaderSharedPtrTest, basicLoad) {
   try {

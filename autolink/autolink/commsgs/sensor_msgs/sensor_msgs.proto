@@ -1,0 +1,522 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.sensor_msgs;
+
+import "autolink/commsgs/std_msgs/std_msgs.proto";
+import "autolink/commsgs/geometry_msgs/geometry_msgs.proto";
+
+// This message defines meta information for a camera. It should be in a
+// camera namespace on topic "camera_info" and accompanied by up to five
+// image topics named:
+//
+//   image_raw - raw data from the camera driver, possibly Bayer encoded
+//   image            - monochrome, distorted
+//   image_color      - color, distorted
+//   image_rect       - monochrome, rectified
+//   image_rect_color - color, rectified
+//
+// The image_pipeline contains packages (image_proc, stereo_image_proc)
+// for producing the four processed image topics from image_raw and
+// camera_info. The meaning of the camera parameters are described in
+// detail at http://www.ros.org/wiki/image_pipeline/CameraInfo.
+//
+// The image_geometry package provides a user-friendly interface to
+// common operations using this meta information. If you want to, e.g.,
+// project a 3d point into image coordinates, we strongly recommend
+// using image_geometry.
+//
+// If the camera is uncalibrated, the matrices D, K, R, P should be left
+// zeroed out. In particular, clients may assume that K[0] == 0.0
+// indicates an uncalibrated camera.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                     Image acquisition info                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+message CameraInfo
+{
+    
+    // Time of image acquisition, camera coordinate frame ID
+    std_msgs.Header header = 1; // Header timestamp should be acquisition time of image
+                                // Header frame_id should be optical frame of camera
+                                // origin of frame should be optical center of camera
+                                // +x should point to the right in the image
+                                // +y should point down in the image
+                                // +z should point into the plane of the image
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                      Calibration Parameters                         //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // These are fixed during camera calibration. Their values will be the //
+    // same in all messages until the camera is recalibrated. Note that    //
+    // self-calibrating systems may "recalibrate" frequently.              //
+    //                                                                     //
+    // The internal parameters can be used to warp a raw (distorted) image //
+    // to:                                                                 //
+    //   1. An undistorted image (requires D and K)                        //
+    //   2. A rectified image (requires D, K, R)                           //
+    // The projection matrix P projects 3D points into the rectified image.//
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // The image dimensions with which the camera was calibrated.
+    // Normally this will be the full camera resolution in pixels.
+    uint32 height = 2;
+    uint32 width = 3;
+
+    // The distortion model used. Supported models are listed in
+    // sensor_msgs/distortion_models.hpp. For most cameras, "plumb_bob" - a
+    // simple model of radial and tangential distortion - is sufficent.
+    string distortion_model = 4;
+
+    // The distortion parameters, size depending on the distortion model.
+    // For "plumb_bob", the 5 parameters are: (k1, k2, t1, t2, k3).
+    repeated double d = 5 [packed=true];
+
+    // Intrinsic camera matrix for the raw (distorted) images.
+    //     [fx  0 cx]
+    // K = [ 0 fy cy]
+    //     [ 0  0  1]
+    // Projects 3D points in the camera coordinate frame to 2D pixel
+    // coordinates using the focal lengths (fx, fy) and principal point
+    // (cx, cy).
+    repeated double k = 6 [packed=true]; // float64[9]  k // 3x3 row-major matrix
+
+    // Rectification matrix (stereo cameras only)
+    // A rotation matrix aligning the camera coordinate system to the ideal
+    // stereo image plane so that epipolar lines in both stereo images are
+    // parallel.
+    // float64[9]  r // 3x3 row-major matrix
+    repeated double r = 7  [packed=true]; 
+
+    // Projection/camera matrix
+    //     [fx'  0  cx' Tx]
+    // P = [ 0  fy' cy' Ty]
+    //     [ 0   0   1   0]
+    // By convention, this matrix specifies the intrinsic (camera) matrix
+    //  of the processed (rectified) image. That is, the left 3x3 portion
+    //  is the normal camera intrinsic matrix for the rectified image.
+    // It projects 3D points in the camera coordinate frame to 2D pixel
+    //  coordinates using the focal lengths (fx', fy') and principal point
+    //  (cx', cy') - these may differ from the values in K.
+    // For monocular cameras, Tx = Ty = 0. Normally, monocular cameras will
+    //  also have R = the identity and P[1:3,1:3] = K.
+    // For a stereo pair, the fourth column [Tx Ty 0]' is related to the
+    //  position of the optical center of the second camera in the first
+    //  camera's frame. We assume Tz = 0 so both cameras are in the same
+    //  stereo image plane. The first camera always has Tx = Ty = 0. For
+    //  the right (second) camera of a horizontal stereo pair, Ty = 0 and
+    //  Tx = -fx' * B, where B is the baseline between the cameras.
+    // Given a 3D point [X Y Z]', the projection (x, y) of the point onto
+    //  the rectified image is given by:
+    //  [u v w]' = P * [X Y Z 1]'
+    //         x = u / w
+    //         y = v / w
+    //  This holds for both images of a stereo pair.
+    // float64[12] p // 3x4 row-major matrix
+    repeated double p = 8 [packed=true]; 
+
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //                      Operational Parameters                         //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // These define the image region actually captured by the camera       //
+    // driver. Although they affect the geometry of the output image, they //
+    // may be changed freely without recalibrating the camera.             //
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    // Binning refers here to any camera setting which combines rectangular
+    //  neighborhoods of pixels into larger "super-pixels." It reduces the
+    //  resolution of the output image to
+    //  (width / binning_x) x (height / binning_y).
+    // The default values binning_x = binning_y = 0 is considered the same
+    //  as binning_x = binning_y = 1 (no subsampling).
+    uint32 binning_x = 10;
+    uint32 binning_y = 11;
+
+    // Region of interest (subwindow of full camera resolution), given in
+    //  full resolution (unbinned) image coordinates. A particular ROI
+    //  always denotes the same window of pixels on the camera sensor,
+    //  regardless of binning settings.
+    // The default setting of roi (all values 0) is considered the same as
+    //  full resolution (roi.width = width, roi.height = height).
+    RegionOfInterest roi = 12;
+}
+
+// This message is used by the PointCloud message to hold data
+// associated with each point in the cloud. The length of the values
+// array should be the same as the length of the points array in the
+// PointCloud, and each value should be associated with the corresponding
+// point.
+//
+// Channel names in existing practice include:
+//   "u", "v" - row and column (respectively) in the left stereo image.
+//              This is opposite to usual conventions but remains for
+//              historical reasons. The newer PointCloud2 message has no
+//              such problem.
+//   "rgb" - For point clouds produced by color stereo cameras. uint8
+//           (R,G,B) values packed into the least significant 24 bits,
+//           in order.
+//   "intensity" - laser or pixel intensity.
+//   "distance"
+message ChannelFloat32
+{
+    // The channel name should give semantics of the channel (e.g.
+    // "intensity" instead of "value").
+    string name = 1;
+
+    // The values array should be 1-1 with the elements of the associated
+    // PointCloud.
+    repeated float values = 2;
+}
+
+// This message contains a compressed image.
+message CompressedImage
+{
+    std_msgs.Header header = 1;  // Header timestamp should be acquisition time of image
+                                // Header frame_id should be optical frame of camera
+                                // origin of frame should be optical center of cameara
+                                // +x should point to the right in the image
+                                // +y should point down in the image
+                                // +z should point into to plane of the image
+
+    string format = 2;          // Specifies the format of the data
+                                //   Acceptable values:
+                                //     jpeg, png, tiff
+
+    bytes data = 3;   // Compressed image buffer
+}
+
+// Single photometric illuminance measurement.  Light should be assumed to be
+// measured along the sensor's x-axis (the area of detection is the y-z plane).
+// The illuminance should have a 0 or positive value and be received with
+// the sensor's +X axis pointing toward the light source.
+//
+// Photometric illuminance is the measure of the human eye's sensitivity of the
+// intensity of light encountering or passing through a surface.
+//
+// All other Photometric and Radiometric measurements should not use this message.
+// This message cannot represent:
+//  - Luminous intensity (candela/light source output)
+//  - Luminance (nits/light output per area)
+//  - Irradiance (watt/area), etc.
+message Illuminance
+{
+    std_msgs.Header header = 1; // timestamp is the time the illuminance was measured
+                                // frame_id is the location and direction of the reading
+
+    float illuminance = 2;      // Measurement of the Photometric Illuminance in Lux.
+
+    float variance = 3;         // 0 is interpreted as variance unknown
+}
+
+message Image 
+{
+    std_msgs.Header header  = 1; // Header timestamp should be acquisition time of image
+                                 // Header frame_id should be optical frame of camera
+                                 // origin of frame should be optical center of cameara
+                                 // +x should point to the right in the image
+                                 // +y should point down in the image
+                                 // +z should point into to plane of the image
+                                 // If the frame_id here and the frame_id of the CameraInfo
+                                 // message associated with the image conflict
+                                 // the behavior is undefined
+
+    // image height, that is, number of rows
+    uint32 height = 2;       
+    
+    // image width, that is, number of columns
+    uint32 width = 3;            
+
+    // The legal values for encoding are in file src/image_encodings.cpp
+    // If you want to standardize a new string format, join
+    // ros-users@lists.ros.org and send an email proposing a new encoding.
+    string encoding = 4;    // Encoding of pixels -- channel meaning, ordering, size
+                            // taken from the list of strings in include/sensor_msgs/image_encodings.hpp
+
+
+    // is this data bigendian?
+    uint32 is_bigendian = 5;
+
+    // Full row length in bytes
+    uint32 step = 6;
+
+    // actual matrix data, size is (step * rows)
+    bytes data = 7;
+}   
+
+// This is a message to hold data from an IMU (Inertial Measurement Unit)
+//
+// Accelerations should be in m/s^2 (not in g's), and rotational velocity should be in rad/sec
+//
+// If the covariance of the measurement is known, it should be filled in (if all you know is the
+// variance of each measurement, e.g. from the datasheet, just put those along the diagonal)
+// A covariance matrix of all zeros will be interpreted as "covariance unknown", and to use the
+// data a covariance will have to be assumed or gotten from some other source
+//
+// If you have no estimate for one of the data elements (e.g. your IMU doesn't produce an
+// orientation estimate), please set element 0 of the associated covariance matrix to -1
+// If you are interpreting this message, please check for a value of -1 in the first element of each
+// covariance matrix, and disregard the associated estimate.
+message Imu
+{
+    std_msgs.Header header = 1;
+
+    geometry_msgs.Quaternion orientation = 2;
+    repeated double orientation_covariance = 3 [packed=true]; // float64[9] orientation_covariance 
+                                                              // Row major about x, y, z axes
+
+    geometry_msgs.Vector3 angular_velocity = 4;
+    repeated double angular_velocity_covariance = 5 [packed=true];  // float64[9] angular_velocity_covariance  
+                                                                    // Row major about x, y, z axes
+
+    geometry_msgs.Vector3 linear_acceleration = 6;
+    repeated double linear_acceleration_covariance = 7 [packed=true];  // float64[9] linear_acceleration_covariance 
+                                                                        // Row major x, y z
+}
+
+// Single scan from a planar laser range-finder
+//
+// If you have another ranging device with different behavior (e.g. a sonar
+// array), please find or create a different message, since applications
+// will make fairly laser-specific assumptions about this data
+message LaserScan
+{
+    std_msgs.Header header = 1; // timestamp in the header is the acquisition time of
+                                // the first ray in the scan.
+                                //
+                                // in frame frame_id, angles are measured around
+                                // the positive Z axis (counterclockwise, if Z is up)
+                                // with zero angle being forward along the x axis
+
+    float angle_min = 2;           // start angle of the scan [rad]
+    float angle_max = 3;           // end angle of the scan [rad]
+    float angle_increment = 4;     // angular distance between measurements [rad]
+
+    float time_increment = 5;       // time between measurements [seconds] - if your scanner
+                                    // is moving, this will be used in interpolating position
+                                    // of 3d points
+    float scan_time = 6;            // time between scans [seconds]
+
+    float range_min = 7;            // minimum range value [m]
+    float range_max = 8;            // maximum range value [m]
+
+    repeated float ranges = 9;           // range data [m]
+                                         // (Note: values < range_min or > range_max should be discarded)
+    repeated float intensities = 10;     // intensity data [device-specific units].  If your
+                                         // device does not provide intensities, please leave the array empty.
+}
+
+// THIS MESSAGE IS DEPRECATED AS OF FOXY
+// Please use sensor_msgs/PointCloud2
+
+// This message holds a collection of 3d points, plus additional
+// information about each point.
+message PointCloud
+{
+    // Time of sensor data acquisition, coordinate frame ID.
+    std_msgs.Header header = 1;
+
+    // Array of 3d points. Each Point32 should be interpreted as a 3d point
+    // in the frame given in the header.
+    // repeated geometry_msgs.Point32 points = 2;
+    repeated geometry_msgs.PointXYZIT points = 2;
+
+    // Each channel should have the same number of elements as points array,
+    // and the data in each channel should correspond 1:1 with each point.
+    // Channel names in common practice are listed in ChannelFloat32.msg.
+    repeated ChannelFloat32 channels = 3;
+}
+
+// This message holds the description of one point entry in the
+// PointCloud2 message format.
+// uint8 INT8    = 1
+// uint8 UINT8   = 2
+// uint8 INT16   = 3
+// uint8 UINT16  = 4
+// uint8 INT32   = 5
+// uint8 UINT32  = 6
+// uint8 FLOAT32 = 7
+// uint8 FLOAT64 = 8
+message PointField
+{
+    // Common PointField names are x, y, z, intensity, rgb, rgba
+    string name = 1;      // Name of field
+    uint32 offset = 2;    // Offset from start of point struct
+    uint32  datatype = 3; // Datatype enumeration, see above
+    uint32 count = 4;     // How many elements in the field
+}
+
+// This message holds a collection of N-dimensional points, which may
+// contain additional information such as normals, intensity, etc. The
+// point data is stored as a binary blob, its layout described by the
+// contents of the "fields" array.
+//
+// The point cloud data may be organized 2d (image-like) or 1d (unordered).
+// Point clouds organized as 2d images may be produced by camera depth sensors
+// such as stereo or time-of-flight.
+message PointCloud2
+{
+
+    // Time of sensor data acquisition, and the coordinate frame ID (for 3d points).
+    std_msgs.Header header = 1;
+
+    // 2D structure of the point cloud. If the cloud is unordered, height is
+    // 1 and width is the length of the point cloud.
+    uint32 height = 2;
+    uint32 width = 3;
+
+    // Describes the channels and their layout in the binary data blob.
+    repeated PointField fields = 4;
+
+    bool    is_bigendian = 5; // Is this data bigendian?
+    uint32  point_step = 6;   // Length of a point in bytes
+    uint32  row_step = 7;     // Length of a row in bytes
+    repeated uint32 data = 8; // Actual point data, size is (row_step*height)
+
+    bool is_dense = 9;        // True if there are no invalid points
+}
+
+// Single range reading from an active ranger that emits energy and reports
+// one range reading that is valid along an arc at the distance measured.
+// This message is  not appropriate for laser scanners. See the LaserScan
+// message if you are working with a laser scanner.
+//
+// This message also can represent a fixed-distance (binary) ranger.  This
+// sensor will have min_range===max_range===distance of detection.
+// These sensors follow REP 117 and will output -Inf if the object is detected
+// and +Inf if the object is outside of the detection range.
+
+message Range
+{
+    std_msgs.Header header = 1; // timestamp in the header is the time the ranger
+                                // returned the distance reading
+
+    // // Radiation type enums
+    // // If you want a value added to this list, send an email to the ros-users list
+    // uint8 ULTRASOUND=0
+    // uint8 INFRARED=1
+
+    uint32 radiation_type = 2;  // the type of radiation used by the sensor(sound, IR, etc) [enum]
+
+    float field_of_view = 3;    // the size of the arc that the distance reading is
+                                // valid for [rad]
+                                // the object causing the range reading may have
+                                // been anywhere within -field_of_view/2 and
+                                // field_of_view/2 at the measured range.
+                                // 0 angle corresponds to the x-axis of the sensor.
+
+    float min_range = 4;       // minimum range value [m]
+    float max_range = 5;       // maximum range value [m]
+                               // Fixed distance rangers require min_range==max_range
+
+    float range = 6;          // range data [m]  
+                              // (Note: values < range_min or > range_max should be discarded)
+                              // Fixed distance rangers only output -Inf or +Inf.
+                              // -Inf represents a detection within fixed distance.
+                              // (Detection too close to the sensor to quantify)
+                              // +Inf represents no detection within the fixed distance.
+                              // (Object out of range)
+}
+
+// This message is used to specify a region of interest within an image.
+//
+// When used to specify the ROI setting of the camera when the image was
+// taken, the height and width fields should either match the height and
+// width fields for the associated image; or height = width = 0
+// indicates that the full resolution image was captured.
+message RegionOfInterest
+{
+    uint32 x_offset = 1;  // Leftmost pixel of the ROI
+                          // (0 if the ROI includes the left edge of the image)
+    uint32 y_offset = 2;  // Topmost pixel of the ROI (0 if the ROI includes the top edge of the image)
+    uint32 height = 3;    // Height of ROI
+    uint32 width  = 4;    // Width of ROI
+
+    // True if a distinct rectified ROI should be calculated from the "raw"
+    // ROI in this message. Typically this should be False if the full image
+    // is captured (ROI not used), and True if a subwindow is captured (ROI
+    // used).
+    bool do_rectify = 5;
+}
+
+// Reports the state of a joystick's axes and buttons.
+message Joy
+{
+    // The timestamp is the time at which data is received from the joystick.
+    std_msgs.Header header = 1; // timestamp in the header is the time the ranger
+                                // returned the distance reading
+
+    // The axes measurements from a joystick.
+    repeated float axes = 2; 
+ 
+    // The buttons measurements from a joystick.
+    repeated int32 buttons = 3;
+}
+
+message RadarObstacle 
+{
+  enum Status {
+    NO_TARGET = 0;
+    NEW_TARGET = 1;
+    NEW_UPDATED_TARGET = 2;
+    UPDATED_TARGET = 3;
+    COASTED_TARGET = 4;
+    MERGED_TARGET = 5;
+    INVALID_COASTED_TARGET = 6;
+    NEW_COASTED_TARGET = 7;
+  }
+
+  enum MovingStatus {
+    STATIONARY = 0;
+    NEARING = 1;
+    AWAYING = 2;
+    NONE = 3;
+  }
+
+  // obstacle ID.
+  int32 id = 1;
+  // obstacle position in the sl coordinate system.
+  geometry_msgs.Point2D relative_position = 2;
+
+  // obstacle relative velocity.
+  geometry_msgs.Point2D relative_velocity = 3;
+
+  // radar signal intensity.
+  double rcs = 4;
+
+  // whether this obstacle is able to move.
+  MovingStatus moving_status = 5;
+  double width = 6;
+  double length = 7;
+  double height = 8;
+  double theta = 9;
+  // obstacle position in map coordinate system
+  geometry_msgs.Point2D absolute_position = 10;
+
+  // obstacle position in map coordinate system
+  geometry_msgs.Point2D absolute_velocity = 11;
+
+  int32 count = 12;
+  int32 moving_frames_count = 13;
+  Status status = 14;
+}
+
+message RadarObstacles 
+{
+    map<int32, RadarObstacle> radar_obstacle = 1;  // An array of obstacles
+    std_msgs.Header header = 2;      // Header
+}

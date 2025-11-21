@@ -21,10 +21,13 @@ message GrpcOptions
 {
     string host = 1;
     uint32 port = 2;
-    uint32 thread_num = 3;
-    uint32 event_num = 4;
+    uint32 num_grpc_threads = 3;
+    uint32 num_event_threads = 4;
+    string uplink_server_address = 5;
+    int32 upload_batch_size = 6;
+    bool enable_ssl_encryption = 7;
+    bool enable_google_auth = 9;
 }
-
 
 message MqttOptions
 {

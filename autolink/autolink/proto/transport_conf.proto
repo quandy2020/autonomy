@@ -1,0 +1,83 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.proto;
+
+enum OptionalMode 
+{
+    HYBRID = 0;
+    INTRA = 1;
+    SHM = 2;
+    RTPS = 3;
+}
+
+message ShmMulticastLocator 
+{
+    string ip = 1;
+    uint32 port = 2;
+};
+
+message ArenaChannelConf 
+{
+    string channel_name = 1;
+    // the acutal arena segment size is equal with max_msg_size * max_pool_size + meta,
+    // so max_msg_size * max_pool_size should be less than the limit of ArenaAddressAllocator:
+    // 2^31 - 128 * 1024 * 1024, which is hardcode in the underlying implementation
+    uint64 max_msg_size = 2;
+    uint64 max_pool_size = 3;
+    uint64 shared_buffer_size = 4;
+};
+
+message ArenaShmConf 
+{
+    repeated ArenaChannelConf arena_channel_conf = 1;
+};
+
+message ShmConf 
+{
+    string notifier_type = 1;
+    string shm_type = 2;
+    ShmMulticastLocator shm_locator = 3;
+    ArenaShmConf arena_shm_conf = 4;
+};
+
+message RtpsParticipantAttr 
+{
+    int32 lease_duration = 1;
+    int32 announcement_period = 2;
+    uint32 domain_id_gain = 3;
+    uint32 port_base = 4;
+};
+
+message CommunicationMode 
+{
+    OptionalMode same_proc = 1;  // INTRA SHM RTPS
+    OptionalMode diff_proc = 2;  // SHM RTPS
+    OptionalMode diff_host = 3;  // RTPS
+};
+
+message ResourceLimit 
+{
+    uint32 max_history_depth = 1;
+};
+
+message TransportConf 
+{
+    ShmConf shm_conf = 1;
+    RtpsParticipantAttr participant_attr = 2;
+    CommunicationMode communication_mode = 3;
+    ResourceLimit resource_limit = 4;
+};

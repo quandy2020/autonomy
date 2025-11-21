@@ -1,0 +1,6 @@
+# Tools BUILD file
+# 此文件存在是为了支持 tools/autolink.bzl 宏函数
+# Bazel 要求每个 .bzl 文件必须有一个对应的 BUILD 文件
+
+package(default_visibility = ["//visibility:public"])
+

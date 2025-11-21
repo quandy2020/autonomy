@@ -20,9 +20,11 @@
 #include <memory>
 #include <thread>
 
-#include "async_grpc/common/blocking_queue.h"
-#include "async_grpc/rpc.h"
+#include "autonomy/common/async_grpc/common/blocking_queue.h"
+#include "autonomy/common/async_grpc/rpc.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 class EventQueueThread {
@@ -42,5 +44,7 @@ class EventQueueThread {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_EVENT_QUEUE_THREAD_H

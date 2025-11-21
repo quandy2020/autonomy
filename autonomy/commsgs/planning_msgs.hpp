@@ -62,6 +62,45 @@ struct Odometry
     geometry_msgs::TwistWithCovariance twist;
 };
 
+struct CostmapFilterInfo
+{
+    // Define CostmapFilterInfo::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(CostmapFilterInfo)
+
+    std_msgs::Header header;
+
+    // Type of plugin used (keepout filter, speed limit in m/s, speed limit in percent, etc...)
+    // 0: keepout/lanes filter
+    // 1: speed limit filter in % of maximum speed
+    // 2: speed limit filter in absolute values (m/s)
+    uint32 type;
+
+    // Name of filter mask topic
+    std::string filter_mask_topic;
+
+    // Multiplier base offset and multiplier coefficient for conversion of OccGrid.
+    // Used to convert OccupancyGrid data values to filter space values.
+    // data -> into some other number space:
+    // space = data * multiplier + base
+    float base;
+    float multiplier;
+};
+
+struct SpeedLimit
+{  
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(SpeedLimit)
+
+    // Indicates the frame_id.
+    std_msgs::Header header;
+
+    // Setting speed limit in percentage if true or in absolute values in false case
+    bool percentage;
+
+    // Maximum allowed speed (in percent of maximum robot speed or in m/s depending
+    // on "percentage" value). When no-limit it is set to 0.0
+    float speed_limit;
+};
 
 }  // namespace planning_msgs
 }  // namespace commsgs

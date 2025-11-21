@@ -20,12 +20,21 @@
 namespace autonomy {
 namespace tasks {
 
-     
-proto::TaskOptions CreateTaskOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+TaskServer::TaskServer()
 {
-    proto::TaskOptions options;
-    return options;
+    task_bridge_ = std::make_shared<TaskBridge>();
+}
+
+void TaskServer::Start()
+{
+    task_bridge_->Start();
+}
+
+void TaskServer::Shutdown()
+{
+    if (task_bridge_) {
+        task_bridge_->Shutdown();
+    }
 }
 
 }   // namespace tasks

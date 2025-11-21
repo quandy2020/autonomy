@@ -1,4 +1,4 @@
-# Copyright 2024 The OpenRobotic Beginner Authors
+# Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set(CYBERRT_ROOT "" CACHE PATH "CyberRT install directory")
+
 # Locate the CyberRT library
 find_path(CYBERRT_INCLUDE_DIR
   NAMES cyber/cyber.h
   PATHS /usr/local/include
+        /opt/cyber/include
 )
 
 find_library(CYBERRT_LIBRARY
   NAMES cyber
   PATHS /usr/local/lib
+        /usr/local/lib64
+        /opt/cyber/lib
 )
 
 # Set the results
@@ -37,3 +42,5 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(CyberRT DEFAULT_MSG CYBERRT_INCLUDE_DIR CYBERRT_LIBRARY)
 
 mark_as_advanced(CYBERRT_INCLUDE_DIR CYBERRT_LIBRARY)
+
+

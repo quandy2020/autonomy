@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#include "async_grpc/event_queue_thread.h"
+#include "autonomy/common/async_grpc/event_queue_thread.h"
 
-#include "async_grpc/common/make_unique.h"
+#include "autonomy/common/async_grpc/common/make_unique.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 EventQueueThread::EventQueueThread() {
@@ -40,3 +42,5 @@ void EventQueueThread::Shutdown() {
 }
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 

@@ -1,0 +1,45 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.proto;
+
+import "autolink/proto/qos_profile.proto";
+
+message SocketAddr 
+{
+    string ip = 1;  // dotted decimal
+    uint32 port = 2;
+};
+
+message RoleAttributes 
+{
+    string host_name = 1;
+    string host_ip = 2;
+    int32 process_id = 3;
+    string node_name = 4;
+    uint64 node_id = 5;  // hash value of node_name
+    // especially for WRITER and READER
+    string channel_name = 6;
+    uint64 channel_id = 7;  // hash value of channel_name
+    string message_type = 8;
+    bytes proto_desc = 9;
+    uint64 id = 10;
+    QosProfile qos_profile = 11;
+    SocketAddr socket_addr = 12;  // reserved for socket communication
+    // especially for SERVER and CLIENT
+    string service_name = 13;
+    uint64 service_id = 14;  // hash value of service_name
+};

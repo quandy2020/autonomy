@@ -31,9 +31,11 @@ namespace impl {
  * \return a copy of the same quaternion
  */
 inline
-tf2::Quaternion toQuaternion(const tf2::Quaternion& q) {
+tf2::Quaternion toQuaternion(const tf2::Quaternion& q) 
+{
     return q;
-  }
+}
+
 
 /** Function needed for the generalization of toQuaternion
  * \param q a geometry_msgs::Quaternion
@@ -118,7 +120,7 @@ inline void getEulerYPR(const tf2::Quaternion& q, double &yaw, double &pitch, do
     roll  = atan2(2 * (q.y()*q.z() + q.w()*q.x()), sqw - sqx - sqy + sqz);
     yaw   = atan2(2 * (q.x()*q.y() + q.w()*q.z()), sqw + sqx - sqy - sqz);
   }
-};
+}
 
 /** The code below is a simplified version of getEulerRPY that only
  * returns the yaw. It is mostly useful in navigation where only yaw
@@ -126,8 +128,7 @@ inline void getEulerYPR(const tf2::Quaternion& q, double &yaw, double &pitch, do
  * \param q a tf2::Quaternion
  * \return the computed yaw
  */
-inline
-double getYaw(const tf2::Quaternion& q)
+inline double getYaw(const tf2::Quaternion& q)
 {
   double yaw;
 
@@ -152,7 +153,13 @@ double getYaw(const tf2::Quaternion& q)
     yaw   = atan2(2 * (q.x()*q.y() + q.w()*q.z()), sqw + sqx - sqy - sqz);
   }
   return yaw;
-};
+}
+
+inline double getYaw(const commsgs::geometry_msgs::Quaternion& q)
+{
+    tf2::Quaternion quat(q.x, q.y, q.z, q.w);
+    return getYaw(quat);
+}
 
 }  // namespace impl
 }  // namespace tf2

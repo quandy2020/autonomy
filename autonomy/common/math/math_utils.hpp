@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -172,11 +172,13 @@ inline double Sigmoid(const double x) { return 1.0 / (1.0 + std::exp(-x)); }
 Eigen::Vector2d RotateVector2d(const Eigen::Vector2d &v_in, const double theta);
 
 inline std::pair<double, double> RFUToFLU(const double x, const double y) {
-  return std::make_pair(y, -x);
+  // return std::make_pair(y, -x);
+  return {y, -x};
 }
 
 inline std::pair<double, double> FLUToRFU(const double x, const double y) {
-  return std::make_pair(-y, x);
+  // return std::make_pair(-y, x);
+  return {-y, x};
 }
 
 inline void L2Norm(int feat_dim, float *feat_data) {

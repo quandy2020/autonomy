@@ -20,10 +20,11 @@
 #include <unordered_map>
 
 #include "autonomy/tasks/proto/task_options.pb.h"
-#include "autonomy/tasks/proto/extend_command.pb.h"
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/thread_pool.hpp"
 #include "autonomy/tasks/common/task_interface.hpp"
+#include "autonomy/tasks/multi_ordered_cmd_queue.hpp"
 
 namespace autonomy {
 namespace tasks { 
@@ -48,29 +49,33 @@ public:
     ~TaskBridge();
 
     /**
-     * @brief Shutdown 
+     * @brief Start task bridge
      */
-    void Shutdown();
+    void Start();
 
     /**
-     * @brief Handle user navigation task commands
-     * 
-     * @return True or false
+     * @brief Shutdown task bridge
      */
-    bool HandleCommandMessageCallback(const proto::ExtendCommand& msgs);
+    void Shutdown();
 
 private:
 
     /**
-     * @brief Get task type name
+     * @brief Run tasks
      */
-    std::string name(const proto::ExtendCommand::Type& msgs);
+    void RunTasks();
 
     // tasks options
     const proto::TaskOptions options_;
 
     // Task map(key & value)
     std::unordered_map<std::string, common::TaskInterface::SharedPtr> tasks_;
+
+    // Task command queue
+    OrderedMultiCommandQueue cmd_queue_;
+
+    // Thread pool
+    autonomy::common::ThreadPool thread_pool_;
 };
 
 }   // namespace tasks

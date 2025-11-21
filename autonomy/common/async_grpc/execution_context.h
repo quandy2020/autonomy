@@ -20,6 +20,8 @@
 #include "autonomy/common/async_grpc/common/mutex.h"
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 // Implementations of this class allow RPC handlers to share state among one
@@ -58,5 +60,7 @@ class ExecutionContext {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_EXECUTION_CONTEXT_H

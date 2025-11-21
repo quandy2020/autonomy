@@ -20,7 +20,7 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/map/common/map_interface.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
@@ -46,14 +46,17 @@ public:
     AUTONOMY_SMART_PTR_DEFINITIONS(GoalChecker)
 
     /**
-     * @brief A constructor for control::common::GoalChecker
-     * @param options Additional options to control creation of the node.
+     * @brief A Destructor for GoalChecker
      */
-    GoalChecker(
-        const std::string& plugin_name, 
-        const std::shared_ptr<map::common::MapInterface> map) = 0;
-
     virtual ~GoalChecker() = default;
+
+     /**
+     * @brief A constructor for control::common::GoalChecker
+     * @param parent Node pointer for grabbing parameters
+     */
+    virtual void Initialize(
+        const std::string & plugin_name,
+        const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wraper) = 0;
 
     virtual void Reset() = 0;
 

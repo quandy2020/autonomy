@@ -17,10 +17,10 @@
 #ifndef CPP_GRPC_CLIENT_H
 #define CPP_GRPC_CLIENT_H
 
-#include "async_grpc/common/optional.h"
-#include "async_grpc/retry.h"
-#include "async_grpc/rpc_handler_interface.h"
-#include "async_grpc/rpc_service_method_traits.h"
+#include "autonomy/common/async_grpc/common/optional.h"
+#include "autonomy/common/async_grpc/retry.h"
+#include "autonomy/common/async_grpc/rpc_handler_interface.h"
+#include "autonomy/common/async_grpc/rpc_service_method_traits.h"
 
 #include "grpc++/grpc++.h"
 #include "grpc++/impl/codegen/client_unary_call.h"
@@ -29,6 +29,8 @@
 
 #include "glog/logging.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 // Wraps a method invocation for all rpc types, unary, client streaming,
@@ -299,5 +301,7 @@ class Client<RpcServiceMethodConcept,
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_CLIENT_H

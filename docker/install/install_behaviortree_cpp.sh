@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ###############################################################################
-# Copyright 2024 The OpenRobotic Beginner Authors. All Rights Reserved.
+# Copyright 2024 The OpenRobotic Beginner Authors (duyongquan). All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,9 +19,19 @@
 # Fail on first error.
 set -e
 
+# update
+sudo ldconfig
+
 cd /thirdparty
-git clone -b 4.6.2 https://github.com/BehaviorTree/BehaviorTree.CPP.git
-cd BehaviorTree.CPP && mkdir build && cd build && cmake ..
+git clone -b 4.7.2 https://gitee.com/quanduyong/BehaviorTree.CPP.git
+cd BehaviorTree.CPP && mkdir build && cd build 
+cmake \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_BUILD_TYPE=Release        \
+    -DCMAKE_CXX_STANDARD=17           \
+    -DBUILD_SHARED_LIBS=ON            \
+    ..  
+
 make -j8
 make install
 

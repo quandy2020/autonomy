@@ -19,13 +19,5 @@
 namespace autonomy {
 namespace perception {
 
-
-proto::PerceptionOptions CreatePerceptionOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::PerceptionOptions options;
-    return options;
-}
-
 }  // namespace perception
 }  // namespace autonomy

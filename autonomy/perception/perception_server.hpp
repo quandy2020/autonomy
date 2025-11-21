@@ -37,9 +37,5 @@ public:
 
 };
 
-
-proto::PerceptionOptions CreatePerceptionOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-
 }  // namespace perception
 }  // namespace autonomy

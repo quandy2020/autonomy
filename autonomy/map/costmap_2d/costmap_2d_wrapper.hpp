@@ -41,15 +41,22 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include "autonomy/transform/tf2/utils.h"
 #include "autonomy/map/proto/map_options.pb.h"
 
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/class_loader/class_loader.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/transform/buffer.hpp"
 #include "autonomy/map/common/map_interface.hpp"
+#include "autonomy/map/costmap_2d/map_io.hpp"
+#include "autonomy/map/costmap_2d/footprint.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 
@@ -60,6 +67,9 @@ namespace costmap_2d {
 class Costmap2DWrapper : public common::MapInterface
 {
 public:
+    using TfBuffer = autonomy::transform::Buffer;
+    using ClassLoader = autonomy::common::class_loader::ClassLoader;
+
     /**
      * Define Costmap2DWrapper::SharedPtr type
      */
@@ -69,7 +79,9 @@ public:
      * @brief A constructor for nautonomy::map::costmap_2d::Costmap2DWrapper
      * @param options Additional options to control creation of the node.
      */
-    Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name = "");
+    Costmap2DWrapper(
+        const proto::Costmap2DOptions& options,
+        const std::string& name = "");
 
     /**
      * @brief A Destructor for autonomy::map::costmap_2d::Costmap2DWrapper
@@ -81,28 +93,27 @@ public:
      */
     void init();
 
-
     /**
      * @brief  Subscribes to sensor topics if necessary and starts costmap
      * updates, can be called to restart the costmap after calls to either
      * stop() or pause()
      */
-    void start();
+    void Start() override;
 
     /**
      * @brief  Stops costmap updates and unsubscribes from sensor topics
      */
-    void stop();
+    void Stop() override;
 
     /**
      * @brief  Stops the costmap from updating, but sensor data still comes in over the wire
      */
-    void pause();
+    void Pause() override;
 
     /**
      * @brief  Resumes costmap updates
      */
-    void resume();
+    void Resume() override;
 
     /**
      * @brief Update the map with the layered costmap / plugins
@@ -113,6 +124,12 @@ public:
      * @brief Reset each individual layer
      */
     void resetLayers();
+
+    void setRobotFootprint(const std::vector<commsgs::geometry_msgs::Point>& points);
+
+    void setRobotFootprintPolygon(const commsgs::geometry_msgs::Polygon::SharedPtr footprint);
+
+    void getOrientedFootprint(std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
 
     /** 
      * @brief Same as getLayeredCostmap()->isCurrent(). 
@@ -155,15 +172,15 @@ public:
         return transform_tolerance_;
     }
 
-    // /**
-    //  * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
-    //  *
-    //  * Same as calling getLayeredCostmap()->getCostmap().
-    //  */
-    // Costmap2D* getCostmap()
-    // {
-    //     return layered_costmap_->getCostmap();
-    // }
+    /**
+     * @brief Return a pointer to the "master" costmap which receives updates from all the layers.
+     *
+     * Same as calling getLayeredCostmap()->getCostmap().
+     */
+    Costmap2D* getCostmap()
+    {
+        return layered_costmap_->getCostmap();
+    }
 
     /**
      * @brief  Returns the global frame of the costmap
@@ -191,13 +208,13 @@ public:
         return layered_costmap_.get();
     }
 
-    // /** 
-    //  * @brief Returns the current padded footprint as a geometry_msgs::msg::Polygon. 
-    //  */
-    // geometry_msgs::msg::Polygon getRobotFootprintPolygon()
-    // {
-    //     return nav2_costmap_2d::toPolygon(padded_footprint_);
-    // }
+    /** 
+     * @brief Returns the current padded footprint as a geometry_msgs::msg::Polygon. 
+     */
+    commsgs::geometry_msgs::Polygon getRobotFootprintPolygon()
+    {
+        return toPolygon(padded_footprint_);
+    }
 
     /** 
      * @brief Return the current footprint of the robot as a vector of points.
@@ -225,10 +242,54 @@ public:
         return unpadded_footprint_;
     }
 
+    /**
+     * @brief Load the map metadata into the costmap
+     * @param map_meta_data The map metadata to load
+     * @return Whether the map was loaded successfully
+     */
+    bool loadMap(const std::string& filename);
+
+    /**
+     * @brief Publish the map to the topic
+     */
+    void publishMap();
+
+    /**
+     * @brief  Get the costmap's use_radius_ parameter, corresponding to
+     * whether the footprint for the robot is a circle with radius robot_radius_
+     * or an arbitrarily defined footprint in footprint_.
+     * @return  use_radius_
+     */
+    bool getUseRadius() {return use_radius_;}
+
+    /**
+     * @brief  Get the costmap's robot_radius_ parameter, corresponding to
+     * raidus of the robot footprint when it is defined as as circle
+     * (i.e. when use_radius_ == true).
+     * @return  robot_radius_
+     */
+    double getRobotRadius() {return robot_radius_;}
+
 protected:
 
     std::unique_ptr<LayeredCostmap> layered_costmap_{nullptr};
     std::string name_;
+
+    /**
+     * @brief Function on timer for costmap update
+     */
+    void mapUpdateLoop(double frequency);
+
+    bool map_update_thread_shutdown_{false};
+    std::atomic<bool> stop_updates_{false};
+    std::atomic<bool> initialized_{false};
+    std::atomic<bool> stopped_{true};
+    std::mutex _dynamic_parameter_mutex;
+    std::unique_ptr<std::thread> map_update_thread_;  ///< @brief A thread for updating the map
+    commsgs::builtin_interfaces::Time last_publish_{0, 0};
+    // builtin_interfaces::builtin_interfaces::Duration publish_cycle_{1, 0};
+    // ClassLoader<Layer> plugin_loader_{"nav2_costmap_2d", "nav2_costmap_2d::Layer"};
+    std::unique_ptr<ClassLoader> plugin_loader_{nullptr};
 
     bool always_send_full_costmap_{false};
     std::string footprint_;
@@ -257,6 +318,10 @@ protected:
 
     bool is_lifecycle_follower_{true};   ///< whether is a child-LifecycleNode or an independent node
 
+    
+    // Map data
+    commsgs::map_msgs::OccupancyGrid occupancy_grid_;
+
     // Derived parameters
     bool use_radius_{false};
     std::vector<commsgs::geometry_msgs::Point> unpadded_footprint_;
@@ -264,7 +329,6 @@ protected:
     
     // options for costmap 2D
     proto::Costmap2DOptions options_;
-
 };
 
 proto::Costmap2DOptions CreateCostmap2DOptions(

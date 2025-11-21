@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,21 +72,21 @@ public:
 
 protected:
     /*
-    * Updates the master_grid within the specified
-    * bounding box using this layer's values.
-    *
-    * TrueOverwrite means every value from this layer
-    * is written into the master grid.
-    */
+     * Updates the master_grid within the specified
+     * bounding box using this layer's values.
+     *
+     * TrueOverwrite means every value from this layer
+     * is written into the master grid.
+     */
     void updateWithTrueOverwrite(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
-    /*
-    * Updates the master_grid within the specified
-    * bounding box using this layer's values.
-    *
-    * Overwrite means every valid value from this layer
-    * is written into the master grid (does not copy NO_INFORMATION)
-    */
+    /** 
+     * Updates the master_grid within the specified
+     * bounding box using this layer's values.
+     *
+     * Overwrite means every valid value from this layer
+     * is written into the master grid (does not copy NO_INFORMATION)
+     */
     void updateWithOverwrite(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
     /*

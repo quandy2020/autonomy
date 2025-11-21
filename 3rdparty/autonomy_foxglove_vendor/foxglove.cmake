@@ -38,3 +38,12 @@ macro(build_foxglove)
 endmacro()
 
 build_foxglove()
+
+# Find all Foxglove SDK source files
+file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
+    "${foxglove_SOURCE_DIR}/src/*.cpp"
+    "${foxglove_SOURCE_DIR}/src/server/*.cpp"
+)
+
+# include 
+include_directories(${foxglove_SOURCE_DIR}/include)

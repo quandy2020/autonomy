@@ -27,8 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GEOMETRY_MSGS_TRANSFORM_STAMPED_H 
-#define GEOMETRY_MSGS_TRANSFORM_STAMPED_H
+#pragma once
 
 #include <iostream>
 #include <stdint.h>
@@ -75,6 +74,4 @@ struct TransformStamped {
 }; 
 
 
-}
-
-#endif
+} // namespace geometry_msgs

@@ -1,0 +1,157 @@
+// Copyright 2025 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.map_msgs;
+
+import "autolink/commsgs/std_msgs/std_msgs.proto";
+import "autolink/commsgs/builtin_interfaces/builtin_interfaces.proto";
+import "autolink/commsgs/geometry_msgs/geometry_msgs.proto";
+
+// An array of cells in a 2D grid
+message GridCells
+{
+    std_msgs.Header header = 1;
+
+    // Width of each cell
+    float cell_width = 2;
+
+    // Height of each cell
+    float cell_height = 3;
+
+    // Each cell is represented by the Point at the center of the cell
+    repeated geometry_msgs.Point cells = 4;
+}
+
+// This hold basic information about the characteristics of the OccupancyGrid
+message MapMetaData
+{
+    // The time at which the map was loaded
+    builtin_interfaces.Time map_load_time = 1;
+    
+    // The map resolution [m/cell]
+    float resolution = 2;
+    
+    // Map width [cells]
+    uint32 width = 3;
+    
+    // Map height [cells]
+    uint32 height = 4;
+    
+    // The origin of the map [m, m, rad].  This is the real-world pose of the
+    // bottom left corner of cell (0,0) in the map.
+    geometry_msgs.Pose origin = 5;
+}
+
+message OccupancyGrid
+{
+    // This represents a 2-D grid map
+    std_msgs.Header header = 1;
+
+    // MetaData for the map
+    MapMetaData info = 2;
+
+    // The map data, in row-major order, starting with (0,0). 
+    // Cell (1, 0) will be listed second, representing the next cell in the x direction. 
+    // Cell (0, 1) will be at the index equal to info.width, followed by (1, 1).
+    // The values inside are application dependent, but frequently, 
+    // 0 represents unoccupied, 1 represents definitely occupied, and
+    // -1 represents unknown. 
+    repeated int32 data = 3;
+}
+
+message OccupancyGridUpdate
+{
+    std_msgs.Header header = 1;
+    int32 x = 2;
+    int32 y = 3;
+    uint32 width = 4;
+    uint32 height = 5;
+    repeated int32 data = 6;
+};
+
+message Octomap
+{
+    // A 3D map in binary format, as Octree
+    std_msgs.Header header = 1;
+
+    // Flag to denote a binary (only free/occupied) or full occupancy octree (.bt/.ot file)
+    bool binary = 2;
+
+    // Class id of the contained octree 
+    string id = 3;
+
+    // Resolution (in m) of the smallest octree nodes
+    double resolution = 4;
+
+    // binary serialization of octree, use conversions.h to read and write octrees
+    repeated int32 data = 5 [packed=true];
+}
+
+message OctomapWithPose
+{
+    // A 3D map in binary format, as Octree
+    std_msgs.Header header = 1;
+
+    // The pose of the octree with respect to the header frame 
+    geometry_msgs.Pose origin = 2;
+
+    // The actual octree msg
+    Octomap octomap = 3;
+}
+
+
+message GridMapInfo
+{
+    // Header (time and frame)
+    std_msgs.Header header = 1;
+
+    // Resolution of the grid [m/cell].
+    float resolution = 2;
+
+    // Length in x-direction [m].
+    float length_x = 3;
+
+    // Length in y-direction [m].
+    float length_y = 4;
+
+    // Pose of the grid map center in the frame defined in `header` [m].
+    geometry_msgs.Pose pose = 5;
+}
+
+message GridMap
+{
+    // Grid map header
+    GridMapInfo info = 1;
+
+    // Grid map layer names.
+    repeated string layers = 2;
+
+    // Grid map basic layer names (optional). The basic layers
+    // determine which layers from `layers` need to be valid
+    // in order for a cell of the grid map to be valid.
+    repeated string basic_layers = 3;
+
+    // Grid map data.
+    repeated std_msgs.Float32MultiArray data = 4;
+
+    // Row start index (default 0).
+    uint32 outer_start_index = 5;
+
+    // Column start index (default 0).
+    uint32 inner_start_index = 6;
+}
+
+

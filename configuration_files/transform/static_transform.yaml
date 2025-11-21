@@ -1,0 +1,115 @@
+# Copyright 2025 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Static Transform Configuration
+# 静态TF变换配置
+# 
+# 说明：
+# - frame_id: 父坐标系名称
+# - child_frame_id: 子坐标系名称
+# - translation: 平移向量 (x, y, z) 单位：米
+# - rotation: 旋转四元数 (x, y, z, w)
+# - enabled: 是否启用该变换
+
+static_transforms:
+  
+  # RGB-D Camera - Intel RealSense D435i
+  - name: realsense435i
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "camera_link"
+    translation:
+      x: 0.15
+      y: 0.0
+      z: 0.12
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  
+  # IMU - Inertial Measurement Unit
+  - name: imu
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "imu_link"
+    translation:
+      x: 0.0
+      y: 0.0
+      z: 0.05
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  
+  # Front Laser scanner
+  - name: laser
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "laser_link"
+    translation:
+      x: 0.3
+      y: 0.0
+      z: 0.1
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  
+  
+  # Map to Odom (可选，通常由定位节点动态发布)
+  - name: map_to_odom
+    enabled: false
+    frame_id: "map"
+    child_frame_id: "odom"
+    translation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  
+  # Odom to Base Link (可选，通常由里程计节点动态发布)
+  - name: odom_to_base
+    enabled: false
+    frame_id: "odom"
+    child_frame_id: "base_link"
+    translation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+
+# Global settings
+settings:
+  # 发布频率 (Hz)
+  publish_rate: 10.0
+  
+  # TF前缀 (可选)
+  tf_prefix: ""
+  
+  # 是否在启动时打印所有变换
+  print_transforms_on_startup: true
+  
+  # 是否验证四元数归一化
+  validate_quaternion: true

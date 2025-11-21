@@ -15,10 +15,23 @@
  */
 
 #include "autonomy/bridge/common/bridge_interface.hpp"
-
+#include "autonomy/common/configuration_file_resolver.hpp"
+#include "autonomy/bridge/common/bridge_option.hpp"
 namespace autonomy {
 namespace bridge { 
+namespace common { 
 
+proto::BridgeOptions LoadOptions(
+    autonomy::common::LuaParameterDictionary* const parameter_dictionary)
+{
+    proto::BridgeOptions options;
+    options.set_use_grpc(parameter_dictionary->GetBool("use_grpc"));
+    options.set_use_mqtt(parameter_dictionary->GetBool("use_mqtt"));
+    // *options.mutable_grpc() = CreateGrpcOptions(parameter_dictionary->GetDictionary("grpc").get());
+    // *options.mutable_mqtt() = CreateMqttOptions(parameter_dictionary->GetDictionary("mqtt").get());
+    return options;
+}
 
+}   // namespace common 
 }   // namespace bridge
 }   // namespace autonomy

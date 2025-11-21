@@ -17,6 +17,7 @@ syntax = "proto3";
 package autonomy.commsgs.proto.geometry_msgs;
 
 import "autonomy/commsgs/proto/std_msgs.proto";
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
 
 // This expresses acceleration in free space broken into its linear and angular parts.
 message Accel 
@@ -120,6 +121,12 @@ message PointStamped
     Point point = 2;
 }
 
+message Point2D
+{
+    float x = 1;
+    float y = 2;
+}
+
 // This contains the position of a point in free space(with 32 bits of precision).
 // It is recommended to use Point wherever possible instead of Point32.
 //
@@ -132,6 +139,15 @@ message Point32
     float x = 1;
     float y = 2;
     float z = 3;
+}
+
+message PointXYZIT 
+{
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    uint32 intensity = 4;
+    builtin_interfaces.Time timestamp = 5;
 }
 
 // A specification of a polygon where the first and last points are assumed to be connected

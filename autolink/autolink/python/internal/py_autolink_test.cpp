@@ -1,0 +1,69 @@
+/**
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "autolink/python/internal/py_autolink.hpp"
+
+#include <memory>
+#include <string>
+
+#include "gtest/gtest.h"
+
+#include "autolink/autolink.hpp"
+#include "autolink/message/py_message.hpp"
+#include "autolink/proto/unit_test.pb.h"
+
+namespace autolink {
+
+TEST(PyAutolinkTest, init_ok) {
+    EXPECT_TRUE(py_ok());
+    EXPECT_TRUE(OK());
+}
+
+TEST(PyAutolinkTest, create_reader) {
+    EXPECT_TRUE(OK());
+    proto::Chatter chat;
+    PyNode node("listener");
+    std::unique_ptr<PyReader> pr(
+        node.create_reader("channel/chatter", chat.GetTypeName()));
+    EXPECT_EQ("autolink.cyber.proto.Chatter", chat.GetTypeName());
+    EXPECT_NE(pr, nullptr);
+    pr->register_func([](const char* channel_name) -> int {
+        AINFO << "recv->[ " << channel_name << " ]";
+        return 0;
+    });
+}
+
+TEST(PyAutolinkTest, create_writer) {
+    EXPECT_TRUE(OK());
+    auto msgChat = std::make_shared<proto::Chatter>();
+    PyNode node("talker");
+    std::unique_ptr<PyWriter> pw(
+        node.create_writer("channel/chatter", msgChat->GetTypeName(), 10));
+    EXPECT_NE(pw, nullptr);
+
+    EXPECT_TRUE(OK());
+    uint64_t seq = 5;
+    msgChat->set_timestamp(Time::Now().ToNanosecond());
+    msgChat->set_lidar_timestamp(Time::Now().ToNanosecond());
+    msgChat->set_seq(seq++);
+    msgChat->set_content("Hello, autolink!");
+
+    std::string org_data;
+    msgChat->SerializeToString(&org_data);
+    EXPECT_TRUE(pw->write(org_data));
+}
+
+}  // namespace autolink

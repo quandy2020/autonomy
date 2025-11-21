@@ -1,0 +1,45 @@
+#!/usr/bin/bash
+
+_SETUP_PATH=$(cd `dirname $0`; pwd)
+USER_HOME_DIR=$(getent passwd $USER | cut -d: -f6)
+
+AUTOLINK_PATH=$(dirname "$_SETUP_PATH") # Autolink Path
+BUILD_PATH=$_SETUP_PATH # build path
+PATH=$_SETUP_PATH/bin/cyber/tools:$_SETUP_PATH/bin/cyber/mainboard:$PATH
+PYTHONPATH=$_SETUP_PATH/lib/python@Python_VERSION@/site-packages:$_SETUP_PATH/lib/python@Python_VERSION@/site-packages/cyber/python/internal:$PYTHONPATH
+LD_LIBRARY_PATH=$_SETUP_PATH/lib:$LD_LIBRARY_PATH
+LIBRARY_PATH=$_SETUP_PATH/lib:$LIBRARY_PATH
+CMAKE_PREFIX_PATH=$_SETUP_PATH:$CMAKE_PREFIX_PATH
+PKG_CONFIG_PATH=$_SETUP_PATH/lib/pkgconfig:$_SETUP_PATH/share/pkgconfig:$PKG_CONFIG_PATH
+AUTOLINK_PATH=$_SETUP_PATH/share/
+export PATH LIBRARY_PATH LD_LIBRARY_PATH CMAKE_PREFIX_PATH PKG_CONFIG_PATH PYTHONPATH AUTOLINK_PATH
+
+# place all these in one place and pathprepend
+bazel_bin_path="${BUILD_PATH}/bin" # bin path
+mainboard_path="${bazel_bin_path}/autolink/mainboard"
+autolink_tool_path="${bazel_bin_path}/autolink/tools"
+recorder_path="${autolink_tool_path}/autolink_recorder"
+launch_path="${autolink_tool_path}/autolink_launch"
+channel_path="${autolink_tool_path}/autolink_channel"
+node_path="${autolink_tool_path}/autolink_node"
+service_path="${autolink_tool_path}/autolink_service"
+monitor_path="${autolink_tool_path}/autolink_monitor"
+visualizer_path="${bazel_bin_path}/modules/tools/visualizer"
+
+
+
+# create log dir
+AUTOLINK_LOG_DIR_PREFIX="$USER_HOME_DIR/.autolink/log"
+if [ ! -d "$AUTOLINK_LOG_DIR_PREFIX" ]; then
+    mkdir -p "$AUTOLINK_LOG_DIR_PREFIX"
+fi
+
+export GLOG_log_dir="$AUTOLINK_LOG_DIR_PREFIX"
+export GLOG_alsologtostderr=1
+export GLOG_colorlogtostderr=1
+export GLOG_minloglevel=0
+export sysmo_start=0
+export AUTOLINK_DOMAIN_ID=80
+export AUTOLINK_IP=127.0.0.1
+
+source ${BUILD_PATH}/autolink_tools_auto_complete.bash

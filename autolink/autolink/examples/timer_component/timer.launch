@@ -1,0 +1,7 @@
+<autolink>
+    <module>
+        <name>timer</name>
+        <dag_conf>/autolink/examples/timer_component/timer.dag</dag_conf>
+        <process_name>timer</process_name>
+    </module>
+</autolink>

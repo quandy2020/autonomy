@@ -82,7 +82,7 @@ struct OccupancyGrid
     // The values inside are application dependent, but frequently, 
     // 0 represents unoccupied, 1 represents definitely occupied, and
     // -1 represents unknown. 
-    std::vector<uint8> data;
+    std::vector<int16> data;
 };
 struct OccupancyGridUpdate
 {

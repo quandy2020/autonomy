@@ -20,25 +20,140 @@
 #include <string>
 #include <vector>
 
+#include "autonomy/common/logging.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/param_handler.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/transform/transform_broadcaster.hpp"
 
 namespace autonomy {
 namespace transform {
 
-class StaticTransformComponent
+/**
+ * @brief Static TF transform configuration structure
+ */
+struct StaticTransformConfig {
+    std::string name;
+    bool enabled;
+    std::string frame_id;
+    std::string child_frame_id;
+    
+    struct Translation {
+        double x;
+        double y;
+        double z;
+    } translation;
+    
+    struct Rotation {
+        double x;
+        double y;
+        double z;
+        double w;
+    } rotation;
+};
+
+/**
+ * @brief Global settings
+ */
+struct StaticTransformSettings {
+    double publish_rate = 10.0;
+    std::string tf_prefix = "";
+    bool print_transforms_on_startup = true;
+    bool validate_quaternion = true;
+};
+
+/**
+ * @brief Static TF transform component
+ * 
+ * This component loads static TF transforms from a YAML configuration file
+ * and periodically publishes these transforms
+ */
+class StaticTransform
 {
 public:
-    StaticTransformComponent() = default;
-    ~StaticTransformComponent() = default;
+    AUTONOMY_SMART_PTR_DEFINITIONS(StaticTransform)
+    
+    /**
+     * @brief Constructor
+     */
+     StaticTransform();
+    
+    /**
+     * @brief Destructor
+     */
+    ~StaticTransform();
+    
+    /**
+     * @brief Initialize the component
+     * @param yaml_file_path YAML configuration file path
+     * @return true on successful initialization
+     */
+    bool Initialize(const std::string& yaml_file_path);
+    
+    /**
+     * @brief Start static TF publishing
+     */
+    void Start();
+    
+    /**
+     * @brief Stop static TF publishing
+     */
+    void Stop();
+    
+    /**
+     * @brief Get the number of loaded transforms
+     */
+    size_t GetTransformCount() const { return transforms_.size(); }
+    
+    /**
+     * @brief Get the number of enabled transforms
+     */
+    size_t GetEnabledTransformCount() const;
 
 private:
-    void SendTransforms();
-    void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
-    bool ParseFromYaml(const std::string& file_path, commsgs::geometry_msgs::TransformStamped* transform);
+    /**
+     * @brief Parse configuration from YAML file
+     * @param yaml_file_path YAML file path
+     * @return true on successful parsing
+     */
+    bool ParseYamlConfig(const std::string& yaml_file_path);
+    
+    /**
+     * @brief Validate if quaternion is normalized
+     * @param rotation Rotation quaternion
+     * @return true if valid
+     */
+    bool ValidateQuaternion(const StaticTransformConfig::Rotation& rotation) const;
+    
+    /**
+     * @brief Publish all static transforms
+     */
+    void PublishTransforms();
+    
+    /**
+     * @brief Convert configuration to TransformStamped message
+     * @param config Configuration
+     * @return TransformStamped message
+     */
+    commsgs::geometry_msgs::TransformStamped ConfigToTransformStamped(
+        const StaticTransformConfig& config) const;
+    
+    /**
+     * @brief Print all transform information
+     */
+    void PrintTransforms() const;
 
-    // openbot::static_transform::Conf conf_;
-    // std::shared_ptr<apollo::cyber::Writer<common::geometry_msgs::TransformStampeds>> writer_;
-    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
+private:
+    // Configuration
+    common::ParamHandler::SharedPtr param_handler_{nullptr};
+    std::vector<StaticTransformConfig> transforms_;
+    StaticTransformSettings settings_;
+    
+    // TF broadcaster
+    std::shared_ptr<TransformBroadcaster> tf_broadcaster_;
+    
+    // Initialization flag
+    bool initialized_ = false;
 };
 
 }  // namespace transform

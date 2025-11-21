@@ -1,0 +1,105 @@
+# Bazel 配置文件
+
+# ============================================
+# 输出目录配置
+# ============================================
+
+# 指定 Bazel 输出基础目录（包含所有构建产物、缓存等）
+# 取消下面的注释并设置路径来指定输出目录
+# common --output_base=/path/to/your/output
+
+# 指定用户根目录（包含所有工作区的共享数据）
+# 取消下面的注释并设置路径来指定用户根目录
+# common --output_user_root=~/.bazel-output
+
+# 自定义符号链接前缀（bazel-bin, bazel-out 等）
+# 例如：设置为 "build-" 会创建 build-bin, build-out 等符号链接
+# common --symlink_prefix=bazel-
+
+# ============================================
+# 构建配置
+# ============================================
+
+# 使用本地磁盘缓存
+build --disk_cache=~/.cache/bazel-disk-cache
+
+# 并行构建
+build --jobs=8
+
+# 显示详细输出（可选）
+# build --verbose_failures
+
+# 使用颜色输出
+common --color=yes
+
+# ============================================
+# 调试配置
+# ============================================
+# 使用 --config=dbg 启用调试模式
+# 调试模式包含：
+#   - 调试符号（-g）
+#   - 无优化（-O0）
+#   - 断言启用
+#   - 详细错误信息
+
+build:dbg --compilation_mode=dbg
+build:dbg --copt=-g
+build:dbg --copt=-O0
+build:dbg --strip=never
+build:dbg --copt=-DDEBUG
+
+# 快速调试模式（保留一些优化以提高调试性能）
+build:fastbuild --compilation_mode=fastbuild
+build:fastbuild --copt=-g
+build:fastbuild --copt=-O1
+
+# ============================================
+# 平台检测和默认配置
+# ============================================
+# 根据主机平台自动选择配置
+# 使用 --config=macos 或 --config=linux 手动指定平台
+
+# macOS 平台配置
+build:macos --copt=-faligned-allocation
+build:macos --linkopt=-Wl,-w
+build:macos --host_linkopt=-Wl,-w
+build:macos --linkopt=-fPIC
+build:macos --copt=-fPIC
+build:macos --dynamic_mode=default
+
+# Linux 平台配置
+build:linux --linkopt=-Wl,--no-warn-unused
+build:linux --host_linkopt=-Wl,--no-warn-unused
+build:linux --linkopt=-fPIC
+build:linux --copt=-fPIC
+build:linux --dynamic_mode=default
+
+# ============================================
+# 通用链接器配置
+# ============================================
+# 抑制重复库的警告（-lm 和 -lpthread 是系统库，Bazel 会自动链接）
+# 注意：平台特定的链接器选项在各自的配置中设置
+
+# ============================================
+# 通用动态库配置
+# ============================================
+# 启用动态链接模式（影响 cc_library 的链接方式）
+# 注意：cc_library 默认生成静态库，要生成共享库需要使用 cc_binary + linkshared=True
+# 此配置主要用于控制可执行文件的链接方式
+# 平台特定的动态库选项在各自的配置中设置
+
+# ============================================
+# 自动平台检测（基于主机系统）
+# ============================================
+# 注意：Bazel 不直接支持在 .bazelrc 中进行条件判断
+# 可以通过以下方式之一来使用平台特定配置：
+# 1. 手动指定：bazel build --config=macos //...
+# 2. 在脚本中检测平台并设置环境变量
+# 3. 使用 Bazel 的 --host_cpu 和 --cpu 选项（需要更复杂的配置）
+
+# 默认配置（如果未指定平台，使用通用设置）
+build --linkopt=-fPIC
+build --copt=-fPIC
+build --dynamic_mode=default
+# macOS 默认启用对齐分配支持
+build --copt=-faligned-allocation

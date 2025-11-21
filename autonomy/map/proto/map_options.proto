@@ -16,15 +16,8 @@ syntax = "proto3";
 
 package autonomy.map.proto;
 
-message Costmap2DOptions
-{
-    string map_file = 1;
-}
-
-message Costmap3DOptions
-{
-    string map_file = 1;
-}
+import "autonomy/map/proto/map_2d_option.proto";
+import "autonomy/map/proto/map_3d_option.proto";
 
 message MapOptions
 {

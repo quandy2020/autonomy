@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ###############################################################################
-# Copyright 2024 The OpenRobotic Beginner Authors. All Rights Reserved.
+# Copyright 2024 The OpenRobotic Beginner Authors (duyongquan). All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,14 @@ set -e
 cd /thirdparty
 git clone --branch 2.2.0 https://github.com/ceres-solver/ceres-solver.git
 cd ceres-solver
-mkdir build && cd build && cmake ..
+mkdir build && cd build 
+cmake \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+    -DCMAKE_BUILD_TYPE=Release        \
+    -DCMAKE_CXX_STANDARD=17           \
+    -DBUILD_SHARED_LIBS=ON            \
+    ..  
+
 make -j6
 make install
 

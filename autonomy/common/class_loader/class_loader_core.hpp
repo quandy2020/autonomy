@@ -57,8 +57,7 @@ namespace Poco
 
 namespace autonomy {
 namespace common { 
-namespace class_loader
-{
+namespace class_loader {
 
 class ClassLoader;  // Forward declaration
 
@@ -361,7 +360,7 @@ void unloadLibrary(const std::string & library_path, ClassLoader * loader);
 
 }  // namespace impl
 }  // namespace class_loader
-}  // namespace commom
+}  // namespace common
 }  // namespace autonomy
 
 #endif  // CLASS_LOADER__CLASS_LOADER_CORE_HPP_

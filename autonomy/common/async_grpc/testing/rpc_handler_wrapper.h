@@ -19,6 +19,8 @@
 
 #include <functional>
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 namespace testing {
 
@@ -52,5 +54,7 @@ class RpcHandlerWrapper : public RpcHandlerType {
 
 }  // namespace testing
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_TESTING_RPC_HANDLER_WRAPPER_H_

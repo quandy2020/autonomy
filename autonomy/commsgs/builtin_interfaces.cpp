@@ -110,19 +110,174 @@ Time FromProto(const proto::builtin_interfaces::Time& proto)
     };
 }
 
+Duration::Duration(int32_t seconds, uint32_t nanoseconds)
+{
+    duration_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>(seconds)).count();
+    duration_  += nanoseconds;
+}
+
+Duration::Duration(std::chrono::nanoseconds nanoseconds)
+{
+    duration_ = nanoseconds.count();
+}
+
+Duration& Duration::operator=(const Duration& rhs) = default;
+
+bool Duration::operator==(const Duration& rhs) const
+{
+    return duration_ == duration_;
+}
+
+bool Duration::operator!=(const Duration& rhs) const
+{
+    return duration_ != rhs.duration_;
+}
+
+bool Duration::operator<(const Duration & rhs) const
+{
+    return duration_ < rhs.duration_;
+}
+
+bool Duration::operator<=(const Duration& rhs) const
+{
+    return duration_ <= rhs.duration_;
+}
+
+bool Duration::operator>=(const Duration& rhs) const
+{
+    return duration_ >= rhs.duration_;
+}
+
+bool Duration::operator>(const Duration& rhs) const
+{
+    return duration_ > rhs.duration_;
+}
+
+void bounds_check_duration_sum(int64_t lhsns, int64_t rhsns, uint64_t max)
+{
+  auto abs_lhs = static_cast<uint64_t>(std::abs(lhsns));
+  auto abs_rhs = static_cast<uint64_t>(std::abs(rhsns));
+
+  if (lhsns > 0 && rhsns > 0) {
+    if (abs_lhs + abs_rhs > max) {
+      throw std::overflow_error("addition leads to int64_t overflow");
+    }
+  } else if (lhsns < 0 && rhsns < 0) {
+    if (abs_lhs + abs_rhs > max) {
+      throw std::underflow_error("addition leads to int64_t underflow");
+    }
+  }
+}
+
+Duration Duration::operator+(const Duration& rhs) const
+{
+    bounds_check_duration_sum(
+        this->duration_,
+        rhs.duration_,
+        std::numeric_limits<int64_t>::max());
+    return Duration::FromNanoseconds(duration_ + rhs.duration_);
+}
+
+void
+bounds_check_duration_difference(int64_t lhsns, int64_t rhsns, uint64_t max)
+{
+  auto abs_lhs = static_cast<uint64_t>(std::abs(lhsns));
+  auto abs_rhs = static_cast<uint64_t>(std::abs(rhsns));
+
+  if (lhsns > 0 && rhsns < 0) {
+    if (abs_lhs + abs_rhs > max) {
+      throw std::overflow_error("duration subtraction leads to int64_t overflow");
+    }
+  } else if (lhsns < 0 && rhsns > 0) {
+    if (abs_lhs + abs_rhs > max) {
+      throw std::underflow_error("duration subtraction leads to int64_t underflow");
+    }
+  }
+}
+
+Duration Duration::operator-(const Duration& rhs) const
+{
+  bounds_check_duration_difference(
+    this->duration_, rhs.duration_,
+    std::numeric_limits<int64_t>::max());
+
+  return Duration::FromNanoseconds(duration_ - rhs.duration_);
+}
+
+void bounds_check_duration_scale(int64_t dns, double scale, uint64_t max)
+{
+  auto abs_dns = static_cast<uint64_t>(std::abs(dns));
+  auto abs_scale = std::abs(scale);
+  if (abs_scale > 1.0 && abs_dns >
+    static_cast<uint64_t>(static_cast<long double>(max) / static_cast<long double>(abs_scale)))
+  {
+    if ((dns > 0 && scale > 0) || (dns < 0 && scale < 0)) {
+      throw std::overflow_error("duration scaling leads to int64_t overflow");
+    } else {
+      throw std::underflow_error("duration scaling leads to int64_t underflow");
+    }
+  }
+}
+
+Duration
+Duration::operator*(double scale) const
+{
+  if (!std::isfinite(scale)) {
+    throw std::runtime_error("abnormal scale in rclcpp::Duration");
+  }
+  bounds_check_duration_scale(
+    this->duration_, scale,
+    std::numeric_limits<int64_t>::max());
+  long double scale_ld = static_cast<long double>(scale);
+  return Duration::FromNanoseconds(
+    static_cast<int64_t>(
+      static_cast<long double>(duration_) * scale_ld));
+}
+
+int64_t Duration::Nanoseconds() const
+{
+    return duration_;
+}
+
+Duration Duration::Max()
+{
+    return Duration(std::numeric_limits<int32_t>::max(), 999999999);
+}
+
+double Duration::Seconds() const
+{
+    return std::chrono::duration<double>(std::chrono::nanoseconds(duration_)).count();
+}
+
+Duration Duration::FromSeconds(double seconds)
+{
+  Duration ret;
+  ret.duration_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::duration<double>(seconds)).count();
+  return ret;
+}
+
+Duration Duration::FromNanoseconds(int64_t nanoseconds)
+{
+    Duration ret;
+    ret.duration_ = nanoseconds;
+    return ret;
+}
+
 proto::builtin_interfaces::Duration ToProto(const Duration& data)
 {
     proto::builtin_interfaces::Duration proto;
-    *proto.mutable_stamp() = ToProto(data.stamp);
-    proto.set_frame_id(data.frame_id);
+    // *proto.mutable_stamp() = ToProto(data.stamp);
+    // proto.set_frame_id(data.frame_id);
     return proto;
 }
 
 Duration FromProto(const proto::builtin_interfaces::Duration& proto)
 {
     Duration data;
-    data.stamp = FromProto(proto.stamp());
-    data.frame_id = proto.frame_id();
+    // data.stamp = FromProto(proto.stamp());
+    // data.frame_id = proto.frame_id();
     return data;
 }
 

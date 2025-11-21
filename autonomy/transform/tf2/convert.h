@@ -54,7 +54,7 @@ namespace tf2 {
  * This method needs to be implemented by client library developers
  */
 template <class T>
-  void doTransform(const T& data_in, T& data_out, const geometry_msgs::TransformStamped& transform);
+void doTransform(const T& data_in, T& data_out, const geometry_msgs::TransformStamped& transform);
 
 /**\brief Get the timestamp from data 
  * \param t The data input.
@@ -62,7 +62,7 @@ template <class T>
  * reference is bound to the lifetime of the argument.
  */
 template <class T>
-  const Time& getTimestamp(const T& t);
+const Time& getTimestamp(const T& t);
 
 /**\brief Get the frame_id from data 
  * \param t The data input.
@@ -70,23 +70,21 @@ template <class T>
  * reference is bound to the lifetime of the argument.
  */
 template <class T>
-  const std::string& getFrameId(const T& t);
-
-
+const std::string& getFrameId(const T& t);
 
 /* An implementation for Stamped<P> datatypes */
 template <class P>
-  const Time& getTimestamp(const tf2::Stamped<P>& t)
-  {
-    return t.stamp_;
-  }
+const Time& getTimestamp(const tf2::Stamped<P>& t)
+{
+  return t.stamp_;
+}
 
 /* An implementation for Stamped<P> datatypes */
 template <class P>
-  const std::string& getFrameId(const tf2::Stamped<P>& t)
-  {
-    return t.frame_id_;
-  }
+const std::string& getFrameId(const tf2::Stamped<P>& t)
+{
+  return t.frame_id_;
+}
 
 /** Function that converts from one type to a ROS message type. It has to be
  * implemented by each data type in tf2_* (except ROS messages) as it is
@@ -95,7 +93,7 @@ template <class P>
  * \return the conversion as a ROS message
  */
 template<typename A, typename B>
-  B toMsg(const A& a);
+B toMsg(const A& a);
 
 /** Function that converts from a ROS message type to another type. It has to be
  * implemented by each data type in tf2_* (except ROS messages) as it is used
@@ -104,7 +102,7 @@ template<typename A, typename B>
  * \param b the object to convert to
  */
 template<typename A, typename B>
-  void fromMsg(const A&, B& b);
+void fromMsg(const A&, B& b);
 
 /** Function that converts any type to any type (messages or not).
  * Matching toMsg and from Msg conversion functions need to exist.
@@ -121,12 +119,12 @@ template <class A, class B>
   }
 
 template <class A>
-  void convert(const A& a1, A& a2)
-  {
-    //printf("In single type convert\n");
-    if(&a1 != &a2)
-      a2 = a1;
-  }
+void convert(const A& a1, A& a2)
+{
+  //printf("In single type convert\n");
+  if(&a1 != &a2)
+    a2 = a1;
+}
 
 
 }

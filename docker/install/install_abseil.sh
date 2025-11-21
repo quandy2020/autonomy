@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ###############################################################################
-# Copyright 2020 The Apollo Authors. All Rights Reserved.
+# Copyright 2024 The OpenRobotic Beginner Authors (duyongquan). All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,16 +22,10 @@ set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
-# # todo(zero): if check "libabsl_base.so" is enough
-# if ldconfig -p | grep -q "libabsl_base.so" ; then
-#     info "Found existing Abseil installation. Reinstallation skipped."
-#     exit 0
-# fi
-
 # Install abseil.
-VERSION="20200225.2"
+VERSION="20220623.0"
 PKG_NAME="abseil-cpp-${VERSION}.tar.gz"
-DOWNLOAD_LINK="https://apollo-system.cdn.bcebos.com/archive/6.0/${VERSION}.tar.gz"
+DOWNLOAD_LINK="https://github.com/abseil/abseil-cpp/archive/refs/tags/${VERSION}.tar.gz"
 CHECKSUM="f41868f7a938605c92936230081175d1eae87f6ea2c248f41077c8f88316f111"
 
 download_if_not_cached "${PKG_NAME}" "${CHECKSUM}" "${DOWNLOAD_LINK}"
@@ -43,11 +37,11 @@ pushd "abseil-cpp-${VERSION}"
     mkdir build && cd build
     cmake .. \
         -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_CXX_STANDARD=17 
+        -DCMAKE_CXX_STANDARD=17 \
+        -DCMAKE_INSTALL_PREFIX=${DEST_DIR}
     cmake --build . --target install
 popd
 
-echo "${DEST_DIR}/lib" >> "${APOLLO_LD_FILE}"
 ldconfig
 
 # Clean up

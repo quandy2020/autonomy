@@ -15,24 +15,99 @@
 
 AUTONOMY_PLANNER = {
 
+    expected_planner_frequency = 10.0,
+
+    frame_id = "map",
+
     -- planner plugins
-    -- plugins = {
-    --     "astar_planner", 
-    --     "dijkstra_planner", 
-    --     "navfn_planner"
-    -- }, 
+    plugins = { 
+        "NavfnPlanner"
+    }, 
 
-    astar_planner = {
-
-    },
-
-    dijkstra_planner = {
-
-    },
-
-    navfn_planner = {
-        tolerance = 0.02,
-        max_its = 100,
+    -- NavfnPlanner
+    NavfnPlanner = {
+        plugin = "planning::NavfnPlanner",
+        enabled = true,
+        tolerance = 0.2,
+        use_astar = true,
         allow_unknown = true,
+    },
+
+    -- global costmap --
+    costmap = {
+        name = "global_costmap",
+        resolution = 0.05,
+        width = 100,
+        height = 100,
+        update_frequency = 1.0,
+        rolling_window = true,
+        robot_radius = 0.5,
+        always_send_full_costmap = true,
+    
+        -- footprint
+        footprint = {
+            {0.5, 0.5},
+            {0.5, -0.5},
+            {-0.5, -0.5},
+            {-0.5, 0.5},
+        },
+        footprint_padding = 0.0,
+
+        -- plugins
+        plugins = {"static_layer", "inflation_layer"},
+
+        -- static layer
+        static_layer = {
+            plugin = "map::costmap_2d::StaticLayer",
+            enabled = true,
+            subscribe_to_updates = false,
+            transform_tolerance = 0.1,
+            footprint_clearing_enabled = true,
+            map_topic = "/map",
+        },
+
+        -- inflation layer
+        inflation_layer = {
+            cost_scaling_factor = 0.5,
+            inflation_radius = 0.5,
+        },
+
+        -- obstacle layer
+        obstacle_layer = {
+           plugin = "map::costmap_2d::ObstacleLayer",
+           enabled = true,
+           footprint_clearing_enabled = true,
+           observation_sources = {"scan", "point_cloud"},
+
+           -- scan source
+           -- sensor type and params
+           scan = {
+               topic = "/scan",
+               max_obstacle_height = 2.0,
+               min_obstacle_height = 0.0,
+               clearing = true,
+               marking = true,
+               data_type = "LaserScan",
+               raytrace_min_range = 0.0,
+               raytrace_max_range = 10.0,
+               obstacle_min_height = 0.0,
+               obstacle_max_height = 2.0,
+           },
+
+           -- point cloud source
+           -- sensor type and params
+           point_cloud = {
+               topic = "/point_cloud",
+               max_obstacle_height = 2.0,
+               min_obstacle_height = 0.0,
+               clearing = true,
+               marking = true,
+               data_type = "PointCloud2",
+               raytrace_min_range = 0.0,
+               raytrace_max_range = 10.0,
+               obstacle_min_height = 0.0,
+               obstacle_max_height = 2.0,
+           },
+        },
     }
 }

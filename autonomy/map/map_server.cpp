@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The OpenRobotic Beginner Authors
+ * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,10 @@
  */
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/map/constants.hpp"
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
-
-#include "autonomy/map/costmap_2d/map_io.hpp"
-#include "autonomy/map/costmap_3d/map_io.hpp"
 
 namespace autonomy {
 namespace map {
@@ -28,66 +26,33 @@ namespace map {
 MapServer::MapServer(const proto::MapOptions& options)
     : options_{options}
 {
-    if (options_.use_costmap_2d()) {
-        costmap_ = std::make_shared<costmap_2d::Costmap2DWrapper>(options_.costmap2d_options());
-        LOG(INFO) << "Use costmap 2D map.";
-    } else if (options_.use_costmap_3d()) {
-        costmap_ = std::make_shared<costmap_3d::Costmap3DWrapper>(options_.costmap3d_options());
-        LOG(INFO) << "Use costmap 3D map.";
-    }
 
+    // // Create costmap 2D or 3D.
+    // if (options_.use_costmap_2d()) {
+    //     costmap_ = std::make_shared<costmap_2d::Costmap2DWrapper>(node_, options_.costmap2d_options());
+    //     LOG(INFO) << "Use costmap 2D map.";
+    // } else if (options_.use_costmap_3d()) {
+    //     costmap_ = std::make_shared<costmap_3d::Costmap3DWrapper>(options_.costmap3d_options());
+    //     LOG(INFO) << "Use costmap 3D map.";
+    // }
 
-    std::string yaml_file = utils::GetMapDataFilesDirectory() + options_.costmap2d_options().map_file();
+    costmap_ = std::make_shared<costmap_2d::Costmap2DWrapper>(options_.costmap2d_options());
 
-    LOG(INFO) << "map_file: " << yaml_file;
+    LOG(INFO) << "Map server init successfully.";
 }
 
-MapServer::~MapServer()
+
+void MapServer::Start()
+{
+    LOG(INFO) << "Start map server.";
+    costmap_->Start();
+}
+
+void MapServer::WaitForShutdown()
 {
 
 }
 
-bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::OccupancyGrid& map_data)
-{
-    if (costmap_2d::loadMapFromYaml(filename, map_data) != costmap_2d::LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
-        LOG(ERROR) << "Load yaml file error.";
-        return false;
-    }
-    return true;
-}
-
-bool MapServer::LoadMapData(const std::string& filename, commsgs::map_msgs::Octomap& map_data)
-{
-    return true;
-}
-
-bool MapServer::LoadMapData(const std::string& filename, commsgs::sensor_msgs::PointCloud& map_data)
-{
-    if (!costmap_3d::LoadPlyFile(filename, map_data)) {
-        LOG(ERROR) << "Load PointCloud data error.";
-        return false;
-    }
-    return true;
-}
-
-bool MapServer::LoadMapData(const std::string& filename, commsgs::sensor_msgs::PointCloud2& map_data)
-{
-    
-    return true;
-}
-
-proto::MapOptions CreateMapOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::MapOptions options;
-    options.set_use_costmap_2d(parameter_dictionary->GetBool("use_costmap_2d"));
-    options.set_use_costmap_3d(parameter_dictionary->GetBool("use_costmap_3d"));
-    *options.mutable_costmap2d_options() = 
-        costmap_2d::CreateCostmap2DOptions(parameter_dictionary->GetDictionary("costmap2d").get());
-    *options.mutable_costmap3d_options() = 
-        costmap_3d::CreateCostmap3DOptions(parameter_dictionary->GetDictionary("costmap3d").get());
-    return options;
-}
 
 }  // namespace map
 }  // namespace autonomy

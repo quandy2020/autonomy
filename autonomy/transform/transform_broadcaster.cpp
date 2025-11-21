@@ -16,22 +16,68 @@
 
 #include "autonomy/transform/transform_broadcaster.hpp"
 
+#include <glog/logging.h>
+
 namespace autonomy {
 namespace transform {
 
-void TransformBroadcaster::SendTransform(const commsgs::geometry_msgs::TransformStamped& transform) 
+TransformBroadcaster::TransformBroadcaster(
+    const std::string& topic_name)
+    : topic_name_(topic_name)
+    , published_count_(0)
+    , initialized_(false)
 {
-  std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
-  transforms.emplace_back(transform);
-  SendTransform(transforms);
+    LOG(INFO) << "TransformBroadcaster created with topic: " << topic_name_;
 }
 
-void TransformBroadcaster::SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) 
+TransformBroadcaster::~TransformBroadcaster()
 {
-  auto message = std::make_shared<commsgs::geometry_msgs::TransformStampeds>();
-//   *message->mutable_transforms() = {transforms.begin(), transforms.end()};
-//   writer_->Write(message);
+    LOG(INFO) << "TransformBroadcaster destroyed. Published " 
+              << published_count_ << " transform messages.";
 }
 
-}  // namespace transform
-}  // namespace autonomy
+void TransformBroadcaster::SendTransform(
+    const commsgs::geometry_msgs::TransformStamped& transform) 
+{
+    std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
+    transforms.push_back(transform);
+    SendTransform(transforms);
+}
+
+void TransformBroadcaster::SendTransform(
+    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) 
+{
+}
+
+std::string TransformBroadcaster::GetTopicName() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return topic_name_;
+}
+
+size_t TransformBroadcaster::GetPublishedCount() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return published_count_;
+}
+
+void TransformBroadcaster::ResetPublishedCount()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    published_count_ = 0;
+    LOG(INFO) << "Published count reset to 0";
+}
+
+bool TransformBroadcaster::IsInitialized() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return initialized_;
+}
+
+void TransformBroadcaster::PublishTransforms(
+    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms)
+{
+}
+
+} // namespace transform
+} // namespace autonomy

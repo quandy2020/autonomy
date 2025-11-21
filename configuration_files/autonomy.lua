@@ -23,8 +23,22 @@ include "tasks/tasks.lua"
 include "transform/transform.lua"
 include "visualization/visualization.lua"
 
+-- -- Autonomy all lua config
+-- AUTONOMY = {
+--   bridge = AUTONOMY_BRIDGE,                 -- bridge options
+--   control = AUTONOMY_CONTROLLER,            -- controller options
+--   localization = AUTONOMY_LOCALIZATION,     -- localization options
+--   map = AUTONOMY_MAP,                       -- map options
+--   prediction = AUTONOMY_PREDICTION,         -- prediction options
+--   perception = AUTONOMY_PERCEPTION,         -- perception options
+--   planning = AUTONOMY_PLANNER,              -- planner options
+--   tasks = AUTONOMY_TASKS,                   -- task options
+--   transform = AUTONOMY_TRANSFORM,           -- transform options
+--   -- visualization = AUTONOMY_VISUALIZATION,   -- visualization options
+-- }
+
 -- Autonomy all lua config
-AUTONOMY = {
+options = {
   bridge = AUTONOMY_BRIDGE,                 -- bridge options
   control = AUTONOMY_CONTROLLER,            -- controller options
   localization = AUTONOMY_LOCALIZATION,     -- localization options
@@ -34,5 +48,7 @@ AUTONOMY = {
   planning = AUTONOMY_PLANNER,              -- planner options
   tasks = AUTONOMY_TASKS,                   -- task options
   transform = AUTONOMY_TRANSFORM,           -- transform options
-  -- visualization = AUTONOMY_VISUALIZATION,   -- visualization options
+  visualization = AUTONOMY_VISUALIZATION,   -- visualization options
 }
+
+return options

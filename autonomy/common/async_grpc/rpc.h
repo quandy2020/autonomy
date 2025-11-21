@@ -32,6 +32,8 @@
 #include "grpc++/impl/codegen/proto_utils.h"
 #include "grpc++/impl/codegen/service_type.h"
 
+namespace autonomy {
+namespace common { 
 namespace async_grpc {
 
 class Service;
@@ -207,5 +209,7 @@ class ActiveRpcs {
 };
 
 }  // namespace async_grpc
+}  // namespace common 
+}  // namespace autonomy 
 
 #endif  // CPP_GRPC_RPC_H
