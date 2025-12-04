@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:24.04 
+FROM osrf/ros:humble-desktop
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -94,14 +94,9 @@ RUN bash /tmp/install/install_gtest.sh
 RUN bash /tmp/install/install_grpc.sh
 RUN bash /tmp/install/install_gperftools.sh
 RUN bash /tmp/install/install_opencv.sh
-RUN bash /tmp/install/install_foonathan_memory.sh
-RUN bash /tmp/install/install_fastcdr.sh
-RUN bash /tmp/install/install_fastdds.sh
-RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_ceres_solver.sh
-RUN bash /tmp/install/install_assimp.sh
-RUN bash /tmp/install/install_ogre.sh
 RUN bash /tmp/install/install_nlohmann.sh
+RUN bash /tmp/install/install_osqp.sh
 
 
 # autonomy workspace
