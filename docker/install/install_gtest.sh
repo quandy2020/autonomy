@@ -23,6 +23,8 @@ set -e
 sudo ldconfig
 
 cd /thirdparty
+# Use GitHub official repository instead of gitee for better compatibility
+git clone -b v1.17.0 https://github.com/google/googletest.git || \
 git clone -b v1.17.0 https://gitee.com/quanduyong/googletest.git
 cd googletest && mkdir builder && cd builder 
 cmake \
