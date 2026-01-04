@@ -13,10 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/rtps/publisher.hpp"
-#include <fastdds/dds/core/ReturnCode.hpp>
-#include <fastdds/rtps/common/WriteParams.hpp>
 #include "autolink/common/log.hpp"
 
 namespace autolink {
@@ -71,8 +68,8 @@ bool Publisher::Write(const UnderlayMessage& msg, bool is_topo_msg) {
     if (is_topo_msg) {
         AINFO << "FastDDSPublisher::Write data size: " << msg.data().size();
     }
-    return writer_->write(reinterpret_cast<void*>(const_cast<UnderlayMessage*>(
-               &msg))) == eprosima::fastdds::dds::RETCODE_OK;
+    return writer_->write(
+        reinterpret_cast<void*>(const_cast<UnderlayMessage*>(&msg)));
 }
 
 bool Publisher::Write(const UnderlayMessage& msg, const MessageInfo& msg_info,
@@ -82,7 +79,7 @@ bool Publisher::Write(const UnderlayMessage& msg, const MessageInfo& msg_info,
         AINFO << "FastDDSPublisher::Write data size: " << msg.data().size();
     }
 
-    eprosima::fastdds::rtps::WriteParams wparams;
+    eprosima::fastrtps::rtps::WriteParams wparams;
 
     char* ptr = reinterpret_cast<char*>(
         &wparams.related_sample_identity().writer_guid());
@@ -96,8 +93,7 @@ bool Publisher::Write(const UnderlayMessage& msg, const MessageInfo& msg_info,
         (int32_t)(msg_info.seq_num() & 0xFFFFFFFF);
 
     return writer_->write(
-               reinterpret_cast<void*>(const_cast<UnderlayMessage*>(&msg)),
-               wparams) == eprosima::fastdds::dds::RETCODE_OK;
+        reinterpret_cast<void*>(const_cast<UnderlayMessage*>(&msg)), wparams);
 }
 
 void Publisher::Shutdown() {
@@ -109,7 +105,7 @@ void Publisher::Shutdown() {
     }
     if (participant_ != nullptr && publisher_ != nullptr) {
         if (participant_->delete_publisher(publisher_) ==
-            eprosima::fastdds::dds::RETCODE_OK) {
+            eprosima::fastrtps::types::ReturnCode_t::RETCODE_OK) {
             publisher_ = nullptr;
         } else {
             AERROR << channel_name_ << ": Failed to delete the publisher.";

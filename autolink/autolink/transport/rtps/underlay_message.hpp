@@ -23,10 +23,9 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/common/macros.hpp"
+#include "autolink/base/macros.hpp"
 
-#include "fastcdr/config.h"
-#include "fastcdr/Cdr.h"
+#include "fastcdr/fastcdr/Cdr.h"
 
 namespace autolink {
 namespace transport {

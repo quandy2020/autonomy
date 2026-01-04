@@ -20,7 +20,7 @@
 set -e
 
 cd /thirdparty
-git clone -b v1.48.0 https://gitee.com/quanduyong/grpc.git
+git clone -b v1.48.0 https://github.com/grpc/grpc.git
 cd grpc && git submodule init && git submodule update
 mkdir build && cd build
 cmake  \

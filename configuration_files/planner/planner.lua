@@ -15,99 +15,64 @@
 
 AUTONOMY_PLANNER = {
 
-    expected_planner_frequency = 10.0,
+    -- NavFn global planner configuration
+    navfn_planner = {
+        -- Tolerance near the goal point (meters)
+        tolerance = 0.1,
 
-    frame_id = "map",
+        -- Whether to use A* algorithm (false uses Dijkstra)
+        use_astar = false,
 
-    -- planner plugins
-    plugins = { 
-        "NavfnPlanner"
-    }, 
+        -- Whether to allow unknown regions (NO_INFORMATION) in planning
+        allow_unknown = false,
 
-    -- NavfnPlanner
-    NavfnPlanner = {
-        plugin = "planning::NavfnPlanner",
-        enabled = true,
-        tolerance = 0.2,
-        use_astar = true,
-        allow_unknown = true,
+        -- Whether to use final approach orientation
+        use_final_approach_orientation = false,
     },
 
-    -- global costmap --
+    -- Expected planner frequency (Hz), used for internal performance checks (PlannerServer::expected_planner_frequency)
+    expected_planner_frequency = 5.0,
+
+
+    -- Global map configuration (for global path planning)
     costmap = {
-        name = "global_costmap",
+        -- Default map name (used if name is not specified in costmap configuration)
+        name = "global_map",
+        frame_id = "map",
         resolution = 0.05,
-        width = 100,
-        height = 100,
-        update_frequency = 1.0,
-        rolling_window = true,
-        robot_radius = 0.5,
+        update_frequency = 5.0,
+        robot_radius = 0.22,
         always_send_full_costmap = true,
-    
-        -- footprint
-        footprint = {
-            {0.5, 0.5},
-            {0.5, -0.5},
-            {-0.5, -0.5},
-            {-0.5, 0.5},
-        },
-        footprint_padding = 0.0,
-
-        -- plugins
-        plugins = {"static_layer", "inflation_layer"},
-
-        -- static layer
+        -- Plugin list (executed in order)
+        -- Layers: static_layer, obstacle_layer, voxel_layer, range_sensor_layer, denoise_layer, inflation_layer
+        -- Filters: keepout_filter, speed_filter, binary_filter
+        plugins = {"static_layer", "denoise_layer", "inflation_layer"},
+        
+        -- Static layer configuration: load static obstacles from SLAM map
         static_layer = {
-            plugin = "map::costmap_2d::StaticLayer",
+            plugin = "libautonomy_map_layers_static_layer.so",
             enabled = true,
-            subscribe_to_updates = false,
-            transform_tolerance = 0.1,
-            footprint_clearing_enabled = true,
-            map_topic = "/map",
+            subscribe_to_updates = false,        -- Whether to subscribe to map updates
+            transform_tolerance = 0.1,           -- Transform tolerance (seconds)
+            footprint_clearing_enabled = false,  -- Whether to clear robot footprint area
+            map_topic = "map",                   -- Static map topic
         },
-
-        -- inflation layer
+        
+        -- Denoise layer configuration: filter isolated obstacles caused by noise
+        denoise_layer = {
+            plugin = "libautonomy_map_layers_denoise_layer.so",
+            enabled = true,
+            denoise_radius = 2,  -- Denoise radius (pixels), obstacle groups smaller than this size will be removed
+        },
+        
+        -- Inflation layer configuration: inflate obstacles to maintain safe distance
         inflation_layer = {
-            cost_scaling_factor = 0.5,
-            inflation_radius = 0.5,
+            plugin = "libautonomy_map_layers_inflation_layer.so",
+            enabled = true,
+            cost_scaling_factor = 3.0,  -- Cost decay factor (larger values decay faster)
+            inflation_radius = 0.55,    -- Inflation radius (meters), should be larger than robot radius
+            inflate_unknown = false,    -- Whether to inflate unknown regions
+            inflate_around_unknown = false,  -- Whether to inflate around unknown regions
         },
-
-        -- obstacle layer
-        obstacle_layer = {
-           plugin = "map::costmap_2d::ObstacleLayer",
-           enabled = true,
-           footprint_clearing_enabled = true,
-           observation_sources = {"scan", "point_cloud"},
-
-           -- scan source
-           -- sensor type and params
-           scan = {
-               topic = "/scan",
-               max_obstacle_height = 2.0,
-               min_obstacle_height = 0.0,
-               clearing = true,
-               marking = true,
-               data_type = "LaserScan",
-               raytrace_min_range = 0.0,
-               raytrace_max_range = 10.0,
-               obstacle_min_height = 0.0,
-               obstacle_max_height = 2.0,
-           },
-
-           -- point cloud source
-           -- sensor type and params
-           point_cloud = {
-               topic = "/point_cloud",
-               max_obstacle_height = 2.0,
-               min_obstacle_height = 0.0,
-               clearing = true,
-               marking = true,
-               data_type = "PointCloud2",
-               raytrace_min_range = 0.0,
-               raytrace_max_range = 10.0,
-               obstacle_min_height = 0.0,
-               obstacle_max_height = 2.0,
-           },
-        },
-    }
+    },
 }

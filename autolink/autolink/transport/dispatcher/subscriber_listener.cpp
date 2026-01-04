@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/dispatcher/subscriber_listener.hpp"
-#include <fastdds/dds/core/ReturnCode.hpp>
 
 #include "autolink/common/log.hpp"
 #include "autolink/transport/message/message_info.hpp"
@@ -40,7 +38,7 @@ void SubscriberListener::on_data_available(
     UnderlayMessage m;
 
     while (reader->take_next_sample(reinterpret_cast<void*>(&m), &m_info) ==
-           eprosima::fastdds::dds::RETCODE_OK) {
+           eprosima::fastrtps::types::ReturnCode_t::RETCODE_OK) {
         if (m_info.valid_data) {
             char* ptr = reinterpret_cast<char*>(
                 &m_info.related_sample_identity.writer_guid());

@@ -17,7 +17,5 @@
 #include "autonomy/prediction/prediction_server.hpp"
 
 namespace autonomy {
-namespace prediction {
-
-}  // namespace prediction
+namespace prediction {}  // namespace prediction
 }  // namespace autonomy

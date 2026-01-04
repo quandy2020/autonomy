@@ -19,10 +19,10 @@
 #include <cmath>
 #include <iostream>
 
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
 namespace map {
@@ -41,8 +41,8 @@ namespace utils {
 // bool getCurrentPose(
 //   commsgs::geometry_msgs::PoseStamped & global_pose,
 //   tf2_ros::Buffer & tf_buffer, const std::string global_frame = "map",
-//   const std::string robot_frame = "base_link", const double transform_timeout = 0.1,
-//   const rclcpp::Time stamp = rclcpp::Time());
+//   const std::string robot_frame = "base_link", const double transform_timeout
+//   = 0.1, const rclcpp::Time stamp = rclcpp::Time());
 
 // /**
 // * @brief get an arbitrary pose in a target frame
@@ -82,7 +82,8 @@ namespace utils {
 //  * @param source_time Source timestamp to convert from
 //  * @param target_frame_id Target frame ID to convert to
 //  * @param target_time Current node time to interpolate to
-//  * @param fixed_frame_id The frame in which to assume the transform is constant in time
+//  * @param fixed_frame_id The frame in which to assume the transform is
+//  constant in time
 //  * @param transform_tolerance Transform tolerance
 //  * @param tf_buffer TF buffer to use for the transformation
 //  * @param tf_transform Output source->target transform
@@ -121,7 +122,8 @@ namespace utils {
 //  * @param source_time Source timestamp to convert from
 //  * @param target_frame_id Target frame ID to convert to
 //  * @param target_time Current node time to interpolate to
-//  * @param fixed_frame_id The frame in which to assume the transform is constant in time
+//  * @param fixed_frame_id The frame in which to assume the transform is
+//  constant in time
 //  * @param transform_tolerance Transform tolerance
 //  * @param tf_buffer TF buffer to use for the transformation
 //  * @param transform_msg Output source->target transform msg
@@ -143,7 +145,8 @@ namespace utils {
 //  * @return True if valid, false if contains unactionable values
 //  */
 // [[nodiscard]] bool validateTwist(const commsgs::geometry_msgs::Twist & msg);
-// [[nodiscard]] bool validateTwist(const commsgs::geometry_msgs::TwistStamped & msg);
+// [[nodiscard]] bool validateTwist(const commsgs::geometry_msgs::TwistStamped &
+// msg);
 
 }  // namespace utils
 }  // namespace costmap_2d

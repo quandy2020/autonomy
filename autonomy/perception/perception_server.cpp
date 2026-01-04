@@ -17,7 +17,5 @@
 #include "autonomy/perception/perception_server.hpp"
 
 namespace autonomy {
-namespace perception {
-
-}  // namespace perception
+namespace perception {}  // namespace perception
 }  // namespace autonomy

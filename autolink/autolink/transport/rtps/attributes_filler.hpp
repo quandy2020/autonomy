@@ -21,10 +21,8 @@
 #include "autolink/base/macros.hpp"
 
 #include "autolink/proto/qos_profile.pb.h"
-
-#include <fastdds/dds/publisher/qos/DataWriterQos.hpp>
-#include <fastdds/dds/subscriber/qos/DataReaderQos.hpp>
-#include "autolink/transport/qos/qos_filler.hpp"
+#include "fastrtps/fastrtps/attributes/PublisherAttributes.h"
+#include "fastrtps/fastrtps/attributes/SubscriberAttributes.h"
 
 namespace autolink {
 namespace transport {
@@ -42,15 +40,11 @@ public:
 
     static bool FillInPubAttr(
         const std::string& channel_name, const QosProfile& qos,
-        eprosima::fastdds::dds::DataWriterQos* writer_qos) {
-        return QosFiller::FillInWriterQos(channel_name, qos, writer_qos);
-    }
+        eprosima::fastrtps::PublisherAttributes* pub_attr);
 
     static bool FillInSubAttr(
         const std::string& channel_name, const QosProfile& qos,
-        eprosima::fastdds::dds::DataReaderQos* reader_qos) {
-        return QosFiller::FillInReaderQos(channel_name, qos, reader_qos);
-    }
+        eprosima::fastrtps::SubscriberAttributes* sub_attr);
 };
 
 }  // namespace transport

@@ -220,8 +220,8 @@ void Screen::Run() {
 
     highlight_direction_ = 0;
 
-    void (Screen::*showFuncs[])(int) = {&Screen::ShowRenderMessage,
-                                        &Screen::ShowInteractiveCmd};
+    void (Screen::* showFuncs[])(int) = {&Screen::ShowRenderMessage,
+                                         &Screen::ShowInteractiveCmd};
 
     do {
         int ch = getch();

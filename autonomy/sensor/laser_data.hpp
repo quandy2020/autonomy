@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+#include "autonomy/commsgs/sensor_msgs.hpp"
 
 namespace autonomy {
 namespace sensor {

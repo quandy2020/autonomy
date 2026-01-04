@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-
 #include "autonomy/common/state_estimation/noise_model/wiener_noise.hpp"
-#include "autonomy/common/helper_functions/types.hpp"
 
 #include <cstddef>
+
+#include "autonomy/common/helper_functions/types.hpp"
 
 namespace autonomy {
 namespace common {
@@ -27,44 +27,42 @@ namespace state_estimation {
 using autonomy::common::types::float32_t;
 using autonomy::common::types::float64_t;
 
-namespace
-{
-template<typename ScalarT>
-Eigen::Matrix<ScalarT, 3, 3> create_single_variable_block(const std::chrono::nanoseconds & dt)
-{
-  const auto seconds = std::chrono::duration<double>{dt}.count();
-  const auto seconds_2 = seconds * seconds;
-  const Eigen::Vector3d noise_gain{0.5 * seconds_2, seconds, 1.0};
-  const Eigen::Matrix3d block = noise_gain * noise_gain.transpose();
-  return block.cast<ScalarT>();
+namespace {
+template <typename ScalarT>
+Eigen::Matrix<ScalarT, 3, 3> create_single_variable_block(
+    const std::chrono::nanoseconds& dt) {
+    const auto seconds = std::chrono::duration<double>{dt}.count();
+    const auto seconds_2 = seconds * seconds;
+    const Eigen::Vector3d noise_gain{0.5 * seconds_2, seconds, 1.0};
+    const Eigen::Matrix3d block = noise_gain * noise_gain.transpose();
+    return block.cast<ScalarT>();
 }
 
-template<typename ScalarT, int size, std::size_t stddev_size>
+template <typename ScalarT, int size, std::size_t stddev_size>
 Eigen::Matrix<ScalarT, size, size> create_covariance(
-  const std::chrono::nanoseconds & dt,
-  const typename std::array<ScalarT, stddev_size> acceleration_variances)
-{
-  const Eigen::Matrix<ScalarT, 3, 3> block_matrix =
-    create_single_variable_block<ScalarT>(dt);
-  Eigen::Matrix<ScalarT, size, size> m = Eigen::Matrix<ScalarT, size, size>::Zero();
-  for (std::size_t i = 0; i < stddev_size; ++i) {
-    const int offs = static_cast<int>(3 * i);
-    m.template block<3, 3>(offs, offs) =
-      block_matrix * acceleration_variances[i] * acceleration_variances[i];
-  }
-  return m;
+    const std::chrono::nanoseconds& dt,
+    const typename std::array<ScalarT, stddev_size> acceleration_variances) {
+    const Eigen::Matrix<ScalarT, 3, 3> block_matrix =
+        create_single_variable_block<ScalarT>(dt);
+    Eigen::Matrix<ScalarT, size, size> m =
+        Eigen::Matrix<ScalarT, size, size>::Zero();
+    for (std::size_t i = 0; i < stddev_size; ++i) {
+        const int offs = static_cast<int>(3 * i);
+        m.template block<3, 3>(offs, offs) = block_matrix *
+                                             acceleration_variances[i] *
+                                             acceleration_variances[i];
+    }
+    return m;
 }
 }  // namespace
 
-template<typename StateT>
+template <typename StateT>
 typename StateT::Matrix WienerNoise<StateT>::crtp_covariance(
-  const std::chrono::nanoseconds & dt) const
-{
-  return create_covariance<
-    typename StateT::Scalar, StateT::size(),
-    number_of_acceleration_components<StateT>::value>(dt, m_acceleration_variances);
+    const std::chrono::nanoseconds& dt) const {
+    return create_covariance<typename StateT::Scalar, StateT::size(),
+                             number_of_acceleration_components<StateT>::value>(
+        dt, m_acceleration_variances);
 }
-
 
 /// \cond DO_NOT_DOCUMENT
 

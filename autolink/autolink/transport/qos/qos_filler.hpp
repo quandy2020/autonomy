@@ -20,13 +20,12 @@
 
 #include "autolink/base/macros.hpp"
 
+#include "autolink/proto/qos_profile.pb.h"
 #include "fastdds/dds/publisher/qos/DataWriterQos.hpp"
 #include "fastdds/dds/publisher/qos/PublisherQos.hpp"
 #include "fastdds/dds/subscriber/qos/DataReaderQos.hpp"
 #include "fastdds/dds/subscriber/qos/SubscriberQos.hpp"
 #include "fastdds/dds/topic/qos/TopicQos.hpp"
-
-#include "autolink/proto/qos_profile.pb.h"
 
 namespace autolink {
 namespace transport {

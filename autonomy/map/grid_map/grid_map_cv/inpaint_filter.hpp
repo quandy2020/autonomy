@@ -8,13 +8,12 @@
 
 #pragma once
 
-//OpenCV
-#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv.hpp"
-
+// OpenCV
 #include <opencv2/opencv.hpp>
-
-#include <vector>
 #include <string>
+#include <vector>
+
+#include "autonomy/map/grid_map/grid_map_cv/grid_map_cv.hpp"
 
 namespace grid_map {
 
@@ -22,7 +21,7 @@ namespace grid_map {
 //  * Uses OpenCV function to inpaint/fill holes in the input layer.
 //  */
 // template<typename T>
-// class InpaintFilter : public filters::FilterBase<T> 
+// class InpaintFilter : public filters::FilterBase<T>
 // {
 
 // public:
@@ -62,4 +61,4 @@ namespace grid_map {
 //   std::string outputLayer_;
 // };
 
-} /* namespace */
+}  // namespace grid_map

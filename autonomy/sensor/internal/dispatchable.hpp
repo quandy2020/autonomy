@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <functional>
 
@@ -24,19 +24,22 @@ namespace autonomy {
 namespace sensor {
 
 template <typename DataType>
-class Dispatchable : public Data 
+class Dispatchable : public Data
 {
 public:
-    Dispatchable(const std::string &sensor_id, const DataType &data)
+    Dispatchable(const std::string& sensor_id, const DataType& data)
         : Data(sensor_id), data_(data) {}
 
-    Time GetTime() const override { return data_.time; }
+    Time GetTime() const override {
+        return data_.time;
+    }
 
-    void AddToCostmap(map::common::MapInterface *costmap_builder) override 
-    {
+    void AddToCostmap(map::common::MapInterface* costmap_builder) override {
         // costmap_builder->AddSensorData(sensor_id_, data_);
     }
-    const DataType &data() const { return data_; }
+    const DataType& data() const {
+        return data_;
+    }
 
 private:
     const DataType data_;
@@ -44,8 +47,8 @@ private:
 
 template <typename DataType>
 std::unique_ptr<Dispatchable<DataType>> MakeDispatchable(
-    const std::string &sensor_id, const DataType &data) {
-  return absl::make_unique<Dispatchable<DataType>>(sensor_id, data);
+    const std::string& sensor_id, const DataType& data) {
+    return absl::make_unique<Dispatchable<DataType>>(sensor_id, data);
 }
 
 }  // namespace sensor

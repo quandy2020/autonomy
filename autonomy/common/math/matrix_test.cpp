@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "autonomy/common/math/matrix.hpp"
 
 #include <gtest/gtest.h>
@@ -25,21 +24,20 @@ namespace math {
 namespace {
 
 TEST(DecomposeMatrixRQ, Nominal) {
-  for (int i = 0; i < 10; ++i) {
-    const Eigen::Matrix4d A = Eigen::Matrix4d::Random();
+    for (int i = 0; i < 10; ++i) {
+        const Eigen::Matrix4d A = Eigen::Matrix4d::Random();
 
-    Eigen::Matrix4d R, Q;
-    DecomposeMatrixRQ(A, &R, &Q);
+        Eigen::Matrix4d R, Q;
+        DecomposeMatrixRQ(A, &R, &Q);
 
-    EXPECT_TRUE(R.bottomRows(4).isUpperTriangular());
-    EXPECT_TRUE(Q.isUnitary());
-    EXPECT_NEAR(Q.determinant(), 1.0, 1e-6);
-    EXPECT_TRUE(A.isApprox(R * Q, 1e-6));
-  }
+        EXPECT_TRUE(R.bottomRows(4).isUpperTriangular());
+        EXPECT_TRUE(Q.isUnitary());
+        EXPECT_NEAR(Q.determinant(), 1.0, 1e-6);
+        EXPECT_TRUE(A.isApprox(R * Q, 1e-6));
+    }
 }
 
 }  // namespace
 }  // namespace math
 }  // namespace common
 }  // namespace autonomy
-

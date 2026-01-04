@@ -13,19 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-
 #include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/init.hpp"
 #include "autolink/common/util.hpp"
+#include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/qos/qos_profile_conf.hpp"
 #include "autolink/transport/receiver/hybrid_receiver.hpp"
 #include "autolink/transport/transmitter/hybrid_transmitter.hpp"

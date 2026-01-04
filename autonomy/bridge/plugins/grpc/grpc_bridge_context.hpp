@@ -14,33 +14,30 @@
  * limitations under the License.
  */
 
- #pragma once
-
+#pragma once
 
 #include "autonomy/common/async_grpc/execution_context.h"
-
 #include "autonomy/common/macros.hpp"
-
 
 class GrpcBridgeServer;
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace plugins {
 namespace grpc {
 
-class GrpcBridgeContextInterface : public common::async_grpc::ExecutionContext 
+class GrpcBridgeContextInterface : public common::async_grpc::ExecutionContext
 {
 public:
-
     GrpcBridgeContextInterface() = default;
     ~GrpcBridgeContextInterface() = default;
 
     GrpcBridgeContextInterface(const GrpcBridgeContextInterface&) = delete;
-    GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) = delete;
+    GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) =
+        delete;
 };
-  
-}   // namespace grpc
-}   // namespace plugins 
-}   // namespace bridge
-}   // namespace autonomy
+
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

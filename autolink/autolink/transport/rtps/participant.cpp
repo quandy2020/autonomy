@@ -13,15 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/rtps/participant.hpp"
-#include "autolink/transport/rtps/publisher.hpp"
-#include "autolink/transport/rtps/subscriber.hpp"
 
-#include <fastdds/dds/core/ReturnCode.hpp>
-#include <fastdds/rtps/attributes/RTPSParticipantAttributes.hpp>
-#include <fastdds/rtps/common/Locator.hpp>
-#include <fastdds/utils/IPLocator.hpp>
 #include <vector>
 
 namespace autolink {
@@ -134,7 +127,7 @@ bool Participant::CreateParticipant(
     wire_protocol.port.portBase =
         static_cast<uint16_t>(part_attr_conf->port_base());
     wire_protocol.builtin.discovery_config.discoveryProtocol =
-        eprosima::fastdds::rtps::DiscoveryProtocol::SIMPLE;
+        eprosima::fastrtps::rtps::DiscoveryProtocol_t::SIMPLE;
     wire_protocol.builtin.discovery_config
         .use_SIMPLE_EndpointDiscoveryProtocol = true;
     wire_protocol.builtin.discovery_config.m_simpleEDP
@@ -146,19 +139,19 @@ bool Participant::CreateParticipant(
     wire_protocol.builtin.discovery_config.leaseDuration_announcementperiod
         .seconds = part_attr_conf->announcement_period();
     wire_protocol.builtin.discovery_config.ignoreParticipantFlags =
-        static_cast<eprosima::fastdds::rtps::ParticipantFilteringFlags>(
-            eprosima::fastdds::rtps::ParticipantFilteringFlags::
+        static_cast<eprosima::fastrtps::rtps::ParticipantFilteringFlags>(
+            eprosima::fastrtps::rtps::ParticipantFilteringFlags::
                 FILTER_SAME_PROCESS);
 
     // set transport locator
-    eprosima::fastdds::rtps::Locator locator;
+    eprosima::fastrtps::rtps::Locator_t locator;
     locator.port = 0;
-    RETURN_VAL_IF(!eprosima::fastdds::rtps::IPLocator::setIPv4(locator, ip_env),
-                  false);
+    RETURN_VAL_IF(
+        !eprosima::fastrtps::rtps::IPLocator::setIPv4(locator, ip_env), false);
     locator.kind = LOCATOR_KIND_UDPv4;
     wire_protocol.default_unicast_locator_list.push_back(locator);
     wire_protocol.builtin.metatrafficUnicastLocatorList.push_back(locator);
-    eprosima::fastdds::rtps::IPLocator::setIPv4(locator, 239, 255, 0, 1);
+    eprosima::fastrtps::rtps::IPLocator::setIPv4(locator, 239, 255, 0, 1);
     wire_protocol.builtin.metatrafficMulticastLocatorList.push_back(locator);
 
     // set participant qos
@@ -184,8 +177,7 @@ bool Participant::CreateParticipant(
             ->create_participant(domain_id, participant_qos, listener_,
                                  eprosima::fastdds::dds::StatusMask::none());
     RETURN_VAL_IF_NULL(participant_, false);
-    if (type_support_.register_type(participant_) !=
-        eprosima::fastdds::dds::RETCODE_OK) {
+    if (type_support_.register_type(participant_) != ReturnCode_t::RETCODE_OK) {
         AERROR << "Register type failed!";
         return false;
     }

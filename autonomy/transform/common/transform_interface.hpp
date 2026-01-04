@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "autonomy/transform/proto/transform_options.pb.h"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/transform/proto/transform_options.pb.h"
 
 namespace autonomy {
 namespace transform {
@@ -25,7 +25,11 @@ namespace common {
 
 proto::TransformOptions LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-    
-}  // namespace common 
+
+proto::TransformOptions CreateOptions(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename);
+
+}  // namespace common
 }  // namespace transform
 }  // namespace autonomy

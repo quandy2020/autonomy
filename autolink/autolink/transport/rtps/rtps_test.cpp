@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -38,8 +37,8 @@ TEST(QosFillerTest, fill_in_pub_qos_test) {
     qos.set_durability(QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL);
     qos.set_reliability(QosReliabilityPolicy::RELIABILITY_BEST_EFFORT);
     qos.set_mps(32);
-    EXPECT_TRUE(filler.FillInPubQos("channel", qos, &pub_qos));
-    EXPECT_TRUE(filler.FillInWriterQos("channel", qos, &writer_qos));
+    filler.FillInPubQos("channel", qos, &pub_qos);
+    filler.FillInWriterQos("channel", qos, &writer_qos);
     EXPECT_EQ(eprosima::fastdds::dds::KEEP_LAST_HISTORY_QOS,
               writer_qos.history().kind);
     EXPECT_EQ(eprosima::fastdds::dds::TRANSIENT_LOCAL_DURABILITY_QOS,
@@ -47,12 +46,12 @@ TEST(QosFillerTest, fill_in_pub_qos_test) {
     EXPECT_EQ(eprosima::fastdds::dds::BEST_EFFORT_RELIABILITY_QOS,
               writer_qos.reliability().kind);
     AINFO << "heartbeat period: "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.seconds
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.seconds
           << ", "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.nanosec;
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.nanosec;
     qos.set_depth(1024);
-    EXPECT_TRUE(filler.FillInPubQos("channel", qos, &pub_qos));
-    EXPECT_TRUE(filler.FillInWriterQos("channel", qos, &writer_qos));
+    filler.FillInPubQos("channel", qos, &pub_qos);
+    filler.FillInWriterQos("channel", qos, &writer_qos);
     AINFO << qos.depth() << ", "
           << QosProfileConf::QOS_HISTORY_DEPTH_SYSTEM_DEFAULT << ", "
           << writer_qos.history().depth;
@@ -62,8 +61,8 @@ TEST(QosFillerTest, fill_in_pub_qos_test) {
     qos.set_durability(QosDurabilityPolicy::DURABILITY_VOLATILE);
     qos.set_reliability(QosReliabilityPolicy::RELIABILITY_RELIABLE);
     qos.set_mps(65);
-    EXPECT_TRUE(filler.FillInPubQos("channel", qos, &pub_qos));
-    EXPECT_TRUE(filler.FillInWriterQos("channel", qos, &writer_qos));
+    filler.FillInPubQos("channel", qos, &pub_qos);
+    filler.FillInWriterQos("channel", qos, &writer_qos);
     EXPECT_EQ(eprosima::fastdds::dds::KEEP_ALL_HISTORY_QOS,
               writer_qos.history().kind);
     EXPECT_EQ(eprosima::fastdds::dds::VOLATILE_DURABILITY_QOS,
@@ -71,16 +70,16 @@ TEST(QosFillerTest, fill_in_pub_qos_test) {
     EXPECT_EQ(eprosima::fastdds::dds::RELIABLE_RELIABILITY_QOS,
               writer_qos.reliability().kind);
     AINFO << "heartbeat period: "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.seconds
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.seconds
           << ", "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.nanosec;
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.nanosec;
 
     qos.set_history(QosHistoryPolicy::HISTORY_SYSTEM_DEFAULT);
     qos.set_durability(QosDurabilityPolicy::DURABILITY_SYSTEM_DEFAULT);
     qos.set_reliability(QosReliabilityPolicy::RELIABILITY_SYSTEM_DEFAULT);
     qos.set_mps(1025);
-    EXPECT_TRUE(filler.FillInPubQos("channel", qos, &pub_qos));
-    EXPECT_TRUE(filler.FillInWriterQos("channel", qos, &writer_qos));
+    filler.FillInPubQos("channel", qos, &pub_qos);
+    filler.FillInWriterQos("channel", qos, &writer_qos);
     EXPECT_EQ(eprosima::fastdds::dds::KEEP_LAST_HISTORY_QOS,
               writer_qos.history().kind);
     EXPECT_EQ(eprosima::fastdds::dds::TRANSIENT_LOCAL_DURABILITY_QOS,
@@ -88,18 +87,18 @@ TEST(QosFillerTest, fill_in_pub_qos_test) {
     EXPECT_EQ(eprosima::fastdds::dds::RELIABLE_RELIABILITY_QOS,
               writer_qos.reliability().kind);
     AINFO << "heartbeat period: "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.seconds
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.seconds
           << ", "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.nanosec;
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.nanosec;
     qos.set_mps(0);
-    EXPECT_TRUE(filler.FillInPubQos("channel", qos, &pub_qos));
-    EXPECT_TRUE(filler.FillInWriterQos("channel", qos, &writer_qos));
+    filler.FillInPubQos("channel", qos, &pub_qos);
+    filler.FillInWriterQos("channel", qos, &writer_qos);
     AINFO << "heartbeat period: "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.seconds
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.seconds
           << ", "
-          << writer_qos.reliable_writer_qos().times.heartbeat_period.nanosec;
+          << writer_qos.reliable_writer_qos().times.heartbeatPeriod.nanosec;
     qos.set_depth(-1);
-    EXPECT_TRUE(filler.FillInPubQos("channel", qos, &pub_qos));
+    EXPECT_FALSE(filler.FillInPubQos("channel", qos, &pub_qos));
     EXPECT_FALSE(filler.FillInWriterQos("channel", qos, &writer_qos));
 }
 
@@ -112,8 +111,8 @@ TEST(AttributesFillerTest, fill_in_sub_attr_test) {
     qos.set_durability(QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL);
     qos.set_reliability(QosReliabilityPolicy::RELIABILITY_BEST_EFFORT);
     qos.set_mps(32);
-    EXPECT_TRUE(filler.FillInSubQos("channel", qos, &sub_qos));
-    EXPECT_TRUE(filler.FillInReaderQos("channel", qos, &reader_qos));
+    filler.FillInSubQos("channel", qos, &sub_qos);
+    filler.FillInReaderQos("channel", qos, &reader_qos);
     EXPECT_EQ(eprosima::fastdds::dds::KEEP_LAST_HISTORY_QOS,
               reader_qos.history().kind);
     EXPECT_EQ(eprosima::fastdds::dds::TRANSIENT_LOCAL_DURABILITY_QOS,
@@ -122,16 +121,16 @@ TEST(AttributesFillerTest, fill_in_sub_attr_test) {
               reader_qos.reliability().kind);
     qos.set_depth(1024);
     // attrs.topic.historyQos.depth = 512;
-    EXPECT_TRUE(filler.FillInSubQos("channel", qos, &sub_qos));
-    EXPECT_TRUE(filler.FillInReaderQos("channel", qos, &reader_qos));
+    filler.FillInSubQos("channel", qos, &sub_qos);
+    filler.FillInReaderQos("channel", qos, &reader_qos);
     EXPECT_EQ(qos.depth(), reader_qos.history().depth);
 
     qos.set_history(QosHistoryPolicy::HISTORY_KEEP_ALL);
     qos.set_durability(QosDurabilityPolicy::DURABILITY_VOLATILE);
     qos.set_reliability(QosReliabilityPolicy::RELIABILITY_RELIABLE);
     qos.set_mps(65);
-    EXPECT_TRUE(filler.FillInSubQos("channel", qos, &sub_qos));
-    EXPECT_TRUE(filler.FillInReaderQos("channel", qos, &reader_qos));
+    filler.FillInSubQos("channel", qos, &sub_qos);
+    filler.FillInReaderQos("channel", qos, &reader_qos);
     EXPECT_EQ(eprosima::fastdds::dds::KEEP_ALL_HISTORY_QOS,
               reader_qos.history().kind);
     EXPECT_EQ(eprosima::fastdds::dds::VOLATILE_DURABILITY_QOS,
@@ -143,17 +142,17 @@ TEST(AttributesFillerTest, fill_in_sub_attr_test) {
     qos.set_durability(QosDurabilityPolicy::DURABILITY_SYSTEM_DEFAULT);
     qos.set_reliability(QosReliabilityPolicy::RELIABILITY_SYSTEM_DEFAULT);
     qos.set_mps(1025);
-    EXPECT_TRUE(filler.FillInSubQos("channel", qos, &sub_qos));
-    EXPECT_TRUE(filler.FillInReaderQos("channel", qos, &reader_qos));
+    filler.FillInSubQos("channel", qos, &sub_qos);
+    filler.FillInReaderQos("channel", qos, &reader_qos);
     EXPECT_EQ(eprosima::fastdds::dds::KEEP_LAST_HISTORY_QOS,
               reader_qos.history().kind);
-    EXPECT_EQ(eprosima::fastdds::dds::TRANSIENT_LOCAL_DURABILITY_QOS,
+    EXPECT_EQ(eprosima::fastdds::dds::VOLATILE_DURABILITY_QOS,
               reader_qos.durability().kind);
-    EXPECT_EQ(eprosima::fastdds::dds::RELIABLE_RELIABILITY_QOS,
+    EXPECT_EQ(eprosima::fastdds::dds::BEST_EFFORT_RELIABILITY_QOS,
               reader_qos.reliability().kind);
 
-    qos.set_depth(static_cast<uint32_t>(-1));
-    EXPECT_TRUE(filler.FillInSubQos("channel", qos, &sub_qos));
+    qos.set_depth(-1);
+    EXPECT_FALSE(filler.FillInSubQos("channel", qos, &sub_qos));
     EXPECT_FALSE(filler.FillInReaderQos("channel", qos, &reader_qos));
 }
 

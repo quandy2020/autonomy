@@ -189,12 +189,17 @@ bool Service<Request, Response>::Init() {
     role.set_channel_name(request_channel_);
     channel_id = common::GlobalData::RegisterChannel(request_channel_);
     role.set_channel_id(channel_id);
+    AINFO << "Service::Init: Creating request receiver for channel: "
+          << request_channel_;
     request_receiver_ = transport->CreateReceiver<Request>(
         role,
         [=](const std::shared_ptr<Request>& request,
             const transport::MessageInfo& message_info,
             const proto::RoleAttributes& reader_attr) {
             (void)reader_attr;
+            AINFO << "Service::Init: Request received callback triggered for "
+                     "channel: "
+                  << request_channel_;
             auto task = [this, request, message_info]() {
                 this->HandleRequest(request, message_info);
             };
@@ -204,10 +209,13 @@ bool Service<Request, Response>::Init() {
     inited_ = true;
     thread_ = std::thread(&Service<Request, Response>::Process, this);
     if (request_receiver_ == nullptr) {
-        AERROR << " Create request sub failed." << request_channel_;
+        AERROR << "Service::Init: Create request sub failed for channel: "
+               << request_channel_;
         response_transmitter_.reset();
         return false;
     }
+    AINFO << "Service::Init: Service initialized successfully for channel: "
+          << request_channel_;
     return true;
 }
 
@@ -216,15 +224,22 @@ void Service<Request, Response>::HandleRequest(
     const std::shared_ptr<Request>& request,
     const transport::MessageInfo& message_info) {
     if (!IsInit()) {
-        // LOG_DEBUG << "not inited error.";
+        AERROR
+            << "Service::HandleRequest: Service not initialized for channel: "
+            << request_channel_;
         return;
     }
-    ADEBUG << "handling request:" << request_channel_;
+    AINFO << "Service::HandleRequest: handling request for channel: "
+          << request_channel_;
     std::lock_guard<std::mutex> lk(service_handle_request_mutex_);
     auto response = std::make_shared<Response>();
+    AINFO << "Service::HandleRequest: calling service callback for channel: "
+          << request_channel_;
     service_callback_(request, response);
     transport::MessageInfo msg_info(message_info);
     msg_info.set_sender_id(response_transmitter_->id());
+    AINFO << "Service::HandleRequest: sending response for channel: "
+          << request_channel_;
     SendResponse(msg_info, response);
 }
 

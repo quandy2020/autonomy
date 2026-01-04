@@ -16,9 +16,6 @@
 
 #pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
 #include <functional>
 #include <memory>
 #include <string>
@@ -37,7 +34,6 @@
 
 #include "autolink/common/log.hpp"
 #include "autolink/service_discovery/communication/subscriber_listener.hpp"
-#include "autolink/transport/common/common_type.hpp"
 #include "autolink/transport/dispatcher/subscriber_listener.hpp"
 #include "autolink/transport/message/message_info.hpp"
 #include "autolink/transport/qos/qos_filler.hpp"
@@ -45,7 +41,6 @@
 
 namespace autolink {
 namespace transport {
-
 class Subscriber
 {
 public:
@@ -67,7 +62,7 @@ private:
     std::atomic<bool> shutdown_;
     rtps::subsciber_callback callback_;
 
-    eprosima::fastdds::dds::DataReaderListener* subscriber_listener_;
+    eprosima::fastdds::dds::SubscriberListener* subscriber_listener_;
     eprosima::fastdds::dds::DomainParticipant* participant_;
     eprosima::fastdds::dds::Subscriber* subscriber_;
     eprosima::fastdds::dds::Topic* topic_;

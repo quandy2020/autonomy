@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/protobuf_arena_manager.hpp"
 
 #include <sys/ipc.h>
@@ -39,19 +38,19 @@ ArenaSegment::ArenaSegment()
 
 ArenaSegment::ArenaSegment(uint64_t channel_id)
     : channel_id_(channel_id),
-      key_id_(std::hash<std::string>{}("/autolink/__arena__/" +
+      key_id_(std::hash<std::string>{}("/apollo/__arena__/" +
                                        std::to_string(channel_id))) {}
 
 ArenaSegment::ArenaSegment(uint64_t channel_id, void* base_address)
     : channel_id_(channel_id),
-      key_id_(std::hash<std::string>{}("/autolink/__arena__/" +
+      key_id_(std::hash<std::string>{}("/apollo/__arena__/" +
                                        std::to_string(channel_id))),
       base_address_(base_address) {}
 
 ArenaSegment::ArenaSegment(uint64_t channel_id, uint64_t message_size,
                            uint64_t block_num, void* base_address)
     : channel_id_(channel_id),
-      key_id_(std::hash<std::string>{}("/autolink/__arena__/" +
+      key_id_(std::hash<std::string>{}("/apollo/__arena__/" +
                                        std::to_string(channel_id))),
       base_address_(base_address) {
     Init(message_size, block_num);
@@ -60,7 +59,7 @@ ArenaSegment::ArenaSegment(uint64_t channel_id, uint64_t message_size,
 ArenaSegment::~ArenaSegment() {}
 
 bool ArenaSegment::Init(uint64_t message_size, uint64_t block_num) {
-    uint64_t key_id = std::hash<std::string>{}("/autolink/__arena__/" +
+    uint64_t key_id = std::hash<std::string>{}("/apollo/__arena__/" +
                                                std::to_string(channel_id_));
     // fprintf(stderr, "channel_id: %lx, key_id: %lx\n", channel_id_, key_id);
 
@@ -508,9 +507,7 @@ bool ProtobufArenaManager::Destroy() {
         address_allocator_->Deallocate(segment.first);
     }
     for (auto& buffer : non_arena_buffers_) {
-        if (buffer.second != nullptr) {
-            free(buffer.second);  // Use free() for void* allocated memory
-        }
+        delete buffer.second;
     }
     segments_.clear();
 

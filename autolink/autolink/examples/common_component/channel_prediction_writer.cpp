@@ -29,40 +29,41 @@
 #include "autolink/time/rate.hpp"
 #include "autolink/time/time.hpp"
 
-using autolink::examples::proto::Driver;
 using autolink::Rate;
 using autolink::Time;
+using autolink::examples::proto::Driver;
 
-int main(int argc, char *argv[]) {
-  // init autolink framework
-  autolink::Init(argv[0]);
-  // create writer node
-  auto writer_node = autolink::CreateNode("prediction_writer");
-  // create writer
-  auto writer = writer_node->CreateWriter<Driver>("/apollo/prediction");
-  if (!writer) {
-    AERROR << "Failed to create writer!";
-    return 1;
-  }
-  AINFO << "Writer created, waiting for topology discovery...";
-  // Wait a bit for topology discovery to complete
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-  Rate rate(3.0);
-  std::string content("apollo_prediction");
-  while (autolink::OK()) {
-    static uint64_t seq = 0;
-    auto msg = std::make_shared<Driver>();
-    msg->set_timestamp(Time::Now().ToNanosecond());
-    msg->set_msg_id(seq++);
-    msg->set_content(content + std::to_string(seq - 1));
-    if (writer->Write(msg)) {
-      AINFO << "/apollo/prediction sent message, seq=" << (seq - 1) << ";";
-    } else {
-      AWARN << "Failed to send message, seq=" << (seq - 1) << ";";
+int main(int argc, char* argv[]) {
+    // init autolink framework
+    autolink::Init(argv[0]);
+    // create writer node
+    auto writer_node = autolink::CreateNode("prediction_writer");
+    // create writer
+    auto writer = writer_node->CreateWriter<Driver>("/apollo/prediction");
+    if (!writer) {
+        AERROR << "Failed to create writer!";
+        return 1;
     }
-    rate.Sleep();
-  }
-  autolink::WaitForShutdown();
-  return 0;
+    AINFO << "Writer created, waiting for topology discovery...";
+    // Wait a bit for topology discovery to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    Rate rate(3.0);
+    std::string content("apollo_prediction");
+    while (autolink::OK()) {
+        static uint64_t seq = 0;
+        auto msg = std::make_shared<Driver>();
+        msg->set_timestamp(Time::Now().ToNanosecond());
+        msg->set_msg_id(seq++);
+        msg->set_content(content + std::to_string(seq - 1));
+        if (writer->Write(msg)) {
+            AINFO << "/apollo/prediction sent message, seq=" << (seq - 1)
+                  << ";";
+        } else {
+            AWARN << "Failed to send message, seq=" << (seq - 1) << ";";
+        }
+        rate.Sleep();
+    }
+    autolink::WaitForShutdown();
+    return 0;
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -26,11 +26,10 @@
 #include "autonomy/sensor/data.hpp"
 #include "autonomy/sensor/internal/ordered_multi_queue.hpp"
 
-
 namespace autonomy {
 namespace sensor {
 
-class Collator : public CollatorInterface 
+class Collator : public CollatorInterface
 {
 public:
     Collator() {}
@@ -48,12 +47,12 @@ public:
 
     void Flush() override;
 
- private:
-  // Queue keys are a pair of trajectory ID and sensor identifier.
-//   OrderedMultiQueue queue_;
+private:
+    // Queue keys are a pair of trajectory ID and sensor identifier.
+    //   OrderedMultiQueue queue_;
 
-//   // Map of trajectory ID to all associated QueueKeys.
-//   absl::flat_hash_set<std::vector<QueueKey>> queue_keys_;
+    //   // Map of trajectory ID to all associated QueueKeys.
+    //   absl::flat_hash_set<std::vector<QueueKey>> queue_keys_;
 };
 
 }  // namespace sensor

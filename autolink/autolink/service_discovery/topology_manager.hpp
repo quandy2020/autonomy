@@ -23,9 +23,10 @@
 #include <mutex>
 #include <string>
 
-#include <fastdds/dds/core/Time_t.hpp>
-#include <fastdds/rtps/common/Guid.hpp>
-#include <fastdds/rtps/participant/ParticipantDiscoveryInfo.hpp>
+#include <fastdds/rtps/common/Guid.h>
+#include <fastdds/rtps/common/Time_t.h>
+#include <fastdds/rtps/common/Types.h>
+#include <fastdds/rtps/participant/ParticipantDiscoveryInfo.h>
 #include "autolink/base/signal.hpp"
 #include "autolink/common/macros.hpp"
 #include "autolink/service_discovery/communication/participant_listener.hpp"
@@ -70,7 +71,7 @@ public:
     using ChangeConnection = base::Connection<const ChangeMsg&>;
     using ParticipantPtr = std::shared_ptr<transport::Participant>;
     using PartNameContainer =
-        std::map<eprosima::fastdds::rtps::GUID_t, std::string>;
+        std::map<eprosima::fastrtps::rtps::GUID_t, std::string>;
 
     virtual ~TopologyManager();
 
@@ -123,13 +124,16 @@ private:
 
     bool CreateParticipant();
     void OnParticipantChange(
-        eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
-        const eprosima::fastdds::rtps::GUID_t& p_guid,
-        const eprosima::fastdds::rtps::BuiltinEndpointSet_t& b_endpoints,
-        eprosima::fastdds::dds::Duration_t /*lease_duration*/);
-    bool Convert(eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
-                 const eprosima::fastdds::rtps::GUID_t& p_guid,
-                 const std::string& participant_name, ChangeMsg* change_msg);
+        eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::DISCOVERY_STATUS
+            status,
+        const eprosima::fastrtps::rtps::GUID_t& p_guid,
+        const eprosima::fastrtps::rtps::BuiltinEndpointSet_t& b_endpoints,
+        eprosima::fastrtps::Duration_t /*lease_duration*/);
+    bool Convert(
+        eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::DISCOVERY_STATUS
+            status,
+        const eprosima::fastrtps::rtps::GUID_t& p_guid,
+        const std::string& participant_name, ChangeMsg* change_msg);
     bool ParseParticipantName(const std::string& participant_name,
                               std::string* host_name, int* process_id);
 

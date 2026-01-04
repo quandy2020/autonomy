@@ -12,27 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TestPlugins1 
-add_library(${PROJECT_NAME}_class_library_test_plugins1 SHARED
-    "${PROJECT_SOURCE_DIR}/autonomy/common/class_loader/test/plugins1_test.cpp")
-list(APPEND plugin_libs ${PROJECT_NAME}_class_library_test_plugins1)
+################################ driver plugins #################################
+include(${PROJECT_SOURCE_DIR}/cmake/plugins/drivers_plugins.cmake)
 
-# TestPlugins2
-add_library(${PROJECT_NAME}_class_library_test_plugins2 SHARED   
-    "${PROJECT_SOURCE_DIR}/autonomy/common/class_loader/test/plugins2_test.cpp")
-list(APPEND plugin_libs ${PROJECT_NAME}_class_library_test_plugins2)
+################################ map plugins ####################################
+include(${PROJECT_SOURCE_DIR}/cmake/plugins/map_plugins.cmake)
 
+################################ planner plugins ################################
+include(${PROJECT_SOURCE_DIR}/cmake/plugins/planner_plugins.cmake)
 
-################################ planner pugins #################################
-# navfn_planner
-add_library(navfn_planner SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/planning/plugins/navfn/navfn.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/planning/plugins/navfn/navfn_planner.cpp"
-)
-list(APPEND plugin_libs navfn_planner)
+################################ controller plugins ################################
+include(${PROJECT_SOURCE_DIR}/cmake/plugins/controller_plugins.cmake)
 
+# ################################ behavior tree plugins ############################
+include(${PROJECT_SOURCE_DIR}/cmake/plugins/behavior_tree_plugins.cmake)
 
 #################################################################################
+
 
 foreach(plugin ${plugin_libs})
     target_include_directories(${plugin}

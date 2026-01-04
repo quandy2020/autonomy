@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/multicast_notifier.hpp"
 
 #include <arpa/inet.h>
@@ -113,12 +112,11 @@ bool MulticastNotifier::Init() {
     uint16_t mcast_port = 8888;
 
     auto& g_conf = GlobalData::Instance()->Config();
-    if (g_conf.has_transport_conf() && g_conf.transport_conf().has_shm_conf()) {
+    if (g_conf.has_transport_conf() && g_conf.transport_conf().has_shm_conf() &&
+        g_conf.transport_conf().shm_conf().has_shm_locator()) {
         auto& locator = g_conf.transport_conf().shm_conf().shm_locator();
-        if (!locator.ip().empty()) {
-            mcast_ip = locator.ip();
-            mcast_port = static_cast<uint16_t>(locator.port());
-        }
+        mcast_ip = locator.ip();
+        mcast_port = static_cast<uint16_t>(locator.port());
     }
 
     ADEBUG << "multicast notifier ip: " << mcast_ip;

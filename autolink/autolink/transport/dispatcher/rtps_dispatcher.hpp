@@ -16,9 +16,6 @@
 
 #pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -82,25 +79,31 @@ private:
 template <typename MessageT>
 void RtpsDispatcher::AddListener(const RoleAttributes& self_attr,
                                  const MessageListener<MessageT>& listener) {
+    ADEBUG << "RtpsDispatcher::AddListener: registering listener for channel: "
+           << self_attr.channel_name();
     auto listener_adapter = [listener, self_attr](
                                 const std::shared_ptr<std::string>& msg_str,
                                 const MessageInfo& msg_info) {
+        ADEBUG << "RtpsDispatcher::AddListener: received message for channel: "
+               << self_attr.channel_name()
+               << ", size: " << (msg_str ? msg_str->size() : 0);
         auto msg = std::make_shared<MessageT>();
-        RETURN_IF(!message::ParseFromString(*msg_str, msg.get()));
+        if (!message::ParseFromString(*msg_str, msg.get())) {
+            AWARN << "RtpsDispatcher: Failed to parse message for channel: "
+                  << self_attr.channel_name()
+                  << ", message size: " << msg_str->size();
+            return;
+        }
         uint64_t recv_time = Time::Now().ToNanosecond();
         uint64_t send_time = msg_info.send_time();
         if (send_time > recv_time) {
             AWARN << "The message is received (" << recv_time
                   << ") earlier than the message is sent (" << send_time << ")";
         } else {
-            auto diff = (recv_time - send_time);
-            // TODO: SamplingTranLatency method not implemented yet
-            // statistics::Statistics::Instance(true)->SamplingTranLatency<uint64_t>(
-            //     self_attr.channel_name(), diff);
+            uint64_t diff = recv_time - send_time;
+            // sample transport latency in microsecond (statistics removed)
+            (void)diff;  // unused variable
         }
-        // Statistics removed
-        (void)recv_time;
-        (void)self_attr;
         listener(msg, msg_info);
     };
 
@@ -123,14 +126,10 @@ void RtpsDispatcher::AddListener(const RoleAttributes& self_attr,
             AWARN << "The message is received (" << recv_time
                   << ") earlier than the message is sent (" << send_time << ")";
         } else {
-            auto diff = (recv_time - send_time);
-            // TODO: SamplingTranLatency method not implemented yet
-            // statistics::Statistics::Instance(true)->SamplingTranLatency<uint64_t>(
-            //     self_attr.channel_name(), diff);
+            uint64_t diff = recv_time - send_time;
+            // sample transport latency in microsecond (statistics removed)
+            (void)diff;  // unused variable
         }
-        // Statistics removed
-        (void)recv_time;
-        (void)self_attr;
         listener(msg, msg_info);
     };
 

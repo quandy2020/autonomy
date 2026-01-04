@@ -25,11 +25,12 @@ using autolink::TimerComponent;
 using autolink::Writer;
 using autolink::examples::proto::Driver;
 
-class TimerComponentSample : public TimerComponent {
- public:
-  bool Init() override;
-  bool Proc() override;
+class TimerComponentSample : public TimerComponent
+{
+public:
+    bool Init() override;
+    bool Proc() override;
 
- private:
-  std::shared_ptr<Writer<Driver>> driver_writer_ = nullptr;
+private:
+    std::shared_ptr<Writer<Driver>> driver_writer_ = nullptr;
 };

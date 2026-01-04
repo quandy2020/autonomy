@@ -1,0 +1,46 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "autonomy/tasks/behavior_tree/plugins/action/follow_path_action.hpp"
+
+#include <set>
+#include <string>
+#include <vector>
+
+namespace autonomy {
+namespace tasks {
+namespace behavior_tree {
+namespace plugins {
+namespace action {}  // namespace action
+}  // namespace plugins
+}  // namespace behavior_tree
+}  // namespace tasks
+}  // namespace autonomy
+
+// TODO: Implement FollowPathAction class before enabling registration
+// #include "behaviortree_cpp/bt_factory.h"
+// BT_REGISTER_NODES(factory) {
+//     BT::NodeBuilder builder = [](const std::string& name,
+//                                  const BT::NodeConfiguration& config) {
+//         return std::make_unique<
+//             autonomy::tasks::behavior_tree::plugins::action::FollowPathAction>(
+//             name, "follow_path", config);
+//     };
+//
+//     factory.registerBuilder<
+//         autonomy::tasks::behavior_tree::plugins::action::FollowPathAction>(
+//         "FollowPath", builder);
+// }

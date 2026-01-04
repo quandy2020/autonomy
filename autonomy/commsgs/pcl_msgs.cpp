@@ -18,9 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace pcl_msgs {
-
-
-}  // namespace pcl_msgs
+namespace pcl_msgs {}  // namespace pcl_msgs
 }  // namespace commsgs
 }  // namespace autonomy

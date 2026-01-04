@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
- #include "autonomy/sensor/odometry_data.hpp"
+#include "autonomy/sensor/odometry_data.hpp"
 
- namespace autonomy {
- namespace sensor {
- 
+namespace autonomy {
+namespace sensor {
+
 // OdometryProto ToProto(const OdometryData& data)
 // {
 //     return commsgs::planning_msgs::ToProto(data);
@@ -28,6 +28,6 @@
 // {
 //     return commsgs::planning_msgs::FromProto(proto);
 // }
- 
- }  // namespace sensor
- }  // namespace autonomy
+
+}  // namespace sensor
+}  // namespace autonomy

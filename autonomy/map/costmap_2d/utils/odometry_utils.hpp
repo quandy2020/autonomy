@@ -19,18 +19,15 @@
 #include <cmath>
 #include <iostream>
 
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
-namespace utils {
-
-
-}  // namespace utils
+namespace utils {}  // namespace utils
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

@@ -1,0 +1,56 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.driver.proto;
+
+// 激光雷达类型枚举
+enum LidarType {
+    LASER_SCAN = 0;          // 2D激光扫描（LaserScan）
+    POINT_CLOUD2 = 1;        // 3D点云（PointCloud2）
+    POINT_CLOUD = 2;         // 3D点云（PointCloud，旧格式）
+    MULTI_ECHO_LASER_SCAN = 3; // 多回波激光扫描
+}
+
+// 激光雷达配置选项
+message LidarOptions {
+    // 传感器ID（唯一标识符）
+    string sensor_id = 1;
+    
+    // 激光雷达类型
+    LidarType type = 2;
+    
+    // 订阅的主题名称
+    string topic = 3;
+    
+    // 传感器坐标系ID
+    string frame_id = 4;
+    
+    // 是否启用该传感器
+    bool enabled = 5;
+    
+    // 最小测距范围（米）
+    double min_range = 6;
+    
+    // 最大测距范围（米）
+    double max_range = 7;
+    
+    // 角度范围（弧度）[min_angle, max_angle]
+    double min_angle = 8;
+    double max_angle = 9;
+    
+    // 数据转发目标列表（可选，如 "map", "localization" 等）
+    repeated string forward_targets = 10;
+}

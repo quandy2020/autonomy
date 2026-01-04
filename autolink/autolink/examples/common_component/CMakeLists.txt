@@ -14,12 +14,13 @@
 
 # Get proto source from parent directory (defined in parent CMakeLists.txt)
 set(EXAMPLES_PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/../proto/examples.pb.cc)
+# Mark as generated so CMake doesn't check for existence during configuration
+set_source_files_properties(${EXAMPLES_PROTO_SRC} PROPERTIES GENERATED TRUE)
 
 # dependencies
 set(common_component_dependencies 
     autolink
-    fastdds
-    fastcdr
+    ${FastDDS_LIBRARIES}
     pthread
     ${Protobuf_LIBRARIES}
 )

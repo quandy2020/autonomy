@@ -20,8 +20,8 @@
 set -e
 
 cd /thirdparty
-git clone -b 5.x https://gitee.com/quanduyong/opencv.git
-git clone -b 5.x https://gitee.com/quanduyong/opencv_contrib.git
+git clone -b 5.x https://github.com/opencv/opencv.git
+git clone -b 5.x https://github.com/opencv/opencv_contrib.git
 
 cd opencv && mkdir build && cd build
 cmake  \

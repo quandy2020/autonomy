@@ -161,9 +161,9 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
     if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
             self_attr.channel_id()) &&
         self_attr.message_type() !=
-            message::MessageType(message::RawMessage{}) &&
+            message::MessageType<message::RawMessage>() &&
         self_attr.message_type() !=
-            message::MessageType(message::PyMessageWrap{})) {
+            message::MessageType<message::PyMessageWrap>()) {
         auto listener_adapter = [listener, self_attr](
                                     const std::shared_ptr<ReadableBlock>& rb,
                                     const MessageInfo& msg_info) {
@@ -172,11 +172,10 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
             auto arena_manager = ProtobufArenaManager::Instance();
             auto msg_wrapper = arena_manager->CreateMessageWrapper();
             memcpy(msg_wrapper->GetData(), rb->buf, 1024);
-            MessageT* msg_p;
+            MessageT* msg_p = nullptr;
             if (!message::ParseFromArenaMessageWrapper(msg_wrapper.get(),
                                                        msg.get(), &msg_p)) {
                 AERROR << "ParseFromArenaMessageWrapper failed";
-                return;
             }
             // msg->CopyFrom(*msg_p);
             // msg = arena_manager->LoadMessage<MessageT>(msg_wrapper.get())
@@ -195,13 +194,13 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
                       });
             auto related_blocks_for_lock =
                 arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
-            for (size_t i = 0; i < related_blocks_for_lock.size(); ++i) {
+            for (int i = 0; i < related_blocks_for_lock.size(); ++i) {
                 auto block_index = related_blocks_for_lock[i];
                 if (!segment->AddBlockReadLock(block_index)) {
                     AWARN << "failed to acquire block for read, channel: "
                           << self_attr.channel_id()
                           << " index: " << block_index;
-                    for (size_t j = 0; j < i; ++j) {
+                    for (int j = 0; j < i; ++j) {
                         // restore the lock
                         segment->RemoveBlockReadLock(
                             related_blocks_for_lock[j]);
@@ -211,26 +210,10 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
             }
 
             auto send_time = msg_info.send_time();
-
-            // Statistics removed
-            (void)self_attr;
-            (void)msg_info;
+            (void)send_time;  // unused variable (statistics removed)
 
             auto recv_time = Time::Now().ToNanosecond();
-
-            // sampling in microsecond
-            auto tran_diff = (recv_time - send_time) / 1000;
-            // TODO: SamplingTranLatency method not implemented yet
-            // if (tran_diff > 0) {
-            //     // sample transport latency in microsecond
-            //     statistics::Statistics::Instance(true)
-            //         ->SamplingTranLatency<uint64_t>(self_attr.channel_name(),
-            //         tran_diff);
-            // }
-
-            // Statistics removed
-            (void)recv_time;
-            (void)self_attr;
+            (void)recv_time;  // unused variable (statistics removed)
 
             listener(msg, msg_info);
             auto related_blocks =
@@ -252,25 +235,11 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
                 rb->buf, static_cast<int>(rb->block->msg_size()), msg.get()));
 
             auto send_time = msg_info.send_time();
-
-            // Statistics removed
-            (void)self_attr;
-            (void)msg_info;
+            (void)send_time;  // unused variable (statistics removed)
 
             auto recv_time = Time::Now().ToNanosecond();
+            (void)recv_time;  // unused variable (statistics removed)
 
-            // sampling in microsecond
-            auto tran_diff = (recv_time - send_time) / 1000;
-            // TODO: SamplingTranLatency method not implemented yet
-            // if (tran_diff > 0) {
-            //     // sample transport latency in microsecond
-            //     statistics::Statistics::Instance(true)
-            //         ->SamplingTranLatency<uint64_t>(self_attr.channel_name(),
-            //         tran_diff);
-            // }
-            // Statistics removed
-            (void)recv_time;
-            (void)self_attr;
             listener(msg, msg_info);
         };
 
@@ -287,9 +256,9 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
     if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
             self_attr.channel_id()) &&
         self_attr.message_type() !=
-            message::MessageType(message::RawMessage{}) &&
+            message::MessageType<message::RawMessage>() &&
         self_attr.message_type() !=
-            message::MessageType(message::PyMessageWrap{})) {
+            message::MessageType<message::PyMessageWrap>()) {
         auto listener_adapter = [listener, self_attr](
                                     const std::shared_ptr<ReadableBlock>& rb,
                                     const MessageInfo& msg_info) {
@@ -301,7 +270,6 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
             if (!message::ParseFromArenaMessageWrapper(msg_wrapper.get(),
                                                        msg.get(), &msg_p)) {
                 AERROR << "ParseFromArenaMessageWrapper failed";
-                return;
             }
             // msg->CopyFrom(*msg_p);
             // msg = arena_manager->LoadMessage<MessageT>(msg_wrapper.get())
@@ -320,13 +288,13 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
                       });
             auto related_blocks_for_lock =
                 arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
-            for (size_t i = 0; i < related_blocks_for_lock.size(); ++i) {
+            for (int i = 0; i < related_blocks_for_lock.size(); ++i) {
                 auto block_index = related_blocks_for_lock[i];
                 if (!segment->AddBlockReadLock(block_index)) {
                     AWARN << "failed to acquire block for read, channel: "
                           << self_attr.channel_id()
                           << " index: " << block_index;
-                    for (size_t j = 0; j < i; ++j) {
+                    for (int j = 0; j < i; ++j) {
                         // restore the lock
                         segment->RemoveBlockReadLock(
                             related_blocks_for_lock[j]);
@@ -336,24 +304,10 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
             }
 
             auto send_time = msg_info.send_time();
-
-            // Statistics removed
-            (void)self_attr;
-            (void)msg_info;
+            (void)send_time;  // unused variable (statistics removed)
 
             auto recv_time = Time::Now().ToNanosecond();
-
-            // sampling in microsecond
-            auto tran_diff = (recv_time - send_time) / 1000;
-            if (tran_diff > 0) {
-                // TODO: SamplingTranLatency method not implemented yet
-                // statistics::Statistics::Instance(true)
-                //     ->SamplingTranLatency<uint64_t>(self_attr.channel_name(),
-                //     tran_diff);
-            }
-            // Statistics removed
-            (void)recv_time;
-            (void)self_attr;
+            (void)recv_time;  // unused variable (statistics removed)
 
             listener(msg, msg_info);
             auto related_blocks =

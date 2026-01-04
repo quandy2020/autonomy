@@ -245,8 +245,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 # Fast DDS (includes Fast CDR)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${FastDDS_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${FastDDS_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${FastDDS_LIBRARIES})
+target_include_directories(${PROJECT_NAME} PUBLIC ${FastDDS_INCLUDE_DIRS})
+# Suppress warnings from FastDDS headers (missing-braces warning in VendorId_t.hpp)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-error=missing-braces)
 
 # Protobuf
 target_link_libraries(${PROJECT_NAME} PUBLIC ${Protobuf_LIBRARIES})
@@ -313,6 +315,7 @@ google_binary(mainboard
     autolink/mainboard/mainboard_main.cpp
 )
 target_link_libraries(mainboard PUBLIC ${FastDDS_LIBRARIES})
+target_compile_options(mainboard PRIVATE -Wno-error=missing-braces)
 
 # autolink_recorder
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/autolink/tools/autolink_recorder/autolink_recorder_main.cpp)
@@ -321,6 +324,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/autolink/tools/autolink_recorder/autolink_
       autolink/tools/autolink_recorder/autolink_recorder_main.cpp
   )
   target_link_libraries(autolink_recorder PUBLIC ${PROJECT_NAME})
+  target_compile_options(autolink_recorder PRIVATE -Wno-error=missing-braces)
   target_link_libraries(autolink_recorder PUBLIC ${FastDDS_LIBRARIES})
 endif()
 
@@ -333,6 +337,8 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/autolink/tools/autolink_monitor/autolink_m
   target_link_libraries(autolink_monitor PUBLIC ${PROJECT_NAME})
   target_link_libraries(autolink_monitor PUBLIC ${FastDDS_LIBRARIES})
   target_include_directories(autolink_monitor PRIVATE ${CURSES_INCLUDE_DIR})
+  target_include_directories(autolink_monitor PRIVATE ${FastDDS_INCLUDE_DIRS})
+  target_compile_options(autolink_monitor PRIVATE -Wno-error=missing-braces)
 endif()
 
 
@@ -381,6 +387,8 @@ if (${BUILD_TEST})
     # Replace slashes as required for CMP0037.
     string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FIL_WE}")
     google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
+    # Suppress warnings from FastDDS headers (missing-braces warning in VendorId_t.hpp)
+    target_compile_options("${TEST_TARGET_NAME}" PRIVATE -Wno-error=missing-braces)
     if(${BUILD_GRPC})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++)
     endif()
@@ -410,6 +418,97 @@ if (${BUILD_BENCHMARK})
   add_subdirectory(benchmark)
 endif()
 
+# Build Python extension modules
+set(PYTHON_MODULE_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/lib/autolink/python/internal)
+file(MAKE_DIRECTORY ${PYTHON_MODULE_OUTPUT_DIR})
+
+# Get Python module extension
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_config_var('EXT_SUFFIX'))"
+  OUTPUT_VARIABLE PYTHON_MODULE_SUFFIX
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Python extension module: _autolink_wrapper
+add_library(_autolink_wrapper MODULE
+  autolink/python/internal/py_autolink.cpp
+)
+target_include_directories(_autolink_wrapper PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(_autolink_wrapper PRIVATE ${FastDDS_INCLUDE_DIRS})
+target_link_libraries(_autolink_wrapper PRIVATE ${PROJECT_NAME} Python3::Module)
+target_link_libraries(_autolink_wrapper PRIVATE ${FastDDS_LIBRARIES})
+add_dependencies(_autolink_wrapper autolink_protos)
+set_target_properties(_autolink_wrapper PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "_autolink_wrapper"
+  LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_OUTPUT_DIR}
+  SUFFIX ${PYTHON_MODULE_SUFFIX}
+)
+
+# Python extension module: _autolink_parameter_wrapper
+add_library(_autolink_parameter_wrapper MODULE
+  autolink/python/internal/py_parameter.cpp
+)
+target_include_directories(_autolink_parameter_wrapper PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(_autolink_parameter_wrapper PRIVATE ${FastDDS_INCLUDE_DIRS})
+target_link_libraries(_autolink_parameter_wrapper PRIVATE ${PROJECT_NAME} Python3::Module)
+target_link_libraries(_autolink_parameter_wrapper PRIVATE ${FastDDS_LIBRARIES})
+add_dependencies(_autolink_parameter_wrapper autolink_protos)
+set_target_properties(_autolink_parameter_wrapper PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "_autolink_parameter_wrapper"
+  LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_OUTPUT_DIR}
+  SUFFIX ${PYTHON_MODULE_SUFFIX}
+)
+
+# Python extension module: _autolink_time_wrapper
+add_library(_autolink_time_wrapper MODULE
+  autolink/python/internal/py_time.cpp
+)
+target_include_directories(_autolink_time_wrapper PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(_autolink_time_wrapper PRIVATE ${FastDDS_INCLUDE_DIRS})
+target_link_libraries(_autolink_time_wrapper PRIVATE ${PROJECT_NAME} Python3::Module)
+target_link_libraries(_autolink_time_wrapper PRIVATE ${FastDDS_LIBRARIES})
+add_dependencies(_autolink_time_wrapper autolink_protos)
+set_target_properties(_autolink_time_wrapper PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "_autolink_time_wrapper"
+  LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_OUTPUT_DIR}
+  SUFFIX ${PYTHON_MODULE_SUFFIX}
+)
+
+# Python extension module: _autolink_record_wrapper
+add_library(_autolink_record_wrapper MODULE
+  autolink/python/internal/py_record.cpp
+)
+target_include_directories(_autolink_record_wrapper PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(_autolink_record_wrapper PRIVATE ${FastDDS_INCLUDE_DIRS})
+target_link_libraries(_autolink_record_wrapper PRIVATE ${PROJECT_NAME} Python3::Module)
+target_link_libraries(_autolink_record_wrapper PRIVATE ${FastDDS_LIBRARIES})
+add_dependencies(_autolink_record_wrapper autolink_protos)
+set_target_properties(_autolink_record_wrapper PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "_autolink_record_wrapper"
+  LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_OUTPUT_DIR}
+  SUFFIX ${PYTHON_MODULE_SUFFIX}
+)
+
+# Python extension module: _autolink_timer_wrapper
+add_library(_autolink_timer_wrapper MODULE
+  autolink/python/internal/py_timer.cpp
+)
+target_include_directories(_autolink_timer_wrapper PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(_autolink_timer_wrapper PRIVATE ${FastDDS_INCLUDE_DIRS})
+target_link_libraries(_autolink_timer_wrapper PRIVATE ${PROJECT_NAME} Python3::Module)
+target_link_libraries(_autolink_timer_wrapper PRIVATE ${FastDDS_LIBRARIES})
+add_dependencies(_autolink_timer_wrapper autolink_protos)
+set_target_properties(_autolink_timer_wrapper PROPERTIES
+  PREFIX ""
+  OUTPUT_NAME "_autolink_timer_wrapper"
+  LIBRARY_OUTPUT_DIRECTORY ${PYTHON_MODULE_OUTPUT_DIR}
+  SUFFIX ${PYTHON_MODULE_SUFFIX}
+)
+
 # Install the library
 install(
   TARGETS ${PROJECT_NAME}
@@ -417,6 +516,16 @@ install(
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
+)
+
+# Install Python extension modules
+install(TARGETS
+  _autolink_wrapper
+  _autolink_parameter_wrapper
+  _autolink_time_wrapper
+  _autolink_record_wrapper
+  _autolink_timer_wrapper
+  LIBRARY DESTINATION lib/autolink/python/internal
 )
 
 # Install C/C++ headers from source tree

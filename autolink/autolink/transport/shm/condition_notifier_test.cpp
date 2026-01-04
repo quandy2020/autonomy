@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/condition_notifier.hpp"
 
 #include "gtest/gtest.h"

@@ -23,7 +23,7 @@
 #include "autonomy/common/async_grpc/common/time.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 namespace common {
 
@@ -44,61 +44,64 @@ namespace common {
 #define PT_GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(pt_guarded_by(x))
 
 #define REQUIRES(...) \
-  THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+    THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
 
 #define ACQUIRE(...) \
-  THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
+    THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
 
 #define RELEASE(...) \
-  THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
+    THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
 
 #define EXCLUDES(...) THREAD_ANNOTATION_ATTRIBUTE__(locks_excluded(__VA_ARGS__))
 
 #define NO_THREAD_SAFETY_ANALYSIS \
-  THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
+    THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
 
 // Defines an annotated mutex that can only be locked through its scoped locker
 // implementation.
-class CAPABILITY("mutex") Mutex {
- public:
-  // A RAII class that acquires a mutex in its constructor, and
-  // releases it in its destructor. It also implements waiting functionality on
-  // conditions that get checked whenever the mutex is released.
-  class SCOPED_CAPABILITY Locker {
-   public:
-    Locker(Mutex* mutex) ACQUIRE(mutex) : mutex_(mutex), lock_(mutex->mutex_) {}
+class CAPABILITY("mutex") Mutex
+{
+public:
+    // A RAII class that acquires a mutex in its constructor, and
+    // releases it in its destructor. It also implements waiting functionality
+    // on conditions that get checked whenever the mutex is released.
+    class SCOPED_CAPABILITY Locker
+    {
+    public:
+        Locker(Mutex* mutex) ACQUIRE(mutex)
+            : mutex_(mutex), lock_(mutex->mutex_) {}
 
-    ~Locker() RELEASE() {
-      lock_.unlock();
-      mutex_->condition_.notify_all();
-    }
+        ~Locker() RELEASE() {
+            lock_.unlock();
+            mutex_->condition_.notify_all();
+        }
 
-    template <typename Predicate>
-    void Await(Predicate predicate) REQUIRES(this) {
-      mutex_->condition_.wait(lock_, predicate);
-    }
+        template <typename Predicate>
+        void Await(Predicate predicate) REQUIRES(this) {
+            mutex_->condition_.wait(lock_, predicate);
+        }
 
-    template <typename Predicate>
-    bool AwaitWithTimeout(Predicate predicate, common::Duration timeout)
-        REQUIRES(this) {
-      return mutex_->condition_.wait_for(lock_, timeout, predicate);
-    }
+        template <typename Predicate>
+        bool AwaitWithTimeout(Predicate predicate, common::Duration timeout)
+            REQUIRES(this) {
+            return mutex_->condition_.wait_for(lock_, timeout, predicate);
+        }
 
-   private:
-    Mutex* mutex_;
-    std::unique_lock<std::mutex> lock_;
-  };
+    private:
+        Mutex* mutex_;
+        std::unique_lock<std::mutex> lock_;
+    };
 
- private:
-  std::condition_variable condition_;
-  std::mutex mutex_;
+private:
+    std::condition_variable condition_;
+    std::mutex mutex_;
 };
 
 using MutexLocker = Mutex::Locker;
 
 }  // namespace common
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy
 
 #endif  // CPP_GRPC_COMMON_MUTEX_H_

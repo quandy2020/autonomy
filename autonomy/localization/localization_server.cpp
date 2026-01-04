@@ -16,9 +16,12 @@
 
 #include "autonomy/localization/localization_server.hpp"
 
+#include <cmath>
+
+#include "autolink/common/log.hpp"
+#include "autolink/time/time.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+
 namespace autonomy {
-namespace localization {
-
-
-}  // namespace localization
+namespace localization {}  // namespace localization
 }  // namespace autonomy

@@ -18,16 +18,15 @@
 
 #include <unordered_map>
 
-#include "autonomy/system/proto/autonomy_options.pb.h"
-
-#include "autonomy/map/map_server.hpp"
 #include "autonomy/control/controller_server.hpp"
+#include "autonomy/map/map_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
+#include "autonomy/system/proto/autonomy_options.pb.h"
+#include "autonomy/tasks/task_manager.hpp"
 #include "autonomy/transform/buffer.hpp"
-#include "autonomy/visualization/visualization_server.hpp"
 
 namespace autonomy {
-namespace system { 
+namespace system {
 
 class AutonomyNode
 {
@@ -47,8 +46,8 @@ public:
 
     /**
      * @brief Destroy the Autonomy Node object
-     * 
-     * @param options 
+     *
+     * @param options
      */
     explicit AutonomyNode(const proto::AutonomyOptions& options);
 
@@ -63,37 +62,27 @@ public:
     void Start();
 
     /**
-     * @brief Shutdown autonomy tasks
+     * @brief Shutdown the autonomy system
      */
-    void WaitForShutdown();
+    void Shutdown();
 
-    // /**
-    //  * @brief Get bridge_server
-    //  * 
-    //  * @return bridge::BridgeServer pointer
-    //  */
-    // bridge::BridgeServer* bridge_server() { return bridge_server_.get(); }
+    /**
+     * @brief Get map_server
+     *
+     * @return pointer
+     */
+    map::MapServer* map_server() {
+        return map_server_.get();
+    }
 
-    // /**
-    //  * @brief Get map_server
-    //  * 
-    //  * @return pointer
-    //  */
-    // map::MapServer* map_server() { return map_server_.get(); }
-
-    // /**
-    //  * @brief Get controller_server
-    //  * 
-    //  * @return control::ControllerServer pointer
-    //  */
-    // control::ControllerServer* controller_server() { return controller_server_.get(); }
-
-    // /**
-    //  * @brief Get planner_server
-    //  * 
-    //  * @return planning::PlannerServer pointer
-    //  */
-    // planning::PlannerServer* planner_server() { return planner_server_.get();}
+    /**
+     * @brief Get planner_server
+     *
+     * @return planning::PlannerServer pointer
+     */
+    planning::PlannerServer* planner_server() {
+        return planner_server_.get();
+    }
 
 private:
     // Configuration for auronomy options
@@ -107,15 +96,15 @@ private:
 
     // controller
     control::ControllerServer::SharedPtr controller_server_{nullptr};
-    
+
     // planner
     planning::PlannerServer::SharedPtr planner_server_{nullptr};
 
-    // visualization
-    visualization::VisualizationServer::SharedPtr visual_server_{nullptr};
+    // task manager
+    tasks::TaskManager::SharedPtr tasks_{nullptr};
 };
 
 AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options);
 
-}   // namespace system
-}   // namespace autonomy
+}  // namespace system
+}  // namespace autonomy

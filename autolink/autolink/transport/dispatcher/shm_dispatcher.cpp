@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/dispatcher/shm_dispatcher.hpp"
 
 #include "autolink/common/global_data.hpp"
@@ -232,8 +231,6 @@ bool ShmDispatcher::Init() {
     notifier_ = NotifierFactory::CreateNotifier();
     thread_ = std::thread(&ShmDispatcher::ThreadFunc, this);
     scheduler::Instance()->SetInnerThreadAttr("shm_disp", &thread_);
-    // TODO: CreateSpan method not implemented yet
-    // statistics::Statistics::Instance(true)->CreateSpan("protobuf_parse_time");
     return true;
 }
 

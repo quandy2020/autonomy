@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
 
 #include "autolink/common/log.hpp"
 #include "autolink/transport/common/endpoint.hpp"
 #include "autolink/transport/dispatcher/dispatcher.hpp"
-#include "autolink/transport/transport.hpp"
 
 namespace autolink {
 namespace transport {
@@ -47,16 +45,6 @@ void RtpsDispatcher::Shutdown() {
 
 void RtpsDispatcher::AddSubscriber(const RoleAttributes& self_attr) {
     if (participant_ == nullptr) {
-        auto transport = Transport::Instance(false);
-        if (transport == nullptr) {
-            transport = Transport::Instance();
-        }
-        if (transport != nullptr) {
-            participant_ = transport->participant();
-        }
-    }
-
-    if (participant_ == nullptr) {
         AWARN << "please set participant firstly.";
         return;
     }
@@ -71,9 +59,6 @@ void RtpsDispatcher::AddSubscriber(const RoleAttributes& self_attr) {
     auto listener_adapter =
         [this, self_attr](const std::shared_ptr<std::string>& msg_str,
                           uint64_t channel_id, const MessageInfo& msg_info) {
-            // Statistics removed
-            (void)self_attr;
-            (void)msg_info;
             this->OnMessage(channel_id, msg_str, msg_info);
         };
 

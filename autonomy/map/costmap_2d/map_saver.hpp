@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <string>
 #include <memory>
+#include <string>
 
 #include "autonomy/map/costmap_2d/map_io.hpp"
 
@@ -32,31 +32,31 @@ namespace costmap_2d {
 class MapSaver
 {
 public:
-  /**
-   * @brief Constructor for the nav2_map_server::MapSaver
-   * @param options Additional options to control creation of the node.
-   */
-  explicit MapSaver();
+    /**
+     * @brief Constructor for the nav2_map_server::MapSaver
+     * @param options Additional options to control creation of the node.
+     */
+    explicit MapSaver();
 
-  /**
-   * @brief Destructor for the nav2_map_server::MapServer
-   */
-  ~MapSaver();
+    /**
+     * @brief Destructor for the nav2_map_server::MapServer
+     */
+    ~MapSaver();
 
-  // /**
-  //  * @brief Read a message from incoming map topic and save map to a file
-  //  * @param map_topic Incoming map topic name
-  //  * @param save_parameters Map saving parameters.
-  //  * @return true of false
-  //  */
-  // bool saveMapTopicToFile(
-  //   const std::string & map_topic,
-  //   const SaveParameters & save_parameters);
+    // /**
+    //  * @brief Read a message from incoming map topic and save map to a file
+    //  * @param map_topic Incoming map topic name
+    //  * @param save_parameters Map saving parameters.
+    //  * @return true of false
+    //  */
+    // bool saveMapTopicToFile(
+    //   const std::string & map_topic,
+    //   const SaveParameters & save_parameters);
 
 protected:
-  // Default values for map thresholds
-  double free_thresh_default_;
-  double occupied_thresh_default_;
+    // Default values for map thresholds
+    double free_thresh_default_;
+    double occupied_thresh_default_;
 };
 
 }  // namespace costmap_2d

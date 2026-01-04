@@ -23,7 +23,7 @@ set -e
 sudo ldconfig
 
 cd /thirdparty
-git clone -b 4.7.2 https://gitee.com/quanduyong/BehaviorTree.CPP.git
+git clone -b 4.7.2 https://github.com/BehaviorTree/BehaviorTree.CPP.git
 cd BehaviorTree.CPP && mkdir build && cd build 
 cmake \
     -DCMAKE_INSTALL_PREFIX=/usr/local \

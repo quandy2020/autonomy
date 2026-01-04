@@ -15,12 +15,12 @@
 # Locate the OMPL library
 find_path(OMPL_INCLUDE_DIR
     NAMES ompl/base/SpaceInformation.h
-    PATHS /usr/local/include /usr/include /usr/local/include/ompl-1.6 /usr/include/ompl-1.5
+    PATHS /opt/ros/humble/include/ompl-1.7 /usr/local/include /usr/include /usr/local/include/ompl-1.6 /usr/include/ompl-1.5
 )
 
 find_library(OMPL_LIBRARY
   NAMES ompl
-  PATHS /usr/local/lib /usr/lib
+  PATHS /opt/ros/humble/lib /usr/local/lib /usr/lib
 )
 
 # Set the results

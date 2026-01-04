@@ -17,22 +17,20 @@
 #include <glog/logging.h>
 #include <signal.h>
 
-#include "autonomy/common/version.hpp"
 #include "autonomy/common/gflags.hpp"
+#include "autonomy/common/version.hpp"
 #include "autonomy/simulation/simulator.hpp"
 
 namespace autonomy {
 namespace simulation {
 namespace {
- 
-void SigintHandler(int sig)
-{
+
+void SigintHandler(int sig) {
     LOG(INFO) << "Shutdown autonomy system all tasks.";
     exit(0);
 }
- 
-void Run()
-{
+
+void Run() {
     // 'Crtl + C' sign handler
     signal(SIGINT, SigintHandler);
 
@@ -47,25 +45,25 @@ void Run()
     simulator->Shutdown();
 }
 
-} // namespace 
-} // namespace simulation
-} // namespace autonomy
- 
-int main(int argc, char **argv)
-{
+}  // namespace
+}  // namespace simulation
+}  // namespace autonomy
+
+int main(int argc, char** argv) {
     google::SetUsageMessage(
         "\n\n"
-        "\033[31m This program offers autonomy framework development for robot.\033[0m \n");
+        "\033[31m This program offers autonomy framework development for "
+        "robot.\033[0m \n");
 
     google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if(autonomy::common::FLAGS_verbose) {
+    if (autonomy::common::FLAGS_verbose) {
         autonomy::common::ShowVersion();
         exit(0);
     }
- 
+
     autonomy::simulation::Run();
-    google::ShutdownGoogleLogging();  
+    google::ShutdownGoogleLogging();
     return EXIT_SUCCESS;
 }

@@ -19,25 +19,32 @@
 # Fail on first error.
 set -e
 
-# update
-sudo ldconfig
+cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
+
+ARCH=$(uname -m)
+THREAD_NUM=$(nproc)
 
 cd /thirdparty
-# Use GitHub official repository instead of gitee for better compatibility
-git clone -b v1.17.0 https://github.com/google/googletest.git || \
-git clone -b v1.17.0 https://gitee.com/quanduyong/googletest.git
-cd googletest && mkdir builder && cd builder 
-cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_BUILD_TYPE=Release        \
-    -DCMAKE_CXX_STANDARD=17           \
-    -DBUILD_SHARED_LIBS=ON            \
-    ..  
+git clone -b v1.17.0 https://github.com/google/googletest.git
 
-make -j8
-make install
+pushd googletest >/dev/null
+    mkdir builder && cd builder
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr/local \
+        -DCMAKE_BUILD_TYPE=Release        \
+        -DCMAKE_CXX_STANDARD=17           \
+        -DBUILD_SHARED_LIBS=ON            \
+        ..
+    
+    make -j${THREAD_NUM}
+    make install
+popd >/dev/null
+
+ldconfig
+
+ok "Successfully installed googletest v1.17.0"
 
 # Clean up.
-cd .. && rm -rf builder
-
+rm -rf googletest
 

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/condition_notifier.hpp"
 
 #include <sys/ipc.h>
@@ -29,7 +28,7 @@ namespace transport {
 using common::Hash;
 
 ConditionNotifier::ConditionNotifier() {
-    key_ = static_cast<key_t>(Hash("/autolink/transport/shm/notifier"));
+    key_ = static_cast<key_t>(Hash("autolink/transport/shm/notifier"));
     ADEBUG << "condition notifier key: " << key_;
     shm_size_ = sizeof(Indicator);
 

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 /**
  * @file
  * @brief Some string util functions.
@@ -23,6 +22,7 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include <memory>
 #include <string>
 
@@ -40,15 +40,15 @@ template <typename T, typename std::enable_if<
                           std::is_base_of<google::protobuf::Message, T>::value,
                           int>::type = 0>
 static void FillHeader(const std::string& module_name, T* msg) {
-  static std::atomic<uint64_t> sequence_num = {0};
-  auto* header = msg->mutable_header();
-  // double timestamp = ::apollo::cyber::Clock::NowInSeconds();
-  // header->mutable_stamp()->set_sec(timestamp);
+    static std::atomic<uint64_t> sequence_num = {0};
+    auto* header = msg->mutable_header();
+    // double timestamp = ::apollo::cyber::Clock::NowInSeconds();
+    // header->mutable_stamp()->set_sec(timestamp);
 }
 
 // template <typename T, typename std::enable_if<
-//                           std::is_base_of<google::protobuf::Message, T>::value,
-//                           int>::type = 0>
+//                           std::is_base_of<google::protobuf::Message,
+//                           T>::value, int>::type = 0>
 // bool DumpMessage(const std::shared_ptr<T>& msg,
 //                  const std::string& dump_dir = "/tmp") {
 //   if (!msg) {
@@ -74,10 +74,10 @@ static void FillHeader(const std::string& module_name, T* msg) {
 // }
 
 inline size_t MessageFingerprint(const google::protobuf::Message& message) {
-  static std::hash<std::string> hash_fn;
-  std::string proto_bytes;
-  message.SerializeToString(&proto_bytes);
-  return hash_fn(proto_bytes);
+    static std::hash<std::string> hash_fn;
+    std::string proto_bytes;
+    message.SerializeToString(&proto_bytes);
+    return hash_fn(proto_bytes);
 }
 
 }  // namespace common

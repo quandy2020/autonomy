@@ -14,31 +14,29 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "autonomy/common/port.hpp"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
 namespace diagnostic_msgs {
 
-struct KeyValue
-{
+struct KeyValue {
     // What to label this value when viewing.
     std::string key;
-    
+
     // A value to track over time.
     std::string value;
 };
 
 // This message holds the status of an individual component of the robot.
-struct DiagnosticStatus
-{
+struct DiagnosticStatus {
     // // Possible levels of operations.
     // byte OK=0
     // byte WARN=1
@@ -60,9 +58,9 @@ struct DiagnosticStatus
     std::vector<KeyValue> values;
 };
 
-// This message is used to send diagnostic information about the state of the robot.
-struct DiagnosticArray
-{
+// This message is used to send diagnostic information about the state of the
+// robot.
+struct DiagnosticArray {
     // for timestamp
     std_msgs::Header header;
 

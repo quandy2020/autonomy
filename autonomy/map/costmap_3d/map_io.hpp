@@ -14,31 +14,31 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <memory>
-#include <vector>
 #include <string>
- 
-#include "autonomy/common/port.hpp"
-#include "autonomy/common/macros.hpp"
+#include <vector>
+
 #include "autonomy/common//ply.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/sensor_msgs.hpp"
 
 namespace autonomy {
 namespace map {
 namespace costmap_3d {
 
-
 /**
- * @brief Load ply_filename convert to `pcl::PointCloud<pcl::PointXYZ>` format cloud
- * 
+ * @brief Load ply_filename convert to `pcl::PointCloud<pcl::PointXYZ>` format
+ * cloud
+ *
  * @param ply_filename The ply format filename
- * @param cloud Ourput map data 
+ * @param cloud Ourput map data
  * @return return Sccess or failed
  */
-bool LoadPlyFile(const std::string& ply_filename, commsgs::sensor_msgs::PointCloud& cloud);
-
+bool LoadPlyFile(const std::string& ply_filename,
+                 commsgs::sensor_msgs::PointCloud& cloud);
 
 }  // namespace costmap_3d
 }  // namespace map

@@ -29,38 +29,38 @@ namespace helper_functions {
 class ByteReader
 {
 private:
-  const std::vector<uint8_t> & byte_vector_;
-  std::size_t index_;
+    const std::vector<uint8_t>& byte_vector_;
+    std::size_t index_;
 
 public:
-  /// \brief Default constructor, byte reader class
-  /// \param[in] byte_vector A vector to read bytes from
-  explicit ByteReader(const std::vector<uint8_t> & byte_vector)
-  : byte_vector_(byte_vector), index_(0U)
-  {
-  }
+    /// \brief Default constructor, byte reader class
+    /// \param[in] byte_vector A vector to read bytes from
+    explicit ByteReader(const std::vector<uint8_t>& byte_vector)
+        : byte_vector_(byte_vector), index_(0U) {}
 
-  // brief Read bytes and store it in the argument passed in big-endian order
-  /// \param[inout] value Read and store the bytes from the vector matching the size of the argument
-  template <typename T>
-  void read(T & value)
-  {
-    constexpr std::size_t kTypeSize = sizeof(T);
-    union {
-      T value;
-      uint8_t byte_vector[kTypeSize];
-    } tmp;
+    // brief Read bytes and store it in the argument passed in big-endian order
+    /// \param[inout] value Read and store the bytes from the vector matching
+    /// the size of the argument
+    template <typename T>
+    void read(T& value) {
+        constexpr std::size_t kTypeSize = sizeof(T);
+        union {
+            T value;
+            uint8_t byte_vector[kTypeSize];
+        } tmp;
 
-    for (std::size_t i = 0; i < kTypeSize; ++i) {
-      tmp.byte_vector[i] = byte_vector_[index_ + kTypeSize - 1 - i];
+        for (std::size_t i = 0; i < kTypeSize; ++i) {
+            tmp.byte_vector[i] = byte_vector_[index_ + kTypeSize - 1 - i];
+        }
+
+        value = tmp.value;
+
+        index_ += kTypeSize;
     }
 
-    value = tmp.value;
-
-    index_ += kTypeSize;
-  }
-
-  void skip(std::size_t count) { index_ += count; }
+    void skip(std::size_t count) {
+        index_ += count;
+    }
 };
 }  // namespace helper_functions
 }  // namespace common

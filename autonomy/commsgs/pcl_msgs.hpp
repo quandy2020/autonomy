@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
 namespace commsgs {
-namespace pcl_msgs {
-
-
-
-}  // namespace pcl_msgs
+namespace pcl_msgs {}  // namespace pcl_msgs
 }  // namespace commsgs
 }  // namespace autonomy

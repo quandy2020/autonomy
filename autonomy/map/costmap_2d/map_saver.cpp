@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
- 
 #include "autonomy/map/costmap_2d/map_saver.hpp"
 
 namespace autonomy {
 namespace map {
-namespace costmap_2d {
-
-
-}  // namespace costmap_2d
+namespace costmap_2d {}  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

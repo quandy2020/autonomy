@@ -15,19 +15,22 @@
  */
 
 #include "autonomy/bridge/plugins/grpc/handlers/navigation_handler.hpp"
+
 #include "autonomy/common/logging.hpp"
 
 namespace autonomy {
-namespace bridge { 
-namespace plugins { 
-namespace grpc { 
-namespace handlers { 
+namespace bridge {
+namespace plugins {
+namespace grpc {
+namespace handlers {
 
-void SendNavigationHandler::OnRequest(const proto::NavigationCommandRequest& request)
-{
-    // if (!GetContext<MapBuilderContextInterface>()->CheckClientIdForTrajectory(
+void SendNavigationHandler::OnRequest(
+    const proto::NavigationCommandRequest& request) {
+    // if
+    // (!GetContext<MapBuilderContextInterface>()->CheckClientIdForTrajectory(
     //         request.client_id(), request.trajectory_id())) {
-    //     LOG(ERROR) << "Unknown trajectory with ID " << request.trajectory_id()
+    //     LOG(ERROR) << "Unknown trajectory with ID " <<
+    //     request.trajectory_id()
     //             << " and client_id " << request.client_id();
     //     Finish(::grpc::Status(::grpc::NOT_FOUND, "Unknown trajectory"));
     //     return;
@@ -42,7 +45,8 @@ void SendNavigationHandler::OnRequest(const proto::NavigationCommandRequest& req
     //     auto status =
     //         GetContext<MapBuilderContextInterface>()
     //             ->local_trajectory_uploader()
-    //             ->FinishTrajectory(request.client_id(), request.trajectory_id());
+    //             ->FinishTrajectory(request.client_id(),
+    //             request.trajectory_id());
     //     if (!status.ok()) {
     //     LOG(ERROR) << "Failed to finish trajectory in uplink: "
     //                 << status.error_message();
@@ -51,8 +55,8 @@ void SendNavigationHandler::OnRequest(const proto::NavigationCommandRequest& req
     // Send(absl::make_unique<google::protobuf::Empty>());
 }
 
-}   // namespace handlers
-}   // namespace grpc
-}   // namespace plugins
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace handlers
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

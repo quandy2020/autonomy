@@ -25,8 +25,8 @@
 
 #include "autolink/common/environment.hpp"
 #include "autolink/common/file.hpp"
-#include "autolink/common/time_conversion.hpp"
 #include "autolink/common/init.hpp"
+#include "autolink/common/time_conversion.hpp"
 #include "autolink/tools/autolink_recorder/info.hpp"
 #include "autolink/tools/autolink_recorder/player/player.hpp"
 #include "autolink/tools/autolink_recorder/recorder.hpp"
@@ -219,6 +219,8 @@ int main(int argc, char** argv) {
     std::vector<std::string> opt_black_channels;
     static bool enable_cpu_profile = false;
     static bool enable_heap_profile = false;
+    (void)enable_cpu_profile;   // Suppress unused variable warning
+    (void)enable_heap_profile;  // Suppress unused variable warning
     bool opt_all = false;
     bool opt_loop = false;
     float opt_rate = 1.0f;

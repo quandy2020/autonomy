@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/dispatcher/dispatcher.hpp"
 
 #include <memory>
 #include <vector>
 #include "gtest/gtest.h"
 
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/common/util.hpp"
+#include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
 
 namespace autolink {

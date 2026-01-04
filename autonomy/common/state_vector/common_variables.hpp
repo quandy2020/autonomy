@@ -17,67 +17,89 @@
 #ifndef AUTONOMY_COMMON_STATE_VECTOR_COMMON_VARIABLES_HPP_
 #define AUTONOMY_COMMON_STATE_VECTOR_COMMON_VARIABLES_HPP_
 
-#include "autonomy/common/state_vector/variable.hpp"
-
 #include <type_traits>
+
+#include "autonomy/common/state_vector/variable.hpp"
 
 namespace autonomy {
 namespace common {
 namespace state_vector {
 
-namespace variable
-{
-struct X : Variable {};
-struct Y : Variable {};
-struct Z : Variable {};
+namespace variable {
+struct X : Variable {
+};
+struct Y : Variable {
+};
+struct Z : Variable {
+};
 
 ///
 /// @brief      A variable that represents the roll angle of an object.
 ///
-/// @note       While the value of this variable in a state vector itself can be set by the user
-///             arbitrarily, throughout our code base we use the convention in which ROLL represents
-///             the CCW rotation around the X axis.
+/// @note       While the value of this variable in a state vector itself can be
+/// set by the user
+///             arbitrarily, throughout our code base we use the convention in
+///             which ROLL represents the CCW rotation around the X axis.
 ///
-struct ROLL : AngleVariable {};
+struct ROLL : AngleVariable {
+};
 
 ///
 /// @brief      A variable that represents the pitch angle of an object.
 ///
-/// @note       While the value of this variable in a state vector itself can be set by the user
-///             arbitrarily, throughout our code base we use the convention in which PITCH
-///             represents the CCW rotation around the Y axis.
+/// @note       While the value of this variable in a state vector itself can be
+/// set by the user
+///             arbitrarily, throughout our code base we use the convention in
+///             which PITCH represents the CCW rotation around the Y axis.
 ///
-struct PITCH : AngleVariable {};
+struct PITCH : AngleVariable {
+};
 
 ///
 /// @brief      A variable that represents the roll angle of an object.
 ///
-/// @note       While the value of this variable in a state vector itself can be set by the user
-///             arbitrarily, throughout our code base we use the convention in which YAW
-///             represents the CCW rotation around the Z axis.
+/// @note       While the value of this variable in a state vector itself can be
+/// set by the user
+///             arbitrarily, throughout our code base we use the convention in
+///             which YAW represents the CCW rotation around the Z axis.
 ///
-struct YAW : AngleVariable {};
+struct YAW : AngleVariable {
+};
 
-struct X_VELOCITY : Variable {};
-struct Y_VELOCITY : Variable {};
-struct Z_VELOCITY : Variable {};
+struct X_VELOCITY : Variable {
+};
+struct Y_VELOCITY : Variable {
+};
+struct Z_VELOCITY : Variable {
+};
 
-struct ROLL_CHANGE_RATE : Variable {};
-struct PITCH_CHANGE_RATE : Variable {};
-struct YAW_CHANGE_RATE : Variable {};
+struct ROLL_CHANGE_RATE : Variable {
+};
+struct PITCH_CHANGE_RATE : Variable {
+};
+struct YAW_CHANGE_RATE : Variable {
+};
 
-struct X_ACCELERATION : Variable {};
-struct Y_ACCELERATION : Variable {};
-struct Z_ACCELERATION : Variable {};
+struct X_ACCELERATION : Variable {
+};
+struct Y_ACCELERATION : Variable {
+};
+struct Z_ACCELERATION : Variable {
+};
 
-struct ROLL_CHANGE_ACCELERATION : Variable {};
-struct PITCH_CHANGE_ACCELERATION : Variable {};
-struct YAW_CHANGE_ACCELERATION : Variable {};
+struct ROLL_CHANGE_ACCELERATION : Variable {
+};
+struct PITCH_CHANGE_ACCELERATION : Variable {
+};
+struct YAW_CHANGE_ACCELERATION : Variable {
+};
 
 /// Velocity in xy plane. Used in differential drive models.
-struct XY_VELOCITY : Variable {};
+struct XY_VELOCITY : Variable {
+};
 /// Acceleration in xy plane. Used in differential drive models.
-struct XY_ACCELERATION : Variable {};
+struct XY_ACCELERATION : Variable {
+};
 
 }  // namespace variable
 

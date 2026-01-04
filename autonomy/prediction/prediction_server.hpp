@@ -21,7 +21,7 @@
 
 namespace autonomy {
 namespace prediction {
-    
+
 class PredictionServer : common::PredictionInterface
 {
 public:
@@ -45,7 +45,6 @@ protected:
     // Options prediction
     proto::PredictionOptions options_;
 };
-
 
 }  // namespace prediction
 }  // namespace autonomy

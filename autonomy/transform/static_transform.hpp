@@ -16,144 +16,83 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "autonomy/common/logging.hpp"
+#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/param_handler.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/transform/transform_broadcaster.hpp"
+#include "autonomy/transform/proto/transform_options.pb.h"
 
 namespace autonomy {
 namespace transform {
 
 /**
- * @brief Static TF transform configuration structure
- */
-struct StaticTransformConfig {
-    std::string name;
-    bool enabled;
-    std::string frame_id;
-    std::string child_frame_id;
-    
-    struct Translation {
-        double x;
-        double y;
-        double z;
-    } translation;
-    
-    struct Rotation {
-        double x;
-        double y;
-        double z;
-        double w;
-    } rotation;
-};
-
-/**
- * @brief Global settings
- */
-struct StaticTransformSettings {
-    double publish_rate = 10.0;
-    std::string tf_prefix = "";
-    bool print_transforms_on_startup = true;
-    bool validate_quaternion = true;
-};
-
-/**
  * @brief Static TF transform component
- * 
- * This component loads static TF transforms from a YAML configuration file
- * and periodically publishes these transforms
  */
 class StaticTransform
 {
 public:
+    /**
+     * @brief Define StaticTransform::SharedPtr type
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(StaticTransform)
-    
+
     /**
      * @brief Constructor
+     * @param options The options for the static transform
+     * @param node The node to use for the static transform
      */
-     StaticTransform();
-    
+    StaticTransform(const autonomy::transform::proto::TransformOptions& options,
+                    ::autolink::Node* node = nullptr);
+
     /**
      * @brief Destructor
      */
-    ~StaticTransform();
-    
+    ~StaticTransform() = default;
+
     /**
-     * @brief Initialize the component
-     * @param yaml_file_path YAML configuration file path
-     * @return true on successful initialization
+     * @brief Get the transform stampeds
+     * @return The transform stampeds
      */
-    bool Initialize(const std::string& yaml_file_path);
-    
-    /**
-     * @brief Start static TF publishing
-     */
-    void Start();
-    
-    /**
-     * @brief Stop static TF publishing
-     */
-    void Stop();
-    
-    /**
-     * @brief Get the number of loaded transforms
-     */
-    size_t GetTransformCount() const { return transforms_.size(); }
-    
-    /**
-     * @brief Get the number of enabled transforms
-     */
-    size_t GetEnabledTransformCount() const;
+    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
+        const {
+        return transform_stampeds_;
+    }
 
 private:
     /**
-     * @brief Parse configuration from YAML file
-     * @param yaml_file_path YAML file path
-     * @return true on successful parsing
+     * @brief Send the transforms to the writer
      */
-    bool ParseYamlConfig(const std::string& yaml_file_path);
-    
-    /**
-     * @brief Validate if quaternion is normalized
-     * @param rotation Rotation quaternion
-     * @return true if valid
-     */
-    bool ValidateQuaternion(const StaticTransformConfig::Rotation& rotation) const;
-    
-    /**
-     * @brief Publish all static transforms
-     */
-    void PublishTransforms();
-    
-    /**
-     * @brief Convert configuration to TransformStamped message
-     * @param config Configuration
-     * @return TransformStamped message
-     */
-    commsgs::geometry_msgs::TransformStamped ConfigToTransformStamped(
-        const StaticTransformConfig& config) const;
-    
-    /**
-     * @brief Print all transform information
-     */
-    void PrintTransforms() const;
+    void SendTransforms();
 
-private:
-    // Configuration
-    common::ParamHandler::SharedPtr param_handler_{nullptr};
-    std::vector<StaticTransformConfig> transforms_;
-    StaticTransformSettings settings_;
-    
-    // TF broadcaster
-    std::shared_ptr<TransformBroadcaster> tf_broadcaster_;
-    
-    // Initialization flag
-    bool initialized_ = false;
+    /**
+     * @brief Send the transform to the writer
+     * @param msgtf The transform to send
+     */
+    void SendTransform(
+        const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
+
+    /**
+     * @brief Parse static transforms from the yaml file
+     * @param file_path The path to the yaml file
+     * @param transforms Output vector of transforms
+     * @return True if parsed successfully, false otherwise
+     */
+    bool ParseFromYaml(
+        const std::string& file_path,
+        std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
+
+    // node
+    ::autolink::Node* node_;
+
+    // transform_stampeds
+    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
+
+    // writer
+    std::shared_ptr<
+        ::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>>
+        writer_;
+
+    // static_transform_options
+    autonomy::transform::proto::TransformOptions static_transform_options_;
 };
 
 }  // namespace transform

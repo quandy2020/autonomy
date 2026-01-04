@@ -18,8 +18,6 @@
 
 namespace autonomy {
 namespace common {
-namespace math {
-
-}  // namespace math
+namespace math {}  // namespace math
 }  // namespace common
 }  // namespace autonomy

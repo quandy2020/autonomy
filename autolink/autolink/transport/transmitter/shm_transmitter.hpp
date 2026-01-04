@@ -113,11 +113,11 @@ ShmTransmitter<M>::~ShmTransmitter() {
 
 template <typename M>
 void ShmTransmitter<M>::Enable(const RoleAttributes& opposite_attr) {
-    message::RawMessage raw_msg;
-    message::PyMessageWrap py_msg;
     if (arena_transmit_) {
-        if (opposite_attr.message_type() == message::MessageType(raw_msg) ||
-            opposite_attr.message_type() == message::MessageType(py_msg)) {
+        if (opposite_attr.message_type() ==
+                message::MessageType<message::RawMessage>() ||
+            opposite_attr.message_type() ==
+                message::MessageType<message::PyMessageWrap>()) {
             serialized_receiver_count_.fetch_add(1);
         } else {
             arena_receiver_count_.fetch_add(1);
@@ -133,11 +133,11 @@ void ShmTransmitter<M>::Enable(const RoleAttributes& opposite_attr) {
 template <typename M>
 void ShmTransmitter<M>::Disable(const RoleAttributes& opposite_attr) {
     if (this->enabled_) {
-        message::RawMessage raw_msg;
-        message::PyMessageWrap py_msg;
         if (arena_transmit_) {
-            if (opposite_attr.message_type() == message::MessageType(raw_msg) ||
-                opposite_attr.message_type() == message::MessageType(py_msg)) {
+            if (opposite_attr.message_type() ==
+                    message::MessageType<message::RawMessage>() ||
+                opposite_attr.message_type() ==
+                    message::MessageType<message::PyMessageWrap>()) {
                 serialized_receiver_count_.fetch_sub(1);
             } else {
                 arena_receiver_count_.fetch_sub(1);

@@ -20,7 +20,7 @@
 #include <cinttypes>
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 
 using int8 = int8_t;
@@ -33,7 +33,7 @@ using uint32 = uint32_t;
 using uint64 = uint64_t;
 
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy
 
 #endif  // CPP_GRPC_COMMON_PORT_H_

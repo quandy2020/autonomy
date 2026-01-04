@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include "autonomy/map/proto/map_options.pb.h"
-
-#include "autonomy/common/macros.hpp"
-#include "autonomy/sensor/data.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/map/proto/map_options.pb.h"
+#include "autonomy/sensor/data.hpp"
 
 namespace autonomy {
 namespace map {
@@ -53,7 +52,8 @@ public:
     virtual void Stop() = 0;
 
     /**
-     * @brief  Stops the costmap from updating, but sensor data still comes in over the wire
+     * @brief  Stops the costmap from updating, but sensor data still comes in
+     * over the wire
      */
     virtual void Pause() = 0;
 
@@ -68,10 +68,6 @@ public:
      */
     void AddSensorData(std::unique_ptr<sensor::Data> data);
 };
-
-proto::MapOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-
 
 }  // namespace common
 }  // namespace map

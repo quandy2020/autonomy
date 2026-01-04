@@ -14,30 +14,69 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/localization/proto/localization_options.pb.h"
 
 namespace autonomy {
 namespace localization {
 namespace common {
 
-class LocalizationServer 
+/**
+ * @brief 定位算法接口
+ *
+ * 所有定位算法（如 AMCL）都应该实现此接口
+ */
+class LocalizationInterface
 {
 public:
-   /**
-    * Define LocalizationServer::SharedPtr type
-    */
-    AUTONOMY_SMART_PTR_DEFINITIONS(LocalizationServer)
+    /**
+     * @brief 定义智能指针类型
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(LocalizationInterface)
 
-    LocalizationServer();
-    
-    ~LocalizationServer();
-    
-private:
+    /**
+     * @brief 构造函数
+     */
+    LocalizationInterface() = default;
 
+    /**
+     * @brief 析构函数
+     */
+    virtual ~LocalizationInterface() = default;
+
+    /**
+     * @brief 启动定位算法（配置并激活）
+     * @param options 定位选项配置
+     * @param name 算法名称
+     * @return true 成功，false 失败
+     */
+    virtual bool Start(const proto::LocalizationOptions& options,
+                       const std::string& name) = 0;
+
+    /**
+     * @brief 停止定位算法（停用、清理并关闭）
+     * @return true 成功，false 失败
+     */
+    virtual bool Stop() = 0;
+
+    /**
+     * @brief 设置初始位姿
+     * @param pose 初始位姿（带协方差）
+     * @return true 成功，false 失败
+     */
+    virtual bool SetInitialPose(
+        const commsgs::geometry_msgs::PoseWithCovariance& pose) = 0;
+
+    /**
+     * @brief 获取当前位姿估计
+     * @param pose 输出的位姿（带协方差）
+     * @return true 成功，false 失败
+     */
+    virtual bool GetPose(commsgs::geometry_msgs::PoseWithCovariance& pose) = 0;
 };
 
 proto::LocalizationOptions LoadOptions(

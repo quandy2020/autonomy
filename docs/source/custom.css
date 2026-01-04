@@ -1,0 +1,344 @@
+/* ============================================================================
+   美观的 HTML 文档样式 - Read the Docs 主题定制
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   页面宽度设置
+   ---------------------------------------------------------------------------- */
+
+/* 增加主要内容区域的最大宽度（默认 1100px -> 1400px）*/
+.wy-nav-content {
+    max-width: 1400px !important;
+    padding: 2rem !important;
+}
+
+/* 对于宽屏显示器，使用更大的宽度 */
+@media screen and (min-width: 1400px) {
+    .wy-nav-content {
+        max-width: 1600px !important;
+    }
+}
+
+/* 对于超宽屏显示器（2K/4K），使用更大的宽度 */
+@media screen and (min-width: 1920px) {
+    .wy-nav-content {
+        max-width: 1800px !important;
+    }
+}
+
+/* 确保内容区域能够充分利用可用空间 */
+.wy-body-for-nav {
+    max-width: 100%;
+}
+
+/* ----------------------------------------------------------------------------
+   代码块样式优化
+   ---------------------------------------------------------------------------- */
+
+/* 代码块容器 */
+.rst-content .highlight {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    background-color: #f8f9fa;
+}
+
+/* 代码块内容 */
+.rst-content .highlight pre {
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    background-color: #282c34;
+    color: #abb2bf;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9em;
+    line-height: 1.6;
+    overflow-x: auto;
+}
+
+/* 代码块行号 */
+.rst-content .highlight pre .linenos {
+    padding-right: 1rem;
+    color: #5c6370;
+    user-select: none;
+}
+
+/* 代码语法高亮优化 */
+.rst-content .highlight .hll {
+    background-color: #3e4451;
+}
+
+/* ----------------------------------------------------------------------------
+   表格样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content table.docutils {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: collapse;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* 表格头部 */
+.rst-content table.docutils thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.rst-content table.docutils thead th {
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    text-align: left;
+    border: none;
+}
+
+/* 表格单元格 */
+.rst-content table.docutils td {
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.rst-content table.docutils tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.rst-content table.docutils tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.rst-content table.docutils tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* 表格边框 */
+.rst-content table.docutils {
+    border: 1px solid #e9ecef;
+}
+
+/* ----------------------------------------------------------------------------
+   引用块样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content .admonition {
+    margin: 1.5rem 0;
+    padding: 1.25rem 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    background-color: #ffffff;
+}
+
+.rst-content .admonition.note {
+    border-left-color: #17a2b8;
+    background-color: #e7f3f5;
+}
+
+.rst-content .admonition.warning {
+    border-left-color: #ffc107;
+    background-color: #fff8e1;
+}
+
+.rst-content .admonition.danger,
+.rst-content .admonition.error {
+    border-left-color: #dc3545;
+    background-color: #ffeaea;
+}
+
+.rst-content .admonition.tip,
+.rst-content .admonition.hint {
+    border-left-color: #28a745;
+    background-color: #e8f5e9;
+}
+
+.rst-content .admonition-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+/* ----------------------------------------------------------------------------
+   标题样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content h1 {
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 3px solid #667eea;
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.rst-content h2 {
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    border-bottom: 2px solid #e9ecef;
+    color: #34495e;
+    font-weight: 600;
+}
+
+.rst-content h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #555;
+    font-weight: 600;
+}
+
+.rst-content h4,
+.rst-content h5,
+.rst-content h6 {
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: #666;
+    font-weight: 600;
+}
+
+/* ----------------------------------------------------------------------------
+   链接样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content a {
+    color: #667eea;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.rst-content a:hover {
+    color: #764ba2;
+    text-decoration: underline;
+}
+
+.rst-content a code {
+    color: #667eea;
+}
+
+.rst-content a code:hover {
+    color: #764ba2;
+}
+
+/* ----------------------------------------------------------------------------
+   段落和列表样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content p {
+    line-height: 1.8;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.rst-content ul,
+.rst-content ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+    line-height: 1.8;
+}
+
+.rst-content li {
+    margin: 0.5rem 0;
+    color: #333;
+}
+
+.rst-content ul li {
+    list-style-type: disc;
+}
+
+.rst-content ol li {
+    list-style-type: decimal;
+}
+
+/* ----------------------------------------------------------------------------
+   内联代码样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content code {
+    padding: 0.2em 0.4em;
+    background-color: #f1f3f5;
+    border: 1px solid #e1e4e8;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #e83e8c;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+/* ----------------------------------------------------------------------------
+   数学公式样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content .math {
+    color: #667eea;
+}
+
+/* ----------------------------------------------------------------------------
+   图片样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin: 1.5rem 0;
+}
+
+/* ----------------------------------------------------------------------------
+   引用样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content blockquote {
+    margin: 1.5rem 0;
+    padding: 1rem 1.5rem;
+    border-left: 4px solid #667eea;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    color: #555;
+    font-style: italic;
+}
+
+/* ----------------------------------------------------------------------------
+   水平分隔线样式优化
+   ---------------------------------------------------------------------------- */
+
+.rst-content hr {
+    border: none;
+    border-top: 2px solid #e9ecef;
+    margin: 2rem 0;
+}
+
+/* ----------------------------------------------------------------------------
+   导航栏优化
+   ---------------------------------------------------------------------------- */
+
+.wy-side-nav-search {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.wy-side-nav-search > a {
+    color: #ffffff;
+}
+
+/* ----------------------------------------------------------------------------
+   响应式优化
+   ---------------------------------------------------------------------------- */
+
+@media screen and (max-width: 768px) {
+    .wy-nav-content {
+        padding: 1rem !important;
+    }
+    
+    .rst-content .highlight pre {
+        padding: 1rem;
+        font-size: 0.85em;
+    }
+    
+    .rst-content table.docutils {
+        font-size: 0.9em;
+    }
+    
+    .rst-content table.docutils th,
+    .rst-content table.docutils td {
+        padding: 0.75rem;
+    }
+}

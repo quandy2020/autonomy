@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-
-#include "autonomy/common/port.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
 namespace visualization_msgs {
 
-struct MenuEntry
-{
+struct MenuEntry {
     // MenuEntry message.
     //
     // Each InteractiveMarker message has an array of MenuEntry messages.
@@ -76,37 +74,34 @@ struct MenuEntry
 
     // // Command_type stores the type of response desired when this menu
     // // entry is clicked.
-    // // FEEDBACK: send an InteractiveMarkerFeedback message with menu_entry_id set to this entry's id.
-    // // ROSRUN: execute "rosrun" with arguments given in the command field (above).
-    // // ROSLAUNCH: execute "roslaunch" with arguments given in the command field (above).
-    // uint8 FEEDBACK=0
-    // uint8 ROSRUN=1
-    // uint8 ROSLAUNCH=2
-    // uint8 command_type
+    // // FEEDBACK: send an InteractiveMarkerFeedback message with menu_entry_id
+    // set to this entry's id.
+    // // ROSRUN: execute "rosrun" with arguments given in the command field
+    // (above).
+    // // ROSLAUNCH: execute "roslaunch" with arguments given in the command
+    // field (above). uint8 FEEDBACK=0 uint8 ROSRUN=1 uint8 ROSLAUNCH=2 uint8
+    // command_type
 };
 
-struct MeshFile
-{
+struct MeshFile {
     // Used to send raw mesh files.
 
-    // The filename is used for both debug purposes and to provide a file extension
-    // for whatever parser is used.
+    // The filename is used for both debug purposes and to provide a file
+    // extension for whatever parser is used.
     std::string filename;
 
     // This stores the raw text of the mesh file.
     std::vector<uint8> data;
 };
 
-struct UVCoordinate
-{
+struct UVCoordinate {
     // Location of the pixel as a ratio of the width of a 2D texture.
     // Values should be in range: [0.0-1.0].
     float u;
     float v;
 };
 
-struct ImageMarker
-{
+struct ImageMarker {
     // int32 CIRCLE=0
     // int32 LINE_STRIP=1
     // int32 LINE_LIST=2
@@ -149,15 +144,15 @@ struct ImageMarker
     // 0 indicates forever.
     builtin_interfaces::Duration lifetime;
 
-    // Coordinates in 2D in pixel coords. Used for LINE_STRIP, LINE_LIST, POINTS, etc.
+    // Coordinates in 2D in pixel coords. Used for LINE_STRIP, LINE_LIST,
+    // POINTS, etc.
     std::vector<geometry_msgs::Point> points;
 
     // The color for each line, point, etc. in the points field.
     std::vector<std_msgs::ColorRGBA> outline_colors;
 };
 
-struct Marker
-{
+struct Marker {
     // See:
     //  - http://www.ros.org/wiki/rviz/DisplayTypes/Marker
     //  - http://www.ros.org/wiki/rviz/Tutorials/Markers%3A%20Basic%20Shapes
@@ -189,8 +184,9 @@ struct Marker
     // Namespace in which to place the object.
     // Used in conjunction with id to create a unique name for the object.
     std::string ns;
-    
-    // Object ID used in conjunction with the namespace for manipulating and deleting the object later.
+
+    // Object ID used in conjunction with the namespace for manipulating and
+    // deleting the object later.
     int32 id;
 
     // Type of object.
@@ -216,25 +212,28 @@ struct Marker
     // 0 indicates forever.
     builtin_interfaces::Duration lifetime;
 
-    // If this marker should be frame-locked, i.e. retransformed into its frame every timestep.
+    // If this marker should be frame-locked, i.e. retransformed into its frame
+    // every timestep.
     bool frame_locked;
 
-    // Only used if the type specified has some use for them (eg. POINTS, LINE_STRIP, ARROW_STRIP, etc.)
+    // Only used if the type specified has some use for them (eg. POINTS,
+    // LINE_STRIP, ARROW_STRIP, etc.)
     std::vector<geometry_msgs::Point> points;
 
-    // Only used if the type specified has some use for them (eg. POINTS, LINE_STRIP, etc.)
-    // The number of colors provided must either be 0 or equal to the number of points provided.
-    // NOTE: alpha is not yet used
+    // Only used if the type specified has some use for them (eg. POINTS,
+    // LINE_STRIP, etc.) The number of colors provided must either be 0 or equal
+    // to the number of points provided. NOTE: alpha is not yet used
     std::vector<std_msgs::ColorRGBA> colors;
 
-    // Texture resource is a special URI that can either reference a texture file in
-    // a format acceptable to (resource retriever)[https://docs.ros.org/en/rolling/p/resource_retriever/]
-    // or an embedded texture via a string matching the format:
+    // Texture resource is a special URI that can either reference a texture
+    // file in a format acceptable to (resource
+    // retriever)[https://docs.ros.org/en/rolling/p/resource_retriever/] or an
+    // embedded texture via a string matching the format:
     //   "embedded://texture_name"
     std::string texture_resource;
 
-    // An image to be loaded into the rendering engine as the texture for this marker.
-    // This will be used iff texture_resource is set to embedded.
+    // An image to be loaded into the rendering engine as the texture for this
+    // marker. This will be used iff texture_resource is set to embedded.
     sensor_msgs::CompressedImage texture;
 
     // Location of each vertex within the texture; in the range: [0.0-1.0]
@@ -244,30 +243,28 @@ struct Marker
     std::string text;
 
     // Only used for MESH_RESOURCE markers.
-    // Similar to texture_resource, mesh_resource uses resource retriever to load a mesh.
-    // Optionally, a mesh file can be sent in-message via the mesh_file field. If doing so,
-    // use the following format for mesh_resource:
+    // Similar to texture_resource, mesh_resource uses resource retriever to
+    // load a mesh. Optionally, a mesh file can be sent in-message via the
+    // mesh_file field. If doing so, use the following format for mesh_resource:
     //   "embedded://mesh_name"
     std::string mesh_resource;
     MeshFile mesh_file;
     bool mesh_use_embedded_materials;
 };
 
-// Represents a control that is to be displayed together with an interactive marker
-struct InteractiveMarkerControl
-{
-
+// Represents a control that is to be displayed together with an interactive
+// marker
+struct InteractiveMarkerControl {
     // Identifying string for this control.
-    // You need to assign a unique value to this to receive feedback from the GUI
-    // on what actions the user performs on this control (e.g. a button click).
+    // You need to assign a unique value to this to receive feedback from the
+    // GUI on what actions the user performs on this control (e.g. a button
+    // click).
     std::string name;
-
 
     // Defines the local coordinate frame (relative to the pose of the parent
     // interactive marker) in which is being rotated and translated.
     // Default: Identity
     geometry_msgs::Quaternion orientation;
-
 
     // // Orientation mode: controls how orientation changes.
     // // INHERIT: Follow orientation of interactive marker
@@ -295,20 +292,20 @@ struct InteractiveMarkerControl
     // uint8 MOVE_PLANE = 4
     // uint8 ROTATE_AXIS = 5
     // uint8 MOVE_ROTATE = 6
-    // // "3D" interaction modes work with the mouse+SHIFT+CTRL or with 3D cursors.
+    // // "3D" interaction modes work with the mouse+SHIFT+CTRL or with 3D
+    // cursors.
     // // MOVE_3D: Translate freely in 3D space.
     // // ROTATE_3D: Rotate freely in 3D space about the origin of parent frame.
-    // // MOVE_ROTATE_3D: Full 6-DOF freedom of translation and rotation about the cursor origin.
-    // uint8 MOVE_3D = 7
-    // uint8 ROTATE_3D = 8
-    // uint8 MOVE_ROTATE_3D = 9
+    // // MOVE_ROTATE_3D: Full 6-DOF freedom of translation and rotation about
+    // the cursor origin. uint8 MOVE_3D = 7 uint8 ROTATE_3D = 8 uint8
+    // MOVE_ROTATE_3D =
+    // 9
 
     uint8 interaction_mode;
 
     // If true, the contained markers will also be visible
     // when the gui is not in interactive mode.
     bool always_visible;
-
 
     // Markers to be displayed as custom visual representation.
     // Leave this empty to use the default control handles.
@@ -325,15 +322,13 @@ struct InteractiveMarkerControl
     // as in INHERIT mode.
     bool independent_marker_orientation;
 
-
     // Short description (< 40 characters) of what this control does,
     // e.g. "Move the robot".
     // Default: A generic description based on the interaction mode
     std::string description;
 };
 
-struct InteractiveMarkerFeedback
-{
+struct InteractiveMarkerFeedback {
     // Time/frame info.
     std_msgs::Header header;
 
@@ -378,8 +373,7 @@ struct InteractiveMarkerFeedback
     bool mouse_point_valid;
 };
 
-struct InteractiveMarker
-{
+struct InteractiveMarker {
     // Time/frame info.
     // If header.time is set to 0, the marker will be retransformed into
     // its frame on each timestep. You will receive the pose feedback
@@ -408,8 +402,7 @@ struct InteractiveMarker
     std::vector<InteractiveMarkerControl> controls;
 };
 
-struct InteractiveMarkerInit
-{
+struct InteractiveMarkerInit {
     // Identifying string. Must be unique in the topic namespace
     // that this server works on.
     std::string server_id;
@@ -426,8 +419,7 @@ struct InteractiveMarkerInit
     std::vector<InteractiveMarker> markers;
 };
 
-struct InteractiveMarkerPose
-{
+struct InteractiveMarkerPose {
     // Time/frame info.
     std_msgs::Header header;
 
@@ -439,8 +431,7 @@ struct InteractiveMarkerPose
     std::string name;
 };
 
-struct InteractiveMarkerUpdate
-{
+struct InteractiveMarkerUpdate {
     // Identifying string. Must be unique in the topic namespace
     // that this server works on.
     std::string server_id;
@@ -449,13 +440,14 @@ struct InteractiveMarkerUpdate
     // The client will use this to detect if it has missed an update.
     uint64 seq_num;
 
-    // Type holds the purpose of this message.  It must be one of UPDATE or KEEP_ALIVE.
-    // UPDATE: Incremental update to previous state.
+    // Type holds the purpose of this message.  It must be one of UPDATE or
+    // KEEP_ALIVE. UPDATE: Incremental update to previous state.
     //         The sequence number must be 1 higher than for
     //         the previous update.
     // KEEP_ALIVE: Indicates the that the server is still living.
     //             The sequence number does not increase.
-    //             No payload data should be filled out (markers, poses, or erases).
+    //             No payload data should be filled out (markers, poses, or
+    //             erases).
     // uint8 KEEP_ALIVE = 0
     // uint8 UPDATE = 1
 
@@ -474,11 +466,9 @@ struct InteractiveMarkerUpdate
     std::vector<std::string> erases;
 };
 
-struct MarkerArray
-{
+struct MarkerArray {
     std::vector<Marker> markers;
 };
-
 
 }  // namespace visualization_msgs
 }  // namespace commsgs

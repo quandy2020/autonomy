@@ -14,27 +14,34 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/state_vector/variable.hpp"
-
 #include <gtest/gtest.h>
+
+#include "autonomy/common/state_vector/variable.hpp"
 
 namespace autonomy {
 namespace common {
 namespace state_vector {
 
-struct NotAVariable {};
-struct CustomVariable : autonomy::common::state_vector::Variable {};
-struct CustomAngle : autonomy::common::state_vector::AngleVariable {};
+struct NotAVariable {
+};
+struct CustomVariable : autonomy::common::state_vector::Variable {
+};
+struct CustomAngle : autonomy::common::state_vector::AngleVariable {
+};
 
 /// @test Variable traits work as expected.
 TEST(VariableTest, CheckVariables) {
-  EXPECT_FALSE(autonomy::common::state_vector::is_variable<NotAVariable>::value);
+    EXPECT_FALSE(
+        autonomy::common::state_vector::is_variable<NotAVariable>::value);
 
-  EXPECT_TRUE(autonomy::common::state_vector::is_variable<CustomVariable>::value);
-  EXPECT_FALSE(autonomy::common::state_vector::is_angle<CustomVariable>::value);
+    EXPECT_TRUE(
+        autonomy::common::state_vector::is_variable<CustomVariable>::value);
+    EXPECT_FALSE(
+        autonomy::common::state_vector::is_angle<CustomVariable>::value);
 
-  EXPECT_TRUE(autonomy::common::state_vector::is_variable<CustomAngle>::value);
-  EXPECT_TRUE(autonomy::common::state_vector::is_angle<CustomAngle>::value);
+    EXPECT_TRUE(
+        autonomy::common::state_vector::is_variable<CustomAngle>::value);
+    EXPECT_TRUE(autonomy::common::state_vector::is_angle<CustomAngle>::value);
 }
 
 }  // namespace state_vector

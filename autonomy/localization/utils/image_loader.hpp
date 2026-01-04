@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-#pragma once 
-
-#include <vector>
-#include <string>
+#pragma once
 
 #include <opencv2/opencv.hpp>
+#include <string>
+#include <vector>
 
 #include "autonomy/commsgs/sensor_msgs.hpp"
 
@@ -28,25 +27,25 @@ namespace localization {
 namespace utils {
 
 /**
- * @brief  Read image from directory_path 
- * 
- * @param directory_path 
- * @param images 
- * @return true 
- * @return false 
+ * @brief  Read image from directory_path
+ *
+ * @param directory_path
+ * @param images
+ * @return true
+ * @return false
  */
 bool ReadImage(const std::string& directory_path, std::vector<cv::Mat>& images);
 
 /**
  * @brief Read image from directory_path  convert `commsgs::sensor_msgs::Image`
- * 
- * @param directory_path 
- * @param images 
- * @return true 
- * @return false 
+ *
+ * @param directory_path
+ * @param images
+ * @return true
+ * @return false
  */
-bool ReadImage(const std::string& directory_path, std::vector<commsgs::sensor_msgs::Image>& images);
-
+bool ReadImage(const std::string& directory_path,
+               std::vector<commsgs::sensor_msgs::Image>& images);
 
 }  // namespace utils
 }  // namespace localization

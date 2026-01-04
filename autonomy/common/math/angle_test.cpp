@@ -23,10 +23,7 @@ namespace common {
 namespace math {
 namespace {
 
-TEST(AngleTest, testOne) 
-{
- 
-}
+TEST(AngleTest, testOne) {}
 
 }  // namespace
 }  // namespace math

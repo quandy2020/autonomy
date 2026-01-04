@@ -18,11 +18,9 @@
 
 #include "autolink/base/macros.hpp"
 
-#include <fastcdr/config.h>
-#include <fastdds/utils/md5.hpp>
-#include "fastdds/dds/topic/TopicDataType.hpp"
-
 #include "autolink/transport/rtps/underlay_message.hpp"
+#include "fastdds/dds/topic/TopicDataType.hpp"
+#include "fastrtps/fastrtps/utils/md5.h"
 
 namespace autolink {
 namespace transport {
@@ -39,30 +37,20 @@ public:
 
     UnderlayMessageType();
     virtual ~UnderlayMessageType();
-    bool serialize(const void* const data,
-                   eprosima::fastdds::rtps::SerializedPayload_t& payload,
-                   eprosima::fastdds::dds::DataRepresentationId_t
-                       data_representation) override;
-
-    bool deserialize(eprosima::fastdds::rtps::SerializedPayload_t& payload,
-                     void* data) override;
-
-    uint32_t calculate_serialized_size(
-        const void* const data,
-        eprosima::fastdds::dds::DataRepresentationId_t data_representation)
-        override;
-
-    bool compute_key(eprosima::fastdds::rtps::SerializedPayload_t& payload,
-                     eprosima::fastdds::rtps::InstanceHandle_t& ihandle,
-                     bool force_md5 = false) override;
-
-    bool compute_key(const void* const data,
-                     eprosima::fastdds::rtps::InstanceHandle_t& ihandle,
-                     bool force_md5 = false) override;
-
-    void* create_data() override;           // NOLINT
-    void delete_data(void* data) override;  // NOLINT
-    eprosima::fastdds::MD5 m_md5;
+    virtual bool serialize(  // NOLINT
+        void* data,
+        eprosima::fastrtps::rtps::SerializedPayload_t* payload) override;
+    virtual bool deserialize(  // NOLINT
+        eprosima::fastrtps::rtps::SerializedPayload_t* payload,
+        void* data) override;
+    virtual std::function<uint32_t()> getSerializedSizeProvider(  // NOLINT
+        void* data) override;
+    virtual bool getKey(void* data,  // NOLINT
+                        eprosima::fastrtps::rtps::InstanceHandle_t* ihandle,
+                        bool force_md5 = false) override;
+    virtual void* createData() override;           // NOLINT
+    virtual void deleteData(void* data) override;  // NOLINT
+    MD5 m_md5;
     unsigned char* m_keyBuffer;
 };
 

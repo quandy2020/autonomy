@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-
-#include <stdexcept>
 #include <algorithm>
+#include <stdexcept>
 
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
@@ -34,23 +33,21 @@ public:
     /**
      * @brief  Constructor for the Costmap2DPublisher
      */
-    Costmap2DPublisher(
-        Costmap2D * costmap,
-        std::string global_frame,
-        std::string topic_name,
-        bool always_send_full_costmap = false,
-        double map_vis_z = 0.0);
+    Costmap2DPublisher(Costmap2D* costmap, std::string global_frame,
+                       std::string topic_name,
+                       bool always_send_full_costmap = false,
+                       double map_vis_z = 0.0);
 
     /**
      * @brief  Destructor
      */
     ~Costmap2DPublisher();
 
-    /** 
-     * @brief Include the given bounds in the changed-rectangle. 
+    /**
+     * @brief Include the given bounds in the changed-rectangle.
      */
-    void updateBounds(unsigned int x0, unsigned int xn, unsigned int y0, unsigned int yn)
-    {
+    void updateBounds(unsigned int x0, unsigned int xn, unsigned int y0,
+                      unsigned int yn) {
         x0_ = std::min(x0, x0_);
         xn_ = std::max(xn, xn_);
         y0_ = std::min(y0, y0_);
@@ -64,10 +61,10 @@ public:
 
     /**
      * @brief Check if the publisher is active
-     * @return True if the frequency for the publisher is non-zero, false otherwise
+     * @return True if the frequency for the publisher is non-zero, false
+     * otherwise
      */
-    bool active()
-    {
+    bool active() {
         return active_;
     }
 
@@ -76,7 +73,7 @@ private:
     void prepareGrid();
     void prepareCostmap();
 
-    Costmap2D * costmap_;
+    Costmap2D* costmap_;
     std::string global_frame_;
     std::string topic_name_;
     unsigned int x0_, xn_, y0_, yn_;
@@ -86,13 +83,12 @@ private:
     bool always_send_full_costmap_;
     double map_vis_z_;
 
-
     float grid_resolution_;
     unsigned int grid_width_, grid_height_;
     // std::unique_ptr<nav_msgs::msg::OccupancyGrid> grid_;
     // std::unique_ptr<nav2_msgs::msg::Costmap> costmap_raw_;
     // Translate from 0-255 values in costmap to -1 to 100 values in message.
-    static char * cost_translation_table_;
+    static char* cost_translation_table_;
 };
 
 }  // namespace costmap_2d

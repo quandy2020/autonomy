@@ -14,25 +14,23 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "autonomy/common/port.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/proto/map_msgs.pb.h"
+#include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
 namespace map_msgs {
 
-
 // An array of cells in a 2D grid
-struct GridCells
-{
+struct GridCells {
     std_msgs::Header header;
 
     // Width of each cell
@@ -46,27 +44,25 @@ struct GridCells
 };
 
 // This hold basic information about the characteristics of the OccupancyGrid
-struct MapMetaData
-{
+struct MapMetaData {
     // The time at which the map was loaded
     builtin_interfaces::Time map_load_time;
-    
+
     // The map resolution [m/cell]
     float resolution;
-    
+
     // Map width [cells]
     uint32 width;
-    
+
     // Map height [cells]
     uint32 height;
-    
+
     // The origin of the map [m, m, rad].  This is the real-world pose of the
     // bottom left corner of cell (0,0) in the map.
     geometry_msgs::Pose origin;
 };
 
-struct OccupancyGrid
-{
+struct OccupancyGrid {
     // Define OccupancyGrid::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(OccupancyGrid)
 
@@ -76,16 +72,15 @@ struct OccupancyGrid
     // MetaData for the map
     MapMetaData info;
 
-    // The map data, in row-major order, starting with (0,0). 
-    // Cell (1, 0) will be listed second, representing the next cell in the x direction. 
-    // Cell (0, 1) will be at the index equal to info.width, followed by (1, 1).
-    // The values inside are application dependent, but frequently, 
-    // 0 represents unoccupied, 1 represents definitely occupied, and
-    // -1 represents unknown. 
+    // The map data, in row-major order, starting with (0,0).
+    // Cell (1, 0) will be listed second, representing the next cell in the x
+    // direction. Cell (0, 1) will be at the index equal to info.width, followed
+    // by (1, 1). The values inside are application dependent, but frequently, 0
+    // represents unoccupied, 1 represents definitely occupied, and -1
+    // represents unknown.
     std::vector<int16> data;
 };
-struct OccupancyGridUpdate
-{
+struct OccupancyGridUpdate {
     // Define OccupancyGrid::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(OccupancyGridUpdate)
 
@@ -96,40 +91,39 @@ struct OccupancyGridUpdate
     uint32 height;
     std::vector<int8> data;
 };
-struct Octomap
-{
+struct Octomap {
     // A 3D map in binary format, as Octree
     std_msgs::Header header;
 
-    // Flag to denote a binary (only free/occupied) or full occupancy octree (.bt/.ot file)
+    // Flag to denote a binary (only free/occupied) or full occupancy octree
+    // (.bt/.ot file)
     bool binary;
 
-    // Class id of the contained octree 
+    // Class id of the contained octree
     std::string id;
 
     // Resolution (in m) of the smallest octree nodes
     double resolution;
 
-    // binary serialization of octree, use conversions.h to read and write octrees
+    // binary serialization of octree, use conversions.h to read and write
+    // octrees
     std::vector<int32> data;
 };
 
-struct OctomapWithPose
-{
+struct OctomapWithPose {
     // A 3D map in binary format, as Octree
     std_msgs::Header header;
 
-    // The pose of the octree with respect to the header frame 
+    // The pose of the octree with respect to the header frame
     geometry_msgs::Pose origin;
 
     // The actual octree msg
     Octomap octomap;
 };
 
-struct GridMapInfo
-{
+struct GridMapInfo {
     // Header (time and frame)
-    std_msgs::Header header ;
+    std_msgs::Header header;
 
     // Resolution of the grid [m/cell].
     float resolution;
@@ -144,8 +138,7 @@ struct GridMapInfo
     geometry_msgs::Pose pose;
 };
 
-struct GridMap
-{
+struct GridMap {
     // Grid map header
     GridMapInfo info;
 

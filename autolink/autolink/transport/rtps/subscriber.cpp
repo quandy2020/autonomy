@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/rtps/subscriber.hpp"
 
 namespace autolink {
@@ -80,7 +79,7 @@ void Subscriber::Shutdown() {
     }
     if (participant_ != nullptr && subscriber_ != nullptr) {
         if (participant_->delete_subscriber(subscriber_) ==
-            eprosima::fastdds::dds::RETCODE_OK) {
+            eprosima::fastrtps::types::ReturnCode_t::RETCODE_OK) {
             subscriber_ = nullptr;
         } else {
             AERROR << channel_name_ << ": Failed to delete the subscriber.";

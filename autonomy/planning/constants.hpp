@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 namespace autonomy {
 namespace planning {
@@ -23,11 +23,10 @@ constexpr char kMakePlanServiceName[] = "get_trajectory_states";
 constexpr char kMapNodeName[] = "/planner_server";
 constexpr char kMapTopicName[] = "/map";
 constexpr char kPlanTopicName[] = "/plan";
-constexpr char kCostmapTopicName[] = "/local_costmap";
+constexpr char kCostmapTopicName[] = "/global_costmap";
 constexpr char kComputePathToPoseServiceName[] = "/compute_path_to_pose";
-constexpr char kComputePathThroughPosesServiceName[] = "/compute_path_through_poses";
-
-
+constexpr char kComputePathThroughPosesServiceName[] =
+    "/compute_path_through_poses";
 
 }  // namespace planning
 }  // namespace autonomy

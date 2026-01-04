@@ -16,69 +16,38 @@
 # limitations under the License.
 ###############################################################################
 
+# Only run xhost on Linux systems (macOS doesn't need it)
+if [[ "$OSTYPE" == "linux-gnu"* ]] && command -v xhost >/dev/null 2>&1; then
+    # Allow all local connections to X server
+    xhost +local:root
+    xhost +local:docker
+    xhost +
+fi
+
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 source $ROOT/scripts/print_color.sh
 
-# Detect operating system
-OS_TYPE=$(uname -s)
-IS_LINUX=false
-IS_MACOS=false
-
-if [[ "$OS_TYPE" == "Linux" ]]; then
-    IS_LINUX=true
-    # Only run xhost + on Linux
-    xhost + 2>/dev/null || true
-elif [[ "$OS_TYPE" == "Darwin" ]]; then
-    IS_MACOS=true
-else
-    print_warning "Unknown operating system: $OS_TYPE"
-fi
-
-# default
+# defualt
 BASE_NAME="autonomy:latest"
 
-# platform detection
-# Save original arguments for docker run command
-DOCKER_RUN_ARGS=()
-
+# platform
 if [ $# -eq 0 ]; then
     # No argument provided, detect platform automatically
     platform_arch=$(uname -m)
-    # Normalize arm64 to aarch64
-    if [[ "$platform_arch" == "arm64" ]]; then
-        platform_arch="aarch64"
-    fi
 else
-    # Check if first argument is a platform specifier
-    if [[ "$1" == "x86_64" ]] || [[ "$1" == "aarch64" ]] || [[ "$1" == "arm64" ]]; then
-        platform_arch=$1
-        # Normalize arm64 to aarch64
-        if [[ "$platform_arch" == "arm64" ]]; then
-            platform_arch="aarch64"
-        fi
-        # Remove platform argument, remaining args are for docker run
-        shift
-        DOCKER_RUN_ARGS=("$@")
-    else
-        # First argument is not a platform specifier, detect automatically
-        platform_arch=$(uname -m)
-        if [[ "$platform_arch" == "arm64" ]]; then
-            platform_arch="aarch64"
-        fi
-        # All arguments are for docker run
-        DOCKER_RUN_ARGS=("$@")
-    fi
+    # Use the provided argument as the platform
+    platform_arch=$1
 fi
 
 if [ "$platform_arch" == "x86_64" ]; then
     print_info "This system is running on a 64-bit x86 architecture."
     BASE_NAME="autonomy.platform.x86_64:latest"
-    BUILD_SCRIPT="$ROOT/build_docker.x86_64.sh"
+    BUILD_SCRIPT="./build_docker.x86_64.sh"
     DOCKERFILE="dockerfile/autonomy.x86_64.dockerfile"
-elif [ "$platform_arch" == "aarch64" ]; then
+elif [ "$platform_arch" == "aarch64" ] || [ "$platform_arch" == "arm64" ]; then
     print_info "This system is running on a 64-bit ARM architecture."
     BASE_NAME="autonomy.platform.aarch64:latest"
-    BUILD_SCRIPT="$ROOT/build_docker.aarch64.sh"
+    BUILD_SCRIPT="./build_docker.aarch64.sh"
     DOCKERFILE="dockerfile/autonomy.aarch64.dockerfile"
 else
     print_info "This system is running on a different architecture: $platform_arch"
@@ -96,19 +65,11 @@ IMAGE_EXISTS=$(docker images -q "$BASE_NAME")
 # If the image doesn't exist, run the build script
 if [ -z "$IMAGE_EXISTS" ]; then
     echo "Build conditions not met, starting Docker image build..."
-    if [ ! -f "$BUILD_SCRIPT" ]; then
-        print_error "Build script not found: $BUILD_SCRIPT"
-        exit 1
-    fi
-    # Change to docker directory to run build script with correct context
-    cd "$ROOT"
     "$BUILD_SCRIPT" -f "$DOCKERFILE"
-    cd - > /dev/null
 fi
 
 # get autonomy dev dir
-AUTONOMY_DEV_DIR="${AUTONOMY_ENV:-$(cd "$ROOT/.." && pwd)}"
-AUTOLINK_DEV_DIR="${AUTOLINK_ENV}"
+AUTONOMY_DEV_DIR="${AUTONOMY_ENV}"
 
 # Prevent running as root.
 if [[ $(id -u) -eq 0 ]]; then
@@ -127,7 +88,7 @@ fi
 # fi
 
 # Check if able to run docker commands.
-if [[ -z "$(docker ps 2>/dev/null)" ]] ;  then
+if [[ -z "$(docker ps)" ]] ;  then
     print_error "Unable to run docker commands. If you have recently added |$USER| to 'docker' group, you may need to log out and log back in for it to take effect."
     print_error "Otherwise, please check your Docker installation."
     exit 1
@@ -136,29 +97,65 @@ fi
 # Initialize the DOCKER_ARGS array
 DOCKER_ARGS=()
 
-# Add platform specification for aarch64
-if [[ "$platform_arch" == "aarch64" ]]; then
+# Check if platform_arch is equal to "aarch64"
+if [[ "$1" == "aarch64" ]]; then
     DOCKER_ARGS+=("--platform" "linux/arm64")
+    shift
 fi
 
-# Map host's display socket to docker (Linux only)
-if [[ "$IS_LINUX" == true ]]; then
-    if [ -d "/tmp/.X11-unix" ]; then
-        DOCKER_ARGS+=("-v" "/tmp/.X11-unix:/tmp/.X11-unix")
-    fi
-    if [ -f "$HOME/.Xauthority" ]; then
-        DOCKER_ARGS+=("-v" "$HOME/.Xauthority:/home/admin/.Xauthority:rw")
-    fi
-    DOCKER_ARGS+=("-e" "DISPLAY")
+# X11 / Display configuration for GUI apps (rviz2, gazebo, etc.)
+# Get the correct DISPLAY variable
+DISPLAY_VAR="${DISPLAY:-:0}"
+print_info "Using DISPLAY: $DISPLAY_VAR"
+
+# Map host's display socket to docker (GUI apps + rviz/gz client)
+DOCKER_ARGS+=("-v /tmp/.X11-unix:/tmp/.X11-unix:rw")
+DOCKER_ARGS+=("-e DISPLAY=$DISPLAY_VAR")
+
+# Handle Xauthority for X11 authentication
+if [ -f "$HOME/.Xauthority" ]; then
+    DOCKER_ARGS+=("-v $HOME/.Xauthority:/root/.Xauthority:rw")
+    DOCKER_ARGS+=("-e XAUTHORITY=/root/.Xauthority")
 fi
 
-# NVIDIA GPU support (Linux only)
-if [[ "$IS_LINUX" == true ]]; then
+# Set QT platform plugin path
+DOCKER_ARGS+=("-e QT_X11_NO_MITSHM=1")
+
+DOCKER_ARGS+=("-e AUTONOMY_DEV_DIR=/workspace/autonomy")
+
+# Add XDG_RUNTIME_DIR for GUI applications
+if [ -n "$XDG_RUNTIME_DIR" ]; then
+    # Create a writable runtime directory in container for root user
+    DOCKER_ARGS+=("-e XDG_RUNTIME_DIR=/tmp/runtime-root")
+    # Also mount host XDG_RUNTIME_DIR if it exists (for non-root user compatibility)
+    if [ -d "$XDG_RUNTIME_DIR" ]; then
+        DOCKER_ARGS+=("-v $XDG_RUNTIME_DIR:$XDG_RUNTIME_DIR:ro")
+    fi
+else
+    DOCKER_ARGS+=("-e XDG_RUNTIME_DIR=/tmp/runtime-root")
+fi
+
+# GPU / rendering configuration
+if command -v nvidia-smi >/dev/null 2>&1; then
+    print_info "Detected NVIDIA GPU, enabling nvidia-container-runtime"
+    DOCKER_ARGS+=("--gpus" "all")
     DOCKER_ARGS+=("-e" "NVIDIA_VISIBLE_DEVICES=all")
     DOCKER_ARGS+=("-e" "NVIDIA_DRIVER_CAPABILITIES=all")
+else
+    print_info "No NVIDIA GPU detected, falling back to Mesa software rendering"
+    # Only add /dev/dri on Linux systems (not macOS)
+    if [[ "$OSTYPE" == "linux-gnu"* ]] && [ -d "/dev/dri" ]; then
+        DOCKER_ARGS+=("--device=/dev/dri")
+    fi
+    DOCKER_ARGS+=("-e" "LIBGL_ALWAYS_SOFTWARE=1")
 fi
 
-DOCKER_ARGS+=("-e" "AUTONOMY_DEV_DIR=/workspace/autonomy")
+# Network mode - use host network for easier ROS2 communication
+# Note: On macOS, --net=host doesn't work as expected (Docker uses VM),
+# so we skip it on macOS and rely on port mapping instead
+if [[ "$OSTYPE" != "darwin"* ]]; then
+    DOCKER_ARGS+=("--net=host")
+fi
 
 # --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh 
 
@@ -183,66 +180,25 @@ function main() {
     # docker image name
     echo "${BASE_NAME}"
 
-    # Prepare volume mounts
-    VOLUME_MOUNTS=()
-    
-    # Mount autonomy dev directory
-    if [ -n "$AUTONOMY_DEV_DIR" ] && [ -d "$AUTONOMY_DEV_DIR" ]; then
-        VOLUME_MOUNTS+=("-v" "$AUTONOMY_DEV_DIR:/workspace/autonomy")
-    else
-        print_warning "AUTONOMY_DEV_DIR not set or directory does not exist: $AUTONOMY_DEV_DIR"
-        print_info "Using default workspace directory"
-    fi
-    
-    # Mount autolink dev directory if set
-    if [ -n "$AUTOLINK_DEV_DIR" ] && [ -d "$AUTOLINK_DEV_DIR" ]; then
-        VOLUME_MOUNTS+=("-v" "$AUTOLINK_DEV_DIR:/workspace/autolink")
-    fi
-    
-    # Mount /dev devices (Linux only, macOS doesn't support this)
-    if [[ "$IS_LINUX" == true ]]; then
-        VOLUME_MOUNTS+=("-v" "/dev:/dev")
-    fi
-    
-    # Mount timezone (platform-specific)
-    if [[ "$IS_LINUX" == true ]]; then
-        if [ -f "/etc/localtime" ]; then
-            VOLUME_MOUNTS+=("-v" "/etc/localtime:/etc/localtime:ro")
-        fi
-    elif [[ "$IS_MACOS" == true ]]; then
-        # macOS uses different timezone handling
-        # Use environment variable instead
-        if [ -z "$TZ" ]; then
-            # Try to get timezone from system settings
-            if [ -f "/etc/localtime" ]; then
-                TZ=$(readlink /etc/localtime 2>/dev/null | sed 's#.*zoneinfo/##' || \
-                     ls -la /etc/localtime 2>/dev/null | sed 's#.*zoneinfo/##' || \
-                     echo "UTC")
-            else
-                TZ="UTC"
-            fi
-        fi
-        DOCKER_ARGS+=("-e" "TZ=$TZ")
-    fi
-
-    # Detect if running in interactive terminal
-    INTERACTIVE_FLAG="-it"
-    if [ ! -t 0 ] || [ ! -t 1 ]; then
-        # Not an interactive terminal, remove -it flag
-        INTERACTIVE_FLAG=""
-        print_warning "Not running in interactive terminal, removing -it flag"
+    # Determine if we have a TTY
+    TTY_FLAG="-i"
+    if [ -t 0 ]; then
+        TTY_FLAG="-it"
     fi
 
     # Run docker
-    docker run $INTERACTIVE_FLAG \
+    docker run $TTY_FLAG          \
         --name SpaceHero    \
         -p 8765:8765        \
-        "${DOCKER_ARGS[@]}" \
-        "${VOLUME_MOUNTS[@]}" \
-        --workdir /workspace \
-        "${DOCKER_RUN_ARGS[@]}" \
-        $BASE_NAME          \
+        ${DOCKER_ARGS[@]}   \
+        -v $AUTONOMY_DEV_DIR:/workspace/autonomy                        \
+        -v /dev/*:/dev/*                                                \
+        -v /etc/localtime:/etc/localtime:ro                             \
+        --workdir /workspace/autonomy                                   \
+        --privileged                                                    \
+        $@                                                              \
+        $BASE_NAME                                                      \
         /bin/bash
 }
 
-main
+main "$@"

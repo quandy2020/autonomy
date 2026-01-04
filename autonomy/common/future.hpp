@@ -17,13 +17,13 @@
 #pragma once
 
 #if __cplusplus == 201103L || __cplusplus == 201402L
-#  include "absl/types/optional.h"
-#  include "absl/strings/string_view.h"
+#include "absl/strings/string_view.h"
+#include "absl/types/optional.h"
 #endif
 
 #if __cplusplus == 201103L
-#  include "absl/memory/memory.h"
-#  include "absl/utility/utility.h"
+#include "absl/memory/memory.h"
+#include "absl/utility/utility.h"
 #endif
 
 namespace std {

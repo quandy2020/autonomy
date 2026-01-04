@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include "autonomy/prediction/proto/prediction_options.pb.h"
-
+#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/prediction/proto/prediction_options.pb.h"
 
 namespace autonomy {
 namespace prediction {

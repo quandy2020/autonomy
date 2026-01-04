@@ -29,29 +29,39 @@ void Print(const std::string& name) {
 
 }  // namespace
 
-class Rect : public Base {
-   public:
-    void DoSomething() override { Print("Rect"); }
+class Rect : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Rect");
+    }
 };
 
-class Circle : public Base {
-   public:
-    void DoSomething() override { Print("Circle"); }
+class Circle : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Circle");
+    }
 };
 
-class Triangle : public Base {
-   public:
-    void DoSomething() override { Print("Triangle"); }
+class Triangle : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Triangle");
+    }
 };
 
-class Star : public Base {
-   public:
-    void DoSomething() override { Print("Star"); }
+class Star : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Star");
+    }
 };
 
 CLASS_LOADER_REGISTER_CLASS(Rect, Base)
 CLASS_LOADER_REGISTER_CLASS(Circle, Base)
 CLASS_LOADER_REGISTER_CLASS(Triangle, Base)
 CLASS_LOADER_REGISTER_CLASS(Star, Base)
-
-

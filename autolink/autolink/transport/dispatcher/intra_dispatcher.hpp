@@ -369,6 +369,8 @@ void IntraDispatcher::AddListener(const RoleAttributes& self_attr,
                                  self_attr](
                                     const std::shared_ptr<MessageT>& message,
                                     const MessageInfo& message_info) {
+            auto recv_time = Time::Now().ToMicrosecond();
+            (void)recv_time;  // unused variable (statistics removed)
             this->chain_->Run<MessageT>(self_id, channel_id, message_type,
                                         message, message_info);
         };
@@ -399,9 +401,7 @@ void IntraDispatcher::AddListener(const RoleAttributes& self_attr,
                                     const std::shared_ptr<MessageT>& message,
                                     const MessageInfo& message_info) {
             auto recv_time = Time::Now().ToMicrosecond();
-            // Statistics removed
-            (void)recv_time;
-            (void)self_attr;
+            (void)recv_time;  // unused variable (statistics removed)
             this->chain_->Run<MessageT>(self_id, oppo_id, channel_id,
                                         message_type, message, message_info);
         };

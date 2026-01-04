@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/class_loader/class_loader.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
 
 namespace autonomy {
@@ -34,12 +33,12 @@ public:
     /**
      * @brief Create library class name
      */
-    common::ControllerInterface::SharedPtr Create(const std::string& class_name);
+    common::ControllerInterface::SharedPtr Create(
+        const std::string& class_name);
 
-    
 private:
     DECLARE_SINGLETON(PluginLoader)
 };
 
 }  // namespace control
-}  // namespace autonomys
+}  // namespace autonomy

@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,38 @@
 syntax = "proto3";
 
 package autonomy.control.proto;
+
+// Controller result codes for ComputeVelocityCommands return value
+enum ControllerResultCode {
+    // Success result
+    CONTROLLER_RESULT_SUCCESS = 0;  // Success
+    
+    // Plugin specific non-error results (1-9 are reserved)
+    // Can be used by plugins for custom success states
+    
+    // Standard error codes (100+)
+    CONTROLLER_RESULT_FAILURE = 100;         // Unspecified failure, only used for old, non-mfb_core based plugins
+    CONTROLLER_RESULT_CANCELED = 101;        // Canceled
+    CONTROLLER_RESULT_NO_VALID_CMD = 102;    // No valid command
+    CONTROLLER_RESULT_PATH_EXCEEDED = 103;    // Path exceeded
+    CONTROLLER_RESULT_COLLISION = 104;       // Collision detected
+    CONTROLLER_RESULT_OSCILLATION = 105;     // Oscillation detected
+    CONTROLLER_RESULT_ROBOT_STUCK = 106;     // Robot stuck
+    CONTROLLER_RESULT_MISSED_GOAL = 107;     // Missed goal
+    CONTROLLER_RESULT_MISSED_PATH = 108;     // Missed path
+    CONTROLLER_RESULT_BLOCKED_GOAL = 109;    // Blocked goal
+    CONTROLLER_RESULT_BLOCKED_PATH = 110;    // Blocked path
+    CONTROLLER_RESULT_INVALID_PATH = 111;    // Invalid path
+    CONTROLLER_RESULT_TF_ERROR = 112;        // TF error
+    CONTROLLER_RESULT_NOT_INITIALIZED = 113; // Not initialized
+    CONTROLLER_RESULT_INVALID_PLUGIN = 114;  // Invalid plugin
+    CONTROLLER_RESULT_INTERNAL_ERROR = 115;  // Internal error
+    CONTROLLER_RESULT_OUT_OF_MAP = 116;      // The start and/or the goal are outside the map
+    CONTROLLER_RESULT_MAP_ERROR = 117;       // The map is not running properly
+    CONTROLLER_RESULT_STOPPED = 118;         // The controller execution has been stopped rigorously
+    
+    // Plugin specific errors (121-149 are reserved)
+}
 
 message ControllerOptions
 {

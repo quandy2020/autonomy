@@ -17,12 +17,11 @@
 #ifndef AUTONOMY_COMMON_KALMAN_FILTER_TIME_DELAY_KALMAN_FILTER_HPP_
 #define AUTONOMY_COMMON_KALMAN_FILTER_TIME_DELAY_KALMAN_FILTER_HPP_
 
-#include "autonomy/common/kalman_filter/kalman_filter.hpp"
-
 #include <Eigen/Core>
 #include <Eigen/LU>
-
 #include <iostream>
+
+#include "autonomy/common/kalman_filter/kalman_filter.hpp"
 
 namespace autonomy {
 namespace common {
@@ -38,56 +37,56 @@ namespace kalman_filter {
 class TimeDelayKalmanFilter : public KalmanFilter
 {
 public:
-  /**
-   * @brief No initialization constructor.
-   */
-  TimeDelayKalmanFilter();
+    /**
+     * @brief No initialization constructor.
+     */
+    TimeDelayKalmanFilter();
 
-  /**
-   * @brief initialization of kalman filter
-   * @param x initial state
-   * @param P0 initial covariance of estimated state
-   * @param max_delay_step Maximum number of delay steps, which determines the dimension of the
-   * extended kalman filter
-   */
-  void init(const Eigen::MatrixXd & x, const Eigen::MatrixXd & P, const int max_delay_step);
+    /**
+     * @brief initialization of kalman filter
+     * @param x initial state
+     * @param P0 initial covariance of estimated state
+     * @param max_delay_step Maximum number of delay steps, which determines the
+     * dimension of the extended kalman filter
+     */
+    void init(const Eigen::MatrixXd& x, const Eigen::MatrixXd& P,
+              const int max_delay_step);
 
-  /**
-   * @brief get latest time estimated state
-   */
-  Eigen::MatrixXd getLatestX() const;
+    /**
+     * @brief get latest time estimated state
+     */
+    Eigen::MatrixXd getLatestX() const;
 
-  /**
-   * @brief get latest time estimation covariance
-   */
-  Eigen::MatrixXd getLatestP() const;
+    /**
+     * @brief get latest time estimation covariance
+     */
+    Eigen::MatrixXd getLatestP() const;
 
-  /**
-   * @brief calculate kalman filter covariance by precision model with time delay. This is mainly
-   * for EKF of nonlinear process model.
-   * @param x_next predicted state by prediction model
-   * @param A coefficient matrix of x for process model
-   * @param Q covariance matrix for process model
-   */
-  bool predictWithDelay(
-    const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A, const Eigen::MatrixXd & Q);
+    /**
+     * @brief calculate kalman filter covariance by precision model with time
+     * delay. This is mainly for EKF of nonlinear process model.
+     * @param x_next predicted state by prediction model
+     * @param A coefficient matrix of x for process model
+     * @param Q covariance matrix for process model
+     */
+    bool predictWithDelay(const Eigen::MatrixXd& x_next,
+                          const Eigen::MatrixXd& A, const Eigen::MatrixXd& Q);
 
-  /**
-   * @brief calculate kalman filter covariance by measurement model with time delay. This is mainly
-   * for EKF of nonlinear process model.
-   * @param y measured values
-   * @param C coefficient matrix of x for measurement model
-   * @param R covariance matrix for measurement model
-   * @param delay_step measurement delay
-   */
-  bool updateWithDelay(
-    const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
-    const int delay_step);
+    /**
+     * @brief calculate kalman filter covariance by measurement model with time
+     * delay. This is mainly for EKF of nonlinear process model.
+     * @param y measured values
+     * @param C coefficient matrix of x for measurement model
+     * @param R covariance matrix for measurement model
+     * @param delay_step measurement delay
+     */
+    bool updateWithDelay(const Eigen::MatrixXd& y, const Eigen::MatrixXd& C,
+                         const Eigen::MatrixXd& R, const int delay_step);
 
 private:
-  int max_delay_step_;  //!< @brief maximum number of delay steps
-  int dim_x_;           //!< @brief dimension of latest state
-  int dim_x_ex_;        //!< @brief dimension of extended state with dime delay
+    int max_delay_step_;  //!< @brief maximum number of delay steps
+    int dim_x_;           //!< @brief dimension of latest state
+    int dim_x_ex_;  //!< @brief dimension of extended state with dime delay
 };
 
 }  // namespace kalman_filter

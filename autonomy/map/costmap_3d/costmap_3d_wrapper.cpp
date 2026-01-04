@@ -21,44 +21,17 @@ namespace map {
 namespace costmap_3d {
 
 Costmap3DWrapper::Costmap3DWrapper(const proto::Costmap3DOptions& options)
-    : options_{options}
-{
+    : options_{options} {}
 
-}
+Costmap3DWrapper::~Costmap3DWrapper() {}
 
-Costmap3DWrapper::~Costmap3DWrapper()
-{
+void Costmap3DWrapper::Start() {}
 
-}
+void Costmap3DWrapper::Stop() {}
 
+void Costmap3DWrapper::Pause() {}
 
-proto::Costmap3DOptions CreateCostmap3DOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::Costmap3DOptions options;
-    options.set_map_file(parameter_dictionary->GetString("map_file"));
-    return options;
-}
-
-void Costmap3DWrapper::Start()
-{
-
-}
-
-void Costmap3DWrapper::Stop()
-{
-
-}
-
-void Costmap3DWrapper::Pause()
-{
-
-}
-
-void Costmap3DWrapper::Resume()
-{
-
-}
+void Costmap3DWrapper::Resume() {}
 }  // namespace costmap_3d
 }  // namespace map
 }  // namespace autonomy

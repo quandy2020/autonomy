@@ -16,23 +16,21 @@
 
 #pragma once
 
-#include "autonomy/common/async_grpc/execution_context.h"
-#include "autonomy/common/async_grpc/server.h"
-#include "autonomy/bridge/proto/bridge_options.pb.h"
-
-#include "autonomy/common/macros.hpp"
 #include "autonomy/bridge/common/bridge_interface.hpp"
 #include "autonomy/bridge/plugins//grpc/grpc_bridge_server_interface.hpp"
+#include "autonomy/bridge/proto/bridge_options.pb.h"
+#include "autonomy/common/async_grpc/execution_context.h"
+#include "autonomy/common/async_grpc/server.h"
+#include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace plugins {
 namespace grpc {
 
 class GrpcBridgeServer : public GrpcBridgeServerInterface
 {
 public:
-
     /**
      * Define GrpcBridgeServer::SharedPtr type
      */
@@ -57,7 +55,6 @@ public:
     void Shutdown() final;
 
 private:
-
     void ProcessSensorDataQueue();
     void StartThread();
 
@@ -69,7 +66,7 @@ private:
     std::unique_ptr<autonomy::common::async_grpc::Server> grpc_server_{nullptr};
 };
 
-}   // namespace grpc
-}   // namespace plugins 
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

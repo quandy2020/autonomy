@@ -19,33 +19,35 @@
 
 // #include <grpc++/grpc++.h>
 #include <grpcpp/grpcpp.h>
+
 #include <memory>
 #include <thread>
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 
-class CompletionQueueThread {
- public:
-  using CompletionQueueRunner =
-      std::function<void(::grpc::ServerCompletionQueue*)>;
+class CompletionQueueThread
+{
+public:
+    using CompletionQueueRunner =
+        std::function<void(::grpc::ServerCompletionQueue*)>;
 
-  explicit CompletionQueueThread(
-      std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue);
+    explicit CompletionQueueThread(
+        std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue);
 
-  ::grpc::ServerCompletionQueue* completion_queue();
+    ::grpc::ServerCompletionQueue* completion_queue();
 
-  void Start(CompletionQueueRunner runner);
-  void Shutdown();
+    void Start(CompletionQueueRunner runner);
+    void Shutdown();
 
- private:
-  std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue_;
-  std::unique_ptr<std::thread> worker_thread_;
+private:
+    std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue_;
+    std::unique_ptr<std::thread> worker_thread_;
 };
 
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy
 
 #endif  // CPP_GRPC_COMMON_COMPLETION_QUEUE_THREAD_H_

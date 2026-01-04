@@ -21,11 +21,9 @@
 #include <string>
 
 #include "autolink/transport/message/message_info.hpp"
-
 namespace autolink {
 namespace transport {
 namespace rtps {
-
 using subsciber_callback =
     std::function<void(const std::shared_ptr<std::string>& msg_str,
                        uint64_t channel_id, const MessageInfo& msg_info)>;

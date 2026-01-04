@@ -68,6 +68,8 @@ int main(int argc, char** argv) {
 
     static bool enable_cpu_profile = module_args.GetEnableCpuprofile();
     static bool enable_mem_profile = module_args.GetEnableHeapprofile();
+    (void)enable_cpu_profile;  // Suppress unused variable warning
+    (void)enable_mem_profile;  // Suppress unused variable warning
     std::signal(SIGTERM, [](int sig) {
         autolink::OnShutdown(sig);
         // TODO: gperftools is optional, comment out for now

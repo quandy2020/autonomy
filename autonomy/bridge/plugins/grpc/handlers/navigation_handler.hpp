@@ -16,32 +16,31 @@
 
 #pragma once
 
-#include "autonomy/common/macros.hpp"
-#include "autonomy/common/async_grpc/rpc_handler.h"
-#include "autonomy/bridge/proto/external_command_service.pb.h"
 #include "autonomy/bridge/proto/external_command_service.grpc.pb.h"
-
+#include "autonomy/bridge/proto/external_command_service.pb.h"
+#include "autonomy/common/async_grpc/rpc_handler.h"
+#include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
-namespace plugins { 
-namespace grpc { 
-namespace handlers { 
+namespace bridge {
+namespace plugins {
+namespace grpc {
+namespace handlers {
 
 DEFINE_HANDLER_SIGNATURE(
-    SendNavigationSignature, 
-    proto::NavigationCommandRequest,
+    SendNavigationSignature, proto::NavigationCommandRequest,
     autonomy::common::async_grpc::Stream<proto::NavigationCommandResponse>,
     "/autonomy.bridge.proto.AutonomyService/SendNavigationCommand")
 
 class SendNavigationHandler
-    : public autonomy::common::async_grpc::RpcHandler<SendNavigationSignature> {
- public:
-  void OnRequest(const proto::NavigationCommandRequest& request) override;
+    : public autonomy::common::async_grpc::RpcHandler<SendNavigationSignature>
+{
+public:
+    void OnRequest(const proto::NavigationCommandRequest& request) override;
 };
 
-}   // namespace handlers
-}   // namespace grpc
-}   // namespace plugins
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace handlers
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

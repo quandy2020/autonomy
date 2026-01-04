@@ -28,23 +28,24 @@ using autolink::examples::proto::Chatter;
 
 void MessageCallback(
     const std::shared_ptr<autolink::examples::proto::Chatter>& msg) {
-  AINFO << "Received message seq-> " << msg->seq();
-  AINFO << "msgcontent->" << msg->content();
+    AINFO << "Received message seq-> " << msg->seq();
+    AINFO << "msgcontent->" << msg->content();
 }
 
 int main(int argc, char* argv[]) {
-  // init cyber framework
-  autolink::Init(argv[0]);
-  // create listener node
-  auto listener_node = autolink::CreateNode("listener");
-  // create listener
-  auto listener = listener_node->CreateReader<autolink::examples::proto::Chatter>(
-          "channel/chatter", MessageCallback);
-  if (!listener) {
-    AERROR << "Failed to create reader!";
-    return 1;
-  }
-  AINFO << "Reader created, waiting for messages...";
-  autolink::WaitForShutdown();
-  return 0;
+    // init cyber framework
+    autolink::Init(argv[0]);
+    // create listener node
+    auto listener_node = autolink::CreateNode("listener");
+    // create listener
+    auto listener =
+        listener_node->CreateReader<autolink::examples::proto::Chatter>(
+            "channel/chatter", MessageCallback);
+    if (!listener) {
+        AERROR << "Failed to create reader!";
+        return 1;
+    }
+    AINFO << "Reader created, waiting for messages...";
+    autolink::WaitForShutdown();
+    return 0;
 }

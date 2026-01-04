@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "autonomy/map/costmap_2d/map_mode.hpp"
 
 #include <stdexcept>
@@ -24,8 +23,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-const char * map_mode_to_string(MapMode map_mode)
-{
+const char* map_mode_to_string(MapMode map_mode) {
     switch (map_mode) {
         case MapMode::Trinary:
             return "trinary";
@@ -37,10 +35,9 @@ const char * map_mode_to_string(MapMode map_mode)
             throw std::invalid_argument("map_mode");
     }
 }
-    
-MapMode map_mode_from_string(std::string map_mode_name)
-{
-    for (auto & c : map_mode_name) {
+
+MapMode map_mode_from_string(std::string map_mode_name) {
+    for (auto& c : map_mode_name) {
         c = tolower(c);
     }
 
@@ -58,4 +55,3 @@ MapMode map_mode_from_string(std::string map_mode_name)
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-

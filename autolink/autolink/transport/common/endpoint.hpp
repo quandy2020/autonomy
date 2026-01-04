@@ -34,29 +34,12 @@ using proto::RoleAttributes;
 class Endpoint
 {
 public:
-    /**
-     * @brief Constructor
-     * @param attr The role attributes
-     */
     explicit Endpoint(const RoleAttributes& attr);
-
-    /**
-     * @brief Destructor
-     */
     virtual ~Endpoint();
 
-    /**
-     * @brief Get the identity
-     * @return The identity
-     */
     const Identity& id() const {
         return id_;
     }
-
-    /**
-     * @brief Get the role attributes
-     * @return The role attributes
-     */
     const RoleAttributes& attributes() const {
         return attr_;
     }

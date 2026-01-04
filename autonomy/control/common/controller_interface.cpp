@@ -18,17 +18,6 @@
 
 namespace autonomy {
 namespace control {
-namespace common {
-
-proto::ControllerOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::ControllerOptions options;
-    return options;
-}
-
-
-}  // namespace common
+namespace common {}  // namespace common
 }  // namespace control
 }  // namespace autonomy
-

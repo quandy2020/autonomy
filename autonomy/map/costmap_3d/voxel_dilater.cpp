@@ -18,8 +18,6 @@
 
 namespace autonomy {
 namespace map {
-namespace costmap_3d {
-
-}  // namespace costmap_3d
+namespace costmap_3d {}  // namespace costmap_3d
 }  // namespace map
 }  // namespace autonomy

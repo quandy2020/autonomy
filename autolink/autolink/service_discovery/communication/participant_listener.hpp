@@ -21,9 +21,9 @@
 
 #include "autolink/base/macros.hpp"
 
-#include "fastdds/dds/builtin/topic/ParticipantBuiltinTopicData.hpp"
-#include "fastdds/dds/domain/DomainParticipantListener.hpp"
-#include "fastdds/rtps/participant/ParticipantDiscoveryInfo.hpp"
+#include "fastrtps/fastdds/dds/builtin/topic/ParticipantBuiltinTopicData.hpp"
+#include "fastrtps/fastdds/dds/domain/DomainParticipantListener.hpp"
+#include "fastrtps/fastdds/rtps/participant/ParticipantDiscoveryInfo.h"
 
 namespace autolink {
 namespace service_discovery {
@@ -37,11 +37,13 @@ public:
     explicit ParticipantListener(const ChangeFunc& callback);
     virtual ~ParticipantListener();
 
+    // FastDDS 2.x compatible signature
+    // Note: Removed 'override' as the base class may not have this method in
+    // some FastDDS versions
     void on_participant_discovery(
         eprosima::fastdds::dds::DomainParticipant* participant,
-        eprosima::fastdds::rtps::ParticipantDiscoveryStatus reason,
-        const eprosima::fastdds::dds::ParticipantBuiltinTopicData& info,
-        bool& should_be_ignored) override;
+        const eprosima::fastrtps::rtps::ParticipantDiscoveryInfo& info,
+        bool& should_be_ignored);
 
 private:
     ChangeFunc callback_;

@@ -28,77 +28,21 @@ constexpr uint8_t ID_SIZE = 8;
 class Identity
 {
 public:
-    /**
-     * @brief Constructor
-     * @param need_generate True if the identity should be generated, false
-     * otherwise
-     */
     explicit Identity(bool need_generate = true);
-
-    /**
-     * @brief Copy constructor
-     * @param another The identity to copy
-     */
     Identity(const Identity& another);
-
-    /**
-     * @brief Destructor
-     */
     virtual ~Identity();
 
-    /**
-     * @brief Assign the identity to another identity
-     * @param another The identity to assign
-     * @return Identity& The assigned identity
-     */
     Identity& operator=(const Identity& another);
-
-    /**
-     * @brief Check if the identity is equal to another identity
-     * @param another The identity to check
-     * @return bool True if the identity is equal to another identity, false
-     * otherwise
-     */
     bool operator==(const Identity& another) const;
-
-    /**
-     * @brief Check if the identity is not equal to another identity
-     * @param another The identity to check
-     * @return bool True if the identity is not equal to another identity, false
-     * otherwise
-     */
     bool operator!=(const Identity& another) const;
 
-    /**
-     * @brief Convert the identity to a string
-     * @return std::string The string representation of the identity
-     */
     std::string ToString() const;
-
-    /**
-     * @brief Get the length of the identity
-     * @return size_t The length of the identity
-     */
     size_t Length() const;
-
-    /**
-     * @brief Get the hash value of the identity
-     * @return uint64_t The hash value of the identity
-     */
     uint64_t HashValue() const;
 
-    /**
-     * @brief Get the data of the identity
-     * @return const char* The data of the identity
-     */
     const char* data() const {
         return data_;
     }
-
-    /**
-     * @brief Set the data of the identity
-     * @param data The data to set
-     */
     void set_data(const char* data) {
         if (data == nullptr) {
             return;
@@ -109,8 +53,10 @@ public:
 
 private:
     void Update();
+
     char data_[ID_SIZE];
     uint64_t hash_value_;
 };
+
 }  // namespace transport
 }  // namespace autolink

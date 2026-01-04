@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace trajectory_msgs {
-
-
-
-}  // namespace trajectory_msgs
+namespace trajectory_msgs {}  // namespace trajectory_msgs
 }  // namespace commsgs
 }  // namespace autonomy

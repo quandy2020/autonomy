@@ -29,6 +29,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Suppress warnings from third-party libraries being treated as errors
+add_compile_options(-Wno-error=missing-braces -Wno-error=sign-compare)
+
 # Suppress RPATH warnings for system directories  
 if(POLICY CMP0060)
   cmake_policy(SET CMP0060 NEW)  # Link libraries by full path
@@ -45,8 +48,10 @@ read_version_from_json(AUTONOMY "${PROJECT_SOURCE_DIR}/version.json")
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
-option(BUILD_DOCS "Build autonomy docs support" false)
+option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TEST "Build autonomy unit test" true)
+option(BUILD_FOXGLOVE "Build foxglove visualization support" true)
+option(BUILD_AVIZ "Build autonomy visualizer (Qt QML application)" false)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -74,6 +79,7 @@ find_package(glog REQUIRED)
 find_package(GRAPHICSMAGICKCPP REQUIRED)
 find_package(octomap REQUIRED)
 find_package(OMPL REQUIRED)
+find_package(OSQP REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
@@ -84,6 +90,13 @@ find_package(Threads REQUIRED)
 find_package(websocketpp REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(FastDDS REQUIRED)
+find_package(behaviortree_cpp REQUIRED)
+
+
+# Include Foxglove SDK vendor file (optional, controlled by BUILD_FOXGLOVE option)
+if(${BUILD_FOXGLOVE})
+  include("${PROJECT_SOURCE_DIR}/3rdparty/foxglove/autonomy_foxglove_vendor.cmake")
+endif()
 
 # add autolink
 add_subdirectory(autolink)
@@ -100,22 +113,30 @@ if (${BUILD_DOCS})
   endif()
 endif()
 
+# Build autonomy visualizer (Qt QML application)
+if (${BUILD_AVIZ})
+  add_subdirectory("autonomy/tools/aviz")
+endif()
+
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
   CACHE PATH ".lua configuration files directory")
+set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
+  CACHE PATH ".lua configuration files directory for cartographer")
 
 install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp" "autonomy/*.h")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp" "autonomy/*.c")
-file(GLOB_RECURSE ALL_IDL_FILES "autonomy/*.idl")
-file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/common/async_grpc/*.h")
-file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/common/async_grpc/*.c")
-file(GLOB_RECURSE ALL_GRPC_FILES "autonomy/common/async_grpc/*")
+file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/common/async_grpc/*.h" "autonomy/bridge/plugins/grpc/*.hpp" "autonomy/bridge/plugins/grpc/*.h")
+file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/common/async_grpc/*.c" "autonomy/bridge/plugins/grpc/*.cpp" "autonomy/bridge/plugins/grpc/*.c")
+file(GLOB_RECURSE ALL_GRPC_FILES "autonomy/common/async_grpc/*" "autonomy/bridge/plugins/grpc/*")
+file(GLOB_RECURSE ALL_GRPC_BRIDGE_FILES "autonomy/bridge/bridge_server.*")
+file(GLOB_RECURSE ALL_PROMETHEUS_FILES "autonomy/localization/cartographer/cloud/metrics/prometheus/*.hpp" "autonomy/localization/cartographer/cloud/metrics/prometheus/*.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/*test*.cpp" "autonomy/mock_*.cpp")
 file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
-file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*_main.cpp")
+file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*main.cpp")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
 file(GLOB_RECURSE ALL_DOTFILES ".*/*")
@@ -141,6 +162,8 @@ if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_GRPC_SRCS})
   list(REMOVE_ITEM ALL_TESTS ${ALL_GRPC_FILES})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_GRPC_FILES})
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_BRIDGE_FILES})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_GRPC_BRIDGE_FILES})
 endif()
 if (NOT ${BUILD_PROMETHEUS})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_PROMETHEUS_FILES})
@@ -151,9 +174,40 @@ if (NOT ${BUILD_PROMETHEUS})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_PROMETHEUS_FILES})
 endif()
 
+# Foxglove visualization support (optional)
+file(GLOB_RECURSE ALL_FOXGLOVE_FILES 
+  "autonomy/visualization/*.hpp" 
+  "autonomy/visualization/*.cpp" 
+  "autonomy/visualization/*.h")
+if (NOT BUILD_FOXGLOVE)
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_FOXGLOVE_FILES})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_FOXGLOVE_FILES})
+  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${ALL_FOXGLOVE_FILES})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_FOXGLOVE_FILES})
+  list(REMOVE_ITEM ALL_TESTS ${ALL_FOXGLOVE_FILES})
+  list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_FOXGLOVE_FILES})
+endif()
+
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
 file(GLOB_RECURSE INTERNAL_HDRS "autonomy/*/internal/*.h" "autonomy/*/internal/*.hpp")
 list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
+
+# Create symlinks for control/controller/* to control/plugins/* during install
+# This allows code to include from plugins/ directory while files are in controller/ directory
+file(GLOB_RECURSE CONTROLLER_PLUGIN_HDRS "autonomy/control/controller/*/*.hpp" "autonomy/control/controller/*/*.h")
+foreach(HDR ${CONTROLLER_PLUGIN_HDRS})
+  file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})
+  # Replace controller/ with plugins/ in the path
+  string(REPLACE "control/controller/" "control/plugins/" PLUGIN_REL_FIL ${REL_FIL})
+  get_filename_component(PLUGIN_DIR ${PLUGIN_REL_FIL} DIRECTORY)
+  # Install to plugins directory instead of controller directory
+  install(
+    FILES ${HDR}
+    DESTINATION include/${PLUGIN_DIR}
+  )
+endforeach()
+# Remove controller headers from regular install list to avoid duplicate installation
+list(FILTER INSTALL_SOURCE_HDRS EXCLUDE REGEX "autonomy/control/controller/")
 
 file(GLOB_RECURSE ALL_PROTOS "autonomy/*.proto")
 file(GLOB_RECURSE ALL_GRPC_SERVICES "autonomy/*_service.proto")
@@ -241,6 +295,11 @@ configure_file(
   ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake
   ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp)
 
+# cartographer configuration files
+configure_file(
+  ${PROJECT_SOURCE_DIR}/autonomy/localization/cartographer/common/config.hpp.cmake
+  ${PROJECT_SOURCE_DIR}/autonomy/localization/cartographer/common/config.hpp)
+
 # autonomy version
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/autonomy-config-version.cmake.in
@@ -255,8 +314,12 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-# Fetch 3rdparty 
-include(${PROJECT_SOURCE_DIR}/3rdparty/autonomy_foxglove_vendor/foxglove.cmake)
+
+# 3rdparty
+# Add urdfdom_headers and urdfdom for URDF parsing support (used in transform/urdf)
+# Note: urdfdom requires urdfdom_headers, so add headers first
+add_subdirectory(3rdparty/urdfdom_headers)
+add_subdirectory(3rdparty/urdfdom)
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
@@ -327,9 +390,33 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 
+# OSQP
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OSQP_INCLUDE_DIRS}")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OSQP_LIBRARIES})
+
 # glog
 target_link_libraries(${PROJECT_NAME} PUBLIC glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
+
+# foxglove (optional)
+if(${BUILD_FOXGLOVE})
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.so)
+  target_sources(${PROJECT_NAME} PRIVATE ${FOXGLOVE_SOURCES})
+  target_compile_definitions(${PROJECT_NAME} PRIVATE AUTONOMY_HAS_FOXGLOVE)
+  # Install foxglove library so executables can find it at runtime
+  install(FILES ${foxglove_SOURCE_DIR}/lib/libfoxglove.so
+    DESTINATION lib
+    OPTIONAL
+  )
+endif()
+
+# BehaviorTree.CPP
+target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
+
+# prometheus (optional)
+if(${BUILD_PROMETHEUS})
+  target_compile_definitions(${PROJECT_NAME} PRIVATE USE_PROMETHEUS=1)
+endif()
 
 # abseil-cpp
 set(ABSL_LIBRARY
@@ -348,7 +435,7 @@ set(ABSL_LIBRARY
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ABSL_LIBRARY})
 
 if(${BUILD_GRPC})
-  target_link_libraries(${PROJECT_NAME} PUBLIC grpc++)
+  target_link_libraries(${PROJECT_NAME} PUBLIC grpc++ grpc)
   # if(${BUILD_PROMETHEUS})
   #   target_link_libraries(cartographer_grpc_server PUBLIC ${ZLIB_LIBRARIES})
   #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-core)
@@ -362,53 +449,22 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ZLIB::ZLIB
   ${FastDDS_LIBRARIES})
 
+# Cairo
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CAIRO REQUIRED cairo)
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${CAIRO_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
+
+# urdfdom_headers and urdfdom (for transform/urdf)
+target_link_libraries(${PROJECT_NAME} PUBLIC urdfdom_headers urdf_parser)
+
 # autolink
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
-
-# foxglove
-target_link_libraries(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.so)
-target_sources(${PROJECT_NAME} PRIVATE ${FOXGLOVE_SOURCES})
 
 # autonomy.bridge.launcher
 google_binary(autonomy.bridge.launcher
   SRCS
     autonomy/bridge/bridge_main.cpp
-)
-
-# autonomy.control.launcher
-google_binary(autonomy.control.launcher
-  SRCS
-    autonomy/control/controller_main.cpp
-)
-
-# autonomy.map.launcher
-google_binary(autonomy.map.launcher
-  SRCS
-    autonomy/map/map_main.cpp
-)
-
-# autonomy.perception.launcher
-google_binary(autonomy.perception.launcher
-  SRCS
-    autonomy/perception/perception_main.cpp
-)
-
-# autonomy.planning.launcher
-google_binary(autonomy.planning.launcher
-  SRCS
-    autonomy/planning/planning_main.cpp
-)
-
-# autonomy.system.launcher
-google_binary(autonomy.system.launcher
-  SRCS
-    autonomy/system/autonomy_main.cpp
-)
-
-# autonomy.tasks.launcher
-google_binary(autonomy.tasks.launcher
-  SRCS
-    autonomy/tasks/task_main.cpp
 )
 
 # autonomy.simulator.launcher
@@ -417,22 +473,29 @@ google_binary(autonomy.simulator.launcher
     autonomy/simulation/simulator_main.cpp
 )
 
-# autonomy.transform.launcher
-google_binary(autonomy.transform.launcher
+# autonomy.system.launcher
+google_binary(autonomy.system.launcher
   SRCS
-    autonomy/transform/transform_server_main.cpp
+    autonomy/system/main.cpp
 )
 
-# autonomy.transform.transform_query
-google_binary(autonomy.transform.transform_query
-  SRCS
-    autonomy/transform/transform_query_main.cpp
-)
+# autonomy.visualization.launcher (requires foxglove)
+if(${BUILD_FOXGLOVE})
+  google_binary(autonomy.visualization.launcher
+    SRCS
+      autonomy/visualization/main.cpp
+  )
+  # Set additional rpath for foxglove library
+  set_target_properties(autonomy.visualization.launcher PROPERTIES
+    INSTALL_RPATH "\$ORIGIN/../lib:${CMAKE_INSTALL_PREFIX}/lib:${foxglove_SOURCE_DIR}/lib"
+    BUILD_RPATH "\$ORIGIN:\$ORIGIN/../lib:${CMAKE_BINARY_DIR}/lib:${foxglove_SOURCE_DIR}/lib"
+  )
+endif()
 
-# autonomy.visualization.launcher
-google_binary(autonomy.visualization.launcher
-  SRCS
-    autonomy/visualization/visualization_server_main.cpp
+# autonomy.visualization.data_publisher (publishes sensor data via autolink)
+google_binary(autonomy.visualization.data_publisher
+    SRCS
+      autonomy/visualization/data_main.cpp
 )
 
 ## Test unit
@@ -442,6 +505,16 @@ if (${BUILD_TEST})
   target_include_directories(${TEST_LIB} SYSTEM PRIVATE "${GMOCK_INCLUDE_DIRS}")
   target_link_libraries(${TEST_LIB} PUBLIC ${GMOCK_LIBRARY})
   target_link_libraries(${TEST_LIB} PUBLIC ${PROJECT_NAME})
+  
+  # Foxglove SDK for tests (if enabled)
+  if(${BUILD_FOXGLOVE} AND FOXGLOVE_SDK_FOUND)
+    if(FOXGLOVE_SDK_INCLUDE_DIRS)
+      target_include_directories(${TEST_LIB} SYSTEM PRIVATE ${FOXGLOVE_SDK_INCLUDE_DIRS})
+    endif()
+    if(TARGET foxglove_sdk)
+      target_link_libraries(${TEST_LIB} PRIVATE foxglove_sdk)
+    endif()
+  endif()
 
   foreach(ABS_FIL ${ALL_TESTS})
     file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
@@ -451,7 +524,7 @@ if (${BUILD_TEST})
     string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FIL_WE}")
     google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
     if(${BUILD_GRPC})
-      target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++)
+      target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++ grpc)
     endif()
     if(${BUILD_PROMETHEUS})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${ZLIB_LIBRARIES})
@@ -459,6 +532,16 @@ if (${BUILD_TEST})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-pull)
     endif()
     target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${TEST_LIB})
+    
+    # Foxglove SDK for individual test targets (if enabled)
+    if(BUILD_FOXGLOVE AND FOXGLOVE_SDK_FOUND)
+      if(FOXGLOVE_SDK_INCLUDE_DIRS)
+        target_include_directories("${TEST_TARGET_NAME}" SYSTEM PRIVATE ${FOXGLOVE_SDK_INCLUDE_DIRS})
+      endif()
+      if(TARGET foxglove_sdk)
+        target_link_libraries("${TEST_TARGET_NAME}" PRIVATE foxglove_sdk)
+      endif()
+    endif()
   endforeach()
 endif()
 
@@ -471,7 +554,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 install(
-  TARGETS ${PROJECT_NAME}
+  TARGETS ${PROJECT_NAME} autolink
+  EXPORT AutonomyExport
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -504,12 +588,15 @@ configure_package_config_file(
   INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}/share/autonomy
 )
 
-# Disabled to avoid export dependency issues with autolink
-# install(
-#   EXPORT AutonomyExport
-#   DESTINATION share/autonomy/cmake/
-#   FILE AutonomyTargets.cmake
-# )
+# Install the export set for find_package
+# Include autolink target in the export since autonomy depends on it
+install(
+  EXPORT AutonomyExport
+  NAMESPACE autonomy::
+  DESTINATION share/autonomy/cmake
+  FILE AutonomyTargets.cmake
+  EXPORT_LINK_INTERFACE_LIBRARIES
+)
 
 install(
   FILES ${PROJECT_BINARY_DIR}/autonomy-config.cmake

@@ -15,6 +15,7 @@
  */
 
 #include "autonomy/common/state_estimation/noise_model/uniform_noise.hpp"
+
 #include "autonomy/common/state_vector/common_states.hpp"
 
 namespace autonomy {

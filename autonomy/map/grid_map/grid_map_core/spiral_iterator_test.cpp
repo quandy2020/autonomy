@@ -7,6 +7,7 @@
  */
 
 #include "autonomy/map/grid_map/grid_map_core/iterators/spiral_iterator.hpp"
+
 #include "autonomy/map/grid_map/grid_map_core/grid_map.hpp"
 
 // gtest
@@ -20,17 +21,16 @@ using grid_map::Length;
 using grid_map::Position;
 using grid_map::SpiralIterator;
 
-TEST(SpiralIterator, CenterOutOfMap)
-{
-  GridMap map( { "types" });
-  map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
-  Position center(8.0, 0.0);
-  double radius = 5.0;
+TEST(SpiralIterator, CenterOutOfMap) {
+    GridMap map({"types"});
+    map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
+    Position center(8.0, 0.0);
+    double radius = 5.0;
 
-  SpiralIterator iterator(map, center, radius);
+    SpiralIterator iterator(map, center, radius);
 
-  Position iterator_position;
-  map.getPosition(*iterator, iterator_position);
+    Position iterator_position;
+    map.getPosition(*iterator, iterator_position);
 
-  EXPECT_TRUE(map.isInside(iterator_position));
+    EXPECT_TRUE(map.isInside(iterator_position));
 }

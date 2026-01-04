@@ -16,31 +16,35 @@
 
 #include "autonomy/map/costmap_2d/layer.hpp"
 
+#include "autonomy/map/proto/map_2d_option.pb.h"
+
+// Forward declaration for autolink Node
+namespace autolink {
+class Node;
+}
+
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
 Layer::Layer()
-: layered_costmap_(nullptr),
-    name_(),
-    current_(false),
-    enabled_(false) {}
+    : layered_costmap_(nullptr), name_(), current_(false), enabled_(false) {}
 
-
-void Layer::initialize(LayeredCostmap* parent, std::string name)
-{
+void Layer::initialize(LayeredCostmap* parent, std::string name,
+                       autolink::Node* node,
+                       const proto::Costmap2DOptions* options) {
     layered_costmap_ = parent;
     name_ = name;
+    node_ = node;
+    options_ = options;
     onInitialize();
 }
 
-const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const
-{
+const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const {
     return layered_costmap_->getFootprint();
 }
 
-std::string Layer::getFullName(const std::string& param_name)
-{
+std::string Layer::getFullName(const std::string& param_name) {
     return std::string(name_ + "." + param_name);
 }
 

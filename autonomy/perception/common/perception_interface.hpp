@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/perception/proto/perception_options.pb.h"
 
 namespace autonomy {
@@ -25,7 +25,7 @@ namespace perception {
 namespace common {
 
 proto::PerceptionOptions LoadOptions(
-   ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace perception

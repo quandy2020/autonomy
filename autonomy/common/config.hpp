@@ -20,14 +20,14 @@
 namespace autonomy {
 namespace common {
 
-constexpr char kConfigurationFilesDirectory[] = "/usr/local/share/autonomy/configuration_files";
-constexpr char kSourceDirectory[] = "/workspace/autonomy";
+constexpr char kConfigurationFilesDirectory[] = "/workspace/autonomy/install/autonomy/share/autonomy/configuration_files";
+constexpr char kSourceDirectory[] = "/workspace/autonomy/src/autonomy";
 
 // Library install dir
-constexpr char kLibraryInstallDir[] = "/usr/local";
+constexpr char kLibraryInstallDir[] = "/workspace/autonomy/install/autonomy";
 
 // Library build dir
-constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build";
+constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build/autonomy";
 
 }  // namespace common
 }  // namespace autonomy

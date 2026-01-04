@@ -27,18 +27,31 @@
 
 namespace autolink {
 
-TEST(PyAutolinkTest, init_ok) {
+class PyAutolinkTestFixture : public ::testing::Test
+{
+protected:
+    void SetUp() override {
+        // Initialize autolink before running tests
+        ASSERT_TRUE(py_init("autolink.python.internal.py_autolink_test"));
+    }
+
+    void TearDown() override {
+        // Cleanup if needed
+    }
+};
+
+TEST_F(PyAutolinkTestFixture, init_ok) {
     EXPECT_TRUE(py_ok());
     EXPECT_TRUE(OK());
 }
 
-TEST(PyAutolinkTest, create_reader) {
+TEST_F(PyAutolinkTestFixture, create_reader) {
     EXPECT_TRUE(OK());
     proto::Chatter chat;
     PyNode node("listener");
     std::unique_ptr<PyReader> pr(
         node.create_reader("channel/chatter", chat.GetTypeName()));
-    EXPECT_EQ("autolink.cyber.proto.Chatter", chat.GetTypeName());
+    EXPECT_EQ("autolink.proto.Chatter", chat.GetTypeName());
     EXPECT_NE(pr, nullptr);
     pr->register_func([](const char* channel_name) -> int {
         AINFO << "recv->[ " << channel_name << " ]";
@@ -46,7 +59,7 @@ TEST(PyAutolinkTest, create_reader) {
     });
 }
 
-TEST(PyAutolinkTest, create_writer) {
+TEST_F(PyAutolinkTestFixture, create_writer) {
     EXPECT_TRUE(OK());
     auto msgChat = std::make_shared<proto::Chatter>();
     PyNode node("talker");

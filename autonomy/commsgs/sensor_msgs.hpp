@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
-
-#include "autonomy/common/port.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+#include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
@@ -36,13 +35,13 @@ namespace sensor_msgs {
 // taken, the height and width fields should either match the height and
 // width fields for the associated image; or height = width = 0
 // indicates that the full resolution image was captured.
-struct RegionOfInterest
-{
+struct RegionOfInterest {
     uint32 x_offset;  // Leftmost pixel of the ROI
-                          // (0 if the ROI includes the left edge of the image)
-    uint32 y_offset;  // Topmost pixel of the ROI (0 if the ROI includes the top edge of the image)
+                      // (0 if the ROI includes the left edge of the image)
+    uint32 y_offset;  // Topmost pixel of the ROI (0 if the ROI includes the top
+                      // edge of the image)
     uint32 height;    // Height of ROI
-    uint32 width ;    // Width of ROI
+    uint32 width;     // Width of ROI
 
     // True if a distinct rectified ROI should be calculated from the "raw"
     // ROI in this message. Typically this should be False if the full image
@@ -78,17 +77,14 @@ struct RegionOfInterest
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                     Image acquisition info                          //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-struct CameraInfo
-{
-    
+struct CameraInfo {
     // Time of image acquisition, camera coordinate frame ID
-    std_msgs::Header header;    // Header timestamp should be acquisition time of image
-                                // Header frame_id should be optical frame of camera
-                                // origin of frame should be optical center of camera
-                                // +x should point to the right in the image
-                                // +y should point down in the image
-                                // +z should point into the plane of the image
-
+    std_msgs::Header header;  // Header timestamp should be acquisition time of
+                              // image Header frame_id should be optical frame
+                              // of camera origin of frame should be optical
+                              // center of camera +x should point to the right
+                              // in the image +y should point down in the image
+                              // +z should point into the plane of the image
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                      Calibration Parameters                         //
@@ -125,14 +121,14 @@ struct CameraInfo
     // Projects 3D points in the camera coordinate frame to 2D pixel
     // coordinates using the focal lengths (fx, fy) and principal point
     // (cx, cy).
-    std::vector<double> k; // float64[9]  k // 3x3 row-major matrix
+    std::vector<double> k;  // float64[9]  k // 3x3 row-major matrix
 
     // Rectification matrix (stereo cameras only)
     // A rotation matrix aligning the camera coordinate system to the ideal
     // stereo image plane so that epipolar lines in both stereo images are
     // parallel.
     // float64[9]  r // 3x3 row-major matrix
-    std::vector<double> r; 
+    std::vector<double> r;
 
     // Projection/camera matrix
     //     [fx'  0  cx' Tx]
@@ -159,8 +155,7 @@ struct CameraInfo
     //         y = v / w
     //  This holds for both images of a stereo pair.
     // float64[12] p // 3x4 row-major matrix
-    std::vector<double> p; 
-
+    std::vector<double> p;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //                      Operational Parameters                         //
@@ -204,8 +199,7 @@ struct CameraInfo
 //           in order.
 //   "intensity" - laser or pixel intensity.
 //   "distance"
-struct ChannelFloat32
-{
+struct ChannelFloat32 {
     // The channel name should give semantics of the channel (e.g.
     // "intensity" instead of "value").
     std::string name;
@@ -216,23 +210,22 @@ struct ChannelFloat32
 };
 
 // This struct contains a compressed image.
-struct CompressedImage
-{
+struct CompressedImage {
     // Define CompressedImage::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(CompressedImage)
 
-    std_msgs::Header header;  // Header timestamp should be acquisition time of image
-                                // Header frame_id should be optical frame of camera
-                                // origin of frame should be optical center of cameara
-                                // +x should point to the right in the image
-                                // +y should point down in the image
-                                // +z should point into to plane of the image
+    std_msgs::Header header;  // Header timestamp should be acquisition time of
+                              // image Header frame_id should be optical frame
+                              // of camera origin of frame should be optical
+                              // center of cameara +x should point to the right
+                              // in the image +y should point down in the image
+                              // +z should point into to plane of the image
 
-    std::string format;          // Specifies the format of the data
-                                //   Acceptable values:
-                                //     jpeg, png, tiff
+    std::string format;  // Specifies the format of the data
+                         //   Acceptable values:
+                         //     jpeg, png, tiff
 
-    std::vector<uint32> data;   // Compressed image buffer
+    std::vector<uint32> data;  // Compressed image buffer
 };
 
 // Single photometric illuminance measurement.  Light should be assumed to be
@@ -243,48 +236,47 @@ struct CompressedImage
 // Photometric illuminance is the measure of the human eye's sensitivity of the
 // intensity of light encountering or passing through a surface.
 //
-// All other Photometric and Radiometric measurements should not use this message.
-// This struct cannot represent:
+// All other Photometric and Radiometric measurements should not use this
+// message. This struct cannot represent:
 //  - Luminous intensity (candela/light source output)
 //  - Luminance (nits/light output per area)
 //  - Irradiance (watt/area), etc.
-struct Illuminance
-{
-    std_msgs::Header header; // timestamp is the time the illuminance was measured
-                                // frame_id is the location and direction of the reading
+struct Illuminance {
+    std_msgs::Header
+        header;  // timestamp is the time the illuminance was measured
+                 // frame_id is the location and direction of the reading
 
-    float illuminance;      // Measurement of the Photometric Illuminance in Lux.
+    float illuminance;  // Measurement of the Photometric Illuminance in Lux.
 
-    float variance;         // 0 is interpreted as variance unknown
+    float variance;  // 0 is interpreted as variance unknown
 };
 
-struct Image 
-{
+struct Image {
     // Define Image::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(Image)
 
-    std_msgs::Header header;     // Header timestamp should be acquisition time of image
-                                 // Header frame_id should be optical frame of camera
-                                 // origin of frame should be optical center of cameara
-                                 // +x should point to the right in the image
-                                 // +y should point down in the image
-                                 // +z should point into to plane of the image
-                                 // If the frame_id here and the frame_id of the CameraInfo
-                                 // struct associated with the image conflict
-                                 // the behavior is undefined
+    std_msgs::Header header;  // Header timestamp should be acquisition time of
+                              // image Header frame_id should be optical frame
+                              // of camera origin of frame should be optical
+                              // center of cameara +x should point to the right
+                              // in the image +y should point down in the image
+                              // +z should point into to plane of the image
+                              // If the frame_id here and the frame_id of the
+                              // CameraInfo struct associated with the image
+                              // conflict the behavior is undefined
 
     // image height, that is, number of rows
-    uint32 height;       
-    
+    uint32 height;
+
     // image width, that is, number of columns
-    uint32 width;            
+    uint32 width;
 
     // The legal values for encoding are in file src/image_encodings.cpp
     // If you want to standardize a new std::string format, join
     // ros-users@lists.ros.org and send an email proposing a new encoding.
-    std::string encoding;    // Encoding of pixels -- channel meaning, ordering, size
-                            // taken from the list of std::strings in include/sensor_msgs/image_encodings.hpp
-
+    std::string encoding;  // Encoding of pixels -- channel meaning, ordering,
+                           // size taken from the list of std::strings in
+                           // include/sensor_msgs/image_encodings.hpp
 
     // is this data bigendian?
     uint32 is_bigendian;
@@ -298,35 +290,40 @@ struct Image
 
 // This is a struct to hold data from an IMU (Inertial Measurement Unit)
 //
-// Accelerations should be in m/s^2 (not in g's), and rotational velocity should be in rad/sec
+// Accelerations should be in m/s^2 (not in g's), and rotational velocity should
+// be in rad/sec
 //
-// If the covariance of the measurement is known, it should be filled in (if all you know is the
-// variance of each measurement, e.g. from the datasheet, just put those along the diagonal)
-// A covariance matrix of all zeros will be interpreted as "covariance unknown", and to use the
-// data a covariance will have to be assumed or gotten from some other source
+// If the covariance of the measurement is known, it should be filled in (if all
+// you know is the variance of each measurement, e.g. from the datasheet, just
+// put those along the diagonal) A covariance matrix of all zeros will be
+// interpreted as "covariance unknown", and to use the data a covariance will
+// have to be assumed or gotten from some other source
 //
-// If you have no estimate for one of the data elements (e.g. your IMU doesn't produce an
-// orientation estimate), please set element 0 of the associated covariance matrix to -1
-// If you are interpreting this message, please check for a value of -1 in the first element of each
-// covariance matrix, and disregard the associated estimate.
-struct Imu
-{
+// If you have no estimate for one of the data elements (e.g. your IMU doesn't
+// produce an orientation estimate), please set element 0 of the associated
+// covariance matrix to -1 If you are interpreting this message, please check
+// for a value of -1 in the first element of each covariance matrix, and
+// disregard the associated estimate.
+struct Imu {
     // Define Imu::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(Imu)
 
     std_msgs::Header header;
 
     geometry_msgs::Quaternion orientation;
-    std::vector<double> orientation_covariance; // float64[9] orientation_covariance 
-                                                // Row major about x, y, z axes
+    std::vector<double>
+        orientation_covariance;  // float64[9] orientation_covariance
+                                 // Row major about x, y, z axes
 
     geometry_msgs::Vector3 angular_velocity;
-    std::vector<double> angular_velocity_covariance;  // float64[9] angular_velocity_covariance  
-                                                      // Row major about x, y, z axes
+    std::vector<double>
+        angular_velocity_covariance;  // float64[9] angular_velocity_covariance
+                                      // Row major about x, y, z axes
 
     geometry_msgs::Vector3 linear_acceleration;
-    std::vector<double> linear_acceleration_covariance;;  // float64[9] linear_acceleration_covariance 
-                                                          // Row major x, y z
+    std::vector<double> linear_acceleration_covariance;
+    ;  // float64[9] linear_acceleration_covariance
+       // Row major x, y z
 };
 
 // Single scan from a planar laser range-finder
@@ -334,34 +331,37 @@ struct Imu
 // If you have another ranging device with different behavior (e.g. a sonar
 // array), please find or create a different message, since applications
 // will make fairly laser-specific assumptions about this data
-struct LaserScan
-{
+struct LaserScan {
     // Define LaserScan::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(LaserScan)
 
-    std_msgs::Header header;    // timestamp in the header is the acquisition time of
-                                // the first ray in the scan.
-                                //
-                                // in frame frame_id, angles are measured around
-                                // the positive Z axis (counterclockwise, if Z is up)
-                                // with zero angle being forward along the x axis
+    std_msgs::Header
+        header;  // timestamp in the header is the acquisition time of
+                 // the first ray in the scan.
+                 //
+                 // in frame frame_id, angles are measured around
+                 // the positive Z axis (counterclockwise, if Z is up)
+                 // with zero angle being forward along the x axis
 
-    float angle_min;           // start angle of the scan [rad]
-    float angle_max;           // end angle of the scan [rad]
-    float angle_increment;     // angular distance between measurements [rad]
+    float angle_min;        // start angle of the scan [rad]
+    float angle_max;        // end angle of the scan [rad]
+    float angle_increment;  // angular distance between measurements [rad]
 
-    float time_increment;       // time between measurements [seconds] - if your scanner
-                                    // is moving, this will be used in interpolating position
-                                    // of 3d points
-    float scan_time;            // time between scans [seconds]
+    float time_increment;  // time between measurements [seconds] - if your
+                           // scanner is moving, this will be used in
+                           // interpolating position of 3d points
+    float scan_time;       // time between scans [seconds]
 
-    float range_min;            // minimum range value [m]
-    float range_max;            // maximum range value [m]
+    float range_min;  // minimum range value [m]
+    float range_max;  // maximum range value [m]
 
-    std::vector<float> ranges;           // range data [m]
-                                         // (Note: values < range_min or > range_max should be discarded)
-    std::vector<float> intensities;      // intensity data [device-specific units].  If your
-                                         // device does not provide intensities, please leave the array empty.
+    std::vector<float> ranges;  // range data [m]
+                                // (Note: values < range_min or > range_max
+                                // should be discarded)
+    std::vector<float>
+        intensities;  // intensity data [device-specific units]. If
+                      // your device does not provide intensities,
+                      // please leave the array empty.
 };
 
 // THIS MESSAGE IS DEPRECATED AS OF FOXY
@@ -369,8 +369,7 @@ struct LaserScan
 
 // This struct holds a collection of 3d points, plus optional additional
 // information about each point.
-struct PointCloud
-{
+struct PointCloud {
     // Define PointCloud::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(PointCloud)
 
@@ -387,24 +386,22 @@ struct PointCloud
     std::vector<ChannelFloat32> channels;
 };
 
-
 // This struct holds the description of one point entry in the
 // PointCloud2 struct format.
-// uint8 INT8   
-// uint8 UINT8  
-// uint8 INT16  
-// uint8 UINT16 
-// uint8 INT32  
-// uint8 UINT32 
+// uint8 INT8
+// uint8 UINT8
+// uint8 INT16
+// uint8 UINT16
+// uint8 INT32
+// uint8 UINT32
 // uint8 FLOAT32
 // uint8 FLOAT64
-struct PointField
-{
+struct PointField {
     // Common PointField names are x, y, z, intensity, rgb, rgba
-    std::string name;      // Name of field
-    uint32 offset;    // Offset from start of point struct
-    uint32  datatype; // Datatype enumeration, see above
-    uint32 count;     // How many elements in the field
+    std::string name;  // Name of field
+    uint32 offset;     // Offset from start of point struct
+    uint32 datatype;   // Datatype enumeration, see above
+    uint32 count;      // How many elements in the field
 };
 
 // This struct holds a collection of N-dimensional points, which may
@@ -415,12 +412,12 @@ struct PointField
 // The point cloud data may be organized 2d (image-like) or 1d (unordered).
 // Point clouds organized as 2d images may be produced by camera depth sensors
 // such as stereo or time-of-flight.
-struct PointCloud2
-{
+struct PointCloud2 {
     // Define PointCloud2::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(PointCloud2)
 
-    // Time of sensor data acquisition, and the coordinate frame ID (for 3d points).
+    // Time of sensor data acquisition, and the coordinate frame ID (for 3d
+    // points).
     std_msgs::Header header;
 
     // 2D structure of the point cloud. If the cloud is unordered, height is
@@ -431,12 +428,12 @@ struct PointCloud2
     // Describes the channels and their layout in the binary data blob.
     std::vector<PointField> fields;
 
-    bool    is_bigendian; // Is this data bigendian?
-    uint32  point_step;   // Length of a point in bytes
-    uint32  row_step;     // Length of a row in bytes
-    std::vector<uint32> data; // Actual point data, size is (row_step*height)
+    bool is_bigendian;         // Is this data bigendian?
+    uint32 point_step;         // Length of a point in bytes
+    uint32 row_step;           // Length of a row in bytes
+    std::vector<uint32> data;  // Actual point data, size is (row_step*height)
 
-    bool is_dense;        // True if there are no invalid points
+    bool is_dense;  // True if there are no invalid points
 };
 
 // Single range reading from an active ranger that emits energy and reports
@@ -449,54 +446,55 @@ struct PointCloud2
 // These sensors follow REP 117 and will output -Inf if the object is detected
 // and +Inf if the object is outside of the detection range.
 
-struct Range
-{
+struct Range {
     // Define Range::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(Range)
 
-    std_msgs::Header header; // timestamp in the header is the time the ranger
-                                // returned the distance reading
+    std_msgs::Header header;  // timestamp in the header is the time the ranger
+                              // returned the distance reading
 
     // // Radiation type enums
-    // // If you want a value added to this list, send an email to the ros-users list
-    // uint8 ULTRASOUND=0
-    // uint8 INFRARED=1
+    // // If you want a value added to this list, send an email to the ros-users
+    // list uint8 ULTRASOUND=0 uint8 INFRARED=1
 
-    uint32 radiation_type;  // the type of radiation used by the sensor(sound, IR, etc) [enum]
+    uint32 radiation_type;  // the type of radiation used by the sensor(sound,
+                            // IR, etc) [enum]
 
-    float field_of_view;    // the size of the arc that the distance reading is
-                                // valid for [rad]
-                                // the object causing the range reading may have
-                                // been anywhere within -field_of_view/2 and
-                                // field_of_view/2 at the measured range.
-                                // 0 angle corresponds to the x-axis of the sensor.
+    float field_of_view;  // the size of the arc that the distance reading is
+                          // valid for [rad]
+                          // the object causing the range reading may have
+                          // been anywhere within -field_of_view/2 and
+                          // field_of_view/2 at the measured range.
+                          // 0 angle corresponds to the x-axis of the sensor.
 
-    float min_range;       // minimum range value [m]
-    float max_range;       // maximum range value [m]
-                               // Fixed distance rangers require min_range==max_range
+    float min_range;  // minimum range value [m]
+    float max_range;  // maximum range value [m]
+                      // Fixed distance rangers require min_range==max_range
 
-    float range;          // range data [m]  
-                              // (Note: values < range_min or > range_max should be discarded)
-                              // Fixed distance rangers only output -Inf or +Inf.
-                              // -Inf represents a detection within fixed distance.
-                              // (Detection too close to the sensor to quantify)
-                              // +Inf represents no detection within the fixed distance.
-                              // (Object out of range)
+    float range;  // range data [m]
+                  // (Note: values < range_min or > range_max should be
+                  // discarded) Fixed distance rangers only output -Inf or +Inf.
+                  // -Inf represents a detection within fixed distance.
+                  // (Detection too close to the sensor to quantify)
+                  // +Inf represents no detection within the fixed distance.
+                  // (Object out of range)
 };
 
 // Reports the state of a joystick's axes and buttons.
-struct Joy
-{
+struct Joy {
     // The timestamp is the time at which data is received from the joystick.
-    std_msgs::Header header; // timestamp in the header is the time the ranger
-                                // returned the distance reading
+    std_msgs::Header header;  // timestamp in the header is the time the ranger
+                              // returned the distance reading
 
     // The axes measurements from a joystick.
-    std::vector<float> axes; 
- 
+    std::vector<float> axes;
+
     // The buttons measurements from a joystick.
     std::vector<int32> buttons;
 };
+
+// Reports the state of a battery.
+using BatteryState = proto::sensor_msgs::BatteryState;
 
 // Converts 'data' to a proto::sensor_msgs::RegionOfInterest.
 proto::sensor_msgs::RegionOfInterest ToProto(const RegionOfInterest& data);
@@ -575,8 +573,6 @@ proto::sensor_msgs::Joy ToProto(const Joy& data);
 
 // Converts 'proto' to Joy.
 Joy FromProto(const proto::sensor_msgs::Joy& proto);
-
-
 
 }  // namespace sensor_msgs
 }  // namespace commsgs

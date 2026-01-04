@@ -17,13 +17,13 @@
 #ifndef AUTONOMY_COMMON_MOTION_MODEL_MOTION_MODEL_INTERFACE_HPP_
 #define AUTONOMY_COMMON_MOTION_MODEL_MOTION_MODEL_INTERFACE_HPP_
 
+#include <chrono>
+
 #include "autonomy/common/helper_functions/crtp.hpp"
 #include "autonomy/common/state_vector/generic_state.hpp"
 
-#include <chrono>
-
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace motion_model {
 
 ///
@@ -31,50 +31,49 @@ namespace motion_model {
 ///
 /// @tparam     Derived  Motion model implementation class.
 ///
-template<typename Derived>
+template <typename Derived>
 class MotionModelInterface : public common::helper_functions::crtp<Derived>
 {
 public:
-  ///
-  /// @brief      Get the next predicted state.
-  ///
-  /// @param[in]  state   The initial state
-  /// @param[in]  dt      Length of prediction into the future
-  ///
-  /// @tparam     StateT  Type of the state.
-  ///
-  /// @return     Predicted state after the time has passed.
-  ///
-  template<typename StateT>
-  inline auto predict(const StateT & state, const std::chrono::nanoseconds & dt) const
-  {
-    static_assert(
-      common::state_vector::is_state<StateT>::value,
-      "\n\nStateT must be a GenericState\n\n");
-    return this->impl().crtp_predict(state, dt);
-  }
-  ///
-  /// @brief      Get the Jacobian of this motion model.
-  ///
-  /// @param[in]  state   The current state.
-  /// @param[in]  dt      Time span.
-  ///
-  /// @tparam     StateT  Type of the state.
-  ///
-  /// @return     A Jacobian of the motion model. In the linear case - a transition matrix.
-  ///
-  template<typename StateT>
-  inline auto jacobian(const StateT & state, const std::chrono::nanoseconds & dt) const
-  {
-    static_assert(
-      common::state_vector::is_state<StateT>::value,
-      "\n\nStateT must be a GenericState\n\n");
-    return this->impl().crtp_jacobian(state, dt);
-  }
+    ///
+    /// @brief      Get the next predicted state.
+    ///
+    /// @param[in]  state   The initial state
+    /// @param[in]  dt      Length of prediction into the future
+    ///
+    /// @tparam     StateT  Type of the state.
+    ///
+    /// @return     Predicted state after the time has passed.
+    ///
+    template <typename StateT>
+    inline auto predict(const StateT& state,
+                        const std::chrono::nanoseconds& dt) const {
+        static_assert(common::state_vector::is_state<StateT>::value,
+                      "\n\nStateT must be a GenericState\n\n");
+        return this->impl().crtp_predict(state, dt);
+    }
+    ///
+    /// @brief      Get the Jacobian of this motion model.
+    ///
+    /// @param[in]  state   The current state.
+    /// @param[in]  dt      Time span.
+    ///
+    /// @tparam     StateT  Type of the state.
+    ///
+    /// @return     A Jacobian of the motion model. In the linear case - a
+    /// transition matrix.
+    ///
+    template <typename StateT>
+    inline auto jacobian(const StateT& state,
+                         const std::chrono::nanoseconds& dt) const {
+        static_assert(common::state_vector::is_state<StateT>::value,
+                      "\n\nStateT must be a GenericState\n\n");
+        return this->impl().crtp_jacobian(state, dt);
+    }
 };
 
 }  // namespace motion_model
-}  // namespace common 
+}  // namespace common
 }  // namespace autonomy
 
 #endif  // AUTONOMY_COMMON_MOTION_MODEL_MOTION_MODEL_INTERFACE_HPP_

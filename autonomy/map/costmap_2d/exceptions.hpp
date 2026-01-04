@@ -16,10 +16,9 @@
 
 #pragma once
 
+#include <memory>
 #include <stdexcept>
 #include <string>
-#include <memory>
-
 
 namespace autonomy {
 namespace map {
@@ -33,8 +32,8 @@ namespace costmap_2d {
 class CollisionCheckerException : public std::runtime_error
 {
 public:
-  explicit CollisionCheckerException(const std::string description)
-  : std::runtime_error(description) {}
+    explicit CollisionCheckerException(const std::string description)
+        : std::runtime_error(description) {}
 };
 
 /**
@@ -44,12 +43,14 @@ public:
 class IllegalPoseException : public CollisionCheckerException
 {
 public:
-  IllegalPoseException(const std::string name, const std::string description)
-  : CollisionCheckerException(description), name_(name) {}
-  std::string getCriticName() const {return name_;}
+    IllegalPoseException(const std::string name, const std::string description)
+        : CollisionCheckerException(description), name_(name) {}
+    std::string getCriticName() const {
+        return name_;
+    }
 
 protected:
-  std::string name_;
+    std::string name_;
 };
 
 }  // namespace costmap_2d

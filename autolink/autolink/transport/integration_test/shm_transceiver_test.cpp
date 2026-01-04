@@ -13,20 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-
 #include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/init.hpp"
 #include "autolink/common/util.hpp"
-#include "autolink/message/message_traits.hpp"
+#include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/receiver/shm_receiver.hpp"
 #include "autolink/transport/transmitter/shm_transmitter.hpp"
 #include "autolink/transport/transport.hpp"
@@ -50,18 +46,13 @@ protected:
         attr.set_host_ip(common::GlobalData::Instance()->HostIp());
         attr.set_channel_name(channel_name_);
         attr.set_channel_id(common::Hash(channel_name_));
-        proto::UnitTest dummy;
-        attr.set_message_type(dummy.GetDescriptor()->full_name());
-        attr.mutable_qos_profile()->CopyFrom(
-            QosProfileConf::QOS_PROFILE_DEFAULT);
         transmitter_a_ =
             std::make_shared<ShmTransmitter<proto::UnitTest>>(attr);
         transmitter_b_ =
             std::make_shared<ShmTransmitter<proto::UnitTest>>(attr);
 
-        transmitter_a_->Enable(attr);
-        transmitter_b_->Enable(attr);
-        base_attr_ = attr;
+        transmitter_a_->Enable();
+        transmitter_b_->Enable();
     }
 
     virtual void TearDown() {
@@ -72,7 +63,6 @@ protected:
     std::string channel_name_;
     TransmitterPtr transmitter_a_ = nullptr;
     TransmitterPtr transmitter_b_ = nullptr;
-    RoleAttributes base_attr_;
 };
 
 TEST_F(ShmTransceiverTest, constructor) {
@@ -108,11 +98,11 @@ TEST_F(ShmTransceiverTest, enable_and_disable) {
 
     receiver->Enable();
     // repeated call
-    receiver->Enable(base_attr_);
+    receiver->Enable();
 
     ReceiverPtr receiver_null_cb =
         std::make_shared<ShmReceiver<proto::UnitTest>>(attr, nullptr);
-    receiver_null_cb->Enable(base_attr_);
+    receiver_null_cb->Enable();
 
     auto msg = std::make_shared<proto::UnitTest>();
     msg->set_class_name("ShmTransceiverTest");

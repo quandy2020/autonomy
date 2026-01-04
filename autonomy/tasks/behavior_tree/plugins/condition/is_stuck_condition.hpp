@@ -1,0 +1,117 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <atomic>
+#include <deque>
+#include <string>
+
+#include "behaviortree_cpp/condition_node.h"
+
+#include "autolink/autolink.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+
+namespace autonomy {
+namespace tasks {
+namespace behavior_tree {
+namespace plugins {
+namespace condition {
+
+/**
+ * @brief A BT::ConditionNode that tracks robot odometry and returns SUCCESS
+ * if robot is stuck somewhere and FAILURE otherwise
+ */
+class IsStuckCondition : public BT::ConditionNode
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::IsStuckCondition
+     * @param condition_name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    IsStuckCondition(const std::string& condition_name,
+                     const BT::NodeConfiguration& conf);
+
+    IsStuckCondition() = delete;
+
+    /**
+     * @brief A destructor for nav2_behavior_tree::IsStuckCondition
+     */
+    ~IsStuckCondition() override;
+
+    /**
+     * @brief Callback function for odom topic
+     * @param msg Shared pointer to nav_msgs::msg::Odometry::SharedPtr message
+     */
+    void onOdomReceived(
+        const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
+
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
+
+    /**
+     * @brief Function to log status when robot is stuck/free
+     */
+    void logStuck(const std::string& msg) const;
+
+    /**
+     * @brief Function to approximate acceleration from the odom history
+     */
+    void updateStates();
+
+    /**
+     * @brief Detect if robot bumped into something by checking for abnormal
+     * deceleration
+     * @return bool true if robot is stuck, false otherwise
+     */
+    bool isStuck();
+
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        return {};
+    }
+
+private:
+    // The node that will be used for any ROS operations
+    std::shared_ptr<::autolink::Node> node_;
+    std::atomic<bool> is_stuck_;
+
+    // Listen to odometry
+    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>>
+        odom_sub_;
+    // Store history of odometry measurements
+    std::deque<commsgs::planning_msgs::Odometry> odom_history_;
+    std::deque<commsgs::planning_msgs::Odometry>::size_type odom_history_size_;
+
+    // Calculated states
+    double current_accel_;
+
+    // Robot specific parameters
+    double brake_accel_limit_;
+};
+
+}  // namespace condition
+}  // namespace plugins
+}  // namespace behavior_tree
+}  // namespace tasks
+}  // namespace autonomy

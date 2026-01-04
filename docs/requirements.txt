@@ -8,4 +8,5 @@ sphinxcontrib-devhelp
 sphinxcontrib-htmlhelp 
 sphinxcontrib-jsmath 
 sphinxcontrib-qthelp
-sphinxcontrib-serializinghtml 
+sphinxcontrib-serializinghtml
+sphinx-copybutton 

@@ -16,68 +16,53 @@
 
 #include "autonomy/transform/transform_broadcaster.hpp"
 
-#include <glog/logging.h>
+#include "autolink/common/log.hpp"
 
 namespace autonomy {
 namespace transform {
 
 TransformBroadcaster::TransformBroadcaster(
-    const std::string& topic_name)
-    : topic_name_(topic_name)
-    , published_count_(0)
-    , initialized_(false)
-{
-    LOG(INFO) << "TransformBroadcaster created with topic: " << topic_name_;
+    const std::shared_ptr<::autolink::Node>& node)
+    : node_(node) {
+    if (!node_) {
+        AERROR << "TransformBroadcaster: Node is null.";
+        return;
+    }
+    ::autolink::proto::RoleAttributes attr;
+    attr.set_channel_name("/tf");
+    writer_ =
+        node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
 }
 
-TransformBroadcaster::~TransformBroadcaster()
-{
-    LOG(INFO) << "TransformBroadcaster destroyed. Published " 
-              << published_count_ << " transform messages.";
+TransformBroadcaster::TransformBroadcaster(::autolink::Node* node) {
+    if (!node) {
+        AERROR << "TransformBroadcaster: Node pointer is null.";
+        return;
+    }
+    ::autolink::proto::RoleAttributes attr;
+    attr.set_channel_name("/tf");
+    writer_ =
+        node->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
 }
 
 void TransformBroadcaster::SendTransform(
-    const commsgs::geometry_msgs::TransformStamped& transform) 
-{
+    const commsgs::geometry_msgs::TransformStamped& transform) {
     std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
-    transforms.push_back(transform);
+    transforms.emplace_back(transform);
     SendTransform(transforms);
 }
 
 void TransformBroadcaster::SendTransform(
-    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) 
-{
+    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
+    if (!writer_) {
+        AERROR
+            << "TransformBroadcaster: Writer is null, cannot send transform.";
+        return;
+    }
+    auto message =
+        std::make_shared<commsgs::geometry_msgs::TransformStampeds>();
+    message->transforms = transforms;
+    writer_->Write(message);
 }
-
-std::string TransformBroadcaster::GetTopicName() const
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    return topic_name_;
-}
-
-size_t TransformBroadcaster::GetPublishedCount() const
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    return published_count_;
-}
-
-void TransformBroadcaster::ResetPublishedCount()
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    published_count_ = 0;
-    LOG(INFO) << "Published count reset to 0";
-}
-
-bool TransformBroadcaster::IsInitialized() const
-{
-    std::lock_guard<std::mutex> lock(mutex_);
-    return initialized_;
-}
-
-void TransformBroadcaster::PublishTransforms(
-    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms)
-{
-}
-
-} // namespace transform
-} // namespace autonomy
+}  // namespace transform
+}  // namespace autonomy

@@ -63,11 +63,10 @@ void ShmReceiver<M>::Enable() {
         return;
     }
 
-    message::RawMessage raw_msg;
-    M msg_temp;
     if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
             this->attr_.channel_id()) &&
-        message::MessageType(msg_temp) != message::MessageType(raw_msg)) {
+        message::MessageType<M>() !=
+            message::MessageType<message::RawMessage>()) {
         auto arena_manager = ProtobufArenaManager::Instance();
         if (!arena_manager->Enable() ||
             !arena_manager->EnableSegment(this->attr_.channel_id())) {
@@ -94,11 +93,10 @@ void ShmReceiver<M>::Disable() {
 
 template <typename M>
 void ShmReceiver<M>::Enable(const RoleAttributes& opposite_attr) {
-    message::RawMessage raw_msg;
-    M msg_temp;
     if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
             this->attr_.channel_id()) &&
-        message::MessageType(msg_temp) != message::MessageType(raw_msg)) {
+        message::MessageType<M>() !=
+            message::MessageType<message::RawMessage>()) {
         auto arena_manager = ProtobufArenaManager::Instance();
         if (!arena_manager->Enable() ||
             !arena_manager->EnableSegment(this->attr_.channel_id())) {

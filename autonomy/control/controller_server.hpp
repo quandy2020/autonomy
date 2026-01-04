@@ -14,43 +14,44 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include <mutex>
 
-#include "autonomy/common/macros.hpp"
-#include "autonomy/common/class_loader/class_loader.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
-#include "autonomy/control/common/progress_checker.hpp"
-#include "autonomy/control/common/goal_checker.hpp"
+#include "autonomy/control/common/goal_checker_interface.hpp"
+#include "autonomy/control/common/progress_checker_interface.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/robot_utils.hpp"
 
 namespace autonomy {
 namespace control {
 
-class ControllerServer 
+class ControllerServer
 {
 public:
-
-    using ControllerMap = std::unordered_map<std::string, common::ControllerInterface::SharedPtr>;
-    using GoalCheckerMap = std::unordered_map<std::string, common::GoalChecker::SharedPtr>;
-    using ProgressCheckerMap = std::unordered_map<std::string, common::ProgressChecker::SharedPtr>;
+    using ControllerMap =
+        std::unordered_map<std::string, common::ControllerInterface::SharedPtr>;
+    using GoalCheckerMap =
+        std::unordered_map<std::string, common::GoalChecker::SharedPtr>;
+    using ProgressCheckerMap =
+        std::unordered_map<std::string, common::ProgressChecker::SharedPtr>;
 
     /**
-    * Define ControllerServer::SharedPtr type
-    */
+     * Define ControllerServer::SharedPtr type
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(ControllerServer)
 
     /**
@@ -58,7 +59,7 @@ public:
      * @param options Additional options to control creation of the node.
      */
     ControllerServer(const proto::ControllerOptions& options);
-    
+
     /**
      * @brief Destrructor for ControllerServer
      */
@@ -72,12 +73,12 @@ public:
     /**
      * @brief Shutdown planning tasks
      */
-    void WaitForShutdown();
+    void Shutdown();
 
 protected:
     /**
-     * @brief FollowPath action server callback. Handles action server updates and
-     * spins server until goal is reached
+     * @brief FollowPath action server callback. Handles action server updates
+     * and spins server until goal is reached
      *
      * Provides global path to controller received from action client. Twist
      * velocities for the robot are calculated and published using controller at
@@ -90,7 +91,8 @@ protected:
      * @brief Find the valid controller ID name for the given request
      *
      * @param c_name The requested controller name
-     * @param name Reference to the name to use for control if any valid available
+     * @param name Reference to the name to use for control if any valid
+     * available
      * @return bool Whether it found a valid controller to use
      */
     bool FindControllerId(const std::string& c_name, std::string& name);
@@ -99,16 +101,19 @@ protected:
      * @brief Find the valid goal checker ID name for the specified parameter
      *
      * @param c_name The goal checker name
-     * @param name Reference to the name to use for goal checking if any valid available
+     * @param name Reference to the name to use for goal checking if any valid
+     * available
      * @return bool Whether it found a valid goal checker to use
      */
     bool FindGoalCheckerId(const std::string& c_name, std::string& name);
 
     /**
-     * @brief Find the valid progress checker ID name for the specified parameter
+     * @brief Find the valid progress checker ID name for the specified
+     * parameter
      *
      * @param c_name The progress checker name
-     * @param name Reference to the name to use for progress checking if any valid available
+     * @param name Reference to the name to use for progress checking if any
+     * valid available
      * @return bool Whether it found a valid progress checker to use
      */
     bool FindProgressCheckerId(const std::string& c_name, std::string& name);
@@ -118,12 +123,12 @@ protected:
      * @param path Path received from action server
      */
     void SetPlannerPath(const commsgs::planning_msgs::Path& path);
-    
+
     /**
      * @brief Calculates velocity and publishes to "cmd_vel" topic
      */
     void ComputeAndPublishVelocity();
-    
+
     /**
      * @brief Calls setPlannerPath method with an updated path received from
      * action server
@@ -131,7 +136,8 @@ protected:
     void UpdateGlobalPath();
 
     /**
-     * @brief Calls velocity publisher to publish the velocity on "cmd_vel" topic
+     * @brief Calls velocity publisher to publish the velocity on "cmd_vel"
+     * topic
      * @param velocity Twist velocity to be published
      */
     void PublishVelocity(const commsgs::geometry_msgs::TwistStamped& velocity);
@@ -145,7 +151,7 @@ protected:
      * @brief Called on goal exit
      */
     void OnGoalExit();
-    
+
     /**
      * @brief Checks if goal is reached
      * @return true or false
@@ -165,8 +171,7 @@ protected:
      * @param threshold The minimum velocity to return non-zero
      * @return double velocity value
      */
-    double GetThresholdedVelocity(double velocity, double threshold)
-    {
+    double GetThresholdedVelocity(double velocity, double threshold) {
         return (std::abs(velocity) > threshold) ? velocity : 0.0;
     }
 
@@ -175,12 +180,15 @@ protected:
      * @param Twist The current Twist from odometry
      * @return Twist Twist after thresholds applied
      */
-    commsgs::geometry_msgs::Twist2D GetThresholdedTwist(const commsgs::geometry_msgs::Twist2D & twist)
-    {
+    commsgs::geometry_msgs::Twist2D GetThresholdedTwist(
+        const commsgs::geometry_msgs::Twist2D& twist) {
         commsgs::geometry_msgs::Twist2D twist_thresh;
-        twist_thresh.x = GetThresholdedVelocity(twist.x, min_x_velocity_threshold_);
-        twist_thresh.y = GetThresholdedVelocity(twist.y, min_y_velocity_threshold_);
-        twist_thresh.theta = GetThresholdedVelocity(twist.theta, min_theta_velocity_threshold_);
+        twist_thresh.x =
+            GetThresholdedVelocity(twist.x, min_x_velocity_threshold_);
+        twist_thresh.y =
+            GetThresholdedVelocity(twist.y, min_y_velocity_threshold_);
+        twist_thresh.theta =
+            GetThresholdedVelocity(twist.theta, min_theta_velocity_threshold_);
         return twist_thresh;
     }
 
@@ -191,10 +199,12 @@ protected:
     // Publishers and subscribers
     // std::unique_ptr<nav_2d_utils::OdomSubscriber> odom_sub_;
     // std::unique_ptr<nav2_util::TwistPublisher> vel_publisher_;
-    // rclcpp::Subscription<nav2_msgs::msg::SpeedLimit>::SharedPtr speed_limit_sub_;
+    // rclcpp::Subscription<nav2_msgs::msg::SpeedLimit>::SharedPtr
+    // speed_limit_sub_;
 
     // Progress Checker Plugin
-    // pluginlib::ClassLoader<nav2_core::ProgressChecker> progress_checker_loader_;
+    // pluginlib::ClassLoader<nav2_core::ProgressChecker>
+    // progress_checker_loader_;
     ProgressCheckerMap progress_checkers_;
     std::vector<std::string> default_progress_checker_ids_;
     std::vector<std::string> default_progress_checker_types_;
@@ -244,7 +254,8 @@ private:
      * @brief Callback for speed limiting messages
      * @param msg Shared pointer to nav2_msgs::msg::SpeedLimit
      */
-    void SpeedLimitCallback(const commsgs::planning_msgs::SpeedLimit::SharedPtr msg);
+    void SpeedLimitCallback(
+        const commsgs::planning_msgs::SpeedLimit::SharedPtr msg);
 
     // controller options
     proto::ControllerOptions options_;

@@ -15,8 +15,7 @@
 # dependencies
 set(timer_component_dependencies 
     autolink
-    fastdds
-    fastcdr
+    ${FastDDS_LIBRARIES}
     pthread
     ${Protobuf_LIBRARIES}
 )

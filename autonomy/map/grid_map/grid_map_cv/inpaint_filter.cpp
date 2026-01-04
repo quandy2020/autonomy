@@ -8,7 +8,6 @@
 
 #include "autonomy/map/grid_map/grid_map_cv/inpaint_filter.hpp"
 
-
 // Grid Map
 #include "autonomy/map/grid_map/grid_map_core/grid_map_core.hpp"
 
@@ -41,14 +40,16 @@
 
 //   ROS_DEBUG("Radius = %f.", radius_);
 
-//   if (!FilterBase < T > ::getParam(std::string("input_layer"), inputLayer_)) {
+//   if (!FilterBase < T > ::getParam(std::string("input_layer"), inputLayer_))
+//   {
 //     ROS_ERROR("Inpaint filter did not find parameter `input_layer`.");
 //     return false;
 //   }
 
 //   ROS_DEBUG("Inpaint input layer is = %s.", inputLayer_.c_str());
 
-//   if (!FilterBase < T > ::getParam(std::string("output_layer"), outputLayer_)) {
+//   if (!FilterBase < T > ::getParam(std::string("output_layer"),
+//   outputLayer_)) {
 //     ROS_ERROR("Inpaint filter did not find parameter `output_layer`.");
 //     return false;
 //   }
@@ -65,11 +66,12 @@
 //   mapOut.add(outputLayer_);
 
 //   //Convert elevation layer to OpenCV image to fill in holes.
-//   //Get the inpaint mask (nonzero pixels indicate where values need to be filled in).
-//   mapOut.add("inpaint_mask", 0.0);
+//   //Get the inpaint mask (nonzero pixels indicate where values need to be
+//   filled in). mapOut.add("inpaint_mask", 0.0);
 
 //   mapOut.setBasicLayers(std::vector<std::string>());
-//   for (grid_map::GridMapIterator iterator(mapOut); !iterator.isPastEnd(); ++iterator) {
+//   for (grid_map::GridMapIterator iterator(mapOut); !iterator.isPastEnd();
+//   ++iterator) {
 //     if (!mapOut.isValid(*iterator, inputLayer_)) {
 //       mapOut.at("inpaint_mask", *iterator) = 1.0;
 //     }
@@ -80,14 +82,18 @@
 //   const float minValue = mapOut.get(inputLayer_).minCoeffOfFinites();
 //   const float maxValue = mapOut.get(inputLayer_).maxCoeffOfFinites();
 
-//   grid_map::GridMapCvConverter::toImage<unsigned char, 3>(mapOut, inputLayer_, CV_8UC3, minValue, maxValue,
+//   grid_map::GridMapCvConverter::toImage<unsigned char, 3>(mapOut,
+//   inputLayer_, CV_8UC3, minValue, maxValue,
 //                                                           originalImage);
-//   grid_map::GridMapCvConverter::toImage<unsigned char, 1>(mapOut, "inpaint_mask", CV_8UC1, mask);
+//   grid_map::GridMapCvConverter::toImage<unsigned char, 1>(mapOut,
+//   "inpaint_mask", CV_8UC1, mask);
 
 //   const double radiusInPixels = radius_ / mapIn.getResolution();
-//   cv::inpaint(originalImage, mask, filledImage, radiusInPixels, cv::INPAINT_NS);
+//   cv::inpaint(originalImage, mask, filledImage, radiusInPixels,
+//   cv::INPAINT_NS);
 
-//   grid_map::GridMapCvConverter::addLayerFromImage<unsigned char, 3>(filledImage, outputLayer_, mapOut, minValue, maxValue);
+//   grid_map::GridMapCvConverter::addLayerFromImage<unsigned char,
+//   3>(filledImage, outputLayer_, mapOut, minValue, maxValue);
 //   mapOut.erase("inpaint_mask");
 
 //   return true;
@@ -95,4 +101,5 @@
 
 // }/* namespace */
 
-// // PLUGINLIB_EXPORT_CLASS(grid_map::InpaintFilter<grid_map::GridMap>, filters::FilterBase<grid_map::GridMap>)
+// // PLUGINLIB_EXPORT_CLASS(grid_map::InpaintFilter<grid_map::GridMap>,
+// filters::FilterBase<grid_map::GridMap>)
