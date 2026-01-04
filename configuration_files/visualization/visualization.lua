@@ -12,71 +12,72 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
-
+-- 可视化服务器配置
 AUTONOMY_VISUALIZATION = {
-    -- Server configuration
+    -- 服务器配置
+    server_name = "AutonomyViewer",
     host = "0.0.0.0",
     port = 8765,
-    write_mcap = false,
-    mcap_filename = "/workspace/autonomy/build/test.mcap",
     
-    -- Topic subscriptions configuration
-    -- Each subscription contains: topic_name and message_type
-    -- Note: Only fully supported message types with DDS + Foxglove handlers are included
-    subscriptions = {
-        -- Map data
+    -- 功能开关
+    enable_client_publish = true,      -- 允许 Foxglove Studio 发布消息
+    enable_connection_graph = true,    -- 启用连接图功能
+    enable_autolink = true,            -- 启用 autolink 订阅
+    
+    -- Topic 订阅列表（需要转发到 Foxglove 的 topic）
+    -- message_type 支持的值：
+    --   sensor_msgs: "LaserScan", "PointCloud2", "PointCloud", "Imu", "Range", "Image", "CompressedImage"
+    --   planning_msgs: "Path", "Odometry"
+    --   map_msgs: "OccupancyGrid"
+    --   geometry_msgs: "PoseStamped", "PoseArray", "TransformStamped"
+    --   visualization_msgs: "Marker", "MarkerArray"
+    topic_subscriptions = {
+        {
+            topic_name = "/sensor/lidar",
+            message_type = "LaserScan",
+            enabled = true,
+        },
+        {
+            topic_name = "/planning/path",
+            message_type = "Path",
+            enabled = true,
+        },
+        {
+            topic_name = "/localization/odometry",
+            message_type = "Odometry",
+            enabled = true,
+        },
         {
             topic_name = "/map",
             message_type = "OccupancyGrid",
+            enabled = true,
         },
-        
-        -- Path planning result
         {
-            topic_name = "/path",
-            message_type = "Path",
-        },
-        
-        -- Camera image
-        {
-            topic_name = "/camera/image",
+            topic_name = "/sensor/camera",
             message_type = "Image",
+            enabled = true,
         },
-        
-        -- Pose
         {
-            topic_name = "/robot_pose",
-            message_type = "Pose",
+            topic_name = "/sensor/pointcloud",
+            message_type = "PointCloud2",
+            enabled = false,  -- 暂时禁用
         },
-        
-        -- Point
         {
-            topic_name = "/waypoint",
-            message_type = "Point",
+            topic_name = "/sensor/imu",
+            message_type = "Imu",
+            enabled = true,
         },
-        
-        -- Polygon
         {
-            topic_name = "/obstacle_polygon",
-            message_type = "PolygonStamped",
+            topic_name = "/visualization/markers",
+            message_type = "MarkerArray",
+            enabled = true,
         },
-        
-        
-        
-        
-        -- Note: The following message types are currently NOT fully supported:
-        -- 
-        -- DDS support but missing Foxglove handler:
-        -- - Odometry (PoseHandler only accepts Pose, not Odometry)
-        -- - PoseStamped (PoseHandler only accepts Pose, not PoseStamped)  
-        -- - PoseWithCovarianceStamped (PoseHandler only accepts Pose)
-        --
-        -- Missing DDS FromDDS converter implementation:
-        -- - LaserScan (has MessageTrait but missing FromDDS implementation)
-        -- - PointCloud2 (missing FromDDS converter)
-        --
-        -- Other issues:
-        -- - Twist (needs custom handler)
-        -- - JointTrajectory (commented out in type_support.hpp)
-        -- - Marker/MarkerArray (visualization_msgs not defined in DDS)
+        {
+            topic_name = "/localization/pose",
+            message_type = "PoseStamped",
+            enabled = true,
+        },
     },
 }
+
+return AUTONOMY_VISUALIZATION

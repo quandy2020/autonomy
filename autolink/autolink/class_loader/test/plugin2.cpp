@@ -29,29 +29,39 @@ void Print(const std::string& name) {
 
 }  // namespace
 
-class Apple : public Base {
-   public:
-    void DoSomething() override { Print("Apple"); }
+class Apple : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Apple");
+    }
 };
 
-class Pear : public Base {
-   public:
-    void DoSomething() override { Print("Pear"); }
+class Pear : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Pear");
+    }
 };
 
-class Banana : public Base {
-   public:
-    void DoSomething() override { Print("Banana"); }
+class Banana : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Banana");
+    }
 };
 
-class Peach : public Base {
-   public:
-    void DoSomething() override { Print("Peach"); }
+class Peach : public Base
+{
+public:
+    void DoSomething() override {
+        Print("Peach");
+    }
 };
 
 CLASS_LOADER_REGISTER_CLASS(Apple, Base)
 CLASS_LOADER_REGISTER_CLASS(Pear, Base)
 CLASS_LOADER_REGISTER_CLASS(Banana, Base)
 CLASS_LOADER_REGISTER_CLASS(Peach, Base)
-
-

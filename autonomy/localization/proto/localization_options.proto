@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,15 @@ syntax = "proto3";
 
 package autonomy.localization.proto;
 
+// Localization Options
+// Configuration options for the localization system
 message LocalizationOptions
 {
-  
+
+    // Default localization algorithm to use
+    // Options: "amcl", "cartographer", etc.
+    string default_algorithm = 2;
+    
+    // Enable/disable localization
+    bool enabled = 3;
 }

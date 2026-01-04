@@ -32,10 +32,9 @@
 #ifndef TF2_TRANSFORM_STORAGE_H
 #define TF2_TRANSFORM_STORAGE_H
 
-#include <autonomy/transform/tf2/LinearMath/Vector3.h>
-#include <autonomy/transform/tf2/LinearMath/Quaternion.h>
-
 #include <autonomy/transform/geometry_msgs/transform_stamped.h>
+#include <autonomy/transform/tf2/LinearMath/Quaternion.h>
+#include <autonomy/transform/tf2/LinearMath/Vector3.h>
 // #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/transform/tf2/time.h"
 
@@ -49,36 +48,34 @@ typedef uint32_t CompactFrameID;
 class TransformStorage
 {
 public:
-  TransformStorage();
-  TransformStorage(const geometry_msgs::TransformStamped& data, CompactFrameID frame_id, CompactFrameID child_frame_id);
+    TransformStorage();
+    TransformStorage(const geometry_msgs::TransformStamped& data,
+                     CompactFrameID frame_id, CompactFrameID child_frame_id);
 
-  TransformStorage(const TransformStorage& rhs)
-  {
-    *this = rhs;
-  }
+    TransformStorage(const TransformStorage& rhs) {
+        *this = rhs;
+    }
 
-  TransformStorage& operator=(const TransformStorage& rhs)
-  {
+    TransformStorage& operator=(const TransformStorage& rhs) {
 #if 01
-    rotation_ = rhs.rotation_;
-    translation_ = rhs.translation_;
-    stamp_ = rhs.stamp_;
-    frame_id_ = rhs.frame_id_;
-    child_frame_id_ = rhs.child_frame_id_;
+        rotation_ = rhs.rotation_;
+        translation_ = rhs.translation_;
+        stamp_ = rhs.stamp_;
+        frame_id_ = rhs.frame_id_;
+        child_frame_id_ = rhs.child_frame_id_;
 #endif
-    return *this;
-  }
+        return *this;
+    }
 
-  tf2::Quaternion rotation_;
-  tf2::Vector3 translation_;
-  Time stamp_;
-  CompactFrameID frame_id_;
-  CompactFrameID child_frame_id_;
+    tf2::Quaternion rotation_;
+    tf2::Vector3 translation_;
+    Time stamp_;
+    CompactFrameID frame_id_;
+    CompactFrameID child_frame_id_;
 };
 
 }  // namespace tf2
 }  // namespace transform
 }  // namespace autonomy
 
-#endif // TF2_TRANSFORM_STORAGE_H
-
+#endif  // TF2_TRANSFORM_STORAGE_H

@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,20 @@ syntax = "proto3";
 
 package autonomy.map.proto;
 
-import "autonomy/map/proto/map_2d_option.proto";
-import "autonomy/map/proto/map_3d_option.proto";
-
 message MapOptions
 {
-    bool use_costmap_2d = 1;
-    bool use_costmap_3d = 2;
-    Costmap2DOptions costmap2d_options = 3;
-    Costmap3DOptions costmap3d_options = 4;
+    // 地图名称
+    string map_name = 1;
+    
+    // 地图文件路径（如果从文件加载）
+    string map_file = 2;
+    
+    // 地图发布主题（用于原始地图发布，默认: "map"）
+    string map_topic = 3;
+    
+    // 地图发布频率（Hz，默认: 0.0，表示不自动发布，仅在请求时发布）
+    double publish_frequency = 4;
+    
+    // 坐标系ID（通常是 "map"）
+    string frame_id = 5;
 }

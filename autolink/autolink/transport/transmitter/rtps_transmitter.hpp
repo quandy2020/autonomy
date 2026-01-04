@@ -119,21 +119,40 @@ bool RtpsTransmitter<M>::Transmit(const MessagePtr& msg,
 template <typename M>
 bool RtpsTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
     if (!this->enabled_) {
-        ADEBUG << "RtpsTransmitter not enable.";
+        AWARN << "RtpsTransmitter::Transmit: not enabled for channel: "
+              << this->attr_.channel_name();
         return false;
     }
 
     UnderlayMessage m;
-    RETURN_VAL_IF(!message::SerializeToString(msg, &m.data()), false);
+    if (!message::SerializeToString(msg, &m.data())) {
+        AWARN << "RtpsTransmitter::Transmit: SerializeToString failed for "
+                 "channel: "
+              << this->attr_.channel_name();
+        return false;
+    }
     m.timestamp(msg_info.send_time());
     m.seq(msg_info.seq_num());
 
     if (participant_->is_shutdown()) {
+        AWARN << "RtpsTransmitter::Transmit: participant is shutdown for "
+                 "channel: "
+              << this->attr_.channel_name();
         return false;
     }
 
-    RETURN_VAL_IF_NULL(publisher_, NULL);
-    return publisher_->Write(m, msg_info);
+    if (!publisher_) {
+        AWARN << "RtpsTransmitter::Transmit: publisher_ is null for channel: "
+              << this->attr_.channel_name();
+        return false;
+    }
+    bool write_result = publisher_->Write(m, msg_info);
+    if (!write_result) {
+        AWARN << "RtpsTransmitter::Transmit: publisher_->Write failed for "
+                 "channel: "
+              << this->attr_.channel_name();
+    }
+    return write_result;
 }
 
 }  // namespace transport

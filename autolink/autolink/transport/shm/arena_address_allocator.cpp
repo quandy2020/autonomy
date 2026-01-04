@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/arena_address_allocator.hpp"
 
 #include <sys/ipc.h>
@@ -29,9 +28,9 @@ namespace transport {
 
 ArenaAddressAllocator::ArenaAddressAllocator()
     : meta_shm_key_(
-          std::hash<std::string>{}("/autolink/__arena__/__address__/__meta__")),
+          std::hash<std::string>{}("/apollo/__arena__/__address__/__meta__")),
       node_shm_key_(
-          std::hash<std::string>{}("/autolink/__arena__/__address__/__node__")),
+          std::hash<std::string>{}("/apollo/__arena__/__address__/__node__")),
       meta_(nullptr),
       nodes_(nullptr),
       reclaim_stack_(nullptr) {

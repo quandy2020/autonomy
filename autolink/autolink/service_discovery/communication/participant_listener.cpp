@@ -31,11 +31,9 @@ ParticipantListener::~ParticipantListener() {
 
 void ParticipantListener::on_participant_discovery(
     eprosima::fastdds::dds::DomainParticipant* participant,
-    eprosima::fastdds::rtps::ParticipantDiscoveryStatus reason,
-    const eprosima::fastdds::dds::ParticipantBuiltinTopicData& info,
+    const eprosima::fastrtps::rtps::ParticipantDiscoveryInfo& info,
     bool& should_be_ignored) {
     (void)participant;
-    (void)reason;
     (void)info;
     should_be_ignored = false;
 

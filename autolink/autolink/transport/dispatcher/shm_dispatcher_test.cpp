@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/dispatcher/shm_dispatcher.hpp"
 
 #include <memory>
@@ -103,3 +102,12 @@ TEST(ShmDispatcherTest, shutdown) {
 
 }  // namespace transport
 }  // namespace autolink
+
+int main(int argc, char** argv) {
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    autolink::transport::Transport::Instance();
+    auto res = RUN_ALL_TESTS();
+    autolink::transport::Transport::Instance()->Shutdown();
+    return res;
+}

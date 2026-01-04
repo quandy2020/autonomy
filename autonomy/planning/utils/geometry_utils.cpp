@@ -18,9 +18,6 @@
 
 namespace autonomy {
 namespace planning {
-namespace utils {
-
-
-}  // namespace utils
+namespace utils {}  // namespace utils
 }  // namespace planning
 }  // namespace autonomy

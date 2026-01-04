@@ -20,14 +20,10 @@ namespace autonomy {
 namespace prediction {
 namespace common {
 
-PredictionInterface::~PredictionInterface()
-{
-
-}
+PredictionInterface::~PredictionInterface() {}
 
 proto::PredictionOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::PredictionOptions options;
     return options;
 }

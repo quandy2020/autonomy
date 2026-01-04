@@ -52,6 +52,8 @@ function(google_test NAME ARG_SRC)
   target_include_directories("${NAME}" SYSTEM PRIVATE
     "${GMOCK_INCLUDE_DIRS}")
   target_link_libraries("${NAME}" PUBLIC ${GMOCK_LIBRARIES})
+  # Suppress warnings from FastDDS headers (missing-braces warning in VendorId_t.hpp)
+  target_compile_options(${NAME} PRIVATE -Wno-error=missing-braces)
 
   add_test(${NAME} ${NAME})
 endfunction()

@@ -12,6 +12,22 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
-AUTONOMY_LOCALIZATION = {
+include "localization/amcl/amcl.lua"
 
+AUTONOMY_LOCALIZATION = {
+    -- Default localization algorithm to use
+    -- Options: "amcl", "cartographer", etc.
+    default_algorithm = "amcl",
+    
+    -- Enable/disable localization
+    enabled = true,
+    
+    -- AMCL configuration
+    -- 对应 proto: autonomy.localization.proto.AmclOptions
+    amcl = AMCL_OPTIONS,
+}
+
+-- 返回一个包含 AUTONOMY_LOCALIZATION 的表
+return {
+    AUTONOMY_LOCALIZATION = AUTONOMY_LOCALIZATION
 }

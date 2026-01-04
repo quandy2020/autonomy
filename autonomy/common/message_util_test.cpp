@@ -20,7 +20,6 @@
 
 #include "gtest/gtest.h"
 
-
 namespace autonomy {
 namespace common {
 

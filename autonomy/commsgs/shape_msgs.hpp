@@ -14,24 +14,22 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "autonomy/commsgs/proto/shape_msgs.pb.h"
-
-#include "autonomy/common/port.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/proto/shape_msgs.pb.h"
+#include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
 namespace builtin_interfaces {
 
-struct Plane
-{
+struct Plane {
     // Representation of a plane, using the plane equation ax + by + cz + d = 0.
     //
     // a := coef[0]
@@ -51,39 +49,43 @@ struct Plane
 // uint8 CONE=4
 // uint8 PRISM=5
 
-struct SolidPrimitive
-{
+struct SolidPrimitive {
     // The type of the shape
     uint32 type;
-    
+
     // The dimensions of the shape
-    // float64[<=3] dimensions  // At no point will dimensions have a length > 3.
+    // float64[<=3] dimensions  // At no point will dimensions have a length
+    // > 3.
     std::vector<double> dimensions;
-    
-    // The meaning of the shape dimensions: each constant defines the index in the 'dimensions' array.
-    
-    // For type BOX, the X, Y, and Z dimensions are the length of the corresponding sides of the box.
-    // uint32 BOX_X=0
-    // uint32 BOX_Y=1
-    // uint32 BOX_Z=2
-    
-    // // For the SPHERE type, only one component is used, and it gives the radius of the sphere.
-    // uint8 SPHERE_RADIUS=0
-    
-    // // For the CYLINDER and CONE types, the center line is oriented along the Z axis.
-    // // Therefore the CYLINDER_HEIGHT (CONE_HEIGHT) component of dimensions gives the
+
+    // The meaning of the shape dimensions: each constant defines the index in
+    // the 'dimensions' array.
+
+    // For type BOX, the X, Y, and Z dimensions are the length of the
+    // corresponding sides of the box. uint32 BOX_X=0 uint32 BOX_Y=1 uint32
+    // BOX_Z=2
+
+    // // For the SPHERE type, only one component is used, and it gives the
+    // radius of the sphere. uint8 SPHERE_RADIUS=0
+
+    // // For the CYLINDER and CONE types, the center line is oriented along the
+    // Z axis.
+    // // Therefore the CYLINDER_HEIGHT (CONE_HEIGHT) component of dimensions
+    // gives the
     // // height of the cylinder (cone).
-    // // The CYLINDER_RADIUS (CONE_RADIUS) component of dimensions gives the radius of
+    // // The CYLINDER_RADIUS (CONE_RADIUS) component of dimensions gives the
+    // radius of
     // // the base of the cylinder (cone).
-    // // Cone and cylinder primitives are defined to be circular. The tip of the cone
+    // // Cone and cylinder primitives are defined to be circular. The tip of
+    // the cone
     // // is pointing up, along +Z axis.
-    
+
     // uint8 CYLINDER_HEIGHT=0
     // uint8 CYLINDER_RADIUS=1
-    
+
     // uint8 CONE_HEIGHT=0
     // uint8 CONE_RADIUS=1
-    
+
     // // For the type PRISM, the center line is oriented along Z axis.
     // // The PRISM_HEIGHT component of dimensions gives the
     // // height of the prism.
@@ -92,22 +94,19 @@ struct SolidPrimitive
     // // directions by half of the PRISM_HEIGHT
     // // Only x and y fields of the points are used in the polygon.
     // // Points of the polygon are ordered counter-clockwise.
-    
+
     // uint8 PRISM_HEIGHT=0
     geometry_msgs::Polygon polygon;
 };
 
-
 // Definition of a triangle's vertices.
-struct MeshTriangle
-{
+struct MeshTriangle {
     // uint32[3] vertex_indices
-    std::vector<uint32> vertex_indices; 
+    std::vector<uint32> vertex_indices;
 };
 
 // Definition of a mesh.
-struct Mesh
-{
+struct Mesh {
     // List of triangles; the index values refer to positions in vertices[].
     std::vector<MeshTriangle> triangles;
 

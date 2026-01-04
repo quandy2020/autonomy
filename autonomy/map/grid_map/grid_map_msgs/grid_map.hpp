@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"

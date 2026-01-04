@@ -38,8 +38,7 @@ add_custom_command(
 # dependencies
 set(dependencies 
     autolink
-    fastdds
-    fastcdr
+    ${FastDDS_LIBRARIES}
     pthread
     ${Protobuf_LIBRARIES}
 )
@@ -93,6 +92,24 @@ target_include_directories(autolink.examples.paramserver PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/proto
 )
 target_link_libraries(autolink.examples.paramserver ${dependencies})
+
+# action_server example
+add_executable(autolink.examples.action_server action_server.cpp ${EXAMPLES_PROTO_SRC})
+add_dependencies(autolink.examples.action_server examples_protos)
+target_include_directories(autolink.examples.action_server PRIVATE 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/proto
+)
+target_link_libraries(autolink.examples.action_server ${dependencies})
+
+# action_client example
+add_executable(autolink.examples.action_client action_client.cpp ${EXAMPLES_PROTO_SRC})
+add_dependencies(autolink.examples.action_client examples_protos)
+target_include_directories(autolink.examples.action_client PRIVATE 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/proto
+)
+target_link_libraries(autolink.examples.action_client ${dependencies})
 
 # common component example
 add_subdirectory(common_component)

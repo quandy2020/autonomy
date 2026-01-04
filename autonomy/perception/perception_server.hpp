@@ -14,27 +14,26 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/perception/proto/perception_options.pb.h"
 
 namespace autonomy {
 namespace perception {
 
-class PerceptionServer 
+class PerceptionServer
 {
 public:
-   /**
-    * Define PerceptionServer::SharedPtr type
-    */
+    /**
+     * Define PerceptionServer::SharedPtr type
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
 
     PerceptionServer();
-    
-    ~PerceptionServer();
 
+    ~PerceptionServer();
 };
 
 }  // namespace perception

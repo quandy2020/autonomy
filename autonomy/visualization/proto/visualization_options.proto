@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,24 +14,19 @@
 
 syntax = "proto3";
 
-package autonomy.visualization.proto;
+package autonomy.commsgs.proto.visualization;
 
-// Topic subscription configuration
-message TopicSubscription
-{
-   string topic_name = 1;      // Topic name to subscribe
-   string message_type = 2;    // Message type (e.g., "LaserScan", "OccupancyGrid")
+/// 可视化服务器配置选项
+message VisualizationOptions {
+    /// 服务器监听地址
+    string host = 1;
+    
+    /// 服务器监听端口
+    uint32 port = 2;
+    
+    /// 是否启用客户端发布功能（允许 Foxglove Studio 发布消息）
+    bool enable_client_publish = 3;
+    
+    /// 是否启用连接图功能
+    bool enable_connection_graph = 4;
 }
-
-message VisualizationOptions
-{
-   string host = 1;
-   int32 port = 2;
-   string mcap_filename = 3;
-   bool write_mcap_data = 4;
-   
-   // List of topics to subscribe
-   repeated TopicSubscription subscriptions = 5;
-}
-
-

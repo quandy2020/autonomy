@@ -16,9 +16,6 @@
 
 #pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
 #include <memory>
 #include <utility>
 #include <vector>

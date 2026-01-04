@@ -24,17 +24,18 @@ namespace autonomy {
 namespace common {
 namespace helper_functions {
 
-namespace detail
-{
+namespace detail {
 constexpr auto kDoublePi = 2.0 * M_PI;
 }  // namespace detail
 
 ///
 /// @brief      Wrap angle to the [-pi, pi] range.
 ///
-/// @details    This method uses the formula suggested in the paper [On wrapping the Kalman filter
-///             and estimating with the SO(2) group](https://arxiv.org/pdf/1708.05551.pdf) and
-///             implements the following formula:
+/// @details    This method uses the formula suggested in the paper [On wrapping
+/// the Kalman filter
+///             and estimating with the SO(2)
+///             group](https://arxiv.org/pdf/1708.05551.pdf) and implements the
+///             following formula:
 ///             \f$\mathrm{mod}(\alpha + \pi, 2 \pi) - \pi\f$.
 ///
 /// @param[in]  angle  The input angle
@@ -44,21 +45,19 @@ constexpr auto kDoublePi = 2.0 * M_PI;
 /// @return     Angle wrapped to the chosen range.
 ///
 template <typename T>
-constexpr T wrap_angle(T angle) noexcept
-{
-  auto help_angle = angle + T(M_PI);
-  while (help_angle < T{}) {
-    help_angle += T(detail::kDoublePi);
-  }
-  while (help_angle >= T(detail::kDoublePi)) {
-    help_angle -= T(detail::kDoublePi);
-  }
-  return help_angle - T(M_PI);
+constexpr T wrap_angle(T angle) noexcept {
+    auto help_angle = angle + T(M_PI);
+    while (help_angle < T{}) {
+        help_angle += T(detail::kDoublePi);
+    }
+    while (help_angle >= T(detail::kDoublePi)) {
+        help_angle -= T(detail::kDoublePi);
+    }
+    return help_angle - T(M_PI);
 }
 
 }  // namespace helper_functions
 }  // namespace common
 }  // namespace autonomy
-
 
 #endif  // AUTONOMY_COMMON_HELPER_FUNCTIONS__ANGLE_UTILS_HPP_

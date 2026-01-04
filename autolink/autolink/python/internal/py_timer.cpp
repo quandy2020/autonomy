@@ -163,7 +163,7 @@ PyMODINIT_FUNC PyInit__autolink_timer_wrapper(void) {
     static struct PyModuleDef module_def = {
         PyModuleDef_HEAD_INIT,
         "_autolink_timer_wrapper",  // Module name.
-        "CyberTimer module",        // Module doc.
+        "AutolinkTimer module",     // Module doc.
         -1,                         // Module size.
         _autolink_timer_methods,    // Module methods.
         nullptr,

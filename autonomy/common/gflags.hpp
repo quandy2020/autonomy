@@ -19,12 +19,11 @@
 #include "gflags/gflags.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 
 DECLARE_bool(verbose);
 DECLARE_string(configuration_directory);
 DECLARE_string(configuration_basename);
 
-
-}   // namespace common
-}   // namespace autonomy
+}  // namespace common
+}  // namespace autonomy

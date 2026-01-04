@@ -14,23 +14,21 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
-
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/commsgs/std_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
 namespace stereo_msgs {
 
-struct DisparityImage 
-{
+struct DisparityImage {
     // Separate header for compatibility with current TimeSynchronizer.
     // Likely to be removed in a later release, use image.header instead.
     std_msgs::Header header;
@@ -41,8 +39,8 @@ struct DisparityImage
     sensor_msgs::Image image;
 
     // Stereo geometry. For disparity d, the depth from the camera is Z = fT/d.
-    float f; // Focal length, pixels
-    float t; // Baseline, world units
+    float f;  // Focal length, pixels
+    float t;  // Baseline, world units
 
     // Subwindow of (potentially) valid disparity values.
     sensor_msgs::RegionOfInterest valid_window;

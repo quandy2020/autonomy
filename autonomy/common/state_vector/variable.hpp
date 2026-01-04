@@ -26,32 +26,39 @@ namespace state_vector {
 ///
 /// @brief      A tag struct used to disambiguate variables from other types.
 ///
-struct Variable {};
+struct Variable {
+};
 
 ///
-/// @brief      A tag struct used to disambiguate variables that store angles from other types.
+/// @brief      A tag struct used to disambiguate variables that store angles
+/// from other types.
 ///
-///             Inheriting from AngleVariable allows to automatically wrap angles upon need.
+///             Inheriting from AngleVariable allows to automatically wrap
+///             angles upon need.
 ///
-struct AngleVariable : Variable {};
+struct AngleVariable : Variable {
+};
 
 ///
-/// @brief      A trait to check if a type is a variable by checking if it inherits from Variable.
+/// @brief      A trait to check if a type is a variable by checking if it
+/// inherits from Variable.
 ///
 /// @tparam     T     Query type.
 ///
-template<typename T>
-struct is_variable : std::conditional_t<
-    std::is_base_of<Variable, T>::value, std::true_type, std::false_type> {};
+template <typename T>
+struct is_variable : std::conditional_t<std::is_base_of<Variable, T>::value,
+                                        std::true_type, std::false_type> {
+};
 
 ///
 /// @brief      A trait to check if a variable represents an angle.
 ///
 /// @tparam     T     Variable type.
 ///
-template<typename T>
-struct is_angle : std::conditional_t<
-    std::is_base_of<AngleVariable, T>::value, std::true_type, std::false_type> {};
+template <typename T>
+struct is_angle : std::conditional_t<std::is_base_of<AngleVariable, T>::value,
+                                     std::true_type, std::false_type> {
+};
 
 }  // namespace state_vector
 }  // namespace common

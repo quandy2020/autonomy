@@ -19,8 +19,5 @@
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
-
-
-}   // namespace bridge
-}   // namespace autonomy
+namespace bridge {}  // namespace bridge
+}  // namespace autonomy

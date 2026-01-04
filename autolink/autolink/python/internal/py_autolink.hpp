@@ -127,13 +127,23 @@ public:
                                 request) { this->cb(request); };
             reader_ = node_->CreateReader<message::PyMessageWrap>(channel, f);
         } else {
+            // Set message type and proto_desc for proper message type matching
+            std::string proto_desc;
+            message::ProtobufFactory::Instance()->GetDescriptorString(
+                type, &proto_desc);
+            proto::RoleAttributes role_attr;
+            role_attr.set_channel_name(channel_name_);
+            role_attr.set_message_type(data_type_);
+            if (!proto_desc.empty()) {
+                role_attr.set_proto_desc(proto_desc);
+            }
             auto f =
                 [this](
                     const std::shared_ptr<const message::RawMessage>& request) {
                     this->cb_rawmsg(request);
                 };
             reader_rawmsg_ =
-                node_->CreateReader<message::RawMessage>(channel, f);
+                node_->CreateReader<message::RawMessage>(role_attr, f);
         }
     }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -27,7 +27,7 @@
 namespace autonomy {
 namespace sensor {
 
-class CollatorInterface 
+class CollatorInterface
 {
 public:
     using Callback =

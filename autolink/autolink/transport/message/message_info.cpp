@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/message/message_info.hpp"
 
 #include <cstring>
@@ -23,15 +22,9 @@
 namespace autolink {
 namespace transport {
 
-namespace {
-
-constexpr std::size_t SerializedSize() {
-    return 2 * ID_SIZE + 3 * sizeof(uint64_t);
-}
-
-}  // namespace
-
-const std::size_t MessageInfo::kSize = SerializedSize();
+const std::size_t MessageInfo::kSize = 2 * ID_SIZE + sizeof(uint64_t) +
+                                       sizeof(uint64_t) + sizeof(int32_t) +
+                                       sizeof(uint64_t);
 
 MessageInfo::MessageInfo() : sender_id_(false), spare_id_(false) {}
 

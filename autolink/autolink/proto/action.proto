@@ -1,0 +1,79 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.proto;
+
+// Goal UUID (16 bytes)
+message GoalUUID {
+    bytes uuid = 1;  // 16 bytes
+}
+
+// Goal status enumeration
+enum GoalStatus {
+    UNKNOWN = 0;
+    ACCEPTED = 1;
+    EXECUTING = 2;
+    CANCELING = 3;
+    SUCCEEDED = 4;
+    CANCELED = 5;
+    ABORTED = 6;
+}
+
+// Send goal request (generic - goal is embedded as bytes)
+message SendGoalRequest {
+    GoalUUID goal_id = 1;
+    bytes goal = 2;  // Serialized Goal message
+}
+
+// Send goal response
+message SendGoalResponse {
+    bool accepted = 1;
+    int64 stamp_sec = 2;
+    uint32 stamp_nanosec = 3;
+}
+
+// Cancel goal request
+message CancelGoalRequest {
+    GoalUUID goal_id = 1;
+}
+
+// Cancel goal response
+message CancelGoalResponse {
+    int32 return_code = 1;  // 0 = ERROR_NONE, 1 = ERROR_REJECTED, 2 = ERROR_UNKNOWN_GOAL_ID, 3 = ERROR_GOAL_TERMINATED
+    repeated GoalUUID goals_canceling = 2;
+}
+
+// Get result request
+message GetResultRequest {
+    GoalUUID goal_id = 1;
+}
+
+// Get result response (generic - result is embedded as bytes)
+message GetResultResponse {
+    int32 status = 1;  // GoalStatus enum value
+    bytes result = 2;  // Serialized Result message
+}
+
+// Feedback message (generic - feedback is embedded as bytes)
+message FeedbackMessage {
+    GoalUUID goal_id = 1;
+    bytes feedback = 2;  // Serialized Feedback message
+}
+
+// Goal status message
+message GoalStatusMessage {
+    repeated GoalStatus status_list = 1;
+}

@@ -24,12 +24,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "autolink/proto/role_attributes.pb.h"
-#include "autolink/proto/transport_conf.pb.h"
-
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/common/types.hpp"
+#include "autolink/proto/role_attributes.pb.h"
+#include "autolink/proto/transport_conf.pb.h"
 #include "autolink/task/task.hpp"
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
 #include "autolink/transport/message/history.hpp"

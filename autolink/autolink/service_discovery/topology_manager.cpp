@@ -116,10 +116,10 @@ bool TopologyManager::CreateParticipant() {
 }
 
 void TopologyManager::OnParticipantChange(
-    eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
-    const eprosima::fastdds::rtps::GUID_t& p_guid,
-    const eprosima::fastdds::rtps::BuiltinEndpointSet_t& /*b_endpoints*/,
-    eprosima::fastdds::dds::Duration_t /*lease_duration*/) {
+    eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::DISCOVERY_STATUS status,
+    const eprosima::fastrtps::rtps::GUID_t& p_guid,
+    const eprosima::fastrtps::rtps::BuiltinEndpointSet_t& /*b_endpoints*/,
+    eprosima::fastrtps::Duration_t /*lease_duration*/) {
     // Get participant name from guid (if available in participant_names_)
     std::string participant_name("");
     if (participant_names_.find(p_guid) != participant_names_.end()) {
@@ -146,14 +146,14 @@ void TopologyManager::OnParticipantChange(
 }
 
 bool TopologyManager::Convert(
-    eprosima::fastdds::rtps::ParticipantDiscoveryStatus status,
-    const eprosima::fastdds::rtps::GUID_t& p_guid,
+    eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::DISCOVERY_STATUS status,
+    const eprosima::fastrtps::rtps::GUID_t& p_guid,
     const std::string& participant_name, ChangeMsg* msg) {
     std::string name = participant_name;
     OperateType opt_type;
 
     switch (status) {
-        case eprosima::fastdds::rtps::ParticipantDiscoveryStatus::
+        case eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::
             DISCOVERED_PARTICIPANT:
             if (!name.empty()) {
                 AINFO << "discovery participant name:" << name;
@@ -161,7 +161,7 @@ bool TopologyManager::Convert(
             }
             opt_type = OperateType::OPT_JOIN;
             break;
-        case eprosima::fastdds::rtps::ParticipantDiscoveryStatus::
+        case eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::
             REMOVED_PARTICIPANT:
             if (participant_names_.find(p_guid) != participant_names_.end()) {
                 name = participant_names_[p_guid];
@@ -170,7 +170,7 @@ bool TopologyManager::Convert(
             }
             opt_type = OperateType::OPT_LEAVE;
             break;
-        case eprosima::fastdds::rtps::ParticipantDiscoveryStatus::
+        case eprosima::fastrtps::rtps::ParticipantDiscoveryInfo::
             DROPPED_PARTICIPANT:
             if (participant_names_.find(p_guid) != participant_names_.end()) {
                 name = participant_names_[p_guid];

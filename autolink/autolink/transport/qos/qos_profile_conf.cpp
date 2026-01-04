@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/qos/qos_profile_conf.hpp"
 
 namespace autolink {

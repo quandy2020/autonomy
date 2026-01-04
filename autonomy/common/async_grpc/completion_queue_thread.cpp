@@ -15,11 +15,12 @@
  */
 
 #include "autonomy/common/async_grpc/completion_queue_thread.h"
+
 #include "autonomy/common/async_grpc/common/make_unique.h"
 #include "glog/logging.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 
 CompletionQueueThread::CompletionQueueThread(
@@ -27,21 +28,21 @@ CompletionQueueThread::CompletionQueueThread(
     : completion_queue_(std::move(completion_queue)) {}
 
 ::grpc::ServerCompletionQueue* CompletionQueueThread::completion_queue() {
-  return completion_queue_.get();
+    return completion_queue_.get();
 }
 
 void CompletionQueueThread::Start(CompletionQueueRunner runner) {
-  CHECK(!worker_thread_);
-  worker_thread_ = common::make_unique<std::thread>(
-      [this, runner]() { runner(this->completion_queue_.get()); });
+    CHECK(!worker_thread_);
+    worker_thread_ = common::make_unique<std::thread>(
+        [this, runner]() { runner(this->completion_queue_.get()); });
 }
 
 void CompletionQueueThread::Shutdown() {
-  LOG(INFO) << "Shutting down completion queue " << completion_queue_.get();
-  completion_queue_->Shutdown();
-  worker_thread_->join();
+    LOG(INFO) << "Shutting down completion queue " << completion_queue_.get();
+    completion_queue_->Shutdown();
+    worker_thread_->join();
 }
 
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy

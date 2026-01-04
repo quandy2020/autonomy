@@ -28,12 +28,12 @@ namespace autolink {
 const char TEST_RECORD_FILE[] = "/tmp/py_record_test.record";
 const char CHAN_1[] = "channel/chatter";
 const char CHAN_2[] = "/test2";
-const char MSG_TYPE[] = "autolink.autolink.proto.Test";
+const char MSG_TYPE[] = "autolink.proto.Test";
 const char PROTO_DESC[] = "1234567890";
 const char MSG_DATA[] = "9876543210";
 const char TEST_FILE[] = "test.record";
 
-TEST(CyberRecordTest, record_readerwriter) {
+TEST(AutolinkRecordTest, record_readerwriter) {
     record::PyRecordWriter rec_writer;
     rec_writer.SetSizeOfFileSegmentation(0);
     rec_writer.SetIntervalOfFileSegmentation(0);

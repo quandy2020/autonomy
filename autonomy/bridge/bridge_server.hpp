@@ -19,14 +19,14 @@
 #include <memory>
 #include <unordered_map>
 
-#include "autonomy/common/macros.hpp"
 #include "autonomy/bridge/common/bridge_option.hpp"
 #include "autonomy/bridge/plugins/grpc/grpc_bridge.hpp"
+#include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 
-class BridgeServer 
+class BridgeServer
 {
 public:
     /**
@@ -56,7 +56,7 @@ public:
     void Start();
 
     /**
-     * @brief Shutdown 
+     * @brief Shutdown
      */
     void WaitForShutdown();
 
@@ -65,6 +65,5 @@ private:
     plugins::grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
 };
 
-
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace bridge
+}  // namespace autonomy

@@ -98,8 +98,8 @@ const std::string GIT_VERSION = "";
 const std::string GIT_BRANCH = "";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2025-11-21 03:11:16";
-const std::string BUILD_HOST = "74ad12676a7f";
+const std::string BUILD_TIMESTAMP = "2026-01-04 03:33:39";
+const std::string BUILD_HOST = "q-Precision-3680";
 const std::string BUILD_USER = "root";
 
 // 系统信息
@@ -107,7 +107,7 @@ const std::string SYSTEM_NAME = "Linux";
 const std::string SYSTEM_PROCESSOR = "x86_64";
 const std::string SYSTEM_VERSION = "6.8.0-60-generic";
 const std::string COMPILER_ID = "GNU";
-const std::string COMPILER_VERSION = "13.3.0";
+const std::string COMPILER_VERSION = "11.4.0";
 
 }  // namespace
 

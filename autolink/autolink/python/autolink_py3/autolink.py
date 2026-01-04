@@ -33,56 +33,57 @@ PY_CALLBACK_TYPE = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_char_p)
 PY_CALLBACK_TYPE_T = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_char_p)
 
 # init vars
-APOLLO_DISTRIBUTION_HOME = os.environ.get(
-    'APOLLO_DISTRIBUTION_HOME', '/opt/apollo/neo')
+AUTOLINK_DISTRIBUTION_HOME = os.environ.get(
+    'AUTOLINK_DISTRIBUTION_HOME', '/opt/apollo/neo')
 
-if APOLLO_DISTRIBUTION_HOME.startswith('/opt/apollo/neo') or APOLLO_DISTRIBUTION_HOME.startswith('/home'):
+# Add wrapper library path if AUTOLINK_DISTRIBUTION_HOME is set
+if AUTOLINK_DISTRIBUTION_HOME:
     wrapper_lib_path = os.path.join(
-        APOLLO_DISTRIBUTION_HOME, "lib", "cyber/python/internal")
+        AUTOLINK_DISTRIBUTION_HOME, "lib", "autolink/python/internal")
+    if os.path.exists(wrapper_lib_path):
+        sys.path.append(wrapper_lib_path)
 
-    sys.path.append(wrapper_lib_path)
-
-_CYBER = importlib.import_module('_cyber_wrapper')
+_AUTOLINK = importlib.import_module('_autolink_wrapper')
 
 
 ##
-# @brief init cyber environment.
+# @brief init autolink environment.
 # @param module_name Used as the log file name.
 #
 # @return Success is True, otherwise False.
-def init(module_name="cyber_py"):
+def init(module_name="autolink_py"):
     """
-    init cyber environment.
+    init autolink environment.
     """
-    return _CYBER.py_init(module_name)
+    return _AUTOLINK.py_init(module_name)
 
 
 def ok():
     """
-    is cyber envi ok.
+    is autolink envi ok.
     """
-    return _CYBER.py_ok()
+    return _AUTOLINK.py_ok()
 
 
 def shutdown():
     """
-    shutdown cyber envi.
+    shutdown autolink envi.
     """
-    return _CYBER.py_shutdown()
+    return _AUTOLINK.py_shutdown()
 
 
 def is_shutdown():
     """
-    is cyber shutdown.
+    is autolink shutdown.
     """
-    return _CYBER.py_is_shutdown()
+    return _AUTOLINK.py_is_shutdown()
 
 
 def waitforshutdown():
     """
-    wait until the cyber is shutdown.
+    wait until the autolink is shutdown.
     """
-    return _CYBER.py_waitforshutdown()
+    return _AUTOLINK.py_waitforshutdown()
 
 # //////////////////////////////class//////////////////////////////
 
@@ -90,7 +91,7 @@ def waitforshutdown():
 class Writer(object):
 
     """
-    Class for cyber writer wrapper.
+    Class for autolink writer wrapper.
     """
 
     def __init__(self, name, writer, data_type):
@@ -108,13 +109,13 @@ class Writer(object):
         """
         writer message string
         """
-        return _CYBER.PyWriter_write(self.writer, data.SerializeToString())
+        return _AUTOLINK.PyWriter_write(self.writer, data.SerializeToString())
 
 
 class Reader(object):
 
     """
-    Class for cyber reader wrapper.
+    Class for autolink reader wrapper.
     """
 
     def __init__(self, name, reader, data_type):
@@ -126,7 +127,7 @@ class Reader(object):
 class Client(object):
 
     """
-    Class for cyber service client wrapper.
+    Class for autolink service client wrapper.
     """
 
     def __init__(self, client, data_type):
@@ -143,7 +144,7 @@ class Client(object):
         """
         send request to service
         """
-        response_str = _CYBER.PyClient_send_request(
+        response_str = _AUTOLINK.PyClient_send_request(
             self.client, data.SerializeToString())
         if len(response_str) == 0:
             return None
@@ -156,11 +157,11 @@ class Client(object):
 class Node(object):
 
     """
-    Class for cyber Node wrapper.
+    Class for autolink Node wrapper.
     """
 
     def __init__(self, name):
-        self.node = _CYBER.new_PyNode(name)
+        self.node = _AUTOLINK.new_PyNode(name)
         self.list_writer = []
         self.list_reader = []
         self.subs = {}
@@ -174,14 +175,14 @@ class Node(object):
     def __del__(self):
         # print("+++ node __del___")
         for writer in self.list_writer:
-            _CYBER.delete_PyWriter(writer)
+            _AUTOLINK.delete_PyWriter(writer)
         for reader in self.list_reader:
-            _CYBER.delete_PyReader(reader)
+            _AUTOLINK.delete_PyReader(reader)
         for c in self.list_client:
-            _CYBER.delete_PyClient(c)
+            _AUTOLINK.delete_PyClient(c)
         for s in self.list_service:
-            _CYBER.delete_PyService(s)
-        _CYBER.delete_PyNode(self.node)
+            _AUTOLINK.delete_PyService(s)
+        _AUTOLINK.delete_PyNode(self.node)
 
     ##
     # @brief register proto message by proto descriptor file.
@@ -197,7 +198,7 @@ class Node(object):
         file_desc.CopyToProto(proto)
         proto.name = file_desc.name
         desc_str = proto.SerializeToString()
-        _CYBER.PyNode_register_message(self.node, desc_str)
+        _AUTOLINK.PyNode_register_message(self.node, desc_str)
 
     ##
     # @brief create a channel writer for send message to another channel.
@@ -213,14 +214,14 @@ class Node(object):
         """
         self.register_message(data_type.DESCRIPTOR.file)
         datatype = data_type.DESCRIPTOR.full_name
-        writer = _CYBER.PyNode_create_writer(self.node, name,
+        writer = _AUTOLINK.PyNode_create_writer(self.node, name,
                                              datatype, qos_depth)
         self.list_writer.append(writer)
         return Writer(name, writer, datatype)
 
     def reader_callback(self, name):
         sub = self.subs[name.decode('utf8')]
-        msg_str = _CYBER.PyReader_read(sub[0], False)
+        msg_str = _AUTOLINK.PyReader_read(sub[0], False)
         if len(msg_str) > 0:
             if sub[3] != "RawData":
                 proto = sub[3]()
@@ -256,9 +257,14 @@ class Node(object):
             return None
         self.mutex.release()
 
-        # datatype = data_type.DESCRIPTOR.full_name
-        reader = _CYBER.PyNode_create_reader(
-            self.node, name, str(data_type))
+        # Register message type and get full name
+        if data_type != "RawData":
+            self.register_message(data_type.DESCRIPTOR.file)
+            datatype = data_type.DESCRIPTOR.full_name
+        else:
+            datatype = "RawData"
+        reader = _AUTOLINK.PyNode_create_reader(
+            self.node, name, datatype)
         if reader is None:
             return None
         self.list_reader.append(reader)
@@ -270,7 +276,7 @@ class Node(object):
         fun_reader_cb = PY_CALLBACK_TYPE(self.reader_callback)
         self.callbacks[name] = fun_reader_cb
         f_ptr = ctypes.cast(self.callbacks[name], ctypes.c_void_p).value
-        _CYBER.PyReader_register_func(reader, f_ptr)
+        _AUTOLINK.PyReader_register_func(reader, f_ptr)
 
         return Reader(name, reader, data_type)
 
@@ -290,7 +296,7 @@ class Node(object):
     # @return the client object.
     def create_client(self, name, request_data_type, response_data_type):
         datatype = request_data_type.DESCRIPTOR.full_name
-        c = _CYBER.PyNode_create_client(self.node, name,
+        c = _AUTOLINK.PyNode_create_client(self.node, name,
                                         str(datatype))
         self.list_client.append(c)
         return Client(c, response_data_type)
@@ -299,7 +305,7 @@ class Node(object):
         # Temporary workaround for cyber_py3 examples: service & client
         v = self.services[name.decode("utf-8")]
 
-        msg_str = _CYBER.PyService_read(v[0])
+        msg_str = _AUTOLINK.PyService_read(v[0])
         if (len(msg_str) > 0):
             proto = v[3]()
             proto.ParseFromString(msg_str)
@@ -308,7 +314,7 @@ class Node(object):
                 response = v[1](proto)
             else:
                 response = v[1](proto, v[2])
-            _CYBER.PyService_write(v[0], response.SerializeToString())
+            _AUTOLINK.PyService_write(v[0], response.SerializeToString())
         return 0
 
     ##
@@ -331,7 +337,7 @@ class Node(object):
             return None
         self.mutex.release()
         datatype = req_data_type.DESCRIPTOR.full_name
-        s = _CYBER.PyNode_create_service(self.node, name, str(datatype))
+        s = _AUTOLINK.PyNode_create_service(self.node, name, str(datatype))
         self.list_service.append(s)
         v = (s, callback, args, req_data_type, False)
         self.mutex.acquire()
@@ -340,14 +346,14 @@ class Node(object):
         f = PY_CALLBACK_TYPE(self.service_callback)
         self.callbacks[name] = f
         f_ptr = ctypes.cast(f, ctypes.c_void_p).value
-        _CYBER.PyService_register_func(s, f_ptr)
+        _AUTOLINK.PyService_register_func(s, f_ptr)
         return s
 
     def spin(self):
         """
         spin for every 0.002s.
         """
-        while not _CYBER.py_is_shutdown():
+        while not _AUTOLINK.py_is_shutdown():
             time.sleep(0.002)
 
 
@@ -363,7 +369,7 @@ class ChannelUtils(object):
     # @return a human readable form of this message. For debugging and
     # other purposes.
     def get_debugstring_rawmsgdata(msg_type, rawmsgdata):
-        return _CYBER.PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata(msg_type, rawmsgdata)
+        return _AUTOLINK.PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata(msg_type, rawmsgdata)
 
     @staticmethod
     ##
@@ -374,7 +380,7 @@ class ChannelUtils(object):
     #
     # @return return the messsage type of this channel.
     def get_msgtype(channel_name, sleep_s=2):
-        return _CYBER.PyChannelUtils_get_msg_type(channel_name, sleep_s)
+        return _AUTOLINK.PyChannelUtils_get_msg_type(channel_name, sleep_s)
 
     @staticmethod
     ##
@@ -384,7 +390,7 @@ class ChannelUtils(object):
     #
     # @return all active channel names.
     def get_channels(sleep_s=2):
-        return _CYBER.PyChannelUtils_get_active_channels(sleep_s)
+        return _AUTOLINK.PyChannelUtils_get_active_channels(sleep_s)
 
     @staticmethod
     ##
@@ -394,7 +400,7 @@ class ChannelUtils(object):
     #
     # @return all active channels info. {'channel1':[], 'channel2':[]} .
     def get_channels_info(sleep_s=2):
-        return _CYBER.PyChannelUtils_get_channels_info(sleep_s)
+        return _AUTOLINK.PyChannelUtils_get_channels_info(sleep_s)
 
 
 class NodeUtils(object):
@@ -407,7 +413,7 @@ class NodeUtils(object):
     #
     # @return all active node names.
     def get_nodes(sleep_s=2):
-        return _CYBER.PyNodeUtils_get_active_nodes(sleep_s)
+        return _AUTOLINK.PyNodeUtils_get_active_nodes(sleep_s)
 
     @staticmethod
     ##
@@ -418,7 +424,7 @@ class NodeUtils(object):
     #
     # @return the node's attribute.
     def get_node_attr(node_name, sleep_s=2):
-        return _CYBER.PyNodeUtils_get_node_attr(node_name, sleep_s)
+        return _AUTOLINK.PyNodeUtils_get_node_attr(node_name, sleep_s)
 
     @staticmethod
     ##
@@ -429,7 +435,7 @@ class NodeUtils(object):
     #
     # @return node's reader channel names.
     def get_readersofnode(node_name, sleep_s=2):
-        return _CYBER.PyNodeUtils_get_readersofnode(node_name, sleep_s)
+        return _AUTOLINK.PyNodeUtils_get_readersofnode(node_name, sleep_s)
 
     @staticmethod
     ##
@@ -440,7 +446,7 @@ class NodeUtils(object):
     #
     # @return node's writer channel names.
     def get_writersofnode(node_name, sleep_s=2):
-        return _CYBER.PyNodeUtils_get_writersofnode(node_name, sleep_s)
+        return _AUTOLINK.PyNodeUtils_get_writersofnode(node_name, sleep_s)
 
 
 class ServiceUtils(object):
@@ -453,7 +459,7 @@ class ServiceUtils(object):
     #
     # @return all active service names.
     def get_services(sleep_s=2):
-        return _CYBER.PyServiceUtils_get_active_services(sleep_s)
+        return _AUTOLINK.PyServiceUtils_get_active_services(sleep_s)
 
     @staticmethod
     ##
@@ -464,4 +470,4 @@ class ServiceUtils(object):
     #
     # @return the service's attribute.
     def get_service_attr(service_name, sleep_s=2):
-        return _CYBER.PyServiceUtils_get_service_attr(service_name, sleep_s)
+        return _AUTOLINK.PyServiceUtils_get_service_attr(service_name, sleep_s)

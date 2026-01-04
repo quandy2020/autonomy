@@ -22,44 +22,31 @@ namespace commsgs {
 namespace std_msgs {
 
 // Converts 'data' to a proto::std_msgs::Header.
-proto::std_msgs::Header ToProto(const Header& data)
-{
+proto::std_msgs::Header ToProto(const Header& data) {
     proto::std_msgs::Header proto;
     *proto.mutable_stamp() = builtin_interfaces::ToProto(data.stamp);
     proto.set_frame_id(data.frame_id);
     return proto;
 }
 
-Header FromProto(const proto::std_msgs::Header& proto)
-{
-    return {
-      builtin_interfaces::FromProto(proto.stamp()),
-      proto.frame_id()
-    };
+Header FromProto(const proto::std_msgs::Header& proto) {
+    return {builtin_interfaces::FromProto(proto.stamp()), proto.frame_id()};
 }
 
-proto::std_msgs::ColorRGBA ToProto(const ColorRGBA& data)
-{
+proto::std_msgs::ColorRGBA ToProto(const ColorRGBA& data) {
     proto::std_msgs::ColorRGBA proto;
     proto.set_r(data.r);
     proto.set_g(data.g);
     proto.set_b(data.b);
     proto.set_a(data.a);
     return proto;
-}   
-
-ColorRGBA FromProto(const proto::std_msgs::ColorRGBA& proto)
-{
-    return {
-        proto.r(),
-        proto.g(),
-        proto.b(),
-        proto.a()
-    };
 }
 
-proto::std_msgs::MultiArrayDimension ToProto(const MultiArrayDimension& data)
-{
+ColorRGBA FromProto(const proto::std_msgs::ColorRGBA& proto) {
+    return {proto.r(), proto.g(), proto.b(), proto.a()};
+}
+
+proto::std_msgs::MultiArrayDimension ToProto(const MultiArrayDimension& data) {
     proto::std_msgs::MultiArrayDimension proto;
     proto.set_label(data.label);
     proto.set_size(data.size);
@@ -67,17 +54,12 @@ proto::std_msgs::MultiArrayDimension ToProto(const MultiArrayDimension& data)
     return proto;
 }
 
-MultiArrayDimension FromProto(const proto::std_msgs::MultiArrayDimension& proto)
-{
-    return {
-        proto.label(),
-        proto.size(),
-        proto.stride()
-    };
+MultiArrayDimension FromProto(
+    const proto::std_msgs::MultiArrayDimension& proto) {
+    return {proto.label(), proto.size(), proto.stride()};
 }
 
-proto::std_msgs::MultiArrayLayout ToProto(const MultiArrayLayout& data)
-{
+proto::std_msgs::MultiArrayLayout ToProto(const MultiArrayLayout& data) {
     proto::std_msgs::MultiArrayLayout proto;
     for (const auto& dimension : data.dim) {
         auto* dim_proto = proto.add_dim();
@@ -89,10 +71,9 @@ proto::std_msgs::MultiArrayLayout ToProto(const MultiArrayLayout& data)
     return proto;
 }
 
-MultiArrayLayout FromProto(const proto::std_msgs::MultiArrayLayout& proto)
-{
+MultiArrayLayout FromProto(const proto::std_msgs::MultiArrayLayout& proto) {
     MultiArrayLayout data;
-    
+
     // Convert dimensions
     data.dim.reserve(proto.dim_size());
     for (const auto& dim_proto : proto.dim()) {
@@ -102,13 +83,12 @@ MultiArrayLayout FromProto(const proto::std_msgs::MultiArrayLayout& proto)
         dim.stride = dim_proto.stride();
         data.dim.push_back(dim);
     }
-    
+
     data.data_offset = proto.data_offset();
     return data;
 }
 
-proto::std_msgs::Float32MultiArray ToProto(const Float32MultiArray& data)
-{
+proto::std_msgs::Float32MultiArray ToProto(const Float32MultiArray& data) {
     proto::std_msgs::Float32MultiArray proto;
     *proto.mutable_layout() = ToProto(data.layout);
 
@@ -118,11 +98,10 @@ proto::std_msgs::Float32MultiArray ToProto(const Float32MultiArray& data)
         proto.add_data(value);
     }
     return proto;
-}   
+}
 
 // Converts 'proto' to Float32MultiArray.
-Float32MultiArray FromProto(const proto::std_msgs::Float32MultiArray& proto)
-{
+Float32MultiArray FromProto(const proto::std_msgs::Float32MultiArray& proto) {
     Float32MultiArray data;
     data.layout = FromProto(proto.layout());
     for (const auto& value : proto.data()) {
@@ -131,18 +110,14 @@ Float32MultiArray FromProto(const proto::std_msgs::Float32MultiArray& proto)
     return data;
 }
 
-proto::std_msgs::String ToProto(const String& data)
-{
+proto::std_msgs::String ToProto(const String& data) {
     proto::std_msgs::String proto;
     proto.set_data(data.data);
     return proto;
 }
 
-String FromProto(const proto::std_msgs::String& proto)
-{
-    return {
-        proto.data()
-    };
+String FromProto(const proto::std_msgs::String& proto) {
+    return {proto.data()};
 }
 
 }  // namespace std_msgs

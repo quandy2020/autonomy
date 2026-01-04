@@ -19,36 +19,16 @@ include "prediction/prediction.lua"
 include "perception/perception.lua"
 include "localization/localization.lua"
 include "planner/planner.lua"
-include "tasks/tasks.lua"
+include "tasks/navigator.lua"
 include "transform/transform.lua"
-include "visualization/visualization.lua"
-
--- -- Autonomy all lua config
--- AUTONOMY = {
---   bridge = AUTONOMY_BRIDGE,                 -- bridge options
---   control = AUTONOMY_CONTROLLER,            -- controller options
---   localization = AUTONOMY_LOCALIZATION,     -- localization options
---   map = AUTONOMY_MAP,                       -- map options
---   prediction = AUTONOMY_PREDICTION,         -- prediction options
---   perception = AUTONOMY_PERCEPTION,         -- perception options
---   planning = AUTONOMY_PLANNER,              -- planner options
---   tasks = AUTONOMY_TASKS,                   -- task options
---   transform = AUTONOMY_TRANSFORM,           -- transform options
---   -- visualization = AUTONOMY_VISUALIZATION,   -- visualization options
--- }
 
 -- Autonomy all lua config
-options = {
-  bridge = AUTONOMY_BRIDGE,                 -- bridge options
-  control = AUTONOMY_CONTROLLER,            -- controller options
-  localization = AUTONOMY_LOCALIZATION,     -- localization options
+AUTONOMY = {
+  -- bridge = AUTONOMY_BRIDGE,                 -- bridge options
+  -- localization = AUTONOMY_LOCALIZATION,     -- localization options
   map = AUTONOMY_MAP,                       -- map options
-  prediction = AUTONOMY_PREDICTION,         -- prediction options
-  perception = AUTONOMY_PERCEPTION,         -- perception options
+  -- transform = AUTONOMY_TRANSFORM,           -- transform options
   planning = AUTONOMY_PLANNER,              -- planner options
-  tasks = AUTONOMY_TASKS,                   -- task options
-  transform = AUTONOMY_TRANSFORM,           -- transform options
-  visualization = AUTONOMY_VISUALIZATION,   -- visualization options
 }
 
-return options
+return AUTONOMY

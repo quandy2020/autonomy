@@ -14,23 +14,22 @@
  * limitations under the License.
  */
 
- #include "autolink/examples/proto/examples.pb.h"
+#include "autolink/examples/proto/examples.pb.h"
 
- #include <unistd.h>
- #include <atomic>
- #include <chrono>
- #include <iostream>
- #include <thread>
- 
- #include "autolink/autolink.hpp"
- #include "autolink/parameter/parameter_client.hpp"
- #include "autolink/parameter/parameter_server.hpp"
- 
- using autolink::Parameter;
- using autolink::ParameterClient;
- using autolink::ParameterServer;
- 
- 
+#include <unistd.h>
+#include <atomic>
+#include <chrono>
+#include <iostream>
+#include <thread>
+
+#include "autolink/autolink.hpp"
+#include "autolink/parameter/parameter_client.hpp"
+#include "autolink/parameter/parameter_server.hpp"
+
+using autolink::Parameter;
+using autolink::ParameterClient;
+using autolink::ParameterServer;
+
 int main(int argc, char** argv) {
     autolink::Init(*argv);
     auto node_unique = autolink::CreateNode("parameter");

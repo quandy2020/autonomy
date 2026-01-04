@@ -16,22 +16,17 @@
 
 #include <random>
 
-#include "gtest/gtest.h"
 #include "glog/logging.h"
+#include "gtest/gtest.h"
 
 namespace autonomy {
 namespace common {
-namespace transform{
+namespace transform {
 namespace {
 
-TEST(TransformTest, GetAngle) 
-{
-  
-}
+TEST(TransformTest, GetAngle) {}
 
 }  // namespace
 }  // namespace transform
 }  // namespace common
 }  // namespace autonomy
-
- 

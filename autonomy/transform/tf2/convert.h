@@ -32,10 +32,9 @@
 #ifndef TF2_CONVERT_H
 #define TF2_CONVERT_H
 
-
-#include <autonomy/transform/tf2/transform_datatypes.h>
-#include <autonomy/transform/tf2/exceptions.h>
 #include <autonomy/transform/geometry_msgs/transform_stamped.h>
+#include <autonomy/transform/tf2/exceptions.h>
+#include <autonomy/transform/tf2/transform_datatypes.h>
 // #include "autonomy/commsgs/geometry_msgs.hpp"
 #include <autonomy/transform/tf2/impl/convert.h>
 #include <autonomy/transform/tf2/time.h>
@@ -46,17 +45,20 @@ namespace tf2 {
 
 /**\brief The templated function expected to be able to do a transform
  *
- * This is the method which tf2 will use to try to apply a transform for any given datatype.   
+ * This is the method which tf2 will use to try to apply a transform for any
+ * given datatype.
  * \param data_in The data to be transformed.
- * \param data_out A reference to the output data.  Note this can point to data in and the method should be mutation safe.
- * \param transform The transform to apply to data_in to fill data_out.  
- * 
+ * \param data_out A reference to the output data.  Note this can point to data
+ * in and the method should be mutation safe.
+ * \param transform The transform to apply to data_in to fill data_out.
+ *
  * This method needs to be implemented by client library developers
  */
 template <class T>
-void doTransform(const T& data_in, T& data_out, const geometry_msgs::TransformStamped& transform);
+void doTransform(const T& data_in, T& data_out,
+                 const geometry_msgs::TransformStamped& transform);
 
-/**\brief Get the timestamp from data 
+/**\brief Get the timestamp from data
  * \param t The data input.
  * \return The timestamp associated with the data. The lifetime of the returned
  * reference is bound to the lifetime of the argument.
@@ -64,7 +66,7 @@ void doTransform(const T& data_in, T& data_out, const geometry_msgs::TransformSt
 template <class T>
 const Time& getTimestamp(const T& t);
 
-/**\brief Get the frame_id from data 
+/**\brief Get the frame_id from data
  * \param t The data input.
  * \return The frame_id associated with the data. The lifetime of the returned
  * reference is bound to the lifetime of the argument.
@@ -74,16 +76,14 @@ const std::string& getFrameId(const T& t);
 
 /* An implementation for Stamped<P> datatypes */
 template <class P>
-const Time& getTimestamp(const tf2::Stamped<P>& t)
-{
-  return t.stamp_;
+const Time& getTimestamp(const tf2::Stamped<P>& t) {
+    return t.stamp_;
 }
 
 /* An implementation for Stamped<P> datatypes */
 template <class P>
-const std::string& getFrameId(const tf2::Stamped<P>& t)
-{
-  return t.frame_id_;
+const std::string& getFrameId(const tf2::Stamped<P>& t) {
+    return t.frame_id_;
 }
 
 /** Function that converts from one type to a ROS message type. It has to be
@@ -92,7 +92,7 @@ const std::string& getFrameId(const tf2::Stamped<P>& t)
  * \param a an object of whatever type
  * \return the conversion as a ROS message
  */
-template<typename A, typename B>
+template <typename A, typename B>
 B toMsg(const A& a);
 
 /** Function that converts from a ROS message type to another type. It has to be
@@ -101,7 +101,7 @@ B toMsg(const A& a);
  * \param a a ROS message to convert from
  * \param b the object to convert to
  */
-template<typename A, typename B>
+template <typename A, typename B>
 void fromMsg(const A&, B& b);
 
 /** Function that converts any type to any type (messages or not).
@@ -112,23 +112,21 @@ void fromMsg(const A&, B& b);
  * \param b the object to convert to
  */
 template <class A, class B>
-  void convert(const A& a, B& b)
-  {
-    //printf("In double type convert\n");
-    // impl::Converter<ros::message_traits::IsMessage<A>::value, ros::message_traits::IsMessage<B>::value>::convert(a, b);
-  }
+void convert(const A& a, B& b) {
+    // printf("In double type convert\n");
+    //  impl::Converter<ros::message_traits::IsMessage<A>::value,
+    //  ros::message_traits::IsMessage<B>::value>::convert(a, b);
+}
 
 template <class A>
-void convert(const A& a1, A& a2)
-{
-  //printf("In single type convert\n");
-  if(&a1 != &a2)
-    a2 = a1;
+void convert(const A& a1, A& a2) {
+    // printf("In single type convert\n");
+    if (&a1 != &a2)
+        a2 = a1;
 }
 
-
-}
+}  // namespace tf2
 }  // namespace transform
 }  // namespace autonomy
 
-#endif //TF2_CONVERT_H
+#endif  // TF2_CONVERT_H

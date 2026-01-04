@@ -18,10 +18,10 @@
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <limits.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <limits.h>
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -47,7 +47,7 @@ const std::string& kEmptyString = "";
 std::string program_path() {
     char path[PATH_MAX];
     uint32_t size = sizeof(path);
-    
+
 #ifdef __APPLE__
     // macOS: use _NSGetExecutablePath
     if (_NSGetExecutablePath(path, &size) == 0) {

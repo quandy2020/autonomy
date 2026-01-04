@@ -24,7 +24,7 @@
 #include "autonomy/common/async_grpc/common/port.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 namespace common {
 
@@ -32,11 +32,11 @@ constexpr int64 kUtsEpochOffsetFromUnixEpochInSeconds =
     (719162ll * 24ll * 60ll * 60ll);
 
 struct UniversalTimeScaleClock {
-  using rep = int64;
-  using period = std::ratio<1, 10000000>;
-  using duration = std::chrono::duration<rep, period>;
-  using time_point = std::chrono::time_point<UniversalTimeScaleClock>;
-  static constexpr bool is_steady = true;
+    using rep = int64;
+    using period = std::ratio<1, 10000000>;
+    using duration = std::chrono::duration<rep, period>;
+    using time_point = std::chrono::time_point<UniversalTimeScaleClock>;
+    static constexpr bool is_steady = true;
 };
 
 // Represents Universal Time Scale durations and timestamps which are 64-bit
@@ -63,7 +63,7 @@ std::ostream& operator<<(std::ostream& os, Time time);
 
 }  // namespace common
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy
 
 #endif  // CPP_GRPC_COMMON_TIME_H_

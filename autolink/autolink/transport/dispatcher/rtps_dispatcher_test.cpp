@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
 
 #include <memory>
 #include "gtest/gtest.h"
 
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/common/init.hpp"
 #include "autolink/common/util.hpp"
+#include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
 #include "autolink/transport/qos/qos_profile_conf.hpp"
 #include "autolink/transport/transport.hpp"
@@ -101,3 +99,12 @@ TEST(RtpsDispatcherTest, shutdown) {
 
 }  // namespace transport
 }  // namespace autolink
+
+int main(int argc, char** argv) {
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    autolink::transport::Transport::Instance();
+    auto res = RUN_ALL_TESTS();
+    autolink::transport::Transport::Instance()->Shutdown();
+    return res;
+}

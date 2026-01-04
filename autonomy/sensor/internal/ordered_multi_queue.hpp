@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <functional>
 #include <map>
@@ -31,7 +31,7 @@ namespace autonomy {
 namespace sensor {
 
 struct QueueKey {
-  std::string sensor_id;
+    std::string sensor_id;
 };
 
 // Maintains multiple queues of sorted sensor data and dispatches it in merge
@@ -39,7 +39,7 @@ struct QueueKey {
 // queue before dispatching the next time ordered value across all queues.
 //
 // This class is thread-compatible.
-class OrderedMultiQueue 
+class OrderedMultiQueue
 {
 public:
     using Callback = std::function<void(std::unique_ptr<Data>)>;
@@ -50,7 +50,8 @@ public:
     ~OrderedMultiQueue();
 
     // Adds a new queue with key 'queue_key' which must not already exist.
-    // 'callback' will be called whenever data from this queue can be dispatched.
+    // 'callback' will be called whenever data from this queue can be
+    // dispatched.
     void AddQueue(const QueueKey& queue_key, Callback callback);
 
     // Marks a queue as finished, i.e. no further data can be added. The queue
@@ -61,8 +62,8 @@ public:
     // sorted per queue.
     void Add(const QueueKey& queue_key, std::unique_ptr<Data> data);
 
-    // Dispatches all remaining values in sorted order and removes the underlying
-    // queues.
+    // Dispatches all remaining values in sorted order and removes the
+    // underlying queues.
     void Flush();
 
     // Must only be called if at least one unfinished queue exists. Returns the
@@ -71,8 +72,7 @@ public:
     QueueKey GetBlocker() const;
 
 private:
-    struct Queue 
-    {
+    struct Queue {
         common::BlockingQueue<std::unique_ptr<Data>> queue;
         Callback callback;
         bool finished = false;
@@ -85,7 +85,7 @@ private:
     Time GetCommonStartTime();
 
     // Used to verify that values are dispatched in sorted order.
-    Time last_dispatched_time_ = Time::Min();
+    Time last_dispatched_time_ = Time{};
 
     std::vector<Time> common_start_time_;
     std::map<QueueKey, Queue> queues_;

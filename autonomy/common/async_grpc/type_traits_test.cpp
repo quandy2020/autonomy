@@ -19,27 +19,27 @@
 #include "gtest/gtest.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 namespace {
 
 TEST(TypeTraitsTest, StreamStripping) {
-  ::testing::StaticAssertTypeEq<StripStream<Stream<int>>, int>();
-  ::testing::StaticAssertTypeEq<StripStream<int>, int>();
+    ::testing::StaticAssertTypeEq<StripStream<Stream<int>>, int>();
+    ::testing::StaticAssertTypeEq<StripStream<int>, int>();
 }
 
 TEST(TypeTraitsTest, RpcTypes) {
-  EXPECT_EQ((RpcType<int, int>::value),
-            ::grpc::internal::RpcMethod::NORMAL_RPC);
-  EXPECT_EQ((RpcType<Stream<int>, int>::value),
-            ::grpc::internal::RpcMethod::CLIENT_STREAMING);
-  EXPECT_EQ((RpcType<int, Stream<int>>::value),
-            ::grpc::internal::RpcMethod::SERVER_STREAMING);
-  EXPECT_EQ((RpcType<Stream<int>, Stream<int>>::value),
-            ::grpc::internal::RpcMethod::BIDI_STREAMING);
+    EXPECT_EQ((RpcType<int, int>::value),
+              ::grpc::internal::RpcMethod::NORMAL_RPC);
+    EXPECT_EQ((RpcType<Stream<int>, int>::value),
+              ::grpc::internal::RpcMethod::CLIENT_STREAMING);
+    EXPECT_EQ((RpcType<int, Stream<int>>::value),
+              ::grpc::internal::RpcMethod::SERVER_STREAMING);
+    EXPECT_EQ((RpcType<Stream<int>, Stream<int>>::value),
+              ::grpc::internal::RpcMethod::BIDI_STREAMING);
 }
 
 }  // namespace
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy

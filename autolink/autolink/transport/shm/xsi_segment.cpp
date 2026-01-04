@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/xsi_segment.hpp"
 
 #include <sys/ipc.h>
@@ -281,17 +280,8 @@ bool XsiSegment::OpenOnly() {
 
 bool XsiSegment::Remove() {
     int shmid = shmget(key_, 0, 0644);
-    if (shmid == -1) {
-        // 共享内存段不存在，不需要删除，这不是错误
-        // 在 macOS 上，shmget 在段不存在时可能返回不同的错误码
-        // 我们简单地认为如果无法获取段，那么它已经不存在了
-        ADEBUG << "shm segment does not exist (errno: " << errno 
-               << "), nothing to remove.";
-        return true;
-    }
-    
-    if (shmctl(shmid, IPC_RMID, 0) == -1) {
-        AWARN << "remove shm failed, error code: " << strerror(errno);
+    if (shmid == -1 || shmctl(shmid, IPC_RMID, 0) == -1) {
+        AERROR << "remove shm failed, error code: " << strerror(errno);
         return false;
     }
     ADEBUG << "remove success.";

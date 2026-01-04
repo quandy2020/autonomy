@@ -121,6 +121,13 @@ std::string MessageType() {
     return typeid(T).name();
 }
 
+template <typename T, typename std::enable_if<
+                          std::is_base_of<google::protobuf::Message, T>::value,
+                          bool>::type = 0>
+std::string MessageType() {
+    return T::descriptor()->full_name();
+}
+
 template <typename T>
 typename std::enable_if<HasSetType<T>::value, void>::type SetTypeName(
     const std::string& type_name, T* message) {

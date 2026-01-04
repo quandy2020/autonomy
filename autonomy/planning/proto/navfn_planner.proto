@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package autonomy.planning.proto;
 message NavFnPlanner
 { 
     double tolerance = 1;
-    double max_its = 2;
+    bool use_astar = 2;
     bool allow_unknown = 3;
+    bool use_final_approach_orientation = 4;
 }

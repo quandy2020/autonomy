@@ -17,11 +17,9 @@
 #include "autonomy/bridge/plugins//grpc/grpc_bridge_server_interface.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace plugins {
-namespace grpc {
- 
-}   // namespace grpc
-}   // namespace plugins 
-}   // namespace bridge
-}   // namespace autonomy
+namespace grpc {}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

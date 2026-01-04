@@ -21,7 +21,7 @@
 #include "glog/logging.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 
 // Implementations of this class allow RPC handlers to share state among one
@@ -29,38 +29,42 @@ namespace async_grpc {
 // 'ExecutionContext' can be specified. This 'ExecutionContext' can be retrieved
 // by all implementations of 'RpcHandler' by calling
 // 'RpcHandler::GetContext<MyContext>()'.
-class ExecutionContext {
- public:
-  // Automatically locks an ExecutionContext for shared use by RPC handlers.
-  // This non-movable, non-copyable class is used to broker access from various
-  // RPC handlers to the shared 'ExecutionContext'.
-  template <typename ContextType>
-  class Synchronized {
-   public:
-    ContextType* operator->() {
-      return static_cast<ContextType*>(execution_context_);
+class ExecutionContext
+{
+public:
+    // Automatically locks an ExecutionContext for shared use by RPC handlers.
+    // This non-movable, non-copyable class is used to broker access from
+    // various RPC handlers to the shared 'ExecutionContext'.
+    template <typename ContextType>
+    class Synchronized
+    {
+    public:
+        ContextType* operator->() {
+            return static_cast<ContextType*>(execution_context_);
+        }
+        Synchronized(common::Mutex* lock, ExecutionContext* execution_context)
+            : locker_(lock), execution_context_(execution_context) {}
+        Synchronized(const Synchronized&) = delete;
+        Synchronized(Synchronized&&) = delete;
+
+    private:
+        common::MutexLocker locker_;
+        ExecutionContext* execution_context_;
+    };
+    ExecutionContext() = default;
+    virtual ~ExecutionContext() = default;
+    ExecutionContext(const ExecutionContext&) = delete;
+    ExecutionContext& operator=(const ExecutionContext&) = delete;
+    common::Mutex* lock() {
+        return &lock_;
     }
-    Synchronized(common::Mutex* lock, ExecutionContext* execution_context)
-        : locker_(lock), execution_context_(execution_context) {}
-    Synchronized(const Synchronized&) = delete;
-    Synchronized(Synchronized&&) = delete;
 
-   private:
-    common::MutexLocker locker_;
-    ExecutionContext* execution_context_;
-  };
-  ExecutionContext() = default;
-  virtual ~ExecutionContext() = default;
-  ExecutionContext(const ExecutionContext&) = delete;
-  ExecutionContext& operator=(const ExecutionContext&) = delete;
-  common::Mutex* lock() { return &lock_; }
-
- private:
-  common::Mutex lock_;
+private:
+    common::Mutex lock_;
 };
 
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy
 
 #endif  // CPP_GRPC_EXECUTION_CONTEXT_H

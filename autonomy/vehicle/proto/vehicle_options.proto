@@ -1,0 +1,202 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.vehicle.proto;
+
+import "autonomy/commsgs/proto/std_msgs.proto";
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+
+enum VehicleType
+{
+    VEHICLE_TYPE_UNDEFINED = 0;   // Unknown or not specified
+    VEHICLE_TYPE_CAR = 1;         // Passenger car / light vehicle
+    VEHICLE_TYPE_TRUCK = 2;       // Truck / van / heavy vehicle
+    VEHICLE_TYPE_MOTORCYCLE = 3;  // Motorcycle / scooter
+    VEHICLE_TYPE_BICYCLE = 4;     // Bicycle or other non‑motorized bike
+    VEHICLE_TYPE_PEDESTRIAN = 5;  // Human on foot
+    VEHICLE_TYPE_ANIMAL = 6;      // Animal road user
+    VEHICLE_TYPE_OTHER = 7;       // Other or custom type not listed above
+
+    // Generic wheeled / tracked ground mobile robot (differential / omni / mecanum, etc.)
+    VEHICLE_TYPE_UGV = 8;
+
+    // Aerial mobile robot (multirotor / fixed‑wing UAV / drone)
+    VEHICLE_TYPE_UAV = 9;
+
+    // Surface vessel robot (boats on water surface)
+    VEHICLE_TYPE_USV = 10;
+
+    // Underwater mobile robot (ROV / AUV)
+    VEHICLE_TYPE_UUV = 11;
+}
+
+// High-level motion state of the vehicle / mobile robot.
+// This describes what the platform is physically doing, independent of control mode.
+enum VehicleState
+{
+    VEHICLE_STATE_UNDEFINED = 0;  // Unknown or not specified
+    VEHICLE_STATE_STOPPED = 1;    // At rest (linear and angular speed effectively zero)
+    VEHICLE_STATE_MOVING = 2;     // Moving but without a more specific classification
+    VEHICLE_STATE_PARKED = 3;     // Parked / anchored, expected not to move
+    VEHICLE_STATE_DRIVING = 4;    // Actively driving forward under power
+    VEHICLE_STATE_REVERSING = 5;  // Moving backwards under power
+}
+
+// High-level control mode of the vehicle / mobile robot.
+// This describes who / what is in control, rather than what the platform is doing.
+enum VehicleMode
+{
+    VEHICLE_MODE_UNDEFINED = 0; // Unknown or not specified
+    VEHICLE_MODE_MANUAL = 1;    // Human driver / operator directly controls the platform
+    VEHICLE_MODE_AUTO = 2;      // Fully autonomous mode (planner / controller in charge)
+    VEHICLE_MODE_REMOTE = 3;    // Teleoperation / remote joystick control
+    VEHICLE_MODE_FOLLOWING = 4; // Following another entity (e.g., convoy / leader–follower)
+    VEHICLE_MODE_EMERGENCY = 5; // Emergency safety mode (e-stop, limp-home, etc.)
+    VEHICLE_MODE_TEST = 6;      // Test mode (calibration / lab testing)
+    VEHICLE_MODE_DEBUG = 7;     // Debug mode (extra logging / instrumentation enabled)
+    VEHICLE_MODE_OTHER = 8;     // Other or custom control mode
+}
+
+// Gear / drive direction for platforms with discrete transmission states.
+// For differential / omni / mecanum robots this can be ignored or mapped to forward / reverse.
+enum Gear
+{
+    GEAR_UNDEFINED = 0;  // Unknown or not specified
+    GEAR_PARK = 1;       // Park (P): mechanically locked, should not move
+    GEAR_REVERSE = 2;    // Reverse (R): commanded to move backwards
+    GEAR_NEUTRAL = 3;    // Neutral (N): drivetrain disengaged
+    GEAR_DRIVE = 4;      // Drive (D): commanded to move forwards
+}
+
+message KinematicsControlCommand
+{
+    // Standard header: timestamp + frame_id
+    autonomy.commsgs.proto.std_msgs.Header header = 1;
+
+    // Linear / angular velocity command (m/s, rad/s)
+    autonomy.commsgs.proto.geometry_msgs.Twist velocity = 2;
+
+    // Linear / angular acceleration command (m/s^2, rad/s^2)
+    autonomy.commsgs.proto.geometry_msgs.Twist acceleration = 3;
+
+    // Higher‑order derivatives of motion, encoded as generic Twist
+    // Units and semantics depend on the specific vehicle model
+    autonomy.commsgs.proto.geometry_msgs.Twist jerk = 4;
+    autonomy.commsgs.proto.geometry_msgs.Twist snap = 5;
+    autonomy.commsgs.proto.geometry_msgs.Twist crackle = 6;
+    autonomy.commsgs.proto.geometry_msgs.Twist pop = 7;
+
+    // Position displacement command in 3D space (m)
+    autonomy.commsgs.proto.geometry_msgs.Vector3 position_delta = 8;
+
+    // Orientation change command (roll, pitch, yaw in radians)
+    autonomy.commsgs.proto.geometry_msgs.Vector3 orientation_delta = 9;
+}
+
+message VehicleInfo
+{
+    // Standard header: timestamp + frame_id
+    autonomy.commsgs.proto.std_msgs.Header header = 1;
+    VehicleType vehicle_type = 2;   // vehicle / robot type (car, truck, differential robot, etc.)
+    string vehicle_id = 3;          // unique vehicle / robot id
+    string vehicle_name = 4;        // human‑readable name
+
+    // Current high-level state & mode as reported by the vehicle / mobile robot
+    VehicleState vehicle_state = 5; // motion state (stopped / moving / parked / reversing)
+    VehicleMode vehicle_mode = 6;   // control mode (manual / auto / remote / emergency, etc.)
+
+    // Current estimated pose of the vehicle in some world or map frame
+    autonomy.commsgs.proto.geometry_msgs.Pose pose = 7;
+
+    // Current measured linear & angular velocity (m/s, rad/s)
+    autonomy.commsgs.proto.geometry_msgs.Twist velocity = 8;
+
+    // Current measured linear & angular acceleration (m/s^2, rad/s^2)
+    autonomy.commsgs.proto.geometry_msgs.Twist acceleration = 9;
+
+    // Current gear (P / R / N / D)，对差速 / 全向底盘可以忽略或映射为前进 / 后退状态
+    Gear gear = 10;
+
+    // Steering angle (radians, left positive)，仅对阿克曼/汽车底盘有意义
+    double steering_angle = 11;
+
+    // Low-level actuator commands / states (normalized 0..1)
+    double throttle_cmd = 12;  // 0..1 or percentage of maximum throttle
+    double brake_cmd = 13;     // 0..1 or percentage of maximum braking
+
+    // Safety and fault status
+    bool emergency_stop_active = 14;  // true if E-stop is currently active
+    bool fault_active = 15;           // true if any fault is active
+    int32 fault_code = 16;            // optional numeric fault code for diagnostics
+
+    // Optional battery / power state (for mobile robots)
+    double battery_soc = 17;          // State of charge (0.0 ~ 1.0), -1 if unknown
+    double battery_voltage = 18;      // Battery voltage in Volts, 0 if unknown
+
+    // Optional localization / state estimation quality (0.0 ~ 1.0, -1 if unknown)
+    double localization_quality = 19;
+}
+
+// 车辆 / 机器人模型配置参数：
+// - 身份标识：类型 / ID / 名称
+// - 几何尺寸：长 / 宽 / 高 / 轴距 / 轮距
+// - 动力学约束：速度 / 加速度 / 转向角等上限
+// - 默认控制指令：用于初始化或安全停车
+message VehicleModel
+{
+    // Basic identity
+    VehicleType vehicle_type = 1;   // vehicle type (car / truck / etc.)
+    string vehicle_id = 2;          // vehicle id, unique identifier
+    string vehicle_name = 3;        // human‑readable vehicle name
+
+    // Geometric parameters (meters)
+    double length = 4;              // overall vehicle length
+    double width = 5;               // overall vehicle width
+    double height = 6;              // overall vehicle height
+    double wheel_base = 7;          // distance between front and rear axle
+    double track_width = 8;         // distance between left and right wheels (average)
+
+    // Dynamic limits (for planning / control constraints)
+    double max_linear_speed = 9;        // maximum forward linear speed (m/s)
+    double max_reverse_speed = 10;      // maximum reverse linear speed (m/s)
+    double max_angular_speed = 11;      // maximum yaw rate (rad/s)
+    double max_linear_acceleration = 12;   // max linear acceleration (m/s^2)
+    double max_angular_acceleration = 13;  // max angular acceleration (rad/s^2)
+    double max_steering_angle = 14;        // steering angle limit (rad, absolute)
+
+    // Optional: default kinematics command used for initialization or safe stop
+    KinematicsControlCommand default_command = 15;
+};
+
+// 顶层 Vehicle 消息，将模型配置、运行时状态和控制指令统一起来，
+// 既方便上层应用（规划 / 决策）使用，也便于底层执行模块直接消费。
+message Vehicle
+{
+    // Standard header: timestamp + frame_id
+    autonomy.commsgs.proto.std_msgs.Header header = 1;
+
+    // Model configuration (static / semi-static parameters)
+    VehicleModel model = 2;
+
+    // Runtime state information (pose, velocity, gear, battery, etc.)
+    VehicleInfo info = 3;
+
+    // Current desired kinematics control command (from higher‑level planning / control module)
+    KinematicsControlCommand command = 4;
+}
+
+
+

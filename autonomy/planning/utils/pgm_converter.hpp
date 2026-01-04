@@ -1,0 +1,80 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <memory>
+#include <string>
+
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d.hpp"
+
+namespace autonomy {
+namespace planning {
+namespace utils {
+
+// Utility for converting PGM maps to Costmap2D and rendering paths.
+class PgmConverter
+{
+public:
+    struct LoadParameters {
+        double resolution{0.05};       // meters/pixel
+        double origin_x{0.0};          // meters
+        double origin_y{0.0};          // meters
+        double origin_yaw{0.0};        // radians
+        double free_thresh{0.196};     // [0, 1]
+        double occupied_thresh{0.65};  // [0, 1]
+        bool negate{false};
+    };
+
+    // Loads PGM file and converts to Costmap2D. Returns nullptr on failure.
+    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(
+        const std::string& pgm_file_path, const LoadParameters& params);
+
+    // Overload with default parameters.
+    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(
+        const std::string& pgm_file_path);
+
+    // Loads map from YAML metadata file. Returns nullptr on failure.
+    static map::costmap_2d::Costmap2D::SharedPtr loadFromYaml(
+        const std::string& yaml_file_path);
+
+    struct RenderParameters {
+        std::string output_format{"png"};
+        double path_line_width{2.0};
+        double start_marker_size{5.0};
+        double goal_marker_size{5.0};
+        bool draw_start_marker{true};
+        bool draw_goal_marker{true};
+        bool draw_path_points{false};
+    };
+
+    // Renders costmap with path overlay and saves as image. Returns false on
+    // failure.
+    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap,
+                                const commsgs::planning_msgs::Path& path,
+                                const std::string& output_file_path,
+                                const RenderParameters& params);
+
+    // Overload with default parameters.
+    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap,
+                                const commsgs::planning_msgs::Path& path,
+                                const std::string& output_file_path);
+};
+
+}  // namespace utils
+}  // namespace planning
+}  // namespace autonomy

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/segment.hpp"
 
 #include "autolink/common/log.hpp"
@@ -35,10 +34,6 @@ Segment::Segment(uint64_t channel_id)
       arena_block_buf_lock_(),
       block_buf_addrs_(),
       arena_block_buf_addrs_() {}
-
-Segment::~Segment() {
-    Destroy();
-}
 
 bool Segment::AcquireBlockToWrite(std::size_t msg_size,
                                   WritableBlock* writable_block) {

@@ -20,25 +20,25 @@
 #include "autolink/examples/proto/examples.pb.h"
 
 bool TimerComponentSample::Init() {
-  driver_writer_ = node_->CreateWriter<Driver>("/carstatus/channel");
-  if (!driver_writer_) {
-    AERROR << "Failed to create writer!";
-    return false;
-  }
-  return true;
+    driver_writer_ = node_->CreateWriter<Driver>("/carstatus/channel");
+    if (!driver_writer_) {
+        AERROR << "Failed to create writer!";
+        return false;
+    }
+    return true;
 }
 
 bool TimerComponentSample::Proc() {
-  static int i = 0;
-  auto out_msg = std::make_shared<Driver>();
-  out_msg->set_msg_id(i++);
-  if (driver_writer_->Write(out_msg)) {
-    AINFO << "timer_component_example: Write drivermsg->"
-          << out_msg->ShortDebugString();
-  } else {
-    AWARN << "Failed to write message";
-  }
-  return true;
+    static int i = 0;
+    auto out_msg = std::make_shared<Driver>();
+    out_msg->set_msg_id(i++);
+    if (driver_writer_->Write(out_msg)) {
+        AINFO << "timer_component_example: Write drivermsg->"
+              << out_msg->ShortDebugString();
+    } else {
+        AWARN << "Failed to write message";
+    }
+    return true;
 }
 
 AUTOLINK_REGISTER_COMPONENT(TimerComponentSample)

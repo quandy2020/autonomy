@@ -23,7 +23,6 @@
 #include "Eigen/Geometry"
 #include "autonomy/common/port.hpp"
 #include "autonomy/transform/rigid_transform.hpp"
-
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -33,23 +32,22 @@ namespace transform {
 
 template <typename T>
 Eigen::Transform<T, 2, Eigen::Affine> ToEigen(const Rigid2<T>& rigid2) {
-  return Eigen::Translation<T, 2>(rigid2.translation()) * rigid2.rotation();
+    return Eigen::Translation<T, 2>(rigid2.translation()) * rigid2.rotation();
 }
 
 template <typename T>
 Eigen::Transform<T, 3, Eigen::Affine> ToEigen(const Rigid3<T>& rigid3) {
-  return Eigen::Translation<T, 3>(rigid3.translation()) * rigid3.rotation();
+    return Eigen::Translation<T, 3>(rigid3.translation()) * rigid3.rotation();
 }
 
 MATCHER_P2(IsNearly, rigid, epsilon,
            std::string(std::string(negation ? "isn't nearly " : "is nearly ") +
                        rigid.DebugString())) {
-  return ToEigen(arg).isApprox(ToEigen(rigid), epsilon);
+    return ToEigen(arg).isApprox(ToEigen(rigid), epsilon);
 }
 
 }  // namespace transform
 }  // namespace common
 }  // namespace autonomy
-
 
 #endif  // AUTONOMY_TRANSFORM_RIGID_TRANSFORM_TEST_HELPERS_HPP_

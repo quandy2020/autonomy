@@ -15,7 +15,7 @@
  */
 
 #include "autonomy/map/costmap_2d/costmap_topic_collision_checker.hpp"
- 
+
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/exceptions.hpp"
@@ -39,18 +39,17 @@ namespace costmap_2d {
 // {}
 
 bool CostmapTopicCollisionChecker::isCollisionFree(
-  const commsgs::geometry_msgs::Pose2D & pose,
-  bool fetch_costmap_and_footprint)
-{
+    const commsgs::geometry_msgs::Pose2D& pose,
+    bool fetch_costmap_and_footprint) {
     try {
         if (scorePose(pose, fetch_costmap_and_footprint) >= LETHAL_OBSTACLE) {
             return false;
         }
         return true;
-    } catch (const IllegalPoseException & e) {
+    } catch (const IllegalPoseException& e) {
         LOG(ERROR) << e.what();
         return false;
-    } catch (const CollisionCheckerException & e) {
+    } catch (const CollisionCheckerException& e) {
         LOG(ERROR) << e.what();
         return false;
     } catch (...) {
@@ -60,9 +59,8 @@ bool CostmapTopicCollisionChecker::isCollisionFree(
 }
 
 double CostmapTopicCollisionChecker::scorePose(
-  const commsgs::geometry_msgs::Pose2D& pose,
-  bool fetch_costmap_and_footprint)
-{
+    const commsgs::geometry_msgs::Pose2D& pose,
+    bool fetch_costmap_and_footprint) {
     if (fetch_costmap_and_footprint) {
         try {
             // collision_checker_.setCostmap(costmap_sub_.getCostmap());
@@ -73,21 +71,22 @@ double CostmapTopicCollisionChecker::scorePose(
 
     unsigned int cell_x, cell_y;
     if (!collision_checker_.worldToMap(pose.x, pose.y, cell_x, cell_y)) {
-        // RCLCPP_DEBUG(rclcpp::get_logger(name_), "Map Cell: [%d, %d]", cell_x, cell_y);
+        // RCLCPP_DEBUG(rclcpp::get_logger(name_), "Map Cell: [%d, %d]", cell_x,
+        // cell_y);
         throw IllegalPoseException(name_, "Pose Goes Off Grid.");
     }
 
-    return collision_checker_.footprintCost(getFootprint(pose, fetch_costmap_and_footprint));
+    return collision_checker_.footprintCost(
+        getFootprint(pose, fetch_costmap_and_footprint));
 }
 
 Footprint CostmapTopicCollisionChecker::getFootprint(
-    const commsgs::geometry_msgs::Pose2D& pose, 
-    bool fetch_latest_footprint)
-{
+    const commsgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint) {
     if (fetch_latest_footprint) {
         commsgs::std_msgs::Header header;
         // if (!footprint_sub_.getFootprintInRobotFrame(footprint_, header)) {
-        //     throw CollisionCheckerException("Current footprint not available.");
+        //     throw CollisionCheckerException("Current footprint not
+        //     available.");
         // }
     }
     Footprint footprint;

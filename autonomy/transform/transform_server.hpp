@@ -18,257 +18,90 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
-#include "autonomy/transform/proto/transform_options.pb.h"
-
-#include "autonomy/common/logging.hpp"
+#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/proto/transform_options.pb.h"
 #include "autonomy/transform/static_transform.hpp"
-#include "autonomy/transform/transform_broadcaster.hpp"
 
 namespace autonomy {
 namespace transform {
 
 /**
- * @brief Transform Server Configuration
- */
-struct TransformServerConfig {
-    // Static TF configuration file path
-    std::string static_transform_config_path;
-    
-    // TF buffer cache size (seconds)
-    double buffer_cache_time = 10.0;
-    
-    // TF query timeout (seconds)
-    float default_timeout = 0.01f;
-    
-    // Enable debug mode
-    bool debug = false;
-    
-    // TF publishing frequency (Hz)
-    double publish_rate = 10.0;
-};
-
-/**
- * @brief Transform Server Class
- * 
- * TransformServer is the core management class of the TF system, responsible for:
- * 1. Managing static TF transform publishing
- * 2. Maintaining the TF transform buffer
- * 3. Providing TF query interface
- * 4. Managing dynamic TF broadcasting
- * 
- * Usage example:
- * @code
- *   auto tf_server = std::make_shared<TransformServer>();
- *   
- *   // Initialize from configuration file
- *   if (tf_server->Initialize("config/transform.lua")) {
- *       tf_server->Start();
- *       
- *       // Query TF
- *       auto transform = tf_server->LookupTransform("map", "base_link", time);
- *       
- *       // Stop
- *       tf_server->Stop();
- *   }
- * @endcode
+ * @brief Transform server that manages static TF transforms
+ *
+ * This server manages:
+ * - Static transforms (published once with latched QoS)
  */
 class TransformServer
 {
 public:
     /**
-     * Define TransformServer::SharedPtr type
+     * @brief Define TransformServer::SharedPtr type
      */
     AUTONOMY_SMART_PTR_DEFINITIONS(TransformServer)
-    
+
     /**
-     * @brief Default constructor
+     * @brief Constructor
+     * @param options The options for the transform server
+     * @param node The node to use for the transform server
      */
-    TransformServer();
-    
+    TransformServer(const autonomy::transform::proto::TransformOptions& options,
+                    ::autolink::Node* node = nullptr);
+
     /**
      * @brief Destructor
      */
-    ~TransformServer();
-    
+    ~TransformServer() = default;
+
     /**
-     * @brief Initialize from Lua configuration file
-     * @param lua_config_path Lua configuration file path
-     * @return true on success
+     * @brief Initialize the transform server
+     * @return True if initialization is successful, false otherwise
      */
-    bool Initialize(const std::string& lua_config_path);
-    
+    bool Initialize();
+
     /**
-     * @brief Initialize from YAML configuration file
-     * @param yaml_config_path YAML configuration file path
-     * @return true on success
-     */
-    bool InitializeFromYaml(const std::string& yaml_config_path);
-    
-    /**
-     * @brief Initialize from configuration structure
-     * @param config Configuration structure
-     * @return true on success
-     */
-    bool InitializeFromConfig(const TransformServerConfig& config);
-    
-    /**
-     * @brief Start TF service
-     * Starts static TF publishing and other periodic tasks
+     * @brief Start the transform server
      */
     void Start();
-    
+
     /**
-     * @brief Stop TF service
+     * @brief Stop the transform server
      */
     void Stop();
-    
+
     /**
-     * @brief Query transform between two coordinate frames
-     * @param target_frame Target coordinate frame
-     * @param source_frame Source coordinate frame
-     * @param time Timestamp
-     * @param timeout Timeout duration (seconds)
-     * @return Transform
-     * @throws tf2::TransformException if query fails
+     * @brief Check if the server is running
+     * @return True if running, false otherwise
      */
-    commsgs::geometry_msgs::TransformStamped LookupTransform(
-        const std::string& target_frame,
-        const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& time,
-        const float timeout = 0.01f) const;
-    
+    bool IsRunning() const {
+        return running_;
+    }
+
     /**
-     * @brief Query transform between two coordinate frames (with fixed frame)
-     * @param target_frame Target coordinate frame
-     * @param target_time Target time
-     * @param source_frame Source coordinate frame
-     * @param source_time Source time
-     * @param fixed_frame Fixed coordinate frame
-     * @param timeout Timeout duration (seconds)
-     * @return Transform
-     * @throws tf2::TransformException if query fails
+     * @brief Get the transform stampeds
+     * @return The transform stampeds
      */
-    commsgs::geometry_msgs::TransformStamped LookupTransform(
-        const std::string& target_frame,
-        const commsgs::builtin_interfaces::Time& target_time,
-        const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& source_time,
-        const std::string& fixed_frame,
-        const float timeout = 0.01f) const;
-    
-    /**
-     * @brief Check if transform is possible
-     * @param target_frame Target coordinate frame
-     * @param source_frame Source coordinate frame
-     * @param time Timestamp
-     * @param timeout Timeout duration (seconds)
-     * @param errstr Error message (optional)
-     * @return true if transform is possible
-     */
-    bool CanTransform(
-        const std::string& target_frame,
-        const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& time,
-        const float timeout = 0.01f,
-        std::string* errstr = nullptr) const;
-    
-    /**
-     * @brief Check if transform is possible (with fixed frame)
-     * @param target_frame Target coordinate frame
-     * @param target_time Target time
-     * @param source_frame Source coordinate frame
-     * @param source_time Source time
-     * @param fixed_frame Fixed coordinate frame
-     * @param timeout Timeout duration (seconds)
-     * @param errstr Error message (optional)
-     * @return true if transform is possible
-     */
-    bool CanTransform(
-        const std::string& target_frame,
-        const commsgs::builtin_interfaces::Time& target_time,
-        const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& source_time,
-        const std::string& fixed_frame,
-        const float timeout = 0.01f,
-        std::string* errstr = nullptr) const;
-    
-    /**
-     * @brief Get TF Buffer
-     * @return Shared pointer to TF Buffer
-     */
-    std::shared_ptr<Buffer> GetBuffer() { return tf_buffer_; }
-    
-    /**
-     * @brief Get TF Buffer (const version)
-     * @return Shared pointer to TF Buffer
-     */
-    std::shared_ptr<const Buffer> GetBuffer() const { return tf_buffer_; }
-    
-    /**
-     * @brief Get Transform Broadcaster
-     * @return Shared pointer to Transform Broadcaster
-     */
-    std::shared_ptr<TransformBroadcaster> GetBroadcaster() { return tf_broadcaster_; }
-    
-    /**
-     * @brief Get static transform component
-     * @return Shared pointer to static transform component
-     */
-    std::shared_ptr<StaticTransform> GetStaticTransform() { return static_transform_; }
-    
-    /**
-     * @brief Check if service is initialized
-     * @return true if initialized
-     */
-    bool IsInitialized() const { return initialized_; }
-    
-    /**
-     * @brief Check if service is running
-     * @return true if running
-     */
-    bool IsRunning() const { return running_; }
-    
-    /**
-     * @brief Get all known coordinate frame names
-     * @return List of coordinate frame names
-     */
-    std::vector<std::string> GetAllFrameNames() const;
-    
-    /**
-     * @brief Print TF tree structure
-     */
-    void PrintFrameGraph() const;
+    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData()
+        const {
+        return static_transform_->GetTransformStampeds();
+    }
 
 private:
-    /**
-     * @brief Load configuration from Lua dictionary
-     * @param dict Lua parameter dictionary
-     * @return true on success
-     */
-    bool LoadConfigFromLua(common::LuaParameterDictionary* dict);
+    // Node
+    ::autolink::Node* node_;
 
-private:
-    // Configuration
-    TransformServerConfig config_;
-    
-    // TF Buffer
-    std::shared_ptr<Buffer> tf_buffer_;
-    
-    // Static TF publisher
-    std::shared_ptr<StaticTransform> static_transform_;
-    
-    // Dynamic TF broadcaster
-    std::shared_ptr<TransformBroadcaster> tf_broadcaster_;
-    
-    // Status flags
-    bool initialized_ = false;
-    bool running_ = false;
+    // Static transform component
+    std::unique_ptr<StaticTransform> static_transform_;
+
+    // Transform options
+    autonomy::transform::proto::TransformOptions transform_options_;
+
+    // Running state
+    bool running_{false};
+
+    // Initialized state
+    bool initialized_{false};
 };
 
 }  // namespace transform

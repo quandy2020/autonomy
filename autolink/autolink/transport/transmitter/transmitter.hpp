@@ -53,20 +53,21 @@ public:
                           const MessageInfo& msg_info) = 0;
 
     uint64_t NextSeqNum() {
-        return seq_num_.fetch_add(1) + 1;
+        return seq_num_.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint64_t seq_num() const {
-        return seq_num_.load();
+        return seq_num_.load(std::memory_order_relaxed);
     }
 
 protected:
     MessageInfo msg_info_;
-    std::atomic<uint64_t> seq_num_{0};
+    std::atomic<uint64_t> seq_num_;
 };
 
 template <typename M>
-Transmitter<M>::Transmitter(const RoleAttributes& attr) : Endpoint(attr) {
+Transmitter<M>::Transmitter(const RoleAttributes& attr)
+    : Endpoint(attr), seq_num_(0) {
     msg_info_.set_sender_id(this->id_);
     msg_info_.set_seq_num(0);
 }

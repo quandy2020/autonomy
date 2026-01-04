@@ -24,71 +24,11 @@
 
 static_transforms:
   
-  # RGB-D Camera - Intel RealSense D435i
-  - name: realsense435i
+  # base_footprint -> base_link: 单位变换（重合）
+  # base_footprint 和 base_link 是重合的，它们之间没有偏移
+  - name: base_footprint_to_base_link
     enabled: true
-    frame_id: "base_link"
-    child_frame_id: "camera_link"
-    translation:
-      x: 0.15
-      y: 0.0
-      z: 0.12
-    rotation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
-  
-  # IMU - Inertial Measurement Unit
-  - name: imu
-    enabled: true
-    frame_id: "base_link"
-    child_frame_id: "imu_link"
-    translation:
-      x: 0.0
-      y: 0.0
-      z: 0.05
-    rotation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
-  
-  # Front Laser scanner
-  - name: laser
-    enabled: true
-    frame_id: "base_link"
-    child_frame_id: "laser_link"
-    translation:
-      x: 0.3
-      y: 0.0
-      z: 0.1
-    rotation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
-  
-  
-  # Map to Odom (可选，通常由定位节点动态发布)
-  - name: map_to_odom
-    enabled: false
-    frame_id: "map"
-    child_frame_id: "odom"
-    translation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-    rotation:
-      x: 0.0
-      y: 0.0
-      z: 0.0
-      w: 1.0
-  
-  # Odom to Base Link (可选，通常由里程计节点动态发布)
-  - name: odom_to_base
-    enabled: false
-    frame_id: "odom"
+    frame_id: "base_footprint"
     child_frame_id: "base_link"
     translation:
       x: 0.0
@@ -99,17 +39,63 @@ static_transforms:
       y: 0.0
       z: 0.0
       w: 1.0
+  
+  # RGB-D Camera - Intel RealSense D435i (前方)
+  - name: realsense435i
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "camera_front_link"
+    translation:
+      x: 0.3
+      y: 0.0
+      z: 0.1
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
 
-# Global settings
-settings:
-  # 发布频率 (Hz)
-  publish_rate: 10.0
+  # RGB-D Camera - Intel RealSense D455 (后方，朝向后方需要旋转180度)
+  - name: realsense455
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "camera_rear_link"
+    translation:
+      x: -0.3
+      y: 0.0
+      z: 0.1
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 1.0
+      w: 0.0
   
-  # TF前缀 (可选)
-  tf_prefix: ""
+  # IMU - Inertial Measurement Unit (质心位置)
+  - name: imu
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "imu_link"
+    translation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
   
-  # 是否在启动时打印所有变换
-  print_transforms_on_startup: true
-  
-  # 是否验证四元数归一化
-  validate_quaternion: true
+  # Front Laser scanner (在imu前方20cm)
+  - name: laser
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "laser_link"
+    translation:
+      x: 0.2
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0

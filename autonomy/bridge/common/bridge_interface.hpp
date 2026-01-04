@@ -17,13 +17,12 @@
 #pragma once
 
 #include "autonomy/bridge/proto/bridge_options.pb.h"
-#include "autonomy/common/macros.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace common {
-
 
 class BridgeInterface
 {
@@ -37,12 +36,11 @@ public:
      * @brief A Destructor for BridgeInterface
      */
     virtual ~BridgeInterface() = default;
-
 };
 
 proto::BridgeOptions LoadOptions(
     autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
-}   // namespace common
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace common
+}  // namespace bridge
+}  // namespace autonomy

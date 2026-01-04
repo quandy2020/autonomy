@@ -24,11 +24,10 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/proto/role_attributes.pb.h"
-
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/common/types.hpp"
+#include "autolink/proto/role_attributes.pb.h"
 #include "autolink/service_discovery/role/role.hpp"
 #include "autolink/task/task.hpp"
 #include "autolink/time/time.hpp"

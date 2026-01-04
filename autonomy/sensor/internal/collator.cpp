@@ -21,7 +21,7 @@ namespace sensor {
 
 // void Collator::AddToCostmap(
 //     const absl::flat_hash_set<std::string>& expected_sensor_ids,
-//     const Callback& callback) 
+//     const Callback& callback)
 // {
 // //   for (const auto& sensor_id : expected_sensor_ids) {
 // //     const auto queue_key = QueueKey{sensor_id};
@@ -33,22 +33,19 @@ namespace sensor {
 // //   }
 // }
 
-void Collator::FinishCostmap() 
-{
-//   for (const auto& queue_key : queue_keys_) {
-//     queue_.MarkQueueAsFinished(queue_key);
-//   }
+void Collator::FinishCostmap() {
+    //   for (const auto& queue_key : queue_keys_) {
+    //     queue_.MarkQueueAsFinished(queue_key);
+    //   }
 }
 
-void Collator::AddSensorData(std::unique_ptr<Data> data) 
-{
-//   QueueKey queue_key{data->GetSensorId()};
-//   queue_.Add(std::move(queue_key), std::move(data));
+void Collator::AddSensorData(std::unique_ptr<Data> data) {
+    //   QueueKey queue_key{data->GetSensorId()};
+    //   queue_.Add(std::move(queue_key), std::move(data));
 }
 
-void Collator::Flush() 
-{ 
-    // queue_.Flush(); 
+void Collator::Flush() {
+    // queue_.Flush();
 }
 
 }  // namespace sensor

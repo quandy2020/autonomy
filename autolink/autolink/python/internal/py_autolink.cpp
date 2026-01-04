@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#define PY_SSIZE_T_CLEAN
 #include "autolink/python/internal/py_autolink.hpp"
 
 #include <string>
@@ -38,12 +39,12 @@ using autolink::PyWriter;
 
 google::protobuf::Message* PyChannelUtils::raw_msg_class_ = nullptr;
 
-static PyObject* cyber_py_init(PyObject* self, PyObject* args) {
+static PyObject* autolink_py_init(PyObject* self, PyObject* args) {
     char* data = nullptr;
     Py_ssize_t len = 0;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("s#:cyber_py_init"), &data,
+    if (!PyArg_ParseTuple(args, const_cast<char*>("s#:autolink_py_init"), &data,
                           &len)) {
-        AERROR << "cyber_py_init:PyArg_ParseTuple failed!";
+        AERROR << "autolink_py_init:PyArg_ParseTuple failed!";
         Py_RETURN_FALSE;
     }
     std::string module_name(data, len);
@@ -55,7 +56,7 @@ static PyObject* cyber_py_init(PyObject* self, PyObject* args) {
     }
 }
 
-static PyObject* cyber_py_ok(PyObject* self, PyObject* args) {
+static PyObject* autolink_py_ok(PyObject* self, PyObject* args) {
     bool is_ok = autolink::py_ok();
     if (is_ok) {
         Py_RETURN_TRUE;
@@ -64,13 +65,13 @@ static PyObject* cyber_py_ok(PyObject* self, PyObject* args) {
     }
 }
 
-static PyObject* cyber_py_shutdown(PyObject* self, PyObject* args) {
+static PyObject* autolink_py_shutdown(PyObject* self, PyObject* args) {
     autolink::py_shutdown();
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-static PyObject* cyber_py_is_shutdown(PyObject* self, PyObject* args) {
+static PyObject* autolink_py_is_shutdown(PyObject* self, PyObject* args) {
     bool is_shutdown = autolink::py_is_shutdown();
     if (is_shutdown) {
         Py_RETURN_TRUE;
@@ -79,7 +80,7 @@ static PyObject* cyber_py_is_shutdown(PyObject* self, PyObject* args) {
     }
 }
 
-static PyObject* cyber_py_waitforshutdown(PyObject* self, PyObject* args) {
+static PyObject* autolink_py_waitforshutdown(PyObject* self, PyObject* args) {
     autolink::py_waitforshutdown();
     Py_INCREF(Py_None);
     return Py_None;
@@ -95,7 +96,7 @@ T PyObjectToPtr(PyObject* pyobj, const std::string& type_ptr) {
     return obj_ptr;
 }
 
-PyObject* cyber_new_PyWriter(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyWriter(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* data_type = nullptr;
     uint32_t qos_depth = 1;
@@ -108,7 +109,7 @@ PyObject* cyber_new_PyWriter(PyObject* self, PyObject* args) {
     }
 
     Node* node = reinterpret_cast<Node*>(
-        PyCapsule_GetPointer(node_pyobj, "autolink_cyber_pynode"));
+        PyCapsule_GetPointer(node_pyobj, "autolink_autolink_pynode"));
     if (nullptr == node) {
         AERROR << "node is null";
         Py_INCREF(Py_None);
@@ -119,11 +120,11 @@ PyObject* cyber_new_PyWriter(PyObject* self, PyObject* args) {
         new PyWriter((std::string const&)*channel_name,
                      (std::string const&)*data_type, qos_depth, node);
     PyObject* pyobj_writer =
-        PyCapsule_New(writer, "autolink_cyber_pywriter", nullptr);
+        PyCapsule_New(writer, "autolink_autolink_pywriter", nullptr);
     return pyobj_writer;
 }
 
-PyObject* cyber_delete_PyWriter(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyWriter(PyObject* self, PyObject* args) {
     PyObject* writer_py = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O:delete_PyWriter"),
                           &writer_py)) {
@@ -132,28 +133,29 @@ PyObject* cyber_delete_PyWriter(PyObject* self, PyObject* args) {
     }
 
     PyWriter* writer = reinterpret_cast<PyWriter*>(
-        PyCapsule_GetPointer(writer_py, "autolink_cyber_pywriter"));
+        PyCapsule_GetPointer(writer_py, "autolink_autolink_pywriter"));
     delete writer;
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-PyObject* cyber_PyWriter_write(PyObject* self, PyObject* args) {
+PyObject* autolink_PyWriter_write(PyObject* self, PyObject* args) {
     PyObject* pyobj_writer = nullptr;
     Py_buffer buffer;
     // Py_ssize_t len = 0;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("Oy*:cyber_PyWriter_write"),
+    if (!PyArg_ParseTuple(args,
+                          const_cast<char*>("Oy*:autolink_PyWriter_write"),
                           &pyobj_writer, &buffer)) {
-        AERROR << "cyber_PyWriter_write:cyber_PyWriter_write failed!";
+        AERROR << "autolink_PyWriter_write:autolink_PyWriter_write failed!";
         PyBuffer_Release(&buffer);
         return PyInt_FromLong(1);
     }
 
     PyWriter* writer =
-        PyObjectToPtr<PyWriter*>(pyobj_writer, "autolink_cyber_pywriter");
+        PyObjectToPtr<PyWriter*>(pyobj_writer, "autolink_autolink_pywriter");
 
     if (nullptr == writer) {
-        AERROR << "cyber_PyWriter_write:writer ptr is null!";
+        AERROR << "autolink_PyWriter_write:writer ptr is null!";
         PyBuffer_Release(&buffer);
         return PyInt_FromLong(1);
     }
@@ -165,7 +167,7 @@ PyObject* cyber_PyWriter_write(PyObject* self, PyObject* args) {
     return PyInt_FromLong(ret);
 }
 
-PyObject* cyber_new_PyReader(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyReader(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* data_type = nullptr;
     PyObject* node_pyobj = nullptr;
@@ -176,7 +178,7 @@ PyObject* cyber_new_PyReader(PyObject* self, PyObject* args) {
     }
 
     Node* node = reinterpret_cast<Node*>(
-        PyCapsule_GetPointer(node_pyobj, "autolink_cyber_pynode"));
+        PyCapsule_GetPointer(node_pyobj, "autolink_autolink_pynode"));
     if (!node) {
         AERROR << "node is null";
         Py_INCREF(Py_None);
@@ -186,11 +188,11 @@ PyObject* cyber_new_PyReader(PyObject* self, PyObject* args) {
     PyReader* reader = new PyReader((std::string const&)*channel_name,
                                     (std::string const&)*data_type, node);
     PyObject* pyobj_reader =
-        PyCapsule_New(reader, "autolink_cyber_pyreader", nullptr);
+        PyCapsule_New(reader, "autolink_autolink_pyreader", nullptr);
     return pyobj_reader;
 }
 
-PyObject* cyber_delete_PyReader(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyReader(PyObject* self, PyObject* args) {
     PyObject* reader_py = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O:delete_PyReader"),
                           &reader_py)) {
@@ -199,33 +201,33 @@ PyObject* cyber_delete_PyReader(PyObject* self, PyObject* args) {
     }
 
     PyReader* reader = reinterpret_cast<PyReader*>(
-        PyCapsule_GetPointer(reader_py, "autolink_cyber_pyreader"));
+        PyCapsule_GetPointer(reader_py, "autolink_autolink_pyreader"));
     delete reader;
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-PyObject* cyber_PyReader_read(PyObject* self, PyObject* args) {
+PyObject* autolink_PyReader_read(PyObject* self, PyObject* args) {
     PyObject* pyobj_reader = nullptr;
     PyObject* pyobj_iswait = nullptr;
 
-    if (!PyArg_ParseTuple(args, const_cast<char*>("OO:cyber_PyReader_read"),
+    if (!PyArg_ParseTuple(args, const_cast<char*>("OO:autolink_PyReader_read"),
                           &pyobj_reader, &pyobj_iswait)) {
-        AERROR << "cyber_PyReader_read:PyArg_ParseTuple failed!";
+        AERROR << "autolink_PyReader_read:PyArg_ParseTuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
     PyReader* reader =
-        PyObjectToPtr<PyReader*>(pyobj_reader, "autolink_cyber_pyreader");
+        PyObjectToPtr<PyReader*>(pyobj_reader, "autolink_autolink_pyreader");
     if (nullptr == reader) {
-        AERROR << "cyber_PyReader_read:PyReader ptr is null!";
+        AERROR << "autolink_PyReader_read:PyReader ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     int r = PyObject_IsTrue(pyobj_iswait);
     if (r == -1) {
-        AERROR << "cyber_PyReader_read:pyobj_iswait is error!";
+        AERROR << "autolink_PyReader_read:pyobj_iswait is error!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -236,7 +238,7 @@ PyObject* cyber_PyReader_read(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(reader_ret);
 }
 
-PyObject* cyber_PyReader_register_func(PyObject* self, PyObject* args) {
+PyObject* autolink_PyReader_register_func(PyObject* self, PyObject* args) {
     PyObject* pyobj_regist_fun = nullptr;
     PyObject* pyobj_reader = nullptr;
 
@@ -249,7 +251,7 @@ PyObject* cyber_PyReader_register_func(PyObject* self, PyObject* args) {
     }
 
     PyReader* reader =
-        PyObjectToPtr<PyReader*>(pyobj_reader, "autolink_cyber_pyreader");
+        PyObjectToPtr<PyReader*>(pyobj_reader, "autolink_autolink_pyreader");
     callback_fun = (int (*)(const char* i))PyInt_AsLong(pyobj_regist_fun);
     if (reader) {
         AINFO << "reader regist fun";
@@ -260,7 +262,7 @@ PyObject* cyber_PyReader_register_func(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_new_PyClient(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyClient(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* data_type = nullptr;
     PyObject* node_pyobj = nullptr;
@@ -271,7 +273,7 @@ PyObject* cyber_new_PyClient(PyObject* self, PyObject* args) {
     }
 
     Node* node = reinterpret_cast<Node*>(
-        PyCapsule_GetPointer(node_pyobj, "autolink_cyber_pynode"));
+        PyCapsule_GetPointer(node_pyobj, "autolink_autolink_pynode"));
     if (!node) {
         AERROR << "node is null";
         Py_INCREF(Py_None);
@@ -281,11 +283,11 @@ PyObject* cyber_new_PyClient(PyObject* self, PyObject* args) {
     PyClient* client = new PyClient((std::string const&)*channel_name,
                                     (std::string const&)*data_type, node);
     PyObject* pyobj_client =
-        PyCapsule_New(client, "autolink_cyber_pyclient", nullptr);
+        PyCapsule_New(client, "autolink_autolink_pyclient", nullptr);
     return pyobj_client;
 }
 
-PyObject* cyber_delete_PyClient(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyClient(PyObject* self, PyObject* args) {
     PyObject* client_py = nullptr;
     if (!PyArg_ParseTuple(args, const_cast<char*>("O:delete_PyClient"),
                           &client_py)) {
@@ -294,35 +296,36 @@ PyObject* cyber_delete_PyClient(PyObject* self, PyObject* args) {
     }
 
     PyClient* client = reinterpret_cast<PyClient*>(
-        PyCapsule_GetPointer(client_py, "autolink_cyber_pyclient"));
+        PyCapsule_GetPointer(client_py, "autolink_autolink_pyclient"));
     delete client;
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-PyObject* cyber_PyClient_send_request(PyObject* self, PyObject* args) {
+PyObject* autolink_PyClient_send_request(PyObject* self, PyObject* args) {
     PyObject* pyobj_client = nullptr;
     Py_buffer buffer;
     // Py_ssize_t len = 0;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("Oy*:PyClient_send_request"),
-                          &pyobj_client, &buffer)) {
-        AERROR << "cyber_PyClient_send_request:PyArg_ParseTuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("Oy*:autolink_PyClient_send_request"),
+            &pyobj_client, &buffer)) {
+        AERROR << "autolink_PyClient_send_request:PyArg_ParseTuple failed!";
         PyBuffer_Release(&buffer);
         return PYOBJECT_NULL_STRING;
     }
 
     PyClient* client =
-        PyObjectToPtr<PyClient*>(pyobj_client, "autolink_cyber_pyclient");
+        PyObjectToPtr<PyClient*>(pyobj_client, "autolink_autolink_pyclient");
 
     if (nullptr == client) {
-        AERROR << "cyber_PyClient_send_request:client ptr is null!";
+        AERROR << "autolink_PyClient_send_request:client ptr is null!";
         PyBuffer_Release(&buffer);
         return PYOBJECT_NULL_STRING;
     }
 
     std::string data_str(
         const_cast<const char*>(static_cast<char*>(buffer.buf)), buffer.len);
-    ADEBUG << "c++:PyClient_send_request data->[ " << data_str << "]";
+    ADEBUG << "c++:autolink_PyClient_send_request data->[ " << data_str << "]";
     const std::string response_str =
         client->send_request((std::string const&)data_str);
     ADEBUG << "c++:response data->[ " << response_str << "]";
@@ -330,18 +333,18 @@ PyObject* cyber_PyClient_send_request(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(response_str);
 }
 
-PyObject* cyber_new_PyService(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyService(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* data_type = nullptr;
     PyObject* node_pyobj = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("ssO:new_PyService"),
+    if (!PyArg_ParseTuple(args, const_cast<char*>("ssO:autolink_new_PyService"),
                           &channel_name, &data_type, &node_pyobj)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     Node* node = reinterpret_cast<Node*>(
-        PyCapsule_GetPointer(node_pyobj, "autolink_cyber_pynode"));
+        PyCapsule_GetPointer(node_pyobj, "autolink_autolink_pynode"));
     if (!node) {
         AERROR << "node is null";
         Py_INCREF(Py_None);
@@ -351,39 +354,41 @@ PyObject* cyber_new_PyService(PyObject* self, PyObject* args) {
     PyService* service = new PyService((std::string const&)*channel_name,
                                        (std::string const&)*data_type, node);
     PyObject* pyobj_service =
-        PyCapsule_New(service, "autolink_cyber_pyservice", nullptr);
+        PyCapsule_New(service, "autolink_autolink_pyservice", nullptr);
     return pyobj_service;
 }
 
-PyObject* cyber_delete_PyService(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyService(PyObject* self, PyObject* args) {
     PyObject* pyobj_service = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:delete_PyService"),
+    if (!PyArg_ParseTuple(args,
+                          const_cast<char*>("O:autolink_delete_PyService"),
                           &pyobj_service)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyService* service = reinterpret_cast<PyService*>(
-        PyCapsule_GetPointer(pyobj_service, "autolink_cyber_pyservice"));
+        PyCapsule_GetPointer(pyobj_service, "autolink_autolink_pyservice"));
     delete service;
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-PyObject* cyber_PyService_register_func(PyObject* self, PyObject* args) {
+PyObject* autolink_PyService_register_func(PyObject* self, PyObject* args) {
     PyObject* pyobj_regist_fun = nullptr;
     PyObject* pyobj_service = nullptr;
 
     int (*callback_fun)(char const*) = (int (*)(char const*))0;
 
-    if (!PyArg_ParseTuple(args, const_cast<char*>("OO:PyService_register_func"),
-                          &pyobj_service, &pyobj_regist_fun)) {
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("OO:autolink_PyService_register_func"),
+            &pyobj_service, &pyobj_regist_fun)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyService* service =
-        PyObjectToPtr<PyService*>(pyobj_service, "autolink_cyber_pyservice");
+        PyObjectToPtr<PyService*>(pyobj_service, "autolink_autolink_pyservice");
     callback_fun = (int (*)(const char* i))PyInt_AsLong(pyobj_regist_fun);
     if (service) {
         AINFO << "service regist fun";
@@ -394,56 +399,57 @@ PyObject* cyber_PyService_register_func(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_PyService_read(PyObject* self, PyObject* args) {
+PyObject* autolink_PyService_read(PyObject* self, PyObject* args) {
     PyObject* pyobj_service = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:cyber_PyService_read"),
+    if (!PyArg_ParseTuple(args, const_cast<char*>("O:autolink_PyService_read"),
                           &pyobj_service)) {
-        AERROR << "cyber_PyService_read:PyArg_ParseTuple failed!";
+        AERROR << "autolink_PyService_read:PyArg_ParseTuple failed!";
         return PYOBJECT_NULL_STRING;
     }
     PyService* service =
-        PyObjectToPtr<PyService*>(pyobj_service, "autolink_cyber_pyservice");
+        PyObjectToPtr<PyService*>(pyobj_service, "autolink_autolink_pyservice");
     if (nullptr == service) {
-        AERROR << "cyber_PyService_read:service ptr is null!";
+        AERROR << "autolink_PyService_read:service ptr is null!";
         return PYOBJECT_NULL_STRING;
     }
 
     const std::string reader_ret = service->read();
-    ADEBUG << "c++:PyService_read -> " << reader_ret;
+    ADEBUG << "c++:autolink_PyService_read -> " << reader_ret;
     return C_STR_TO_PY_BYTES(reader_ret);
 }
 
-PyObject* cyber_PyService_write(PyObject* self, PyObject* args) {
+PyObject* autolink_PyService_write(PyObject* self, PyObject* args) {
     PyObject* pyobj_service = nullptr;
     Py_buffer buffer;
     // Py_ssize_t len = 0;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("Oy*:cyber_PyService_write"),
+    if (!PyArg_ParseTuple(args,
+                          const_cast<char*>("Oy*:autolink_PyService_write"),
                           &pyobj_service, &buffer)) {
-        AERROR << "cyber_PyService_write:PyArg_ParseTuple failed!";
+        AERROR << "autolink_PyService_write:PyArg_ParseTuple failed!";
         PyBuffer_Release(&buffer);
         return PyInt_FromLong(1);
     }
 
     PyService* service =
-        PyObjectToPtr<PyService*>(pyobj_service, "autolink_cyber_pyservice");
+        PyObjectToPtr<PyService*>(pyobj_service, "autolink_autolink_pyservice");
 
     if (nullptr == service) {
-        AERROR << "cyber_PyService_write:writer ptr is null!";
+        AERROR << "autolink_PyService_write:writer ptr is null!";
         PyBuffer_Release(&buffer);
         return PyInt_FromLong(1);
     }
 
     std::string data_str(
         const_cast<const char*>(static_cast<char*>(buffer.buf)), buffer.len);
-    ADEBUG << "c++:PyService_write data->[ " << data_str << "]";
+    ADEBUG << "c++:autolink_PyService_write data->[ " << data_str << "]";
     int ret = service->write((std::string const&)data_str);
     PyBuffer_Release(&buffer);
     return PyInt_FromLong(ret);
 }
 
-PyObject* cyber_new_PyNode(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyNode(PyObject* self, PyObject* args) {
     char* node_name = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("s:new_PyNode"),
+    if (!PyArg_ParseTuple(args, const_cast<char*>("s:autolink_new_PyNode"),
                           &node_name)) {
         Py_INCREF(Py_None);
         return Py_None;
@@ -451,41 +457,43 @@ PyObject* cyber_new_PyNode(PyObject* self, PyObject* args) {
 
     PyNode* node = new PyNode((std::string const&)node_name);
     PyObject* pyobj_node =
-        PyCapsule_New(node, "autolink_cyber_pynode", nullptr);
+        PyCapsule_New(node, "autolink_autolink_pynode", nullptr);
     return pyobj_node;
 }
 
-PyObject* cyber_delete_PyNode(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyNode(PyObject* self, PyObject* args) {
     PyObject* pyobj_node = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:delete_PyNode"),
+    if (!PyArg_ParseTuple(args, const_cast<char*>("O:autolink_delete_PyNode"),
                           &pyobj_node)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyNode* node = reinterpret_cast<PyNode*>(
-        PyCapsule_GetPointer(pyobj_node, "autolink_cyber_pynode"));
+        PyCapsule_GetPointer(pyobj_node, "autolink_autolink_pynode"));
     delete node;
     Py_INCREF(Py_None);
     return Py_None;
 }
 
-PyObject* cyber_PyNode_create_writer(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNode_create_writer(PyObject* self, PyObject* args) {
     PyObject* pyobj_node = nullptr;
     char* channel_name = nullptr;
     char* type_name = nullptr;
     uint32_t qos_depth = 1;
 
-    if (!PyArg_ParseTuple(args, const_cast<char*>("OssI:PyNode_create_writer"),
-                          &pyobj_node, &channel_name, &type_name, &qos_depth)) {
-        AERROR << "cyber_PyNode_create_writer:PyArg_ParseTuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("OssI:autolink_PyNode_create_writer"),
+            &pyobj_node, &channel_name, &type_name, &qos_depth)) {
+        AERROR << "autolink_PyNode_create_writer:PyArg_ParseTuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* node = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* node =
+        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_autolink_pynode");
     if (nullptr == node) {
-        AERROR << "cyber_PyNode_create_writer:node ptr is null!";
+        AERROR << "autolink_PyNode_create_writer:node ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -495,30 +503,32 @@ PyObject* cyber_PyNode_create_writer(PyObject* self, PyObject* args) {
                              (std::string const&)type_name, qos_depth)));
 
     if (nullptr == writer) {
-        AERROR << "cyber_PyNode_create_writer:writer is null!";
+        AERROR << "autolink_PyNode_create_writer:writer is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
     PyObject* pyobj_writer =
-        PyCapsule_New(writer, "autolink_cyber_pywriter", nullptr);
+        PyCapsule_New(writer, "autolink_autolink_pywriter", nullptr);
     return pyobj_writer;
 }
 
-PyObject* cyber_PyNode_create_reader(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNode_create_reader(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* type_name = nullptr;
     PyObject* pyobj_node = nullptr;
 
-    if (!PyArg_ParseTuple(args, const_cast<char*>("Oss:PyNode_create_reader"),
-                          &pyobj_node, &channel_name, &type_name)) {
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("Oss:autolink_PyNode_create_reader"),
+            &pyobj_node, &channel_name, &type_name)) {
         AERROR << "PyNode_create_reader:PyArg_ParseTuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* node = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* node =
+        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_autolink_pynode");
     if (nullptr == node) {
-        AERROR << "PyNode_create_reader:node ptr is null!";
+        AERROR << "autolink_PyNode_create_reader:node ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -528,25 +538,27 @@ PyObject* cyber_PyNode_create_reader(PyObject* self, PyObject* args) {
     ACHECK(reader) << "PyReader is NULL!";
 
     PyObject* pyobj_reader =
-        PyCapsule_New(reader, "autolink_cyber_pyreader", nullptr);
+        PyCapsule_New(reader, "autolink_autolink_pyreader", nullptr);
     return pyobj_reader;
 }
 
-PyObject* cyber_PyNode_create_client(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNode_create_client(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* type_name = nullptr;
     PyObject* pyobj_node = nullptr;
 
-    if (!PyArg_ParseTuple(args, const_cast<char*>("Oss:PyNode_create_client"),
-                          &pyobj_node, &channel_name, &type_name)) {
-        AERROR << "PyNode_create_client:PyArg_ParseTuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("Oss:autolink_PyNode_create_client"),
+            &pyobj_node, &channel_name, &type_name)) {
+        AERROR << "autolink_PyNode_create_client:PyArg_ParseTuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* node = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* node =
+        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_autolink_pynode");
     if (nullptr == node) {
-        AERROR << "PyNode_create_client:node ptr is null!";
+        AERROR << "autolink_PyNode_create_client:node ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -554,27 +566,28 @@ PyObject* cyber_PyNode_create_client(PyObject* self, PyObject* args) {
     PyClient* client = reinterpret_cast<PyClient*>((node->create_client(
         (std::string const&)channel_name, (std::string const&)type_name)));
     PyObject* pyobj_client =
-        PyCapsule_New(client, "autolink_cyber_pyclient", nullptr);
+        PyCapsule_New(client, "autolink_autolink_pyclient", nullptr);
 
     return pyobj_client;
 }
 
-PyObject* cyber_PyNode_create_service(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNode_create_service(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     char* type_name = nullptr;
     PyObject* pyobj_node = nullptr;
 
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("Oss:cyber_PyNode_create_service"),
-                          &pyobj_node, &channel_name, &type_name)) {
-        AERROR << "cyber_PyNode_create_service:PyArg_ParseTuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("Oss:autolink_PyNode_create_service"),
+            &pyobj_node, &channel_name, &type_name)) {
+        AERROR << "autolink_PyNode_create_service:PyArg_ParseTuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* node = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* node =
+        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_autolink_pynode");
     if (nullptr == node) {
-        AERROR << "cyber_PyNode_create_service:node ptr is null!";
+        AERROR << "autolink_PyNode_create_service:node ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -582,23 +595,24 @@ PyObject* cyber_PyNode_create_service(PyObject* self, PyObject* args) {
     PyService* service = reinterpret_cast<PyService*>((node->create_service(
         (std::string const&)channel_name, (std::string const&)type_name)));
     PyObject* pyobj_service =
-        PyCapsule_New(service, "autolink_cyber_pyservice", nullptr);
+        PyCapsule_New(service, "autolink_autolink_pyservice", nullptr);
     return pyobj_service;
 }
 
-PyObject* cyber_PyNode_shutdown(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNode_shutdown(PyObject* self, PyObject* args) {
     PyObject* pyobj_node = nullptr;
 
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:PyNode_shutdown"),
+    if (!PyArg_ParseTuple(args, const_cast<char*>("O:autolink_PyNode_shutdown"),
                           &pyobj_node)) {
-        AERROR << "cyber_PyNode_shutdown:PyNode_shutdown failed!";
+        AERROR << "autolink_PyNode_shutdown:PyNode_shutdown failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* node = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* node =
+        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_autolink_pynode");
     if (nullptr == node) {
-        AERROR << "cyber_PyNode_shutdown:node ptr is null!";
+        AERROR << "autolink_PyNode_shutdown:node ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -607,23 +621,24 @@ PyObject* cyber_PyNode_shutdown(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_PyNode_register_message(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNode_register_message(PyObject* self, PyObject* args) {
     PyObject* pyobj_node = nullptr;
     Py_buffer buffer;
     // int len = 0;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("Oy*:cyber_PyNode_register_message"),
+            args, const_cast<char*>("Oy*:autolink_PyNode_register_message"),
             &pyobj_node, &buffer)) {
-        AERROR << "cyber_PyNode_register_message: failed!";
+        AERROR << "autolink_PyNode_register_message: failed!";
         Py_INCREF(Py_None);
         PyBuffer_Release(&buffer);
         return Py_None;
     }
     std::string desc_str(
         const_cast<const char*>(static_cast<char*>(buffer.buf)), buffer.len);
-    PyNode* node = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* node =
+        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_autolink_pynode");
     if (nullptr == node) {
-        AERROR << "cyber_PyNode_register_message:node ptr is null! desc->"
+        AERROR << "autolink_PyNode_register_message:node ptr is null! desc->"
                << desc_str;
         Py_INCREF(Py_None);
         PyBuffer_Release(&buffer);
@@ -635,14 +650,14 @@ PyObject* cyber_PyNode_register_message(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_PyChannelUtils_get_msg_type(PyObject* self, PyObject* args) {
+PyObject* autolink_PyChannelUtils_get_msg_type(PyObject* self, PyObject* args) {
     char* channel_name = nullptr;
     Py_ssize_t len = 0;
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("s#B:cyber_PyChannelUtils_get_msg_type"),
+            args, const_cast<char*>("s#B:autolink_PyChannelUtils_get_msg_type"),
             &channel_name, &len, &sleep_s)) {
-        AERROR << "cyber_PyChannelUtils_get_msg_type failed!";
+        AERROR << "autolink_PyChannelUtils_get_msg_type failed!";
         return PYOBJECT_NULL_STRING;
     }
     std::string channel(channel_name, len);
@@ -651,18 +666,19 @@ PyObject* cyber_PyChannelUtils_get_msg_type(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(msg_type);
 }
 
-PyObject* cyber_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata(
+PyObject* autolink_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata(
     PyObject* self, PyObject* args) {
     char* msgtype = nullptr;
     char* rawdata = nullptr;
     Py_ssize_t len = 0;
     if (!PyArg_ParseTuple(
             args,
-            const_cast<char*>("ss#:cyber_PyChannelUtils_get_debugstring_by_"
+            const_cast<char*>("ss#:autolink_PyChannelUtils_get_debugstring_by_"
                               "msgtype_rawmsgdata"),
             &msgtype, &rawdata, &len)) {
-        AERROR << "cyber_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata "
-                  "failed!";
+        AERROR
+            << "autolink_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata "
+               "failed!";
         return PYOBJECT_NULL_STRING;
     }
     std::string raw_data(rawdata, len);
@@ -672,14 +688,14 @@ PyObject* cyber_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata(
     return C_STR_TO_PY_BYTES(debug_string);
 }
 
-static PyObject* cyber_PyChannelUtils_get_active_channels(PyObject* self,
-                                                          PyObject* args) {
+static PyObject* autolink_PyChannelUtils_get_active_channels(PyObject* self,
+                                                             PyObject* args) {
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
             args,
-            const_cast<char*>("B:cyber_PyChannelUtils_get_active_channels"),
+            const_cast<char*>("B:autolink_PyChannelUtils_get_active_channels"),
             &sleep_s)) {
-        AERROR << "cyber_PyChannelUtils_get_active_channels failed!";
+        AERROR << "autolink_PyChannelUtils_get_active_channels failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -700,8 +716,8 @@ static PyObject* cyber_PyChannelUtils_get_active_channels(PyObject* self,
 // {  'channel1':[atrr1, atrr2, atrr3],
 //    'channel2':[atrr1, atrr2]
 // }
-static PyObject* cyber_PyChannelUtils_get_channels_info(PyObject* self,
-                                                        PyObject* args) {
+static PyObject* autolink_PyChannelUtils_get_channels_info(PyObject* self,
+                                                           PyObject* args) {
     auto channelsinfo = PyChannelUtils::get_channels_info();
     PyObject* pyobj_channelinfo_dict = PyDict_New();
     for (auto& channelinfo : channelsinfo) {
@@ -721,12 +737,13 @@ static PyObject* cyber_PyChannelUtils_get_channels_info(PyObject* self,
     return pyobj_channelinfo_dict;
 }
 
-PyObject* cyber_PyNodeUtils_get_active_nodes(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNodeUtils_get_active_nodes(PyObject* self,
+                                                PyObject* args) {
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("B:cyber_PyNodeUtils_get_active_nodes"),
+            args, const_cast<char*>("B:autolink_PyNodeUtils_get_active_nodes"),
             &sleep_s)) {
-        AERROR << "cyber_PyNodeUtils_get_active_nodes failed!";
+        AERROR << "autolink_PyNodeUtils_get_active_nodes failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -743,14 +760,14 @@ PyObject* cyber_PyNodeUtils_get_active_nodes(PyObject* self, PyObject* args) {
     return pyobj_list;
 }
 
-PyObject* cyber_PyNodeUtils_get_node_attr(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNodeUtils_get_node_attr(PyObject* self, PyObject* args) {
     char* node_name = nullptr;
     Py_ssize_t len = 0;
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("s#B:cyber_PyNodeUtils_get_node_attr"),
+            args, const_cast<char*>("s#B:autolink_PyNodeUtils_get_node_attr"),
             &node_name, &len, &sleep_s)) {
-        AERROR << "cyber_PyNodeUtils_get_node_attr failed!";
+        AERROR << "autolink_PyNodeUtils_get_node_attr failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -760,14 +777,16 @@ PyObject* cyber_PyNodeUtils_get_node_attr(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(node_attr);
 }
 
-PyObject* cyber_PyNodeUtils_get_readersofnode(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNodeUtils_get_readersofnode(PyObject* self,
+                                                 PyObject* args) {
     char* node_name = nullptr;
     Py_ssize_t len = 0;
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("s#B:cyber_PyNodeUtils_get_readersofnode"),
+            args,
+            const_cast<char*>("s#B:autolink_PyNodeUtils_get_readersofnode"),
             &node_name, &len, &sleep_s)) {
-        AERROR << "cyber_PyNodeUtils_get_readersofnode failed!";
+        AERROR << "autolink_PyNodeUtils_get_readersofnode failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -784,14 +803,16 @@ PyObject* cyber_PyNodeUtils_get_readersofnode(PyObject* self, PyObject* args) {
     return pyobj_list;
 }
 
-PyObject* cyber_PyNodeUtils_get_writersofnode(PyObject* self, PyObject* args) {
+PyObject* autolink_PyNodeUtils_get_writersofnode(PyObject* self,
+                                                 PyObject* args) {
     char* node_name = nullptr;
     Py_ssize_t len = 0;
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("s#B:cyber_PyNodeUtils_get_writersofnode"),
+            args,
+            const_cast<char*>("s#B:autolink_PyNodeUtils_get_writersofnode"),
             &node_name, &len, &sleep_s)) {
-        AERROR << "cyber_PyNodeUtils_get_writersofnode failed!";
+        AERROR << "autolink_PyNodeUtils_get_writersofnode failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -808,14 +829,14 @@ PyObject* cyber_PyNodeUtils_get_writersofnode(PyObject* self, PyObject* args) {
     return pyobj_list;
 }
 
-PyObject* cyber_PyServiceUtils_get_active_services(PyObject* self,
-                                                   PyObject* args) {
+PyObject* autolink_PyServiceUtils_get_active_services(PyObject* self,
+                                                      PyObject* args) {
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
             args,
-            const_cast<char*>("B:cyber_PyServiceUtils_get_active_services"),
+            const_cast<char*>("B:autolink_PyServiceUtils_get_active_services"),
             &sleep_s)) {
-        AERROR << "cyber_PyServiceUtils_get_active_services failed!";
+        AERROR << "autolink_PyServiceUtils_get_active_services failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -832,16 +853,16 @@ PyObject* cyber_PyServiceUtils_get_active_services(PyObject* self,
     return pyobj_list;
 }
 
-PyObject* cyber_PyServiceUtils_get_service_attr(PyObject* self,
-                                                PyObject* args) {
+PyObject* autolink_PyServiceUtils_get_service_attr(PyObject* self,
+                                                   PyObject* args) {
     char* srv_name = nullptr;
     Py_ssize_t len = 0;
     unsigned char sleep_s = 0;
     if (!PyArg_ParseTuple(
             args,
-            const_cast<char*>("s#B:cyber_PyServiceUtils_get_service_attr"),
+            const_cast<char*>("s#B:autolink_PyServiceUtils_get_service_attr"),
             &srv_name, &len, &sleep_s)) {
-        AERROR << "cyber_PyServiceUtils_get_service_attr failed!";
+        AERROR << "autolink_PyServiceUtils_get_service_attr failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -854,82 +875,83 @@ PyObject* cyber_PyServiceUtils_get_service_attr(PyObject* self,
 /////////////////////////////////////////////////////////////////////
 //// global for whole page, init module
 /////////////////////////////////////////////////////////////////////
-static PyMethodDef _cyber_methods[] = {
+static PyMethodDef _autolink_methods[] = {
     // PyInit fun
-    {"py_init", cyber_py_init, METH_VARARGS, ""},
-    {"py_ok", cyber_py_ok, METH_NOARGS, ""},
-    {"py_shutdown", cyber_py_shutdown, METH_NOARGS, ""},
-    {"py_is_shutdown", cyber_py_is_shutdown, METH_NOARGS, ""},
-    {"py_waitforshutdown", cyber_py_waitforshutdown, METH_NOARGS, ""},
+    {"py_init", autolink_py_init, METH_VARARGS, ""},
+    {"py_ok", autolink_py_ok, METH_NOARGS, ""},
+    {"py_shutdown", autolink_py_shutdown, METH_NOARGS, ""},
+    {"py_is_shutdown", autolink_py_is_shutdown, METH_NOARGS, ""},
+    {"py_waitforshutdown", autolink_py_waitforshutdown, METH_NOARGS, ""},
 
     // PyWriter fun
-    {"new_PyWriter", cyber_new_PyWriter, METH_VARARGS, ""},
-    {"delete_PyWriter", cyber_delete_PyWriter, METH_VARARGS, ""},
-    {"PyWriter_write", cyber_PyWriter_write, METH_VARARGS, ""},
+    {"new_PyWriter", autolink_new_PyWriter, METH_VARARGS, ""},
+    {"delete_PyWriter", autolink_delete_PyWriter, METH_VARARGS, ""},
+    {"PyWriter_write", autolink_PyWriter_write, METH_VARARGS, ""},
 
     // PyReader fun
-    {"new_PyReader", cyber_new_PyReader, METH_VARARGS, ""},
-    {"delete_PyReader", cyber_delete_PyReader, METH_VARARGS, ""},
-    {"PyReader_register_func", cyber_PyReader_register_func, METH_VARARGS, ""},
-    {"PyReader_read", cyber_PyReader_read, METH_VARARGS, ""},
+    {"new_PyReader", autolink_new_PyReader, METH_VARARGS, ""},
+    {"delete_PyReader", autolink_delete_PyReader, METH_VARARGS, ""},
+    {"PyReader_register_func", autolink_PyReader_register_func, METH_VARARGS,
+     ""},
+    {"PyReader_read", autolink_PyReader_read, METH_VARARGS, ""},
 
     // PyClient fun
-    {"new_PyClient", cyber_new_PyClient, METH_VARARGS, ""},
-    {"delete_PyClient", cyber_delete_PyClient, METH_VARARGS, ""},
-    {"PyClient_send_request", cyber_PyClient_send_request, METH_VARARGS, ""},
+    {"new_PyClient", autolink_new_PyClient, METH_VARARGS, ""},
+    {"delete_PyClient", autolink_delete_PyClient, METH_VARARGS, ""},
+    {"PyClient_send_request", autolink_PyClient_send_request, METH_VARARGS, ""},
     // PyService fun
-    {"new_PyService", cyber_new_PyService, METH_VARARGS, ""},
-    {"delete_PyService", cyber_delete_PyService, METH_VARARGS, ""},
-    {"PyService_register_func", cyber_PyService_register_func, METH_VARARGS,
+    {"new_PyService", autolink_new_PyService, METH_VARARGS, ""},
+    {"delete_PyService", autolink_delete_PyService, METH_VARARGS, ""},
+    {"PyService_register_func", autolink_PyService_register_func, METH_VARARGS,
      ""},
-    {"PyService_read", cyber_PyService_read, METH_VARARGS, ""},
-    {"PyService_write", cyber_PyService_write, METH_VARARGS, ""},
+    {"PyService_read", autolink_PyService_read, METH_VARARGS, ""},
+    {"PyService_write", autolink_PyService_write, METH_VARARGS, ""},
     // PyNode fun
-    {"new_PyNode", cyber_new_PyNode, METH_VARARGS, ""},
-    {"delete_PyNode", cyber_delete_PyNode, METH_VARARGS, ""},
-    {"PyNode_shutdown", cyber_PyNode_shutdown, METH_VARARGS, ""},
-    {"PyNode_create_writer", cyber_PyNode_create_writer, METH_VARARGS, ""},
-    {"PyNode_register_message", cyber_PyNode_register_message, METH_VARARGS,
+    {"new_PyNode", autolink_new_PyNode, METH_VARARGS, ""},
+    {"delete_PyNode", autolink_delete_PyNode, METH_VARARGS, ""},
+    {"PyNode_shutdown", autolink_PyNode_shutdown, METH_VARARGS, ""},
+    {"PyNode_create_writer", autolink_PyNode_create_writer, METH_VARARGS, ""},
+    {"PyNode_register_message", autolink_PyNode_register_message, METH_VARARGS,
      ""},
-    {"PyNode_create_reader", cyber_PyNode_create_reader, METH_VARARGS, ""},
-    {"PyNode_create_client", cyber_PyNode_create_client, METH_VARARGS, ""},
-    {"PyNode_create_service", cyber_PyNode_create_service, METH_VARARGS, ""},
+    {"PyNode_create_reader", autolink_PyNode_create_reader, METH_VARARGS, ""},
+    {"PyNode_create_client", autolink_PyNode_create_client, METH_VARARGS, ""},
+    {"PyNode_create_service", autolink_PyNode_create_service, METH_VARARGS, ""},
 
-    {"PyChannelUtils_get_msg_type", cyber_PyChannelUtils_get_msg_type,
+    {"PyChannelUtils_get_msg_type", autolink_PyChannelUtils_get_msg_type,
      METH_VARARGS, ""},
     {"PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata",
-     cyber_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata, METH_VARARGS,
-     ""},
+     autolink_PyChannelUtils_get_debugstring_by_msgtype_rawmsgdata,
+     METH_VARARGS, ""},
     {"PyChannelUtils_get_active_channels",
-     cyber_PyChannelUtils_get_active_channels, METH_VARARGS, ""},
-    {"PyChannelUtils_get_channels_info", cyber_PyChannelUtils_get_channels_info,
-     METH_VARARGS, ""},
+     autolink_PyChannelUtils_get_active_channels, METH_VARARGS, ""},
+    {"PyChannelUtils_get_channels_info",
+     autolink_PyChannelUtils_get_channels_info, METH_VARARGS, ""},
 
-    {"PyNodeUtils_get_active_nodes", cyber_PyNodeUtils_get_active_nodes,
+    {"PyNodeUtils_get_active_nodes", autolink_PyNodeUtils_get_active_nodes,
      METH_VARARGS, ""},
-    {"PyNodeUtils_get_node_attr", cyber_PyNodeUtils_get_node_attr, METH_VARARGS,
-     ""},
-    {"PyNodeUtils_get_readersofnode", cyber_PyNodeUtils_get_readersofnode,
+    {"PyNodeUtils_get_node_attr", autolink_PyNodeUtils_get_node_attr,
      METH_VARARGS, ""},
-    {"PyNodeUtils_get_writersofnode", cyber_PyNodeUtils_get_writersofnode,
+    {"PyNodeUtils_get_readersofnode", autolink_PyNodeUtils_get_readersofnode,
+     METH_VARARGS, ""},
+    {"PyNodeUtils_get_writersofnode", autolink_PyNodeUtils_get_writersofnode,
      METH_VARARGS, ""},
 
     {"PyServiceUtils_get_active_services",
-     cyber_PyServiceUtils_get_active_services, METH_VARARGS, ""},
-    {"PyServiceUtils_get_service_attr", cyber_PyServiceUtils_get_service_attr,
-     METH_VARARGS, ""},
+     autolink_PyServiceUtils_get_active_services, METH_VARARGS, ""},
+    {"PyServiceUtils_get_service_attr",
+     autolink_PyServiceUtils_get_service_attr, METH_VARARGS, ""},
 
     {nullptr, nullptr, 0, nullptr} /* sentinel */
 };
 
 /// Init function of this module
-PyMODINIT_FUNC PyInit__cyber_wrapper(void) {
+PyMODINIT_FUNC PyInit__autolink_wrapper(void) {
     static struct PyModuleDef module_def = {
         PyModuleDef_HEAD_INIT,
-        "_cyber_wrapper",  // Module name.
-        "Cyber module",    // Module doc.
-        -1,                // Module size.
-        _cyber_methods,    // Module methods.
+        "_autolink_wrapper",  // Module name.
+        "Autolink module",    // Module doc.
+        -1,                   // Module size.
+        _autolink_methods,    // Module methods.
         nullptr,
         nullptr,
         nullptr,

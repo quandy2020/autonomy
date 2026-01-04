@@ -8,17 +8,16 @@
 
 #pragma once
 
-#include "autonomy/map/grid_map/grid_map_core/type_defs.hpp"
-#include "autonomy/map/grid_map/grid_map_core/buffer_region.hpp"
-
 #include <Eigen/Core>
-#include <vector>
 #include <map>
+#include <vector>
+
+#include "autonomy/map/grid_map/grid_map_core/buffer_region.hpp"
+#include "autonomy/map/grid_map/grid_map_core/type_defs.hpp"
 
 namespace grid_map {
 
-union Color
-{
+union Color {
     unsigned long longColor_;
     float floatColor_;
 };
@@ -31,15 +30,13 @@ union Color
  * @param[in] mapPosition the position of the map.
  * @param[in] resolution the resolution of the map.
  * @param[in] bufferSize the size of the buffer (optional).
- * @param[in] bufferStartIndex the index of the starting point of the circular buffer (optional).
+ * @param[in] bufferStartIndex the index of the starting point of the circular
+ * buffer (optional).
  * @return true if successful, false if index not within range of buffer.
  */
-bool getPositionFromIndex(Position& position,
-                          const Index& index,
-                          const Length& mapLength,
-                          const Position& mapPosition,
-                          const double& resolution,
-                          const Size& bufferSize,
+bool getPositionFromIndex(Position& position, const Index& index,
+                          const Length& mapLength, const Position& mapPosition,
+                          const double& resolution, const Size& bufferSize,
                           const Index& bufferStartIndex = Index::Zero());
 
 /*!
@@ -50,15 +47,13 @@ bool getPositionFromIndex(Position& position,
  * @param[in] mapPosition the position of the map.
  * @param[in] resolution the resolution of the map.
  * @param[in] bufferSize the size of the buffer (optional).
- * @param[in] bufferStartIndex the index of the starting point of the circular buffer (optional).
+ * @param[in] bufferStartIndex the index of the starting point of the circular
+ * buffer (optional).
  * @return true if successful, false if position outside of map.
  */
-bool getIndexFromPosition(Index& index,
-                          const Position& position,
-                          const Length& mapLength,
-                          const Position& mapPosition,
-                          const double& resolution,
-                          const Size& bufferSize,
+bool getIndexFromPosition(Index& index, const Position& position,
+                          const Length& mapLength, const Position& mapPosition,
+                          const double& resolution, const Size& bufferSize,
                           const Index& bufferStartIndex = Index::Zero());
 
 /*!
@@ -68,8 +63,7 @@ bool getIndexFromPosition(Index& index,
  * @param[in] mapPosition the position of the map.
  * @return true if position is within map, false otherwise.
  */
-bool checkIfPositionWithinMap(const Position& position,
-                              const Length& mapLength,
+bool checkIfPositionWithinMap(const Position& position, const Length& mapLength,
                               const Position& mapPosition);
 
 /*!
@@ -96,10 +90,11 @@ bool getIndexShiftFromPositionShift(Index& indexShift,
                                     const double& resolution);
 
 /*!
- * Computes the corresponding position shift from a index shift. Use this function
- * if you are moving the grid map and want to ensure that the cells match
- * before and after.
- * @param[out] positionShift the corresponding shift in position in the grid map frame.
+ * Computes the corresponding position shift from a index shift. Use this
+ * function if you are moving the grid map and want to ensure that the cells
+ * match before and after.
+ * @param[out] positionShift the corresponding shift in position in the grid map
+ * frame.
  * @param[in] indexShift the desired shift of the indices.
  * @param[in] resolution the resolution of the map.
  * @return true if successful.
@@ -120,7 +115,8 @@ bool checkIfIndexInRange(const Index& index, const Size& bufferSize);
  * Bounds an index that runs out of the range of the buffer.
  * This means that an index that overflows is stopped at the last valid index.
  * This is the 2d version of boundIndexToRange(int&, const int&).
- * @param[in/out] index the indices that will be bounded to the valid region of the buffer.
+ * @param[in/out] index the indices that will be bounded to the valid region of
+ * the buffer.
  * @param[in] bufferSize the size of the buffer.
  */
 void boundIndexToRange(Index& index, const Size& bufferSize);
@@ -128,24 +124,27 @@ void boundIndexToRange(Index& index, const Size& bufferSize);
 /*!
  * Bounds an index that runs out of the range of the buffer.
  * This means that an index that overflows is stopped at the last valid index.
- * @param[in/out] index the index that will be bounded to the valid region of the buffer.
+ * @param[in/out] index the index that will be bounded to the valid region of
+ * the buffer.
  * @param[in] bufferSize the size of the buffer.
  */
 void boundIndexToRange(int& index, const int& bufferSize);
 
 /*!
- * Wraps an index that runs out of the range of the buffer back into allowed the region.
- * This means that an index that overflows is reset to zero.
- * This is the 2d version of wrapIndexToRange(int&, const int&).
- * @param[in/out] index the indices that will be wrapped into the valid region of the buffer.
+ * Wraps an index that runs out of the range of the buffer back into allowed the
+ * region. This means that an index that overflows is reset to zero. This is the
+ * 2d version of wrapIndexToRange(int&, const int&).
+ * @param[in/out] index the indices that will be wrapped into the valid region
+ * of the buffer.
  * @param[in] bufferSize the size of the buffer.
  */
 void wrapIndexToRange(Index& index, const Size& bufferSize);
 
 /*!
- * Wraps an index that runs out of the range of the buffer back into allowed the region.
- * This means that an index that overflows is reset to zero.
- * @param[in/out] index the index that will be wrapped into the valid region of the buffer.
+ * Wraps an index that runs out of the range of the buffer back into allowed the
+ * region. This means that an index that overflows is reset to zero.
+ * @param[in/out] index the index that will be wrapped into the valid region of
+ * the buffer.
  * @param[in] bufferSize the size of the buffer.
  */
 void wrapIndexToRange(int& index, int bufferSize);
@@ -157,65 +156,72 @@ void wrapIndexToRange(int& index, int bufferSize);
  * @param[in] mapLength the lengths in x and y direction.
  * @param[in] mapPosition the position of the map.
  */
-void boundPositionToRange(Position& position, const Length& mapLength, const Position& mapPosition);
+void boundPositionToRange(Position& position, const Length& mapLength,
+                          const Position& mapPosition);
 
 /*!
- * Provides the alignment transformation from the buffer order (outer/inner storage)
- * and the map frame (x/y-coordinate).
+ * Provides the alignment transformation from the buffer order (outer/inner
+ * storage) and the map frame (x/y-coordinate).
  * @return the alignment transformation.
  */
 Eigen::Matrix2i getBufferOrderToMapFrameAlignment();
 
 /*!
- * Given a map and a desired submap (defined by position and size), this function computes
- * various information about the submap. The returned submap might be smaller than the requested
- * size as it respects the boundaries of the map.
+ * Given a map and a desired submap (defined by position and size), this
+ * function computes various information about the submap. The returned submap
+ * might be smaller than the requested size as it respects the boundaries of the
+ * map.
  * @param[out] submapTopLeftIndex the top left index of the returned submap.
  * @param[out] submapBufferSize the buffer size of the returned submap.
- * @param[out] submapPosition the position of the submap (center) in the map frame.
+ * @param[out] submapPosition the position of the submap (center) in the map
+ * frame.
  * @param[out] submapLength the length of the submap.
- * @param[out] requestedIndexInSubmap the index in the submap that corresponds to the requested
- *             position of the submap.
- * @param[in] requestedSubmapPosition the requested submap position (center) in the map frame.
+ * @param[out] requestedIndexInSubmap the index in the submap that corresponds
+ * to the requested position of the submap.
+ * @param[in] requestedSubmapPosition the requested submap position (center) in
+ * the map frame.
  * @param[in] requestedSubmapLength the requested submap length.
  * @param[in] mapLength the lengths in x and y direction.
  * @param[in] mapPosition the position of the map.
  * @param[in] resolution the resolution of the map.
  * @param[in] bufferSize the buffer size of the map.
- * @param[in] bufferStartIndex the index of the starting point of the circular buffer (optional).
+ * @param[in] bufferStartIndex the index of the starting point of the circular
+ * buffer (optional).
  * @return true if successful.
  */
-bool getSubmapInformation(Index& submapTopLeftIndex,
-                          Size& submapBufferSize,
-                          Position& submapPosition,
-                          Length& submapLength,
+bool getSubmapInformation(Index& submapTopLeftIndex, Size& submapBufferSize,
+                          Position& submapPosition, Length& submapLength,
                           Index& requestedIndexInSubmap,
                           const Position& requestedSubmapPosition,
                           const Length& requestedSubmapLength,
-                          const Length& mapLength,
-                          const Position& mapPosition,
-                          const double& resolution,
-                          const Size& bufferSize,
+                          const Length& mapLength, const Position& mapPosition,
+                          const double& resolution, const Size& bufferSize,
                           const Index& bufferStartIndex = Index::Zero());
 
 /*!
- * Computes the buffer size of a submap given a top left and a lower right index.
+ * Computes the buffer size of a submap given a top left and a lower right
+ * index.
  * @param topLeftIndex the top left index in the map.
  * @param bottomRightIndex the bottom right index in the map.
  * @return buffer size for the submap.
  */
-Size getSubmapSizeFromCornerIndices(const Index& topLeftIndex, const Index& bottomRightIndex,
-                                    const Size& bufferSize, const Index& bufferStartIndex);
+Size getSubmapSizeFromCornerIndices(const Index& topLeftIndex,
+                                    const Index& bottomRightIndex,
+                                    const Size& bufferSize,
+                                    const Index& bufferStartIndex);
 
 /*!
  * Computes the regions in the circular buffer that make up the data for
  * a requested submap.
- * @param[out] submapBufferRegions the list of buffer regions that make up the submap.
+ * @param[out] submapBufferRegions the list of buffer regions that make up the
+ * submap.
  * @param[in] submapIndex the index (top-left) for the requested submap.
  * @param[in] submapBufferSize the size of the requested submap.
  * @param[in] bufferSize the buffer size of the map.
- * @param[in] bufferStartIndex the index of the starting point of the circular buffer (optional).
- * @return true if successful, false if requested submap is not fully contained in the map.
+ * @param[in] bufferStartIndex the index of the starting point of the circular
+ * buffer (optional).
+ * @return true if successful, false if requested submap is not fully contained
+ * in the map.
  */
 bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
                                const Index& submapIndex,
@@ -227,10 +233,12 @@ bool getBufferRegionsForSubmap(std::vector<BufferRegion>& submapBufferRegions,
  * Increases the index by one to iterate through the map.
  * Increments either to the neighboring index to the right or to
  * the start of the lower row. Returns false if end of iterations are reached.
- * @param[in/out] index the index in the map that is incremented (corrected for the circular buffer).
+ * @param[in/out] index the index in the map that is incremented (corrected for
+ * the circular buffer).
  * @param[in] bufferSize the map buffer size.
  * @param[in] bufferStartIndex the map buffer start index.
- * @return true if successfully incremented indices, false if end of iteration limits are reached.
+ * @return true if successfully incremented indices, false if end of iteration
+ * limits are reached.
  */
 bool incrementIndex(Index& index, const Size& bufferSize,
                     const Index& bufferStartIndex = Index::Zero());
@@ -240,19 +248,23 @@ bool incrementIndex(Index& index, const Size& bufferSize,
  * Increments either to the neighboring index to the right or to
  * the start of the lower row. Returns false if end of iterations are reached.
  *
- * Note: This function does not check if submap actually fits to the map. This needs
- * to be checked before separately.
+ * Note: This function does not check if submap actually fits to the map. This
+ * needs to be checked before separately.
  *
  * @param[in/out] submapIndex the index in the submap that is incremented.
- * @param[out] index the index in the map that is incremented (corrected for the circular buffer).
+ * @param[out] index the index in the map that is incremented (corrected for the
+ * circular buffer).
  * @param[in] submapTopLefIndex the top left index of the submap.
  * @param[in] submapBufferSize the submap buffer size.
  * @param[in] bufferSize the map buffer size.
  * @param[in] bufferStartIndex the map buffer start index.
- * @return true if successfully incremented indices, false if end of iteration limits are reached.
+ * @return true if successfully incremented indices, false if end of iteration
+ * limits are reached.
  */
-bool incrementIndexForSubmap(Index& submapIndex, Index& index, const Index& submapTopLeftIndex,
-                             const Size& submapBufferSize, const Size& bufferSize,
+bool incrementIndexForSubmap(Index& submapIndex, Index& index,
+                             const Index& submapTopLeftIndex,
+                             const Size& submapBufferSize,
+                             const Size& bufferSize,
                              const Index& bufferStartIndex = Index::Zero());
 
 /*!
@@ -267,52 +279,64 @@ Index getIndexFromBufferIndex(const Index& bufferIndex, const Size& bufferSize,
                               const Index& bufferStartIndex);
 
 /*!
- * Retrieve the index of the buffer from a unwrapped index (reverse from function above).
+ * Retrieve the index of the buffer from a unwrapped index (reverse from
+ * function above).
  * @param index the unwrapped index.
  * @param bufferSize the map buffer size.
  * @param bufferStartIndex the map buffer start index.
  * @return the buffer index.
  */
-Index getBufferIndexFromIndex(const Index& index, const Size& bufferSize, const Index& bufferStartIndex);
+Index getBufferIndexFromIndex(const Index& index, const Size& bufferSize,
+                              const Index& bufferStartIndex);
 
 /*!
- * Returns the linear index (1-dim.) corresponding to the regular index (2-dim.) for either
- * row- or column-major format.
- * Note: Eigen is defaulting to column-major format.
+ * Returns the linear index (1-dim.) corresponding to the regular index (2-dim.)
+ * for either row- or column-major format. Note: Eigen is defaulting to
+ * column-major format.
  * @param[in] index the regular 2d index.
  * @param[in] bufferSize the map buffer size.
- * @param[in] (optional) rowMajor if the linear index is generated for row-major format.
+ * @param[in] (optional) rowMajor if the linear index is generated for row-major
+ * format.
  * @return the linear 1d index.
  */
-size_t getLinearIndexFromIndex(const Index& index, const Size& bufferSize, bool rowMajor = false);
+size_t getLinearIndexFromIndex(const Index& index, const Size& bufferSize,
+                               bool rowMajor = false);
 
 /*!
- * Returns the regular index (2-dim.) corresponding to the linear index (1-dim.) for a given buffer size.
+ * Returns the regular index (2-dim.) corresponding to the linear index (1-dim.)
+ * for a given buffer size.
  * @param[in] linearIndex the he linear 1d index.
  * @param[in] bufferSize the map buffer size.
- * @param[in] (optional) rowMajor if the linear index is generated for row-major format.
+ * @param[in] (optional) rowMajor if the linear index is generated for row-major
+ * format.
  * @return the regular 2d index.
  */
-Index getIndexFromLinearIndex(size_t linearIndex, const Size& bufferSize, bool rowMajor = false);
+Index getIndexFromLinearIndex(size_t linearIndex, const Size& bufferSize,
+                              bool rowMajor = false);
 
 /*!
- * Transforms an int color value (concatenated RGB values) to an int color vector (RGB from 0-255).
+ * Transforms an int color value (concatenated RGB values) to an int color
+ * vector (RGB from 0-255).
  * @param [in] colorValue the concatenated RGB color value.
  * @param [out] colorVector the color vector in RGB from 0-255.
  * @return true if successful.
  */
-bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3i& colorVector);
+bool colorValueToVector(const unsigned long& colorValue,
+                        Eigen::Vector3i& colorVector);
 
 /*!
- * Transforms an int color value (concatenated RGB values) to a float color vector (RGB from 0.0-1.0).
+ * Transforms an int color value (concatenated RGB values) to a float color
+ * vector (RGB from 0.0-1.0).
  * @param [in] colorValue the concatenated RGB color value.
  * @param [out] colorVector the color vector in RGB from 0.0-1.0.
  * @return true if successful.
  */
-bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3f& colorVector);
+bool colorValueToVector(const unsigned long& colorValue,
+                        Eigen::Vector3f& colorVector);
 
 /*!
- * Transforms a float color value (concatenated 3 single-byte value) to a float color vector (RGB from 0.0-1.0).
+ * Transforms a float color value (concatenated 3 single-byte value) to a float
+ * color vector (RGB from 0.0-1.0).
  * @param [in] colorValue the concatenated RGB color value.
  * @param [out] colorVector the color vector in RGB from 0.0-1.0.
  * @return true if successful.
@@ -320,22 +344,26 @@ bool colorValueToVector(const unsigned long& colorValue, Eigen::Vector3f& colorV
 bool colorValueToVector(const float& colorValue, Eigen::Vector3f& colorVector);
 
 /*!
- * Transforms an int color vector (RGB from 0-255) to a concatenated RGB int color.
+ * Transforms an int color vector (RGB from 0-255) to a concatenated RGB int
+ * color.
  * @param [in] colorVector the color vector in RGB from 0-255.
  * @param [out] colorValue the concatenated RGB color value.
  * @return true if successful.
  */
-bool colorVectorToValue(const Eigen::Vector3i& colorVector, unsigned long& colorValue);
+bool colorVectorToValue(const Eigen::Vector3i& colorVector,
+                        unsigned long& colorValue);
 
 /*!
- * Transforms a color vector (RGB from 0-255) to a concatenated 3 single-byte float value.
+ * Transforms a color vector (RGB from 0-255) to a concatenated 3 single-byte
+ * float value.
  * @param [in] colorVector the color vector in RGB from 0-255.
  * @param [out] colorValue the concatenated RGB color value.
  */
 void colorVectorToValue(const Eigen::Vector3i& colorVector, float& colorValue);
 
 /*!
- * Transforms a color vector (RGB from 0.0-1.0) to a concatenated 3 single-byte float value.
+ * Transforms a color vector (RGB from 0.0-1.0) to a concatenated 3 single-byte
+ * float value.
  * @param [in] colorVector the color vector in RGB from 0.0-1.0.
  * @param [out] colorValue the concatenated RGB color value.
  */

@@ -19,13 +19,11 @@
 namespace autonomy {
 namespace sensor {
 
-RangeProto ToProto(const RangeData& data)
-{
+RangeProto ToProto(const RangeData& data) {
     return commsgs::sensor_msgs::ToProto(data);
 }
 
-RangeData FromProto(const RangeProto& proto)
-{
+RangeData FromProto(const RangeProto& proto) {
     return commsgs::sensor_msgs::FromProto(proto);
 }
 

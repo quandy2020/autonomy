@@ -20,13 +20,13 @@
 #include <string>
 #include <utility>
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
+#include "autolink/action/action.hpp"
 #include "autolink/common/init.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/component/component.hpp"
 #include "autolink/node/node.hpp"
+#include "autolink/node/reader.hpp"
+#include "autolink/node/writer.hpp"
 #include "autolink/task/task.hpp"
 #include "autolink/time/time.hpp"
 #include "autolink/timer/timer.hpp"

@@ -23,10 +23,10 @@
 namespace autolink {
 namespace transport {
 
-using autolink::proto::QosDurabilityPolicy;
-using autolink::proto::QosHistoryPolicy;
-using autolink::proto::QosProfile;
-using autolink::proto::QosReliabilityPolicy;
+using proto::QosDurabilityPolicy;
+using proto::QosHistoryPolicy;
+using proto::QosProfile;
+using proto::QosReliabilityPolicy;
 
 class QosProfileConf
 {

@@ -13,13 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/common/identity.hpp"
 
 #include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
+
+TEST(IdentityTest, testConstructFalse) {
+    Identity it(false);
+
+    EXPECT_EQ(it.HashValue(), static_cast<uint64_t>(0));
+    EXPECT_EQ(it.ToString(), "0");
+}
+
+TEST(IdentityTest, testConstructTrue) {
+    Identity it(true);
+
+    EXPECT_NE(it.HashValue(), static_cast<uint64_t>(0));
+    EXPECT_NE(it.ToString(), "0");
+}
 
 TEST(IdentityTest, testIdentityEqual) {
     Identity id1;

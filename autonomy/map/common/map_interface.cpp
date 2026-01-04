@@ -15,24 +15,21 @@
  */
 
 #include "autonomy/map/common/map_interface.hpp"
+
+#include "autolink/common/log.hpp"
+#include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
+#include "autonomy/map/grid_map/grid_map_wrapper.hpp"
 
 namespace autonomy {
 namespace map {
 namespace common {
 
-proto::MapOptions LoadOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
-    proto::MapOptions options;
-    options.set_use_costmap_2d(parameter_dictionary->GetBool("use_costmap_2d"));
-    options.set_use_costmap_3d(parameter_dictionary->GetBool("use_costmap_3d"));
-    *options.mutable_costmap2d_options() = 
-        costmap_2d::CreateCostmap2DOptions(parameter_dictionary->GetDictionary("costmap2d").get());
-    *options.mutable_costmap3d_options() = 
-        costmap_3d::CreateCostmap3DOptions(parameter_dictionary->GetDictionary("costmap3d").get());
-    return options;
+void MapInterface::AddSensorData(std::unique_ptr<sensor::Data> data) {
+    // 默认实现：什么都不做
+    // 子类可以重写此方法来实现具体的传感器数据处理逻辑
+    (void)data;  // 避免未使用参数警告
 }
 
 }  // namespace common

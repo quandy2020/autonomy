@@ -61,8 +61,7 @@ public:
     // For protobuf < 29.0, this method may not exist in the base class
     void RecordError(absl::string_view filename, absl::string_view element_name,
                      const google::protobuf::Message* descriptor,
-                     ErrorLocation location,
-                     absl::string_view message);
+                     ErrorLocation location, absl::string_view message);
 };
 
 class ProtobufFactory

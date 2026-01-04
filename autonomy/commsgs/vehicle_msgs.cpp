@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace vehicle_msgs {
-
-
-
-}  // namespace vehicle_msgs
+namespace vehicle_msgs {}  // namespace vehicle_msgs
 }  // namespace commsgs
 }  // namespace autonomy

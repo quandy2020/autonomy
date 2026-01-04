@@ -16,10 +16,11 @@
 #define TF2_IMPL_UTILS_H
 
 // #include <autonomy/transform/tf2_geometry_msgs/tf2_geometry_msgs.h>
-#include <autonomy/transform/tf2/transform_datatypes.h>
 #include <autonomy/transform/tf2/LinearMath/Quaternion.h>
+#include <autonomy/transform/tf2/transform_datatypes.h>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/transform/geometry_msgs/pose_stamped.h"
 #include "autonomy/transform/tf2/convert.h"
 
 namespace autonomy {
@@ -30,20 +31,16 @@ namespace impl {
  * \param q a tf2::Quaternion
  * \return a copy of the same quaternion
  */
-inline
-tf2::Quaternion toQuaternion(const tf2::Quaternion& q) 
-{
+inline tf2::Quaternion toQuaternion(const tf2::Quaternion& q) {
     return q;
 }
-
 
 /** Function needed for the generalization of toQuaternion
  * \param q a geometry_msgs::Quaternion
  * \return a copy of the same quaternion as a tf2::Quaternion
  */
-inline
-tf2::Quaternion toQuaternion(const commsgs::geometry_msgs::Quaternion& q) 
-{
+inline tf2::Quaternion toQuaternion(
+    const commsgs::geometry_msgs::Quaternion& q) {
     tf2::Quaternion res;
     fromMsg(q, res);
     return res;
@@ -53,9 +50,8 @@ tf2::Quaternion toQuaternion(const commsgs::geometry_msgs::Quaternion& q)
  * \param q a geometry_msgs::QuaternionStamped
  * \return a copy of the same quaternion as a tf2::Quaternion
  */
-inline
-tf2::Quaternion toQuaternion(const commsgs::geometry_msgs::QuaternionStamped& q) 
-{
+inline tf2::Quaternion toQuaternion(
+    const commsgs::geometry_msgs::QuaternionStamped& q) {
     tf2::Quaternion res;
     fromMsg(q.quaternion, res);
     return res;
@@ -65,11 +61,10 @@ tf2::Quaternion toQuaternion(const commsgs::geometry_msgs::QuaternionStamped& q)
  * \param t some tf2::Stamped object
  * \return a copy of the same quaternion as a tf2::Quaternion
  */
-template<typename T>
-tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t) 
-{
-  commsgs::geometry_msgs::QuaternionStamped q = toMsg(t);
-  return toQuaternion(q);
+template <typename T>
+tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t) {
+    commsgs::geometry_msgs::QuaternionStamped q = toMsg(t);
+    return toQuaternion(q);
 }
 
 /** Generic version of toQuaternion. It tries to convert the argument
@@ -77,9 +72,8 @@ tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t)
  * \param t some object
  * \return a copy of the same quaternion as a tf2::Quaternion
  */
-template<typename T>
-tf2::Quaternion toQuaternion(const T& t) 
-{
+template <typename T>
+tf2::Quaternion toQuaternion(const T& t) {
     commsgs::geometry_msgs::Quaternion q = toMsg(t);
     return toQuaternion(q);
 }
@@ -93,33 +87,36 @@ tf2::Quaternion toQuaternion(const T& t)
  * \param pitch the computed pitch
  * \param roll the computed roll
  */
-inline void getEulerYPR(const tf2::Quaternion& q, double &yaw, double &pitch, double &roll)
-{
-  double sqw;
-  double sqx;
-  double sqy;
-  double sqz;
+inline void getEulerYPR(const tf2::Quaternion& q, double& yaw, double& pitch,
+                        double& roll) {
+    double sqw;
+    double sqx;
+    double sqy;
+    double sqz;
 
-  sqx = q.x() * q.x();
-  sqy = q.y() * q.y();
-  sqz = q.z() * q.z();
-  sqw = q.w() * q.w();
+    sqx = q.x() * q.x();
+    sqy = q.y() * q.y();
+    sqz = q.z() * q.z();
+    sqw = q.w() * q.w();
 
-  // Cases derived from https://orbitalstation.wordpress.com/tag/quaternion/
-  double sarg = -2 * (q.x()*q.z() - q.w()*q.y()) / (sqx + sqy + sqz + sqw); /* normalization added from urdfom_headers */
-  if (sarg <= -0.99999) {
-    pitch = -0.5*M_PI;
-    roll  = 0;
-    yaw   = -2 * atan2(q.y(), q.x());
-  } else if (sarg >= 0.99999) {
-    pitch = 0.5*M_PI;
-    roll  = 0;
-    yaw   = 2 * atan2(q.y(), q.x());
-  } else {
-    pitch = asin(sarg);
-    roll  = atan2(2 * (q.y()*q.z() + q.w()*q.x()), sqw - sqx - sqy + sqz);
-    yaw   = atan2(2 * (q.x()*q.y() + q.w()*q.z()), sqw + sqx - sqy - sqz);
-  }
+    // Cases derived from https://orbitalstation.wordpress.com/tag/quaternion/
+    double sarg =
+        -2 * (q.x() * q.z() - q.w() * q.y()) /
+        (sqx + sqy + sqz + sqw); /* normalization added from urdfom_headers */
+    if (sarg <= -0.99999) {
+        pitch = -0.5 * M_PI;
+        roll = 0;
+        yaw = -2 * atan2(q.y(), q.x());
+    } else if (sarg >= 0.99999) {
+        pitch = 0.5 * M_PI;
+        roll = 0;
+        yaw = 2 * atan2(q.y(), q.x());
+    } else {
+        pitch = asin(sarg);
+        roll =
+            atan2(2 * (q.y() * q.z() + q.w() * q.x()), sqw - sqx - sqy + sqz);
+        yaw = atan2(2 * (q.x() * q.y() + q.w() * q.z()), sqw + sqx - sqy - sqz);
+    }
 }
 
 /** The code below is a simplified version of getEulerRPY that only
@@ -128,35 +125,35 @@ inline void getEulerYPR(const tf2::Quaternion& q, double &yaw, double &pitch, do
  * \param q a tf2::Quaternion
  * \return the computed yaw
  */
-inline double getYaw(const tf2::Quaternion& q)
-{
-  double yaw;
+inline double getYaw(const tf2::Quaternion& q) {
+    double yaw;
 
-  double sqw;
-  double sqx;
-  double sqy;
-  double sqz;
+    double sqw;
+    double sqx;
+    double sqy;
+    double sqz;
 
-  sqx = q.x() * q.x();
-  sqy = q.y() * q.y();
-  sqz = q.z() * q.z();
-  sqw = q.w() * q.w();
+    sqx = q.x() * q.x();
+    sqy = q.y() * q.y();
+    sqz = q.z() * q.z();
+    sqw = q.w() * q.w();
 
-  // Cases derived from https://orbitalstation.wordpress.com/tag/quaternion/
-  double sarg = -2 * (q.x()*q.z() - q.w()*q.y()) / (sqx + sqy + sqz + sqw); /* normalization added from urdfom_headers */
+    // Cases derived from https://orbitalstation.wordpress.com/tag/quaternion/
+    double sarg =
+        -2 * (q.x() * q.z() - q.w() * q.y()) /
+        (sqx + sqy + sqz + sqw); /* normalization added from urdfom_headers */
 
-  if (sarg <= -0.99999) {
-    yaw   = -2 * atan2(q.y(), q.x());
-  } else if (sarg >= 0.99999) {
-    yaw   = 2 * atan2(q.y(), q.x());
-  } else {
-    yaw   = atan2(2 * (q.x()*q.y() + q.w()*q.z()), sqw + sqx - sqy - sqz);
-  }
-  return yaw;
+    if (sarg <= -0.99999) {
+        yaw = -2 * atan2(q.y(), q.x());
+    } else if (sarg >= 0.99999) {
+        yaw = 2 * atan2(q.y(), q.x());
+    } else {
+        yaw = atan2(2 * (q.x() * q.y() + q.w() * q.z()), sqw + sqx - sqy - sqz);
+    }
+    return yaw;
 }
 
-inline double getYaw(const commsgs::geometry_msgs::Quaternion& q)
-{
+inline double getYaw(const commsgs::geometry_msgs::Quaternion& q) {
     tf2::Quaternion quat(q.x, q.y, q.z, q.w);
     return getYaw(quat);
 }
@@ -166,4 +163,4 @@ inline double getYaw(const commsgs::geometry_msgs::Quaternion& q)
 }  // namespace transform
 }  // namespace autonomy
 
-#endif //TF2_IMPL_UTILS_H
+#endif  // TF2_IMPL_UTILS_H

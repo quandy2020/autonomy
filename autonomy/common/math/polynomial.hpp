@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-
 #pragma once
 
-#include "autonomy/common/math/eigen_alignment.hpp"
-
 #include <Eigen/Core>
+
+#include "autonomy/common/math/eigen_alignment.hpp"
 
 namespace autonomy {
 namespace common {
@@ -44,20 +43,16 @@ T EvaluatePolynomial(const Eigen::VectorXd& coeffs, const T& x);
 // Find the root of polynomials of the form: a * x + b = 0.
 // The real and/or imaginary variable may be NULL if the output is not needed.
 bool FindLinearPolynomialRoots(const Eigen::VectorXd& coeffs,
-                               Eigen::VectorXd* real,
-                               Eigen::VectorXd* imag);
+                               Eigen::VectorXd* real, Eigen::VectorXd* imag);
 
 // Find the roots of polynomials of the form: a * x^2 + b * x + c = 0.
 // The real and/or imaginary variable may be NULL if the output is not needed.
 bool FindQuadraticPolynomialRoots(const Eigen::VectorXd& coeffs,
-                                  Eigen::VectorXd* real,
-                                  Eigen::VectorXd* imag);
+                                  Eigen::VectorXd* real, Eigen::VectorXd* imag);
 
 // Find the real roots of polynomials of the form: x^3 + c2*x^2 + c1*x + c0 = 0.
 // Returns the number of found roots.
-int FindCubicPolynomialRoots(double c2,
-                             double c1,
-                             double c0,
+int FindCubicPolynomialRoots(double c2, double c1, double c0,
                              Eigen::Vector3d* real);
 
 // Find the roots of a polynomial using the Durand-Kerner method, based on:
@@ -87,14 +82,13 @@ bool FindPolynomialRootsCompanionMatrix(const Eigen::VectorXd& coeffs,
 
 template <typename T>
 T EvaluatePolynomial(const Eigen::VectorXd& coeffs, const T& x) {
-  T value = 0.0;
-  for (Eigen::VectorXd::Index i = 0; i < coeffs.size(); ++i) {
-    value = value * x + coeffs(i);
-  }
-  return value;
+    T value = 0.0;
+    for (Eigen::VectorXd::Index i = 0; i < coeffs.size(); ++i) {
+        value = value * x + coeffs(i);
+    }
+    return value;
 }
 
 }  // namespace math
 }  // namespace common
 }  // namespace autonomy
-

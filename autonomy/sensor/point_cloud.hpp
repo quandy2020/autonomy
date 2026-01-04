@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/commsgs/proto/sensor_msgs.pb.h"
+#include "autonomy/commsgs/sensor_msgs.hpp"
 
 namespace autonomy {
 namespace sensor {
@@ -39,7 +39,6 @@ PointCloud2Proto ToProto(const PointCloud2Data& data);
 
 // Converts 'proto' to PointCloud2Data.
 PointCloud2Data FromProto(const PointCloud2Proto& proto);
-
 
 }  // namespace sensor
 }  // namespace autonomy

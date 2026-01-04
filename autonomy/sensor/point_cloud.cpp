@@ -19,23 +19,19 @@
 namespace autonomy {
 namespace sensor {
 
-PointCloudProto ToProto(const PointCloudData& data)
-{
+PointCloudProto ToProto(const PointCloudData& data) {
     return commsgs::sensor_msgs::ToProto(data);
 }
 
-PointCloudData FromProto(const PointCloudProto& proto)
-{
+PointCloudData FromProto(const PointCloudProto& proto) {
     return commsgs::sensor_msgs::FromProto(proto);
 }
 
-PointCloud2Proto ToProto(const PointCloud2Data& data)
-{
+PointCloud2Proto ToProto(const PointCloud2Data& data) {
     return commsgs::sensor_msgs::ToProto(data);
 }
 
-PointCloud2Data FromProto(const PointCloud2Proto& proto)
-{
+PointCloud2Data FromProto(const PointCloud2Proto& proto) {
     return commsgs::sensor_msgs::FromProto(proto);
 }
 

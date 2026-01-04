@@ -42,24 +42,24 @@ T PyObjectToPtr(PyObject* pyobj, const std::string& type_ptr) {
     return obj_ptr;
 }
 
-PyObject* cyber_new_PyParameter_noparam(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyParameter_noparam(PyObject* self, PyObject* args) {
     PyParameter* pyparameter = new PyParameter();
-    return PyCapsule_New(pyparameter, "autolink_cybertron_pyparameter",
-                         nullptr);
+    return PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
 }
 
-PyObject* cyber_delete_PyParameter(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyParameter(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:cyber_delete_PyParameter"),
+    if (!PyArg_ParseTuple(args,
+                          const_cast<char*>("O:autolink_delete_PyParameter"),
                           &pyobj_param)) {
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     auto* pyparameter = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == pyparameter) {
-        AERROR << "cyber_delete_PyParameter:parameter ptr is null!";
+        AERROR << "autolink_delete_PyParameter:parameter ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -68,72 +68,69 @@ PyObject* cyber_delete_PyParameter(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_new_PyParameter_int(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyParameter_int(PyObject* self, PyObject* args) {
     char* name = nullptr;
     Py_ssize_t len = 0;
     int64_t int_value = 0;
     if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("s#L:cyber_new_PyParameter_int"),
+                          const_cast<char*>("s#L:autolink_new_PyParameter_int"),
                           &name, &len, &int_value)) {
-        AERROR << "cyber_new_PyParameter_int parsetuple failed!";
+        AERROR << "autolink_new_PyParameter_int parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyParameter* pyparameter =
         new PyParameter(std::string(name, len), int_value);
-    return PyCapsule_New(pyparameter, "autolink_cybertron_pyparameter",
-                         nullptr);
+    return PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
 }
 
-PyObject* cyber_new_PyParameter_double(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyParameter_double(PyObject* self, PyObject* args) {
     char* name = nullptr;
     Py_ssize_t len = 0;
     double double_value = 0;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("s#d:cyber_new_PyParameter_double"),
-                          &name, &len, &double_value)) {
-        AERROR << "cyber_new_PyParameter_double parsetuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("s#d:autolink_new_PyParameter_double"),
+            &name, &len, &double_value)) {
+        AERROR << "autolink_new_PyParameter_double parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyParameter* pyparameter =
         new PyParameter(std::string(name, len), double_value);
-    return PyCapsule_New(pyparameter, "autolink_cybertron_pyparameter",
-                         nullptr);
+    return PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
 }
 
-PyObject* cyber_new_PyParameter_string(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyParameter_string(PyObject* self, PyObject* args) {
     char* name = nullptr;
     char* string_param = nullptr;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("ss:cyber_new_PyParameter_string"),
-                          &name, &string_param)) {
-        AERROR << "cyber_new_PyParameter_string parsetuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("ss:autolink_new_PyParameter_string"),
+            &name, &string_param)) {
+        AERROR << "autolink_new_PyParameter_string parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyParameter* pyparameter =
         new PyParameter(std::string(name), std::string(string_param));
-    return PyCapsule_New(pyparameter, "autolink_cybertron_pyparameter",
-                         nullptr);
+    return PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
 }
 
-PyObject* cyber_PyParameter_type_name(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_type_name(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
     if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_PyParameter_type_name"),
+                          const_cast<char*>("O:autolink_PyParameter_type_name"),
                           &pyobj_param)) {
-        AERROR << "cyber_PyParameter_type_name failed!";
+        AERROR << "autolink_PyParameter_type_name failed!";
         return PYOBJECT_NULL_STRING;
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_type_name ptr is null!";
+        AERROR << "autolink_PyParameter_type_name ptr is null!";
         return PYOBJECT_NULL_STRING;
     }
 
@@ -141,19 +138,19 @@ PyObject* cyber_PyParameter_type_name(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(type);
 }
 
-PyObject* cyber_PyParameter_descriptor(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_descriptor(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_PyParameter_descriptor"),
-                          &pyobj_param)) {
-        AERROR << "cyber_PyParameter_descriptor failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("O:autolink_PyParameter_descriptor"),
+            &pyobj_param)) {
+        AERROR << "autolink_PyParameter_descriptor failed!";
         return PYOBJECT_NULL_STRING;
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_descriptor ptr is null!";
+        AERROR << "autolink_PyParameter_descriptor ptr is null!";
         return PYOBJECT_NULL_STRING;
     }
 
@@ -161,18 +158,19 @@ PyObject* cyber_PyParameter_descriptor(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(desc);
 }
 
-PyObject* cyber_PyParameter_name(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_name(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
-    if (!PyArg_ParseTuple(args, const_cast<char*>("O:cyber_PyParameter_name"),
+    if (!PyArg_ParseTuple(args,
+                          const_cast<char*>("O:autolink_PyParameter_name"),
                           &pyobj_param)) {
-        AERROR << "cyber_PyParameter_name failed!";
+        AERROR << "autolink_PyParameter_name failed!";
         return PYOBJECT_NULL_STRING;
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_name ptr is null!";
+        AERROR << "autolink_PyParameter_name ptr is null!";
         return PYOBJECT_NULL_STRING;
     }
 
@@ -180,19 +178,19 @@ PyObject* cyber_PyParameter_name(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(name);
 }
 
-PyObject* cyber_PyParameter_debug_string(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_debug_string(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_PyParameter_debug_string"),
-                          &pyobj_param)) {
-        AERROR << "cyber_PyParameter_debug_string failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("O:autolink_PyParameter_debug_string"),
+            &pyobj_param)) {
+        AERROR << "autolink_PyParameter_debug_string failed!";
         return PYOBJECT_NULL_STRING;
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_debug_string ptr is null!";
+        AERROR << "autolink_PyParameter_debug_string ptr is null!";
         return PYOBJECT_NULL_STRING;
     }
 
@@ -200,19 +198,19 @@ PyObject* cyber_PyParameter_debug_string(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(debug_string);
 }
 
-PyObject* cyber_PyParameter_as_string(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_as_string(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
     if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_PyParameter_as_string"),
+                          const_cast<char*>("O:autolink_PyParameter_as_string"),
                           &pyobj_param)) {
-        AERROR << "cyber_PyParameter_as_string failed!";
+        AERROR << "autolink_PyParameter_as_string failed!";
         return PYOBJECT_NULL_STRING;
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_as_string ptr is null!";
+        AERROR << "autolink_PyParameter_as_string ptr is null!";
         return PYOBJECT_NULL_STRING;
     }
 
@@ -220,19 +218,19 @@ PyObject* cyber_PyParameter_as_string(PyObject* self, PyObject* args) {
     return C_STR_TO_PY_BYTES(debug_string);
 }
 
-PyObject* cyber_PyParameter_as_double(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_as_double(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
     if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_PyParameter_as_double"),
+                          const_cast<char*>("O:autolink_PyParameter_as_double"),
                           &pyobj_param)) {
-        AERROR << "cyber_PyParameter_as_double failed!";
+        AERROR << "autolink_PyParameter_as_double failed!";
         return PyFloat_FromDouble(0.0);
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_as_double ptr is null!";
+        AERROR << "autolink_PyParameter_as_double ptr is null!";
         return PyFloat_FromDouble(0.0);
     }
 
@@ -240,19 +238,19 @@ PyObject* cyber_PyParameter_as_double(PyObject* self, PyObject* args) {
     return PyFloat_FromDouble(dTemp);
 }
 
-PyObject* cyber_PyParameter_as_int64(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_as_int64(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
     if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_PyParameter_as_int64"),
+                          const_cast<char*>("O:autolink_PyParameter_as_int64"),
                           &pyobj_param)) {
-        AERROR << "cyber_PyParameter_as_int64 failed!";
+        AERROR << "autolink_PyParameter_as_int64 failed!";
         return PyLong_FromLongLong(0);
     }
 
     auto* param = reinterpret_cast<PyParameter*>(
-        PyCapsule_GetPointer(pyobj_param, "autolink_cybertron_pyparameter"));
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameter"));
     if (nullptr == param) {
-        AERROR << "cyber_PyParameter_as_int64 ptr is null!";
+        AERROR << "autolink_PyParameter_as_int64 ptr is null!";
         return PyLong_FromLongLong(0);
     }
 
@@ -261,20 +259,19 @@ PyObject* cyber_PyParameter_as_int64(PyObject* self, PyObject* args) {
 }
 
 // PyParameterClient
-PyObject* cyber_new_PyParameterClient(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyParameterClient(PyObject* self, PyObject* args) {
     PyObject* pyobj_node = nullptr;
     char* service_node_name = nullptr;
     Py_ssize_t len = 0;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("Os#:cyber_new_PyParameterClient"),
-                          &pyobj_node, &service_node_name, &len)) {
-        AERROR << "cyber_new_PyParameterClient parsetuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("Os#:autolink_new_PyParameterClient"),
+            &pyobj_node, &service_node_name, &len)) {
+        AERROR << "autolink_new_PyParameterClient parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* pynode =
-        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* pynode = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_pynode");
     if (nullptr == pynode) {
         AERROR << "pynode ptr is null!";
         Py_INCREF(Py_None);
@@ -290,25 +287,25 @@ PyObject* cyber_new_PyParameterClient(PyObject* self, PyObject* args) {
 
     PyParameterClient* pyparameter_clt =
         new PyParameterClient(node, std::string(service_node_name, len));
-    return PyCapsule_New(pyparameter_clt,
-                         "autolink_cybertron_pyparameterclient", nullptr);
+    return PyCapsule_New(pyparameter_clt, "autolink_pyparameterclient",
+                         nullptr);
 }
 
-PyObject* cyber_delete_PyParameterClient(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyParameterClient(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_delete_PyParameterClient"),
-                          &pyobj_param)) {
-        AERROR << "cyber_delete_PyParameterClient parsetuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("O:autolink_delete_PyParameterClient"),
+            &pyobj_param)) {
+        AERROR << "autolink_delete_PyParameterClient parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyParameterClient* pyparameter_clt =
-        reinterpret_cast<PyParameterClient*>(PyCapsule_GetPointer(
-            pyobj_param, "autolink_cybertron_pyparameterclient"));
+    PyParameterClient* pyparameter_clt = reinterpret_cast<PyParameterClient*>(
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameterclient"));
     if (nullptr == pyparameter_clt) {
-        AERROR << "cyber_delete_PyParameterClient:pyparameter_clt ptr is null!";
+        AERROR
+            << "autolink_delete_PyParameterClient:pyparameter_clt ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -317,25 +314,26 @@ PyObject* cyber_delete_PyParameterClient(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_PyParameter_clt_set_parameter(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_clt_set_parameter(PyObject* self,
+                                                 PyObject* args) {
     PyObject* pyobj_param_clt = nullptr;
     PyObject* pyobj_param = nullptr;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("OO:cyber_PyParameter_set_parameter"),
+            args, const_cast<char*>("OO:autolink_PyParameter_set_parameter"),
             &pyobj_param_clt, &pyobj_param)) {
-        AERROR << "cyber_PyParameter_set_parameter parsetuple failed!";
+        AERROR << "autolink_PyParameter_set_parameter parsetuple failed!";
         Py_RETURN_FALSE;
     }
 
     PyParameterClient* pyparam_clt = PyObjectToPtr<PyParameterClient*>(
-        pyobj_param_clt, "autolink_cybertron_pyparameterclient");
+        pyobj_param_clt, "autolink_pyparameterclient");
     if (nullptr == pyparam_clt) {
         AERROR << "pyparam_clt ptr is null!";
         Py_RETURN_FALSE;
     }
 
-    PyParameter* pyparam = PyObjectToPtr<PyParameter*>(
-        pyobj_param, "autolink_cybertron_pyparameter");
+    PyParameter* pyparam =
+        PyObjectToPtr<PyParameter*>(pyobj_param, "autolink_pyparameter");
     if (nullptr == pyparam) {
         AERROR << "pyparam ptr is null!";
         Py_RETURN_FALSE;
@@ -348,19 +346,20 @@ PyObject* cyber_PyParameter_clt_set_parameter(PyObject* self, PyObject* args) {
     }
 }
 
-PyObject* cyber_PyParameter_clt_get_parameter(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_clt_get_parameter(PyObject* self,
+                                                 PyObject* args) {
     char* name = nullptr;
     Py_ssize_t len = 0;
     PyObject* pyobj_param_clt = nullptr;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("Os#:cyber_PyParameter_get_parameter"),
+            args, const_cast<char*>("Os#:autolink_PyParameter_get_parameter"),
             &pyobj_param_clt, &name, &len)) {
-        AERROR << "cyber_PyParameter_get_parameter parsetuple failed!";
+        AERROR << "autolink_PyParameter_get_parameter parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
     PyParameterClient* pyparam_clt = PyObjectToPtr<PyParameterClient*>(
-        pyobj_param_clt, "autolink_cybertron_pyparameterclient");
+        pyobj_param_clt, "autolink_pyparameterclient");
     if (nullptr == pyparam_clt) {
         AERROR << "pyparam_clt ptr is null!";
         Py_INCREF(Py_None);
@@ -376,29 +375,28 @@ PyObject* cyber_PyParameter_clt_get_parameter(PyObject* self, PyObject* args) {
     }
 
     PyParameter* pyparameter = new PyParameter(param);
-    return PyCapsule_New(pyparameter, "autolink_cybertron_pyparameter",
-                         nullptr);
+    return PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
 }
 
-PyObject* cyber_PyParameter_clt_get_parameter_list(PyObject* self,
-                                                   PyObject* args) {
+PyObject* autolink_PyParameter_clt_get_parameter_list(PyObject* self,
+                                                      PyObject* args) {
     PyObject* pyobj_param_clt = nullptr;
     if (!PyArg_ParseTuple(
             args,
-            const_cast<char*>("O:cyber_PyParameter_clt_get_parameter_list"),
+            const_cast<char*>("O:autolink_PyParameter_clt_get_parameter_list"),
             &pyobj_param_clt)) {
-        AERROR << "cyber_PyParameter_clt_get_parameter_list:PyArg_ParseTuple "
-                  "failed!";
+        AERROR
+            << "autolink_PyParameter_clt_get_parameter_list:PyArg_ParseTuple "
+               "failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    auto* pyparam_clt =
-        reinterpret_cast<PyParameterClient*>(PyCapsule_GetPointer(
-            pyobj_param_clt, "autolink_cybertron_pyparameterclient"));
+    auto* pyparam_clt = reinterpret_cast<PyParameterClient*>(
+        PyCapsule_GetPointer(pyobj_param_clt, "autolink_pyparameterclient"));
     if (nullptr == pyparam_clt) {
-        AERROR
-            << "cyber_PyParameter_clt_get_parameter_list pyparam_clt is null!";
+        AERROR << "autolink_PyParameter_clt_get_parameter_list pyparam_clt is "
+                  "null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -411,8 +409,8 @@ PyObject* cyber_PyParameter_clt_get_parameter_list(PyObject* self,
     for (auto& param : param_list) {
         Parameter* param_ptr = new Parameter(param);
         PyParameter* pyparameter = new PyParameter(param_ptr);
-        PyObject* pyobj_param = PyCapsule_New(
-            pyparameter, "autolink_cybertron_pyparameter", nullptr);
+        PyObject* pyobj_param =
+            PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
         PyList_SetItem(pyobj_list, pos, pyobj_param);
         pos++;
     }
@@ -421,18 +419,17 @@ PyObject* cyber_PyParameter_clt_get_parameter_list(PyObject* self,
 }
 
 // PyParameterServer
-PyObject* cyber_new_PyParameterServer(PyObject* self, PyObject* args) {
+PyObject* autolink_new_PyParameterServer(PyObject* self, PyObject* args) {
     PyObject* pyobj_node = nullptr;
     if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_new_PyParameterServer"),
+                          const_cast<char*>("O:autolink_new_PyParameterServer"),
                           &pyobj_node)) {
-        AERROR << "cyber_new_PyParameterServer parsetuple failed!";
+        AERROR << "autolink_new_PyParameterServer parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyNode* pynode =
-        PyObjectToPtr<PyNode*>(pyobj_node, "autolink_cyber_pynode");
+    PyNode* pynode = PyObjectToPtr<PyNode*>(pyobj_node, "autolink_pynode");
     if (nullptr == pynode) {
         AERROR << "pynode ptr is null!";
         Py_INCREF(Py_None);
@@ -447,25 +444,25 @@ PyObject* cyber_new_PyParameterServer(PyObject* self, PyObject* args) {
     }
 
     PyParameterServer* pyparameter_srv = new PyParameterServer(node);
-    return PyCapsule_New(pyparameter_srv,
-                         "autolink_cybertron_pyparameterserver", nullptr);
+    return PyCapsule_New(pyparameter_srv, "autolink_pyparameterserver",
+                         nullptr);
 }
 
-PyObject* cyber_delete_PyParameterServer(PyObject* self, PyObject* args) {
+PyObject* autolink_delete_PyParameterServer(PyObject* self, PyObject* args) {
     PyObject* pyobj_param = nullptr;
-    if (!PyArg_ParseTuple(args,
-                          const_cast<char*>("O:cyber_delete_PyParameterServer"),
-                          &pyobj_param)) {
-        AERROR << "cyber_delete_PyParameterServer parsetuple failed!";
+    if (!PyArg_ParseTuple(
+            args, const_cast<char*>("O:autolink_delete_PyParameterServer"),
+            &pyobj_param)) {
+        AERROR << "autolink_delete_PyParameterServer parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyParameterServer* pyparameter_srv =
-        reinterpret_cast<PyParameterServer*>(PyCapsule_GetPointer(
-            pyobj_param, "autolink_cybertron_pyparameterserver"));
+    PyParameterServer* pyparameter_srv = reinterpret_cast<PyParameterServer*>(
+        PyCapsule_GetPointer(pyobj_param, "autolink_pyparameterserver"));
     if (nullptr == pyparameter_srv) {
-        AERROR << "cyber_delete_PyParameterServer:pyparameter_srv ptr is null!";
+        AERROR
+            << "autolink_delete_PyParameterServer:pyparameter_srv ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -474,27 +471,28 @@ PyObject* cyber_delete_PyParameterServer(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_PyParameter_srv_set_parameter(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_srv_set_parameter(PyObject* self,
+                                                 PyObject* args) {
     PyObject* pyobj_param_srv = nullptr;
     PyObject* pyobj_param = nullptr;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("OO:cyber_PyParameter_set_parameter"),
+            args, const_cast<char*>("OO:autolink_PyParameter_set_parameter"),
             &pyobj_param_srv, &pyobj_param)) {
-        AERROR << "cyber_PyParameter_set_parameter parsetuple failed!";
+        AERROR << "autolink_PyParameter_set_parameter parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
     PyParameterServer* pyparam_srv = PyObjectToPtr<PyParameterServer*>(
-        pyobj_param_srv, "autolink_cybertron_pyparameterserver");
+        pyobj_param_srv, "autolink_pyparameterserver");
     if (nullptr == pyparam_srv) {
         AERROR << "pyparam_srv ptr is null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    PyParameter* pyparam = PyObjectToPtr<PyParameter*>(
-        pyobj_param, "autolink_cybertron_pyparameter");
+    PyParameter* pyparam =
+        PyObjectToPtr<PyParameter*>(pyobj_param, "autolink_pyparameter");
     if (nullptr == pyparam) {
         AERROR << "pyparam ptr is null!";
         Py_INCREF(Py_None);
@@ -506,19 +504,20 @@ PyObject* cyber_PyParameter_srv_set_parameter(PyObject* self, PyObject* args) {
     return Py_None;
 }
 
-PyObject* cyber_PyParameter_srv_get_parameter(PyObject* self, PyObject* args) {
+PyObject* autolink_PyParameter_srv_get_parameter(PyObject* self,
+                                                 PyObject* args) {
     char* name = nullptr;
     Py_ssize_t len = 0;
     PyObject* pyobj_param_srv = nullptr;
     if (!PyArg_ParseTuple(
-            args, const_cast<char*>("Os#:cyber_PyParameter_get_parameter"),
+            args, const_cast<char*>("Os#:autolink_PyParameter_get_parameter"),
             &pyobj_param_srv, &name, &len)) {
-        AERROR << "cyber_PyParameter_get_parameter parsetuple failed!";
+        AERROR << "autolink_PyParameter_get_parameter parsetuple failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
     PyParameterServer* pyparam_srv = PyObjectToPtr<PyParameterServer*>(
-        pyobj_param_srv, "autolink_cybertron_pyparameterserver");
+        pyobj_param_srv, "autolink_pyparameterserver");
     if (nullptr == pyparam_srv) {
         AERROR << "pyparam_srv ptr is null!";
         Py_INCREF(Py_None);
@@ -534,29 +533,28 @@ PyObject* cyber_PyParameter_srv_get_parameter(PyObject* self, PyObject* args) {
     }
 
     PyParameter* pyparameter = new PyParameter(param);
-    return PyCapsule_New(pyparameter, "autolink_cybertron_pyparameter",
-                         nullptr);
+    return PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
 }
 
-PyObject* cyber_PyParameter_srv_get_parameter_list(PyObject* self,
-                                                   PyObject* args) {
+PyObject* autolink_PyParameter_srv_get_parameter_list(PyObject* self,
+                                                      PyObject* args) {
     PyObject* pyobj_param_srv = nullptr;
     if (!PyArg_ParseTuple(
             args,
-            const_cast<char*>("O:cyber_PyParameter_srv_get_parameter_list"),
+            const_cast<char*>("O:autolink_PyParameter_srv_get_parameter_list"),
             &pyobj_param_srv)) {
-        AERROR << "cyber_PyParameter_srv_get_parameter_list:PyArg_ParseTuple "
-                  "failed!";
+        AERROR
+            << "autolink_PyParameter_srv_get_parameter_list:PyArg_ParseTuple "
+               "failed!";
         Py_INCREF(Py_None);
         return Py_None;
     }
 
-    auto* pyparam_srv =
-        reinterpret_cast<PyParameterServer*>(PyCapsule_GetPointer(
-            pyobj_param_srv, "autolink_cybertron_pyparameterserver"));
+    auto* pyparam_srv = reinterpret_cast<PyParameterServer*>(
+        PyCapsule_GetPointer(pyobj_param_srv, "autolink_pyparameterserver"));
     if (nullptr == pyparam_srv) {
-        AERROR
-            << "cyber_PyParameter_srv_get_parameter_list pyparam_srv is null!";
+        AERROR << "autolink_PyParameter_srv_get_parameter_list pyparam_srv is "
+                  "null!";
         Py_INCREF(Py_None);
         return Py_None;
     }
@@ -569,8 +567,8 @@ PyObject* cyber_PyParameter_srv_get_parameter_list(PyObject* self,
     for (auto& param : param_list) {
         Parameter* param_ptr = new Parameter(param);
         PyParameter* pyparameter = new PyParameter(param_ptr);
-        PyObject* pyobj_param = PyCapsule_New(
-            pyparameter, "autolink_cybertron_pyparameter", nullptr);
+        PyObject* pyobj_param =
+            PyCapsule_New(pyparameter, "autolink_pyparameter", nullptr);
         PyList_SetItem(pyobj_list, pos, pyobj_param);
         pos++;
     }
@@ -578,52 +576,54 @@ PyObject* cyber_PyParameter_srv_get_parameter_list(PyObject* self,
     return pyobj_list;
 }
 
-static PyMethodDef _cyber_parameter_methods[] = {
-    {"new_PyParameter_noparam", cyber_new_PyParameter_noparam, METH_NOARGS, ""},
-    {"delete_PyParameter", cyber_delete_PyParameter, METH_VARARGS, ""},
-    {"new_PyParameter_int", cyber_new_PyParameter_int, METH_VARARGS, ""},
-    {"new_PyParameter_double", cyber_new_PyParameter_double, METH_VARARGS, ""},
-    {"new_PyParameter_string", cyber_new_PyParameter_string, METH_VARARGS, ""},
-    {"PyParameter_type_name", cyber_PyParameter_type_name, METH_VARARGS, ""},
-    {"PyParameter_descriptor", cyber_PyParameter_descriptor, METH_VARARGS, ""},
-    {"PyParameter_name", cyber_PyParameter_name, METH_VARARGS, ""},
-    {"PyParameter_debug_string", cyber_PyParameter_debug_string, METH_VARARGS,
+static PyMethodDef _autolink_parameter_methods[] = {
+    {"new_PyParameter_noparam", autolink_new_PyParameter_noparam, METH_NOARGS,
      ""},
-    {"PyParameter_as_string", cyber_PyParameter_as_string, METH_VARARGS, ""},
-    {"PyParameter_as_double", cyber_PyParameter_as_double, METH_VARARGS, ""},
-    {"PyParameter_as_int64", cyber_PyParameter_as_int64, METH_VARARGS, ""},
-
-    {"new_PyParameterClient", cyber_new_PyParameterClient, METH_VARARGS, ""},
-    {"delete_PyParameterClient", cyber_delete_PyParameterClient, METH_VARARGS,
+    {"delete_PyParameter", autolink_delete_PyParameter, METH_VARARGS, ""},
+    {"new_PyParameter_int", autolink_new_PyParameter_int, METH_VARARGS, ""},
+    {"new_PyParameter_double", autolink_new_PyParameter_double, METH_VARARGS,
      ""},
-    {"PyParameter_clt_set_parameter", cyber_PyParameter_clt_set_parameter,
+    {"new_PyParameter_string", autolink_new_PyParameter_string, METH_VARARGS,
+     ""},
+    {"PyParameter_type_name", autolink_PyParameter_type_name, METH_VARARGS, ""},
+    {"PyParameter_descriptor", autolink_PyParameter_descriptor, METH_VARARGS,
+     ""},
+    {"PyParameter_name", autolink_PyParameter_name, METH_VARARGS, ""},
+    {"PyParameter_debug_string", autolink_PyParameter_debug_string,
      METH_VARARGS, ""},
-    {"PyParameter_clt_get_parameter", cyber_PyParameter_clt_get_parameter,
+    {"PyParameter_as_string", autolink_PyParameter_as_string, METH_VARARGS, ""},
+    {"PyParameter_as_double", autolink_PyParameter_as_double, METH_VARARGS, ""},
+    {"PyParameter_as_int64", autolink_PyParameter_as_int64, METH_VARARGS, ""},
+    {"new_PyParameterClient", autolink_new_PyParameterClient, METH_VARARGS, ""},
+    {"delete_PyParameterClient", autolink_delete_PyParameterClient,
+     METH_VARARGS, ""},
+    {"PyParameter_clt_set_parameter", autolink_PyParameter_clt_set_parameter,
+     METH_VARARGS, ""},
+    {"PyParameter_clt_get_parameter", autolink_PyParameter_clt_get_parameter,
      METH_VARARGS, ""},
     {"PyParameter_clt_get_parameter_list",
-     cyber_PyParameter_clt_get_parameter_list, METH_VARARGS, ""},
-
-    {"new_PyParameterServer", cyber_new_PyParameterServer, METH_VARARGS, ""},
-    {"delete_PyParameterServer", cyber_delete_PyParameterServer, METH_VARARGS,
-     ""},
-    {"PyParameter_srv_set_parameter", cyber_PyParameter_srv_set_parameter,
+     autolink_PyParameter_clt_get_parameter_list, METH_VARARGS, ""},
+    {"new_PyParameterServer", autolink_new_PyParameterServer, METH_VARARGS, ""},
+    {"delete_PyParameterServer", autolink_delete_PyParameterServer,
      METH_VARARGS, ""},
-    {"PyParameter_srv_get_parameter", cyber_PyParameter_srv_get_parameter,
+    {"PyParameter_srv_set_parameter", autolink_PyParameter_srv_set_parameter,
+     METH_VARARGS, ""},
+    {"PyParameter_srv_get_parameter", autolink_PyParameter_srv_get_parameter,
      METH_VARARGS, ""},
     {"PyParameter_srv_get_parameter_list",
-     cyber_PyParameter_srv_get_parameter_list, METH_VARARGS, ""},
+     autolink_PyParameter_srv_get_parameter_list, METH_VARARGS, ""},
 
     {nullptr, nullptr, 0, nullptr} /* sentinel */
 };
 
 /// Init function of this module
-PyMODINIT_FUNC PyInit__cyber_parameter_wrapper(void) {
+PyMODINIT_FUNC PyInit__autolink_parameter_wrapper(void) {
     static struct PyModuleDef module_def = {
         PyModuleDef_HEAD_INIT,
-        "_cyber_parameter_wrapper",  // Module name.
-        "CyberParameter module",     // Module doc.
-        -1,                          // Module size.
-        _cyber_parameter_methods,    // Module methods.
+        "_autolink_parameter_wrapper",  // Module name.
+        "AutolinkParameter module",     // Module doc.
+        -1,                             // Module size.
+        _autolink_parameter_methods,    // Module methods.
         nullptr,
         nullptr,
         nullptr,

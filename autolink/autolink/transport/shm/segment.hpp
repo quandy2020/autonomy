@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <map>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <unordered_map>
 
 #include "autolink/transport/shm/block.hpp"
 #include "autolink/transport/shm/shm_conf.hpp"
@@ -29,42 +28,38 @@
 namespace autolink {
 namespace transport {
 
-struct WritableBlock {
-    uint32_t index;
-    Block* block;
-    uint8_t* buf;
-};
-
-struct ReadableBlock {
-    uint32_t index;
-    Block* block;
-    uint8_t* buf;
-};
-
 class Segment;
 using SegmentPtr = std::shared_ptr<Segment>;
+
+struct WritableBlock {
+    uint32_t index = 0;
+    Block* block = nullptr;
+    uint8_t* buf = nullptr;
+};
+using ReadableBlock = WritableBlock;
 
 class Segment
 {
 public:
     explicit Segment(uint64_t channel_id);
-    virtual ~Segment();
+    virtual ~Segment() {}
 
     bool AcquireBlockToWrite(std::size_t msg_size,
                              WritableBlock* writable_block);
+    void ReleaseWrittenBlock(const WritableBlock& writable_block);
+
     bool AcquireArenaBlockToWrite(std::size_t msg_size,
                                   WritableBlock* writable_block);
-    void ReleaseWrittenBlock(const WritableBlock& writable_block);
     void ReleaseArenaWrittenBlock(const WritableBlock& writable_block);
 
     bool AcquireBlockToRead(ReadableBlock* readable_block);
-    bool AcquireArenaBlockToRead(ReadableBlock* readable_block);
     void ReleaseReadBlock(const ReadableBlock& readable_block);
+
+    bool AcquireArenaBlockToRead(ReadableBlock* readable_block);
     void ReleaseArenaReadBlock(const ReadableBlock& readable_block);
 
     bool InitOnly(uint64_t message_size);
     void* GetManagedShm();
-
     bool LockBlockForWriteByIndex(uint64_t block_index);
     bool ReleaseBlockForWriteByIndex(uint64_t block_index);
     bool LockBlockForReadByIndex(uint64_t block_index);
@@ -75,30 +70,31 @@ public:
     bool LockArenaBlockForReadByIndex(uint64_t block_index);
     bool ReleaseArenaBlockForReadByIndex(uint64_t block_index);
 
-    virtual bool Destroy();
-
 protected:
+    virtual bool Destroy();
     virtual void Reset() = 0;
     virtual bool Remove() = 0;
     virtual bool OpenOnly() = 0;
     virtual bool OpenOrCreate() = 0;
 
+    bool init_;
+    ShmConf conf_;
+    uint64_t channel_id_;
+
+    State* state_;
+    Block* blocks_;
+    Block* arena_blocks_;
+    void* managed_shm_;
+    std::mutex block_buf_lock_;
+    std::mutex arena_block_buf_lock_;
+    std::unordered_map<uint32_t, uint8_t*> block_buf_addrs_;
+    std::unordered_map<uint32_t, uint8_t*> arena_block_buf_addrs_;
+
+private:
     bool Remap();
     bool Recreate(const uint64_t& msg_size);
     uint32_t GetNextWritableBlockIndex();
     uint32_t GetNextArenaWritableBlockIndex();
-
-    uint64_t channel_id_;
-    void* managed_shm_;
-    State* state_;
-    Block* blocks_;
-    Block* arena_blocks_;
-    ShmConf conf_;
-    bool init_;
-    std::map<uint32_t, uint8_t*> block_buf_addrs_;
-    std::map<uint32_t, uint8_t*> arena_block_buf_addrs_;
-    std::mutex block_buf_lock_;
-    std::mutex arena_block_buf_lock_;
 };
 
 }  // namespace transport

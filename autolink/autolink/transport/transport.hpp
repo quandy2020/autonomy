@@ -16,13 +16,6 @@
 
 #pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
-#include <atomic>
-#include <memory>
-#include <string>
-
 #include <atomic>
 #include <memory>
 #include <string>
@@ -125,12 +118,8 @@ auto Transport::CreateTransmitter(const RoleAttributes& attr,
     }
 
     RETURN_VAL_IF_NULL(transmitter, nullptr);
-    // For HYBRID mode, Enable is called after topology discovery
-    // For specific modes, enable immediately
-    if (mode == OptionalMode::HYBRID) {
-        // HYBRID mode will be enabled via OnChannelChange callback
-    } else {
-        transmitter->Enable(modified_attr);
+    if (mode != OptionalMode::HYBRID) {
+        transmitter->Enable();
     }
     return transmitter;
 }
@@ -175,11 +164,7 @@ auto Transport::CreateReceiver(
     }
 
     RETURN_VAL_IF_NULL(receiver, nullptr);
-    // For HYBRID mode, Enable is called after topology discovery
-    // For specific modes, enable immediately
-    if (mode == OptionalMode::HYBRID) {
-        // HYBRID mode will be enabled via OnChannelChange callback
-    } else {
+    if (mode != OptionalMode::HYBRID) {
         receiver->Enable();
     }
     return receiver;

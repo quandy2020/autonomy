@@ -19,32 +19,31 @@
 #include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace plugins {
 namespace grpc {
 
-class GrpcBridgeServerInterface 
+class GrpcBridgeServerInterface
 {
 public:
-     virtual ~GrpcBridgeServerInterface() {}
-   
-     // Starts the gRPC server.
-     virtual void Start() = 0;
-   
-     // Waits for the 'GrpcBridgeServerI' to shut down. Note: The server must be
-     // either shutting down or some other thread must call 'Shutdown()' for
-     // this function to ever return.
-     virtual void WaitForShutdown() = 0;
-   
-     // Waits until all computation is finished (for testing).
-     virtual void WaitUntilIdle() = 0;
-   
-     // Shuts down the gRPC server thread.
-     virtual void Shutdown() = 0;
+    virtual ~GrpcBridgeServerInterface() {}
+
+    // Starts the gRPC server.
+    virtual void Start() = 0;
+
+    // Waits for the 'GrpcBridgeServerI' to shut down. Note: The server must be
+    // either shutting down or some other thread must call 'Shutdown()' for
+    // this function to ever return.
+    virtual void WaitForShutdown() = 0;
+
+    // Waits until all computation is finished (for testing).
+    virtual void WaitUntilIdle() = 0;
+
+    // Shuts down the gRPC server thread.
+    virtual void Shutdown() = 0;
 };
 
-  
-}   // namespace grpc
-}   // namespace plugins 
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

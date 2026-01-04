@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/port.hpp"
 
@@ -22,7 +22,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 namespace utils {
- 
+
 /**
  * @brief OccupancyGrid data constants
  */

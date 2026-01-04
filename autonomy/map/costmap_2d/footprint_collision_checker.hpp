@@ -15,11 +15,11 @@
  */
 
 #pragma once
- 
+
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <algorithm>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -34,7 +34,7 @@ typedef std::vector<commsgs::geometry_msgs::Point> Footprint;
  * @class FootprintCollisionChecker
  * @brief Checker for collision with a footprint on a costmap
  */
-template<typename CostmapT>
+template <typename CostmapT>
 class FootprintCollisionChecker
 {
 public:
@@ -42,7 +42,7 @@ public:
      * @brief A constructor.
      */
     FootprintCollisionChecker();
-    
+
     /**
      * @brief A constructor.
      */
@@ -56,7 +56,8 @@ public:
     /**
      * @brief Find the footprint cost a a post with an unoriented footprint
      */
-    double footprintCostAtPose(double x, double y, double theta, const Footprint& footprint);
+    double footprintCostAtPose(double x, double y, double theta,
+                               const Footprint& footprint);
 
     /**
      * @brief Get the cost for a line segment
@@ -82,8 +83,7 @@ public:
     /**
      * @brief Get the current costmap object
      */
-    CostmapT getCostmap()
-    {
+    CostmapT getCostmap() {
         return costmap_;
     }
 

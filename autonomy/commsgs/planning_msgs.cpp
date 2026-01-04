@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace builtin_interfaces {
-
-
-
-}  // namespace builtin_interfaces
+namespace builtin_interfaces {}  // namespace builtin_interfaces
 }  // namespace commsgs
 }  // namespace autonomy

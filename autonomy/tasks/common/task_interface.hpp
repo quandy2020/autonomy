@@ -14,34 +14,33 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
-#include <string>
-#include <vector>
-#include <tuple>
-#include <functional>
-#include <type_traits>
-#include <memory>
-#include <atomic>
 #include <any>
+#include <atomic>
+#include <functional>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
-#include "autonomy/tasks/proto/task_options.pb.h"
-
-#include "autonomy/common/macros.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
 namespace tasks {
 namespace common {
 
-class TaskInterface 
+class TaskInterface
 {
 public:
-   /**
-    * Define TaskInterface::SharedPtr type
-    */
+    /**
+     * Define TaskInterface::SharedPtr type
+     */
     AUTONOMY_SMART_PTR_DEFINITIONS(TaskInterface)
 
     /**
@@ -49,7 +48,7 @@ public:
      * @param options Additional options to control creation of the node.
      */
     TaskInterface() = default;
-    
+
     /**
      * @brief A Destructor for autonomy::tasks::TaskInterface
      */
@@ -57,8 +56,9 @@ public:
 
     /**
      * @brief Enumeration representing the possible states of a task
-     * 
-     * This enum class defines the various states that a task can be in during its lifecycle:
+     *
+     * This enum class defines the various states that a task can be in during
+     * its lifecycle:
      * - IDLE: Task has been created but not yet started
      * - RUNNING: Task is currently executing
      * - PAUSED: Task execution has been temporarily suspended
@@ -80,21 +80,23 @@ public:
 
     /**
      * @brief Starts the task with the provided arguments.
-     * 
-     * This function template captures any number of arguments, stores them in a vector of type-erased values (std::any),
-     * and forwards them to the implementation-specific StartImpl method.
-     * 
-     * @tparam Args Variadic template parameter pack representing the types of arguments to be passed
+     *
+     * This function template captures any number of arguments, stores them in a
+     * vector of type-erased values (std::any), and forwards them to the
+     * implementation-specific StartImpl method.
+     *
+     * @tparam Args Variadic template parameter pack representing the types of
+     * arguments to be passed
      * @param args Arguments to be forwarded to the StartImpl method
      * @return bool True if the task was successfully started, false otherwise
      */
-    template<typename... Args>
+    template <typename... Args>
     bool Start(Args&&... args) {
         std::vector<std::any> captured_args;
         (captured_args.emplace_back(std::forward<Args>(args)), ...);
         return StartImpl(std::move(captured_args));
     }
-    
+
     /**
      * @brief Resumes a paused task
      * @return bool True if the task was successfully resumed, false otherwise
@@ -115,10 +117,10 @@ public:
 
     /**
      * @brief Shuts down the task
-     * 
-     * This function is responsible for performing any necessary cleanup or resource release
-     * when the task is being shut down. It is typically called when the task is being
-     * stopped or when the program is exiting.
+     *
+     * This function is responsible for performing any necessary cleanup or
+     * resource release when the task is being shut down. It is typically called
+     * when the task is being stopped or when the program is exiting.
      */
     virtual void Shutdown() = 0;
 

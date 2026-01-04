@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,71 @@ syntax = "proto3";
 
 package autonomy.tasks.proto;
 
+// Navigator configuration for individual navigator types
+message NavigatorConfig
+{
+    // Plugin name for the navigator
+    string plugin = 1;
+    
+    // Enable Groot monitoring
+    bool enable_groot_monitoring = 2;
+    
+    // Groot server port
+    uint32 groot_server_port = 3;
+}
+
+// Task navigator options
+message TaskNavigatorOptions
+{
+    // Global frame (typically "map")
+    string global_frame = 1;
+    
+    // Robot base frame (typically "base_link")
+    string robot_base_frame = 2;
+    
+    // Odometry topic name
+    string odom_topic = 3;
+    
+    // Behavior tree loop duration (milliseconds)
+    uint32 bt_loop_duration = 4;
+    
+    // Filter duration (seconds)
+    double filter_duration = 5;
+    
+    // Default server timeout (seconds)
+    uint32 default_server_timeout = 6;
+    
+    // Wait for service timeout (milliseconds)
+    uint32 wait_for_service_timeout = 7;
+    
+    // Service introspection mode
+    string service_introspection_mode = 8;
+    
+    // List of enabled navigator types
+    repeated string navigators = 9;
+    
+    // Navigate to pose navigator configuration
+    NavigatorConfig navigate_to_pose = 10;
+    
+    // Navigate through poses navigator configuration
+    NavigatorConfig navigate_through_poses = 11;
+    
+    // Navigate to docking navigator configuration
+    NavigatorConfig navigate_to_docking = 12;
+    
+    // Track to target navigator configuration
+    NavigatorConfig track_to_target = 13;
+    
+    // Explore to anywhere navigator configuration
+    NavigatorConfig explore_to_anywhere = 14;
+    
+    // Error code name prefixes
+    repeated string error_code_name_prefixes = 15;
+}
+
+// Task options
 message TaskOptions
 {
-
+    // Task navigator options
+    TaskNavigatorOptions navigator_options = 1;
 }

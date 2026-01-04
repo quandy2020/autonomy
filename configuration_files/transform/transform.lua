@@ -19,23 +19,23 @@
 AUTONOMY_TRANSFORM = {
     -- 静态TF配置文件路径（YAML格式）
     -- 包含所有静态坐标系变换的定义
-    static_transform_config = "configuration_files/transform/static_transform.yaml",
+    -- static_transform_config = "configuration_files/transform/static_transform.yaml",
     
-    -- TF缓冲区大小（秒）
-    -- 定义TF系统保存历史变换的时间长度
-    buffer_cache_time = 10.0,
+    -- -- TF缓冲区大小（秒）
+    -- -- 定义TF系统保存历史变换的时间长度
+    -- buffer_cache_time = 10.0,
     
-    -- TF查询默认超时时间（秒）
-    -- 当查询TF变换时的最大等待时间
-    default_timeout = 0.01,
+    -- -- TF查询默认超时时间（秒）
+    -- -- 当查询TF变换时的最大等待时间
+    -- default_timeout = 0.01,
     
-    -- 调试模式
-    -- 启用后会输出更详细的TF调试信息
-    debug = false,
+    -- -- 调试模式
+    -- -- 启用后会输出更详细的TF调试信息
+    -- debug = false,
     
-    -- TF发布频率（Hz）
-    -- 静态TF的发布频率
-    publish_rate = 10.0,
+    -- -- TF发布频率（Hz）
+    -- -- 静态TF的发布频率
+    -- publish_rate = 10.0,
 }
 
 return AUTONOMY_TRANSFORM

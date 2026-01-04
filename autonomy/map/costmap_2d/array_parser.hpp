@@ -37,15 +37,14 @@
 
 #pragma once
 
-#include <vector>
 #include <string>
-
+#include <vector>
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-/** 
+/**
  * @brief Parse a vector of vectors of floats from a string.
  * @param error_return If no error, error_return is set to "".  If
  *        error, error_return will describe the error.
@@ -53,7 +52,8 @@ namespace costmap_2d {
  *
  * On error, error_return is set and the return value could be
  * anything, like part of a successful parse. */
-std::vector<std::vector<float>> parseVVF(const std::string& input, std::string& error_return);
+std::vector<std::vector<float>> parseVVF(const std::string& input,
+                                         std::string& error_return);
 
 }  // namespace costmap_2d
 }  // namespace map

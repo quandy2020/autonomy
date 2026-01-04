@@ -17,8 +17,5 @@
 #include "autonomy/bridge/plugins/mqtt/mqtt_bridge.hpp"
 
 namespace autonomy {
-namespace bridge { 
-
-
-}   // namespace bridge
-}   // namespace autonomy
+namespace bridge {}  // namespace bridge
+}  // namespace autonomy

@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,18 +18,49 @@ package autonomy.planning.proto;
 
 import "autonomy/planning/proto/dijkstra_planner.proto";
 import "autonomy/planning/proto/navfn_planner.proto";
+import "autonomy/planning/proto/theta_star_planner.proto";
 import "autonomy/map/proto/map_2d_option.proto";
 
+// Planner result codes returned by MakePlan method
+enum PlannerResultCode {
+    // Success
+    PLANNER_SUCCESS = 0;
+    
+    // Plugin specific non-error results (reserved range: 1-9)
+    // PLUGIN_SPECIFIC_SUCCESS_1 = 1;
+    // ...
+    // PLUGIN_SPECIFIC_SUCCESS_9 = 9;
+    
+    // Error codes
+    PLANNER_FAILURE = 50;          // Unspecified failure, only used for old, non-mfb_core based plugins
+    PLANNER_CANCELED = 51;
+    PLANNER_INVALID_START = 52;
+    PLANNER_INVALID_GOAL = 53;
+    PLANNER_BLOCKED_START = 54;
+    PLANNER_BLOCKED_GOAL = 55;
+    PLANNER_NO_PATH_FOUND = 56;
+    PLANNER_PAT_EXCEEDED = 57;
+    PLANNER_EMPTY_PATH = 58;
+    PLANNER_TF_ERROR = 59;
+    PLANNER_NOT_INITIALIZED = 60;
+    PLANNER_INVALID_PLUGIN = 61;
+    PLANNER_INTERNAL_ERROR = 62;
+    
+    // Plugin specific errors (reserved range: 71-99)
+    // PLUGIN_SPECIFIC_ERROR_71 = 71;
+    // ...
+    // PLUGIN_SPECIFIC_ERROR_99 = 99;
+}
 
 message PlannerOptions
 {
     DijkstraPlanner dijkstra = 1;
     NavFnPlanner navfn = 2;
+    ThetaStarPlanner theta_star = 3;
 
-    double expected_planner_frequency = 3;
-    double costmap_update_timeout = 4;
+    double expected_planner_frequency = 4;
+    double costmap_update_timeout = 5;
 
     // Global costmap options
-    autonomy.map.proto.Costmap2DOptions costmap = 5;
+    autonomy.map.proto.Costmap2DOptions costmap = 6;
 }
-

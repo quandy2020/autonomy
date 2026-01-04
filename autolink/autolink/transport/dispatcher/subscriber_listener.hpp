@@ -16,9 +16,6 @@
 
 #pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -41,7 +38,6 @@
 namespace autolink {
 namespace transport {
 namespace dispatcher {
-
 class SubscriberListener : public eprosima::fastdds::dds::SubscriberListener
 {
 public:

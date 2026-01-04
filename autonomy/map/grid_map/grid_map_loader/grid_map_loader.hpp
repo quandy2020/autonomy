@@ -21,37 +21,35 @@ namespace grid_map_loader {
  */
 class GridMapLoader
 {
- public:
+public:
+    /*!
+     * Constructor.
+     */
+    GridMapLoader();
 
-  /*!
-   * Constructor.
-   */
-  GridMapLoader();
+    /*!
+     * Destructor.
+     */
+    virtual ~GridMapLoader();
 
-  /*!
-   * Destructor.
-   */
-  virtual ~GridMapLoader();
+    /*!
+     * Reads and verifies the ROS parameters.
+     * @return true if successful.
+     */
+    bool readParameters();
 
-  /*!
-  * Reads and verifies the ROS parameters.
-  * @return true if successful.
-  */
-  bool readParameters();
+    /*!
+     * Loads the grid map from the bag file.
+     * @return true if successful, false otherwise.
+     */
+    bool load();
 
-  /*!
-   * Loads the grid map from the bag file.
-   * @return true if successful, false otherwise.
-   */
-  bool load();
+private:
+    //! Grid map data.
+    grid_map::GridMap map_;
 
- private:
-
-  //! Grid map data.
-  grid_map::GridMap map_;
-
-  //! Path the ROS bag to be published.
-  std::string filePath_;
+    //! Path the ROS bag to be published.
+    std::string filePath_;
 };
 
-} /* namespace */
+}  // namespace grid_map_loader

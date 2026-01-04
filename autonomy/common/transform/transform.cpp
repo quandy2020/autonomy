@@ -132,5 +132,5 @@ namespace transform {
 // }
 
 }  // namespace transform
-}  // namespace common 
+}  // namespace common
 }  // namespace autonomy

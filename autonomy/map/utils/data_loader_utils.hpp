@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include <string>
 
@@ -25,8 +25,7 @@ namespace map {
 namespace utils {
 
 std::string GetMapDataFilesDirectory();
- 
+
 }  // namespace utils
 }  // namespace map
 }  // namespace autonomy
-

@@ -18,26 +18,22 @@
 
 namespace grid_map {
 
-GridMapInfoProto ToProto(const GridMapInfoData& data)
-{
+GridMapInfoProto ToProto(const GridMapInfoData& data) {
     GridMapInfoProto proto;
     return proto;
 }
 
-GridMapInfoData FromProto(const GridMapInfoProto& proto)
-{
+GridMapInfoData FromProto(const GridMapInfoProto& proto) {
     GridMapInfoData data;
     return data;
 }
 
-GridMapProto ToProto(const GridMapData& data)
-{
+GridMapProto ToProto(const GridMapData& data) {
     GridMapProto proto;
     return proto;
 }
 
-GridMapData FromProto(const GridMapProto& proto)
-{
+GridMapData FromProto(const GridMapProto& proto) {
     GridMapData data;
     return data;
 }

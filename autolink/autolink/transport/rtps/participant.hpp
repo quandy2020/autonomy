@@ -13,26 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
+#pragma once
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
 #include <atomic>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 
-#include <fastdds/rtps/transport/TCPv4TransportDescriptor.hpp>
-#include <fastdds/rtps/transport/UDPv4TransportDescriptor.hpp>
-#include <fastdds/utils/IPLocator.hpp>
 #include "fastdds/dds/domain/DomainParticipantFactory.hpp"
 #include "fastdds/dds/domain/DomainParticipantListener.hpp"
+#include "fastrtps/fastdds/rtps/transport/TCPv4TransportDescriptor.h"
+#include "fastrtps/fastdds/rtps/transport/UDPv4TransportDescriptor.h"
+#include "fastrtps/fastrtps/utils/IPLocator.h"
 
 #include "autolink/base/macros.hpp"
 
@@ -41,14 +38,12 @@
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
-#include "autolink/transport/common/common_type.hpp"
+#include "autolink/transport/rtps/publisher.hpp"
+#include "autolink/transport/rtps/subscriber.hpp"
 #include "autolink/transport/rtps/underlay_message_type.hpp"
 
 namespace autolink {
 namespace transport {
-
-class Publisher;
-class Subscriber;
 
 class Participant
 {

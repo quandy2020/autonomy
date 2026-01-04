@@ -16,12 +16,11 @@
 
 #pragma once
 
-#include "autonomy/simulation/proto/simulation_option.pb.h"
-
-#include "autonomy/common/macros.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
 #include "autonomy/simulation/constants.hpp"
+#include "autonomy/simulation/proto/simulation_option.pb.h"
 
 namespace autonomy {
 namespace simulation {
@@ -46,9 +45,9 @@ public:
 
     /**
      * @brief Start simulator
-     * 
-     * @return true 
-     * @return false 
+     *
+     * @return true
+     * @return false
      */
     bool Start();
 
@@ -65,5 +64,5 @@ private:
 proto::SimulationOption LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
-} // namespace simulation
-} // namespace autonomy
+}  // namespace simulation
+}  // namespace autonomy

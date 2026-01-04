@@ -144,6 +144,9 @@ bool Writer<MessageT>::Init() {
     channel_manager_ =
         service_discovery::TopologyManager::Instance()->channel_manager();
     JoinTheTopology();
+    // Enable transmitter for HYBRID mode (other modes are enabled in
+    // CreateTransmitter)
+    transmitter_->Enable();
     return true;
 }
 
@@ -170,8 +173,23 @@ bool Writer<MessageT>::Write(const MessageT& msg) {
 
 template <typename MessageT>
 bool Writer<MessageT>::Write(const std::shared_ptr<MessageT>& msg_ptr) {
-    RETURN_VAL_IF(!WriterBase::IsInit(), false);
-    return transmitter_->Transmit(msg_ptr);
+    if (!WriterBase::IsInit()) {
+        AWARN << "Writer::Write: Writer not initialized for channel: "
+              << this->role_attr_.channel_name();
+        return false;
+    }
+    if (!transmitter_) {
+        AWARN << "Writer::Write: transmitter_ is null for channel: "
+              << this->role_attr_.channel_name();
+        return false;
+    }
+    bool result = transmitter_->Transmit(msg_ptr);
+    if (!result) {
+        AWARN << "Writer::Write: transmitter_->Transmit returned false for "
+                 "channel: "
+              << this->role_attr_.channel_name();
+    }
+    return result;
 }
 
 template <typename MessageT>

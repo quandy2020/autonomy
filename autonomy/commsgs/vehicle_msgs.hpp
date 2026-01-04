@@ -22,14 +22,10 @@ namespace autonomy {
 namespace commsgs {
 namespace vehicle_msgs {
 
-struct RobotEvent
-{
-
+struct RobotEvent {
 };
 
-struct RobotState
-{
-
+struct RobotState {
 };
 
 // Converts 'data' to a proto::vehicle_msgs::RobotEvent.
@@ -43,7 +39,6 @@ proto::vehicle_msgs::RobotState ToProto(const RobotState& data);
 
 // Converts 'proto' to RobotState.
 RobotState FromProto(const proto::vehicle_msgs::RobotState& proto);
-
 
 }  // namespace vehicle_msgs
 }  // namespace commsgs

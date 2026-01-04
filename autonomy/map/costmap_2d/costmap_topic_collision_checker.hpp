@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
+#pragma once
 
- 
-#pragma once 
-
+#include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
-#include <algorithm>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -56,29 +54,35 @@ public:
      * @brief Returns the obstacle footprint score for a particular pose
      *
      * @param pose Pose to get score at
-     * @param fetch_costmap_and_footprint Defaults to true. When checking with multiple poses at once,
-     * data should be fetched in the first check but fetching can be skipped in consequent checks for speedup
+     * @param fetch_costmap_and_footprint Defaults to true. When checking with
+     * multiple poses at once, data should be fetched in the first check but
+     * fetching can be skipped in consequent checks for speedup
      */
-    double scorePose(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_costmap_and_footprint = true);
+    double scorePose(const commsgs::geometry_msgs::Pose2D& pose,
+                     bool fetch_costmap_and_footprint = true);
 
     /**
      * @brief Returns if a pose is collision free
      *
      * @param pose Pose to check collision at
-     * @param fetch_costmap_and_footprint Defaults to true. When checking with multiple poses at once,
-     * data should be fetched in the first check but fetching can be skipped in consequent checks for speedup
+     * @param fetch_costmap_and_footprint Defaults to true. When checking with
+     * multiple poses at once, data should be fetched in the first check but
+     * fetching can be skipped in consequent checks for speedup
      */
-    bool isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_costmap_and_footprint = true);
+    bool isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose,
+                         bool fetch_costmap_and_footprint = true);
 
 protected:
     /**
      * @brief Get a footprint at a set pose
      *
      * @param pose Pose to get footprint at
-     * @param fetch_latest_footprint Defaults to true. When checking with multiple poses at once,
-     * footprint should be fetched in the first check but fetching can be skipped in consequent checks for speedup
+     * @param fetch_latest_footprint Defaults to true. When checking with
+     * multiple poses at once, footprint should be fetched in the first check
+     * but fetching can be skipped in consequent checks for speedup
      */
-    Footprint getFootprint(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint = true);
+    Footprint getFootprint(const commsgs::geometry_msgs::Pose2D& pose,
+                           bool fetch_latest_footprint = true);
 
     // Name used for logging
     std::string name_;

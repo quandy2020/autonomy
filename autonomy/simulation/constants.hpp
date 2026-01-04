@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace autonomy {
 namespace simulation {
 
 constexpr char kSimulationNodeName[] = "simulator_server";
 
-} // namespace simulation
-} // namespace autonomy
+}  // namespace simulation
+}  // namespace autonomy

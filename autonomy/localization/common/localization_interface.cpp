@@ -16,14 +16,17 @@
 
 #include "autonomy/localization/common/localization_interface.hpp"
 
+#include "autolink/common/log.hpp"
+#include "autonomy/common/configuration_file_resolver.hpp"
+
 namespace autonomy {
 namespace localization {
 namespace common {
 
 proto::LocalizationOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::LocalizationOptions options;
+
     return options;
 }
 

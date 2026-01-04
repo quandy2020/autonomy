@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace autonomy {
-namespace tasks { 
+namespace tasks {
 
 constexpr char kTaskNavigation[] = "TaskNavigation";
 
-}   // namespace tasks
-}   // namespace autonomy
+}  // namespace tasks
+}  // namespace autonomy

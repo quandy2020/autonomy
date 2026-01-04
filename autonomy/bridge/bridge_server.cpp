@@ -17,25 +17,21 @@
 #include "autonomy/bridge/bridge_server.hpp"
 
 #include <autonomy/common/port.hpp>
+
 #include "autonomy//common/logging.hpp"
 #include "autonomy/common/json_util.hpp"
 
 namespace autonomy {
 namespace bridge {
 
-BridgeServer::BridgeServer()
-{
+BridgeServer::BridgeServer() {
     grpc_bridge_ = std::make_unique<plugins::grpc::GrpcBridgeServer>();
 }
 
 BridgeServer::BridgeServer(const proto::BridgeOptions& options)
-    : options_{options}
-{
-}
+    : options_{options} {}
 
-
-void BridgeServer::Start()
-{
+void BridgeServer::Start() {
     if (options_.use_grpc()) {
         LOG(INFO) << "Use mqtt gRPC as communication.";
         // grpc_bridge_->Start();
@@ -48,12 +44,9 @@ void BridgeServer::Start()
     grpc_bridge_->Start();
 }
 
-void BridgeServer::WaitForShutdown()
-{
+void BridgeServer::WaitForShutdown() {
     grpc_bridge_->WaitForShutdown();
 }
-    
 
-}   // namespace bridge
-}   // namespace autonomy
-
+}  // namespace bridge
+}  // namespace autonomy

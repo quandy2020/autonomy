@@ -17,14 +17,11 @@
 #include "autonomy/bridge/plugins/grpc/clients/navigator_stub.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace plugins {
 namespace grpc {
-namespace clients {
-
-
-}   // namespace clients
-}   // namespace grpc
-}   // namespace plugins 
-}   // namespace bridge
-}   // namespace autonomy
+namespace clients {}  // namespace clients
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

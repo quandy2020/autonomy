@@ -18,21 +18,21 @@
 
 #include <unordered_map>
 
-#include "autonomy/bridge/proto/bridge_options.pb.h"
-#include "autonomy/common/macros.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/bridge/bridge_server.hpp"
+#include "autonomy/bridge/proto/bridge_options.pb.h"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/common/macros.hpp"
 
 namespace autonomy {
-namespace bridge { 
-namespace common { 
+namespace bridge {
+namespace common {
 
 proto::GrpcOptions CreateGrpcOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-    
+
 proto::MqttOptions CreateMqttOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
- 
-}   // namespace common 
-}   // namespace bridge
-}   // namespace autonomy
+
+}  // namespace common
+}  // namespace bridge
+}  // namespace autonomy

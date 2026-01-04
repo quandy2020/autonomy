@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace visualization_msgs {
-
-
-
-}  // namespace visualization_msgs
+namespace visualization_msgs {}  // namespace visualization_msgs
 }  // namespace commsgs
 }  // namespace autonomy

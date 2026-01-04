@@ -16,31 +16,23 @@
 
 #pragma once
 
-#include "autonomy/system/proto/autonomy_options.pb.h"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
-
 #include "autonomy/bridge/common/bridge_interface.hpp"
+#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/control/common/controller_interface.hpp"
 #include "autonomy/localization/common/localization_interface.hpp"
 #include "autonomy/map/common/map_interface.hpp"
-#include "autonomy/prediction/common/prediction_interface.hpp"
 #include "autonomy/perception/common/perception_interface.hpp"
-#include "autonomy/control/common/controller_interface.hpp"
-#include "autonomy/planning/common/planner_interface.hpp"
+#include "autonomy/prediction/common/prediction_interface.hpp"
+#include "autonomy/system/proto/autonomy_options.pb.h"
 #include "autonomy/tasks/common/task_interface.hpp"
 #include "autonomy/transform/common/transform_interface.hpp"
-#include "autonomy/visualization/common/visualization_interface.hpp"
 
 namespace autonomy {
-namespace system { 
+namespace system {
 namespace common {
 
-proto::AutonomyOptions CreateOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename);
+// CreateOptions is declared in system/options.hpp
 
-proto::AutonomyOptions LoadOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-    
-}   // namespace common
-}   // namespace system
-}   // namespace autonomy
+}  // namespace common
+}  // namespace system
+}  // namespace autonomy

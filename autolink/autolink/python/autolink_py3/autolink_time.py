@@ -23,23 +23,23 @@ import importlib
 import os
 import sys
 
-APOLLO_DISTRIBUTION_HOME = os.environ.get(
-    'APOLLO_DISTRIBUTION_HOME', '/opt/apollo/neo')
+AUTOLINK_DISTRIBUTION_HOME = os.environ.get(
+    'AUTOLINK_DISTRIBUTION_HOME', '/opt/apollo/neo')
 
-if APOLLO_DISTRIBUTION_HOME.startswith('/opt/apollo/neo') or APOLLO_DISTRIBUTION_HOME.startswith('/home'):
+if AUTOLINK_DISTRIBUTION_HOME.startswith('/opt/apollo/neo') or AUTOLINK_DISTRIBUTION_HOME.startswith('/home'):
     wrapper_lib_path = os.path.join(
-        APOLLO_DISTRIBUTION_HOME, "lib", "cyber/python/internal")
+        AUTOLINK_DISTRIBUTION_HOME, "lib", "autolink/python/internal")
 
     sys.path.append(wrapper_lib_path)
 
-_CYBER = importlib.import_module('_cyber_wrapper')
-_CYBER_TIME = importlib.import_module('_cyber_time_wrapper')
+_AUTOLINK = importlib.import_module('_autolink_wrapper')
+_AUTOLINK_TIME = importlib.import_module('_autolink_time_wrapper')
 
 
 class Duration(object):
 
     """
-    Class for cyber Duration wrapper.
+    Class for autolink Duration wrapper.
     """
 
     def __init__(self, other):
@@ -49,16 +49,16 @@ class Duration(object):
             self.nanoseconds_ = other * 1000000000
         elif isinstance(other, Duration):
             self.nanoseconds_ = other.nanoseconds_
-        self.duration_ = _CYBER_TIME.new_PyDuration(int(self.nanoseconds_))
+        self.duration_ = _AUTOLINK_TIME.new_PyDuration(int(self.nanoseconds_))
 
     def __del__(self):
-        _CYBER_TIME.delete_PyDuration(self.duration_)
+        _AUTOLINK_TIME.delete_PyDuration(self.duration_)
 
     def sleep(self):
         """
         sleep for the amount of time specified by the duration.
         """
-        _CYBER_TIME.PyDuration_sleep(self.duration_)
+        _AUTOLINK_TIME.PyDuration_sleep(self.duration_)
 
     def __str__(self):
         return str(self.nanoseconds_)
@@ -109,7 +109,7 @@ class Duration(object):
 class Time(object):
 
     """
-    Class for cyber time wrapper.
+    Class for autolink time wrapper.
     """
 
     ##
@@ -126,10 +126,10 @@ class Time(object):
         elif isinstance(other, Time):
             nanoseconds = other.to_nsec()
 
-        self.time = _CYBER_TIME.new_PyTime(int(nanoseconds))
+        self.time = _AUTOLINK_TIME.new_PyTime(int(nanoseconds))
 
     def __del__(self):
-        _CYBER_TIME.delete_PyTime(self.time)
+        _AUTOLINK_TIME.delete_PyTime(self.time)
 
     def __str__(self):
         return str(self.to_nsec())
@@ -144,32 +144,32 @@ class Time(object):
         """
         # print _CYBER_TIME.PyTime_now()
         # print type(_CYBER_TIME.PyTime_now())
-        time_now = Time(_CYBER_TIME.PyTime_now())
+        time_now = Time(_AUTOLINK_TIME.PyTime_now())
         return time_now
 
     @staticmethod
     def mono_time():
-        mono_time = Time(_CYBER_TIME.PyTime_mono_time())
+        mono_time = Time(_AUTOLINK_TIME.PyTime_mono_time())
         return mono_time
 
     def to_sec(self):
         """
         convert to second.
         """
-        return _CYBER_TIME.PyTime_to_sec(self.time)
+        return _AUTOLINK_TIME.PyTime_to_sec(self.time)
 
     def to_nsec(self):
         """
         convert to nanosecond.
         """
-        return _CYBER_TIME.PyTime_to_nsec(self.time)
+        return _AUTOLINK_TIME.PyTime_to_nsec(self.time)
 
     def sleep_until(self, cyber_time):
         """
         sleep until time.
         """
         if isinstance(time, Time):
-            return _CYBER_TIME.PyTime_sleep_until(self.time,
+            return _AUTOLINK_TIME.PyTime_sleep_until(self.time,
                                                   cyber_time.to_nsec())
         return NotImplemented
 
@@ -208,7 +208,7 @@ class Time(object):
 class Rate(object):
 
     """
-    Class for cyber Rate wrapper. Help run loops at a desired frequency.
+    Class for autolink Rate wrapper. Help run loops at a desired frequency.
     """
 
     ##
@@ -218,14 +218,14 @@ class Rate(object):
     # int means the expected_cycle_time.
     def __init__(self, other):
         if isinstance(other, int):
-            self.rate_ = _CYBER_TIME.new_PyRate(other)
+            self.rate_ = _AUTOLINK_TIME.new_PyRate(other)
         elif isinstance(other, float):
-            self.rate_ = _CYBER_TIME.new_PyRate(int(1.0 / other))
+            self.rate_ = _AUTOLINK_TIME.new_PyRate(int(1.0 / other))
         elif isinstance(other, Duration):
-            self.rate_ = _CYBER_TIME.new_PyRate(other.to_nsec())
+            self.rate_ = _AUTOLINK_TIME.new_PyRate(other.to_nsec())
 
     def __del__(self):
-        _CYBER_TIME.delete_PyRate(self.rate_)
+        _AUTOLINK_TIME.delete_PyRate(self.rate_)
 
     def __str__(self):
         return "cycle_time = %s, exp_cycle_time = %s" % (str(self.get_cycle_time()), str(self.get_expected_cycle_time()))
@@ -234,22 +234,22 @@ class Rate(object):
         """
         Sleeps for any leftover time in a cycle.
         """
-        _CYBER_TIME.PyRate_sleep(self.rate_)
+        _AUTOLINK_TIME.PyRate_sleep(self.rate_)
 
     def reset(self):
         """
         Sets the start time for the rate to now.
         """
-        _CYBER_TIME.PyRate_PyRate_reset(self.rate_)
+        _AUTOLINK_TIME.PyRate_PyRate_reset(self.rate_)
 
     def get_cycle_time(self):
         """
         Get the actual run time of a cycle from start to sleep.
         """
-        return Duration(_CYBER_TIME.PyRate_get_cycle_time(self.rate_))
+        return Duration(_AUTOLINK_TIME.PyRate_get_cycle_time(self.rate_))
 
     def get_expected_cycle_time(self):
         """
         Get the expected cycle time.
         """
-        return Duration(_CYBER_TIME.PyRate_get_expected_cycle_time(self.rate_))
+        return Duration(_AUTOLINK_TIME.PyRate_get_expected_cycle_time(self.rate_))

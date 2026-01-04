@@ -16,41 +16,34 @@
 
 #include "autonomy/simulation/simulator.hpp"
 
-#include "autonomy/common/logging.hpp"
-#include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/common/config.hpp"
+#include "autonomy/common/configuration_file_resolver.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/param_handler.hpp"
 
 namespace autonomy {
 namespace simulation {
 
 Simulator::Simulator(const proto::SimulationOption& option)
-    : options_(option)
-{
-}
+    : options_(option) {}
 
-Simulator::~Simulator()
-{
+Simulator::~Simulator() {
     Shutdown();
 }
 
-bool Simulator::Start()
-{
+bool Simulator::Start() {
     LOG(INFO) << "Starting Simulator...";
 
     return true;
 }
 
-void Simulator::Shutdown()
-{
-}
+void Simulator::Shutdown() {}
 
 proto::SimulationOption LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::SimulationOption option;
     return option;
 }
 
-} // namespace simulation
-} // namespace autonomy
+}  // namespace simulation
+}  // namespace autonomy

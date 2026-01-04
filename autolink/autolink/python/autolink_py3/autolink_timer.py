@@ -27,23 +27,23 @@ import sys
 
 PY_TIMER_CB_TYPE = ctypes.CFUNCTYPE(ctypes.c_void_p)
 
-APOLLO_DISTRIBUTION_HOME = os.environ.get(
-    'APOLLO_DISTRIBUTION_HOME', '/opt/apollo/neo')
+AUTOLINK_DISTRIBUTION_HOME = os.environ.get(
+    'AUTOLINK_DISTRIBUTION_HOME', '/opt/apollo/neo')
 
 # init vars
-if APOLLO_DISTRIBUTION_HOME.startswith('/opt/apollo/neo') or APOLLO_DISTRIBUTION_HOME.startswith('/home'):
+if AUTOLINK_DISTRIBUTION_HOME.startswith('/opt/apollo/neo') or AUTOLINK_DISTRIBUTION_HOME.startswith('/home'):
     wrapper_lib_path = os.path.join(
-        APOLLO_DISTRIBUTION_HOME, "lib", "cyber/python/internal")
+        AUTOLINK_DISTRIBUTION_HOME, "lib", "autolink/python/internal")
         
     sys.path.append(wrapper_lib_path)
 
-_CYBER_TIMER = importlib.import_module('_cyber_timer_wrapper')
+_AUTOLINK_TIMER = importlib.import_module('_autolink_timer_wrapper')
 
 
 class Timer(object):
 
     """
-    Class for cyber timer wrapper.
+    Class for autolink timer wrapper.
     """
 
     ##
@@ -55,15 +55,15 @@ class Timer(object):
     # 0:perform the callback every timed period
     def __init__(self, period=None, callback=None, oneshot=None):
         if period is None and callback is None and oneshot is None:
-            self.timer = _CYBER_TIMER.new_PyTimer_noparam()
+            self.timer = _AUTOLINK_TIMER.new_PyTimer_noparam()
         else:
             self.timer_cb = PY_TIMER_CB_TYPE(callback)
             self.f_ptr_cb = ctypes.cast(self.timer_cb, ctypes.c_void_p).value
-            self.timer = _CYBER_TIMER.new_PyTimer(
+            self.timer = _AUTOLINK_TIMER.new_PyTimer(
                 period, self.f_ptr_cb, oneshot)
 
     def __del__(self):
-        _CYBER_TIMER.delete_PyTimer(self.timer)
+        _AUTOLINK_TIMER.delete_PyTimer(self.timer)
 
     ##
     # @brief set the option of timer.
@@ -75,15 +75,15 @@ class Timer(object):
     def set_option(self, period, callback, oneshot=0):
         self.timer_cb = PY_TIMER_CB_TYPE(callback)
         self.f_ptr_cb = ctypes.cast(self.timer_cb, ctypes.c_void_p).value
-        _CYBER_TIMER.PyTimer_set_option(
+        _AUTOLINK_TIMER.PyTimer_set_option(
             self.timer, period, self.f_ptr_cb, oneshot)
 
     ##
     # @brief start the timer
     def start(self):
-        _CYBER_TIMER.PyTimer_start(self.timer)
+        _AUTOLINK_TIMER.PyTimer_start(self.timer)
 
     ##
     # @brief stop the timer
     def stop(self):
-        _CYBER_TIMER.PyTimer_stop(self.timer)
+        _AUTOLINK_TIMER.PyTimer_stop(self.timer)

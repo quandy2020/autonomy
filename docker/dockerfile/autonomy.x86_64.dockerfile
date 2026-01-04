@@ -97,7 +97,8 @@ RUN bash /tmp/install/install_opencv.sh
 RUN bash /tmp/install/install_ceres_solver.sh
 RUN bash /tmp/install/install_nlohmann.sh
 RUN bash /tmp/install/install_osqp.sh
-
+RUN bash /tmp/install/install_behaviortree_cpp.sh
+RUN bash /tmp/install/install_python_modules.sh
 
 # autonomy workspace
 ENV AUTONOMY_WS /workspace/autonomy

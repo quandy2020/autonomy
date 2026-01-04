@@ -24,27 +24,28 @@
 #include "autonomy/common/async_grpc/rpc.h"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 namespace async_grpc {
 
-class EventQueueThread {
- public:
-  using EventQueueRunner = std::function<void(EventQueue*)>;
+class EventQueueThread
+{
+public:
+    using EventQueueRunner = std::function<void(EventQueue*)>;
 
-  EventQueueThread();
+    EventQueueThread();
 
-  EventQueue* event_queue();
+    EventQueue* event_queue();
 
-  void Start(EventQueueRunner runner);
-  void Shutdown();
+    void Start(EventQueueRunner runner);
+    void Shutdown();
 
- private:
-  std::unique_ptr<EventQueue> event_queue_;
-  std::unique_ptr<std::thread> thread_;
+private:
+    std::unique_ptr<EventQueue> event_queue_;
+    std::unique_ptr<std::thread> thread_;
 };
 
 }  // namespace async_grpc
-}  // namespace common 
-}  // namespace autonomy 
+}  // namespace common
+}  // namespace autonomy
 
 #endif  // CPP_GRPC_EVENT_QUEUE_THREAD_H

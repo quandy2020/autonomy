@@ -29,46 +29,46 @@
 #include "autolink/time/rate.hpp"
 #include "autolink/time/time.hpp"
 
-using autolink::examples::proto::Chatter;
 using autolink::Rate;
 using autolink::Time;
+using autolink::examples::proto::Chatter;
 
-int main(int argc, char *argv[]) {
-  // init cyber framework
-  autolink::Init(argv[0]);
-  // create talker node
-  auto talker_node = autolink::CreateNode("talker");
-  // create talker
-  auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
-  if (!talker) {
-    AERROR << "Failed to create writer!";
-    return 1;
-  }
-  AINFO << "Writer created, waiting for topology discovery...";
-  // Wait a bit for topology discovery to complete
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  
-  // Create rate limiter: 1.0 Hz = 1 message per second
-  Rate rate(1.0);  // 每秒发送一条消息
-  uint64_t seq = 0;
-  AINFO << "Starting to send messages at 1 Hz (1 message per second)";
-  
-  while (autolink::OK()) {
-    auto msg = std::make_shared<Chatter>();
-    msg->set_timestamp(Time::Now().ToNanosecond());
-    msg->set_lidar_timestamp(Time::Now().ToNanosecond());
-    msg->set_seq(seq);
-    msg->set_content("Hello, autolink!");
-    if (talker->Write(msg)) {
-      AINFO << "talker sent a message! No. " << seq;
-    } else {
-      AWARN << "Failed to send message No. " << seq;
+int main(int argc, char* argv[]) {
+    // init cyber framework
+    autolink::Init(argv[0]);
+    // create talker node
+    auto talker_node = autolink::CreateNode("talker");
+    // create talker
+    auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
+    if (!talker) {
+        AERROR << "Failed to create writer!";
+        return 1;
     }
-    seq++;
-    // Sleep to maintain 1 Hz rate (1 second between messages)
-    rate.Sleep();
-  }
+    AINFO << "Writer created, waiting for topology discovery...";
+    // Wait a bit for topology discovery to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-  autolink::WaitForShutdown();
-  return 0;
+    // Create rate limiter: 1.0 Hz = 1 message per second
+    Rate rate(1.0);  // 每秒发送一条消息
+    uint64_t seq = 0;
+    AINFO << "Starting to send messages at 1 Hz (1 message per second)";
+
+    while (autolink::OK()) {
+        auto msg = std::make_shared<Chatter>();
+        msg->set_timestamp(Time::Now().ToNanosecond());
+        msg->set_lidar_timestamp(Time::Now().ToNanosecond());
+        msg->set_seq(seq);
+        msg->set_content("Hello, autolink!");
+        if (talker->Write(msg)) {
+            AINFO << "talker sent a message! No. " << seq;
+        } else {
+            AWARN << "Failed to send message No. " << seq;
+        }
+        seq++;
+        // Sleep to maintain 1 Hz rate (1 second between messages)
+        rate.Sleep();
+    }
+
+    autolink::WaitForShutdown();
+    return 0;
 }

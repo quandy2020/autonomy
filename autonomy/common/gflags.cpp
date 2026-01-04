@@ -17,7 +17,7 @@
 #include "autonomy/common/gflags.hpp"
 
 namespace autonomy {
-namespace common { 
+namespace common {
 
 DEFINE_bool(verbose, false, "Show autnomy verison info");
 
@@ -29,6 +29,5 @@ DEFINE_string(configuration_basename, "",
               "Basename, i.e. not containing any directory prefix, of the "
               "configuration file.");
 
-
-}   // namespace common
-}   // namespace autonomy
+}  // namespace common
+}  // namespace autonomy

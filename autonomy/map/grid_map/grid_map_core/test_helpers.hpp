@@ -7,14 +7,14 @@
  */
 
 #pragma once
+#include <functional>
+#include <random>
+#include <vector>
+
 #include "autonomy/map/grid_map/grid_map_core/type_defs.hpp"
 
-#include <functional>
-#include <vector>
-#include <random>
-
 namespace grid_map {
-  class GridMap;
+class GridMap;
 }
 
 namespace grid_map_test {
@@ -32,15 +32,13 @@ static const std::string testLayer = "test";
  * derivatives to this class, e.g. for testing the
  * accuracy of the normal estimation.
  */
-struct AnalyticalFunctions
-{
-  std::function<double(double, double)> f_;
+struct AnalyticalFunctions {
+    std::function<double(double, double)> f_;
 };
 
-struct Point2D
-{
-  double x_ = 0.0;
-  double y_ = 0.0;
+struct Point2D {
+    double x_ = 0.0;
+    double y_ = 0.0;
 };
 
 // Random generator engine.
@@ -49,8 +47,8 @@ extern std::mt19937 rndGenerator;
 // Maximal tolerance when comparing doubles in tests.
 const double maxAbsErrorValue = 1e-3;
 
-grid_map::GridMap createMap(const grid_map::Length &length, double resolution,
-                            const grid_map::Position &pos);
+grid_map::GridMap createMap(const grid_map::Length& length, double resolution,
+                            const grid_map::Position& pos);
 
 /*
  * Collections of methods that modify the grid map.
@@ -65,33 +63,35 @@ grid_map::GridMap createMap(const grid_map::Length &length, double resolution,
  * function.
  * Each method returns a structure containing the analytical function.
  */
-AnalyticalFunctions createFlatWorld(grid_map::GridMap *map);
-AnalyticalFunctions createRationalFunctionWorld(grid_map::GridMap *map);
-AnalyticalFunctions createSaddleWorld(grid_map::GridMap *map);
-AnalyticalFunctions createSecondOrderPolyWorld(grid_map::GridMap *map);
-AnalyticalFunctions createSineWorld(grid_map::GridMap *map);
-AnalyticalFunctions createTanhWorld(grid_map::GridMap *map);
-AnalyticalFunctions createGaussianWorld(grid_map::GridMap *map);
+AnalyticalFunctions createFlatWorld(grid_map::GridMap* map);
+AnalyticalFunctions createRationalFunctionWorld(grid_map::GridMap* map);
+AnalyticalFunctions createSaddleWorld(grid_map::GridMap* map);
+AnalyticalFunctions createSecondOrderPolyWorld(grid_map::GridMap* map);
+AnalyticalFunctions createSineWorld(grid_map::GridMap* map);
+AnalyticalFunctions createTanhWorld(grid_map::GridMap* map);
+AnalyticalFunctions createGaussianWorld(grid_map::GridMap* map);
 
 /*
  * Iterates over the grid map and fill it with values.
  * values are calculated by evaluating analytical function.
  */
-void fillGridMap(grid_map::GridMap *map, const AnalyticalFunctions &functions);
+void fillGridMap(grid_map::GridMap* map, const AnalyticalFunctions& functions);
 
 /*
- * Create numPoints uniformly distributed random points that lie within the grid map.
+ * Create numPoints uniformly distributed random points that lie within the grid
+ * map.
  */
-std::vector<Point2D> uniformlyDitributedPointsWithinMap(const grid_map::GridMap &map,
-                                                        unsigned int numPoints);
+std::vector<Point2D> uniformlyDitributedPointsWithinMap(
+    const grid_map::GridMap& map, unsigned int numPoints);
 
 /*
- * For each point in queryPoints, verify that the interpolated value of the grid map
- * is close to the ground truth which is contained in Analytical functions structure.
- * Called inside the tests. Calls macros from gtest.
+ * For each point in queryPoints, verify that the interpolated value of the grid
+ * map is close to the ground truth which is contained in Analytical functions
+ * structure. Called inside the tests. Calls macros from gtest.
  */
-void verifyValuesAtQueryPointsAreClose(const grid_map::GridMap &map, const AnalyticalFunctions &trueValues,
-                               const std::vector<Point2D> &queryPoints,
-                               grid_map::InterpolationMethods interpolationMethod);
+void verifyValuesAtQueryPointsAreClose(
+    const grid_map::GridMap& map, const AnalyticalFunctions& trueValues,
+    const std::vector<Point2D>& queryPoints,
+    grid_map::InterpolationMethods interpolationMethod);
 
 }  // namespace grid_map_test

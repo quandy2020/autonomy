@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/time.hpp"
 #include "autonomy/bridge/plugins/grpc/grpc_bridge.hpp"
+
 #include "autonomy/bridge/plugins/grpc/handlers/exploration_handler.hpp"
 #include "autonomy/bridge/plugins/grpc/handlers/navigation_handler.hpp"
+#include "autonomy/common/time.hpp"
 
 namespace autonomy {
-namespace bridge { 
+namespace bridge {
 namespace plugins {
 namespace grpc {
 
@@ -28,12 +29,12 @@ namespace {
 
 // static auto* kIncomingDataQueueMetric = metrics::Gauge::Null();
 constexpr int kMaxMessageSize = 100 * 1024 * 1024;  // 100 MB
-const autonomy::common::Duration kPopTimeout = autonomy::common::FromMilliseconds(100);
+const autonomy::common::Duration kPopTimeout =
+    autonomy::common::FromMilliseconds(100);
 
 }  // namespace
 
-GrpcBridgeServer::GrpcBridgeServer()
-{
+GrpcBridgeServer::GrpcBridgeServer() {
     autonomy::common::async_grpc::Server::Builder server_builder;
     server_builder.SetServerAddress("127.0.0.1");
     server_builder.SetNumGrpcThreads(4);
@@ -51,30 +52,23 @@ GrpcBridgeServer::GrpcBridgeServer()
     grpc_server_ = server_builder.Build();
 }
 
-void GrpcBridgeServer::Start()
-{
+void GrpcBridgeServer::Start() {
     shutting_down_ = false;
     StartThread();
     grpc_server_->Start();
 }
 
-void GrpcBridgeServer::WaitUntilIdle()
-{
+void GrpcBridgeServer::WaitUntilIdle() {}
 
-}
-
-void GrpcBridgeServer::WaitForShutdown()
-{
+void GrpcBridgeServer::WaitForShutdown() {
     grpc_server_->WaitForShutdown();
 
     if (task_thread_) {
         task_thread_->join();
     }
-
 }
 
-void GrpcBridgeServer::Shutdown()
-{
+void GrpcBridgeServer::Shutdown() {
     shutting_down_ = true;
     grpc_server_->Shutdown();
 
@@ -84,8 +78,7 @@ void GrpcBridgeServer::Shutdown()
     }
 }
 
-void GrpcBridgeServer::ProcessSensorDataQueue() 
-{
+void GrpcBridgeServer::ProcessSensorDataQueue() {
     LOG(INFO) << "Starting task handler thread.";
     while (!shutting_down_) {
         LOG(INFO) << "handler sensor datas.";
@@ -93,8 +86,7 @@ void GrpcBridgeServer::ProcessSensorDataQueue()
     }
 }
 
-void GrpcBridgeServer::StartThread()
-{
+void GrpcBridgeServer::StartThread() {
     CHECK(!task_thread_);
 
     // Start the ask handler processing thread.
@@ -102,7 +94,7 @@ void GrpcBridgeServer::StartThread()
         [this]() { this->ProcessSensorDataQueue(); });
 }
 
-}   // namespace grpc
-}   // namespace plugins 
-}   // namespace bridge
-}   // namespace autonomy
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
+}  // namespace autonomy

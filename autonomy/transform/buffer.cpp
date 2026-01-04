@@ -14,84 +14,89 @@
  * limitations under the License.
  */
 
- #include <thread>
-
 #include "autonomy/transform/buffer.hpp"
-#include "autonomy/common/logging.hpp"
+
+#include <thread>
+
 #include "absl/strings/str_cat.h"
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace transform {
 
 namespace {
-    constexpr float kSecondToNanoFactor = 1e9f;
-    constexpr uint64_t kMilliToNanoFactor = 1e6;
+constexpr float kSecondToNanoFactor = 1e9f;
+constexpr uint64_t kMilliToNanoFactor = 1e6;
 }  // namespace
 
-Buffer::Buffer() : BufferCore() { Init(); }
+Buffer::Buffer() : BufferCore() {
+    Init();
+}
 
-int Buffer::Init() 
-{
-//   const std::string node_name =
-//       absl::StrCat("transform_listener_", Time::Now().ToNanosecond());
-//   node_ = cyber::CreateNode(node_name);
-//   apollo::cyber::proto::RoleAttributes attr;
-//   attr.set_channel_name("/tf");
-//   message_subscriber_tf_ = node_->CreateReader<TransformStampeds>(
-//       attr, [&](const std::shared_ptr<const TransformStampeds>& msg_evt) {
-//         SubscriptionCallbackImpl(msg_evt, false);
-//       });
+int Buffer::Init() {
+    const std::string node_name =
+        absl::StrCat("transform_listener_", Time::Now().Nanoseconds());
+    node_ = ::autolink::CreateNode(node_name);
+    ::autolink::proto::RoleAttributes attr;
+    attr.set_channel_name("/tf");
+    message_subscriber_tf_ =
+        node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
+            attr,
+            [&](const std::shared_ptr<
+                const commsgs::geometry_msgs::TransformStampeds>& msg_evt) {
+                SubscriptionCallbackImpl(msg_evt, false);
+            });
 
-//   apollo::cyber::proto::RoleAttributes attr_static;
-//   attr_static.set_channel_name(FLAGS_tf_static_topic);
-//   attr_static.mutable_qos_profile()->CopyFrom(
-//       apollo::cyber::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
-//   message_subscriber_tf_static_ = node_->CreateReader<TransformStampeds>(
-//       attr_static, [&](const std::shared_ptr<TransformStampeds>& msg_evt) {
-//         SubscriptionCallbackImpl(msg_evt, true);
-//       });
+    ::autolink::proto::RoleAttributes attr_static;
+    attr_static.set_channel_name("/tf_static");
+    message_subscriber_tf_static_ =
+        node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
+            attr_static,
+            [&](const std::shared_ptr<
+                const commsgs::geometry_msgs::TransformStampeds>& msg_evt) {
+                SubscriptionCallbackImpl(msg_evt, true);
+            });
 
-//   return cyber::SUCC;
-
-    return 0;
+    return ::autolink::SUCC;
 }
 
 commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
-        const std::string& target_frame, const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& time, 
-        const float timeout_second) const
-{
+    const std::string& target_frame, const std::string& source_frame,
+    const commsgs::builtin_interfaces::Time& time,
+    const float timeout_second) const {
     commsgs::geometry_msgs::TransformStamped transform;
     return transform;
 }
 
 commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
-        const std::string& target_frame, const commsgs::builtin_interfaces::Time& target_time,
-        const std::string& source_frame, const commsgs::builtin_interfaces::Time& source_time,
-        const std::string& fixed_frame, const float timeout_second) const
-{
+    const std::string& target_frame,
+    const commsgs::builtin_interfaces::Time& target_time,
+    const std::string& source_frame,
+    const commsgs::builtin_interfaces::Time& source_time,
+    const std::string& fixed_frame, const float timeout_second) const {
     commsgs::geometry_msgs::TransformStamped transform;
     return transform;
 }
 
 bool Buffer::canTransform(const std::string& target_frame,
-                              const std::string& source_frame,
-                              const commsgs::builtin_interfaces::Time& time,
-                              const float timeout_second,
-                              std::string* errstr) const
-{
+                          const std::string& source_frame,
+                          const commsgs::builtin_interfaces::Time& time,
+                          const float timeout_second,
+                          std::string* errstr) const {
     uint64_t timeout_ns =
-    static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
+        static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
     uint64_t start_time = Time::Now().Nanoseconds();  // time.ToNanosecond();
     while (Time::Now().Nanoseconds() < start_time + timeout_ns) {
         errstr->clear();
-        bool retval = tf2::BufferCore::canTransform(target_frame, source_frame, time.Nanoseconds(), errstr);
+        bool retval = tf2::BufferCore::canTransform(target_frame, source_frame,
+                                                    time.Nanoseconds(), errstr);
         if (retval) {
             return true;
         } else {
             const int sleep_time_ms = 3;
             LOG(WARNING) << "BufferCore::canTransform failed: " << *errstr;
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(sleep_time_ms));
         }
     }
     *errstr = *errstr + ":timeout";
@@ -99,18 +104,17 @@ bool Buffer::canTransform(const std::string& target_frame,
 }
 
 bool Buffer::canTransform(const std::string& target_frame,
-                              const commsgs::builtin_interfaces::Time& target_time,
-                              const std::string& source_frame,
-                              const commsgs::builtin_interfaces::Time& source_time,
-                              const std::string& fixed_frame,
-                              const float timeout_second,
-                              std::string* errstr) const
-{
+                          const commsgs::builtin_interfaces::Time& target_time,
+                          const std::string& source_frame,
+                          const commsgs::builtin_interfaces::Time& source_time,
+                          const std::string& fixed_frame,
+                          const float timeout_second,
+                          std::string* errstr) const {
     // poll for transform if timeout is set
-    uint64_t timeout_ns = static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
+    uint64_t timeout_ns =
+        static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
     uint64_t start_time = Time::Now().Nanoseconds();
-    while (Time::Now().Nanoseconds() < start_time + timeout_ns) 
-    {  
+    while (Time::Now().Nanoseconds() < start_time + timeout_ns) {
         // Make sure we haven't been stopped
         errstr->clear();
 
@@ -122,7 +126,8 @@ bool Buffer::canTransform(const std::string& target_frame,
         } else {
             const int sleep_time_ms = 3;
             LOG(WARNING) << "BufferCore::canTransform failed: " << *errstr;
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(sleep_time_ms));
         }
     }
     *errstr = *errstr + ":timeout";
@@ -130,17 +135,106 @@ bool Buffer::canTransform(const std::string& target_frame,
 }
 
 bool Buffer::GetLatestStaticTF(const std::string& frame_id,
-    const std::string& child_frame_id,
-    commsgs::geometry_msgs::TransformStamped* tf)
-{
-    for (auto reverse_iter = static_msgs_.rbegin(); reverse_iter != static_msgs_.rend(); ++reverse_iter) {
+                               const std::string& child_frame_id,
+                               commsgs::geometry_msgs::TransformStamped* tf) {
+    for (auto reverse_iter = static_msgs_.rbegin();
+         reverse_iter != static_msgs_.rend(); ++reverse_iter) {
         if ((*reverse_iter).header.frame_id == frame_id &&
             (*reverse_iter).child_frame_id == child_frame_id) {
-            // TF2MsgToCyber((*reverse_iter), (*tf));
+            TF2MsgToConvert((*reverse_iter), (*tf));
             return true;
         }
     }
     return false;
+}
+
+void Buffer::SubscriptionCallback(
+    const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+        msg_evt) {
+    SubscriptionCallbackImpl(msg_evt, false);
+}
+
+void Buffer::StaticSubscriptionCallback(
+    const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+        msg_evt) {
+    SubscriptionCallbackImpl(msg_evt, true);
+}
+
+void Buffer::SubscriptionCallbackImpl(
+    const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+        msg_evt,
+    bool is_static) {
+    commsgs::builtin_interfaces::Time now = Time::Now();
+    std::string authority =
+        "autolink_tf";  // msg_evt.getPublisherName(); // lookup the authority
+    if (now.Nanoseconds() < last_update_.Nanoseconds()) {
+        AINFO << "Detected jump back in time. Clearing TF buffer.";
+        clear();
+        // cache static transform stamped again.
+        for (const auto& geo_msg : static_msgs_) {
+            setTransform(geo_msg, authority, true);
+        }
+    }
+    last_update_ = now;
+
+    for (size_t i = 0; i < msg_evt->transforms.size(); i++) {
+        try {
+            const auto& trans = msg_evt->transforms[i];
+
+            // Convert to geometry_msgs::TransformStamped for tf2
+            geometry_msgs::TransformStamped geo_msg;
+            // Convert timestamp: sec * 1e9 + nanosec
+            geo_msg.header.stamp =
+                static_cast<uint64_t>(trans.header.stamp.sec) * 1000000000ULL +
+                static_cast<uint64_t>(trans.header.stamp.nanosec);
+            geo_msg.header.frame_id = trans.header.frame_id;
+            geo_msg.child_frame_id = trans.child_frame_id;
+            geo_msg.transform.translation.x = trans.transform.translation.x;
+            geo_msg.transform.translation.y = trans.transform.translation.y;
+            geo_msg.transform.translation.z = trans.transform.translation.z;
+            geo_msg.transform.rotation.x = trans.transform.rotation.x;
+            geo_msg.transform.rotation.y = trans.transform.rotation.y;
+            geo_msg.transform.rotation.z = trans.transform.rotation.z;
+            geo_msg.transform.rotation.w = trans.transform.rotation.w;
+
+            if (is_static) {
+                static_msgs_.push_back(geo_msg);
+            }
+            setTransform(geo_msg, authority, is_static);
+        } catch (tf2::TransformException& ex) {
+            std::string temp = ex.what();
+            AERROR << "Failure to set received transform:" << temp.c_str();
+        }
+    }
+}
+
+void Buffer::TF2MsgToConvert(
+    const geometry_msgs::TransformStamped& tf2_trans_stamped,
+    commsgs::geometry_msgs::TransformStamped& trans_stamped) const {
+    // Convert from geometry_msgs (tf2 internal) to commsgs::geometry_msgs
+    // (autolink) header
+    trans_stamped.header.stamp.sec =
+        static_cast<int32_t>(tf2_trans_stamped.header.stamp / 1000000000ULL);
+    trans_stamped.header.stamp.nanosec =
+        static_cast<uint32_t>(tf2_trans_stamped.header.stamp % 1000000000ULL);
+    trans_stamped.header.frame_id = tf2_trans_stamped.header.frame_id;
+
+    // child_frame_id
+    trans_stamped.child_frame_id = tf2_trans_stamped.child_frame_id;
+
+    // translation
+    trans_stamped.transform.translation.x =
+        tf2_trans_stamped.transform.translation.x;
+    trans_stamped.transform.translation.y =
+        tf2_trans_stamped.transform.translation.y;
+    trans_stamped.transform.translation.z =
+        tf2_trans_stamped.transform.translation.z;
+
+    // rotation
+    trans_stamped.transform.rotation.x = tf2_trans_stamped.transform.rotation.x;
+    trans_stamped.transform.rotation.y = tf2_trans_stamped.transform.rotation.y;
+    trans_stamped.transform.rotation.z = tf2_trans_stamped.transform.rotation.z;
+    trans_stamped.transform.rotation.w = tf2_trans_stamped.transform.rotation.w;
 }
 
 }  // namespace transform

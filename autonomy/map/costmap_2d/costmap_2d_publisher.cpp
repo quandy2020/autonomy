@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-
 #include "autonomy/map/costmap_2d/costmap_2d_publisher.hpp"
 
 namespace autonomy {
 namespace map {
-namespace costmap_2d {
-
-
-}  // namespace costmap_2d
+namespace costmap_2d {}  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

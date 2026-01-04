@@ -197,9 +197,9 @@ bool IsLibraryLoaded(const std::string& library_path,
 
 bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
     if (IsLibraryLoadedByAnybody(library_path)) {
-        AINFO
-            << "lib has been loaded by others,only attach to class factory obj."
-            << library_path;
+        AINFO << "lib has been loaded by others, only attach to class factory "
+                 "obj."
+              << library_path;
         ClassFactoryVector lib_class_factory_objs =
             GetAllClassFactoryObjectsOfLibrary(library_path);
         for (auto& class_factory_obj : lib_class_factory_objs) {

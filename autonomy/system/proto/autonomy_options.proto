@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import "autonomy/control/proto/controller_options.proto";
 import "autonomy/planning/proto/planning_options.proto"; 
 import "autonomy/tasks/proto/task_options.proto"; 
 import "autonomy/transform/proto/transform_options.proto"; 
-import "autonomy/visualization/proto/visualization_options.proto"; 
 
 message AutonomyOptions
 {
@@ -38,6 +37,5 @@ message AutonomyOptions
     perception.proto.PerceptionOptions perception_options = 7;
     tasks.proto.TaskOptions task_options = 8;
     transform.proto.TransformOptions transform_options = 9;
-    visualization.proto.VisualizationOptions visualization_options = 10;
 }
 

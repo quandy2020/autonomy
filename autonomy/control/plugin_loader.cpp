@@ -19,10 +19,10 @@
 namespace autonomy {
 namespace control {
 
-common::ControllerInterface::SharedPtr PluginLoader::Create(const std::string& class_name)
-{
+common::ControllerInterface::SharedPtr PluginLoader::Create(
+    const std::string& class_name) {
     return nullptr;
 }
 
 }  // namespace control
-}  // namespace autonomys
+}  // namespace autonomy

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/segment_factory.hpp"
 
 #include <memory>
@@ -24,23 +23,13 @@
 #include "autolink/transport/shm/posix_segment.hpp"
 #include "autolink/transport/shm/xsi_segment.hpp"
 
-#ifdef __APPLE__
-#include <TargetConditionals.h>
-#endif
-
 namespace autolink {
 namespace transport {
 
 using autolink::common::GlobalData;
 
 auto SegmentFactory::CreateSegment(uint64_t channel_id) -> SegmentPtr {
-    // 在 macOS 上默认使用 POSIX 共享内存，因为 XSI 共享内存可能不稳定
-#ifdef __APPLE__
-    std::string segment_type(PosixSegment::Type());
-#else
     std::string segment_type(XsiSegment::Type());
-#endif
-    
     auto& shm_conf = GlobalData::Instance()->Config();
     if (shm_conf.has_transport_conf() &&
         shm_conf.transport_conf().has_shm_conf() &&

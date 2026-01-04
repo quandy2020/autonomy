@@ -27,7 +27,7 @@
 #include "autonomy/common/future.hpp"
 
 #define FORMAT_TIMESTAMP(timestamp) \
-  std::fixed << std::setprecision(9) << timestamp
+    std::fixed << std::setprecision(9) << timestamp
 
 /**
  * @namespace autonomy::common
@@ -39,10 +39,10 @@ namespace common {
 using absl::StrFormat;
 
 struct DebugStringFormatter {
-  template <class T>
-  void operator()(std::string* out, const T& t) const {
-    out->append(t.DebugString());
-  }
+    template <class T>
+    void operator()(std::string* out, const T& t) const {
+        out->append(t.DebugString());
+    }
 };
 
 std::string EncodeBase64(std::string_view in);
@@ -53,8 +53,7 @@ std::string EncodeBase64(std::string_view in);
 std::string StringPrintf(const char* format, ...);
 
 // Replace all occurrences of `old_str` with `new_str` in the given string.
-std::string StringReplace(const std::string& str,
-                          const std::string& old_str,
+std::string StringReplace(const std::string& str, const std::string& old_str,
                           const std::string& new_str);
 
 // Get substring of string after search key

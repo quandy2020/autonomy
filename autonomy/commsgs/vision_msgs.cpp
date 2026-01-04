@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace vision_msgs {
-
-
-
-}  // namespace vision_msgs
+namespace vision_msgs {}  // namespace vision_msgs
 }  // namespace commsgs
 }  // namespace autonomy

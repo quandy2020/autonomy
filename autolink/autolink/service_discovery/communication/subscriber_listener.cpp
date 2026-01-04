@@ -20,9 +20,9 @@
 
 #include "autolink/base/macros.hpp"
 
-#include <fastdds/dds/core/ReturnCode.hpp>
-#include "fastdds/dds/subscriber/InstanceState.hpp"
-#include "fastdds/dds/topic/TopicDescription.hpp"
+#include "fastrtps/fastdds/dds/subscriber/DataReader.hpp"
+#include "fastrtps/fastdds/dds/topic/TopicDescription.hpp"
+#include "fastrtps/types/TypesBase.h"
 
 #include "autolink/common/log.hpp"
 #include "autolink/transport/rtps/underlay_message.hpp"
@@ -46,7 +46,7 @@ void SubscriberListener::on_data_available(
     eprosima::fastdds::dds::SampleInfo m_info;
     autolink::transport::UnderlayMessage m;
     while (reader->take_next_sample(reinterpret_cast<void*>(&m), &m_info) ==
-           eprosima::fastdds::dds::RETCODE_OK) {
+           eprosima::fastrtps::types::ReturnCode_t::RETCODE_OK) {
         if (m_info.valid_data) {
             // parameter 1 and 2 are not used
             callback_(std::make_shared<std::string>(m.data()), 0, msg_info_);

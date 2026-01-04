@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,5 @@ syntax = "proto3";
 package autonomy.planning.proto;
 
 message DijkstraPlanner
-{ 
-    double tolerance = 1;
-    double max_its = 2;
-    bool allow_unknown = 3;
+{
 }
-

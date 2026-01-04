@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace diagnostic_msgs {
-
-
-
-}  // namespace diagnostic_msgs
+namespace diagnostic_msgs {}  // namespace diagnostic_msgs
 }  // namespace commsgs
 }  // namespace autonomy

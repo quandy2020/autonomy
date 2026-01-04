@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "autolink/transport/shm/posix_segment.hpp"
 
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include "autolink/common/log.hpp"
 #include "autolink/common/util.hpp"
@@ -252,7 +250,7 @@ bool PosixSegment::OpenOnly() {
 
     // get arena block buf
     uint32_t ai = 0;
-    for (; ai < ShmConf::ARENA_BLOCK_NUM; ++ai) {
+    for (; i < ShmConf::ARENA_BLOCK_NUM; ++ai) {
         uint8_t* addr = reinterpret_cast<uint8_t*>(
             static_cast<char*>(managed_shm_) + sizeof(State) +
             conf_.block_num() * sizeof(Block) +
@@ -269,8 +267,7 @@ bool PosixSegment::OpenOnly() {
 
     if (i != conf_.block_num() || ai != ShmConf::ARENA_BLOCK_NUM) {
         AERROR << "open only failed.";
-        // 在 OpenOnly() 中，我们只是读取者，不应该析构共享内存中的对象
-        // state_ 是从共享内存中 reinterpret_cast 得到的，由创建者管理生命周期
+        state_->~State();
         state_ = nullptr;
         blocks_ = nullptr;
         arena_blocks_ = nullptr;
@@ -284,7 +281,7 @@ bool PosixSegment::OpenOnly() {
         }
         munmap(managed_shm_, conf_.managed_shm_size());
         managed_shm_ = nullptr;
-        // 不要 unlink，因为其他进程可能还在使用
+        shm_unlink(shm_name_.c_str());
         return false;
     }
 

@@ -18,10 +18,6 @@
 
 namespace autonomy {
 namespace commsgs {
-namespace stereo_msgs {
-
-
-
-}  // namespace stereo_msgs
+namespace stereo_msgs {}  // namespace stereo_msgs
 }  // namespace commsgs
 }  // namespace autonomy

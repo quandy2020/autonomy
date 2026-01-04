@@ -1,4 +1,4 @@
-// Copyright 2025 The Openbot Authors
+// Copyright 2025 The Openbot Authors （duyongquan）
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ message DenoiseLayer
     double denoise_radius = 3;
 }
 
-message Footprint 
+message Footprint
 {
     repeated autonomy.commsgs.proto.geometry_msgs.Point2D points = 1;
 }
@@ -52,6 +52,8 @@ message InflationLayer
     bool enabled = 2;
     double cost_scaling_factor = 3;
     double inflation_radius = 4;
+    bool inflate_unknown = 5;
+    bool inflate_around_unknown = 6;
 }
 
 message ObstacleLayer
@@ -74,51 +76,57 @@ message StaticLayer
 
 message Costmap2DOptions
 {
-    // string map_file = 1;
-    string frame_id = 1;
+    // 是否启用2D代价地图
+    bool enabled = 1;
+
+    // map file path
+    string map_file = 2;
+
+    // frame id
+    string frame_id = 3;
 
     // costmap name
-    string name = 2;
+    string name = 4;
 
     // costmap resolution
-    double resolution = 3;
+    double resolution = 5;
 
     // costmap width
-    int32 width = 4;
+    int32 width = 6;
 
     // costmap height
-    int32 height = 5;
+    int32 height = 7;
 
     // update frequency
-    double update_frequency = 6;
+    double update_frequency = 8;
 
     // rolling window
-    bool rolling_window = 7;
+    bool rolling_window = 9;
 
     // robot radius
-    double robot_radius = 8;
+    double robot_radius = 10;
 
     // always send full costmap
-    bool always_send_full_costmap = 9;
+    bool always_send_full_costmap = 11;
 
     // footprint
-    Footprint footprint = 10;
+    Footprint footprint = 12;
 
     // footprint padding
-    double footprint_padding = 11;
+    double footprint_padding = 13;
 
     // plugins
-    repeated string plugins = 12;
+    repeated string plugins = 14;
 
     // static layer
-    StaticLayer static_layer = 13;
+    StaticLayer static_layer = 15;
 
     // denoise layer
-    DenoiseLayer denoise_layer = 14;
+    DenoiseLayer denoise_layer = 16;
 
     // obstacle layer
-    ObstacleLayer obstacle_layer = 15;
+    ObstacleLayer obstacle_layer = 17;
 
     // inflation layer
-    InflationLayer inflation_layer = 16;
+    InflationLayer inflation_layer = 18;
 }

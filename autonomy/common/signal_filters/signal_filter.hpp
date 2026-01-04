@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-
 #ifndef AUTONOMY_COMMON_SIGNAL_FILTERS_SIGNAL_FILTER_HPP_
 #define AUTONOMY_COMMON_SIGNAL_FILTERS_SIGNAL_FILTER_HPP_
-
-#include "autonomy/common/port.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -26,79 +23,88 @@
 #include <stdexcept>
 #include <type_traits>
 
+#include "autonomy/common/port.hpp"
+
 namespace autonomy {
 namespace common {
 namespace signal_filters {
 
 /// Fake clock to denote that the duration API is supposed to be used
-struct DummyClock
-{
-  static auto now() {return std::chrono::steady_clock::now();}  // Just for test convenience
-  using time_point = std::chrono::steady_clock::time_point;  // Just for test convenience
+struct DummyClock {
+    static auto now() {
+        return std::chrono::steady_clock::now();
+    }  // Just for test convenience
+    using time_point =
+        std::chrono::steady_clock::time_point;  // Just for test convenience
 };
 
-/// Interface class for filters in the signal processing sense; attenuate response from
-/// various frequency domains
+/// Interface class for filters in the signal processing sense; attenuate
+/// response from various frequency domains
 /// \tparam T A floating point type for the signal
-/// \tparam ClockT The (std::)clock type intended to be used. Setting this implies that the
-///               time_point-based API is going to be used (and that the duration API can't be used)
-template<typename T, typename ClockT = DummyClock>
+/// \tparam ClockT The (std::)clock type intended to be used. Setting this
+/// implies that the
+///               time_point-based API is going to be used (and that the
+///               duration API can't be used)
+template <typename T, typename ClockT = DummyClock>
 class FilterBase
 {
-  static_assert(std::is_floating_point<T>::value, "Filters require a floating point type");
-  constexpr static bool use_time_point_api = !std::is_same<ClockT, DummyClock>::value;
+    static_assert(std::is_floating_point<T>::value,
+                  "Filters require a floating point type");
+    constexpr static bool use_time_point_api =
+        !std::is_same<ClockT, DummyClock>::value;
 
 public:
-  using clock_type = ClockT;
-  using signal_type = T;
+    using clock_type = ClockT;
+    using signal_type = T;
 
-  /// Destructor
-  virtual ~FilterBase() = default;
-  /// Primary API: receives a value and outputs the result of the filter
-  /// \param[in] value An observation on the signal
-  /// \param[in] time_stamp The time of the current observation
-  /// \return The result of the filter
-  /// \throw std::domain_error If time_stamp goes back in time
-  /// \throw std::domain_error If value is not normal
-  /// \tparam DummyT Dummy type to get SFINAE to work
-  template<typename DummyT = T, typename = std::enable_if_t<use_time_point_api, DummyT>>
-  T filter(T value, typename clock_type::time_point time_stamp)
-  {
-    const auto dt = time_stamp - m_last_observation_stamp;
-    const auto ret = filter_impl_checked(value, dt);
-    m_last_observation_stamp = time_stamp;  // Goes after just in case there's an exception
-    return ret;
-  }
-  /// Primary API: receives a value and outputs the result of the filter
-  /// \param[in] value An observation on the signal
-  /// \param[in] duration Time since last observation, must be positive
-  /// \return The result of the filter
-  /// \throw std::domain_error If duration is negative
-  /// \throw std::domain_error If value is not normal
-  /// \tparam DummyT Dummy type to get SFINAE to work
-  template<typename DummyT = T, typename = std::enable_if_t<!use_time_point_api, DummyT>>
-  T filter(T value, std::chrono::nanoseconds duration)
-  {
-    return filter_impl_checked(value, duration);
-  }
+    /// Destructor
+    virtual ~FilterBase() = default;
+    /// Primary API: receives a value and outputs the result of the filter
+    /// \param[in] value An observation on the signal
+    /// \param[in] time_stamp The time of the current observation
+    /// \return The result of the filter
+    /// \throw std::domain_error If time_stamp goes back in time
+    /// \throw std::domain_error If value is not normal
+    /// \tparam DummyT Dummy type to get SFINAE to work
+    template <typename DummyT = T,
+              typename = std::enable_if_t<use_time_point_api, DummyT>>
+    T filter(T value, typename clock_type::time_point time_stamp) {
+        const auto dt = time_stamp - m_last_observation_stamp;
+        const auto ret = filter_impl_checked(value, dt);
+        m_last_observation_stamp =
+            time_stamp;  // Goes after just in case there's an exception
+        return ret;
+    }
+    /// Primary API: receives a value and outputs the result of the filter
+    /// \param[in] value An observation on the signal
+    /// \param[in] duration Time since last observation, must be positive
+    /// \return The result of the filter
+    /// \throw std::domain_error If duration is negative
+    /// \throw std::domain_error If value is not normal
+    /// \tparam DummyT Dummy type to get SFINAE to work
+    template <typename DummyT = T,
+              typename = std::enable_if_t<!use_time_point_api, DummyT>>
+    T filter(T value, std::chrono::nanoseconds duration) {
+        return filter_impl_checked(value, duration);
+    }
 
 protected:
-  /// Underlying implementation, with error checking
-  T filter_impl_checked(T value, std::chrono::nanoseconds duration)
-  {
-    if (decltype(duration)::zero() >= duration) {
-      throw std::domain_error{"Duration is negative"};
+    /// Underlying implementation, with error checking
+    T filter_impl_checked(T value, std::chrono::nanoseconds duration) {
+        if (decltype(duration)::zero() >= duration) {
+            throw std::domain_error{"Duration is negative"};
+        }
+        if (!std::isfinite(value)) {
+            throw std::domain_error{"Value is not finite"};
+        }
+        return filter_impl(value, duration);
     }
-    if (!std::isfinite(value)) {
-      throw std::domain_error{"Value is not finite"};
-    }
-    return filter_impl(value, duration);
-  }
-  /// Actual implementation, error checking already done, can assume duration is positive
-  virtual T filter_impl(T value, std::chrono::nanoseconds duration) = 0;
+    /// Actual implementation, error checking already done, can assume duration
+    /// is positive
+    virtual T filter_impl(T value, std::chrono::nanoseconds duration) = 0;
 
 private:
-  typename clock_type::time_point m_last_observation_stamp{};
+    typename clock_type::time_point m_last_observation_stamp{};
 };
 
 }  // namespace signal_filters

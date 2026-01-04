@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef AUTONOMY_COMMON_STATE_ESTIMATION_NOISE_MODEL_NOISE_INTERFACE_HPP_
 #define AUTONOMY_COMMON_STATE_ESTIMATION_NOISE_MODEL_NOISE_INTERFACE_HPP_
 
@@ -25,26 +24,27 @@ namespace common {
 namespace state_estimation {
 
 ///
-/// @brief      A CRTP interface for implementing noise models used for providing motion model noise
+/// @brief      A CRTP interface for implementing noise models used for
+/// providing motion model noise
 ///             covariance.
 ///
 /// @tparam     Derived  A derived class that holds the actual implementation.
 ///
-template<typename Derived>
+template <typename Derived>
 class NoiseInterface
 {
 public:
-  ///
-  /// @brief      Get a covariance matrix for this noise model.
-  ///
-  /// @param[in]  dt    Time difference.
-  ///
-  /// @return     A covariance matrix for the noise gain during the dt time difference.
-  ///
-  inline auto covariance(const std::chrono::nanoseconds & dt) const
-  {
-    return static_cast<const Derived &>(*this).crtp_covariance(dt);
-  }
+    ///
+    /// @brief      Get a covariance matrix for this noise model.
+    ///
+    /// @param[in]  dt    Time difference.
+    ///
+    /// @return     A covariance matrix for the noise gain during the dt time
+    /// difference.
+    ///
+    inline auto covariance(const std::chrono::nanoseconds& dt) const {
+        return static_cast<const Derived&>(*this).crtp_covariance(dt);
+    }
 };
 
 }  // namespace state_estimation

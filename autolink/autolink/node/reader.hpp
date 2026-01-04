@@ -16,9 +16,6 @@
 
 #pragma once
 
-// Fix FastCDR TEMPLATE_SPEC issue - must be included before any FastCDR headers
-#include <fastcdr/config.h>
-
 #include <algorithm>
 #include <list>
 #include <memory>
@@ -305,6 +302,9 @@ bool Reader<MessageT>::Init() {
     this->role_attr_.set_id(receiver_->id().HashValue());
     channel_manager_ =
         service_discovery::TopologyManager::Instance()->channel_manager();
+    // Enable receiver for HYBRID mode (other modes are enabled in
+    // CreateReceiver)
+    receiver_->Enable();
     JoinTheTopology();
 
     return true;

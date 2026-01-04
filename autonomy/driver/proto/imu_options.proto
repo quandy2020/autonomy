@@ -1,0 +1,47 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.driver.proto;
+
+// IMU配置选项
+message ImuOptions {
+    // 传感器ID（唯一标识符）
+    string sensor_id = 1;
+    
+    // 订阅的主题名称
+    string topic = 2;
+    
+    // 传感器坐标系ID
+    string frame_id = 3;
+    
+    // 是否启用该传感器
+    bool enabled = 4;
+    
+    // 角速度协方差缩放因子（用于调整协方差矩阵）
+    double angular_velocity_covariance_scale = 5;
+    
+    // 线性加速度协方差缩放因子
+    double linear_acceleration_covariance_scale = 6;
+    
+    // 方向协方差缩放因子
+    double orientation_covariance_scale = 7;
+    
+    // 数据转发目标列表（可选，如 "localization", "map" 等）
+    repeated string forward_targets = 8;
+    
+    // 采样率（Hz，0表示使用原始频率）
+    double sampling_rate = 9;
+}

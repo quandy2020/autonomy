@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once 
+#pragma once
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
@@ -22,9 +22,6 @@
 
 namespace autonomy {
 namespace planning {
-namespace utils {
-
-
-}  // namespace utils
+namespace utils {}  // namespace utils
 }  // namespace planning
 }  // namespace autonomy

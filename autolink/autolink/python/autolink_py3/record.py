@@ -17,7 +17,7 @@
 #***************************************************************************
 
 # -*- coding: utf-8 -*-
-"""Module for wrapper cyber record."""
+"""Module for wrapper autolink record."""
 
 import collections
 import importlib
@@ -26,18 +26,18 @@ import sys
 
 from google.protobuf.descriptor_pb2 import FileDescriptorProto
 
-# Refer to the _cyber_record_wrapper.so with relative path so that it can be
+# Refer to the _autolink_record_wrapper.so with relative path so that it can be
 # always addressed as a part of the runfiles.
 APOLLO_DISTRIBUTION_HOME = os.environ.get(
     'APOLLO_DISTRIBUTION_HOME', '/opt/apollo/neo')
 
 if APOLLO_DISTRIBUTION_HOME.startswith('/opt/apollo/neo') or APOLLO_DISTRIBUTION_HOME.startswith('/home'):
     wrapper_lib_path = os.path.join(
-        APOLLO_DISTRIBUTION_HOME, "lib", "cyber/python/internal")
+        APOLLO_DISTRIBUTION_HOME, "lib", "autolink/python/internal")
 
     sys.path.append(wrapper_lib_path)
 
-_CYBER_RECORD = importlib.import_module('_cyber_record_wrapper')
+_AUTOLINK_RECORD = importlib.import_module('_autolink_record_wrapper')
 PyBagMessage = collections.namedtuple('PyBagMessage',
                                       'topic message data_type timestamp')
 
@@ -45,7 +45,7 @@ PyBagMessage = collections.namedtuple('PyBagMessage',
 class RecordReader(object):
 
     """
-    Class for cyber RecordReader wrapper.
+    Class for autolink RecordReader wrapper.
     """
 
     ##
@@ -53,10 +53,10 @@ class RecordReader(object):
     #
     # @param file_name the record file name.
     def __init__(self, file_name):
-        self.record_reader = _CYBER_RECORD.new_PyRecordReader(file_name)
+        self.record_reader = _AUTOLINK_RECORD.new_PyRecordReader(file_name)
 
     def __del__(self):
-        _CYBER_RECORD.delete_PyRecordReader(self.record_reader)
+        _AUTOLINK_RECORD.delete_PyRecordReader(self.record_reader)
 
     ##
     # @brief Read message from bag file.
@@ -67,7 +67,7 @@ class RecordReader(object):
     # @return return (channnel, data, data_type, timestamp)
     def read_messages(self, start_time=0, end_time=18446744073709551615):
         while True:
-            message = _CYBER_RECORD.PyRecordReader_ReadMessage(
+            message = _AUTOLINK_RECORD.PyRecordReader_ReadMessage(
                 self.record_reader, start_time, end_time)
 
             if not message["end"]:
@@ -84,7 +84,7 @@ class RecordReader(object):
     #
     # @return return the message count.
     def get_messagenumber(self, channel_name):
-        return _CYBER_RECORD.PyRecordReader_GetMessageNumber(
+        return _AUTOLINK_RECORD.PyRecordReader_GetMessageNumber(
             self.record_reader, channel_name)
 
     ##
@@ -94,39 +94,39 @@ class RecordReader(object):
     #
     # @return return the name of ther string type.
     def get_messagetype(self, channel_name):
-        return _CYBER_RECORD.PyRecordReader_GetMessageType(
+        return _AUTOLINK_RECORD.PyRecordReader_GetMessageType(
             self.record_reader, channel_name).decode('utf-8')
 
     def get_protodesc(self, channel_name):
         """
         Return message protodesc.
         """
-        return _CYBER_RECORD.PyRecordReader_GetProtoDesc(
+        return _AUTOLINK_RECORD.PyRecordReader_GetProtoDesc(
             self.record_reader, channel_name)
 
     def get_headerstring(self):
         """
         Return message header string.
         """
-        return _CYBER_RECORD.PyRecordReader_GetHeaderString(self.record_reader)
+        return _AUTOLINK_RECORD.PyRecordReader_GetHeaderString(self.record_reader)
 
     def reset(self):
         """
         Return reset.
         """
-        return _CYBER_RECORD.PyRecordReader_Reset(self.record_reader)
+        return _AUTOLINK_RECORD.PyRecordReader_Reset(self.record_reader)
 
     def get_channellist(self):
         """
         Return current channel names list.
         """
-        return _CYBER_RECORD.PyRecordReader_GetChannelList(self.record_reader)
+        return _AUTOLINK_RECORD.PyRecordReader_GetChannelList(self.record_reader)
 
 
 class RecordWriter(object):
 
     """
-    Class for cyber RecordWriter wrapper.
+    Class for autolink RecordWriter wrapper.
     """
 
     ##
@@ -136,14 +136,14 @@ class RecordWriter(object):
     # @param file_segmentation_interval_sec size to segment the file, 0 is no segmentation.
     def __init__(self, file_segmentation_size_kb=0,
                  file_segmentation_interval_sec=0):
-        self.record_writer = _CYBER_RECORD.new_PyRecordWriter()
-        _CYBER_RECORD.PyRecordWriter_SetSizeOfFileSegmentation(
+        self.record_writer = _AUTOLINK_RECORD.new_PyRecordWriter()
+        _AUTOLINK_RECORD.PyRecordWriter_SetSizeOfFileSegmentation(
             self.record_writer, file_segmentation_size_kb)
-        _CYBER_RECORD.PyRecordWriter_SetIntervalOfFileSegmentation(
+        _AUTOLINK_RECORD.PyRecordWriter_SetIntervalOfFileSegmentation(
             self.record_writer, file_segmentation_interval_sec)
 
     def __del__(self):
-        _CYBER_RECORD.delete_PyRecordWriter(self.record_writer)
+        _AUTOLINK_RECORD.delete_PyRecordWriter(self.record_writer)
 
     ##
     # @brief Open record file for write.
@@ -152,7 +152,7 @@ class RecordWriter(object):
     #
     # @return Success is True, other False.
     def open(self, path):
-        return _CYBER_RECORD.PyRecordWriter_Open(self.record_writer, path)
+        return _AUTOLINK_RECORD.PyRecordWriter_Open(self.record_writer, path)
 
     ##
     # @brief Close record file.
@@ -160,7 +160,7 @@ class RecordWriter(object):
         """
         Close record file.
         """
-        _CYBER_RECORD.PyRecordWriter_Close(self.record_writer)
+        _AUTOLINK_RECORD.PyRecordWriter_Close(self.record_writer)
 
     ##
     # @brief Writer channel by channelname, typename, protodesc.
@@ -174,7 +174,7 @@ class RecordWriter(object):
         """
         Writer channel by channelname,typename,protodesc
         """
-        return _CYBER_RECORD.PyRecordWriter_WriteChannel(
+        return _AUTOLINK_RECORD.PyRecordWriter_WriteChannel(
             self.record_writer, channel_name, type_name, proto_desc)
 
     ##
@@ -191,7 +191,7 @@ class RecordWriter(object):
         Writer msg:channelname,rawmsg,writer time
         """
         if raw:
-            return _CYBER_RECORD.PyRecordWriter_WriteMessage(
+            return _AUTOLINK_RECORD.PyRecordWriter_WriteMessage(
                 self.record_writer, channel_name, data, time, "")
 
         file_desc = data.DESCRIPTOR.file
@@ -199,7 +199,7 @@ class RecordWriter(object):
         file_desc.CopyToProto(proto)
         proto.name = file_desc.name
         desc_str = proto.SerializeToString()
-        return _CYBER_RECORD.PyRecordWriter_WriteMessage(
+        return _AUTOLINK_RECORD.PyRecordWriter_WriteMessage(
             self.record_writer,
             channel_name, data.SerializeToString(), time, desc_str)
 
@@ -207,33 +207,33 @@ class RecordWriter(object):
         """
         Return filesegment size.
         """
-        return _CYBER_RECORD.PyRecordWriter_SetSizeOfFileSegmentation(
+        return _AUTOLINK_RECORD.PyRecordWriter_SetSizeOfFileSegmentation(
             self.record_writer, size_kilobytes)
 
     def set_intervaltime_fileseg(self, time_sec):
         """
         Return file interval time.
         """
-        return _CYBER_RECORD.PyRecordWriter_SetIntervalOfFileSegmentation(
+        return _AUTOLINK_RECORD.PyRecordWriter_SetIntervalOfFileSegmentation(
             self.record_writer, time_sec)
 
     def get_messagenumber(self, channel_name):
         """
         Return message count.
         """
-        return _CYBER_RECORD.PyRecordWriter_GetMessageNumber(
+        return _AUTOLINK_RECORD.PyRecordWriter_GetMessageNumber(
             self.record_writer, channel_name)
 
     def get_messagetype(self, channel_name):
         """
         Return message type.
         """
-        return _CYBER_RECORD.PyRecordWriter_GetMessageType(
+        return _AUTOLINK_RECORD.PyRecordWriter_GetMessageType(
             self.record_writer, channel_name).decode('utf-8')
 
     def get_protodesc(self, channel_name):
         """
         Return message protodesc.
         """
-        return _CYBER_RECORD.PyRecordWriter_GetProtoDesc(
+        return _AUTOLINK_RECORD.PyRecordWriter_GetProtoDesc(
             self.record_writer, channel_name)

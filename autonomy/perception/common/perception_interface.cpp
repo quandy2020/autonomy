@@ -21,8 +21,7 @@ namespace perception {
 namespace common {
 
 proto::PerceptionOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary)
-{
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::PerceptionOptions options;
     return options;
 }

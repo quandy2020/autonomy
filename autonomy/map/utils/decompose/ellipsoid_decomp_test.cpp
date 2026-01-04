@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
-
-#include <string>
-#include <fstream>
-
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
+#include <fstream>
+#include <string>
+
+#include "gtest/gtest.h"
 
 // #include "autonomy/map/utils/decompose/txt_reader.hpp"
 #include "autonomy/map/utils/decompose/ellipsoid_decomp.hpp"
@@ -32,10 +31,7 @@ namespace map {
 namespace utils {
 namespace {
 
-TEST(ellipsoid_decomp_test, test01)
-{
-
-}
+TEST(ellipsoid_decomp_test, test01) {}
 
 // int main(int argc, char **argv) {
 //   if (argc != 2) {
@@ -85,7 +81,8 @@ TEST(ellipsoid_decomp_test, test01)
 //   boost::geometry::correct(bound);
 
 //   mapper.add(bound);
-//   mapper.map(bound, "fill-opacity:1.0;fill:rgb(255,255,255);stroke:rgb(0,0,0);"
+//   mapper.map(bound,
+//   "fill-opacity:1.0;fill:rgb(255,255,255);stroke:rgb(0,0,0);"
 //                     "stroke-width:2"); // White
 //   // Draw obstacles
 //   for(const auto& it: obs) {
@@ -126,7 +123,8 @@ TEST(ellipsoid_decomp_test, test01)
 //       boost::geometry::model::polygon<point_2d> p;
 //       boost::geometry::read_wkt(ss, p);
 //       mapper.add(p);
-//       mapper.map(p, "fill-opacity:0.2;fill:rgb(51,51,153);stroke:rgb(51,51,153);stroke-width:2");
+//       mapper.map(p,
+//       "fill-opacity:0.2;fill:rgb(51,51,153);stroke:rgb(51,51,153);stroke-width:2");
 //     }
 //   }
 
@@ -139,7 +137,6 @@ TEST(ellipsoid_decomp_test, test01)
 //     mapper.map(line,
 //                "opacity:0.8;fill:none;stroke:rgb(255,0,0);stroke-width:5");
 //   }
-
 
 //   // Write title at the lower right corner on canvas
 //   mapper.text(point_2d(1.0, -1.8), "test_ellipsoid_decomp",

@@ -14,15 +14,13 @@
  * limitations under the License.
  */
 
-
 #include "autonomy/map/utils/data_loader_utils.hpp"
 
 namespace autonomy {
 namespace map {
 namespace utils {
-    
-std::string GetMapDataFilesDirectory()
-{
+
+std::string GetMapDataFilesDirectory() {
     return std::string(common::kConfigurationFilesDirectory) + "/map/";
 }
 
