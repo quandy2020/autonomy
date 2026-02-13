@@ -27,10 +27,8 @@ namespace math {
 
 namespace {
 
-bool CheckBoxOverlapSlow(const Box2d& box1, const Box2d& box2,
-                         bool* const ambiguous) {
-    double headings[4] = {box1.heading(), box1.heading() + M_PI_2,
-                          box2.heading(), box2.heading() + M_PI_2};
+bool CheckBoxOverlapSlow(const Box2d& box1, const Box2d& box2, bool* const ambiguous) {
+    double headings[4] = {box1.heading(), box1.heading() + M_PI_2, box2.heading(), box2.heading() + M_PI_2};
     *ambiguous = false;
     for (int k = 0; k < 4; ++k) {
         const double heading = headings[k];
@@ -84,14 +82,12 @@ Box2d box7(AABox2d({4, 5}, 0, 0));
 TEST(Box2dTest, DebugString) {
     Box2d box1({0, 0}, 0, 4, 2);
     Box2d box2({5, 2}, 0, 4, 2);
-    EXPECT_EQ(
-        box1.DebugString(),
-        "box2d ( center = vec2d ( x = 0  y = 0 )  heading = 0  length = 4  "
-        "width = 2 )");
-    EXPECT_EQ(
-        box2.DebugString(),
-        "box2d ( center = vec2d ( x = 5  y = 2 )  heading = 0  length = 4  "
-        "width = 2 )");
+    EXPECT_EQ(box1.DebugString(),
+              "box2d ( center = vec2d ( x = 0  y = 0 )  heading = 0  length = 4  "
+              "width = 2 )");
+    EXPECT_EQ(box2.DebugString(),
+              "box2d ( center = vec2d ( x = 5  y = 2 )  heading = 0  length = 4  "
+              "width = 2 )");
 }
 
 TEST(Box2dTest, GetAllCorners) {
@@ -182,8 +178,7 @@ TEST(Box2dTest, DistanceTo) {
     EXPECT_NEAR(box1.DistanceTo(LineSegment2d({-4, -4}, {4, 4})), 0.0, 1e-5);
     EXPECT_NEAR(box1.DistanceTo(LineSegment2d({4, -4}, {-4, 4})), 0.0, 1e-5);
     EXPECT_NEAR(box1.DistanceTo(LineSegment2d({0, 2}, {4, 4})), 1.0, 1e-5);
-    EXPECT_NEAR(box1.DistanceTo(LineSegment2d({2, 2}, {3, 1})),
-                std::sqrt(2.0) / 2.0, 1e-5);
+    EXPECT_NEAR(box1.DistanceTo(LineSegment2d({2, 2}, {3, 1})), std::sqrt(2.0) / 2.0, 1e-5);
 }
 
 TEST(Box2dTest, IsPointIn) {
@@ -267,16 +262,14 @@ TEST(Box2dTest, TestByRandom) {
             const double x = RandomDouble(-20, 20);
             const double y = RandomDouble(-20, 20);
             EXPECT_EQ(box.IsPointIn({x, y}), poly.IsPointIn({x, y}));
-            EXPECT_EQ(box.IsPointOnBoundary({x, y}),
-                      poly.IsPointOnBoundary({x, y}));
+            EXPECT_EQ(box.IsPointOnBoundary({x, y}), poly.IsPointOnBoundary({x, y}));
             EXPECT_NEAR(box.DistanceTo({x, y}), poly.DistanceTo({x, y}), 1e-3);
 
             const double other_x = RandomDouble(-20, 20);
             const double other_y = RandomDouble(-20, 20);
             const LineSegment2d segment({x, y}, {other_x, other_y});
             EXPECT_EQ(box.HasOverlap(segment), poly.HasOverlap(segment));
-            EXPECT_NEAR(box.DistanceTo(segment), poly.DistanceTo(segment),
-                        1e-3);
+            EXPECT_NEAR(box.DistanceTo(segment), poly.DistanceTo(segment), 1e-3);
         }
     }
 }

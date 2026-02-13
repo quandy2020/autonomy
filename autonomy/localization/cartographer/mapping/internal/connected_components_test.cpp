@@ -32,13 +32,10 @@ TEST(ConnectedComponentsTest, TransitivelyConnected) {
     ConnectedComponents connected_components;
 
     // Make sure nothing's connected until we connect some things.
-    for (int trajectory_a = 0; trajectory_a < kNumTrajectories;
-         ++trajectory_a) {
-        for (int trajectory_b = 0; trajectory_b < kNumTrajectories;
-             ++trajectory_b) {
+    for (int trajectory_a = 0; trajectory_a < kNumTrajectories; ++trajectory_a) {
+        for (int trajectory_b = 0; trajectory_b < kNumTrajectories; ++trajectory_b) {
             EXPECT_EQ(trajectory_a == trajectory_b,
-                      connected_components.TransitivelyConnected(trajectory_a,
-                                                                 trajectory_b));
+                      connected_components.TransitivelyConnected(trajectory_a, trajectory_b));
         }
     }
 
@@ -76,8 +73,7 @@ TEST(ConnectedComponentsTest, ConnectedComponents) {
     // The clustering is arbitrary; we need to figure out which one is which.
     const std::vector<int>* zero_cluster = nullptr;
     const std::vector<int>* five_cluster = nullptr;
-    if (std::find(connections[0].begin(), connections[0].end(), 0) !=
-        connections[0].end()) {
+    if (std::find(connections[0].begin(), connections[0].end(), 0) != connections[0].end()) {
         zero_cluster = &connections[0];
         five_cluster = &connections[1];
     } else {
@@ -85,10 +81,8 @@ TEST(ConnectedComponentsTest, ConnectedComponents) {
         five_cluster = &connections[0];
     }
     for (int i = 0; i <= 9; ++i) {
-        EXPECT_EQ(i <= 4, std::find(zero_cluster->begin(), zero_cluster->end(),
-                                    i) != zero_cluster->end());
-        EXPECT_EQ(i > 4, std::find(five_cluster->begin(), five_cluster->end(),
-                                   i) != five_cluster->end());
+        EXPECT_EQ(i <= 4, std::find(zero_cluster->begin(), zero_cluster->end(), i) != zero_cluster->end());
+        EXPECT_EQ(i > 4, std::find(five_cluster->begin(), five_cluster->end(), i) != five_cluster->end());
     }
 }
 

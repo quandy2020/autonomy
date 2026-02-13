@@ -28,9 +28,8 @@ namespace smoother {
 
 using namespace std::chrono;  // NOLINT
 
-void SimpleSmoother::Configure(
-    std::string name, std::shared_ptr<void> /*costmap_sub*/,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+void SimpleSmoother::Configure(std::string name, std::shared_ptr<void> /*costmap_sub*/,
+                               std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     costmap_wrapper_ = costmap_wrapper;
 
     // declare_parameter_if_not_declared(
@@ -58,8 +57,7 @@ void SimpleSmoother::Configure(
     // enforce_path_inversion_);
 }
 
-bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
-                            const std::chrono::milliseconds& max_time) {
+bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path, const std::chrono::milliseconds& max_time) {
     // Get costmap from wrapper if available, otherwise use nullptr
     map::costmap_2d::Costmap2D* costmap = nullptr;
     if (costmap_wrapper_) {
@@ -67,8 +65,7 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
     }
 
     steady_clock::time_point start = steady_clock::now();
-    double max_time_seconds =
-        max_time.count() / 1000.0;  // Convert milliseconds to seconds
+    double max_time_seconds = max_time.count() / 1000.0;  // Convert milliseconds to seconds
     double time_remaining = max_time_seconds;
 
     bool reversing_segment;
@@ -80,8 +77,7 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
         unsigned int start;
         unsigned int end;
     };
-    std::vector<PathSegment> path_segments{
-        PathSegment{0u, static_cast<unsigned int>(path.poses.size() - 1)}};
+    std::vector<PathSegment> path_segments{PathSegment{0u, static_cast<unsigned int>(path.poses.size() - 1)}};
     // Note: findDirectionalPathSegments is not implemented, using single
     // segment for now
 
@@ -92,25 +88,20 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
         if (path_segments[i].end - path_segments[i].start > 3) {
             // Populate path segment
             curr_path_segment.poses.clear();
-            std::copy(path.poses.begin() + path_segments[i].start,
-                      path.poses.begin() + path_segments[i].end + 1,
+            std::copy(path.poses.begin() + path_segments[i].start, path.poses.begin() + path_segments[i].end + 1,
                       std::back_inserter(curr_path_segment.poses));
 
             // Make sure we're still able to smooth with time remaining
             steady_clock::time_point now = steady_clock::now();
-            time_remaining =
-                max_time.count() / 1000.0 -
-                duration_cast<duration<double>>(now - start).count();
+            time_remaining = max_time.count() / 1000.0 - duration_cast<duration<double>>(now - start).count();
             refinement_ctr_ = 0;
 
             // Attempt to smooth the segment
             // May throw SmootherTimedOut
-            SmoothImpl(curr_path_segment, reversing_segment, costmap,
-                       time_remaining);
+            SmoothImpl(curr_path_segment, reversing_segment, costmap, time_remaining);
 
             // Assemble the path changes to the main path
-            std::copy(curr_path_segment.poses.begin(),
-                      curr_path_segment.poses.end(),
+            std::copy(curr_path_segment.poses.begin(), curr_path_segment.poses.end(),
                       path.poses.begin() + path_segments[i].start);
         }
     }
@@ -118,10 +109,8 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
     return true;
 }
 
-void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
-                                bool& reversing_segment,
-                                const map::costmap_2d::Costmap2D* costmap,
-                                const double& max_time_seconds) {
+void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path, bool& reversing_segment,
+                                const map::costmap_2d::Costmap2D* costmap, const double& max_time_seconds) {
     steady_clock::time_point a = steady_clock::now();
 
     int its = 0;
@@ -141,8 +130,7 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
         if (its >= max_its_) {
             AWARN << "Number of iterations has exceeded limit of " << max_its_;
             path = last_path;
-            map::costmap_2d::utils::updateApproximatePathOrientations(
-                path, reversing_segment);
+            map::costmap_2d::utils::updateApproximatePathOrientations(path, reversing_segment);
             return;
         }
 
@@ -150,13 +138,10 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
         steady_clock::time_point b = steady_clock::now();
         double elapsed_seconds = duration_cast<duration<double>>(b - a).count();
         if (elapsed_seconds > max_time_seconds) {
-            AWARN << "Smoothing time exceeded allowed duration of "
-                  << max_time_seconds << " seconds";
+            AWARN << "Smoothing time exceeded allowed duration of " << max_time_seconds << " seconds";
             path = last_path;
-            map::costmap_2d::utils::updateApproximatePathOrientations(
-                path, reversing_segment);
-            throw common::SmootherException(
-                "Smoothing time exceed allowed duration");
+            map::costmap_2d::utils::updateApproximatePathOrientations(path, reversing_segment);
+            throw common::SmootherException("Smoothing time exceed allowed duration");
         }
 
         for (unsigned int i = 1; i != path_size - 1; i++) {
@@ -169,8 +154,7 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
 
                 // Smooth based on local 3 point neighborhood and original data
                 // locations
-                y_i += data_w_ * (x_i - y_i) +
-                       smooth_w_ * (y_ip1 + y_m1 - (2.0 * y_i));
+                y_i += data_w_ * (x_i - y_i) + smooth_w_ * (y_ip1 + y_m1 - (2.0 * y_i));
                 SetFieldByDim(new_path.poses[i], j, y_i);
                 change += abs(y_i - y_i_org);
             }
@@ -179,21 +163,16 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
             // costmap pointer is provided
             float cost = 0.0;
             if (costmap) {
-                costmap->worldToMap(GetFieldByDim(new_path.poses[i], 0),
-                                    GetFieldByDim(new_path.poses[i], 1), mx,
-                                    my);
+                costmap->worldToMap(GetFieldByDim(new_path.poses[i], 0), GetFieldByDim(new_path.poses[i], 1), mx, my);
                 cost = static_cast<float>(costmap->getCost(mx, my));
             }
 
-            if (cost > map::costmap_2d::MAX_NON_OBSTACLE &&
-                cost != map::costmap_2d::NO_INFORMATION) {
-                AWARN
-                    << "Smoothing process resulted in an infeasible collision. "
-                       "Returning the last path before the infeasibility was "
-                       "introduced.";
+            if (cost > map::costmap_2d::MAX_NON_OBSTACLE && cost != map::costmap_2d::NO_INFORMATION) {
+                AWARN << "Smoothing process resulted in an infeasible collision. "
+                         "Returning the last path before the infeasibility was "
+                         "introduced.";
                 path = last_path;
-                map::costmap_2d::utils::updateApproximatePathOrientations(
-                    path, reversing_segment);
+                map::costmap_2d::utils::updateApproximatePathOrientations(path, reversing_segment);
                 throw common::SmootherException(
                     "Smoothing process resulted in an infeasible collision. "
                     "Returning the last path before the infeasibility was "
@@ -211,13 +190,11 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
         SmoothImpl(new_path, reversing_segment, costmap, max_time_seconds);
     }
 
-    map::costmap_2d::utils::updateApproximatePathOrientations(
-        new_path, reversing_segment);
+    map::costmap_2d::utils::updateApproximatePathOrientations(new_path, reversing_segment);
     path = new_path;
 }
 
-double SimpleSmoother::GetFieldByDim(
-    const commsgs::geometry_msgs::PoseStamped& msg, const unsigned int& dim) {
+double SimpleSmoother::GetFieldByDim(const commsgs::geometry_msgs::PoseStamped& msg, const unsigned int& dim) {
     if (dim == 0) {
         return msg.pose.position.x;
     } else if (dim == 1) {
@@ -227,8 +204,7 @@ double SimpleSmoother::GetFieldByDim(
     }
 }
 
-void SimpleSmoother::SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg,
-                                   const unsigned int dim,
+void SimpleSmoother::SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg, const unsigned int dim,
                                    const double& value) {
     if (dim == 0) {
         msg.pose.position.x = value;

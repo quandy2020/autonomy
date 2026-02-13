@@ -37,8 +37,7 @@ namespace costmap_3d {
  * @param cloud Ourput map data
  * @return return Sccess or failed
  */
-bool LoadPlyFile(const std::string& ply_filename,
-                 commsgs::sensor_msgs::PointCloud& cloud);
+bool LoadPlyFile(const std::string& ply_filename, commsgs::sensor_msgs::PointCloud& cloud);
 
 }  // namespace costmap_3d
 }  // namespace map

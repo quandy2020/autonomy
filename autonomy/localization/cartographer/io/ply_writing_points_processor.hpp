@@ -26,19 +26,17 @@ class PlyWritingPointsProcessor : public PointsProcessor
 {
 public:
     constexpr static const char* kConfigurationFileActionName = "write_ply";
-    PlyWritingPointsProcessor(std::unique_ptr<FileWriter> file_writer,
-                              const std::vector<std::string>& comments,
+    PlyWritingPointsProcessor(std::unique_ptr<FileWriter> file_writer, const std::vector<std::string>& comments,
                               PointsProcessor* next);
 
-    static std::unique_ptr<PlyWritingPointsProcessor> FromDictionary(
-        const FileWriterFactory& file_writer_factory,
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<PlyWritingPointsProcessor> FromDictionary(const FileWriterFactory& file_writer_factory,
+                                                                     common::LuaParameterDictionary* dictionary,
+                                                                     PointsProcessor* next);
 
     ~PlyWritingPointsProcessor() override {}
 
     PlyWritingPointsProcessor(const PlyWritingPointsProcessor&) = delete;
-    PlyWritingPointsProcessor& operator=(const PlyWritingPointsProcessor&) =
-        delete;
+    PlyWritingPointsProcessor& operator=(const PlyWritingPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

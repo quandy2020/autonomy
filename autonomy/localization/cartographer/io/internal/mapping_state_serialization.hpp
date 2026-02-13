@@ -29,11 +29,9 @@ static constexpr int kMappingStateSerializationFormatVersion = 2;
 static constexpr int kFormatVersionWithoutSubmapHistograms = 1;
 
 // Serialize mapping state to a pbstream.
-void WritePbStream(
-    const mapping::PoseGraph& pose_graph,
-    const std::vector<mapping::proto::TrajectoryBuilderOptionsWithSensorIds>&
-        builder_options,
-    ProtoStreamWriterInterface* const writer, bool include_unfinished_submaps);
+void WritePbStream(const mapping::PoseGraph& pose_graph,
+                   const std::vector<mapping::proto::TrajectoryBuilderOptionsWithSensorIds>& builder_options,
+                   ProtoStreamWriterInterface* const writer, bool include_unfinished_submaps);
 
 }  // namespace io
 }  // namespace cartographer

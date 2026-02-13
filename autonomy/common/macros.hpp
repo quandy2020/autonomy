@@ -91,17 +91,14 @@
     using ConstWeakPtr = std::weak_ptr<const __VA_ARGS__>;
 
 /// Defines aliases and static functions for using the Class with weak_ptrs.
-#define AUTONOMY_WEAK_PTR_DEFINITIONS(...) \
-    __AUTONOMY_WEAK_PTR_ALIAS(__VA_ARGS__)
+#define AUTONOMY_WEAK_PTR_DEFINITIONS(...) __AUTONOMY_WEAK_PTR_ALIAS(__VA_ARGS__)
 
-#define __AUTONOMY_UNIQUE_PTR_ALIAS(...) \
-    using UniquePtr = std::unique_ptr<__VA_ARGS__>;
+#define __AUTONOMY_UNIQUE_PTR_ALIAS(...) using UniquePtr = std::unique_ptr<__VA_ARGS__>;
 
-#define __AUTONOMY_MAKE_UNIQUE_DEFINITION(...)                        \
-    template <typename... Args>                                       \
-    static std::unique_ptr<__VA_ARGS__> make_unique(Args&&... args) { \
-        return std::unique_ptr<__VA_ARGS__>(                          \
-            new __VA_ARGS__(std::forward<Args>(args)...));            \
+#define __AUTONOMY_MAKE_UNIQUE_DEFINITION(...)                                             \
+    template <typename... Args>                                                            \
+    static std::unique_ptr<__VA_ARGS__> make_unique(Args&&... args) {                      \
+        return std::unique_ptr<__VA_ARGS__>(new __VA_ARGS__(std::forward<Args>(args)...)); \
     }
 
 /// Defines aliases and static functions for using the Class with unique_ptrs.
@@ -168,8 +165,7 @@ typename std::enable_if<HasShutdown<T>::value>::type CallShutdown(T* instance) {
 }
 
 template <typename T>
-typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(
-    T* instance) {
+typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(T* instance) {
     (void)instance;
 }
 
@@ -182,31 +178,34 @@ typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(
 
 #define UNUSED(param) (void)param
 
+// Convenience alias to keep style consistent in autonomy codebase.
+// Prefer AUTONOMY_UNUSED in new code.
+#define AUTONOMY_UNUSED(param) UNUSED(param)
+
 #define DISALLOW_COPY_AND_ASSIGN(classname) \
     classname(const classname&) = delete;   \
     classname& operator=(const classname&) = delete;
 
-#define DECLARE_SINGLETON(classname)                                       \
-public:                                                                    \
-    static classname* Instance(bool create_if_needed = true) {             \
-        static classname* instance = nullptr;                              \
-        if (!instance && create_if_needed) {                               \
-            static std::once_flag flag;                                    \
-            std::call_once(                                                \
-                flag, [&] { instance = new (std::nothrow) classname(); }); \
-        }                                                                  \
-        return instance;                                                   \
-    }                                                                      \
-                                                                           \
-    static void CleanUp() {                                                \
-        auto instance = Instance(false);                                   \
-        if (instance != nullptr) {                                         \
-            CallShutdown(instance);                                        \
-        }                                                                  \
-    }                                                                      \
-                                                                           \
-private:                                                                   \
-    classname();                                                           \
+#define DECLARE_SINGLETON(classname)                                                  \
+public:                                                                               \
+    static classname* Instance(bool create_if_needed = true) {                        \
+        static classname* instance = nullptr;                                         \
+        if (!instance && create_if_needed) {                                          \
+            static std::once_flag flag;                                               \
+            std::call_once(flag, [&] { instance = new (std::nothrow) classname(); }); \
+        }                                                                             \
+        return instance;                                                              \
+    }                                                                                 \
+                                                                                      \
+    static void CleanUp() {                                                           \
+        auto instance = Instance(false);                                              \
+        if (instance != nullptr) {                                                    \
+            CallShutdown(instance);                                                   \
+        }                                                                             \
+    }                                                                                 \
+                                                                                      \
+private:                                                                              \
+    classname();                                                                      \
     DISALLOW_COPY_AND_ASSIGN(classname)
 
 #endif  // AUTONOMY_COMMON

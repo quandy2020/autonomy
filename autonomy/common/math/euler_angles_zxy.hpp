@@ -84,8 +84,7 @@ public:
      * @param pitch The pitch of the car
      * @param yaw The yaw of the car
      */
-    EulerAnglesZXY(T roll, T pitch, T yaw)
-        : roll_(roll), pitch_(pitch), yaw_(yaw) {}
+    EulerAnglesZXY(T roll, T pitch, T yaw) : roll_(roll), pitch_(pitch), yaw_(yaw) {}
 
     /**
      * @brief Constructs a rotation using components of a quaternion.
@@ -96,22 +95,17 @@ public:
      * @param qz Quaternion z-coordinate
      */
     EulerAnglesZXY(T qw, T qx, T qy, T qz)
-        : roll_(
-              std::atan2(static_cast<T>(2.0) * (qw * qy - qx * qz),
-                         static_cast<T>(2.0) * (Square<T>(qw) + Square<T>(qz)) -
-                             static_cast<T>(1.0))),
+        : roll_(std::atan2(static_cast<T>(2.0) * (qw * qy - qx * qz),
+                           static_cast<T>(2.0) * (Square<T>(qw) + Square<T>(qz)) - static_cast<T>(1.0))),
           pitch_(std::asin(static_cast<T>(2.0) * (qw * qx + qy * qz))),
-          yaw_(
-              std::atan2(static_cast<T>(2.0) * (qw * qz - qx * qy),
-                         static_cast<T>(2.0) * (Square<T>(qw) + Square<T>(qy)) -
-                             static_cast<T>(1.0))) {}
+          yaw_(std::atan2(static_cast<T>(2.0) * (qw * qz - qx * qy),
+                          static_cast<T>(2.0) * (Square<T>(qw) + Square<T>(qy)) - static_cast<T>(1.0))) {}
 
     /**
      * @brief Constructs a rotation from quaternion.
      * @param q Quaternion
      */
-    explicit EulerAnglesZXY(const Eigen::Quaternion<T>& q)
-        : EulerAnglesZXY(q.w(), q.x(), q.y(), q.z()) {}
+    explicit EulerAnglesZXY(const Eigen::Quaternion<T>& q) : EulerAnglesZXY(q.w(), q.x(), q.y(), q.z()) {}
 
     /**
      * @brief Getter for roll_

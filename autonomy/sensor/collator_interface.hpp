@@ -30,8 +30,7 @@ namespace sensor {
 class CollatorInterface
 {
 public:
-    using Callback =
-        std::function<void(const std::string&, std::unique_ptr<Data>)>;
+    using Callback = std::function<void(const std::string&, std::unique_ptr<Data>)>;
 
     CollatorInterface() {}
     virtual ~CollatorInterface() {}
@@ -41,9 +40,8 @@ public:
 
     // Adds a costmap to produce sorted sensor output for. Calls 'callback'
     // for each collated sensor data.
-    virtual void AddToCostmap(
-        const absl::flat_hash_set<std::string>& expected_sensor_ids,
-        const Callback& callback) = 0;
+    virtual void AddToCostmap(const absl::flat_hash_set<std::string>& expected_sensor_ids,
+                              const Callback& callback) = 0;
 
     // Marks 'costmap' as finished.
     virtual void FinishCostmap() = 0;

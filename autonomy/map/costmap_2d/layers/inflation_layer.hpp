@@ -45,8 +45,7 @@ public:
      * @param  sy The y coordinate of the closest obstacle cell in the costmap
      * @return
      */
-    CellData(unsigned int x, unsigned int y, unsigned int sx, unsigned int sy)
-        : x_(x), y_(y), src_x_(sx), src_y_(sy) {}
+    CellData(unsigned int x, unsigned int y, unsigned int sx, unsigned int sy) : x_(x), y_(y), src_x_(sx), src_y_(sy) {}
     unsigned int x_, y_;
     unsigned int src_x_, src_y_;
 };
@@ -85,8 +84,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                      double* min_x, double* min_y, double* max_x,
+    void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
                       double* max_y) override;
     /**
      * @brief Update the costs in the master costmap in the window
@@ -96,8 +94,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                     int max_j) override;
+    void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) override;
 
     /**
      * @brief Match the size of the master costmap
@@ -131,25 +128,20 @@ public:
             cost = INSCRIBED_INFLATED_OBSTACLE;
         } else {
             // make sure cost falls off by Euclidean distance
-            double factor = exp(-1.0 * cost_scaling_factor_ *
-                                (distance * resolution_ - inscribed_radius_));
-            cost = static_cast<unsigned char>(
-                (INSCRIBED_INFLATED_OBSTACLE - 1) * factor);
+            double factor = exp(-1.0 * cost_scaling_factor_ * (distance * resolution_ - inscribed_radius_));
+            cost = static_cast<unsigned char>((INSCRIBED_INFLATED_OBSTACLE - 1) * factor);
         }
         return cost;
     }
 
-    static std::shared_ptr<InflationLayer> getInflationLayer(
-        std::shared_ptr<Costmap2DWrapper>& costmap_wrapper,
-        const std::string layer_name = "") {
+    static std::shared_ptr<InflationLayer> getInflationLayer(std::shared_ptr<Costmap2DWrapper>& costmap_wrapper,
+                                                             const std::string layer_name = "") {
         const auto layered_costmap = costmap_wrapper->getLayeredCostmap();
-        for (auto layer = layered_costmap->getPlugins()->begin();
-             layer != layered_costmap->getPlugins()->end(); ++layer) {
-            auto inflation_layer =
-                std::dynamic_pointer_cast<InflationLayer>(*layer);
+        for (auto layer = layered_costmap->getPlugins()->begin(); layer != layered_costmap->getPlugins()->end();
+             ++layer) {
+            auto inflation_layer = std::dynamic_pointer_cast<InflationLayer>(*layer);
             if (inflation_layer) {
-                if (layer_name.empty() ||
-                    inflation_layer->getName() == layer_name) {
+                if (layer_name.empty() || inflation_layer->getName() == layer_name) {
                     return inflation_layer;
                 }
             }
@@ -189,8 +181,7 @@ protected:
      * @param src_y The y coordinate of the source cell
      * @return
      */
-    inline double distanceLookup(unsigned int mx, unsigned int my,
-                                 unsigned int src_x, unsigned int src_y) {
+    inline double distanceLookup(unsigned int mx, unsigned int my, unsigned int src_x, unsigned int src_y) {
         unsigned int dx = (mx > src_x) ? mx - src_x : src_x - mx;
         unsigned int dy = (my > src_y) ? my - src_y : src_y - my;
         return cached_distances_[dx * cache_length_ + dy];
@@ -204,8 +195,7 @@ protected:
      * @param src_y The y coordinate of the source cell
      * @return
      */
-    inline unsigned char costLookup(unsigned int mx, unsigned int my,
-                                    unsigned int src_x, unsigned int src_y) {
+    inline unsigned char costLookup(unsigned int mx, unsigned int my, unsigned int src_x, unsigned int src_y) {
         unsigned int dx = (mx > src_x) ? mx - src_x : src_x - mx;
         unsigned int dy = (my > src_y) ? my - src_y : src_y - my;
         return cached_costs_[dx * cache_length_ + dy];
@@ -231,8 +221,7 @@ protected:
     /**
      * @brief Enqueue new cells in cache distance update search
      */
-    inline void enqueue(unsigned int index, unsigned int mx, unsigned int my,
-                        unsigned int src_x, unsigned int src_y);
+    inline void enqueue(unsigned int index, unsigned int mx, unsigned int my, unsigned int src_x, unsigned int src_y);
 
     double inflation_radius_, inscribed_radius_, cost_scaling_factor_;
     bool inflate_unknown_, inflate_around_unknown_;

@@ -31,11 +31,9 @@ public:
     enum RpcHandlerEvent { ON_REQUEST, ON_READS_DONE, ON_FINISH };
     using EventCallback = std::function<void(RpcHandlerEvent)>;
 
-    RpcHandlerWrapper(EventCallback event_callback)
-        : event_callback_(event_callback) {}
+    RpcHandlerWrapper(EventCallback event_callback) : event_callback_(event_callback) {}
 
-    void OnRequest(
-        const typename RpcHandlerType::RequestType& request) override {
+    void OnRequest(const typename RpcHandlerType::RequestType& request) override {
         RpcHandlerType::OnRequest(request);
         event_callback_(ON_REQUEST);
     }

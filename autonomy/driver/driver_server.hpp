@@ -102,8 +102,8 @@ public:
     }
 
 protected:
-    // Autolink 节点（使用 unique_ptr 管理生命周期）
-    std::unique_ptr<::autolink::Node> node_ptr_{nullptr};
+    // Autolink 节点（使用 shared_ptr 管理生命周期）
+    std::shared_ptr<::autolink::Node> node_ptr_{nullptr};
 
     // Autolink 节点指针（用于传递给其他组件）
     ::autolink::Node* node_{nullptr};

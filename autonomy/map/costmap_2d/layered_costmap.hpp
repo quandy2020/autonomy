@@ -41,8 +41,7 @@ public:
     /**
      * @brief  Constructor for a costmap
      */
-    LayeredCostmap(std::string global_frame, bool rolling_window,
-                   bool track_unknown);
+    LayeredCostmap(std::string global_frame, bool rolling_window, bool track_unknown);
 
     /**
      * @brief  Destructor
@@ -63,14 +62,13 @@ public:
     /**
      * @brief Resize the map to a new size, resolution, or origin
      */
-    void resizeMap(unsigned int size_x, unsigned int size_y, double resolution,
-                   double origin_x, double origin_y, bool size_locked = false);
+    void resizeMap(unsigned int size_x, unsigned int size_y, double resolution, double origin_x, double origin_y,
+                   bool size_locked = false);
 
     /**
      * @brief Get the size of the bounds for update
      */
-    void getUpdatedBounds(double& minx, double& miny, double& maxx,
-                          double& maxy) {
+    void getUpdatedBounds(double& minx, double& miny, double& maxx, double& maxy) {
         minx = minx_;
         miny = miny_;
         maxx = maxx_;
@@ -138,8 +136,7 @@ public:
     /**
      * @brief Get the bounds of the costmap
      */
-    void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0,
-                   unsigned int* yn) {
+    void getBounds(unsigned int* x0, unsigned int* xn, unsigned int* y0, unsigned int* yn) {
         *x0 = bx0_;
         *xn = bxn_;
         *y0 = by0_;
@@ -156,8 +153,7 @@ public:
     /** @brief Updates the stored footprint, updates the circumscribed
      * and inscribed radii, and calls onFootprintChanged() in all
      * layers. */
-    void setFootprint(
-        const std::vector<commsgs::geometry_msgs::Point>& footprint_spec);
+    void setFootprint(const std::vector<commsgs::geometry_msgs::Point>& footprint_spec);
 
     /** @brief Returns the latest footprint stored with setFootprint(). */
     const std::vector<commsgs::geometry_msgs::Point>& getFootprint() {

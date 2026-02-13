@@ -110,8 +110,7 @@ public:
      * @param sensor_id 传感器ID
      * @param data 传感器数据
      */
-    void ForwardFromRos2(const std::string& sensor_id,
-                         const std::shared_ptr<sensor::Data>& data);
+    void ForwardFromRos2(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data);
 
     /**
      * @brief 从内部驱动读取数据并发送
@@ -124,11 +123,8 @@ public:
      * @param target 目标名称（如 "map", "localization" 等）
      * @param handler 数据处理器函数
      */
-    void RegisterTargetHandler(
-        const std::string& target,
-        std::function<void(const std::string&,
-                           const std::shared_ptr<sensor::Data>&)>
-            handler);
+    void RegisterTargetHandler(const std::string& target,
+                               std::function<void(const std::string&, const std::shared_ptr<sensor::Data>&)> handler);
 
     /**
      * @brief 取消注册数据接收处理器
@@ -142,8 +138,7 @@ public:
      * @param data 传感器数据
      * @param targets 目标列表（如果为空，则使用默认目标）
      */
-    void ForwardToTargets(const std::string& sensor_id,
-                          const std::shared_ptr<sensor::Data>& data,
+    void ForwardToTargets(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data,
                           const std::vector<std::string>& targets = {});
 
     /**
@@ -152,9 +147,7 @@ public:
      * @param message 激光扫描消息
      * @return true 成功，false 失败
      */
-    bool PublishLaserScan(
-        const std::string& topic,
-        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message);
+    bool PublishLaserScan(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message);
 
     /**
      * @brief 发布点云数据（PointCloud2）
@@ -162,9 +155,8 @@ public:
      * @param message 点云消息
      * @return true 成功，false 失败
      */
-    bool PublishPointCloud2(
-        const std::string& topic,
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message);
+    bool PublishPointCloud2(const std::string& topic,
+                            const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message);
 
     /**
      * @brief 发布点云数据（PointCloud）
@@ -172,9 +164,7 @@ public:
      * @param message 点云消息
      * @return true 成功，false 失败
      */
-    bool PublishPointCloud(
-        const std::string& topic,
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message);
+    bool PublishPointCloud(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message);
 
     /**
      * @brief 发布IMU数据
@@ -182,8 +172,7 @@ public:
      * @param message IMU消息
      * @return true 成功，false 失败
      */
-    bool PublishImu(const std::string& topic,
-                    const std::shared_ptr<commsgs::sensor_msgs::Imu>& message);
+    bool PublishImu(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::Imu>& message);
 
     /**
      * @brief 发布里程计数据
@@ -191,9 +180,7 @@ public:
      * @param message 里程计消息
      * @return true 成功，false 失败
      */
-    bool PublishOdometry(
-        const std::string& topic,
-        const std::shared_ptr<commsgs::planning_msgs::Odometry>& message);
+    bool PublishOdometry(const std::string& topic, const std::shared_ptr<commsgs::planning_msgs::Odometry>& message);
 
     /**
      * @brief 发布图像数据
@@ -201,9 +188,7 @@ public:
      * @param message 图像消息
      * @return true 成功，false 失败
      */
-    bool PublishImage(
-        const std::string& topic,
-        const std::shared_ptr<commsgs::sensor_msgs::Image>& message);
+    bool PublishImage(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::Image>& message);
 
     /**
      * @brief 发布测距传感器数据
@@ -211,9 +196,7 @@ public:
      * @param message 测距消息
      * @return true 成功，false 失败
      */
-    bool PublishRange(
-        const std::string& topic,
-        const std::shared_ptr<commsgs::sensor_msgs::Range>& message);
+    bool PublishRange(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::Range>& message);
 
 private:
     /**
@@ -242,9 +225,7 @@ private:
     std::map<std::string, DataSource> data_sources_;
 
     // 目标处理器映射表（目标名称 -> 处理器函数）
-    std::map<std::string,
-             std::function<void(const std::string&,
-                                const std::shared_ptr<sensor::Data>&)>>
+    std::map<std::string, std::function<void(const std::string&, const std::shared_ptr<sensor::Data>&)>>
         target_handlers_;
 
     // 默认转发目标列表

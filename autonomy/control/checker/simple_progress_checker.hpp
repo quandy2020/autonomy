@@ -55,8 +55,7 @@ protected:
      */
     void ResetBaselinePose(const commsgs::geometry_msgs::Pose2D& pose);
 
-    static double PoseDistance(const commsgs::geometry_msgs::Pose2D&,
-                               const commsgs::geometry_msgs::Pose2D&);
+    static double PoseDistance(const commsgs::geometry_msgs::Pose2D&, const commsgs::geometry_msgs::Pose2D&);
 
     double radius_;
     commsgs::geometry_msgs::Pose2D baseline_pose_;

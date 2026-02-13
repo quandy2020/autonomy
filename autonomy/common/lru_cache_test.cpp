@@ -30,20 +30,17 @@ TEST(LRUCache, General) {
     int ids[] = {0, 1, 2, 3, 2, 1, 4, 3, 5, 6};
     int timestamps[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 
-    std::vector<std::vector<int>> keys = {
-        {0},          {1, 0},       {2, 1, 0},    {3, 2, 1, 0}, {2, 3, 1, 0},
-        {1, 2, 3, 0}, {4, 1, 2, 3}, {3, 4, 1, 2}, {5, 3, 4, 1}, {6, 5, 3, 4}};
-    std::vector<std::vector<int>> values = {
-        {0},          {1, 0},       {2, 1, 0},    {3, 2, 1, 0}, {4, 3, 1, 0},
-        {5, 4, 3, 0}, {6, 5, 4, 3}, {7, 6, 5, 4}, {8, 7, 6, 5}, {9, 8, 7, 6}};
+    std::vector<std::vector<int>> keys = {{0},          {1, 0},       {2, 1, 0},    {3, 2, 1, 0}, {2, 3, 1, 0},
+                                          {1, 2, 3, 0}, {4, 1, 2, 3}, {3, 4, 1, 2}, {5, 3, 4, 1}, {6, 5, 3, 4}};
+    std::vector<std::vector<int>> values = {{0},          {1, 0},       {2, 1, 0},    {3, 2, 1, 0}, {4, 3, 1, 0},
+                                            {5, 4, 3, 0}, {6, 5, 4, 3}, {7, 6, 5, 4}, {8, 7, 6, 5}, {9, 8, 7, 6}};
     int obsoletes[TEST_NUM] = {-1, -1, -1, -1, -1, -1, 0, -1, 2, 1};
     LRUCache<int, int> lru(CAPACITY);
     for (int i = 0; i < TEST_NUM; ++i) {
         int obsolete = -1;
         lru.PutAndGetObsolete(ids[i], &timestamps[i], &obsolete);
         EXPECT_EQ(obsolete, obsoletes[i]);
-        EXPECT_EQ(static_cast<int>(lru.size()),
-                  i < CAPACITY ? i + 1 : CAPACITY);
+        EXPECT_EQ(static_cast<int>(lru.size()), i < CAPACITY ? i + 1 : CAPACITY);
 
         Node<int, int>* cur = lru.First();
         for (int j = 0; j < static_cast<int>(lru.size()); ++j) {

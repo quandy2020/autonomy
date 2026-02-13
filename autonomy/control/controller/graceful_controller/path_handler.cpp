@@ -31,20 +31,15 @@ namespace autonomy {
 namespace control {
 namespace controller {
 
-PathHandler::PathHandler(
-    double transform_tolerance, std::shared_ptr<transform::Buffer> tf,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper)
-    : transform_tolerance_(transform_tolerance),
-      tf_buffer_(tf),
-      costmap_wrapper_(costmap_wrapper) {}
+PathHandler::PathHandler(double transform_tolerance, std::shared_ptr<transform::Buffer> tf,
+                         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper)
+    : transform_tolerance_(transform_tolerance), tf_buffer_(tf), costmap_wrapper_(costmap_wrapper) {}
 
-commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
-    const commsgs::geometry_msgs::PoseStamped& pose,
-    double max_robot_pose_search_dist) {
+commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(const commsgs::geometry_msgs::PoseStamped& pose,
+                                                              double max_robot_pose_search_dist) {
     // Check first if the plan is empty
     if (global_plan_.poses.empty()) {
-        throw autonomy::control::common::InvalidPath(
-            "Received plan with zero length");
+        throw autonomy::control::common::InvalidPath("Received plan with zero length");
     }
 
     // Let's get the pose of the robot in the frame of the plan
@@ -52,12 +47,10 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     try {
         // Use Buffer's transform method directly
         robot_pose =
-            tf_buffer_->transform(pose, global_plan_.header.frame_id,
-                                  static_cast<float>(transform_tolerance_));
+            tf_buffer_->transform(pose, global_plan_.header.frame_id, static_cast<float>(transform_tolerance_));
     } catch (const std::exception& e) {
-        throw autonomy::control::common::ControllerTFError(
-            "Unable to transform robot pose into global plan's frame: " +
-            std::string(e.what()));
+        throw autonomy::control::common::ControllerTFError("Unable to transform robot pose into global plan's frame: " +
+                                                           std::string(e.what()));
     }
 
     // Find the first pose in the global plan that's further than
@@ -66,10 +59,8 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     // max_robot_pose_search_dist from the robot using integrated distance
     auto closest_pose_upper_bound = global_plan_.poses.end();
     double accumulated_dist = 0.0;
-    for (auto it = global_plan_.poses.begin();
-         it != global_plan_.poses.end() - 1; ++it) {
-        accumulated_dist +=
-            map::costmap_2d::utils::euclidean_distance(*it, *(it + 1));
+    for (auto it = global_plan_.poses.begin(); it != global_plan_.poses.end() - 1; ++it) {
+        accumulated_dist += map::costmap_2d::utils::euclidean_distance(*it, *(it + 1));
         if (accumulated_dist > max_robot_pose_search_dist) {
             closest_pose_upper_bound = it + 1;
             break;
@@ -79,22 +70,18 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     // First find the closest pose on the path to the robot
     // bounded by when the path turns around (if it does) so we don't get a pose
     // from a later portion of the path
-    auto transformation_begin = map::costmap_2d::utils::min_by(
-        global_plan_.poses.begin(), closest_pose_upper_bound,
-        [&robot_pose](const commsgs::geometry_msgs::PoseStamped& ps) {
-            return map::costmap_2d::utils::euclidean_distance(robot_pose, ps);
-        });
+    auto transformation_begin =
+        map::costmap_2d::utils::min_by(global_plan_.poses.begin(), closest_pose_upper_bound,
+                                       [&robot_pose](const commsgs::geometry_msgs::PoseStamped& ps) {
+                                           return map::costmap_2d::utils::euclidean_distance(robot_pose, ps);
+                                       });
 
     // We'll discard points on the plan that are outside the local costmap
     auto* costmap = costmap_wrapper_->getCostmap();
-    double dist_threshold =
-        std::max(costmap->getSizeInMetersX(), costmap->getSizeInMetersY()) /
-        2.0;
-    auto transformation_end = std::find_if(
-        transformation_begin, global_plan_.poses.end(),
-        [&](const auto& global_plan_pose) {
-            return map::costmap_2d::utils::euclidean_distance(
-                       global_plan_pose, robot_pose) > dist_threshold;
+    double dist_threshold = std::max(costmap->getSizeInMetersX(), costmap->getSizeInMetersY()) / 2.0;
+    auto transformation_end =
+        std::find_if(transformation_begin, global_plan_.poses.end(), [&](const auto& global_plan_pose) {
+            return map::costmap_2d::utils::euclidean_distance(global_plan_pose, robot_pose) > dist_threshold;
         });
 
     // Lambda to transform a PoseStamped from global frame to local
@@ -105,9 +92,8 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
         stamped_pose.pose = global_plan_pose.pose;
         try {
             // Use Buffer's transform method directly
-            transformed_pose = tf_buffer_->transform(
-                stamped_pose, costmap_wrapper_->getGlobalFrameID(),
-                static_cast<float>(transform_tolerance_));
+            transformed_pose = tf_buffer_->transform(stamped_pose, costmap_wrapper_->getGlobalFrameID(),
+                                                     static_cast<float>(transform_tolerance_));
         } catch (const std::exception& e) {
             // Return empty pose to skip this pose (will be filtered out)
             transformed_pose.header.frame_id = "";  // Mark as invalid
@@ -120,8 +106,7 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     // Transform the near part of the global plan into the robot's frame of
     // reference.
     commsgs::planning_msgs::Path transformed_plan;
-    transformed_plan.header.frame_id =
-        costmap_wrapper_->getGlobalFrameID();  // Use global frame as base frame
+    transformed_plan.header.frame_id = costmap_wrapper_->getGlobalFrameID();  // Use global frame as base frame
     transformed_plan.header.stamp = robot_pose.header.stamp;
     for (auto it = transformation_begin; it != transformation_end; ++it) {
         auto transformed = TransformGlobalPoseToLocal(*it);
@@ -136,8 +121,7 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     global_plan_.poses.erase(begin(global_plan_.poses), transformation_begin);
 
     if (transformed_plan.poses.empty()) {
-        throw autonomy::control::common::InvalidPath(
-            "Resulting plan has 0 poses in it.");
+        throw autonomy::control::common::InvalidPath("Resulting plan has 0 poses in it.");
     }
 
     return transformed_plan;

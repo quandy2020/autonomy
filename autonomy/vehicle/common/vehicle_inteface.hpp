@@ -59,25 +59,21 @@ public:
      * @param model VehicleModel proto，包含尺寸和动力学约束
      * @return true 初始化成功，false 失败
      */
-    virtual bool Initialize(
-        const ::autonomy::vehicle::proto::VehicleModel& model) = 0;
+    virtual bool Initialize(const ::autonomy::vehicle::proto::VehicleModel& model) = 0;
 
     /**
      * @brief 从底层读取当前车辆 / 机器人状态
      * @param info 输出参数，填充为当前 VehicleInfo
      * @return true 读取成功，false 失败
      */
-    virtual bool GetVehicleInfo(
-        ::autonomy::vehicle::proto::VehicleInfo* info) = 0;
+    virtual bool GetVehicleInfo(::autonomy::vehicle::proto::VehicleInfo* info) = 0;
 
     /**
      * @brief 向底层发送运动学控制指令
      * @param command 上层规划 / 控制模块给出的 KinematicsControlCommand
      * @return true 发送成功，false 失败
      */
-    virtual bool ApplyCommand(
-        const ::autonomy::vehicle::proto::KinematicsControlCommand&
-            command) = 0;
+    virtual bool ApplyCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command) = 0;
 };
 
 }  // namespace vehicle

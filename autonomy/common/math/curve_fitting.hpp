@@ -32,8 +32,7 @@ namespace math {
 // The coef is in ascending order,
 // i.e., f(x) = coef[0] + coef[1] * x + coef[2] * x^2 ...
 template <std::size_t N>
-double EvaluatePolynomial(const std::array<double, N + 1>& coef,
-                          const double p) {
+double EvaluatePolynomial(const std::array<double, N + 1>& coef, const double p) {
     double r = 0.0;
     for (int i = N; i >= 0; --i) {
         r = r * p + coef[i];
@@ -43,9 +42,8 @@ double EvaluatePolynomial(const std::array<double, N + 1>& coef,
 
 // Fit a Nth order polynomial using M 2d points.
 template <std::size_t N, std::size_t M>
-std::array<double, N + 1> FitPolynomial(
-    const std::array<Eigen::Vector2d, M>& points,
-    double* ptr_error_square = nullptr) {
+std::array<double, N + 1> FitPolynomial(const std::array<Eigen::Vector2d, M>& points,
+                                        double* ptr_error_square = nullptr) {
     Eigen::Matrix<double, M, N + 1> X;
     Eigen::Matrix<double, M, 1> Y;
     for (std::size_t i = 0; i < M; ++i) {
@@ -60,9 +58,7 @@ std::array<double, N + 1> FitPolynomial(
         Y(i, 0) = y;
     }
 
-    Eigen::Matrix<double, N + 1, 1> t =
-        PseudoInverse<double, N + 1, N + 1>(X.transpose() * X) * X.transpose() *
-        Y;
+    Eigen::Matrix<double, N + 1, 1> t = PseudoInverse<double, N + 1, N + 1>(X.transpose() * X) * X.transpose() * Y;
 
     std::array<double, N + 1> coefs;
     for (std::size_t i = 0; i < N + 1; ++i) {

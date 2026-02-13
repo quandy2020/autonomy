@@ -189,8 +189,7 @@ TEST(Polygon, convexHullCircle) {
 }
 
 TEST(convertToInequalityConstraints, triangle1) {
-    Polygon polygon(
-        {Position(1.0, 1.0), Position(0.0, 0.0), Position(1.1, -1.1)});
+    Polygon polygon({Position(1.0, 1.0), Position(0.0, 0.0), Position(1.1, -1.1)});
     MatrixXd A;
     VectorXd b;
     ASSERT_TRUE(polygon.convertToInequalityConstraints(A, b));
@@ -206,8 +205,7 @@ TEST(convertToInequalityConstraints, triangle1) {
 }
 
 TEST(convertToInequalityConstraints, triangle2) {
-    Polygon polygon(
-        {Position(-1.0, 0.5), Position(-1.0, -0.5), Position(1.0, -0.5)});
+    Polygon polygon({Position(-1.0, 0.5), Position(-1.0, -0.5), Position(1.0, -0.5)});
     MatrixXd A;
     VectorXd b;
     ASSERT_TRUE(polygon.convertToInequalityConstraints(A, b));
@@ -223,8 +221,7 @@ TEST(convertToInequalityConstraints, triangle2) {
 }
 
 TEST(offsetInward, triangle) {
-    Polygon polygon(
-        {Position(1.0, 1.0), Position(0.0, 0.0), Position(1.0, -1.0)});
+    Polygon polygon({Position(1.0, 1.0), Position(0.0, 0.0), Position(1.0, -1.0)});
     polygon.offsetInward(0.1);
     EXPECT_NEAR(0.9, polygon.getVertex(0)(0), 1e-4);
     EXPECT_NEAR(0.758579, polygon.getVertex(0)(1), 1e-4);
@@ -235,8 +232,7 @@ TEST(offsetInward, triangle) {
 }
 
 TEST(triangulation, triangle) {
-    Polygon polygon(
-        {Position(1.0, 1.0), Position(0.0, 0.0), Position(1.0, -1.0)});
+    Polygon polygon({Position(1.0, 1.0), Position(0.0, 0.0), Position(1.0, -1.0)});
     std::vector<Polygon> polygons;
     polygons = polygon.triangulate();
     ASSERT_EQ(1, polygons.size());

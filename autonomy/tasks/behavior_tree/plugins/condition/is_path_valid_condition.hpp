@@ -46,8 +46,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    IsPathValidCondition(const std::string& condition_name,
-                         const BT::NodeConfiguration& conf);
+    IsPathValidCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     IsPathValidCondition() = delete;
 
@@ -71,21 +70,16 @@ public:
         BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
         BT::RegisterJsonDefinition<std::chrono::milliseconds>();
 
-        return {BT::InputPort<commsgs::planning_msgs::Path>("path",
-                                                            "Path to Check"),
-                BT::InputPort<std::chrono::milliseconds>("server_timeout"),
-                BT::InputPort<unsigned int>("max_cost", 253,
-                                            "Maximum cost of the path"),
-                BT::InputPort<bool>(
-                    "consider_unknown_as_obstacle", false,
-                    "Whether to consider unknown cost as obstacle")};
+        return {
+            BT::InputPort<commsgs::planning_msgs::Path>("path", "Path to Check"),
+            BT::InputPort<std::chrono::milliseconds>("server_timeout"),
+            BT::InputPort<unsigned int>("max_cost", 253, "Maximum cost of the path"),
+            BT::InputPort<bool>("consider_unknown_as_obstacle", false, "Whether to consider unknown cost as obstacle")};
     }
 
 private:
     std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Client<proto::IsPathValid::Request,
-                                       proto::IsPathValid::Response>>
-        client_;
+    std::shared_ptr<::autolink::Client<proto::IsPathValid::Request, proto::IsPathValid::Response>> client_;
     // The timeout value while waiting for a response from the
     // is path valid service
     std::chrono::milliseconds server_timeout_;

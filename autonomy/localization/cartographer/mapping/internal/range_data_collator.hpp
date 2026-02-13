@@ -33,16 +33,13 @@ namespace mapping {
 class RangeDataCollator
 {
 public:
-    explicit RangeDataCollator(
-        const std::vector<std::string>& expected_range_sensor_ids)
-        : expected_sensor_ids_(expected_range_sensor_ids.begin(),
-                               expected_range_sensor_ids.end()) {}
+    explicit RangeDataCollator(const std::vector<std::string>& expected_range_sensor_ids)
+        : expected_sensor_ids_(expected_range_sensor_ids.begin(), expected_range_sensor_ids.end()) {}
 
     // If timed_point_cloud_data has incomplete intensity data, we will fill the
     // missing intensities with kDefaultIntensityValue.
-    sensor::TimedPointCloudOriginData AddRangeData(
-        const std::string& sensor_id,
-        sensor::TimedPointCloudData timed_point_cloud_data);
+    sensor::TimedPointCloudOriginData AddRangeData(const std::string& sensor_id,
+                                                   sensor::TimedPointCloudData timed_point_cloud_data);
 
 private:
     sensor::TimedPointCloudOriginData CropAndMerge();

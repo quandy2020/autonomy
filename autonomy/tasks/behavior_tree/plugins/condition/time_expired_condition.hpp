@@ -43,8 +43,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    TimeExpiredCondition(const std::string& condition_name,
-                         const BT::NodeConfiguration& conf);
+    TimeExpiredCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     TimeExpiredCondition() = delete;
 

@@ -31,16 +31,12 @@ struct CustomAngle : autonomy::common::state_vector::AngleVariable {
 
 /// @test Variable traits work as expected.
 TEST(VariableTest, CheckVariables) {
-    EXPECT_FALSE(
-        autonomy::common::state_vector::is_variable<NotAVariable>::value);
+    EXPECT_FALSE(autonomy::common::state_vector::is_variable<NotAVariable>::value);
 
-    EXPECT_TRUE(
-        autonomy::common::state_vector::is_variable<CustomVariable>::value);
-    EXPECT_FALSE(
-        autonomy::common::state_vector::is_angle<CustomVariable>::value);
+    EXPECT_TRUE(autonomy::common::state_vector::is_variable<CustomVariable>::value);
+    EXPECT_FALSE(autonomy::common::state_vector::is_angle<CustomVariable>::value);
 
-    EXPECT_TRUE(
-        autonomy::common::state_vector::is_variable<CustomAngle>::value);
+    EXPECT_TRUE(autonomy::common::state_vector::is_variable<CustomAngle>::value);
     EXPECT_TRUE(autonomy::common::state_vector::is_angle<CustomAngle>::value);
 }
 

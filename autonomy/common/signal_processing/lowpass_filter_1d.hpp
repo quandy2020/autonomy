@@ -23,8 +23,7 @@ namespace autonomy {
 namespace common {
 namespace signal_processing {
 
-double lowpassFilter(const double current_val, const double prev_val,
-                     const double gain);
+double lowpassFilter(const double current_val, const double prev_val, const double gain);
 
 /**
  * @class First-order low-pass filter
@@ -34,7 +33,7 @@ class LowpassFilter1d
 {
 private:
     boost::optional<double> x_;  //!< @brief current filtered value
-    double gain_;  //!< @brief gain value of first-order low-pass filter
+    double gain_;                //!< @brief gain value of first-order low-pass filter
 
 public:
     explicit LowpassFilter1d(const double gain);

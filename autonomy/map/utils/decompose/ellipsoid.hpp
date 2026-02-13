@@ -67,8 +67,7 @@ struct Ellipsoid {
     /// Find the closest hyperplane from the closest point
     Hyperplane<Dim> closest_hyperplane(const vec_Vecf<Dim>& O) const {
         const auto closest_pt = closest_point(O);
-        const auto n =
-            C_.inverse() * C_.inverse().transpose() * (closest_pt - d_);
+        const auto n = C_.inverse() * C_.inverse().transpose() * (closest_pt - d_);
         return Hyperplane<Dim>(closest_pt, n.normalized());
     }
 

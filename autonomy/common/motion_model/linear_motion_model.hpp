@@ -53,8 +53,7 @@ protected:
     ///
     /// @return     New state after prediction.
     ///
-    inline State crtp_predict(const State& state,
-                              const std::chrono::nanoseconds& dt) const {
+    inline State crtp_predict(const State& state, const std::chrono::nanoseconds& dt) const {
         return State{crtp_jacobian(state, dt) * state.vector()};
     }
 
@@ -69,8 +68,7 @@ protected:
     ///
     /// @return     A matrix that represents the Jacobian.
     ///
-    typename State::Matrix crtp_jacobian(
-        const State&, const std::chrono::nanoseconds& dt) const;
+    typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds& dt) const;
 };
 
 }  // namespace motion_model

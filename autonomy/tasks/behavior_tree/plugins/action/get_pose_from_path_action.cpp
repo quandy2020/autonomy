@@ -16,34 +16,49 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/get_pose_from_path_action.hpp"
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-GetPoseFromPathAction::GetPoseFromPathAction(const std::string& xml_tag_name,
-                                             const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
+GetPoseFromPath::GetPoseFromPath(const std::string& name, const BT::NodeConfiguration& conf)
+    : BT::ActionNodeBase(name, conf) {}
 
-BT::NodeStatus GetPoseFromPathAction::tick() {
-    commsgs::planning_msgs::Path path;
-    size_t index = 0;
+inline BT::NodeStatus GetPoseFromPath::tick() {
+    setStatus(BT::NodeStatus::RUNNING);
 
-    if (!getInput("path", path)) {
+    commsgs::planning_msgs::Path input_path;
+    getInput("path", input_path);
+
+    int pose_index;
+    getInput("index", pose_index);
+
+    if (input_path.poses.empty()) {
         return BT::NodeStatus::FAILURE;
     }
 
-    getInput("index", index);
+    // Account for negative indices
+    if (pose_index < 0) {
+        pose_index = input_path.poses.size() + pose_index;
+    }
 
-    if (index >= path.poses.size()) {
+    // out of bounds index
+    if (pose_index < 0 || static_cast<unsigned>(pose_index) >= input_path.poses.size()) {
         return BT::NodeStatus::FAILURE;
     }
 
-    setOutput("pose", path.poses[index]);
+    // extract pose
+    commsgs::geometry_msgs::PoseStamped output_pose;
+    output_pose = input_path.poses[pose_index];
+
+    // populate pose frame from path if necessary
+    if (output_pose.header.frame_id.empty()) {
+        output_pose.header.frame_id = input_path.header.frame_id;
+    }
+
+    setOutput("pose", output_pose);
+
     return BT::NodeStatus::SUCCESS;
 }
 
@@ -55,7 +70,5 @@ BT::NodeStatus GetPoseFromPathAction::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::action::GetPoseFromPathAction>(
-        "GetPoseFromPath");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetPoseFromPath>("GetPoseFromPath");
 }

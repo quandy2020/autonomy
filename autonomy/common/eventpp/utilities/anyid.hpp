@@ -29,16 +29,14 @@ template <typename T, typename Enabled = void>
 struct MakeHash;
 
 template <typename T>
-struct MakeHash<T, typename std::enable_if<
-                       std::is_convertible<T, std::size_t>::value>::type> {
+struct MakeHash<T, typename std::enable_if<std::is_convertible<T, std::size_t>::value>::type> {
     std::size_t operator()(T value) const {
         return static_cast<std::size_t>(value);
     }
 };
 
 template <typename T>
-struct MakeHash<T, typename std::enable_if<
-                       !std::is_convertible<T, std::size_t>::value>::type> {
+struct MakeHash<T, typename std::enable_if<!std::is_convertible<T, std::size_t>::value>::type> {
     std::size_t operator()(const T& value) const {
         return std::hash<T>()(value);
     }
@@ -48,8 +46,7 @@ template <typename T>
 class HasLess
 {
     template <typename C>
-    static std::true_type test(decltype(std::declval<C>() <
-                                        std::declval<C>())*);
+    static std::true_type test(decltype(std::declval<C>() < std::declval<C>())*);
     template <typename C>
     static std::false_type test(...);
 
@@ -58,14 +55,12 @@ public:
 };
 
 template <typename T>
-auto compareLessThan(const T& a, const T& b) ->
-    typename std::enable_if<HasLess<T>::value, bool>::type {
+auto compareLessThan(const T& a, const T& b) -> typename std::enable_if<HasLess<T>::value, bool>::type {
     return a < b;
 }
 
 template <typename T>
-auto compareLessThan(const T&, const T&) ->
-    typename std::enable_if<!HasLess<T>::value, bool>::type {
+auto compareLessThan(const T&, const T&) -> typename std::enable_if<!HasLess<T>::value, bool>::type {
     return false;
 }
 
@@ -73,8 +68,7 @@ template <typename T>
 class HasEqual
 {
     template <typename C>
-    static std::true_type test(decltype(std::declval<C>() ==
-                                        std::declval<C>())*);
+    static std::true_type test(decltype(std::declval<C>() == std::declval<C>())*);
     template <typename C>
     static std::false_type test(...);
 
@@ -83,14 +77,12 @@ public:
 };
 
 template <typename T>
-auto compareEqual(const T& a, const T& b) ->
-    typename std::enable_if<HasEqual<T>::value, bool>::type {
+auto compareEqual(const T& a, const T& b) -> typename std::enable_if<HasEqual<T>::value, bool>::type {
     return a == b;
 }
 
 template <typename T>
-auto compareEqual(const T&, const T&) ->
-    typename std::enable_if<!HasEqual<T>::value, bool>::type {
+auto compareEqual(const T&, const T&) -> typename std::enable_if<!HasEqual<T>::value, bool>::type {
     return true;
 }
 
@@ -103,8 +95,7 @@ struct EmptyAnyStorage {
     EmptyAnyStorage(const T&) {}
 };
 
-template <template <typename> class Digester = std::hash,
-          typename Storage = EmptyAnyStorage>
+template <template <typename> class Digester = std::hash, typename Storage = EmptyAnyStorage>
 class AnyId
 {
 public:
@@ -130,18 +121,14 @@ private:
 };
 
 template <template <typename> class Digester, typename Storage>
-bool operator==(const AnyId<Digester, Storage>& a,
-                const AnyId<Digester, Storage>& b) {
-    return a.getDigest() == b.getDigest() &&
-           anyid_internal_::compareEqual(a.getValue(), b.getValue());
+bool operator==(const AnyId<Digester, Storage>& a, const AnyId<Digester, Storage>& b) {
+    return a.getDigest() == b.getDigest() && anyid_internal_::compareEqual(a.getValue(), b.getValue());
 }
 
 template <template <typename> class Digester, typename Storage>
-bool operator<(const AnyId<Digester, Storage>& a,
-               const AnyId<Digester, Storage>& b) {
+bool operator<(const AnyId<Digester, Storage>& a, const AnyId<Digester, Storage>& b) {
     return (a.getDigest() < b.getDigest()) ||
-           (anyid_internal_::compareLessThan(a.getValue(), b.getValue()) &&
-            a.getDigest() == b.getDigest());
+           (anyid_internal_::compareLessThan(a.getValue(), b.getValue()) && a.getDigest() == b.getDigest());
 }
 
 using AnyHashableId = AnyId<>;
@@ -151,10 +138,8 @@ using AnyHashableId = AnyId<>;
 namespace std {
 template <template <typename> class Digester, typename Storage>
 struct hash<eventpp::AnyId<Digester, Storage>> {
-    std::size_t operator()(
-        const eventpp::AnyId<Digester, Storage>& value) const noexcept {
-        return eventpp::anyid_internal_::MakeHash<
-            typename eventpp::AnyId<Digester, Storage>::DigestType>()(
+    std::size_t operator()(const eventpp::AnyId<Digester, Storage>& value) const noexcept {
+        return eventpp::anyid_internal_::MakeHash<typename eventpp::AnyId<Digester, Storage>::DigestType>()(
             value.getDigest());
     }
 };

@@ -46,8 +46,7 @@ bool DataRouter::Initialize(const proto::DriverOptions& options) {
     }
 
     if (node_ == nullptr || driver_engine_ == nullptr) {
-        AERROR
-            << "DataRouter: node or driver_engine is null, cannot initialize";
+        AERROR << "DataRouter: node or driver_engine is null, cannot initialize";
         return false;
     }
 
@@ -100,8 +99,8 @@ bool DataRouter::Initialize(const proto::DriverOptions& options) {
     for (const auto& sensor_id : sensor_ids) {
         DataSource source = DetectDataSource(sensor_id);
         data_sources_[sensor_id] = source;
-        AINFO << "DataRouter: sensor " << sensor_id << " data source: "
-              << (source == DataSource::ROS2 ? "ROS2" : "DRIVER");
+        AINFO << "DataRouter: sensor " << sensor_id
+              << " data source: " << (source == DataSource::ROS2 ? "ROS2" : "DRIVER");
     }
 
     initialized_ = true;
@@ -126,8 +125,7 @@ void DataRouter::Start() {
     for (const auto& pair : data_sources_) {
         if (pair.second == DataSource::DRIVER) {
             // 注册到驱动引擎，当驱动数据到达时自动转发
-            auto handler = [this](const std::string& sensor_id,
-                                  const std::shared_ptr<sensor::Data>& data) {
+            auto handler = [this](const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data) {
                 this->ForwardToTargets(sensor_id, data);
             };
             driver_engine_->RegisterSensorHandler(pair.first, handler);
@@ -159,16 +157,14 @@ void DataRouter::Stop() {
     AINFO << "DataRouter stopped";
 }
 
-void DataRouter::SetDataSource(const std::string& sensor_id,
-                               DataSource source) {
+void DataRouter::SetDataSource(const std::string& sensor_id, DataSource source) {
     std::lock_guard<std::mutex> lock(mutex_);
     data_sources_[sensor_id] = source;
     AINFO << "DataRouter: set sensor " << sensor_id << " data source to "
           << (source == DataSource::ROS2 ? "ROS2" : "DRIVER");
 }
 
-DataRouter::DataSource DataRouter::GetDataSource(
-    const std::string& sensor_id) const {
+DataRouter::DataSource DataRouter::GetDataSource(const std::string& sensor_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = data_sources_.find(sensor_id);
     if (it != data_sources_.end()) {
@@ -178,19 +174,16 @@ DataRouter::DataSource DataRouter::GetDataSource(
     return DataSource::DRIVER;
 }
 
-void DataRouter::ForwardFromRos2(const std::string& sensor_id,
-                                 const std::shared_ptr<sensor::Data>& data) {
+void DataRouter::ForwardFromRos2(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data) {
     if (data == nullptr) {
-        AERROR << "DataRouter: received null data from ROS2 for sensor: "
-               << sensor_id;
+        AERROR << "DataRouter: received null data from ROS2 for sensor: " << sensor_id;
         return;
     }
 
     // 检查数据源类型
     DataSource source = GetDataSource(sensor_id);
     if (source != DataSource::ROS2) {
-        AWARN << "DataRouter: sensor " << sensor_id
-              << " is not configured for ROS2, ignoring ROS2 data";
+        AWARN << "DataRouter: sensor " << sensor_id << " is not configured for ROS2, ignoring ROS2 data";
         return;
     }
 
@@ -202,23 +195,18 @@ void DataRouter::ReadAndSendFromDriver(const std::string& sensor_id) {
     // 检查数据源类型
     DataSource source = GetDataSource(sensor_id);
     if (source != DataSource::DRIVER) {
-        AWARN << "DataRouter: sensor " << sensor_id
-              << " is not configured for DRIVER, ignoring driver read request";
+        AWARN << "DataRouter: sensor " << sensor_id << " is not configured for DRIVER, ignoring driver read request";
         return;
     }
 
     // 注意：实际的驱动数据读取由 DriverEngine 通过回调自动触发
     // 这个方法主要用于手动触发读取（如果需要的话）
     // 目前 DriverEngine 已经通过 RegisterSensorHandler 自动处理
-    ADEBUG << "DataRouter: driver data for sensor " << sensor_id
-           << " will be handled by DriverEngine callbacks";
+    ADEBUG << "DataRouter: driver data for sensor " << sensor_id << " will be handled by DriverEngine callbacks";
 }
 
 void DataRouter::RegisterTargetHandler(
-    const std::string& target,
-    std::function<void(const std::string&,
-                       const std::shared_ptr<sensor::Data>&)>
-        handler) {
+    const std::string& target, std::function<void(const std::string&, const std::shared_ptr<sensor::Data>&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     target_handlers_[target] = handler;
     AINFO << "DataRouter: registered target handler for " << target;
@@ -233,12 +221,10 @@ void DataRouter::UnregisterTargetHandler(const std::string& target) {
     }
 }
 
-void DataRouter::ForwardToTargets(const std::string& sensor_id,
-                                  const std::shared_ptr<sensor::Data>& data,
+void DataRouter::ForwardToTargets(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data,
                                   const std::vector<std::string>& targets) {
     if (data == nullptr) {
-        AERROR << "DataRouter: cannot forward null data for sensor: "
-               << sensor_id;
+        AERROR << "DataRouter: cannot forward null data for sensor: " << sensor_id;
         return;
     }
 
@@ -259,11 +245,9 @@ void DataRouter::ForwardToTargets(const std::string& sensor_id,
         if (it != target_handlers_.end()) {
             try {
                 it->second(sensor_id, data);
-                ADEBUG << "DataRouter: forwarded data from sensor " << sensor_id
-                       << " to target " << target;
+                ADEBUG << "DataRouter: forwarded data from sensor " << sensor_id << " to target " << target;
             } catch (const std::exception& e) {
-                AERROR << "DataRouter: error forwarding data to target "
-                       << target << ": " << e.what();
+                AERROR << "DataRouter: error forwarding data to target " << target << ": " << e.what();
             }
         } else {
             AWARN << "DataRouter: no handler registered for target " << target;
@@ -271,14 +255,12 @@ void DataRouter::ForwardToTargets(const std::string& sensor_id,
     }
 }
 
-DataRouter::DataSource DataRouter::DetectDataSource(
-    const std::string& sensor_id) const {
+DataRouter::DataSource DataRouter::DetectDataSource(const std::string& sensor_id) const {
     // 检测策略：
     // 1. 如果传感器已经在驱动引擎中注册，则使用 DRIVER
     // 2. 否则，假设使用 ROS2（需要外部通过 ROS2 接口提供数据）
 
-    if (driver_engine_ != nullptr &&
-        driver_engine_->IsSensorRegistered(sensor_id)) {
+    if (driver_engine_ != nullptr && driver_engine_->IsSensorRegistered(sensor_id)) {
         return DataSource::DRIVER;
     }
 
@@ -287,9 +269,8 @@ DataRouter::DataSource DataRouter::DetectDataSource(
     return DataSource::ROS2;
 }
 
-bool DataRouter::PublishLaserScan(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message) {
+bool DataRouter::PublishLaserScan(const std::string& topic,
+                                  const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null LaserScan message";
         return false;
@@ -304,14 +285,10 @@ bool DataRouter::PublishLaserScan(
 
     // 获取或创建发布器
     auto it = sensor_publishers_.find(topic);
-    if (it == sensor_publishers_.end() ||
-        it->second.sensor_type != "laser_scan") {
-        auto writer =
-            node_->CreateWriter<commsgs::sensor_msgs::LaserScan>(topic);
+    if (it == sensor_publishers_.end() || it->second.sensor_type != "laser_scan") {
+        auto writer = node_->CreateWriter<commsgs::sensor_msgs::LaserScan>(topic);
         if (writer == nullptr) {
-            AERROR
-                << "DataRouter: failed to create LaserScan writer for topic: "
-                << topic;
+            AERROR << "DataRouter: failed to create LaserScan writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -321,15 +298,13 @@ bool DataRouter::PublishLaserScan(
         sensor_publishers_[topic] = publisher;
     }
 
-    auto writer = std::static_pointer_cast<
-        ::autolink::Writer<commsgs::sensor_msgs::LaserScan>>(
-        sensor_publishers_[topic].writer);
+    auto writer =
+        std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::LaserScan>>(sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 
-bool DataRouter::PublishPointCloud2(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message) {
+bool DataRouter::PublishPointCloud2(const std::string& topic,
+                                    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null PointCloud2 message";
         return false;
@@ -343,14 +318,10 @@ bool DataRouter::PublishPointCloud2(
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = sensor_publishers_.find(topic);
-    if (it == sensor_publishers_.end() ||
-        it->second.sensor_type != "point_cloud2") {
-        auto writer =
-            node_->CreateWriter<commsgs::sensor_msgs::PointCloud2>(topic);
+    if (it == sensor_publishers_.end() || it->second.sensor_type != "point_cloud2") {
+        auto writer = node_->CreateWriter<commsgs::sensor_msgs::PointCloud2>(topic);
         if (writer == nullptr) {
-            AERROR
-                << "DataRouter: failed to create PointCloud2 writer for topic: "
-                << topic;
+            AERROR << "DataRouter: failed to create PointCloud2 writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -360,15 +331,13 @@ bool DataRouter::PublishPointCloud2(
         sensor_publishers_[topic] = publisher;
     }
 
-    auto writer = std::static_pointer_cast<
-        ::autolink::Writer<commsgs::sensor_msgs::PointCloud2>>(
+    auto writer = std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::PointCloud2>>(
         sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 
-bool DataRouter::PublishPointCloud(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message) {
+bool DataRouter::PublishPointCloud(const std::string& topic,
+                                   const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null PointCloud message";
         return false;
@@ -382,14 +351,10 @@ bool DataRouter::PublishPointCloud(
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = sensor_publishers_.find(topic);
-    if (it == sensor_publishers_.end() ||
-        it->second.sensor_type != "point_cloud") {
-        auto writer =
-            node_->CreateWriter<commsgs::sensor_msgs::PointCloud>(topic);
+    if (it == sensor_publishers_.end() || it->second.sensor_type != "point_cloud") {
+        auto writer = node_->CreateWriter<commsgs::sensor_msgs::PointCloud>(topic);
         if (writer == nullptr) {
-            AERROR
-                << "DataRouter: failed to create PointCloud writer for topic: "
-                << topic;
+            AERROR << "DataRouter: failed to create PointCloud writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -399,15 +364,12 @@ bool DataRouter::PublishPointCloud(
         sensor_publishers_[topic] = publisher;
     }
 
-    auto writer = std::static_pointer_cast<
-        ::autolink::Writer<commsgs::sensor_msgs::PointCloud>>(
+    auto writer = std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::PointCloud>>(
         sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 
-bool DataRouter::PublishImu(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::sensor_msgs::Imu>& message) {
+bool DataRouter::PublishImu(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::Imu>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null Imu message";
         return false;
@@ -424,8 +386,7 @@ bool DataRouter::PublishImu(
     if (it == sensor_publishers_.end() || it->second.sensor_type != "imu") {
         auto writer = node_->CreateWriter<commsgs::sensor_msgs::Imu>(topic);
         if (writer == nullptr) {
-            AERROR << "DataRouter: failed to create Imu writer for topic: "
-                   << topic;
+            AERROR << "DataRouter: failed to create Imu writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -436,14 +397,12 @@ bool DataRouter::PublishImu(
     }
 
     auto writer =
-        std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::Imu>>(
-            sensor_publishers_[topic].writer);
+        std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::Imu>>(sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 
-bool DataRouter::PublishOdometry(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::planning_msgs::Odometry>& message) {
+bool DataRouter::PublishOdometry(const std::string& topic,
+                                 const std::shared_ptr<commsgs::planning_msgs::Odometry>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null Odometry message";
         return false;
@@ -457,13 +416,10 @@ bool DataRouter::PublishOdometry(
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = sensor_publishers_.find(topic);
-    if (it == sensor_publishers_.end() ||
-        it->second.sensor_type != "odometry") {
-        auto writer =
-            node_->CreateWriter<commsgs::planning_msgs::Odometry>(topic);
+    if (it == sensor_publishers_.end() || it->second.sensor_type != "odometry") {
+        auto writer = node_->CreateWriter<commsgs::planning_msgs::Odometry>(topic);
         if (writer == nullptr) {
-            AERROR << "DataRouter: failed to create Odometry writer for topic: "
-                   << topic;
+            AERROR << "DataRouter: failed to create Odometry writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -473,15 +429,12 @@ bool DataRouter::PublishOdometry(
         sensor_publishers_[topic] = publisher;
     }
 
-    auto writer = std::static_pointer_cast<
-        ::autolink::Writer<commsgs::planning_msgs::Odometry>>(
+    auto writer = std::static_pointer_cast<::autolink::Writer<commsgs::planning_msgs::Odometry>>(
         sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 
-bool DataRouter::PublishImage(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::sensor_msgs::Image>& message) {
+bool DataRouter::PublishImage(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::Image>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null Image message";
         return false;
@@ -498,8 +451,7 @@ bool DataRouter::PublishImage(
     if (it == sensor_publishers_.end() || it->second.sensor_type != "image") {
         auto writer = node_->CreateWriter<commsgs::sensor_msgs::Image>(topic);
         if (writer == nullptr) {
-            AERROR << "DataRouter: failed to create Image writer for topic: "
-                   << topic;
+            AERROR << "DataRouter: failed to create Image writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -509,15 +461,12 @@ bool DataRouter::PublishImage(
         sensor_publishers_[topic] = publisher;
     }
 
-    auto writer = std::static_pointer_cast<
-        ::autolink::Writer<commsgs::sensor_msgs::Image>>(
-        sensor_publishers_[topic].writer);
+    auto writer =
+        std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::Image>>(sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 
-bool DataRouter::PublishRange(
-    const std::string& topic,
-    const std::shared_ptr<commsgs::sensor_msgs::Range>& message) {
+bool DataRouter::PublishRange(const std::string& topic, const std::shared_ptr<commsgs::sensor_msgs::Range>& message) {
     if (message == nullptr) {
         AERROR << "DataRouter: cannot publish null Range message";
         return false;
@@ -534,8 +483,7 @@ bool DataRouter::PublishRange(
     if (it == sensor_publishers_.end() || it->second.sensor_type != "range") {
         auto writer = node_->CreateWriter<commsgs::sensor_msgs::Range>(topic);
         if (writer == nullptr) {
-            AERROR << "DataRouter: failed to create Range writer for topic: "
-                   << topic;
+            AERROR << "DataRouter: failed to create Range writer for topic: " << topic;
             return false;
         }
         SensorPublisher publisher;
@@ -545,9 +493,8 @@ bool DataRouter::PublishRange(
         sensor_publishers_[topic] = publisher;
     }
 
-    auto writer = std::static_pointer_cast<
-        ::autolink::Writer<commsgs::sensor_msgs::Range>>(
-        sensor_publishers_[topic].writer);
+    auto writer =
+        std::static_pointer_cast<::autolink::Writer<commsgs::sensor_msgs::Range>>(sensor_publishers_[topic].writer);
     return writer->Write(message);
 }
 

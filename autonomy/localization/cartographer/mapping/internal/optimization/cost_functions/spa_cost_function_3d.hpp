@@ -36,29 +36,24 @@ namespace optimization {
 class SpaCostFunction3D
 {
 public:
-    static ceres::CostFunction* CreateAutoDiffCostFunction(
-        const PoseGraph::Constraint::Pose& pose) {
-        return new ceres::AutoDiffCostFunction<
-            SpaCostFunction3D, 6 /* residuals */, 4 /* rotation variables */,
-            3 /* translation variables */, 4 /* rotation variables */,
-            3 /* translation variables */>(new SpaCostFunction3D(pose));
+    static ceres::CostFunction* CreateAutoDiffCostFunction(const PoseGraph::Constraint::Pose& pose) {
+        return new ceres::AutoDiffCostFunction<SpaCostFunction3D, 6 /* residuals */, 4 /* rotation variables */,
+                                               3 /* translation variables */, 4 /* rotation variables */,
+                                               3 /* translation variables */>(new SpaCostFunction3D(pose));
     }
 
     template <typename T>
-    bool operator()(const T* const c_i_rotation, const T* const c_i_translation,
-                    const T* const c_j_rotation, const T* const c_j_translation,
-                    T* const e) const {
+    bool operator()(const T* const c_i_rotation, const T* const c_i_translation, const T* const c_j_rotation,
+                    const T* const c_j_translation, T* const e) const {
         const std::array<T, 6> error = ScaleError(
-            ComputeUnscaledError(pose_.zbar_ij, c_i_rotation, c_i_translation,
-                                 c_j_rotation, c_j_translation),
+            ComputeUnscaledError(pose_.zbar_ij, c_i_rotation, c_i_translation, c_j_rotation, c_j_translation),
             pose_.translation_weight, pose_.rotation_weight);
         std::copy(std::begin(error), std::end(error), e);
         return true;
     }
 
 private:
-    explicit SpaCostFunction3D(const PoseGraph::Constraint::Pose& pose)
-        : pose_(pose) {}
+    explicit SpaCostFunction3D(const PoseGraph::Constraint::Pose& pose) : pose_(pose) {}
 
     const PoseGraph::Constraint::Pose pose_;
 };

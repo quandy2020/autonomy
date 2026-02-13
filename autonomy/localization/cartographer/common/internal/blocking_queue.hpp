@@ -48,9 +48,7 @@ public:
 
     // Pushes a value onto the queue. Blocks if the queue is full.
     void Push(T t) {
-        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-            return QueueNotFullCondition();
-        };
+        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return QueueNotFullCondition(); };
         absl::MutexLock lock(&mutex_);
         mutex_.Await(absl::Condition(&predicate));
         deque_.push_back(std::move(t));
@@ -58,12 +56,9 @@ public:
 
     // Like push, but returns false if 'timeout' is reached.
     bool PushWithTimeout(T t, const common::Duration timeout) {
-        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-            return QueueNotFullCondition();
-        };
+        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return QueueNotFullCondition(); };
         absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate), absl::FromChrono(timeout))) {
             return false;
         }
         deque_.push_back(std::move(t));
@@ -72,9 +67,7 @@ public:
 
     // Pops the next value from the queue. Blocks until a value is available.
     T Pop() {
-        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-            return !QueueEmptyCondition();
-        };
+        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return !QueueEmptyCondition(); };
         absl::MutexLock lock(&mutex_);
         mutex_.Await(absl::Condition(&predicate));
 
@@ -85,12 +78,9 @@ public:
 
     // Like Pop, but can timeout. Returns nullptr in this case.
     T PopWithTimeout(const common::Duration timeout) {
-        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-            return !QueueEmptyCondition();
-        };
+        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return !QueueEmptyCondition(); };
         absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate), absl::FromChrono(timeout))) {
             return nullptr;
         }
         T t = std::move(deque_.front());
@@ -101,12 +91,9 @@ public:
     // Like Peek, but can timeout. Returns nullptr in this case.
     template <typename R>
     R* PeekWithTimeout(const common::Duration timeout) {
-        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-            return !QueueEmptyCondition();
-        };
+        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return !QueueEmptyCondition(); };
         absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate), absl::FromChrono(timeout))) {
             return nullptr;
         }
         return deque_.front().get();
@@ -132,9 +119,7 @@ public:
 
     // Blocks until the queue is empty.
     void WaitUntilEmpty() {
-        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-            return QueueEmptyCondition();
-        };
+        const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return QueueEmptyCondition(); };
         absl::MutexLock lock(&mutex_);
         mutex_.Await(absl::Condition(&predicate));
     }

@@ -16,17 +16,23 @@
 
 #pragma once
 
-#include <atomic>
-#include <climits>
-#include <map>
-#include <mutex>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace autonomy {
 namespace system {
 namespace monitor {
-namespace cpu_monitor {}  // namespace cpu_monitor
+namespace cpu_monitor {
+
+struct CpuInformation {
+    std::string model_name;
+    uint32_t num_cores{0};
+    uint64_t freq_hz{0};
+    std::string vendor;  // "intel", "raspi", "tegra", "arm", "unknown"
+};
+
+}  // namespace cpu_monitor
 }  // namespace monitor
 }  // namespace system
 }  // namespace autonomy

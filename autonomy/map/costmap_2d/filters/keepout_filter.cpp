@@ -53,8 +53,7 @@ void KeepoutFilter::initializeFilter(const std::string& filter_info_topic) {
     global_frame_ = layered_costmap_->getGlobalFrameID();
 }
 
-void KeepoutFilter::filterInfoCallback(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg) {
+void KeepoutFilter::filterInfoCallback(const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg) {
     // std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     // rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
@@ -99,8 +98,7 @@ void KeepoutFilter::filterInfoCallback(
     //     std::placeholders::_1));
 }
 
-void KeepoutFilter::maskCallback(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
+void KeepoutFilter::maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     // rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
@@ -126,8 +124,7 @@ void KeepoutFilter::maskCallback(
     filter_mask_ = msg;
 }
 
-void KeepoutFilter::process(Costmap2D& master_grid, int min_i, int min_j,
-                            int max_i, int max_j,
+void KeepoutFilter::process(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j,
                             const commsgs::geometry_msgs::Pose2D& /*pose*/) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
@@ -139,8 +136,8 @@ void KeepoutFilter::process(Costmap2D& master_grid, int min_i, int min_j,
 
     transform::tf2::Transform tf2_transform;
     tf2_transform.setIdentity();  // initialize by identical transform
-    int mg_min_x, mg_min_y;  // masger_grid indexes of bottom-left window corner
-    int mg_max_x, mg_max_y;  // masger_grid indexes of top-right window corner
+    int mg_min_x, mg_min_y;       // masger_grid indexes of bottom-left window corner
+    int mg_max_x, mg_max_y;       // masger_grid indexes of top-right window corner
 
     const std::string mask_frame = filter_mask_->header.frame_id;
 
@@ -205,11 +202,9 @@ void KeepoutFilter::process(Costmap2D& master_grid, int min_i, int min_j,
 
         // Calculating bounds corresponding to top-right window (2) corner
         // filter_mask_ -> master_grid intexes conversion
-        wx = filter_mask_->info.origin.position.x +
-             filter_mask_->info.width * filter_mask_->info.resolution +
+        wx = filter_mask_->info.origin.position.x + filter_mask_->info.width * filter_mask_->info.resolution +
              half_cell_size;
-        wy = filter_mask_->info.origin.position.y +
-             filter_mask_->info.height * filter_mask_->info.resolution +
+        wy = filter_mask_->info.origin.position.y + filter_mask_->info.height * filter_mask_->info.resolution +
              half_cell_size;
         master_grid.worldToMapNoBounds(wx, wy, mg_max_x, mg_max_y);
         // Calculation of (2) corner bounds
@@ -294,5 +289,4 @@ bool KeepoutFilter::isActive() {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::KeepoutFilter,
-                            autonomy::map::costmap_2d::Layer)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::KeepoutFilter, autonomy::map::costmap_2d::Layer)

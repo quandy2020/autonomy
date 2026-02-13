@@ -32,24 +32,20 @@ namespace internal_ {
 template <typename EventType_, typename Prototype_, typename Policies_>
 class EventQueueBase;
 
-template <typename EventType_, typename Policies_, typename ReturnType,
-          typename... Args>
+template <typename EventType_, typename Policies_, typename ReturnType, typename... Args>
 class EventQueueBase<EventType_, ReturnType(Args...), Policies_>
-    : public EventDispatcherBase<
-          EventType_, ReturnType(Args...), Policies_,
-          EventQueueBase<EventType_, ReturnType(Args...), Policies_> >
+    : public EventDispatcherBase<EventType_, ReturnType(Args...), Policies_,
+                                 EventQueueBase<EventType_, ReturnType(Args...), Policies_> >
 {
 private:
-    using super = EventDispatcherBase<
-        EventType_, ReturnType(Args...), Policies_,
-        EventQueueBase<EventType_, ReturnType(Args...), Policies_> >;
+    using super = EventDispatcherBase<EventType_, ReturnType(Args...), Policies_,
+                                      EventQueueBase<EventType_, ReturnType(Args...), Policies_> >;
 
     using Policies = typename super::Policies;
     using Threading = typename super::Threading;
     using ConditionVariable = typename Threading::ConditionVariable;
 
-    using QueuedEventArgumentsType =
-        std::tuple<typename std::decay<Args>::type...>;
+    using QueuedEventArgumentsType = std::tuple<typename std::decay<Args>::type...>;
 
     struct QueuedEvent_ {
         typename std::decay<typename super::Event>::type event;
@@ -60,15 +56,13 @@ private:
         }
 
         template <std::size_t N>
-        auto getArgument() const ->
-            typename std::tuple_element<N, std::tuple<Args...> >::type {
+        auto getArgument() const -> typename std::tuple_element<N, std::tuple<Args...> >::type {
             return std::get<N>(arguments);
         }
     };
 
     using BufferedItemList =
-        typename SelectQueueList<BufferedItem<QueuedEvent_>, Policies_,
-                                 HasTemplateQueueList<Policies_>::value>::Type;
+        typename SelectQueueList<BufferedItem<QueuedEvent_>, Policies_, HasTemplateQueueList<Policies_>::value>::Type;
 
 public:
     using QueuedEvent = QueuedEvent_;
@@ -119,19 +113,15 @@ public:
     }
 
     template <typename... A>
-    auto enqueue(A&&... args) ->
-        typename std::enable_if<sizeof...(A) == sizeof...(Args), void>::type {
+    auto enqueue(A&&... args) -> typename std::enable_if<sizeof...(A) == sizeof...(Args), void>::type {
         static_assert(super::ArgumentPassingMode::canIncludeEventType,
                       "Enqueuing arguments count doesn't match required (Event "
                       "type should be included).");
 
-        using GetEvent = typename SelectGetEvent<
-            Policies_, EventType_,
-            HasFunctionGetEvent<Policies_, A...>::value>::Type;
+        using GetEvent =
+            typename SelectGetEvent<Policies_, EventType_, HasFunctionGetEvent<Policies_, A...>::value>::Type;
 
-        doEnqueue(
-            QueuedEvent{GetEvent::getEvent(args...),
-                        QueuedEventArgumentsType(std::forward<A>(args)...)});
+        doEnqueue(QueuedEvent{GetEvent::getEvent(args...), QueuedEventArgumentsType(std::forward<A>(args)...)});
 
         if (doCanProcess()) {
             queueListConditionVariable.notify_one();
@@ -139,19 +129,16 @@ public:
     }
 
     template <typename T, typename... A>
-    auto enqueue(T&& first, A&&... args) ->
-        typename std::enable_if<sizeof...(A) == sizeof...(Args), void>::type {
+    auto enqueue(T&& first, A&&... args) -> typename std::enable_if<sizeof...(A) == sizeof...(Args), void>::type {
         static_assert(super::ArgumentPassingMode::canExcludeEventType,
                       "Enqueuing arguments count doesn't match required (Event "
                       "type should NOT be included).");
 
-        using GetEvent = typename SelectGetEvent<
-            Policies_, EventType_,
-            HasFunctionGetEvent<Policies_, T&&, A...>::value>::Type;
+        using GetEvent =
+            typename SelectGetEvent<Policies_, EventType_, HasFunctionGetEvent<Policies_, T&&, A...>::value>::Type;
 
-        doEnqueue(
-            QueuedEvent{GetEvent::getEvent(std::forward<T>(first), args...),
-                        QueuedEventArgumentsType(std::forward<A>(args)...)});
+        doEnqueue(QueuedEvent{GetEvent::getEvent(std::forward<T>(first), args...),
+                              QueuedEventArgumentsType(std::forward<A>(args)...)});
 
         if (doCanProcess()) {
             queueListConditionVariable.notify_one();
@@ -159,8 +146,7 @@ public:
     }
 
     bool emptyQueue() const {
-        return queueList.empty() &&
-               (queueEmptyCounter.load(std::memory_order_acquire) == 0);
+        return queueList.empty() && (queueEmptyCounter.load(std::memory_order_acquire) == 0);
     }
 
     void clearEvents() {
@@ -189,8 +175,7 @@ public:
 
             // Use a counter to tell the queue list is not empty during
             // processing even though queueList is swapped to empty.
-            CounterGuard<decltype(queueEmptyCounter)> counterGuard(
-                queueEmptyCounter);
+            CounterGuard<decltype(queueEmptyCounter)> counterGuard(queueEmptyCounter);
 
             {
                 std::lock_guard<Mutex> queueListLock(queueListMutex);
@@ -199,9 +184,7 @@ public:
 
             if (!tempList.empty()) {
                 for (auto& item : tempList) {
-                    doDispatchQueuedEvent(
-                        item.get(),
-                        typename MakeIndexSequence<sizeof...(Args)>::Type());
+                    doDispatchQueuedEvent(item.get(), typename MakeIndexSequence<sizeof...(Args)>::Type());
                     item.clear();
                 }
 
@@ -221,22 +204,18 @@ public:
 
             // Use a counter to tell the queue list is not empty during
             // processing even though queueList is swapped to empty.
-            CounterGuard<decltype(queueEmptyCounter)> counterGuard(
-                queueEmptyCounter);
+            CounterGuard<decltype(queueEmptyCounter)> counterGuard(queueEmptyCounter);
 
             {
                 std::lock_guard<Mutex> queueListLock(queueListMutex);
                 if (!queueList.empty()) {
-                    tempList.splice(tempList.end(), queueList,
-                                    queueList.begin());
+                    tempList.splice(tempList.end(), queueList, queueList.begin());
                 }
             }
 
             if (!tempList.empty()) {
                 auto& item = tempList.front();
-                doDispatchQueuedEvent(
-                    item.get(),
-                    typename MakeIndexSequence<sizeof...(Args)>::Type());
+                doDispatchQueuedEvent(item.get(), typename MakeIndexSequence<sizeof...(Args)>::Type());
                 item.clear();
 
                 std::lock_guard<Mutex> queueListLock(freeListMutex);
@@ -257,8 +236,7 @@ public:
 
             // Use a counter to tell the queue list is not empty during
             // processing even though queueList is swapped to empty.
-            CounterGuard<decltype(queueEmptyCounter)> counterGuard(
-                queueEmptyCounter);
+            CounterGuard<decltype(queueEmptyCounter)> counterGuard(queueEmptyCounter);
 
             {
                 std::lock_guard<Mutex> queueListLock(queueListMutex);
@@ -267,13 +245,9 @@ public:
 
             if (!tempList.empty()) {
                 for (auto it = tempList.begin(); it != tempList.end();) {
-                    if (doInvokeFuncWithQueuedEvent(
-                            predictor, it->get(),
-                            typename MakeIndexSequence<sizeof...(
-                                Args)>::Type())) {
-                        doDispatchQueuedEvent(
-                            it->get(), typename MakeIndexSequence<sizeof...(
-                                           Args)>::Type());
+                    if (doInvokeFuncWithQueuedEvent(predictor, it->get(),
+                                                    typename MakeIndexSequence<sizeof...(Args)>::Type())) {
+                        doDispatchQueuedEvent(it->get(), typename MakeIndexSequence<sizeof...(Args)>::Type());
                         it->clear();
 
                         auto tempIt = it;
@@ -309,8 +283,7 @@ public:
 
             // Use a counter to tell the queue list is not empty during
             // processing even though queueList is swapped to empty.
-            CounterGuard<decltype(queueEmptyCounter)> counterGuard(
-                queueEmptyCounter);
+            CounterGuard<decltype(queueEmptyCounter)> counterGuard(queueEmptyCounter);
 
             {
                 std::lock_guard<Mutex> queueListLock(queueListMutex);
@@ -319,15 +292,11 @@ public:
 
             if (!tempList.empty()) {
                 for (auto it = tempList.begin(); it != tempList.end();) {
-                    if (doInvokeFuncWithQueuedEvent(
-                            predictor, it->get(),
-                            typename MakeIndexSequence<sizeof...(
-                                Args)>::Type())) {
+                    if (doInvokeFuncWithQueuedEvent(predictor, it->get(),
+                                                    typename MakeIndexSequence<sizeof...(Args)>::Type())) {
                         break;
                     } else {
-                        doDispatchQueuedEvent(
-                            it->get(), typename MakeIndexSequence<sizeof...(
-                                           Args)>::Type());
+                        doDispatchQueuedEvent(it->get(), typename MakeIndexSequence<sizeof...(Args)>::Type());
                         it->clear();
 
                         auto tempIt = it;
@@ -355,26 +324,21 @@ public:
 
     void wait() const {
         std::unique_lock<Mutex> queueListLock(queueListMutex);
-        queueListConditionVariable.wait(
-            queueListLock, [this]() -> bool { return doCanProcess(); });
+        queueListConditionVariable.wait(queueListLock, [this]() -> bool { return doCanProcess(); });
     }
 
     template <class Rep, class Period>
     bool waitFor(const std::chrono::duration<Rep, Period>& duration) const {
         std::unique_lock<Mutex> queueListLock(queueListMutex);
-        return queueListConditionVariable.wait_for(
-            queueListLock, duration,
-            [this]() -> bool { return doCanProcess(); });
+        return queueListConditionVariable.wait_for(queueListLock, duration,
+                                                   [this]() -> bool { return doCanProcess(); });
     }
 
     using super::dispatch;
 
     template <typename U>
-    auto dispatch(const U& queuedEvent) ->
-        typename std::enable_if<std::is_same<U, QueuedEvent>::value,
-                                void>::type {
-        doDispatchQueuedEvent(
-            queuedEvent, typename MakeIndexSequence<sizeof...(Args)>::Type());
+    auto dispatch(const U& queuedEvent) -> typename std::enable_if<std::is_same<U, QueuedEvent>::value, void>::type {
+        doDispatchQueuedEvent(queuedEvent, typename MakeIndexSequence<sizeof...(Args)>::Type());
     }
 
     bool peekEvent(QueuedEvent* queuedEvent) {
@@ -398,8 +362,7 @@ public:
                 std::lock_guard<Mutex> queueListLock(queueListMutex);
 
                 if (!queueList.empty()) {
-                    tempList.splice(tempList.end(), queueList,
-                                    queueList.begin());
+                    tempList.splice(tempList.end(), queueList, queueList.begin());
                 }
             }
 
@@ -432,10 +395,8 @@ protected:
     }
 
     template <typename F, typename T, size_t... Indexes>
-    bool doInvokeFuncWithQueuedEvent(F&& func, T&& item,
-                                     IndexSequence<Indexes...>) const {
-        return doInvokeFuncWithQueuedEventHelper(
-            std::forward<F>(func), std::get<Indexes>(item.arguments)...);
+    bool doInvokeFuncWithQueuedEvent(F&& func, T&& item, IndexSequence<Indexes...>) const {
+        return doInvokeFuncWithQueuedEventHelper(std::forward<F>(func), std::get<Indexes>(item.arguments)...);
     }
 
     template <typename F>
@@ -484,22 +445,18 @@ private:
 
 }  // namespace internal_
 
-template <typename Event_, typename Prototype_,
-          typename Policies_ = DefaultPolicies>
+template <typename Event_, typename Prototype_, typename Policies_ = DefaultPolicies>
 class EventQueue
     : public internal_::InheritMixins<
           internal_::EventQueueBase<Event_, Prototype_, Policies_>,
-          typename internal_::SelectMixins<
-              Policies_,
-              internal_::HasTypeMixins<Policies_>::value>::Type>::Type,
+          typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type,
       public TagEventDispatcher,
       public TagEventQueue
 {
 private:
     using super = typename internal_::InheritMixins<
         internal_::EventQueueBase<Event_, Prototype_, Policies_>,
-        typename internal_::SelectMixins<
-            Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type;
+        typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type;
 
 public:
     using super::super;

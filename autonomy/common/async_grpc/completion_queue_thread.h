@@ -30,11 +30,9 @@ namespace async_grpc {
 class CompletionQueueThread
 {
 public:
-    using CompletionQueueRunner =
-        std::function<void(::grpc::ServerCompletionQueue*)>;
+    using CompletionQueueRunner = std::function<void(::grpc::ServerCompletionQueue*)>;
 
-    explicit CompletionQueueThread(
-        std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue);
+    explicit CompletionQueueThread(std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue);
 
     ::grpc::ServerCompletionQueue* completion_queue();
 

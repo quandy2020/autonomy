@@ -55,37 +55,25 @@ public:
      * @param action_name Action name this node creates a client for
      * @param conf BT node configuration
      */
-    BtActionNode(const std::string& xml_tag_name,
-                 const std::string& action_name,
-                 const BT::NodeConfiguration& conf)
-        : BT::ActionNodeBase(xml_tag_name, conf),
-          action_name_(action_name),
-          should_send_goal_(true) {
-        node_ =
-            config().blackboard->template get<std::shared_ptr<autolink::Node>>(
-                "node");
+    BtActionNode(const std::string& xml_tag_name, const std::string& action_name, const BT::NodeConfiguration& conf)
+        : BT::ActionNodeBase(xml_tag_name, conf), action_name_(action_name), should_send_goal_(true) {
+        node_ = config().blackboard->template get<std::shared_ptr<autolink::Node>>("node");
 
         // Get the required items from the blackboard
-        auto bt_loop_duration =
-            config().blackboard->template get<std::chrono::milliseconds>(
-                "bt_loop_duration");
-        if (!GetInputPortOrBlackboard(*this, *config().blackboard,
-                                      "server_timeout", server_timeout_)) {
+        auto bt_loop_duration = config().blackboard->template get<std::chrono::milliseconds>("bt_loop_duration");
+        if (!GetInputPortOrBlackboard(*this, *config().blackboard, "server_timeout", server_timeout_)) {
             server_timeout_ = std::chrono::milliseconds(10);  // Default timeout
         }
         wait_for_service_timeout_ =
-            config().blackboard->template get<std::chrono::milliseconds>(
-                "wait_for_service_timeout");
+            config().blackboard->template get<std::chrono::milliseconds>("wait_for_service_timeout");
 
         // timeout should be less than bt_loop_duration to be able to finish the
         // current tick
-        max_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(
-            bt_loop_duration * 0.5);
+        max_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(bt_loop_duration * 0.5);
 
         // Initialize the input and output messages
         goal_ = typename ActionT::Goal();
-        result_ = typename autolink::action::ClientGoalHandle<
-            ActionT>::WrappedResult();
+        result_ = typename autolink::action::ClientGoalHandle<ActionT>::WrappedResult();
 
         std::string remapped_action_name;
         if (getInput("server_name", remapped_action_name)) {
@@ -108,25 +96,20 @@ public:
     void createActionClient(const std::string& action_name) {
         // Now that we have the autolink node to use, create the action client
         // for this BT action
-        action_client_ =
-            autolink::action::CreateClient<ActionT>(node_, action_name);
+        action_client_ = autolink::action::CreateClient<ActionT>(node_, action_name);
 
         // Make sure the server is actually there before continuing
         ADEBUG << "Waiting for \"" << action_name << "\" action server";
         int wait_count = 0;
-        int max_wait = wait_for_service_timeout_.count() /
-                       100;  // Convert ms to count (assuming 100ms intervals)
-        while (!action_client_->ActionServerIsReady() &&
-               wait_count < max_wait) {
+        int max_wait = wait_for_service_timeout_.count() / 100;  // Convert ms to count (assuming 100ms intervals)
+        while (!action_client_->ActionServerIsReady() && wait_count < max_wait) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             wait_count++;
         }
         if (!action_client_->ActionServerIsReady()) {
-            AERROR << "\"" << action_name
-                   << "\" action server not available after waiting for "
+            AERROR << "\"" << action_name << "\" action server not available after waiting for "
                    << wait_for_service_timeout_.count() / 1000.0 << "s";
-            throw std::runtime_error(std::string("Action server ") +
-                                     action_name + " not available");
+            throw std::runtime_error(std::string("Action server ") + action_name + " not available");
         }
     }
 
@@ -138,9 +121,8 @@ public:
      * ports
      */
     static BT::PortsList providedBasicPorts(BT::PortsList addition) {
-        BT::PortsList basic = {
-            BT::InputPort<std::string>("server_name", "Action server name"),
-            BT::InputPort<std::chrono::milliseconds>("server_timeout")};
+        BT::PortsList basic = {BT::InputPort<std::string>("server_name", "Action server name"),
+                               BT::InputPort<std::chrono::milliseconds>("server_timeout")};
         basic.insert(addition.begin(), addition.end());
         return basic;
     }
@@ -174,8 +156,7 @@ public:
      * @param feedback shared_ptr to latest feedback message, nullptr if no new
      * feedback was received
      */
-    virtual void on_wait_for_result(
-        std::shared_ptr<const typename ActionT::Feedback> /*feedback*/) {}
+    virtual void on_wait_for_result(std::shared_ptr<const typename ActionT::Feedback> /*feedback*/) {}
 
     /**
      * @brief Function to perform some user-defined operation upon successful
@@ -230,8 +211,7 @@ public:
             // Clear the input and output messages to make sure we have no
             // leftover from previous calls
             goal_ = typename ActionT::Goal();
-            result_ = typename autolink::action::ClientGoalHandle<
-                ActionT>::WrappedResult();
+            result_ = typename autolink::action::ClientGoalHandle<ActionT>::WrappedResult();
 
             // user defined callback, may modify "should_send_goal_".
             on_tick();
@@ -250,11 +230,9 @@ public:
             // check the future goal handle
             if (future_goal_handle_) {
                 auto now = autolink::Clock::Now();
-                auto elapsed_ns =
-                    now.ToNanosecond() - time_goal_sent_.ToNanosecond();
+                auto elapsed_ns = now.ToNanosecond() - time_goal_sent_.ToNanosecond();
                 auto elapsed =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::nanoseconds(elapsed_ns));
+                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds(elapsed_ns));
                 if (!is_future_goal_handle_complete(elapsed)) {
                     // return RUNNING if there is still some time before timeout
                     // happens
@@ -263,10 +241,9 @@ public:
                     }
                     // if server has taken more time than the specified timeout
                     // value return FAILURE
-                    LOG(WARNING)
-                        << "Timed out while waiting for action server to "
-                           "acknowledge goal request for "
-                        << action_name_;
+                    LOG(WARNING) << "Timed out while waiting for action server to "
+                                    "acknowledge goal request for "
+                                 << action_name_;
                     future_goal_handle_.reset();
                     on_timeout();
                     return BT::NodeStatus::FAILURE;
@@ -283,22 +260,15 @@ public:
                 feedback_.reset();
 
                 if (goal_handle_) {
-                    auto goal_status =
-                        static_cast<autolink::action::GoalStatus>(
-                            goal_handle_->GetStatus());
-                    if (goal_updated_ &&
-                        (goal_status ==
-                             autolink::action::GoalStatus::EXECUTING ||
-                         goal_status ==
-                             autolink::action::GoalStatus::ACCEPTED)) {
+                    auto goal_status = static_cast<autolink::action::GoalStatus>(goal_handle_->GetStatus());
+                    if (goal_updated_ && (goal_status == autolink::action::GoalStatus::EXECUTING ||
+                                          goal_status == autolink::action::GoalStatus::ACCEPTED)) {
                         goal_updated_ = false;
                         send_new_goal();
                         auto now = autolink::Clock::Now();
-                        auto elapsed_ns =
-                            now.ToNanosecond() - time_goal_sent_.ToNanosecond();
-                        auto elapsed = std::chrono::duration_cast<
-                            std::chrono::milliseconds>(
-                            std::chrono::nanoseconds(elapsed_ns));
+                        auto elapsed_ns = now.ToNanosecond() - time_goal_sent_.ToNanosecond();
+                        auto elapsed =
+                            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds(elapsed_ns));
                         if (!is_future_goal_handle_complete(elapsed)) {
                             if (elapsed < server_timeout_) {
                                 return BT::NodeStatus::RUNNING;
@@ -322,8 +292,7 @@ public:
             }
         } catch (const std::runtime_error& e) {
             if (e.what() == std::string("send_goal failed") ||
-                e.what() ==
-                    std::string("Goal was rejected by the action server")) {
+                e.what() == std::string("Goal was rejected by the action server")) {
                 // Action related failure that should not fail the tree, but the
                 // node
                 return BT::NodeStatus::FAILURE;
@@ -348,8 +317,7 @@ public:
                 break;
 
             default:
-                throw std::logic_error(
-                    "BtActionNode::Tick: invalid status value");
+                throw std::logic_error("BtActionNode::Tick: invalid status value");
         }
 
         goal_handle_.reset();
@@ -372,8 +340,7 @@ public:
             }
             auto result_status = future_result.wait_for(server_timeout_);
             if (result_status != std::future_status::ready) {
-                AERROR << "Failed to get result for " << action_name_
-                       << " in node halt!";
+                AERROR << "Failed to get result for " << action_name_ << " in node halt!";
             } else {
                 ADEBUG << "Got result for " << action_name_ << " in node halt!";
             }
@@ -398,8 +365,7 @@ protected:
             return false;
         }
 
-        auto goal_status = static_cast<autolink::action::GoalStatus>(
-            goal_handle_->GetStatus());
+        auto goal_status = static_cast<autolink::action::GoalStatus>(goal_handle_->GetStatus());
 
         // Check if the goal is still executing
         return goal_status == autolink::action::GoalStatus::ACCEPTED ||
@@ -411,45 +377,37 @@ protected:
      */
     void send_new_goal() {
         goal_result_available_ = false;
-        typename autolink::action::Client<ActionT>::SendGoalOptions
-            send_goal_options;
-        send_goal_options
-            .result_callback = [this](
-                                   const typename autolink::action::
-                                       ClientGoalHandle<ActionT>::WrappedResult&
-                                           result) {
-            if (future_goal_handle_ && future_goal_handle_->valid()) {
-                ADEBUG
-                    << "Goal result for " << action_name_
-                    << " available, but it hasn't received the goal response "
-                       "yet. "
-                    << "It's probably a goal result for the last goal request";
-                return;
-            }
+        typename autolink::action::Client<ActionT>::SendGoalOptions send_goal_options;
+        send_goal_options.result_callback =
+            [this](const typename autolink::action::ClientGoalHandle<ActionT>::WrappedResult& result) {
+                if (future_goal_handle_ && future_goal_handle_->valid()) {
+                    ADEBUG << "Goal result for " << action_name_
+                           << " available, but it hasn't received the goal response "
+                              "yet. "
+                           << "It's probably a goal result for the last goal request";
+                    return;
+                }
 
-            // if goal ids are not matched, the older goal call this callback so
-            // ignore the result if matched, it must be processed (including
-            // aborted)
-            if (this->goal_handle_ &&
-                this->goal_handle_->GetGoalId() == result.goal_id) {
-                goal_result_available_ = true;
-                result_.goal_id = result.goal_id;
-                result_.code = result.code;
-                result_.result = result.result;
-                emitWakeUpSignal();
-            }
-        };
-        send_goal_options.feedback_callback =
-            [this](std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>>,
-                   const std::shared_ptr<const typename ActionT::Feedback>
-                       feedback) {
-                feedback_ = feedback;
-                emitWakeUpSignal();
+                // if goal ids are not matched, the older goal call this callback so
+                // ignore the result if matched, it must be processed (including
+                // aborted)
+                if (this->goal_handle_ && this->goal_handle_->GetGoalId() == result.goal_id) {
+                    goal_result_available_ = true;
+                    result_.goal_id = result.goal_id;
+                    result_.code = result.code;
+                    result_.result = result.result;
+                    emitWakeUpSignal();
+                }
             };
+        send_goal_options.feedback_callback = [this](std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>>,
+                                                     const std::shared_ptr<const typename ActionT::Feedback> feedback) {
+            feedback_ = feedback;
+            emitWakeUpSignal();
+        };
 
-        future_goal_handle_ = std::make_shared<std::shared_future<
-            std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>>>>(
-            action_client_->AsyncSendGoal(goal_, send_goal_options));
+        future_goal_handle_ =
+            std::make_shared<std::shared_future<std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>>>>(
+                action_client_->AsyncSendGoal(goal_, send_goal_options));
         time_goal_sent_ = autolink::Clock::Now();
     }
 
@@ -487,8 +445,7 @@ protected:
             goal_handle_ = future_goal_handle_->get();
             future_goal_handle_.reset();
             if (!goal_handle_) {
-                throw std::runtime_error(
-                    "Goal was rejected by the action server");
+                throw std::runtime_error("Goal was rejected by the action server");
             }
             return true;
         }
@@ -502,8 +459,7 @@ protected:
      */
     void increment_recovery_count() {
         int recovery_count = 0;
-        [[maybe_unused]] auto res = config().blackboard->get(
-            "number_recoveries", recovery_count);  // NOLINT
+        [[maybe_unused]] auto res = config().blackboard->get("number_recoveries", recovery_count);  // NOLINT
         recovery_count += 1;
         config().blackboard->set("number_recoveries",
                                  recovery_count);  // NOLINT
@@ -536,8 +492,7 @@ protected:
     std::chrono::milliseconds wait_for_service_timeout_;
 
     // To track the action server acknowledgement when a new goal is sent
-    std::shared_ptr<std::shared_future<
-        std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>>>>
+    std::shared_ptr<std::shared_future<std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>>>>
         future_goal_handle_;
     autolink::Time time_goal_sent_;
 

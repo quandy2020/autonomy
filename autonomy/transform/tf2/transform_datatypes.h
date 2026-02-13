@@ -51,16 +51,16 @@ public:
 
     /** Default constructor */
     Stamped()
-        : frame_id_("NO_ID_STAMPED_DEFAULT_CONSTRUCTION") {
-          };  // Default constructor used only for preallocation
+        : frame_id_("NO_ID_STAMPED_DEFAULT_CONSTRUCTION"){};  // Default constructor
+                                                              // used only for
+                                                              // preallocation
 
     /** Full constructor */
     Stamped(const T& input, const Time& timestamp, const std::string& frame_id)
-        : T(input), stamp_(timestamp), frame_id_(frame_id) {};
+        : T(input), stamp_(timestamp), frame_id_(frame_id){};
 
     /** Copy Constructor */
-    Stamped(const Stamped<T>& s)
-        : T(s), stamp_(s.stamp_), frame_id_(s.frame_id_) {}
+    Stamped(const Stamped<T>& s) : T(s), stamp_(s.stamp_), frame_id_(s.frame_id_) {}
 
     /** Set the data element */
     void setData(const T& input) {
@@ -71,8 +71,7 @@ public:
 /** \brief Comparison Operator for Stamped datatypes */
 template <typename T>
 bool operator==(const Stamped<T>& a, const Stamped<T>& b) {
-    return a.frame_id_ == b.frame_id_ && a.stamp_ == b.stamp_ &&
-           static_cast<const T&>(a) == static_cast<const T&>(b);
+    return a.frame_id_ == b.frame_id_ && a.stamp_ == b.stamp_ && static_cast<const T&>(a) == static_cast<const T&>(b);
 };
 
 }  // namespace tf2

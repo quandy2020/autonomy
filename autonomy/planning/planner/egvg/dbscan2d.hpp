@@ -36,10 +36,7 @@ class DBScan2D
 {
 public:
     DBScan2D(const std::vector<Point>& points, float eps, int minPts)
-        : points_(points),
-          eps_(eps),
-          minPts_(minPts),
-          labels_(points.size(), UNCLASSIFIED) {}
+        : points_(points), eps_(eps), minPts_(minPts), labels_(points.size(), UNCLASSIFIED) {}
 
     // 运行聚类，返回聚类总数
     int run(std::vector<std::vector<int>>& clusters);

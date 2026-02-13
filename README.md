@@ -42,7 +42,7 @@
 
 ## :house_with_garden: Usage
 
-**<font color='green'>Online Documentation Reference</font>** ：[autonomy documents](https://openbot-doc.readthedocs.io/en/latest/)
+**<font color='green'>Online Documentation Reference</font>** ：[autonomy documents](https://autonomy.readthedocs.io/en/latest/index.html)
 
 ```bash
 # gitee

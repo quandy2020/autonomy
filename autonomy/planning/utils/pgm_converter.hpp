@@ -41,16 +41,14 @@ public:
     };
 
     // Loads PGM file and converts to Costmap2D. Returns nullptr on failure.
-    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(
-        const std::string& pgm_file_path, const LoadParameters& params);
+    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(const std::string& pgm_file_path,
+                                                             const LoadParameters& params);
 
     // Overload with default parameters.
-    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(
-        const std::string& pgm_file_path);
+    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(const std::string& pgm_file_path);
 
     // Loads map from YAML metadata file. Returns nullptr on failure.
-    static map::costmap_2d::Costmap2D::SharedPtr loadFromYaml(
-        const std::string& yaml_file_path);
+    static map::costmap_2d::Costmap2D::SharedPtr loadFromYaml(const std::string& yaml_file_path);
 
     struct RenderParameters {
         std::string output_format{"png"};
@@ -64,14 +62,11 @@ public:
 
     // Renders costmap with path overlay and saves as image. Returns false on
     // failure.
-    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                const commsgs::planning_msgs::Path& path,
-                                const std::string& output_file_path,
-                                const RenderParameters& params);
+    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap, const commsgs::planning_msgs::Path& path,
+                                const std::string& output_file_path, const RenderParameters& params);
 
     // Overload with default parameters.
-    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                const commsgs::planning_msgs::Path& path,
+    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap, const commsgs::planning_msgs::Path& path,
                                 const std::string& output_file_path);
 };
 

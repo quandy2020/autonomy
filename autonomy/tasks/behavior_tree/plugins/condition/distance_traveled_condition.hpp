@@ -46,8 +46,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    DistanceTraveledCondition(const std::string& condition_name,
-                              const BT::NodeConfiguration& conf);
+    DistanceTraveledCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     DistanceTraveledCondition() = delete;
 
@@ -67,10 +66,9 @@ public:
      * @return BT::PortsList Containing node-specific ports
      */
     static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<double>("distance", 1.0, "Distance"),
-            BT::InputPort<std::string>("global_frame", "Global frame"),
-            BT::InputPort<std::string>("robot_base_frame", "Robot base frame")};
+        return {BT::InputPort<double>("distance", 1.0, "Distance"),
+                BT::InputPort<std::string>("global_frame", "Global frame"),
+                BT::InputPort<std::string>("robot_base_frame", "Robot base frame")};
     }
 
 private:

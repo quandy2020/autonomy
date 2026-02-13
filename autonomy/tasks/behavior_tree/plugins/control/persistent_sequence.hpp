@@ -46,16 +46,14 @@ namespace control {
 class PersistentSequenceNode : public BT::ControlNode
 {
 public:
-    PersistentSequenceNode(const std::string& name,
-                           const BT::NodeConfiguration& conf);
+    PersistentSequenceNode(const std::string& name, const BT::NodeConfiguration& conf);
 
     ~PersistentSequenceNode() override = default;
 
     //! @brief Declare ports
     static BT::PortsList providedPorts() {
         return {
-            BT::BidirectionalPort<int>("current_child_idx",
-                                       "The index of the current child"),
+            BT::BidirectionalPort<int>("current_child_idx", "The index of the current child"),
         };
     }
 

@@ -31,8 +31,7 @@ proto::RangeDataInserterOptions3D CreateRangeDataInserterOptions3D(
 class RangeDataInserter3D
 {
 public:
-    explicit RangeDataInserter3D(
-        const proto::RangeDataInserterOptions3D& options);
+    explicit RangeDataInserter3D(const proto::RangeDataInserterOptions3D& options);
 
     RangeDataInserter3D(const RangeDataInserter3D&) = delete;
     RangeDataInserter3D& operator=(const RangeDataInserter3D&) = delete;

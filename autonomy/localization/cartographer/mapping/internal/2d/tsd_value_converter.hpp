@@ -33,14 +33,11 @@ namespace mapping {
 class TSDValueConverter
 {
 public:
-    TSDValueConverter(float max_tsd, float max_weight,
-                      ValueConversionTables* conversion_tables);
+    TSDValueConverter(float max_tsd, float max_weight, ValueConversionTables* conversion_tables);
 
     // Converts a tsd to a uint16 in the [1, 32767] range.
     inline uint16 TSDToValue(const float tsd) const {
-        const int value =
-            common::RoundToInt((ClampTSD(tsd) - min_tsd_) * tsd_resolution_) +
-            1;
+        const int value = common::RoundToInt((ClampTSD(tsd) - min_tsd_) * tsd_resolution_) + 1;
         DCHECK_GE(value, 1);
         DCHECK_LE(value, 32767);
         return value;
@@ -48,10 +45,7 @@ public:
 
     // Converts a weight to a uint16 in the [1, 32767] range.
     inline uint16 WeightToValue(const float weight) const {
-        const int value =
-            common::RoundToInt((ClampWeight(weight) - min_weight_) *
-                               weight_resolution_) +
-            1;
+        const int value = common::RoundToInt((ClampWeight(weight) - min_weight_) * weight_resolution_) + 1;
         DCHECK_GE(value, 1);
         DCHECK_LE(value, 32767);
         return value;

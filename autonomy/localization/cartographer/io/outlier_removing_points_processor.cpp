@@ -23,10 +23,8 @@
 namespace cartographer {
 namespace io {
 
-std::unique_ptr<OutlierRemovingPointsProcessor>
-OutlierRemovingPointsProcessor::FromDictionary(
-    common::LuaParameterDictionary* const dictionary,
-    PointsProcessor* const next) {
+std::unique_ptr<OutlierRemovingPointsProcessor> OutlierRemovingPointsProcessor::FromDictionary(
+    common::LuaParameterDictionary* const dictionary, PointsProcessor* const next) {
     const double miss_per_hit_limit = [&]() {
         if (!dictionary->HasKey("miss_per_hit_limit")) {
             LOG(INFO) << "Using default value of 3 for miss_per_hit_limit.";
@@ -35,13 +33,12 @@ OutlierRemovingPointsProcessor::FromDictionary(
             return dictionary->GetDouble("miss_per_hit_limit");
         }
     }();
-    return absl::make_unique<OutlierRemovingPointsProcessor>(
-        dictionary->GetDouble("voxel_size"), miss_per_hit_limit, next);
+    return absl::make_unique<OutlierRemovingPointsProcessor>(dictionary->GetDouble("voxel_size"), miss_per_hit_limit,
+                                                             next);
 }
 
-OutlierRemovingPointsProcessor::OutlierRemovingPointsProcessor(
-    const double voxel_size, const double miss_per_hit_limit,
-    PointsProcessor* next)
+OutlierRemovingPointsProcessor::OutlierRemovingPointsProcessor(const double voxel_size, const double miss_per_hit_limit,
+                                                               PointsProcessor* next)
     : voxel_size_(voxel_size),
       miss_per_hit_limit_(miss_per_hit_limit),
       next_(next),
@@ -50,8 +47,7 @@ OutlierRemovingPointsProcessor::OutlierRemovingPointsProcessor(
     LOG(INFO) << "Marking hits...";
 }
 
-void OutlierRemovingPointsProcessor::Process(
-    std::unique_ptr<PointsBatch> batch) {
+void OutlierRemovingPointsProcessor::Process(std::unique_ptr<PointsBatch> batch) {
     switch (state_) {
         case State::kPhase1:
             ProcessInPhaseOne(*batch);
@@ -89,16 +85,13 @@ PointsProcessor::FlushResult OutlierRemovingPointsProcessor::Flush() {
     LOG(FATAL);
 }
 
-void OutlierRemovingPointsProcessor::ProcessInPhaseOne(
-    const PointsBatch& batch) {
+void OutlierRemovingPointsProcessor::ProcessInPhaseOne(const PointsBatch& batch) {
     for (size_t i = 0; i < batch.points.size(); ++i) {
-        ++voxels_.mutable_value(voxels_.GetCellIndex(batch.points[i].position))
-              ->hits;
+        ++voxels_.mutable_value(voxels_.GetCellIndex(batch.points[i].position))->hits;
     }
 }
 
-void OutlierRemovingPointsProcessor::ProcessInPhaseTwo(
-    const PointsBatch& batch) {
+void OutlierRemovingPointsProcessor::ProcessInPhaseTwo(const PointsBatch& batch) {
     // TODO(whess): This samples every 'voxel_size' distance and could be
     // improved by better ray casting, and also by marking the hits of the
     // current range data to be excluded.
@@ -106,8 +99,7 @@ void OutlierRemovingPointsProcessor::ProcessInPhaseTwo(
         const Eigen::Vector3f delta = batch.points[i].position - batch.origin;
         const float length = delta.norm();
         for (float x = 0; x < length; x += voxel_size_) {
-            const Eigen::Array3i index =
-                voxels_.GetCellIndex(batch.origin + (x / length) * delta);
+            const Eigen::Array3i index = voxels_.GetCellIndex(batch.origin + (x / length) * delta);
             if (voxels_.value(index).hits > 0) {
                 ++voxels_.mutable_value(index)->rays;
             }
@@ -115,12 +107,10 @@ void OutlierRemovingPointsProcessor::ProcessInPhaseTwo(
     }
 }
 
-void OutlierRemovingPointsProcessor::ProcessInPhaseThree(
-    std::unique_ptr<PointsBatch> batch) {
+void OutlierRemovingPointsProcessor::ProcessInPhaseThree(std::unique_ptr<PointsBatch> batch) {
     absl::flat_hash_set<int> to_remove;
     for (size_t i = 0; i < batch->points.size(); ++i) {
-        const VoxelData voxel =
-            voxels_.value(voxels_.GetCellIndex(batch->points[i].position));
+        const VoxelData voxel = voxels_.value(voxels_.GetCellIndex(batch->points[i].position));
         if (!(voxel.rays < miss_per_hit_limit_ * voxel.hits)) {
             to_remove.insert(i);
         }

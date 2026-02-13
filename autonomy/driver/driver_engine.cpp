@@ -73,24 +73,18 @@ bool DriverEngine::Initialize(const proto::DriverOptions& options) {
                         sensor_type = "multi_echo_laser_scan";
                         break;
                     default:
-                        AWARN << "Unknown lidar type for sensor: "
-                              << lidar.sensor_id();
+                        AWARN << "Unknown lidar type for sensor: " << lidar.sensor_id();
                         continue;
                 }
-                if (!SubscribeSensor(lidar.sensor_id(), lidar.topic(),
-                                     sensor_type)) {
-                    AERROR << "Failed to subscribe lidar: "
-                           << lidar.sensor_id();
+                if (!SubscribeSensor(lidar.sensor_id(), lidar.topic(), sensor_type)) {
+                    AERROR << "Failed to subscribe lidar: " << lidar.sensor_id();
                     return false;
                 }
-                sensor_data_sources_[lidar.sensor_id()] =
-                    SensorDataSource::ROS2;
+                sensor_data_sources_[lidar.sensor_id()] = SensorDataSource::ROS2;
             } else {
                 // Driver 模式：需要外部注册硬件驱动
-                sensor_data_sources_[lidar.sensor_id()] =
-                    SensorDataSource::DRIVER;
-                AINFO << "Lidar " << lidar.sensor_id()
-                      << " configured for hardware driver mode";
+                sensor_data_sources_[lidar.sensor_id()] = SensorDataSource::DRIVER;
+                AINFO << "Lidar " << lidar.sensor_id() << " configured for hardware driver mode";
             }
         }
     }
@@ -107,10 +101,8 @@ bool DriverEngine::Initialize(const proto::DriverOptions& options) {
                 sensor_data_sources_[imu.sensor_id()] = SensorDataSource::ROS2;
             } else {
                 // Driver 模式
-                sensor_data_sources_[imu.sensor_id()] =
-                    SensorDataSource::DRIVER;
-                AINFO << "IMU " << imu.sensor_id()
-                      << " configured for hardware driver mode";
+                sensor_data_sources_[imu.sensor_id()] = SensorDataSource::DRIVER;
+                AINFO << "IMU " << imu.sensor_id() << " configured for hardware driver mode";
             }
         }
     }
@@ -120,20 +112,15 @@ bool DriverEngine::Initialize(const proto::DriverOptions& options) {
         if (camera.enabled()) {
             if (!camera.image_topic().empty()) {
                 // ROS2 模式
-                if (!SubscribeSensor(camera.sensor_id(), camera.image_topic(),
-                                     "image")) {
-                    AERROR << "Failed to subscribe camera: "
-                           << camera.sensor_id();
+                if (!SubscribeSensor(camera.sensor_id(), camera.image_topic(), "image")) {
+                    AERROR << "Failed to subscribe camera: " << camera.sensor_id();
                     return false;
                 }
-                sensor_data_sources_[camera.sensor_id()] =
-                    SensorDataSource::ROS2;
+                sensor_data_sources_[camera.sensor_id()] = SensorDataSource::ROS2;
             } else {
                 // Driver 模式
-                sensor_data_sources_[camera.sensor_id()] =
-                    SensorDataSource::DRIVER;
-                AINFO << "Camera " << camera.sensor_id()
-                      << " configured for hardware driver mode";
+                sensor_data_sources_[camera.sensor_id()] = SensorDataSource::DRIVER;
+                AINFO << "Camera " << camera.sensor_id() << " configured for hardware driver mode";
             }
         }
     }
@@ -143,20 +130,15 @@ bool DriverEngine::Initialize(const proto::DriverOptions& options) {
         if (range.enabled()) {
             if (!range.topic().empty()) {
                 // ROS2 模式
-                if (!SubscribeSensor(range.sensor_id(), range.topic(),
-                                     "range")) {
-                    AERROR << "Failed to subscribe range sensor: "
-                           << range.sensor_id();
+                if (!SubscribeSensor(range.sensor_id(), range.topic(), "range")) {
+                    AERROR << "Failed to subscribe range sensor: " << range.sensor_id();
                     return false;
                 }
-                sensor_data_sources_[range.sensor_id()] =
-                    SensorDataSource::ROS2;
+                sensor_data_sources_[range.sensor_id()] = SensorDataSource::ROS2;
             } else {
                 // Driver 模式
-                sensor_data_sources_[range.sensor_id()] =
-                    SensorDataSource::DRIVER;
-                AINFO << "Range sensor " << range.sensor_id()
-                      << " configured for hardware driver mode";
+                sensor_data_sources_[range.sensor_id()] = SensorDataSource::DRIVER;
+                AINFO << "Range sensor " << range.sensor_id() << " configured for hardware driver mode";
             }
         }
     }
@@ -166,24 +148,20 @@ bool DriverEngine::Initialize(const proto::DriverOptions& options) {
         if (gps.enabled()) {
             if (!gps.topic().empty()) {
                 // TODO: 需要定义 NavSatFix 消息类型后实现
-                AWARN << "GPS sensor ROS2 subscription not yet implemented: "
-                      << gps.sensor_id();
+                AWARN << "GPS sensor ROS2 subscription not yet implemented: " << gps.sensor_id();
                 sensor_data_sources_[gps.sensor_id()] = SensorDataSource::ROS2;
             } else {
                 // Driver 模式
-                sensor_data_sources_[gps.sensor_id()] =
-                    SensorDataSource::DRIVER;
-                AINFO << "GPS sensor " << gps.sensor_id()
-                      << " configured for hardware driver mode";
+                sensor_data_sources_[gps.sensor_id()] = SensorDataSource::DRIVER;
+                AINFO << "GPS sensor " << gps.sensor_id() << " configured for hardware driver mode";
             }
         }
     }
 
     initialized_ = true;
-    AINFO << "DriverEngine initialized with " << options.lidars_size()
-          << " lidars, " << options.imus_size() << " IMUs, "
-          << options.cameras_size() << " cameras, " << options.ranges_size()
-          << " range sensors, " << options.gps_sensors_size() << " GPS sensors";
+    AINFO << "DriverEngine initialized with " << options.lidars_size() << " lidars, " << options.imus_size()
+          << " IMUs, " << options.cameras_size() << " cameras, " << options.ranges_size() << " range sensors, "
+          << options.gps_sensors_size() << " GPS sensors";
     return true;
 }
 
@@ -234,8 +212,7 @@ void DriverEngine::Stop() {
     AINFO << "DriverEngine stopped";
 }
 
-bool DriverEngine::RegisterSensorHandler(const std::string& sensor_id,
-                                         SensorDataHandler handler) {
+bool DriverEngine::RegisterSensorHandler(const std::string& sensor_id, SensorDataHandler handler) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (sensor_id.empty()) {
@@ -263,8 +240,7 @@ void DriverEngine::UnregisterSensorHandler(const std::string& sensor_id) {
     }
 }
 
-bool DriverEngine::SubscribeSensor(const std::string& sensor_id,
-                                   const std::string& topic,
+bool DriverEngine::SubscribeSensor(const std::string& sensor_id, const std::string& topic,
                                    const std::string& sensor_type) {
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -291,116 +267,89 @@ bool DriverEngine::SubscribeSensor(const std::string& sensor_id,
 
     // 根据传感器类型创建订阅器
     if (sensor_type == "laser_scan" || sensor_type == "LaserScan") {
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::LaserScan>(
-            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::LaserScan>(
-                       callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::LaserScan>(callback));
         if (reader == nullptr) {
             AERROR << "Failed to create LaserScan reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
     } else if (sensor_type == "point_cloud2" || sensor_type == "PointCloud2") {
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::PointCloud2>(
-            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::PointCloud2>(
-                       callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::PointCloud2>(callback));
         if (reader == nullptr) {
-            AERROR << "Failed to create PointCloud2 reader for topic: "
-                   << topic;
+            AERROR << "Failed to create PointCloud2 reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
     } else if (sensor_type == "point_cloud" || sensor_type == "PointCloud") {
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::PointCloud>(
-            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::PointCloud>(
-                       callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::PointCloud>(callback));
         if (reader == nullptr) {
             AERROR << "Failed to create PointCloud reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
-    } else if (sensor_type == "multi_echo_laser_scan" ||
-               sensor_type == "MultiEchoLaserScan") {
+    } else if (sensor_type == "multi_echo_laser_scan" || sensor_type == "MultiEchoLaserScan") {
         // MultiEchoLaserScan 使用与 LaserScan 相同的处理方式
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::LaserScan>(
-            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::LaserScan>(
-                       callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::LaserScan>(callback));
         if (reader == nullptr) {
-            AERROR << "Failed to create MultiEchoLaserScan reader for topic: "
-                   << topic;
+            AERROR << "Failed to create MultiEchoLaserScan reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
     } else if (sensor_type == "imu" || sensor_type == "Imu") {
-        auto callback =
-            [this,
-             sensor_id](const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::Imu>(
-            topic,
-            ::autolink::CallbackFunc<commsgs::sensor_msgs::Imu>(callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::Imu>(callback));
         if (reader == nullptr) {
             AERROR << "Failed to create Imu reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
     } else if (sensor_type == "odometry" || sensor_type == "Odometry") {
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::planning_msgs::Odometry>(
-            topic, ::autolink::CallbackFunc<commsgs::planning_msgs::Odometry>(
-                       callback));
+            topic, ::autolink::CallbackFunc<commsgs::planning_msgs::Odometry>(callback));
         if (reader == nullptr) {
             AERROR << "Failed to create Odometry reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
     } else if (sensor_type == "image" || sensor_type == "Image") {
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::sensor_msgs::Image>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::Image>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::Image>(
-            topic,
-            ::autolink::CallbackFunc<commsgs::sensor_msgs::Image>(callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::Image>(callback));
         if (reader == nullptr) {
             AERROR << "Failed to create Image reader for topic: " << topic;
             return false;
         }
         subscription.reader = std::static_pointer_cast<void>(reader);
     } else if (sensor_type == "range" || sensor_type == "Range") {
-        auto callback =
-            [this, sensor_id](
-                const std::shared_ptr<commsgs::sensor_msgs::Range>& msg) {
-                this->AddSensorData(sensor_id, msg);
-            };
+        auto callback = [this, sensor_id](const std::shared_ptr<commsgs::sensor_msgs::Range>& msg) {
+            this->AddSensorData(sensor_id, msg);
+        };
         auto reader = node_->CreateReader<commsgs::sensor_msgs::Range>(
-            topic,
-            ::autolink::CallbackFunc<commsgs::sensor_msgs::Range>(callback));
+            topic, ::autolink::CallbackFunc<commsgs::sensor_msgs::Range>(callback));
         if (reader == nullptr) {
             AERROR << "Failed to create Range reader for topic: " << topic;
             return false;
@@ -417,8 +366,7 @@ bool DriverEngine::SubscribeSensor(const std::string& sensor_id,
     }
 
     sensor_subscriptions_[sensor_id] = subscription;
-    AINFO << "Subscribed to sensor: " << sensor_id << " on topic: " << topic
-          << " with type: " << sensor_type;
+    AINFO << "Subscribed to sensor: " << sensor_id << " on topic: " << topic << " with type: " << sensor_type;
     return true;
 }
 
@@ -439,9 +387,8 @@ void DriverEngine::UnsubscribeAllSensors() {
     AINFO << "Unsubscribed from all sensors";
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message) {
     if (message == nullptr) {
         AERROR << "Received null LaserScan message for sensor: " << sensor_id;
         return;
@@ -451,8 +398,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -460,32 +406,25 @@ void DriverEngine::AddSensorData(
         }
     }
 
-    ADEBUG << "Received LaserScan from sensor: " << sensor_id << " with "
-           << message->ranges.size() << " ranges";
+    ADEBUG << "Received LaserScan from sensor: " << sensor_id << " with " << message->ranges.size() << " ranges";
 
     // 将 LaserScan 转换为 sensor::Data 并转发
     class LaserScanData : public sensor::Data
     {
     public:
-        LaserScanData(
-            const std::string& sensor_id,
-            const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg)
+        LaserScanData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
             // TODO: 实现添加到 costmap 的逻辑
         }
-        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& GetMessage()
-            const {
+        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& GetMessage() const {
             return message_;
         }
 
@@ -497,9 +436,8 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message) {
     if (message == nullptr) {
         AERROR << "Received null PointCloud2 message for sensor: " << sensor_id;
         return;
@@ -509,8 +447,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -518,33 +455,26 @@ void DriverEngine::AddSensorData(
         }
     }
 
-    ADEBUG << "Received PointCloud2 from sensor: " << sensor_id
-           << " with width: " << message->width
+    ADEBUG << "Received PointCloud2 from sensor: " << sensor_id << " with width: " << message->width
            << ", height: " << message->height;
 
     // 将 PointCloud2 转换为 sensor::Data 并转发
     class PointCloud2Data : public sensor::Data
     {
     public:
-        PointCloud2Data(
-            const std::string& sensor_id,
-            const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg)
+        PointCloud2Data(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
             // TODO: 实现添加到 costmap 的逻辑
         }
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& GetMessage()
-            const {
+        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& GetMessage() const {
             return message_;
         }
 
@@ -556,9 +486,8 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message) {
     if (message == nullptr) {
         AERROR << "Received null PointCloud message for sensor: " << sensor_id;
         return;
@@ -568,8 +497,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -577,32 +505,25 @@ void DriverEngine::AddSensorData(
         }
     }
 
-    ADEBUG << "Received PointCloud from sensor: " << sensor_id << " with "
-           << message->points.size() << " points";
+    ADEBUG << "Received PointCloud from sensor: " << sensor_id << " with " << message->points.size() << " points";
 
     // 将 PointCloud 转换为 sensor::Data 并转发
     class PointCloudData : public sensor::Data
     {
     public:
-        PointCloudData(
-            const std::string& sensor_id,
-            const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& msg)
+        PointCloudData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
             // TODO: 实现添加到 costmap 的逻辑
         }
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& GetMessage()
-            const {
+        const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& GetMessage() const {
             return message_;
         }
 
@@ -614,9 +535,8 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::Imu>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::sensor_msgs::Imu>& message) {
     if (message == nullptr) {
         AERROR << "Received null Imu message for sensor: " << sensor_id;
         return;
@@ -626,8 +546,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -641,17 +560,13 @@ void DriverEngine::AddSensorData(
     class ImuData : public sensor::Data
     {
     public:
-        ImuData(const std::string& sensor_id,
-                const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg)
+        ImuData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
@@ -669,9 +584,8 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::planning_msgs::Odometry>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::planning_msgs::Odometry>& message) {
     if (message == nullptr) {
         AERROR << "Received null Odometry message for sensor: " << sensor_id;
         return;
@@ -681,8 +595,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -696,25 +609,19 @@ void DriverEngine::AddSensorData(
     class OdometryData : public sensor::Data
     {
     public:
-        OdometryData(
-            const std::string& sensor_id,
-            const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg)
+        OdometryData(const std::string& sensor_id, const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
             // Odometry 数据通常不直接添加到 costmap
         }
-        const std::shared_ptr<commsgs::planning_msgs::Odometry>& GetMessage()
-            const {
+        const std::shared_ptr<commsgs::planning_msgs::Odometry>& GetMessage() const {
             return message_;
         }
 
@@ -726,9 +633,8 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::Image>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::sensor_msgs::Image>& message) {
     if (message == nullptr) {
         AERROR << "Received null Image message for sensor: " << sensor_id;
         return;
@@ -738,8 +644,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -747,24 +652,19 @@ void DriverEngine::AddSensorData(
         }
     }
 
-    ADEBUG << "Received Image from sensor: " << sensor_id
-           << " with size: " << message->width << "x" << message->height;
+    ADEBUG << "Received Image from sensor: " << sensor_id << " with size: " << message->width << "x" << message->height;
 
     // 将 Image 转换为 sensor::Data 并转发
     class ImageData : public sensor::Data
     {
     public:
-        ImageData(const std::string& sensor_id,
-                  const std::shared_ptr<commsgs::sensor_msgs::Image>& msg)
+        ImageData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Image>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
@@ -782,9 +682,8 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::Range>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id,
+                                 const std::shared_ptr<commsgs::sensor_msgs::Range>& message) {
     if (message == nullptr) {
         AERROR << "Received null Range message for sensor: " << sensor_id;
         return;
@@ -794,8 +693,7 @@ void DriverEngine::AddSensorData(
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto it = sensor_data_sources_.find(sensor_id);
-        if (it != sensor_data_sources_.end() &&
-            it->second == SensorDataSource::DRIVER) {
+        if (it != sensor_data_sources_.end() && it->second == SensorDataSource::DRIVER) {
             AWARN << "Sensor " << sensor_id
                   << " is configured for hardware driver mode, ignoring ROS2 "
                      "data";
@@ -803,26 +701,20 @@ void DriverEngine::AddSensorData(
         }
     }
 
-    ADEBUG << "Received Range from sensor: " << sensor_id
-           << " with range: " << message->range
-           << " m (min: " << message->min_range
-           << ", max: " << message->max_range << ")";
+    ADEBUG << "Received Range from sensor: " << sensor_id << " with range: " << message->range
+           << " m (min: " << message->min_range << ", max: " << message->max_range << ")";
 
     // 将 Range 转换为 sensor::Data 并转发
     class RangeData : public sensor::Data
     {
     public:
-        RangeData(const std::string& sensor_id,
-                  const std::shared_ptr<commsgs::sensor_msgs::Range>& msg)
+        RangeData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Range>& msg)
             : Data(sensor_id), message_(msg) {}
         autonomy::common::Time GetTime() const override {
             // 将 builtin_interfaces::Time 转换为 common::Time
-            int64_t total_ns =
-                static_cast<int64_t>(message_->header.stamp.sec) *
-                    1000000000LL +
-                static_cast<int64_t>(message_->header.stamp.nanosec);
-            return autonomy::common::FromUniversal(total_ns /
-                                                   100);  // 转换为 100ns ticks
+            int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                               static_cast<int64_t>(message_->header.stamp.nanosec);
+            return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
         }
         void AddToCostmap(map::common::MapInterface* costmap_builder) override {
             (void)costmap_builder;
@@ -840,8 +732,7 @@ void DriverEngine::AddSensorData(
     ForwardSensorData(sensor_id, sensor_data);
 }
 
-void DriverEngine::AddSensorData(const std::string& sensor_id,
-                                 const std::shared_ptr<void>& message) {
+void DriverEngine::AddSensorData(const std::string& sensor_id, const std::shared_ptr<void>& message) {
     if (message == nullptr) {
         AERROR << "Received null NavSatFix message for sensor: " << sensor_id;
         return;
@@ -863,8 +754,7 @@ std::vector<std::string> DriverEngine::GetRegisteredSensors() const {
     }
     // 收集 Driver 模式的传感器
     for (const auto& pair : hardware_drivers_) {
-        if (std::find(sensors.begin(), sensors.end(), pair.first) ==
-            sensors.end()) {
+        if (std::find(sensors.begin(), sensors.end(), pair.first) == sensors.end()) {
             sensors.push_back(pair.first);
         }
     }
@@ -874,13 +764,11 @@ std::vector<std::string> DriverEngine::GetRegisteredSensors() const {
 bool DriverEngine::IsSensorRegistered(const std::string& sensor_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
     // 检查是否在 ROS2 订阅或硬件驱动中注册
-    return sensor_subscriptions_.find(sensor_id) !=
-               sensor_subscriptions_.end() ||
+    return sensor_subscriptions_.find(sensor_id) != sensor_subscriptions_.end() ||
            hardware_drivers_.find(sensor_id) != hardware_drivers_.end();
 }
 
-bool DriverEngine::RegisterHardwareDriver(const std::string& sensor_id,
-                                          common::DriverInterface* driver) {
+bool DriverEngine::RegisterHardwareDriver(const std::string& sensor_id, common::DriverInterface* driver) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (sensor_id.empty()) {
@@ -901,11 +789,8 @@ bool DriverEngine::RegisterHardwareDriver(const std::string& sensor_id,
 
     // 检查数据源类型
     auto it = sensor_data_sources_.find(sensor_id);
-    if (it != sensor_data_sources_.end() &&
-        it->second != SensorDataSource::DRIVER) {
-        AERROR
-            << "Sensor " << sensor_id
-            << " is configured for ROS2 mode, cannot register hardware driver";
+    if (it != sensor_data_sources_.end() && it->second != SensorDataSource::DRIVER) {
+        AERROR << "Sensor " << sensor_id << " is configured for ROS2 mode, cannot register hardware driver";
         return false;
     }
 
@@ -914,13 +799,11 @@ bool DriverEngine::RegisterHardwareDriver(const std::string& sensor_id,
     sensor_data_sources_[sensor_id] = SensorDataSource::DRIVER;
 
     // 注册数据处理器，将驱动数据转发到 ForwardSensorData
-    auto handler = [this](const std::string& id,
-                          const std::shared_ptr<sensor::Data>& data) {
+    auto handler = [this](const std::string& id, const std::shared_ptr<sensor::Data>& data) {
         this->OnHardwareDriverData(id, data);
     };
     if (!driver->RegisterSensorHandler(sensor_id, handler)) {
-        AERROR << "Failed to register sensor handler with hardware driver: "
-               << sensor_id;
+        AERROR << "Failed to register sensor handler with hardware driver: " << sensor_id;
         hardware_drivers_.erase(sensor_id);
         return false;
     }
@@ -967,15 +850,13 @@ std::vector<std::string> DriverEngine::GetHardwareDriverSensors() const {
     return sensors;
 }
 
-void DriverEngine::OnHardwareDriverData(
-    const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data) {
+void DriverEngine::OnHardwareDriverData(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data) {
     // 硬件驱动数据到达时的回调
     // 直接转发到注册的处理器
     ForwardSensorData(sensor_id, data);
 }
 
-void DriverEngine::ForwardSensorData(
-    const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data) {
+void DriverEngine::ForwardSensorData(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data) {
     if (data == nullptr) {
         AERROR << "Cannot forward null sensor data for sensor: " << sensor_id;
         return;

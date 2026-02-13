@@ -53,9 +53,8 @@ struct YawOnlyQuaternionPlus {
         T q_diff[4];
         ceres::QuaternionProduct(q_inv, y, q_diff);
         // Extract yaw from quaternion difference
-        x_minus_y[0] = ceres::atan2(
-            2.0 * (q_diff[0] * q_diff[3] + q_diff[1] * q_diff[2]),
-            1.0 - 2.0 * (q_diff[2] * q_diff[2] + q_diff[3] * q_diff[3]));
+        x_minus_y[0] = ceres::atan2(2.0 * (q_diff[0] * q_diff[3] + q_diff[1] * q_diff[2]),
+                                    1.0 - 2.0 * (q_diff[2] * q_diff[2] + q_diff[3] * q_diff[3]));
         return true;
     }
 };
@@ -68,10 +67,8 @@ struct ConstantYawQuaternionPlus {
 
     template <typename T>
     bool Plus(const T* x, const T* delta, T* x_plus_delta) const {
-        const T delta_norm =
-            ceres::sqrt(common::Pow2(delta[0]) + common::Pow2(delta[1]));
-        const T sin_delta_over_delta =
-            delta_norm < 1e-6 ? T(1.) : ceres::sin(delta_norm) / delta_norm;
+        const T delta_norm = ceres::sqrt(common::Pow2(delta[0]) + common::Pow2(delta[1]));
+        const T sin_delta_over_delta = delta_norm < 1e-6 ? T(1.) : ceres::sin(delta_norm) / delta_norm;
         T q_delta[4];
         q_delta[0] = delta_norm < 1e-6 ? T(1.) : ceres::cos(delta_norm);
         q_delta[1] = sin_delta_over_delta * delta[0];
@@ -99,8 +96,7 @@ struct ConstantYawQuaternionPlus {
         ceres::QuaternionProduct(q_inv, y, q_diff);
         // Extract xy-plane rotation from quaternion difference
         // The rotation axis should be in the xy-plane (z-component should be 0)
-        T angle =
-            ceres::acos(common::Clamp(q_diff[0], T(-1.0), T(1.0))) * T(2.0);
+        T angle = ceres::acos(common::Clamp(q_diff[0], T(-1.0), T(1.0))) * T(2.0);
         T sin_half_angle = ceres::sin(angle / T(2.0));
         if (sin_half_angle < T(1e-6)) {
             x_minus_y[0] = T(0.);

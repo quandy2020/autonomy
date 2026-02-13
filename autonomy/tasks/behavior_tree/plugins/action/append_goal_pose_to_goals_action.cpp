@@ -25,8 +25,8 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-AppendGoalPoseToGoalsAction::AppendGoalPoseToGoalsAction(
-    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
+AppendGoalPoseToGoalsAction::AppendGoalPoseToGoalsAction(const std::string& xml_tag_name,
+                                                         const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(xml_tag_name, conf) {}
 
 BT::NodeStatus AppendGoalPoseToGoalsAction::tick() {
@@ -56,7 +56,6 @@ BT::NodeStatus AppendGoalPoseToGoalsAction::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 AppendGoalPoseToGoalsAction>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::AppendGoalPoseToGoalsAction>(
         "AppendGoalPoseToGoals");
 }

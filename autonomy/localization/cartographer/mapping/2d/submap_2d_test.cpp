@@ -68,16 +68,14 @@ TEST(Submap2DTest, TheRightNumberOfRangeDataAreInserted) {
     ActiveSubmaps2D submaps{CreateSubmapsOptions2D(parameter_dictionary.get())};
     std::set<std::shared_ptr<const Submap2D>> all_submaps;
     for (int i = 0; i != 1000; ++i) {
-        auto insertion_submaps =
-            submaps.InsertRangeData({Eigen::Vector3f::Zero(), {}, {}});
+        auto insertion_submaps = submaps.InsertRangeData({Eigen::Vector3f::Zero(), {}, {}});
         // Except for the first, maps should only be returned after enough range
         // data.
         for (const auto& submap : insertion_submaps) {
             all_submaps.insert(submap);
         }
         if (submaps.submaps().size() > 1) {
-            EXPECT_LE(kNumRangeData,
-                      submaps.submaps().front()->num_range_data());
+            EXPECT_LE(kNumRangeData, submaps.submaps().front()->num_range_data());
         }
     }
     EXPECT_EQ(2, submaps.submaps().size());
@@ -98,30 +96,21 @@ TEST(Submap2DTest, TheRightNumberOfRangeDataAreInserted) {
 }
 
 TEST(Submap2DTest, ToFromProto) {
-    MapLimits expected_map_limits(1., Eigen::Vector2d(2., 3.),
-                                  CellLimits(100, 110));
+    MapLimits expected_map_limits(1., Eigen::Vector2d(2., 3.), CellLimits(100, 110));
     ValueConversionTables conversion_tables;
     Submap2D expected(Eigen::Vector2f(4.f, 5.f),
-                      absl::make_unique<ProbabilityGrid>(expected_map_limits,
-                                                         &conversion_tables),
-                      &conversion_tables);
-    const proto::Submap proto =
-        expected.ToProto(true /* include_probability_grid_data */);
+                      absl::make_unique<ProbabilityGrid>(expected_map_limits, &conversion_tables), &conversion_tables);
+    const proto::Submap proto = expected.ToProto(true /* include_probability_grid_data */);
     EXPECT_TRUE(proto.has_submap_2d());
     EXPECT_FALSE(proto.has_submap_3d());
     const auto actual = Submap2D(proto.submap_2d(), &conversion_tables);
-    EXPECT_TRUE(expected.local_pose().translation().isApprox(
-        actual.local_pose().translation(), 1e-6));
-    EXPECT_TRUE(expected.local_pose().rotation().isApprox(
-        actual.local_pose().rotation(), 1e-6));
+    EXPECT_TRUE(expected.local_pose().translation().isApprox(actual.local_pose().translation(), 1e-6));
+    EXPECT_TRUE(expected.local_pose().rotation().isApprox(actual.local_pose().rotation(), 1e-6));
     EXPECT_EQ(expected.num_range_data(), actual.num_range_data());
     EXPECT_EQ(expected.insertion_finished(), actual.insertion_finished());
-    EXPECT_NEAR(expected.grid()->limits().resolution(),
-                actual.grid()->limits().resolution(), 1e-6);
-    EXPECT_TRUE(expected.grid()->limits().max().isApprox(
-        actual.grid()->limits().max(), 1e-6));
-    EXPECT_EQ(expected.grid()->limits().cell_limits().num_x_cells,
-              actual.grid()->limits().cell_limits().num_x_cells);
+    EXPECT_NEAR(expected.grid()->limits().resolution(), actual.grid()->limits().resolution(), 1e-6);
+    EXPECT_TRUE(expected.grid()->limits().max().isApprox(actual.grid()->limits().max(), 1e-6));
+    EXPECT_EQ(expected.grid()->limits().cell_limits().num_x_cells, actual.grid()->limits().cell_limits().num_x_cells);
 }
 
 }  // namespace

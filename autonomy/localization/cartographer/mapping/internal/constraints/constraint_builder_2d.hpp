@@ -63,8 +63,7 @@ public:
     using Constraint = PoseGraphInterface::Constraint;
     using Result = std::vector<Constraint>;
 
-    ConstraintBuilder2D(const proto::ConstraintBuilderOptions& options,
-                        common::ThreadPoolInterface* thread_pool);
+    ConstraintBuilder2D(const proto::ConstraintBuilderOptions& options, common::ThreadPoolInterface* thread_pool);
     ~ConstraintBuilder2D();
 
     ConstraintBuilder2D(const ConstraintBuilder2D&) = delete;
@@ -76,8 +75,7 @@ public:
     //
     // The pointees of 'submap' and 'compressed_point_cloud' must stay valid
     // until all computations are finished.
-    void MaybeAddConstraint(const SubmapId& submap_id, const Submap2D* submap,
-                            const NodeId& node_id,
+    void MaybeAddConstraint(const SubmapId& submap_id, const Submap2D* submap, const NodeId& node_id,
                             const TrajectoryNode::Data* const constant_data,
                             const transform::Rigid2d& initial_relative_pose);
 
@@ -87,9 +85,8 @@ public:
     //
     // The pointees of 'submap' and 'compressed_point_cloud' must stay valid
     // until all computations are finished.
-    void MaybeAddGlobalConstraint(
-        const SubmapId& submap_id, const Submap2D* submap,
-        const NodeId& node_id, const TrajectoryNode::Data* const constant_data);
+    void MaybeAddGlobalConstraint(const SubmapId& submap_id, const Submap2D* submap, const NodeId& node_id,
+                                  const TrajectoryNode::Data* const constant_data);
 
     // Must be called after all computations related to one node have been
     // added.
@@ -111,25 +108,21 @@ public:
 private:
     struct SubmapScanMatcher {
         const Grid2D* grid = nullptr;
-        std::unique_ptr<scan_matching::FastCorrelativeScanMatcher2D>
-            fast_correlative_scan_matcher;
+        std::unique_ptr<scan_matching::FastCorrelativeScanMatcher2D> fast_correlative_scan_matcher;
         std::weak_ptr<common::Task> creation_task_handle;
     };
 
     // The returned 'grid' and 'fast_correlative_scan_matcher' must only be
     // accessed after 'creation_task_handle' has completed.
-    const SubmapScanMatcher* DispatchScanMatcherConstruction(
-        const SubmapId& submap_id, const Grid2D* grid);
+    const SubmapScanMatcher* DispatchScanMatcherConstruction(const SubmapId& submap_id, const Grid2D* grid);
 
     // Runs in a background thread and does computations for an additional
     // constraint, assuming 'submap' and 'compressed_point_cloud' do not change
     // anymore. As output, it may create a new Constraint in 'constraint'.
-    void ComputeConstraint(const SubmapId& submap_id, const Submap2D* submap,
-                           const NodeId& node_id, bool match_full_submap,
-                           const TrajectoryNode::Data* const constant_data,
+    void ComputeConstraint(const SubmapId& submap_id, const Submap2D* submap, const NodeId& node_id,
+                           bool match_full_submap, const TrajectoryNode::Data* const constant_data,
                            const transform::Rigid2d& initial_relative_pose,
-                           const SubmapScanMatcher& submap_scan_matcher,
-                           std::unique_ptr<Constraint>* constraint);
+                           const SubmapScanMatcher& submap_scan_matcher, std::unique_ptr<Constraint>* constraint);
 
     void RunWhenDoneCallback();
 

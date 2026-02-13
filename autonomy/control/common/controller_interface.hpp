@@ -47,11 +47,13 @@ public:
 
     /**
      * @param  parent pointer to user's node
-     * @param  costmap_ros A pointer to the costmap
+     * @param  options The options to configure the controller
+     * @param  name The name of the controller
+     * @param  tf_buffer The transform buffer
+     * @param  costmap_wrapper A pointer to the costmap wrapper
      */
-    virtual void Configure(
-        std::string name, std::shared_ptr<TfBuffer>,
-        std::shared_ptr<map::costmap_2d::Costmap2DWrapper>) = 0;
+    virtual void Configure(const proto::ControllerOptions& options, std::string name, std::shared_ptr<TfBuffer>,
+                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper>) = 0;
 
     /**
      * @brief Method to cleanup resources.
@@ -86,11 +88,10 @@ public:
      * codes
      *         - 121..149: Reserved for plugin specific errors
      */
-    virtual uint32 ComputeVelocityCommands(
-        const commsgs::geometry_msgs::PoseStamped& pose,
-        const commsgs::geometry_msgs::TwistStamped& velocity,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel,
-        common::GoalChecker* goal_checker, std::string& message) = 0;
+    virtual uint32 ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
+                                           const commsgs::geometry_msgs::TwistStamped& velocity,
+                                           commsgs::geometry_msgs::TwistStamped& cmd_vel,
+                                           common::GoalChecker* goal_checker, std::string& message) = 0;
 
     /**
      * @brief Check if the goal pose has been achieved by the local planner
@@ -100,8 +101,7 @@ public:
      * will be partly accepted as reached goal
      * @return True if achieved, false otherwise
      */
-    virtual bool IsGoalReached(double dist_tolerance,
-                               double angle_tolerance) = 0;
+    virtual bool IsGoalReached(double dist_tolerance, double angle_tolerance) = 0;
 
     /**
      * @brief Set the plan that the local planner is following
@@ -116,8 +116,7 @@ public:
      * @param percentage Setting speed limit in percentage if true
      * or in absolute values in false case.
      */
-    virtual void SetSpeedLimit(const double& speed_limit,
-                               const bool& percentage) = 0;
+    virtual void SetSpeedLimit(const double& speed_limit, const bool& percentage) = 0;
 
     /**
      * @brief Reset the state of the controller if necessary after task is

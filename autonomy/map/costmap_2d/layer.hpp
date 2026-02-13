@@ -71,8 +71,7 @@ public:
      * @param options Optional Costmap2DOptions pointer for layer-specific
      * configuration
      */
-    void initialize(LayeredCostmap* parent, std::string name,
-                    autolink::Node* node = nullptr,
+    void initialize(LayeredCostmap* parent, std::string name, autolink::Node* node = nullptr,
                     const proto::Costmap2DOptions* options = nullptr);
 
     /**
@@ -93,16 +92,14 @@ public:
      * For more details, see "Layered Costmaps for Context-Sensitive
      * Navigation", by Lu et. Al, IROS 2014.
      */
-    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                              double* min_x, double* min_y, double* max_x,
-                              double* max_y) = 0;
+    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                              double* max_x, double* max_y) = 0;
 
     /**
      * @brief Actually update the underlying costmap, only within the bounds
      *        calculated during UpdateBounds().
      */
-    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                             int max_i, int max_j) = 0;
+    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) = 0;
 
     /**
      * @brief Implement this to make this layer match the size of the parent

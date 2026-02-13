@@ -41,38 +41,24 @@ TEST(Collator, Ordering) {
 
     std::vector<CollatorInput> input_data;
     // Send each sensor_id once to establish a common start time.
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId, kSensorId[0], 0));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId, kSensorId[1], 0));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId, kSensorId[2], 0));
-    input_data.push_back(
-        CollatorInput::CreateOdometryData(kTrajectoryId, kSensorId[3], 0));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId, kSensorId[0], 0));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId, kSensorId[1], 0));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId, kSensorId[2], 0));
+    input_data.push_back(CollatorInput::CreateOdometryData(kTrajectoryId, kSensorId[3], 0));
 
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId, kSensorId[0], 100));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId, kSensorId[1], 200));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId, kSensorId[2], 300));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId, kSensorId[0], 400));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId, kSensorId[1], 500));
-    input_data.push_back(
-        CollatorInput::CreateOdometryData(kTrajectoryId, kSensorId[3], 600));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId, kSensorId[0], 100));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId, kSensorId[1], 200));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId, kSensorId[2], 300));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId, kSensorId[0], 400));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId, kSensorId[1], 500));
+    input_data.push_back(CollatorInput::CreateOdometryData(kTrajectoryId, kSensorId[3], 600));
 
     std::vector<CollatorOutput> received;
     Collator collator;
-    collator.AddTrajectory(
-        kTrajectoryId,
-        absl::flat_hash_set<std::string>(kSensorId.begin(), kSensorId.end()),
-        [&received, kTrajectoryId](const std::string& sensor_id,
-                                   std::unique_ptr<Data> data) {
-            received.push_back(CollatorOutput(
-                kTrajectoryId, data->GetSensorId(), data->GetTime()));
-        });
+    collator.AddTrajectory(kTrajectoryId, absl::flat_hash_set<std::string>(kSensorId.begin(), kSensorId.end()),
+                           [&received, kTrajectoryId](const std::string& sensor_id, std::unique_ptr<Data> data) {
+                               received.push_back(CollatorOutput(kTrajectoryId, data->GetSensorId(), data->GetTime()));
+                           });
 
     input_data[0].MoveToCollator(&collator);
     input_data[1].MoveToCollator(&collator);
@@ -106,47 +92,30 @@ TEST(Collator, OrderingMultipleTrajectories) {
 
     std::vector<CollatorInput> input_data;
     // Send each sensor_id once to establish a common start time.
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId[0], kSensorId[0], 0));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId[0], kSensorId[1], 0));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId[1], kSensorId[0], 0));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId[1], kSensorId[1], 0));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId[0], kSensorId[0], 0));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId[0], kSensorId[1], 0));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId[1], kSensorId[0], 0));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId[1], kSensorId[1], 0));
 
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId[0], kSensorId[0], 100));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId[1], kSensorId[1], 200));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId[0], kSensorId[1], 300));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId[1], kSensorId[0], 400));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId[1], kSensorId[0], 400));
-    input_data.push_back(CollatorInput::CreateTimedPointCloudData(
-        kTrajectoryId[1], kSensorId[0], 500));
-    input_data.push_back(
-        CollatorInput::CreateImuData(kTrajectoryId[1], kSensorId[1], 600));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId[0], kSensorId[0], 100));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId[1], kSensorId[1], 200));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId[0], kSensorId[1], 300));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId[1], kSensorId[0], 400));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId[1], kSensorId[0], 400));
+    input_data.push_back(CollatorInput::CreateTimedPointCloudData(kTrajectoryId[1], kSensorId[0], 500));
+    input_data.push_back(CollatorInput::CreateImuData(kTrajectoryId[1], kSensorId[1], 600));
 
     std::vector<CollatorOutput> received;
     Collator collator;
     collator.AddTrajectory(
-        kTrajectoryId[0],
-        absl::flat_hash_set<std::string>(kSensorId.begin(), kSensorId.end()),
-        [&received, kTrajectoryId](const std::string& sensor_id,
-                                   std::unique_ptr<Data> data) {
-            received.push_back(CollatorOutput(
-                kTrajectoryId[0], data->GetSensorId(), data->GetTime()));
+        kTrajectoryId[0], absl::flat_hash_set<std::string>(kSensorId.begin(), kSensorId.end()),
+        [&received, kTrajectoryId](const std::string& sensor_id, std::unique_ptr<Data> data) {
+            received.push_back(CollatorOutput(kTrajectoryId[0], data->GetSensorId(), data->GetTime()));
         });
     collator.AddTrajectory(
-        kTrajectoryId[1],
-        absl::flat_hash_set<std::string>(kSensorId.begin(), kSensorId.end()),
-        [&received, kTrajectoryId](const std::string& sensor_id,
-                                   std::unique_ptr<Data> data) {
-            received.push_back(CollatorOutput(
-                kTrajectoryId[1], data->GetSensorId(), data->GetTime()));
+        kTrajectoryId[1], absl::flat_hash_set<std::string>(kSensorId.begin(), kSensorId.end()),
+        [&received, kTrajectoryId](const std::string& sensor_id, std::unique_ptr<Data> data) {
+            received.push_back(CollatorOutput(kTrajectoryId[1], data->GetSensorId(), data->GetTime()));
         });
 
     input_data[0].MoveToCollator(&collator);

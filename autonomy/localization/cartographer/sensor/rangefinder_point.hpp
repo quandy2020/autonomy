@@ -40,65 +40,53 @@ struct TimedRangefinderPoint {
 };
 
 template <class T>
-inline RangefinderPoint operator*(const transform::Rigid3<T>& lhs,
-                                  const RangefinderPoint& rhs) {
+inline RangefinderPoint operator*(const transform::Rigid3<T>& lhs, const RangefinderPoint& rhs) {
     RangefinderPoint result = rhs;
     result.position = lhs * rhs.position;
     return result;
 }
 
 template <class T>
-inline TimedRangefinderPoint operator*(const transform::Rigid3<T>& lhs,
-                                       const TimedRangefinderPoint& rhs) {
+inline TimedRangefinderPoint operator*(const transform::Rigid3<T>& lhs, const TimedRangefinderPoint& rhs) {
     TimedRangefinderPoint result = rhs;
     result.position = lhs * rhs.position;
     return result;
 }
 
-inline bool operator==(const RangefinderPoint& lhs,
-                       const RangefinderPoint& rhs) {
+inline bool operator==(const RangefinderPoint& lhs, const RangefinderPoint& rhs) {
     return lhs.position == rhs.position;
 }
 
-inline bool operator==(const TimedRangefinderPoint& lhs,
-                       const TimedRangefinderPoint& rhs) {
+inline bool operator==(const TimedRangefinderPoint& lhs, const TimedRangefinderPoint& rhs) {
     return lhs.position == rhs.position && lhs.time == rhs.time;
 }
 
-inline RangefinderPoint FromProto(
-    const proto::RangefinderPoint& rangefinder_point_proto) {
+inline RangefinderPoint FromProto(const proto::RangefinderPoint& rangefinder_point_proto) {
     return {transform::ToEigen(rangefinder_point_proto.position())};
 }
 
-inline proto::RangefinderPoint ToProto(
-    const RangefinderPoint& rangefinder_point) {
+inline proto::RangefinderPoint ToProto(const RangefinderPoint& rangefinder_point) {
     proto::RangefinderPoint proto;
     *proto.mutable_position() = transform::ToProto(rangefinder_point.position);
     return proto;
 }
 
-inline TimedRangefinderPoint FromProto(
-    const proto::TimedRangefinderPoint& timed_rangefinder_point_proto) {
-    return {transform::ToEigen(timed_rangefinder_point_proto.position()),
-            timed_rangefinder_point_proto.time()};
+inline TimedRangefinderPoint FromProto(const proto::TimedRangefinderPoint& timed_rangefinder_point_proto) {
+    return {transform::ToEigen(timed_rangefinder_point_proto.position()), timed_rangefinder_point_proto.time()};
 }
 
-inline proto::TimedRangefinderPoint ToProto(
-    const TimedRangefinderPoint& timed_rangefinder_point) {
+inline proto::TimedRangefinderPoint ToProto(const TimedRangefinderPoint& timed_rangefinder_point) {
     proto::TimedRangefinderPoint proto;
-    *proto.mutable_position() =
-        transform::ToProto(timed_rangefinder_point.position);
+    *proto.mutable_position() = transform::ToProto(timed_rangefinder_point.position);
     proto.set_time(timed_rangefinder_point.time);
     return proto;
 }
 
-inline RangefinderPoint ToRangefinderPoint(
-    const TimedRangefinderPoint& timed_rangefinder_point) {
+inline RangefinderPoint ToRangefinderPoint(const TimedRangefinderPoint& timed_rangefinder_point) {
     return {timed_rangefinder_point.position};
 }
 
-inline TimedRangefinderPoint ToTimedRangefinderPoint(
-    const RangefinderPoint& rangefinder_point, const float time) {
+inline TimedRangefinderPoint ToTimedRangefinderPoint(const RangefinderPoint& rangefinder_point, const float time) {
     return {rangefinder_point.position, time};
 }
 

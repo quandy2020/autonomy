@@ -23,12 +23,10 @@ namespace autonomy {
 namespace transform {
 namespace common {
 
-proto::TransformOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::TransformOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
-proto::TransformOptions CreateOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename);
+proto::TransformOptions CreateOptions(const std::string& configuration_directory,
+                                      const std::string& configuration_basename);
 
 }  // namespace common
 }  // namespace transform

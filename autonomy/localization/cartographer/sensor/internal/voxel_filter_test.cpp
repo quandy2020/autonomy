@@ -28,10 +28,7 @@ using ::testing::Contains;
 using ::testing::IsEmpty;
 
 TEST(VoxelFilterTest, ReturnsOnePointInEachVoxel) {
-    const PointCloud point_cloud({{{0.f, 0.f, 0.f}},
-                                  {{0.1f, -0.1f, 0.1f}},
-                                  {{0.3f, -0.1f, 0.f}},
-                                  {{0.f, 0.f, 0.1f}}});
+    const PointCloud point_cloud({{{0.f, 0.f, 0.f}}, {{0.1f, -0.1f, 0.1f}}, {{0.3f, -0.1f, 0.f}}, {{0.f, 0.f, 0.1f}}});
     const PointCloud result = VoxelFilter(point_cloud, 0.3f);
     ASSERT_EQ(result.size(), 2);
     EXPECT_THAT(result.intensities(), IsEmpty());

@@ -37,8 +37,7 @@ struct CellLimits {
         : num_x_cells(init_num_x_cells), num_y_cells(init_num_y_cells) {}
 
     explicit CellLimits(const proto::CellLimits& cell_limits)
-        : num_x_cells(cell_limits.num_x_cells()),
-          num_y_cells(cell_limits.num_y_cells()) {}
+        : num_x_cells(cell_limits.num_x_cells()), num_y_cells(cell_limits.num_y_cells()) {}
 
     int num_x_cells = 0;
     int num_y_cells = 0;
@@ -52,22 +51,17 @@ inline proto::CellLimits ToProto(const CellLimits& cell_limits) {
 }
 
 // Iterates in row-major order through a range of xy-indices.
-class XYIndexRangeIterator
-    : public std::iterator<std::input_iterator_tag, Eigen::Array2i>
+class XYIndexRangeIterator : public std::iterator<std::input_iterator_tag, Eigen::Array2i>
 {
 public:
     // Constructs a new iterator for the specified range.
-    XYIndexRangeIterator(const Eigen::Array2i& min_xy_index,
-                         const Eigen::Array2i& max_xy_index)
-        : min_xy_index_(min_xy_index),
-          max_xy_index_(max_xy_index),
-          xy_index_(min_xy_index) {}
+    XYIndexRangeIterator(const Eigen::Array2i& min_xy_index, const Eigen::Array2i& max_xy_index)
+        : min_xy_index_(min_xy_index), max_xy_index_(max_xy_index), xy_index_(min_xy_index) {}
 
     // Constructs a new iterator for everything contained in 'cell_limits'.
     explicit XYIndexRangeIterator(const CellLimits& cell_limits)
         : XYIndexRangeIterator(Eigen::Array2i::Zero(),
-                               Eigen::Array2i(cell_limits.num_x_cells - 1,
-                                              cell_limits.num_y_cells - 1)) {}
+                               Eigen::Array2i(cell_limits.num_x_cells - 1, cell_limits.num_y_cells - 1)) {}
 
     XYIndexRangeIterator& operator++() {
         // This is a necessary evil. Bounds checking is very expensive and needs

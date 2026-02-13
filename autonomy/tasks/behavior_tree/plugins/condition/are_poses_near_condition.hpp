@@ -48,8 +48,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    ArePosesNearCondition(const std::string& condition_name,
-                          const BT::NodeConfiguration& conf);
+    ArePosesNearCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief A destructor for nav2_behavior_tree::ArePosesNearCondition
@@ -79,10 +78,8 @@ public:
      * @return BT::PortsList Containing node-specific ports
      */
     static BT::PortsList providedPorts() {
-        return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                    "ref_pose", "Destination"),
-                BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                    "target_pose", "Destination"),
+        return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>("ref_pose", "Destination"),
+                BT::InputPort<commsgs::geometry_msgs::PoseStamped>("target_pose", "Destination"),
                 BT::InputPort<std::string>("global_frame", "Global frame"),
                 BT::InputPort<double>("tolerance", 0.5, "Tolerance")};
     }

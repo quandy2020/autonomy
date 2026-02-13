@@ -6,6 +6,7 @@ Autolink 提供了基于 DDS（Data Distribution Service）的分布式通信框
 
 * **Topic 通信**：基于发布/订阅模式的点对点消息通信（Writer/Reader）
 * **Service/Client**：基于请求/响应模式的 RPC 通信
+* **Action**：基于目标/反馈/结果的长时间运行任务通信机制
 
 Autolink 框架封装了底层的 DDS 实现（如 FastDDS），提供了简洁易用的 API。框架会自动处理服务发现、消息序列化、传输等底层细节。
 
@@ -238,6 +239,310 @@ auto response2 = future.get();  // 获取结果
 * **WaitForService()**：等待服务可用，可以设置超时时间
 * **ServiceIsReady()**：检查服务是否可用（非阻塞）
 
+### 2.7 创建 Action Server
+
+Action Server 用于处理长时间运行的任务，支持目标接受、取消和进度反馈。
+
+```cpp
+#include "autolink/autolink.hpp"
+#include "autolink/action/action.hpp"
+#include "autonomy/commsgs/example_msgs.hpp"  // 假设有 Action 类型定义
+
+using ActionT = autonomy::commsgs::example_msgs::ExampleAction;
+using Goal = ActionT::Goal;
+
+auto node = CreateNode("action_server_node");
+
+// 创建 Action Server
+auto server = autolink::action::CreateServer<ActionT>(
+    node,
+    "/my_action",
+    // handle_goal: 决定是否接受目标
+    [](const autolink::action::GoalUUID& uuid,
+       std::shared_ptr<const Goal> goal) {
+        AINFO << "Goal received: " << autolink::action::ToString(uuid);
+        // 返回 ACCEPT_AND_EXECUTE、ACCEPT_AND_DEFER 或 REJECT
+        return autolink::action::GoalResponse::ACCEPT_AND_EXECUTE;
+    },
+    // handle_cancel: 决定是否接受取消请求
+    [](std::shared_ptr<autolink::action::ServerGoalHandle<ActionT>> goal_handle) {
+        return autolink::action::CancelResponse::ACCEPT;
+    },
+    // handle_accepted: 目标被接受时调用，用于执行目标
+    [](std::shared_ptr<autolink::action::ServerGoalHandle<ActionT>> goal_handle) {
+        // 在新线程中执行目标（推荐做法）
+        std::thread([goal_handle]() {
+            goal_handle->Execute();  // 开始执行
+            // ... 执行任务 ...
+            // goal_handle->PublishFeedback(feedback);  // 发布反馈
+            // goal_handle->Succeed(result);  // 标记成功
+        }).detach();
+    });
+```
+
+**[说明]**
+
+* **ActionT**：Action 类型，需要定义 `Goal`、`Feedback`、`Result` 三个嵌套类型
+* **action_name**：Action 名称（字符串类型），用于标识 Action
+* **handle_goal**：目标接受回调，返回 `GoalResponse::ACCEPT_AND_EXECUTE`、`ACCEPT_AND_DEFER` 或 `REJECT`
+* **handle_cancel**：取消请求回调，返回 `CancelResponse::ACCEPT` 或 `REJECT`
+* **handle_accepted**：目标接受后的回调，通常在此启动新线程执行目标
+* **返回值**：`std::shared_ptr<Server<ActionT>>`，如果创建失败返回 `nullptr`
+
+**ServerGoalHandle 常用方法**：
+- `GetGoal()`：获取目标消息
+- `GetGoalId()`：获取目标 UUID
+- `Execute()`：开始执行目标
+- `PublishFeedback(feedback)`：发布反馈消息
+- `Succeed(result)`：标记成功完成
+- `Canceled(result)`：标记已被取消
+- `Abort(result)`：标记失败中止
+- `IsCanceling()`：检查是否收到取消请求
+
+### 2.8 创建 Action Client
+
+Action Client 用于发送目标并接收反馈和结果。
+
+```cpp
+#include "autolink/autolink.hpp"
+#include "autolink/action/action.hpp"
+#include "autonomy/commsgs/example_msgs.hpp"
+
+using ActionT = autonomy::commsgs::example_msgs::ExampleAction;
+using Goal = ActionT::Goal;
+using Feedback = ActionT::Feedback;
+
+auto node = CreateNode("action_client_node");
+
+// 创建 Action Client
+auto client = autolink::action::CreateClient<ActionT>(node, "/my_action");
+
+if (!client) {
+    AERROR << "Failed to create action client";
+    return -1;
+}
+
+// 等待服务器就绪（可选）
+while (!client->ActionServerIsReady()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
+// 创建目标
+Goal goal;
+goal.set_target_value(100);
+
+// 配置发送选项
+autolink::action::Client<ActionT>::SendGoalOptions options;
+options.goal_response_callback = [](
+    std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>> handle) {
+    if (handle) {
+        AINFO << "Goal accepted";
+    } else {
+        AERROR << "Goal rejected";
+    }
+};
+options.feedback_callback = [](
+    std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>> handle,
+    std::shared_ptr<const Feedback> feedback) {
+    AINFO << "Feedback: " << feedback->progress();
+};
+options.result_callback = [](
+    const autolink::action::ClientGoalHandle<ActionT>::WrappedResult& result) {
+    AINFO << "Result code: " << static_cast<int>(result.code);
+};
+
+// 异步发送目标
+auto goal_future = client->AsyncSendGoal(goal, options);
+auto goal_handle = goal_future.get();
+
+if (goal_handle) {
+    // 获取结果
+    auto result_future = client->AsyncGetResult(goal_handle);
+    auto wrapped_result = result_future.get();
+    
+    // 也可以取消目标
+    // auto cancel_future = client->AsyncCancelGoal(goal_handle);
+}
+```
+
+**[说明]**
+
+* **ActionT**：Action 类型，必须与 Server 使用的类型一致
+* **action_name**：Action 名称，必须与 Server 使用的名称相同
+* **AsyncSendGoal()**：异步发送目标，返回 `std::shared_future<std::shared_ptr<GoalHandle>>`
+* **AsyncGetResult()**：异步获取结果，返回 `std::shared_future<WrappedResult>`
+* **AsyncCancelGoal()**：异步请求取消目标，返回 `std::shared_future<bool>`
+* **ActionServerIsReady()**：检查 Action 服务器是否就绪
+* **SendGoalOptions**：发送选项，可设置目标响应、反馈和结果回调
+
+**ClientGoalHandle 常用方法**：
+- `GetGoalId()`：获取目标 UUID
+- `GetStatus()`：获取当前状态
+- `AsyncGetResult()`：获取结果的 future
+
+### 2.9 Action 类型定义（Proto3）
+
+在使用 Action 之前，需要先在 `.proto` 文件中定义 Action 类型。Action 类型必须遵循以下规则：
+
+**基本结构**：
+
+```protobuf
+syntax = "proto3";
+
+package your.package.name;
+
+// 可选：定义错误码枚举（推荐）
+enum YourActionErrorCode {
+    YOUR_ACTION_ERROR_NONE = 0;
+    YOUR_ACTION_ERROR_UNKNOWN = 100;
+    YOUR_ACTION_ERROR_TIMEOUT = 101;
+    // ... 其他错误码
+}
+
+// Action 定义
+message YourActionAction {
+    // 必须定义三个嵌套 message
+    
+    message Goal {
+        // 定义目标参数
+        // 例如：目标位置、速度、超时时间等
+        string target_name = 1;
+        float target_value = 2;
+        // ... 其他字段
+    }
+
+    message Feedback {
+        // 定义反馈信息
+        // 例如：当前进度、状态信息等
+        float progress = 1;  // 进度百分比 (0.0-1.0)
+        string status = 2;   // 状态描述
+        // ... 其他字段
+    }
+
+    message Result {
+        // 定义结果信息
+        // 通常包含错误码和错误消息
+        YourActionErrorCode error_code = 1;
+        string error_msg = 2;
+        // ... 其他结果字段
+    }
+
+    // Action message 本身必须包含这三个字段
+    Goal goal = 1;
+    Feedback feedback = 2;
+    Result result = 3;
+}
+```
+
+**定义规则**：
+
+1. **语法版本**：必须使用 `syntax = "proto3";` 声明
+2. **命名规范**：Action message 名称应以 `Action` 结尾，例如 `NavigateToPoseAction`、`ComputePathAction`
+3. **嵌套 Message**：必须在 Action message 内部定义三个嵌套 message：
+   - `Goal`：定义目标参数，客户端发送给服务器
+   - `Feedback`：定义反馈信息，服务器在执行过程中发送给客户端
+   - `Result`：定义结果信息，服务器在任务完成时发送给客户端
+4. **字段定义**：Action message 本身必须包含三个字段（字段编号固定）：
+   - `Goal goal = 1;`
+   - `Feedback feedback = 2;`
+   - `Result result = 3;`
+5. **错误码枚举**（可选但推荐）：
+   - 为每个 Action 定义错误码枚举，命名格式为 `XxxActionErrorCode`
+   - 错误码枚举应在 Action message 之前定义
+   - 必须包含 `ERROR_NONE = 0;` 表示成功
+   - 其他错误码应从 100 开始编号
+6. **字段编号**：所有字段必须使用明确的字段编号（`= 1`, `= 2`, ...），不能使用 `reserved` 或跳过编号
+7. **字段类型**：可以使用任何 proto3 支持的类型（`string`, `int32`, `float`, `bool`, 自定义 message 等）
+8. **导入依赖**：可以使用 `import` 导入其他 proto 文件中的类型
+
+**完整示例**：
+
+```protobuf
+syntax = "proto3";
+
+package autonomy.tasks.example.proto;
+
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+
+// 错误码枚举
+enum NavigateToPoseErrorCode {
+    NAVIGATE_TO_POSE_ERROR_NONE = 0;
+    NAVIGATE_TO_POSE_ERROR_UNKNOWN = 100;
+    NAVIGATE_TO_POSE_ERROR_TIMEOUT = 101;
+    NAVIGATE_TO_POSE_ERROR_TF_ERROR = 102;
+    NAVIGATE_TO_POSE_ERROR_NO_PATH_FOUND = 103;
+}
+
+// Action 定义
+message NavigateToPoseAction {
+    message Goal {
+        // 目标位置
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped pose = 1;
+        
+        // 行为树插件 ID（可选）
+        string behavior_tree = 2;
+    }
+
+    message Feedback {
+        // 当前位置
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped current_pose = 1;
+        
+        // 到目标的距离
+        float distance_remaining = 2;
+        
+        // 导航状态
+        string navigation_state = 3;
+        
+        // 已用时间
+        autonomy.commsgs.proto.builtin_interfaces.Duration elapsed_time = 4;
+    }
+
+    message Result {
+        // 错误码
+        NavigateToPoseErrorCode error_code = 1;
+        
+        // 错误消息
+        string error_msg = 2;
+        
+        // 总耗时
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 3;
+    }
+
+    // 必须包含这三个字段
+    Goal goal = 1;
+    Feedback feedback = 2;
+    Result result = 3;
+}
+```
+
+**注意事项**：
+
+1. **字段编号不可重复**：Goal、Feedback、Result 内部的字段编号可以独立编号（都从 1 开始），但 Action message 本身的三个字段必须使用 1、2、3
+2. **嵌套消息命名**：嵌套的 `Goal`、`Feedback`、`Result` 消息名称必须严格按照这三个名称，不能使用其他名称
+3. **字段可选性**：在 proto3 中，所有字段默认都是可选的（没有 `required` 关键字）
+4. **默认值**：数字类型默认为 0，字符串默认为空字符串，布尔值默认为 false
+5. **枚举值**：枚举的第一个值必须为 0（用于默认值）
+6. **命名空间**：在 C++ 代码中，Action 类型的完整命名空间为 `package::ActionName`，嵌套类型为 `package::ActionName::Goal` 等
+
+**C++ 中的使用**：
+
+定义好 proto 文件后，在 C++ 代码中可以这样使用：
+
+```cpp
+// 使用 Action 类型
+using ActionT = autonomy::tasks::example::proto::NavigateToPoseAction;
+using Goal = ActionT::Goal;
+using Feedback = ActionT::Feedback;
+using Result = ActionT::Result;
+
+// 创建 Action Server
+auto server = autolink::action::CreateServer<ActionT>(...);
+
+// 创建 Action Client
+auto client = autolink::action::CreateClient<ActionT>(node, "/navigate_to_pose");
+```
+
 ## 3. 使用案例
 
 ### 3.1 发布地图并订阅
@@ -435,6 +740,230 @@ int main(int argc, char* argv[]) {
 }
 ```
 
+### 3.4 Action 通信示例
+
+Action 是一种用于长时间运行任务的通信机制，与 Service 不同，Action 支持目标执行过程中的反馈（Feedback）和可取消性。
+
+**Action Server（服务端）：**
+
+```cpp
+#include "autolink/autolink.hpp"
+#include "autolink/action/action.hpp"
+#include "autonomy/commsgs/example_msgs.hpp"  // 假设有 Action 类型定义
+
+// 假设 Action 类型为：ExampleAction，包含 Goal、Feedback、Result
+using ActionT = autonomy::commsgs::example_msgs::ExampleAction;
+using Goal = ActionT::Goal;
+using Feedback = ActionT::Feedback;
+using Result = ActionT::Result;
+
+int main(int argc, char* argv[]) {
+    autolink::Init(argv[0]);
+    
+    auto node = autolink::CreateNode("action_server_node");
+    
+    // 创建 Action Server
+    auto server = autolink::action::CreateServer<ActionT>(
+        node,
+        "/example_action",
+        // handle_goal: 决定是否接受目标
+        [](const autolink::action::GoalUUID& uuid,
+           std::shared_ptr<const Goal> goal) {
+            AINFO << "Goal received, UUID: " 
+                  << autolink::action::ToString(uuid);
+            // 可以根据目标内容决定是否接受
+            // 返回 REJECT、ACCEPT_AND_EXECUTE 或 ACCEPT_AND_DEFER
+            return autolink::action::GoalResponse::ACCEPT_AND_EXECUTE;
+        },
+        // handle_cancel: 决定是否接受取消请求
+        [](std::shared_ptr<autolink::action::ServerGoalHandle<ActionT>> 
+           goal_handle) {
+            AINFO << "Cancel request received for goal: "
+                  << autolink::action::ToString(goal_handle->GetGoalId());
+            // 返回 REJECT 或 ACCEPT
+            return autolink::action::CancelResponse::ACCEPT;
+        },
+        // handle_accepted: 目标被接受时的回调，用于执行目标
+        [](std::shared_ptr<autolink::action::ServerGoalHandle<ActionT>> 
+           goal_handle) {
+            // 在新的线程中执行目标
+            std::thread([goal_handle]() {
+                auto goal = goal_handle->GetGoal();
+                AINFO << "Executing goal...";
+                
+                // 开始执行（将状态从 ACCEPTED 转为 EXECUTING）
+                goal_handle->Execute();
+                
+                // 模拟长时间运行的任务
+                for (int i = 0; i < 10; ++i) {
+                    // 检查是否被取消
+                    if (goal_handle->IsCanceling()) {
+                        AINFO << "Goal canceled, aborting...";
+                        auto result = std::make_shared<Result>();
+                        result->set_status("Canceled");
+                        goal_handle->Canceled(result);
+                        return;
+                    }
+                    
+                    // 发布反馈
+                    auto feedback = std::make_shared<Feedback>();
+                    feedback->set_progress(i * 10);
+                    feedback->set_status("Processing...");
+                    goal_handle->PublishFeedback(feedback);
+                    
+                    // 模拟工作
+                    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                }
+                
+                // 任务完成，设置结果
+                auto result = std::make_shared<Result>();
+                result->set_status("Succeeded");
+                result->set_final_value(100);
+                goal_handle->Succeed(result);
+            }).detach();
+        });
+    
+    if (!server) {
+        AERROR << "Failed to create action server";
+        return 1;
+    }
+    
+    AINFO << "Action server started";
+    autolink::WaitForShutdown();
+    return 0;
+}
+```
+
+**Action Client（客户端）：**
+
+```cpp
+#include "autolink/autolink.hpp"
+#include "autolink/action/action.hpp"
+#include "autonomy/commsgs/example_msgs.hpp"
+#include <future>
+
+using ActionT = autonomy::commsgs::example_msgs::ExampleAction;
+using Goal = ActionT::Goal;
+using Feedback = ActionT::Feedback;
+
+int main(int argc, char* argv[]) {
+    autolink::Init(argv[0]);
+    
+    auto node = autolink::CreateNode("action_client_node");
+    
+    // 创建 Action Client
+    auto client = autolink::action::CreateClient<ActionT>(
+        node, "/example_action");
+    
+    if (!client) {
+        AERROR << "Failed to create action client";
+        return 1;
+    }
+    
+    // 等待服务器就绪
+    while (!client->ActionServerIsReady()) {
+        AINFO << "Waiting for action server...";
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
+    // 创建目标
+    Goal goal;
+    goal.set_target_value(100);
+    goal.set_timeout(30);
+    
+    // 发送目标（带回调选项）
+    autolink::action::Client<ActionT>::SendGoalOptions options;
+    
+    // 目标响应回调
+    options.goal_response_callback = [](
+        std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>> goal_handle) {
+        if (goal_handle) {
+            AINFO << "Goal accepted, UUID: "
+                  << autolink::action::ToString(goal_handle->GetGoalId());
+        } else {
+            AERROR << "Goal rejected";
+        }
+    };
+    
+    // 反馈回调
+    options.feedback_callback = [](
+        std::shared_ptr<autolink::action::ClientGoalHandle<ActionT>> goal_handle,
+        std::shared_ptr<const Feedback> feedback) {
+        AINFO << "Feedback received: progress=" << feedback->progress()
+              << ", status=" << feedback->status();
+    };
+    
+    // 结果回调
+    options.result_callback = [](
+        const autolink::action::ClientGoalHandle<ActionT>::WrappedResult& result) {
+        AINFO << "Result received, code: " << static_cast<int>(result.code);
+        if (result.result) {
+            AINFO << "Result status: " << result.result->status();
+        }
+    };
+    
+    // 异步发送目标
+    auto goal_future = client->AsyncSendGoal(goal, options);
+    auto goal_handle = goal_future.get();
+    
+    if (!goal_handle) {
+        AERROR << "Failed to send goal";
+        return 1;
+    }
+    
+    // 等待结果
+    auto result_future = client->AsyncGetResult(goal_handle);
+    auto wrapped_result = result_future.get();
+    
+    AINFO << "Action completed with code: " 
+          << static_cast<int>(wrapped_result.code);
+    
+    // 也可以取消目标（示例）
+    // auto cancel_future = client->AsyncCancelGoal(goal_handle);
+    // bool canceled = cancel_future.get();
+    // AINFO << "Cancel request " << (canceled ? "accepted" : "rejected");
+    
+    autolink::WaitForShutdown();
+    return 0;
+}
+```
+
+**[说明]**
+
+* **ActionT**：Action 类型，需要定义三个嵌套类型：`Goal`、`Feedback`、`Result`
+* **action_name**：Action 名称（字符串类型），用于标识 Action
+* **Server 回调函数**：
+  - `handle_goal`：决定是否接受目标，返回 `GoalResponse::ACCEPT_AND_EXECUTE`、`ACCEPT_AND_DEFER` 或 `REJECT`
+  - `handle_cancel`：决定是否接受取消请求，返回 `CancelResponse::ACCEPT` 或 `REJECT`
+  - `handle_accepted`：目标被接受时调用，通常在这里启动新线程执行目标
+* **ServerGoalHandle 方法**：
+  - `GetGoal()`：获取目标消息
+  - `GetGoalId()`：获取目标 UUID
+  - `Execute()`：开始执行目标（状态转为 EXECUTING）
+  - `PublishFeedback()`：发布反馈消息
+  - `Succeed()`：标记目标成功完成（终端状态）
+  - `Canceled()`：标记目标已被取消（终端状态）
+  - `Abort()`：标记目标失败中止（终端状态）
+  - `IsCanceling()`：检查是否收到取消请求
+  - `IsActive()`：检查目标是否处于活跃状态
+* **Client 方法**：
+  - `AsyncSendGoal()`：异步发送目标，返回 `std::shared_future<std::shared_ptr<GoalHandle>>`
+  - `AsyncGetResult()`：异步获取结果，返回 `std::shared_future<WrappedResult>`
+  - `AsyncCancelGoal()`：异步请求取消目标，返回 `std::shared_future<bool>`
+  - `ActionServerIsReady()`：检查 Action 服务器是否就绪
+* **ClientGoalHandle 方法**：
+  - `GetGoalId()`：获取目标 UUID
+  - `GetStatus()`：获取当前状态
+  - `AsyncGetResult()`：获取结果的 future
+* **GoalStatus 枚举**：`UNKNOWN`、`ACCEPTED`、`EXECUTING`、`CANCELING`、`SUCCEEDED`、`CANCELED`、`ABORTED`
+* **ResultCode 枚举**：`UNKNOWN`、`SUCCEEDED`、`CANCELED`、`ABORTED`
+
+**提示**：
+- Action 适用于需要长时间运行、可以中途取消、需要进度反馈的任务
+- Server 端通常在 `handle_accepted` 回调中启动新线程执行目标，以保持非阻塞
+- Client 端可以同时发送多个目标，每个目标有唯一的 UUID
+- Feedback 是单向的（从 Server 到 Client），用于报告执行进度
+
 ## 4. 注意事项
 
 1. **初始化顺序**：在使用任何 Autolink API 之前，必须先调用 `autolink::Init()`
@@ -442,8 +971,11 @@ int main(int argc, char* argv[]) {
 3. **消息类型匹配**：Writer 和 Reader 的消息类型必须完全一致
 4. **Channel 名称匹配**：发布者和订阅者必须使用相同的 Channel 名称
 5. **Service 名称匹配**：Service 和 Client 必须使用相同的服务名称
-6. **线程安全**：Autolink API 通常是线程安全的，但同一对象的并发调用需要注意
-7. **资源清理**：Node、Writer、Reader 等对象使用智能指针管理，通常不需要手动释放
+6. **Action 名称匹配**：Action Server 和 Client 必须使用相同的 Action 名称
+7. **Action 类型定义**：Action 类型必须定义 `Goal`、`Feedback`、`Result` 三个嵌套类型
+8. **线程安全**：Autolink API 通常是线程安全的，但同一对象的并发调用需要注意
+9. **资源清理**：Node、Writer、Reader 等对象使用智能指针管理，通常不需要手动释放
+10. **Action Server 非阻塞**：Server 端的 `handle_accepted` 回调应该启动新线程执行目标，避免阻塞
 
 ## 5. 高级功能
 
@@ -468,3 +1000,17 @@ Autolink 支持多种传输后端：
 - 等等
 
 传输后端的选择通常通过配置文件控制，对用户透明。
+
+### 5.4 Action 与 Service 的区别
+
+| 特性 | Service | Action |
+|------|---------|--------|
+| 执行时间 | 短时间（通常 < 1秒） | 长时间运行（可无限期） |
+| 反馈 | 不支持 | 支持（Feedback） |
+| 可取消性 | 不支持 | 支持（Cancel） |
+| 响应模式 | 请求/响应（同步或异步） | 目标/反馈/结果（异步） |
+| 适用场景 | 计算、查询、状态查询 | 导航、任务执行、长时间操作 |
+
+选择建议：
+- 使用 **Service** 进行快速的请求/响应操作（如查询状态、计算、设置参数）
+- 使用 **Action** 进行长时间运行的任务（如导航到目标点、执行复杂任务），需要进度反馈和可取消性

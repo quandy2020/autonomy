@@ -46,7 +46,7 @@ protected:
         node_.reset();
     }
 
-    std::unique_ptr<::autolink::Node> node_;
+    std::shared_ptr<::autolink::Node> node_;
     std::unique_ptr<DriverEngine> driver_engine_;
 };
 
@@ -102,13 +102,12 @@ TEST_F(DriverEngineTest, RegisterUnregisterSensorHandler) {
     bool handler_called = false;
 
     // 注册处理器
-    DriverEngine::SensorDataHandler handler =
-        [&handler_called, sensor_id](
-            const std::string& id, const std::shared_ptr<sensor::Data>& data) {
-            if (id == sensor_id) {
-                handler_called = true;
-            }
-        };
+    DriverEngine::SensorDataHandler handler = [&handler_called, sensor_id](const std::string& id,
+                                                                           const std::shared_ptr<sensor::Data>& data) {
+        if (id == sensor_id) {
+            handler_called = true;
+        }
+    };
 
     EXPECT_TRUE(driver_engine_->RegisterSensorHandler(sensor_id, handler));
 

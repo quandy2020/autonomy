@@ -30,45 +30,20 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-/**
- * @brief A BT::ActionNode that gets the next few goals from a goals array
- */
-class GetNextFewGoalsAction : public BT::ActionNodeBase
+class GetNextFewGoals : public BT::ActionNodeBase
 {
 public:
-    /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::GetNextFewGoalsAction
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    GetNextFewGoalsAction(const std::string& xml_tag_name,
-                          const BT::NodeConfiguration& conf);
+    GetNextFewGoals(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
     static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<commsgs::planning_msgs::Goals>("goals",
-                                                         "Input goals array"),
-            BT::InputPort<size_t>("count", 1, "Number of goals to extract"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>(
-                "goals", "Output goals array with next few goals"),
-        };
+        return {BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Input goals for navigation"),
+                BT::InputPort<int>("num_goals", "Number of goals to extract"),
+                BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Output goals for navigation")};
     }
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
-
-    /**
-     * @brief Function to halt the node
-     */
+private:
     void halt() override {}
+    BT::NodeStatus tick() override;
 };
 
 }  // namespace action

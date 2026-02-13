@@ -60,8 +60,7 @@ autonomy::commsgs::proto::geometry_msgs::Pose Pose2DToPose3D(
 }
 
 // BoundingBox2D conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::BoundingBox2D& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::BoundingBox2D& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     // Create scene entity for 2D bounding box
@@ -76,8 +75,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 
     // Convert 2D pose to 3D pose
     if (message.has_center()) {
-        autonomy::commsgs::proto::geometry_msgs::Pose pose3d =
-            Pose2DToPose3D(message.center());
+        autonomy::commsgs::proto::geometry_msgs::Pose pose3d = Pose2DToPose3D(message.center());
 
         // Create a cube to represent the 2D bounding box (projected to 3D)
         foxglove::schemas::CubePrimitive cube;
@@ -123,8 +121,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     for (int i = 0; i < message.boxes_size(); ++i) {
         const auto& bbox = message.boxes(i);
         if (bbox.has_center()) {
-            autonomy::commsgs::proto::geometry_msgs::Pose pose3d =
-                Pose2DToPose3D(bbox.center());
+            autonomy::commsgs::proto::geometry_msgs::Pose pose3d = Pose2DToPose3D(bbox.center());
 
             foxglove::schemas::CubePrimitive cube;
             cube.pose = CreatePose(pose3d);
@@ -146,15 +143,13 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted BoundingBox2DArray with " << message.boxes_size()
-          << " boxes to SceneUpdate";
+    AINFO << "Converted BoundingBox2DArray with " << message.boxes_size() << " boxes to SceneUpdate";
 
     return scene_update;
 }
 
 // BoundingBox3D conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::BoundingBox3D& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::BoundingBox3D& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     foxglove::schemas::SceneEntity entity;
@@ -228,23 +223,20 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted BoundingBox3DArray with " << message.boxes_size()
-          << " boxes to SceneUpdate";
+    AINFO << "Converted BoundingBox3DArray with " << message.boxes_size() << " boxes to SceneUpdate";
 
     return scene_update;
 }
 
 // Detection2D conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::Detection2D& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection2D& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     foxglove::schemas::SceneEntity entity;
     SetEntityHeader(entity, ExtractTimestamp(message), ExtractFrameId(message));
 
     // Use detection ID if available, otherwise use index
-    entity.id =
-        message.id().empty() ? "detection2d" : "detection2d_" + message.id();
+    entity.id = message.id().empty() ? "detection2d" : "detection2d_" + message.id();
     entity.frame_locked = false;
 
     // Visualize the 2D bounding box
@@ -253,8 +245,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         if (!bbox_entity.entities.empty()) {
             // Merge the bounding box visualization into the detection entity
             if (!bbox_entity.entities[0].cubes.empty()) {
-                entity.cubes.insert(entity.cubes.end(),
-                                    bbox_entity.entities[0].cubes.begin(),
+                entity.cubes.insert(entity.cubes.end(), bbox_entity.entities[0].cubes.begin(),
                                     bbox_entity.entities[0].cubes.end());
             }
         }
@@ -287,16 +278,14 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted Detection2D (id=" << message.id()
-          << ") to SceneUpdate with " << message.results_size()
+    AINFO << "Converted Detection2D (id=" << message.id() << ") to SceneUpdate with " << message.results_size()
           << " hypotheses";
 
     return scene_update;
 }
 
 // Detection2DArray conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::Detection2DArray& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection2DArray& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     if (message.detections_size() == 0) {
@@ -307,28 +296,24 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     // Convert each detection
     for (int i = 0; i < message.detections_size(); ++i) {
         auto detection_update = ToFoxgloveImpl(message.detections(i));
-        scene_update.entities.insert(scene_update.entities.end(),
-                                     detection_update.entities.begin(),
+        scene_update.entities.insert(scene_update.entities.end(), detection_update.entities.begin(),
                                      detection_update.entities.end());
     }
 
-    AINFO << "Converted Detection2DArray with " << message.detections_size()
-          << " detections to SceneUpdate";
+    AINFO << "Converted Detection2DArray with " << message.detections_size() << " detections to SceneUpdate";
 
     return scene_update;
 }
 
 // Detection3D conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::Detection3D& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection3D& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     foxglove::schemas::SceneEntity entity;
     SetEntityHeader(entity, ExtractTimestamp(message), ExtractFrameId(message));
 
     // Use detection ID if available
-    entity.id =
-        message.id().empty() ? "detection3d" : "detection3d_" + message.id();
+    entity.id = message.id().empty() ? "detection3d" : "detection3d_" + message.id();
     entity.frame_locked = false;
 
     // Visualize the 3D bounding box
@@ -337,8 +322,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         if (!bbox_entity.entities.empty()) {
             // Merge the bounding box visualization
             if (!bbox_entity.entities[0].cubes.empty()) {
-                entity.cubes.insert(entity.cubes.end(),
-                                    bbox_entity.entities[0].cubes.begin(),
+                entity.cubes.insert(entity.cubes.end(), bbox_entity.entities[0].cubes.begin(),
                                     bbox_entity.entities[0].cubes.end());
             }
         }
@@ -371,16 +355,14 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted Detection3D (id=" << message.id()
-          << ") to SceneUpdate with " << message.results_size()
+    AINFO << "Converted Detection3D (id=" << message.id() << ") to SceneUpdate with " << message.results_size()
           << " hypotheses";
 
     return scene_update;
 }
 
 // Detection3DArray conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::Detection3DArray& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection3DArray& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     if (message.detections_size() == 0) {
@@ -391,13 +373,11 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     // Convert each detection
     for (int i = 0; i < message.detections_size(); ++i) {
         auto detection_update = ToFoxgloveImpl(message.detections(i));
-        scene_update.entities.insert(scene_update.entities.end(),
-                                     detection_update.entities.begin(),
+        scene_update.entities.insert(scene_update.entities.end(), detection_update.entities.begin(),
                                      detection_update.entities.end());
     }
 
-    AINFO << "Converted Detection3DArray with " << message.detections_size()
-          << " detections to SceneUpdate";
+    AINFO << "Converted Detection3DArray with " << message.detections_size() << " detections to SceneUpdate";
 
     return scene_update;
 }
@@ -406,8 +386,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 // Classification doesn't have spatial information, so we return an empty
 // SceneUpdate In a more advanced implementation, this could display text labels
 // or confidence bars
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::Classification& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Classification& message) {
     (void)message;  // Unused for now
     AWARN << "Classification messages have no spatial information, "
           << "returning empty SceneUpdate";
@@ -417,8 +396,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 // ObjectHypothesis conversion
 // ObjectHypothesis doesn't have spatial information, so we return an empty
 // SceneUpdate
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::ObjectHypothesis& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::ObjectHypothesis& message) {
     (void)message;  // Unused for now
     AWARN << "ObjectHypothesis messages have no spatial information, "
           << "returning empty SceneUpdate";
@@ -427,8 +405,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 
 // ObjectHypothesisWithPose conversion
 foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::ObjectHypothesisWithPose&
-        message) {
+    const autonomy::commsgs::proto::vision_msgs::ObjectHypothesisWithPose& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     foxglove::schemas::SceneEntity entity;
@@ -461,8 +438,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted ObjectHypothesisWithPose (class_id="
-          << message.hypothesis().class_id()
+    AINFO << "Converted ObjectHypothesisWithPose (class_id=" << message.hypothesis().class_id()
           << ", score=" << message.hypothesis().score() << ") to SceneUpdate";
 
     return scene_update;

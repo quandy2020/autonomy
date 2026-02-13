@@ -68,9 +68,8 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                              double* min_x, double* min_y, double* max_x,
-                              double* max_y);
+    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                              double* max_x, double* max_y);
 
     /**
      * @brief Update the costs in the master costmap in the window
@@ -80,8 +79,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                             int max_i, int max_j);
+    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
     /**
      * @brief Deactivate the layer
@@ -115,9 +113,8 @@ public:
      * @param message The message returned from a message notifier
      * @param buffer A pointer to the observation buffer to update
      */
-    void laserScanCallback(
-        commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
-        const std::shared_ptr<ObservationBuffer>& buffer);
+    void laserScanCallback(commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
+                           const std::shared_ptr<ObservationBuffer>& buffer);
 
     /**
      * @brief A callback to handle buffering LaserScan messages which need
@@ -125,18 +122,16 @@ public:
      * @param message The message returned from a message notifier
      * @param buffer A pointer to the observation buffer to update
      */
-    void laserScanValidInfCallback(
-        commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
-        const std::shared_ptr<ObservationBuffer>& buffer);
+    void laserScanValidInfCallback(commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
+                                   const std::shared_ptr<ObservationBuffer>& buffer);
 
     /**
      * @brief  A callback to handle buffering PointCloud2 messages
      * @param message The message returned from a message notifier
      * @param buffer A pointer to the observation buffer to update
      */
-    void pointCloud2Callback(
-        commsgs::sensor_msgs::PointCloud2::ConstSharedPtr message,
-        const std::shared_ptr<ObservationBuffer>& buffer);
+    void pointCloud2Callback(commsgs::sensor_msgs::PointCloud2::ConstSharedPtr message,
+                             const std::shared_ptr<ObservationBuffer>& buffer);
 
     // for testing purposes
     void addStaticObservation(Observation& obs, bool marking, bool clearing);
@@ -149,8 +144,7 @@ protected:
      * populated with the observations
      * @return True if all the observation buffers are current, false otherwise
      */
-    bool getMarkingObservations(
-        std::vector<Observation>& marking_observations) const;
+    bool getMarkingObservations(std::vector<Observation>& marking_observations) const;
 
     /**
      * @brief  Get the observations used to clear space
@@ -158,8 +152,7 @@ protected:
      * populated with the observations
      * @return True if all the observation buffers are current, false otherwise
      */
-    bool getClearingObservations(
-        std::vector<Observation>& clearing_observations) const;
+    bool getClearingObservations(std::vector<Observation>& clearing_observations) const;
 
     /**
      * @brief  Clear freespace based on one observation
@@ -169,16 +162,14 @@ protected:
      * @param max_x
      * @param max_y
      */
-    virtual void raytraceFreespace(const Observation& clearing_observation,
-                                   double* min_x, double* min_y, double* max_x,
+    virtual void raytraceFreespace(const Observation& clearing_observation, double* min_x, double* min_y, double* max_x,
                                    double* max_y);
 
     /**
      * @brief Process update costmap with raytracing the window bounds
      */
-    void updateRaytraceBounds(double ox, double oy, double wx, double wy,
-                              double max_range, double min_range, double* min_x,
-                              double* min_y, double* max_x, double* max_y);
+    void updateRaytraceBounds(double ox, double oy, double wx, double wy, double max_range, double min_range,
+                              double* min_x, double* min_y, double* max_x, double* max_y);
 
     std::vector<commsgs::geometry_msgs::Point> transformed_footprint_;
     bool footprint_clearing_enabled_;
@@ -186,8 +177,7 @@ protected:
     /**
      * @brief Clear costmap layer info below the robot's footprint
      */
-    void updateFootprint(double robot_x, double robot_y, double robot_yaw,
-                         double* min_x, double* min_y, double* max_x,
+    void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
                          double* max_y);
 
     std::string global_frame_;    ///< @brief The global frame for the costmap

@@ -44,20 +44,16 @@ namespace tf2 {
 
 TransformStorage::TransformStorage() {}
 
-TransformStorage::TransformStorage(const geometry_msgs::TransformStamped& data,
-                                   CompactFrameID frame_id,
+TransformStorage::TransformStorage(const geometry_msgs::TransformStamped& data, CompactFrameID frame_id,
                                    CompactFrameID child_frame_id)
-    : stamp_(data.header.stamp),
-      frame_id_(frame_id),
-      child_frame_id_(child_frame_id) {
+    : stamp_(data.header.stamp), frame_id_(frame_id), child_frame_id_(child_frame_id) {
     const geometry_msgs::Quaternion& o = data.transform.rotation;
     rotation_ = tf2::Quaternion(o.x, o.y, o.z, o.w);
     const geometry_msgs::Vector3& v = data.transform.translation;
     translation_ = tf2::Vector3(v.x, v.y, v.z);
 }
 
-TimeCache::TimeCache(Duration max_storage_time)
-    : max_storage_time_(max_storage_time) {}
+TimeCache::TimeCache(Duration max_storage_time) : max_storage_time_(max_storage_time) {}
 
 namespace cache {  // Avoid ODR collisions
                    // https://github.com/ros/geometry2/issues/175
@@ -66,8 +62,7 @@ namespace cache {  // Avoid ODR collisions
 void createExtrapolationException1(Time t0, Time t1, std::string* error_str) {
     if (error_str) {
         std::stringstream ss;
-        ss << "Lookup would require extrapolation at time " << t0
-           << ", but only time " << t1 << " is in the buffer";
+        ss << "Lookup would require extrapolation at time " << t0 << ", but only time " << t1 << " is in the buffer";
         *error_str = ss.str();
     }
 }
@@ -93,8 +88,8 @@ void createExtrapolationException3(Time t0, Time t1, std::string* error_str) {
 }
 }  // namespace cache
 
-uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two,
-                               Time target_time, std::string* error_str) {
+uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two, Time target_time,
+                               std::string* error_str) {
     // No values stored
     if (storage_.empty()) {
         return 0;
@@ -113,8 +108,7 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two,
             one = &ts;
             return 1;
         } else {
-            cache::createExtrapolationException1(target_time, ts.stamp_,
-                                                 error_str);
+            cache::createExtrapolationException1(target_time, ts.stamp_, error_str);
             return 0;
         }
     }
@@ -131,12 +125,10 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two,
     }
     // Catch cases that would require extrapolation
     else if (target_time > latest_time) {
-        cache::createExtrapolationException2(target_time, latest_time,
-                                             error_str);
+        cache::createExtrapolationException2(target_time, latest_time, error_str);
         return 0;
     } else if (target_time < earliest_time) {
-        cache::createExtrapolationException3(target_time, earliest_time,
-                                             error_str);
+        cache::createExtrapolationException3(target_time, earliest_time, error_str);
         return 0;
     }
 
@@ -166,8 +158,7 @@ uint8_t TimeCache::findClosest(TransformStorage*& one, TransformStorage*& two,
     return 2;
 }
 
-void TimeCache::interpolate(const TransformStorage& one,
-                            const TransformStorage& two, Time time,
+void TimeCache::interpolate(const TransformStorage& one, const TransformStorage& two, Time time,
                             TransformStorage& output) {
     // Check for zero distance case
     if (two.stamp_ == one.stamp_) {
@@ -177,12 +168,10 @@ void TimeCache::interpolate(const TransformStorage& one,
     // Calculate the ratio
     //  tf2Scalar ratio = (time.toSec() - one.stamp_.toSec()) /
     //  (two.stamp_.toSec() - one.stamp_.toSec());
-    tf2Scalar ratio =
-        time_to_sec(time - one.stamp_) / time_to_sec(two.stamp_ - one.stamp_);
+    tf2Scalar ratio = time_to_sec(time - one.stamp_) / time_to_sec(two.stamp_ - one.stamp_);
 
     // Interpolate translation
-    output.translation_.setInterpolate3(one.translation_, two.translation_,
-                                        ratio);
+    output.translation_.setInterpolate3(one.translation_, two.translation_, ratio);
 
     // Interpolate rotation
     output.rotation_ = slerp(one.rotation_, two.rotation_, ratio);
@@ -192,9 +181,8 @@ void TimeCache::interpolate(const TransformStorage& one,
     output.child_frame_id_ = one.child_frame_id_;
 }
 
-bool TimeCache::getData(
-    Time time, TransformStorage& data_out,
-    std::string* error_str)  // returns false if data not available
+bool TimeCache::getData(Time time, TransformStorage& data_out,
+                        std::string* error_str)  // returns false if data not available
 {
     TransformStorage* p_temp_1;
     TransformStorage* p_temp_2;
@@ -281,8 +269,7 @@ Time TimeCache::getOldestTimestamp() {
 void TimeCache::pruneList() {
     Time latest_time = storage_.begin()->stamp_;
 
-    while (!storage_.empty() &&
-           storage_.back().stamp_ + max_storage_time_ < latest_time) {
+    while (!storage_.empty() && storage_.back().stamp_ + max_storage_time_ < latest_time) {
         storage_.pop_back();
     }
 

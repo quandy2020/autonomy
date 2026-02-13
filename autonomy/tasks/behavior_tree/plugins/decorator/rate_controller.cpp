@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace decorator {
 
-RateController::RateController(const std::string& name,
-                               const BT::NodeConfiguration& conf)
+RateController::RateController(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf), first_time_(false) {}
 
 void RateController::initialize() {
@@ -57,8 +56,7 @@ BT::NodeStatus RateController::tick() {
     // The child gets ticked the first time through and any time the period has
     // expired. In addition, once the child begins to run, it is ticked each
     // time 'til completion
-    if (first_time_ || (child_node_->status() == BT::NodeStatus::RUNNING) ||
-        seconds.count() >= period_) {
+    if (first_time_ || (child_node_->status() == BT::NodeStatus::RUNNING) || seconds.count() >= period_) {
         first_time_ = false;
         const BT::NodeStatus child_state = child_node_->executeTick();
 
@@ -69,9 +67,8 @@ BT::NodeStatus RateController::tick() {
                 return child_state;
 
             case BT::NodeStatus::SUCCESS:
-                start_ =
-                    std::chrono::high_resolution_clock::now();  // Reset the
-                                                                // timer
+                start_ = std::chrono::high_resolution_clock::now();  // Reset the
+                                                                     // timer
                 return BT::NodeStatus::SUCCESS;
 
             default:
@@ -90,7 +87,5 @@ BT::NodeStatus RateController::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::decorator::RateController>(
-        "RateController");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::decorator::RateController>("RateController");
 }

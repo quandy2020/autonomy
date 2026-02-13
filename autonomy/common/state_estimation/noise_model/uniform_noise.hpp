@@ -53,8 +53,7 @@ public:
     ///
     /// @param[in]  covariance  The covariance
     ///
-    explicit UniformNoise(const Matrix& covariance) noexcept
-        : m_covariance{covariance} {}
+    explicit UniformNoise(const Matrix& covariance) noexcept : m_covariance{covariance} {}
 
     ///
     /// @brief      Create the noise model from an array
@@ -65,15 +64,13 @@ public:
     /// @tparam     OtherScalarT  Some scalar type.
     ///
     template <typename OtherScalarT>
-    explicit UniformNoise(
-        const std::array<OtherScalarT, State::size()>& variances) noexcept
-        : m_covariance{
-              Eigen::Map<const VarianceVector<OtherScalarT>>(variances.data())
-                  .template cast<Scalar>()
-                  .array()
-                  .square()
-                  .matrix()
-                  .asDiagonal()} {}
+    explicit UniformNoise(const std::array<OtherScalarT, State::size()>& variances) noexcept
+        : m_covariance{Eigen::Map<const VarianceVector<OtherScalarT>>(variances.data())
+                           .template cast<Scalar>()
+                           .array()
+                           .square()
+                           .matrix()
+                           .asDiagonal()} {}
 
     ///
     /// @brief      Create the noise model from a vector
@@ -88,18 +85,16 @@ public:
     template <typename OtherScalarT>
     explicit UniformNoise(const std::vector<OtherScalarT>& variances) {
         if (variances.size() != static_cast<std::size_t>(State::size())) {
-            throw std::runtime_error(
-                "There must be " + std::to_string(State::size()) +
-                " variances for initializing the uniform noise model, but " +
-                std::to_string(variances.size()) + " provided");
+            throw std::runtime_error("There must be " + std::to_string(State::size()) +
+                                     " variances for initializing the uniform noise model, but " +
+                                     std::to_string(variances.size()) + " provided");
         }
-        m_covariance =
-            Eigen::Map<const VarianceVector<OtherScalarT>>(variances.data())
-                .template cast<Scalar>()
-                .array()
-                .square()
-                .matrix()
-                .asDiagonal();
+        m_covariance = Eigen::Map<const VarianceVector<OtherScalarT>>(variances.data())
+                           .template cast<Scalar>()
+                           .array()
+                           .square()
+                           .matrix()
+                           .asDiagonal();
     }
 
     ///
@@ -113,8 +108,7 @@ public:
     ///
     template <typename... VarianceTs>
     explicit UniformNoise(const Scalar variance, const VarianceTs... variances)
-        : UniformNoise{
-              std::array<Scalar, State::size()>{variance, variances...}} {
+        : UniformNoise{std::array<Scalar, State::size()>{variance, variances...}} {
         static_assert(sizeof...(VarianceTs) + 1 == State::size(),
                       "Wrong number of variances passed into the UniformNoise "
                       "constructor");
@@ -131,9 +125,7 @@ protected:
     /// @return     A covariance of the noise process over a given time span.
     ///
     Matrix crtp_covariance(const std::chrono::nanoseconds& dt) const noexcept {
-        return m_covariance *
-               std::chrono::duration_cast<std::chrono::duration<Scalar>>(dt)
-                   .count();
+        return m_covariance * std::chrono::duration_cast<std::chrono::duration<Scalar>>(dt).count();
     }
 
 private:

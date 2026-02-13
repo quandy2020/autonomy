@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  启动 autonomy tasks 模块（行为树导航、TaskManager 等）。
+  二进制：autonomy.tasks.launcher（需在 CMake 中为该 target 命名并安装到 bin）。
+  使用前请设置 PATH 或编辑 process_name 中的路径；配置目录可通过 process_name 中参数传入。
+-->
+<autolink>
+  <module>
+    <name>tasks</name>
+    <type>binary</type>
+    <process_name>autonomy.tasks.launcher --configuration_directory /opt/autonomy/configuration_files --configuration_basename task_options.lua</process_name>
+  </module>
+</autolink>

@@ -27,24 +27,18 @@
 namespace cartographer {
 namespace sensor {
 
-std::vector<RangefinderPoint> VoxelFilter(
-    const std::vector<RangefinderPoint>& points, const float resolution);
+std::vector<RangefinderPoint> VoxelFilter(const std::vector<RangefinderPoint>& points, const float resolution);
 
 PointCloud VoxelFilter(const PointCloud& point_cloud, const float resolution);
-TimedPointCloud VoxelFilter(const TimedPointCloud& timed_point_cloud,
-                            const float resolution);
+TimedPointCloud VoxelFilter(const TimedPointCloud& timed_point_cloud, const float resolution);
 
 std::vector<sensor::TimedPointCloudOriginData::RangeMeasurement> VoxelFilter(
-    const std::vector<sensor::TimedPointCloudOriginData::RangeMeasurement>&
-        range_measurements,
-    const float resolution);
+    const std::vector<sensor::TimedPointCloudOriginData::RangeMeasurement>& range_measurements, const float resolution);
 
 proto::AdaptiveVoxelFilterOptions CreateAdaptiveVoxelFilterOptions(
     common::LuaParameterDictionary* const parameter_dictionary);
 
-PointCloud AdaptiveVoxelFilter(
-    const PointCloud& point_cloud,
-    const proto::AdaptiveVoxelFilterOptions& options);
+PointCloud AdaptiveVoxelFilter(const PointCloud& point_cloud, const proto::AdaptiveVoxelFilterOptions& options);
 
 }  // namespace sensor
 }  // namespace cartographer

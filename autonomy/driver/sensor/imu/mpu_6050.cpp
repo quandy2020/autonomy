@@ -134,15 +134,13 @@ bool Mpu6050Driver::InitializeHardware() {
     // 打开 I2C 设备
     i2c_fd_ = open(i2c_device_path_.c_str(), O_RDWR);
     if (i2c_fd_ < 0) {
-        AERROR << "Failed to open I2C device: " << i2c_device_path_
-               << " (error: " << strerror(errno) << ")";
+        AERROR << "Failed to open I2C device: " << i2c_device_path_ << " (error: " << strerror(errno) << ")";
         return false;
     }
 
     // 设置 I2C 从设备地址
     if (ioctl(i2c_fd_, I2C_SLAVE, i2c_address_) < 0) {
-        AERROR << "Failed to set I2C slave address: "
-               << static_cast<int>(i2c_address_)
+        AERROR << "Failed to set I2C slave address: " << static_cast<int>(i2c_address_)
                << " (error: " << strerror(errno) << ")";
         close(i2c_fd_);
         i2c_fd_ = -1;
@@ -152,8 +150,7 @@ bool Mpu6050Driver::InitializeHardware() {
     // 读取 WHO_AM_I 寄存器验证设备
     int who_am_i = ReadRegister(MPU6050_WHO_AM_I);
     if (who_am_i != MPU6050_WHO_AM_I_VALUE) {
-        AERROR << "MPU6050 WHO_AM_I mismatch: expected "
-               << static_cast<int>(MPU6050_WHO_AM_I_VALUE) << ", got "
+        AERROR << "MPU6050 WHO_AM_I mismatch: expected " << static_cast<int>(MPU6050_WHO_AM_I_VALUE) << ", got "
                << who_am_i;
         close(i2c_fd_);
         i2c_fd_ = -1;
@@ -242,8 +239,7 @@ int Mpu6050Driver::ReadRegister(uint8_t reg) const {
     packets.nmsgs = 2;
 
     if (ioctl(i2c_fd_, I2C_RDWR, &packets) < 0) {
-        AERROR << "Failed to read register 0x" << std::hex
-               << static_cast<int>(reg) << std::dec
+        AERROR << "Failed to read register 0x" << std::hex << static_cast<int>(reg) << std::dec
                << " (error: " << strerror(errno) << ")";
         return -1;
     }
@@ -259,8 +255,7 @@ bool Mpu6050Driver::WriteRegister(uint8_t reg, uint8_t value) {
     uint8_t buffer[2] = {reg, value};
 
     if (write(i2c_fd_, buffer, 2) != 2) {
-        AERROR << "Failed to write register 0x" << std::hex
-               << static_cast<int>(reg) << std::dec
+        AERROR << "Failed to write register 0x" << std::hex << static_cast<int>(reg) << std::dec
                << " (error: " << strerror(errno) << ")";
         return false;
     }
@@ -268,8 +263,7 @@ bool Mpu6050Driver::WriteRegister(uint8_t reg, uint8_t value) {
     return true;
 }
 
-bool Mpu6050Driver::ReadAccelerometer(int16_t& accel_x, int16_t& accel_y,
-                                      int16_t& accel_z) {
+bool Mpu6050Driver::ReadAccelerometer(int16_t& accel_x, int16_t& accel_y, int16_t& accel_z) {
     if (i2c_fd_ < 0) {
         return false;
     }
@@ -295,8 +289,7 @@ bool Mpu6050Driver::ReadAccelerometer(int16_t& accel_x, int16_t& accel_y,
     packets.nmsgs = 2;
 
     if (ioctl(i2c_fd_, I2C_RDWR, &packets) < 0) {
-        AERROR << "Failed to read accelerometer data (error: "
-               << strerror(errno) << ")";
+        AERROR << "Failed to read accelerometer data (error: " << strerror(errno) << ")";
         return false;
     }
 
@@ -308,8 +301,7 @@ bool Mpu6050Driver::ReadAccelerometer(int16_t& accel_x, int16_t& accel_y,
     return true;
 }
 
-bool Mpu6050Driver::ReadGyroscope(int16_t& gyro_x, int16_t& gyro_y,
-                                  int16_t& gyro_z) {
+bool Mpu6050Driver::ReadGyroscope(int16_t& gyro_x, int16_t& gyro_y, int16_t& gyro_z) {
     if (i2c_fd_ < 0) {
         return false;
     }
@@ -335,8 +327,7 @@ bool Mpu6050Driver::ReadGyroscope(int16_t& gyro_x, int16_t& gyro_y,
     packets.nmsgs = 2;
 
     if (ioctl(i2c_fd_, I2C_RDWR, &packets) < 0) {
-        AERROR << "Failed to read gyroscope data (error: " << strerror(errno)
-               << ")";
+        AERROR << "Failed to read gyroscope data (error: " << strerror(errno) << ")";
         return false;
     }
 
@@ -352,20 +343,17 @@ double Mpu6050Driver::ConvertAccelerometer(int16_t raw_value, int range) {
     // MPU6050 加速度计分辨率：16-bit，量程为 ±range g
     // 转换公式：value = (raw_value / 32768.0) * range * 9.80665
     constexpr double GRAVITY = 9.80665;  // m/s²
-    return (static_cast<double>(raw_value) / 32768.0) *
-           static_cast<double>(range) * GRAVITY;
+    return (static_cast<double>(raw_value) / 32768.0) * static_cast<double>(range) * GRAVITY;
 }
 
 double Mpu6050Driver::ConvertGyroscope(int16_t raw_value, int range) {
     // MPU6050 陀螺仪分辨率：16-bit，量程为 ±range °/s
     // 转换公式：value = (raw_value / 32768.0) * range * (π / 180.0)
     constexpr double DEG_TO_RAD = M_PI / 180.0;
-    return (static_cast<double>(raw_value) / 32768.0) *
-           static_cast<double>(range) * DEG_TO_RAD;
+    return (static_cast<double>(raw_value) / 32768.0) * static_cast<double>(range) * DEG_TO_RAD;
 }
 
-std::shared_ptr<commsgs::sensor_msgs::Imu> Mpu6050Driver::ReadImuData(
-    const std::string& sensor_id) {
+std::shared_ptr<commsgs::sensor_msgs::Imu> Mpu6050Driver::ReadImuData(const std::string& sensor_id) {
     std::lock_guard<std::mutex> lock(hardware_mutex_);
 
     if (!hardware_initialized_ || i2c_fd_ < 0) {
@@ -450,5 +438,4 @@ std::shared_ptr<commsgs::sensor_msgs::Imu> Mpu6050Driver::ReadImuData(
 }  // namespace autonomy
 
 // 注册驱动类为插件，支持动态库加载
-CLASS_LOADER_REGISTER_CLASS(autonomy::driver::sensor::imu::Mpu6050Driver,
-                            autonomy::driver::sensor::imu::ImuBase)
+CLASS_LOADER_REGISTER_CLASS(autonomy::driver::sensor::imu::Mpu6050Driver, autonomy::driver::sensor::imu::ImuBase)

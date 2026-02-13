@@ -66,12 +66,10 @@ public:
      * @param  tf_tolerance The amount of time to wait for a transform to be
      * available when setting a new global frame
      */
-    ObservationBuffer(std::string topic_name, double observation_keep_time,
-                      double expected_update_rate, double min_obstacle_height,
-                      double max_obstacle_height, double obstacle_max_range,
-                      double obstacle_min_range, double raytrace_max_range,
-                      double raytrace_min_range, TfBuffer& tf_buffer,
-                      std::string global_frame, std::string sensor_frame,
+    ObservationBuffer(std::string topic_name, double observation_keep_time, double expected_update_rate,
+                      double min_obstacle_height, double max_obstacle_height, double obstacle_max_range,
+                      double obstacle_min_range, double raytrace_max_range, double raytrace_min_range,
+                      TfBuffer& tf_buffer, std::string global_frame, std::string sensor_frame,
                       transform::tf2::Duration tf_tolerance);
 
     /**
@@ -135,10 +133,8 @@ private:
     std::list<Observation> observation_list_;
     std::string topic_name_;
     double min_obstacle_height_, max_obstacle_height_;
-    std::recursive_mutex
-        lock_;  ///< @brief A lock for accessing data in callbacks safely
-    double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_,
-        raytrace_min_range_;
+    std::recursive_mutex lock_;  ///< @brief A lock for accessing data in callbacks safely
+    double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_, raytrace_min_range_;
     transform::tf2::Duration tf_tolerance_;
 };
 

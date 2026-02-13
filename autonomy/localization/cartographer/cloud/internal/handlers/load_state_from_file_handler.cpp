@@ -26,18 +26,13 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void LoadStateFromFileHandler::OnRequest(
-    const proto::LoadStateFromFileRequest& request) {
+void LoadStateFromFileHandler::OnRequest(const proto::LoadStateFromFileRequest& request) {
     // TODO(gaschler): This blocks a handler thread, consider working in
     // background.
-    auto trajectory_remapping =
-        GetContext<MapBuilderContextInterface>()
-            ->map_builder()
-            .LoadStateFromFile(request.file_path(),
-                               request.load_frozen_state());
+    auto trajectory_remapping = GetContext<MapBuilderContextInterface>()->map_builder().LoadStateFromFile(
+        request.file_path(), request.load_frozen_state());
     for (const auto& entry : trajectory_remapping) {
-        GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(
-            request.client_id(), entry.second);
+        GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(request.client_id(), entry.second);
     }
     auto response = absl::make_unique<proto::LoadStateFromFileResponse>();
     *response->mutable_trajectory_remapping() = ToProto(trajectory_remapping);

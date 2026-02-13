@@ -31,8 +31,7 @@ public:
      * @param[in] length the requested submap length.
      * @param[out] isSuccess true if successful, false otherwise.
      */
-    SubmapGeometry(const GridMap& gridMap, const Position& position,
-                   const Length& length, bool& isSuccess);
+    SubmapGeometry(const GridMap& gridMap, const Position& position, const Length& length, bool& isSuccess);
 
     virtual ~SubmapGeometry() = default;
 

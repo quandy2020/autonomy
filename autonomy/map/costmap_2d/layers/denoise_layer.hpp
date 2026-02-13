@@ -53,8 +53,7 @@ public:
      * update. A layer is essentially a filter, so it never needs to expand
      * bounds.
      */
-    void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                      double* min_x, double* min_y, double* max_x,
+    void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
                       double* max_y) override;
 
     /**
@@ -67,8 +66,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    void updateCosts(Costmap2D& master_grid, int min_x, int min_y, int max_x,
-                     int max_y) override;
+    void updateCosts(Costmap2D& master_grid, int min_x, int min_y, int max_x, int max_y) override;
 
 protected:
     /**

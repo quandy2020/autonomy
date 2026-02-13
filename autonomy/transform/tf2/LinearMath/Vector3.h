@@ -73,8 +73,7 @@ public:
      * @param y Y value
      * @param z Z value
      */
-    TF2SIMD_FORCE_INLINE Vector3(const tf2Scalar& x, const tf2Scalar& y,
-                                 const tf2Scalar& z) {
+    TF2SIMD_FORCE_INLINE Vector3(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z) {
         m_floats[0] = x;
         m_floats[1] = y;
         m_floats[2] = z;
@@ -117,8 +116,7 @@ public:
     /**@brief Return the dot product
      * @param v The other vector in the dot product */
     TF2SIMD_FORCE_INLINE tf2Scalar dot(const Vector3& v) const {
-        return m_floats[0] * v.m_floats[0] + m_floats[1] * v.m_floats[1] +
-               m_floats[2] * v.m_floats[2];
+        return m_floats[0] * v.m_floats[0] + m_floats[1] * v.m_floats[1] + m_floats[2] * v.m_floats[2];
     }
 
     /**@brief Return the length of the vector squared */
@@ -151,8 +149,7 @@ public:
     /**@brief Rotate this vector
      * @param wAxis The axis to rotate about
      * @param angle The angle to rotate by */
-    TF2SIMD_FORCE_INLINE Vector3 rotate(const Vector3& wAxis,
-                                        const tf2Scalar angle) const;
+    TF2SIMD_FORCE_INLINE Vector3 rotate(const Vector3& wAxis, const tf2Scalar angle) const;
 
     /**@brief Return the angle between this and another vector
      * @param v The other vector */
@@ -163,40 +160,32 @@ public:
     }
     /**@brief Return a vector will the absolute values of each element */
     TF2SIMD_FORCE_INLINE Vector3 absolute() const {
-        return Vector3(tf2Fabs(m_floats[0]), tf2Fabs(m_floats[1]),
-                       tf2Fabs(m_floats[2]));
+        return Vector3(tf2Fabs(m_floats[0]), tf2Fabs(m_floats[1]), tf2Fabs(m_floats[2]));
     }
     /**@brief Return the cross product between this and another vector
      * @param v The other vector */
     TF2SIMD_FORCE_INLINE Vector3 cross(const Vector3& v) const {
-        return Vector3(
-            m_floats[1] * v.m_floats[2] - m_floats[2] * v.m_floats[1],
-            m_floats[2] * v.m_floats[0] - m_floats[0] * v.m_floats[2],
-            m_floats[0] * v.m_floats[1] - m_floats[1] * v.m_floats[0]);
+        return Vector3(m_floats[1] * v.m_floats[2] - m_floats[2] * v.m_floats[1],
+                       m_floats[2] * v.m_floats[0] - m_floats[0] * v.m_floats[2],
+                       m_floats[0] * v.m_floats[1] - m_floats[1] * v.m_floats[0]);
     }
 
-    TF2SIMD_FORCE_INLINE tf2Scalar triple(const Vector3& v1, const Vector3& v2)
-        const {
-        return m_floats[0] * (v1.m_floats[1] * v2.m_floats[2] -
-                              v1.m_floats[2] * v2.m_floats[1]) +
-               m_floats[1] * (v1.m_floats[2] * v2.m_floats[0] -
-                              v1.m_floats[0] * v2.m_floats[2]) +
-               m_floats[2] * (v1.m_floats[0] * v2.m_floats[1] -
-                              v1.m_floats[1] * v2.m_floats[0]);
+    TF2SIMD_FORCE_INLINE tf2Scalar triple(const Vector3& v1, const Vector3& v2) const {
+        return m_floats[0] * (v1.m_floats[1] * v2.m_floats[2] - v1.m_floats[2] * v2.m_floats[1]) +
+               m_floats[1] * (v1.m_floats[2] * v2.m_floats[0] - v1.m_floats[0] * v2.m_floats[2]) +
+               m_floats[2] * (v1.m_floats[0] * v2.m_floats[1] - v1.m_floats[1] * v2.m_floats[0]);
     }
 
     /**@brief Return the axis with the smallest value
      * Note return values are 0,1,2 for x, y, or z */
     TF2SIMD_FORCE_INLINE int minAxis() const {
-        return m_floats[0] < m_floats[1] ? (m_floats[0] < m_floats[2] ? 0 : 2)
-                                         : (m_floats[1] < m_floats[2] ? 1 : 2);
+        return m_floats[0] < m_floats[1] ? (m_floats[0] < m_floats[2] ? 0 : 2) : (m_floats[1] < m_floats[2] ? 1 : 2);
     }
 
     /**@brief Return the axis with the largest value
      * Note return values are 0,1,2 for x, y, or z */
     TF2SIMD_FORCE_INLINE int maxAxis() const {
-        return m_floats[0] < m_floats[1] ? (m_floats[1] < m_floats[2] ? 2 : 1)
-                                         : (m_floats[0] < m_floats[2] ? 2 : 0);
+        return m_floats[0] < m_floats[1] ? (m_floats[1] < m_floats[2] ? 2 : 1) : (m_floats[0] < m_floats[2] ? 2 : 0);
     }
 
     TF2SIMD_FORCE_INLINE int furthestAxis() const {
@@ -207,8 +196,7 @@ public:
         return absolute().maxAxis();
     }
 
-    TF2SIMD_FORCE_INLINE void setInterpolate3(const Vector3& v0,
-                                              const Vector3& v1, tf2Scalar rt) {
+    TF2SIMD_FORCE_INLINE void setInterpolate3(const Vector3& v0, const Vector3& v1, tf2Scalar rt) {
         tf2Scalar s = tf2Scalar(1.0) - rt;
         m_floats[0] = s * v0.m_floats[0] + rt * v1.m_floats[0];
         m_floats[1] = s * v0.m_floats[1] + rt * v1.m_floats[1];
@@ -221,10 +209,8 @@ public:
      * @param v The other vector
      * @param t The ration of this to v (t = 0 => return this, t=1 => return
      * other) */
-    TF2SIMD_FORCE_INLINE Vector3 lerp(const Vector3& v, const tf2Scalar& t)
-        const {
-        return Vector3(m_floats[0] + (v.m_floats[0] - m_floats[0]) * t,
-                       m_floats[1] + (v.m_floats[1] - m_floats[1]) * t,
+    TF2SIMD_FORCE_INLINE Vector3 lerp(const Vector3& v, const tf2Scalar& t) const {
+        return Vector3(m_floats[0] + (v.m_floats[0] - m_floats[0]) * t, m_floats[1] + (v.m_floats[1] - m_floats[1]) * t,
                        m_floats[2] + (v.m_floats[2] - m_floats[2]) * t);
     }
 
@@ -295,10 +281,8 @@ public:
     }
 
     TF2SIMD_FORCE_INLINE bool operator==(const Vector3& other) const {
-        return ((m_floats[3] == other.m_floats[3]) &&
-                (m_floats[2] == other.m_floats[2]) &&
-                (m_floats[1] == other.m_floats[1]) &&
-                (m_floats[0] == other.m_floats[0]));
+        return ((m_floats[3] == other.m_floats[3]) && (m_floats[2] == other.m_floats[2]) &&
+                (m_floats[1] == other.m_floats[1]) && (m_floats[0] == other.m_floats[0]));
     }
 
     TF2SIMD_FORCE_INLINE bool operator!=(const Vector3& other) const {
@@ -326,16 +310,14 @@ public:
         tf2SetMin(m_floats[3], other.w());
     }
 
-    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y,
-                                       const tf2Scalar& z) {
+    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z) {
         m_floats[0] = x;
         m_floats[1] = y;
         m_floats[2] = z;
         m_floats[3] = tf2Scalar(0.);
     }
 
-    void getSkewSymmetricMatrix(Vector3 * v0, Vector3 * v1, Vector3 * v2)
-        const {
+    void getSkewSymmetricMatrix(Vector3 * v0, Vector3 * v1, Vector3 * v2) const {
         v0->setValue(0., -z(), y());
         v1->setValue(z(), 0., -x());
         v2->setValue(-y(), x(), 0.);
@@ -346,8 +328,7 @@ public:
     }
 
     TF2SIMD_FORCE_INLINE bool isZero() const {
-        return m_floats[0] == tf2Scalar(0) && m_floats[1] == tf2Scalar(0) &&
-               m_floats[2] == tf2Scalar(0);
+        return m_floats[0] == tf2Scalar(0) && m_floats[1] == tf2Scalar(0) && m_floats[2] == tf2Scalar(0);
     }
 
     TF2SIMD_FORCE_INLINE bool fuzzyZero() const {
@@ -358,38 +339,28 @@ public:
 
     TF2SIMD_FORCE_INLINE void deSerialize(const struct Vector3Data& dataIn);
 
-    TF2SIMD_FORCE_INLINE void serializeFloat(struct Vector3FloatData & dataOut)
-        const;
+    TF2SIMD_FORCE_INLINE void serializeFloat(struct Vector3FloatData & dataOut) const;
 
-    TF2SIMD_FORCE_INLINE void deSerializeFloat(
-        const struct Vector3FloatData& dataIn);
+    TF2SIMD_FORCE_INLINE void deSerializeFloat(const struct Vector3FloatData& dataIn);
 
-    TF2SIMD_FORCE_INLINE void serializeDouble(struct Vector3DoubleData &
-                                              dataOut) const;
+    TF2SIMD_FORCE_INLINE void serializeDouble(struct Vector3DoubleData & dataOut) const;
 
-    TF2SIMD_FORCE_INLINE void deSerializeDouble(
-        const struct Vector3DoubleData& dataIn);
+    TF2SIMD_FORCE_INLINE void deSerializeDouble(const struct Vector3DoubleData& dataIn);
 };
 
 /**@brief Return the sum of two vectors (Point symantics)*/
 TF2SIMD_FORCE_INLINE Vector3 operator+(const Vector3& v1, const Vector3& v2) {
-    return Vector3(v1.m_floats[0] + v2.m_floats[0],
-                   v1.m_floats[1] + v2.m_floats[1],
-                   v1.m_floats[2] + v2.m_floats[2]);
+    return Vector3(v1.m_floats[0] + v2.m_floats[0], v1.m_floats[1] + v2.m_floats[1], v1.m_floats[2] + v2.m_floats[2]);
 }
 
 /**@brief Return the elementwise product of two vectors */
 TF2SIMD_FORCE_INLINE Vector3 operator*(const Vector3& v1, const Vector3& v2) {
-    return Vector3(v1.m_floats[0] * v2.m_floats[0],
-                   v1.m_floats[1] * v2.m_floats[1],
-                   v1.m_floats[2] * v2.m_floats[2]);
+    return Vector3(v1.m_floats[0] * v2.m_floats[0], v1.m_floats[1] * v2.m_floats[1], v1.m_floats[2] * v2.m_floats[2]);
 }
 
 /**@brief Return the difference between two vectors */
 TF2SIMD_FORCE_INLINE Vector3 operator-(const Vector3& v1, const Vector3& v2) {
-    return Vector3(v1.m_floats[0] - v2.m_floats[0],
-                   v1.m_floats[1] - v2.m_floats[1],
-                   v1.m_floats[2] - v2.m_floats[2]);
+    return Vector3(v1.m_floats[0] - v2.m_floats[0], v1.m_floats[1] - v2.m_floats[1], v1.m_floats[2] - v2.m_floats[2]);
 }
 /**@brief Return the negative of the vector */
 TF2SIMD_FORCE_INLINE Vector3 operator-(const Vector3& v) {
@@ -414,9 +385,7 @@ TF2SIMD_FORCE_INLINE Vector3 operator/(const Vector3& v, const tf2Scalar& s) {
 
 /**@brief Return the vector inversely scaled by s */
 TF2SIMD_FORCE_INLINE Vector3 operator/(const Vector3& v1, const Vector3& v2) {
-    return Vector3(v1.m_floats[0] / v2.m_floats[0],
-                   v1.m_floats[1] / v2.m_floats[1],
-                   v1.m_floats[2] / v2.m_floats[2]);
+    return Vector3(v1.m_floats[0] / v2.m_floats[0], v1.m_floats[1] / v2.m_floats[1], v1.m_floats[2] / v2.m_floats[2]);
 }
 
 /**@brief Return the dot product between two vectors */
@@ -425,14 +394,12 @@ TF2SIMD_FORCE_INLINE tf2Scalar tf2Dot(const Vector3& v1, const Vector3& v2) {
 }
 
 /**@brief Return the distance squared between two vectors */
-TF2SIMD_FORCE_INLINE tf2Scalar tf2Distance2(const Vector3& v1,
-                                            const Vector3& v2) {
+TF2SIMD_FORCE_INLINE tf2Scalar tf2Distance2(const Vector3& v1, const Vector3& v2) {
     return v1.distance2(v2);
 }
 
 /**@brief Return the distance between two vectors */
-TF2SIMD_FORCE_INLINE tf2Scalar tf2Distance(const Vector3& v1,
-                                           const Vector3& v2) {
+TF2SIMD_FORCE_INLINE tf2Scalar tf2Distance(const Vector3& v1, const Vector3& v2) {
     return v1.distance(v2);
 }
 
@@ -446,8 +413,7 @@ TF2SIMD_FORCE_INLINE Vector3 tf2Cross(const Vector3& v1, const Vector3& v2) {
     return v1.cross(v2);
 }
 
-TF2SIMD_FORCE_INLINE tf2Scalar tf2Triple(const Vector3& v1, const Vector3& v2,
-                                         const Vector3& v3) {
+TF2SIMD_FORCE_INLINE tf2Scalar tf2Triple(const Vector3& v1, const Vector3& v2, const Vector3& v3) {
     return v1.triple(v2, v3);
 }
 
@@ -455,8 +421,7 @@ TF2SIMD_FORCE_INLINE tf2Scalar tf2Triple(const Vector3& v1, const Vector3& v2,
  * @param v1 One vector
  * @param v2 The other vector
  * @param t The ration of this to v (t = 0 => return v1, t=1 => return v2) */
-TF2SIMD_FORCE_INLINE Vector3 lerp(const Vector3& v1, const Vector3& v2,
-                                  const tf2Scalar& t) {
+TF2SIMD_FORCE_INLINE Vector3 lerp(const Vector3& v1, const Vector3& v2, const tf2Scalar& t) {
     return v1.lerp(v2, t);
 }
 
@@ -472,8 +437,7 @@ TF2SIMD_FORCE_INLINE Vector3 Vector3::normalized() const {
     return *this / length();
 }
 
-TF2SIMD_FORCE_INLINE Vector3 Vector3::rotate(const Vector3& wAxis,
-                                             const tf2Scalar angle) const {
+TF2SIMD_FORCE_INLINE Vector3 Vector3::rotate(const Vector3& wAxis, const tf2Scalar angle) const {
     // wAxis must be a unit lenght vector
 
     Vector3 o = wAxis * wAxis.dot(*this);
@@ -490,15 +454,13 @@ class tf2Vector4 : public Vector3
 public:
     TF2SIMD_FORCE_INLINE tf2Vector4() {}
 
-    TF2SIMD_FORCE_INLINE tf2Vector4(const tf2Scalar& x, const tf2Scalar& y,
-                                    const tf2Scalar& z, const tf2Scalar& w)
+    TF2SIMD_FORCE_INLINE tf2Vector4(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z, const tf2Scalar& w)
         : Vector3(x, y, z) {
         m_floats[3] = w;
     }
 
     TF2SIMD_FORCE_INLINE tf2Vector4 absolute4() const {
-        return tf2Vector4(tf2Fabs(m_floats[0]), tf2Fabs(m_floats[1]),
-                          tf2Fabs(m_floats[2]), tf2Fabs(m_floats[3]));
+        return tf2Vector4(tf2Fabs(m_floats[0]), tf2Fabs(m_floats[1]), tf2Fabs(m_floats[2]), tf2Fabs(m_floats[3]));
     }
 
     tf2Scalar getW() const {
@@ -572,8 +534,7 @@ public:
      * @param z Value of z
      * @param w Value of w
      */
-    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y,
-                                       const tf2Scalar& z, const tf2Scalar& w) {
+    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z, const tf2Scalar& w) {
         m_floats[0] = x;
         m_floats[1] = y;
         m_floats[2] = z;
@@ -583,8 +544,7 @@ public:
 
 /// tf2SwapVector3Endian swaps vector endianness, useful for network and
 /// cross-platform serialization
-TF2SIMD_FORCE_INLINE void tf2SwapScalarEndian(const tf2Scalar& sourceVal,
-                                              tf2Scalar& destVal) {
+TF2SIMD_FORCE_INLINE void tf2SwapScalarEndian(const tf2Scalar& sourceVal, tf2Scalar& destVal) {
     unsigned char* dest = (unsigned char*)&destVal;
     unsigned char* src = (unsigned char*)&sourceVal;
     dest[0] = src[7];
@@ -598,8 +558,7 @@ TF2SIMD_FORCE_INLINE void tf2SwapScalarEndian(const tf2Scalar& sourceVal,
 }
 /// tf2SwapVector3Endian swaps vector endianness, useful for network and
 /// cross-platform serialization
-TF2SIMD_FORCE_INLINE void tf2SwapVector3Endian(const Vector3& sourceVec,
-                                               Vector3& destVec) {
+TF2SIMD_FORCE_INLINE void tf2SwapVector3Endian(const Vector3& sourceVec, Vector3& destVec) {
     for (int i = 0; i < 4; i++) {
         tf2SwapScalarEndian(sourceVec[i], destVec[i]);
     }
@@ -615,8 +574,7 @@ TF2SIMD_FORCE_INLINE void tf2UnSwapVector3Endian(Vector3& vector) {
     vector = swappedVec;
 }
 
-TF2SIMD_FORCE_INLINE void tf2PlaneSpace1(const Vector3& n, Vector3& p,
-                                         Vector3& q) {
+TF2SIMD_FORCE_INLINE void tf2PlaneSpace1(const Vector3& n, Vector3& p, Vector3& q) {
     if (tf2Fabs(n.z()) > TF2SIMDSQRT12) {
         // choose p in y-z plane
         tf2Scalar a = n[1] * n[1] + n[2] * n[2];
@@ -642,41 +600,35 @@ struct Vector3DoubleData {
     double m_floats[4];
 };
 
-TF2SIMD_FORCE_INLINE void Vector3::serializeFloat(
-    struct Vector3FloatData& dataOut) const {
+TF2SIMD_FORCE_INLINE void Vector3::serializeFloat(struct Vector3FloatData& dataOut) const {
     /// could also do a memcpy, check if it is worth it
     for (int i = 0; i < 4; i++)
         dataOut.m_floats[i] = float(m_floats[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Vector3::deSerializeFloat(
-    const struct Vector3FloatData& dataIn) {
+TF2SIMD_FORCE_INLINE void Vector3::deSerializeFloat(const struct Vector3FloatData& dataIn) {
     for (int i = 0; i < 4; i++)
         m_floats[i] = tf2Scalar(dataIn.m_floats[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Vector3::serializeDouble(
-    struct Vector3DoubleData& dataOut) const {
+TF2SIMD_FORCE_INLINE void Vector3::serializeDouble(struct Vector3DoubleData& dataOut) const {
     /// could also do a memcpy, check if it is worth it
     for (int i = 0; i < 4; i++)
         dataOut.m_floats[i] = double(m_floats[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Vector3::deSerializeDouble(
-    const struct Vector3DoubleData& dataIn) {
+TF2SIMD_FORCE_INLINE void Vector3::deSerializeDouble(const struct Vector3DoubleData& dataIn) {
     for (int i = 0; i < 4; i++)
         m_floats[i] = tf2Scalar(dataIn.m_floats[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Vector3::serialize(
-    struct Vector3Data& dataOut) const {
+TF2SIMD_FORCE_INLINE void Vector3::serialize(struct Vector3Data& dataOut) const {
     /// could also do a memcpy, check if it is worth it
     for (int i = 0; i < 4; i++)
         dataOut.m_floats[i] = m_floats[i];
 }
 
-TF2SIMD_FORCE_INLINE void Vector3::deSerialize(
-    const struct Vector3Data& dataIn) {
+TF2SIMD_FORCE_INLINE void Vector3::deSerialize(const struct Vector3Data& dataIn) {
     for (int i = 0; i < 4; i++)
         m_floats[i] = dataIn.m_floats[i];
 }

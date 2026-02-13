@@ -41,9 +41,8 @@ void Run() {
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
     // Create options from lua
-    auto options = autonomy::system::CreateOptions(
-        autonomy::common::FLAGS_configuration_directory,
-        autonomy::common::FLAGS_configuration_basename);
+    auto options = autonomy::system::CreateOptions(autonomy::common::FLAGS_configuration_directory,
+                                                   autonomy::common::FLAGS_configuration_basename);
 
     // Create autonomy node
     auto autonomy = autonomy::system::CreateAutonomy(options);

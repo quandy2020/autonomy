@@ -23,8 +23,7 @@ namespace autonomy {
 namespace driver {
 namespace common {
 
-proto::DriverOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::DriverOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     if (parameter_dictionary == nullptr) {
         proto::DriverOptions options;
         return options;
@@ -39,12 +38,10 @@ proto::DriverOptions LoadOptions(
 
     // 加载 default_forward_targets（字符串数组）
     if (parameter_dictionary->HasKey("default_forward_targets")) {
-        auto targets_dict =
-            parameter_dictionary->GetDictionary("default_forward_targets");
+        auto targets_dict = parameter_dictionary->GetDictionary("default_forward_targets");
         if (targets_dict != nullptr) {
             // 获取数组值作为字符串
-            std::vector<std::string> targets =
-                targets_dict->GetArrayValuesAsStrings();
+            std::vector<std::string> targets = targets_dict->GetArrayValuesAsStrings();
             for (const auto& target : targets) {
                 options.add_default_forward_targets(target);
             }
@@ -55,9 +52,8 @@ proto::DriverOptions LoadOptions(
     if (parameter_dictionary->HasKey("lidars")) {
         auto lidars_dict = parameter_dictionary->GetDictionary("lidars");
         if (lidars_dict != nullptr) {
-            std::vector<
-                std::unique_ptr<::autonomy::common::LuaParameterDictionary>>
-                lidar_list = lidars_dict->GetArrayValuesAsDictionaries();
+            std::vector<std::unique_ptr<::autonomy::common::LuaParameterDictionary>> lidar_list =
+                lidars_dict->GetArrayValuesAsDictionaries();
             for (const auto& lidar_dict : lidar_list) {
                 if (lidar_dict == nullptr)
                     continue;
@@ -67,8 +63,7 @@ proto::DriverOptions LoadOptions(
                     lidar->set_sensor_id(lidar_dict->GetString("sensor_id"));
                 }
                 if (lidar_dict->HasKey("type")) {
-                    lidar->set_type(static_cast<proto::LidarType>(
-                        lidar_dict->GetInt("type")));
+                    lidar->set_type(static_cast<proto::LidarType>(lidar_dict->GetInt("type")));
                 }
                 if (lidar_dict->HasKey("topic")) {
                     lidar->set_topic(lidar_dict->GetString("topic"));
@@ -92,11 +87,9 @@ proto::DriverOptions LoadOptions(
                     lidar->set_max_angle(lidar_dict->GetDouble("max_angle"));
                 }
                 if (lidar_dict->HasKey("forward_targets")) {
-                    auto forward_targets_dict =
-                        lidar_dict->GetDictionary("forward_targets");
+                    auto forward_targets_dict = lidar_dict->GetDictionary("forward_targets");
                     if (forward_targets_dict != nullptr) {
-                        std::vector<std::string> targets =
-                            forward_targets_dict->GetArrayValuesAsStrings();
+                        std::vector<std::string> targets = forward_targets_dict->GetArrayValuesAsStrings();
                         for (const auto& target : targets) {
                             lidar->add_forward_targets(target);
                         }
@@ -110,9 +103,8 @@ proto::DriverOptions LoadOptions(
     if (parameter_dictionary->HasKey("imus")) {
         auto imus_dict = parameter_dictionary->GetDictionary("imus");
         if (imus_dict != nullptr) {
-            std::vector<
-                std::unique_ptr<::autonomy::common::LuaParameterDictionary>>
-                imu_list = imus_dict->GetArrayValuesAsDictionaries();
+            std::vector<std::unique_ptr<::autonomy::common::LuaParameterDictionary>> imu_list =
+                imus_dict->GetArrayValuesAsDictionaries();
             for (const auto& imu_dict : imu_list) {
                 if (imu_dict == nullptr)
                     continue;
@@ -132,32 +124,26 @@ proto::DriverOptions LoadOptions(
                 }
                 if (imu_dict->HasKey("angular_velocity_covariance_scale")) {
                     imu->set_angular_velocity_covariance_scale(
-                        imu_dict->GetDouble(
-                            "angular_velocity_covariance_scale"));
+                        imu_dict->GetDouble("angular_velocity_covariance_scale"));
                 }
                 if (imu_dict->HasKey("linear_acceleration_covariance_scale")) {
                     imu->set_linear_acceleration_covariance_scale(
-                        imu_dict->GetDouble(
-                            "linear_acceleration_covariance_scale"));
+                        imu_dict->GetDouble("linear_acceleration_covariance_scale"));
                 }
                 if (imu_dict->HasKey("orientation_covariance_scale")) {
-                    imu->set_orientation_covariance_scale(
-                        imu_dict->GetDouble("orientation_covariance_scale"));
+                    imu->set_orientation_covariance_scale(imu_dict->GetDouble("orientation_covariance_scale"));
                 }
                 if (imu_dict->HasKey("forward_targets")) {
-                    auto forward_targets_dict =
-                        imu_dict->GetDictionary("forward_targets");
+                    auto forward_targets_dict = imu_dict->GetDictionary("forward_targets");
                     if (forward_targets_dict != nullptr) {
-                        std::vector<std::string> targets =
-                            forward_targets_dict->GetArrayValuesAsStrings();
+                        std::vector<std::string> targets = forward_targets_dict->GetArrayValuesAsStrings();
                         for (const auto& target : targets) {
                             imu->add_forward_targets(target);
                         }
                     }
                 }
                 if (imu_dict->HasKey("sampling_rate")) {
-                    imu->set_sampling_rate(
-                        imu_dict->GetDouble("sampling_rate"));
+                    imu->set_sampling_rate(imu_dict->GetDouble("sampling_rate"));
                 }
             }
         }
@@ -167,9 +153,8 @@ proto::DriverOptions LoadOptions(
     if (parameter_dictionary->HasKey("cameras")) {
         auto cameras_dict = parameter_dictionary->GetDictionary("cameras");
         if (cameras_dict != nullptr) {
-            std::vector<
-                std::unique_ptr<::autonomy::common::LuaParameterDictionary>>
-                camera_list = cameras_dict->GetArrayValuesAsDictionaries();
+            std::vector<std::unique_ptr<::autonomy::common::LuaParameterDictionary>> camera_list =
+                cameras_dict->GetArrayValuesAsDictionaries();
             for (const auto& camera_dict : camera_list) {
                 if (camera_dict == nullptr)
                     continue;
@@ -179,20 +164,16 @@ proto::DriverOptions LoadOptions(
                     camera->set_sensor_id(camera_dict->GetString("sensor_id"));
                 }
                 if (camera_dict->HasKey("type")) {
-                    camera->set_type(static_cast<proto::CameraType>(
-                        camera_dict->GetInt("type")));
+                    camera->set_type(static_cast<proto::CameraType>(camera_dict->GetInt("type")));
                 }
                 if (camera_dict->HasKey("image_topic")) {
-                    camera->set_image_topic(
-                        camera_dict->GetString("image_topic"));
+                    camera->set_image_topic(camera_dict->GetString("image_topic"));
                 }
                 if (camera_dict->HasKey("camera_info_topic")) {
-                    camera->set_camera_info_topic(
-                        camera_dict->GetString("camera_info_topic"));
+                    camera->set_camera_info_topic(camera_dict->GetString("camera_info_topic"));
                 }
                 if (camera_dict->HasKey("depth_topic")) {
-                    camera->set_depth_topic(
-                        camera_dict->GetString("depth_topic"));
+                    camera->set_depth_topic(camera_dict->GetString("depth_topic"));
                 }
                 if (camera_dict->HasKey("frame_id")) {
                     camera->set_frame_id(camera_dict->GetString("frame_id"));
@@ -201,30 +182,25 @@ proto::DriverOptions LoadOptions(
                     camera->set_enabled(camera_dict->GetBool("enabled"));
                 }
                 if (camera_dict->HasKey("width")) {
-                    camera->set_width(
-                        static_cast<uint32_t>(camera_dict->GetInt("width")));
+                    camera->set_width(static_cast<uint32_t>(camera_dict->GetInt("width")));
                 }
                 if (camera_dict->HasKey("height")) {
-                    camera->set_height(
-                        static_cast<uint32_t>(camera_dict->GetInt("height")));
+                    camera->set_height(static_cast<uint32_t>(camera_dict->GetInt("height")));
                 }
                 if (camera_dict->HasKey("encoding")) {
                     camera->set_encoding(camera_dict->GetString("encoding"));
                 }
                 if (camera_dict->HasKey("forward_targets")) {
-                    auto forward_targets_dict =
-                        camera_dict->GetDictionary("forward_targets");
+                    auto forward_targets_dict = camera_dict->GetDictionary("forward_targets");
                     if (forward_targets_dict != nullptr) {
-                        std::vector<std::string> targets =
-                            forward_targets_dict->GetArrayValuesAsStrings();
+                        std::vector<std::string> targets = forward_targets_dict->GetArrayValuesAsStrings();
                         for (const auto& target : targets) {
                             camera->add_forward_targets(target);
                         }
                     }
                 }
                 if (camera_dict->HasKey("sampling_rate")) {
-                    camera->set_sampling_rate(
-                        camera_dict->GetDouble("sampling_rate"));
+                    camera->set_sampling_rate(camera_dict->GetDouble("sampling_rate"));
                 }
             }
         }
@@ -234,9 +210,8 @@ proto::DriverOptions LoadOptions(
     if (parameter_dictionary->HasKey("ranges")) {
         auto ranges_dict = parameter_dictionary->GetDictionary("ranges");
         if (ranges_dict != nullptr) {
-            std::vector<
-                std::unique_ptr<::autonomy::common::LuaParameterDictionary>>
-                range_list = ranges_dict->GetArrayValuesAsDictionaries();
+            std::vector<std::unique_ptr<::autonomy::common::LuaParameterDictionary>> range_list =
+                ranges_dict->GetArrayValuesAsDictionaries();
             for (const auto& range_dict : range_list) {
                 if (range_dict == nullptr)
                     continue;
@@ -256,12 +231,10 @@ proto::DriverOptions LoadOptions(
                 }
                 if (range_dict->HasKey("radiation_type")) {
                     range->set_radiation_type(
-                        static_cast<proto::RangeRadiationType>(
-                            range_dict->GetInt("radiation_type")));
+                        static_cast<proto::RangeRadiationType>(range_dict->GetInt("radiation_type")));
                 }
                 if (range_dict->HasKey("field_of_view")) {
-                    range->set_field_of_view(
-                        range_dict->GetDouble("field_of_view"));
+                    range->set_field_of_view(range_dict->GetDouble("field_of_view"));
                 }
                 if (range_dict->HasKey("min_range")) {
                     range->set_min_range(range_dict->GetDouble("min_range"));
@@ -270,19 +243,16 @@ proto::DriverOptions LoadOptions(
                     range->set_max_range(range_dict->GetDouble("max_range"));
                 }
                 if (range_dict->HasKey("forward_targets")) {
-                    auto forward_targets_dict =
-                        range_dict->GetDictionary("forward_targets");
+                    auto forward_targets_dict = range_dict->GetDictionary("forward_targets");
                     if (forward_targets_dict != nullptr) {
-                        std::vector<std::string> targets =
-                            forward_targets_dict->GetArrayValuesAsStrings();
+                        std::vector<std::string> targets = forward_targets_dict->GetArrayValuesAsStrings();
                         for (const auto& target : targets) {
                             range->add_forward_targets(target);
                         }
                     }
                 }
                 if (range_dict->HasKey("sampling_rate")) {
-                    range->set_sampling_rate(
-                        range_dict->GetDouble("sampling_rate"));
+                    range->set_sampling_rate(range_dict->GetDouble("sampling_rate"));
                 }
             }
         }
@@ -292,9 +262,8 @@ proto::DriverOptions LoadOptions(
     if (parameter_dictionary->HasKey("gps_sensors")) {
         auto gps_dict = parameter_dictionary->GetDictionary("gps_sensors");
         if (gps_dict != nullptr) {
-            std::vector<
-                std::unique_ptr<::autonomy::common::LuaParameterDictionary>>
-                gps_list = gps_dict->GetArrayValuesAsDictionaries();
+            std::vector<std::unique_ptr<::autonomy::common::LuaParameterDictionary>> gps_list =
+                gps_dict->GetArrayValuesAsDictionaries();
             for (const auto& gps_sensor_dict : gps_list) {
                 if (gps_sensor_dict == nullptr)
                     continue;
@@ -313,35 +282,28 @@ proto::DriverOptions LoadOptions(
                     gps->set_enabled(gps_sensor_dict->GetBool("enabled"));
                 }
                 if (gps_sensor_dict->HasKey("min_position_accuracy")) {
-                    gps->set_min_position_accuracy(
-                        gps_sensor_dict->GetDouble("min_position_accuracy"));
+                    gps->set_min_position_accuracy(gps_sensor_dict->GetDouble("min_position_accuracy"));
                 }
                 if (gps_sensor_dict->HasKey("min_altitude_accuracy")) {
-                    gps->set_min_altitude_accuracy(
-                        gps_sensor_dict->GetDouble("min_altitude_accuracy"));
+                    gps->set_min_altitude_accuracy(gps_sensor_dict->GetDouble("min_altitude_accuracy"));
                 }
                 if (gps_sensor_dict->HasKey("forward_targets")) {
-                    auto forward_targets_dict =
-                        gps_sensor_dict->GetDictionary("forward_targets");
+                    auto forward_targets_dict = gps_sensor_dict->GetDictionary("forward_targets");
                     if (forward_targets_dict != nullptr) {
-                        std::vector<std::string> targets =
-                            forward_targets_dict->GetArrayValuesAsStrings();
+                        std::vector<std::string> targets = forward_targets_dict->GetArrayValuesAsStrings();
                         for (const auto& target : targets) {
                             gps->add_forward_targets(target);
                         }
                     }
                 }
                 if (gps_sensor_dict->HasKey("sampling_rate")) {
-                    gps->set_sampling_rate(
-                        gps_sensor_dict->GetDouble("sampling_rate"));
+                    gps->set_sampling_rate(gps_sensor_dict->GetDouble("sampling_rate"));
                 }
                 if (gps_sensor_dict->HasKey("use_for_localization")) {
-                    gps->set_use_for_localization(
-                        gps_sensor_dict->GetBool("use_for_localization"));
+                    gps->set_use_for_localization(gps_sensor_dict->GetBool("use_for_localization"));
                 }
                 if (gps_sensor_dict->HasKey("service_type")) {
-                    gps->set_service_type(static_cast<uint32_t>(
-                        gps_sensor_dict->GetInt("service_type")));
+                    gps->set_service_type(static_cast<uint32_t>(gps_sensor_dict->GetInt("service_type")));
                 }
             }
         }
@@ -352,13 +314,10 @@ proto::DriverOptions LoadOptions(
 
 proto::DriverOptions CreateOptions(const std::string& configuration_directory,
                                    const std::string& configuration_basename) {
-    auto file_resolver =
-        std::make_unique<::autonomy::common::ConfigurationFileResolver>(
-            std::vector<std::string>{configuration_directory});
-    std::string code =
-        file_resolver->GetFileContentOrDie(configuration_basename);
-    ::autonomy::common::LuaParameterDictionary parameter_dictionary(
-        code, std::move(file_resolver));
+    auto file_resolver = std::make_unique<::autonomy::common::ConfigurationFileResolver>(
+        std::vector<std::string>{configuration_directory});
+    std::string code = file_resolver->GetFileContentOrDie(configuration_basename);
+    ::autonomy::common::LuaParameterDictionary parameter_dictionary(code, std::move(file_resolver));
     return LoadOptions(parameter_dictionary.GetDictionary("driver").get());
 }
 

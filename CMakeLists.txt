@@ -50,8 +50,10 @@ option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TEST "Build autonomy unit test" true)
+option(BUILD_EXAMPLES "Build autonomy examples" true)
 option(BUILD_FOXGLOVE "Build foxglove visualization support" true)
-option(BUILD_AVIZ "Build autonomy visualizer (Qt QML application)" false)
+option(BUILD_TOOLS "Build autonomy tools" true)
+option(BUILD_FORMAT_CODE "Build format code before building" true)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -69,6 +71,9 @@ google_enable_testing()
 #   set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
 # endif()
 
+# Set module path to find custom Find modules
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
+
 find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
@@ -83,7 +88,6 @@ find_package(OSQP REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
-find_package(Poco REQUIRED COMPONENTS Foundation)
 find_package(Protobuf 3.0.0 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
@@ -91,7 +95,16 @@ find_package(websocketpp REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(FastDDS REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
+find_package(Adolc REQUIRED)
+find_package(Ipopt QUIET)
 
+option(BUILD_ONNXRUNTIME "Build ONNX Runtime inference support (common/network)" true)
+find_package(OnnxRuntime QUIET)
+
+# Create alias for behaviortree_cpp target if needed
+if(TARGET BT::behaviortree_cpp AND NOT TARGET behaviortree_cpp::behaviortree_cpp)
+    add_library(behaviortree_cpp::behaviortree_cpp ALIAS BT::behaviortree_cpp)
+endif()
 
 # Include Foxglove SDK vendor file (optional, controlled by BUILD_FOXGLOVE option)
 if(${BUILD_FOXGLOVE})
@@ -114,8 +127,8 @@ if (${BUILD_DOCS})
 endif()
 
 # Build autonomy visualizer (Qt QML application)
-if (${BUILD_AVIZ})
-  add_subdirectory("autonomy/tools/aviz")
+if (${BUILD_TOOLS})
+  add_subdirectory("autonomy/tools")
 endif()
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
@@ -126,17 +139,26 @@ set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/aut
 install(DIRECTORY configuration_files DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
-file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp" "autonomy/*.h")
-file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp" "autonomy/*.c")
-file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/common/async_grpc/*.h" "autonomy/bridge/plugins/grpc/*.hpp" "autonomy/bridge/plugins/grpc/*.h")
-file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/common/async_grpc/*.c" "autonomy/bridge/plugins/grpc/*.cpp" "autonomy/bridge/plugins/grpc/*.c")
+# Include generate_plugins.cmake early to collect plugin files and create plugin libraries
+# This must be done before GLOB_RECURSE so we can exclude plugin files
+# This must also be done before examples so plugin libraries are available for linking
+include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
+
+
+file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
+file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
+# Exclude aviz files - they are built as a separate visualizer_lib target
+file(GLOB_RECURSE AVIZ_FILES "autonomy/tools/aviz/*.cpp" "autonomy/tools/aviz/*.hpp" "autonomy/tools/aviz/*.h" "autonomy/tools/aviz/*.ui" "autonomy/tools/aviz/*.qrc")
+file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/common/async_grpc/*.h" "autonomy/bridge/plugins/grpc/*.hpp")
+file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/common/async_grpc/*.c" "autonomy/bridge/plugins/grpc/*.cpp")
 file(GLOB_RECURSE ALL_GRPC_FILES "autonomy/common/async_grpc/*" "autonomy/bridge/plugins/grpc/*")
 file(GLOB_RECURSE ALL_GRPC_BRIDGE_FILES "autonomy/bridge/bridge_server.*")
 file(GLOB_RECURSE ALL_PROMETHEUS_FILES "autonomy/localization/cartographer/cloud/metrics/prometheus/*.hpp" "autonomy/localization/cartographer/cloud/metrics/prometheus/*.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/*test*.cpp" "autonomy/mock_*.cpp")
-file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
+file(GLOB_RECURSE ALL_TOOLS "autonomy/tools/*")
 file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*main.cpp")
+file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
 file(GLOB_RECURSE ALL_DOTFILES ".*/*")
@@ -151,9 +173,26 @@ endif()
 
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
+
+# Remove plugin files (collected in generate_plugins.cmake, already in absolute paths)
+if(ALL_PLUGINS_HDRS)
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_PLUGINS_HDRS})
+endif()
+if(ALL_PLUGINS_SRCS)
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_PLUGINS_SRCS})
+endif()
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
+list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
+# Exclude aviz files - they are built as a separate visualizer_lib target
+list(REMOVE_ITEM ALL_LIBRARY_HDRS ${AVIZ_FILES})
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${AVIZ_FILES})
 
+# Exclude ONNX Runtime network wrapper when not building with ONNX
+file(GLOB_RECURSE ONNX_NETWORK_SRCS "autonomy/common/network/*.cpp")
+if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
+endif()
 
 if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_HDRS})
@@ -186,6 +225,15 @@ if (NOT BUILD_FOXGLOVE)
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_FOXGLOVE_FILES})
   list(REMOVE_ITEM ALL_TESTS ${ALL_FOXGLOVE_FILES})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_FOXGLOVE_FILES})
+endif()
+
+if (NOT ${BUILD_TOOLS})
+  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_TOOLS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TOOLS})
+  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${ALL_TOOLS})
+  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TOOLS})
+  list(REMOVE_ITEM ALL_TESTS ${ALL_TOOLS})
+  list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_TOOLS})
 endif()
 
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
@@ -314,7 +362,6 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-
 # 3rdparty
 # Add urdfdom_headers and urdfdom for URDF parsing support (used in transform/urdf)
 # Note: urdfdom requires urdfdom_headers, so add headers first
@@ -323,6 +370,13 @@ add_subdirectory(3rdparty/urdfdom)
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
+
+# Auto-format code before building (if enabled)
+google_format_code(
+  TARGET_NAME ${PROJECT_NAME}
+  ENABLED ${BUILD_FORMAT_CODE}
+  PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}
+)
 
 # causes the shared library to have a version number
 set_target_properties(${PROJECT_NAME} PROPERTIES 
@@ -335,9 +389,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   SKIP_BUILD_RPATH FALSE
 )
 
-# Define library plugins
-include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
-
 # protobuf
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY})
@@ -349,6 +400,22 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
 # Ceres solver
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
+# SuiteSparse (required by Ceres cholmod solver)
+find_library(CHOLMOD_LIBRARY NAMES cholmod PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
+if(CHOLMOD_LIBRARY)
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${CHOLMOD_LIBRARY})
+endif()
+# LAPACK (required by Ceres)
+find_package(LAPACK QUIET)
+if(LAPACK_FOUND)
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARIES})
+else()
+  # Fallback: try to find lapack directly
+  find_library(LAPACK_LIBRARY NAMES lapack PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
+  if(LAPACK_LIBRARY)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARY})
+  endif()
+endif()
 
 # Lua5.3
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
@@ -365,10 +432,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 # PCL
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
-
-# Poco
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Poco_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${Poco_LIBRARIES})
 
 # octomap
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OCTOMAP_INCLUDE_DIRS}")
@@ -413,9 +476,13 @@ endif()
 # BehaviorTree.CPP
 target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
 
-# prometheus (optional)
+# prometheus (optional, for system/monitor and cartographer metrics/visualization)
 if(${BUILD_PROMETHEUS})
   target_compile_definitions(${PROJECT_NAME} PRIVATE USE_PROMETHEUS=1)
+  find_package(prometheus-cpp CONFIG QUIET)
+  if(prometheus-cpp_FOUND OR TARGET prometheus-cpp-core)
+    target_link_libraries(${PROJECT_NAME} PRIVATE prometheus-cpp-core prometheus-cpp-pull)
+  endif()
 endif()
 
 # abseil-cpp
@@ -461,6 +528,20 @@ target_link_libraries(${PROJECT_NAME} PUBLIC urdfdom_headers urdf_parser)
 # autolink
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
 
+# ADOL-C (Automatic Differentiation Library)
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${ADOLC_LIBRARIES})
+
+# Ipopt (Interior Point Optimizer)
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${IPOPT_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${IPOPT_LIBRARIES})
+
+# ONNX Runtime (optional, common/network)
+if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
+  target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} PUBLIC ${OnnxRuntime_LIBRARIES})
+endif()
+
 # autonomy.bridge.launcher
 google_binary(autonomy.bridge.launcher
   SRCS
@@ -478,6 +559,20 @@ google_binary(autonomy.system.launcher
   SRCS
     autonomy/system/main.cpp
 )
+
+# autonomy.tasks.launcher (behavior-tree navigators, TaskManager)
+google_binary(autonomy.tasks.launcher
+  SRCS
+    autonomy/tasks/main.cpp
+)
+
+# autonomy.tasks.navigator_client_test (action client for track_to_target testing; optional when not yet implemented)
+if(EXISTS "${PROJECT_SOURCE_DIR}/autonomy/tasks/navigator/navigator_client_test.cpp")
+  google_binary(autonomy.tasks.navigator_client_test
+    SRCS
+      autonomy/tasks/navigator/navigator_client_test.cpp
+  )
+endif()
 
 # autonomy.visualization.launcher (requires foxglove)
 if(${BUILD_FOXGLOVE})
@@ -552,6 +647,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
+
+# Build examples (after plugins are created)
+if (${BUILD_EXAMPLES})
+  add_subdirectory("examples")
+endif()
 
 install(
   TARGETS ${PROJECT_NAME} autolink

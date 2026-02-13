@@ -50,8 +50,7 @@ public:
         return submap_ids;
     }
 
-    void set_submap_data(
-        const MapById<SubmapId, PoseGraphInterface::SubmapData>& submap_data) {
+    void set_submap_data(const MapById<SubmapId, PoseGraphInterface::SubmapData>& submap_data) {
         submap_data_ = submap_data;
     }
 
@@ -59,13 +58,11 @@ public:
         return &submap_data_;
     }
 
-    MapById<SubmapId, PoseGraphInterface::SubmapData> GetOptimizedSubmapData()
-        const override {
+    MapById<SubmapId, PoseGraphInterface::SubmapData> GetOptimizedSubmapData() const override {
         return submap_data_;
     }
 
-    void set_trajectory_nodes(
-        const MapById<NodeId, TrajectoryNode>& trajectory_nodes) {
+    void set_trajectory_nodes(const MapById<NodeId, TrajectoryNode>& trajectory_nodes) {
         trajectory_nodes_ = trajectory_nodes;
     }
 
@@ -77,8 +74,7 @@ public:
         return trajectory_nodes_;
     }
 
-    void set_constraints(
-        const std::vector<PoseGraphInterface::Constraint>& constraints) {
+    void set_constraints(const std::vector<PoseGraphInterface::Constraint>& constraints) {
         constraints_ = constraints;
     }
 
@@ -86,8 +82,7 @@ public:
         return &constraints_;
     }
 
-    const std::vector<PoseGraphInterface::Constraint>& GetConstraints()
-        const override {
+    const std::vector<PoseGraphInterface::Constraint>& GetConstraints() const override {
         return constraints_;
     }
 
@@ -99,9 +94,7 @@ public:
         return false;
     }
 
-    void SetTrajectoryState(
-        int /*trajectory_id*/,
-        PoseGraphInterface::TrajectoryState /*state*/) override {}
+    void SetTrajectoryState(int /*trajectory_id*/, PoseGraphInterface::TrajectoryState /*state*/) override {}
 
     std::vector<SubmapId> trimmed_submaps() {
         return trimmed_submaps_;

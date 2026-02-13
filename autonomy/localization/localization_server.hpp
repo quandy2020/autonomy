@@ -58,9 +58,8 @@ public:
      * @param options 定位选项配置
      * @param node_name 可选的节点名称，如果为空则使用默认名称
      */
-    explicit LocalizationServer(
-        const proto::LocalizationOptions& options,
-        const std::string& node_name = "localization_server");
+    explicit LocalizationServer(const proto::LocalizationOptions& options,
+                                const std::string& node_name = "localization_server");
 
     /**
      * @brief 析构函数

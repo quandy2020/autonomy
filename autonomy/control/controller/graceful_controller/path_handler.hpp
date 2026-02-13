@@ -37,9 +37,8 @@ public:
     /**
      * @brief Constructor for nav2_graceful_controller::PathHandler
      */
-    PathHandler(
-        double transform_tolerance, std::shared_ptr<transform::Buffer> tf,
-        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
+    PathHandler(double transform_tolerance, std::shared_ptr<transform::Buffer> tf,
+                std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
 
     /**
      * @brief Destructor for nav2_graceful_controller::PathHandler
@@ -56,9 +55,8 @@ public:
      * path point
      * @return Path in new frame
      */
-    commsgs::planning_msgs::Path TransformGlobalPlan(
-        const commsgs::geometry_msgs::PoseStamped& pose,
-        double max_robot_pose_search_dist);
+    commsgs::planning_msgs::Path TransformGlobalPlan(const commsgs::geometry_msgs::PoseStamped& pose,
+                                                     double max_robot_pose_search_dist);
 
     /**
      * @brief Sets the global plan

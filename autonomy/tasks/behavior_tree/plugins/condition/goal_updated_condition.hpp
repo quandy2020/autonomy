@@ -49,8 +49,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    GoalUpdatedCondition(const std::string& condition_name,
-                         const BT::NodeConfiguration& conf);
+    GoalUpdatedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     GoalUpdatedCondition() = delete;
 
@@ -70,10 +69,8 @@ public:
         BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
 
         return {
-            BT::InputPort<commsgs::planning_msgs::Goals>(
-                "goals", "Vector of navigation goals"),
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                "goal", "Navigation goal"),
+            BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of navigation goals"),
+            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
         };
     }
 

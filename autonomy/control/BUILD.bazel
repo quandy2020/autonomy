@@ -1,0 +1,93 @@
+"""
+Bazel BUILD file for autonomy/control
+
+This file defines rules to build the control system library.
+Uses simplified macros from tools/autonomy_module.bzl
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_module", "autonomy_cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Create complete module with proto and C++ library
+# Exclude controller/ directory as it's built as a separate shared library
+autonomy_module(
+    name = "control",
+    has_proto = True,
+    proto_glob = ["proto/*.proto"],
+    proto_deps = [
+        "//autonomy/map:map_proto",
+    ],
+    exclude_patterns = ["proto/**", "controller/**"],
+    deps = [
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+    ],
+    extra_deps = [
+        "//autonomy/map:map",
+        "//autonomy/tasks:tasks",
+    ],
+)
+
+# Controller plugins are defined in their own BUILD.bazel files
+# Add aliases for easier access from the control package
+
+# MPPI Controller alias
+# Defined in: controller/mppi_controller/BUILD.bazel
+alias(
+    name = "mppi_controller",
+    actual = "//autonomy/control/controller/mppi_controller:mppi_controller",
+    visibility = ["//visibility:public"],
+)
+
+# Graceful Controller alias
+# Defined in: controller/graceful_controller/BUILD.bazel
+alias(
+    name = "graceful_controller",
+    actual = "//autonomy/control/controller/graceful_controller:graceful_controller",
+    visibility = ["//visibility:public"],
+)
+
+# Regulated Pure Pursuit Controller alias
+# Defined in: controller/pure_pursuit_controller/BUILD.bazel
+alias(
+    name = "pure_pursuit_controller",
+    actual = "//autonomy/control/controller/pure_pursuit_controller:pure_pursuit_controller",
+    visibility = ["//visibility:public"],
+)
+
+# Controller shared library (dynamic library)
+# This contains other controller implementations (if any)
+# Note: mppi_controller and graceful_controller are built separately in their own BUILD.bazel files
+autonomy_cc_library(
+    name = "controller",
+    srcs_glob = ["controller/**/*.cpp", "controller/**/*.cc"],
+    hdrs_glob = ["controller/**/*.hpp", "controller/**/*.h"],
+    exclude_patterns = [
+        "**/*_test.cpp",
+        "**/*_test.cc",
+        "**/*_test.hpp",
+        "**/*_test.h",
+        "**/test/**",
+        "**/testing/**",
+        "**/*.xml",
+        "**/*.cmake",
+        "**/*.md",
+        "controller/mppi_controller/**",           # Exclude mppi_controller (built separately)
+        "controller/graceful_controller/**",       # Exclude graceful_controller (built separately)
+        "controller/pure_pursuit_controller/**",   # Exclude pure_pursuit_controller (built separately)
+    ],
+    deps = [
+        ":control_cc_proto",
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+        "//autonomy/map:map",
+        "//autonomy/tasks:tasks",
+    ],
+    linkstatic = False,  # Build as shared library (.so/.dylib)
+    alwayslink = 1,      # Always link all symbols (important for plugins)
+)
+

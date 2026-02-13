@@ -92,10 +92,8 @@ protected:
       MAP_BUILDER_SERVER.uplink_server_address = ""
       MAP_BUILDER_SERVER.server_address = "0.0.0.0:50051"
       return MAP_BUILDER_SERVER)text";
-        auto map_builder_server_parameters =
-            mapping::testing::ResolveLuaParameters(kMapBuilderServerLua);
-        map_builder_server_options_ =
-            CreateMapBuilderServerOptions(map_builder_server_parameters.get());
+        auto map_builder_server_parameters = mapping::testing::ResolveLuaParameters(kMapBuilderServerLua);
+        map_builder_server_options_ = CreateMapBuilderServerOptions(map_builder_server_parameters.get());
 
         const std::string kUploadingMapBuilderServerLua = R"text(
       include "map_builder_server.lua"
@@ -108,30 +106,22 @@ protected:
       MAP_BUILDER_SERVER.upload_batch_size = 1
       return MAP_BUILDER_SERVER)text";
         auto uploading_map_builder_server_parameters =
-            mapping::testing::ResolveLuaParameters(
-                kUploadingMapBuilderServerLua);
-        uploading_map_builder_server_options_ = CreateMapBuilderServerOptions(
-            uploading_map_builder_server_parameters.get());
-        EXPECT_NE(map_builder_server_options_.server_address(),
-                  uploading_map_builder_server_options_.server_address());
+            mapping::testing::ResolveLuaParameters(kUploadingMapBuilderServerLua);
+        uploading_map_builder_server_options_ =
+            CreateMapBuilderServerOptions(uploading_map_builder_server_parameters.get());
+        EXPECT_NE(map_builder_server_options_.server_address(), uploading_map_builder_server_options_.server_address());
 
         const std::string kTrajectoryBuilderLua = R"text(
       include "trajectory_builder.lua"
       TRAJECTORY_BUILDER.trajectory_builder_2d.use_imu_data = false
       TRAJECTORY_BUILDER.trajectory_builder_2d.submaps.num_range_data = 4
       return TRAJECTORY_BUILDER)text";
-        auto trajectory_builder_parameters =
-            mapping::testing::ResolveLuaParameters(kTrajectoryBuilderLua);
-        trajectory_builder_options_ = mapping::CreateTrajectoryBuilderOptions(
-            trajectory_builder_parameters.get());
+        auto trajectory_builder_parameters = mapping::testing::ResolveLuaParameters(kTrajectoryBuilderLua);
+        trajectory_builder_options_ = mapping::CreateTrajectoryBuilderOptions(trajectory_builder_parameters.get());
         number_of_insertion_results_ = 0;
         local_slam_result_callback_ =
-            [this](
-                int, common::Time, transform::Rigid3d local_pose,
-                sensor::RangeData,
-                std::unique_ptr<
-                    const mapping::TrajectoryBuilderInterface::InsertionResult>
-                    insertion_result) {
+            [this](int, common::Time, transform::Rigid3d local_pose, sensor::RangeData,
+                   std::unique_ptr<const mapping::TrajectoryBuilderInterface::InsertionResult> insertion_result) {
                 std::unique_lock<std::mutex> lock(local_slam_result_mutex_);
                 if (insertion_result) {
                     ++number_of_insertion_results_;
@@ -143,18 +133,15 @@ protected:
     }
 
     void InitializeRealServer() {
-        auto map_builder =
-            CreateMapBuilder(map_builder_server_options_.map_builder_options());
-        server_ = absl::make_unique<MapBuilderServer>(
-            map_builder_server_options_, std::move(map_builder));
+        auto map_builder = CreateMapBuilder(map_builder_server_options_.map_builder_options());
+        server_ = absl::make_unique<MapBuilderServer>(map_builder_server_options_, std::move(map_builder));
         EXPECT_TRUE(server_ != nullptr);
     }
 
     void InitializeRealUploadingServer() {
-        auto map_builder = CreateMapBuilder(
-            uploading_map_builder_server_options_.map_builder_options());
-        uploading_server_ = absl::make_unique<MapBuilderServer>(
-            uploading_map_builder_server_options_, std::move(map_builder));
+        auto map_builder = CreateMapBuilder(uploading_map_builder_server_options_.map_builder_options());
+        uploading_server_ =
+            absl::make_unique<MapBuilderServer>(uploading_map_builder_server_options_, std::move(map_builder));
         EXPECT_TRUE(uploading_server_ != nullptr);
     }
 
@@ -162,24 +149,21 @@ protected:
         auto mock_map_builder = absl::make_unique<MockMapBuilder>();
         mock_map_builder_ = mock_map_builder.get();
         mock_pose_graph_ = absl::make_unique<MockPoseGraph>();
-        EXPECT_CALL(*mock_map_builder_, pose_graph())
-            .WillOnce(::testing::Return(mock_pose_graph_.get()));
+        EXPECT_CALL(*mock_map_builder_, pose_graph()).WillOnce(::testing::Return(mock_pose_graph_.get()));
         EXPECT_CALL(*mock_pose_graph_, SetGlobalSlamOptimizationCallback(_));
-        server_ = absl::make_unique<MapBuilderServer>(
-            map_builder_server_options_, std::move(mock_map_builder));
+        server_ = absl::make_unique<MapBuilderServer>(map_builder_server_options_, std::move(mock_map_builder));
         EXPECT_TRUE(server_ != nullptr);
         mock_trajectory_builder_ = absl::make_unique<MockTrajectoryBuilder>();
     }
 
     void InitializeStub() {
-        stub_ = absl::make_unique<MapBuilderStub>(
-            map_builder_server_options_.server_address(), kClientId);
+        stub_ = absl::make_unique<MapBuilderStub>(map_builder_server_options_.server_address(), kClientId);
         EXPECT_TRUE(stub_ != nullptr);
     }
 
     void InitializeStubForUploadingServer() {
-        stub_for_uploading_server_ = absl::make_unique<MapBuilderStub>(
-            uploading_map_builder_server_options_.server_address(), kClientId);
+        stub_for_uploading_server_ =
+            absl::make_unique<MapBuilderStub>(uploading_map_builder_server_options_.server_address(), kClientId);
         EXPECT_TRUE(stub_for_uploading_server_ != nullptr);
     }
 
@@ -187,14 +171,11 @@ protected:
         trajectory_builder_options_.mutable_trajectory_builder_2d_options()
             ->mutable_submaps_options()
             ->mutable_range_data_inserter_options()
-            ->set_range_data_inserter_type(
-                ::cartographer::mapping::proto::RangeDataInserterOptions::
-                    TSDF_INSERTER_2D);
+            ->set_range_data_inserter_type(::cartographer::mapping::proto::RangeDataInserterOptions::TSDF_INSERTER_2D);
         trajectory_builder_options_.mutable_trajectory_builder_2d_options()
             ->mutable_submaps_options()
             ->mutable_grid_options_2d()
-            ->set_grid_type(
-                ::cartographer::mapping::proto::GridOptions2D::TSDF);
+            ->set_grid_type(::cartographer::mapping::proto::GridOptions2D::TSDF);
         trajectory_builder_options_.mutable_trajectory_builder_2d_options()
             ->mutable_ceres_scan_matcher_options()
             ->set_occupied_space_weight(10.0);
@@ -212,8 +193,7 @@ protected:
 
     void WaitForLocalSlamResults(size_t size) {
         std::unique_lock<std::mutex> lock(local_slam_result_mutex_);
-        local_slam_result_condition_.wait(
-            lock, [&] { return local_slam_result_poses_.size() >= size; });
+        local_slam_result_condition_.wait(lock, [&] { return local_slam_result_poses_.size() >= size; });
     }
 
     void WaitForLocalSlamResultUploads(size_t size) {
@@ -227,14 +207,12 @@ protected:
     MockMapBuilder* mock_map_builder_;
     std::unique_ptr<MockPoseGraph> mock_pose_graph_;
     std::unique_ptr<MockTrajectoryBuilder> mock_trajectory_builder_;
-    ::cartographer::mapping::proto::TrajectoryBuilderOptions
-        trajectory_builder_options_;
+    ::cartographer::mapping::proto::TrajectoryBuilderOptions trajectory_builder_options_;
     std::unique_ptr<MapBuilderServer> server_;
     std::unique_ptr<MapBuilderServer> uploading_server_;
     std::unique_ptr<MapBuilderStub> stub_;
     std::unique_ptr<MapBuilderStub> stub_for_uploading_server_;
-    TrajectoryBuilderInterface::LocalSlamResultCallback
-        local_slam_result_callback_;
+    TrajectoryBuilderInterface::LocalSlamResultCallback local_slam_result_callback_;
     std::condition_variable local_slam_result_condition_;
     std::condition_variable local_slam_result_upload_condition_;
     std::mutex local_slam_result_mutex_;
@@ -247,15 +225,13 @@ class ClientServerTest : public ClientServerTestBase<::testing::Test>
 {
 };
 class ClientServerTestByGridType
-    : public ClientServerTestBase<
-          ::testing::TestWithParam<::cartographer::mapping::GridType>>
+    : public ClientServerTestBase<::testing::TestWithParam<::cartographer::mapping::GridType>>
 {
 };
 
-INSTANTIATE_TEST_CASE_P(
-    ClientServerTestByGridType, ClientServerTestByGridType,
-    ::testing::Values(::cartographer::mapping::GridType::PROBABILITY_GRID,
-                      ::cartographer::mapping::GridType::TSDF));
+INSTANTIATE_TEST_CASE_P(ClientServerTestByGridType, ClientServerTestByGridType,
+                        ::testing::Values(::cartographer::mapping::GridType::PROBABILITY_GRID,
+                                          ::cartographer::mapping::GridType::TSDF));
 
 TEST_F(ClientServerTest, StartAndStopServer) {
     InitializeRealServer();
@@ -270,8 +246,7 @@ TEST_P(ClientServerTestByGridType, AddTrajectoryBuilder) {
     InitializeRealServer();
     server_->Start();
     InitializeStub();
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        {kImuSensorId}, trajectory_builder_options_, nullptr);
+    int trajectory_id = stub_->AddTrajectoryBuilder({kImuSensorId}, trajectory_builder_options_, nullptr);
     EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFinished(trajectory_id));
     stub_->FinishTrajectory(trajectory_id);
     EXPECT_TRUE(stub_->pose_graph()->IsTrajectoryFinished(trajectory_id));
@@ -287,14 +262,10 @@ TEST_P(ClientServerTestByGridType, AddTrajectoryBuilderWithMock) {
     server_->Start();
     InitializeStub();
     std::set<SensorId> expected_sensor_ids = {kImuSensorId};
-    EXPECT_CALL(
-        *mock_map_builder_,
-        AddTrajectoryBuilder(::testing::ContainerEq(expected_sensor_ids), _, _))
+    EXPECT_CALL(*mock_map_builder_, AddTrajectoryBuilder(::testing::ContainerEq(expected_sensor_ids), _, _))
         .WillOnce(::testing::Return(3));
-    EXPECT_CALL(*mock_map_builder_, GetTrajectoryBuilder(_))
-        .WillRepeatedly(::testing::Return(nullptr));
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        expected_sensor_ids, trajectory_builder_options_, nullptr);
+    EXPECT_CALL(*mock_map_builder_, GetTrajectoryBuilder(_)).WillRepeatedly(::testing::Return(nullptr));
+    int trajectory_id = stub_->AddTrajectoryBuilder(expected_sensor_ids, trajectory_builder_options_, nullptr);
     EXPECT_EQ(trajectory_id, 3);
     EXPECT_CALL(*mock_map_builder_, FinishTrajectory(trajectory_id));
     stub_->FinishTrajectory(trajectory_id);
@@ -305,18 +276,13 @@ TEST_P(ClientServerTestByGridType, AddSensorData) {
     if (GetParam() == ::cartographer::mapping::GridType::TSDF) {
         SetOptionsToTSDF2D();
     }
-    trajectory_builder_options_.mutable_trajectory_builder_2d_options()
-        ->set_use_imu_data(true);
+    trajectory_builder_options_.mutable_trajectory_builder_2d_options()->set_use_imu_data(true);
     InitializeRealServer();
     server_->Start();
     InitializeStub();
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        {kImuSensorId}, trajectory_builder_options_, nullptr);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_->GetTrajectoryBuilder(trajectory_id);
-    sensor::ImuData imu_data{common::FromUniversal(42),
-                             Eigen::Vector3d(0., 0., 9.8),
-                             Eigen::Vector3d::Zero()};
+    int trajectory_id = stub_->AddTrajectoryBuilder({kImuSensorId}, trajectory_builder_options_, nullptr);
+    TrajectoryBuilderInterface* trajectory_stub = stub_->GetTrajectoryBuilder(trajectory_id);
+    sensor::ImuData imu_data{common::FromUniversal(42), Eigen::Vector3d(0., 0., 9.8), Eigen::Vector3d::Zero()};
     trajectory_stub->AddSensorData(kImuSensorId.id, imu_data);
     stub_->FinishTrajectory(trajectory_id);
     server_->Shutdown();
@@ -330,23 +296,16 @@ TEST_P(ClientServerTestByGridType, AddSensorDataWithMock) {
     server_->Start();
     InitializeStub();
     std::set<SensorId> expected_sensor_ids = {kImuSensorId};
-    EXPECT_CALL(
-        *mock_map_builder_,
-        AddTrajectoryBuilder(::testing::ContainerEq(expected_sensor_ids), _, _))
+    EXPECT_CALL(*mock_map_builder_, AddTrajectoryBuilder(::testing::ContainerEq(expected_sensor_ids), _, _))
         .WillOnce(::testing::Return(3));
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        expected_sensor_ids, trajectory_builder_options_, nullptr);
+    int trajectory_id = stub_->AddTrajectoryBuilder(expected_sensor_ids, trajectory_builder_options_, nullptr);
     EXPECT_EQ(trajectory_id, 3);
     EXPECT_CALL(*mock_map_builder_, GetTrajectoryBuilder(_))
         .WillRepeatedly(::testing::Return(mock_trajectory_builder_.get()));
-    mapping::TrajectoryBuilderInterface* trajectory_stub =
-        stub_->GetTrajectoryBuilder(trajectory_id);
-    sensor::ImuData imu_data{common::FromUniversal(42),
-                             Eigen::Vector3d(0., 0., 9.8),
-                             Eigen::Vector3d::Zero()};
+    mapping::TrajectoryBuilderInterface* trajectory_stub = stub_->GetTrajectoryBuilder(trajectory_id);
+    sensor::ImuData imu_data{common::FromUniversal(42), Eigen::Vector3d(0., 0., 9.8), Eigen::Vector3d::Zero()};
     EXPECT_CALL(*mock_trajectory_builder_,
-                AddSensorData(::testing::StrEq(kImuSensorId.id),
-                              ::testing::Matcher<const sensor::ImuData&>(_)))
+                AddSensorData(::testing::StrEq(kImuSensorId.id), ::testing::Matcher<const sensor::ImuData&>(_)))
         .WillOnce(::testing::Return());
     trajectory_stub->AddSensorData(kImuSensorId.id, imu_data);
     EXPECT_CALL(*mock_map_builder_, FinishTrajectory(trajectory_id));
@@ -362,13 +321,10 @@ TEST_P(ClientServerTestByGridType, LocalSlam2D) {
     server_->Start();
     InitializeStub();
     EXPECT_TRUE(stub_->pose_graph()->GetTrajectoryStates().empty());
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id =
+        stub_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_, local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_stub->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -381,9 +337,7 @@ TEST_P(ClientServerTestByGridType, LocalSlam2D) {
               PoseGraphInterface::TrajectoryState::FINISHED);
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
     server_->Shutdown();
 }
@@ -395,13 +349,10 @@ TEST_P(ClientServerTestByGridType, LocalSlamAndDelete2D) {
     InitializeRealServer();
     server_->Start();
     InitializeStub();
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id =
+        stub_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_, local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_stub->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -422,13 +373,10 @@ TEST_P(ClientServerTestByGridType, LocalSlamAndDelete2D) {
 }
 
 TEST_F(ClientServerTest, GlobalSlam3D) {
-    map_builder_server_options_.mutable_map_builder_options()
-        ->set_use_trajectory_builder_2d(false);
-    map_builder_server_options_.mutable_map_builder_options()
-        ->set_use_trajectory_builder_3d(true);
-    map_builder_server_options_.mutable_map_builder_options()
-        ->mutable_pose_graph_options()
-        ->set_optimize_every_n_nodes(3);
+    map_builder_server_options_.mutable_map_builder_options()->set_use_trajectory_builder_2d(false);
+    map_builder_server_options_.mutable_map_builder_options()->set_use_trajectory_builder_3d(true);
+    map_builder_server_options_.mutable_map_builder_options()->mutable_pose_graph_options()->set_optimize_every_n_nodes(
+        3);
     trajectory_builder_options_.mutable_trajectory_builder_3d_options()
         ->mutable_motion_filter_options()
         ->set_max_distance_meters(0);
@@ -438,17 +386,13 @@ TEST_F(ClientServerTest, GlobalSlam3D) {
     InitializeRealServer();
     server_->Start();
     InitializeStub();
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        {kRangeSensorId, kImuSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = stub_->AddTrajectoryBuilder({kRangeSensorId, kImuSensorId}, trajectory_builder_options_,
+                                                    local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
-        sensor::ImuData imu_data{
-            measurement.time - common::FromSeconds(kTimeStep / 2),
-            Eigen::Vector3d(0., 0., 9.8), Eigen::Vector3d::Zero()};
+        sensor::ImuData imu_data{measurement.time - common::FromSeconds(kTimeStep / 2), Eigen::Vector3d(0., 0., 9.8),
+                                 Eigen::Vector3d::Zero()};
         trajectory_stub->AddSensorData(kImuSensorId.id, imu_data);
         trajectory_stub->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -457,9 +401,7 @@ TEST_F(ClientServerTest, GlobalSlam3D) {
     WaitForLocalSlamResults(measurements.size() - 1);
     stub_->FinishTrajectory(trajectory_id);
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
     server_->Shutdown();
 }
@@ -486,17 +428,14 @@ TEST_P(ClientServerTestByGridType, AddTrajectoryBuilderWithUploadingServer) {
     uploading_server_->Start();
     InitializeStub();
     InitializeStubForUploadingServer();
-    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder(
-        {kImuSensorId}, trajectory_builder_options_, nullptr);
-    EXPECT_FALSE(stub_for_uploading_server_->pose_graph()->IsTrajectoryFinished(
-        trajectory_id));
+    int trajectory_id =
+        stub_for_uploading_server_->AddTrajectoryBuilder({kImuSensorId}, trajectory_builder_options_, nullptr);
+    EXPECT_FALSE(stub_for_uploading_server_->pose_graph()->IsTrajectoryFinished(trajectory_id));
     EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFinished(trajectory_id));
     stub_for_uploading_server_->FinishTrajectory(trajectory_id);
-    EXPECT_TRUE(stub_for_uploading_server_->pose_graph()->IsTrajectoryFinished(
-        trajectory_id));
+    EXPECT_TRUE(stub_for_uploading_server_->pose_graph()->IsTrajectoryFinished(trajectory_id));
     EXPECT_TRUE(stub_->pose_graph()->IsTrajectoryFinished(trajectory_id));
-    EXPECT_FALSE(stub_for_uploading_server_->pose_graph()->IsTrajectoryFrozen(
-        trajectory_id));
+    EXPECT_FALSE(stub_for_uploading_server_->pose_graph()->IsTrajectoryFrozen(trajectory_id));
     EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFrozen(trajectory_id));
     uploading_server_->Shutdown();
     server_->Shutdown();
@@ -512,13 +451,10 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DWithUploadingServer) {
     InitializeRealUploadingServer();
     uploading_server_->Start();
     InitializeStubForUploadingServer();
-    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_for_uploading_server_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_,
+                                                                         local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_for_uploading_server_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_stub->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -526,16 +462,15 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DWithUploadingServer) {
     WaitForLocalSlamResultUploads(number_of_insertion_results_);
 
     std::queue<std::unique_ptr<google::protobuf::Message>> chunks;
-    io::ForwardingProtoStreamWriter writer(
-        [&chunks](const google::protobuf::Message* proto) -> bool {
-            if (!proto) {
-                return true;
-            }
-            std::unique_ptr<google::protobuf::Message> p(proto->New());
-            p->CopyFrom(*proto);
-            chunks.push(std::move(p));
+    io::ForwardingProtoStreamWriter writer([&chunks](const google::protobuf::Message* proto) -> bool {
+        if (!proto) {
             return true;
-        });
+        }
+        std::unique_ptr<google::protobuf::Message> p(proto->New());
+        p->CopyFrom(*proto);
+        chunks.push(std::move(p));
+        return true;
+    });
     stub_->SerializeState(false, &writer);
     CHECK(writer.Close());
     // Ensure it can be read.
@@ -546,9 +481,7 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DWithUploadingServer) {
     stub_for_uploading_server_->FinishTrajectory(trajectory_id);
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
     uploading_server_->Shutdown();
     server_->Shutdown();
@@ -564,13 +497,10 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DUplinkServerRestarting) {
     InitializeRealUploadingServer();
     uploading_server_->Start();
     InitializeStubForUploadingServer();
-    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_for_uploading_server_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_,
+                                                                         local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_for_uploading_server_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
 
     // Insert half of the measurements.
     for (unsigned int i = 0; i < measurements.size() / 2; ++i) {
@@ -590,8 +520,7 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DUplinkServerRestarting) {
     InitializeStub();
 
     // Insert the second half of the measurements.
-    for (unsigned int i = measurements.size() / 2; i < measurements.size();
-         ++i) {
+    for (unsigned int i = measurements.size() / 2; i < measurements.size(); ++i) {
         trajectory_stub->AddSensorData(kRangeSensorId.id, measurements.at(i));
     }
 
@@ -608,13 +537,10 @@ TEST_F(ClientServerTest, DelayedConnectionToUplinkServer) {
     InitializeRealUploadingServer();
     uploading_server_->Start();
     InitializeStubForUploadingServer();
-    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_for_uploading_server_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = stub_for_uploading_server_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_,
+                                                                         local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_for_uploading_server_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
 
     // Insert the first measurement.
     trajectory_stub->AddSensorData(kRangeSensorId.id, measurements.at(0));
@@ -647,27 +573,23 @@ TEST_P(ClientServerTestByGridType, LoadStateAndDelete) {
     InitializeStub();
 
     // Load text proto into in_memory_reader.
-    auto reader =
-        ProtoReaderFromStrings(kSerializationHeaderProtoString,
-                               {
-                                   kPoseGraphProtoString,
-                                   kAllTrajectoryBuilderOptionsProtoString,
-                                   kSubmapProtoString,
-                                   kNodeProtoString,
-                                   kImuDataProtoString,
-                                   kOdometryDataProtoString,
-                                   kLandmarkDataProtoString,
-                               });
+    auto reader = ProtoReaderFromStrings(kSerializationHeaderProtoString, {
+                                                                              kPoseGraphProtoString,
+                                                                              kAllTrajectoryBuilderOptionsProtoString,
+                                                                              kSubmapProtoString,
+                                                                              kNodeProtoString,
+                                                                              kImuDataProtoString,
+                                                                              kOdometryDataProtoString,
+                                                                              kLandmarkDataProtoString,
+                                                                          });
 
     auto trajectory_remapping = stub_->LoadState(reader.get(), true);
     int expected_trajectory_id = 0;
     EXPECT_EQ(trajectory_remapping.size(), 1);
     EXPECT_EQ(trajectory_remapping.at(0), expected_trajectory_id);
     stub_->pose_graph()->RunFinalOptimization();
-    EXPECT_TRUE(
-        stub_->pose_graph()->IsTrajectoryFrozen(expected_trajectory_id));
-    EXPECT_FALSE(
-        stub_->pose_graph()->IsTrajectoryFinished(expected_trajectory_id));
+    EXPECT_TRUE(stub_->pose_graph()->IsTrajectoryFrozen(expected_trajectory_id));
+    EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFinished(expected_trajectory_id));
     for (const auto& entry : trajectory_remapping) {
         int trajectory_id = entry.second;
         stub_->pose_graph()->DeleteTrajectory(trajectory_id);
@@ -687,35 +609,28 @@ TEST_P(ClientServerTestByGridType, LoadUnfrozenStateAndDelete) {
     InitializeStub();
 
     // Load text proto into in_memory_reader.
-    auto reader =
-        ProtoReaderFromStrings(kSerializationHeaderProtoString,
-                               {
-                                   kPoseGraphProtoString,
-                                   kAllTrajectoryBuilderOptionsProtoString,
-                                   kSubmapProtoString,
-                                   kNodeProtoString,
-                                   kImuDataProtoString,
-                                   kOdometryDataProtoString,
-                                   kLandmarkDataProtoString,
-                               });
+    auto reader = ProtoReaderFromStrings(kSerializationHeaderProtoString, {
+                                                                              kPoseGraphProtoString,
+                                                                              kAllTrajectoryBuilderOptionsProtoString,
+                                                                              kSubmapProtoString,
+                                                                              kNodeProtoString,
+                                                                              kImuDataProtoString,
+                                                                              kOdometryDataProtoString,
+                                                                              kLandmarkDataProtoString,
+                                                                          });
 
-    auto trajectory_remapping =
-        stub_->LoadState(reader.get(), false /* load_frozen_state */);
+    auto trajectory_remapping = stub_->LoadState(reader.get(), false /* load_frozen_state */);
     int expected_trajectory_id = 0;
     EXPECT_EQ(trajectory_remapping.size(), 1);
     EXPECT_EQ(trajectory_remapping.at(0), expected_trajectory_id);
     stub_->pose_graph()->RunFinalOptimization();
-    EXPECT_FALSE(
-        stub_->pose_graph()->IsTrajectoryFrozen(expected_trajectory_id));
-    EXPECT_FALSE(
-        stub_->pose_graph()->IsTrajectoryFinished(expected_trajectory_id));
-    EXPECT_EQ(
-        stub_->pose_graph()->GetTrajectoryStates().at(expected_trajectory_id),
-        PoseGraphInterface::TrajectoryState::ACTIVE);
+    EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFrozen(expected_trajectory_id));
+    EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFinished(expected_trajectory_id));
+    EXPECT_EQ(stub_->pose_graph()->GetTrajectoryStates().at(expected_trajectory_id),
+              PoseGraphInterface::TrajectoryState::ACTIVE);
     stub_->FinishTrajectory(expected_trajectory_id);
-    EXPECT_EQ(
-        stub_->pose_graph()->GetTrajectoryStates().at(expected_trajectory_id),
-        PoseGraphInterface::TrajectoryState::FINISHED);
+    EXPECT_EQ(stub_->pose_graph()->GetTrajectoryStates().at(expected_trajectory_id),
+              PoseGraphInterface::TrajectoryState::FINISHED);
     for (const auto& entry : trajectory_remapping) {
         int trajectory_id = entry.second;
         stub_->pose_graph()->DeleteTrajectory(trajectory_id);
@@ -735,13 +650,10 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DHandlesInvalidRequests) {
     InitializeRealServer();
     server_->Start();
     InitializeStub();
-    int trajectory_id = stub_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        local_slam_result_callback_);
-    TrajectoryBuilderInterface* trajectory_stub =
-        stub_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id =
+        stub_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_, local_slam_result_callback_);
+    TrajectoryBuilderInterface* trajectory_stub = stub_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = mapping::testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_stub->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -750,19 +662,15 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DHandlesInvalidRequests) {
 
     const int kInvalidTrajectoryId = 7;
     stub_->pose_graph()->DeleteTrajectory(kInvalidTrajectoryId);
-    EXPECT_FALSE(
-        stub_->pose_graph()->IsTrajectoryFinished(kInvalidTrajectoryId));
+    EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFinished(kInvalidTrajectoryId));
     EXPECT_FALSE(stub_->pose_graph()->IsTrajectoryFrozen(kInvalidTrajectoryId));
     EXPECT_EQ(nullptr, stub_->GetTrajectoryBuilder(kInvalidTrajectoryId));
     stub_->FinishTrajectory(kInvalidTrajectoryId);
-    const mapping::SubmapId kInvalidSubmapId0{kInvalidTrajectoryId, 0},
-        kInvalidSubmapId1{trajectory_id, 424242};
+    const mapping::SubmapId kInvalidSubmapId0{kInvalidTrajectoryId, 0}, kInvalidSubmapId1{trajectory_id, 424242};
     mapping::proto::SubmapQuery::Response submap_query_response;
     // Expect that it returns non-empty error string.
-    EXPECT_NE("",
-              stub_->SubmapToProto(kInvalidSubmapId0, &submap_query_response));
-    EXPECT_NE("",
-              stub_->SubmapToProto(kInvalidSubmapId1, &submap_query_response));
+    EXPECT_NE("", stub_->SubmapToProto(kInvalidSubmapId0, &submap_query_response));
+    EXPECT_NE("", stub_->SubmapToProto(kInvalidSubmapId1, &submap_query_response));
 
     EXPECT_EQ(stub_->pose_graph()->GetTrajectoryStates().at(trajectory_id),
               PoseGraphInterface::TrajectoryState::ACTIVE);
@@ -773,8 +681,7 @@ TEST_P(ClientServerTestByGridType, LocalSlam2DHandlesInvalidRequests) {
     stub_->pose_graph()->DeleteTrajectory(trajectory_id);
     stub_->pose_graph()->RunFinalOptimization();
     mapping::SubmapId deleted_submap_id = submap_poses.begin()->id;
-    EXPECT_NE("",
-              stub_->SubmapToProto(deleted_submap_id, &submap_query_response));
+    EXPECT_NE("", stub_->SubmapToProto(deleted_submap_id, &submap_query_response));
     EXPECT_EQ(stub_->pose_graph()->GetTrajectoryStates().at(trajectory_id),
               PoseGraphInterface::TrajectoryState::DELETED);
     // Make sure optimization runs with a deleted trajectory.

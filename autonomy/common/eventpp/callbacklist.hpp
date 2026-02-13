@@ -38,17 +38,13 @@ class CallbackListBase<ReturnType(Args...), PoliciesType>
 private:
     using Policies = PoliciesType;
 
-    using Threading =
-        typename SelectThreading<Policies,
-                                 HasTypeThreading<Policies>::value>::Type;
+    using Threading = typename SelectThreading<Policies, HasTypeThreading<Policies>::value>::Type;
 
     using Callback_ =
-        typename SelectCallback<Policies, HasTypeCallback<Policies>::value,
-                                std::function<ReturnType(Args...)> >::Type;
+        typename SelectCallback<Policies, HasTypeCallback<Policies>::value, std::function<ReturnType(Args...)> >::Type;
 
-    using CanContinueInvoking = typename SelectCanContinueInvoking<
-        Policies,
-        HasFunctionCanContinueInvoking<Policies, Args...>::value>::Type;
+    using CanContinueInvoking =
+        typename SelectCanContinueInvoking<Policies, HasFunctionCanContinueInvoking<Policies, Args...>::value>::Type;
 
     struct Node;
     using NodePtr = std::shared_ptr<Node>;
@@ -56,8 +52,7 @@ private:
     struct Node {
         using Counter = unsigned int;
 
-        Node(const Callback_& callback, const Counter counter)
-            : callback(callback), counter(counter) {}
+        Node(const Callback_& callback, const Counter counter) : callback(callback), counter(counter) {}
 
         NodePtr previous;
         NodePtr next;
@@ -243,9 +238,7 @@ public:
 
     template <typename Func>
     bool forEachIf(Func&& func) const {
-        return doForEachIf([&func, this](NodePtr& node) -> bool {
-            return doForEachInvoke<bool>(func, node);
-        });
+        return doForEachIf([&func, this](NodePtr& node) -> bool { return doForEachInvoke<bool>(func, node); });
     }
 
 #if !defined(__GNUC__) || __GNUC__ >= 5
@@ -324,8 +317,7 @@ private:
 
     template <typename RT, typename Func>
     auto doForEachInvoke(Func&& func, NodePtr& node) const ->
-        typename std::enable_if<CanInvoke<Func, Handle, Callback&>::value,
-                                RT>::type {
+        typename std::enable_if<CanInvoke<Func, Handle, Callback&>::value, RT>::type {
         return func(Handle(node), node->callback);
     }
 
@@ -411,8 +403,7 @@ private:
         NodePtr node;
         const Counter counter = getNextCounter();
         while (fromNode) {
-            const NodePtr nextNode(
-                std::make_shared<Node>(fromNode->callback, counter));
+            const NodePtr nextNode(std::make_shared<Node>(fromNode->callback, counter));
 
             nextNode->previous = node;
 
@@ -440,8 +431,7 @@ private:
 }  // namespace internal_
 
 template <typename Prototype_, typename Policies_ = DefaultPolicies>
-class CallbackList : public internal_::CallbackListBase<Prototype_, Policies_>,
-                     public TagCallbackList
+class CallbackList : public internal_::CallbackListBase<Prototype_, Policies_>, public TagCallbackList
 {
 private:
     using super = internal_::CallbackListBase<Prototype_, Policies_>;

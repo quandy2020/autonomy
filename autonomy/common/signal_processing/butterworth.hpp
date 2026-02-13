@@ -59,12 +59,10 @@ public:
     void printContinuousTimeTF() const;
     void printDiscreteTimeTF() const;
 
-    void Buttord(double const& Wp, double const& Ws, double const& Ap,
-                 double const& As);
+    void Buttord(double const& Wp, double const& Ws, double const& Ap, double const& As);
 
     // Setters and Getters
-    void setCutOffFrequency(
-        double const& Wc);  // Wc is the cut-off frequency in [rad/sec]
+    void setCutOffFrequency(double const& Wc);  // Wc is the cut-off frequency in [rad/sec]
 
     // fc is cut-off frequency in [Hz] and fs is the sampling frequency in [Hz]
     void setCutOffFrequency(double const& fc, double const& fs);
@@ -94,8 +92,7 @@ private:
         std::vector<std::complex<double>> continuous_time_roots_{};
 
         // Continuous time transfer function numerator denominators
-        std::vector<std::complex<double>> continuous_time_denominator_{
-            {0.0, 0.0}};
+        std::vector<std::complex<double>> continuous_time_denominator_{{0.0, 0.0}};
         double continuous_time_numerator_{0.0};
     } ct_tf_{};
 
@@ -108,8 +105,7 @@ private:
         std::vector<std::complex<double>> discrete_time_zeros_{{-1.0, 0.0}};
 
         // Discrete time transfer function numerator denominators
-        std::vector<std::complex<double>> discrete_time_denominator_{
-            {0.0, 0.0}};
+        std::vector<std::complex<double>> discrete_time_denominator_{{0.0, 0.0}};
         std::vector<std::complex<double>> discrete_time_numerator_{{0.0, 0.0}};
     } dt_tf_{};
 
@@ -119,8 +115,7 @@ private:
     // METHODS
     // polynomial function returns the coefficients given the roots of a
     // polynomial
-    static std::vector<std::complex<double>> poly(
-        std::vector<std::complex<double>> const& roots);
+    static std::vector<std::complex<double>> poly(std::vector<std::complex<double>> const& roots);
 
     /*
      * Implementation starts by computing the pole locations of the filter in

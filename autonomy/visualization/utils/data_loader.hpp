@@ -51,8 +51,7 @@ public:
      * @param frame_id 图像 frame_id（默认为 "camera_frame"）
      * @return true 如果成功，false 否则
      */
-    static bool LoadImageFromFile(const std::string& file_path,
-                                  commsgs::proto::sensor_msgs::Image& image,
+    static bool LoadImageFromFile(const std::string& file_path, commsgs::proto::sensor_msgs::Image& image,
                                   const std::string& frame_id = "camera_frame");
 
     /**
@@ -63,10 +62,9 @@ public:
      * @param frame_id 图像 frame_id（默认为 "camera_frame"）
      * @return true 如果成功，false 否则
      */
-    static bool LoadImagesFromDirectory(
-        const std::string& directory_path,
-        std::vector<commsgs::proto::sensor_msgs::Image>& images,
-        const std::string& frame_id = "camera_frame");
+    static bool LoadImagesFromDirectory(const std::string& directory_path,
+                                        std::vector<commsgs::proto::sensor_msgs::Image>& images,
+                                        const std::string& frame_id = "camera_frame");
 
     /**
      * @brief 从 OpenCV Mat 转换为 commsgs Image
@@ -76,9 +74,8 @@ public:
      * @param frame_id 图像 frame_id（默认为 "camera_frame"）
      * @return true 如果成功，false 否则
      */
-    static bool ConvertCvMatToImage(
-        const cv::Mat& cv_image, commsgs::proto::sensor_msgs::Image& image,
-        const std::string& frame_id = "camera_frame");
+    static bool ConvertCvMatToImage(const cv::Mat& cv_image, commsgs::proto::sensor_msgs::Image& image,
+                                    const std::string& frame_id = "camera_frame");
 
     /**
      * @brief 生成圆形路径
@@ -90,9 +87,9 @@ public:
      * @param frame_id 路径 frame_id（默认为 "map"）
      * @return 生成的 Path 消息
      */
-    static commsgs::proto::planning_msgs::Path GenerateCircularPath(
-        double center_x, double center_y, double radius, int num_points = 20,
-        const std::string& frame_id = "map");
+    static commsgs::proto::planning_msgs::Path GenerateCircularPath(double center_x, double center_y, double radius,
+                                                                    int num_points = 20,
+                                                                    const std::string& frame_id = "map");
 
     /**
      * @brief 生成直线路径
@@ -105,9 +102,9 @@ public:
      * @param frame_id 路径 frame_id（默认为 "map"）
      * @return 生成的 Path 消息
      */
-    static commsgs::proto::planning_msgs::Path GenerateStraightPath(
-        double start_x, double start_y, double end_x, double end_y,
-        int num_points = 10, const std::string& frame_id = "map");
+    static commsgs::proto::planning_msgs::Path GenerateStraightPath(double start_x, double start_y, double end_x,
+                                                                    double end_y, int num_points = 10,
+                                                                    const std::string& frame_id = "map");
 
     /**
      * @brief 生成矩形路径
@@ -120,9 +117,9 @@ public:
      * @param frame_id 路径 frame_id（默认为 "map"）
      * @return 生成的 Path 消息
      */
-    static commsgs::proto::planning_msgs::Path GenerateRectangularPath(
-        double center_x, double center_y, double width, double height,
-        int num_points_per_side = 5, const std::string& frame_id = "map");
+    static commsgs::proto::planning_msgs::Path GenerateRectangularPath(double center_x, double center_y, double width,
+                                                                       double height, int num_points_per_side = 5,
+                                                                       const std::string& frame_id = "map");
 
     /**
      * @brief 从点列表生成路径
@@ -132,8 +129,7 @@ public:
      * @return 生成的 Path 消息
      */
     static commsgs::proto::planning_msgs::Path GeneratePathFromPoints(
-        const std::vector<std::pair<double, double>>& points,
-        const std::string& frame_id = "map");
+        const std::vector<std::pair<double, double>>& points, const std::string& frame_id = "map");
 
     /**
      * @brief 生成螺旋路径
@@ -147,10 +143,9 @@ public:
      * @param frame_id 路径 frame_id（默认为 "map"）
      * @return 生成的 Path 消息
      */
-    static commsgs::proto::planning_msgs::Path GenerateSpiralPath(
-        double center_x, double center_y, double start_radius,
-        double end_radius, int num_turns, int num_points = 50,
-        const std::string& frame_id = "map");
+    static commsgs::proto::planning_msgs::Path GenerateSpiralPath(double center_x, double center_y, double start_radius,
+                                                                  double end_radius, int num_turns, int num_points = 50,
+                                                                  const std::string& frame_id = "map");
 
 private:
     /**
@@ -166,8 +161,7 @@ private:
      * @param pose 位姿消息
      * @param angle 角度（弧度）
      */
-    static void SetPoseOrientation(commsgs::proto::geometry_msgs::Pose& pose,
-                                   double angle);
+    static void SetPoseOrientation(commsgs::proto::geometry_msgs::Pose& pose, double angle);
 };
 
 }  // namespace utils

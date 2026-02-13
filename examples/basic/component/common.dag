@@ -1,0 +1,22 @@
+# Define all components in DAG streaming.
+module_config {
+  # 相对于 AUTOLINK_PATH 的组件库路径
+  # 对应 CMake 中 LIBRARY_OUTPUT_DIRECTORY: bin/autonomy/examples/basic/component
+  module_library : "autonomy/examples/basic/component/libcommon_component_example.so"
+
+  components {
+    class_name : "CommonComponentSample"
+    config {
+      name : "common_component_example"
+
+      # 两个输入通道，消息类型为 Driver
+      readers {
+        channel: "/examples/driver_input0"
+      }
+      readers {
+        channel: "/examples/driver_input1"
+      }
+    }
+  }
+}
+

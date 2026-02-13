@@ -25,8 +25,7 @@ namespace motion {
 using ::autonomy::vehicle::proto::KinematicsControlCommand;
 using ::autonomy::vehicle::proto::VehicleModel;
 
-KinematicsControl::KinematicsControl(const VehicleModel& model)
-    : model_(model) {}
+KinematicsControl::KinematicsControl(const VehicleModel& model) : model_(model) {}
 
 void KinematicsControl::ApplyLimits(KinematicsControlCommand* cmd) const {
     if (!cmd) {

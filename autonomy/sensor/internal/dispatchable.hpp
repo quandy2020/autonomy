@@ -27,8 +27,7 @@ template <typename DataType>
 class Dispatchable : public Data
 {
 public:
-    Dispatchable(const std::string& sensor_id, const DataType& data)
-        : Data(sensor_id), data_(data) {}
+    Dispatchable(const std::string& sensor_id, const DataType& data) : Data(sensor_id), data_(data) {}
 
     Time GetTime() const override {
         return data_.time;
@@ -46,8 +45,7 @@ private:
 };
 
 template <typename DataType>
-std::unique_ptr<Dispatchable<DataType>> MakeDispatchable(
-    const std::string& sensor_id, const DataType& data) {
+std::unique_ptr<Dispatchable<DataType>> MakeDispatchable(const std::string& sensor_id, const DataType& data) {
     return absl::make_unique<Dispatchable<DataType>>(sensor_id, data);
 }
 

@@ -35,8 +35,7 @@ namespace condition {
 class InitialPoseReceived : public BT::ConditionNode
 {
 public:
-    InitialPoseReceived(const std::string& name,
-                        const BT::NodeConfiguration& config);
+    InitialPoseReceived(const std::string& name, const BT::NodeConfiguration& config);
 
     static BT::PortsList providedPorts() {
         return {BT::InputPort<bool>("initial_pose_received")};

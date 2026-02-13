@@ -28,26 +28,18 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-IsPathValidCondition::IsPathValidCondition(const std::string& condition_name,
-                                           const BT::NodeConfiguration& conf)
-    : BT::ConditionNode(condition_name, conf),
-      max_cost_(253),
-      consider_unknown_as_obstacle_(false) {
+IsPathValidCondition::IsPathValidCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
+    : BT::ConditionNode(condition_name, conf), max_cost_(253), consider_unknown_as_obstacle_(false) {
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    client_ =
-        node_->CreateClient<proto::IsPathValid::Request,
-                            proto::IsPathValid::Response>("is_path_valid");
+    client_ = node_->CreateClient<proto::IsPathValid::Request, proto::IsPathValid::Response>("is_path_valid");
 
-    server_timeout_ =
-        config().blackboard->template get<std::chrono::milliseconds>(
-            "server_timeout");
+    server_timeout_ = config().blackboard->template get<std::chrono::milliseconds>("server_timeout");
 }
 
 void IsPathValidCondition::initialize() {
     getInput<std::chrono::milliseconds>("server_timeout", server_timeout_);
     getInput<unsigned int>("max_cost", max_cost_);
-    getInput<bool>("consider_unknown_as_obstacle",
-                   consider_unknown_as_obstacle_);
+    getInput<bool>("consider_unknown_as_obstacle", consider_unknown_as_obstacle_);
 }
 
 BT::NodeStatus IsPathValidCondition::tick() {
@@ -89,7 +81,5 @@ BT::NodeStatus IsPathValidCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::IsPathValidCondition>(
-        "IsPathValid");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsPathValidCondition>("IsPathValid");
 }

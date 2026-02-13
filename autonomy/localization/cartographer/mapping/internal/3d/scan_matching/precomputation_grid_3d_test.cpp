@@ -33,8 +33,7 @@ TEST(PrecomputedGridGenerator3DTest, TestAgainstNaiveAlgorithm) {
 
     std::mt19937 rng(23847);
     std::uniform_int_distribution<int> coordinate_distribution(-50, 49);
-    std::uniform_real_distribution<float> value_distribution(kMinProbability,
-                                                             kMaxProbability);
+    std::uniform_real_distribution<float> value_distribution(kMinProbability, kMaxProbability);
     for (int i = 0; i < 1000; ++i) {
         const auto x = coordinate_distribution(rng);
         const auto y = coordinate_distribution(rng);
@@ -46,12 +45,10 @@ TEST(PrecomputedGridGenerator3DTest, TestAgainstNaiveAlgorithm) {
     std::vector<PrecomputationGrid3D> precomputed_grids;
     for (int depth = 0; depth <= 3; ++depth) {
         if (depth == 0) {
-            precomputed_grids.push_back(
-                ConvertToPrecomputationGrid(hybrid_grid));
+            precomputed_grids.push_back(ConvertToPrecomputationGrid(hybrid_grid));
         } else {
             precomputed_grids.push_back(
-                PrecomputeGrid(precomputed_grids.back(), false,
-                               (1 << (depth - 1)) * Eigen::Array3i::Ones()));
+                PrecomputeGrid(precomputed_grids.back(), false, (1 << (depth - 1)) * Eigen::Array3i::Ones()));
         }
         const int width = 1 << depth;
         for (int i = 0; i < 100; ++i) {
@@ -62,19 +59,15 @@ TEST(PrecomputedGridGenerator3DTest, TestAgainstNaiveAlgorithm) {
             for (int dx = 0; dx < width; ++dx) {
                 for (int dy = 0; dy < width; ++dy) {
                     for (int dz = 0; dz < width; ++dz) {
-                        max_probability =
-                            std::max(max_probability,
-                                     hybrid_grid.GetProbability(Eigen::Array3i(
-                                         x + dx, y + dy, z + dz)));
+                        max_probability = std::max(max_probability,
+                                                   hybrid_grid.GetProbability(Eigen::Array3i(x + dx, y + dy, z + dz)));
                     }
                 }
             }
 
-            EXPECT_NEAR(
-                max_probability,
-                PrecomputationGrid3D::ToProbability(
-                    precomputed_grids.back().value(Eigen::Array3i(x, y, z))),
-                1e-2);
+            EXPECT_NEAR(max_probability,
+                        PrecomputationGrid3D::ToProbability(precomputed_grids.back().value(Eigen::Array3i(x, y, z))),
+                        1e-2);
         }
     }
 }

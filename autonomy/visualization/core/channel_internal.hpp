@@ -36,8 +36,7 @@ namespace detail {
 /// 从消息描述符创建 protobuf schema
 /// 递归收集所有依赖的 FileDescriptor，并序列化为 FileDescriptorSet
 template <typename ProtoMsgs>
-::foxglove::Schema CreateProtobufSchema(
-    const google::protobuf::Descriptor* descriptor, std::string& storage) {
+::foxglove::Schema CreateProtobufSchema(const google::protobuf::Descriptor* descriptor, std::string& storage) {
     ::foxglove::Schema schema;
 
     if (descriptor == nullptr) {
@@ -47,18 +46,16 @@ template <typename ProtoMsgs>
     schema.encoding = "protobuf";
     schema.name = descriptor->full_name();
 
-    const google::protobuf::FileDescriptor* file_descriptor =
-        descriptor->file();
+    const google::protobuf::FileDescriptor* file_descriptor = descriptor->file();
     if (file_descriptor == nullptr) {
         return schema;
     }
 
     // Recursively collect all dependencies
     std::set<const google::protobuf::FileDescriptor*> collected_files;
-    std::function<void(const google::protobuf::FileDescriptor*)>
-        collect_dependencies = [&](const google::protobuf::FileDescriptor* fd) {
-            if (fd == nullptr ||
-                collected_files.find(fd) != collected_files.end()) {
+    std::function<void(const google::protobuf::FileDescriptor*)> collect_dependencies =
+        [&](const google::protobuf::FileDescriptor* fd) {
+            if (fd == nullptr || collected_files.find(fd) != collected_files.end()) {
                 return;
             }
             collected_files.insert(fd);
@@ -87,10 +84,9 @@ template <typename ProtoMsgs>
 
 /// 创建 protobuf channel（仅用于 RawChannel 类型）
 template <typename ProtoMsgs>
-std::unique_ptr<ChannelType<ProtoMsgs>> CreateProtobufChannel(
-    const std::string& topic_name,
-    const google::protobuf::Descriptor* descriptor,
-    const std::string& storage) {
+std::unique_ptr<ChannelType<ProtoMsgs>> CreateProtobufChannel(const std::string& topic_name,
+                                                              const google::protobuf::Descriptor* descriptor,
+                                                              const std::string& storage) {
     using ChType = ChannelType<ProtoMsgs>;
 
     // CreateProtobufChannel should only be used for RawChannel
@@ -110,8 +106,7 @@ std::unique_ptr<ChannelType<ProtoMsgs>> CreateProtobufChannel(
     schema.data = reinterpret_cast<const std::byte*>(storage.data());
     schema.data_len = storage.size();
 
-    auto channel_result = ::foxglove::RawChannel::create(topic_name, "protobuf",
-                                                         std::move(schema));
+    auto channel_result = ::foxglove::RawChannel::create(topic_name, "protobuf", std::move(schema));
     if (channel_result.has_value()) {
         AINFO << "Created topic: " << topic_name << " channel successfully";
         return std::make_unique<ChType>(std::move(channel_result.value()));
@@ -124,8 +119,7 @@ std::unique_ptr<ChannelType<ProtoMsgs>> CreateProtobufChannel(
 
 /// 创建 Foxglove schema channel（SceneUpdate/Grid/RawImage/PointCloud）
 template <typename ProtoMsgs>
-std::unique_ptr<ChannelType<ProtoMsgs>> CreateSchemaChannel(
-    const std::string& topic_name) {
+std::unique_ptr<ChannelType<ProtoMsgs>> CreateSchemaChannel(const std::string& topic_name) {
     using ChType = ChannelType<ProtoMsgs>;
     using Factory = ChannelCreateTraits<ChType>;
 

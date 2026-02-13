@@ -48,10 +48,8 @@ protected:
       MAP_BUILDER.pose_graph.global_sampling_ratio = 0.05
       MAP_BUILDER.pose_graph.global_constraint_search_after_n_seconds = 0
       return MAP_BUILDER)text";
-        auto map_builder_parameters =
-            testing::ResolveLuaParameters(kMapBuilderLua);
-        map_builder_options_ =
-            CreateMapBuilderOptions(map_builder_parameters.get());
+        auto map_builder_parameters = testing::ResolveLuaParameters(kMapBuilderLua);
+        map_builder_options_ = CreateMapBuilderOptions(map_builder_parameters.get());
         // Multiple submaps are created because of a small 'num_range_data'.
         const std::string kTrajectoryBuilderLua = R"text(
       include "trajectory_builder.lua"
@@ -59,10 +57,8 @@ protected:
       TRAJECTORY_BUILDER.trajectory_builder_2d.submaps.num_range_data = 4
       TRAJECTORY_BUILDER.trajectory_builder_3d.submaps.num_range_data = 4
       return TRAJECTORY_BUILDER)text";
-        auto trajectory_builder_parameters =
-            testing::ResolveLuaParameters(kTrajectoryBuilderLua);
-        trajectory_builder_options_ =
-            CreateTrajectoryBuilderOptions(trajectory_builder_parameters.get());
+        auto trajectory_builder_parameters = testing::ResolveLuaParameters(kTrajectoryBuilderLua);
+        trajectory_builder_options_ = CreateTrajectoryBuilderOptions(trajectory_builder_parameters.get());
     }
 
     void BuildMapBuilder() {
@@ -78,8 +74,7 @@ protected:
         trajectory_builder_options_.mutable_trajectory_builder_2d_options()
             ->mutable_submaps_options()
             ->mutable_range_data_inserter_options()
-            ->set_range_data_inserter_type(
-                proto::RangeDataInserterOptions::TSDF_INSERTER_2D);
+            ->set_range_data_inserter_type(proto::RangeDataInserterOptions::TSDF_INSERTER_2D);
         trajectory_builder_options_.mutable_trajectory_builder_2d_options()
             ->mutable_submaps_options()
             ->mutable_grid_options_2d()
@@ -94,33 +89,26 @@ protected:
     }
 
     void SetOptionsEnableGlobalOptimization() {
-        map_builder_options_.mutable_pose_graph_options()
-            ->set_optimize_every_n_nodes(3);
+        map_builder_options_.mutable_pose_graph_options()->set_optimize_every_n_nodes(3);
         trajectory_builder_options_.mutable_trajectory_builder_2d_options()
             ->mutable_motion_filter_options()
             ->set_max_distance_meters(0);
     }
 
     MapBuilderInterface::LocalSlamResultCallback GetLocalSlamResultCallback() {
-        return [=](const int trajectory_id,
-                   const ::cartographer::common::Time time,
+        return [=](const int trajectory_id, const ::cartographer::common::Time time,
                    const ::cartographer::transform::Rigid3d local_pose,
                    ::cartographer::sensor::RangeData range_data_in_local,
-                   const std::unique_ptr<
-                       const cartographer::mapping::TrajectoryBuilderInterface::
-                           InsertionResult>) {
+                   const std::unique_ptr<const cartographer::mapping::TrajectoryBuilderInterface::InsertionResult>) {
             local_slam_result_poses_.push_back(local_pose);
         };
     }
 
     int CreateTrajectoryWithFakeData(double timestamps_add_duration = 0.) {
-        int trajectory_id = map_builder_->AddTrajectoryBuilder(
-            {kRangeSensorId}, trajectory_builder_options_,
-            GetLocalSlamResultCallback());
-        TrajectoryBuilderInterface* trajectory_builder =
-            map_builder_->GetTrajectoryBuilder(trajectory_id);
-        auto measurements = testing::GenerateFakeRangeMeasurements(
-            kTravelDistance, kDuration, kTimeStep);
+        int trajectory_id = map_builder_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_,
+                                                               GetLocalSlamResultCallback());
+        TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
+        auto measurements = testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
         for (auto& measurement : measurements) {
             measurement.time += common::FromSeconds(timestamps_add_duration);
             trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
@@ -138,24 +126,19 @@ protected:
 class MapBuilderTest : public MapBuilderTestBase<::testing::Test>
 {
 };
-class MapBuilderTestByGridType
-    : public MapBuilderTestBase<::testing::TestWithParam<GridType>>
+class MapBuilderTestByGridType : public MapBuilderTestBase<::testing::TestWithParam<GridType>>
 {
 };
 class MapBuilderTestByGridTypeAndDimensions
-    : public MapBuilderTestBase<
-          ::testing::TestWithParam<std::pair<GridType, int /* dimensions */>>>
+    : public MapBuilderTestBase<::testing::TestWithParam<std::pair<GridType, int /* dimensions */>>>
 {
 };
 INSTANTIATE_TEST_CASE_P(MapBuilderTestByGridType, MapBuilderTestByGridType,
-                        ::testing::Values(GridType::PROBABILITY_GRID,
-                                          GridType::TSDF));
-INSTANTIATE_TEST_CASE_P(
-    MapBuilderTestByGridTypeAndDimensions,
-    MapBuilderTestByGridTypeAndDimensions,
-    ::testing::Values(std::make_pair(GridType::PROBABILITY_GRID, 2),
-                      std::make_pair(GridType::PROBABILITY_GRID, 3),
-                      std::make_pair(GridType::TSDF, 2)));
+                        ::testing::Values(GridType::PROBABILITY_GRID, GridType::TSDF));
+INSTANTIATE_TEST_CASE_P(MapBuilderTestByGridTypeAndDimensions, MapBuilderTestByGridTypeAndDimensions,
+                        ::testing::Values(std::make_pair(GridType::PROBABILITY_GRID, 2),
+                                          std::make_pair(GridType::PROBABILITY_GRID, 3),
+                                          std::make_pair(GridType::TSDF, 2)));
 
 TEST_P(MapBuilderTestByGridTypeAndDimensions, TrajectoryAddFinish) {
     if (GetParam().second == 3)
@@ -163,29 +146,24 @@ TEST_P(MapBuilderTestByGridTypeAndDimensions, TrajectoryAddFinish) {
     if (GetParam().first == GridType::TSDF)
         SetOptionsToTSDF2D();
     BuildMapBuilder();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        nullptr /* GetLocalSlamResultCallbackForSubscriptions */);
+    int trajectory_id = map_builder_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_,
+                                                           nullptr /* GetLocalSlamResultCallbackForSubscriptions */);
     EXPECT_EQ(1, map_builder_->num_trajectory_builders());
     EXPECT_TRUE(map_builder_->GetTrajectoryBuilder(trajectory_id) != nullptr);
     EXPECT_TRUE(map_builder_->pose_graph() != nullptr);
     map_builder_->FinishTrajectory(trajectory_id);
     map_builder_->pose_graph()->RunFinalOptimization();
-    EXPECT_TRUE(
-        map_builder_->pose_graph()->IsTrajectoryFinished(trajectory_id));
+    EXPECT_TRUE(map_builder_->pose_graph()->IsTrajectoryFinished(trajectory_id));
 }
 
 TEST_P(MapBuilderTestByGridType, LocalSlam2D) {
     if (GetParam() == GridType::TSDF)
         SetOptionsToTSDF2D();
     BuildMapBuilder();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        GetLocalSlamResultCallback());
-    TrajectoryBuilderInterface* trajectory_builder =
-        map_builder_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id =
+        map_builder_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_, GetLocalSlamResultCallback());
+    TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -193,36 +171,27 @@ TEST_P(MapBuilderTestByGridType, LocalSlam2D) {
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
 }
 
 TEST_F(MapBuilderTest, LocalSlam3D) {
     SetOptionsTo3D();
     BuildMapBuilder();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId, kIMUSensorId}, trajectory_builder_options_,
-        GetLocalSlamResultCallback());
-    TrajectoryBuilderInterface* trajectory_builder =
-        map_builder_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = map_builder_->AddTrajectoryBuilder({kRangeSensorId, kIMUSensorId}, trajectory_builder_options_,
+                                                           GetLocalSlamResultCallback());
+    TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
         trajectory_builder->AddSensorData(
-            kIMUSensorId.id,
-            sensor::ImuData{measurement.time, Eigen::Vector3d(0., 0., 9.8),
-                            Eigen::Vector3d::Zero()});
+            kIMUSensorId.id, sensor::ImuData{measurement.time, Eigen::Vector3d(0., 0., 9.8), Eigen::Vector3d::Zero()});
     }
     map_builder_->FinishTrajectory(trajectory_id);
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
 }
 
@@ -231,13 +200,10 @@ TEST_P(MapBuilderTestByGridType, GlobalSlam2D) {
         SetOptionsToTSDF2D();
     SetOptionsEnableGlobalOptimization();
     BuildMapBuilder();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        GetLocalSlamResultCallback());
-    TrajectoryBuilderInterface* trajectory_builder =
-        map_builder_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id =
+        map_builder_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_, GetLocalSlamResultCallback());
+    TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
     }
@@ -245,68 +211,51 @@ TEST_P(MapBuilderTestByGridType, GlobalSlam2D) {
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
     EXPECT_GE(map_builder_->pose_graph()->constraints().size(), 50);
     EXPECT_THAT(map_builder_->pose_graph()->constraints(),
-                ::testing::Contains(::testing::Field(
-                    &PoseGraphInterface::Constraint::tag,
-                    PoseGraphInterface::Constraint::INTER_SUBMAP)));
-    const auto trajectory_nodes =
-        map_builder_->pose_graph()->GetTrajectoryNodes();
+                ::testing::Contains(::testing::Field(&PoseGraphInterface::Constraint::tag,
+                                                     PoseGraphInterface::Constraint::INTER_SUBMAP)));
+    const auto trajectory_nodes = map_builder_->pose_graph()->GetTrajectoryNodes();
     EXPECT_GE(trajectory_nodes.SizeOfTrajectoryOrZero(trajectory_id), 20);
     const auto submap_data = map_builder_->pose_graph()->GetAllSubmapData();
     EXPECT_GE(submap_data.SizeOfTrajectoryOrZero(trajectory_id), 5);
     const transform::Rigid3d final_pose =
-        map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id) *
-        local_slam_result_poses_.back();
-    EXPECT_NEAR(kTravelDistance, final_pose.translation().norm(),
-                0.1 * kTravelDistance);
+        map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id) * local_slam_result_poses_.back();
+    EXPECT_NEAR(kTravelDistance, final_pose.translation().norm(), 0.1 * kTravelDistance);
 }
 
 TEST_F(MapBuilderTest, GlobalSlam3D) {
     SetOptionsTo3D();
     SetOptionsEnableGlobalOptimization();
     BuildMapBuilder();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId, kIMUSensorId}, trajectory_builder_options_,
-        GetLocalSlamResultCallback());
-    TrajectoryBuilderInterface* trajectory_builder =
-        map_builder_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = map_builder_->AddTrajectoryBuilder({kRangeSensorId, kIMUSensorId}, trajectory_builder_options_,
+                                                           GetLocalSlamResultCallback());
+    TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
         trajectory_builder->AddSensorData(
-            kIMUSensorId.id,
-            sensor::ImuData{measurement.time, Eigen::Vector3d(0., 0., 9.8),
-                            Eigen::Vector3d::Zero()});
+            kIMUSensorId.id, sensor::ImuData{measurement.time, Eigen::Vector3d(0., 0., 9.8), Eigen::Vector3d::Zero()});
     }
     map_builder_->FinishTrajectory(trajectory_id);
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.1 * kTravelDistance);
     EXPECT_GE(map_builder_->pose_graph()->constraints().size(), 10);
     EXPECT_THAT(map_builder_->pose_graph()->constraints(),
-                ::testing::Contains(::testing::Field(
-                    &PoseGraphInterface::Constraint::tag,
-                    PoseGraphInterface::Constraint::INTER_SUBMAP)));
-    const auto trajectory_nodes =
-        map_builder_->pose_graph()->GetTrajectoryNodes();
+                ::testing::Contains(::testing::Field(&PoseGraphInterface::Constraint::tag,
+                                                     PoseGraphInterface::Constraint::INTER_SUBMAP)));
+    const auto trajectory_nodes = map_builder_->pose_graph()->GetTrajectoryNodes();
     EXPECT_GE(trajectory_nodes.SizeOfTrajectoryOrZero(trajectory_id), 5);
     const auto submap_data = map_builder_->pose_graph()->GetAllSubmapData();
     EXPECT_GE(submap_data.SizeOfTrajectoryOrZero(trajectory_id), 2);
     const transform::Rigid3d final_pose =
-        map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id) *
-        local_slam_result_poses_.back();
-    EXPECT_NEAR(kTravelDistance, final_pose.translation().norm(),
-                0.1 * kTravelDistance);
+        map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id) * local_slam_result_poses_.back();
+    EXPECT_NEAR(kTravelDistance, final_pose.translation().norm(), 0.1 * kTravelDistance);
 }
 
 TEST_P(MapBuilderTestByGridType, DeleteFinishedTrajectory2D) {
@@ -316,41 +265,21 @@ TEST_P(MapBuilderTestByGridType, DeleteFinishedTrajectory2D) {
     BuildMapBuilder();
     int trajectory_id = CreateTrajectoryWithFakeData();
     map_builder_->pose_graph()->RunFinalOptimization();
-    EXPECT_TRUE(
-        map_builder_->pose_graph()->IsTrajectoryFinished(trajectory_id));
+    EXPECT_TRUE(map_builder_->pose_graph()->IsTrajectoryFinished(trajectory_id));
     EXPECT_GE(map_builder_->pose_graph()->constraints().size(), 50);
-    EXPECT_GE(
-        map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(
-            trajectory_id),
-        20);
-    EXPECT_GE(
-        map_builder_->pose_graph()->GetAllSubmapData().SizeOfTrajectoryOrZero(
-            trajectory_id),
-        5);
+    EXPECT_GE(map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(trajectory_id), 20);
+    EXPECT_GE(map_builder_->pose_graph()->GetAllSubmapData().SizeOfTrajectoryOrZero(trajectory_id), 5);
     map_builder_->pose_graph()->DeleteTrajectory(trajectory_id);
     int another_trajectory_id = CreateTrajectoryWithFakeData(100.);
     map_builder_->pose_graph()->RunFinalOptimization();
-    EXPECT_TRUE(map_builder_->pose_graph()->IsTrajectoryFinished(
-        another_trajectory_id));
-    EXPECT_EQ(
-        map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(
-            trajectory_id),
-        0);
-    EXPECT_EQ(
-        map_builder_->pose_graph()->GetAllSubmapData().SizeOfTrajectoryOrZero(
-            trajectory_id),
-        0);
+    EXPECT_TRUE(map_builder_->pose_graph()->IsTrajectoryFinished(another_trajectory_id));
+    EXPECT_EQ(map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(trajectory_id), 0);
+    EXPECT_EQ(map_builder_->pose_graph()->GetAllSubmapData().SizeOfTrajectoryOrZero(trajectory_id), 0);
     map_builder_->pose_graph()->DeleteTrajectory(another_trajectory_id);
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_EQ(map_builder_->pose_graph()->constraints().size(), 0);
-    EXPECT_EQ(
-        map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(
-            another_trajectory_id),
-        0);
-    EXPECT_EQ(
-        map_builder_->pose_graph()->GetAllSubmapData().SizeOfTrajectoryOrZero(
-            another_trajectory_id),
-        0);
+    EXPECT_EQ(map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(another_trajectory_id), 0);
+    EXPECT_EQ(map_builder_->pose_graph()->GetAllSubmapData().SizeOfTrajectoryOrZero(another_trajectory_id), 0);
 }
 
 TEST_P(MapBuilderTestByGridTypeAndDimensions, SaveLoadState) {
@@ -358,29 +287,21 @@ TEST_P(MapBuilderTestByGridTypeAndDimensions, SaveLoadState) {
         SetOptionsTo3D();
     if (GetParam().first == GridType::TSDF)
         SetOptionsToTSDF2D();
-    trajectory_builder_options_.mutable_trajectory_builder_2d_options()
-        ->set_use_imu_data(true);
+    trajectory_builder_options_.mutable_trajectory_builder_2d_options()->set_use_imu_data(true);
     BuildMapBuilder();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId, kIMUSensorId}, trajectory_builder_options_,
-        GetLocalSlamResultCallback());
-    TrajectoryBuilderInterface* trajectory_builder =
-        map_builder_->GetTrajectoryBuilder(trajectory_id);
-    const auto measurements = testing::GenerateFakeRangeMeasurements(
-        kTravelDistance, kDuration, kTimeStep);
+    int trajectory_id = map_builder_->AddTrajectoryBuilder({kRangeSensorId, kIMUSensorId}, trajectory_builder_options_,
+                                                           GetLocalSlamResultCallback());
+    TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
+    const auto measurements = testing::GenerateFakeRangeMeasurements(kTravelDistance, kDuration, kTimeStep);
     for (const auto& measurement : measurements) {
         trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
         trajectory_builder->AddSensorData(
-            kIMUSensorId.id,
-            sensor::ImuData{measurement.time, Eigen::Vector3d(0., 0., 9.8),
-                            Eigen::Vector3d::Zero()});
+            kIMUSensorId.id, sensor::ImuData{measurement.time, Eigen::Vector3d(0., 0., 9.8), Eigen::Vector3d::Zero()});
     }
     map_builder_->FinishTrajectory(trajectory_id);
     map_builder_->pose_graph()->RunFinalOptimization();
     int num_constraints = map_builder_->pose_graph()->constraints().size();
-    int num_nodes =
-        map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(
-            trajectory_id);
+    int num_nodes = map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(trajectory_id);
     EXPECT_GT(num_constraints, 0);
     EXPECT_GT(num_nodes, 0);
     // TODO(gaschler): Consider using in-memory to avoid side effects.
@@ -392,17 +313,12 @@ TEST_P(MapBuilderTestByGridTypeAndDimensions, SaveLoadState) {
     // Reset 'map_builder_'.
     BuildMapBuilder();
     io::ProtoStreamReader reader(filename);
-    auto trajectory_remapping =
-        map_builder_->LoadState(&reader, false /* load_frozen_state */);
+    auto trajectory_remapping = map_builder_->LoadState(&reader, false /* load_frozen_state */);
     map_builder_->pose_graph()->RunFinalOptimization();
-    EXPECT_EQ(num_constraints,
-              map_builder_->pose_graph()->constraints().size());
+    EXPECT_EQ(num_constraints, map_builder_->pose_graph()->constraints().size());
     ASSERT_EQ(trajectory_remapping.size(), 1);
     int new_trajectory_id = trajectory_remapping.begin()->second;
-    EXPECT_EQ(
-        num_nodes,
-        map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(
-            new_trajectory_id));
+    EXPECT_EQ(num_nodes, map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(new_trajectory_id));
 }
 
 TEST_P(MapBuilderTestByGridType, LocalizationOnFrozenTrajectory2D) {
@@ -412,12 +328,8 @@ TEST_P(MapBuilderTestByGridType, LocalizationOnFrozenTrajectory2D) {
     int temp_trajectory_id = CreateTrajectoryWithFakeData();
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_GT(map_builder_->pose_graph()->constraints().size(), 0);
-    EXPECT_GT(
-        map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(
-            temp_trajectory_id),
-        0);
-    const std::string filename =
-        "temp-LocalizationOnFrozenTrajectory2D.pbstream";
+    EXPECT_GT(map_builder_->pose_graph()->GetTrajectoryNodes().SizeOfTrajectoryOrZero(temp_trajectory_id), 0);
+    const std::string filename = "temp-LocalizationOnFrozenTrajectory2D.pbstream";
     io::ProtoStreamWriter writer(filename);
     map_builder_->SerializeState(/*include_unfinished_submaps=*/true, &writer);
     writer.Close();
@@ -429,19 +341,14 @@ TEST_P(MapBuilderTestByGridType, LocalizationOnFrozenTrajectory2D) {
     io::ProtoStreamReader reader(filename);
     map_builder_->LoadState(&reader, true /* load_frozen_state */);
     map_builder_->pose_graph()->RunFinalOptimization();
-    int trajectory_id = map_builder_->AddTrajectoryBuilder(
-        {kRangeSensorId}, trajectory_builder_options_,
-        GetLocalSlamResultCallback());
-    TrajectoryBuilderInterface* trajectory_builder =
-        map_builder_->GetTrajectoryBuilder(trajectory_id);
+    int trajectory_id =
+        map_builder_->AddTrajectoryBuilder({kRangeSensorId}, trajectory_builder_options_, GetLocalSlamResultCallback());
+    TrajectoryBuilderInterface* trajectory_builder = map_builder_->GetTrajectoryBuilder(trajectory_id);
     transform::Rigid3d frozen_trajectory_to_global(
-        Eigen::Vector3d(0.5, 0.4, 0),
-        Eigen::Quaterniond(Eigen::AngleAxisd(1.2, Eigen::Vector3d::UnitZ())));
-    Eigen::Vector3d travel_translation =
-        Eigen::Vector3d(2., 1., 0.).normalized() * kTravelDistance;
-    auto measurements = testing::GenerateFakeRangeMeasurements(
-        travel_translation.cast<float>(), kDuration, kTimeStep,
-        frozen_trajectory_to_global.cast<float>());
+        Eigen::Vector3d(0.5, 0.4, 0), Eigen::Quaterniond(Eigen::AngleAxisd(1.2, Eigen::Vector3d::UnitZ())));
+    Eigen::Vector3d travel_translation = Eigen::Vector3d(2., 1., 0.).normalized() * kTravelDistance;
+    auto measurements = testing::GenerateFakeRangeMeasurements(travel_translation.cast<float>(), kDuration, kTimeStep,
+                                                               frozen_trajectory_to_global.cast<float>());
     for (auto& measurement : measurements) {
         measurement.time += common::FromSeconds(100.);
         trajectory_builder->AddSensorData(kRangeSensorId.id, measurement);
@@ -450,49 +357,33 @@ TEST_P(MapBuilderTestByGridType, LocalizationOnFrozenTrajectory2D) {
     map_builder_->pose_graph()->RunFinalOptimization();
     EXPECT_EQ(local_slam_result_poses_.size(), measurements.size());
     EXPECT_NEAR(kTravelDistance,
-                (local_slam_result_poses_.back().translation() -
-                 local_slam_result_poses_.front().translation())
-                    .norm(),
+                (local_slam_result_poses_.back().translation() - local_slam_result_poses_.front().translation()).norm(),
                 0.15 * kTravelDistance);
     EXPECT_GE(map_builder_->pose_graph()->constraints().size(), 50);
     auto constraints = map_builder_->pose_graph()->constraints();
     int num_cross_trajectory_constraints = 0;
     for (const auto& constraint : constraints) {
-        if (constraint.node_id.trajectory_id !=
-            constraint.submap_id.trajectory_id) {
+        if (constraint.node_id.trajectory_id != constraint.submap_id.trajectory_id) {
             ++num_cross_trajectory_constraints;
         }
     }
     EXPECT_GE(num_cross_trajectory_constraints, 3);
     // TODO(gaschler): Subscribe global slam callback, verify that all nodes are
     // optimized.
-    EXPECT_THAT(constraints,
-                ::testing::Contains(::testing::Field(
-                    &PoseGraphInterface::Constraint::tag,
-                    PoseGraphInterface::Constraint::INTER_SUBMAP)));
-    const auto trajectory_nodes =
-        map_builder_->pose_graph()->GetTrajectoryNodes();
+    EXPECT_THAT(constraints, ::testing::Contains(::testing::Field(&PoseGraphInterface::Constraint::tag,
+                                                                  PoseGraphInterface::Constraint::INTER_SUBMAP)));
+    const auto trajectory_nodes = map_builder_->pose_graph()->GetTrajectoryNodes();
     EXPECT_GE(trajectory_nodes.SizeOfTrajectoryOrZero(trajectory_id), 20);
     const auto submap_data = map_builder_->pose_graph()->GetAllSubmapData();
     EXPECT_GE(submap_data.SizeOfTrajectoryOrZero(trajectory_id), 5);
     const transform::Rigid3d global_pose =
-        map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id) *
-        local_slam_result_poses_.back();
+        map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id) * local_slam_result_poses_.back();
     EXPECT_NEAR(frozen_trajectory_to_global.translation().norm(),
-                map_builder_->pose_graph()
-                    ->GetLocalToGlobalTransform(trajectory_id)
-                    .translation()
-                    .norm(),
-                0.1);
+                map_builder_->pose_graph()->GetLocalToGlobalTransform(trajectory_id).translation().norm(), 0.1);
     const transform::Rigid3d expected_global_pose =
-        frozen_trajectory_to_global *
-        transform::Rigid3d::Translation(travel_translation);
-    EXPECT_NEAR(
-        0.,
-        (global_pose.translation() - expected_global_pose.translation()).norm(),
-        0.3)
-        << "global_pose: " << global_pose
-        << "expected_global_pose: " << expected_global_pose;
+        frozen_trajectory_to_global * transform::Rigid3d::Translation(travel_translation);
+    EXPECT_NEAR(0., (global_pose.translation() - expected_global_pose.translation()).norm(), 0.3)
+        << "global_pose: " << global_pose << "expected_global_pose: " << expected_global_pose;
 }
 
 }  // namespace

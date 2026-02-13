@@ -35,17 +35,14 @@ using Time = autonomy::common::Time;
 class GpsSensorData : public autonomy::sensor::Data
 {
 public:
-    GpsSensorData(const std::string& sensor_id,
-                  const std::shared_ptr<NavSatFix>& msg)
+    GpsSensorData(const std::string& sensor_id, const std::shared_ptr<NavSatFix>& msg)
         : autonomy::sensor::Data(sensor_id), message_(msg) {}
 
     Time GetTime() const override {
         // 将 builtin_interfaces::Time 转换为 common::Time
-        int64_t total_ns =
-            static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
-            static_cast<int64_t>(message_->header.stamp.nanosec);
-        return autonomy::common::FromUniversal(total_ns /
-                                               100);  // 转换为 100ns ticks
+        int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                           static_cast<int64_t>(message_->header.stamp.nanosec);
+        return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
     }
 
     void AddToCostmap(map::common::MapInterface* costmap_builder) override {
@@ -68,8 +65,7 @@ GpsBase::~GpsBase() {
     Cleanup();
 }
 
-bool GpsBase::Configure(const std::string& name,
-                        const proto::DriverOptions& options) {
+bool GpsBase::Configure(const std::string& name, const proto::DriverOptions& options) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (configured_) {
@@ -84,8 +80,7 @@ bool GpsBase::Configure(const std::string& name,
     for (const auto& gps_option : options.gps_sensors()) {
         if (gps_option.enabled()) {
             gps_configs_[gps_option.sensor_id()] = gps_option;
-            AINFO << "Configured GPS sensor: " << gps_option.sensor_id()
-                  << " (hardware: " << GetHardwareModel() << ")";
+            AINFO << "Configured GPS sensor: " << gps_option.sensor_id() << " (hardware: " << GetHardwareModel() << ")";
         }
     }
 
@@ -95,8 +90,7 @@ bool GpsBase::Configure(const std::string& name,
     }
 
     configured_ = true;
-    AINFO << "GpsBase configured: " << name_ << " with " << gps_configs_.size()
-          << " GPS sensors";
+    AINFO << "GpsBase configured: " << name_ << " with " << gps_configs_.size() << " GPS sensors";
     return true;
 }
 
@@ -124,8 +118,7 @@ bool GpsBase::Initialize() {
         const auto& config = pair.second;
         sampling_rate_ = config.sampling_rate();
         last_sample_time_[pair.first] = commsgs::builtin_interfaces::Time{0, 0};
-        AINFO << "Initialized GPS sensor: " << pair.first
-              << " (sampling_rate: " << sampling_rate_ << " Hz)";
+        AINFO << "Initialized GPS sensor: " << pair.first << " (sampling_rate: " << sampling_rate_ << " Hz)";
     }
 
     initialized_ = true;
@@ -205,9 +198,7 @@ bool GpsBase::IsSensorRegistered(const std::string& sensor_id) const {
 
 bool GpsBase::RegisterSensorHandler(
     const std::string& sensor_id,
-    std::function<void(const std::string&,
-                       const std::shared_ptr<autonomy::sensor::Data>&)>
-        handler) {
+    std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!IsSensorRegistered(sensor_id)) {
@@ -235,8 +226,7 @@ void GpsBase::UnregisterSensorHandler(const std::string& sensor_id) {
     }
 }
 
-void GpsBase::ProcessGpsData(const std::string& sensor_id,
-                             const std::shared_ptr<NavSatFix>& gps_msg) {
+void GpsBase::ProcessGpsData(const std::string& sensor_id, const std::shared_ptr<NavSatFix>& gps_msg) {
     if (gps_msg == nullptr) {
         AERROR << "Received null GPS message for sensor: " << sensor_id;
         return;
@@ -249,35 +239,28 @@ void GpsBase::ProcessGpsData(const std::string& sensor_id,
         const auto& config = config_it->second;
 
         // 检查位置精度（如果协方差矩阵可用）
-        if (!gps_msg->position_covariance.empty() &&
-            gps_msg->position_covariance.size() >= 9) {
+        if (!gps_msg->position_covariance.empty() && gps_msg->position_covariance.size() >= 9) {
             // 计算位置精度（使用协方差矩阵的对角线元素）
-            double position_variance =
-                std::max(gps_msg->position_covariance[0],  // xx
-                         gps_msg->position_covariance[4]   // yy
-                );
+            double position_variance = std::max(gps_msg->position_covariance[0],  // xx
+                                                gps_msg->position_covariance[4]   // yy
+            );
             double position_accuracy = std::sqrt(position_variance);
 
             if (position_accuracy > config.min_position_accuracy()) {
-                ADEBUG << "GPS position accuracy " << position_accuracy
-                       << " exceeds threshold "
-                       << config.min_position_accuracy()
-                       << " for sensor: " << sensor_id;
+                ADEBUG << "GPS position accuracy " << position_accuracy << " exceeds threshold "
+                       << config.min_position_accuracy() << " for sensor: " << sensor_id;
                 return;  // 过滤低精度数据
             }
         }
 
         // 检查高度精度（如果协方差矩阵可用）
-        if (!gps_msg->position_covariance.empty() &&
-            gps_msg->position_covariance.size() >= 9) {
+        if (!gps_msg->position_covariance.empty() && gps_msg->position_covariance.size() >= 9) {
             double altitude_variance = gps_msg->position_covariance[8];  // zz
             double altitude_accuracy = std::sqrt(altitude_variance);
 
             if (altitude_accuracy > config.min_altitude_accuracy()) {
-                ADEBUG << "GPS altitude accuracy " << altitude_accuracy
-                       << " exceeds threshold "
-                       << config.min_altitude_accuracy()
-                       << " for sensor: " << sensor_id;
+                ADEBUG << "GPS altitude accuracy " << altitude_accuracy << " exceeds threshold "
+                       << config.min_altitude_accuracy() << " for sensor: " << sensor_id;
                 return;  // 过滤低精度数据
             }
         }
@@ -289,11 +272,9 @@ void GpsBase::ProcessGpsData(const std::string& sensor_id,
         auto it = last_sample_time_.find(sensor_id);
         if (it != last_sample_time_.end()) {
             // 计算时间差（秒）
-            int64_t time_diff_ns = (static_cast<int64_t>(current_time.sec) -
-                                    static_cast<int64_t>(it->second.sec)) *
-                                       1000000000LL +
-                                   (static_cast<int64_t>(current_time.nanosec) -
-                                    static_cast<int64_t>(it->second.nanosec));
+            int64_t time_diff_ns =
+                (static_cast<int64_t>(current_time.sec) - static_cast<int64_t>(it->second.sec)) * 1000000000LL +
+                (static_cast<int64_t>(current_time.nanosec) - static_cast<int64_t>(it->second.nanosec));
             double time_diff = static_cast<double>(time_diff_ns) / 1e9;
             double min_interval = 1.0 / sampling_rate_;
             if (time_diff < min_interval) {
@@ -321,8 +302,7 @@ void GpsBase::DataReadingThread() {
     // 计算读取间隔（如果采样率 > 0）
     std::chrono::milliseconds read_interval(1000);  // 默认 1Hz
     if (sampling_rate_ > 0.0) {
-        read_interval = std::chrono::milliseconds(
-            static_cast<int>(1000.0 / sampling_rate_));
+        read_interval = std::chrono::milliseconds(static_cast<int>(1000.0 / sampling_rate_));
     }
 
     while (!stop_thread_) {

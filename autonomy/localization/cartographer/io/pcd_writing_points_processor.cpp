@@ -32,8 +32,7 @@ namespace {
 
 // Writes the PCD header claiming 'num_points' will follow it into
 // 'output_file'.
-void WriteBinaryPcdHeader(const bool has_color, const int64 num_points,
-                          FileWriter* const file_writer) {
+void WriteBinaryPcdHeader(const bool has_color, const int64 num_points, FileWriter* const file_writer) {
     std::string color_header_field = !has_color ? "" : " rgb";
     std::string color_header_type = !has_color ? "" : " U";
     std::string color_header_size = !has_color ? "" : " 4";
@@ -46,19 +45,16 @@ void WriteBinaryPcdHeader(const bool has_color, const int64 num_points,
            << "SIZE 4 4 4" << color_header_size << "\n"
            << "TYPE F F F" << color_header_type << "\n"
            << "COUNT 1 1 1" << color_header_count << "\n"
-           << "WIDTH " << std::setw(15) << std::setfill('0') << num_points
-           << "\n"
+           << "WIDTH " << std::setw(15) << std::setfill('0') << num_points << "\n"
            << "HEIGHT 1\n"
            << "VIEWPOINT 0 0 0 1 0 0 0\n"
-           << "POINTS " << std::setw(15) << std::setfill('0') << num_points
-           << "\n"
+           << "POINTS " << std::setw(15) << std::setfill('0') << num_points << "\n"
            << "DATA binary\n";
     const std::string out = stream.str();
     file_writer->WriteHeader(out.data(), out.size());
 }
 
-void WriteBinaryPcdPointCoordinate(const Eigen::Vector3f& point,
-                                   FileWriter* const file_writer) {
+void WriteBinaryPcdPointCoordinate(const Eigen::Vector3f& point, FileWriter* const file_writer) {
     char buffer[12];
     memcpy(buffer, &point[0], sizeof(float));
     memcpy(buffer + 4, &point[1], sizeof(float));
@@ -66,8 +62,7 @@ void WriteBinaryPcdPointCoordinate(const Eigen::Vector3f& point,
     CHECK(file_writer->Write(buffer, 12));
 }
 
-void WriteBinaryPcdPointColor(const Uint8Color& color,
-                              FileWriter* const file_writer) {
+void WriteBinaryPcdPointColor(const Uint8Color& color, FileWriter* const file_writer) {
     char buffer[4];
     buffer[0] = color[2];
     buffer[1] = color[1];
@@ -78,21 +73,15 @@ void WriteBinaryPcdPointColor(const Uint8Color& color,
 
 }  // namespace
 
-std::unique_ptr<PcdWritingPointsProcessor>
-PcdWritingPointsProcessor::FromDictionary(
-    FileWriterFactory file_writer_factory,
-    common::LuaParameterDictionary* const dictionary,
+std::unique_ptr<PcdWritingPointsProcessor> PcdWritingPointsProcessor::FromDictionary(
+    FileWriterFactory file_writer_factory, common::LuaParameterDictionary* const dictionary,
     PointsProcessor* const next) {
-    return absl::make_unique<PcdWritingPointsProcessor>(
-        file_writer_factory(dictionary->GetString("filename")), next);
+    return absl::make_unique<PcdWritingPointsProcessor>(file_writer_factory(dictionary->GetString("filename")), next);
 }
 
-PcdWritingPointsProcessor::PcdWritingPointsProcessor(
-    std::unique_ptr<FileWriter> file_writer, PointsProcessor* const next)
-    : next_(next),
-      num_points_(0),
-      has_colors_(false),
-      file_writer_(std::move(file_writer)) {}
+PcdWritingPointsProcessor::PcdWritingPointsProcessor(std::unique_ptr<FileWriter> file_writer,
+                                                     PointsProcessor* const next)
+    : next_(next), num_points_(0), has_colors_(false), file_writer_(std::move(file_writer)) {}
 
 PointsProcessor::FlushResult PcdWritingPointsProcessor::Flush() {
     WriteBinaryPcdHeader(has_colors_, num_points_, file_writer_.get());
@@ -103,9 +92,8 @@ PointsProcessor::FlushResult PcdWritingPointsProcessor::Flush() {
             return FlushResult::kFinished;
 
         case FlushResult::kRestartStream:
-            LOG(FATAL)
-                << "PCD generation must be configured to occur after any "
-                   "stages that require multiple passes.";
+            LOG(FATAL) << "PCD generation must be configured to occur after any "
+                          "stages that require multiple passes.";
     }
     LOG(FATAL);
 }
@@ -121,11 +109,9 @@ void PcdWritingPointsProcessor::Process(std::unique_ptr<PointsBatch> batch) {
         WriteBinaryPcdHeader(has_colors_, 0, file_writer_.get());
     }
     for (size_t i = 0; i < batch->points.size(); ++i) {
-        WriteBinaryPcdPointCoordinate(batch->points[i].position,
-                                      file_writer_.get());
+        WriteBinaryPcdPointCoordinate(batch->points[i].position, file_writer_.get());
         if (!batch->colors.empty()) {
-            WriteBinaryPcdPointColor(ToUint8Color(batch->colors[i]),
-                                     file_writer_.get());
+            WriteBinaryPcdPointColor(ToUint8Color(batch->colors[i]), file_writer_.get());
         }
         ++num_points_;
     }

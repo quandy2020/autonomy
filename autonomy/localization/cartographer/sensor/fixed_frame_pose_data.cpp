@@ -33,10 +33,8 @@ proto::FixedFramePoseData ToProto(const FixedFramePoseData& pose_data) {
 
 FixedFramePoseData FromProto(const proto::FixedFramePoseData& proto) {
     return FixedFramePoseData{common::FromUniversal(proto.timestamp()),
-                              proto.has_pose()
-                                  ? absl::optional<transform::Rigid3d>(
-                                        transform::ToRigid3(proto.pose()))
-                                  : absl::optional<transform::Rigid3d>()};
+                              proto.has_pose() ? absl::optional<transform::Rigid3d>(transform::ToRigid3(proto.pose()))
+                                               : absl::optional<transform::Rigid3d>()};
 }
 
 }  // namespace sensor

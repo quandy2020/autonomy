@@ -32,8 +32,7 @@ using detail::ExtractFrameId;
 using detail::ExtractTimestamp;
 using detail::SetEntityHeader;
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::visualization_msgs::Marker& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::visualization_msgs::Marker& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     // 处理 DELETE 和 DELETEALL 操作
@@ -177,10 +176,8 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         case 5: {  // LINE_LIST
             if (message.points_size() > 0) {
                 foxglove::schemas::LinePrimitive line;
-                line.type =
-                    (message.type() == 4)
-                        ? foxglove::schemas::LinePrimitive::LineType::LINE_STRIP
-                        : foxglove::schemas::LinePrimitive::LineType::LINE_LIST;
+                line.type = (message.type() == 4) ? foxglove::schemas::LinePrimitive::LineType::LINE_STRIP
+                                                  : foxglove::schemas::LinePrimitive::LineType::LINE_LIST;
 
                 if (message.has_scale()) {
                     line.thickness = message.scale().x();
@@ -214,8 +211,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         case 8: {  // POINTS
             if (message.points_size() > 0) {
                 foxglove::schemas::LinePrimitive points_line;
-                points_line.type =
-                    foxglove::schemas::LinePrimitive::LineType::LINE_LIST;
+                points_line.type = foxglove::schemas::LinePrimitive::LineType::LINE_LIST;
 
                 double point_size = 0.1;
                 if (message.has_scale()) {
@@ -257,14 +253,12 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
             break;
     }
 
-    if (!entity.arrows.empty() || !entity.cubes.empty() ||
-        !entity.spheres.empty() || !entity.cylinders.empty() ||
+    if (!entity.arrows.empty() || !entity.cubes.empty() || !entity.spheres.empty() || !entity.cylinders.empty() ||
         !entity.lines.empty()) {
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted Marker (type=" << message.type()
-          << ", id=" << message.id() << ") to SceneUpdate";
+    AINFO << "Converted Marker (type=" << message.type() << ", id=" << message.id() << ") to SceneUpdate";
 
     return scene_update;
 }
@@ -286,8 +280,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         }
     }
 
-    AINFO << "Converted MarkerArray with " << message.markers_size()
-          << " markers to SceneUpdate";
+    AINFO << "Converted MarkerArray with " << message.markers_size() << " markers to SceneUpdate";
 
     return scene_update;
 }

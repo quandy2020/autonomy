@@ -30,8 +30,7 @@ public:
      * @throw std::invalid_argument if start and end impose an ill conditioned
      * line iteration.
      */
-    LineIterator(const grid_map::GridMap& gridMap, const Position& start,
-                 const Position& end);
+    LineIterator(const grid_map::GridMap& gridMap, const Position& start, const Position& end);
 
     /*!
      * Constructor.
@@ -39,8 +38,7 @@ public:
      * @param start the starting index of the line.
      * @param end the ending index of the line.
      */
-    LineIterator(const grid_map::GridMap& gridMap, const Index& start,
-                 const Index& end);
+    LineIterator(const grid_map::GridMap& gridMap, const Index& start, const Index& end);
 
     /*!
      * Compare to another iterator.
@@ -76,8 +74,7 @@ private:
      * @param end the ending index of the line.
      * @return true if successful, false otherwise.
      */
-    bool initialize(const grid_map::GridMap& gridMap, const Index& start,
-                    const Index& end);
+    bool initialize(const grid_map::GridMap& gridMap, const Index& start, const Index& end);
 
     /*!
      * Computes the parameters requires for the line drawing algorithm.
@@ -92,9 +89,8 @@ private:
      * @param[out] index the index of the moved start position.
      * @return true if successful, false otherwise.
      */
-    static bool getIndexLimitedToMapRange(const grid_map::GridMap& gridMap,
-                                          const Position& start,
-                                          const Position& end, Index& index);
+    static bool getIndexLimitedToMapRange(const grid_map::GridMap& gridMap, const Position& start, const Position& end,
+                                          Index& index);
 
     //! Current index.
     Index index_;

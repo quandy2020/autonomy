@@ -25,13 +25,11 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-TransformAvailableCondition::TransformAvailableCondition(
-    const std::string& condition_name, const BT::NodeConfiguration& conf)
+TransformAvailableCondition::TransformAvailableCondition(const std::string& condition_name,
+                                                         const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), was_found_(false) {
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    tf_ =
-        config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
-            "tf_buffer");
+    tf_ = config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>("tf_buffer");
 }
 
 TransformAvailableCondition::~TransformAvailableCondition() {
@@ -43,8 +41,7 @@ void TransformAvailableCondition::initialize() {
     getInput("parent", parent_frame_);
 
     if (child_frame_.empty() || parent_frame_.empty()) {
-        AERROR << "Child frame (" << child_frame_ << ") or parent frame ("
-               << parent_frame_ << ") were empty.";
+        AERROR << "Child frame (" << child_frame_ << ") or parent frame (" << parent_frame_ << ") were empty.";
         throw std::runtime_error(
             "TransformAvailableCondition: Child or parent frames not "
             "provided!");
@@ -64,16 +61,14 @@ BT::NodeStatus TransformAvailableCondition::tick() {
 
     std::string tf_error;
     commsgs::builtin_interfaces::Time zero_time(0, 0);
-    bool found = tf_->canTransform(parent_frame_, child_frame_, zero_time,
-                                   0.01f, &tf_error);
+    bool found = tf_->canTransform(parent_frame_, child_frame_, zero_time, 0.01f, &tf_error);
 
     if (found) {
         was_found_ = true;
         return BT::NodeStatus::SUCCESS;
     }
 
-    AINFO << "Transform from " << child_frame_ << " to " << parent_frame_
-          << " was not found, tf error: " << tf_error;
+    AINFO << "Transform from " << child_frame_ << " to " << parent_frame_ << " was not found, tf error: " << tf_error;
     return BT::NodeStatus::FAILURE;
 }
 
@@ -85,7 +80,6 @@ BT::NodeStatus TransformAvailableCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::TransformAvailableCondition>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::TransformAvailableCondition>(
         "TransformAvailable");
 }

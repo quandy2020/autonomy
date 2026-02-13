@@ -102,8 +102,7 @@ protected:
      * @param sensor_id 传感器ID
      * @return IMU 数据消息，如果读取失败返回 nullptr
      */
-    std::shared_ptr<commsgs::sensor_msgs::Imu> ReadImuData(
-        const std::string& sensor_id) override;
+    std::shared_ptr<commsgs::sensor_msgs::Imu> ReadImuData(const std::string& sensor_id) override;
 
 private:
     /**
@@ -134,8 +133,7 @@ private:
      * @param accel_z 加速度 Z 轴（输出）
      * @return true 成功，false 失败
      */
-    bool ReadAccelerometer(int16_t& accel_x, int16_t& accel_y,
-                           int16_t& accel_z);
+    bool ReadAccelerometer(int16_t& accel_x, int16_t& accel_y, int16_t& accel_z);
 
     /**
      * @brief 读取陀螺仪原始数据

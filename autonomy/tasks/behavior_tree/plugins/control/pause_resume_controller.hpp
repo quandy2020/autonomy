@@ -33,25 +33,16 @@ namespace control {
 
 using Trigger = autonomy::tasks::behavior_tree::proto::Trigger;
 
-enum state_t {
-    RESUMED,
-    PAUSED,
-    PAUSE_REQUESTED,
-    ON_PAUSE,
-    RESUME_REQUESTED,
-    ON_RESUME
-};
+enum state_t { RESUMED, PAUSED, PAUSE_REQUESTED, ON_PAUSE, RESUME_REQUESTED, ON_RESUME };
 
-const std::map<state_t, std::string> state_names = {
-    {RESUMED, "RESUMED"},
-    {PAUSED, "PAUSED"},
-    {PAUSE_REQUESTED, "PAUSE_REQUESTED"},
-    {ON_PAUSE, "ON_PAUSE"},
-    {RESUME_REQUESTED, "RESUME_REQUESTED"},
-    {ON_RESUME, "ON_RESUME"}};
+const std::map<state_t, std::string> state_names = {{RESUMED, "RESUMED"},
+                                                    {PAUSED, "PAUSED"},
+                                                    {PAUSE_REQUESTED, "PAUSE_REQUESTED"},
+                                                    {ON_PAUSE, "ON_PAUSE"},
+                                                    {RESUME_REQUESTED, "RESUME_REQUESTED"},
+                                                    {ON_RESUME, "ON_RESUME"}};
 
-const std::map<state_t, uint16_t> child_indices = {
-    {RESUMED, 0}, {PAUSED, 1}, {ON_PAUSE, 2}, {ON_RESUME, 3}};
+const std::map<state_t, uint16_t> child_indices = {{RESUMED, 0}, {PAUSED, 1}, {ON_PAUSE, 2}, {ON_RESUME, 3}};
 
 /* @brief Controlled through service calls to pause and resume the execution
 of the tree
@@ -90,8 +81,7 @@ class PauseResumeController : public BT::ControlNode
 {
 public:
     //! @brief Constructor
-    PauseResumeController(const std::string& name,
-                          const BT::NodeConfiguration& conf);
+    PauseResumeController(const std::string& name, const BT::NodeConfiguration& conf);
 
     //! @brief Reset state and go to Idle
     void halt() override;
@@ -103,10 +93,8 @@ public:
     //! @brief Declare ports
     static BT::PortsList providedPorts() {
         return {
-            BT::InputPort<std::string>("pause_service_name",
-                                       "Name of the service to pause"),
-            BT::InputPort<std::string>("resume_service_name",
-                                       "Name of the service to resume"),
+            BT::InputPort<std::string>("pause_service_name", "Name of the service to pause"),
+            BT::InputPort<std::string>("resume_service_name", "Name of the service to resume"),
         };
     }
 
@@ -135,10 +123,8 @@ private:
      */
     void switchToNextState();
 
-    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>>
-        pause_srv_;
-    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>>
-        resume_srv_;
+    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>> pause_srv_;
+    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>> resume_srv_;
     state_t state_;
 };
 

@@ -141,8 +141,7 @@ public:
      * @param b the b matrix in of the inequality constraint.
      * @return true if conversion successful, false otherwise.
      */
-    bool convertToInequalityConstraints(Eigen::MatrixXd& A,
-                                        Eigen::VectorXd& b) const;
+    bool convertToInequalityConstraints(Eigen::MatrixXd& A, Eigen::VectorXd& b) const;
 
     /*!
      * Offsets the polygon inward (buffering) by a margin.
@@ -164,8 +163,7 @@ public:
      * Return a triangulated version of the polygon.
      * @return a list of triangle polygons covering the same polygon.
      */
-    std::vector<Polygon> triangulate(
-        const TriangulationMethods& method = TriangulationMethods::FAN) const;
+    std::vector<Polygon> triangulate(const TriangulationMethods& method = TriangulationMethods::FAN) const;
 
     /*!
      * Approximates a circle with a polygon.
@@ -175,8 +173,7 @@ public:
      * Default = 20.
      * @return circle as polygon.
      */
-    static Polygon fromCircle(Position center, double radius,
-                              int nVertices = 20);
+    static Polygon fromCircle(Position center, double radius, int nVertices = 20);
 
     /*!
      * Approximates two circles with a convex hull and returns it as polygon.
@@ -187,8 +184,7 @@ public:
      * Default = 20.
      * @return convex hull of the two circles as polygon.
      */
-    static Polygon convexHullOfTwoCircles(Position center1, Position center2,
-                                          double radius, int nVertices = 20);
+    static Polygon convexHullOfTwoCircles(Position center1, Position center2, double radius, int nVertices = 20);
 
     /*!
      * Computes the convex hull of two polygons and returns it as polygon.
@@ -205,8 +201,7 @@ public:
      * the polygon.
      * @return convex hull as polygon.
      */
-    static Polygon monotoneChainConvexHullOfPoints(
-        const std::vector<Position>& points);
+    static Polygon monotoneChainConvexHullOfPoints(const std::vector<Position>& points);
 
 protected:
     /*!
@@ -214,16 +209,14 @@ protected:
      * @param[in] vector1 the first input vector.
      * @param[in] vector2 the second input vector.
      */
-    static bool sortVertices(const Eigen::Vector2d& vector1,
-                             const Eigen::Vector2d& vector2);
+    static bool sortVertices(const Eigen::Vector2d& vector1, const Eigen::Vector2d& vector2);
 
     /*!
      * Returns the 2D cross product of vector1 and vector2.
      * @param[in] vector1 the first input vector.
      * @param[in] vector2 the second input vector.
      */
-    static double computeCrossProduct2D(const Eigen::Vector2d& vector1,
-                                        const Eigen::Vector2d& vector2);
+    static double computeCrossProduct2D(const Eigen::Vector2d& vector1, const Eigen::Vector2d& vector2);
 
     /*!
      * Returns true if OAB makes a clockwise turn or if the OA and OB vectors
@@ -232,8 +225,7 @@ protected:
      * @param[in] pointA input point A, used to compute OA.
      * @param[in] pointB input point B, used to compute OB.
      */
-    static double vectorsMakeClockwiseTurn(const Eigen::Vector2d& pointO,
-                                           const Eigen::Vector2d& pointA,
+    static double vectorsMakeClockwiseTurn(const Eigen::Vector2d& pointO, const Eigen::Vector2d& pointA,
                                            const Eigen::Vector2d& pointB);
     // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
     //! Frame id of the polygon.

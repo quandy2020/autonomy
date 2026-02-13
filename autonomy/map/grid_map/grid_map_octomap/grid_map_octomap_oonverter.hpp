@@ -51,9 +51,7 @@ public:
      * @param[in] maxPoint (optional) maximum coordinate for bounding box.
      * @return true if successful, false otherwise.
      */
-    static bool fromOctomap(const octomap::OcTree& octomap,
-                            const std::string& layer,
-                            grid_map::GridMap& gridMap,
+    static bool fromOctomap(const octomap::OcTree& octomap, const std::string& layer, grid_map::GridMap& gridMap,
                             const grid_map::Position3* minPoint = nullptr,
                             const grid_map::Position3* maxPoint = nullptr);
 };

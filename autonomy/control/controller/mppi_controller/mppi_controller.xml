@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<library path="@PLUGIN_LIBRARY_PATH@">
+  <class name="autonomy_control/mppi_controller" type="autonomy::control::controller::mppi_controller::MPPIController" base_class="autonomy::control::common::ControllerInterface">
+    <description>MPPI (Model Predictive Path Integral) Controller plugin for path following</description>
+  </class>
+</library>

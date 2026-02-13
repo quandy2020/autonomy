@@ -18,6 +18,8 @@
 
 #include <string>
 
+#include "autonomy/tasks/behavior_tree/behavior_tree_service_node.hpp"
+#include "autonomy/tasks/navigator/proto/srv.pb.h"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
@@ -27,38 +29,21 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A BT::ActionNode that reinitializes global localization
+ * @brief A nav2_behavior_tree::BtServiceNode class that wraps
+ * nav2_msgs::srv::Empty
+ * @note This is an Asynchronous (long-running) node which may return a RUNNING
+ * state while executing. It will re-initialize when halted.
  */
-class ReinitializeGlobalLocalizationService : public BT::ActionNodeBase
+class ReinitializeGlobalLocalizationService : public BtServiceNode<proto::Empty>
 {
 public:
     /**
      * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::ReinitializeGlobalLocalizationService
-     * @param xml_tag_name Name for the XML tag for this node
+     * nav2_behavior_tree::ReinitializeGlobalLocalizationService
+     * @param service_node_name Service name this node creates a client for
      * @param conf BT node configuration
      */
-    ReinitializeGlobalLocalizationService(const std::string& xml_tag_name,
-                                          const BT::NodeConfiguration& conf);
-
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        return BT::PortsList();
-    }
-
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
-
-    /**
-     * @brief Function to halt the node
-     */
-    void halt() override {}
+    ReinitializeGlobalLocalizationService(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 };
 
 }  // namespace action

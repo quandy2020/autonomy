@@ -22,13 +22,10 @@
 namespace cartographer {
 namespace io {
 
-CountingPointsProcessor::CountingPointsProcessor(PointsProcessor* next)
-    : num_points_(0), next_(next) {}
+CountingPointsProcessor::CountingPointsProcessor(PointsProcessor* next) : num_points_(0), next_(next) {}
 
-std::unique_ptr<CountingPointsProcessor>
-CountingPointsProcessor::FromDictionary(
-    common::LuaParameterDictionary* const dictionary,
-    PointsProcessor* const next) {
+std::unique_ptr<CountingPointsProcessor> CountingPointsProcessor::FromDictionary(
+    common::LuaParameterDictionary* const dictionary, PointsProcessor* const next) {
     return absl::make_unique<CountingPointsProcessor>(next);
 }
 
@@ -44,8 +41,7 @@ PointsProcessor::FlushResult CountingPointsProcessor::Flush() {
             return FlushResult::kFinished;
 
         case FlushResult::kRestartStream:
-            LOG(INFO) << "Processed " << num_points_
-                      << " and restarting stream.";
+            LOG(INFO) << "Processed " << num_points_ << " and restarting stream.";
             num_points_ = 0;
             return FlushResult::kRestartStream;
     }

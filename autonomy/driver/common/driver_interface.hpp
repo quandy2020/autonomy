@@ -66,8 +66,7 @@ public:
      * @param options 驱动器配置选项（通用选项，子类可转换为具体类型）
      * @return true 成功，false 失败
      */
-    virtual bool Configure(const std::string& name,
-                           const proto::DriverOptions& options) = 0;
+    virtual bool Configure(const std::string& name, const proto::DriverOptions& options) = 0;
 
     /**
      * @brief 初始化驱动器
@@ -117,9 +116,7 @@ public:
      */
     virtual bool RegisterSensorHandler(
         const std::string& sensor_id,
-        std::function<void(const std::string&,
-                           const std::shared_ptr<sensor::Data>&)>
-            handler) = 0;
+        std::function<void(const std::string&, const std::shared_ptr<sensor::Data>&)> handler) = 0;
 
     /**
      * @brief 取消注册传感器数据处理器
@@ -133,8 +130,7 @@ public:
  * @param parameter_dictionary Lua 参数字典
  * @return 驱动器选项
  */
-proto::DriverOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::DriverOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 /**
  * @brief 从配置文件创建驱动器选项

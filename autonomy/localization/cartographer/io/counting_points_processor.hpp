@@ -28,12 +28,11 @@ namespace io {
 class CountingPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "dump_num_points";
+    constexpr static const char* kConfigurationFileActionName = "dump_num_points";
     explicit CountingPointsProcessor(PointsProcessor* next);
 
-    static std::unique_ptr<CountingPointsProcessor> FromDictionary(
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<CountingPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                   PointsProcessor* next);
 
     ~CountingPointsProcessor() override {}
 

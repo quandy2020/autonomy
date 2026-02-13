@@ -22,16 +22,16 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ClearEntireCostmapService::ClearEntireCostmapService(
-    const std::string& service_node_name, const BT::NodeConfiguration& conf)
+ClearEntireCostmapService::ClearEntireCostmapService(const std::string& service_node_name,
+                                                     const BT::NodeConfiguration& conf)
     : BtServiceNode<proto::ClearEntireCostmap>(service_node_name, conf) {}
 
 void ClearEntireCostmapService::on_tick() {
     increment_recovery_count();
 }
 
-ClearCostmapExceptRegionService::ClearCostmapExceptRegionService(
-    const std::string& service_node_name, const BT::NodeConfiguration& conf)
+ClearCostmapExceptRegionService::ClearCostmapExceptRegionService(const std::string& service_node_name,
+                                                                 const BT::NodeConfiguration& conf)
     : BtServiceNode<proto::ClearCostmapExceptRegion>(service_node_name, conf) {}
 
 void ClearCostmapExceptRegionService::on_tick() {
@@ -41,8 +41,8 @@ void ClearCostmapExceptRegionService::on_tick() {
     increment_recovery_count();
 }
 
-ClearCostmapAroundRobotService::ClearCostmapAroundRobotService(
-    const std::string& service_node_name, const BT::NodeConfiguration& conf)
+ClearCostmapAroundRobotService::ClearCostmapAroundRobotService(const std::string& service_node_name,
+                                                               const BT::NodeConfiguration& conf)
     : BtServiceNode<proto::ClearCostmapAroundRobot>(service_node_name, conf) {}
 
 void ClearCostmapAroundRobotService::on_tick() {
@@ -60,13 +60,10 @@ void ClearCostmapAroundRobotService::on_tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 ClearEntireCostmapService>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ClearEntireCostmapService>(
         "ClearEntireCostmap");
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 ClearCostmapExceptRegionService>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ClearCostmapExceptRegionService>(
         "ClearCostmapExceptRegion");
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 ClearCostmapAroundRobotService>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ClearCostmapAroundRobotService>(
         "ClearCostmapAroundRobot");
 }

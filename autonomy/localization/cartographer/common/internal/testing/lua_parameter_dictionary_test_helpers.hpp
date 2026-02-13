@@ -38,8 +38,7 @@ public:
 
     ~DummyFileResolver() override {}
 
-    std::string GetFileContentOrDie(
-        const std::string& unused_basename) override {
+    std::string GetFileContentOrDie(const std::string& unused_basename) override {
         LOG(FATAL) << "Not implemented";
     }
 
@@ -48,10 +47,8 @@ public:
     }
 };
 
-std::unique_ptr<LuaParameterDictionary> MakeDictionary(
-    const std::string& code) {
-    return absl::make_unique<LuaParameterDictionary>(
-        code, absl::make_unique<DummyFileResolver>());
+std::unique_ptr<LuaParameterDictionary> MakeDictionary(const std::string& code) {
+    return absl::make_unique<LuaParameterDictionary>(code, absl::make_unique<DummyFileResolver>());
 }
 
 }  // namespace common

@@ -79,8 +79,7 @@ public:
      * @param options 驱动器配置选项
      * @return true 成功，false 失败
      */
-    bool Configure(const std::string& name,
-                   const proto::DriverOptions& options) override;
+    bool Configure(const std::string& name, const proto::DriverOptions& options) override;
 
     /**
      * @brief 初始化驱动器
@@ -130,9 +129,7 @@ public:
      */
     bool RegisterSensorHandler(
         const std::string& sensor_id,
-        std::function<void(const std::string&,
-                           const std::shared_ptr<autonomy::sensor::Data>&)>
-            handler) override;
+        std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) override;
 
     /**
      * @brief 取消注册传感器数据处理器
@@ -166,16 +163,14 @@ protected:
      * @param sensor_id 传感器ID
      * @return 图像数据消息，如果读取失败返回 nullptr
      */
-    virtual std::shared_ptr<commsgs::sensor_msgs::Image> ReadImageData(
-        const std::string& sensor_id) = 0;
+    virtual std::shared_ptr<commsgs::sensor_msgs::Image> ReadImageData(const std::string& sensor_id) = 0;
 
     /**
      * @brief 从硬件读取深度图像数据（子类实现，仅用于RGBD相机）
      * @param sensor_id 传感器ID
      * @return 深度图像数据消息，如果读取失败返回 nullptr
      */
-    virtual std::shared_ptr<commsgs::sensor_msgs::Image> ReadDepthData(
-        const std::string& sensor_id) {
+    virtual std::shared_ptr<commsgs::sensor_msgs::Image> ReadDepthData(const std::string& sensor_id) {
         (void)sensor_id;
         return nullptr;
     }
@@ -185,9 +180,7 @@ protected:
      * @param sensor_id 传感器ID
      * @param image_msg 图像消息
      */
-    void ProcessImageData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::Image>& image_msg);
+    void ProcessImageData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Image>& image_msg);
 
     /**
      * @brief 数据读取线程函数
@@ -201,9 +194,7 @@ protected:
     std::map<std::string, proto::CameraOptions> camera_configs_;
 
     // 传感器数据处理器映射表（sensor_id -> handler）
-    std::map<std::string, std::function<void(
-                              const std::string&,
-                              const std::shared_ptr<autonomy::sensor::Data>&)>>
+    std::map<std::string, std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)>>
         handlers_;
 
     // 互斥锁

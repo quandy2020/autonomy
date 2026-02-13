@@ -51,8 +51,7 @@ namespace driver {
 namespace sensor {
 namespace camera {
 
-RealSenseD435iDriver::RealSenseD435iDriver()
-    : hardware_initialized_(false), pipeline_ptr_(nullptr) {}
+RealSenseD435iDriver::RealSenseD435iDriver() : hardware_initialized_(false), pipeline_ptr_(nullptr) {}
 
 RealSenseD435iDriver::~RealSenseD435iDriver() {
     Cleanup();
@@ -180,8 +179,7 @@ bool RealSenseD435iDriver::InitializeHardware() {
 #endif
 }
 
-std::shared_ptr<commsgs::sensor_msgs::Image>
-RealSenseD435iDriver::ReadImageData(const std::string& sensor_id) {
+std::shared_ptr<commsgs::sensor_msgs::Image> RealSenseD435iDriver::ReadImageData(const std::string& sensor_id) {
     std::lock_guard<std::mutex> lock(hardware_mutex_);
 
     if (!hardware_initialized_) {
@@ -242,8 +240,7 @@ RealSenseD435iDriver::ReadImageData(const std::string& sensor_id) {
 #endif
 }
 
-std::shared_ptr<commsgs::sensor_msgs::Image>
-RealSenseD435iDriver::ReadDepthData(const std::string& sensor_id) {
+std::shared_ptr<commsgs::sensor_msgs::Image> RealSenseD435iDriver::ReadDepthData(const std::string& sensor_id) {
     std::lock_guard<std::mutex> lock(hardware_mutex_);
 
     if (!hardware_initialized_) {
@@ -310,6 +307,5 @@ RealSenseD435iDriver::ReadDepthData(const std::string& sensor_id) {
 }  // namespace autonomy
 
 // 注册驱动类为插件，支持动态库加载
-CLASS_LOADER_REGISTER_CLASS(
-    autonomy::driver::sensor::camera::RealSenseD435iDriver,
-    autonomy::driver::sensor::camera::CameraBase)
+CLASS_LOADER_REGISTER_CLASS(autonomy::driver::sensor::camera::RealSenseD435iDriver,
+                            autonomy::driver::sensor::camera::CameraBase)

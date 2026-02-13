@@ -25,10 +25,8 @@ namespace converter {
 namespace impl {
 
 // visualization_msgs
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::visualization_msgs::Marker& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::visualization_msgs::MarkerArray& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::visualization_msgs::Marker& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::visualization_msgs::MarkerArray& message);
 
 }  // namespace impl
 }  // namespace converter

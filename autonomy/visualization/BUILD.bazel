@@ -1,0 +1,44 @@
+"""
+Bazel BUILD file for autonomy/visualization
+
+This file defines rules to build the visualization system.
+Uses simplified macros from tools/autonomy_module.bzl
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_module", "autonomy_binary")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Create complete module with proto and C++ library
+autonomy_module(
+    name = "visualization",
+    has_proto = True,
+    proto_glob = ["proto/*.proto"],
+    exclude_patterns = ["proto/**", "main.cpp", "data_main.cpp"],
+    deps = [
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+    ],
+)
+
+# Main executable
+autonomy_binary(
+    name = "main",
+    srcs = ["main.cpp"],
+    deps = [
+        ":visualization",
+        "//autonomy/common:common",
+    ],
+)
+
+# Data loader executable
+autonomy_binary(
+    name = "data_main",
+    srcs = ["data_main.cpp"],
+    deps = [
+        ":visualization",
+        "//autonomy/common:common",
+    ],
+)

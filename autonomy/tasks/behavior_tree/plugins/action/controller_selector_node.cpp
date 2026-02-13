@@ -16,6 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/controller_selector_node.hpp"
 
+#include <functional>
 #include <set>
 #include <string>
 #include <vector>
@@ -26,14 +27,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ControllerSelector::ControllerSelector(const std::string& name,
-                                       const BT::NodeConfiguration& conf)
+ControllerSelector::ControllerSelector(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::SyncActionNode(name, conf) {
     initialize();
-
-    // TODO: Implement callback group executor if needed
-    // Spin multiple times due to rclcpp regression in Jazzy requiring a 'warm
-    // up' spin callback_group_executor_.spin_some(std::chrono::nanoseconds(1));
 }
 
 void ControllerSelector::initialize() {
@@ -43,18 +39,13 @@ void ControllerSelector::initialize() {
 void ControllerSelector::createROSInterfaces() {
     std::string topic_new;
     getInput("topic_name", topic_new);
-    if (topic_new != topic_name_) {
+    if (topic_new != topic_name_ || !controller_selector_sub_) {
         topic_name_ = topic_new;
-        // node_ =
-        // config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+        node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 
-        // TODO: Implement subscription for controller selector
-        // controller_selector_sub_ =
-        // node_->create_subscription<commsgs::std_msgs::String>(
-        //     topic_name_,
-        //     qos,
-        //     std::bind(&ControllerSelector::callbackControllerSelect, this,
-        //     _1), sub_option);
+        controller_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
+            topic_name_,
+            [this](std::shared_ptr<const commsgs::std_msgs::String> msg) { callbackControllerSelect(msg); });
     }
 }
 
@@ -83,9 +74,8 @@ BT::NodeStatus ControllerSelector::tick() {
     return BT::NodeStatus::SUCCESS;
 }
 
-void ControllerSelector::callbackControllerSelect(
-    const commsgs::std_msgs::String& msg) {
-    last_selected_controller_ = msg.data;
+void ControllerSelector::callbackControllerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg) {
+    last_selected_controller_ = msg->data;
 }
 
 }  // namespace action
@@ -96,7 +86,5 @@ void ControllerSelector::callbackControllerSelect(
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::action::ControllerSelector>(
-        "ControllerSelector");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ControllerSelector>("ControllerSelector");
 }

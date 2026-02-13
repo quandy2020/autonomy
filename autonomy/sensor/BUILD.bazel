@@ -1,0 +1,22 @@
+"""
+Bazel BUILD file for autonomy/sensor
+
+This file defines rules to build the sensor data handling system.
+Uses simplified macros from tools/autonomy_module.bzl
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_module")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Create module without proto files
+autonomy_module(
+    name = "sensor",
+    has_proto = False,
+    deps = [
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+    ],
+)

@@ -80,10 +80,8 @@ void CostmapFilter::reset() {
     current_ = false;
 }
 
-void CostmapFilter::updateBounds(double robot_x, double robot_y,
-                                 double robot_yaw, double* /*min_x*/,
-                                 double* /*min_y*/, double* /*max_x*/,
-                                 double* /*max_y*/) {
+void CostmapFilter::updateBounds(double robot_x, double robot_y, double robot_yaw, double* /*min_x*/, double* /*min_y*/,
+                                 double* /*max_x*/, double* /*max_y*/) {
     if (!enabled_) {
         return;
     }
@@ -93,8 +91,7 @@ void CostmapFilter::updateBounds(double robot_x, double robot_y,
     latest_pose_.theta = robot_yaw;
 }
 
-void CostmapFilter::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                                int max_i, int max_j) {
+void CostmapFilter::updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     if (!enabled_) {
         return;
     }
@@ -117,11 +114,8 @@ void CostmapFilter::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
 //   }
 // }
 
-bool CostmapFilter::transformPose(
-    const std::string global_frame,
-    const commsgs::geometry_msgs::Pose2D& global_pose,
-    const std::string mask_frame,
-    commsgs::geometry_msgs::Pose2D& mask_pose) const {
+bool CostmapFilter::transformPose(const std::string global_frame, const commsgs::geometry_msgs::Pose2D& global_pose,
+                                  const std::string mask_frame, commsgs::geometry_msgs::Pose2D& mask_pose) const {
     if (mask_frame != global_frame) {
         // Filter mask and current layer are in different frames:
         // Transform (global_pose.x, global_pose.y) point from current layer
@@ -155,9 +149,8 @@ bool CostmapFilter::transformPose(
     return true;
 }
 
-bool CostmapFilter::worldToMask(
-    commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, double wx,
-    double wy, unsigned int& mx, unsigned int& my) const {
+bool CostmapFilter::worldToMask(commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, double wx, double wy,
+                                unsigned int& mx, unsigned int& my) const {
     const double origin_x = filter_mask->info.origin.position.x;
     const double origin_y = filter_mask->info.origin.position.y;
     const double resolution = filter_mask->info.resolution;
@@ -177,9 +170,8 @@ bool CostmapFilter::worldToMask(
     return true;
 }
 
-unsigned char CostmapFilter::getMaskCost(
-    commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
-    const unsigned int mx, const unsigned int& my) const {
+unsigned char CostmapFilter::getMaskCost(commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
+                                         const unsigned int mx, const unsigned int& my) const {
     const unsigned int index = my * filter_mask->info.width + mx;
 
     const char data = filter_mask->data[index];
@@ -189,8 +181,7 @@ unsigned char CostmapFilter::getMaskCost(
         // Linear conversion from OccupancyGrid data range
         // [OCC_GRID_FREE..OCC_GRID_OCCUPIED] to costmap data range
         // [FREE_SPACE..LETHAL_OBSTACLE]
-        return std::round(static_cast<double>(data) *
-                          (LETHAL_OBSTACLE - FREE_SPACE) /
+        return std::round(static_cast<double>(data) * (LETHAL_OBSTACLE - FREE_SPACE) /
                           (utils::OCC_GRID_OCCUPIED - utils::OCC_GRID_FREE));
     }
 }

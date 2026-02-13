@@ -35,21 +35,15 @@ namespace io {
 class XRayPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "write_xray_image";
+    constexpr static const char* kConfigurationFileActionName = "write_xray_image";
     enum class DrawTrajectories { kNo, kYes };
-    XRayPointsProcessor(
-        double voxel_size, double saturation_factor,
-        const transform::Rigid3f& transform,
-        const std::vector<mapping::Floor>& floors,
-        const DrawTrajectories& draw_trajectories,
-        const std::string& output_filename,
-        const std::vector<mapping::proto::Trajectory>& trajectories,
-        FileWriterFactory file_writer_factory, PointsProcessor* next);
+    XRayPointsProcessor(double voxel_size, double saturation_factor, const transform::Rigid3f& transform,
+                        const std::vector<mapping::Floor>& floors, const DrawTrajectories& draw_trajectories,
+                        const std::string& output_filename, const std::vector<mapping::proto::Trajectory>& trajectories,
+                        FileWriterFactory file_writer_factory, PointsProcessor* next);
 
     static std::unique_ptr<XRayPointsProcessor> FromDictionary(
-        const std::vector<mapping::proto::Trajectory>& trajectories,
-        FileWriterFactory file_writer_factory,
+        const std::vector<mapping::proto::Trajectory>& trajectories, FileWriterFactory file_writer_factory,
         common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
     ~XRayPointsProcessor() override {}
@@ -74,8 +68,7 @@ private:
         std::map<std::pair<int, int>, ColumnData> column_data;
     };
 
-    void WriteVoxels(const Aggregation& aggregation,
-                     FileWriter* const file_writer);
+    void WriteVoxels(const Aggregation& aggregation, FileWriter* const file_writer);
     void Insert(const PointsBatch& batch, Aggregation* aggregation);
 
     const DrawTrajectories draw_trajectories_;

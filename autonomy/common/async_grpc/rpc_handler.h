@@ -76,9 +76,7 @@ public:
     };
 
 #if BUILD_TRACING
-    RpcHandler()
-        : span_(OpencensusSpan::StartSpan(
-              RpcServiceMethodConcept::MethodName())) {}
+    RpcHandler() : span_(OpencensusSpan::StartSpan(RpcServiceMethodConcept::MethodName())) {}
     virtual ~RpcHandler() {
         span_->End();
     }
@@ -93,8 +91,7 @@ public:
     void SetRpc(Rpc* rpc) override {
         rpc_ = rpc;
     }
-    void OnRequestInternal(
-        const ::google::protobuf::Message* request) override {
+    void OnRequestInternal(const ::google::protobuf::Message* request) override {
         DCHECK(dynamic_cast<const RequestType*>(request));
         OnRequest(static_cast<const RequestType&>(*request));
     }

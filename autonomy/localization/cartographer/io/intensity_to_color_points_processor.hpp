@@ -29,25 +29,21 @@ namespace io {
 class IntensityToColorPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "intensity_to_color";
+    constexpr static const char* kConfigurationFileActionName = "intensity_to_color";
 
     // Applies ('intensity' - min ) / (max - min) * 255 and color the point grey
     // with this value for each point that comes from the sensor with
     // 'frame_id'. If 'frame_id' is empty, this applies to all points.
-    IntensityToColorPointsProcessor(float min_intensity, float max_intensity,
-                                    const std::string& frame_id,
+    IntensityToColorPointsProcessor(float min_intensity, float max_intensity, const std::string& frame_id,
                                     PointsProcessor* next);
 
-    static std::unique_ptr<IntensityToColorPointsProcessor> FromDictionary(
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<IntensityToColorPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                           PointsProcessor* next);
 
-    ~IntensityToColorPointsProcessor() override {};
+    ~IntensityToColorPointsProcessor() override{};
 
-    IntensityToColorPointsProcessor(const IntensityToColorPointsProcessor&) =
-        delete;
-    IntensityToColorPointsProcessor& operator=(
-        const IntensityToColorPointsProcessor&) = delete;
+    IntensityToColorPointsProcessor(const IntensityToColorPointsProcessor&) = delete;
+    IntensityToColorPointsProcessor& operator=(const IntensityToColorPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

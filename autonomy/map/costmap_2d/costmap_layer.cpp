@@ -25,8 +25,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-void CostmapLayer::touch(double x, double y, double* min_x, double* min_y,
-                         double* max_x, double* max_y) {
+void CostmapLayer::touch(double x, double y, double* min_x, double* min_y, double* max_x, double* max_y) {
     *min_x = std::min(x, *min_x);
     *min_y = std::min(y, *min_y);
     *max_x = std::max(x, *max_x);
@@ -36,13 +35,11 @@ void CostmapLayer::touch(double x, double y, double* min_x, double* min_y,
 void CostmapLayer::matchSize() {
     std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
     Costmap2D* master = layered_costmap_->getCostmap();
-    resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(),
-              master->getResolution(), master->getOriginX(),
+    resizeMap(master->getSizeInCellsX(), master->getSizeInCellsY(), master->getResolution(), master->getOriginX(),
               master->getOriginY());
 }
 
-void CostmapLayer::clearArea(int start_x, int start_y, int end_x, int end_y,
-                             bool invert) {
+void CostmapLayer::clearArea(int start_x, int start_y, int end_x, int end_y, bool invert) {
     current_ = false;
     unsigned char* grid = getCharMap();
     for (int x = 0; x < static_cast<int>(getSizeInCellsX()); x++) {
@@ -60,8 +57,7 @@ void CostmapLayer::clearArea(int start_x, int start_y, int end_x, int end_y,
     }
 }
 
-void CostmapLayer::addExtraBounds(double mx0, double my0, double mx1,
-                                  double my1) {
+void CostmapLayer::addExtraBounds(double mx0, double my0, double mx1, double my1) {
     extra_min_x_ = std::min(mx0, extra_min_x_);
     extra_max_x_ = std::max(mx1, extra_max_x_);
     extra_min_y_ = std::min(my0, extra_min_y_);
@@ -69,8 +65,7 @@ void CostmapLayer::addExtraBounds(double mx0, double my0, double mx1,
     has_extra_bounds_ = true;
 }
 
-void CostmapLayer::useExtraBounds(double* min_x, double* min_y, double* max_x,
-                                  double* max_y) {
+void CostmapLayer::useExtraBounds(double* min_x, double* min_y, double* max_x, double* max_y) {
     if (!has_extra_bounds_) {
         return;
     }
@@ -86,8 +81,7 @@ void CostmapLayer::useExtraBounds(double* min_x, double* min_y, double* max_x,
     has_extra_bounds_ = false;
 }
 
-void CostmapLayer::updateWithMax(Costmap2D& master_grid, int min_i, int min_j,
-                                 int max_i, int max_j) {
+void CostmapLayer::updateWithMax(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     if (!enabled_) {
         return;
     }
@@ -112,9 +106,8 @@ void CostmapLayer::updateWithMax(Costmap2D& master_grid, int min_i, int min_j,
     }
 }
 
-void CostmapLayer::updateWithMaxWithoutUnknownOverwrite(Costmap2D& master_grid,
-                                                        int min_i, int min_j,
-                                                        int max_i, int max_j) {
+void CostmapLayer::updateWithMaxWithoutUnknownOverwrite(Costmap2D& master_grid, int min_i, int min_j, int max_i,
+                                                        int max_j) {
     if (!enabled_) {
         return;
     }
@@ -139,15 +132,13 @@ void CostmapLayer::updateWithMaxWithoutUnknownOverwrite(Costmap2D& master_grid,
     }
 }
 
-void CostmapLayer::updateWithTrueOverwrite(Costmap2D& master_grid, int min_i,
-                                           int min_j, int max_i, int max_j) {
+void CostmapLayer::updateWithTrueOverwrite(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     if (!enabled_) {
         return;
     }
 
     if (costmap_ == nullptr) {
-        throw std::runtime_error(
-            "Can't update costmap layer: It has't been initialized yet!");
+        throw std::runtime_error("Can't update costmap layer: It has't been initialized yet!");
     }
 
     unsigned char* master = master_grid.getCharMap();
@@ -162,8 +153,7 @@ void CostmapLayer::updateWithTrueOverwrite(Costmap2D& master_grid, int min_i,
     }
 }
 
-void CostmapLayer::updateWithOverwrite(Costmap2D& master_grid, int min_i,
-                                       int min_j, int max_i, int max_j) {
+void CostmapLayer::updateWithOverwrite(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     if (!enabled_) {
         return;
     }
@@ -181,8 +171,7 @@ void CostmapLayer::updateWithOverwrite(Costmap2D& master_grid, int min_i,
     }
 }
 
-void CostmapLayer::updateWithAddition(Costmap2D& master_grid, int min_i,
-                                      int min_j, int max_i, int max_j) {
+void CostmapLayer::updateWithAddition(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     if (!enabled_) {
         return;
     }

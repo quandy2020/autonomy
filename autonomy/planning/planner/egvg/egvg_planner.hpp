@@ -52,19 +52,16 @@ public:
 
     std::vector<IntPoint> getVisitedNodes();
 
-    std::vector<IntPoint> AstarOnVoronoi(const IntPoint& pt1,
-                                         const IntPoint& pt2, int sizeX,
-                                         int sizeY, int graph_id);
+    std::vector<IntPoint> AstarOnVoronoi(const IntPoint& pt1, const IntPoint& pt2, int sizeX, int sizeY, int graph_id);
 
-    std::vector<std::vector<IntPoint>> expand_voronoi_grid(
-        const IntPoint& voronoi_grid, const std::vector<IntPoint> strong_nodes,
-        const int& sizeX, const int& sizeY);
+    std::vector<std::vector<IntPoint>> expand_voronoi_grid(const IntPoint& voronoi_grid,
+                                                           const std::vector<IntPoint> strong_nodes, const int& sizeX,
+                                                           const int& sizeY);
 
-    void DFSSearch(std::vector<GraphNode::Ptr>& vis, GraphNode::Ptr goal,
-                   int max_path_num);
+    void DFSSearch(std::vector<GraphNode::Ptr>& vis, GraphNode::Ptr goal, int max_path_num);
 
-    std::vector<std::vector<IntPoint>> searchTopoPaths(
-        GraphNode::Ptr start_node, GraphNode::Ptr goal_node, int max_path_num);
+    std::vector<std::vector<IntPoint>> searchTopoPaths(GraphNode::Ptr start_node, GraphNode::Ptr goal_node,
+                                                       int max_path_num);
 
 private:
     // 和A*规划相关的
@@ -72,9 +69,7 @@ private:
     int use_node_num_ = 0;
     int iter_num_ = 0;
     NodeHashTable0 expanded_nodes_;
-    std::priority_queue<GraphNode::Ptr, std::vector<GraphNode::Ptr>,
-                        NodeComparator0>
-        open_set_;
+    std::priority_queue<GraphNode::Ptr, std::vector<GraphNode::Ptr>, NodeComparator0> open_set_;
     std::vector<GraphNode::Ptr> path_nodes_;
     double lambda_heu_ = 1.0;
     int allocate_num_ = 10000;

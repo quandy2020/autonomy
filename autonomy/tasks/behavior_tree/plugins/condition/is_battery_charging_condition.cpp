@@ -22,11 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-IsBatteryChargingCondition::IsBatteryChargingCondition(
-    const std::string& condition_name, const BT::NodeConfiguration& conf)
-    : BT::ConditionNode(condition_name, conf),
-      battery_topic_("/battery_status"),
-      is_battery_charging_(false) {
+IsBatteryChargingCondition::IsBatteryChargingCondition(const std::string& condition_name,
+                                                       const BT::NodeConfiguration& conf)
+    : BT::ConditionNode(condition_name, conf), battery_topic_("/battery_status"), is_battery_charging_(false) {
     initialize();
 }
 
@@ -42,13 +40,9 @@ void IsBatteryChargingCondition::createROSInterfaces() {
     // empty
     if (battery_topic_new != battery_topic_ || !battery_reader_) {
         battery_topic_ = battery_topic_new;
-        auto node =
-            config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-        battery_reader_ =
-            node->CreateReader<commsgs::sensor_msgs::BatteryState>(
-                battery_topic_,
-                std::bind(&IsBatteryChargingCondition::batteryCallback, this,
-                          std::placeholders::_1));
+        auto node = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+        battery_reader_ = node->CreateReader<commsgs::sensor_msgs::BatteryState>(
+            battery_topic_, std::bind(&IsBatteryChargingCondition::batteryCallback, this, std::placeholders::_1));
     }
 }
 
@@ -62,11 +56,9 @@ BT::NodeStatus IsBatteryChargingCondition::tick() {
     return BT::NodeStatus::FAILURE;
 }
 
-void IsBatteryChargingCondition::batteryCallback(
-    const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg) {
-    is_battery_charging_ = (msg->power_supply_status() ==
-                            commsgs::proto::sensor_msgs::BatteryState::
-                                POWER_SUPPLY_STATUS_CHARGING);
+void IsBatteryChargingCondition::batteryCallback(const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg) {
+    is_battery_charging_ =
+        (msg->power_supply_status() == commsgs::proto::sensor_msgs::BatteryState::POWER_SUPPLY_STATUS_CHARGING);
 }
 
 }  // namespace condition
@@ -77,7 +69,6 @@ void IsBatteryChargingCondition::batteryCallback(
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::IsBatteryChargingCondition>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsBatteryChargingCondition>(
         "IsBatteryCharging");
 }

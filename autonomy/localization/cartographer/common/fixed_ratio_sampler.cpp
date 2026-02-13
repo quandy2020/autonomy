@@ -39,8 +39,7 @@ bool FixedRatioSampler::Pulse() {
 }
 
 std::string FixedRatioSampler::DebugString() {
-    return std::to_string(num_samples_) + " (" +
-           std::to_string(100. * num_samples_ / num_pulses_) + "%)";
+    return std::to_string(num_samples_) + " (" + std::to_string(100. * num_samples_ / num_pulses_) + "%)";
 }
 
 }  // namespace common

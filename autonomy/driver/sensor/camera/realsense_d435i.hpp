@@ -102,16 +102,14 @@ protected:
      * @param sensor_id 传感器ID
      * @return 图像数据消息，如果读取失败返回 nullptr
      */
-    std::shared_ptr<commsgs::sensor_msgs::Image> ReadImageData(
-        const std::string& sensor_id) override;
+    std::shared_ptr<commsgs::sensor_msgs::Image> ReadImageData(const std::string& sensor_id) override;
 
     /**
      * @brief 从硬件读取深度图像数据
      * @param sensor_id 传感器ID
      * @return 深度图像数据消息，如果读取失败返回 nullptr
      */
-    std::shared_ptr<commsgs::sensor_msgs::Image> ReadDepthData(
-        const std::string& sensor_id) override;
+    std::shared_ptr<commsgs::sensor_msgs::Image> ReadDepthData(const std::string& sensor_id) override;
 
 private:
     /**
@@ -131,8 +129,7 @@ private:
 
     // RealSense pipeline（前向声明，实际类型在 .cpp 中定义）
     // 使用 void* 避免在头文件中暴露 RealSense SDK 依赖
-    void*
-        pipeline_ptr_;  // 实际类型为 std::shared_ptr<rs2::pipeline> 或 nullptr
+    void* pipeline_ptr_;  // 实际类型为 std::shared_ptr<rs2::pipeline> 或 nullptr
 };
 
 }  // namespace camera

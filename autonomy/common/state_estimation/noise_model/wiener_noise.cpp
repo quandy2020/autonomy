@@ -29,8 +29,7 @@ using autonomy::common::types::float64_t;
 
 namespace {
 template <typename ScalarT>
-Eigen::Matrix<ScalarT, 3, 3> create_single_variable_block(
-    const std::chrono::nanoseconds& dt) {
+Eigen::Matrix<ScalarT, 3, 3> create_single_variable_block(const std::chrono::nanoseconds& dt) {
     const auto seconds = std::chrono::duration<double>{dt}.count();
     const auto seconds_2 = seconds * seconds;
     const Eigen::Vector3d noise_gain{0.5 * seconds_2, seconds, 1.0};
@@ -40,27 +39,20 @@ Eigen::Matrix<ScalarT, 3, 3> create_single_variable_block(
 
 template <typename ScalarT, int size, std::size_t stddev_size>
 Eigen::Matrix<ScalarT, size, size> create_covariance(
-    const std::chrono::nanoseconds& dt,
-    const typename std::array<ScalarT, stddev_size> acceleration_variances) {
-    const Eigen::Matrix<ScalarT, 3, 3> block_matrix =
-        create_single_variable_block<ScalarT>(dt);
-    Eigen::Matrix<ScalarT, size, size> m =
-        Eigen::Matrix<ScalarT, size, size>::Zero();
+    const std::chrono::nanoseconds& dt, const typename std::array<ScalarT, stddev_size> acceleration_variances) {
+    const Eigen::Matrix<ScalarT, 3, 3> block_matrix = create_single_variable_block<ScalarT>(dt);
+    Eigen::Matrix<ScalarT, size, size> m = Eigen::Matrix<ScalarT, size, size>::Zero();
     for (std::size_t i = 0; i < stddev_size; ++i) {
         const int offs = static_cast<int>(3 * i);
-        m.template block<3, 3>(offs, offs) = block_matrix *
-                                             acceleration_variances[i] *
-                                             acceleration_variances[i];
+        m.template block<3, 3>(offs, offs) = block_matrix * acceleration_variances[i] * acceleration_variances[i];
     }
     return m;
 }
 }  // namespace
 
 template <typename StateT>
-typename StateT::Matrix WienerNoise<StateT>::crtp_covariance(
-    const std::chrono::nanoseconds& dt) const {
-    return create_covariance<typename StateT::Scalar, StateT::size(),
-                             number_of_acceleration_components<StateT>::value>(
+typename StateT::Matrix WienerNoise<StateT>::crtp_covariance(const std::chrono::nanoseconds& dt) const {
+    return create_covariance<typename StateT::Scalar, StateT::size(), number_of_acceleration_components<StateT>::value>(
         dt, m_acceleration_variances);
 }
 

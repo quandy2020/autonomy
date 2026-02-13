@@ -25,14 +25,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    GetAllSubmapPosesSignature, google::protobuf::Empty,
-    proto::GetAllSubmapPosesResponse,
-    "/cartographer.cloud.proto.MapBuilderService/GetAllSubmapPoses")
+DEFINE_HANDLER_SIGNATURE(GetAllSubmapPosesSignature, google::protobuf::Empty, proto::GetAllSubmapPosesResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/GetAllSubmapPoses")
 
-class GetAllSubmapPosesHandler
-    : public autonomy::common::async_grpc::RpcHandler<
-          GetAllSubmapPosesSignature>
+class GetAllSubmapPosesHandler : public autonomy::common::async_grpc::RpcHandler<GetAllSubmapPosesSignature>
 {
 public:
     void OnRequest(const google::protobuf::Empty& request) override;

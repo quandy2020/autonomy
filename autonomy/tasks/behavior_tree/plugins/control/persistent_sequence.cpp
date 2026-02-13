@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace control {
 
-PersistentSequenceNode::PersistentSequenceNode(
-    const std::string& name, const BT::NodeConfiguration& conf)
+PersistentSequenceNode::PersistentSequenceNode(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::ControlNode::ControlNode(name, conf) {}
 
 BT::NodeStatus PersistentSequenceNode::tick() {
@@ -64,7 +63,7 @@ BT::NodeStatus PersistentSequenceNode::tick() {
             case BT::NodeStatus::IDLE:
                 throw std::runtime_error("A child node must never return IDLE");
         }  // end switch
-    }  // end while loop
+    }      // end while loop
 
     // The entire while loop completed. This means that all the children
     // returned SUCCESS.
@@ -82,14 +81,10 @@ BT::NodeStatus PersistentSequenceNode::tick() {
 }  // namespace autonomy
 
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::
-                                    control::PersistentSequenceNode>(name,
-                                                                     config);
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::control::PersistentSequenceNode>(name, config);
     };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::control::
-                                PersistentSequenceNode>("PersistentSequence",
-                                                        builder);
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::control::PersistentSequenceNode>(
+        "PersistentSequence", builder);
 }

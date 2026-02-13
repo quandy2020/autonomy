@@ -36,13 +36,9 @@ class CeresScanMatcherTest : public ::testing::Test
 {
 protected:
     CeresScanMatcherTest()
-        : probability_grid_(
-              MapLimits(1., Eigen::Vector2d(10., 10.), CellLimits(20, 20)),
-              &conversion_tables_) {
-        probability_grid_.SetProbability(
-            probability_grid_.limits().GetCellIndex(
-                Eigen::Vector2f(-3.5f, 2.5f)),
-            kMaxProbability);
+        : probability_grid_(MapLimits(1., Eigen::Vector2d(10., 10.), CellLimits(20, 20)), &conversion_tables_) {
+        probability_grid_.SetProbability(probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-3.5f, 2.5f)),
+                                         kMaxProbability);
 
         point_cloud_.push_back({Eigen::Vector3f{-3.f, 2.f, 0.f}});
 
@@ -57,24 +53,20 @@ protected:
             num_threads = 1,
           },
         })text");
-        const proto::CeresScanMatcherOptions2D options =
-            CreateCeresScanMatcherOptions2D(parameter_dictionary.get());
+        const proto::CeresScanMatcherOptions2D options = CreateCeresScanMatcherOptions2D(parameter_dictionary.get());
         ceres_scan_matcher_ = absl::make_unique<CeresScanMatcher2D>(options);
     }
 
     void TestFromInitialPose(const transform::Rigid2d& initial_pose) {
         transform::Rigid2d pose;
-        const transform::Rigid2d expected_pose =
-            transform::Rigid2d::Translation({-0.5, 0.5});
+        const transform::Rigid2d expected_pose = transform::Rigid2d::Translation({-0.5, 0.5});
         ceres::Solver::Summary summary;
-        ceres_scan_matcher_->Match(initial_pose.translation(), initial_pose,
-                                   point_cloud_, probability_grid_, &pose,
+        ceres_scan_matcher_->Match(initial_pose.translation(), initial_pose, point_cloud_, probability_grid_, &pose,
                                    &summary);
         EXPECT_NEAR(0., summary.final_cost, 1e-2) << summary.FullReport();
         EXPECT_THAT(pose, transform::IsNearly(expected_pose, 1e-2))
             << "Actual: " << transform::ToProto(pose).DebugString()
-            << "\nExpected: "
-            << transform::ToProto(expected_pose).DebugString();
+            << "\nExpected: " << transform::ToProto(expected_pose).DebugString();
     }
 
     ValueConversionTables conversion_tables_;

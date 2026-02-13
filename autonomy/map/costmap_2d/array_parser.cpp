@@ -32,8 +32,7 @@ namespace costmap_2d {
  * Syntax is [[1.0, 2.0], [3.3, 4.4, 5.5], ...]
  *
  */
-std::vector<std::vector<float>> parseVVF(const std::string& input,
-                                         std::string& error_return) {
+std::vector<std::vector<float>> parseVVF(const std::string& input, std::string& error_return) {
     std::vector<std::vector<float>> result;
 
     std::stringstream input_ss(input);
@@ -71,8 +70,7 @@ std::vector<std::vector<float>> parseVVF(const std::string& input,
             default:  // All other characters should be part of the numbers.
                 if (depth != 2) {
                     std::stringstream err_ss;
-                    err_ss << "Numbers at depth other than 2. Char was '"
-                           << char(input_ss.peek()) << "'.";
+                    err_ss << "Numbers at depth other than 2. Char was '" << char(input_ss.peek()) << "'.";
                     error_return = err_ss.str();
                     return result;
                 }

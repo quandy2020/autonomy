@@ -47,8 +47,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    IsStoppedCondition(const std::string& condition_name,
-                       const BT::NodeConfiguration& conf);
+    IsStoppedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     IsStoppedCondition() = delete;
 
@@ -73,12 +72,10 @@ public:
         // TODO: Implement JSON conversion
 
         return {
-            BT::InputPort<double>(
-                "velocity_threshold", 0.01,
-                "Velocity threshold below which robot is considered stopped"),
-            BT::InputPort<std::chrono::milliseconds>(
-                "duration_stopped", 1000ms,
-                "Duration (ms) the velocity must remain below the threshold"),
+            BT::InputPort<double>("velocity_threshold", 0.01,
+                                  "Velocity threshold below which robot is considered stopped"),
+            BT::InputPort<std::chrono::milliseconds>("duration_stopped", 1000ms,
+                                                     "Duration (ms) the velocity must remain below the threshold"),
         };
     }
 

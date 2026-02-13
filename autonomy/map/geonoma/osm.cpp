@@ -26,8 +26,7 @@ namespace autonomy {
 namespace map {
 namespace geonoma {
 
-OsmMap::OsmMap(const std::string& name)
-    : name_(name.empty() ? "osm_map" : name), stopped_(true), paused_(false) {
+OsmMap::OsmMap(const std::string& name) : name_(name.empty() ? "osm_map" : name), stopped_(true), paused_(false) {
     LOG(INFO) << "[OsmMap] OsmMap created: " << name_;
 }
 
@@ -105,12 +104,10 @@ bool OsmMap::LoadFromFile(const std::string& filename) {
 
     bool success = ParseOsmXml(xml_content);
     if (success) {
-        LOG(INFO) << "[OsmMap] Loaded OSM map from file: " << filename
-                  << " (Nodes: " << nodes_.size() << ", Ways: " << ways_.size()
-                  << ", Relations: " << relations_.size() << ")";
+        LOG(INFO) << "[OsmMap] Loaded OSM map from file: " << filename << " (Nodes: " << nodes_.size()
+                  << ", Ways: " << ways_.size() << ", Relations: " << relations_.size() << ")";
     } else {
-        LOG(ERROR) << "[OsmMap] Failed to parse OSM XML from file: "
-                   << filename;
+        LOG(ERROR) << "[OsmMap] Failed to parse OSM XML from file: " << filename;
     }
 
     return success;
@@ -171,8 +168,7 @@ const OsmRelation* OsmMap::GetRelation(int64_t relation_id) const {
     return nullptr;
 }
 
-std::vector<int64_t> OsmMap::FindNodesByTag(const std::string& key,
-                                            const std::string& value) const {
+std::vector<int64_t> OsmMap::FindNodesByTag(const std::string& key, const std::string& value) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     std::vector<int64_t> result;
@@ -184,8 +180,7 @@ std::vector<int64_t> OsmMap::FindNodesByTag(const std::string& key,
     return result;
 }
 
-std::vector<int64_t> OsmMap::FindWaysByTag(const std::string& key,
-                                           const std::string& value) const {
+std::vector<int64_t> OsmMap::FindWaysByTag(const std::string& key, const std::string& value) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     std::vector<int64_t> result;
@@ -197,8 +192,7 @@ std::vector<int64_t> OsmMap::FindWaysByTag(const std::string& key,
     return result;
 }
 
-std::vector<int64_t> OsmMap::FindRelationsByTag(
-    const std::string& key, const std::string& value) const {
+std::vector<int64_t> OsmMap::FindRelationsByTag(const std::string& key, const std::string& value) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     std::vector<int64_t> result;
@@ -210,16 +204,14 @@ std::vector<int64_t> OsmMap::FindRelationsByTag(
     return result;
 }
 
-std::vector<int64_t> OsmMap::GetNodesInBounds(double min_lat, double min_lon,
-                                              double max_lat,
-                                              double max_lon) const {
+std::vector<int64_t> OsmMap::GetNodesInBounds(double min_lat, double min_lon, double max_lat, double max_lon) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     std::vector<int64_t> result;
     for (const auto& pair : nodes_) {
         const OsmNode& node = pair.second;
-        if (node.latitude >= min_lat && node.latitude <= max_lat &&
-            node.longitude >= min_lon && node.longitude <= max_lon) {
+        if (node.latitude >= min_lat && node.latitude <= max_lat && node.longitude >= min_lon &&
+            node.longitude <= max_lon) {
             result.push_back(pair.first);
         }
     }
@@ -233,8 +225,7 @@ void OsmMap::Clear() {
     relations_.clear();
 }
 
-bool OsmMap::TagMatches(const std::vector<OsmTag>& tags, const std::string& key,
-                        const std::string& value) const {
+bool OsmMap::TagMatches(const std::vector<OsmTag>& tags, const std::string& key, const std::string& value) const {
     for (const auto& tag : tags) {
         if (tag.key == key) {
             if (value.empty() || tag.value == value) {
@@ -250,12 +241,10 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
     // This is a basic implementation - for production use, consider using a
     // proper XML library
 
-    std::regex node_regex(
-        R"(<node\s+id=["'](\d+)["']\s+lat=["']([\d\.\-]+)["']\s+lon=["']([\d\.\-]+)["']([^>]*)>)");
+    std::regex node_regex(R"(<node\s+id=["'](\d+)["']\s+lat=["']([\d\.\-]+)["']\s+lon=["']([\d\.\-]+)["']([^>]*)>)");
     std::regex way_regex(R"(<way\s+id=["'](\d+)["']([^>]*)>)");
     std::regex relation_regex(R"(<relation\s+id=["'](\d+)["']([^>]*)>)");
-    std::regex tag_regex(
-        R"(<tag\s+k=["']([^"']+)["']\s+v=["']([^"']+)["']\s*/>)");
+    std::regex tag_regex(R"(<tag\s+k=["']([^"']+)["']\s+v=["']([^"']+)["']\s*/>)");
     std::regex nd_regex(R"(<nd\s+ref=["'](\d+)["']\s*/>)");
     std::regex member_regex(
         R"(<member\s+type=["'](node|way|relation)["']\s+ref=["'](\d+)["']\s+role=["']([^"']*)["']\s*/>)");
@@ -264,8 +253,7 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
     std::sregex_iterator end;
 
     // Parse nodes
-    iter = std::sregex_iterator(xml_content.begin(), xml_content.end(),
-                                node_regex);
+    iter = std::sregex_iterator(xml_content.begin(), xml_content.end(), node_regex);
     for (; iter != end; ++iter) {
         std::smatch match = *iter;
         int64_t id = std::stoll(match[1].str());
@@ -280,10 +268,8 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
         size_t node_start = match.position(0);
         size_t node_end = xml_content.find("</node>", node_start);
         if (node_end != std::string::npos) {
-            std::string node_content =
-                xml_content.substr(node_start, node_end - node_start);
-            std::sregex_iterator tag_iter(node_content.begin(),
-                                          node_content.end(), tag_regex);
+            std::string node_content = xml_content.substr(node_start, node_end - node_start);
+            std::sregex_iterator tag_iter(node_content.begin(), node_content.end(), tag_regex);
             std::sregex_iterator tag_end;
             for (; tag_iter != tag_end; ++tag_iter) {
                 std::smatch tag_match = *tag_iter;
@@ -295,8 +281,7 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
     }
 
     // Parse ways
-    iter =
-        std::sregex_iterator(xml_content.begin(), xml_content.end(), way_regex);
+    iter = std::sregex_iterator(xml_content.begin(), xml_content.end(), way_regex);
     for (; iter != end; ++iter) {
         std::smatch match = *iter;
         int64_t id = std::stoll(match[1].str());
@@ -307,12 +292,10 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
         size_t way_start = match.position(0);
         size_t way_end = xml_content.find("</way>", way_start);
         if (way_end != std::string::npos) {
-            std::string way_content =
-                xml_content.substr(way_start, way_end - way_start);
+            std::string way_content = xml_content.substr(way_start, way_end - way_start);
 
             // Parse nd refs
-            std::sregex_iterator nd_iter(way_content.begin(), way_content.end(),
-                                         nd_regex);
+            std::sregex_iterator nd_iter(way_content.begin(), way_content.end(), nd_regex);
             std::sregex_iterator nd_end;
             for (; nd_iter != nd_end; ++nd_iter) {
                 std::smatch nd_match = *nd_iter;
@@ -320,8 +303,7 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
             }
 
             // Parse tags
-            std::sregex_iterator tag_iter(way_content.begin(),
-                                          way_content.end(), tag_regex);
+            std::sregex_iterator tag_iter(way_content.begin(), way_content.end(), tag_regex);
             std::sregex_iterator tag_end;
             for (; tag_iter != tag_end; ++tag_iter) {
                 std::smatch tag_match = *tag_iter;
@@ -333,8 +315,7 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
     }
 
     // Parse relations
-    iter = std::sregex_iterator(xml_content.begin(), xml_content.end(),
-                                relation_regex);
+    iter = std::sregex_iterator(xml_content.begin(), xml_content.end(), relation_regex);
     for (; iter != end; ++iter) {
         std::smatch match = *iter;
         int64_t id = std::stoll(match[1].str());
@@ -345,12 +326,10 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
         size_t relation_start = match.position(0);
         size_t relation_end = xml_content.find("</relation>", relation_start);
         if (relation_end != std::string::npos) {
-            std::string relation_content = xml_content.substr(
-                relation_start, relation_end - relation_start);
+            std::string relation_content = xml_content.substr(relation_start, relation_end - relation_start);
 
             // Parse members
-            std::sregex_iterator member_iter(
-                relation_content.begin(), relation_content.end(), member_regex);
+            std::sregex_iterator member_iter(relation_content.begin(), relation_content.end(), member_regex);
             std::sregex_iterator member_end;
             for (; member_iter != member_end; ++member_iter) {
                 std::smatch member_match = *member_iter;
@@ -360,19 +339,15 @@ bool OsmMap::ParseOsmXml(const std::string& xml_content) {
                 } else if (member_match[1].str() == "relation") {
                     type = OsmMemberType::RELATION;
                 }
-                relation.members.emplace_back(type,
-                                              std::stoll(member_match[2].str()),
-                                              member_match[3].str());
+                relation.members.emplace_back(type, std::stoll(member_match[2].str()), member_match[3].str());
             }
 
             // Parse tags
-            std::sregex_iterator tag_iter(relation_content.begin(),
-                                          relation_content.end(), tag_regex);
+            std::sregex_iterator tag_iter(relation_content.begin(), relation_content.end(), tag_regex);
             std::sregex_iterator tag_end;
             for (; tag_iter != tag_end; ++tag_iter) {
                 std::smatch tag_match = *tag_iter;
-                relation.tags.emplace_back(tag_match[1].str(),
-                                           tag_match[2].str());
+                relation.tags.emplace_back(tag_match[1].str(), tag_match[2].str());
             }
         }
 
@@ -396,12 +371,10 @@ bool OsmMap::WriteOsmXml(const std::string& filename) const {
     // Write nodes
     for (const auto& pair : nodes_) {
         const OsmNode& node = pair.second;
-        file << "  <node id='" << node.id << "' lat='" << node.latitude
-             << "' lon='" << node.longitude << "'>\n";
+        file << "  <node id='" << node.id << "' lat='" << node.latitude << "' lon='" << node.longitude << "'>\n";
 
         for (const auto& tag : node.tags) {
-            file << "    <tag k='" << tag.key << "' v='" << tag.value
-                 << "'/>\n";
+            file << "    <tag k='" << tag.key << "' v='" << tag.value << "'/>\n";
         }
 
         file << "  </node>\n";
@@ -417,8 +390,7 @@ bool OsmMap::WriteOsmXml(const std::string& filename) const {
         }
 
         for (const auto& tag : way.tags) {
-            file << "    <tag k='" << tag.key << "' v='" << tag.value
-                 << "'/>\n";
+            file << "    <tag k='" << tag.key << "' v='" << tag.value << "'/>\n";
         }
 
         file << "  </way>\n";
@@ -436,13 +408,11 @@ bool OsmMap::WriteOsmXml(const std::string& filename) const {
             } else if (member.type == OsmMemberType::RELATION) {
                 type_str = "relation";
             }
-            file << "    <member type='" << type_str << "' ref='" << member.ref
-                 << "' role='" << member.role << "'/>\n";
+            file << "    <member type='" << type_str << "' ref='" << member.ref << "' role='" << member.role << "'/>\n";
         }
 
         for (const auto& tag : relation.tags) {
-            file << "    <tag k='" << tag.key << "' v='" << tag.value
-                 << "'/>\n";
+            file << "    <tag k='" << tag.key << "' v='" << tag.value << "'/>\n";
         }
 
         file << "  </relation>\n";

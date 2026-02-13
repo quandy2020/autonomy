@@ -47,8 +47,7 @@ public:
      * @param name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    PathLongerOnApproach(const std::string& name,
-                         const BT::NodeConfiguration& conf);
+    PathLongerOnApproach(const std::string& name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
@@ -60,9 +59,7 @@ public:
 
         return {
             BT::InputPort<commsgs::planning_msgs::Path>("path", "Planned Path"),
-            BT::InputPort<double>(
-                "prox_len", 3.0,
-                "Proximity length (m) for the path to be longer on approach"),
+            BT::InputPort<double>("prox_len", 3.0, "Proximity length (m) for the path to be longer on approach"),
             BT::InputPort<double>("length_factor", 2.0,
                                   "Length multiplication factor to check if "
                                   "the path is significantly longer"),
@@ -82,8 +79,7 @@ private:
      * @param old_path current path to the goal
      * @return whether the path is updated for the current goal
      */
-    bool isPathUpdated(commsgs::planning_msgs::Path& new_path,
-                       commsgs::planning_msgs::Path& old_path);
+    bool isPathUpdated(commsgs::planning_msgs::Path& new_path, commsgs::planning_msgs::Path& old_path);
 
     /**
      * @brief Checks if the robot is in the goal proximity
@@ -91,8 +87,7 @@ private:
      * @param prox_leng proximity length from the goal
      * @return whether the robot is in the goal proximity
      */
-    bool isRobotInGoalProximity(commsgs::planning_msgs::Path& old_path,
-                                double& prox_leng);
+    bool isRobotInGoalProximity(commsgs::planning_msgs::Path& old_path, double& prox_leng);
 
     /**
      * @brief Checks if the new path is longer
@@ -101,8 +96,7 @@ private:
      * @param length_factor multiplier for path length check
      * @return whether the new path is longer
      */
-    bool isNewPathLonger(commsgs::planning_msgs::Path& new_path,
-                         commsgs::planning_msgs::Path& old_path,
+    bool isNewPathLonger(commsgs::planning_msgs::Path& new_path, commsgs::planning_msgs::Path& old_path,
                          double& length_factor);
 
 private:

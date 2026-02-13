@@ -37,12 +37,7 @@ struct LoadParameters {
     bool negate;
 };
 
-typedef enum {
-    LOAD_MAP_SUCCESS,
-    MAP_DOES_NOT_EXIST,
-    INVALID_MAP_METADATA,
-    INVALID_MAP_DATA
-} LOAD_MAP_STATUS;
+typedef enum { LOAD_MAP_SUCCESS, MAP_DOES_NOT_EXIST, INVALID_MAP_METADATA, INVALID_MAP_DATA } LOAD_MAP_STATUS;
 
 /**
  * @brief Load and parse the given YAML file
@@ -58,8 +53,7 @@ LoadParameters loadMapYaml(const std::string& yaml_filename);
  * @param map Output loaded map
  * @throw std::exception
  */
-void loadMapFromFile(const LoadParameters& load_parameters,
-                     commsgs::map_msgs::OccupancyGrid& map);
+void loadMapFromFile(const LoadParameters& load_parameters, commsgs::map_msgs::OccupancyGrid& map);
 
 /**
  * @brief Load the map YAML, image from map file and
@@ -68,8 +62,7 @@ void loadMapFromFile(const LoadParameters& load_parameters,
  * @param map Output loaded map
  * @return status of map loaded
  */
-LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file,
-                                commsgs::map_msgs::OccupancyGrid& map);
+LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file, commsgs::map_msgs::OccupancyGrid& map);
 
 /* Map output part */
 
@@ -87,8 +80,7 @@ struct SaveParameters {
  * @param save_parameters Map saving parameters.
  * @return true or false
  */
-bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
-                   const SaveParameters& save_parameters);
+bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map, const SaveParameters& save_parameters);
 
 /**
  * @brief Expand ~/ to home user dir.
@@ -97,8 +89,7 @@ bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
  *
  * @return Expanded string or input string if `~/` not expanded
  */
-std::string expand_user_home_dir_if_needed(std::string yaml_filename,
-                                           std::string home_dir);
+std::string expand_user_home_dir_if_needed(std::string yaml_filename, std::string home_dir);
 
 }  // namespace costmap_2d
 }  // namespace map

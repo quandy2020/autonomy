@@ -24,8 +24,7 @@ namespace autonomy {
 namespace transform {
 namespace common {
 
-proto::TransformOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::TransformOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::TransformOptions options;
 
     if (!parameter_dictionary) {
@@ -35,16 +34,14 @@ proto::TransformOptions LoadOptions(
 
     // Load extrinsic_file path from Lua config
     if (parameter_dictionary->HasKey("extrinsic_file")) {
-        options.set_extrinsic_file(
-            parameter_dictionary->GetString("extrinsic_file"));
+        options.set_extrinsic_file(parameter_dictionary->GetString("extrinsic_file"));
     }
 
     return options;
 }
 
-proto::TransformOptions CreateOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename) {
+proto::TransformOptions CreateOptions(const std::string& configuration_directory,
+                                      const std::string& configuration_basename) {
     proto::TransformOptions options;
 
     // Construct full path to the configuration file
@@ -57,8 +54,7 @@ proto::TransformOptions CreateOptions(
     // Check if file exists
     std::ifstream file(config_file);
     if (!file.good()) {
-        AERROR << "CreateOptions: Configuration file not found: "
-               << config_file;
+        AERROR << "CreateOptions: Configuration file not found: " << config_file;
         return options;
     }
     file.close();

@@ -27,11 +27,9 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-FootprintSubscriber::FootprintSubscriber(const std::string& topic_name,
-                                         std::string robot_base_frame,
+FootprintSubscriber::FootprintSubscriber(const std::string& topic_name, std::string robot_base_frame,
                                          double transform_tolerance)
-    : robot_base_frame_(robot_base_frame),
-      transform_tolerance_(transform_tolerance) {
+    : robot_base_frame_(robot_base_frame), transform_tolerance_(transform_tolerance) {
     // footprint_sub_ =
     // node->create_subscription<commsgs::geometry_msgs::PolygonStamped>(
     //   topic_name, rclcpp::SystemDefaultsQoS(),
@@ -39,9 +37,8 @@ FootprintSubscriber::FootprintSubscriber(const std::string& topic_name,
     //   std::placeholders::_1));
 }
 
-bool FootprintSubscriber::getFootprintRaw(
-    std::vector<commsgs::geometry_msgs::Point>& footprint,
-    commsgs::std_msgs::Header& footprint_header) {
+bool FootprintSubscriber::getFootprintRaw(std::vector<commsgs::geometry_msgs::Point>& footprint,
+                                          commsgs::std_msgs::Header& footprint_header) {
     if (!footprint_received_) {
         return false;
     }
@@ -54,9 +51,8 @@ bool FootprintSubscriber::getFootprintRaw(
     return true;
 }
 
-bool FootprintSubscriber::getFootprintInRobotFrame(
-    std::vector<commsgs::geometry_msgs::Point>& footprint,
-    commsgs::std_msgs::Header& footprint_header) {
+bool FootprintSubscriber::getFootprintInRobotFrame(std::vector<commsgs::geometry_msgs::Point>& footprint,
+                                                   commsgs::std_msgs::Header& footprint_header) {
     // if (!getFootprintRaw(footprint, footprint_header)) {
     //   return false;
     // }
@@ -83,8 +79,7 @@ bool FootprintSubscriber::getFootprintInRobotFrame(
     return true;
 }
 
-void FootprintSubscriber::footprint_callback(
-    const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg) {
+void FootprintSubscriber::footprint_callback(const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg) {
     std::atomic_store(&footprint_, msg);
     if (!footprint_received_) {
         footprint_received_ = true;

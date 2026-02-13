@@ -38,43 +38,26 @@ MATCHER_P(Near, point, std::string(negation ? "Doesn't" : "Does") + " match.") {
 
 namespace testing {
 
-typedef std::tuple<int /* trajectory_id */, std::string /* sensor_id */,
-                   common::Time>
-    CollatorOutput;
+typedef std::tuple<int /* trajectory_id */, std::string /* sensor_id */, common::Time> CollatorOutput;
 
 struct CollatorInput {
-    static CollatorInput CreateImuData(int trajectory_id,
-                                       const std::string& sensor_id, int time) {
-        return CollatorInput{
-            trajectory_id,
-            MakeDispatchable(sensor_id, ImuData{common::FromUniversal(time)}),
-            CollatorOutput{trajectory_id, sensor_id,
-                           common::FromUniversal(time)}};
+    static CollatorInput CreateImuData(int trajectory_id, const std::string& sensor_id, int time) {
+        return CollatorInput{trajectory_id, MakeDispatchable(sensor_id, ImuData{common::FromUniversal(time)}),
+                             CollatorOutput{trajectory_id, sensor_id, common::FromUniversal(time)}};
     }
 
-    static CollatorInput CreateTimedPointCloudData(int trajectory_id,
-                                                   const std::string& sensor_id,
-                                                   int time) {
+    static CollatorInput CreateTimedPointCloudData(int trajectory_id, const std::string& sensor_id, int time) {
         return CollatorInput{
             trajectory_id,
-            MakeDispatchable(
-                sensor_id,
-                TimedPointCloudData{
-                    common::FromUniversal(time), Eigen::Vector3f::Zero(), {}}),
-            CollatorOutput{trajectory_id, sensor_id,
-                           common::FromUniversal(time)}};
+            MakeDispatchable(sensor_id, TimedPointCloudData{common::FromUniversal(time), Eigen::Vector3f::Zero(), {}}),
+            CollatorOutput{trajectory_id, sensor_id, common::FromUniversal(time)}};
     }
 
-    static CollatorInput CreateOdometryData(int trajectory_id,
-                                            const std::string& sensor_id,
-                                            int time) {
+    static CollatorInput CreateOdometryData(int trajectory_id, const std::string& sensor_id, int time) {
         return CollatorInput{
             trajectory_id,
-            MakeDispatchable(sensor_id,
-                             OdometryData{common::FromUniversal(time),
-                                          transform::Rigid3d::Identity()}),
-            CollatorOutput{trajectory_id, sensor_id,
-                           common::FromUniversal(time)}};
+            MakeDispatchable(sensor_id, OdometryData{common::FromUniversal(time), transform::Rigid3d::Identity()}),
+            CollatorOutput{trajectory_id, sensor_id, common::FromUniversal(time)}};
     }
 
     void MoveToCollator(CollatorInterface* collator) {

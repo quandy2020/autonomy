@@ -41,8 +41,7 @@ bool CameraManager::LoadDriverPlugin(const std::string& library_path) {
     }
 
     // 创建 ClassLoader
-    auto class_loader =
-        std::make_shared<::autolink::class_loader::ClassLoader>(library_path);
+    auto class_loader = std::make_shared<::autolink::class_loader::ClassLoader>(library_path);
 
     if (!class_loader->LoadLibrary()) {
         AERROR << "Failed to load plugin library: " << library_path;
@@ -50,8 +49,7 @@ bool CameraManager::LoadDriverPlugin(const std::string& library_path) {
     }
 
     // 获取所有可用的驱动类名
-    std::vector<std::string> driver_classes =
-        class_loader->GetValidClassNames<CameraBase>();
+    std::vector<std::string> driver_classes = class_loader->GetValidClassNames<CameraBase>();
 
     if (driver_classes.empty()) {
         AWARN << "No camera driver classes found in library: " << library_path;
@@ -67,8 +65,7 @@ bool CameraManager::LoadDriverPlugin(const std::string& library_path) {
 
     plugin_libraries_[library_path] = plugin_lib;
 
-    AINFO << "Loaded camera driver plugin: " << library_path << " with "
-          << driver_classes.size() << " driver classes";
+    AINFO << "Loaded camera driver plugin: " << library_path << " with " << driver_classes.size() << " driver classes";
     for (const auto& class_name : driver_classes) {
         AINFO << "  - " << class_name;
     }
@@ -112,8 +109,8 @@ std::vector<std::string> CameraManager::GetAvailableDriverClasses() const {
     return all_classes;
 }
 
-CameraBase::SharedPtr CameraManager::CreateDriver(
-    const std::string& driver_class_name, const std::string& driver_name) {
+CameraBase::SharedPtr CameraManager::CreateDriver(const std::string& driver_class_name,
+                                                  const std::string& driver_name) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     // 在所有已加载的插件库中查找驱动类
@@ -121,32 +118,27 @@ CameraBase::SharedPtr CameraManager::CreateDriver(
         auto& plugin_lib = plugin_pair.second;
 
         // 检查此插件库是否包含该驱动类
-        auto it = std::find(plugin_lib.driver_classes.begin(),
-                            plugin_lib.driver_classes.end(), driver_class_name);
+        auto it = std::find(plugin_lib.driver_classes.begin(), plugin_lib.driver_classes.end(), driver_class_name);
         if (it != plugin_lib.driver_classes.end()) {
             // 从此插件库创建驱动实例
-            auto driver = plugin_lib.class_loader->CreateClassObj<CameraBase>(
-                driver_class_name);
+            auto driver = plugin_lib.class_loader->CreateClassObj<CameraBase>(driver_class_name);
             if (driver != nullptr) {
-                AINFO << "Created camera driver instance: " << driver_name
-                      << " (class: " << driver_class_name
+                AINFO << "Created camera driver instance: " << driver_name << " (class: " << driver_class_name
                       << ", library: " << plugin_lib.library_path << ")";
                 return driver;
             } else {
-                AERROR << "Failed to create driver instance: "
-                       << driver_class_name
+                AERROR << "Failed to create driver instance: " << driver_class_name
                        << " from library: " << plugin_lib.library_path;
             }
         }
     }
 
-    AERROR << "Driver class not found in any loaded plugin: "
-           << driver_class_name;
+    AERROR << "Driver class not found in any loaded plugin: " << driver_class_name;
     return nullptr;
 }
 
-CameraBase::SharedPtr CameraManager::CreateDriverFromPlugin(
-    const std::string& library_path, const std::string& driver_class_name) {
+CameraBase::SharedPtr CameraManager::CreateDriverFromPlugin(const std::string& library_path,
+                                                            const std::string& driver_class_name) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = plugin_libraries_.find(library_path);
@@ -155,18 +147,15 @@ CameraBase::SharedPtr CameraManager::CreateDriverFromPlugin(
         return nullptr;
     }
 
-    auto driver =
-        it->second.class_loader->CreateClassObj<CameraBase>(driver_class_name);
+    auto driver = it->second.class_loader->CreateClassObj<CameraBase>(driver_class_name);
     if (driver != nullptr) {
-        AINFO << "Created camera driver from plugin: " << driver_class_name
-              << " (library: " << library_path << ")";
+        AINFO << "Created camera driver from plugin: " << driver_class_name << " (library: " << library_path << ")";
     }
 
     return driver;
 }
 
-bool CameraManager::RegisterDriver(const std::string& driver_name,
-                                   CameraBase::SharedPtr driver) {
+bool CameraManager::RegisterDriver(const std::string& driver_name, CameraBase::SharedPtr driver) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (driver == nullptr) {
@@ -199,8 +188,7 @@ void CameraManager::UnregisterDriver(const std::string& driver_name) {
     }
 }
 
-CameraBase::SharedPtr CameraManager::GetDriver(
-    const std::string& driver_name) const {
+CameraBase::SharedPtr CameraManager::GetDriver(const std::string& driver_name) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = drivers_.find(driver_name);

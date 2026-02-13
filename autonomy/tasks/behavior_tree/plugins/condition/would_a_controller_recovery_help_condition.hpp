@@ -31,8 +31,7 @@ class WouldAControllerRecoveryHelp : public AreErrorCodesPresent
     using ActionResult = Action::Result;
 
 public:
-    WouldAControllerRecoveryHelp(const std::string& condition_name,
-                                 const BT::NodeConfiguration& conf);
+    WouldAControllerRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     WouldAControllerRecoveryHelp() = delete;
 };

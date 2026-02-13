@@ -1,0 +1,71 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autolink.examples.proto;
+
+message SamplesTest1
+{
+    string class_name = 1;
+    string case_name = 2;
+}
+
+message Chatter
+{
+    uint64 timestamp = 1;
+    uint64 lidar_timestamp = 2;
+    uint64 seq = 3;
+    bytes content = 4;
+}
+
+message Driver
+{
+    string content = 1;
+    uint64 msg_id = 2;
+    uint64 timestamp = 3;
+}
+
+// Example Action message for demonstrating action client-server communication
+message ExampleAction
+{
+    // Goal: what the client wants to achieve
+    message Goal
+    {
+        int32 target_number = 1;  // Target number to count to
+        string task_name = 2;      // Name of the task
+    }
+
+    // Feedback: progress updates during execution
+    message Feedback
+    {
+        int32 current_progress = 1;  // Current progress value
+        double percentage = 2;       // Completion percentage (0.0 to 1.0)
+        string status_message = 3;   // Status message
+    }
+
+    // Result: final outcome of the action
+    message Result
+    {
+        bool success = 1;            // Whether the action succeeded
+        int32 final_count = 2;       // Final count value
+        string message = 3;          // Result message
+        int64 execution_time_ms = 4; // Execution time in milliseconds
+    }
+
+    // Nested messages for action system
+    Goal goal = 1;
+    Feedback feedback = 2;
+    Result result = 3;
+}

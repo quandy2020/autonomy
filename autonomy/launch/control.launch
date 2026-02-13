@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  control 模块无独立进程，作为 system 的一部分运行（ControllerServer）。
+  本 launch 启动 system，从而带起 control 服务；若后续有 control 专用二进制可替换 process_name。
+-->
+<autolink>
+  <module>
+    <name>control</name>
+    <type>binary</type>
+    <process_name>autonomy.system.launcher --configuration_directory /opt/autonomy/configuration_files --configuration_basename autonomy.lua</process_name>
+  </module>
+</autolink>

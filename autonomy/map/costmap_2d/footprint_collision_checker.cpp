@@ -26,16 +26,13 @@ namespace map {
 namespace costmap_2d {
 
 template <typename CostmapT>
-FootprintCollisionChecker<CostmapT>::FootprintCollisionChecker()
-    : costmap_(nullptr) {}
+FootprintCollisionChecker<CostmapT>::FootprintCollisionChecker() : costmap_(nullptr) {}
 
 template <typename CostmapT>
-FootprintCollisionChecker<CostmapT>::FootprintCollisionChecker(CostmapT costmap)
-    : costmap_(costmap) {}
+FootprintCollisionChecker<CostmapT>::FootprintCollisionChecker(CostmapT costmap) : costmap_(costmap) {}
 
 template <typename CostmapT>
-double FootprintCollisionChecker<CostmapT>::footprintCost(
-    const Footprint& footprint) {
+double FootprintCollisionChecker<CostmapT>::footprintCost(const Footprint& footprint) {
     // now we really have to lay down the footprint in the costmap_ grid
     unsigned int x0, x1, y0, y1;
     double footprint_cost = 0.0;
@@ -74,15 +71,12 @@ double FootprintCollisionChecker<CostmapT>::footprintCost(
 }
 
 template <typename CostmapT>
-double FootprintCollisionChecker<CostmapT>::lineCost(int x0, int x1, int y0,
-                                                     int y1) const {
+double FootprintCollisionChecker<CostmapT>::lineCost(int x0, int x1, int y0, int y1) const {
     double line_cost = 0.0;
     double point_cost = -1.0;
 
-    for (utils::LineIterator line(x0, y0, x1, y1); line.isValid();
-         line.advance()) {
-        point_cost =
-            pointCost(line.getX(), line.getY());  // Score the current point
+    for (utils::LineIterator line(x0, y0, x1, y1); line.isValid(); line.advance()) {
+        point_cost = pointCost(line.getX(), line.getY());  // Score the current point
 
         // if in collision, no need to continue
         if (point_cost == static_cast<double>(LETHAL_OBSTACLE)) {
@@ -98,9 +92,7 @@ double FootprintCollisionChecker<CostmapT>::lineCost(int x0, int x1, int y0,
 }
 
 template <typename CostmapT>
-bool FootprintCollisionChecker<CostmapT>::worldToMap(double wx, double wy,
-                                                     unsigned int& mx,
-                                                     unsigned int& my) {
+bool FootprintCollisionChecker<CostmapT>::worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my) {
     return costmap_->worldToMap(wx, wy, mx, my);
 }
 
@@ -115,8 +107,8 @@ void FootprintCollisionChecker<CostmapT>::setCostmap(CostmapT costmap) {
 }
 
 template <typename CostmapT>
-double FootprintCollisionChecker<CostmapT>::footprintCostAtPose(
-    double x, double y, double theta, const Footprint& footprint) {
+double FootprintCollisionChecker<CostmapT>::footprintCostAtPose(double x, double y, double theta,
+                                                                const Footprint& footprint) {
     double cos_th = cos(theta);
     double sin_th = sin(theta);
     Footprint oriented_footprint;

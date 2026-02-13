@@ -44,9 +44,8 @@ double intbound(double s, double ds) {
     }
 }
 
-void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
-             const Eigen::Vector3d& min, const Eigen::Vector3d& max,
-             int& output_points_cnt, Eigen::Vector3d* output) {
+void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end, const Eigen::Vector3d& min,
+             const Eigen::Vector3d& max, int& output_points_cnt, Eigen::Vector3d* output) {
     //    std::cout << start << ' ' << end << std::endl;
     // From "A Fast Voxel Traversal Algorithm for Ray Tracing"
     // by John Amanatides and Andrew Woo, 1987
@@ -103,15 +102,13 @@ void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
 
     double dist = 0;
     while (true) {
-        if (x >= min.x() && x < max.x() && y >= min.y() && y < max.y() &&
-            z >= min.z() && z < max.z()) {
+        if (x >= min.x() && x < max.x() && y >= min.y() && y < max.y() && z >= min.z() && z < max.z()) {
             output[output_points_cnt](0) = x;
             output[output_points_cnt](1) = y;
             output[output_points_cnt](2) = z;
 
             output_points_cnt++;
-            dist = sqrt((x - start(0)) * (x - start(0)) +
-                        (y - start(1)) * (y - start(1)) +
+            dist = sqrt((x - start(0)) * (x - start(0)) + (y - start(1)) * (y - start(1)) +
                         (z - start(2)) * (z - start(2)));
 
             if (dist > maxDist)
@@ -147,9 +144,8 @@ void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
     }
 }
 
-void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
-             const Eigen::Vector3d& min, const Eigen::Vector3d& max,
-             std::vector<Eigen::Vector3d>* output) {
+void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end, const Eigen::Vector3d& min,
+             const Eigen::Vector3d& max, std::vector<Eigen::Vector3d>* output) {
     // From "A Fast Voxel Traversal Algorithm for Ray Tracing"
     // by John Amanatides and Andrew Woo, 1987
     // <http://www.cse.yorku.ca/~amana/research/grid.pdf>
@@ -207,8 +203,7 @@ void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
 
     double dist = 0;
     while (true) {
-        if (x >= min.x() && x < max.x() && y >= min.y() && y < max.y() &&
-            z >= min.z() && z < max.z()) {
+        if (x >= min.x() && x < max.x() && y >= min.y() && y < max.y() && z >= min.z() && z < max.z()) {
             output->push_back(Eigen::Vector3d(x, y, z));
 
             dist = (Eigen::Vector3d(x, y, z) - start).squaredNorm();
@@ -217,8 +212,7 @@ void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
                 return;
 
             if (output->size() > 1500) {
-                AERROR << "[Raycast] Too many raycast voxels: "
-                       << output->size();
+                AERROR << "[Raycast] Too many raycast voxels: " << output->size();
                 throw std::out_of_range("Too many raycast voxels");
             }
         }
@@ -252,8 +246,7 @@ void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
     }
 }
 
-bool RayCaster::setInput(const Eigen::Vector3d& start,
-                         const Eigen::Vector3d& end) {
+bool RayCaster::setInput(const Eigen::Vector3d& start, const Eigen::Vector3d& end) {
     start_ = start;
     end_ = end;
 
@@ -307,11 +300,9 @@ bool RayCaster::step(Eigen::Vector3d& ray_pt, bool verbose) {
 
     // step_num_++;
     if (verbose) {
-        AINFO << "[RayCaster] start_: " << start_.transpose()
-              << ", end_: " << end_.transpose()
-              << ", current: " << Eigen::Vector3i(x_, y_, z_).transpose()
-              << ". tMaxX_: " << tMaxX_ << ", tMaxY_: " << tMaxY_
-              << ", tMaxZ_: " << tMaxZ_;
+        AINFO << "[RayCaster] start_: " << start_.transpose() << ", end_: " << end_.transpose()
+              << ", current: " << Eigen::Vector3i(x_, y_, z_).transpose() << ". tMaxX_: " << tMaxX_
+              << ", tMaxY_: " << tMaxY_ << ", tMaxZ_: " << tMaxZ_;
     }
 
     if ((x_ == endX_ && y_ == endY_ && z_ == endZ_)) {

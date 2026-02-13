@@ -20,8 +20,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_3d {
 
-bool LoadPlyFile(const std::string& ply_filename,
-                 commsgs::sensor_msgs::PointCloud& cloud) {
+bool LoadPlyFile(const std::string& ply_filename, commsgs::sensor_msgs::PointCloud& cloud) {
     if (ply_filename.empty()) {
         return false;
     }

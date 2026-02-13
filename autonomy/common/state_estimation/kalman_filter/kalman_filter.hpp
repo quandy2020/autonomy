@@ -38,19 +38,13 @@ namespace state_estimation {
 /// @tparam     NoiseModelT   Type of the noise model.
 ///
 template <typename MotionModelT, typename NoiseModelT>
-class KalmanFilter
-    : public StateEstimationInterface<KalmanFilter<MotionModelT, NoiseModelT>>
+class KalmanFilter : public StateEstimationInterface<KalmanFilter<MotionModelT, NoiseModelT>>
 {
-    static_assert(
-        std::is_base_of<
-            common::motion_model::MotionModelInterface<MotionModelT>,
-            MotionModelT>::value,
-        "\n\nMotion model must inherit from MotionModelInterface\n\n");
-    static_assert(
-        std::is_base_of<NoiseInterface<NoiseModelT>, NoiseModelT>::value,
-        "\n\nNoise model must inherit from NoiseInterface\n\n");
-    static_assert(std::is_same<typename MotionModelT::State,
-                               typename NoiseModelT::State>::value,
+    static_assert(std::is_base_of<common::motion_model::MotionModelInterface<MotionModelT>, MotionModelT>::value,
+                  "\n\nMotion model must inherit from MotionModelInterface\n\n");
+    static_assert(std::is_base_of<NoiseInterface<NoiseModelT>, NoiseModelT>::value,
+                  "\n\nNoise model must inherit from NoiseInterface\n\n");
+    static_assert(std::is_same<typename MotionModelT::State, typename NoiseModelT::State>::value,
                   "\n\nMotion model and noise model must have the same "
                   "underlying state\n\n");
 
@@ -71,8 +65,7 @@ public:
     /// @param[in]  initial_state       The initial state of the filter.
     /// @param[in]  initial_covariance  The initial state covariance.
     ///
-    explicit KalmanFilter(MotionModelT motion_model, NoiseModelT noise_model,
-                          const State& initial_state,
+    explicit KalmanFilter(MotionModelT motion_model, NoiseModelT noise_model, const State& initial_state,
                           const StateMatrix& initial_covariance)
         : m_motion_model{motion_model},
           m_noise_model{noise_model},
@@ -90,9 +83,7 @@ public:
     State crtp_predict(const std::chrono::nanoseconds& dt) {
         m_state = m_motion_model.predict(m_state, dt);
         const auto& motion_jacobian = m_motion_model.jacobian(m_state, dt);
-        m_covariance =
-            motion_jacobian * m_covariance * motion_jacobian.transpose() +
-            m_noise_model.covariance(dt);
+        m_covariance = motion_jacobian * m_covariance * motion_jacobian.transpose() + m_noise_model.covariance(dt);
         return m_state;
     }
 
@@ -110,21 +101,15 @@ public:
     ///
     template <typename MeasurementT>
     State crtp_correct(const MeasurementT& measurement) {
-        const auto expected_measurement =
-            measurement.create_new_instance_from(m_state);
-        const auto innovation =
-            wrap_all_angles(measurement.state() - expected_measurement);
+        const auto expected_measurement = measurement.create_new_instance_from(m_state);
+        const auto innovation = wrap_all_angles(measurement.state() - expected_measurement);
         const auto mapping_matrix = measurement.mapping_matrix_from(m_state);
         const auto innovation_covariance =
-            mapping_matrix * m_covariance * mapping_matrix.transpose() +
-            measurement.covariance();
-        const auto kalman_gain = m_covariance * mapping_matrix.transpose() *
-                                 innovation_covariance.inverse();
+            mapping_matrix * m_covariance * mapping_matrix.transpose() + measurement.covariance();
+        const auto kalman_gain = m_covariance * mapping_matrix.transpose() * innovation_covariance.inverse();
         m_state += kalman_gain * innovation.vector();
         m_state.wrap_all_angles();
-        m_covariance =
-            (State::Matrix::Identity() - kalman_gain * mapping_matrix) *
-            m_covariance;
+        m_covariance = (State::Matrix::Identity() - kalman_gain * mapping_matrix) * m_covariance;
         return m_state;
     }
 
@@ -190,12 +175,10 @@ private:
 /// @return     Returns a valid KalmanFilter instance.
 ///
 template <typename MotionModelT, typename NoiseModelT>
-auto make_kalman_filter(
-    const MotionModelT& motion_model, const NoiseModelT& noise_model,
-    const typename MotionModelT::State& initial_state,
-    const typename MotionModelT::State::Matrix& initial_covariance) {
-    return KalmanFilter<MotionModelT, NoiseModelT>{
-        motion_model, noise_model, initial_state, initial_covariance};
+auto make_kalman_filter(const MotionModelT& motion_model, const NoiseModelT& noise_model,
+                        const typename MotionModelT::State& initial_state,
+                        const typename MotionModelT::State::Matrix& initial_covariance) {
+    return KalmanFilter<MotionModelT, NoiseModelT>{motion_model, noise_model, initial_state, initial_covariance};
 }
 
 ///
@@ -219,13 +202,11 @@ auto make_kalman_filter(
 /// @return     Returns a valid KalmanFilter instance.
 ///
 template <typename StateT>
-auto make_correction_only_kalman_filter(
-    const StateT& initial_state,
-    const typename StateT::Matrix& initial_covariance) {
+auto make_correction_only_kalman_filter(const StateT& initial_state,
+                                        const typename StateT::Matrix& initial_covariance) {
     struct DummyNoise : public NoiseInterface<DummyNoise> {
         using State = StateT;
-        typename State::Matrix crtp_covariance(
-            const std::chrono::nanoseconds&) const {
+        typename State::Matrix crtp_covariance(const std::chrono::nanoseconds&) const {
             throw std::runtime_error(
                 "Trying to use a correction-only Kalman filter to predict the "
                 "state.");
@@ -234,8 +215,7 @@ auto make_correction_only_kalman_filter(
 
     using MotionModel = common::motion_model::StationaryMotionModel<StateT>;
 
-    return make_kalman_filter(MotionModel{}, DummyNoise{}, initial_state,
-                              initial_covariance);
+    return make_kalman_filter(MotionModel{}, DummyNoise{}, initial_state, initial_covariance);
 }
 
 ///
@@ -257,32 +237,25 @@ auto make_correction_only_kalman_filter(
 /// @return     Returns a valid KalmanFilter instance.
 ///
 template <typename MotionModelT, typename NoiseModelT>
-auto make_kalman_filter(const MotionModelT& motion_model,
-                        const NoiseModelT& noise_model,
+auto make_kalman_filter(const MotionModelT& motion_model, const NoiseModelT& noise_model,
                         const typename MotionModelT::State& initial_state,
-                        const std::vector<typename MotionModelT::State::Scalar>&
-                            initial_variances) {
+                        const std::vector<typename MotionModelT::State::Scalar>& initial_variances) {
     using State = typename MotionModelT::State;
     if (initial_variances.size() != static_cast<std::size_t>(State::size())) {
-        std::runtime_error(
-            "Cannot create Kalman filter - dimensions mismatch. Provided " +
-            std::to_string(initial_variances.size()) + " variances, but " +
-            std::to_string(State::size()) + " required.");
+        std::runtime_error("Cannot create Kalman filter - dimensions mismatch. Provided " +
+                           std::to_string(initial_variances.size()) + " variances, but " +
+                           std::to_string(State::size()) + " required.");
     }
     typename State::Vector variances{State::Vector::Zero()};
     // A small enough epsilon to compare a floating point variance with zero.
-    const auto epsilon =
-        5.0F * std::numeric_limits<common::types::float32_t>::epsilon();
+    const auto epsilon = 5.0F * std::numeric_limits<common::types::float32_t>::epsilon();
     for (std::uint32_t i = 0; i < initial_variances.size(); ++i) {
-        if (common::helper_functions::abs_lte(initial_variances[i], 0.0F,
-                                              epsilon)) {
+        if (common::helper_functions::abs_lte(initial_variances[i], 0.0F, epsilon)) {
             throw std::domain_error("Variances must be positive");
         }
-        variances[static_cast<std::int32_t>(i)] =
-            initial_variances[i] * initial_variances[i];
+        variances[static_cast<std::int32_t>(i)] = initial_variances[i] * initial_variances[i];
     }
-    return KalmanFilter<MotionModelT, NoiseModelT>{
-        motion_model, noise_model, initial_state, variances.asDiagonal()};
+    return KalmanFilter<MotionModelT, NoiseModelT>{motion_model, noise_model, initial_state, variances.asDiagonal()};
 }
 
 }  // namespace state_estimation

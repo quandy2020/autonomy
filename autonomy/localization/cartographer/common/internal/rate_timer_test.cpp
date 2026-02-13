@@ -53,8 +53,7 @@ TEST(RateTimerTest, ComputeWallTimeRateRatio) {
         rate_timer.Pulse(time);
         time += common::FromSeconds(0.1);
         SimulatedClock::time +=
-            std::chrono::duration_cast<SimulatedClock::duration>(
-                std::chrono::duration<double>(0.05));
+            std::chrono::duration_cast<SimulatedClock::duration>(std::chrono::duration<double>(0.05));
     }
     EXPECT_NEAR(2., rate_timer.ComputeWallTimeRateRatio(), 1e-3);
 }

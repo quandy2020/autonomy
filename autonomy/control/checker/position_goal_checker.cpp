@@ -21,14 +21,10 @@ namespace control {
 namespace checker {
 
 PositionGoalChecker::PositionGoalChecker()
-    : xy_goal_tolerance_(0.25),
-      xy_goal_tolerance_sq_(0.0625),
-      stateful_(true),
-      position_reached_(false) {}
+    : xy_goal_tolerance_(0.25), xy_goal_tolerance_sq_(0.0625), stateful_(true), position_reached_(false) {}
 
-void PositionGoalChecker::Initialize(
-    const std::string& plugin_name,
-    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+void PositionGoalChecker::Initialize(const std::string& plugin_name,
+                                     const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     plugin_name_ = plugin_name;
 
     // TODO: Load parameters from configuration
@@ -43,10 +39,9 @@ void PositionGoalChecker::Reset() {
     position_reached_ = false;
 }
 
-bool PositionGoalChecker::IsGoalReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity) {
+bool PositionGoalChecker::IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
+                                        const commsgs::geometry_msgs::Pose& goal_pose,
+                                        const commsgs::geometry_msgs::Twist& velocity) {
     // If stateful and position was already reached, maintain state
     if (stateful_ && position_reached_) {
         return true;
@@ -66,9 +61,8 @@ bool PositionGoalChecker::IsGoalReached(
     return position_reached;
 }
 
-bool PositionGoalChecker::GetTolerances(
-    commsgs::geometry_msgs::Pose& pose_tolerance,
-    commsgs::geometry_msgs::Twist& vel_tolerance) {
+bool PositionGoalChecker::GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                                        commsgs::geometry_msgs::Twist& vel_tolerance) {
     double invalid_field = std::numeric_limits<double>::lowest();
 
     pose_tolerance.position.x = xy_goal_tolerance_;
@@ -100,3 +94,6 @@ void PositionGoalChecker::SetXYGoalTolerance(double tolerance) {
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
+
+// Plugins
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::PositionGoalChecker, autonomy::control::common::GoalChecker)

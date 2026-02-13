@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-IsBatteryLowCondition::IsBatteryLowCondition(const std::string& condition_name,
-                                             const BT::NodeConfiguration& conf)
+IsBatteryLowCondition::IsBatteryLowCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf),
       battery_topic_("/battery_status"),
       min_battery_(0.0),
@@ -47,11 +46,9 @@ void IsBatteryLowCondition::createROSInterfaces() {
     // empty
     if (battery_topic_new != battery_topic_ || !battery_sub_) {
         battery_topic_ = battery_topic_new;
-        node_ =
-            config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+        node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
         battery_sub_ = node_->CreateReader<commsgs::sensor_msgs::BatteryState>(
-            battery_topic_, std::bind(&IsBatteryLowCondition::batteryCallback,
-                                      this, std::placeholders::_1));
+            battery_topic_, std::bind(&IsBatteryLowCondition::batteryCallback, this, std::placeholders::_1));
     }
 }
 
@@ -66,8 +63,7 @@ BT::NodeStatus IsBatteryLowCondition::tick() {
     return BT::NodeStatus::FAILURE;
 }
 
-void IsBatteryLowCondition::batteryCallback(
-    const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg) {
+void IsBatteryLowCondition::batteryCallback(const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg) {
     if (is_voltage_) {
         is_battery_low_ = msg->voltage() <= min_battery_;
     } else {
@@ -83,7 +79,5 @@ void IsBatteryLowCondition::batteryCallback(
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::IsBatteryLowCondition>(
-        "IsBatteryLow");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsBatteryLowCondition>("IsBatteryLow");
 }

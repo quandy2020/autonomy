@@ -57,9 +57,8 @@ public:
     }
     */
     /** @brief Constructor with row major formatting */
-    Matrix3x3(const tf2Scalar& xx, const tf2Scalar& xy, const tf2Scalar& xz,
-              const tf2Scalar& yx, const tf2Scalar& yy, const tf2Scalar& yz,
-              const tf2Scalar& zx, const tf2Scalar& zy, const tf2Scalar& zz) {
+    Matrix3x3(const tf2Scalar& xx, const tf2Scalar& xy, const tf2Scalar& xz, const tf2Scalar& yx, const tf2Scalar& yy,
+              const tf2Scalar& yz, const tf2Scalar& zx, const tf2Scalar& zy, const tf2Scalar& zz) {
         setValue(xx, xy, xz, yx, yy, yz, zx, zy, zz);
     }
     /** @brief Copy constructor */
@@ -126,9 +125,8 @@ public:
      *  @param zx Bottom Left
      *  @param zy Bottom Middle
      *  @param zz Bottom Right*/
-    void setValue(const tf2Scalar& xx, const tf2Scalar& xy, const tf2Scalar& xz,
-                  const tf2Scalar& yx, const tf2Scalar& yy, const tf2Scalar& yz,
-                  const tf2Scalar& zx, const tf2Scalar& zy,
+    void setValue(const tf2Scalar& xx, const tf2Scalar& xy, const tf2Scalar& xz, const tf2Scalar& yx,
+                  const tf2Scalar& yy, const tf2Scalar& yz, const tf2Scalar& zx, const tf2Scalar& zy,
                   const tf2Scalar& zz) {
         m_el[0].setValue(xx, xy, xz);
         m_el[1].setValue(yx, yy, yz);
@@ -145,9 +143,8 @@ public:
         tf2Scalar wx = q.w() * xs, wy = q.w() * ys, wz = q.w() * zs;
         tf2Scalar xx = q.x() * xs, xy = q.x() * ys, xz = q.x() * zs;
         tf2Scalar yy = q.y() * ys, yz = q.y() * zs, zz = q.z() * zs;
-        setValue(tf2Scalar(1.0) - (yy + zz), xy - wz, xz + wy, xy + wz,
-                 tf2Scalar(1.0) - (xx + zz), yz - wx, xz - wy, yz + wx,
-                 tf2Scalar(1.0) - (xx + yy));
+        setValue(tf2Scalar(1.0) - (yy + zz), xy - wz, xz + wy, xy + wz, tf2Scalar(1.0) - (xx + zz), yz - wx, xz - wy,
+                 yz + wx, tf2Scalar(1.0) - (xx + yy));
     }
 
     /** @brief Set the matrix from euler angles using YPR around ZYX
@@ -156,8 +153,7 @@ public:
      *  @param pitch Pitch about Y axis
      *  @param roll Roll about X axis
      */
-    void setEulerZYX(const tf2Scalar& yaw, const tf2Scalar& pitch,
-                     const tf2Scalar& roll) __attribute__((deprecated)) {
+    void setEulerZYX(const tf2Scalar& yaw, const tf2Scalar& pitch, const tf2Scalar& roll) __attribute__((deprecated)) {
         setEulerYPR(yaw, pitch, roll);
     }
 
@@ -182,8 +178,7 @@ public:
         tf2Scalar sc = si * ch;
         tf2Scalar ss = si * sh;
 
-        setValue(cj * ch, sj * sc - cs, sj * cc + ss, cj * sh, sj * ss + cc,
-                 sj * cs - sc, -sj, cj * si, cj * ci);
+        setValue(cj * ch, sj * sc - cs, sj * cc + ss, cj * sh, sj * ss + cc, sj * cs - sc, -sj, cj * si, cj * ci);
     }
 
     /** @brief Set the matrix using RPY about XYZ fixed axes
@@ -198,16 +193,14 @@ public:
 
     /**@brief Set the matrix to the identity */
     void setIdentity() {
-        setValue(tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
-                 tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
-                 tf2Scalar(1.0));
+        setValue(tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(1.0), tf2Scalar(0.0),
+                 tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(1.0));
     }
 
     static const Matrix3x3& getIdentity() {
-        static const Matrix3x3 identityMatrix(
-            tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
-            tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
-            tf2Scalar(1.0));
+        static const Matrix3x3 identityMatrix(tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
+                                              tf2Scalar(1.0), tf2Scalar(0.0), tf2Scalar(0.0), tf2Scalar(0.0),
+                                              tf2Scalar(1.0));
         return identityMatrix;
     }
 
@@ -243,14 +236,12 @@ public:
             temp[1] = ((m_el[0].z() - m_el[2].x()) * s);
             temp[2] = ((m_el[1].x() - m_el[0].y()) * s);
         } else {
-            int i = m_el[0].x() < m_el[1].y()
-                        ? (m_el[1].y() < m_el[2].z() ? 2 : 1)
-                        : (m_el[0].x() < m_el[2].z() ? 2 : 0);
+            int i =
+                m_el[0].x() < m_el[1].y() ? (m_el[1].y() < m_el[2].z() ? 2 : 1) : (m_el[0].x() < m_el[2].z() ? 2 : 0);
             int j = (i + 1) % 3;
             int k = (i + 2) % 3;
 
-            tf2Scalar s =
-                tf2Sqrt(m_el[i][i] - m_el[j][j] - m_el[k][k] + tf2Scalar(1.0));
+            tf2Scalar s = tf2Sqrt(m_el[i][i] - m_el[j][j] - m_el[k][k] + tf2Scalar(1.0));
             temp[i] = s * tf2Scalar(0.5);
             s = tf2Scalar(0.5) / s;
 
@@ -267,9 +258,8 @@ public:
      * @param roll around X axis
      * @param solution_number Which solution of two possible solutions ( 1 or 2)
      * are possible values*/
-    __attribute__((deprecated)) void getEulerZYX(
-        tf2Scalar& yaw, tf2Scalar& pitch, tf2Scalar& roll,
-        unsigned int solution_number = 1) const {
+    __attribute__((deprecated)) void getEulerZYX(tf2Scalar& yaw, tf2Scalar& pitch, tf2Scalar& roll,
+                                                 unsigned int solution_number = 1) const {
         getEulerYPR(yaw, pitch, roll, solution_number);
     };
 
@@ -278,8 +268,7 @@ public:
      * @param yaw Yaw around Z axis
      * @param pitch Pitch around Y axis
      * @param roll around X axis */
-    void getEulerYPR(tf2Scalar& yaw, tf2Scalar& pitch, tf2Scalar& roll,
-                     unsigned int solution_number = 1) const {
+    void getEulerYPR(tf2Scalar& yaw, tf2Scalar& pitch, tf2Scalar& roll, unsigned int solution_number = 1) const {
         struct Euler {
             tf2Scalar yaw;
             tf2Scalar pitch;
@@ -315,15 +304,11 @@ public:
             euler_out.pitch = -tf2Asin(m_el[2].x());
             euler_out2.pitch = TF2SIMD_PI - euler_out.pitch;
 
-            euler_out.roll = tf2Atan2(m_el[2].y() / tf2Cos(euler_out.pitch),
-                                      m_el[2].z() / tf2Cos(euler_out.pitch));
-            euler_out2.roll = tf2Atan2(m_el[2].y() / tf2Cos(euler_out2.pitch),
-                                       m_el[2].z() / tf2Cos(euler_out2.pitch));
+            euler_out.roll = tf2Atan2(m_el[2].y() / tf2Cos(euler_out.pitch), m_el[2].z() / tf2Cos(euler_out.pitch));
+            euler_out2.roll = tf2Atan2(m_el[2].y() / tf2Cos(euler_out2.pitch), m_el[2].z() / tf2Cos(euler_out2.pitch));
 
-            euler_out.yaw = tf2Atan2(m_el[1].x() / tf2Cos(euler_out.pitch),
-                                     m_el[0].x() / tf2Cos(euler_out.pitch));
-            euler_out2.yaw = tf2Atan2(m_el[1].x() / tf2Cos(euler_out2.pitch),
-                                      m_el[0].x() / tf2Cos(euler_out2.pitch));
+            euler_out.yaw = tf2Atan2(m_el[1].x() / tf2Cos(euler_out.pitch), m_el[0].x() / tf2Cos(euler_out.pitch));
+            euler_out2.yaw = tf2Atan2(m_el[1].x() / tf2Cos(euler_out2.pitch), m_el[0].x() / tf2Cos(euler_out2.pitch));
         }
 
         if (solution_number == 1) {
@@ -344,8 +329,7 @@ public:
      * @param yaw Yaw around Z axis
      * @param solution_number Which solution of two possible solutions ( 1 or 2)
      * are possible values*/
-    void getRPY(tf2Scalar& roll, tf2Scalar& pitch, tf2Scalar& yaw,
-                unsigned int solution_number = 1) const {
+    void getRPY(tf2Scalar& roll, tf2Scalar& pitch, tf2Scalar& yaw, unsigned int solution_number = 1) const {
         getEulerYPR(yaw, pitch, roll, solution_number);
     }
 
@@ -354,10 +338,9 @@ public:
      */
 
     Matrix3x3 scaled(const Vector3& s) const {
-        return Matrix3x3(
-            m_el[0].x() * s.x(), m_el[0].y() * s.y(), m_el[0].z() * s.z(),
-            m_el[1].x() * s.x(), m_el[1].y() * s.y(), m_el[1].z() * s.z(),
-            m_el[2].x() * s.x(), m_el[2].y() * s.y(), m_el[2].z() * s.z());
+        return Matrix3x3(m_el[0].x() * s.x(), m_el[0].y() * s.y(), m_el[0].z() * s.z(), m_el[1].x() * s.x(),
+                         m_el[1].y() * s.y(), m_el[1].z() * s.z(), m_el[2].x() * s.x(), m_el[2].y() * s.y(),
+                         m_el[2].z() * s.z());
     }
 
     /**@brief Return the determinant of the matrix */
@@ -418,9 +401,7 @@ public:
                 max = v;
             }
 
-            tf2Scalar t =
-                threshold * (tf2Fabs(m_el[0][0]) + tf2Fabs(m_el[1][1]) +
-                             tf2Fabs(m_el[2][2]));
+            tf2Scalar t = threshold * (tf2Fabs(m_el[0][0]) + tf2Fabs(m_el[1][1]) + tf2Fabs(m_el[2][2]));
             if (max <= t) {
                 if (max <= TF2SIMD_EPSILON * t) {
                     return;
@@ -436,8 +417,7 @@ public:
             tf2Scalar cos;
             tf2Scalar sin;
             if (theta2 * theta2 < tf2Scalar(10 / TF2SIMD_EPSILON)) {
-                t = (theta >= 0) ? 1 / (theta + tf2Sqrt(1 + theta2))
-                                 : 1 / (theta - tf2Sqrt(1 + theta2));
+                t = (theta >= 0) ? 1 / (theta + tf2Sqrt(1 + theta2)) : 1 / (theta - tf2Sqrt(1 + theta2));
                 cos = 1 / tf2Sqrt(1 + t * t);
                 sin = cos * t;
             } else {
@@ -492,8 +472,7 @@ public:
 };
 
 TF2SIMD_FORCE_INLINE Matrix3x3& Matrix3x3::operator*=(const Matrix3x3& m) {
-    setValue(m.tdotx(m_el[0]), m.tdoty(m_el[0]), m.tdotz(m_el[0]),
-             m.tdotx(m_el[1]), m.tdoty(m_el[1]), m.tdotz(m_el[1]),
+    setValue(m.tdotx(m_el[0]), m.tdoty(m_el[0]), m.tdotz(m_el[0]), m.tdotx(m_el[1]), m.tdoty(m_el[1]), m.tdotz(m_el[1]),
              m.tdotx(m_el[2]), m.tdoty(m_el[2]), m.tdotz(m_el[2]));
     return *this;
 }
@@ -503,22 +482,19 @@ TF2SIMD_FORCE_INLINE tf2Scalar Matrix3x3::determinant() const {
 }
 
 TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::absolute() const {
-    return Matrix3x3(
-        tf2Fabs(m_el[0].x()), tf2Fabs(m_el[0].y()), tf2Fabs(m_el[0].z()),
-        tf2Fabs(m_el[1].x()), tf2Fabs(m_el[1].y()), tf2Fabs(m_el[1].z()),
-        tf2Fabs(m_el[2].x()), tf2Fabs(m_el[2].y()), tf2Fabs(m_el[2].z()));
+    return Matrix3x3(tf2Fabs(m_el[0].x()), tf2Fabs(m_el[0].y()), tf2Fabs(m_el[0].z()), tf2Fabs(m_el[1].x()),
+                     tf2Fabs(m_el[1].y()), tf2Fabs(m_el[1].z()), tf2Fabs(m_el[2].x()), tf2Fabs(m_el[2].y()),
+                     tf2Fabs(m_el[2].z()));
 }
 
 TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::transpose() const {
-    return Matrix3x3(m_el[0].x(), m_el[1].x(), m_el[2].x(), m_el[0].y(),
-                     m_el[1].y(), m_el[2].y(), m_el[0].z(), m_el[1].z(),
-                     m_el[2].z());
+    return Matrix3x3(m_el[0].x(), m_el[1].x(), m_el[2].x(), m_el[0].y(), m_el[1].y(), m_el[2].y(), m_el[0].z(),
+                     m_el[1].z(), m_el[2].z());
 }
 
 TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::adjoint() const {
-    return Matrix3x3(cofac(1, 1, 2, 2), cofac(0, 2, 2, 1), cofac(0, 1, 1, 2),
-                     cofac(1, 2, 2, 0), cofac(0, 0, 2, 2), cofac(0, 2, 1, 0),
-                     cofac(1, 0, 2, 1), cofac(0, 1, 2, 0), cofac(0, 0, 1, 1));
+    return Matrix3x3(cofac(1, 1, 2, 2), cofac(0, 2, 2, 1), cofac(0, 1, 1, 2), cofac(1, 2, 2, 0), cofac(0, 0, 2, 2),
+                     cofac(0, 2, 1, 0), cofac(1, 0, 2, 1), cofac(0, 1, 2, 0), cofac(0, 0, 1, 1));
 }
 
 TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::inverse() const {
@@ -526,38 +502,25 @@ TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::inverse() const {
     tf2Scalar det = (*this)[0].dot(co);
     tf2FullAssert(det != tf2Scalar(0.0));
     tf2Scalar s = tf2Scalar(1.0) / det;
-    return Matrix3x3(co.x() * s, cofac(0, 2, 2, 1) * s, cofac(0, 1, 1, 2) * s,
-                     co.y() * s, cofac(0, 0, 2, 2) * s, cofac(0, 2, 1, 0) * s,
-                     co.z() * s, cofac(0, 1, 2, 0) * s, cofac(0, 0, 1, 1) * s);
+    return Matrix3x3(co.x() * s, cofac(0, 2, 2, 1) * s, cofac(0, 1, 1, 2) * s, co.y() * s, cofac(0, 0, 2, 2) * s,
+                     cofac(0, 2, 1, 0) * s, co.z() * s, cofac(0, 1, 2, 0) * s, cofac(0, 0, 1, 1) * s);
 }
 
-TF2SIMD_FORCE_INLINE Matrix3x3
-Matrix3x3::transposeTimes(const Matrix3x3& m) const {
-    return Matrix3x3(m_el[0].x() * m[0].x() + m_el[1].x() * m[1].x() +
-                         m_el[2].x() * m[2].x(),
-                     m_el[0].x() * m[0].y() + m_el[1].x() * m[1].y() +
-                         m_el[2].x() * m[2].y(),
-                     m_el[0].x() * m[0].z() + m_el[1].x() * m[1].z() +
-                         m_el[2].x() * m[2].z(),
-                     m_el[0].y() * m[0].x() + m_el[1].y() * m[1].x() +
-                         m_el[2].y() * m[2].x(),
-                     m_el[0].y() * m[0].y() + m_el[1].y() * m[1].y() +
-                         m_el[2].y() * m[2].y(),
-                     m_el[0].y() * m[0].z() + m_el[1].y() * m[1].z() +
-                         m_el[2].y() * m[2].z(),
-                     m_el[0].z() * m[0].x() + m_el[1].z() * m[1].x() +
-                         m_el[2].z() * m[2].x(),
-                     m_el[0].z() * m[0].y() + m_el[1].z() * m[1].y() +
-                         m_el[2].z() * m[2].y(),
-                     m_el[0].z() * m[0].z() + m_el[1].z() * m[1].z() +
-                         m_el[2].z() * m[2].z());
+TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::transposeTimes(const Matrix3x3& m) const {
+    return Matrix3x3(m_el[0].x() * m[0].x() + m_el[1].x() * m[1].x() + m_el[2].x() * m[2].x(),
+                     m_el[0].x() * m[0].y() + m_el[1].x() * m[1].y() + m_el[2].x() * m[2].y(),
+                     m_el[0].x() * m[0].z() + m_el[1].x() * m[1].z() + m_el[2].x() * m[2].z(),
+                     m_el[0].y() * m[0].x() + m_el[1].y() * m[1].x() + m_el[2].y() * m[2].x(),
+                     m_el[0].y() * m[0].y() + m_el[1].y() * m[1].y() + m_el[2].y() * m[2].y(),
+                     m_el[0].y() * m[0].z() + m_el[1].y() * m[1].z() + m_el[2].y() * m[2].z(),
+                     m_el[0].z() * m[0].x() + m_el[1].z() * m[1].x() + m_el[2].z() * m[2].x(),
+                     m_el[0].z() * m[0].y() + m_el[1].z() * m[1].y() + m_el[2].z() * m[2].y(),
+                     m_el[0].z() * m[0].z() + m_el[1].z() * m[1].z() + m_el[2].z() * m[2].z());
 }
 
-TF2SIMD_FORCE_INLINE Matrix3x3
-Matrix3x3::timesTranspose(const Matrix3x3& m) const {
-    return Matrix3x3(m_el[0].dot(m[0]), m_el[0].dot(m[1]), m_el[0].dot(m[2]),
-                     m_el[1].dot(m[0]), m_el[1].dot(m[1]), m_el[1].dot(m[2]),
-                     m_el[2].dot(m[0]), m_el[2].dot(m[1]), m_el[2].dot(m[2]));
+TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::timesTranspose(const Matrix3x3& m) const {
+    return Matrix3x3(m_el[0].dot(m[0]), m_el[0].dot(m[1]), m_el[0].dot(m[2]), m_el[1].dot(m[0]), m_el[1].dot(m[1]),
+                     m_el[1].dot(m[2]), m_el[2].dot(m[0]), m_el[2].dot(m[1]), m_el[2].dot(m[2]));
 }
 
 TF2SIMD_FORCE_INLINE Vector3 operator*(const Matrix3x3& m, const Vector3& v) {
@@ -568,11 +531,9 @@ TF2SIMD_FORCE_INLINE Vector3 operator*(const Vector3& v, const Matrix3x3& m) {
     return Vector3(m.tdotx(v), m.tdoty(v), m.tdotz(v));
 }
 
-TF2SIMD_FORCE_INLINE Matrix3x3 operator*(const Matrix3x3& m1,
-                                         const Matrix3x3& m2) {
-    return Matrix3x3(m2.tdotx(m1[0]), m2.tdoty(m1[0]), m2.tdotz(m1[0]),
-                     m2.tdotx(m1[1]), m2.tdoty(m1[1]), m2.tdotz(m1[1]),
-                     m2.tdotx(m1[2]), m2.tdoty(m1[2]), m2.tdotz(m1[2]));
+TF2SIMD_FORCE_INLINE Matrix3x3 operator*(const Matrix3x3& m1, const Matrix3x3& m2) {
+    return Matrix3x3(m2.tdotx(m1[0]), m2.tdoty(m1[0]), m2.tdotz(m1[0]), m2.tdotx(m1[1]), m2.tdoty(m1[1]),
+                     m2.tdotz(m1[1]), m2.tdotx(m1[2]), m2.tdoty(m1[2]), m2.tdotz(m1[2]));
 }
 
 /*
@@ -592,10 +553,9 @@ m1[0][2] * m2[0][2] + m1[1][2] * m2[1][2] + m1[2][2] * m2[2][2]);
 /**@brief Equality operator between two matrices
  * It will test all elements are equal.  */
 TF2SIMD_FORCE_INLINE bool operator==(const Matrix3x3& m1, const Matrix3x3& m2) {
-    return (
-        m1[0][0] == m2[0][0] && m1[1][0] == m2[1][0] && m1[2][0] == m2[2][0] &&
-        m1[0][1] == m2[0][1] && m1[1][1] == m2[1][1] && m1[2][1] == m2[2][1] &&
-        m1[0][2] == m2[0][2] && m1[1][2] == m2[1][2] && m1[2][2] == m2[2][2]);
+    return (m1[0][0] == m2[0][0] && m1[1][0] == m2[1][0] && m1[2][0] == m2[2][0] && m1[0][1] == m2[0][1] &&
+            m1[1][1] == m2[1][1] && m1[2][1] == m2[2][1] && m1[0][2] == m2[0][2] && m1[1][2] == m2[1][2] &&
+            m1[2][2] == m2[2][2]);
 }
 
 /// for serialization
@@ -608,32 +568,27 @@ struct Matrix3x3DoubleData {
     Vector3DoubleData m_el[3];
 };
 
-TF2SIMD_FORCE_INLINE void Matrix3x3::serialize(
-    struct Matrix3x3Data& dataOut) const {
+TF2SIMD_FORCE_INLINE void Matrix3x3::serialize(struct Matrix3x3Data& dataOut) const {
     for (int i = 0; i < 3; i++)
         m_el[i].serialize(dataOut.m_el[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Matrix3x3::serializeFloat(
-    struct Matrix3x3FloatData& dataOut) const {
+TF2SIMD_FORCE_INLINE void Matrix3x3::serializeFloat(struct Matrix3x3FloatData& dataOut) const {
     for (int i = 0; i < 3; i++)
         m_el[i].serializeFloat(dataOut.m_el[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Matrix3x3::deSerialize(
-    const struct Matrix3x3Data& dataIn) {
+TF2SIMD_FORCE_INLINE void Matrix3x3::deSerialize(const struct Matrix3x3Data& dataIn) {
     for (int i = 0; i < 3; i++)
         m_el[i].deSerialize(dataIn.m_el[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Matrix3x3::deSerializeFloat(
-    const struct Matrix3x3FloatData& dataIn) {
+TF2SIMD_FORCE_INLINE void Matrix3x3::deSerializeFloat(const struct Matrix3x3FloatData& dataIn) {
     for (int i = 0; i < 3; i++)
         m_el[i].deSerializeFloat(dataIn.m_el[i]);
 }
 
-TF2SIMD_FORCE_INLINE void Matrix3x3::deSerializeDouble(
-    const struct Matrix3x3DoubleData& dataIn) {
+TF2SIMD_FORCE_INLINE void Matrix3x3::deSerializeDouble(const struct Matrix3x3DoubleData& dataIn) {
     for (int i = 0; i < 3; i++)
         m_el[i].deSerializeDouble(dataIn.m_el[i]);
 }

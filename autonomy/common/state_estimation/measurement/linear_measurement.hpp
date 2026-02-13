@@ -42,9 +42,7 @@ template <typename StateT>
 class LinearMeasurement : public MeasurementInterface<LinearMeasurement<StateT>>
 {
     template <typename OtherStateT>
-    using MappingMatrixFrom =
-        Eigen::Matrix<typename StateT::Scalar, StateT::size(),
-                      OtherStateT::size()>;
+    using MappingMatrixFrom = Eigen::Matrix<typename StateT::Scalar, StateT::size(), OtherStateT::size()>;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -58,8 +56,7 @@ public:
     /// @param[in]  measurement  The measurement
     /// @param[in]  covariance   The covariance
     ///
-    explicit LinearMeasurement(const typename StateT::Vector& measurement,
-                               const typename StateT::Matrix& covariance)
+    explicit LinearMeasurement(const typename StateT::Vector& measurement, const typename StateT::Matrix& covariance)
         : m_measurement{measurement}, m_covariance{covariance} {}
     ///
     /// @brief      Convenience factory function to construct a measurement from
@@ -75,12 +72,9 @@ public:
     /// @param[in]  standard_deviation  The standard deviation for each
     /// variable.
     ///
-    static LinearMeasurement create_with_stddev(
-        const typename StateT::Vector& measurement,
-        const typename StateT::Vector& standard_deviation) {
-        return LinearMeasurement{
-            measurement,
-            standard_deviation.array().square().matrix().asDiagonal()};
+    static LinearMeasurement create_with_stddev(const typename StateT::Vector& measurement,
+                                                const typename StateT::Vector& standard_deviation) {
+        return LinearMeasurement{measurement, standard_deviation.array().square().matrix().asDiagonal()};
     }
 
     ///
@@ -91,9 +85,8 @@ public:
     template <typename NewScalarT>
     auto cast() const noexcept {
         using NewState = decltype(m_measurement.template cast<NewScalarT>());
-        return LinearMeasurement<NewState>{
-            m_measurement.vector().template cast<NewScalarT>(),
-            m_covariance.template cast<NewScalarT>()};
+        return LinearMeasurement<NewState>{m_measurement.vector().template cast<NewScalarT>(),
+                                           m_covariance.template cast<NewScalarT>()};
     }
 
 protected:
@@ -182,31 +175,24 @@ protected:
     /// @return     A matrix M, such that other_state = M * this_state.
     ///
     template <typename OtherStateT>
-    MappingMatrixFrom<OtherStateT> crtp_mapping_matrix_from(
-        const OtherStateT&) const {
-        MappingMatrixFrom<OtherStateT> m{
-            MappingMatrixFrom<OtherStateT>::Zero()};
+    MappingMatrixFrom<OtherStateT> crtp_mapping_matrix_from(const OtherStateT&) const {
+        MappingMatrixFrom<OtherStateT> m{MappingMatrixFrom<OtherStateT>::Zero()};
         auto fill_mapping_matrix = [&m, this](auto variable) {
             using VariableT = std::decay_t<decltype(variable)>;
-            constexpr auto index_in_this_state =
-                StateT::template index_of<VariableT>();
-            constexpr auto index_in_other_state =
-                OtherStateT::template index_of<VariableT>();
+            constexpr auto index_in_this_state = StateT::template index_of<VariableT>();
+            constexpr auto index_in_other_state = OtherStateT::template index_of<VariableT>();
             m(index_in_this_state, index_in_other_state) = 1;
         };
         using CommonVariablesTuple =
-            typename autonomy::common::type_traits::intersect<
-                typename StateT::Variables,
-                typename OtherStateT::Variables>::type;
+            typename autonomy::common::type_traits::intersect<typename StateT::Variables,
+                                                              typename OtherStateT::Variables>::type;
         common::type_traits::visit(CommonVariablesTuple{}, fill_mapping_matrix);
         return m;
     }
 
     /// @brief An equality operator.
-    friend bool operator==(const LinearMeasurement& lhs,
-                           const LinearMeasurement& rhs) {
-        return (lhs.state() == rhs.state()) &&
-               lhs.covariance().isApprox(rhs.covariance());
+    friend bool operator==(const LinearMeasurement& lhs, const LinearMeasurement& rhs) {
+        return (lhs.state() == rhs.state()) && lhs.covariance().isApprox(rhs.covariance());
     }
 
 private:

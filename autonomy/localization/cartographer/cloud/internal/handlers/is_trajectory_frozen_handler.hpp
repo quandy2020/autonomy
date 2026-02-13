@@ -24,14 +24,11 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    IsTrajectoryFrozenSignature, proto::IsTrajectoryFrozenRequest,
-    proto::IsTrajectoryFrozenResponse,
-    "/cartographer.cloud.proto.MapBuilderService/IsTrajectoryFrozen")
+DEFINE_HANDLER_SIGNATURE(IsTrajectoryFrozenSignature, proto::IsTrajectoryFrozenRequest,
+                         proto::IsTrajectoryFrozenResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/IsTrajectoryFrozen")
 
-class IsTrajectoryFrozenHandler
-    : public autonomy::common::async_grpc::RpcHandler<
-          IsTrajectoryFrozenSignature>
+class IsTrajectoryFrozenHandler : public autonomy::common::async_grpc::RpcHandler<IsTrajectoryFrozenSignature>
 {
 public:
     void OnRequest(const proto::IsTrajectoryFrozenRequest& request) override;

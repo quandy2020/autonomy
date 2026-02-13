@@ -56,10 +56,8 @@ public:
      */
     ~SavitzkyGolaySmoother() override = default;
 
-    void Configure(
-        std::string name, std::shared_ptr<void> /*costmap_sub*/,
-        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/)
-        override;
+    void Configure(std::string name, std::shared_ptr<void> /*costmap_sub*/,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) override;
 
     /**
      * @brief Method to cleanup resources.
@@ -85,8 +83,7 @@ public:
      * @return If smoothing was completed (true) or interrupted by time limit
      * (false)
      */
-    bool Smooth(commsgs::planning_msgs::Path& path,
-                const std::chrono::milliseconds& max_time) override;
+    bool Smooth(commsgs::planning_msgs::Path& path, const std::chrono::milliseconds& max_time) override;
 
     /**
      * @brief Method to calculate SavitzkyGolay Coefficients
@@ -102,8 +99,7 @@ protected:
      * @param max_time Maximum time to compute, stop early if over limit
      * @return If smoothing was successful
      */
-    bool SmoothImpl(commsgs::planning_msgs::Path& path,
-                    bool& reversing_segment);
+    bool SmoothImpl(commsgs::planning_msgs::Path& path, bool& reversing_segment);
 
     bool do_refinement_, enforce_path_inversion_;
     int refinement_num_, window_size_, half_window_size_, poly_order_;

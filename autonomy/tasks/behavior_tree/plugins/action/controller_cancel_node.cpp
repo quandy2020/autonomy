@@ -22,14 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ControllerCancelNode::ControllerCancelNode(const std::string& xml_tag_name,
-                                           const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
-
-BT::NodeStatus ControllerCancelNode::tick() {
-    // TODO: Implement controller cancel behavior
-    return BT::NodeStatus::SUCCESS;
-}
+ControllerCancel::ControllerCancel(const std::string& xml_tag_name, const std::string& action_name,
+                                   const BT::NodeConfiguration& conf)
+    : BtCancelActionNode<proto::FollowPathAction>(xml_tag_name, action_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -39,13 +34,11 @@ BT::NodeStatus ControllerCancelNode::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::
-                                    action::ControllerCancelNode>(name, config);
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ControllerCancel>(name, "follow_path",
+                                                                                                   config);
     };
 
-    factory.registerBuilder<
-        autonomy::tasks::behavior_tree::plugins::action::ControllerCancelNode>(
-        "CancelControl", builder);
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ControllerCancel>("CancelControl",
+                                                                                               builder);
 }

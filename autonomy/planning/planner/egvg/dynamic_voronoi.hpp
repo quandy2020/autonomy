@@ -94,8 +94,7 @@ public:
     //! returns whether the specified cell is part of the (pruned) Voronoi graph
     bool isVoronoi(int x, int y) const;
     bool isVoronoiWithDisThr(int x, int y, float disThreSq) const;
-    bool isVoronoiWithDisThr(int x, int y, float disThreSqLow,
-                             float disThreSqHight) const;
+    bool isVoronoiWithDisThr(int x, int y, float disThreSqLow, float disThreSqHight) const;
     //! checks whether the specficied location is occupied
     bool isOccupied(int x, int y) const;
     //! write the current distance map and voronoi diagram as ppm file
@@ -134,13 +133,7 @@ private:
         occupied = 1
     } State;
 
-    typedef enum {
-        fwNotQueued = 1,
-        fwQueued = 2,
-        fwProcessed = 3,
-        bwQueued = 4,
-        bwProcessed = 1
-    } QueueingState;
+    typedef enum { fwNotQueued = 1, fwQueued = 2, fwProcessed = 3, bwQueued = 4, bwProcessed = 1 } QueueingState;
 
     typedef enum { invalidObstData = SHRT_MAX / 2 } ObstDataState;
 
@@ -149,8 +142,7 @@ private:
     // methods
     void setObstacle(int x, int y);
     void removeObstacle(int x, int y);
-    inline void checkVoro(int x, int y, int nx, int ny, dataCell& c,
-                          dataCell& nc);
+    inline void checkVoro(int x, int y, int nx, int ny, dataCell& c, dataCell& nc);
     void recheckVoro();
     void commitAndColorize(bool updateRealDist = true);
     inline void reviveVoroNeighbors(int& x, int& y);

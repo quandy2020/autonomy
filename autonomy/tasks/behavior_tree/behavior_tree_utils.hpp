@@ -40,8 +40,7 @@ namespace behavior_tree {
  * @param key XML string
  * @return geometry_msgs::msg::Point
  */
-inline commsgs::geometry_msgs::Point ConvertFromStringPoint(
-    const std::string& key) {
+inline commsgs::geometry_msgs::Point ConvertFromStringPoint(const std::string& key) {
     // JSON support not yet implemented
     // if string starts with "json:{", try to parse it as json
     // if (key.substr(0, 5) == "json:") {
@@ -52,8 +51,7 @@ inline commsgs::geometry_msgs::Point ConvertFromStringPoint(
     // three real numbers separated by semicolons
     auto parts = BT::splitString(key, ';');
     if (parts.size() != 3) {
-        throw std::runtime_error(
-            "invalid number of fields for point attribute)");
+        throw std::runtime_error("invalid number of fields for point attribute)");
     } else {
         commsgs::geometry_msgs::Point position;
         position.x = BT::convertFromString<double>(parts[0]);
@@ -68,8 +66,7 @@ inline commsgs::geometry_msgs::Point ConvertFromStringPoint(
  * @param key XML string
  * @return geometry_msgs::msg::Quaternion
  */
-inline commsgs::geometry_msgs::Quaternion ConvertFromStringQuaternion(
-    const std::string& key) {
+inline commsgs::geometry_msgs::Quaternion ConvertFromStringQuaternion(const std::string& key) {
     // JSON support not yet implemented
     // if string starts with "json:{", try to parse it as json
     // if (key.substr(0, 5) == "json:") {
@@ -80,8 +77,7 @@ inline commsgs::geometry_msgs::Quaternion ConvertFromStringQuaternion(
     // four real numbers separated by semicolons
     auto parts = BT::splitString(key, ';');
     if (parts.size() != 4) {
-        throw std::runtime_error(
-            "invalid number of fields for orientation attribute)");
+        throw std::runtime_error("invalid number of fields for orientation attribute)");
     } else {
         commsgs::geometry_msgs::Quaternion orientation;
         orientation.x = BT::convertFromString<double>(parts[0]);
@@ -97,8 +93,7 @@ inline commsgs::geometry_msgs::Quaternion ConvertFromStringQuaternion(
  * @param key XML string
  * @return geometry_msgs::msg::PoseStamped
  */
-inline commsgs::geometry_msgs::PoseStamped ConvertFromStringPoseStamped(
-    const std::string& key) {
+inline commsgs::geometry_msgs::PoseStamped ConvertFromStringPoseStamped(const std::string& key) {
     // JSON support not yet implemented
     // if string starts with "json:{", try to parse it as json
     // if (key.substr(0, 5) == "json:") {
@@ -109,27 +104,20 @@ inline commsgs::geometry_msgs::PoseStamped ConvertFromStringPoseStamped(
     // 7 real numbers separated by semicolons
     auto parts = BT::splitString(key, ';');
     if (parts.size() != 9) {
-        throw std::runtime_error(
-            "invalid number of fields for PoseStamped attribute)");
+        throw std::runtime_error("invalid number of fields for PoseStamped attribute)");
     } else {
         commsgs::geometry_msgs::PoseStamped pose_stamped;
         int64_t ns = BT::convertFromString<int64_t>(parts[0]);
-        pose_stamped.header.stamp = commsgs::builtin_interfaces::Time(
-            static_cast<int32_t>(ns / 1000000000),
-            static_cast<uint32_t>(ns % 1000000000));
-        pose_stamped.header.frame_id =
-            BT::convertFromString<std::string>(parts[1]);
+        pose_stamped.header.stamp = commsgs::builtin_interfaces::Time(static_cast<int32_t>(ns / 1000000000),
+                                                                      static_cast<uint32_t>(ns % 1000000000));
+        pose_stamped.header.frame_id = BT::convertFromString<std::string>(parts[1]);
         pose_stamped.pose.position.x = BT::convertFromString<double>(parts[2]);
         pose_stamped.pose.position.y = BT::convertFromString<double>(parts[3]);
         pose_stamped.pose.position.z = BT::convertFromString<double>(parts[4]);
-        pose_stamped.pose.orientation.x =
-            BT::convertFromString<double>(parts[5]);
-        pose_stamped.pose.orientation.y =
-            BT::convertFromString<double>(parts[6]);
-        pose_stamped.pose.orientation.z =
-            BT::convertFromString<double>(parts[7]);
-        pose_stamped.pose.orientation.w =
-            BT::convertFromString<double>(parts[8]);
+        pose_stamped.pose.orientation.x = BT::convertFromString<double>(parts[5]);
+        pose_stamped.pose.orientation.y = BT::convertFromString<double>(parts[6]);
+        pose_stamped.pose.orientation.z = BT::convertFromString<double>(parts[7]);
+        pose_stamped.pose.orientation.w = BT::convertFromString<double>(parts[8]);
         return pose_stamped;
     }
 }
@@ -139,8 +127,7 @@ inline commsgs::geometry_msgs::PoseStamped ConvertFromStringPoseStamped(
  * @param key XML string
  * @return std::vector<commsgs::geometry_msgs::PoseStamped>
  */
-inline std::vector<commsgs::geometry_msgs::PoseStamped> ConvertFromStringVector(
-    const std::string& key) {
+inline std::vector<commsgs::geometry_msgs::PoseStamped> ConvertFromStringVector(const std::string& key) {
     // JSON support not yet implemented
     // if string starts with "json:{", try to parse it as json
     // if (key.substr(0, 5) == "json:") {
@@ -151,32 +138,22 @@ inline std::vector<commsgs::geometry_msgs::PoseStamped> ConvertFromStringVector(
 
     auto parts = BT::splitString(key, ';');
     if (parts.size() % 9 != 0) {
-        throw std::runtime_error(
-            "invalid number of fields for std::vector<PoseStamped> attribute)");
+        throw std::runtime_error("invalid number of fields for std::vector<PoseStamped> attribute)");
     } else {
         std::vector<commsgs::geometry_msgs::PoseStamped> poses;
         for (size_t i = 0; i < parts.size(); i += 9) {
             commsgs::geometry_msgs::PoseStamped pose_stamped;
             int64_t ns = BT::convertFromString<int64_t>(parts[i]);
-            pose_stamped.header.stamp = commsgs::builtin_interfaces::Time(
-                static_cast<int32_t>(ns / 1000000000),
-                static_cast<uint32_t>(ns % 1000000000));
-            pose_stamped.header.frame_id =
-                BT::convertFromString<std::string>(parts[i + 1]);
-            pose_stamped.pose.position.x =
-                BT::convertFromString<double>(parts[i + 2]);
-            pose_stamped.pose.position.y =
-                BT::convertFromString<double>(parts[i + 3]);
-            pose_stamped.pose.position.z =
-                BT::convertFromString<double>(parts[i + 4]);
-            pose_stamped.pose.orientation.x =
-                BT::convertFromString<double>(parts[i + 5]);
-            pose_stamped.pose.orientation.y =
-                BT::convertFromString<double>(parts[i + 6]);
-            pose_stamped.pose.orientation.z =
-                BT::convertFromString<double>(parts[i + 7]);
-            pose_stamped.pose.orientation.w =
-                BT::convertFromString<double>(parts[i + 8]);
+            pose_stamped.header.stamp = commsgs::builtin_interfaces::Time(static_cast<int32_t>(ns / 1000000000),
+                                                                          static_cast<uint32_t>(ns % 1000000000));
+            pose_stamped.header.frame_id = BT::convertFromString<std::string>(parts[i + 1]);
+            pose_stamped.pose.position.x = BT::convertFromString<double>(parts[i + 2]);
+            pose_stamped.pose.position.y = BT::convertFromString<double>(parts[i + 3]);
+            pose_stamped.pose.position.z = BT::convertFromString<double>(parts[i + 4]);
+            pose_stamped.pose.orientation.x = BT::convertFromString<double>(parts[i + 5]);
+            pose_stamped.pose.orientation.y = BT::convertFromString<double>(parts[i + 6]);
+            pose_stamped.pose.orientation.z = BT::convertFromString<double>(parts[i + 7]);
+            pose_stamped.pose.orientation.w = BT::convertFromString<double>(parts[i + 8]);
             poses.push_back(pose_stamped);
         }
         return poses;
@@ -235,8 +212,7 @@ BT::convertFromString<double>(parts[i + 8]);
  * @param key XML string
  * @return commsgs::planning_msgs::Path
  */
-inline commsgs::planning_msgs::Path ConvertFromStringPath(
-    const std::string& key) {
+inline commsgs::planning_msgs::Path ConvertFromStringPath(const std::string& key) {
     // JSON support not yet implemented
     // if string starts with "json:{", try to parse it as json
     // if (key.substr(0, 5) == "json:") {
@@ -246,37 +222,26 @@ inline commsgs::planning_msgs::Path ConvertFromStringPath(
 
     auto parts = BT::splitString(key, ';');
     if ((parts.size() - 2) % 9 != 0) {
-        throw std::runtime_error(
-            "invalid number of fields for Path attribute)");
+        throw std::runtime_error("invalid number of fields for Path attribute)");
     } else {
         commsgs::planning_msgs::Path path;
         int64_t ns = BT::convertFromString<int64_t>(parts[0]);
-        path.header.stamp = commsgs::builtin_interfaces::Time(
-            static_cast<int32_t>(ns / 1000000000),
-            static_cast<uint32_t>(ns % 1000000000));
+        path.header.stamp = commsgs::builtin_interfaces::Time(static_cast<int32_t>(ns / 1000000000),
+                                                              static_cast<uint32_t>(ns % 1000000000));
         path.header.frame_id = BT::convertFromString<std::string>(parts[1]);
         for (size_t i = 2; i < parts.size(); i += 9) {
             commsgs::geometry_msgs::PoseStamped pose_stamped;
             int64_t ns = BT::convertFromString<int64_t>(parts[i]);
-            pose_stamped.header.stamp = commsgs::builtin_interfaces::Time(
-                static_cast<int32_t>(ns / 1000000000),
-                static_cast<uint32_t>(ns % 1000000000));
-            pose_stamped.header.frame_id =
-                BT::convertFromString<std::string>(parts[i + 1]);
-            pose_stamped.pose.position.x =
-                BT::convertFromString<double>(parts[i + 2]);
-            pose_stamped.pose.position.y =
-                BT::convertFromString<double>(parts[i + 3]);
-            pose_stamped.pose.position.z =
-                BT::convertFromString<double>(parts[i + 4]);
-            pose_stamped.pose.orientation.x =
-                BT::convertFromString<double>(parts[i + 5]);
-            pose_stamped.pose.orientation.y =
-                BT::convertFromString<double>(parts[i + 6]);
-            pose_stamped.pose.orientation.z =
-                BT::convertFromString<double>(parts[i + 7]);
-            pose_stamped.pose.orientation.w =
-                BT::convertFromString<double>(parts[i + 8]);
+            pose_stamped.header.stamp = commsgs::builtin_interfaces::Time(static_cast<int32_t>(ns / 1000000000),
+                                                                          static_cast<uint32_t>(ns % 1000000000));
+            pose_stamped.header.frame_id = BT::convertFromString<std::string>(parts[i + 1]);
+            pose_stamped.pose.position.x = BT::convertFromString<double>(parts[i + 2]);
+            pose_stamped.pose.position.y = BT::convertFromString<double>(parts[i + 3]);
+            pose_stamped.pose.position.z = BT::convertFromString<double>(parts[i + 4]);
+            pose_stamped.pose.orientation.x = BT::convertFromString<double>(parts[i + 5]);
+            pose_stamped.pose.orientation.y = BT::convertFromString<double>(parts[i + 6]);
+            pose_stamped.pose.orientation.z = BT::convertFromString<double>(parts[i + 7]);
+            pose_stamped.pose.orientation.w = BT::convertFromString<double>(parts[i + 8]);
             path.poses.push_back(pose_stamped);
         }
         return path;
@@ -397,8 +362,7 @@ BT::convertFromString<std::string>(parts[i + 12]);
  * @param key XML string
  * @return std::chrono::milliseconds
  */
-inline std::chrono::milliseconds ConvertFromStringMilliseconds(
-    const std::string& key) {
+inline std::chrono::milliseconds ConvertFromStringMilliseconds(const std::string& key) {
     // JSON support not yet implemented
     // if string starts with "json:{", try to parse it as json
     // if (key.substr(0, 5) == "json:") {
@@ -416,12 +380,10 @@ inline std::chrono::milliseconds ConvertFromStringMilliseconds(
  * @return <T1>
  */
 template <typename T1, typename T2 = BT::TreeNode>
-T1 DeconflictPortAndParamFrame(std::shared_ptr<::autolink::Node> node,
-                               const std::string& param_name,
+T1 DeconflictPortAndParamFrame(std::shared_ptr<::autolink::Node> node, const std::string& param_name,
                                const T2* behavior_tree_node) {
     T1 param_value;
-    bool param_from_input =
-        behavior_tree_node->getInput(param_name, param_value).has_value();
+    bool param_from_input = behavior_tree_node->getInput(param_name, param_value).has_value();
 
     if (!param_from_input) {
         // TODO: Implement parameter getting from autolink node
@@ -429,8 +391,7 @@ T1 DeconflictPortAndParamFrame(std::shared_ptr<::autolink::Node> node,
         // behavior tree xml file, using parameter from autolink";
         // node->get_parameter(param_name, param_value);
         // return param_value;
-        throw std::runtime_error("Parameter '" + param_name +
-                                 "' not provided by behavior tree xml file");
+        throw std::runtime_error("Parameter '" + param_name + "' not provided by behavior tree xml file");
     } else {
         // LOG(DEBUG) << "Parameter '" << param_name << "' provided by behavior
         // tree xml file";
@@ -451,8 +412,7 @@ T1 DeconflictPortAndParamFrame(std::shared_ptr<::autolink::Node> node,
  * @return <T>
  */
 template <typename T>
-inline bool GetInputPortOrBlackboard(const BT::TreeNode& bt_node,
-                                     const BT::Blackboard& blackboard,
+inline bool GetInputPortOrBlackboard(const BT::TreeNode& bt_node, const BT::Blackboard& blackboard,
                                      const std::string& param_name, T& value) {
     if (bt_node.getInput<T>(param_name, value)) {
         return true;
@@ -464,8 +424,7 @@ inline bool GetInputPortOrBlackboard(const BT::TreeNode& bt_node,
 }
 
 // Macro to remove boiler plate when using getInputPortOrBlackboard
-#define GetInputOrBlackboard(name, value) \
-    GetInputPortOrBlackboard(*this, *(this->config().blackboard), name, value);
+#define GetInputOrBlackboard(name, value) GetInputPortOrBlackboard(*this, *(this->config().blackboard), name, value);
 
 }  // namespace behavior_tree
 }  // namespace tasks

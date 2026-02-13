@@ -23,16 +23,12 @@
 namespace autonomy {
 namespace transform {
 
-StaticTransform::StaticTransform(
-    const autonomy::transform::proto::TransformOptions& options,
-    ::autolink::Node* node)
+StaticTransform::StaticTransform(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node)
     : static_transform_options_(options), node_(node) {
     ::autolink::proto::RoleAttributes attr;
     attr.set_channel_name("/tf_static");
-    attr.mutable_qos_profile()->CopyFrom(
-        ::autolink::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
-    writer_ =
-        node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
+    attr.mutable_qos_profile()->CopyFrom(::autolink::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
+    writer_ = node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
     SendTransforms();
 }
 
@@ -49,9 +45,8 @@ void StaticTransform::SendTransforms() {
     }
 }
 
-bool StaticTransform::ParseFromYaml(
-    const std::string& file_path,
-    std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
+bool StaticTransform::ParseFromYaml(const std::string& file_path,
+                                    std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
     common::ParamHandler param_handler(file_path);
     if (!param_handler.FileOpenedSuccessfully()) {
         AERROR << "Extrinsic yaml file does not exist: " << file_path;
@@ -68,8 +63,7 @@ bool StaticTransform::ParseFromYaml(
 
         const YAML::Node& transforms_node = config["static_transforms"];
         if (!transforms_node.IsSequence()) {
-            AERROR << "'static_transforms' should be a sequence in: "
-                   << file_path;
+            AERROR << "'static_transforms' should be a sequence in: " << file_path;
             return false;
         }
 
@@ -87,14 +81,12 @@ bool StaticTransform::ParseFromYaml(
 
             // frame_id
             if (tf_node["frame_id"]) {
-                transform.header.frame_id =
-                    tf_node["frame_id"].as<std::string>();
+                transform.header.frame_id = tf_node["frame_id"].as<std::string>();
             }
 
             // child_frame_id
             if (tf_node["child_frame_id"]) {
-                transform.child_frame_id =
-                    tf_node["child_frame_id"].as<std::string>();
+                transform.child_frame_id = tf_node["child_frame_id"].as<std::string>();
             }
 
             // translation
@@ -125,26 +117,21 @@ bool StaticTransform::ParseFromYaml(
 
             transforms.push_back(transform);
 
-            std::string name =
-                tf_node["name"] ? tf_node["name"].as<std::string>() : "unnamed";
-            AINFO << "Broadcast static transform '" << name << "': ["
-                  << transform.header.frame_id << " -> "
+            std::string name = tf_node["name"] ? tf_node["name"].as<std::string>() : "unnamed";
+            AINFO << "Broadcast static transform '" << name << "': [" << transform.header.frame_id << " -> "
                   << transform.child_frame_id << "]";
         }
 
     } catch (const std::exception& e) {
-        AERROR << "Extrinsic yaml file parse failed: " << file_path
-               << ", error: " << e.what();
+        AERROR << "Extrinsic yaml file parse failed: " << file_path << ", error: " << e.what();
         return false;
     }
 
-    AINFO << "Loaded " << transforms.size()
-          << " static transforms from: " << file_path;
+    AINFO << "Loaded " << transforms.size() << " static transforms from: " << file_path;
     return !transforms.empty();
 }
 
-void StaticTransform::SendTransform(
-    const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf) {
+void StaticTransform::SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf) {
     for (const auto& new_tf : msgtf) {
         bool match_found = false;
         for (auto& existing_tf : transform_stampeds_.transforms) {

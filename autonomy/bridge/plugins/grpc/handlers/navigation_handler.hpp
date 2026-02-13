@@ -27,13 +27,11 @@ namespace plugins {
 namespace grpc {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    SendNavigationSignature, proto::NavigationCommandRequest,
-    autonomy::common::async_grpc::Stream<proto::NavigationCommandResponse>,
-    "/autonomy.bridge.proto.AutonomyService/SendNavigationCommand")
+DEFINE_HANDLER_SIGNATURE(SendNavigationSignature, proto::NavigationCommandRequest,
+                         autonomy::common::async_grpc::Stream<proto::NavigationCommandResponse>,
+                         "/autonomy.bridge.proto.AutonomyService/SendNavigationCommand")
 
-class SendNavigationHandler
-    : public autonomy::common::async_grpc::RpcHandler<SendNavigationSignature>
+class SendNavigationHandler : public autonomy::common::async_grpc::RpcHandler<SendNavigationSignature>
 {
 public:
     void OnRequest(const proto::NavigationCommandRequest& request) override;

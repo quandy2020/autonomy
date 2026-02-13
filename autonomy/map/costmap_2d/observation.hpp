@@ -77,10 +77,9 @@ public:
      * @param raytrace_min_range The range from which an observation should be
      * able to clear via raytracing
      */
-    Observation(commsgs::geometry_msgs::Point& origin,
-                const commsgs::sensor_msgs::PointCloud2& cloud,
-                double obstacle_max_range, double obstacle_min_range,
-                double raytrace_max_range, double raytrace_min_range)
+    Observation(commsgs::geometry_msgs::Point& origin, const commsgs::sensor_msgs::PointCloud2& cloud,
+                double obstacle_max_range, double obstacle_min_range, double raytrace_max_range,
+                double raytrace_min_range)
         : origin_(origin),
           cloud_(new commsgs::sensor_msgs::PointCloud2(cloud)),
           obstacle_max_range_(obstacle_max_range),
@@ -108,8 +107,7 @@ public:
      * @param obstacle_min_range The range from which an observation should be
      * able to insert obstacles
      */
-    Observation(const commsgs::sensor_msgs::PointCloud2& cloud,
-                double obstacle_max_range, double obstacle_min_range)
+    Observation(const commsgs::sensor_msgs::PointCloud2& cloud, double obstacle_max_range, double obstacle_min_range)
         : cloud_(new commsgs::sensor_msgs::PointCloud2(cloud)),
           obstacle_max_range_(obstacle_max_range),
           obstacle_min_range_(obstacle_min_range),
@@ -118,8 +116,7 @@ public:
 
     commsgs::geometry_msgs::Point origin_;
     commsgs::sensor_msgs::PointCloud2* cloud_;
-    double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_,
-        raytrace_min_range_;
+    double obstacle_max_range_, obstacle_min_range_, raytrace_max_range_, raytrace_min_range_;
 };
 
 }  // namespace costmap_2d

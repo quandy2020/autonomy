@@ -24,36 +24,25 @@
 namespace cartographer {
 namespace io {
 
-std::unique_ptr<IntensityToColorPointsProcessor>
-IntensityToColorPointsProcessor::FromDictionary(
-    common::LuaParameterDictionary* const dictionary,
-    PointsProcessor* const next) {
-    const std::string frame_id =
-        dictionary->HasKey("frame_id") ? dictionary->GetString("frame_id") : "";
+std::unique_ptr<IntensityToColorPointsProcessor> IntensityToColorPointsProcessor::FromDictionary(
+    common::LuaParameterDictionary* const dictionary, PointsProcessor* const next) {
+    const std::string frame_id = dictionary->HasKey("frame_id") ? dictionary->GetString("frame_id") : "";
     const float min_intensity = dictionary->GetDouble("min_intensity");
     const float max_intensity = dictionary->GetDouble("max_intensity");
-    return absl::make_unique<IntensityToColorPointsProcessor>(
-        min_intensity, max_intensity, frame_id, next);
+    return absl::make_unique<IntensityToColorPointsProcessor>(min_intensity, max_intensity, frame_id, next);
 }
 
-IntensityToColorPointsProcessor::IntensityToColorPointsProcessor(
-    const float min_intensity, const float max_intensity,
-    const std::string& frame_id, PointsProcessor* const next)
-    : min_intensity_(min_intensity),
-      max_intensity_(max_intensity),
-      frame_id_(frame_id),
-      next_(next) {}
+IntensityToColorPointsProcessor::IntensityToColorPointsProcessor(const float min_intensity, const float max_intensity,
+                                                                 const std::string& frame_id,
+                                                                 PointsProcessor* const next)
+    : min_intensity_(min_intensity), max_intensity_(max_intensity), frame_id_(frame_id), next_(next) {}
 
-void IntensityToColorPointsProcessor::Process(
-    std::unique_ptr<PointsBatch> batch) {
-    if (!batch->intensities.empty() &&
-        (frame_id_.empty() || batch->frame_id == frame_id_)) {
+void IntensityToColorPointsProcessor::Process(std::unique_ptr<PointsBatch> batch) {
+    if (!batch->intensities.empty() && (frame_id_.empty() || batch->frame_id == frame_id_)) {
         batch->colors.clear();
         for (const float intensity : batch->intensities) {
-            const float gray = cartographer::common::Clamp(
-                (intensity - min_intensity_) /
-                    (max_intensity_ - min_intensity_),
-                0.f, 1.f);
+            const float gray =
+                cartographer::common::Clamp((intensity - min_intensity_) / (max_intensity_ - min_intensity_), 0.f, 1.f);
             batch->colors.push_back({{gray, gray, gray}});
         }
     }

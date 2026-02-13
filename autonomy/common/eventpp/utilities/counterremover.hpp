@@ -29,8 +29,7 @@ class CounterRemover;
 
 template <typename DispatcherType>
 class CounterRemover<DispatcherType,
-                     typename std::enable_if<std::is_base_of<
-                         TagEventDispatcher, DispatcherType>::value>::type>
+                     typename std::enable_if<std::is_base_of<TagEventDispatcher, DispatcherType>::value>::type>
 {
 private:
     template <typename Callback>
@@ -44,8 +43,8 @@ private:
         };
 
         template <typename... Args>
-        auto operator()(Args&&... args) const -> typename std::enable_if<
-            internal_::CanInvoke<Callback, Args...>::value, void>::type {
+        auto operator()(Args&&... args) const ->
+            typename std::enable_if<internal_::CanInvoke<Callback, Args...>::value, void>::type {
             if (--data->triggerCount <= 0) {
                 data->dispatcher.removeListener(data->event, data->handle);
             }
@@ -56,46 +55,34 @@ private:
     };
 
 public:
-    explicit CounterRemover(DispatcherType& dispatcher)
-        : dispatcher(dispatcher) {}
+    explicit CounterRemover(DispatcherType& dispatcher) : dispatcher(dispatcher) {}
 
     template <typename Callback>
-    typename DispatcherType::Handle appendListener(
-        const typename DispatcherType::Event& event, const Callback& listener,
-        const int triggerCount = 1) {
-        auto data = std::make_shared<typename Wrapper<Callback>::Data>(
-            typename Wrapper<Callback>::Data{
-                triggerCount, dispatcher, event, listener,
-                typename DispatcherType::Handle()});
-        data->handle =
-            dispatcher.appendListener(event, Wrapper<Callback>{data});
+    typename DispatcherType::Handle appendListener(const typename DispatcherType::Event& event,
+                                                   const Callback& listener, const int triggerCount = 1) {
+        auto data = std::make_shared<typename Wrapper<Callback>::Data>(typename Wrapper<Callback>::Data{
+            triggerCount, dispatcher, event, listener, typename DispatcherType::Handle()});
+        data->handle = dispatcher.appendListener(event, Wrapper<Callback>{data});
         return data->handle;
     }
 
     template <typename Callback>
-    typename DispatcherType::Handle prependListener(
-        const typename DispatcherType::Event& event, const Callback& listener,
-        const int triggerCount = 1) {
-        auto data = std::make_shared<typename Wrapper<Callback>::Data>(
-            typename Wrapper<Callback>::Data{
-                triggerCount, dispatcher, event, listener,
-                typename DispatcherType::Handle()});
-        data->handle =
-            dispatcher.prependListener(event, Wrapper<Callback>{data});
+    typename DispatcherType::Handle prependListener(const typename DispatcherType::Event& event,
+                                                    const Callback& listener, const int triggerCount = 1) {
+        auto data = std::make_shared<typename Wrapper<Callback>::Data>(typename Wrapper<Callback>::Data{
+            triggerCount, dispatcher, event, listener, typename DispatcherType::Handle()});
+        data->handle = dispatcher.prependListener(event, Wrapper<Callback>{data});
         return data->handle;
     }
 
     template <typename Callback>
-    typename DispatcherType::Handle insertListener(
-        const typename DispatcherType::Event& event, const Callback& listener,
-        const typename DispatcherType::Handle& before,
-        const int triggerCount = 1) {
-        auto data = std::make_shared<typename Wrapper<Callback>::Data>(
-            typename Wrapper<Callback>::Data{
-                triggerCount, dispatcher, event, listener,
-                typename DispatcherType::Handle()});
-        data->handle =
-            dispatcher.insertListener(event, Wrapper<Callback>{data}, before);
+    typename DispatcherType::Handle insertListener(const typename DispatcherType::Event& event,
+                                                   const Callback& listener,
+                                                   const typename DispatcherType::Handle& before,
+                                                   const int triggerCount = 1) {
+        auto data = std::make_shared<typename Wrapper<Callback>::Data>(typename Wrapper<Callback>::Data{
+            triggerCount, dispatcher, event, listener, typename DispatcherType::Handle()});
+        data->handle = dispatcher.insertListener(event, Wrapper<Callback>{data}, before);
         return data->handle;
     }
 
@@ -105,8 +92,7 @@ private:
 
 template <typename CallbackListType>
 class CounterRemover<CallbackListType,
-                     typename std::enable_if<std::is_base_of<
-                         TagCallbackList, CallbackListType>::value>::type>
+                     typename std::enable_if<std::is_base_of<TagCallbackList, CallbackListType>::value>::type>
 {
 private:
     template <typename Callback>
@@ -119,8 +105,8 @@ private:
         };
 
         template <typename... Args>
-        auto operator()(Args&&... args) const -> typename std::enable_if<
-            internal_::CanInvoke<Callback, Args...>::value, void>::type {
+        auto operator()(Args&&... args) const ->
+            typename std::enable_if<internal_::CanInvoke<Callback, Args...>::value, void>::type {
             if (--data->triggerCount <= 0) {
                 data->callbackList.remove(data->handle);
             }
@@ -131,40 +117,29 @@ private:
     };
 
 public:
-    explicit CounterRemover(CallbackListType& callbackList)
-        : callbackList(callbackList) {}
+    explicit CounterRemover(CallbackListType& callbackList) : callbackList(callbackList) {}
 
     template <typename Callback>
-    typename CallbackListType::Handle append(const Callback& listener,
-                                             const int triggerCount = 1) {
-        auto data = std::make_shared<typename Wrapper<Callback>::Data>(
-            typename Wrapper<Callback>::Data{
-                triggerCount, callbackList, listener,
-                typename CallbackListType::Handle()});
+    typename CallbackListType::Handle append(const Callback& listener, const int triggerCount = 1) {
+        auto data = std::make_shared<typename Wrapper<Callback>::Data>(typename Wrapper<Callback>::Data{
+            triggerCount, callbackList, listener, typename CallbackListType::Handle()});
         data->handle = callbackList.append(Wrapper<Callback>{data});
         return data->handle;
     }
 
     template <typename Callback>
-    typename CallbackListType::Handle prepend(const Callback& listener,
-                                              const int triggerCount = 1) {
-        auto data = std::make_shared<typename Wrapper<Callback>::Data>(
-            typename Wrapper<Callback>::Data{
-                triggerCount, callbackList, listener,
-                typename CallbackListType::Handle()});
+    typename CallbackListType::Handle prepend(const Callback& listener, const int triggerCount = 1) {
+        auto data = std::make_shared<typename Wrapper<Callback>::Data>(typename Wrapper<Callback>::Data{
+            triggerCount, callbackList, listener, typename CallbackListType::Handle()});
         data->handle = callbackList.prepend(Wrapper<Callback>{data});
         return data->handle;
     }
 
     template <typename Callback>
-    typename CallbackListType::Handle insert(
-        const Callback& listener,
-        const typename CallbackListType::Handle& before,
-        const int triggerCount = 1) {
-        auto data = std::make_shared<typename Wrapper<Callback>::Data>(
-            typename Wrapper<Callback>::Data{
-                triggerCount, callbackList, listener,
-                typename CallbackListType::Handle()});
+    typename CallbackListType::Handle insert(const Callback& listener, const typename CallbackListType::Handle& before,
+                                             const int triggerCount = 1) {
+        auto data = std::make_shared<typename Wrapper<Callback>::Data>(typename Wrapper<Callback>::Data{
+            triggerCount, callbackList, listener, typename CallbackListType::Handle()});
         data->handle = callbackList.insert(Wrapper<Callback>{data}, before);
         return data->handle;
     }

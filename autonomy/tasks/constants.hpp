@@ -22,7 +22,7 @@
 namespace autonomy {
 namespace tasks {
 
-constexpr char kTaskNavigation[] = "TaskNavigation";
+constexpr char kTaskNodeName[] = "task_manager";
 
 }  // namespace tasks
 }  // namespace autonomy

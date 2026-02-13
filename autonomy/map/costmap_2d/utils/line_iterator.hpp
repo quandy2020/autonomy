@@ -63,17 +63,16 @@ public:
             yinc2_ = -1;
         }
 
-        if (deltax_ >=
-            deltay_) {   // There is at least one x-value for every y-value
-            xinc1_ = 0;  // Don't change the x when numerator >= denominator
-            yinc2_ = 0;  // Don't change the y for every iteration
+        if (deltax_ >= deltay_) {  // There is at least one x-value for every y-value
+            xinc1_ = 0;            // Don't change the x when numerator >= denominator
+            yinc2_ = 0;            // Don't change the y for every iteration
             den_ = deltax_;
             num_ = deltax_ / 2;
             numadd_ = deltay_;
             numpixels_ = deltax_;  // There are more x-values than y-values
-        } else {         // There is at least one y-value for every x-value
-            xinc2_ = 0;  // Don't change the x for every iteration
-            yinc1_ = 0;  // Don't change the y when numerator >= denominator
+        } else {                   // There is at least one y-value for every x-value
+            xinc2_ = 0;            // Don't change the x for every iteration
+            yinc1_ = 0;            // Don't change the y when numerator >= denominator
             den_ = deltay_;
             num_ = deltay_ / 2;
             numadd_ = deltax_;
@@ -93,7 +92,7 @@ public:
      * @brief Advance iteration along the line
      */
     void advance() {
-        num_ += numadd_;  // Increase the numerator by the top of the fraction
+        num_ += numadd_;     // Increase the numerator by the top of the fraction
         if (num_ >= den_) {  // Check if numerator >= denominator
             num_ -= den_;    // Calculate the new numerator value
             x_ += xinc1_;    // Change the x as appropriate

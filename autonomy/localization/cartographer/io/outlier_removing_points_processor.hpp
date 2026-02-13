@@ -29,21 +29,17 @@ namespace io {
 class OutlierRemovingPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "voxel_filter_and_remove_moving_objects";
+    constexpr static const char* kConfigurationFileActionName = "voxel_filter_and_remove_moving_objects";
 
-    OutlierRemovingPointsProcessor(double voxel_size, double miss_per_hit_limit,
-                                   PointsProcessor* next);
+    OutlierRemovingPointsProcessor(double voxel_size, double miss_per_hit_limit, PointsProcessor* next);
 
-    static std::unique_ptr<OutlierRemovingPointsProcessor> FromDictionary(
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<OutlierRemovingPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                          PointsProcessor* next);
 
     ~OutlierRemovingPointsProcessor() override {}
 
-    OutlierRemovingPointsProcessor(const OutlierRemovingPointsProcessor&) =
-        delete;
-    OutlierRemovingPointsProcessor& operator=(
-        const OutlierRemovingPointsProcessor&) = delete;
+    OutlierRemovingPointsProcessor(const OutlierRemovingPointsProcessor&) = delete;
+    OutlierRemovingPointsProcessor& operator=(const OutlierRemovingPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

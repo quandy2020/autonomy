@@ -30,9 +30,7 @@ private:
     using super = Base;
 
     using BoolReferencePrototype = typename internal_::ReplaceReturnType<
-        typename internal_::TransformArguments<typename super::Prototype,
-                                               std::add_lvalue_reference>::Type,
-        bool>::Type;
+        typename internal_::TransformArguments<typename super::Prototype, std::add_lvalue_reference>::Type, bool>::Type;
 
     using Filter = std::function<BoolReferencePrototype>;
     using FilterList = CallbackList<BoolReferencePrototype>;
@@ -53,9 +51,7 @@ public:
     bool mixinBeforeDispatch(Args&&... args) const {
         if (!filterList.empty()) {
             if (!filterList.forEachIf(
-                    [&args...](typename FilterList::Callback& callback) {
-                        return callback(args...);
-                    })) {
+                    [&args...](typename FilterList::Callback& callback) { return callback(args...); })) {
                 return false;
             }
         }

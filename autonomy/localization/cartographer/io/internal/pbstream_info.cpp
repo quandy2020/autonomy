@@ -25,8 +25,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-DEFINE_bool(all_debug_strings, false,
-            "Print debug strings of all serialized data.");
+DEFINE_bool(all_debug_strings, false, "Print debug strings of all serialized data.");
 
 using cartographer::mapping::proto::SerializedData;
 
@@ -40,16 +39,13 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
     io::ProtoStreamDeserializer deserializer(&reader);
     const auto header = deserializer.header();
     LOG(INFO) << "Header: " << header.DebugString();
-    for (const mapping::proto::TrajectoryBuilderOptionsWithSensorIds&
-             trajectory_options : deserializer.all_trajectory_builder_options()
-                                      .options_with_sensor_ids()) {
+    for (const mapping::proto::TrajectoryBuilderOptionsWithSensorIds& trajectory_options :
+         deserializer.all_trajectory_builder_options().options_with_sensor_ids()) {
         LOG(INFO) << "Trajectory options: " << trajectory_options.DebugString();
     }
     const mapping::proto::PoseGraph pose_graph = deserializer.pose_graph();
-    for (const mapping::proto::Trajectory& trajectory :
-         pose_graph.trajectory()) {
-        LOG(INFO) << "Trajectory id: " << trajectory.trajectory_id()
-                  << " has #nodes " << trajectory.node_size()
+    for (const mapping::proto::Trajectory& trajectory : pose_graph.trajectory()) {
+        LOG(INFO) << "Trajectory id: " << trajectory.trajectory_id() << " has #nodes " << trajectory.node_size()
                   << " has #submaps " << trajectory.submap_size();
     }
     if (all_debug_strings) {
@@ -79,8 +75,7 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
         }
         auto it = data_case_to_name.find(proto.data_case());
         if (it == data_case_to_name.end()) {
-            LOG(WARNING) << "Skipping unknown message type in stream: "
-                         << proto.GetTypeName();
+            LOG(WARNING) << "Skipping unknown message type in stream: " << proto.GetTypeName();
         }
         const std::string& data_name = it->second;
         ++data_counts[data_name];
@@ -93,9 +88,7 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
             }
             if (proto.mutable_submap()->has_submap_3d()) {
                 ++data_counts["submap_3d"];
-                if (proto.mutable_submap()
-                        ->mutable_submap_3d()
-                        ->has_high_resolution_hybrid_grid()) {
+                if (proto.mutable_submap()->mutable_submap_3d()->has_high_resolution_hybrid_grid()) {
                     ++data_counts["submap_3d_high_resolution_hybrid_grid"];
                 }
             }
@@ -103,8 +96,7 @@ void Run(const std::string& pbstream_filename, bool all_debug_strings) {
     }
 
     for (const auto& entry : data_counts) {
-        LOG(INFO) << "SerializedData package contains #" << entry.first << ": "
-                  << entry.second;
+        LOG(INFO) << "SerializedData package contains #" << entry.first << ": " << entry.second;
     }
 }
 }  // namespace
@@ -113,8 +105,7 @@ int pbstream_info(int argc, char* argv[]) {
     std::stringstream ss;
     ss << "\n\n"
        << "Reads a pbstream file and summarizes its contents.\n\n"
-       << "Usage: " << argv[0] << " " << argv[1]
-       << " <pbstream_filename> [flags]\n";
+       << "Usage: " << argv[0] << " " << argv[1] << " <pbstream_filename> [flags]\n";
     google::SetUsageMessage(ss.str());
     if (argc < 3) {
         google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_info");

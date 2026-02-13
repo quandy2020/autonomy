@@ -29,8 +29,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-std::pair<double, double> calculateMinAndMaxDistances(
-    const std::vector<commsgs::geometry_msgs::Point>& footprint) {
+std::pair<double, double> calculateMinAndMaxDistances(const std::vector<commsgs::geometry_msgs::Point>& footprint) {
     double min_dist = std::numeric_limits<double>::max();
     double max_dist = 0.0;
 
@@ -42,18 +41,15 @@ std::pair<double, double> calculateMinAndMaxDistances(
         // check the distance from the robot center point to the first vertex
         double vertex_dist = distance(0.0, 0.0, footprint[i].x, footprint[i].y);
         double edge_dist =
-            distanceToLine(0.0, 0.0, footprint[i].x, footprint[i].y,
-                           footprint[i + 1].x, footprint[i + 1].y);
+            distanceToLine(0.0, 0.0, footprint[i].x, footprint[i].y, footprint[i + 1].x, footprint[i + 1].y);
         min_dist = std::min(min_dist, std::min(vertex_dist, edge_dist));
         max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
     }
 
     // we also need to do the last vertex and the first vertex
-    double vertex_dist =
-        distance(0.0, 0.0, footprint.back().x, footprint.back().y);
+    double vertex_dist = distance(0.0, 0.0, footprint.back().x, footprint.back().y);
     double edge_dist =
-        distanceToLine(0.0, 0.0, footprint.back().x, footprint.back().y,
-                       footprint.front().x, footprint.front().y);
+        distanceToLine(0.0, 0.0, footprint.back().x, footprint.back().y, footprint.front().x, footprint.front().y);
     min_dist = std::min(min_dist, std::min(vertex_dist, edge_dist));
     max_dist = std::max(max_dist, std::max(vertex_dist, edge_dist));
 
@@ -76,8 +72,7 @@ commsgs::geometry_msgs::Point toPoint(commsgs::geometry_msgs::Point32 pt) {
     return point;
 }
 
-commsgs::geometry_msgs::Polygon toPolygon(
-    std::vector<commsgs::geometry_msgs::Point> pts) {
+commsgs::geometry_msgs::Polygon toPolygon(std::vector<commsgs::geometry_msgs::Point> pts) {
     commsgs::geometry_msgs::Polygon polygon;
     for (unsigned int i = 0; i < pts.size(); i++) {
         polygon.points.push_back(toPoint32(pts[i]));
@@ -85,8 +80,7 @@ commsgs::geometry_msgs::Polygon toPolygon(
     return polygon;
 }
 
-std::vector<commsgs::geometry_msgs::Point> toPointVector(
-    std::shared_ptr<commsgs::geometry_msgs::Polygon> polygon) {
+std::vector<commsgs::geometry_msgs::Point> toPointVector(std::shared_ptr<commsgs::geometry_msgs::Polygon> polygon) {
     std::vector<commsgs::geometry_msgs::Point> pts;
     for (unsigned int i = 0; i < polygon->points.size(); i++) {
         pts.push_back(toPoint(polygon->points[i]));
@@ -94,45 +88,38 @@ std::vector<commsgs::geometry_msgs::Point> toPointVector(
     return pts;
 }
 
-void transformFootprint(
-    double x, double y, double theta,
-    const std::vector<commsgs::geometry_msgs::Point>& footprint_spec,
-    std::vector<commsgs::geometry_msgs::Point>& oriented_footprint) {
+void transformFootprint(double x, double y, double theta,
+                        const std::vector<commsgs::geometry_msgs::Point>& footprint_spec,
+                        std::vector<commsgs::geometry_msgs::Point>& oriented_footprint) {
     // build the oriented footprint at a given location
     oriented_footprint.resize(footprint_spec.size());
     double cos_th = cos(theta);
     double sin_th = sin(theta);
     for (unsigned int i = 0; i < footprint_spec.size(); ++i) {
-        double new_x =
-            x + (footprint_spec[i].x * cos_th - footprint_spec[i].y * sin_th);
-        double new_y =
-            y + (footprint_spec[i].x * sin_th + footprint_spec[i].y * cos_th);
+        double new_x = x + (footprint_spec[i].x * cos_th - footprint_spec[i].y * sin_th);
+        double new_y = y + (footprint_spec[i].x * sin_th + footprint_spec[i].y * cos_th);
         commsgs::geometry_msgs::Point& new_pt = oriented_footprint[i];
         new_pt.x = new_x;
         new_pt.y = new_y;
     }
 }
 
-void transformFootprint(
-    double x, double y, double theta,
-    const std::vector<commsgs::geometry_msgs::Point>& footprint_spec,
-    commsgs::geometry_msgs::PolygonStamped& oriented_footprint) {
+void transformFootprint(double x, double y, double theta,
+                        const std::vector<commsgs::geometry_msgs::Point>& footprint_spec,
+                        commsgs::geometry_msgs::PolygonStamped& oriented_footprint) {
     // build the oriented footprint at a given location
     oriented_footprint.polygon.points.clear();
     double cos_th = cos(theta);
     double sin_th = sin(theta);
     for (unsigned int i = 0; i < footprint_spec.size(); ++i) {
         commsgs::geometry_msgs::Point32 new_pt;
-        new_pt.x =
-            x + (footprint_spec[i].x * cos_th - footprint_spec[i].y * sin_th);
-        new_pt.y =
-            y + (footprint_spec[i].x * sin_th + footprint_spec[i].y * cos_th);
+        new_pt.x = x + (footprint_spec[i].x * cos_th - footprint_spec[i].y * sin_th);
+        new_pt.y = y + (footprint_spec[i].x * sin_th + footprint_spec[i].y * cos_th);
         oriented_footprint.polygon.points.push_back(new_pt);
     }
 }
 
-void padFootprint(std::vector<commsgs::geometry_msgs::Point>& footprint,
-                  double padding) {
+void padFootprint(std::vector<commsgs::geometry_msgs::Point>& footprint, double padding) {
     // pad footprint in place
     for (unsigned int i = 0; i < footprint.size(); i++) {
         commsgs::geometry_msgs::Point& pt = footprint[i];
@@ -141,8 +128,7 @@ void padFootprint(std::vector<commsgs::geometry_msgs::Point>& footprint,
     }
 }
 
-std::vector<commsgs::geometry_msgs::Point> makeFootprintFromRadius(
-    double radius) {
+std::vector<commsgs::geometry_msgs::Point> makeFootprintFromRadius(double radius) {
     std::vector<commsgs::geometry_msgs::Point> points;
 
     // Loop over 16 angles around a circle making a point each time
@@ -159,9 +145,8 @@ std::vector<commsgs::geometry_msgs::Point> makeFootprintFromRadius(
     return points;
 }
 
-bool makeFootprintFromString(
-    const std::string& footprint_string,
-    std::vector<commsgs::geometry_msgs::Point>& footprint) {
+bool makeFootprintFromString(const std::string& footprint_string,
+                             std::vector<commsgs::geometry_msgs::Point>& footprint) {
     std::string error;
     std::vector<std::vector<float>> vvf = parseVVF(footprint_string, error);
 
@@ -188,10 +173,9 @@ bool makeFootprintFromString(
             point.z = 0;
             footprint.push_back(point);
         } else {
-            LOG(ERROR)
-                << " Points in the footprint specification must be pairs of "
-                   "numbers. Found a point with "
-                << static_cast<int>(vvf[i].size()) << " numbers.";
+            LOG(ERROR) << " Points in the footprint specification must be pairs of "
+                          "numbers. Found a point with "
+                       << static_cast<int>(vvf[i].size()) << " numbers.";
             return false;
         }
     }

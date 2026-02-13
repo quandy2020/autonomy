@@ -86,9 +86,8 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                              double* min_x, double* min_y, double* max_x,
-                              double* max_y);
+    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                              double* max_x, double* max_y);
 
     /**
      * @brief Update the costs in the master costmap in the window
@@ -98,8 +97,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                             int max_i, int max_j);
+    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
     /**
      * @brief Match the size of the master costmap
@@ -129,8 +127,7 @@ protected:
      * @brief Callback to update the costmap's map from the map_server (or SLAM)
      * with an update in a particular area of the map
      */
-    void incomingUpdate(
-        commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update);
+    void incomingUpdate(commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update);
 
     /**
      * @brief Interpret the value in the static map given on the topic to
@@ -143,8 +140,7 @@ protected:
     /**
      * @brief Clear costmap layer info below the robot's footprint
      */
-    void updateFootprint(double robot_x, double robot_y, double robot_yaw,
-                         double* min_x, double* min_y, double* max_x,
+    void updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
                          double* max_y);
 
     std::string global_frame_;  ///< @brief The global frame for the costmap
@@ -157,10 +153,8 @@ protected:
     unsigned int width_{0};
     unsigned int height_{0};
 
-    std::shared_ptr<::autolink::Reader<commsgs::map_msgs::OccupancyGrid>>
-        map_sub_{nullptr};
-    std::shared_ptr<::autolink::Reader<commsgs::map_msgs::OccupancyGridUpdate>>
-        map_update_sub_{nullptr};
+    std::shared_ptr<::autolink::Reader<commsgs::map_msgs::OccupancyGrid>> map_sub_{nullptr};
+    std::shared_ptr<::autolink::Reader<commsgs::map_msgs::OccupancyGridUpdate>> map_update_sub_{nullptr};
 
     // Parameters
     std::string map_topic_;

@@ -22,11 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace control {
 
-NonblockingSequence::NonblockingSequence(const std::string& name)
-    : BT::ControlNode(name, {}) {}
+NonblockingSequence::NonblockingSequence(const std::string& name) : BT::ControlNode(name, {}) {}
 
-NonblockingSequence::NonblockingSequence(const std::string& name,
-                                         const BT::NodeConfiguration& conf)
+NonblockingSequence::NonblockingSequence(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::ControlNode(name, conf) {}
 
 BT::NodeStatus NonblockingSequence::tick() {
@@ -46,8 +44,8 @@ BT::NodeStatus NonblockingSequence::tick() {
                 break;
             default:
                 std::stringstream error_msg;
-                error_msg << "Invalid node status. Received status " << status
-                          << "from child " << children_nodes_[i]->name();
+                error_msg << "Invalid node status. Received status " << status << "from child "
+                          << children_nodes_[i]->name();
                 throw std::runtime_error(error_msg.str());
         }
     }
@@ -68,7 +66,6 @@ BT::NodeStatus NonblockingSequence::tick() {
 }  // namespace autonomy
 
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence>(
         "NonblockingSequence");
 }

@@ -1,0 +1,43 @@
+"""
+Bazel BUILD file for autonomy/tools
+
+This file defines rules to build the tools system.
+Includes aviz (visualization tool) and evaluators.
+
+This directory also contains reusable Bazel macros in autonomy_module.bzl
+that simplify BUILD.bazel files across the autonomy project.
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_cc_library", "autonomy_binary")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Main library for tools
+autonomy_cc_library(
+    name = "tools",
+    exclude_patterns = [
+        "**/*.frag",
+        "**/*.vert",
+        "**/*.png",
+        "**/*.svg",
+        "**/*.jpg",
+        "**/*.jpeg",
+        "main.cpp",
+    ],
+    deps = [
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+    ],
+)
+
+# Aviz main executable
+autonomy_binary(
+    name = "aviz_main",
+    srcs = ["aviz/main.cpp"],
+    deps = [
+        ":tools",
+        "//autonomy/common:common",
+    ],
+)

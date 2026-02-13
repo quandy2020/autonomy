@@ -1,0 +1,41 @@
+"""
+Bazel BUILD file for autonomy/system
+
+This file defines rules to build the system integration layer.
+Uses simplified macros from tools/autonomy_module.bzl
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_module", "autonomy_binary")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Create complete module with proto and C++ library
+autonomy_module(
+    name = "system",
+    has_proto = True,
+    proto_glob = ["proto/*.proto"],
+    exclude_patterns = ["proto/**", "main.cpp"],
+    deps = [
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+    ],
+    extra_deps = [
+        "//autonomy/control:control",
+        "//autonomy/map:map",
+        "//autonomy/planning:planning",
+        "//autonomy/tasks:tasks",
+        "//autonomy/transform:transform",
+    ],
+)
+
+# Main executable
+autonomy_binary(
+    name = "main",
+    srcs = ["main.cpp"],
+    deps = [
+        ":system",
+        "//autonomy/common:common",
+    ],
+)

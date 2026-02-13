@@ -140,8 +140,7 @@ protected:
     virtual bool StartImpl(std::vector<std::any>&& args) = 0;
 };
 
-proto::TaskOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::TaskOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace tasks

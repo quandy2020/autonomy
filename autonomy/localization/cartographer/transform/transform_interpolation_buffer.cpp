@@ -26,16 +26,13 @@
 namespace cartographer {
 namespace transform {
 
-TransformInterpolationBuffer::TransformInterpolationBuffer(
-    const mapping::proto::Trajectory& trajectory) {
+TransformInterpolationBuffer::TransformInterpolationBuffer(const mapping::proto::Trajectory& trajectory) {
     for (const mapping::proto::Trajectory::Node& node : trajectory.node()) {
-        Push(common::FromUniversal(node.timestamp()),
-             transform::ToRigid3(node.pose()));
+        Push(common::FromUniversal(node.timestamp()), transform::ToRigid3(node.pose()));
     }
 }
 
-void TransformInterpolationBuffer::Push(const common::Time time,
-                                        const transform::Rigid3d& transform) {
+void TransformInterpolationBuffer::Push(const common::Time time, const transform::Rigid3d& transform) {
     if (!timestamped_transforms_.empty()) {
         CHECK_GE(time, latest_time()) << "New transform is older than latest.";
     }
@@ -43,8 +40,7 @@ void TransformInterpolationBuffer::Push(const common::Time time,
     RemoveOldTransformsIfNeeded();
 }
 
-void TransformInterpolationBuffer::SetSizeLimit(
-    const size_t buffer_size_limit) {
+void TransformInterpolationBuffer::SetSizeLimit(const size_t buffer_size_limit) {
     buffer_size_limit_ = buffer_size_limit;
     RemoveOldTransformsIfNeeded();
 }
@@ -60,15 +56,12 @@ bool TransformInterpolationBuffer::Has(const common::Time time) const {
     return earliest_time() <= time && time <= latest_time();
 }
 
-transform::Rigid3d TransformInterpolationBuffer::Lookup(
-    const common::Time time) const {
+transform::Rigid3d TransformInterpolationBuffer::Lookup(const common::Time time) const {
     CHECK(Has(time)) << "Missing transform for: " << time;
-    const auto end = std::lower_bound(
-        timestamped_transforms_.begin(), timestamped_transforms_.end(), time,
-        [](const TimestampedTransform& timestamped_transform,
-           const common::Time time) {
-            return timestamped_transform.time < time;
-        });
+    const auto end = std::lower_bound(timestamped_transforms_.begin(), timestamped_transforms_.end(), time,
+                                      [](const TimestampedTransform& timestamped_transform, const common::Time time) {
+                                          return timestamped_transform.time < time;
+                                      });
     if (end->time == time) {
         return end->transform;
     }

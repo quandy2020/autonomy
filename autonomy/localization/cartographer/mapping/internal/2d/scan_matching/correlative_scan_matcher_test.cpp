@@ -30,8 +30,7 @@ TEST(SearchParameters, Construction) {
     EXPECT_NEAR(0.05, search_parameters.resolution, 1e-9);
     EXPECT_EQ(11, search_parameters.num_scans);
     EXPECT_EQ(11, search_parameters.linear_bounds.size());
-    for (const SearchParameters::LinearBounds linear_bounds :
-         search_parameters.linear_bounds) {
+    for (const SearchParameters::LinearBounds linear_bounds : search_parameters.linear_bounds) {
         EXPECT_EQ(-4, linear_bounds.min_x);
         EXPECT_EQ(4, linear_bounds.max_x);
         EXPECT_EQ(-4, linear_bounds.min_y);
@@ -58,8 +57,8 @@ TEST(Candidate, Construction) {
 TEST(GenerateRotatedScans, GenerateRotatedScans) {
     sensor::PointCloud point_cloud;
     point_cloud.push_back({Eigen::Vector3f{-1.f, 1.f, 0.f}});
-    const std::vector<sensor::PointCloud> scans = GenerateRotatedScans(
-        point_cloud, SearchParameters(0, 1, M_PI / 2., 0.));
+    const std::vector<sensor::PointCloud> scans =
+        GenerateRotatedScans(point_cloud, SearchParameters(0, 1, M_PI / 2., 0.));
     EXPECT_EQ(3, scans.size());
     EXPECT_NEAR(1., scans[0][0].position.x(), 1e-6);
     EXPECT_NEAR(1., scans[0][0].position.y(), 1e-6);
@@ -78,10 +77,8 @@ TEST(DiscretizeScans, DiscretizeScans) {
     point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.125f, 0.f}});
     point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.075f, 0.f}});
     point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.025f, 0.f}});
-    const MapLimits map_limits(0.05, Eigen::Vector2d(0.05, 0.25),
-                               CellLimits(6, 6));
-    const std::vector<sensor::PointCloud> scans =
-        GenerateRotatedScans(point_cloud, SearchParameters(0, 0, 0., 0.));
+    const MapLimits map_limits(0.05, Eigen::Vector2d(0.05, 0.25), CellLimits(6, 6));
+    const std::vector<sensor::PointCloud> scans = GenerateRotatedScans(point_cloud, SearchParameters(0, 0, 0., 0.));
     const std::vector<DiscreteScan2D> discrete_scans =
         DiscretizeScans(map_limits, scans, Eigen::Translation2f::Identity());
     EXPECT_EQ(1, discrete_scans.size());

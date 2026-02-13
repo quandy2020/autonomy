@@ -45,23 +45,19 @@ TEST(eventpp, tutorial01_basic) {
 }
 
 TEST(eventpp, tutorial01_callback_with_parameters) {
-    std::cout << std::endl
-              << "CallbackList tutorial 2, callback with parameters"
-              << std::endl;
+    std::cout << std::endl << "CallbackList tutorial 2, callback with parameters" << std::endl;
 
     // The callback list prototype has two parameters.
     eventpp::CallbackList<void(const std::string&, const bool)> callbackList;
 
     callbackList.append([](const std::string& s, const bool b) {
-        std::cout << std::boolalpha << "Got callback 1, s is " << s << " b is "
-                  << b << std::endl;
+        std::cout << std::boolalpha << "Got callback 1, s is " << s << " b is " << b << std::endl;
     });
     // The callback prototype doesn't need to be exactly same as the callback
     // list. It would be fine as long as the arguments are compatible with the
     // callbacklist.
     callbackList.append([](std::string s, int b) {
-        std::cout << std::boolalpha << "Got callback 2, s is " << s << " b is "
-                  << b << std::endl;
+        std::cout << std::boolalpha << "Got callback 2, s is " << s << " b is " << b << std::endl;
     });
 
     // Invoke the callback list
@@ -78,8 +74,7 @@ TEST(eventpp, tutorial03_remove) {
 
     // Add some callbacks.
     callbackList.append([]() { std::cout << "Got callback 1." << std::endl; });
-    handle2 = callbackList.append(
-        []() { std::cout << "Got callback 2." << std::endl; });
+    handle2 = callbackList.append([]() { std::cout << "Got callback 2." << std::endl; });
     callbackList.append([]() { std::cout << "Got callback 3." << std::endl; });
 
     callbackList.remove(handle2);
@@ -104,25 +99,20 @@ TEST(eventpp, tutorial04_foreach) {
     // The forEach callback prototype is void(const CallbackList::Handle &
     // handle, const CallbackList::Callback & callback)
     int index = 0;
-    callbackList.forEach([&callbackList, &index](
-                             const CL::Handle& handle,
-                             const CL::Callback& /*callback*/) {
-        std::cout << "forEach(Handle, Callback), invoked " << index
-                  << std::endl;
+    callbackList.forEach([&callbackList, &index](const CL::Handle& handle, const CL::Callback& /*callback*/) {
+        std::cout << "forEach(Handle, Callback), invoked " << index << std::endl;
         if (index == 1) {
             callbackList.remove(handle);
-            std::cout << "forEach(Handle, Callback), removed second callback"
-                      << std::endl;
+            std::cout << "forEach(Handle, Callback), removed second callback" << std::endl;
         }
         ++index;
     });
 
     // The forEach callback prototype can also be void(const
     // CallbackList::Callback & callback)
-    callbackList.forEach(
-        [&callbackList, &index](const CL::Callback& /*callback*/) {
-            std::cout << "forEach(Callback), invoked" << std::endl;
-        });
+    callbackList.forEach([&callbackList, &index](const CL::Callback& /*callback*/) {
+        std::cout << "forEach(Callback), invoked" << std::endl;
+    });
 
     // Invoke the callback list
     // The "Got callback 2" callback should not be triggered.

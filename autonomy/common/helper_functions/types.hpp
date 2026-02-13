@@ -57,12 +57,10 @@ struct PointXYZIF {
     float32_t intensity{0};
     uint16_t id{0};
     static constexpr uint16_t END_OF_SCAN_ID = 65535u;
-    friend bool operator==(const PointXYZIF& p1,
-                           const PointXYZIF& p2) noexcept {
+    friend bool operator==(const PointXYZIF& p1, const PointXYZIF& p2) noexcept {
         using helper_functions::rel_eq;
         const auto epsilon = std::numeric_limits<float32_t>::epsilon();
-        return rel_eq(p1.x, p2.x, epsilon) && rel_eq(p1.y, p2.y, epsilon) &&
-               rel_eq(p1.z, p2.z, epsilon) &&
+        return rel_eq(p1.x, p2.x, epsilon) && rel_eq(p1.y, p2.y, epsilon) && rel_eq(p1.z, p2.z, epsilon) &&
                rel_eq(p1.intensity, p2.intensity, epsilon) && (p1.id == p2.id);
     }
 };
@@ -76,9 +74,8 @@ struct PointXYZF {
     friend bool operator==(const PointXYZF& p1, const PointXYZF& p2) noexcept {
         using helper_functions::rel_eq;
         const auto epsilon = std::numeric_limits<float32_t>::epsilon();
-        return helper_functions::rel_eq(p1.x, p2.x, epsilon) &&
-               rel_eq(p1.y, p2.y, epsilon) && rel_eq(p1.z, p2.z, epsilon) &&
-               (p1.id == p2.id);
+        return helper_functions::rel_eq(p1.x, p2.x, epsilon) && rel_eq(p1.y, p2.y, epsilon) &&
+               rel_eq(p1.z, p2.z, epsilon) && (p1.id == p2.id);
     }
 };
 
@@ -88,15 +85,10 @@ struct PointXYZI {
     float32_t z{0.0F};
     float32_t intensity{0.0F};
     friend bool operator==(const PointXYZI& p1, const PointXYZI& p2) noexcept {
-        return helper_functions::rel_eq(
-                   p1.x, p2.x, std::numeric_limits<float32_t>::epsilon()) &&
-               helper_functions::rel_eq(
-                   p1.y, p2.y, std::numeric_limits<float32_t>::epsilon()) &&
-               helper_functions::rel_eq(
-                   p1.z, p2.z, std::numeric_limits<float32_t>::epsilon()) &&
-               helper_functions::rel_eq(
-                   p1.intensity, p2.intensity,
-                   std::numeric_limits<float32_t>::epsilon());
+        return helper_functions::rel_eq(p1.x, p2.x, std::numeric_limits<float32_t>::epsilon()) &&
+               helper_functions::rel_eq(p1.y, p2.y, std::numeric_limits<float32_t>::epsilon()) &&
+               helper_functions::rel_eq(p1.z, p2.z, std::numeric_limits<float32_t>::epsilon()) &&
+               helper_functions::rel_eq(p1.intensity, p2.intensity, std::numeric_limits<float32_t>::epsilon());
     }
 };
 

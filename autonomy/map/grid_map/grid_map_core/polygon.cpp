@@ -23,12 +23,9 @@ Polygon::Polygon(std::vector<Position> vertices) : Polygon() {
 
 bool Polygon::isInside(const Position& point) const {
     int cross = 0;
-    for (size_t i = 0, j = vertices_.size() - 1; i < vertices_.size();
-         j = i++) {
-        if (((vertices_[i].y() > point.y()) !=
-             (vertices_[j].y() > point.y())) &&
-            (point.x() < (vertices_[j].x() - vertices_[i].x()) *
-                                 (point.y() - vertices_[i].y()) /
+    for (size_t i = 0, j = vertices_.size() - 1; i < vertices_.size(); j = i++) {
+        if (((vertices_[i].y() > point.y()) != (vertices_[j].y() > point.y())) &&
+            (point.x() < (vertices_[j].x() - vertices_[i].x()) * (point.y() - vertices_[i].y()) /
                                  (vertices_[j].y() - vertices_[i].y()) +
                              vertices_[i].x())) {
             cross++;
@@ -85,8 +82,7 @@ double Polygon::getArea() const {
     double area = 0.0;
     int j = vertices_.size() - 1;
     for (size_t i = 0; i < vertices_.size(); i++) {
-        area += (vertices_.at(j).x() + vertices_.at(i).x()) *
-                (vertices_.at(j).y() - vertices_.at(i).y());
+        area += (vertices_.at(j).x() + vertices_.at(i).x()) * (vertices_.at(j).y() - vertices_.at(i).y());
         j = i;
     }
     return std::abs(area / 2.0);
@@ -98,8 +94,7 @@ Position Polygon::getCentroid() const {
     vertices.push_back(vertices.at(0));
     double area = 0.0;
     for (size_t i = 0; i < vertices.size() - 1; i++) {
-        const double a = vertices[i].x() * vertices[i + 1].y() -
-                         vertices[i + 1].x() * vertices[i].y();
+        const double a = vertices[i].x() * vertices[i + 1].y() - vertices[i + 1].x() * vertices[i].y();
         area += a;
         centroid.x() += a * (vertices[i].x() + vertices[i + 1].x());
         centroid.y() += a * (vertices[i].y() + vertices[i + 1].y());
@@ -130,8 +125,7 @@ void Polygon::getBoundingBox(Position& center, Length& length) const {
     length.y() = (maxY - minY);
 }
 
-bool Polygon::convertToInequalityConstraints(Eigen::MatrixXd& A,
-                                             Eigen::VectorXd& b) const {
+bool Polygon::convertToInequalityConstraints(Eigen::MatrixXd& A, Eigen::VectorXd& b) const {
     Eigen::MatrixXd V(nVertices(), 2);
     for (unsigned int i = 0; i < nVertices(); ++i)
         V.row(i) = vertices_[i];
@@ -154,8 +148,7 @@ bool Polygon::convertToInequalityConstraints(Eigen::MatrixXd& A,
         F.row(1) << V.row(k(ix, 1));
         Eigen::FullPivLU<Eigen::MatrixXd> luDecomp(F);
         if (luDecomp.rank() == F.rows()) {
-            A.row(rc) =
-                F.colPivHouseholderQr().solve(Eigen::VectorXd::Ones(F.rows()));
+            A.row(rc) = F.colPivHouseholderQr().solve(Eigen::VectorXd::Ones(F.rows()));
             ++rc;
         }
     }
@@ -171,8 +164,7 @@ bool Polygon::thickenLine(const double thickness) {
     if (vertices_.size() != 2)
         return false;
     const Vector connection(vertices_[1] - vertices_[0]);
-    const Vector orthogonal =
-        thickness * Vector(connection.y(), -connection.x()).normalized();
+    const Vector orthogonal = thickness * Vector(connection.y(), -connection.x()).normalized();
     std::vector<Position> newVertices;
     newVertices.reserve(4);
     newVertices.push_back(vertices_[0] + orthogonal);
@@ -206,8 +198,7 @@ bool Polygon::offsetInward(const double margin) {
     return true;
 }
 
-std::vector<Polygon> Polygon::triangulate(
-    const TriangulationMethods& /*method*/) const {
+std::vector<Polygon> Polygon::triangulate(const TriangulationMethods& /*method*/) const {
     // TODO Add more triangulation methods.
     // https://en.wikipedia.org/wiki/Polygon_triangulation
     std::vector<Polygon> polygons;
@@ -231,8 +222,7 @@ std::vector<Polygon> Polygon::triangulate(
     return polygons;
 }
 
-Polygon Polygon::fromCircle(const Position center, const double radius,
-                            const int nVertices) {
+Polygon Polygon::fromCircle(const Position center, const double radius, const int nVertices) {
     Eigen::Vector2d centerToVertex(radius, 0.0), centerToVertexTemp;
 
     Polygon polygon;
@@ -245,9 +235,7 @@ Polygon Polygon::fromCircle(const Position center, const double radius,
     return polygon;
 }
 
-Polygon Polygon::convexHullOfTwoCircles(const Position center1,
-                                        const Position center2,
-                                        const double radius,
+Polygon Polygon::convexHullOfTwoCircles(const Position center1, const Position center2, const double radius,
                                         const int nVertices) {
     if (center1 == center2)
         return fromCircle(center1, radius, nVertices);
@@ -275,16 +263,13 @@ Polygon Polygon::convexHullOfTwoCircles(const Position center1,
 Polygon Polygon::convexHull(Polygon& polygon1, Polygon& polygon2) {
     std::vector<Position> vertices;
     vertices.reserve(polygon1.nVertices() + polygon2.nVertices());
-    vertices.insert(vertices.end(), polygon1.getVertices().begin(),
-                    polygon1.getVertices().end());
-    vertices.insert(vertices.end(), polygon2.getVertices().begin(),
-                    polygon2.getVertices().end());
+    vertices.insert(vertices.end(), polygon1.getVertices().begin(), polygon1.getVertices().end());
+    vertices.insert(vertices.end(), polygon2.getVertices().begin(), polygon2.getVertices().end());
 
     return monotoneChainConvexHullOfPoints(vertices);
 }
 
-Polygon Polygon::monotoneChainConvexHullOfPoints(
-    const std::vector<Position>& points) {
+Polygon Polygon::monotoneChainConvexHullOfPoints(const std::vector<Position>& points) {
     // Adapted from
     // https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain
     if (points.size() <= 3) {
@@ -299,9 +284,8 @@ Polygon Polygon::monotoneChainConvexHullOfPoints(
     int k = 0;
     // Build lower hull
     for (size_t i = 0; i < sortedPoints.size(); ++i) {
-        while (k >= 2 && vectorsMakeClockwiseTurn(pointsConvexHull.at(k - 2),
-                                                  pointsConvexHull.at(k - 1),
-                                                  sortedPoints.at(i))) {
+        while (k >= 2 &&
+               vectorsMakeClockwiseTurn(pointsConvexHull.at(k - 2), pointsConvexHull.at(k - 1), sortedPoints.at(i))) {
             k--;
         }
         pointsConvexHull.at(k++) = sortedPoints.at(i);
@@ -309,9 +293,8 @@ Polygon Polygon::monotoneChainConvexHullOfPoints(
 
     // Build upper hull.
     for (int i = sortedPoints.size() - 2, t = k + 1; i >= 0; i--) {
-        while (k >= t && vectorsMakeClockwiseTurn(pointsConvexHull.at(k - 2),
-                                                  pointsConvexHull.at(k - 1),
-                                                  sortedPoints.at(i))) {
+        while (k >= t &&
+               vectorsMakeClockwiseTurn(pointsConvexHull.at(k - 2), pointsConvexHull.at(k - 1), sortedPoints.at(i))) {
             k--;
         }
         pointsConvexHull.at(k++) = sortedPoints.at(i);
@@ -322,22 +305,17 @@ Polygon Polygon::monotoneChainConvexHullOfPoints(
     return polygon;
 }
 
-bool Polygon::sortVertices(const Eigen::Vector2d& vector1,
-                           const Eigen::Vector2d& vector2) {
-    return (vector1.x() < vector2.x() ||
-            (vector1.x() == vector2.x() && vector1.y() < vector2.y()));
+bool Polygon::sortVertices(const Eigen::Vector2d& vector1, const Eigen::Vector2d& vector2) {
+    return (vector1.x() < vector2.x() || (vector1.x() == vector2.x() && vector1.y() < vector2.y()));
 }
 
-double Polygon::computeCrossProduct2D(const Eigen::Vector2d& vector1,
-                                      const Eigen::Vector2d& vector2) {
+double Polygon::computeCrossProduct2D(const Eigen::Vector2d& vector1, const Eigen::Vector2d& vector2) {
     return (vector1.x() * vector2.y() - vector1.y() * vector2.x());
 }
 
-double Polygon::vectorsMakeClockwiseTurn(const Eigen::Vector2d& pointOrigin,
-                                         const Eigen::Vector2d& pointA,
+double Polygon::vectorsMakeClockwiseTurn(const Eigen::Vector2d& pointOrigin, const Eigen::Vector2d& pointA,
                                          const Eigen::Vector2d& pointB) {
-    return computeCrossProduct2D(pointA - pointOrigin, pointB - pointOrigin) <=
-           0;
+    return computeCrossProduct2D(pointA - pointOrigin, pointB - pointOrigin) <= 0;
 }
 
 } /* namespace grid_map */

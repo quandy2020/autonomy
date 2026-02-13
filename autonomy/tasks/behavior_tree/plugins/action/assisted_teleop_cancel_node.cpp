@@ -22,14 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-AssistedTeleopCancelNode::AssistedTeleopCancelNode(
-    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
-
-BT::NodeStatus AssistedTeleopCancelNode::tick() {
-    // TODO: Implement assisted teleop cancel behavior
-    return BT::NodeStatus::SUCCESS;
-}
+AssistedTeleopCancel::AssistedTeleopCancel(const std::string& xml_tag_name, const std::string& action_name,
+                                           const BT::NodeConfiguration& conf)
+    : BtCancelActionNode<proto::AssistedTeleopAction>(xml_tag_name, action_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -39,14 +34,11 @@ BT::NodeStatus AssistedTeleopCancelNode::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::
-                                    action::AssistedTeleopCancelNode>(name,
-                                                                      config);
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::AssistedTeleopCancel>(
+            name, "assisted_teleop", config);
     };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::
-                                AssistedTeleopCancelNode>(
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::AssistedTeleopCancel>(
         "CancelAssistedTeleop", builder);
 }

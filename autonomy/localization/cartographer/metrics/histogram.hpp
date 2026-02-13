@@ -33,8 +33,7 @@ public:
     static Histogram* Null();
 
     static BucketBoundaries FixedWidth(double width, int num_finite_buckets);
-    static BucketBoundaries ScaledPowersOf(double base, double scale_factor,
-                                           double max_value);
+    static BucketBoundaries ScaledPowersOf(double base, double scale_factor, double max_value);
 
     virtual ~Histogram() = default;
     virtual void Observe(double value) = 0;

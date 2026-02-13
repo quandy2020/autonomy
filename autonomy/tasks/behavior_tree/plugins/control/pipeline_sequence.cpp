@@ -22,11 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace control {
 
-PipelineSequence::PipelineSequence(const std::string& name)
-    : BT::ControlNode(name, {}) {}
+PipelineSequence::PipelineSequence(const std::string& name) : BT::ControlNode(name, {}) {}
 
-PipelineSequence::PipelineSequence(const std::string& name,
-                                   const BT::NodeConfiguration& config)
+PipelineSequence::PipelineSequence(const std::string& name, const BT::NodeConfiguration& config)
     : BT::ControlNode(name, config) {}
 
 BT::NodeStatus PipelineSequence::tick() {
@@ -56,8 +54,8 @@ BT::NodeStatus PipelineSequence::tick() {
                 break;
             default:
                 std::stringstream error_msg;
-                error_msg << "Invalid node status. Received status " << status
-                          << "from child " << children_nodes_[i]->name();
+                error_msg << "Invalid node status. Received status " << status << "from child "
+                          << children_nodes_[i]->name();
                 throw std::runtime_error(error_msg.str());
         }
     }
@@ -83,7 +81,5 @@ void PipelineSequence::halt() {
 }  // namespace autonomy
 
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::control::PipelineSequence>(
-        "PipelineSequence");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::control::PipelineSequence>("PipelineSequence");
 }

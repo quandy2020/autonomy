@@ -44,10 +44,8 @@ public:
      */
     virtual ~Smoother() {}
 
-    virtual void Configure(
-        std::string name, std::shared_ptr<void> /*costmap_sub*/,
-        std::shared_ptr<
-            map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) = 0;
+    virtual void Configure(std::string name, std::shared_ptr<void> /*costmap_sub*/,
+                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) = 0;
 
     /**
      * @brief Method to cleanup resources.
@@ -73,8 +71,7 @@ public:
      * @return If smoothing was completed (true) or interrupted by time limit
      * (false)
      */
-    virtual bool Smooth(commsgs::planning_msgs::Path& path,
-                        const std::chrono::milliseconds& max_time) = 0;
+    virtual bool Smooth(commsgs::planning_msgs::Path& path, const std::chrono::milliseconds& max_time) = 0;
 };
 
 }  // namespace common

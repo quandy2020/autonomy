@@ -74,8 +74,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                      double* min_x, double* min_y, double* max_x,
+    void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y, double* max_x,
                       double* max_y) final;
 
     /**
@@ -86,8 +85,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                     int max_j) final;
+    void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) final;
 
     /**
      * @brief Activate the layer
@@ -130,8 +128,7 @@ public:
      * @param: High window map boundary OY
      * @param: Robot 2D-pose
      */
-    virtual void process(Costmap2D& master_grid, int min_i, int min_j,
-                         int max_i, int max_j,
+    virtual void process(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j,
                          const commsgs::geometry_msgs::Pose2D& pose) = 0;
 
     /**
@@ -159,10 +156,8 @@ protected:
      * @param:  mask_pose Output robot pose in mask frame
      * @return: True if the transformation was successful, false otherwise
      */
-    bool transformPose(const std::string global_frame,
-                       const commsgs::geometry_msgs::Pose2D& global_pose,
-                       const std::string mask_frame,
-                       commsgs::geometry_msgs::Pose2D& mask_pose) const;
+    bool transformPose(const std::string global_frame, const commsgs::geometry_msgs::Pose2D& global_pose,
+                       const std::string mask_frame, commsgs::geometry_msgs::Pose2D& mask_pose) const;
 
     /**
      * @brief: Convert from world coordinates to mask coordinates.
@@ -176,9 +171,8 @@ protected:
     * @return True if the conversion was successful (legal bounds) false
     otherwise
     */
-    bool worldToMask(
-        commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, double wx,
-        double wy, unsigned int& mx, unsigned int& my) const;
+    bool worldToMask(commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, double wx, double wy,
+                     unsigned int& mx, unsigned int& my) const;
 
     /**
      * @brief  Get the data of a cell in the filter mask
@@ -187,9 +181,8 @@ protected:
      * @param  my The y coordinate of the cell
      * @return The data of the selected cell
      */
-    inline int8_t getMaskData(
-        commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
-        const unsigned int mx, const unsigned int my) const {
+    inline int8_t getMaskData(commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, const unsigned int mx,
+                              const unsigned int my) const {
         return filter_mask->data[my * filter_mask->info.width + mx];
     }
 
@@ -200,9 +193,8 @@ protected:
      * @param  my The y coordinate of the cell
      * @return The cost to set the cell to
      */
-    unsigned char getMaskCost(
-        commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
-        const unsigned int mx, const unsigned int& my) const;
+    unsigned char getMaskCost(commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, const unsigned int mx,
+                              const unsigned int& my) const;
 
     /**
      * @brief: Name of costmap filter info topic

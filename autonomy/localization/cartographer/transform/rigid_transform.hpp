@@ -38,12 +38,9 @@ public:
     using Vector = Eigen::Matrix<FloatType, 2, 1>;
     using Rotation2D = Eigen::Rotation2D<FloatType>;
 
-    Rigid2()
-        : translation_(Vector::Zero()), rotation_(Rotation2D::Identity()) {}
-    Rigid2(const Vector& translation, const Rotation2D& rotation)
-        : translation_(translation), rotation_(rotation) {}
-    Rigid2(const Vector& translation, const double rotation)
-        : translation_(translation), rotation_(rotation) {}
+    Rigid2() : translation_(Vector::Zero()), rotation_(Rotation2D::Identity()) {}
+    Rigid2(const Vector& translation, const Rotation2D& rotation) : translation_(translation), rotation_(rotation) {}
+    Rigid2(const Vector& translation, const double rotation) : translation_(translation), rotation_(rotation) {}
 
     static Rigid2 Rotation(const double rotation) {
         return Rigid2(Vector::Zero(), rotation);
@@ -63,8 +60,7 @@ public:
 
     template <typename OtherType>
     Rigid2<OtherType> cast() const {
-        return Rigid2<OtherType>(translation_.template cast<OtherType>(),
-                                 rotation_.template cast<OtherType>());
+        return Rigid2<OtherType>(translation_.template cast<OtherType>(), rotation_.template cast<OtherType>());
     }
 
     const Vector& translation() const {
@@ -86,8 +82,7 @@ public:
     }
 
     std::string DebugString() const {
-        return absl::Substitute("{ t: [$0, $1], r: [$2] }", translation().x(),
-                                translation().y(), rotation().angle());
+        return absl::Substitute("{ t: [$0, $1], r: [$2] }", translation().x(), translation().y(), rotation().angle());
     }
 
 private:
@@ -96,24 +91,19 @@ private:
 };
 
 template <typename FloatType>
-Rigid2<FloatType> operator*(const Rigid2<FloatType>& lhs,
-                            const Rigid2<FloatType>& rhs) {
-    return Rigid2<FloatType>(
-        lhs.rotation() * rhs.translation() + lhs.translation(),
-        lhs.rotation() * rhs.rotation());
+Rigid2<FloatType> operator*(const Rigid2<FloatType>& lhs, const Rigid2<FloatType>& rhs) {
+    return Rigid2<FloatType>(lhs.rotation() * rhs.translation() + lhs.translation(), lhs.rotation() * rhs.rotation());
 }
 
 template <typename FloatType>
-typename Rigid2<FloatType>::Vector operator*(
-    const Rigid2<FloatType>& rigid,
-    const typename Rigid2<FloatType>::Vector& point) {
+typename Rigid2<FloatType>::Vector operator*(const Rigid2<FloatType>& rigid,
+                                             const typename Rigid2<FloatType>::Vector& point) {
     return rigid.rotation() * point + rigid.translation();
 }
 
 // This is needed for gmock.
 template <typename T>
-std::ostream& operator<<(std::ostream& os,
-                         const cartographer::transform::Rigid2<T>& rigid) {
+std::ostream& operator<<(std::ostream& os, const cartographer::transform::Rigid2<T>& rigid) {
     os << rigid.DebugString();
     return os;
 }
@@ -129,12 +119,9 @@ public:
     using Quaternion = Eigen::Quaternion<FloatType>;
     using AngleAxis = Eigen::AngleAxis<FloatType>;
 
-    Rigid3()
-        : translation_(Vector::Zero()), rotation_(Quaternion::Identity()) {}
-    Rigid3(const Vector& translation, const Quaternion& rotation)
-        : translation_(translation), rotation_(rotation) {}
-    Rigid3(const Vector& translation, const AngleAxis& rotation)
-        : translation_(translation), rotation_(rotation) {}
+    Rigid3() : translation_(Vector::Zero()), rotation_(Quaternion::Identity()) {}
+    Rigid3(const Vector& translation, const Quaternion& rotation) : translation_(translation), rotation_(rotation) {}
+    Rigid3(const Vector& translation, const AngleAxis& rotation) : translation_(translation), rotation_(rotation) {}
 
     static Rigid3 Rotation(const AngleAxis& angle_axis) {
         return Rigid3(Vector::Zero(), Quaternion(angle_axis));
@@ -148,11 +135,9 @@ public:
         return Rigid3(vector, Quaternion::Identity());
     }
 
-    static Rigid3 FromArrays(const std::array<FloatType, 4>& rotation,
-                             const std::array<FloatType, 3>& translation) {
+    static Rigid3 FromArrays(const std::array<FloatType, 4>& rotation, const std::array<FloatType, 3>& translation) {
         return Rigid3(Eigen::Map<const Vector>(translation.data()),
-                      Eigen::Quaternion<FloatType>(rotation[0], rotation[1],
-                                                   rotation[2], rotation[3]));
+                      Eigen::Quaternion<FloatType>(rotation[0], rotation[1], rotation[2], rotation[3]));
     }
 
     static Rigid3<FloatType> Identity() {
@@ -161,8 +146,7 @@ public:
 
     template <typename OtherType>
     Rigid3<OtherType> cast() const {
-        return Rigid3<OtherType>(translation_.template cast<OtherType>(),
-                                 rotation_.template cast<OtherType>());
+        return Rigid3<OtherType>(translation_.template cast<OtherType>(), rotation_.template cast<OtherType>());
     }
 
     const Vector& translation() const {
@@ -179,15 +163,12 @@ public:
     }
 
     std::string DebugString() const {
-        return absl::Substitute("{ t: [$0, $1, $2], q: [$3, $4, $5, $6] }",
-                                translation().x(), translation().y(),
-                                translation().z(), rotation().w(),
-                                rotation().x(), rotation().y(), rotation().z());
+        return absl::Substitute("{ t: [$0, $1, $2], q: [$3, $4, $5, $6] }", translation().x(), translation().y(),
+                                translation().z(), rotation().w(), rotation().x(), rotation().y(), rotation().z());
     }
 
     bool IsValid() const {
-        return !std::isnan(translation_.x()) && !std::isnan(translation_.y()) &&
-               !std::isnan(translation_.z()) &&
+        return !std::isnan(translation_.x()) && !std::isnan(translation_.y()) && !std::isnan(translation_.z()) &&
                std::abs(FloatType(1) - rotation_.norm()) < FloatType(1e-3);
     }
 
@@ -197,24 +178,20 @@ private:
 };
 
 template <typename FloatType>
-Rigid3<FloatType> operator*(const Rigid3<FloatType>& lhs,
-                            const Rigid3<FloatType>& rhs) {
-    return Rigid3<FloatType>(
-        lhs.rotation() * rhs.translation() + lhs.translation(),
-        (lhs.rotation() * rhs.rotation()).normalized());
+Rigid3<FloatType> operator*(const Rigid3<FloatType>& lhs, const Rigid3<FloatType>& rhs) {
+    return Rigid3<FloatType>(lhs.rotation() * rhs.translation() + lhs.translation(),
+                             (lhs.rotation() * rhs.rotation()).normalized());
 }
 
 template <typename FloatType>
-typename Rigid3<FloatType>::Vector operator*(
-    const Rigid3<FloatType>& rigid,
-    const typename Rigid3<FloatType>::Vector& point) {
+typename Rigid3<FloatType>::Vector operator*(const Rigid3<FloatType>& rigid,
+                                             const typename Rigid3<FloatType>::Vector& point) {
     return rigid.rotation() * point + rigid.translation();
 }
 
 // This is needed for gmock.
 template <typename T>
-std::ostream& operator<<(std::ostream& os,
-                         const cartographer::transform::Rigid3<T>& rigid) {
+std::ostream& operator<<(std::ostream& os, const cartographer::transform::Rigid3<T>& rigid) {
     os << rigid.DebugString();
     return os;
 }

@@ -30,19 +30,16 @@
 namespace cartographer {
 namespace mapping {
 
-proto::GridOptions2D CreateGridOptions2D(
-    common::LuaParameterDictionary* const parameter_dictionary);
+proto::GridOptions2D CreateGridOptions2D(common::LuaParameterDictionary* const parameter_dictionary);
 
 enum class GridType { PROBABILITY_GRID, TSDF };
 
 class Grid2D : public GridInterface
 {
 public:
-    Grid2D(const MapLimits& limits, float min_correspondence_cost,
-           float max_correspondence_cost,
+    Grid2D(const MapLimits& limits, float min_correspondence_cost, float max_correspondence_cost,
            ValueConversionTables* conversion_tables);
-    explicit Grid2D(const proto::Grid2D& proto,
-                    ValueConversionTables* conversion_tables);
+    explicit Grid2D(const proto::Grid2D& proto, ValueConversionTables* conversion_tables);
 
     // Returns the limits of this Grid2D.
     const MapLimits& limits() const {
@@ -56,8 +53,7 @@ public:
     float GetCorrespondenceCost(const Eigen::Array2i& cell_index) const {
         if (!limits().Contains(cell_index))
             return max_correspondence_cost_;
-        return (*value_to_correspondence_cost_table_)
-            [correspondence_cost_cells()[ToFlatIndex(cell_index)]];
+        return (*value_to_correspondence_cost_table_)[correspondence_cost_cells()[ToFlatIndex(cell_index)]];
     }
 
     virtual GridType GetGridType() const = 0;
@@ -75,14 +71,12 @@ public:
     // Returns true if the probability at the specified index is known.
     bool IsKnown(const Eigen::Array2i& cell_index) const {
         return limits_.Contains(cell_index) &&
-               correspondence_cost_cells_[ToFlatIndex(cell_index)] !=
-                   kUnknownCorrespondenceValue;
+               correspondence_cost_cells_[ToFlatIndex(cell_index)] != kUnknownCorrespondenceValue;
     }
 
     // Fills in 'offset' and 'limits' to define a subregion of that contains all
     // known cells.
-    void ComputeCroppedLimits(Eigen::Array2i* const offset,
-                              CellLimits* const limits) const;
+    void ComputeCroppedLimits(Eigen::Array2i* const offset, CellLimits* const limits) const;
 
     // Grows the map as necessary to include 'point'. This changes the meaning
     // of these coordinates going forward. This method must be called
@@ -93,13 +87,11 @@ public:
 
     virtual proto::Grid2D ToProto() const;
 
-    virtual bool DrawToSubmapTexture(
-        proto::SubmapQuery::Response::SubmapTexture* const texture,
-        transform::Rigid3d local_pose) const = 0;
+    virtual bool DrawToSubmapTexture(proto::SubmapQuery::Response::SubmapTexture* const texture,
+                                     transform::Rigid3d local_pose) const = 0;
 
 protected:
-    void GrowLimits(const Eigen::Vector2f& point,
-                    const std::vector<std::vector<uint16>*>& grids,
+    void GrowLimits(const Eigen::Vector2f& point, const std::vector<std::vector<uint16>*>& grids,
                     const std::vector<uint16>& grids_unknown_cell_values);
 
     const std::vector<uint16>& correspondence_cost_cells() const {
@@ -126,8 +118,7 @@ protected:
     // Converts a 'cell_index' into an index into 'cells_'.
     int ToFlatIndex(const Eigen::Array2i& cell_index) const {
         CHECK(limits_.Contains(cell_index)) << cell_index;
-        return limits_.cell_limits().num_x_cells * cell_index.y() +
-               cell_index.x();
+        return limits_.cell_limits().num_x_cells * cell_index.y() + cell_index.x();
     }
 
 private:

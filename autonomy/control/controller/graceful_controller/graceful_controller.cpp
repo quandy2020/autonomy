@@ -34,9 +34,9 @@ namespace autonomy {
 namespace control {
 namespace controller {
 
-void GracefulController::Configure(
-    std::string name, std::shared_ptr<transform::Buffer> tf,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+void GracefulController::Configure(const proto::ControllerOptions& options, std::string name,
+                                   std::shared_ptr<transform::Buffer> tf,
+                                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     costmap_wrapper_ = costmap_wrapper;
     tf_buffer_ = tf;
     plugin_name_ = name;
@@ -45,8 +45,7 @@ void GracefulController::Configure(
     double transform_tolerance = 0.1;
 
     // Handles global path transformations
-    path_handler_ = std::make_unique<PathHandler>(transform_tolerance,
-                                                  tf_buffer_, costmap_wrapper_);
+    path_handler_ = std::make_unique<PathHandler>(transform_tolerance, tf_buffer_, costmap_wrapper_);
 
     // Initialize footprint collision checker
     // TODO: Add params_ and collision detection support
@@ -89,11 +88,10 @@ void GracefulController::Deactivate() {
     AINFO << "Deactivating controller: " << plugin_name_;
 }
 
-uint32 GracefulController::ComputeVelocityCommands(
-    const commsgs::geometry_msgs::PoseStamped& pose,
-    const commsgs::geometry_msgs::TwistStamped& velocity,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel,
-    common::GoalChecker* goal_checker, std::string& message) {
+uint32 GracefulController::ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
+                                                   const commsgs::geometry_msgs::TwistStamped& velocity,
+                                                   commsgs::geometry_msgs::TwistStamped& cmd_vel,
+                                                   common::GoalChecker* goal_checker, std::string& message) {
     // TODO: Add param_handler_ and params_ support
     // std::lock_guard<std::mutex> param_lock(param_handler_->getMutex());
 
@@ -117,8 +115,7 @@ uint32 GracefulController::ComputeVelocityCommands(
     // Update for the current goal checker's state
     commsgs::geometry_msgs::Pose pose_tolerance;
     commsgs::geometry_msgs::Twist velocity_tolerance;
-    if (goal_checker &&
-        goal_checker->GetTolerances(pose_tolerance, velocity_tolerance)) {
+    if (goal_checker && goal_checker->GetTolerances(pose_tolerance, velocity_tolerance)) {
         goal_dist_tolerance_ = pose_tolerance.position.x;
     } else {
         goal_dist_tolerance_ = goal_dist_tolerance;
@@ -127,9 +124,8 @@ uint32 GracefulController::ComputeVelocityCommands(
     // Update the smooth control law with the new params
     // Initialize control_law_ if not already done
     if (!control_law_) {
-        control_law_ = std::make_unique<SmoothControlLaw>(
-            k_phi, k_delta, beta, lambda, slowdown_radius, v_linear_min,
-            v_linear_max, v_angular_max);
+        control_law_ = std::make_unique<SmoothControlLaw>(k_phi, k_delta, beta, lambda, slowdown_radius, v_linear_min,
+                                                          v_linear_max, v_angular_max);
     } else {
         control_law_->SetCurvatureConstants(k_phi, k_delta, beta, lambda);
         control_law_->SetSlowdownRadius(slowdown_radius);
@@ -137,8 +133,7 @@ uint32 GracefulController::ComputeVelocityCommands(
     }
 
     // Transform path to robot base frame
-    auto transformed_plan =
-        path_handler_->TransformGlobalPlan(pose, max_robot_pose_search_dist);
+    auto transformed_plan = path_handler_->TransformGlobalPlan(pose, max_robot_pose_search_dist);
 
     // Add proper orientations to plan, if needed
     ValidateOrientations(transformed_plan.poses);
@@ -149,13 +144,11 @@ uint32 GracefulController::ComputeVelocityCommands(
         commsgs::builtin_interfaces::Time zero_time;
         zero_time.sec = 0;
         zero_time.nanosec = 0;
-        costmap_transform = tf_buffer_->lookupTransform(
-            costmap_wrapper_->getGlobalFrameID(),
-            costmap_wrapper_->getBaseFrameID(), zero_time, 0.1f);
+        costmap_transform = tf_buffer_->lookupTransform(costmap_wrapper_->getGlobalFrameID(),
+                                                        costmap_wrapper_->getBaseFrameID(), zero_time, 0.1f);
     } catch (const std::exception& ex) {
-        AERROR << "Could not transform " << costmap_wrapper_->getBaseFrameID()
-               << " to " << costmap_wrapper_->getGlobalFrameID() << ": "
-               << ex.what();
+        AERROR << "Could not transform " << costmap_wrapper_->getBaseFrameID() << " to "
+               << costmap_wrapper_->getGlobalFrameID() << ": " << ex.what();
         message = "Transform error: " + std::string(ex.what());
         return 1;
     }
@@ -164,58 +157,43 @@ uint32 GracefulController::ComputeVelocityCommands(
     // path curvatures
     double dist_to_goal = 0.0;
     for (size_t i = 1; i < transformed_plan.poses.size(); ++i) {
-        dist_to_goal += map::costmap_2d::utils::euclidean_distance(
-            transformed_plan.poses[i - 1], transformed_plan.poses[i]);
+        dist_to_goal +=
+            map::costmap_2d::utils::euclidean_distance(transformed_plan.poses[i - 1], transformed_plan.poses[i]);
     }
 
     // If we've reached the XY goal tolerance, just rotate
     if (dist_to_goal < goal_dist_tolerance_ || goal_reached_) {
         goal_reached_ = true;
-        double angle_to_goal = transform::tf2::getYaw(
-            transformed_plan.poses.back().pose.orientation);
+        double angle_to_goal = transform::tf2::getYaw(transformed_plan.poses.back().pose.orientation);
         // Check for collisions between our current pose and goal pose
-        size_t num_steps = static_cast<size_t>(fabs(angle_to_goal) /
-                                               in_place_collision_resolution);
+        size_t num_steps = static_cast<size_t>(fabs(angle_to_goal) / in_place_collision_resolution);
         // Need to check at least the end pose
         num_steps = std::max(static_cast<size_t>(1), num_steps);
         bool collision_free = true;
         for (size_t i = 1; i <= num_steps; ++i) {
-            double step =
-                static_cast<double>(i) / static_cast<double>(num_steps);
+            double step = static_cast<double>(i) / static_cast<double>(num_steps);
             double yaw = step * angle_to_goal;
             commsgs::geometry_msgs::PoseStamped next_pose;
             next_pose.header.frame_id = costmap_wrapper_->getBaseFrameID();
-            next_pose.pose.orientation =
-                map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+            next_pose.pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
             commsgs::geometry_msgs::PoseStamped costmap_pose;
             // Convert commsgs::TransformStamped to
             // geometry_msgs::TransformStamped for doTransform
             geometry_msgs::TransformStamped tf2_transform;
-            tf2_transform.header.stamp =
-                static_cast<uint64_t>(costmap_transform.header.stamp.sec) *
-                    1000000000ULL +
-                static_cast<uint64_t>(costmap_transform.header.stamp.nanosec);
+            tf2_transform.header.stamp = static_cast<uint64_t>(costmap_transform.header.stamp.sec) * 1000000000ULL +
+                                         static_cast<uint64_t>(costmap_transform.header.stamp.nanosec);
             tf2_transform.header.frame_id = costmap_transform.header.frame_id;
             tf2_transform.child_frame_id = costmap_transform.child_frame_id;
-            tf2_transform.transform.translation.x =
-                costmap_transform.transform.translation.x;
-            tf2_transform.transform.translation.y =
-                costmap_transform.transform.translation.y;
-            tf2_transform.transform.translation.z =
-                costmap_transform.transform.translation.z;
-            tf2_transform.transform.rotation.x =
-                costmap_transform.transform.rotation.x;
-            tf2_transform.transform.rotation.y =
-                costmap_transform.transform.rotation.y;
-            tf2_transform.transform.rotation.z =
-                costmap_transform.transform.rotation.z;
-            tf2_transform.transform.rotation.w =
-                costmap_transform.transform.rotation.w;
+            tf2_transform.transform.translation.x = costmap_transform.transform.translation.x;
+            tf2_transform.transform.translation.y = costmap_transform.transform.translation.y;
+            tf2_transform.transform.translation.z = costmap_transform.transform.translation.z;
+            tf2_transform.transform.rotation.x = costmap_transform.transform.rotation.x;
+            tf2_transform.transform.rotation.y = costmap_transform.transform.rotation.y;
+            tf2_transform.transform.rotation.z = costmap_transform.transform.rotation.z;
+            tf2_transform.transform.rotation.w = costmap_transform.transform.rotation.w;
             transform::tf2::doTransform(next_pose, costmap_pose, tf2_transform);
-            if (use_collision_detection &&
-                InCollision(
-                    costmap_pose.pose.position.x, costmap_pose.pose.position.y,
-                    transform::tf2::getYaw(costmap_pose.pose.orientation))) {
+            if (use_collision_detection && InCollision(costmap_pose.pose.position.x, costmap_pose.pose.position.y,
+                                                       transform::tf2::getYaw(costmap_pose.pose.orientation))) {
                 collision_free = false;
                 break;
             }
@@ -247,8 +225,7 @@ uint32 GracefulController::ComputeVelocityCommands(
             // Requires interpolating the orientation which is not yet
             // implemented Updates dist_to_target for target_pose returned if
             // using the point on the path
-            target_pose = control::utils::GetLookAheadPoint(
-                dist_to_target, transformed_plan, false);
+            target_pose = control::utils::GetLookAheadPoint(dist_to_target, transformed_plan, false);
             is_first_iteration = false;
         } else {
             // Underlying control law needs a single target pose, which should:
@@ -260,16 +237,14 @@ uint32 GracefulController::ComputeVelocityCommands(
         }
 
         // Compute velocity at this moment if valid target pose is found
-        if (ValidateTargetPose(target_pose, dist_to_target, dist_to_goal,
-                               local_plan, costmap_transform, cmd_vel)) {
+        if (ValidateTargetPose(target_pose, dist_to_target, dist_to_goal, local_plan, costmap_transform, cmd_vel)) {
             // Publish the selected target_pose
             if (motion_target_pub_) {
                 motion_target_pub_->Write(target_pose);
             }
             // Publish marker for slowdown radius around motion target for
             // debugging / visualization
-            auto slowdown_marker =
-                CreateSlowdownMarker(target_pose, slowdown_radius);
+            auto slowdown_marker = CreateSlowdownMarker(target_pose, slowdown_radius);
             if (slowdown_pub_) {
                 slowdown_pub_->Write(slowdown_marker);
             }
@@ -288,8 +263,7 @@ uint32 GracefulController::ComputeVelocityCommands(
     return 1;  // Return error code
 }
 
-bool GracefulController::IsGoalReached(double dist_tolerance,
-                                       double angle_tolerance) {
+bool GracefulController::IsGoalReached(double dist_tolerance, double angle_tolerance) {
     // TODO: Implement goal reached check based on current pose and goal
     // For now, return false as a placeholder
     (void)dist_tolerance;
@@ -303,8 +277,7 @@ void GracefulController::SetPlan(const commsgs::planning_msgs::Path& path) {
     do_initial_rotation_ = true;
 }
 
-void GracefulController::SetSpeedLimit(const double& speed_limit,
-                                       const bool& percentage) {
+void GracefulController::SetSpeedLimit(const double& speed_limit, const bool& percentage) {
     // TODO: Add param_handler_ and params_ support
     // For now, update control_law_ directly if it exists
     if (control_law_) {
@@ -329,11 +302,10 @@ void GracefulController::SetSpeedLimit(const double& speed_limit,
     }
 }
 
-bool GracefulController::ValidateTargetPose(
-    commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-    double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
-    commsgs::geometry_msgs::TransformStamped& costmap_transform,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel) {
+bool GracefulController::ValidateTargetPose(commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+                                            double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
+                                            commsgs::geometry_msgs::TransformStamped& costmap_transform,
+                                            commsgs::geometry_msgs::TwistStamped& cmd_vel) {
     // Default parameters - TODO: Load from params_
     double max_lookahead = 2.0;
     double min_lookahead = 0.3;
@@ -349,10 +321,8 @@ bool GracefulController::ValidateTargetPose(
         if (prefer_final_rotation) {
             // Avoid instability and big sweeping turns at the end of paths by
             // ignoring final heading
-            double yaw = std::atan2(target_pose.pose.position.y,
-                                    target_pose.pose.position.x);
-            target_pose.pose.orientation =
-                map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+            double yaw = std::atan2(target_pose.pose.position.y, target_pose.pose.position.x);
+            target_pose.pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
         }
     } else if (dist_to_target < min_lookahead) {
         // Make sure target is far enough away to avoid instability
@@ -365,13 +335,11 @@ bool GracefulController::ValidateTargetPose(
     if (allow_backward && target_pose.pose.position.x < 0.0) {
         reversing = true;
         target_pose.pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(
-                transform::tf2::getYaw(target_pose.pose.orientation) + M_PI);
+            map::costmap_2d::utils::OrientationAroundZAxis(transform::tf2::getYaw(target_pose.pose.orientation) + M_PI);
     }
 
     // Actually simulate the path
-    if (SimulateTrajectory(target_pose, costmap_transform, trajectory, cmd_vel,
-                           reversing)) {
+    if (SimulateTrajectory(target_pose, costmap_transform, trajectory, cmd_vel, reversing)) {
         // Successfully simulated to target_pose
         return true;
     }
@@ -380,11 +348,10 @@ bool GracefulController::ValidateTargetPose(
     return false;
 }
 
-bool GracefulController::SimulateTrajectory(
-    const commsgs::geometry_msgs::PoseStamped& motion_target,
-    const commsgs::geometry_msgs::TransformStamped& costmap_transform,
-    commsgs::planning_msgs::Path& trajectory,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward) {
+bool GracefulController::SimulateTrajectory(const commsgs::geometry_msgs::PoseStamped& motion_target,
+                                            const commsgs::geometry_msgs::TransformStamped& costmap_transform,
+                                            commsgs::planning_msgs::Path& trajectory,
+                                            commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward) {
     trajectory.poses.clear();
 
     // Default parameters - TODO: Load from params_
@@ -400,8 +367,7 @@ bool GracefulController::SimulateTrajectory(
 
     // Should we simulate rotation initially?
     bool sim_initial_rotation = do_initial_rotation_ && initial_rotation;
-    double angle_to_target = std::atan2(motion_target.pose.position.y,
-                                        motion_target.pose.position.x);
+    double angle_to_target = std::atan2(motion_target.pose.position.y, motion_target.pose.position.x);
     if (fabs(angle_to_target) < initial_rotation_tolerance) {
         sim_initial_rotation = false;
         do_initial_rotation_ = false;
@@ -412,17 +378,15 @@ bool GracefulController::SimulateTrajectory(
     double dt = (v_linear_max > 0.0) ? resolution / v_linear_max : 0.0;
 
     // Set max iter to avoid infinite loop
-    unsigned int max_iter = 3 * static_cast<unsigned int>(
-                                    std::hypot(motion_target.pose.position.x,
-                                               motion_target.pose.position.y) /
-                                    resolution);
+    unsigned int max_iter =
+        3 * static_cast<unsigned int>(std::hypot(motion_target.pose.position.x, motion_target.pose.position.y) /
+                                      resolution);
 
     // Generate path
     do {
         if (sim_initial_rotation) {
             // Compute rotation velocity
-            double next_pose_yaw =
-                transform::tf2::getYaw(next_pose.pose.orientation);
+            double next_pose_yaw = transform::tf2::getYaw(next_pose.pose.orientation);
             auto cmd = RotateToTarget(angle_to_target - next_pose_yaw);
 
             // If this is first iteration, this is our current target velocity
@@ -431,26 +395,22 @@ bool GracefulController::SimulateTrajectory(
             }
 
             // Are we done simulating initial rotation?
-            if (fabs(angle_to_target - next_pose_yaw) <
-                initial_rotation_tolerance) {
+            if (fabs(angle_to_target - next_pose_yaw) < initial_rotation_tolerance) {
                 sim_initial_rotation = false;
             }
 
             // Forward simulate rotation command
             next_pose_yaw += cmd_vel.twist.angular.z * dt;
-            next_pose.pose.orientation =
-                map::costmap_2d::utils::OrientationAroundZAxis(next_pose_yaw);
+            next_pose.pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(next_pose_yaw);
         } else {
             // If this is first iteration, this is our current target velocity
             if (trajectory.poses.empty() && control_law_) {
-                cmd_vel.twist = control_law_->CalculateRegularVelocity(
-                    motion_target.pose, next_pose.pose, backward);
+                cmd_vel.twist = control_law_->CalculateRegularVelocity(motion_target.pose, next_pose.pose, backward);
             }
 
             // Apply velocities to calculate next pose
             if (control_law_) {
-                next_pose.pose = control_law_->CalculateNextPose(
-                    dt, motion_target.pose, next_pose.pose, backward);
+                next_pose.pose = control_law_->CalculateNextPose(dt, motion_target.pose, next_pose.pose, backward);
             }
         }
 
@@ -462,44 +422,31 @@ bool GracefulController::SimulateTrajectory(
         // Convert commsgs::TransformStamped to geometry_msgs::TransformStamped
         // for doTransform
         geometry_msgs::TransformStamped tf2_transform;
-        tf2_transform.header.stamp =
-            static_cast<uint64_t>(costmap_transform.header.stamp.sec) *
-                1000000000ULL +
-            static_cast<uint64_t>(costmap_transform.header.stamp.nanosec);
+        tf2_transform.header.stamp = static_cast<uint64_t>(costmap_transform.header.stamp.sec) * 1000000000ULL +
+                                     static_cast<uint64_t>(costmap_transform.header.stamp.nanosec);
         tf2_transform.header.frame_id = costmap_transform.header.frame_id;
         tf2_transform.child_frame_id = costmap_transform.child_frame_id;
-        tf2_transform.transform.translation.x =
-            costmap_transform.transform.translation.x;
-        tf2_transform.transform.translation.y =
-            costmap_transform.transform.translation.y;
-        tf2_transform.transform.translation.z =
-            costmap_transform.transform.translation.z;
-        tf2_transform.transform.rotation.x =
-            costmap_transform.transform.rotation.x;
-        tf2_transform.transform.rotation.y =
-            costmap_transform.transform.rotation.y;
-        tf2_transform.transform.rotation.z =
-            costmap_transform.transform.rotation.z;
-        tf2_transform.transform.rotation.w =
-            costmap_transform.transform.rotation.w;
+        tf2_transform.transform.translation.x = costmap_transform.transform.translation.x;
+        tf2_transform.transform.translation.y = costmap_transform.transform.translation.y;
+        tf2_transform.transform.translation.z = costmap_transform.transform.translation.z;
+        tf2_transform.transform.rotation.x = costmap_transform.transform.rotation.x;
+        tf2_transform.transform.rotation.y = costmap_transform.transform.rotation.y;
+        tf2_transform.transform.rotation.z = costmap_transform.transform.rotation.z;
+        tf2_transform.transform.rotation.w = costmap_transform.transform.rotation.w;
         transform::tf2::doTransform(next_pose, global_pose, tf2_transform);
-        if (use_collision_detection &&
-            InCollision(global_pose.pose.position.x,
-                        global_pose.pose.position.y,
-                        transform::tf2::getYaw(global_pose.pose.orientation))) {
+        if (use_collision_detection && InCollision(global_pose.pose.position.x, global_pose.pose.position.y,
+                                                   transform::tf2::getYaw(global_pose.pose.orientation))) {
             return false;
         }
 
         // Check if we reach the goal
-        distance = map::costmap_2d::utils::euclidean_distance(
-            motion_target.pose, next_pose.pose);
+        distance = map::costmap_2d::utils::euclidean_distance(motion_target.pose, next_pose.pose);
     } while (distance > resolution && trajectory.poses.size() < max_iter);
 
     return true;
 }
 
-commsgs::geometry_msgs::Twist GracefulController::RotateToTarget(
-    double angle_to_target) {
+commsgs::geometry_msgs::Twist GracefulController::RotateToTarget(double angle_to_target) {
     // Default parameters - TODO: Load from params_
     double rotation_scaling_factor = 1.0;
     double v_angular_max = 1.0;
@@ -509,13 +456,11 @@ commsgs::geometry_msgs::Twist GracefulController::RotateToTarget(
     vel.linear.x = 0.0;
     vel.angular.z = rotation_scaling_factor * angle_to_target * v_angular_max;
     vel.angular.z = std::copysign(1.0, vel.angular.z) *
-                    std::max(static_cast<double>(std::abs(vel.angular.z)),
-                             v_angular_min_in_place);
+                    std::max(static_cast<double>(std::abs(vel.angular.z)), v_angular_min_in_place);
     return vel;
 }
 
-bool GracefulController::InCollision(const double& x, const double& y,
-                                     const double& theta) {
+bool GracefulController::InCollision(const double& x, const double& y, const double& theta) {
     if (!collision_checker_) {
         return false;  // No collision checker available
     }
@@ -538,8 +483,7 @@ bool GracefulController::InCollision(const double& x, const double& y,
     if (consider_footprint) {
         // TODO: Get robot footprint from costmap_wrapper_
         std::vector<commsgs::geometry_msgs::Point> footprint;
-        footprint_cost =
-            collision_checker_->footprintCostAtPose(x, y, theta, footprint);
+        footprint_cost = collision_checker_->footprintCostAtPose(x, y, theta, footprint);
     } else {
         footprint_cost = collision_checker_->pointCost(mx, my);
     }
@@ -556,9 +500,8 @@ bool GracefulController::InCollision(const double& x, const double& y,
     return false;
 }
 
-void GracefulController::ComputeDistanceAlongPath(
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
-    std::vector<double>& distances) {
+void GracefulController::ComputeDistanceAlongPath(const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
+                                                  std::vector<double>& distances) {
     distances.resize(poses.size());
     // Do the first pose from robot
     double d = std::hypot(poses[0].pose.position.x, poses[0].pose.position.y);
@@ -570,8 +513,7 @@ void GracefulController::ComputeDistanceAlongPath(
     }
 }
 
-void GracefulController::ValidateOrientations(
-    std::vector<commsgs::geometry_msgs::PoseStamped>& path) {
+void GracefulController::ValidateOrientations(std::vector<commsgs::geometry_msgs::PoseStamped>& path) {
     // We never change the orientation of the first & last pose
     // So we need at least three poses to do anything here
     if (path.size() < 3) {
@@ -582,8 +524,7 @@ void GracefulController::ValidateOrientations(
     double initial_yaw = transform::tf2::getYaw(path[1].pose.orientation);
     for (size_t i = 2; i < path.size() - 1; ++i) {
         double this_yaw = transform::tf2::getYaw(path[i].pose.orientation);
-        if (std::abs(autonomy::common::math::AngleDiff(this_yaw, initial_yaw)) >
-            1e-6) {
+        if (std::abs(autonomy::common::math::AngleDiff(this_yaw, initial_yaw)) > 1e-6) {
             return;
         }
     }
@@ -595,8 +536,7 @@ void GracefulController::ValidateOrientations(
         double dx = path[i + 1].pose.position.x - path[i].pose.position.x;
         double dy = path[i + 1].pose.position.y - path[i].pose.position.y;
         double yaw = std::atan2(dy, dx);
-        path[i].pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+        path[i].pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
     }
 }
 

@@ -31,11 +31,8 @@ namespace {
 class Object
 {
 public:
-    Object(const double x1, const double y1, const double x2, const double y2,
-           const int id)
-        : aabox_({x1, y1}, {x2, y2}),
-          line_segment_({x1, y1}, {x2, y2}),
-          id_(id) {}
+    Object(const double x1, const double y1, const double x2, const double y2, const int id)
+        : aabox_({x1, y1}, {x2, y2}), line_segment_({x1, y1}, {x2, y2}), id_(id) {}
     const AABox2d& aabox() const {
         return aabox_;
     }
@@ -78,32 +75,25 @@ TEST(AABoxKDTree2dNode, OverallTests) {
         }
         std::unique_ptr<AABoxKDTree2d<Object>> kdtrees[kNumTrees];
         for (int i = 0; i < kNumTrees; ++i) {
-            kdtrees[i].reset(
-                new AABoxKDTree2d<Object>(objects, kdtree_params[i]));
+            kdtrees[i].reset(new AABoxKDTree2d<Object>(objects, kdtree_params[i]));
         }
         for (int i = 0; i < kNumQueries; ++i) {
-            const Vec2d point(RandomDouble(-kSize * 1.5, kSize * 1.5),
-                              RandomDouble(-kSize * 1.5, kSize * 1.5));
+            const Vec2d point(RandomDouble(-kSize * 1.5, kSize * 1.5), RandomDouble(-kSize * 1.5, kSize * 1.5));
             double expected_distance = std::numeric_limits<double>::infinity();
             for (const auto& object : objects) {
-                expected_distance =
-                    std::min(expected_distance, object.DistanceTo(point));
+                expected_distance = std::min(expected_distance, object.DistanceTo(point));
             }
             for (int k = 0; k < kNumTrees; ++k) {
-                const Object* nearest_object =
-                    kdtrees[k]->GetNearestObject(point);
-                const double actual_distance =
-                    nearest_object->DistanceTo(point);
+                const Object* nearest_object = kdtrees[k]->GetNearestObject(point);
+                const double actual_distance = nearest_object->DistanceTo(point);
                 EXPECT_NEAR(actual_distance, expected_distance, 1e-3);
             }
         }
         for (int i = 0; i < kNumQueries; ++i) {
-            const Vec2d point(RandomDouble(-kSize * 1.5, kSize * 1.5),
-                              RandomDouble(-kSize * 1.5, kSize * 1.5));
+            const Vec2d point(RandomDouble(-kSize * 1.5, kSize * 1.5), RandomDouble(-kSize * 1.5, kSize * 1.5));
             const double distance = RandomDouble(0, kSize * 2.0);
             for (int k = 0; k < kNumTrees; ++k) {
-                std::vector<const Object*> result_objects =
-                    kdtrees[k]->GetObjects(point, distance);
+                std::vector<const Object*> result_objects = kdtrees[k]->GetObjects(point, distance);
                 std::set<int> result_ids;
                 for (const Object* object : result_objects) {
                     result_ids.insert(object->id());

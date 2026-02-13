@@ -38,25 +38,17 @@ namespace sensor {
 using Time = common::Time;
 
 struct SensorId {
-    enum class SensorType {
-        RANGE = 0,
-        IMU,
-        ODOMETRY,
-        LANDMARK,
-        FIXED_FRAME_POSE
-    };
+    enum class SensorType { RANGE = 0, IMU, ODOMETRY, LANDMARK, FIXED_FRAME_POSE };
 
     SensorType type;
     std::string id;
 
     bool operator==(const SensorId& other) const {
-        return std::forward_as_tuple(type, id) ==
-               std::forward_as_tuple(other.type, other.id);
+        return std::forward_as_tuple(type, id) == std::forward_as_tuple(other.type, other.id);
     }
 
     bool operator<(const SensorId& other) const {
-        return std::forward_as_tuple(type, id) <
-               std::forward_as_tuple(other.type, other.id);
+        return std::forward_as_tuple(type, id) < std::forward_as_tuple(other.type, other.id);
     }
 };
 

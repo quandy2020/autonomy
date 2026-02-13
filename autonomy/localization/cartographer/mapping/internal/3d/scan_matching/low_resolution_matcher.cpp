@@ -20,15 +20,13 @@ namespace cartographer {
 namespace mapping {
 namespace scan_matching {
 
-std::function<float(const transform::Rigid3f&)> CreateLowResolutionMatcher(
-    const HybridGrid* low_resolution_grid, const sensor::PointCloud* points) {
+std::function<float(const transform::Rigid3f&)> CreateLowResolutionMatcher(const HybridGrid* low_resolution_grid,
+                                                                           const sensor::PointCloud* points) {
     return [=](const transform::Rigid3f& pose) {
         float score = 0.f;
-        for (const sensor::RangefinderPoint& point :
-             sensor::TransformPointCloud(*points, pose)) {
+        for (const sensor::RangefinderPoint& point : sensor::TransformPointCloud(*points, pose)) {
             // TODO(zhengj, whess): Interpolate the Grid to get better score.
-            score += low_resolution_grid->GetProbability(
-                low_resolution_grid->GetCellIndex(point.position));
+            score += low_resolution_grid->GetProbability(low_resolution_grid->GetCellIndex(point.position));
         }
         return score / points->size();
     };

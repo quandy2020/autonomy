@@ -29,11 +29,8 @@ namespace scan_matching {
 class RotationDeltaCostFunctor2D
 {
 public:
-    static ceres::CostFunction* CreateAutoDiffCostFunction(
-        const double scaling_factor, const double target_angle) {
-        return new ceres::AutoDiffCostFunction<RotationDeltaCostFunctor2D,
-                                               1 /* residuals */,
-                                               3 /* pose variables */>(
+    static ceres::CostFunction* CreateAutoDiffCostFunction(const double scaling_factor, const double target_angle) {
+        return new ceres::AutoDiffCostFunction<RotationDeltaCostFunctor2D, 1 /* residuals */, 3 /* pose variables */>(
             new RotationDeltaCostFunctor2D(scaling_factor, target_angle));
     }
 
@@ -44,13 +41,11 @@ public:
     }
 
 private:
-    explicit RotationDeltaCostFunctor2D(const double scaling_factor,
-                                        const double target_angle)
+    explicit RotationDeltaCostFunctor2D(const double scaling_factor, const double target_angle)
         : scaling_factor_(scaling_factor), angle_(target_angle) {}
 
     RotationDeltaCostFunctor2D(const RotationDeltaCostFunctor2D&) = delete;
-    RotationDeltaCostFunctor2D& operator=(const RotationDeltaCostFunctor2D&) =
-        delete;
+    RotationDeltaCostFunctor2D& operator=(const RotationDeltaCostFunctor2D&) = delete;
 
     const double scaling_factor_;
     const double angle_;

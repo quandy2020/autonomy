@@ -28,8 +28,7 @@ public:
      * @param center the position of the circle center.
      * @param radius the radius of the circle.
      */
-    SpiralIterator(const grid_map::GridMap& gridMap, Eigen::Vector2d center,
-                   double radius);
+    SpiralIterator(const grid_map::GridMap& gridMap, Eigen::Vector2d center, double radius);
 
     /*!
      * Compare to another iterator.

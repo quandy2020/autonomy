@@ -31,8 +31,7 @@ using detail::ExtractFrameId;
 using detail::ExtractTimestamp;
 using detail::SetEntityHeader;
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::planning_msgs::Path& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::planning_msgs::Path& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     if (message.poses_size() == 0) {
@@ -67,14 +66,12 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     entity.lines.push_back(line);
     scene_update.entities.push_back(entity);
 
-    AINFO << "Converted Path with " << message.poses_size()
-          << " poses to SceneUpdate";
+    AINFO << "Converted Path with " << message.poses_size() << " poses to SceneUpdate";
 
     return scene_update;
 }
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::planning_msgs::Odometry& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::planning_msgs::Odometry& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     // 创建场景实体
@@ -127,12 +124,9 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 
                 if (message.has_pose() && message.pose().has_pose()) {
                     vel_arrow.pose->position = foxglove::schemas::Vector3();
-                    vel_arrow.pose->position->x =
-                        message.pose().pose().position().x();
-                    vel_arrow.pose->position->y =
-                        message.pose().pose().position().y();
-                    vel_arrow.pose->position->z =
-                        message.pose().pose().position().z();
+                    vel_arrow.pose->position->x = message.pose().pose().position().x();
+                    vel_arrow.pose->position->y = message.pose().pose().position().y();
+                    vel_arrow.pose->position->z = message.pose().pose().position().z();
                 } else {
                     vel_arrow.pose->position = foxglove::schemas::Vector3();
                     vel_arrow.pose->position->x = 0.0;
@@ -169,12 +163,9 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 
                 if (message.has_pose() && message.pose().has_pose()) {
                     ang_arrow.pose->position = foxglove::schemas::Vector3();
-                    ang_arrow.pose->position->x =
-                        message.pose().pose().position().x();
-                    ang_arrow.pose->position->y =
-                        message.pose().pose().position().y();
-                    ang_arrow.pose->position->z =
-                        message.pose().pose().position().z() + 0.5;
+                    ang_arrow.pose->position->x = message.pose().pose().position().x();
+                    ang_arrow.pose->position->y = message.pose().pose().position().y();
+                    ang_arrow.pose->position->z = message.pose().pose().position().z() + 0.5;
                 } else {
                     ang_arrow.pose->position = foxglove::schemas::Vector3();
                     ang_arrow.pose->position->x = 0.0;
@@ -203,8 +194,8 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted Odometry to SceneUpdate with " << entity.cubes.size()
-          << " cubes and " << entity.arrows.size() << " arrows";
+    AINFO << "Converted Odometry to SceneUpdate with " << entity.cubes.size() << " cubes and " << entity.arrows.size()
+          << " arrows";
 
     return scene_update;
 }

@@ -46,14 +46,12 @@ public:
     };
 
     PoseExtrapolatorInterface(const PoseExtrapolatorInterface&) = delete;
-    PoseExtrapolatorInterface& operator=(const PoseExtrapolatorInterface&) =
-        delete;
+    PoseExtrapolatorInterface& operator=(const PoseExtrapolatorInterface&) = delete;
     virtual ~PoseExtrapolatorInterface() {}
 
     // TODO: Remove dependency cycle.
     static std::unique_ptr<PoseExtrapolatorInterface> CreateWithImuData(
-        const proto::PoseExtrapolatorOptions& options,
-        const std::vector<sensor::ImuData>& imu_data,
+        const proto::PoseExtrapolatorOptions& options, const std::vector<sensor::ImuData>& imu_data,
         const std::vector<transform::TimestampedTransform>& initial_poses);
 
     // Returns the time of the last added pose or Time::min() if no pose was
@@ -66,13 +64,11 @@ public:
     virtual void AddOdometryData(const sensor::OdometryData& odometry_data) = 0;
     virtual transform::Rigid3d ExtrapolatePose(common::Time time) = 0;
 
-    virtual ExtrapolationResult ExtrapolatePosesWithGravity(
-        const std::vector<common::Time>& times) = 0;
+    virtual ExtrapolationResult ExtrapolatePosesWithGravity(const std::vector<common::Time>& times) = 0;
 
     // Returns the current gravity alignment estimate as a rotation from
     // the tracking frame into a gravity aligned frame.
-    virtual Eigen::Quaterniond EstimateGravityOrientation(
-        common::Time time) = 0;
+    virtual Eigen::Quaterniond EstimateGravityOrientation(common::Time time) = 0;
 
 protected:
     PoseExtrapolatorInterface() {}

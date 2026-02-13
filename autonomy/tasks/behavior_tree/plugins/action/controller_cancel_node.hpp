@@ -18,6 +18,9 @@
 
 #include <string>
 
+#include "autonomy/tasks/navigator/proto/action.pb.h"
+
+#include "autonomy/tasks/behavior_tree/behavior_tree_cancel_action_node.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
@@ -27,38 +30,29 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A BT::ActionNode that cancels a controller behavior
+ * @brief A nav2_behavior_tree::BtActionNode class that wraps
+ * nav2_msgs::action::FollowPath
  */
-class ControllerCancelNode : public BT::ActionNodeBase
+class ControllerCancel : public BtCancelActionNode<proto::FollowPathAction>
 {
 public:
     /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::ControllerCancelNode
+     * @brief A constructor for nav2_behavior_tree::FollowPathAction
      * @param xml_tag_name Name for the XML tag for this node
+     * @param action_name Action name this node creates a client for
      * @param conf BT node configuration
      */
-    ControllerCancelNode(const std::string& xml_tag_name,
-                         const BT::NodeConfiguration& conf);
+    ControllerCancel(const std::string& xml_tag_name, const std::string& action_name,
+                     const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
+     * @return BT::PortsList Containing basic ports along with node-specific
+     * ports
      */
     static BT::PortsList providedPorts() {
-        return BT::PortsList();
+        return providedBasicPorts({});
     }
-
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
-
-    /**
-     * @brief Function to halt the node
-     */
-    void halt() override {}
 };
 
 }  // namespace action

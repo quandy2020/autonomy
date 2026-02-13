@@ -39,8 +39,7 @@ public:
      * to be an odd number!).
      */
     SlidingWindowIterator(const GridMap& gridMap, const std::string& layer,
-                          const EdgeHandling& edgeHandling = EdgeHandling::CROP,
-                          size_t windowSize = 3);
+                          const EdgeHandling& edgeHandling = EdgeHandling::CROP, size_t windowSize = 3);
 
     /*!
      * Copy constructor.

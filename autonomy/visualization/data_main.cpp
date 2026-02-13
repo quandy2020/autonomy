@@ -39,7 +39,7 @@ namespace autonomy {
 namespace visualization {
 namespace {
 
-std::unique_ptr<autolink::Node> g_node;
+std::shared_ptr<autolink::Node> g_node;
 bool g_running = true;
 
 void SignalHandler(int) {
@@ -59,8 +59,7 @@ autonomy::commsgs::proto::builtin_interfaces::Time GetCurrentTime() {
 }
 
 // 创建 Header
-autonomy::commsgs::proto::std_msgs::Header CreateHeader(
-    const std::string& frame_id) {
+autonomy::commsgs::proto::std_msgs::Header CreateHeader(const std::string& frame_id) {
     autonomy::commsgs::proto::std_msgs::Header header;
     *header.mutable_stamp() = GetCurrentTime();
     header.set_frame_id(frame_id);
@@ -68,11 +67,7 @@ autonomy::commsgs::proto::std_msgs::Header CreateHeader(
 }
 
 // 发布 IMU 数据
-void PublishImu(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::sensor_msgs::Imu>>
-        writer,
-    uint64_t seq) {
+void PublishImu(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::sensor_msgs::Imu>> writer, uint64_t seq) {
     auto msg = std::make_shared<autonomy::commsgs::proto::sensor_msgs::Imu>();
 
     // 设置 header
@@ -103,11 +98,8 @@ void PublishImu(
 }
 
 // 发布 Camera (Image) 数据
-void PublishImage(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::sensor_msgs::Image>>
-        writer,
-    uint64_t seq) {
+void PublishImage(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::sensor_msgs::Image>> writer,
+                  uint64_t seq) {
     auto msg = std::make_shared<autonomy::commsgs::proto::sensor_msgs::Image>();
 
     // 设置 header
@@ -139,17 +131,13 @@ void PublishImage(
     msg->set_data(image_data);
 
     if (writer->Write(msg)) {
-        AINFO << "Published Image message, seq=" << seq
-              << ", size=" << data_size << " bytes";
+        AINFO << "Published Image message, seq=" << seq << ", size=" << data_size << " bytes";
     }
 }
 
 // 发布 Range 数据
-void PublishRange(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::sensor_msgs::Range>>
-        writer,
-    uint64_t seq) {
+void PublishRange(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::sensor_msgs::Range>> writer,
+                  uint64_t seq) {
     auto msg = std::make_shared<autonomy::commsgs::proto::sensor_msgs::Range>();
 
     // 设置 header
@@ -167,19 +155,14 @@ void PublishRange(
     msg->set_range(range);
 
     if (writer->Write(msg)) {
-        AINFO << "Published Range message, seq=" << seq << ", range=" << range
-              << "m";
+        AINFO << "Published Range message, seq=" << seq << ", range=" << range << "m";
     }
 }
 
 // 发布点云 (PointCloud2) 数据
-void PublishPointCloud2(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::sensor_msgs::PointCloud2>>
-        writer,
-    uint64_t seq) {
-    auto msg =
-        std::make_shared<autonomy::commsgs::proto::sensor_msgs::PointCloud2>();
+void PublishPointCloud2(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::sensor_msgs::PointCloud2>> writer,
+                        uint64_t seq) {
+    auto msg = std::make_shared<autonomy::commsgs::proto::sensor_msgs::PointCloud2>();
 
     // 设置 header
     *msg->mutable_header() = CreateHeader("map");
@@ -251,19 +234,14 @@ void PublishPointCloud2(
     }
 
     if (writer->Write(msg)) {
-        AINFO << "Published PointCloud2 message, seq=" << seq
-              << ", points=" << WIDTH;
+        AINFO << "Published PointCloud2 message, seq=" << seq << ", points=" << WIDTH;
     }
 }
 
 // 发布点云 (PointCloud) 数据
-void PublishPointCloud(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::sensor_msgs::PointCloud>>
-        writer,
-    uint64_t seq) {
-    auto msg =
-        std::make_shared<autonomy::commsgs::proto::sensor_msgs::PointCloud>();
+void PublishPointCloud(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::sensor_msgs::PointCloud>> writer,
+                       uint64_t seq) {
+    auto msg = std::make_shared<autonomy::commsgs::proto::sensor_msgs::PointCloud>();
 
     // 设置 header
     *msg->mutable_header() = CreateHeader("map");
@@ -273,27 +251,21 @@ void PublishPointCloud(
     for (int i = 0; i < NUM_POINTS; ++i) {
         auto* point = msg->add_points();
         point->set_x(static_cast<float>(i * 0.1));
-        point->set_y(
-            static_cast<float>(2.0 + 0.5 * std::sin(i * 0.2 + seq * 0.1)));
+        point->set_y(static_cast<float>(2.0 + 0.5 * std::sin(i * 0.2 + seq * 0.1)));
         point->set_z(static_cast<float>(1.0));
         point->set_intensity(static_cast<uint32_t>(100 + i * 2));
         *point->mutable_timestamp() = GetCurrentTime();
     }
 
     if (writer->Write(msg)) {
-        AINFO << "Published PointCloud message, seq=" << seq
-              << ", points=" << NUM_POINTS;
+        AINFO << "Published PointCloud message, seq=" << seq << ", points=" << NUM_POINTS;
     }
 }
 
 // 发布轨迹 (Path) 数据
-void PublishPath(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::planning_msgs::Path>>
-        writer,
-    uint64_t seq) {
-    auto msg =
-        std::make_shared<autonomy::commsgs::proto::planning_msgs::Path>();
+void PublishPath(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::planning_msgs::Path>> writer,
+                 uint64_t seq) {
+    auto msg = std::make_shared<autonomy::commsgs::proto::planning_msgs::Path>();
 
     // 设置 header
     *msg->mutable_header() = CreateHeader("map");
@@ -321,19 +293,14 @@ void PublishPath(
     }
 
     if (writer->Write(msg)) {
-        AINFO << "Published Path message, seq=" << seq
-              << ", waypoints=" << NUM_POINTS;
+        AINFO << "Published Path message, seq=" << seq << ", waypoints=" << NUM_POINTS;
     }
 }
 
 // 发布地图 (OccupancyGrid) 数据
-void PublishOccupancyGrid(
-    std::shared_ptr<
-        autolink::Writer<autonomy::commsgs::proto::map_msgs::OccupancyGrid>>
-        writer,
-    uint64_t seq) {
-    auto msg =
-        std::make_shared<autonomy::commsgs::proto::map_msgs::OccupancyGrid>();
+void PublishOccupancyGrid(std::shared_ptr<autolink::Writer<autonomy::commsgs::proto::map_msgs::OccupancyGrid>> writer,
+                          uint64_t seq) {
+    auto msg = std::make_shared<autonomy::commsgs::proto::map_msgs::OccupancyGrid>();
 
     // 设置 header
     *msg->mutable_header() = CreateHeader("map");
@@ -384,8 +351,7 @@ void PublishOccupancyGrid(
     }
 
     if (writer->Write(msg)) {
-        AINFO << "Published OccupancyGrid message, seq=" << seq
-              << ", size=" << MAP_WIDTH << "x" << MAP_HEIGHT;
+        AINFO << "Published OccupancyGrid message, seq=" << seq << ", size=" << MAP_WIDTH << "x" << MAP_HEIGHT;
     }
 }
 
@@ -411,69 +377,48 @@ void Run() {
     // IMU writer
     RoleAttributes imu_attr;
     imu_attr.set_channel_name("/sensor/imu");
-    imu_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::sensor_msgs::Imu>());
-    auto imu_writer =
-        g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Imu>(
-            imu_attr);
+    imu_attr.set_message_type(MessageType<autonomy::commsgs::proto::sensor_msgs::Imu>());
+    auto imu_writer = g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Imu>(imu_attr);
 
     // Image writer
     RoleAttributes image_attr;
     image_attr.set_channel_name("/sensor/camera");
-    image_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::sensor_msgs::Image>());
-    auto image_writer =
-        g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Image>(
-            image_attr);
+    image_attr.set_message_type(MessageType<autonomy::commsgs::proto::sensor_msgs::Image>());
+    auto image_writer = g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Image>(image_attr);
 
     // Range writer
     RoleAttributes range_attr;
     range_attr.set_channel_name("/sensor/range");
-    range_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::sensor_msgs::Range>());
-    auto range_writer =
-        g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Range>(
-            range_attr);
+    range_attr.set_message_type(MessageType<autonomy::commsgs::proto::sensor_msgs::Range>());
+    auto range_writer = g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Range>(range_attr);
 
     // PointCloud2 writer
     RoleAttributes pointcloud2_attr;
     pointcloud2_attr.set_channel_name("/sensor/pointcloud2");
-    pointcloud2_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::sensor_msgs::PointCloud2>());
+    pointcloud2_attr.set_message_type(MessageType<autonomy::commsgs::proto::sensor_msgs::PointCloud2>());
     auto pointcloud2_writer =
-        g_node
-            ->CreateWriter<autonomy::commsgs::proto::sensor_msgs::PointCloud2>(
-                pointcloud2_attr);
+        g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::PointCloud2>(pointcloud2_attr);
 
     // PointCloud writer
     RoleAttributes pointcloud_attr;
     pointcloud_attr.set_channel_name("/sensor/pointcloud");
-    pointcloud_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::sensor_msgs::PointCloud>());
-    auto pointcloud_writer =
-        g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::PointCloud>(
-            pointcloud_attr);
+    pointcloud_attr.set_message_type(MessageType<autonomy::commsgs::proto::sensor_msgs::PointCloud>());
+    auto pointcloud_writer = g_node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::PointCloud>(pointcloud_attr);
 
     // Path writer
     RoleAttributes path_attr;
     path_attr.set_channel_name("/planning/path");
-    path_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::planning_msgs::Path>());
-    auto path_writer =
-        g_node->CreateWriter<autonomy::commsgs::proto::planning_msgs::Path>(
-            path_attr);
+    path_attr.set_message_type(MessageType<autonomy::commsgs::proto::planning_msgs::Path>());
+    auto path_writer = g_node->CreateWriter<autonomy::commsgs::proto::planning_msgs::Path>(path_attr);
 
     // OccupancyGrid writer
     RoleAttributes map_attr;
     map_attr.set_channel_name("/map/occupancy_grid");
-    map_attr.set_message_type(
-        MessageType<autonomy::commsgs::proto::map_msgs::OccupancyGrid>());
-    auto map_writer =
-        g_node->CreateWriter<autonomy::commsgs::proto::map_msgs::OccupancyGrid>(
-            map_attr);
+    map_attr.set_message_type(MessageType<autonomy::commsgs::proto::map_msgs::OccupancyGrid>());
+    auto map_writer = g_node->CreateWriter<autonomy::commsgs::proto::map_msgs::OccupancyGrid>(map_attr);
 
-    if (!imu_writer || !image_writer || !range_writer || !pointcloud2_writer ||
-        !pointcloud_writer || !path_writer || !map_writer) {
+    if (!imu_writer || !image_writer || !range_writer || !pointcloud2_writer || !pointcloud_writer || !path_writer ||
+        !map_writer) {
         AERROR << "Failed to create one or more writers";
         return;
     }
@@ -523,50 +468,43 @@ void Run() {
         Time now = Time::Now();
 
         // 发布 IMU (10 Hz)
-        if ((now.ToNanosecond() - imu_last_time.ToNanosecond()) >=
-            IMU_INTERVAL_NS) {
+        if ((now.ToNanosecond() - imu_last_time.ToNanosecond()) >= IMU_INTERVAL_NS) {
             PublishImu(imu_writer, imu_seq++);
             imu_last_time = now;
         }
 
         // 发布 Image (5 Hz)
-        if ((now.ToNanosecond() - image_last_time.ToNanosecond()) >=
-            IMAGE_INTERVAL_NS) {
+        if ((now.ToNanosecond() - image_last_time.ToNanosecond()) >= IMAGE_INTERVAL_NS) {
             PublishImage(image_writer, image_seq++);
             image_last_time = now;
         }
 
         // 发布 Range (20 Hz)
-        if ((now.ToNanosecond() - range_last_time.ToNanosecond()) >=
-            RANGE_INTERVAL_NS) {
+        if ((now.ToNanosecond() - range_last_time.ToNanosecond()) >= RANGE_INTERVAL_NS) {
             PublishRange(range_writer, range_seq++);
             range_last_time = now;
         }
 
         // 发布 PointCloud2 (2 Hz)
-        if ((now.ToNanosecond() - pointcloud2_last_time.ToNanosecond()) >=
-            POINTCLOUD2_INTERVAL_NS) {
+        if ((now.ToNanosecond() - pointcloud2_last_time.ToNanosecond()) >= POINTCLOUD2_INTERVAL_NS) {
             PublishPointCloud2(pointcloud2_writer, pointcloud2_seq++);
             pointcloud2_last_time = now;
         }
 
         // 发布 PointCloud (2 Hz)
-        if ((now.ToNanosecond() - pointcloud_last_time.ToNanosecond()) >=
-            POINTCLOUD_INTERVAL_NS) {
+        if ((now.ToNanosecond() - pointcloud_last_time.ToNanosecond()) >= POINTCLOUD_INTERVAL_NS) {
             PublishPointCloud(pointcloud_writer, pointcloud_seq++);
             pointcloud_last_time = now;
         }
 
         // 发布 Path (1 Hz)
-        if ((now.ToNanosecond() - path_last_time.ToNanosecond()) >=
-            PATH_INTERVAL_NS) {
+        if ((now.ToNanosecond() - path_last_time.ToNanosecond()) >= PATH_INTERVAL_NS) {
             PublishPath(path_writer, path_seq++);
             path_last_time = now;
         }
 
         // 发布 OccupancyGrid (0.5 Hz)
-        if ((now.ToNanosecond() - map_last_time.ToNanosecond()) >=
-            MAP_INTERVAL_NS) {
+        if ((now.ToNanosecond() - map_last_time.ToNanosecond()) >= MAP_INTERVAL_NS) {
             PublishOccupancyGrid(map_writer, map_seq++);
             map_last_time = now;
         }

@@ -50,10 +50,8 @@ public:
      * later)
      * @return True if the planner was successfully configured, false otherwise
      */
-    bool Configure(const proto::PlannerOptions& options,
-                   const std::string& name,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap =
-                       nullptr) override;
+    bool Configure(const proto::PlannerOptions& options, const std::string& name,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap = nullptr) override;
 
     /**
      * @brief Cleanup the planner
@@ -79,8 +77,7 @@ public:
      * @return autonomy::commsgs::planning_msgs::Path of the generated path
      */
     uint32_t CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
-                        const commsgs::geometry_msgs::PoseStamped& goal,
-                        commsgs::planning_msgs::Path& plan,
+                        const commsgs::geometry_msgs::PoseStamped& goal, commsgs::planning_msgs::Path& plan,
                         std::function<bool()> cancel_checker) override;
 
 protected:
@@ -95,8 +92,7 @@ protected:
      * canceled
      * @return global_path is the planned path to be taken
      */
-    void getPlan(commsgs::planning_msgs::Path& global_path,
-                 std::function<bool()> cancel_checker);
+    void getPlan(commsgs::planning_msgs::Path& global_path, std::function<bool()> cancel_checker);
 
     /**
      * @brief interpolates points between the consecutive waypoints of the path
@@ -106,8 +102,8 @@ protected:
      * @return the final path with waypoints at a distance of the value of
      * interpolation_resolution of each other
      */
-    static commsgs::planning_msgs::Path linearInterpolation(
-        const std::vector<coordsW>& raw_path, const double& dist_bw_points);
+    static commsgs::planning_msgs::Path linearInterpolation(const std::vector<coordsW>& raw_path,
+                                                            const double& dist_bw_points);
 
     proto::ThetaStarPlanner options_;
 };

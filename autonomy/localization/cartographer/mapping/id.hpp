@@ -57,8 +57,7 @@ common::Time GetTime(const T& t) {
 // Uniquely identifies a trajectory node using a combination of a unique
 // trajectory ID and a zero-based index of the node inside that trajectory.
 struct NodeId {
-    NodeId(int trajectory_id, int node_index)
-        : trajectory_id(trajectory_id), node_index(node_index) {}
+    NodeId(int trajectory_id, int node_index) : trajectory_id(trajectory_id), node_index(node_index) {}
 
     int trajectory_id;
     int node_index;
@@ -90,8 +89,7 @@ inline std::ostream& operator<<(std::ostream& os, const NodeId& v) {
 // Uniquely identifies a submap using a combination of a unique trajectory ID
 // and a zero-based index of the submap inside that trajectory.
 struct SubmapId {
-    SubmapId(int trajectory_id, int submap_index)
-        : trajectory_id(trajectory_id), submap_index(submap_index) {}
+    SubmapId(int trajectory_id, int submap_index) : trajectory_id(trajectory_id), submap_index(submap_index) {}
 
     int trajectory_id;
     int submap_index;
@@ -124,8 +122,7 @@ template <typename IteratorType>
 class Range
 {
 public:
-    Range(const IteratorType& begin, const IteratorType& end)
-        : begin_(begin), end_(end) {}
+    Range(const IteratorType& begin, const IteratorType& end) : begin_(begin), end_(end) {}
 
     IteratorType begin() const {
         return begin_;
@@ -164,10 +161,8 @@ public:
         using pointer = std::unique_ptr<const IdDataReference>;
         using reference = const IdDataReference&;
 
-        explicit ConstIterator(const MapById& map_by_id,
-                               const int trajectory_id)
-            : current_trajectory_(
-                  map_by_id.trajectories_.lower_bound(trajectory_id)),
+        explicit ConstIterator(const MapById& map_by_id, const int trajectory_id)
+            : current_trajectory_(map_by_id.trajectories_.lower_bound(trajectory_id)),
               end_trajectory_(map_by_id.trajectories_.end()) {
             if (current_trajectory_ != end_trajectory_) {
                 current_data_ = current_trajectory_->second.data_.begin();
@@ -176,12 +171,10 @@ public:
         }
 
         explicit ConstIterator(const MapById& map_by_id, const IdType& id)
-            : current_trajectory_(
-                  map_by_id.trajectories_.find(id.trajectory_id)),
+            : current_trajectory_(map_by_id.trajectories_.find(id.trajectory_id)),
               end_trajectory_(map_by_id.trajectories_.end()) {
             if (current_trajectory_ != end_trajectory_) {
-                current_data_ = current_trajectory_->second.data_.find(
-                    MapById::GetIndex(id));
+                current_data_ = current_trajectory_->second.data_.find(MapById::GetIndex(id));
                 if (current_data_ == current_trajectory_->second.data_.end()) {
                     current_trajectory_ = end_trajectory_;
                 }
@@ -190,9 +183,7 @@ public:
 
         IdDataReference operator*() const {
             CHECK(current_trajectory_ != end_trajectory_);
-            return IdDataReference{
-                IdType{current_trajectory_->first, current_data_->first},
-                current_data_->second};
+            return IdDataReference{IdType{current_trajectory_->first, current_data_->first}, current_data_->second};
         }
 
         std::unique_ptr<const IdDataReference> operator->() const {
@@ -217,12 +208,10 @@ public:
         }
 
         bool operator==(const ConstIterator& it) const {
-            if (current_trajectory_ == end_trajectory_ ||
-                it.current_trajectory_ == it.end_trajectory_) {
+            if (current_trajectory_ == end_trajectory_ || it.current_trajectory_ == it.end_trajectory_) {
                 return current_trajectory_ == it.current_trajectory_;
             }
-            return current_trajectory_ == it.current_trajectory_ &&
-                   current_data_ == it.current_data_;
+            return current_trajectory_ == it.current_trajectory_ && current_data_ == it.current_data_;
         }
 
         bool operator!=(const ConstIterator& it) const {
@@ -255,9 +244,7 @@ public:
         using pointer = const int*;
         using reference = const int&;
 
-        explicit ConstTrajectoryIterator(
-            typename std::map<int, MapByIndex>::const_iterator
-                current_trajectory)
+        explicit ConstTrajectoryIterator(typename std::map<int, MapByIndex>::const_iterator current_trajectory)
             : current_trajectory_(current_trajectory) {}
 
         int operator*() const {
@@ -291,8 +278,7 @@ public:
         CHECK_GE(trajectory_id, 0);
         auto& trajectory = trajectories_[trajectory_id];
         CHECK(trajectory.can_append_);
-        const int index =
-            trajectory.data_.empty() ? 0 : trajectory.data_.rbegin()->first + 1;
+        const int index = trajectory.data_.empty() ? 0 : trajectory.data_.rbegin()->first + 1;
         trajectory.data_.emplace(index, data);
         return IdType{trajectory_id, index};
     }
@@ -332,8 +318,7 @@ public:
 
     bool Contains(const IdType& id) const {
         return trajectories_.count(id.trajectory_id) != 0 &&
-               trajectories_.at(id.trajectory_id).data_.count(GetIndex(id)) !=
-                   0;
+               trajectories_.at(id.trajectory_id).data_.count(GetIndex(id)) != 0;
     }
 
     const DataType& at(const IdType& id) const {
@@ -355,9 +340,7 @@ public:
 
     // Returns 0 if 'trajectory_id' does not exist.
     size_t SizeOfTrajectoryOrZero(const int trajectory_id) const {
-        return trajectories_.count(trajectory_id)
-                   ? trajectories_.at(trajectory_id).data_.size()
-                   : 0;
+        return trajectories_.count(trajectory_id) ? trajectories_.at(trajectory_id).data_.size() : 0;
     }
 
     // Returns count of all elements.
@@ -372,15 +355,13 @@ public:
     // Returns Range object for range-based loops over the nodes of a
     // trajectory.
     Range<ConstIterator> trajectory(const int trajectory_id) const {
-        return Range<ConstIterator>(BeginOfTrajectory(trajectory_id),
-                                    EndOfTrajectory(trajectory_id));
+        return Range<ConstIterator>(BeginOfTrajectory(trajectory_id), EndOfTrajectory(trajectory_id));
     }
 
     // Returns Range object for range-based loops over the trajectory IDs.
     Range<ConstTrajectoryIterator> trajectory_ids() const {
-        return Range<ConstTrajectoryIterator>(
-            ConstTrajectoryIterator(trajectories_.begin()),
-            ConstTrajectoryIterator(trajectories_.end()));
+        return Range<ConstTrajectoryIterator>(ConstTrajectoryIterator(trajectories_.begin()),
+                                              ConstTrajectoryIterator(trajectories_.end()));
     }
 
     ConstIterator begin() const {
@@ -399,14 +380,12 @@ public:
     // trajectory 'trajectory_id' whose time is not considered to go before
     // 'time', or EndOfTrajectory(trajectory_id) if all keys are considered to
     // go before 'time'.
-    ConstIterator lower_bound(const int trajectory_id,
-                              const common::Time time) const {
+    ConstIterator lower_bound(const int trajectory_id, const common::Time time) const {
         if (SizeOfTrajectoryOrZero(trajectory_id) == 0) {
             return EndOfTrajectory(trajectory_id);
         }
 
-        const std::map<int, DataType>& trajectory =
-            trajectories_.at(trajectory_id).data_;
+        const std::map<int, DataType>& trajectory = trajectories_.at(trajectory_id).data_;
 
         if (internal::GetTime(std::prev(trajectory.end())->second) < time) {
             return EndOfTrajectory(trajectory_id);

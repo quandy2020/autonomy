@@ -44,15 +44,14 @@ class LuaParameterDictionary
 {
 public:
     // Constructs the dictionary from a Lua Table specification.
-    LuaParameterDictionary(const std::string& code,
-                           std::unique_ptr<FileResolver> file_resolver);
+    LuaParameterDictionary(const std::string& code, std::unique_ptr<FileResolver> file_resolver);
 
     LuaParameterDictionary(const LuaParameterDictionary&) = delete;
     LuaParameterDictionary& operator=(const LuaParameterDictionary&) = delete;
 
     // Constructs a LuaParameterDictionary without reference counting.
-    static std::unique_ptr<LuaParameterDictionary> NonReferenceCounted(
-        const std::string& code, std::unique_ptr<FileResolver> file_resolver);
+    static std::unique_ptr<LuaParameterDictionary> NonReferenceCounted(const std::string& code,
+                                                                       std::unique_ptr<FileResolver> file_resolver);
 
     ~LuaParameterDictionary();
 
@@ -67,8 +66,7 @@ public:
     double GetDouble(const std::string& key);
     int GetInt(const std::string& key);
     bool GetBool(const std::string& key);
-    std::unique_ptr<LuaParameterDictionary> GetDictionary(
-        const std::string& key);
+    std::unique_ptr<LuaParameterDictionary> GetDictionary(const std::string& key);
 
     // Gets an int from the dictionary and CHECK()s that it is non-negative.
     int GetNonNegativeInt(const std::string& key);
@@ -79,18 +77,15 @@ public:
     // Returns the values of the keys '1', '2', '3' as the given types.
     std::vector<double> GetArrayValuesAsDoubles();
     std::vector<std::string> GetArrayValuesAsStrings();
-    std::vector<std::unique_ptr<LuaParameterDictionary>>
-    GetArrayValuesAsDictionaries();
+    std::vector<std::unique_ptr<LuaParameterDictionary>> GetArrayValuesAsDictionaries();
 
 private:
     enum class ReferenceCount { YES, NO };
-    LuaParameterDictionary(const std::string& code,
-                           ReferenceCount reference_count,
+    LuaParameterDictionary(const std::string& code, ReferenceCount reference_count,
                            std::unique_ptr<FileResolver> file_resolver);
 
     // For GetDictionary().
-    LuaParameterDictionary(lua_State* L, ReferenceCount reference_count,
-                           std::shared_ptr<FileResolver> file_resolver);
+    LuaParameterDictionary(lua_State* L, ReferenceCount reference_count, std::shared_ptr<FileResolver> file_resolver);
 
     // Function that recurses to keep track of indent for ToString().
     std::string DoToString(const std::string& indent) const;
@@ -108,8 +103,7 @@ private:
 
     // Creates a LuaParameterDictionary from the Lua table at the top of the
     // stack, either with or without reference counting.
-    std::unique_ptr<LuaParameterDictionary> PopDictionary(
-        ReferenceCount reference_count) const;
+    std::unique_ptr<LuaParameterDictionary> PopDictionary(ReferenceCount reference_count) const;
 
     // CHECK() that 'key' is in the dictionary.
     void CheckHasKey(const std::string& key) const;

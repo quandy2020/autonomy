@@ -35,8 +35,7 @@ class WouldARouteRecoveryHelp : public AreErrorCodesPresent
     using TrackActionResult = TrackAction::Result;
 
 public:
-    WouldARouteRecoveryHelp(const std::string& condition_name,
-                            const BT::NodeConfiguration& conf);
+    WouldARouteRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     WouldARouteRecoveryHelp() = delete;
 };

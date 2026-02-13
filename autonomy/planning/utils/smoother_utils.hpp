@@ -49,8 +49,8 @@ struct PathSegment {
  * holonomic planner like NavFn.
  * @return Set of index pairs for each segment of the path in a given direction
  */
-inline std::vector<PathSegment> findDirectionalPathSegments(
-    const commsgs::planning_msgs::Path& path, bool is_holonomic = false) {
+inline std::vector<PathSegment> findDirectionalPathSegments(const commsgs::planning_msgs::Path& path,
+                                                            bool is_holonomic = false) {
     std::vector<PathSegment> segments;
     PathSegment curr_segment;
     curr_segment.start = 0;
@@ -67,14 +67,10 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
     for (unsigned int idx = 1; idx < path.poses.size() - 1; ++idx) {
         // We have two vectors for the dot product OA and AB. Determining the
         // vectors.
-        double oa_x = path.poses[idx].pose.position.x -
-                      path.poses[idx - 1].pose.position.x;
-        double oa_y = path.poses[idx].pose.position.y -
-                      path.poses[idx - 1].pose.position.y;
-        double ab_x = path.poses[idx + 1].pose.position.x -
-                      path.poses[idx].pose.position.x;
-        double ab_y = path.poses[idx + 1].pose.position.y -
-                      path.poses[idx].pose.position.y;
+        double oa_x = path.poses[idx].pose.position.x - path.poses[idx - 1].pose.position.x;
+        double oa_y = path.poses[idx].pose.position.y - path.poses[idx - 1].pose.position.y;
+        double ab_x = path.poses[idx + 1].pose.position.x - path.poses[idx].pose.position.x;
+        double ab_y = path.poses[idx + 1].pose.position.y - path.poses[idx].pose.position.y;
 
         // Checking for the existence of cusp, in the path, using the dot
         // product.
@@ -88,8 +84,7 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
         // Checking for the existence of a differential rotation in place.
         double cur_theta = tf2::getYaw(path.poses[idx].pose.orientation);
         double next_theta = tf2::getYaw(path.poses[idx + 1].pose.orientation);
-        double dtheta =
-            angles::shortest_angular_distance(cur_theta, next_theta);
+        double dtheta = angles::shortest_angular_distance(cur_theta, next_theta);
         if (fabs(ab_x) < 1e-4 && fabs(ab_y) < 1e-4 && fabs(dtheta) > 1e-4) {
             curr_segment.end = idx;
             segments.push_back(curr_segment);
@@ -111,9 +106,8 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
  *        Only set as true when the input path is known to be generated from a
  * holonomic planner like NavFn.
  */
-inline void updateApproximatePathOrientations(
-    commsgs::planning_msgs::Path& path, bool& reversing_segment,
-    bool is_holonomic = false) {
+inline void updateApproximatePathOrientations(commsgs::planning_msgs::Path& path, bool& reversing_segment,
+                                              bool is_holonomic = false) {
     double dx, dy, theta, pt_yaw;
     reversing_segment = false;
 
@@ -122,8 +116,7 @@ inline void updateApproximatePathOrientations(
     dy = path.poses[2].pose.position.y - path.poses[1].pose.position.y;
     theta = atan2(dy, dx);
     pt_yaw = tf2::getYaw(path.poses[1].pose.orientation);
-    if (!is_holonomic &&
-        fabs(angles::shortest_angular_distance(pt_yaw, theta)) > M_PI_2) {
+    if (!is_holonomic && fabs(angles::shortest_angular_distance(pt_yaw, theta)) > M_PI_2) {
         reversing_segment = true;
     }
 
@@ -143,8 +136,7 @@ inline void updateApproximatePathOrientations(
             theta += M_PI;  // orientationAroundZAxis will normalize
         }
 
-        path.poses[i].pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(theta);
+        path.poses[i].pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(theta);
     }
 }
 

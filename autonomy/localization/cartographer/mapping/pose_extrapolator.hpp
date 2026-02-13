@@ -36,15 +36,14 @@ namespace mapping {
 class PoseExtrapolator : public PoseExtrapolatorInterface
 {
 public:
-    explicit PoseExtrapolator(common::Duration pose_queue_duration,
-                              double imu_gravity_time_constant);
+    explicit PoseExtrapolator(common::Duration pose_queue_duration, double imu_gravity_time_constant);
 
     PoseExtrapolator(const PoseExtrapolator&) = delete;
     PoseExtrapolator& operator=(const PoseExtrapolator&) = delete;
 
-    static std::unique_ptr<PoseExtrapolator> InitializeWithImu(
-        common::Duration pose_queue_duration, double imu_gravity_time_constant,
-        const sensor::ImuData& imu_data);
+    static std::unique_ptr<PoseExtrapolator> InitializeWithImu(common::Duration pose_queue_duration,
+                                                               double imu_gravity_time_constant,
+                                                               const sensor::ImuData& imu_data);
 
     // Returns the time of the last added pose or Time::min() if no pose was
     // added yet.
@@ -56,8 +55,7 @@ public:
     void AddOdometryData(const sensor::OdometryData& odometry_data) override;
     transform::Rigid3d ExtrapolatePose(common::Time time) override;
 
-    ExtrapolationResult ExtrapolatePosesWithGravity(
-        const std::vector<common::Time>& times) override;
+    ExtrapolationResult ExtrapolatePosesWithGravity(const std::vector<common::Time>& times) override;
 
     // Returns the current gravity alignment estimate as a rotation from
     // the tracking frame into a gravity aligned frame.
@@ -68,8 +66,7 @@ private:
     void TrimImuData();
     void TrimOdometryData();
     void AdvanceImuTracker(common::Time time, ImuTracker* imu_tracker) const;
-    Eigen::Quaterniond ExtrapolateRotation(common::Time time,
-                                           ImuTracker* imu_tracker) const;
+    Eigen::Quaterniond ExtrapolateRotation(common::Time time, ImuTracker* imu_tracker) const;
     Eigen::Vector3d ExtrapolateTranslation(common::Time time);
 
     const common::Duration pose_queue_duration_;

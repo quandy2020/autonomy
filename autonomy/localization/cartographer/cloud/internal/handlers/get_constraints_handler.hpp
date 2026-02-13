@@ -25,13 +25,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    GetConstraintsSignature, google::protobuf::Empty,
-    proto::GetConstraintsResponse,
-    "/cartographer.cloud.proto.MapBuilderService/GetConstraints")
+DEFINE_HANDLER_SIGNATURE(GetConstraintsSignature, google::protobuf::Empty, proto::GetConstraintsResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/GetConstraints")
 
-class GetConstraintsHandler
-    : public autonomy::common::async_grpc::RpcHandler<GetConstraintsSignature>
+class GetConstraintsHandler : public autonomy::common::async_grpc::RpcHandler<GetConstraintsSignature>
 {
 public:
     void OnRequest(const google::protobuf::Empty& request) override;

@@ -34,8 +34,7 @@ constexpr cairo_format_t kCairoFormat = CAIRO_FORMAT_ARGB32;
 
 // std::unique_ptr for Cairo surfaces. The surface is destroyed when the
 // std::unique_ptr is reset or destroyed.
-using UniqueCairoSurfacePtr =
-    std::unique_ptr<cairo_surface_t, void (*)(cairo_surface_t*)>;
+using UniqueCairoSurfacePtr = std::unique_ptr<cairo_surface_t, void (*)(cairo_surface_t*)>;
 
 // Takes ownership.
 UniqueCairoSurfacePtr MakeUniqueCairoSurfacePtr(cairo_surface_t* surface);

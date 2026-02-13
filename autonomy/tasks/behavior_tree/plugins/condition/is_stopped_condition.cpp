@@ -25,16 +25,13 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-IsStoppedCondition::IsStoppedCondition(const std::string& condition_name,
-                                       const BT::NodeConfiguration& conf)
+IsStoppedCondition::IsStoppedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf),
       velocity_threshold_(0.01),
       duration_stopped_(1000ms),
       stopped_stamp_(commsgs::builtin_interfaces::Time(0, 0)) {
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    odom_smoother_ =
-        config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>(
-            "odom_smoother");
+    odom_smoother_ = config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>("odom_smoother");
 }
 
 IsStoppedCondition::~IsStoppedCondition() {
@@ -54,19 +51,15 @@ BT::NodeStatus IsStoppedCondition::tick() {
 
     commsgs::builtin_interfaces::Time zero_time(0, 0);
 
-    if (abs(twist.twist.linear.x) < velocity_threshold_ &&
-        abs(twist.twist.linear.y) < velocity_threshold_ &&
+    if (abs(twist.twist.linear.x) < velocity_threshold_ && abs(twist.twist.linear.y) < velocity_threshold_ &&
         abs(twist.twist.angular.z) < velocity_threshold_) {
         if (stopped_stamp_ == zero_time) {
             stopped_stamp_ = twist.header.stamp;
         }
 
         auto current_time = commsgs::builtin_interfaces::Time::Now();
-        auto elapsed_ns =
-            current_time.Nanoseconds() - stopped_stamp_.Nanoseconds();
-        auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                               duration_stopped_)
-                               .count();
+        auto elapsed_ns = current_time.Nanoseconds() - stopped_stamp_.Nanoseconds();
+        auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_stopped_).count();
 
         if (elapsed_ns > static_cast<uint32>(duration_ns)) {
             stopped_stamp_ = zero_time;
@@ -89,7 +82,5 @@ BT::NodeStatus IsStoppedCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::condition::IsStoppedCondition>(
-        "IsStopped");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsStoppedCondition>("IsStopped");
 }

@@ -17,21 +17,29 @@
 #pragma once
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
-#include "autonomy/common/macros.hpp"
+#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
+#include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/collision_checker.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/parameter_handler.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/path_handler.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/regulation_functions.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace control {
 namespace controller {
+namespace pure_pursuit_controller {
 
 /**
  * @class nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
@@ -40,30 +48,26 @@ namespace controller {
 class RegulatedPurePursuitController : public common::ControllerInterface
 {
 public:
-    using TfBuffer = autonomy::transform::Buffer;
-
     /**
-     * @brief Constructor for
-     * nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+     * @brief Constructor for nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
      */
     RegulatedPurePursuitController() = default;
 
     /**
-     * @brief Destrructor for
-     * nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
+     * @brief Destrructor for nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController
      */
     ~RegulatedPurePursuitController() override = default;
 
     /**
      * @brief Configure controller state machine
-     * @param parent WeakPtr to node
+     * @param options Controller options
      * @param name Name of plugin
-     * @param tf TF buffer
-     * @param costmap_ros Costmap2DROS object of environment
+     * @param tf_buffer TF buffer
+     * @param costmap_wrapper Costmap2DWrapper object of environment
      */
-    void Configure(std::string name, std::shared_ptr<TfBuffer> tf,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                       costmap_wrapper) override;
+    void Configure(const proto::ControllerOptions& options, std::string name,
+                   std::shared_ptr<transform::Buffer> tf_buffer,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
 
     /**
      * @brief Cleanup controller state machine
@@ -81,27 +85,29 @@ public:
     void Deactivate() override;
 
     /**
-     * @brief Compute the best command given the current pose and velocity, with
-     * possible debug information
-     *
-     * Same as above computeVelocityCommands, but with debug results.
-     * If the results pointer is not null, additional information about the
-     * twists evaluated will be in results after the call.
-     *
+     * @brief Compute the best command given the current pose and velocity
      * @param pose      Current robot pose
      * @param velocity  Current robot velocity
-     * @param goal_checker   Ptr to the goal checker for this task in case
-     * useful in computing commands
-     * @return          Best command
+     * @param cmd_vel   Output velocity command
+     * @param goal_checker   Ptr to the goal checker for this task
+     * @param message   Optional detailed outcome message
+     * @return          Result code (0 = success)
      */
-    uint32 ComputeVelocityCommands(
-        const commsgs::geometry_msgs::PoseStamped& pose,
-        const commsgs::geometry_msgs::TwistStamped& velocity,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel,
-        common::GoalChecker* goal_checker, std::string& message) override;
+    uint32 ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
+                                   const commsgs::geometry_msgs::TwistStamped& velocity,
+                                   commsgs::geometry_msgs::TwistStamped& cmd_vel, common::GoalChecker* goal_checker,
+                                   std::string& message) override;
 
     /**
-     * @brief nav2_core setPlan - Sets the global plan
+     * @brief Check if the goal pose has been achieved
+     * @param dist_tolerance Distance tolerance
+     * @param angle_tolerance Angle tolerance
+     * @return True if goal reached
+     */
+    bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
+
+    /**
+     * @brief Set the global plan
      * @param path The global plan
      */
     void SetPlan(const commsgs::planning_msgs::Path& path) override;
@@ -113,10 +119,15 @@ public:
      * @param percentage Setting speed limit in percentage if true
      * or in absolute values in false case.
      */
-    void SetSpeedLimit(const double& speed_limit,
-                       const bool& percentage) override;
+    void SetSpeedLimit(const double& speed_limit, const bool& percentage) override;
 
+    /**
+     * @brief Reset the state of the controller
+     */
     void Reset() override;
+
+    // Legacy methods for compatibility (not part of ControllerInterface)
+    bool cancel();
 
 protected:
     /**
@@ -124,7 +135,7 @@ protected:
      * @param cmd the current speed to use to compute lookahead point
      * @return lookahead distance
      */
-    double getLookAheadDistance(const commsgs::geometry_msgs::Twist&);
+    double getLookAheadDistance(const commsgs::geometry_msgs::TwistStamped&);
 
     /**
      * @brief Creates a PointStamped message for visualization
@@ -137,32 +148,29 @@ protected:
     /**
      * @brief Whether robot should rotate to rough path heading
      * @param carrot_pose current lookahead point
-     * @param angle_to_path Angle of robot output relatie to carrot marker
+     * @param angle_to_path Angle of robot output relative to carrot marker
      * @param x_vel_sign Velocoty sign (forward or backward)
      * @return Whether should rotate to path heading
      */
-    bool shouldRotateToPath(
-        const commsgs::geometry_msgs::PoseStamped& carrot_pose,
-        double& angle_to_path, double& x_vel_sign);
+    bool shouldRotateToPath(const commsgs::geometry_msgs::PoseStamped& carrot_pose, double& angle_to_path,
+                            double& x_vel_sign);
 
     /**
      * @brief Whether robot should rotate to final goal orientation
      * @param carrot_pose current lookahead point
      * @return Whether should rotate to goal heading
      */
-    bool shouldRotateToGoalHeading(
-        const commsgs::geometry_msgs::PoseStamped& carrot_pose);
+    bool shouldRotateToGoalHeading(const commsgs::geometry_msgs::PoseStamped& carrot_pose);
 
     /**
      * @brief Create a smooth and kinematically smoothed rotation command
      * @param linear_vel linear velocity
      * @param angular_vel angular velocity
-     * @param angle_to_path Angle of robot output relatie to carrot marker
+     * @param angle_to_path Angle of robot output relative to carrot marker
      * @param curr_speed the current robot speed
      */
-    void rotateToHeading(double& linear_vel, double& angular_vel,
-                         const double& angle_to_path,
-                         const commsgs::geometry_msgs::Twist& curr_speed);
+    void rotateToHeading(double& linear_vel, double& angular_vel, const double& angle_to_path,
+                         const commsgs::geometry_msgs::TwistStamped& curr_speed);
 
     /**
      * @brief apply regulation constraints to the system
@@ -172,11 +180,9 @@ protected:
      * @param speed Speed of robot
      * @param pose_cost cost at this pose
      */
-    void applyConstraints(const double& curvature,
-                          const commsgs::geometry_msgs::Twist& speed,
-                          const double& pose_cost,
-                          const commsgs::planning_msgs::Path& path,
-                          double& linear_vel, double& sign);
+    void applyConstraints(const double& curvature, const commsgs::geometry_msgs::TwistStamped& speed,
+                          const double& pose_cost, const commsgs::planning_msgs::Path& path, double& linear_vel,
+                          double& sign);
 
     /**
      * @brief Find the intersection a circle and a line segment.
@@ -187,57 +193,55 @@ protected:
      * @param r radius of circle
      * @return point of intersection
      */
-    static commsgs::geometry_msgs::Point circleSegmentIntersection(
-        const commsgs::geometry_msgs::Point& p1,
-        const commsgs::geometry_msgs::Point& p2, double r);
+    static commsgs::geometry_msgs::Point circleSegmentIntersection(const commsgs::geometry_msgs::Point& p1,
+                                                                   const commsgs::geometry_msgs::Point& p2, double r);
 
     /**
      * @brief Get lookahead point
      * @param lookahead_dist Optimal lookahead distance
      * @param path Current global path
-     * @param interpolate_after_goal If true, interpolate the lookahead point
-     * after the goal based on the orientation given by the position of the last
-     * two pose of the path
+     * @param interpolate_after_goal If true, interpolate the lookahead point after the goal based
+     * on the orientation given by the position of the last two pose of the path
      * @return Lookahead point
      */
-    commsgs::geometry_msgs::PoseStamped getLookAheadPoint(
-        const double&, const commsgs::planning_msgs::Path&,
-        bool interpolate_after_goal = false);
+    commsgs::geometry_msgs::PoseStamped getLookAheadPoint(const double&, const commsgs::planning_msgs::Path&,
+                                                          bool interpolate_after_goal = false);
 
     /**
      * @brief checks for the cusp position
      * @param pose Pose input to determine the cusp position
      * @return robot distance from the cusp
      */
-    double findVelocitySignChange(
-        const commsgs::planning_msgs::Path& transformed_plan);
+    double findVelocitySignChange(const commsgs::planning_msgs::Path& transformed_plan);
 
-    std::shared_ptr<TfBuffer> tf_;
+    std::shared_ptr<autolink::Node> node_;
+    std::shared_ptr<transform::Buffer> tf_buffer_;
     std::string plugin_name_;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
     map::costmap_2d::Costmap2D* costmap_;
 
-    Parameters* params_;
+    const proto::PurePursuitControllerOptions* pp_options_ = nullptr;
     double goal_dist_tol_;
     double control_duration_;
-    // Cancel functionality removed - these members are no longer used
+    bool cancelling_ = false;
+    bool finished_cancelling_ = false;
     bool is_rotating_to_heading_ = false;
+    bool has_reached_xy_tolerance_ = false;
+    double last_dist_to_goal_ = std::numeric_limits<double>::infinity();
+    double last_angle_to_goal_ = std::numeric_limits<double>::infinity();
 
-    // std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<commsgs::planning_msgs::Path>>
-    // global_path_pub_;
-    // std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<commsgs::geometry_msgs::PointStamped>>
-    // carrot_pub_;
-    // std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<commsgs::geometry_msgs::PointStamped>>
-    // curvature_carrot_pub_;
-    // std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Bool>>
-    // is_rotating_to_heading_pub_;
-    // std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<commsgs::planning_msgs::Path>>
-    // carrot_arc_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> global_path_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PointStamped>> carrot_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PointStamped>> curvature_carrot_pub_;
+    // TODO: Add Bool message type to commsgs or use a different approach
+    // std::shared_ptr<autolink::Writer<commsgs::std_msgs::Bool>> is_rotating_to_heading_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> carrot_arc_pub_;
     std::unique_ptr<PathHandler> path_handler_;
     std::unique_ptr<ParameterHandler> param_handler_;
     std::unique_ptr<CollisionChecker> collision_checker_;
 };
 
+}  // namespace pure_pursuit_controller
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy

@@ -27,11 +27,8 @@ namespace math {
 
 namespace {
 
-Eigen::Quaterniond GoldenEulerZXYToQuaternion(const double roll,
-                                              const double pitch,
-                                              const double yaw) {
-    return Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
-           Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitX()) *
+Eigen::Quaterniond GoldenEulerZXYToQuaternion(const double roll, const double pitch, const double yaw) {
+    return Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) * Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitX()) *
            Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitY());
 }
 

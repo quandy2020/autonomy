@@ -22,14 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-BackUpCancelNode::BackUpCancelNode(const std::string& xml_tag_name,
-                                   const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
-
-BT::NodeStatus BackUpCancelNode::tick() {
-    // TODO: Implement back up cancel behavior
-    return BT::NodeStatus::SUCCESS;
-}
+BackUpCancel::BackUpCancel(const std::string& xml_tag_name, const std::string& action_name,
+                           const BT::NodeConfiguration& conf)
+    : BtCancelActionNode<proto::BackUpAction>(xml_tag_name, action_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -39,14 +34,9 @@ BT::NodeStatus BackUpCancelNode::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<
-            autonomy::tasks::behavior_tree::plugins::action::BackUpCancelNode>(
-            name, config);
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::BackUpCancel>(name, "backup", config);
     };
 
-    factory.registerBuilder<
-        autonomy::tasks::behavior_tree::plugins::action::BackUpCancelNode>(
-        "CancelBackUp", builder);
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::BackUpCancel>("CancelBackUp", builder);
 }

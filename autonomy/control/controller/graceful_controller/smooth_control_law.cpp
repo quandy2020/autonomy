@@ -24,10 +24,8 @@ namespace autonomy {
 namespace control {
 namespace controller {
 
-SmoothControlLaw::SmoothControlLaw(double k_phi, double k_delta, double beta,
-                                   double lambda, double slowdown_radius,
-                                   double v_linear_min, double v_linear_max,
-                                   double v_angular_max)
+SmoothControlLaw::SmoothControlLaw(double k_phi, double k_delta, double beta, double lambda, double slowdown_radius,
+                                   double v_linear_min, double v_linear_max, double v_angular_max)
     : k_phi_(k_phi),
       k_delta_(k_delta),
       beta_(beta),
@@ -37,8 +35,7 @@ SmoothControlLaw::SmoothControlLaw(double k_phi, double k_delta, double beta,
       v_linear_max_(v_linear_max),
       v_angular_max_(v_angular_max) {}
 
-void SmoothControlLaw::SetCurvatureConstants(double k_phi, double k_delta,
-                                             double beta, double lambda) {
+void SmoothControlLaw::SetCurvatureConstants(double k_phi, double k_delta, double beta, double lambda) {
     k_phi_ = k_phi;
     k_delta_ = k_delta;
     beta_ = beta;
@@ -49,29 +46,25 @@ void SmoothControlLaw::SetSlowdownRadius(double slowdown_radius) {
     slowdown_radius_ = slowdown_radius;
 }
 
-void SmoothControlLaw::SetSpeedLimit(const double v_linear_min,
-                                     const double v_linear_max,
-                                     const double v_angular_max) {
+void SmoothControlLaw::SetSpeedLimit(const double v_linear_min, const double v_linear_max, const double v_angular_max) {
     v_linear_min_ = v_linear_min;
     v_linear_max_ = v_linear_max;
     v_angular_max_ = v_angular_max;
 }
 
-commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
-    const commsgs::geometry_msgs::Pose& target,
-    const commsgs::geometry_msgs::Pose& current, const bool& backward) {
+commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(const commsgs::geometry_msgs::Pose& target,
+                                                                         const commsgs::geometry_msgs::Pose& current,
+                                                                         const bool& backward) {
     // Convert the target to polar coordinates
     auto ego_coords = EgocentricPolarCoordinates(target, current, backward);
     // Calculate the curvature
-    double curvature =
-        CalculateCurvature(ego_coords.r, ego_coords.phi, ego_coords.delta);
+    double curvature = CalculateCurvature(ego_coords.r, ego_coords.phi, ego_coords.delta);
     // Invert the curvature if the robot is moving backwards
     curvature = backward ? -curvature : curvature;
 
     // Adjust the linear velocity as a function of the path curvature to
     // slowdown the controller as it approaches its target
-    double v =
-        v_linear_max_ / (1.0 + beta_ * std::pow(fabs(curvature), lambda_));
+    double v = v_linear_max_ / (1.0 + beta_ * std::pow(fabs(curvature), lambda_));
 
     // Slowdown when the robot is near the target to remove singularity
     v = std::min(v_linear_max_ * (ego_coords.r / slowdown_radius_), v);
@@ -97,17 +90,16 @@ commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
     return cmd_vel;
 }
 
-commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
-    const commsgs::geometry_msgs::Pose& target, const bool& backward) {
-    return CalculateRegularVelocity(target, commsgs::geometry_msgs::Pose(),
-                                    backward);
+commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(const commsgs::geometry_msgs::Pose& target,
+                                                                         const bool& backward) {
+    return CalculateRegularVelocity(target, commsgs::geometry_msgs::Pose(), backward);
 }
 
-commsgs::geometry_msgs::Pose SmoothControlLaw::CalculateNextPose(
-    const double dt, const commsgs::geometry_msgs::Pose& target,
-    const commsgs::geometry_msgs::Pose& current, const bool& backward) {
-    commsgs::geometry_msgs::Twist vel =
-        CalculateRegularVelocity(target, current, backward);
+commsgs::geometry_msgs::Pose SmoothControlLaw::CalculateNextPose(const double dt,
+                                                                 const commsgs::geometry_msgs::Pose& target,
+                                                                 const commsgs::geometry_msgs::Pose& current,
+                                                                 const bool& backward) {
+    commsgs::geometry_msgs::Twist vel = CalculateRegularVelocity(target, current, backward);
     commsgs::geometry_msgs::Pose next;
     double yaw = transform::tf2::getYaw(current.orientation);
     next.position.x = current.position.x + vel.linear.x * dt * cos(yaw);
@@ -117,15 +109,13 @@ commsgs::geometry_msgs::Pose SmoothControlLaw::CalculateNextPose(
     return next;
 }
 
-double SmoothControlLaw::CalculateCurvature(double r, double phi,
-                                            double delta) {
+double SmoothControlLaw::CalculateCurvature(double r, double phi, double delta) {
     // Calculate the proportional term of the control law as the product of the
     // gain and the error: difference between the actual steering angle and the
     // virtual control for the slow subsystem
     double prop_term = k_delta_ * (delta - std::atan(-k_phi_ * phi));
     // Calculate the feedback control law for the steering
-    double feedback_term =
-        (1.0 + (k_phi_ / (1.0 + std::pow(k_phi_ * phi, 2)))) * sin(delta);
+    double feedback_term = (1.0 + (k_phi_ / (1.0 + std::pow(k_phi_ * phi, 2)))) * sin(delta);
     // Calculate the path curvature
     return -1.0 / r * (prop_term + feedback_term);
 }

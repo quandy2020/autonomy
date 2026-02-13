@@ -51,8 +51,7 @@ namespace common {
  * @param MapContainer Internal implementation of the function mapping
  * IdentifierType to ProductCreator, by default std::unordered_map
  */
-template <typename IdentifierType, class AbstractProduct,
-          class ProductCreator = AbstractProduct* (*)(),
+template <typename IdentifierType, class AbstractProduct, class ProductCreator = AbstractProduct* (*)(),
           class MapContainer = std::map<IdentifierType, ProductCreator>>
 class Factory
 {
@@ -97,12 +96,10 @@ public:
      * @param args the object construction arguments
      */
     template <typename... Args>
-    std::unique_ptr<AbstractProduct> CreateObjectOrNull(
-        const IdentifierType& id, Args&&... args) {
+    std::unique_ptr<AbstractProduct> CreateObjectOrNull(const IdentifierType& id, Args&&... args) {
         auto id_iter = producers_.find(id);
         if (id_iter != producers_.end()) {
-            return std::unique_ptr<AbstractProduct>(
-                (id_iter->second)(std::forward<Args>(args)...));
+            return std::unique_ptr<AbstractProduct>((id_iter->second)(std::forward<Args>(args)...));
         }
         return nullptr;
     }
@@ -114,8 +111,7 @@ public:
      * @param args the object construction arguments
      */
     template <typename... Args>
-    std::unique_ptr<AbstractProduct> CreateObject(const IdentifierType& id,
-                                                  Args&&... args) {
+    std::unique_ptr<AbstractProduct> CreateObject(const IdentifierType& id, Args&&... args) {
         auto result = CreateObjectOrNull(id, std::forward<Args>(args)...);
         // AERROR_IF(!result) << "Factory could not create Object of type : " <<
         // id;

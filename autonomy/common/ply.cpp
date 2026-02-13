@@ -103,8 +103,7 @@ std::vector<PlyPoint> ReadPly(const std::string& path) {
                 num_vertices = std::stoll(line_elems[2]);
                 in_vertex_section = true;
             } else if (std::stoll(line_elems[2]) > 0) {
-                LOG(WARNING) << "Only vertex elements supported; ignoring "
-                             << line_elems[1];
+                LOG(WARNING) << "Only vertex elements supported; ignoring " << line_elems[1];
             }
         }
 
@@ -115,77 +114,53 @@ std::vector<PlyPoint> ReadPly(const std::string& path) {
         // Show diffuse, ambient, specular colors as regular colors.
 
         if (line_elems.size() >= 3 && line_elems[0] == "property") {
-            THROW_CHECK(line_elems[1] == "float" ||
-                        line_elems[1] == "float32" ||
-                        line_elems[1] == "double" ||
+            THROW_CHECK(line_elems[1] == "float" || line_elems[1] == "float32" || line_elems[1] == "double" ||
                         line_elems[1] == "float64" || line_elems[1] == "uchar")
                 << "PLY import only supports float, double, and uchar data "
                    "types";
 
-            if (line == "property float x" || line == "property float32 x" ||
-                line == "property double x" || line == "property float64 x") {
+            if (line == "property float x" || line == "property float32 x" || line == "property double x" ||
+                line == "property float64 x") {
                 X_index = index;
                 X_byte_pos = num_bytes_per_line;
-                X_double =
-                    (line_elems[1] == "double" || line_elems[1] == "float64");
-            } else if (line == "property float y" ||
-                       line == "property float32 y" ||
-                       line == "property double y" ||
+                X_double = (line_elems[1] == "double" || line_elems[1] == "float64");
+            } else if (line == "property float y" || line == "property float32 y" || line == "property double y" ||
                        line == "property float64 y") {
                 Y_index = index;
                 Y_byte_pos = num_bytes_per_line;
-                Y_double =
-                    (line_elems[1] == "double" || line_elems[1] == "float64");
-            } else if (line == "property float z" ||
-                       line == "property float32 z" ||
-                       line == "property double z" ||
+                Y_double = (line_elems[1] == "double" || line_elems[1] == "float64");
+            } else if (line == "property float z" || line == "property float32 z" || line == "property double z" ||
                        line == "property float64 z") {
                 Z_index = index;
                 Z_byte_pos = num_bytes_per_line;
-                Z_double =
-                    (line_elems[1] == "double" || line_elems[1] == "float64");
-            } else if (line == "property float nx" ||
-                       line == "property float32 nx" ||
-                       line == "property double nx" ||
+                Z_double = (line_elems[1] == "double" || line_elems[1] == "float64");
+            } else if (line == "property float nx" || line == "property float32 nx" || line == "property double nx" ||
                        line == "property float64 nx") {
                 NX_index = index;
                 NX_byte_pos = num_bytes_per_line;
-                NX_double =
-                    (line_elems[1] == "double" || line_elems[1] == "float64");
-            } else if (line == "property float ny" ||
-                       line == "property float32 ny" ||
-                       line == "property double ny" ||
+                NX_double = (line_elems[1] == "double" || line_elems[1] == "float64");
+            } else if (line == "property float ny" || line == "property float32 ny" || line == "property double ny" ||
                        line == "property float64 ny") {
                 NY_index = index;
                 NY_byte_pos = num_bytes_per_line;
-                NY_double =
-                    (line_elems[1] == "double" || line_elems[1] == "float64");
-            } else if (line == "property float nz" ||
-                       line == "property float32 nz" ||
-                       line == "property double nz" ||
+                NY_double = (line_elems[1] == "double" || line_elems[1] == "float64");
+            } else if (line == "property float nz" || line == "property float32 nz" || line == "property double nz" ||
                        line == "property float64 nz") {
                 NZ_index = index;
                 NZ_byte_pos = num_bytes_per_line;
-                NZ_double =
-                    (line_elems[1] == "double" || line_elems[1] == "float64");
-            } else if (line == "property uchar r" ||
-                       line == "property uchar red" ||
-                       line == "property uchar diffuse_red" ||
-                       line == "property uchar ambient_red" ||
+                NZ_double = (line_elems[1] == "double" || line_elems[1] == "float64");
+            } else if (line == "property uchar r" || line == "property uchar red" ||
+                       line == "property uchar diffuse_red" || line == "property uchar ambient_red" ||
                        line == "property uchar specular_red") {
                 R_index = index;
                 R_byte_pos = num_bytes_per_line;
-            } else if (line == "property uchar g" ||
-                       line == "property uchar green" ||
-                       line == "property uchar diffuse_green" ||
-                       line == "property uchar ambient_green" ||
+            } else if (line == "property uchar g" || line == "property uchar green" ||
+                       line == "property uchar diffuse_green" || line == "property uchar ambient_green" ||
                        line == "property uchar specular_green") {
                 G_index = index;
                 G_byte_pos = num_bytes_per_line;
-            } else if (line == "property uchar b" ||
-                       line == "property uchar blue" ||
-                       line == "property uchar diffuse_blue" ||
-                       line == "property uchar ambient_blue" ||
+            } else if (line == "property uchar b" || line == "property uchar blue" ||
+                       line == "property uchar diffuse_blue" || line == "property uchar ambient_blue" ||
                        line == "property uchar specular_blue") {
                 B_index = index;
                 B_byte_pos = num_bytes_per_line;
@@ -194,8 +169,7 @@ std::vector<PlyPoint> ReadPly(const std::string& path) {
             index += 1;
             if (line_elems[1] == "float" || line_elems[1] == "float32") {
                 num_bytes_per_line += 4;
-            } else if (line_elems[1] == "double" ||
-                       line_elems[1] == "float64") {
+            } else if (line_elems[1] == "double" || line_elems[1] == "float64") {
                 num_bytes_per_line += 8;
             } else if (line_elems[1] == "uchar") {
                 num_bytes_per_line += 1;
@@ -205,10 +179,8 @@ std::vector<PlyPoint> ReadPly(const std::string& path) {
         }
     }
 
-    const bool is_normal_missing =
-        (NX_index == -1) || (NY_index == -1) || (NZ_index == -1);
-    const bool is_rgb_missing =
-        (R_index == -1) || (G_index == -1) || (B_index == -1);
+    const bool is_normal_missing = (NX_index == -1) || (NY_index == -1) || (NZ_index == -1);
+    const bool is_rgb_missing = (R_index == -1) || (G_index == -1) || (B_index == -1);
 
     THROW_CHECK(X_index != -1 && Y_index != -1 && Z_index != -1)
         << "Invalid PLY file format: x, y, z properties missing";
@@ -223,72 +195,48 @@ std::vector<PlyPoint> ReadPly(const std::string& path) {
             PlyPoint point;
 
             if (is_little_endian) {
-                point.x = LittleEndianToNative(
-                    X_double ? *reinterpret_cast<double*>(&buffer[X_byte_pos])
-                             : *reinterpret_cast<float*>(&buffer[X_byte_pos]));
-                point.y = LittleEndianToNative(
-                    Y_double ? *reinterpret_cast<double*>(&buffer[Y_byte_pos])
-                             : *reinterpret_cast<float*>(&buffer[Y_byte_pos]));
-                point.z = LittleEndianToNative(
-                    Z_double ? *reinterpret_cast<double*>(&buffer[Z_byte_pos])
-                             : *reinterpret_cast<float*>(&buffer[Z_byte_pos]));
+                point.x = LittleEndianToNative(X_double ? *reinterpret_cast<double*>(&buffer[X_byte_pos])
+                                                        : *reinterpret_cast<float*>(&buffer[X_byte_pos]));
+                point.y = LittleEndianToNative(Y_double ? *reinterpret_cast<double*>(&buffer[Y_byte_pos])
+                                                        : *reinterpret_cast<float*>(&buffer[Y_byte_pos]));
+                point.z = LittleEndianToNative(Z_double ? *reinterpret_cast<double*>(&buffer[Z_byte_pos])
+                                                        : *reinterpret_cast<float*>(&buffer[Z_byte_pos]));
 
                 if (!is_normal_missing) {
-                    point.nx = LittleEndianToNative(
-                        NX_double
-                            ? *reinterpret_cast<double*>(&buffer[NX_byte_pos])
-                            : *reinterpret_cast<float*>(&buffer[NX_byte_pos]));
-                    point.ny = LittleEndianToNative(
-                        NY_double
-                            ? *reinterpret_cast<double*>(&buffer[NY_byte_pos])
-                            : *reinterpret_cast<float*>(&buffer[NY_byte_pos]));
-                    point.nz = LittleEndianToNative(
-                        NZ_double
-                            ? *reinterpret_cast<double*>(&buffer[NZ_byte_pos])
-                            : *reinterpret_cast<float*>(&buffer[NZ_byte_pos]));
+                    point.nx = LittleEndianToNative(NX_double ? *reinterpret_cast<double*>(&buffer[NX_byte_pos])
+                                                              : *reinterpret_cast<float*>(&buffer[NX_byte_pos]));
+                    point.ny = LittleEndianToNative(NY_double ? *reinterpret_cast<double*>(&buffer[NY_byte_pos])
+                                                              : *reinterpret_cast<float*>(&buffer[NY_byte_pos]));
+                    point.nz = LittleEndianToNative(NZ_double ? *reinterpret_cast<double*>(&buffer[NZ_byte_pos])
+                                                              : *reinterpret_cast<float*>(&buffer[NZ_byte_pos]));
                 }
 
                 if (!is_rgb_missing) {
-                    point.r = LittleEndianToNative(
-                        *reinterpret_cast<uint8_t*>(&buffer[R_byte_pos]));
-                    point.g = LittleEndianToNative(
-                        *reinterpret_cast<uint8_t*>(&buffer[G_byte_pos]));
-                    point.b = LittleEndianToNative(
-                        *reinterpret_cast<uint8_t*>(&buffer[B_byte_pos]));
+                    point.r = LittleEndianToNative(*reinterpret_cast<uint8_t*>(&buffer[R_byte_pos]));
+                    point.g = LittleEndianToNative(*reinterpret_cast<uint8_t*>(&buffer[G_byte_pos]));
+                    point.b = LittleEndianToNative(*reinterpret_cast<uint8_t*>(&buffer[B_byte_pos]));
                 }
             } else {
-                point.x = BigEndianToNative(
-                    X_double ? *reinterpret_cast<double*>(&buffer[X_byte_pos])
-                             : *reinterpret_cast<float*>(&buffer[X_byte_pos]));
-                point.y = BigEndianToNative(
-                    Y_double ? *reinterpret_cast<double*>(&buffer[Y_byte_pos])
-                             : *reinterpret_cast<float*>(&buffer[Y_byte_pos]));
-                point.z = BigEndianToNative(
-                    Z_double ? *reinterpret_cast<double*>(&buffer[Z_byte_pos])
-                             : *reinterpret_cast<float*>(&buffer[Z_byte_pos]));
+                point.x = BigEndianToNative(X_double ? *reinterpret_cast<double*>(&buffer[X_byte_pos])
+                                                     : *reinterpret_cast<float*>(&buffer[X_byte_pos]));
+                point.y = BigEndianToNative(Y_double ? *reinterpret_cast<double*>(&buffer[Y_byte_pos])
+                                                     : *reinterpret_cast<float*>(&buffer[Y_byte_pos]));
+                point.z = BigEndianToNative(Z_double ? *reinterpret_cast<double*>(&buffer[Z_byte_pos])
+                                                     : *reinterpret_cast<float*>(&buffer[Z_byte_pos]));
 
                 if (!is_normal_missing) {
-                    point.nx = BigEndianToNative(
-                        NX_double
-                            ? *reinterpret_cast<double*>(&buffer[NX_byte_pos])
-                            : *reinterpret_cast<float*>(&buffer[NX_byte_pos]));
-                    point.ny = BigEndianToNative(
-                        NY_double
-                            ? *reinterpret_cast<double*>(&buffer[NY_byte_pos])
-                            : *reinterpret_cast<float*>(&buffer[NY_byte_pos]));
-                    point.nz = BigEndianToNative(
-                        NZ_double
-                            ? *reinterpret_cast<double*>(&buffer[NZ_byte_pos])
-                            : *reinterpret_cast<float*>(&buffer[NZ_byte_pos]));
+                    point.nx = BigEndianToNative(NX_double ? *reinterpret_cast<double*>(&buffer[NX_byte_pos])
+                                                           : *reinterpret_cast<float*>(&buffer[NX_byte_pos]));
+                    point.ny = BigEndianToNative(NY_double ? *reinterpret_cast<double*>(&buffer[NY_byte_pos])
+                                                           : *reinterpret_cast<float*>(&buffer[NY_byte_pos]));
+                    point.nz = BigEndianToNative(NZ_double ? *reinterpret_cast<double*>(&buffer[NZ_byte_pos])
+                                                           : *reinterpret_cast<float*>(&buffer[NZ_byte_pos]));
                 }
 
                 if (!is_rgb_missing) {
-                    point.r = BigEndianToNative(
-                        *reinterpret_cast<uint8_t*>(&buffer[R_byte_pos]));
-                    point.g = BigEndianToNative(
-                        *reinterpret_cast<uint8_t*>(&buffer[G_byte_pos]));
-                    point.b = BigEndianToNative(
-                        *reinterpret_cast<uint8_t*>(&buffer[B_byte_pos]));
+                    point.r = BigEndianToNative(*reinterpret_cast<uint8_t*>(&buffer[R_byte_pos]));
+                    point.g = BigEndianToNative(*reinterpret_cast<uint8_t*>(&buffer[G_byte_pos]));
+                    point.b = BigEndianToNative(*reinterpret_cast<uint8_t*>(&buffer[B_byte_pos]));
                 }
             }
 
@@ -332,9 +280,8 @@ std::vector<PlyPoint> ReadPly(const std::string& path) {
     return points;
 }
 
-void WriteTextPlyPoints(const std::string& path,
-                        const std::vector<PlyPoint>& points,
-                        const bool write_normal, const bool write_rgb) {
+void WriteTextPlyPoints(const std::string& path, const std::vector<PlyPoint>& points, const bool write_normal,
+                        const bool write_rgb) {
     std::ofstream file(path);
     THROW_CHECK_FILE_OPEN(file, path);
 
@@ -368,8 +315,7 @@ void WriteTextPlyPoints(const std::string& path,
         }
 
         if (write_rgb) {
-            file << " " << static_cast<int>(point.r) << " "
-                 << static_cast<int>(point.g) << " "
+            file << " " << static_cast<int>(point.r) << " " << static_cast<int>(point.g) << " "
                  << static_cast<int>(point.b);
         }
 
@@ -379,9 +325,8 @@ void WriteTextPlyPoints(const std::string& path,
     file.close();
 }
 
-void WriteBinaryPlyPoints(const std::string& path,
-                          const std::vector<PlyPoint>& points,
-                          const bool write_normal, const bool write_rgb) {
+void WriteBinaryPlyPoints(const std::string& path, const std::vector<PlyPoint>& points, const bool write_normal,
+                          const bool write_rgb) {
     std::fstream text_file(path, std::ios::out);
     THROW_CHECK_FILE_OPEN(text_file, path);
 
@@ -408,8 +353,7 @@ void WriteBinaryPlyPoints(const std::string& path,
     text_file << "end_header" << std::endl;
     text_file.close();
 
-    std::fstream binary_file(path,
-                             std::ios::out | std::ios::binary | std::ios::app);
+    std::fstream binary_file(path, std::ios::out | std::ios::binary | std::ios::app);
     THROW_CHECK_FILE_OPEN(binary_file, path);
 
     for (const auto& point : points) {
@@ -452,9 +396,7 @@ void WriteTextPlyMesh(const std::string& path, const PlyMesh& mesh) {
     }
 
     for (const auto& face : mesh.faces) {
-        file << StringPrintf("3 %d %d %d", face.vertex_idx1, face.vertex_idx2,
-                             face.vertex_idx3)
-             << std::endl;
+        file << StringPrintf("3 %d %d %d", face.vertex_idx1, face.vertex_idx2, face.vertex_idx3) << std::endl;
     }
 }
 
@@ -473,8 +415,7 @@ void WriteBinaryPlyMesh(const std::string& path, const PlyMesh& mesh) {
     text_file << "end_header" << std::endl;
     text_file.close();
 
-    std::fstream binary_file(path,
-                             std::ios::out | std::ios::binary | std::ios::app);
+    std::fstream binary_file(path, std::ios::out | std::ios::binary | std::ios::app);
     THROW_CHECK_FILE_OPEN(binary_file, path);
 
     for (const auto& vertex : mesh.vertices) {

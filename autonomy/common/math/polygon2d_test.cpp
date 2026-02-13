@@ -30,17 +30,14 @@ namespace math {
 
 namespace {
 
-bool ProjectByXSlow(const std::vector<Vec2d>& points, double x,
-                    double* const min_y, double* const max_y) {
+bool ProjectByXSlow(const std::vector<Vec2d>& points, double x, double* const min_y, double* const max_y) {
     *min_y = std::numeric_limits<double>::infinity();
     *max_y = -std::numeric_limits<double>::infinity();
     for (const Vec2d& p1 : points) {
         if (p1.x() < x) {
             for (const Vec2d& p2 : points) {
                 if (p2.x() > x) {
-                    const double y =
-                        ((p2.x() - x) * p1.y() + (x - p1.x()) * p2.y()) /
-                        (p2.x() - p1.x());
+                    const double y = ((p2.x() - x) * p1.y() + (x - p1.x()) * p2.y()) / (p2.x() - p1.x());
                     *min_y = std::min(*min_y, y);
                     *max_y = std::max(*max_y, y);
                 }
@@ -54,11 +51,10 @@ bool ProjectByXSlow(const std::vector<Vec2d>& points, double x,
 
 TEST(Polygon2dTest, polygon_IsPointIn) {
     const Polygon2d poly1(Box2d::CreateAABox({0, 0}, {1, 1}));
-    EXPECT_EQ(
-        poly1.DebugString(),
-        "polygon2d (  num_points = 4  points = (vec2d ( x = 1  y = 0 ) "
-        "vec2d ( x = 1  y = 1 ) vec2d ( x = 0  y = 1 ) vec2d ( x = 0  y = "
-        "0 ) )  convex  area = 1 )");
+    EXPECT_EQ(poly1.DebugString(),
+              "polygon2d (  num_points = 4  points = (vec2d ( x = 1  y = 0 ) "
+              "vec2d ( x = 1  y = 1 ) vec2d ( x = 0  y = 1 ) vec2d ( x = 0  y = "
+              "0 ) )  convex  area = 1 )");
     EXPECT_TRUE(poly1.IsPointIn({0.5, 0.5}));
     EXPECT_TRUE(poly1.IsPointIn({0.2, 0.2}));
     EXPECT_TRUE(poly1.IsPointIn({0.2, 0.8}));
@@ -118,8 +114,7 @@ TEST(Polygon2dTest, polygon_IsPointIn) {
     EXPECT_TRUE(poly4.IsPointIn({1.5, 1.5}));
     EXPECT_TRUE(poly4.IsPointOnBoundary({1.5, 1.5}));
 
-    const Polygon2d poly5(
-        {{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
+    const Polygon2d poly5({{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
     EXPECT_FALSE(poly5.IsPointIn({-0.5, 2.0}));
     EXPECT_TRUE(poly5.IsPointIn({0.5, 2.0}));
     EXPECT_FALSE(poly5.IsPointIn({1.5, 2.0}));
@@ -169,8 +164,7 @@ TEST(Polygon2dTest, DistanceToPoint) {
         for (int iter2 = 0; iter2 < 100; ++iter2) {
             const double x = RandomDouble(-20, 20);
             const double y = RandomDouble(-20, 20);
-            EXPECT_NEAR(polygon.DistanceTo({x, y}), box.DistanceTo({x, y}),
-                        1e-5);
+            EXPECT_NEAR(polygon.DistanceTo({x, y}), box.DistanceTo({x, y}), 1e-5);
         }
     }
 
@@ -185,8 +179,7 @@ TEST(Polygon2dTest, DistanceToPoint) {
     EXPECT_NEAR(poly2.DistanceTo({0.5, 0.5}), 0.0, 1e-5);
     EXPECT_NEAR(poly2.DistanceTo({0.6, 0.6}), 0.1 * sqrt(2.0), 1e-5);
 
-    const Polygon2d poly3(
-        {{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
+    const Polygon2d poly3({{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
     EXPECT_NEAR(poly3.DistanceTo({-0.5, 2.0}), 0.5, 1e-5);
     EXPECT_NEAR(poly3.DistanceTo({0.5, 2.0}), 0.0, 1e-5);
     EXPECT_NEAR(poly3.DistanceTo({1.5, 2.0}), 0.5 / sqrt(2.0), 1e-5);
@@ -215,10 +208,8 @@ TEST(Polygon2dTest, DistanceToLineSegment) {
     EXPECT_NEAR(poly1.DistanceTo({{0.5, -0.3}, {0.8, -0.2}}), 0.2, 1e-5);
     EXPECT_NEAR(poly1.DistanceTo({{0.5, 1.2}, {0.3, 1.3}}), 0.2, 1e-5);
 
-    EXPECT_NEAR(poly1.DistanceTo({{0, -0.1}, {-0.1, 0}}), 0.1 / sqrt(2.0),
-                1e-5);
-    EXPECT_NEAR(poly1.DistanceTo({{1.0, 1.1}, {1.1, 1.0}}), 0.1 / sqrt(2.0),
-                1e-5);
+    EXPECT_NEAR(poly1.DistanceTo({{0, -0.1}, {-0.1, 0}}), 0.1 / sqrt(2.0), 1e-5);
+    EXPECT_NEAR(poly1.DistanceTo({{1.0, 1.1}, {1.1, 1.0}}), 0.1 / sqrt(2.0), 1e-5);
 
     EXPECT_NEAR(poly1.DistanceTo({{-10.0, 0.5}, {2.0, 0.5}}), 0.0, 1e-5);
     EXPECT_NEAR(poly1.DistanceTo({{-1.0, 0.5}, {10.0, 0.5}}), 0.0, 1e-5);
@@ -233,20 +224,15 @@ TEST(Polygon2dTest, DistanceToLineSegment) {
     EXPECT_NEAR(poly2.DistanceTo({{0, 1.1}, {1.1, 0}}), 0.1 / sqrt(2.0), 1e-5);
     EXPECT_NEAR(poly2.DistanceTo({{0, 1.1}, {-1.1, 0}}), 0.1 / sqrt(2.0), 1e-5);
     EXPECT_NEAR(poly2.DistanceTo({{0, -1.1}, {1.1, 0}}), 0.1 / sqrt(2.0), 1e-5);
-    EXPECT_NEAR(poly2.DistanceTo({{0, -1.1}, {-1.1, 0}}), 0.1 / sqrt(2.0),
-                1e-5);
-    EXPECT_NEAR(poly2.DistanceTo({{0.6, 0.6}, {0.7, 0.7}}), 0.1 * sqrt(2.0),
-                1e-5);
-    EXPECT_NEAR(poly2.DistanceTo({{-0.6, -0.6}, {-0.7, -0.7}}), 0.1 * sqrt(2.0),
-                1e-5);
+    EXPECT_NEAR(poly2.DistanceTo({{0, -1.1}, {-1.1, 0}}), 0.1 / sqrt(2.0), 1e-5);
+    EXPECT_NEAR(poly2.DistanceTo({{0.6, 0.6}, {0.7, 0.7}}), 0.1 * sqrt(2.0), 1e-5);
+    EXPECT_NEAR(poly2.DistanceTo({{-0.6, -0.6}, {-0.7, -0.7}}), 0.1 * sqrt(2.0), 1e-5);
     EXPECT_NEAR(poly2.DistanceTo({{-0.6, -0.6}, {0.7, 0.7}}), 0.0, 1e-5);
 
     const Polygon2d poly3({{0, 0}, {2, 0}, {2, 2}, {1, 1}, {0, 2}});
     EXPECT_NEAR(poly3.DistanceTo({{-2, 0}, {2, 0}}), 0.0, 1e-5);
-    EXPECT_NEAR(poly3.DistanceTo({{0.7, 2.0}, {1.2, 2.0}}), 0.7 / sqrt(2.0),
-                1e-5);
-    EXPECT_NEAR(poly3.DistanceTo({{0.7, 2.0}, {1.4, 2.0}}), 0.6 / sqrt(2.0),
-                1e-5);
+    EXPECT_NEAR(poly3.DistanceTo({{0.7, 2.0}, {1.2, 2.0}}), 0.7 / sqrt(2.0), 1e-5);
+    EXPECT_NEAR(poly3.DistanceTo({{0.7, 2.0}, {1.4, 2.0}}), 0.6 / sqrt(2.0), 1e-5);
     EXPECT_NEAR(poly3.DistanceTo({{0.7, 1.5}, {1.6, 1.5}}), 0.0, 1e-5);
 }
 
@@ -281,8 +267,7 @@ TEST(Polygon2dTest, ContainPolygon) {
     EXPECT_TRUE(poly4.Contains(poly2));
     EXPECT_TRUE(poly4.Contains(poly3));
 
-    const Polygon2d poly5(
-        {{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
+    const Polygon2d poly5({{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
     const Polygon2d poly6({{0, 1}, {4, 1}, {4, 2}, {0, 2}});
     const Polygon2d poly7({{0, 1}, {1, 1}, {1, 2}, {0, 2}});
     const Polygon2d poly8({{3, 1}, {4, 1}, {4, 2}, {3, 2}});
@@ -298,27 +283,22 @@ TEST(Polygon2dTest, ConvexHull) {
     EXPECT_FALSE(Polygon2d::ComputeConvexHull({}, &polygon));
     EXPECT_FALSE(Polygon2d::ComputeConvexHull({{1, 2}}, &polygon));
     EXPECT_FALSE(Polygon2d::ComputeConvexHull({{3, 4}, {5, 6}}, &polygon));
-    EXPECT_FALSE(Polygon2d::ComputeConvexHull({{3, 4}, {3, 4}, {5, 6}, {5, 6}},
-                                              &polygon));
+    EXPECT_FALSE(Polygon2d::ComputeConvexHull({{3, 4}, {3, 4}, {5, 6}, {5, 6}}, &polygon));
 
-    EXPECT_TRUE(
-        Polygon2d::ComputeConvexHull({{0, 0}, {0, 4}, {3, 0}}, &polygon));
+    EXPECT_TRUE(Polygon2d::ComputeConvexHull({{0, 0}, {0, 4}, {3, 0}}, &polygon));
     EXPECT_TRUE(polygon.is_convex());
     EXPECT_NEAR(6.0, polygon.area(), 1e-5);
 
-    EXPECT_TRUE(Polygon2d::ComputeConvexHull({{0, 0}, {0, 4}, {3, 0}, {3, 4}},
-                                             &polygon));
+    EXPECT_TRUE(Polygon2d::ComputeConvexHull({{0, 0}, {0, 4}, {3, 0}, {3, 4}}, &polygon));
     EXPECT_TRUE(polygon.is_convex());
     EXPECT_NEAR(12.0, polygon.area(), 1e-5);
 
-    EXPECT_TRUE(Polygon2d::ComputeConvexHull(
-        {{0, 0}, {2, 2}, {1, 1}, {0, 4}, {3, 0}, {3, 4}}, &polygon));
+    EXPECT_TRUE(Polygon2d::ComputeConvexHull({{0, 0}, {2, 2}, {1, 1}, {0, 4}, {3, 0}, {3, 4}}, &polygon));
     EXPECT_TRUE(polygon.is_convex());
     EXPECT_NEAR(12.0, polygon.area(), 1e-5);
 
-    EXPECT_TRUE(Polygon2d::ComputeConvexHull(
-        {{0, 0}, {0, 4}, {0, 1}, {0, 3}, {0, 2}, {1, 0}, {3, 0}, {2, 0}},
-        &polygon));
+    EXPECT_TRUE(
+        Polygon2d::ComputeConvexHull({{0, 0}, {0, 4}, {0, 1}, {0, 3}, {0, 2}, {1, 0}, {3, 0}, {2, 0}}, &polygon));
     EXPECT_TRUE(polygon.is_convex());
     EXPECT_NEAR(6.0, polygon.area(), 1e-5);
 
@@ -402,65 +382,52 @@ TEST(Polygon2dTest, Overlap) {
 
     Vec2d first_intersect;
     Vec2d last_intersect;
-    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({-1, 0}, {-1, 2}),
-                                  &first_intersect, &last_intersect));
-    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({-1, 1}, {-3, 1}),
-                                  &first_intersect, &last_intersect));
-    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({1, 3}, {1, 5}),
-                                  &first_intersect, &last_intersect));
+    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({-1, 0}, {-1, 2}), &first_intersect, &last_intersect));
+    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({-1, 1}, {-3, 1}), &first_intersect, &last_intersect));
+    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({1, 3}, {1, 5}), &first_intersect, &last_intersect));
 
-    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, -1}, {1, 3}),
-                                 &first_intersect, &last_intersect));
+    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, -1}, {1, 3}), &first_intersect, &last_intersect));
     EXPECT_NEAR(1.0, first_intersect.x(), 1e-5);
     EXPECT_NEAR(0.0, first_intersect.y(), 1e-5);
     EXPECT_NEAR(1.0, last_intersect.x(), 1e-5);
     EXPECT_NEAR(2.0, last_intersect.y(), 1e-5);
 
-    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, 1}, {1, 3}),
-                                 &first_intersect, &last_intersect));
+    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, 1}, {1, 3}), &first_intersect, &last_intersect));
     EXPECT_NEAR(1.0, first_intersect.x(), 1e-5);
     EXPECT_NEAR(1.0, first_intersect.y(), 1e-5);
     EXPECT_NEAR(1.0, last_intersect.x(), 1e-5);
     EXPECT_NEAR(2.0, last_intersect.y(), 1e-5);
 
-    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, -1}, {1, 1}),
-                                 &first_intersect, &last_intersect));
+    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, -1}, {1, 1}), &first_intersect, &last_intersect));
     EXPECT_NEAR(1.0, first_intersect.x(), 1e-5);
     EXPECT_NEAR(0.0, first_intersect.y(), 1e-5);
     EXPECT_NEAR(1.0, last_intersect.x(), 1e-5);
     EXPECT_NEAR(1.0, last_intersect.y(), 1e-5);
 
-    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, 3}, {3, 1}),
-                                 &first_intersect, &last_intersect));
+    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, 3}, {3, 1}), &first_intersect, &last_intersect));
     EXPECT_NEAR(2.0, first_intersect.x(), 1e-5);
     EXPECT_NEAR(2.0, first_intersect.y(), 1e-5);
     EXPECT_NEAR(2.0, last_intersect.x(), 1e-5);
     EXPECT_NEAR(2.0, last_intersect.y(), 1e-5);
 
-    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({4, 3}, {4, 3}),
-                                  &first_intersect, &last_intersect));
-    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, 1}, {1, 1}),
-                                 &first_intersect, &last_intersect));
+    EXPECT_FALSE(poly1.GetOverlap(LineSegment2d({4, 3}, {4, 3}), &first_intersect, &last_intersect));
+    EXPECT_TRUE(poly1.GetOverlap(LineSegment2d({1, 1}, {1, 1}), &first_intersect, &last_intersect));
     EXPECT_NEAR(1.0, first_intersect.x(), 1e-5);
     EXPECT_NEAR(1.0, first_intersect.y(), 1e-5);
     EXPECT_NEAR(1.0, last_intersect.x(), 1e-5);
     EXPECT_NEAR(1.0, last_intersect.y(), 1e-5);
 
-    const Polygon2d poly5(
-        {{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
+    const Polygon2d poly5({{0, 0}, {4, 0}, {4, 2}, {3, 2}, {2, 1}, {1, 2}, {0, 2}});
     const Polygon2d poly6({{-3, 2}, {-3, 3}, {0, 3}, {0, 2.5}});
 
     EXPECT_FALSE(poly5.HasOverlap(poly6));
     for (size_t i = 0; i < poly6.line_segments().size(); i++) {
         EXPECT_FALSE(poly5.HasOverlap(poly6.line_segments()[i]))
-            << poly6.line_segments()[i].start().x() << ", "
-            << poly6.line_segments()[i].start().y() << " "
-            << poly6.line_segments()[i].end().x() << ", "
-            << poly6.line_segments()[i].end().y();
+            << poly6.line_segments()[i].start().x() << ", " << poly6.line_segments()[i].start().y() << " "
+            << poly6.line_segments()[i].end().x() << ", " << poly6.line_segments()[i].end().y();
     }
 
-    std::vector<LineSegment2d> overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({-10, 1.5}, {10, 1.5}));
+    std::vector<LineSegment2d> overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({-10, 1.5}, {10, 1.5}));
     EXPECT_EQ(2, overlap_line_segments.size());
     EXPECT_NEAR(0.0, overlap_line_segments[0].start().x(), 1e-5);
     EXPECT_NEAR(1.5, overlap_line_segments[0].start().y(), 1e-5);
@@ -471,60 +438,49 @@ TEST(Polygon2dTest, Overlap) {
     EXPECT_NEAR(4.0, overlap_line_segments[1].end().x(), 1e-5);
     EXPECT_NEAR(1.5, overlap_line_segments[1].end().y(), 1e-5);
 
-    overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({-10, 1}, {10, 1}));
+    overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({-10, 1}, {10, 1}));
     EXPECT_EQ(1, overlap_line_segments.size());
     EXPECT_NEAR(0.0, overlap_line_segments[0].start().x(), 1e-5);
     EXPECT_NEAR(1.0, overlap_line_segments[0].start().y(), 1e-5);
     EXPECT_NEAR(4.0, overlap_line_segments[0].end().x(), 1e-5);
     EXPECT_NEAR(1.0, overlap_line_segments[0].end().y(), 1e-5);
 
-    overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({-10, 0.5}, {10, 0.5}));
+    overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({-10, 0.5}, {10, 0.5}));
     EXPECT_EQ(1, overlap_line_segments.size());
     EXPECT_NEAR(0.0, overlap_line_segments[0].start().x(), 1e-5);
     EXPECT_NEAR(0.5, overlap_line_segments[0].start().y(), 1e-5);
     EXPECT_NEAR(4.0, overlap_line_segments[0].end().x(), 1e-5);
     EXPECT_NEAR(0.5, overlap_line_segments[0].end().y(), 1e-5);
 
-    overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({-10, -0.5}, {10, -0.5}));
+    overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({-10, -0.5}, {10, -0.5}));
     EXPECT_EQ(0, overlap_line_segments.size());
-    overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({-10, 2.5}, {10, 2.5}));
+    overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({-10, 2.5}, {10, 2.5}));
     EXPECT_EQ(0, overlap_line_segments.size());
 
-    overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({2, 0.5}, {2, 0.5}));
+    overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({2, 0.5}, {2, 0.5}));
     EXPECT_EQ(1, overlap_line_segments.size());
     EXPECT_NEAR(2.0, overlap_line_segments[0].start().x(), 1e-5);
     EXPECT_NEAR(0.5, overlap_line_segments[0].start().y(), 1e-5);
     EXPECT_NEAR(2.0, overlap_line_segments[0].end().x(), 1e-5);
     EXPECT_NEAR(0.5, overlap_line_segments[0].end().y(), 1e-5);
-    overlap_line_segments =
-        poly5.GetAllOverlaps(LineSegment2d({5, 0.5}, {5, 0.5}));
+    overlap_line_segments = poly5.GetAllOverlaps(LineSegment2d({5, 0.5}, {5, 0.5}));
     EXPECT_EQ(0, overlap_line_segments.size());
 
-    EXPECT_TRUE(Polygon2d({{0, 0}, {0, 4}, {4, 0}})
-                    .ComputeOverlap(Polygon2d({{1, 1}, {1, 3}, {3, 1}}),
-                                    &overlap_polygon));
+    EXPECT_TRUE(
+        Polygon2d({{0, 0}, {0, 4}, {4, 0}}).ComputeOverlap(Polygon2d({{1, 1}, {1, 3}, {3, 1}}), &overlap_polygon));
     EXPECT_NEAR(overlap_polygon.area(), 2.0, 1e-5);
 
-    EXPECT_TRUE(Polygon2d({{0, 0}, {0, 4}, {4, 0}})
-                    .ComputeOverlap(Polygon2d({{1, 1}, {-1, 1}, {1, 3}}),
-                                    &overlap_polygon));
+    EXPECT_TRUE(
+        Polygon2d({{0, 0}, {0, 4}, {4, 0}}).ComputeOverlap(Polygon2d({{1, 1}, {-1, 1}, {1, 3}}), &overlap_polygon));
     EXPECT_NEAR(overlap_polygon.area(), 1.5, 1e-5);
-    EXPECT_TRUE(Polygon2d({{0, 0}, {0, 4}, {4, 0}})
-                    .ComputeOverlap(Polygon2d({{2, 1}, {-1, 1}, {2, 4}}),
-                                    &overlap_polygon));
+    EXPECT_TRUE(
+        Polygon2d({{0, 0}, {0, 4}, {4, 0}}).ComputeOverlap(Polygon2d({{2, 1}, {-1, 1}, {2, 4}}), &overlap_polygon));
     EXPECT_NEAR(overlap_polygon.area(), 3.0, 1e-5);
-    EXPECT_TRUE(Polygon2d({{0, 0}, {0, 4}, {4, 0}})
-                    .ComputeOverlap(Polygon2d({{3, 1}, {-1, 1}, {3, 5}}),
-                                    &overlap_polygon));
+    EXPECT_TRUE(
+        Polygon2d({{0, 0}, {0, 4}, {4, 0}}).ComputeOverlap(Polygon2d({{3, 1}, {-1, 1}, {3, 5}}), &overlap_polygon));
     EXPECT_NEAR(overlap_polygon.area(), 3.5, 1e-5);
-    EXPECT_TRUE(Polygon2d({{0, 0}, {0, 4}, {4, 0}})
-                    .ComputeOverlap(Polygon2d({{4, 1}, {-1, 1}, {4, 6}}),
-                                    &overlap_polygon));
+    EXPECT_TRUE(
+        Polygon2d({{0, 0}, {0, 4}, {4, 0}}).ComputeOverlap(Polygon2d({{4, 1}, {-1, 1}, {4, 6}}), &overlap_polygon));
     EXPECT_NEAR(overlap_polygon.area(), 3.5, 1e-5);
 
     for (int iter = 0; iter < 10000; ++iter) {
@@ -543,11 +499,9 @@ TEST(Polygon2dTest, Overlap) {
         Box2d shrinked_box2({x2, y2}, heading2, l2 - 0.2, w2 - 0.2);
         Box2d extended_box2({x2, y2}, heading2, l2 + 0.2, w2 + 0.2);
         if (!box1.HasOverlap(extended_box2)) {
-            EXPECT_FALSE(Polygon2d(box1).ComputeOverlap(Polygon2d(box2),
-                                                        &overlap_polygon));
+            EXPECT_FALSE(Polygon2d(box1).ComputeOverlap(Polygon2d(box2), &overlap_polygon));
         } else if (box1.HasOverlap(shrinked_box2)) {
-            EXPECT_TRUE(Polygon2d(box1).ComputeOverlap(Polygon2d(box2),
-                                                       &overlap_polygon));
+            EXPECT_TRUE(Polygon2d(box1).ComputeOverlap(Polygon2d(box2), &overlap_polygon));
         }
     }
 
@@ -564,8 +518,7 @@ TEST(Polygon2dTest, Overlap) {
         }
         Polygon2d polygon1;
         Polygon2d polygon2;
-        if (!Polygon2d::ComputeConvexHull(points1, &polygon1) ||
-            !Polygon2d::ComputeConvexHull(points2, &polygon2)) {
+        if (!Polygon2d::ComputeConvexHull(points1, &polygon1) || !Polygon2d::ComputeConvexHull(points2, &polygon2)) {
             continue;
         }
         std::vector<double> key_points;
@@ -592,11 +545,8 @@ TEST(Polygon2dTest, Overlap) {
             double max_y1 = 0.0;
             double min_y2 = 0.0;
             double max_y2 = 0.0;
-            if (ProjectByXSlow(points1, x, &min_y1, &max_y1) &&
-                ProjectByXSlow(points2, x, &min_y2, &max_y2)) {
-                area += std::max(0.0, std::min(max_y1, max_y2) -
-                                          std::max(min_y1, min_y2)) *
-                        width;
+            if (ProjectByXSlow(points1, x, &min_y1, &max_y1) && ProjectByXSlow(points2, x, &min_y2, &max_y2)) {
+                area += std::max(0.0, std::min(max_y1, max_y2) - std::max(min_y1, min_y2)) * width;
             }
         }
         Polygon2d overlap_polygon;

@@ -22,8 +22,7 @@
 namespace cartographer {
 namespace sensor {
 
-RangeData TransformRangeData(const RangeData& range_data,
-                             const transform::Rigid3f& transform) {
+RangeData TransformRangeData(const RangeData& range_data, const transform::Rigid3f& transform) {
     return RangeData{
         transform * range_data.origin,
         TransformPointCloud(range_data.returns, transform),
@@ -31,10 +30,8 @@ RangeData TransformRangeData(const RangeData& range_data,
     };
 }
 
-RangeData CropRangeData(const RangeData& range_data, const float min_z,
-                        const float max_z) {
-    return RangeData{range_data.origin,
-                     CropPointCloud(range_data.returns, min_z, max_z),
+RangeData CropRangeData(const RangeData& range_data, const float min_z, const float max_z) {
+    return RangeData{range_data.origin, CropPointCloud(range_data.returns, min_z, max_z),
                      CropPointCloud(range_data.misses, min_z, max_z)};
 }
 
@@ -77,8 +74,7 @@ RangeData FromProto(const proto::RangeData& proto) {
             misses.push_back({transform::ToEigen(point_proto)});
         }
     }
-    return RangeData{transform::ToEigen(proto.origin()), PointCloud(returns),
-                     PointCloud(misses)};
+    return RangeData{transform::ToEigen(proto.origin()), PointCloud(returns), PointCloud(misses)};
 }
 
 }  // namespace sensor

@@ -255,13 +255,11 @@ void NavFn::setCostmap(const COSTTYPE* cmap, bool isROS, bool allow_unknown) {
     }
 }
 
-bool NavFn::calcNavFnDijkstra(std::function<bool()> cancelChecker,
-                              bool atStart) {
+bool NavFn::calcNavFnDijkstra(std::function<bool()> cancelChecker, bool atStart) {
     setupNavFn(true);
 
     // calculate the nav fn and path
-    return propNavFnDijkstra(std::max(nx * ny / 20, nx + ny), cancelChecker,
-                             atStart);
+    return propNavFnDijkstra(std::max(nx * ny / 20, nx + ny), cancelChecker, atStart);
 }
 
 //
@@ -290,29 +288,26 @@ int NavFn::getPathLen() {
 }
 
 // inserting onto the priority blocks
-#define push_cur(n)                                                     \
-    {                                                                   \
-        if (n >= 0 && n < ns && !pending[n] && costarr[n] < COST_OBS && \
-            curPe < PRIORITYBUFSIZE) {                                  \
-            curP[curPe++] = n;                                          \
-            pending[n] = true;                                          \
-        }                                                               \
+#define push_cur(n)                                                                                \
+    {                                                                                              \
+        if (n >= 0 && n < ns && !pending[n] && costarr[n] < COST_OBS && curPe < PRIORITYBUFSIZE) { \
+            curP[curPe++] = n;                                                                     \
+            pending[n] = true;                                                                     \
+        }                                                                                          \
     }
-#define push_next(n)                                                    \
-    {                                                                   \
-        if (n >= 0 && n < ns && !pending[n] && costarr[n] < COST_OBS && \
-            nextPe < PRIORITYBUFSIZE) {                                 \
-            nextP[nextPe++] = n;                                        \
-            pending[n] = true;                                          \
-        }                                                               \
+#define push_next(n)                                                                                \
+    {                                                                                               \
+        if (n >= 0 && n < ns && !pending[n] && costarr[n] < COST_OBS && nextPe < PRIORITYBUFSIZE) { \
+            nextP[nextPe++] = n;                                                                    \
+            pending[n] = true;                                                                      \
+        }                                                                                           \
     }
-#define push_over(n)                                                    \
-    {                                                                   \
-        if (n >= 0 && n < ns && !pending[n] && costarr[n] < COST_OBS && \
-            overPe < PRIORITYBUFSIZE) {                                 \
-            overP[overPe++] = n;                                        \
-            pending[n] = true;                                          \
-        }                                                               \
+#define push_over(n)                                                                                \
+    {                                                                                               \
+        if (n >= 0 && n < ns && !pending[n] && costarr[n] < COST_OBS && overPe < PRIORITYBUFSIZE) { \
+            overP[overPe++] = n;                                                                    \
+            pending[n] = true;                                                                      \
+        }                                                                                           \
     }
 
 // Set up navigation potential arrays for new propagation
@@ -415,10 +410,10 @@ inline void NavFn::updateCell(int n) {
     }
 
     // do planar wave update
-    if (costarr[n] < COST_OBS) {  // don't propagate into obstacles
+    if (costarr[n] < COST_OBS) {                    // don't propagate into obstacles
         float hf = static_cast<float>(costarr[n]);  // traversability factor
-        float dc = tc - ta;  // relative cost between ta,tc
-        if (dc < 0) {        // ta is lowest
+        float dc = tc - ta;                         // relative cost between ta,tc
+        if (dc < 0) {                               // ta is lowest
             dc = -dc;
             ta = tc;
         }
@@ -511,10 +506,10 @@ inline void NavFn::updateCellAstar(int n) {
     }
 
     // do planar wave update
-    if (costarr[n] < COST_OBS) {  // don't propagate into obstacles
+    if (costarr[n] < COST_OBS) {                    // don't propagate into obstacles
         float hf = static_cast<float>(costarr[n]);  // traversability factor
-        float dc = tc - ta;  // relative cost between ta,tc
-        if (dc < 0) {        // ta is lowest
+        float dc = tc - ta;                         // relative cost between ta,tc
+        if (dc < 0) {                               // ta is lowest
             dc = -dc;
             ta = tc;
         }
@@ -544,8 +539,7 @@ inline void NavFn::updateCellAstar(int n) {
             // calculate distance
             int x = n % nx;
             int y = n / nx;
-            float dist = hypot(x - start[0], y - start[1]) *
-                         static_cast<float>(COST_NEUTRAL);
+            float dist = hypot(x - start[0], y - start[1]) * static_cast<float>(COST_NEUTRAL);
 
             potarr[n] = pot;
             pot += dist;
@@ -588,8 +582,7 @@ inline void NavFn::updateCellAstar(int n) {
 //   or until the Start cell is found (atStart = true)
 //
 
-bool NavFn::propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker,
-                              bool atStart) {
+bool NavFn::propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker, bool atStart) {
     int nwv = 0;    // max priority block size
     int nc = 0;     // number of cells put into priority blocks
     int cycle = 0;  // which cycle we're on
@@ -597,8 +590,7 @@ bool NavFn::propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker,
     // set up start cell
     int startCell = start[1] * nx + start[0];
 
-    for (; cycle < cycles;
-         cycle++) {  // go for this many cycles, unless interrupted
+    for (; cycle < cycles; cycle++) {  // go for this many cycles, unless interrupted
         if (cycle % terminal_checking_interval == 0 && cancelChecker()) {
             //   throw nav2_core::PlannerCancelled("Planner was cancelled");
         }
@@ -678,16 +670,14 @@ bool NavFn::propNavFnAstar(int cycles, std::function<bool()> cancelChecker) {
     int cycle = 0;  // which cycle we're on
 
     // set initial threshold, based on distance
-    float dist = hypot(goal[0] - start[0], goal[1] - start[1]) *
-                 static_cast<float>(COST_NEUTRAL);
+    float dist = hypot(goal[0] - start[0], goal[1] - start[1]) * static_cast<float>(COST_NEUTRAL);
     curT = dist + curT;
 
     // set up start cell
     int startCell = start[1] * nx + start[0];
 
     // do main cycle
-    for (; cycle < cycles;
-         cycle++) {  // go for this many cycles, unless interrupted
+    for (; cycle < cycles; cycle++) {  // go for this many cycles, unless interrupted
         if (cycle % terminal_checking_interval == 0 && cancelChecker()) {
             //   throw nav2_core::PlannerCancelled("Planner was cancelled");
         }
@@ -804,9 +794,8 @@ int NavFn::calcPath(int n, int* st) {
     // go for <n> cycles at most
     for (int i = 0; i < n; i++) {
         // check if near goal
-        int nearest_point = std::max(
-            0, std::min(nx * ny - 1, stc + static_cast<int>(round(dx)) +
-                                         static_cast<int>(nx * round(dy))));
+        int nearest_point =
+            std::max(0, std::min(nx * ny - 1, stc + static_cast<int>(round(dx)) + static_cast<int>(nx * round(dy))));
         if (potarr[nearest_point] < COST_NEUTRAL) {
             pathx[npath] = static_cast<float>(goal[0]);
             pathy[npath] = static_cast<float>(goal[1]);
@@ -825,8 +814,7 @@ int NavFn::calcPath(int n, int* st) {
         npath++;
 
         bool oscillation_detected = false;
-        if (npath > 2 && pathx[npath - 1] == pathx[npath - 3] &&
-            pathy[npath - 1] == pathy[npath - 3]) {
+        if (npath > 2 && pathx[npath - 1] == pathx[npath - 3] && pathy[npath - 1] == pathy[npath - 3]) {
             //   RCLCPP_DEBUG(
             //     rclcpp::get_logger("rclcpp"),
             //     "[PathCalc] oscillation detected, attempting fix.");
@@ -837,11 +825,10 @@ int NavFn::calcPath(int n, int* st) {
         int stcpx = stc - nx;
 
         // check for potentials at eight positions near cell
-        if (potarr[stc] >= POT_HIGH || potarr[stc + 1] >= POT_HIGH ||
-            potarr[stc - 1] >= POT_HIGH || potarr[stcnx] >= POT_HIGH ||
-            potarr[stcnx + 1] >= POT_HIGH || potarr[stcnx - 1] >= POT_HIGH ||
-            potarr[stcpx] >= POT_HIGH || potarr[stcpx + 1] >= POT_HIGH ||
-            potarr[stcpx - 1] >= POT_HIGH || oscillation_detected) {
+        if (potarr[stc] >= POT_HIGH || potarr[stc + 1] >= POT_HIGH || potarr[stc - 1] >= POT_HIGH ||
+            potarr[stcnx] >= POT_HIGH || potarr[stcnx + 1] >= POT_HIGH || potarr[stcnx - 1] >= POT_HIGH ||
+            potarr[stcpx] >= POT_HIGH || potarr[stcpx + 1] >= POT_HIGH || potarr[stcpx - 1] >= POT_HIGH ||
+            oscillation_detected) {
             //   RCLCPP_DEBUG(
             //     rclcpp::get_logger("rclcpp"),
             //     "[Path] Pot fn boundary, following grid (%0.1f/%d)",

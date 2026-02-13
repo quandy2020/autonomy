@@ -8,8 +8,7 @@ namespace autonomy {
 namespace common {
 namespace async_grpc {
 
-DEFINE_HAS_SIGNATURE(has_service_method_name, T::MethodName,
-                     const char* (*)(void));
+DEFINE_HAS_SIGNATURE(has_service_method_name, T::MethodName, const char* (*)(void));
 
 DEFINE_HAS_MEMBER_TYPE(has_incoming_type, IncomingType);
 DEFINE_HAS_MEMBER_TYPE(has_outgoing_type, OutgoingType);
@@ -30,13 +29,11 @@ struct RpcServiceMethodTraits {
                   "The RPC service method concept must provide a static member "
                   "'const char* MethodName()'.");
 
-    static_assert(
-        has_incoming_type<RpcServiceMethodConcept>::value,
-        "The RPC service method concept must provide an IncomingType.");
+    static_assert(has_incoming_type<RpcServiceMethodConcept>::value,
+                  "The RPC service method concept must provide an IncomingType.");
 
-    static_assert(
-        has_outgoing_type<RpcServiceMethodConcept>::value,
-        "The RPC service method concept must provide an OutgoingType.");
+    static_assert(has_outgoing_type<RpcServiceMethodConcept>::value,
+                  "The RPC service method concept must provide an OutgoingType.");
 
     // Returns the fully qualified name of the gRPC method this handler is
     // implementing. The fully qualified name has the structure
@@ -49,29 +46,24 @@ struct RpcServiceMethodTraits {
 
     // An object derived from ::google::protobuf::Message which is passed to a
     // specific service method.
-    using RequestType =
-        StripStream<typename RpcServiceMethodConcept::IncomingType>;
+    using RequestType = StripStream<typename RpcServiceMethodConcept::IncomingType>;
 
     // An object derived from ::google::protobuf::Message which is returned from
     // a specific service method.
-    using ResponseType =
-        StripStream<typename RpcServiceMethodConcept::OutgoingType>;
+    using ResponseType = StripStream<typename RpcServiceMethodConcept::OutgoingType>;
 
-    static_assert(
-        std::is_base_of<::google::protobuf::Message, RequestType>::value,
-        "The RPC request type must be derived from "
-        "::google::protobuf::Message.");
+    static_assert(std::is_base_of<::google::protobuf::Message, RequestType>::value,
+                  "The RPC request type must be derived from "
+                  "::google::protobuf::Message.");
 
-    static_assert(
-        std::is_base_of<::google::protobuf::Message, ResponseType>::value,
-        "The RPC response type must be derived from "
-        "::google::protobuf::Message.");
+    static_assert(std::is_base_of<::google::protobuf::Message, ResponseType>::value,
+                  "The RPC response type must be derived from "
+                  "::google::protobuf::Message.");
 
     // The streaming type of the service method. See also
     // ::grpc::internal::RpcMethod.
     static constexpr auto StreamType =
-        RpcType<typename RpcServiceMethodConcept::IncomingType,
-                typename RpcServiceMethodConcept::OutgoingType>::value;
+        RpcType<typename RpcServiceMethodConcept::IncomingType, typename RpcServiceMethodConcept::OutgoingType>::value;
 };
 
 }  // namespace async_grpc

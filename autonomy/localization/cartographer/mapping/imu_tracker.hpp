@@ -36,10 +36,8 @@ public:
     void Advance(common::Time time);
 
     // Updates from an IMU reading (in the IMU frame).
-    void AddImuLinearAccelerationObservation(
-        const Eigen::Vector3d& imu_linear_acceleration);
-    void AddImuAngularVelocityObservation(
-        const Eigen::Vector3d& imu_angular_velocity);
+    void AddImuLinearAccelerationObservation(const Eigen::Vector3d& imu_linear_acceleration);
+    void AddImuAngularVelocityObservation(const Eigen::Vector3d& imu_angular_velocity);
 
     // Query the current time.
     common::Time time() const {

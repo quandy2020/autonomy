@@ -14,29 +14,21 @@
 
 namespace grid_map {
 
-SlidingWindowIterator::SlidingWindowIterator(const GridMap& gridMap,
-                                             const std::string& layer,
-                                             const EdgeHandling& edgeHandling,
-                                             const size_t windowSize)
-    : GridMapIterator(gridMap),
-      edgeHandling_(edgeHandling),
-      data_(gridMap[layer]) {
+SlidingWindowIterator::SlidingWindowIterator(const GridMap& gridMap, const std::string& layer,
+                                             const EdgeHandling& edgeHandling, const size_t windowSize)
+    : GridMapIterator(gridMap), edgeHandling_(edgeHandling), data_(gridMap[layer]) {
     windowSize_ = windowSize;
     setup(gridMap);
 }
 
 SlidingWindowIterator::SlidingWindowIterator(const SlidingWindowIterator* other)
-    : GridMapIterator(other),
-      edgeHandling_(other->edgeHandling_),
-      data_(other->data_) {
+    : GridMapIterator(other), edgeHandling_(other->edgeHandling_), data_(other->data_) {
     windowSize_ = other->windowSize_;
     windowMargin_ = other->windowMargin_;
 }
 
-void SlidingWindowIterator::setWindowLength(const GridMap& gridMap,
-                                            const double windowLength) {
-    windowSize_ =
-        static_cast<size_t>(std::round(windowLength / gridMap.getResolution()));
+void SlidingWindowIterator::setWindowLength(const GridMap& gridMap, const double windowLength) {
+    windowSize_ = static_cast<size_t>(std::round(windowLength / gridMap.getResolution()));
     if (windowSize_ % 2 != 1) {
         ++windowSize_;
     }
@@ -81,19 +73,16 @@ Matrix SlidingWindowIterator::getData() const {
     boundIndexToRange(topLeftIndex, size_);
     Index bottomRightIndex(centerIndex + windowMargin);
     boundIndexToRange(bottomRightIndex, size_);
-    const Size adjustedWindowSize(bottomRightIndex - topLeftIndex +
-                                  Size::Ones());
+    const Size adjustedWindowSize(bottomRightIndex - topLeftIndex + Size::Ones());
 
     switch (edgeHandling_) {
         case EdgeHandling::INSIDE:
         case EdgeHandling::CROP:
-            return data_.block(topLeftIndex(0), topLeftIndex(1),
-                               adjustedWindowSize(0), adjustedWindowSize(1));
+            return data_.block(topLeftIndex(0), topLeftIndex(1), adjustedWindowSize(0), adjustedWindowSize(1));
         case EdgeHandling::EMPTY:
         case EdgeHandling::MEAN:
             const Matrix data =
-                data_.block(topLeftIndex(0), topLeftIndex(1),
-                            adjustedWindowSize(0), adjustedWindowSize(1));
+                data_.block(topLeftIndex(0), topLeftIndex(1), adjustedWindowSize(0), adjustedWindowSize(1));
             Matrix returnData(windowSize_, windowSize_);
             if (edgeHandling_ == EdgeHandling::EMPTY) {
                 returnData.setConstant(NAN);
@@ -102,10 +91,8 @@ Matrix SlidingWindowIterator::getData() const {
                 returnData.setConstant(meanOfFinites(data));
             }
             const Index topLeftIndexShift(topLeftIndex - originalTopLeftIndex);
-            returnData.block(topLeftIndexShift(0), topLeftIndexShift(1),
-                             adjustedWindowSize(0), adjustedWindowSize(1)) =
-                data_.block(topLeftIndex(0), topLeftIndex(1),
-                            adjustedWindowSize(0), adjustedWindowSize(1));
+            returnData.block(topLeftIndexShift(0), topLeftIndexShift(1), adjustedWindowSize(0), adjustedWindowSize(1)) =
+                data_.block(topLeftIndex(0), topLeftIndex(1), adjustedWindowSize(0), adjustedWindowSize(1));
             return returnData;
     }
     return Matrix::Zero(0, 0);
@@ -119,8 +106,7 @@ void SlidingWindowIterator::setup(const GridMap& gridMap) {
             "default buffer start index.");
     }
     if (windowSize_ % 2 == 0) {
-        throw std::runtime_error(
-            "SlidingWindowIterator has a wrong window size!");
+        throw std::runtime_error("SlidingWindowIterator has a wrong window size!");
     }
     windowMargin_ = (windowSize_ - 1) / 2;
 
@@ -136,8 +122,7 @@ bool SlidingWindowIterator::dataInsideMap() const {
     const Index windowMargin(Index::Constant(static_cast<int>(windowMargin_)));
     const Index topLeftIndex(centerIndex - windowMargin);
     const Index bottomRightIndex(centerIndex + windowMargin);
-    return checkIfIndexInRange(topLeftIndex, size_) &&
-           checkIfIndexInRange(bottomRightIndex, size_);
+    return checkIfIndexInRange(topLeftIndex, size_) && checkIfIndexInRange(bottomRightIndex, size_);
 }
 
 } /* namespace grid_map */

@@ -34,12 +34,9 @@ public:
 
     virtual std::vector<SubmapId> GetSubmapIds(int trajectory_id) const = 0;
     // Returns finished submaps with optimized poses only.
-    virtual MapById<SubmapId, PoseGraphInterface::SubmapData>
-    GetOptimizedSubmapData() const = 0;
-    virtual const MapById<NodeId, TrajectoryNode>& GetTrajectoryNodes()
-        const = 0;
-    virtual const std::vector<PoseGraphInterface::Constraint>& GetConstraints()
-        const = 0;
+    virtual MapById<SubmapId, PoseGraphInterface::SubmapData> GetOptimizedSubmapData() const = 0;
+    virtual const MapById<NodeId, TrajectoryNode>& GetTrajectoryNodes() const = 0;
+    virtual const std::vector<PoseGraphInterface::Constraint>& GetConstraints() const = 0;
 
     // Trim 'submap_id' and corresponding intra-submap nodes. They
     // will no longer take part in scan matching, loop closure, visualization.
@@ -50,8 +47,7 @@ public:
     virtual bool IsFinished(int trajectory_id) const = 0;
 
     // Sets the state for a specific trajectory.
-    virtual void SetTrajectoryState(
-        int trajectory_id, PoseGraphInterface::TrajectoryState state) = 0;
+    virtual void SetTrajectoryState(int trajectory_id, PoseGraphInterface::TrajectoryState state) = 0;
 };
 
 // An interface to implement algorithms that choose how to trim the pose graph.

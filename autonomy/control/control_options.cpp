@@ -17,13 +17,52 @@
 #include "autonomy/control/control_options.hpp"
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/parameter_options.hpp"
+#include "autonomy/map/map_options.hpp"
 
 namespace autonomy {
 namespace control {
 
-proto::ControllerOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::ControllerOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::ControllerOptions options;
+
+    if (!parameter_dictionary) {
+        return options;
+    }
+
+    if (parameter_dictionary->HasKey("costmap_2d")) {
+        auto costmap_dict = parameter_dictionary->GetDictionary("costmap_2d");
+        if (costmap_dict && costmap_dict->HasKey("costmap_2d")) {
+            auto nested_costmap_dict = costmap_dict->GetDictionary("costmap_2d");
+            if (nested_costmap_dict) {
+                *options.mutable_costmap_2d_options() = map::CreateCostmap2DOptions(nested_costmap_dict.get());
+            }
+        }
+    }
+
+    if (parameter_dictionary->HasKey("mppi_controller")) {
+        auto mppi_dict = parameter_dictionary->GetDictionary("mppi_controller");
+        if (mppi_dict) {
+            *options.mutable_mppi_controller_options() =
+                controller::mppi_controller::tools::LoadOptions(mppi_dict.get());
+        }
+    }
+    if (parameter_dictionary->HasKey("graceful_controller")) {
+        auto graceful_dict = parameter_dictionary->GetDictionary("graceful_controller");
+        if (graceful_dict) {
+            *options.mutable_graceful_controller_options() =
+                controller::graceful_controller::LoadOptions(graceful_dict.get());
+        }
+    }
+    if (parameter_dictionary->HasKey("pure_pursuit_controller")) {
+        auto pp_dict = parameter_dictionary->GetDictionary("pure_pursuit_controller");
+        if (pp_dict) {
+            *options.mutable_pure_pursuit_controller_options() =
+                controller::pure_pursuit_controller::LoadOptions(pp_dict.get());
+        }
+    }
     return options;
 }
 

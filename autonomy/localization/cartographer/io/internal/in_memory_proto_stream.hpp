@@ -27,18 +27,15 @@
 namespace cartographer {
 namespace io {
 
-class ForwardingProtoStreamWriter
-    : public cartographer::io::ProtoStreamWriterInterface
+class ForwardingProtoStreamWriter : public cartographer::io::ProtoStreamWriterInterface
 {
 public:
     // A callback that is invoked anytime 'WriteProto()' is called on the
     // 'ForwardingProtoStreamWriter'. When 'Close()' is called on the
     // 'ForwardingProtoStreamWriter' the callback is invoked with a 'nullptr'.
-    using WriterCallback =
-        std::function<bool(const google::protobuf::Message* proto)>;
+    using WriterCallback = std::function<bool(const google::protobuf::Message* proto)>;
 
-    explicit ForwardingProtoStreamWriter(WriterCallback writer_callback)
-        : writer_callback_(writer_callback) {}
+    explicit ForwardingProtoStreamWriter(WriterCallback writer_callback) : writer_callback_(writer_callback) {}
     ~ForwardingProtoStreamWriter() = default;
 
     void WriteProto(const google::protobuf::Message& proto) override;
@@ -48,19 +45,16 @@ private:
     WriterCallback writer_callback_;
 };
 
-class InMemoryProtoStreamReader
-    : public cartographer::io::ProtoStreamReaderInterface
+class InMemoryProtoStreamReader : public cartographer::io::ProtoStreamReaderInterface
 {
 public:
-    explicit InMemoryProtoStreamReader(
-        std::queue<std::unique_ptr<google::protobuf::Message>>&& state_chunks)
+    explicit InMemoryProtoStreamReader(std::queue<std::unique_ptr<google::protobuf::Message>>&& state_chunks)
         : state_chunks_(std::move(state_chunks)) {}
     InMemoryProtoStreamReader() = default;
     ~InMemoryProtoStreamReader() = default;
 
     InMemoryProtoStreamReader(const InMemoryProtoStreamReader&) = delete;
-    InMemoryProtoStreamReader& operator=(const InMemoryProtoStreamReader&) =
-        delete;
+    InMemoryProtoStreamReader& operator=(const InMemoryProtoStreamReader&) = delete;
 
     template <typename MessageType>
     void AddProto(const MessageType& proto) {

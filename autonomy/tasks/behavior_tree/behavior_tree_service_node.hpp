@@ -21,8 +21,8 @@
 #include <memory>
 #include <string>
 
-#include "behaviortree_cpp/json_export.h"
 #include "behaviortree_cpp/action_node.h"
+#include "behaviortree_cpp/json_export.h"
 
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
@@ -54,8 +54,7 @@ public:
      * @param service_name Optional service name this node creates a client for
      * instead of from input port
      */
-    BtServiceNode(const std::string& service_node_name,
-                  const BT::NodeConfiguration& conf,
+    BtServiceNode(const std::string& service_node_name, const BT::NodeConfiguration& conf,
                   const std::string& service_name = "")
         : BT::ActionNodeBase(service_node_name, conf),
           service_name_(service_name),
@@ -68,11 +67,9 @@ public:
         // Make sure the server is actually there before continuing
         ADEBUG << "Waiting for \"" << service_name_ << "\" service";
         if (!service_client_->WaitForService(wait_for_service_timeout_)) {
-            AERROR << "Service server " << service_name_
-                   << " not available after waiting for "
+            AERROR << "Service server " << service_name_ << " not available after waiting for "
                    << wait_for_service_timeout_.count() / 1000.0 << " seconds";
-            throw std::runtime_error(std::string(
-                "Service server " + service_name_ + " not available"));
+            throw std::runtime_error(std::string("Service server " + service_name_ + " not available"));
         }
 
         AINFO << "BtServiceNode " << service_node_name_ << " initialized";
@@ -87,18 +84,14 @@ public:
      */
     void initialize() {
         // Get the required items from the blackboard
-        auto bt_loop_duration =
-            config().blackboard->template get<std::chrono::milliseconds>(
-                "bt_loop_duration");
+        auto bt_loop_duration = config().blackboard->template get<std::chrono::milliseconds>("bt_loop_duration");
         GetInputOrBlackboard("server_timeout", server_timeout_);
         wait_for_service_timeout_ =
-            config().blackboard->template get<std::chrono::milliseconds>(
-                "wait_for_service_timeout");
+            config().blackboard->template get<std::chrono::milliseconds>("wait_for_service_timeout");
 
         // timeout should be less than bt_loop_duration to be able to finish the
         // current tick
-        max_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(
-            bt_loop_duration * 0.5);
+        max_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(bt_loop_duration * 0.5);
 
         // Now that we have node_ to use, create the service client for this BT
         // service
@@ -113,16 +106,11 @@ public:
         getInput("service_name", service_new);
         if (service_new != service_name_ || !service_client_) {
             service_name_ = service_new;
-            node_ =
-                config()
-                    .blackboard
-                    ->template get<std::shared_ptr<::autolink::Node>>("node");
+            node_ = config().blackboard->template get<std::shared_ptr<::autolink::Node>>("node");
             service_client_ =
-                node_->CreateClient<typename ServiceT::Request,
-                                    typename ServiceT::Response>(service_name_);
+                node_->CreateClient<typename ServiceT::Request, typename ServiceT::Response>(service_name_);
             if (!service_client_) {
-                AERROR << "Failed to create service client for "
-                       << service_name_;
+                AERROR << "Failed to create service client for " << service_name_;
                 throw std::runtime_error("Failed to create service client");
             }
         }
@@ -136,10 +124,8 @@ public:
      * ports
      */
     static BT::PortsList providedBasicPorts(BT::PortsList addition) {
-        BT::PortsList basic = {
-            BT::InputPort<std::string>("service_name",
-                                       "please_set_service_name_in_BT_Node"),
-            BT::InputPort<std::chrono::milliseconds>("server_timeout")};
+        BT::PortsList basic = {BT::InputPort<std::string>("service_name", "please_set_service_name_in_BT_Node"),
+                               BT::InputPort<std::chrono::milliseconds>("server_timeout")};
         basic.insert(addition.begin(), addition.end());
 
         return basic;
@@ -208,8 +194,7 @@ public:
      * @return BT::NodeStatus Returns SUCCESS by default, user may override to
      * return another value
      */
-    virtual BT::NodeStatus on_completion(
-        std::shared_ptr<typename ServiceT::Response> /*response*/) {
+    virtual BT::NodeStatus on_completion(std::shared_ptr<typename ServiceT::Response> /*response*/) {
         return BT::NodeStatus::SUCCESS;
     }
 
@@ -221,10 +206,8 @@ public:
     virtual BT::NodeStatus check_future() {
         // Calculate elapsed time in milliseconds
         auto now = commsgs::builtin_interfaces::Time::Now();
-        int64_t sent_ns = static_cast<int64_t>(sent_time_.sec) * 1000000000LL +
-                          sent_time_.nanosec;
-        int64_t now_ns =
-            static_cast<int64_t>(now.sec) * 1000000000LL + now.nanosec;
+        int64_t sent_ns = static_cast<int64_t>(sent_time_.sec) * 1000000000LL + sent_time_.nanosec;
+        int64_t now_ns = static_cast<int64_t>(now.sec) * 1000000000LL + now.nanosec;
         int64_t elapsed_ns = now_ns - sent_ns;
         auto elapsed = std::chrono::milliseconds(elapsed_ns / 1000000);
         auto remaining = server_timeout_ - elapsed;
@@ -244,8 +227,7 @@ public:
                 on_wait_for_result();
                 // Recalculate elapsed time
                 now = commsgs::builtin_interfaces::Time::Now();
-                now_ns =
-                    static_cast<int64_t>(now.sec) * 1000000000LL + now.nanosec;
+                now_ns = static_cast<int64_t>(now.sec) * 1000000000LL + now.nanosec;
                 elapsed_ns = now_ns - sent_ns;
                 elapsed = std::chrono::milliseconds(elapsed_ns / 1000000);
                 if (elapsed < server_timeout_) {
@@ -254,8 +236,7 @@ public:
             }
         }
 
-        AWARN << "Node timed out while executing service call to "
-              << service_name_ << ".";
+        AWARN << "Node timed out while executing service call to " << service_name_ << ".";
         request_sent_ = false;
         return BT::NodeStatus::FAILURE;
     }
@@ -273,17 +254,14 @@ protected:
      */
     void increment_recovery_count() {
         int recovery_count = 0;
-        [[maybe_unused]] auto res = config().blackboard->get(
-            "number_recoveries", recovery_count);  // NOLINT
+        [[maybe_unused]] auto res = config().blackboard->get("number_recoveries", recovery_count);  // NOLINT
         recovery_count += 1;
         config().blackboard->set("number_recoveries",
                                  recovery_count);  // NOLINT
     }
 
     std::string service_name_, service_node_name_;
-    std::shared_ptr<::autolink::Client<typename ServiceT::Request,
-                                       typename ServiceT::Response>>
-        service_client_;
+    std::shared_ptr<::autolink::Client<typename ServiceT::Request, typename ServiceT::Response>> service_client_;
     std::shared_ptr<typename ServiceT::Request> request_;
 
     // The node that will be used for any ROS operations
@@ -300,8 +278,7 @@ protected:
     std::chrono::milliseconds wait_for_service_timeout_;
 
     // To track the server response when a new request is sent
-    std::shared_future<std::shared_ptr<typename ServiceT::Response>>
-        future_result_;
+    std::shared_future<std::shared_ptr<typename ServiceT::Response>> future_result_;
     bool request_sent_{false};
     commsgs::builtin_interfaces::Time sent_time_;
 

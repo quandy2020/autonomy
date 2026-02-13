@@ -50,15 +50,12 @@ struct is_state;
 template <typename ScalarT, typename... VariableTs>
 class GenericState
 {
-    static_assert(
-        common::type_traits::conjunction<is_variable<VariableTs>...>::value,
-        "\n\nState can only be generated from variables, i.e. types that "
-        "inherit "
-        "from Variable.\n\n");
-    static_assert(std::is_arithmetic<ScalarT>::value,
-                  "\n\nThe provided scalar type is not arithmetic.\n\n");
-    static_assert(sizeof...(VariableTs) > 0,
-                  "\n\nCannot create state without variables.\n\n");
+    static_assert(common::type_traits::conjunction<is_variable<VariableTs>...>::value,
+                  "\n\nState can only be generated from variables, i.e. types that "
+                  "inherit "
+                  "from Variable.\n\n");
+    static_assert(std::is_arithmetic<ScalarT>::value, "\n\nThe provided scalar type is not arithmetic.\n\n");
+    static_assert(sizeof...(VariableTs) > 0, "\n\nCannot create state without variables.\n\n");
     // Hide this under private to make sure it is never ODR-used.
     constexpr static std::int32_t kSize = sizeof...(VariableTs);
 
@@ -198,16 +195,11 @@ public:
     /// @return     The updated other state.
     ///
     template <typename OtherStateT>
-    inline OtherStateT copy_into(
-        OtherStateT other_state = OtherStateT{}) const noexcept {
-        static_assert(is_state<OtherStateT>::value,
-                      "\n\nOtherStateT is not a GenericState.\n\n");
-        auto copy_variables = [&other_state, this](auto variable) {
-            other_state.at(variable) = this->at(variable);
-        };
+    inline OtherStateT copy_into(OtherStateT other_state = OtherStateT{}) const noexcept {
+        static_assert(is_state<OtherStateT>::value, "\n\nOtherStateT is not a GenericState.\n\n");
+        auto copy_variables = [&other_state, this](auto variable) { other_state.at(variable) = this->at(variable); };
         using CommonVariablesTuple =
-            typename autonomy::common::type_traits::intersect<
-                Variables, typename OtherStateT::Variables>::type;
+            typename autonomy::common::type_traits::intersect<Variables, typename OtherStateT::Variables>::type;
         common::type_traits::visit(CommonVariablesTuple{}, copy_variables);
         return other_state;
     }
@@ -242,8 +234,7 @@ public:
     }
 
     /// @brief      An equality operator.
-    friend constexpr bool operator==(const GenericState& lhs,
-                                     const GenericState& rhs) {
+    friend constexpr bool operator==(const GenericState& lhs, const GenericState& rhs) {
         return lhs.m_state.isApprox(rhs.m_state);
     }
 
@@ -251,12 +242,10 @@ public:
     ///
     ///             This function adds the variables to the output stream along
     ///             with their names.
-    friend std::ostream& operator<<(std::ostream& out,
-                                    const GenericState& state) {
+    friend std::ostream& operator<<(std::ostream& out, const GenericState& state) {
         out << "State:";
         auto print = [&out, &state](auto element) {
-            out << "\n  " << helper_functions::get_type_name(element) << ": "
-                << state.at(element);
+            out << "\n  " << helper_functions::get_type_name(element) << ": " << state.at(element);
         };
         common::type_traits::visit(GenericState::variables(), print);
         return out;
@@ -328,8 +317,7 @@ public:
     /// @return     A state that results from this operation.
     ///
     template <typename T>
-    inline friend GenericState operator-(GenericState lhs,
-                                         const T& rhs) noexcept {
+    inline friend GenericState operator-(GenericState lhs, const T& rhs) noexcept {
         lhs -= rhs;
         return lhs;
     }
@@ -346,8 +334,7 @@ public:
     /// @return     A state that results from this operation.
     ///
     template <typename T>
-    inline friend GenericState operator+(GenericState lhs,
-                                         const T& rhs) noexcept {
+    inline friend GenericState operator+(GenericState lhs, const T& rhs) noexcept {
         lhs += rhs;
         return lhs;
     }
@@ -360,8 +347,7 @@ public:
         const auto wrap_angles = [this](auto variable) {
             using VariableT = decltype(variable);
             if (is_angle<VariableT>::value) {
-                this->at(variable) =
-                    common::helper_functions::wrap_angle(this->at(variable));
+                this->at(variable) = common::helper_functions::wrap_angle(this->at(variable));
             }
         };
         common::type_traits::visit(GenericState::variables(), wrap_angles);
@@ -383,8 +369,7 @@ public:
     ///
     template <typename NewScalarT>
     GenericState<NewScalarT, VariableTs...> cast() const noexcept {
-        return GenericState<NewScalarT, VariableTs...>{
-            m_state.template cast<NewScalarT>()};
+        return GenericState<NewScalarT, VariableTs...>{m_state.template cast<NewScalarT>()};
     }
 
 private:
@@ -398,8 +383,7 @@ private:
 /// @tparam     StateT  A query potential state type.
 ///
 template <typename StateT>
-struct is_state : public std::false_type {
-};
+struct is_state : public std::false_type {};
 
 ///
 /// @brief      A specialization of this trait for GenericState type.
@@ -408,8 +392,7 @@ struct is_state : public std::false_type {
 /// @tparam     VariableTs  Variable types.
 ///
 template <typename ScalarT, typename... VariableTs>
-struct is_state<GenericState<ScalarT, VariableTs...>> : public std::true_type {
-};
+struct is_state<GenericState<ScalarT, VariableTs...>> : public std::true_type {};
 
 /// A typedef for the 32 bit floating point state.
 template <typename... Ts>

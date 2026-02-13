@@ -47,8 +47,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    PathExpiringTimerCondition(const std::string& condition_name,
-                               const BT::NodeConfiguration& conf);
+    PathExpiringTimerCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     PathExpiringTimerCondition() = delete;
 
@@ -66,8 +65,7 @@ public:
         // Register JSON definitions for the types used in the ports
         BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
 
-        return {BT::InputPort<double>("seconds", 1.0, "Seconds"),
-                BT::InputPort<commsgs::planning_msgs::Path>("path")};
+        return {BT::InputPort<double>("seconds", 1.0, "Seconds"), BT::InputPort<commsgs::planning_msgs::Path>("path")};
     }
 
 private:

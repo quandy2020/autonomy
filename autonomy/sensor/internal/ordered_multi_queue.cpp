@@ -60,8 +60,7 @@ void OrderedMultiQueue::MarkQueueAsFinished(const QueueKey& queue_key) {
     // Dispatch();
 }
 
-void OrderedMultiQueue::Add(const QueueKey& queue_key,
-                            std::unique_ptr<Data> data) {
+void OrderedMultiQueue::Add(const QueueKey& queue_key, std::unique_ptr<Data> data) {
     // auto it = queues_.find(queue_key);
     // if (it == queues_.end()) {
     //     LOG_EVERY_N(WARNING, 1000)

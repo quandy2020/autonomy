@@ -35,15 +35,13 @@ double intbound(double s, double ds);
 
 // Raycast from start to end within [min, max), returning grid points in a
 // preallocated buffer.
-void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
-             const Eigen::Vector3d& min, const Eigen::Vector3d& max,
-             int& output_points_cnt, Eigen::Vector3d* output);
+void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end, const Eigen::Vector3d& min,
+             const Eigen::Vector3d& max, int& output_points_cnt, Eigen::Vector3d* output);
 
 // Raycast from start to end within [min, max), returning grid points in a
 // vector.
-void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
-             const Eigen::Vector3d& min, const Eigen::Vector3d& max,
-             std::vector<Eigen::Vector3d>* output);
+void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end, const Eigen::Vector3d& min,
+             const Eigen::Vector3d& max, std::vector<Eigen::Vector3d>* output);
 
 class RayCaster
 {
@@ -51,10 +49,8 @@ public:
     RayCaster() = default;
     ~RayCaster() = default;
 
-    bool setInput(
-        const Eigen::Vector3d& start,
-        const Eigen::Vector3d&
-            end /* , const Eigen::Vector3d& min, const Eigen::Vector3d& max */);
+    bool setInput(const Eigen::Vector3d& start,
+                  const Eigen::Vector3d& end /* , const Eigen::Vector3d& min, const Eigen::Vector3d& max */);
 
     bool step(Eigen::Vector3d& ray_pt, bool verbose = false);
 

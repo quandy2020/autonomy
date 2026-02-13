@@ -23,8 +23,7 @@ namespace autonomy {
 namespace common {
 namespace async_grpc {
 
-CompletionQueueThread::CompletionQueueThread(
-    std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue)
+CompletionQueueThread::CompletionQueueThread(std::unique_ptr<::grpc::ServerCompletionQueue> completion_queue)
     : completion_queue_(std::move(completion_queue)) {}
 
 ::grpc::ServerCompletionQueue* CompletionQueueThread::completion_queue() {
@@ -33,8 +32,7 @@ CompletionQueueThread::CompletionQueueThread(
 
 void CompletionQueueThread::Start(CompletionQueueRunner runner) {
     CHECK(!worker_thread_);
-    worker_thread_ = common::make_unique<std::thread>(
-        [this, runner]() { runner(this->completion_queue_.get()); });
+    worker_thread_ = common::make_unique<std::thread>([this, runner]() { runner(this->completion_queue_.get()); });
 }
 
 void CompletionQueueThread::Shutdown() {

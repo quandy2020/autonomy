@@ -52,8 +52,7 @@ struct OsmNode {
     std::vector<OsmTag> tags;
 
     OsmNode() : id(0), latitude(0.0), longitude(0.0) {}
-    OsmNode(int64_t node_id, double lat, double lon)
-        : id(node_id), latitude(lat), longitude(lon) {}
+    OsmNode(int64_t node_id, double lat, double lon) : id(node_id), latitude(lat), longitude(lon) {}
 };
 
 /**
@@ -85,8 +84,7 @@ struct OsmMember {
     std::string role;
 
     OsmMember() : type(OsmMemberType::NODE), ref(0) {}
-    OsmMember(OsmMemberType t, int64_t r, const std::string& ro)
-        : type(t), ref(r), role(ro) {}
+    OsmMember(OsmMemberType t, int64_t r, const std::string& ro) : type(t), ref(r), role(ro) {}
 };
 
 /**
@@ -213,8 +211,7 @@ public:
      * @param value Tag value (optional, empty string matches any value)
      * @return Vector of node IDs matching the criteria
      */
-    std::vector<int64_t> FindNodesByTag(const std::string& key,
-                                        const std::string& value = "") const;
+    std::vector<int64_t> FindNodesByTag(const std::string& key, const std::string& value = "") const;
 
     /**
      * @brief Find ways by tag key-value pair
@@ -222,8 +219,7 @@ public:
      * @param value Tag value (optional, empty string matches any value)
      * @return Vector of way IDs matching the criteria
      */
-    std::vector<int64_t> FindWaysByTag(const std::string& key,
-                                       const std::string& value = "") const;
+    std::vector<int64_t> FindWaysByTag(const std::string& key, const std::string& value = "") const;
 
     /**
      * @brief Find relations by tag key-value pair
@@ -231,8 +227,7 @@ public:
      * @param value Tag value (optional, empty string matches any value)
      * @return Vector of relation IDs matching the criteria
      */
-    std::vector<int64_t> FindRelationsByTag(
-        const std::string& key, const std::string& value = "") const;
+    std::vector<int64_t> FindRelationsByTag(const std::string& key, const std::string& value = "") const;
 
     /**
      * @brief Get all nodes within a bounding box
@@ -242,8 +237,7 @@ public:
      * @param max_lon Maximum longitude
      * @return Vector of node IDs within the bounding box
      */
-    std::vector<int64_t> GetNodesInBounds(double min_lat, double min_lon,
-                                          double max_lat, double max_lon) const;
+    std::vector<int64_t> GetNodesInBounds(double min_lat, double min_lon, double max_lat, double max_lon) const;
 
     /**
      * @brief Get the name of the map
@@ -302,8 +296,7 @@ private:
     bool WriteOsmXml(const std::string& filename) const;
 
     // Helper function to check if a tag matches
-    bool TagMatches(const std::vector<OsmTag>& tags, const std::string& key,
-                    const std::string& value) const;
+    bool TagMatches(const std::vector<OsmTag>& tags, const std::string& key, const std::string& value) const;
 };
 
 }  // namespace geonoma

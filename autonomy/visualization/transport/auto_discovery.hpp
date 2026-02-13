@@ -62,24 +62,20 @@ public:
     }
 
     /// 手动订阅指定 topic（支持消息类型自动识别）
-    bool SubscribeTopic(const std::string& topic_name,
-                        const std::string& message_type = "");
+    bool SubscribeTopic(const std::string& topic_name, const std::string& message_type = "");
 
 private:
     /// 发现并订阅所有活跃的 topics
     void DiscoverAndSubscribe();
 
     /// 订阅单个 topic
-    bool SubscribeTopicInternal(const std::string& topic_name,
-                                const std::string& message_type);
+    bool SubscribeTopicInternal(const std::string& topic_name, const std::string& message_type);
 
     /// 根据消息类型订阅 topic
-    bool SubscribeByMessageType(const std::string& topic_name,
-                                const std::string& message_type);
+    bool SubscribeByMessageType(const std::string& topic_name, const std::string& message_type);
 
     /// 类型萃取：根据消息类型字符串订阅
-    bool SubscribeByTypeTraits(const std::string& topic_name,
-                               const std::string& type_lower,
+    bool SubscribeByTypeTraits(const std::string& topic_name, const std::string& type_lower,
                                const std::string& short_type);
 
     /// 模板方法：订阅指定类型的 topic
@@ -94,14 +90,13 @@ private:
 
     /// 处理来自 autolink 的消息并转发到 Foxglove
     template <typename MsgType>
-    void OnProtoMessage(const std::string& topic_name,
-                        const std::shared_ptr<MsgType>& msg);
+    void OnProtoMessage(const std::string& topic_name, const std::shared_ptr<MsgType>& msg);
 
     // FoxgloveBridge 实例
     std::shared_ptr<FoxgloveBridge> bridge_{nullptr};
 
     // Autolink node
-    std::unique_ptr<autolink::Node> node_{nullptr};
+    std::shared_ptr<autolink::Node> node_{nullptr};
 
     // 运行状态
     std::atomic<bool> running_{false};
@@ -114,9 +109,7 @@ private:
     std::thread discovery_thread_;
 
     // Topology 监听器连接（使用可选类型来跟踪是否已连接）
-    std::optional<
-        autolink::service_discovery::TopologyManager::ChangeConnection>
-        topology_connection_;
+    std::optional<autolink::service_discovery::TopologyManager::ChangeConnection> topology_connection_;
 
     // 存储每个 autolink topic 对应的 Channel 和 Reader（用于转发到 Foxglove）
     std::map<std::string, std::shared_ptr<void>> autolink_channels_;

@@ -33,8 +33,7 @@ class WouldASmootherRecoveryHelp : public AreErrorCodesPresent
     using ActionResult = Action::Result;
 
 public:
-    WouldASmootherRecoveryHelp(const std::string& condition_name,
-                               const BT::NodeConfiguration& conf);
+    WouldASmootherRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     WouldASmootherRecoveryHelp() = delete;
 };

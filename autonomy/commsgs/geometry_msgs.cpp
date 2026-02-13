@@ -54,8 +54,7 @@ AccelStamped FromProto(const proto::geometry_msgs::AccelStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.accel())};
 }
 
-proto::geometry_msgs::AccelWithCovariance ToProto(
-    const AccelWithCovariance& data) {
+proto::geometry_msgs::AccelWithCovariance ToProto(const AccelWithCovariance& data) {
     proto::geometry_msgs::AccelWithCovariance proto;
     *proto.mutable_accel() = ToProto(data.accel);
     proto.mutable_covariance()->Reserve(data.covariance.size());
@@ -65,8 +64,7 @@ proto::geometry_msgs::AccelWithCovariance ToProto(
     return proto;
 }
 
-AccelWithCovariance FromProto(
-    const proto::geometry_msgs::AccelWithCovariance& proto) {
+AccelWithCovariance FromProto(const proto::geometry_msgs::AccelWithCovariance& proto) {
     AccelWithCovariance data;
     data.accel = FromProto(proto.accel());
     for (const auto& covariance : proto.covariance()) {
@@ -75,16 +73,14 @@ AccelWithCovariance FromProto(
     return data;
 }
 
-proto::geometry_msgs::AccelWithCovarianceStamped ToProto(
-    const AccelWithCovarianceStamped& data) {
+proto::geometry_msgs::AccelWithCovarianceStamped ToProto(const AccelWithCovarianceStamped& data) {
     proto::geometry_msgs::AccelWithCovarianceStamped proto;
     *proto.mutable_header() = std_msgs::ToProto(data.header);
     *proto.mutable_accel() = ToProto(data.accel);
     return proto;
 }
 
-AccelWithCovarianceStamped FromProto(
-    const proto::geometry_msgs::AccelWithCovarianceStamped& proto) {
+AccelWithCovarianceStamped FromProto(const proto::geometry_msgs::AccelWithCovarianceStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.accel())};
 }
 
@@ -276,31 +272,27 @@ PoseStamped FromProto(const proto::geometry_msgs::PoseStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.pose())};
 }
 
-proto::geometry_msgs::PoseWithCovariance ToProto(
-    const PoseWithCovariance& data) {
+proto::geometry_msgs::PoseWithCovariance ToProto(const PoseWithCovariance& data) {
     proto::geometry_msgs::PoseWithCovariance proto;
     *proto.mutable_pose() = ToProto(data.pose);
     // covariance
     return proto;
 }
 
-PoseWithCovariance FromProto(
-    const proto::geometry_msgs::PoseWithCovariance& proto) {
+PoseWithCovariance FromProto(const proto::geometry_msgs::PoseWithCovariance& proto) {
     PoseWithCovariance data;
     data.pose = FromProto(proto.pose());
     return data;
 }
 
-proto::geometry_msgs::PoseWithCovarianceStamped ToProto(
-    const PoseWithCovarianceStamped& data) {
+proto::geometry_msgs::PoseWithCovarianceStamped ToProto(const PoseWithCovarianceStamped& data) {
     proto::geometry_msgs::PoseWithCovarianceStamped proto;
     *proto.mutable_header() = std_msgs::ToProto(data.header);
     *proto.mutable_pose() = ToProto(data.pose);
     return proto;
 }
 
-PoseWithCovarianceStamped FromProto(
-    const proto::geometry_msgs::PoseWithCovarianceStamped& proto) {
+PoseWithCovarianceStamped FromProto(const proto::geometry_msgs::PoseWithCovarianceStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.pose())};
 }
 
@@ -311,8 +303,7 @@ proto::geometry_msgs::QuaternionStamped ToProto(const QuaternionStamped& data) {
     return proto;
 }
 
-QuaternionStamped FromProto(
-    const proto::geometry_msgs::QuaternionStamped& proto) {
+QuaternionStamped FromProto(const proto::geometry_msgs::QuaternionStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.quaternion())};
 }
 
@@ -336,10 +327,8 @@ proto::geometry_msgs::TransformStamped ToProto(const TransformStamped& data) {
 }
 
 // Converts 'proto' to TransformStamped.
-TransformStamped FromProto(
-    const proto::geometry_msgs::TransformStamped& proto) {
-    return {std_msgs::FromProto(proto.header()), proto.child_frame_id(),
-            FromProto(proto.transform())};
+TransformStamped FromProto(const proto::geometry_msgs::TransformStamped& proto) {
+    return {std_msgs::FromProto(proto.header()), proto.child_frame_id(), FromProto(proto.transform())};
 }
 
 proto::geometry_msgs::TransformStampeds ToProto(const TransformStampeds& data) {
@@ -350,8 +339,7 @@ proto::geometry_msgs::TransformStampeds ToProto(const TransformStampeds& data) {
 }
 
 // Converts 'proto' to TransformStampeds.
-TransformStampeds FromProto(
-    const proto::geometry_msgs::TransformStampeds& proto) {
+TransformStampeds FromProto(const proto::geometry_msgs::TransformStampeds& proto) {
     TransformStampeds data;
     data.header = std_msgs::FromProto(proto.header());
     // std::vector<TransformStamped> transforms;
@@ -380,32 +368,28 @@ TwistStamped FromProto(const proto::geometry_msgs::TwistStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.twist())};
 }
 
-proto::geometry_msgs::TwistWithCovariance ToProto(
-    const TwistWithCovariance& data) {
+proto::geometry_msgs::TwistWithCovariance ToProto(const TwistWithCovariance& data) {
     proto::geometry_msgs::TwistWithCovariance proto;
     *proto.mutable_twist() = ToProto(data.twist);
     // covariance
     return proto;
 }
 
-TwistWithCovariance FromProto(
-    const proto::geometry_msgs::TwistWithCovariance& proto) {
+TwistWithCovariance FromProto(const proto::geometry_msgs::TwistWithCovariance& proto) {
     TwistWithCovariance data;
     data.twist = FromProto(proto.twist());
     // covariance
     return data;
 }
 
-proto::geometry_msgs::TwistWithCovarianceStamped ToProto(
-    const TwistWithCovarianceStamped& data) {
+proto::geometry_msgs::TwistWithCovarianceStamped ToProto(const TwistWithCovarianceStamped& data) {
     proto::geometry_msgs::TwistWithCovarianceStamped proto;
     *proto.mutable_header() = std_msgs::ToProto(data.header);
     *proto.mutable_twist() = ToProto(data.twist);
     return proto;
 }
 
-TwistWithCovarianceStamped FromProto(
-    const proto::geometry_msgs::TwistWithCovarianceStamped& proto) {
+TwistWithCovarianceStamped FromProto(const proto::geometry_msgs::TwistWithCovarianceStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.twist())};
 }
 
@@ -453,8 +437,8 @@ proto::geometry_msgs::VelocityStamped ToProto(const VelocityStamped& data) {
 }
 
 VelocityStamped FromProto(const proto::geometry_msgs::VelocityStamped& proto) {
-    return {std_msgs::FromProto(proto.header()), proto.body_frame_id(),
-            proto.reference_frame_id(), FromProto(proto.velocity())};
+    return {std_msgs::FromProto(proto.header()), proto.body_frame_id(), proto.reference_frame_id(),
+            FromProto(proto.velocity())};
 }
 
 }  // namespace geometry_msgs

@@ -39,8 +39,7 @@ public:
     const std::string& GetSensorId() const {
         return sensor_id_;
     }
-    virtual void AddToTrajectoryBuilder(
-        mapping::TrajectoryBuilderInterface* trajectory_builder) = 0;
+    virtual void AddToTrajectoryBuilder(mapping::TrajectoryBuilderInterface* trajectory_builder) = 0;
 
 protected:
     const std::string sensor_id_;

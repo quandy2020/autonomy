@@ -133,26 +133,22 @@ TEST(KalmanFilterGenericStateTest, WrapAngle) {
     const auto eps = 0.42F;
     StateXYaw angle_epsilon_plus{{0.0F, eps}};
     StateXYaw angle_epsilon_minus{{0.0F, -eps}};
-    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}),
-              wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
+    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}), wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
     angle_epsilon_plus.at<YAW>() = M_PIf32 + eps;
     angle_epsilon_plus.wrap_all_angles();
     angle_epsilon_minus.at<YAW>() = M_PIf32 - eps;
     angle_epsilon_minus.wrap_all_angles();
-    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}),
-              wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
+    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}), wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
     angle_epsilon_plus.at<YAW>() = -M_PIf32 + eps;
     angle_epsilon_plus.wrap_all_angles();
     angle_epsilon_minus.at<YAW>() = -M_PIf32 - eps;
     angle_epsilon_minus.wrap_all_angles();
-    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}),
-              wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
+    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}), wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
     angle_epsilon_plus.at<YAW>() = -2.0F * M_PIf32 + eps;
     angle_epsilon_plus.wrap_all_angles();
     angle_epsilon_minus.at<YAW>() = 2.0F * M_PIf32 - eps;
     angle_epsilon_minus.wrap_all_angles();
-    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}),
-              wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
+    EXPECT_EQ((StateXYaw{{0.0F, 2.0F * eps}}), wrap_all_angles(angle_epsilon_plus - angle_epsilon_minus));
 }
 
 }  // namespace state_vector

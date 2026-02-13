@@ -40,8 +40,7 @@ namespace mapping {
 class MapLimits
 {
 public:
-    MapLimits(const double resolution, const Eigen::Vector2d& max,
-              const CellLimits& cell_limits)
+    MapLimits(const double resolution, const Eigen::Vector2d& max, const CellLimits& cell_limits)
         : resolution_(resolution), max_(max), cell_limits_(cell_limits) {
         CHECK_GT(resolution_, 0.);
         CHECK_GT(cell_limits.num_x_cells, 0.);
@@ -77,23 +76,19 @@ public:
         // Index values are row major and the top left has
         // Eigen::Array2i::Zero() and contains (centered_max_x, centered_max_y).
         // We need to flip and rotate.
-        return Eigen::Array2i(
-            common::RoundToInt((max_.y() - point.y()) / resolution_ - 0.5),
-            common::RoundToInt((max_.x() - point.x()) / resolution_ - 0.5));
+        return Eigen::Array2i(common::RoundToInt((max_.y() - point.y()) / resolution_ - 0.5),
+                              common::RoundToInt((max_.x() - point.x()) / resolution_ - 0.5));
     }
 
     // Returns the center of the cell at 'cell_index'.
     Eigen::Vector2f GetCellCenter(const Eigen::Array2i cell_index) const {
-        return {max_.x() - resolution() * (cell_index[1] + 0.5),
-                max_.y() - resolution() * (cell_index[0] + 0.5)};
+        return {max_.x() - resolution() * (cell_index[1] + 0.5), max_.y() - resolution() * (cell_index[0] + 0.5)};
     }
 
     // Returns true if the ProbabilityGrid contains 'cell_index'.
     bool Contains(const Eigen::Array2i& cell_index) const {
         return (Eigen::Array2i(0, 0) <= cell_index).all() &&
-               (cell_index < Eigen::Array2i(cell_limits_.num_x_cells,
-                                            cell_limits_.num_y_cells))
-                   .all();
+               (cell_index < Eigen::Array2i(cell_limits_.num_x_cells, cell_limits_.num_y_cells)).all();
     }
 
 private:

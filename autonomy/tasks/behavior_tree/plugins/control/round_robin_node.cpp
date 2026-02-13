@@ -22,11 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace control {
 
-RoundRobinNode::RoundRobinNode(const std::string& name)
-    : BT::ControlNode::ControlNode(name, {}) {}
+RoundRobinNode::RoundRobinNode(const std::string& name) : BT::ControlNode::ControlNode(name, {}) {}
 
-RoundRobinNode::RoundRobinNode(const std::string& name,
-                               const BT::NodeConfiguration& config)
+RoundRobinNode::RoundRobinNode(const std::string& name, const BT::NodeConfiguration& config)
     : BT::ControlNode(name, config) {}
 
 BT::NodeStatus RoundRobinNode::tick() {
@@ -89,7 +87,5 @@ void RoundRobinNode::halt() {
 }  // namespace autonomy
 
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::control::RoundRobinNode>(
-        "RoundRobin");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::control::RoundRobinNode>("RoundRobin");
 }

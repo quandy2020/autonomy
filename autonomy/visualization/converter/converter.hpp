@@ -63,8 +63,7 @@ namespace visualization {
  * @endcode
  */
 template <typename MsgType>
-auto ToFoxglove(const MsgType& message) ->
-    typename core::MessageChannelTraits<MsgType>::FoxgloveMessageType {
+auto ToFoxglove(const MsgType& message) -> typename core::MessageChannelTraits<MsgType>::FoxgloveMessageType {
     // All ToFoxgloveImpl functions are in converter::impl namespace
     // They are declared in the various converter module header files
     return converter::impl::ToFoxgloveImpl(message);

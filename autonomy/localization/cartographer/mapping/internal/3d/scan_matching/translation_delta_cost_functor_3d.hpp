@@ -29,14 +29,11 @@ namespace scan_matching {
 class TranslationDeltaCostFunctor3D
 {
 public:
-    static ceres::CostFunction* CreateAutoDiffCostFunction(
-        const double scaling_factor,
-        const Eigen::Vector3d& target_translation) {
-        return new ceres::AutoDiffCostFunction<TranslationDeltaCostFunctor3D,
-                                               3 /* residuals */,
+    static ceres::CostFunction* CreateAutoDiffCostFunction(const double scaling_factor,
+                                                           const Eigen::Vector3d& target_translation) {
+        return new ceres::AutoDiffCostFunction<TranslationDeltaCostFunctor3D, 3 /* residuals */,
                                                3 /* translation variables */>(
-            new TranslationDeltaCostFunctor3D(scaling_factor,
-                                              target_translation));
+            new TranslationDeltaCostFunctor3D(scaling_factor, target_translation));
     }
 
     template <typename T>
@@ -50,17 +47,14 @@ public:
 private:
     // Constructs a new TranslationDeltaCostFunctor3D from the given
     // 'target_translation'.
-    explicit TranslationDeltaCostFunctor3D(
-        const double scaling_factor, const Eigen::Vector3d& target_translation)
+    explicit TranslationDeltaCostFunctor3D(const double scaling_factor, const Eigen::Vector3d& target_translation)
         : scaling_factor_(scaling_factor),
           x_(target_translation.x()),
           y_(target_translation.y()),
           z_(target_translation.z()) {}
 
-    TranslationDeltaCostFunctor3D(const TranslationDeltaCostFunctor3D&) =
-        delete;
-    TranslationDeltaCostFunctor3D& operator=(
-        const TranslationDeltaCostFunctor3D&) = delete;
+    TranslationDeltaCostFunctor3D(const TranslationDeltaCostFunctor3D&) = delete;
+    TranslationDeltaCostFunctor3D& operator=(const TranslationDeltaCostFunctor3D&) = delete;
 
     const double scaling_factor_;
     const double x_;

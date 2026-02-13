@@ -48,8 +48,7 @@ auto doFuncMoveConstruct(void* object, void* buffer) ->
 template <typename T>
 auto doFuncMoveConstruct(void* object, void* buffer) ->
     typename std::enable_if<!std::is_move_constructible<T>::value>::type {
-    static_assert(std::is_move_constructible<T>::value,
-                  "AnyData: object must be either copy or move constructible");
+    static_assert(std::is_move_constructible<T>::value, "AnyData: object must be either copy or move constructible");
 }
 
 template <typename T>
@@ -64,15 +63,13 @@ struct AnyDataFunctions {
 
 template <typename T>
 const AnyDataFunctions* doGetAnyDataFunctions() {
-    static const AnyDataFunctions functions{&funcFreeObject<T>,
-                                            &funcMoveConstruct<T>};
+    static const AnyDataFunctions functions{&funcFreeObject<T>, &funcMoveConstruct<T>};
     return &functions;
 }
 
 template <typename T>
 struct RemoveCvRef {
-    using Type =
-        typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+    using Type = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 };
 
 template <typename T>
@@ -145,8 +142,7 @@ class AnyData
 {
 private:
     using LargeData = anydata_internal_::LargeData;
-    static constexpr std::size_t maxSize =
-        maxSize_ < sizeof(LargeData) ? sizeof(LargeData) : maxSize_;
+    static constexpr std::size_t maxSize = maxSize_ < sizeof(LargeData) ? sizeof(LargeData) : maxSize_;
 
     static_assert(maxSize > 0, "AnyData: maxSize must be greater than 0");
 
@@ -159,9 +155,7 @@ public:
 
     template <typename T>
     AnyData(T&& object,
-            typename std::enable_if<
-                (sizeof(typename anydata_internal_::RemoveCvRef<T>::Type) <=
-                 maxSize)>::type* = 0)
+            typename std::enable_if<(sizeof(typename anydata_internal_::RemoveCvRef<T>::Type) <= maxSize)>::type* = 0)
         : functions(anydata_internal_::getAnyDataFunctions<T>()), buffer() {
         using U = typename std::remove_reference<T>::type;
         new (buffer.data()) U(std::forward<T>(object));
@@ -169,11 +163,8 @@ public:
 
     template <typename T>
     AnyData(T&& object,
-            typename std::enable_if<
-                (sizeof(typename anydata_internal_::RemoveCvRef<T>::Type) >
-                 maxSize)>::type* = 0)
-        : functions(anydata_internal_::getAnyDataFunctions<LargeData>()),
-          buffer() {
+            typename std::enable_if<(sizeof(typename anydata_internal_::RemoveCvRef<T>::Type) > maxSize)>::type* = 0)
+        : functions(anydata_internal_::getAnyDataFunctions<LargeData>()), buffer() {
         new (buffer.data()) LargeData(std::forward<T>(object));
     }
 

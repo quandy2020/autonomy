@@ -39,8 +39,7 @@ bool PluginsManager::LoadDriverPlugin(const std::string& library_path) {
     }
 
     // 创建 ClassLoader
-    auto class_loader =
-        std::make_shared<::autolink::class_loader::ClassLoader>(library_path);
+    auto class_loader = std::make_shared<::autolink::class_loader::ClassLoader>(library_path);
 
     if (!class_loader->LoadLibrary()) {
         AERROR << "Failed to load plugin library: " << library_path;
@@ -48,8 +47,7 @@ bool PluginsManager::LoadDriverPlugin(const std::string& library_path) {
     }
 
     // 获取所有可用的驱动类名（使用 DriverInterface 作为基类）
-    std::vector<std::string> driver_classes =
-        class_loader->GetValidClassNames<common::DriverInterface>();
+    std::vector<std::string> driver_classes = class_loader->GetValidClassNames<common::DriverInterface>();
 
     if (driver_classes.empty()) {
         AWARN << "No driver classes found in library: " << library_path;
@@ -65,8 +63,7 @@ bool PluginsManager::LoadDriverPlugin(const std::string& library_path) {
 
     plugin_libraries_[library_path] = plugin_lib;
 
-    AINFO << "Loaded driver plugin: " << library_path << " with "
-          << driver_classes.size() << " driver classes";
+    AINFO << "Loaded driver plugin: " << library_path << " with " << driver_classes.size() << " driver classes";
     for (const auto& class_name : driver_classes) {
         AINFO << "  - " << class_name;
     }
@@ -110,8 +107,8 @@ std::vector<std::string> PluginsManager::GetAvailableDriverClasses() const {
     return all_classes;
 }
 
-common::DriverInterface::SharedPtr PluginsManager::CreateDriver(
-    const std::string& driver_class_name, const std::string& driver_name) {
+common::DriverInterface::SharedPtr PluginsManager::CreateDriver(const std::string& driver_class_name,
+                                                                const std::string& driver_name) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     // 在所有已加载的插件库中查找驱动类
@@ -119,33 +116,27 @@ common::DriverInterface::SharedPtr PluginsManager::CreateDriver(
         auto& plugin_lib = plugin_pair.second;
 
         // 检查此插件库是否包含该驱动类
-        auto it = std::find(plugin_lib.driver_classes.begin(),
-                            plugin_lib.driver_classes.end(), driver_class_name);
+        auto it = std::find(plugin_lib.driver_classes.begin(), plugin_lib.driver_classes.end(), driver_class_name);
         if (it != plugin_lib.driver_classes.end()) {
             // 从此插件库创建驱动实例
-            auto driver = plugin_lib.class_loader
-                              ->CreateClassObj<common::DriverInterface>(
-                                  driver_class_name);
+            auto driver = plugin_lib.class_loader->CreateClassObj<common::DriverInterface>(driver_class_name);
             if (driver != nullptr) {
-                AINFO << "Created driver instance: " << driver_name
-                      << " (class: " << driver_class_name
+                AINFO << "Created driver instance: " << driver_name << " (class: " << driver_class_name
                       << ", library: " << plugin_lib.library_path << ")";
                 return driver;
             } else {
-                AERROR << "Failed to create driver instance: "
-                       << driver_class_name
+                AERROR << "Failed to create driver instance: " << driver_class_name
                        << " from library: " << plugin_lib.library_path;
             }
         }
     }
 
-    AERROR << "Driver class not found in any loaded plugin: "
-           << driver_class_name;
+    AERROR << "Driver class not found in any loaded plugin: " << driver_class_name;
     return nullptr;
 }
 
-common::DriverInterface::SharedPtr PluginsManager::CreateDriverFromPlugin(
-    const std::string& library_path, const std::string& driver_class_name) {
+common::DriverInterface::SharedPtr PluginsManager::CreateDriverFromPlugin(const std::string& library_path,
+                                                                          const std::string& driver_class_name) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = plugin_libraries_.find(library_path);
@@ -154,19 +145,15 @@ common::DriverInterface::SharedPtr PluginsManager::CreateDriverFromPlugin(
         return nullptr;
     }
 
-    auto driver =
-        it->second.class_loader->CreateClassObj<common::DriverInterface>(
-            driver_class_name);
+    auto driver = it->second.class_loader->CreateClassObj<common::DriverInterface>(driver_class_name);
     if (driver != nullptr) {
-        AINFO << "Created driver from plugin: " << driver_class_name
-              << " (library: " << library_path << ")";
+        AINFO << "Created driver from plugin: " << driver_class_name << " (library: " << library_path << ")";
     }
 
     return driver;
 }
 
-bool PluginsManager::RegisterDriver(const std::string& driver_name,
-                                    common::DriverInterface::SharedPtr driver) {
+bool PluginsManager::RegisterDriver(const std::string& driver_name, common::DriverInterface::SharedPtr driver) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (driver == nullptr) {
@@ -199,8 +186,7 @@ void PluginsManager::UnregisterDriver(const std::string& driver_name) {
     }
 }
 
-common::DriverInterface::SharedPtr PluginsManager::GetDriver(
-    const std::string& driver_name) const {
+common::DriverInterface::SharedPtr PluginsManager::GetDriver(const std::string& driver_name) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = drivers_.find(driver_name);
@@ -240,10 +226,9 @@ bool PluginsManager::ConfigureFromOptions(const proto::DriverOptions& options) {
             continue;
         }
         // TODO: 从配置中获取驱动类名和插件库路径
-        AWARN
-            << "Camera driver configuration found but driver creation not yet "
-               "implemented. "
-            << "Sensor ID: " << camera_option.sensor_id();
+        AWARN << "Camera driver configuration found but driver creation not yet "
+                 "implemented. "
+              << "Sensor ID: " << camera_option.sensor_id();
     }
 
     // 处理IMU配置

@@ -25,12 +25,10 @@
 namespace cartographer {
 namespace cloud {
 
-proto::MapBuilderServerOptions CreateMapBuilderServerOptions(
-    common::LuaParameterDictionary* lua_parameter_dictionary);
+proto::MapBuilderServerOptions CreateMapBuilderServerOptions(common::LuaParameterDictionary* lua_parameter_dictionary);
 
-proto::MapBuilderServerOptions LoadMapBuilderServerOptions(
-    const std::string& configuration_directory,
-    const std::string& configuration_basename);
+proto::MapBuilderServerOptions LoadMapBuilderServerOptions(const std::string& configuration_directory,
+                                                           const std::string& configuration_basename);
 
 }  // namespace cloud
 }  // namespace cartographer

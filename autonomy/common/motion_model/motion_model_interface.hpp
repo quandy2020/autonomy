@@ -46,10 +46,8 @@ public:
     /// @return     Predicted state after the time has passed.
     ///
     template <typename StateT>
-    inline auto predict(const StateT& state,
-                        const std::chrono::nanoseconds& dt) const {
-        static_assert(common::state_vector::is_state<StateT>::value,
-                      "\n\nStateT must be a GenericState\n\n");
+    inline auto predict(const StateT& state, const std::chrono::nanoseconds& dt) const {
+        static_assert(common::state_vector::is_state<StateT>::value, "\n\nStateT must be a GenericState\n\n");
         return this->impl().crtp_predict(state, dt);
     }
     ///
@@ -64,10 +62,8 @@ public:
     /// transition matrix.
     ///
     template <typename StateT>
-    inline auto jacobian(const StateT& state,
-                         const std::chrono::nanoseconds& dt) const {
-        static_assert(common::state_vector::is_state<StateT>::value,
-                      "\n\nStateT must be a GenericState\n\n");
+    inline auto jacobian(const StateT& state, const std::chrono::nanoseconds& dt) const {
+        static_assert(common::state_vector::is_state<StateT>::value, "\n\nStateT must be a GenericState\n\n");
         return this->impl().crtp_jacobian(state, dt);
     }
 };

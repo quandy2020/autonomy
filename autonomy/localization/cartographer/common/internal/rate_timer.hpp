@@ -39,8 +39,7 @@ class RateTimer
 public:
     // Computes the rate at which pulses come in over 'window_duration' in wall
     // time.
-    explicit RateTimer(const common::Duration window_duration)
-        : window_duration_(window_duration) {}
+    explicit RateTimer(const common::Duration window_duration) : window_duration_(window_duration) {}
     ~RateTimer() {}
 
     RateTimer(const RateTimer&) = delete;
@@ -63,16 +62,13 @@ public:
             return 0.;
         }
         return common::ToSeconds((events_.back().time - events_.front().time)) /
-               common::ToSeconds(events_.back().wall_time -
-                                 events_.front().wall_time);
+               common::ToSeconds(events_.back().wall_time - events_.front().wall_time);
     }
 
     // Records an event that will contribute to the computed rate.
     void Pulse(common::Time time) {
         events_.push_back(Event{time, ClockType::now()});
-        while (events_.size() > 2 &&
-               (events_.back().wall_time - events_.front().wall_time) >
-                   window_duration_) {
+        while (events_.size() > 2 && (events_.back().wall_time - events_.front().wall_time) > window_duration_) {
             events_.pop_front();
         }
     }
@@ -83,8 +79,7 @@ public:
             return "unknown";
         }
         std::ostringstream out;
-        out << std::fixed << std::setprecision(2) << ComputeRate() << " Hz "
-            << DeltasDebugString() << " (pulsed at "
+        out << std::fixed << std::setprecision(2) << ComputeRate() << " Hz " << DeltasDebugString() << " (pulsed at "
             << ComputeWallTimeRateRatio() * 100. << "% real time)";
         return out.str();
     }
@@ -102,8 +97,7 @@ private:
         std::vector<double> result;
         result.reserve(count);
         for (size_t i = 0; i != count; ++i) {
-            result.push_back(
-                common::ToSeconds(events_[i + 1].time - events_[i].time));
+            result.push_back(common::ToSeconds(events_[i + 1].time - events_[i].time));
         }
         return result;
     }
@@ -121,8 +115,7 @@ private:
         const double sigma = std::sqrt(squared_sum / (deltas.size() - 1));
 
         std::ostringstream out;
-        out << std::scientific << std::setprecision(2) << mean << " s +/- "
-            << sigma << " s";
+        out << std::scientific << std::setprecision(2) << mean << " s +/- " << sigma << " s";
         return out.str();
     }
 

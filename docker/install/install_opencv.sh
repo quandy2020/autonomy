@@ -19,23 +19,49 @@
 # Fail on first error.
 set -e
 
+###############################################################################
+# 安装 GUI 相关依赖，使 OpenCV 在 Docker 中支持窗口显示 (GTK highgui)
+###############################################################################
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    pkg-config \
+    libgtk-3-dev \
+    libcanberra-gtk3-module \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev
+
+###############################################################################
+# 获取 OpenCV 源码
+###############################################################################
 cd /thirdparty
 git clone -b 5.x https://github.com/opencv/opencv.git
 git clone -b 5.x https://github.com/opencv/opencv_contrib.git
 
+###############################################################################
+# 配置并编译 OpenCV（启用 GTK 高级 GUI）
+###############################################################################
 cd opencv && mkdir build && cd build
 cmake  \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
     -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
+    -DWITH_GTK=ON \
+    -DWITH_QT=OFF \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_PERF_TESTS=OFF \
     ..
 
 # build
-make -j8
+make -j"$(nproc)"
 sudo make install
 sudo ldconfig
 
-# Clean up.
+###############################################################################
+# 清理中间文件，减小镜像体积
+###############################################################################
 cd .. && rm -rf build
-

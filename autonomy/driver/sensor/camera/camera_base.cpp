@@ -34,17 +34,14 @@ using Time = autonomy::common::Time;
 class CameraSensorData : public autonomy::sensor::Data
 {
 public:
-    CameraSensorData(const std::string& sensor_id,
-                     const std::shared_ptr<commsgs::sensor_msgs::Image>& msg)
+    CameraSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Image>& msg)
         : autonomy::sensor::Data(sensor_id), message_(msg) {}
 
     Time GetTime() const override {
         // 将 builtin_interfaces::Time 转换为 common::Time
-        int64_t total_ns =
-            static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
-            static_cast<int64_t>(message_->header.stamp.nanosec);
-        return autonomy::common::FromUniversal(total_ns /
-                                               100);  // 转换为 100ns ticks
+        int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                           static_cast<int64_t>(message_->header.stamp.nanosec);
+        return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
     }
 
     void AddToCostmap(map::common::MapInterface* costmap_builder) override {
@@ -67,8 +64,7 @@ CameraBase::~CameraBase() {
     Cleanup();
 }
 
-bool CameraBase::Configure(const std::string& name,
-                           const proto::DriverOptions& options) {
+bool CameraBase::Configure(const std::string& name, const proto::DriverOptions& options) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (configured_) {
@@ -83,8 +79,8 @@ bool CameraBase::Configure(const std::string& name,
     for (const auto& camera_option : options.cameras()) {
         if (camera_option.enabled()) {
             camera_configs_[camera_option.sensor_id()] = camera_option;
-            AINFO << "Configured camera sensor: " << camera_option.sensor_id()
-                  << " (hardware: " << GetHardwareModel() << ")";
+            AINFO << "Configured camera sensor: " << camera_option.sensor_id() << " (hardware: " << GetHardwareModel()
+                  << ")";
         }
     }
 
@@ -94,8 +90,7 @@ bool CameraBase::Configure(const std::string& name,
     }
 
     configured_ = true;
-    AINFO << "CameraBase configured: " << name_ << " with "
-          << camera_configs_.size() << " camera sensors";
+    AINFO << "CameraBase configured: " << name_ << " with " << camera_configs_.size() << " camera sensors";
     return true;
 }
 
@@ -123,8 +118,7 @@ bool CameraBase::Initialize() {
         const auto& config = pair.second;
         sampling_rate_ = config.sampling_rate();
         last_sample_time_[pair.first] = commsgs::builtin_interfaces::Time{0, 0};
-        AINFO << "Initialized camera sensor: " << pair.first
-              << " (sampling_rate: " << sampling_rate_ << " Hz)";
+        AINFO << "Initialized camera sensor: " << pair.first << " (sampling_rate: " << sampling_rate_ << " Hz)";
     }
 
     initialized_ = true;
@@ -204,9 +198,7 @@ bool CameraBase::IsSensorRegistered(const std::string& sensor_id) const {
 
 bool CameraBase::RegisterSensorHandler(
     const std::string& sensor_id,
-    std::function<void(const std::string&,
-                       const std::shared_ptr<autonomy::sensor::Data>&)>
-        handler) {
+    std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!IsSensorRegistered(sensor_id)) {
@@ -234,9 +226,8 @@ void CameraBase::UnregisterSensorHandler(const std::string& sensor_id) {
     }
 }
 
-void CameraBase::ProcessImageData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::Image>& image_msg) {
+void CameraBase::ProcessImageData(const std::string& sensor_id,
+                                  const std::shared_ptr<commsgs::sensor_msgs::Image>& image_msg) {
     if (image_msg == nullptr) {
         AERROR << "Received null image message for sensor: " << sensor_id;
         return;
@@ -244,16 +235,13 @@ void CameraBase::ProcessImageData(
 
     // 采样率控制
     if (sampling_rate_ > 0.0) {
-        commsgs::builtin_interfaces::Time current_time =
-            image_msg->header.stamp;
+        commsgs::builtin_interfaces::Time current_time = image_msg->header.stamp;
         auto it = last_sample_time_.find(sensor_id);
         if (it != last_sample_time_.end()) {
             // 计算时间差（秒）
-            int64_t time_diff_ns = (static_cast<int64_t>(current_time.sec) -
-                                    static_cast<int64_t>(it->second.sec)) *
-                                       1000000000LL +
-                                   (static_cast<int64_t>(current_time.nanosec) -
-                                    static_cast<int64_t>(it->second.nanosec));
+            int64_t time_diff_ns =
+                (static_cast<int64_t>(current_time.sec) - static_cast<int64_t>(it->second.sec)) * 1000000000LL +
+                (static_cast<int64_t>(current_time.nanosec) - static_cast<int64_t>(it->second.nanosec));
             double time_diff = static_cast<double>(time_diff_ns) / 1e9;
             double min_interval = 1.0 / sampling_rate_;
             if (time_diff < min_interval) {
@@ -282,8 +270,7 @@ void CameraBase::DataReadingThread() {
     // 计算读取间隔（如果采样率 > 0）
     std::chrono::milliseconds read_interval(33);  // 默认 30Hz
     if (sampling_rate_ > 0.0) {
-        read_interval = std::chrono::milliseconds(
-            static_cast<int>(1000.0 / sampling_rate_));
+        read_interval = std::chrono::milliseconds(static_cast<int>(1000.0 / sampling_rate_));
     }
 
     while (!stop_thread_) {
@@ -313,9 +300,7 @@ void CameraBase::DataReadingThread() {
                         if (depth_msg != nullptr) {
                             // 使用 depth_topic 中定义的 sensor_id，如果存在
                             std::string depth_sensor_id =
-                                config.depth_topic().empty()
-                                    ? (sensor_id + "_depth")
-                                    : config.depth_topic();
+                                config.depth_topic().empty() ? (sensor_id + "_depth") : config.depth_topic();
                             ProcessImageData(depth_sensor_id, depth_msg);
                         }
                     }

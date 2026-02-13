@@ -41,8 +41,7 @@ public:
 
     ~ModelImplementation() = default;
 
-    std::shared_ptr<::urdf::URDFParser> load_plugin(
-        const std::string& plugin_name);
+    std::shared_ptr<::urdf::URDFParser> load_plugin(const std::string& plugin_name);
 
     // Loader manager used to get plugins
     autolink::class_loader::ClassLoaderManager loader_manager_;
@@ -68,19 +67,16 @@ bool Model::initFile(const std::string& filename) {
         xml_file.close();
         return Model::initString(xml_string);
     } else {
-        fprintf(stderr, "Could not open file [%s] for parsing.\n",
-                filename.c_str());
+        fprintf(stderr, "Could not open file [%s] for parsing.\n", filename.c_str());
         return false;
     }
 }
 
-std::shared_ptr<::urdf::URDFParser> ModelImplementation::load_plugin(
-    const std::string& plugin_name) {
+std::shared_ptr<::urdf::URDFParser> ModelImplementation::load_plugin(const std::string& plugin_name) {
     std::shared_ptr<::urdf::URDFParser> plugin_instance =
         loader_manager_.CreateClassObj<::urdf::URDFParser>(plugin_name);
     if (!plugin_instance) {
-        fprintf(stderr, "Failed to load urdf_parser_plugin [%s]\n",
-                plugin_name.c_str());
+        fprintf(stderr, "Failed to load urdf_parser_plugin [%s]\n", plugin_name.c_str());
     }
     return plugin_instance;
 }
@@ -93,10 +89,8 @@ bool Model::initString(const std::string& data) {
     std::string best_plugin_name;
 
     // Figure out what plugins might handle this format
-    for (const std::string& plugin_name :
-         impl_->loader_manager_.GetValidClassNames<::urdf::URDFParser>()) {
-        std::shared_ptr<urdf::URDFParser> plugin_instance =
-            impl_->load_plugin(plugin_name);
+    for (const std::string& plugin_name : impl_->loader_manager_.GetValidClassNames<::urdf::URDFParser>()) {
+        std::shared_ptr<urdf::URDFParser> plugin_instance = impl_->load_plugin(plugin_name);
         if (!plugin_instance) {
             // Debug mode
             assert(plugin_instance);
@@ -126,8 +120,7 @@ bool Model::initString(const std::string& data) {
 
     // copy data from model into this object
     if (!model) {
-        fprintf(stderr, "Failed to parse robot description using: %s\n",
-                best_plugin_name.c_str());
+        fprintf(stderr, "Failed to parse robot description using: %s\n", best_plugin_name.c_str());
         return false;
     }
 

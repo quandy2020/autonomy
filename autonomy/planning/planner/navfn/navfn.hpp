@@ -71,8 +71,7 @@ namespace navfn {
  interpolated
  *          positions at about 1/2 cell resolution; else returns 0.
  */
-int create_nav_plan_astar(const COSTTYPE* costmap, int nx, int ny, int* goal,
-                          int* start, float* plan, int nplan);
+int create_nav_plan_astar(const COSTTYPE* costmap, int nx, int ny, int* goal, int* start, float* plan, int nplan);
 
 /**
  * @class NavFn
@@ -106,8 +105,7 @@ public:
      * @param allow_unknown Whether or not the planner should be allowed to plan
      * through unknown space
      */
-    void setCostmap(const COSTTYPE* cmap, bool isROS = true,
-                    bool allow_unknown = true);
+    void setCostmap(const COSTTYPE* cmap, bool isROS = true, bool allow_unknown = true);
 
     /**
      * @brief  Calculates a plan using the A* heuristic, returns true if one is
@@ -121,8 +119,7 @@ public:
      * @brief Calculates the full navigation function using Dijkstra
      * @param cancelChecker Function to check if the task has been canceled
      */
-    bool calcNavFnDijkstra(std::function<bool()> cancelChecker,
-                           bool atStart = false);
+    bool calcNavFnDijkstra(std::function<bool()> cancelChecker, bool atStart = false);
 
     /**
      * @brief  Accessor for the x-coordinates of a path
@@ -221,8 +218,7 @@ public:
      * @param atStart Whether or not to stop when the start point is reached
      * @return true if the start point is reached
      */
-    bool propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker,
-                           bool atStart = false);
+    bool propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker, bool atStart = false);
 
     /**
      * @brief  Run propagation for <cycles> iterations, or until start is

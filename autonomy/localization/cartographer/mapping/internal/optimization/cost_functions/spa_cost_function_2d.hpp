@@ -24,11 +24,9 @@ namespace cartographer {
 namespace mapping {
 namespace optimization {
 
-ceres::CostFunction* CreateAutoDiffSpaCostFunction(
-    const PoseGraphInterface::Constraint::Pose& pose);
+ceres::CostFunction* CreateAutoDiffSpaCostFunction(const PoseGraphInterface::Constraint::Pose& pose);
 
-ceres::CostFunction* CreateAnalyticalSpaCostFunction(
-    const PoseGraphInterface::Constraint::Pose& pose);
+ceres::CostFunction* CreateAnalyticalSpaCostFunction(const PoseGraphInterface::Constraint::Pose& pose);
 
 }  // namespace optimization
 }  // namespace mapping

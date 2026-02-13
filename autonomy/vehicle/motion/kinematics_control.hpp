@@ -44,8 +44,7 @@ public:
      * @brief 构造函数
      * @param model 车辆 / 机器人的模型参数（包含速度、加速度、转向等上限）
      */
-    explicit KinematicsControl(
-        const ::autonomy::vehicle::proto::VehicleModel& model);
+    explicit KinematicsControl(const ::autonomy::vehicle::proto::VehicleModel& model);
 
     /**
      * @brief 对给定的运动学控制指令进行限幅（就地修改）
@@ -57,8 +56,7 @@ public:
      *
      * @param cmd 待限幅的控制指令（非空指针）
      */
-    void ApplyLimits(
-        ::autonomy::vehicle::proto::KinematicsControlCommand* cmd) const;
+    void ApplyLimits(::autonomy::vehicle::proto::KinematicsControlCommand* cmd) const;
 
 private:
     ::autonomy::vehicle::proto::VehicleModel model_;

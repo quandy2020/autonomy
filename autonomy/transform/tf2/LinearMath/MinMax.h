@@ -37,8 +37,7 @@ TF2SIMD_FORCE_INLINE const T& tf2Max(const T& a, const T& b) {
 }
 
 template <class T>
-TF2SIMD_FORCE_INLINE const T& GEN_clamped(const T& a, const T& lb,
-                                          const T& ub) {
+TF2SIMD_FORCE_INLINE const T& GEN_clamped(const T& a, const T& lb, const T& ub) {
     return a < lb ? lb : (ub < a ? ub : a);
 }
 

@@ -23,31 +23,22 @@ namespace plugins {
 namespace control {
 
 RecoveryNode::RecoveryNode(const std::string& name)
-    : BT::ControlNode(name, {}),
-      current_child_idx_(0),
-      number_of_retries_(1),
-      retry_count_(0) {}
+    : BT::ControlNode(name, {}), current_child_idx_(0), number_of_retries_(1), retry_count_(0) {}
 
-RecoveryNode::RecoveryNode(const std::string& name,
-                           const BT::NodeConfiguration& conf)
-    : BT::ControlNode(name, conf),
-      current_child_idx_(0),
-      number_of_retries_(1),
-      retry_count_(0) {}
+RecoveryNode::RecoveryNode(const std::string& name, const BT::NodeConfiguration& conf)
+    : BT::ControlNode(name, conf), current_child_idx_(0), number_of_retries_(1), retry_count_(0) {}
 
 BT::NodeStatus RecoveryNode::tick() {
     getInput("number_of_retries", number_of_retries_);
     const unsigned children_count = children_nodes_.size();
 
     if (children_count != 2) {
-        throw BT::BehaviorTreeException("Recovery Node '" + name() +
-                                        "' must only have 2 children.");
+        throw BT::BehaviorTreeException("Recovery Node '" + name() + "' must only have 2 children.");
     }
 
     setStatus(BT::NodeStatus::RUNNING);
 
-    while (current_child_idx_ < children_count &&
-           retry_count_ <= number_of_retries_) {
+    while (current_child_idx_ < children_count && retry_count_ <= number_of_retries_) {
         TreeNode* child_node = children_nodes_[current_child_idx_];
         const BT::NodeStatus child_status = child_node->executeTick();
 
@@ -141,7 +132,5 @@ void RecoveryNode::halt() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::control::RecoveryNode>(
-        "RecoveryNode");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::control::RecoveryNode>("RecoveryNode");
 }

@@ -31,13 +31,10 @@ using ::testing::ElementsAre;
 
 TEST(OccupiedSpaceCostFunction2DTest, SmokeTest) {
     ValueConversionTables conversion_tables;
-    ProbabilityGrid grid(
-        MapLimits(1., Eigen::Vector2d(1., 1.), CellLimits(2, 2)),
-        &conversion_tables);
+    ProbabilityGrid grid(MapLimits(1., Eigen::Vector2d(1., 1.), CellLimits(2, 2)), &conversion_tables);
     sensor::PointCloud point_cloud({{Eigen::Vector3f{0.f, 0.f, 0.f}}});
     ceres::Problem problem;
-    std::unique_ptr<ceres::CostFunction> cost_function(
-        CreateOccupiedSpaceCostFunction2D(1.f, point_cloud, grid));
+    std::unique_ptr<ceres::CostFunction> cost_function(CreateOccupiedSpaceCostFunction2D(1.f, point_cloud, grid));
 
     const std::array<double, 3> pose_estimate{{0., 0., 0.}};
     const std::array<const double*, 1> parameter_blocks{{pose_estimate.data()}};
@@ -47,8 +44,7 @@ TEST(OccupiedSpaceCostFunction2DTest, SmokeTest) {
     std::array<double*, 1> jacobians_ptrs;
     for (int i = 0; i < 1; ++i)
         jacobians_ptrs[i] = jacobians[i].data();
-    cost_function->Evaluate(parameter_blocks.data(), residuals.data(),
-                            jacobians_ptrs.data());
+    cost_function->Evaluate(parameter_blocks.data(), residuals.data(), jacobians_ptrs.data());
 
     EXPECT_THAT(residuals, ElementsAre(DoubleEq(kMaxProbability)));
 }

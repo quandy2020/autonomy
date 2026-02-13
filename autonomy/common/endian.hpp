@@ -62,8 +62,7 @@ void WriteBinaryLittleEndian(std::ostream* stream, const std::vector<T>& data);
 template <typename T>
 T ReverseBytes(const T& data) {
     T data_reversed = data;
-    std::reverse(reinterpret_cast<char*>(&data_reversed),
-                 reinterpret_cast<char*>(&data_reversed) + sizeof(T));
+    std::reverse(reinterpret_cast<char*>(&data_reversed), reinterpret_cast<char*>(&data_reversed) + sizeof(T));
     return data_reversed;
 }
 
@@ -120,8 +119,7 @@ void ReadBinaryLittleEndian(std::istream* stream, std::vector<T>* data) {
 template <typename T>
 void WriteBinaryLittleEndian(std::ostream* stream, const T& data) {
     const T data_little_endian = NativeToLittleEndian(data);
-    stream->write(reinterpret_cast<const char*>(&data_little_endian),
-                  sizeof(T));
+    stream->write(reinterpret_cast<const char*>(&data_little_endian), sizeof(T));
 }
 
 template <typename T>

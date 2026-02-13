@@ -62,8 +62,7 @@ public:
     using Constraint = mapping::PoseGraphInterface::Constraint;
     using Result = std::vector<Constraint>;
 
-    ConstraintBuilder3D(const proto::ConstraintBuilderOptions& options,
-                        common::ThreadPoolInterface* thread_pool);
+    ConstraintBuilder3D(const proto::ConstraintBuilderOptions& options, common::ThreadPoolInterface* thread_pool);
     ~ConstraintBuilder3D();
 
     ConstraintBuilder3D(const ConstraintBuilder3D&) = delete;
@@ -77,10 +76,8 @@ public:
     //
     // The pointees of 'submap' and 'compressed_point_cloud' must stay valid
     // until all computations are finished.
-    void MaybeAddConstraint(const SubmapId& submap_id, const Submap3D* submap,
-                            const NodeId& node_id,
-                            const TrajectoryNode::Data* const constant_data,
-                            const transform::Rigid3d& global_node_pose,
+    void MaybeAddConstraint(const SubmapId& submap_id, const Submap3D* submap, const NodeId& node_id,
+                            const TrajectoryNode::Data* const constant_data, const transform::Rigid3d& global_node_pose,
                             const transform::Rigid3d& global_submap_pose);
 
     // Schedules exploring a new constraint between 'submap' identified by
@@ -92,11 +89,10 @@ public:
     //
     // The pointees of 'submap' and 'compressed_point_cloud' must stay valid
     // until all computations are finished.
-    void MaybeAddGlobalConstraint(
-        const SubmapId& submap_id, const Submap3D* submap,
-        const NodeId& node_id, const TrajectoryNode::Data* const constant_data,
-        const Eigen::Quaterniond& global_node_rotation,
-        const Eigen::Quaterniond& global_submap_rotation);
+    void MaybeAddGlobalConstraint(const SubmapId& submap_id, const Submap3D* submap, const NodeId& node_id,
+                                  const TrajectoryNode::Data* const constant_data,
+                                  const Eigen::Quaterniond& global_node_rotation,
+                                  const Eigen::Quaterniond& global_submap_rotation);
 
     // Must be called after all computations related to one node have been
     // added.
@@ -119,28 +115,22 @@ private:
     struct SubmapScanMatcher {
         const HybridGrid* high_resolution_hybrid_grid = nullptr;
         const HybridGrid* low_resolution_hybrid_grid = nullptr;
-        std::unique_ptr<scan_matching::FastCorrelativeScanMatcher3D>
-            fast_correlative_scan_matcher;
+        std::unique_ptr<scan_matching::FastCorrelativeScanMatcher3D> fast_correlative_scan_matcher;
         std::weak_ptr<common::Task> creation_task_handle;
     };
 
     // The returned 'grid' and 'fast_correlative_scan_matcher' must only be
     // accessed after 'creation_task_handle' has completed.
-    const SubmapScanMatcher* DispatchScanMatcherConstruction(
-        const SubmapId& submap_id, const Submap3D* submap)
+    const SubmapScanMatcher* DispatchScanMatcherConstruction(const SubmapId& submap_id, const Submap3D* submap)
         EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
     // Runs in a background thread and does computations for an additional
     // constraint.
     // As output, it may create a new Constraint in 'constraint'.
-    void ComputeConstraint(const SubmapId& submap_id, const NodeId& node_id,
-                           bool match_full_submap,
-                           const TrajectoryNode::Data* const constant_data,
-                           const transform::Rigid3d& global_node_pose,
-                           const transform::Rigid3d& global_submap_pose,
-                           const SubmapScanMatcher& submap_scan_matcher,
-                           std::unique_ptr<Constraint>* constraint)
-        LOCKS_EXCLUDED(mutex_);
+    void ComputeConstraint(const SubmapId& submap_id, const NodeId& node_id, bool match_full_submap,
+                           const TrajectoryNode::Data* const constant_data, const transform::Rigid3d& global_node_pose,
+                           const transform::Rigid3d& global_submap_pose, const SubmapScanMatcher& submap_scan_matcher,
+                           std::unique_ptr<Constraint>* constraint) LOCKS_EXCLUDED(mutex_);
 
     void RunWhenDoneCallback() LOCKS_EXCLUDED(mutex_);
 
@@ -149,8 +139,7 @@ private:
     absl::Mutex mutex_;
 
     // 'callback' set by WhenDone().
-    std::unique_ptr<std::function<void(const Result&)>> when_done_
-        GUARDED_BY(mutex_);
+    std::unique_ptr<std::function<void(const Result&)>> when_done_ GUARDED_BY(mutex_);
 
     // TODO(gaschler): Use atomics instead of mutex to access these counters.
     // Number of the node in reaction to which computations are currently
@@ -170,8 +159,7 @@ private:
     std::deque<std::unique_ptr<Constraint>> constraints_ GUARDED_BY(mutex_);
 
     // Map of dispatched or constructed scan matchers by 'submap_id'.
-    std::map<SubmapId, SubmapScanMatcher> submap_scan_matchers_
-        GUARDED_BY(mutex_);
+    std::map<SubmapId, SubmapScanMatcher> submap_scan_matchers_ GUARDED_BY(mutex_);
     std::map<SubmapId, common::FixedRatioSampler> per_submap_sampler_;
 
     scan_matching::CeresScanMatcher3D ceres_scan_matcher_;

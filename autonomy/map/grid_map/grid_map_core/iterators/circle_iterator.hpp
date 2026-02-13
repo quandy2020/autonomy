@@ -28,8 +28,7 @@ public:
      * @param center the position of the circle center.
      * @param radius the radius of the circle.
      */
-    CircleIterator(const GridMap& gridMap, const Position& center,
-                   double radius);
+    CircleIterator(const GridMap& gridMap, const Position& center, double radius);
 
     /*!
      * Compare to another iterator.
@@ -72,8 +71,7 @@ private:
      * @param[out] startIndex the start index of the submap.
      * @param[out] bufferSize the buffer size of the submap.
      */
-    void findSubmapParameters(const Position& center, double radius,
-                              Index& startIndex, Size& bufferSize) const;
+    void findSubmapParameters(const Position& center, double radius, Index& startIndex, Size& bufferSize) const;
 
     //! Position of the circle center;
     Position center_;

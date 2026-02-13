@@ -93,8 +93,7 @@ public:
      * @return true if a path is found, false if no path is found in between the
      * start and goal pose
      */
-    bool generatePath(std::vector<coordsW>& raw_path,
-                      std::function<bool()> cancel_checker);
+    bool generatePath(std::vector<coordsW>& raw_path, std::function<bool()> cancel_checker);
 
     /**
      * @brief this function checks whether the cost of a point(cx, cy) on the
@@ -105,8 +104,7 @@ public:
         if (!costmap_) {
             return false;
         }
-        return (costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) ||
-               costmap_->getCost(cx, cy) < LETHAL_COST;
+        return (costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) || costmap_->getCost(cx, cy) < LETHAL_COST;
     }
 
     /**
@@ -154,8 +152,7 @@ protected:
     /// stored consecutively in nodes_data_
     int index_generated_;
 
-    const coordsM moves[8] = {{0, 1},  {0, -1}, {1, 0}, {-1, 0},
-                              {1, -1}, {-1, 1}, {1, 1}, {-1, -1}};
+    const coordsM moves[8] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, -1}, {-1, 1}, {1, 1}, {-1, -1}};
 
     tree_node* exp_node;
 
@@ -183,8 +180,7 @@ protected:
      * @param sl_cost is used to return the cost thus incurred
      * @return true if a line of sight exists between the points
      */
-    bool losCheck(const int& x0, const int& y0, const int& x1, const int& y1,
-                  double& sl_cost) const;
+    bool losCheck(const int& x0, const int& y0, const int& x1, const int& y1, double& sl_cost) const;
 
     /**
      * @brief it returns the path by backtracking from the goal to the start, by
@@ -193,8 +189,7 @@ protected:
      * @param curr_id sends in the index of the goal coordinate, as stored in
      * nodes_position
      */
-    void backtrace(std::vector<coordsW>& raw_points,
-                   const tree_node* curr_n) const;
+    void backtrace(std::vector<coordsW>& raw_points, const tree_node* curr_n) const;
 
     /**
      * @brief it is an overloaded function to ease the cost calculations while
@@ -210,13 +205,11 @@ protected:
             return false;
         }
         double curr_cost = getCost(cx, cy);
-        if ((costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) ||
-            curr_cost < LETHAL_COST) {
+        if ((costmap_->getCost(cx, cy) == UNKNOWN_COST && allow_unknown_) || curr_cost < LETHAL_COST) {
             if (costmap_->getCost(cx, cy) == UNKNOWN_COST) {
                 curr_cost = OBS_COST - 1;
             }
-            cost += w_traversal_cost_ * curr_cost * curr_cost / LETHAL_COST /
-                    LETHAL_COST;
+            cost += w_traversal_cost_ * curr_cost * curr_cost / LETHAL_COST / LETHAL_COST;
             return true;
         } else {
             return false;
@@ -242,8 +235,7 @@ protected:
      */
     inline double getTraversalCost(const int& cx, const int& cy) {
         double curr_cost = getCost(cx, cy);
-        return w_traversal_cost_ * curr_cost * curr_cost / LETHAL_COST /
-               LETHAL_COST;
+        return w_traversal_cost_ * curr_cost * curr_cost / LETHAL_COST / LETHAL_COST;
     }
 
     /**
@@ -252,8 +244,7 @@ protected:
      * points (ax, ay) and (bx, by)>
      * @return the distance thus calculated
      */
-    inline double getEuclideanCost(const int& ax, const int& ay, const int& bx,
-                                   const int& by) {
+    inline double getEuclideanCost(const int& ax, const int& ay, const int& bx, const int& by) {
         return w_euc_cost_ * std::hypot(ax - bx, ay - by);
     }
 
@@ -335,8 +326,7 @@ protected:
      * function
      */
     void clearQueue() {
-        queue_ =
-            std::priority_queue<tree_node*, std::vector<tree_node*>, comp>();
+        queue_ = std::priority_queue<tree_node*, std::vector<tree_node*>, comp>();
     }
 };
 

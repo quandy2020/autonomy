@@ -40,8 +40,7 @@ using ::testing::PrintToString;
 constexpr float kPrecision = 0.001f;
 
 // Matcher for 3-d vectors w.r.t. to the target precision.
-MATCHER_P(ApproximatelyEquals, expected,
-          std::string("is equal to ") + PrintToString(expected)) {
+MATCHER_P(ApproximatelyEquals, expected, std::string("is equal to ") + PrintToString(expected)) {
     return (arg.position - expected).isZero(kPrecision);
 }
 
@@ -70,20 +69,15 @@ TEST(CompressPointCloudTest, CompressesPointsCorrectly) {
 }
 
 TEST(CompressPointCloudTest, Compresses) {
-    const CompressedPointCloud compressed(
-        PointCloud({{Eigen::Vector3f(0.838f, 0, 0)},
-                    {Eigen::Vector3f(0.839f, 0, 0)},
-                    {Eigen::Vector3f(0.840f, 0, 0)}}));
+    const CompressedPointCloud compressed(PointCloud(
+        {{Eigen::Vector3f(0.838f, 0, 0)}, {Eigen::Vector3f(0.839f, 0, 0)}, {Eigen::Vector3f(0.840f, 0, 0)}}));
     EXPECT_FALSE(compressed.empty());
     EXPECT_EQ(3, compressed.size());
     const PointCloud decompressed = compressed.Decompress();
     EXPECT_EQ(3, decompressed.size());
-    EXPECT_THAT(decompressed.points(),
-                Contains(ApproximatelyEquals(Eigen::Vector3f(0.838f, 0, 0))));
-    EXPECT_THAT(decompressed.points(),
-                Contains(ApproximatelyEquals(Eigen::Vector3f(0.839f, 0, 0))));
-    EXPECT_THAT(decompressed.points(),
-                Contains(ApproximatelyEquals(Eigen::Vector3f(0.840f, 0, 0))));
+    EXPECT_THAT(decompressed.points(), Contains(ApproximatelyEquals(Eigen::Vector3f(0.838f, 0, 0))));
+    EXPECT_THAT(decompressed.points(), Contains(ApproximatelyEquals(Eigen::Vector3f(0.839f, 0, 0))));
+    EXPECT_THAT(decompressed.points(), Contains(ApproximatelyEquals(Eigen::Vector3f(0.840f, 0, 0))));
 }
 
 TEST(CompressPointCloudTest, CompressesEmptyPointCloud) {
@@ -112,8 +106,7 @@ TEST(CompressPointCloudTest, CompressesNoGaps) {
     }
     std::sort(x_coord.begin(), x_coord.end());
     for (size_t i = 1; i < x_coord.size(); ++i) {
-        EXPECT_THAT(std::abs(x_coord[i] - x_coord[i - 1]),
-                    FloatNear(kPrecision, 1e-7f));
+        EXPECT_THAT(std::abs(x_coord[i] - x_coord[i - 1]), FloatNear(kPrecision, 1e-7f));
     }
 }
 

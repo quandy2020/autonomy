@@ -38,22 +38,19 @@ namespace io {
 class PointsProcessorPipelineBuilder
 {
 public:
-    using FactoryFunction = std::function<std::unique_ptr<PointsProcessor>(
-        common::LuaParameterDictionary*, PointsProcessor* next)>;
+    using FactoryFunction =
+        std::function<std::unique_ptr<PointsProcessor>(common::LuaParameterDictionary*, PointsProcessor* next)>;
 
     PointsProcessorPipelineBuilder();
 
-    PointsProcessorPipelineBuilder(const PointsProcessorPipelineBuilder&) =
-        delete;
-    PointsProcessorPipelineBuilder& operator=(
-        const PointsProcessorPipelineBuilder&) = delete;
+    PointsProcessorPipelineBuilder(const PointsProcessorPipelineBuilder&) = delete;
+    PointsProcessorPipelineBuilder& operator=(const PointsProcessorPipelineBuilder&) = delete;
 
     // Register a new PointsProcessor type uniquly identified by 'name' which
     // will be created using 'factory'.
     void Register(const std::string& name, FactoryFunction factory);
 
-    std::vector<std::unique_ptr<PointsProcessor>> CreatePipeline(
-        common::LuaParameterDictionary* dictionary) const;
+    std::vector<std::unique_ptr<PointsProcessor>> CreatePipeline(common::LuaParameterDictionary* dictionary) const;
 
 private:
     absl::flat_hash_map<std::string, FactoryFunction> factories_;
@@ -61,10 +58,9 @@ private:
 
 // Register all 'PointsProcessor' that ship with Cartographer with this
 // 'builder'.
-void RegisterBuiltInPointsProcessors(
-    const std::vector<mapping::proto::Trajectory>& trajectories,
-    const FileWriterFactory& file_writer_factory,
-    PointsProcessorPipelineBuilder* builder);
+void RegisterBuiltInPointsProcessors(const std::vector<mapping::proto::Trajectory>& trajectories,
+                                     const FileWriterFactory& file_writer_factory,
+                                     PointsProcessorPipelineBuilder* builder);
 
 }  // namespace io
 }  // namespace cartographer

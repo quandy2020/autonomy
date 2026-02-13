@@ -24,6 +24,9 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 
+#include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
+#include "autonomy/tasks/navigator/proto/action.pb.h"
+
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
@@ -43,8 +46,7 @@ public:
      * @param xml_tag_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    AppendGoalPoseToGoalsAction(const std::string& xml_tag_name,
-                                const BT::NodeConfiguration& conf);
+    AppendGoalPoseToGoalsAction(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
@@ -52,12 +54,9 @@ public:
      */
     static BT::PortsList providedPorts() {
         return {
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                "goal", "Goal pose to append"),
-            BT::InputPort<commsgs::planning_msgs::Goals>("goals",
-                                                         "Input goals array"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>(
-                "goals", "Output goals array with appended goal"),
+            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Goal pose to append"),
+            BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Input goals array"),
+            BT::OutputPort<commsgs::planning_msgs::Goals>("goals", "Output goals array with appended goal"),
         };
     }
 

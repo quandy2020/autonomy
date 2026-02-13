@@ -26,20 +26,15 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-ArePosesNearCondition::ArePosesNearCondition(const std::string& condition_name,
-                                             const BT::NodeConfiguration& conf)
+ArePosesNearCondition::ArePosesNearCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf) {
-    auto node =
-        config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    global_frame_ =
-        DeconflictPortAndParamFrame<std::string>(node, "global_frame", this);
+    auto node = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+    global_frame_ = DeconflictPortAndParamFrame<std::string>(node, "global_frame", this);
 }
 
 void ArePosesNearCondition::initialize() {
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    tf_ =
-        config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
-            "tf_buffer");
+    tf_ = config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>("tf_buffer");
     getInput("transform_tolerance", transform_tolerance_);
 }
 
@@ -62,12 +57,10 @@ bool ArePosesNearCondition::arePosesNearby() {
     getInput("tolerance", tol);
 
     if (pose1.header.frame_id != pose2.header.frame_id) {
-        if (!autonomy::tasks::utils::transformPoseInTargetFrame(
-                pose1, pose1, tf_, global_frame_,
-                static_cast<float>(transform_tolerance_)) ||
-            !autonomy::tasks::utils::transformPoseInTargetFrame(
-                pose2, pose2, tf_, global_frame_,
-                static_cast<float>(transform_tolerance_))) {
+        if (!autonomy::tasks::utils::transformPoseInTargetFrame(pose1, pose1, tf_, global_frame_,
+                                                                static_cast<float>(transform_tolerance_)) ||
+            !autonomy::tasks::utils::transformPoseInTargetFrame(pose2, pose2, tf_, global_frame_,
+                                                                static_cast<float>(transform_tolerance_))) {
             AERROR << "Failed to transform poses to the same frame";
             return false;
         }
@@ -86,7 +79,5 @@ bool ArePosesNearCondition::arePosesNearby() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::ArePosesNearCondition>(
-        "ArePosesNear");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::ArePosesNearCondition>("ArePosesNear");
 }

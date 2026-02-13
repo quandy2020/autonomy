@@ -20,8 +20,7 @@ namespace autonomy {
 namespace common {
 namespace signal_processing {
 
-double lowpassFilter(const double current_val, const double prev_val,
-                     const double gain) {
+double lowpassFilter(const double current_val, const double prev_val, const double gain) {
     return gain * prev_val + (1.0 - gain) * current_val;
 }
 

@@ -37,8 +37,7 @@ Histogram* Histogram::Null() {
     return &null_histogram;
 }
 
-Histogram::BucketBoundaries Histogram::FixedWidth(double width,
-                                                  int num_finite_buckets) {
+Histogram::BucketBoundaries Histogram::FixedWidth(double width, int num_finite_buckets) {
     BucketBoundaries result;
     double boundary = 0;
     for (int i = 0; i < num_finite_buckets; ++i) {
@@ -48,9 +47,7 @@ Histogram::BucketBoundaries Histogram::FixedWidth(double width,
     return result;
 }
 
-Histogram::BucketBoundaries Histogram::ScaledPowersOf(double base,
-                                                      double scale_factor,
-                                                      double max_value) {
+Histogram::BucketBoundaries Histogram::ScaledPowersOf(double base, double scale_factor, double max_value) {
     CHECK_GT(base, 1);
     CHECK_GT(scale_factor, 0);
     BucketBoundaries result;

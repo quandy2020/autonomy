@@ -42,8 +42,7 @@ TEST(MapByTimeTest, AppendAndViewTrajectory) {
     map_by_time.Append(0, Data{CreateTime(10)});
     map_by_time.Append(42, Data{CreateTime(42)});
     map_by_time.Append(42, Data{CreateTime(43)});
-    std::deque<Data> expected_data = {Data{CreateTime(42)},
-                                      Data{CreateTime(43)}};
+    std::deque<Data> expected_data = {Data{CreateTime(42)}, Data{CreateTime(43)}};
     for (const Data& data : map_by_time.trajectory(42)) {
         ASSERT_FALSE(expected_data.empty());
         EXPECT_EQ(expected_data.front().time, data.time);
@@ -72,9 +71,8 @@ TEST(MapByTimeTest, Trimming) {
     map_by_time.Trim(map_by_id, mapping::NodeId{42, 1});
     map_by_id.Trim(mapping::NodeId{42, 1});
     ASSERT_TRUE(map_by_time.HasTrajectory(42));
-    std::deque<Data> expected_data = {
-        Data{CreateTime(1)},  Data{CreateTime(41)}, Data{CreateTime(42)},
-        Data{CreateTime(48)}, Data{CreateTime(49)}, Data{CreateTime(5000)}};
+    std::deque<Data> expected_data = {Data{CreateTime(1)},  Data{CreateTime(41)}, Data{CreateTime(42)},
+                                      Data{CreateTime(48)}, Data{CreateTime(49)}, Data{CreateTime(5000)}};
     for (const Data& data : map_by_time.trajectory(42)) {
         ASSERT_FALSE(expected_data.empty());
         EXPECT_EQ(expected_data.front().time, data.time);

@@ -16,20 +16,6 @@ syntax = "proto3";
 
 package autonomy.simulation.proto;
 
-message StageOption
-{
-    string world = 1;
-    string map = 2;
-}
-
-message PedsimOption
-{
-
-}
-
-
 message SimulationOption
 {
-    StageOption stage = 1;
-    PedsimOption pedsim = 2;
 }

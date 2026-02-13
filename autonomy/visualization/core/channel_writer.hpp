@@ -33,8 +33,8 @@ namespace detail {
 template <typename ChType, typename ProtoMsgs>
 struct ChannelPublishTraits {
     // 默认实现：不支持
-    static bool Publish(ChType* channel, const ProtoMsgs& message,
-                        uint64_t timestamp_ns, const std::string& topic_name) {
+    static bool Publish(ChType* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
+                        const std::string& topic_name) {
         (void)channel;
         (void)message;
         (void)timestamp_ns;
@@ -45,11 +45,9 @@ struct ChannelPublishTraits {
 
 /// SceneUpdateChannel 特化：发布 3D 场景更新
 template <typename ProtoMsgs>
-struct ChannelPublishTraits<::foxglove::schemas::SceneUpdateChannel,
-                            ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::SceneUpdateChannel* channel,
-                        const ProtoMsgs& message, uint64_t timestamp_ns,
-                        const std::string& topic_name) {
+struct ChannelPublishTraits<::foxglove::schemas::SceneUpdateChannel, ProtoMsgs> {
+    static bool Publish(::foxglove::schemas::SceneUpdateChannel* channel, const ProtoMsgs& message,
+                        uint64_t timestamp_ns, const std::string& topic_name) {
         (void)topic_name;
         if (channel) {
             auto scene_update = ToFoxglove(message);
@@ -63,8 +61,7 @@ struct ChannelPublishTraits<::foxglove::schemas::SceneUpdateChannel,
 /// GridChannel 特化：发布 2D 栅格地图
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::GridChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::GridChannel* channel,
-                        const ProtoMsgs& message, uint64_t timestamp_ns,
+    static bool Publish(::foxglove::schemas::GridChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
                         const std::string& topic_name) {
         (void)topic_name;
         if (channel) {
@@ -79,8 +76,7 @@ struct ChannelPublishTraits<::foxglove::schemas::GridChannel, ProtoMsgs> {
 /// RawImageChannel 特化：发布图像数据
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::RawImageChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::RawImageChannel* channel,
-                        const ProtoMsgs& message, uint64_t timestamp_ns,
+    static bool Publish(::foxglove::schemas::RawImageChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
                         const std::string& topic_name) {
         (void)topic_name;
         if (channel) {
@@ -95,9 +91,8 @@ struct ChannelPublishTraits<::foxglove::schemas::RawImageChannel, ProtoMsgs> {
 /// PointCloudChannel 特化：发布点云数据
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::PointCloudChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::PointCloudChannel* channel,
-                        const ProtoMsgs& message, uint64_t timestamp_ns,
-                        const std::string& topic_name) {
+    static bool Publish(::foxglove::schemas::PointCloudChannel* channel, const ProtoMsgs& message,
+                        uint64_t timestamp_ns, const std::string& topic_name) {
         (void)topic_name;
         if (channel) {
             auto pointcloud = ToFoxglove(message);
@@ -111,8 +106,7 @@ struct ChannelPublishTraits<::foxglove::schemas::PointCloudChannel, ProtoMsgs> {
 /// RawChannel 特化：发布原始 protobuf 消息
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::RawChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::RawChannel* channel,
-                        const ProtoMsgs& message, uint64_t timestamp_ns,
+    static bool Publish(::foxglove::RawChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
                         const std::string& topic_name) {
         std::string serialized = message.SerializeAsString();
         if (serialized.empty()) {
@@ -120,8 +114,7 @@ struct ChannelPublishTraits<::foxglove::RawChannel, ProtoMsgs> {
             return false;
         }
         if (channel) {
-            channel->log(reinterpret_cast<const std::byte*>(serialized.data()),
-                         serialized.size(), timestamp_ns);
+            channel->log(reinterpret_cast<const std::byte*>(serialized.data()), serialized.size(), timestamp_ns);
             return true;
         }
         return false;

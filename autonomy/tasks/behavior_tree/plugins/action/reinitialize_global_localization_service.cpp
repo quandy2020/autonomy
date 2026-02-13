@@ -22,14 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ReinitializeGlobalLocalizationService::ReinitializeGlobalLocalizationService(
-    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
-
-BT::NodeStatus ReinitializeGlobalLocalizationService::tick() {
-    // TODO: Implement reinitialize global localization service
-    return BT::NodeStatus::SUCCESS;
-}
+ReinitializeGlobalLocalizationService::ReinitializeGlobalLocalizationService(const std::string& service_node_name,
+                                                                             const BT::NodeConfiguration& conf)
+    : BtServiceNode<proto::Empty>(service_node_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -39,7 +34,6 @@ BT::NodeStatus ReinitializeGlobalLocalizationService::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 ReinitializeGlobalLocalizationService>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ReinitializeGlobalLocalizationService>(
         "ReinitializeGlobalLocalization");
 }

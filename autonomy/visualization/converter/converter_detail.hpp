@@ -30,8 +30,7 @@ namespace detail {
 // 从消息头提取时间戳（使用 SFINAE）
 template <typename MsgType>
 auto ExtractTimestamp(const MsgType& msg)
-    -> decltype(msg.header().stamp(),
-                std::optional<foxglove::schemas::Timestamp>{}) {
+    -> decltype(msg.header().stamp(), std::optional<foxglove::schemas::Timestamp>{}) {
     if (msg.has_header() && msg.header().has_stamp()) {
         foxglove::schemas::Timestamp timestamp;
         timestamp.sec = msg.header().stamp().sec();
@@ -43,8 +42,7 @@ auto ExtractTimestamp(const MsgType& msg)
 
 // 从消息头提取 frame_id（使用 SFINAE）
 template <typename MsgType>
-auto ExtractFrameId(const MsgType& msg)
-    -> decltype(msg.header().frame_id(), std::optional<std::string>{}) {
+auto ExtractFrameId(const MsgType& msg) -> decltype(msg.header().frame_id(), std::optional<std::string>{}) {
     if (msg.has_header()) {
         return msg.header().frame_id();
     }
@@ -52,32 +50,26 @@ auto ExtractFrameId(const MsgType& msg)
 }
 
 // 设置 Entity/RawImage/Grid 的头部信息
-void SetEntityHeader(
-    foxglove::schemas::SceneEntity& entity,
-    const std::optional<foxglove::schemas::Timestamp>& timestamp,
-    const std::optional<std::string>& frame_id);
+void SetEntityHeader(foxglove::schemas::SceneEntity& entity,
+                     const std::optional<foxglove::schemas::Timestamp>& timestamp,
+                     const std::optional<std::string>& frame_id);
 
-void SetRawImageHeader(
-    foxglove::schemas::RawImage& raw_image,
-    const std::optional<foxglove::schemas::Timestamp>& timestamp,
-    const std::optional<std::string>& frame_id);
+void SetRawImageHeader(foxglove::schemas::RawImage& raw_image,
+                       const std::optional<foxglove::schemas::Timestamp>& timestamp,
+                       const std::optional<std::string>& frame_id);
 
-void SetGridHeader(foxglove::schemas::Grid& grid,
-                   const std::optional<foxglove::schemas::Timestamp>& timestamp,
+void SetGridHeader(foxglove::schemas::Grid& grid, const std::optional<foxglove::schemas::Timestamp>& timestamp,
                    const std::optional<std::string>& frame_id);
 
-void SetPointCloudHeader(
-    foxglove::schemas::PointCloud& pointcloud,
-    const std::optional<foxglove::schemas::Timestamp>& timestamp,
-    const std::optional<std::string>& frame_id);
+void SetPointCloudHeader(foxglove::schemas::PointCloud& pointcloud,
+                         const std::optional<foxglove::schemas::Timestamp>& timestamp,
+                         const std::optional<std::string>& frame_id);
 
 // 从 Pose 创建 Foxglove Pose
-foxglove::schemas::Pose CreatePose(
-    const autonomy::commsgs::proto::geometry_msgs::Pose& pose);
+foxglove::schemas::Pose CreatePose(const autonomy::commsgs::proto::geometry_msgs::Pose& pose);
 
 // 创建颜色
-foxglove::schemas::Color CreateColor(double r, double g, double b,
-                                     double a = 1.0);
+foxglove::schemas::Color CreateColor(double r, double g, double b, double a = 1.0);
 
 }  // namespace detail
 }  // namespace converter

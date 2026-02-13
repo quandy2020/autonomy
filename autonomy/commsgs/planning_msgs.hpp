@@ -39,6 +39,45 @@ struct Path {
     std::vector<geometry_msgs::PoseStamped> poses;
 };
 
+struct Path2D {
+    // Define Path::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Path2D)
+
+    // Indicates the frame_id of the path.
+    std_msgs::Header header;
+
+    // Array of poses to follow.
+    std::vector<geometry_msgs::Pose2D> poses;
+};
+
+struct Point2D {
+    // Define Path::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Point2D)
+
+    double x;
+    double y;
+};
+
+struct Twist2D {
+    // Define Path::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Twist2D)
+
+    double x;
+    double y;
+    double theta;
+};
+
+struct Pose2DStamped {
+    // Define Path::SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Pose2DStamped)
+
+    // Indicates the frame_id of the path.
+    std_msgs::Header header;
+
+    // pose 2D
+    geometry_msgs::Pose2D pose;
+};
+
 struct Odometry {
     // Define Odometry::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(Odometry)

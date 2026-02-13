@@ -25,24 +25,21 @@
 namespace cartographer {
 namespace mapping {
 
-ConnectedComponents::ConnectedComponents()
-    : lock_(), forest_(), connection_map_() {}
+ConnectedComponents::ConnectedComponents() : lock_(), forest_(), connection_map_() {}
 
 void ConnectedComponents::Add(const int trajectory_id) {
     absl::MutexLock locker(&lock_);
     forest_.emplace(trajectory_id, trajectory_id);
 }
 
-void ConnectedComponents::Connect(const int trajectory_id_a,
-                                  const int trajectory_id_b) {
+void ConnectedComponents::Connect(const int trajectory_id_a, const int trajectory_id_b) {
     absl::MutexLock locker(&lock_);
     Union(trajectory_id_a, trajectory_id_b);
     auto sorted_pair = std::minmax(trajectory_id_a, trajectory_id_b);
     ++connection_map_[sorted_pair];
 }
 
-void ConnectedComponents::Union(const int trajectory_id_a,
-                                const int trajectory_id_b) {
+void ConnectedComponents::Union(const int trajectory_id_a, const int trajectory_id_b) {
     forest_.emplace(trajectory_id_a, trajectory_id_a);
     forest_.emplace(trajectory_id_b, trajectory_id_b);
     const int representative_a = FindSet(trajectory_id_a);
@@ -60,16 +57,14 @@ int ConnectedComponents::FindSet(const int trajectory_id) {
     return it->second;
 }
 
-bool ConnectedComponents::TransitivelyConnected(const int trajectory_id_a,
-                                                const int trajectory_id_b) {
+bool ConnectedComponents::TransitivelyConnected(const int trajectory_id_a, const int trajectory_id_b) {
     if (trajectory_id_a == trajectory_id_b) {
         return true;
     }
 
     absl::MutexLock locker(&lock_);
 
-    if (forest_.count(trajectory_id_a) == 0 ||
-        forest_.count(trajectory_id_b) == 0) {
+    if (forest_.count(trajectory_id_a) == 0 || forest_.count(trajectory_id_b) == 0) {
         return false;
     }
     return FindSet(trajectory_id_a) == FindSet(trajectory_id_b);
@@ -80,8 +75,7 @@ std::vector<std::vector<int>> ConnectedComponents::Components() {
     absl::flat_hash_map<int, std::vector<int>> map;
     absl::MutexLock locker(&lock_);
     for (const auto& trajectory_id_entry : forest_) {
-        map[FindSet(trajectory_id_entry.first)].push_back(
-            trajectory_id_entry.first);
+        map[FindSet(trajectory_id_entry.first)].push_back(trajectory_id_entry.first);
     }
 
     std::vector<std::vector<int>> result;
@@ -104,16 +98,13 @@ std::vector<int> ConnectedComponents::GetComponent(const int trajectory_id) {
     return trajectory_ids;
 }
 
-int ConnectedComponents::ConnectionCount(const int trajectory_id_a,
-                                         const int trajectory_id_b) {
+int ConnectedComponents::ConnectionCount(const int trajectory_id_a, const int trajectory_id_b) {
     absl::MutexLock locker(&lock_);
-    const auto it =
-        connection_map_.find(std::minmax(trajectory_id_a, trajectory_id_b));
+    const auto it = connection_map_.find(std::minmax(trajectory_id_a, trajectory_id_b));
     return it != connection_map_.end() ? it->second : 0;
 }
 
-proto::ConnectedComponents ToProto(
-    std::vector<std::vector<int>> connected_components) {
+proto::ConnectedComponents ToProto(std::vector<std::vector<int>> connected_components) {
     proto::ConnectedComponents proto;
     for (auto& connected_component : connected_components) {
         std::sort(connected_component.begin(), connected_component.end());

@@ -22,8 +22,7 @@
 namespace cartographer {
 namespace io {
 
-FakeFileWriter::FakeFileWriter(const std::string& filename,
-                               std::shared_ptr<std::vector<char>> content)
+FakeFileWriter::FakeFileWriter(const std::string& filename, std::shared_ptr<std::vector<char>> content)
     : is_closed_(false), content_(content), filename_(filename) {
     CHECK(content != nullptr);
 }

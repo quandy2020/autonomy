@@ -34,8 +34,7 @@ EventQueue* EventQueueThread::event_queue() {
 void EventQueueThread::Start(EventQueueRunner runner) {
     CHECK(!thread_);
     EventQueue* event_queue = event_queue_.get();
-    thread_ = common::make_unique<std::thread>(
-        [event_queue, runner]() { runner(event_queue); });
+    thread_ = common::make_unique<std::thread>([event_queue, runner]() { runner(event_queue); });
 }
 
 void EventQueueThread::Shutdown() {

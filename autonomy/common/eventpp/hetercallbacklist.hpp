@@ -56,9 +56,7 @@ protected:
     };
 
     template <typename T>
-    class HomoCallbackListType
-        : public CallbackList<T, UnderlyingPoliciesType_>,
-          public HomoCallbackListTypeBase
+    class HomoCallbackListType : public CallbackList<T, UnderlyingPoliciesType_>, public HomoCallbackListTypeBase
     {
     private:
         using super = CallbackList<T, UnderlyingPoliciesType_>;
@@ -73,9 +71,8 @@ protected:
             if (!sp) {
                 return false;
             }
-            return this->remove(typename super::Handle(
-                std::static_pointer_cast<typename super::Handle::element_type>(
-                    sp)));
+            return this->remove(
+                typename super::Handle(std::static_pointer_cast<typename super::Handle::element_type>(sp)));
         }
 
         virtual std::shared_ptr<HomoCallbackListTypeBase> doClone() override {
@@ -84,9 +81,7 @@ protected:
     };
 
     using Policies = Policies_;
-    using Threading =
-        typename SelectThreading<Policies,
-                                 HasTypeThreading<Policies>::value>::Type;
+    using Threading = typename SelectThreading<Policies, HasTypeThreading<Policies>::value>::Type;
 
     using PrototypeList = PrototypeList_;
 
@@ -97,8 +92,7 @@ public:
 public:
     HeterCallbackListBase() : callbackListList(), callbackListListMutex() {}
 
-    HeterCallbackListBase(const HeterCallbackListBase& other)
-        : callbackListList(), callbackListListMutex() {
+    HeterCallbackListBase(const HeterCallbackListBase& other) : callbackListList(), callbackListListMutex() {
         for (size_t i = 0; i < callbackListList.size(); ++i) {
             if (other.callbackListList[i]) {
                 callbackListList[i] = other.callbackListList[i]->doClone();
@@ -107,13 +101,11 @@ public:
     }
 
     HeterCallbackListBase(HeterCallbackListBase&& other) noexcept
-        : callbackListList(std::move(other.callbackListList)),
-          callbackListListMutex() {}
+        : callbackListList(std::move(other.callbackListList)), callbackListListMutex() {}
 
     // If we use pass by value idiom and omit the 'this' check,
     // when assigning to self there is a deep copy which is inefficient.
-    HeterCallbackListBase& operator=(
-        const HeterCallbackListBase& other) noexcept {
+    HeterCallbackListBase& operator=(const HeterCallbackListBase& other) noexcept {
         if (this != &other) {
             HeterCallbackListBase copied(other);
             swap(copied);
@@ -154,8 +146,7 @@ public:
     template <typename C>
     Handle append(const C& callback) {
         using PrototypeInfo = FindPrototypeByCallable<PrototypeList_, C>;
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         auto callbackList = doGetCallbackList<PrototypeInfo>();
         return Handle{PrototypeInfo::index, callbackList->append(callback)};
@@ -164,8 +155,7 @@ public:
     template <typename C>
     Handle prepend(const C& callback) {
         using PrototypeInfo = FindPrototypeByCallable<PrototypeList_, C>;
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         auto callbackList = doGetCallbackList<PrototypeInfo>();
         return Handle{PrototypeInfo::index, callbackList->prepend(callback)};
@@ -174,8 +164,7 @@ public:
     template <typename C>
     Handle insert(const C& callback, const Handle& before) {
         using PrototypeInfo = FindPrototypeByCallable<PrototypeList_, C>;
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         auto callbackList = doGetCallbackList<PrototypeInfo>();
 
@@ -183,16 +172,12 @@ public:
             return Handle{PrototypeInfo::index, callbackList->append(callback)};
         }
 
-        using UnderlyingHandle =
-            typename decltype(callbackList)::element_type::Handle;
+        using UnderlyingHandle = typename decltype(callbackList)::element_type::Handle;
 
-        return Handle{
-            PrototypeInfo::index,
-            callbackList->insert(
-                callback,
-                UnderlyingHandle(std::static_pointer_cast<
-                                 typename UnderlyingHandle::element_type>(
-                    before.homoHandle.lock())))};
+        return Handle{PrototypeInfo::index,
+                      callbackList->insert(
+                          callback, UnderlyingHandle(std::static_pointer_cast<typename UnderlyingHandle::element_type>(
+                                        before.homoHandle.lock())))};
     }
 
     bool remove(const Handle& handle) {
@@ -207,14 +192,11 @@ public:
     template <typename Prototype, typename Func>
     void forEach(Func&& func) const {
         using PrototypeInfo = FindPrototypeByCallable<PrototypeList, Prototype>;
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         auto callbackList = doGetCallbackList<PrototypeInfo>();
         using CL = typename decltype(callbackList)::element_type;
-        callbackList->forEach([this, &func](
-                                  const typename CL::Handle& handle,
-                                  const typename CL::Callback& callback) {
+        callbackList->forEach([this, &func](const typename CL::Handle& handle, const typename CL::Callback& callback) {
             doForEachInvoke<void, PrototypeInfo::index>(func, handle, callback);
         });
     }
@@ -222,69 +204,59 @@ public:
     template <typename Prototype, typename Func>
     bool forEachIf(Func&& func) const {
         using PrototypeInfo = FindPrototypeByCallable<PrototypeList, Prototype>;
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         auto callbackList = doGetCallbackList<PrototypeInfo>();
         using CL = typename decltype(callbackList)::element_type;
         return callbackList->forEachIf(
-            [this, &func](const typename CL::Handle& handle,
-                          const typename CL::Callback& callback) {
-                return doForEachInvoke<bool, PrototypeInfo::index>(func, handle,
-                                                                   callback);
+            [this, &func](const typename CL::Handle& handle, const typename CL::Callback& callback) {
+                return doForEachInvoke<bool, PrototypeInfo::index>(func, handle, callback);
             });
     }
 
     template <typename... Args>
     void operator()(Args&&... args) const {
         using PrototypeInfo = FindPrototypeByArgs<PrototypeList, Args...>;
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         auto callbackList = doGetCallbackList<PrototypeInfo>();
         (*callbackList)(std::forward<Args>(args)...);
     }
 
 private:
-    template <typename RT, int PrototypeIndex, typename Func, typename H,
-              typename CL>
+    template <typename RT, int PrototypeIndex, typename Func, typename H, typename CL>
     auto doForEachInvoke(Func&& func, const H& handle, CL&& callback) const ->
         typename std::enable_if<CanInvoke<Func, Handle, CL>::value, RT>::type {
         return func(Handle{PrototypeIndex, handle}, callback);
     }
 
-    template <typename RT, int PrototypeIndex, typename Func, typename H,
-              typename CL>
-    auto doForEachInvoke(Func&& func, const H& /*handle*/, CL&& callback) const
-        -> typename std::enable_if<CanInvoke<Func, CL>::value, RT>::type {
+    template <typename RT, int PrototypeIndex, typename Func, typename H, typename CL>
+    auto doForEachInvoke(Func&& func, const H& /*handle*/, CL&& callback) const ->
+        typename std::enable_if<CanInvoke<Func, CL>::value, RT>::type {
         return func(callback);
     }
 
     template <typename PrototypeInfo>
-    auto doGetCallbackList() const -> std::shared_ptr<
-        HomoCallbackListType<typename PrototypeInfo::Prototype> > {
-        static_assert(PrototypeInfo::index >= 0,
-                      "Can't find invoker for the given argument types.");
+    auto doGetCallbackList() const -> std::shared_ptr<HomoCallbackListType<typename PrototypeInfo::Prototype> > {
+        static_assert(PrototypeInfo::index >= 0, "Can't find invoker for the given argument types.");
 
         if (!callbackListList[PrototypeInfo::index]) {
             std::lock_guard<Mutex> lockGuard(callbackListListMutex);
 
             if (!callbackListList[PrototypeInfo::index]) {
-                callbackListList[PrototypeInfo::index] = std::make_shared<
-                    HomoCallbackListType<typename PrototypeInfo::Prototype> >();
+                callbackListList[PrototypeInfo::index] =
+                    std::make_shared<HomoCallbackListType<typename PrototypeInfo::Prototype> >();
             }
         }
 
-        return std::static_pointer_cast<
-            HomoCallbackListType<typename PrototypeInfo::Prototype> >(
+        return std::static_pointer_cast<HomoCallbackListType<typename PrototypeInfo::Prototype> >(
             callbackListList[PrototypeInfo::index]);
     }
 
 private:
     // the postfix 'ListList' is not good, but it's better to use consistent
     // naming convention.
-    mutable std::array<std::shared_ptr<HomoCallbackListTypeBase>,
-                       HeterTupleSize<PrototypeList_>::value>
+    mutable std::array<std::shared_ptr<HomoCallbackListTypeBase>, HeterTupleSize<PrototypeList_>::value>
         callbackListList;
     mutable Mutex callbackListListMutex;
 };
@@ -292,10 +264,9 @@ private:
 }  // namespace internal_
 
 template <typename PrototypeList_, typename Policies_ = DefaultPolicies>
-class HeterCallbackList
-    : public internal_::HeterCallbackListBase<PrototypeList_, Policies_>,
-      public TagCallbackList,
-      public TagHeterCallbackList
+class HeterCallbackList : public internal_::HeterCallbackListBase<PrototypeList_, Policies_>,
+                          public TagCallbackList,
+                          public TagHeterCallbackList
 {
 private:
     using super = internal_::HeterCallbackListBase<PrototypeList_, Policies_>;
@@ -303,8 +274,7 @@ private:
 public:
     using super::super;
 
-    friend void swap(HeterCallbackList& first,
-                     HeterCallbackList& second) noexcept {
+    friend void swap(HeterCallbackList& first, HeterCallbackList& second) noexcept {
         first.swap(second);
     }
 };

@@ -29,8 +29,7 @@ proto::OdometryData ToProto(const OdometryData& odometry_data) {
 }
 
 OdometryData FromProto(const proto::OdometryData& proto) {
-    return OdometryData{common::FromUniversal(proto.timestamp()),
-                        transform::ToRigid3(proto.pose())};
+    return OdometryData{common::FromUniversal(proto.timestamp()), transform::ToRigid3(proto.pose())};
 }
 
 }  // namespace sensor

@@ -15,8 +15,7 @@
 
 namespace grid_map {
 
-SpiralIterator::SpiralIterator(const grid_map::GridMap& gridMap,
-                               Eigen::Vector2d center, const double radius)
+SpiralIterator::SpiralIterator(const grid_map::GridMap& gridMap, Eigen::Vector2d center, const double radius)
     : center_(std::move(center)), radius_(radius), distance_(0) {
     radiusSquare_ = radius_ * radius_;
     mapLength_ = gridMap.getLength();
@@ -56,8 +55,7 @@ bool SpiralIterator::isPastEnd() const {
 
 bool SpiralIterator::isInside(const Index& index) const {
     Eigen::Vector2d position;
-    getPositionFromIndex(position, index, mapLength_, mapPosition_, resolution_,
-                         bufferSize_);
+    getPositionFromIndex(position, index, mapLength_, mapPosition_, resolution_, bufferSize_);
     double squareNorm = (position - center_).array().square().sum();
     return (squareNorm <= radiusSquare_);
 }
@@ -82,21 +80,16 @@ void SpiralIterator::generateRing() {
         normal.x() = -signum(point.y());
         normal.y() = signum(point.x());
         if (normal.x() != 0 &&
-            static_cast<unsigned int>(
-                Vector(point.x() + normal.x(), point.y()).norm()) ==
-                distance_) {
+            static_cast<unsigned int>(Vector(point.x() + normal.x(), point.y()).norm()) == distance_) {
             point.x() += normal.x();
         } else if (normal.y() != 0 &&
-                   static_cast<unsigned int>(
-                       Vector(point.x(), point.y() + normal.y()).norm()) ==
-                       distance_) {
+                   static_cast<unsigned int>(Vector(point.x(), point.y() + normal.y()).norm()) == distance_) {
             point.y() += normal.y();
         } else {
             point.x() += normal.x();
             point.y() += normal.y();
         }
-    } while (static_cast<unsigned int>(point.x()) != distance_ ||
-             point.y() != 0);
+    } while (static_cast<unsigned int>(point.x()) != distance_ || point.y() != 0);
 }
 
 double SpiralIterator::getCurrentRadius() const {

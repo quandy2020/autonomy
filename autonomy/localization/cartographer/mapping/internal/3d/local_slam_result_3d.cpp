@@ -21,14 +21,11 @@
 namespace cartographer {
 namespace mapping {
 
-void LocalSlamResult3D::AddToTrajectoryBuilder(
-    TrajectoryBuilderInterface* const trajectory_builder) {
-    trajectory_builder->AddLocalSlamResultData(
-        absl::make_unique<LocalSlamResult3D>(*this));
+void LocalSlamResult3D::AddToTrajectoryBuilder(TrajectoryBuilderInterface* const trajectory_builder) {
+    trajectory_builder->AddLocalSlamResultData(absl::make_unique<LocalSlamResult3D>(*this));
 }
 
-void LocalSlamResult3D::AddToPoseGraph(int trajectory_id,
-                                       PoseGraph* pose_graph) const {
+void LocalSlamResult3D::AddToPoseGraph(int trajectory_id, PoseGraph* pose_graph) const {
     DCHECK(dynamic_cast<PoseGraph3D*>(pose_graph));
     CHECK_GE(local_slam_result_data_.submaps().size(), 1);
     CHECK(local_slam_result_data_.submaps(0).has_submap_3d());

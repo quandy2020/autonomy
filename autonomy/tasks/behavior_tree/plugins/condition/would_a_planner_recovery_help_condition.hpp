@@ -35,8 +35,7 @@ class WouldAPlannerRecoveryHelp : public AreErrorCodesPresent
     using ThroughActionResult = ThroughAction::Result;
 
 public:
-    WouldAPlannerRecoveryHelp(const std::string& condition_name,
-                              const BT::NodeConfiguration& conf);
+    WouldAPlannerRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     WouldAPlannerRecoveryHelp() = delete;
 };

@@ -1,0 +1,137 @@
+"""
+Bazel BUILD file for autonomy/control/controller/mppi_controller
+
+This file defines rules to build the MPPI controller plugin library.
+This is a plugin-based controller implementation for MPPI (Model Predictive Path Integral).
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_binary")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# MPPI Critics shared library (dynamic library)
+# This contains all critic implementations for MPPI controller
+autonomy_cc_library(
+    name = "mppi_critics",
+    srcs_glob = [
+        "critics/*.cpp",
+        "critics/*.cc",
+    ],
+    hdrs_glob = [
+        "critics/*.hpp",
+        "critics/*.h",
+    ],
+    exclude_patterns = [
+        "**/*_test.cpp",
+        "**/*_test.cc",
+        "**/*_test.hpp",
+        "**/*_test.h",
+        "**/test/**",
+        "**/testing/**",
+        "**/*.xml",
+        "**/*.cmake",
+        "**/*.md",
+    ],
+    deps = [
+        ":mppi_controller_core",  # Depend on core mppi_controller for base classes
+        "//autonomy/control:control_cc_proto",
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+        "//autonomy/map:map",
+        "//autonomy/tasks:tasks",
+    ],
+    linkstatic = False,  # Build as shared library (.so/.dylib)
+    alwayslink = 1,      # Always link all symbols (important for plugins)
+)
+
+# MPPI Controller core shared library (dynamic library)
+# This contains the core controller implementation (excluding critics)
+autonomy_cc_library(
+    name = "mppi_controller_core",
+    srcs_glob = [
+        "*.cpp",
+        "*.cc",
+        "models/**/*.cpp",
+        "models/**/*.cc",
+        "tools/**/*.cpp",
+        "tools/**/*.cc",
+    ],
+    hdrs_glob = [
+        "*.hpp",
+        "*.h",
+        "models/**/*.hpp",
+        "models/**/*.h",
+        "tools/**/*.hpp",
+        "tools/**/*.h",
+    ],
+    exclude_patterns = [
+        "**/*_test.cpp",
+        "**/*_test.cc",
+        "**/*_test.hpp",
+        "**/*_test.h",
+        "**/test/**",
+        "**/testing/**",
+        "**/*.xml",
+        "**/*.cmake",
+        "**/*.md",
+        "critics/**",  # Exclude critics (built separately)
+    ],
+    deps = [
+        "//autonomy/control:control_cc_proto",
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+        "//autonomy/map:map",
+        "//autonomy/tasks:tasks",
+    ],
+    linkstatic = False,  # Build as shared library (.so/.dylib)
+    alwayslink = 1,      # Always link all symbols (important for plugins)
+)
+
+# MPPI Controller shared library (dynamic library)
+# This is the main plugin library that aggregates core and critics
+# This is a plugin-based controller implementation for MPPI (Model Predictive Path Integral)
+cc_library(
+    name = "mppi_controller",
+    deps = [
+        ":mppi_controller_core",
+        ":mppi_critics",
+    ],
+    linkstatic = False,  # Build as shared library (.so/.dylib)
+    alwayslink = 1,      # Always link all symbols (important for plugins)
+    visibility = ["//visibility:public"],
+)
+
+# MPPI Controller test with OpenCV visualization
+# This test program visualizes the path following behavior of the MPPI controller
+cc_binary(
+    name = "mppi_controller_test",
+    srcs = ["mppi_controller_test.cpp"],
+    deps = [
+        ":mppi_controller",
+        "//autonomy/control:control_cc_proto",
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+        "//autonomy/map:map",
+        "//autonomy/tasks:tasks",
+        # TODO: Add OpenCV dependency when available in Bazel
+        # For now, OpenCV needs to be installed system-wide or configured as a local repository
+        # Example: "@opencv//:opencv" or use system library with --linkopt
+    ],
+    copts = [
+        "-std=c++17",
+        # Link against system OpenCV (if installed)
+        # This assumes OpenCV is installed in standard system paths
+    ],
+    linkopts = [
+        # Link against OpenCV libraries
+        # Adjust paths based on your OpenCV installation
+        "-lopencv_core",
+        "-lopencv_imgproc",
+        "-lopencv_imgcodecs",
+        "-lopencv_highgui",
+    ],
+    visibility = ["//visibility:public"],
+)

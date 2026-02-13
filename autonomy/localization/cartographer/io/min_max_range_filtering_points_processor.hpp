@@ -30,19 +30,15 @@ namespace io {
 class MinMaxRangeFilteringPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "min_max_range_filter";
-    MinMaxRangeFilteringPointsProcessor(double min_range, double max_range,
-                                        PointsProcessor* next);
+    constexpr static const char* kConfigurationFileActionName = "min_max_range_filter";
+    MinMaxRangeFilteringPointsProcessor(double min_range, double max_range, PointsProcessor* next);
     static std::unique_ptr<MinMaxRangeFilteringPointsProcessor> FromDictionary(
         common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
     ~MinMaxRangeFilteringPointsProcessor() override {}
 
-    MinMaxRangeFilteringPointsProcessor(
-        const MinMaxRangeFilteringPointsProcessor&) = delete;
-    MinMaxRangeFilteringPointsProcessor& operator=(
-        const MinMaxRangeFilteringPointsProcessor&) = delete;
+    MinMaxRangeFilteringPointsProcessor(const MinMaxRangeFilteringPointsProcessor&) = delete;
+    MinMaxRangeFilteringPointsProcessor& operator=(const MinMaxRangeFilteringPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

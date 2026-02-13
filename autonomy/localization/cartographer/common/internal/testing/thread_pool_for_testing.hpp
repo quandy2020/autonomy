@@ -35,8 +35,7 @@ public:
     ThreadPoolForTesting();
     ~ThreadPoolForTesting();
 
-    std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task)
-        LOCKS_EXCLUDED(mutex_) override;
+    std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task) LOCKS_EXCLUDED(mutex_) override;
 
     void WaitUntilIdle();
 
@@ -45,8 +44,7 @@ private:
 
     void DoWork();
 
-    void NotifyDependenciesCompleted(Task* task)
-        LOCKS_EXCLUDED(mutex_) override;
+    void NotifyDependenciesCompleted(Task* task) LOCKS_EXCLUDED(mutex_) override;
 
     absl::Mutex mutex_;
     bool running_ GUARDED_BY(mutex_) = true;

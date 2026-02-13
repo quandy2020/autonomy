@@ -50,8 +50,8 @@ public:
     /**
      * @brief Process the keepout layer at the current pose / bounds / grid
      */
-    void process(Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                 int max_j, const commsgs::geometry_msgs::Pose2D& pose);
+    void process(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j,
+                 const commsgs::geometry_msgs::Pose2D& pose);
 
     /**
      * @brief Reset the costmap filter / topic / info

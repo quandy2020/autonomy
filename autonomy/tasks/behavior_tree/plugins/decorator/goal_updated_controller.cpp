@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace decorator {
 
-GoalUpdatedController::GoalUpdatedController(const std::string& name,
-                                             const BT::NodeConfiguration& conf)
+GoalUpdatedController::GoalUpdatedController(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf) {}
 
 BT::NodeStatus GoalUpdatedController::tick() {
@@ -57,10 +56,8 @@ BT::NodeStatus GoalUpdatedController::tick() {
 
     if (goals_.goals.size() != current_goals.goals.size() ||
         (goals_.goals.size() > 0 && current_goals.goals.size() > 0 &&
-         (goals_.goals[0].pose.position.x !=
-              current_goals.goals[0].pose.position.x ||
-          goals_.goals[0].pose.position.y !=
-              current_goals.goals[0].pose.position.y))) {
+         (goals_.goals[0].pose.position.x != current_goals.goals[0].pose.position.x ||
+          goals_.goals[0].pose.position.y != current_goals.goals[0].pose.position.y))) {
         goals_changed = true;
     }
 
@@ -73,8 +70,7 @@ BT::NodeStatus GoalUpdatedController::tick() {
     // The child gets ticked the first time through and any time the goal has
     // changed or preempted. In addition, once the child begins to run, it is
     // ticked each time 'til completion
-    if ((child_node_->status() == BT::NodeStatus::RUNNING) ||
-        goal_was_updated_) {
+    if ((child_node_->status() == BT::NodeStatus::RUNNING) || goal_was_updated_) {
         goal_was_updated_ = false;
         return child_node_->executeTick();
     }
@@ -90,7 +86,6 @@ BT::NodeStatus GoalUpdatedController::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 decorator::GoalUpdatedController>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::decorator::GoalUpdatedController>(
         "GoalUpdatedController");
 }

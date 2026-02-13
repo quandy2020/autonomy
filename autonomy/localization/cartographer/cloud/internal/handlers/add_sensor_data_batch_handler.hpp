@@ -31,14 +31,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    AddSensorDataBatchSignature, proto::AddSensorDataBatchRequest,
-    google::protobuf::Empty,
-    "/cartographer.cloud.proto.MapBuilderService/AddSensorDataBatch")
+DEFINE_HANDLER_SIGNATURE(AddSensorDataBatchSignature, proto::AddSensorDataBatchRequest, google::protobuf::Empty,
+                         "/cartographer.cloud.proto.MapBuilderService/AddSensorDataBatch")
 
-class AddSensorDataBatchHandler
-    : public autonomy::common::async_grpc::RpcHandler<
-          AddSensorDataBatchSignature>
+class AddSensorDataBatchHandler : public autonomy::common::async_grpc::RpcHandler<AddSensorDataBatchSignature>
 {
 public:
     void OnRequest(const proto::AddSensorDataBatchRequest& request) override;
@@ -55,15 +51,12 @@ private:
         metrics::Counter* local_slam_result_counter;
     };
 
-    ClientMetrics* GetOrCreateClientMetrics(const std::string& client_id,
-                                            int trajectory_id);
+    ClientMetrics* GetOrCreateClientMetrics(const std::string& client_id, int trajectory_id);
 
-    static cartographer::metrics::Family<metrics::Counter>*
-        counter_metrics_family_;
+    static cartographer::metrics::Family<metrics::Counter>* counter_metrics_family_;
 
     // Holds individual metrics for each client.
-    absl::flat_hash_map<std::string, std::unique_ptr<ClientMetrics>>
-        client_metric_map_;
+    absl::flat_hash_map<std::string, std::unique_ptr<ClientMetrics>> client_metric_map_;
 };
 
 }  // namespace handlers

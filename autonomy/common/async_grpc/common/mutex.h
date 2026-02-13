@@ -43,19 +43,15 @@ namespace common {
 
 #define PT_GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(pt_guarded_by(x))
 
-#define REQUIRES(...) \
-    THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+#define REQUIRES(...) THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
 
-#define ACQUIRE(...) \
-    THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
+#define ACQUIRE(...) THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
 
-#define RELEASE(...) \
-    THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
+#define RELEASE(...) THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
 
 #define EXCLUDES(...) THREAD_ANNOTATION_ATTRIBUTE__(locks_excluded(__VA_ARGS__))
 
-#define NO_THREAD_SAFETY_ANALYSIS \
-    THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
+#define NO_THREAD_SAFETY_ANALYSIS THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
 
 // Defines an annotated mutex that can only be locked through its scoped locker
 // implementation.
@@ -68,8 +64,7 @@ public:
     class SCOPED_CAPABILITY Locker
     {
     public:
-        Locker(Mutex* mutex) ACQUIRE(mutex)
-            : mutex_(mutex), lock_(mutex->mutex_) {}
+        Locker(Mutex* mutex) ACQUIRE(mutex) : mutex_(mutex), lock_(mutex->mutex_) {}
 
         ~Locker() RELEASE() {
             lock_.unlock();
@@ -82,8 +77,7 @@ public:
         }
 
         template <typename Predicate>
-        bool AwaitWithTimeout(Predicate predicate, common::Duration timeout)
-            REQUIRES(this) {
+        bool AwaitWithTimeout(Predicate predicate, common::Duration timeout) REQUIRES(this) {
             return mutex_->condition_.wait_for(lock_, timeout, predicate);
         }
 

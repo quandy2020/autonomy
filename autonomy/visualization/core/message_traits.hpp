@@ -53,6 +53,8 @@ SCENE_UPDATE_TRAIT(commsgs::proto::geometry_msgs::PoseStamped);
 SCENE_UPDATE_TRAIT(commsgs::proto::geometry_msgs::PoseArray);
 SCENE_UPDATE_TRAIT(commsgs::proto::geometry_msgs::TransformStamped);
 SCENE_UPDATE_TRAIT(commsgs::proto::geometry_msgs::TransformStampeds);
+SCENE_UPDATE_TRAIT(commsgs::proto::geometry_msgs::Twist);
+SCENE_UPDATE_TRAIT(commsgs::proto::geometry_msgs::TwistStamped);
 
 // Visualization messages
 SCENE_UPDATE_TRAIT(commsgs::proto::visualization_msgs::Marker);

@@ -91,15 +91,13 @@ TEST(ContinuousToDiscreteTest, c2d_fixed_size) {
 
     Eigen::Matrix<float, 1, 1> prt_d_d;
 
-    bool res = ContinuousToDiscrete<float, 2, 1, 1>(
-        m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
+    bool res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_FALSE(res);
 
     ts = 1;
 
-    res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d,
-                                               &prt_b_d, &prt_c_d, &prt_d_d);
+    res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_TRUE(res);
 
@@ -118,8 +116,7 @@ TEST(ContinuousToDiscreteTest, c2d_fixed_size) {
 
     ts = 0.1;
 
-    res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d,
-                                               &prt_b_d, &prt_c_d, &prt_d_d);
+    res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_TRUE(res);
 
@@ -138,8 +135,7 @@ TEST(ContinuousToDiscreteTest, c2d_fixed_size) {
 
     ts = 0.01;
 
-    res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d,
-                                               &prt_b_d, &prt_c_d, &prt_d_d);
+    res = ContinuousToDiscrete<float, 2, 1, 1>(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_TRUE(res);
 
@@ -176,15 +172,13 @@ TEST(ContinuousToDiscreteTest, c2d_dynamic_size) {
 
     Eigen::MatrixXd prt_d_d;
 
-    bool res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d,
-                                    &prt_c_d, &prt_d_d);
+    bool res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_FALSE(res);
 
     ts = 1;
 
-    res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d,
-                               &prt_c_d, &prt_d_d);
+    res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_TRUE(res);
 
@@ -203,8 +197,7 @@ TEST(ContinuousToDiscreteTest, c2d_dynamic_size) {
 
     ts = 0.1;
 
-    res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d,
-                               &prt_c_d, &prt_d_d);
+    res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_TRUE(res);
 
@@ -223,8 +216,7 @@ TEST(ContinuousToDiscreteTest, c2d_dynamic_size) {
 
     ts = 0.01;
 
-    res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d,
-                               &prt_c_d, &prt_d_d);
+    res = ContinuousToDiscrete(m_a, m_b, m_c, m_d, ts, &prt_a_d, &prt_b_d, &prt_c_d, &prt_d_d);
 
     EXPECT_TRUE(res);
 
@@ -301,16 +293,13 @@ TEST(DENSE_TO_CSC_MATRIX, dense_to_csc_matrix_test) {
         std::vector<int> indices;
         std::vector<int> indptr;
         Eigen::MatrixXd dense_matrix(4, 6);
-        dense_matrix << 11, 0, 0, 14, 0, 16, 0, 22, 0, 0, 25, 26, 0, 0, 33, 34,
-            0, 36, 41, 0, 43, 44, 0, 46;
+        dense_matrix << 11, 0, 0, 14, 0, 16, 0, 22, 0, 0, 25, 26, 0, 0, 33, 34, 0, 36, 41, 0, 43, 44, 0, 46;
 
         DenseToCSCMatrix(dense_matrix, &data, &indices, &indptr);
 
-        std::vector<double> data_golden = {11.0, 41.0, 22.0, 33.0, 43.0,
-                                           14.0, 34.0, 44.0, 25.0, 16.0,
-                                           26.0, 36.0, 46.0};
-        std::vector<int> indices_golden = {0, 3, 1, 2, 3, 0, 2,
-                                           3, 1, 0, 1, 2, 3};
+        std::vector<double> data_golden = {11.0, 41.0, 22.0, 33.0, 43.0, 14.0, 34.0,
+                                           44.0, 25.0, 16.0, 26.0, 36.0, 46.0};
+        std::vector<int> indices_golden = {0, 3, 1, 2, 3, 0, 2, 3, 1, 0, 1, 2, 3};
         std::vector<int> indptr_golden = {0, 2, 3, 5, 8, 9, 13};
 
         EXPECT_EQ(data.size(), data_golden.size());

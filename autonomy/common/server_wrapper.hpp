@@ -24,8 +24,8 @@
 #include <string>
 #include <thread>
 
-#include "autolink/service/service.hpp"
 #include "autolink/common/log.hpp"
+#include "autolink/service/service.hpp"
 
 namespace autonomy {
 namespace common {
@@ -42,21 +42,16 @@ public:
 
     using CompletionCallback = std::function<void()>;
 
-    ServiceWrapper(const std::shared_ptr<::autolink::Node>& node,
-                   const std::string& service_name,
-                   ExecuteCallback execute_callback,
-                   CompletionCallback completion_callback = nullptr,
-                   std::chrono::milliseconds server_timeout =
-                       std::chrono::milliseconds(500))
+    ServiceWrapper(const std::shared_ptr<::autolink::Node>& node, const std::string& service_name,
+                   ExecuteCallback execute_callback, CompletionCallback completion_callback = nullptr,
+                   std::chrono::milliseconds server_timeout = std::chrono::milliseconds(500))
         : service_name_(service_name),
           execute_callback_(execute_callback),
           completion_callback_(completion_callback),
           server_timeout_(server_timeout) {
-        server_ = node->CreateService<typename ServiceT::Request,
-                                      typename ServiceT::Response>(
-            service_name,
-            [this](const std::shared_ptr<typename ServiceT::Request>& request,
-                   std::shared_ptr<typename ServiceT::Response>& response) {
+        server_ = node->CreateService<typename ServiceT::Request, typename ServiceT::Response>(
+            service_name, [this](const std::shared_ptr<typename ServiceT::Request>& request,
+                                 std::shared_ptr<typename ServiceT::Response>& response) {
                 server_active_ = true;
                 HandleAccepted(request, response);
             });
@@ -69,12 +64,10 @@ public:
      * @return true
      * @return false
      */
-    bool HandleAccepted(
-        const std::shared_ptr<typename ServiceT::Request>& request,
-        std::shared_ptr<typename ServiceT::Response>& response) {
+    bool HandleAccepted(const std::shared_ptr<typename ServiceT::Request>& request,
+                        std::shared_ptr<typename ServiceT::Response>& response) {
         InfoMsg("Executing goal asynchronously.");
-        execution_future_ =
-            std::async(std::launch::async, [this]() { Work(); });
+        execution_future_ = std::async(std::launch::async, [this]() { Work(); });
         return true;
     }
 
@@ -90,9 +83,7 @@ public:
 
                 InfoMsg("Executing the goal 2");
             } catch (std::exception& ex) {
-                LOG(ERROR)
-                    << "Action server failed while executing action callback: "
-                    << ex.what();
+                LOG(ERROR) << "Action server failed while executing action callback: " << ex.what();
                 completion_callback_();
                 return;
             }
@@ -112,8 +103,7 @@ public:
      */
     bool IsRunning() {
         return execution_future_.valid() &&
-               (execution_future_.wait_for(std::chrono::milliseconds(0)) ==
-                std::future_status::timeout);
+               (execution_future_.wait_for(std::chrono::milliseconds(0)) == std::future_status::timeout);
     }
 
     /**
@@ -154,8 +144,7 @@ public:
      * @brief Get the current request object
      * @return request Ptr to the  goal that's being processed currently
      */
-    const std::shared_ptr<const typename ServiceT::Request> GetCurrentRequest()
-        const {
+    const std::shared_ptr<const typename ServiceT::Request> GetCurrentRequest() const {
         return nullptr;
     }
 
@@ -163,8 +152,7 @@ public:
      * @brief Get the pending request object
      * @return Request Ptr to the request that's pending
      */
-    const std::shared_ptr<const typename ServiceT::Request> GetPendingRequest()
-        const {
+    const std::shared_ptr<const typename ServiceT::Request> GetPendingRequest() const {
         return nullptr;
     }
 
@@ -187,8 +175,7 @@ protected:
      * @brief Warn logging
      */
     void WarnMsg(const std::string& msg) const {
-        LOG(WARNING) << service_name_.c_str() << "[ActionServer] "
-                     << msg.c_str();
+        LOG(WARNING) << service_name_.c_str() << "[ActionServer] " << msg.c_str();
     }
 
     /**
@@ -210,9 +197,7 @@ protected:
     bool preempt_requested_{false};
     std::chrono::milliseconds server_timeout_;
 
-    std::shared_ptr<::autolink::Service<typename ServiceT::Request,
-                                        typename ServiceT::Response>>
-        server_;
+    std::shared_ptr<::autolink::Service<typename ServiceT::Request, typename ServiceT::Response>> server_;
 };
 
 }  // namespace common

@@ -72,6 +72,10 @@ RUN apt-get update && apt-get install -y sudo \
     libeigen3-dev \
     libsqlite3-dev \
     libzmq3-dev \
+    uuid-dev \
+    liburdfdom-dev \
+    libgtk2.0-dev \
+    clang-format \
     sqlite3 \
     stow && \
     rm -rf /var/lib/apt/lists/*
@@ -87,10 +91,19 @@ RUN current_dir="dirname $(dirname "$(realpath "$0")")"
 # Install autonomy dependencies
 COPY $current_dir/install /tmp/install
 
+# Setup GLOG environment variables in user home directory .bashrc
+RUN touch /root/.bashrc && \
+    echo '# GLOG environment variables' >> /root/.bashrc && \
+    echo 'export GLOG_logtostderr=1' >> /root/.bashrc && \
+    echo 'export GLOG_alsologtostderr=0' >> /root/.bashrc && \
+    echo 'export GLOG_colorlogtostderr=1' >> /root/.bashrc && \
+    echo 'export GLOG_minloglevel=0' >> /root/.bashrc
+
 # thirdparty
 RUN mkdir /thirdparty
-RUN bash /tmp/install/install_gflags_glog.sh
 RUN bash /tmp/install/install_gtest.sh
+RUN bash /tmp/install/install_glog.sh
+RUN bash /tmp/install/install_gflags.sh
 RUN bash /tmp/install/install_grpc.sh
 RUN bash /tmp/install/install_gperftools.sh
 RUN bash /tmp/install/install_opencv.sh
@@ -99,6 +112,13 @@ RUN bash /tmp/install/install_nlohmann.sh
 RUN bash /tmp/install/install_osqp.sh
 RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_python_modules.sh
+RUN bash /tmp/install/install_assimp.sh
+RUN bash /tmp/install/install_ogre.sh
+RUN bash /tmp/install/install_mcap.sh
+RUN bash /tmp/install/install_adolc.sh
+RUN bash /tmp/install/install_ipopt.sh
+RUN bash /tmp/install/install_bazel.sh
+RUN bash /tmp/install/install_gperftools.sh
 
 # autonomy workspace
 ENV AUTONOMY_WS /workspace/autonomy

@@ -94,14 +94,12 @@ void VoxelLayer::resetMaps() {
     // voxel_grid_.reset();
 }
 
-void VoxelLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
-                              double* min_x, double* min_y, double* max_x,
-                              double* max_y) {
+void VoxelLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                              double* max_x, double* max_y) {
     std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
 
     if (rolling_window_) {
-        updateOrigin(robot_x - getSizeInMetersX() / 2,
-                     robot_y - getSizeInMetersY() / 2);
+        updateOrigin(robot_x - getSizeInMetersX() / 2, robot_y - getSizeInMetersY() / 2);
     }
     if (!enabled_) {
         return;
@@ -211,14 +209,11 @@ void VoxelLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
     updateFootprint(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);
 }
 
-void VoxelLayer::raytraceFreespace(const Observation& clearing_observation,
-                                   double* min_x, double* min_y, double* max_x,
+void VoxelLayer::raytraceFreespace(const Observation& clearing_observation, double* min_x, double* min_y, double* max_x,
                                    double* max_y) {
-    auto clearing_endpoints_ =
-        std::make_unique<commsgs::sensor_msgs::PointCloud2>();
+    auto clearing_endpoints_ = std::make_unique<commsgs::sensor_msgs::PointCloud2>();
 
-    if (clearing_observation.cloud_->height == 0 ||
-        clearing_observation.cloud_->width == 0) {
+    if (clearing_observation.cloud_->height == 0 || clearing_observation.cloud_->width == 0) {
         return;
     }
 
@@ -438,5 +433,4 @@ void VoxelLayer::updateOrigin(double new_origin_x, double new_origin_y) {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::VoxelLayer,
-                            autonomy::map::costmap_2d::Layer)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::VoxelLayer, autonomy::map::costmap_2d::Layer)

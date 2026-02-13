@@ -36,8 +36,7 @@ class TransformInterpolationBuffer
 {
 public:
     TransformInterpolationBuffer() = default;
-    explicit TransformInterpolationBuffer(
-        const mapping::proto::Trajectory& trajectory);
+    explicit TransformInterpolationBuffer(const mapping::proto::Trajectory& trajectory);
 
     // Sets the transform buffer size limit and removes old transforms
     // if it is exceeded.

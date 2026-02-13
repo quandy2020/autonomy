@@ -34,13 +34,11 @@ google::protobuf::util::JsonOptions JsonOption() {
 
 }  // namespace
 
-nlohmann::json JsonUtil::ProtoToTypedJson(
-    const std::string& json_type, const google::protobuf::Message& proto) {
+nlohmann::json JsonUtil::ProtoToTypedJson(const std::string& json_type, const google::protobuf::Message& proto) {
     static const auto kJsonOption = JsonOption();
     std::string json_string;
     const auto status = MessageToJsonString(proto, &json_string, kJsonOption);
-    CHECK(status.ok()) << "Cannot convert proto to json:"
-                       << proto.DebugString();
+    CHECK(status.ok()) << "Cannot convert proto to json:" << proto.DebugString();
 
     Json json_obj;
     json_obj["type"] = json_type;
@@ -56,8 +54,7 @@ nlohmann::json JsonUtil::ProtoToJson(const google::protobuf::Message& proto) {
     return json_obj;
 }
 
-bool JsonUtil::GetString(const Json& json, const std::string& key,
-                         std::string* value) {
+bool JsonUtil::GetString(const Json& json, const std::string& key, std::string* value) {
     const auto iter = json.find(key);
     if (iter == json.end()) {
         LOG(ERROR) << "The json has no such key: " << key;
@@ -71,9 +68,7 @@ bool JsonUtil::GetString(const Json& json, const std::string& key,
     return true;
 }
 
-bool JsonUtil::GetJsonByPath(const nlohmann::json& json,
-                             const std::vector<std::string>& paths,
-                             nlohmann::json* value) {
+bool JsonUtil::GetJsonByPath(const nlohmann::json& json, const std::vector<std::string>& paths, nlohmann::json* value) {
     Json upper_layer_json = json;
     for (auto& field : paths) {
         if (field.empty()) {
@@ -95,8 +90,7 @@ bool JsonUtil::GetJsonByPath(const nlohmann::json& json,
     return true;
 }
 
-bool JsonUtil::GetStringByPath(const Json& json, const std::string& path,
-                               std::string* value) {
+bool JsonUtil::GetStringByPath(const Json& json, const std::string& path, std::string* value) {
     std::vector<std::string> paths = absl::StrSplit(path, '.');
     std::string key = paths.back();
     paths.pop_back();
@@ -107,8 +101,7 @@ bool JsonUtil::GetStringByPath(const Json& json, const std::string& path,
     return GetString(upper_layer_json, key, value);
 }
 
-bool JsonUtil::GetStringVector(const Json& json, const std::string& key,
-                               std::vector<std::string>* value) {
+bool JsonUtil::GetStringVector(const Json& json, const std::string& key, std::vector<std::string>* value) {
     const auto iter = json.find(key);
     if (iter == json.end()) {
         LOG(ERROR) << "The json has no such key: " << key;
@@ -126,8 +119,7 @@ bool JsonUtil::GetStringVector(const Json& json, const std::string& key,
         // Note that we still try to get all string values though there are
         // invalid elements.
         if (!elem.is_string()) {
-            LOG(WARNING) << "The value of json[" << key
-                         << "] contains non-string element";
+            LOG(WARNING) << "The value of json[" << key << "] contains non-string element";
             ret = false;
         } else {
             value->push_back(elem);
@@ -136,8 +128,7 @@ bool JsonUtil::GetStringVector(const Json& json, const std::string& key,
     return ret;
 }
 
-bool JsonUtil::GetBoolean(const nlohmann::json& json, const std::string& key,
-                          bool* value) {
+bool JsonUtil::GetBoolean(const nlohmann::json& json, const std::string& key, bool* value) {
     const auto iter = json.find(key);
     if (iter == json.end()) {
         LOG(ERROR) << "The json has no such key: " << key;
@@ -151,8 +142,7 @@ bool JsonUtil::GetBoolean(const nlohmann::json& json, const std::string& key,
     return true;
 }
 
-bool JsonUtil::GetBooleanByPath(const Json& json, const std::string& path,
-                                bool* value) {
+bool JsonUtil::GetBooleanByPath(const Json& json, const std::string& path, bool* value) {
     std::vector<std::string> paths = absl::StrSplit(path, '.');
     std::string key = paths.back();
     paths.pop_back();

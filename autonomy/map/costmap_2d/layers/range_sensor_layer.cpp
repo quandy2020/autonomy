@@ -165,8 +165,7 @@ double RangeSensorLayer::sensor_model(double r, double phi, double theta) {
     if (phi >= 0.0 && phi < r - 2 * delta * r) {
         return (1 - lbda) * (0.5);
     } else if (phi < r - delta * r) {
-        return lbda * 0.5 * pow((phi - (r - 2 * delta * r)) / (delta * r), 2) +
-               (1 - lbda) * .5;
+        return lbda * 0.5 * pow((phi - (r - 2 * delta * r)) / (delta * r), 2) + (1 - lbda) * .5;
     } else if (phi < r + delta * r) {
         double J = (r - phi) / (delta * r);
         return lbda * ((1 - (0.5) * pow(J, 2)) - 0.5) + 0.5;
@@ -175,8 +174,7 @@ double RangeSensorLayer::sensor_model(double r, double phi, double theta) {
     }
 }
 
-void RangeSensorLayer::bufferIncomingRangeMsg(
-    const commsgs::sensor_msgs::Range::SharedPtr range_message) {
+void RangeSensorLayer::bufferIncomingRangeMsg(const commsgs::sensor_msgs::Range::SharedPtr range_message) {
     range_message_mutex_.lock();
     range_msgs_buffer_.push_back(*range_message);
     range_message_mutex_.unlock();
@@ -186,8 +184,7 @@ void RangeSensorLayer::updateCostmap() {
     std::list<commsgs::sensor_msgs::Range> range_msgs_buffer_copy;
 
     range_message_mutex_.lock();
-    range_msgs_buffer_copy =
-        std::list<commsgs::sensor_msgs::Range>(range_msgs_buffer_);
+    range_msgs_buffer_copy = std::list<commsgs::sensor_msgs::Range>(range_msgs_buffer_);
     range_msgs_buffer_.clear();
     range_message_mutex_.unlock();
 
@@ -196,8 +193,7 @@ void RangeSensorLayer::updateCostmap() {
     }
 }
 
-void RangeSensorLayer::processRangeMsg(
-    commsgs::sensor_msgs::Range& range_message) {
+void RangeSensorLayer::processRangeMsg(commsgs::sensor_msgs::Range& range_message) {
     if (range_message.min_range == range_message.max_range) {
         processFixedRangeMsg(range_message);
     } else {
@@ -205,8 +201,7 @@ void RangeSensorLayer::processRangeMsg(
     }
 }
 
-void RangeSensorLayer::processFixedRangeMsg(
-    commsgs::sensor_msgs::Range& range_message) {
+void RangeSensorLayer::processFixedRangeMsg(commsgs::sensor_msgs::Range& range_message) {
     if (!std::isinf(range_message.range)) {
         // RCLCPP_ERROR(
         //     logger_,
@@ -230,25 +225,21 @@ void RangeSensorLayer::processFixedRangeMsg(
     updateCostmap(range_message, clear_sensor_cone);
 }
 
-void RangeSensorLayer::processVariableRangeMsg(
-    commsgs::sensor_msgs::Range& range_message) {
-    if (range_message.range < range_message.min_range ||
-        range_message.range > range_message.max_range) {
+void RangeSensorLayer::processVariableRangeMsg(commsgs::sensor_msgs::Range& range_message) {
+    if (range_message.range < range_message.min_range || range_message.range > range_message.max_range) {
         return;
     }
 
     bool clear_sensor_cone = false;
 
-    if (range_message.range >= range_message.max_range &&
-        clear_on_max_reading_) {
+    if (range_message.range >= range_message.max_range && clear_on_max_reading_) {
         clear_sensor_cone = true;
     }
 
     updateCostmap(range_message, clear_sensor_cone);
 }
 
-void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
-                                     bool clear_sensor_cone) {
+void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message, bool clear_sensor_cone) {
     max_angle_ = range_message.field_of_view / 2;
 
     commsgs::geometry_msgs::PointStamped in, out;
@@ -277,8 +268,7 @@ void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
     double tx = out.point.x, ty = out.point.y;
 
     // calculate target props
-    double dx = tx - ox, dy = ty - oy, theta = atan2(dy, dx),
-           d = sqrt(dx * dx + dy * dy);
+    double dx = tx - ox, dy = ty - oy, theta = atan2(dy, dx), d = sqrt(dx * dx + dy * dy);
 
     // Integer Bounds of Update
     int bx0, by0, bx1, by1;
@@ -347,17 +337,14 @@ void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
 
                 // Barycentric coordinates inside area threshold; this is not
                 // mathematically sound at all, but it works!
-                float bcciath = -static_cast<float>(inflate_cone_) *
-                                area(Ax, Ay, Bx, By, Ox, Oy);
-                update_xy_cell =
-                    w0 >= bcciath && w1 >= bcciath && w2 >= bcciath;
+                float bcciath = -static_cast<float>(inflate_cone_) * area(Ax, Ay, Bx, By, Ox, Oy);
+                update_xy_cell = w0 >= bcciath && w1 >= bcciath && w2 >= bcciath;
             }
 
             if (update_xy_cell) {
                 double wx, wy;
                 mapToWorld(x, y, wx, wy);
-                update_cell(ox, oy, theta, range_message.range, wx, wy,
-                            clear_sensor_cone);
+                update_cell(ox, oy, theta, range_message.range, wx, wy, clear_sensor_cone);
             }
         }
     }
@@ -366,8 +353,7 @@ void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
     // last_reading_time_ = clock_->now();
 }
 
-void RangeSensorLayer::update_cell(double ox, double oy, double ot, double r,
-                                   double nx, double ny, bool clear) {
+void RangeSensorLayer::update_cell(double ox, double oy, double ot, double r, double nx, double ny, bool clear) {
     unsigned int x, y;
     if (worldToMap(nx, ny, x, y)) {
         double dx = nx - ox, dy = ny - oy;
@@ -399,14 +385,11 @@ void RangeSensorLayer::resetRange() {
     max_x_ = max_y_ = -std::numeric_limits<double>::max();
 }
 
-void RangeSensorLayer::updateBounds(double robot_x, double robot_y,
-                                    double robot_yaw, double* min_x,
-                                    double* min_y, double* max_x,
-                                    double* max_y) {
+void RangeSensorLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                                    double* max_x, double* max_y) {
     robot_yaw = 0 + robot_yaw;  // Avoid error if variable not in use
     if (layered_costmap_->isRolling()) {
-        updateOrigin(robot_x - getSizeInMetersX() / 2,
-                     robot_y - getSizeInMetersY() / 2);
+        updateOrigin(robot_x - getSizeInMetersX() / 2, robot_y - getSizeInMetersY() / 2);
     }
 
     updateCostmap();
@@ -437,16 +420,14 @@ void RangeSensorLayer::updateBounds(double robot_x, double robot_y,
     // }
 }
 
-void RangeSensorLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                                   int max_i, int max_j) {
+void RangeSensorLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     if (!enabled_) {
         return;
     }
 
     unsigned char* master_array = master_grid.getCharMap();
     unsigned int span = master_grid.getSizeInCellsX();
-    unsigned char clear = to_cost(clear_threshold_),
-                  mark = to_cost(mark_threshold_);
+    unsigned char clear = to_cost(clear_threshold_), mark = to_cost(mark_threshold_);
 
     for (int j = min_j; j < max_j; j++) {
         unsigned int it = j * span + min_i;
@@ -504,5 +485,4 @@ void RangeSensorLayer::activate() {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::RangeSensorLayer,
-                            autonomy::map::costmap_2d::Layer)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::RangeSensorLayer, autonomy::map::costmap_2d::Layer)

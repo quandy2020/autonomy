@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<library path="@PLUGIN_LIBRARY_PATH@">
+  <!-- Constraint Critic -->
+  <class name="autonomy_control_mppi/constraint_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::ConstraintCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Constraint critic for enforcing feasible constraints in MPPI controller</description>
+  </class>
+
+  <!-- Cost Critic -->
+  <class name="autonomy_control_mppi/cost_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::CostCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Cost critic for evaluating trajectory costs in MPPI controller</description>
+  </class>
+
+  <!-- Goal Angle Critic -->
+  <class name="autonomy_control_mppi/goal_angle_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::GoalAngleCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Goal angle critic for evaluating goal orientation in MPPI controller</description>
+  </class>
+
+  <!-- Goal Critic -->
+  <class name="autonomy_control_mppi/goal_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::GoalCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Goal critic for evaluating goal distance in MPPI controller</description>
+  </class>
+
+  <!-- Obstacles Critic -->
+  <class name="autonomy_control_mppi/obstacles_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::ObstaclesCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Obstacles critic for evaluating obstacle avoidance in MPPI controller</description>
+  </class>
+
+  <!-- Path Align Critic -->
+  <class name="autonomy_control_mppi/path_align_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::PathAlignCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Path align critic for evaluating path alignment in MPPI controller</description>
+  </class>
+
+  <!-- Path Angle Critic -->
+  <class name="autonomy_control_mppi/path_angle_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::PathAngleCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Path angle critic for evaluating path angle in MPPI controller</description>
+  </class>
+
+  <!-- Path Follow Critic -->
+  <class name="autonomy_control_mppi/path_follow_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::PathFollowCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Path follow critic for evaluating path following in MPPI controller</description>
+  </class>
+
+  <!-- Prefer Forward Critic -->
+  <class name="autonomy_control_mppi/prefer_forward_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::PreferForwardCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Prefer forward critic for preferring forward motion in MPPI controller</description>
+  </class>
+
+  <!-- Twirling Critic -->
+  <class name="autonomy_control_mppi/twirling_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::TwirlingCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Twirling critic for penalizing excessive rotation in MPPI controller</description>
+  </class>
+
+  <!-- Velocity Deadband Critic -->
+  <class name="autonomy_control_mppi/velocity_deadband_critic" 
+         type="autonomy::control::controller::mppi_controller::critics::VelocityDeadbandCritic" 
+         base_class="autonomy::control::controller::mppi_controller::CriticFunction">
+    <description>Velocity deadband critic for handling velocity deadband in MPPI controller</description>
+  </class>
+</library>

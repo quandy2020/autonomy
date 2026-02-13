@@ -31,8 +31,7 @@ public:
     virtual ~PredictionInterface();
 };
 
-proto::PredictionOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::PredictionOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace prediction

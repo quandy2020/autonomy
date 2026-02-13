@@ -36,12 +36,10 @@ autonomy::commsgs::proto::visualization::VisualizationOptions LoadOptions(
 
     // 功能开关
     if (parameter_dictionary->HasKey("enable_client_publish")) {
-        options.set_enable_client_publish(
-            parameter_dictionary->GetBool("enable_client_publish"));
+        options.set_enable_client_publish(parameter_dictionary->GetBool("enable_client_publish"));
     }
     if (parameter_dictionary->HasKey("enable_connection_graph")) {
-        options.set_enable_connection_graph(
-            parameter_dictionary->GetBool("enable_connection_graph"));
+        options.set_enable_connection_graph(parameter_dictionary->GetBool("enable_connection_graph"));
     }
 
     return options;

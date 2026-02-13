@@ -38,23 +38,17 @@ DEFINE_string(subdictionary, "",
 namespace cartographer {
 namespace common {
 
-std::unique_ptr<LuaParameterDictionary> LoadLuaDictionary(
-    const std::vector<std::string>& configuration_directories,
-    const std::string& configuration_basename) {
-    auto file_resolver =
-        absl::make_unique<ConfigurationFileResolver>(configuration_directories);
-    const std::string code =
-        file_resolver->GetFileContentOrDie(configuration_basename);
+std::unique_ptr<LuaParameterDictionary> LoadLuaDictionary(const std::vector<std::string>& configuration_directories,
+                                                          const std::string& configuration_basename) {
+    auto file_resolver = absl::make_unique<ConfigurationFileResolver>(configuration_directories);
+    const std::string code = file_resolver->GetFileContentOrDie(configuration_basename);
     // We use no reference count because we just want to print the
     // configuration.
-    return LuaParameterDictionary::NonReferenceCounted(
-        code, std::move(file_resolver));
+    return LuaParameterDictionary::NonReferenceCounted(code, std::move(file_resolver));
 }
 
-void PrintSubdictionaryById(LuaParameterDictionary* lua_dictionary,
-                            const std::string& subdictionary_id) {
-    const std::vector<std::string> subdictionary_keys =
-        absl::StrSplit(subdictionary_id, '.', absl::SkipEmpty());
+void PrintSubdictionaryById(LuaParameterDictionary* lua_dictionary, const std::string& subdictionary_id) {
+    const std::vector<std::string> subdictionary_keys = absl::StrSplit(subdictionary_id, '.', absl::SkipEmpty());
     CHECK(!subdictionary_keys.empty()) << "Failed to parse 'subdictionary_id'.";
     // Keep a stack to avoid memory glitches due to unique_ptr deletion.
     std::vector<std::unique_ptr<LuaParameterDictionary>> stack;
@@ -65,8 +59,7 @@ void PrintSubdictionaryById(LuaParameterDictionary* lua_dictionary,
         }
         stack.push_back(stack.back()->GetDictionary(key));
     }
-    std::cout << subdictionary_id << " = " << stack.back()->ToString()
-              << std::endl;
+    std::cout << subdictionary_id << " = " << stack.back()->ToString() << std::endl;
 }
 
 }  // namespace common
@@ -82,8 +75,7 @@ int main(int argc, char** argv) {
         "'--logtostderr' is given.");
     google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (FLAGS_configuration_directories.empty() ||
-        FLAGS_configuration_basename.empty()) {
+    if (FLAGS_configuration_directories.empty() || FLAGS_configuration_basename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "print_configuration_main");
         return EXIT_FAILURE;
     }
@@ -91,13 +83,12 @@ int main(int argc, char** argv) {
     const std::vector<std::string> configuration_directories =
         absl::StrSplit(FLAGS_configuration_directories, ',', absl::SkipEmpty());
 
-    auto lua_dictionary = ::cartographer::common::LoadLuaDictionary(
-        configuration_directories, FLAGS_configuration_basename);
+    auto lua_dictionary =
+        ::cartographer::common::LoadLuaDictionary(configuration_directories, FLAGS_configuration_basename);
 
     if (FLAGS_subdictionary.empty()) {
         std::cout << "return " << lua_dictionary->ToString() << std::endl;
         return EXIT_SUCCESS;
     }
-    ::cartographer::common::PrintSubdictionaryById(lua_dictionary.get(),
-                                                   FLAGS_subdictionary);
+    ::cartographer::common::PrintSubdictionaryById(lua_dictionary.get(), FLAGS_subdictionary);
 }

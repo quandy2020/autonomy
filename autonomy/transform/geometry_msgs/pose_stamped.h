@@ -27,8 +27,8 @@ namespace tf2 {
 // Template specialization for fromMsg (Quaternion)
 // This needs to be defined before it's used in impl/utils.h
 template <>
-inline void fromMsg<commsgs::geometry_msgs::Quaternion, Quaternion>(
-    const commsgs::geometry_msgs::Quaternion& msg, Quaternion& out) {
+inline void fromMsg<commsgs::geometry_msgs::Quaternion, Quaternion>(const commsgs::geometry_msgs::Quaternion& msg,
+                                                                    Quaternion& out) {
     out.setX(msg.x);
     out.setY(msg.y);
     out.setZ(msg.z);

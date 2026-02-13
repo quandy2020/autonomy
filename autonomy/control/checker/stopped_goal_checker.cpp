@@ -21,13 +21,10 @@ namespace control {
 namespace checker {
 
 StoppedGoalChecker::StoppedGoalChecker()
-    : SimpleGoalChecker(),
-      rot_stopped_velocity_(0.25),
-      trans_stopped_velocity_(0.25) {}
+    : SimpleGoalChecker(), rot_stopped_velocity_(0.25), trans_stopped_velocity_(0.25) {}
 
-void StoppedGoalChecker::Initialize(
-    const std::string& plugin_name,
-    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+void StoppedGoalChecker::Initialize(const std::string& plugin_name,
+                                    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     plugin_name_ = plugin_name;
     SimpleGoalChecker::Initialize(plugin_name, costmap_wrapper);
 
@@ -41,24 +38,20 @@ void StoppedGoalChecker::Initialize(
     // ".trans_stopped_velocity", trans_stopped_velocity_);
 }
 
-bool StoppedGoalChecker::IsGoalReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity) {
-    bool ret =
-        SimpleGoalChecker::IsGoalReached(query_pose, goal_pose, velocity);
+bool StoppedGoalChecker::IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
+                                       const commsgs::geometry_msgs::Pose& goal_pose,
+                                       const commsgs::geometry_msgs::Twist& velocity) {
+    bool ret = SimpleGoalChecker::IsGoalReached(query_pose, goal_pose, velocity);
     if (!ret) {
         return ret;
     }
 
     return std::fabs(velocity.angular.z) <= rot_stopped_velocity_ &&
-           std::hypot(velocity.linear.x, velocity.linear.y) <=
-               trans_stopped_velocity_;
+           std::hypot(velocity.linear.x, velocity.linear.y) <= trans_stopped_velocity_;
 }
 
-bool StoppedGoalChecker::GetTolerances(
-    commsgs::geometry_msgs::Pose& pose_tolerance,
-    commsgs::geometry_msgs::Twist& vel_tolerance) {
+bool StoppedGoalChecker::GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                                       commsgs::geometry_msgs::Twist& vel_tolerance) {
     double invalid_field = std::numeric_limits<double>::lowest();
 
     // populate the poses
@@ -79,3 +72,6 @@ bool StoppedGoalChecker::GetTolerances(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
+
+// Plugins
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::StoppedGoalChecker, autonomy::control::common::GoalChecker)

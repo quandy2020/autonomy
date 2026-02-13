@@ -22,14 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-DriveOnHeadingCancelNode::DriveOnHeadingCancelNode(
-    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
-
-BT::NodeStatus DriveOnHeadingCancelNode::tick() {
-    // TODO: Implement drive on heading cancel behavior
-    return BT::NodeStatus::SUCCESS;
-}
+DriveOnHeadingCancel::DriveOnHeadingCancel(const std::string& xml_tag_name, const std::string& action_name,
+                                           const BT::NodeConfiguration& conf)
+    : BtCancelActionNode<proto::DriveOnHeadingAction>(xml_tag_name, action_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -39,7 +34,11 @@ BT::NodeStatus DriveOnHeadingCancelNode::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 DriveOnHeadingCancelNode>(
-        "CancelDriveOnHeading");
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::DriveOnHeadingCancel>(
+            name, "drive_on_heading", config);
+    };
+
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::DriveOnHeadingCancel>(
+        "CancelDriveOnHeading", builder);
 }

@@ -47,8 +47,7 @@ public:
      * @param origin
      * @param voxScale
      */
-    VoxelMap(const Eigen::Vector3i& size, const Eigen::Vector3d& origin,
-             const double& vox_scale);
+    VoxelMap(const Eigen::Vector3i& size, const Eigen::Vector3d& origin, const double& vox_scale);
 
     /**
      * @brief Get scale value
@@ -107,8 +106,7 @@ public:
     /**
      * @brief Get value
      */
-    void GetSurfInBox(const Eigen::Vector3i& center, const int& half_width,
-                      std::vector<Eigen::Vector3d>& points) const;
+    void GetSurfInBox(const Eigen::Vector3i& center, const int& half_width, std::vector<Eigen::Vector3d>& points) const;
 
     /**
      * @brief Get

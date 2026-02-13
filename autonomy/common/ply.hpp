@@ -37,8 +37,7 @@ struct PlyPoint {
 
 struct PlyMeshVertex {
     PlyMeshVertex() : x(0), y(0), z(0) {}
-    PlyMeshVertex(const float x, const float y, const float z)
-        : x(x), y(y), z(z) {}
+    PlyMeshVertex(const float x, const float y, const float z) : x(x), y(y), z(z) {}
 
     float x = 0.0f;
     float y = 0.0f;
@@ -47,11 +46,8 @@ struct PlyMeshVertex {
 
 struct PlyMeshFace {
     PlyMeshFace() : vertex_idx1(0), vertex_idx2(0), vertex_idx3(0) {}
-    PlyMeshFace(const size_t vertex_idx1, const size_t vertex_idx2,
-                const size_t vertex_idx3)
-        : vertex_idx1(vertex_idx1),
-          vertex_idx2(vertex_idx2),
-          vertex_idx3(vertex_idx3) {}
+    PlyMeshFace(const size_t vertex_idx1, const size_t vertex_idx2, const size_t vertex_idx3)
+        : vertex_idx1(vertex_idx1), vertex_idx2(vertex_idx2), vertex_idx3(vertex_idx3) {}
 
     size_t vertex_idx1 = 0;
     size_t vertex_idx2 = 0;
@@ -67,12 +63,10 @@ struct PlyMesh {
 std::vector<PlyPoint> ReadPly(const std::string& path);
 
 // Write PLY point cloud to text or binary file.
-void WriteTextPlyPoints(const std::string& path,
-                        const std::vector<PlyPoint>& points,
-                        bool write_normal = true, bool write_rgb = true);
-void WriteBinaryPlyPoints(const std::string& path,
-                          const std::vector<PlyPoint>& points,
-                          bool write_normal = true, bool write_rgb = true);
+void WriteTextPlyPoints(const std::string& path, const std::vector<PlyPoint>& points, bool write_normal = true,
+                        bool write_rgb = true);
+void WriteBinaryPlyPoints(const std::string& path, const std::vector<PlyPoint>& points, bool write_normal = true,
+                          bool write_rgb = true);
 
 // Write PLY mesh to text or binary file.
 void WriteTextPlyMesh(const std::string& path, const PlyMesh& mesh);

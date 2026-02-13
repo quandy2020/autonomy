@@ -18,9 +18,13 @@
 
 #include <string>
 
-#include "behaviortree_cpp/action_node.h"
+#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/navigator/proto/srv.pb.h"
 
 #include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/tasks/behavior_tree/behavior_tree_service_node.hpp"
+#include "autonomy/tasks/behavior_tree/json_utils.hpp"
+#include "behaviortree_cpp/json_export.h"
 
 namespace autonomy {
 namespace tasks {
@@ -29,43 +33,48 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A BT::ActionNode that removes goals that are in collision
+ * @brief A autonomy::tasks::behavior_tree::BtServiceNode class that removes
+ * goals that are in collision in on the global costmap wraps proto::GetCosts
+ * @note This is an Asynchronous (long-running) node which may return a RUNNING
+ * state while executing. It will re-initialize when halted.
  */
-class RemoveInCollisionGoalsAction : public BT::ActionNodeBase
+class RemoveInCollisionGoals : public BtServiceNode<proto::GetCosts>
 {
 public:
     /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::RemoveInCollisionGoalsAction
-     * @param xml_tag_name Name for the XML tag for this node
+     * @brief A constructor for nav2_behavior_tree::RemoveInCollisionGoals
+     * @param service_node_name Service name this node creates a client for
      * @param conf BT node configuration
      */
-    RemoveInCollisionGoalsAction(const std::string& xml_tag_name,
-                                 const BT::NodeConfiguration& conf);
+    RemoveInCollisionGoals(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 
     /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<commsgs::planning_msgs::Goals>("goals",
-                                                         "Input goals array"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>(
-                "goals", "Output goals array with collision goals removed"),
-        };
-    }
-
-    /**
-     * @brief The main override required by a BT action
+     * @brief The main override required by a BT service
      * @return BT::NodeStatus Status of tick execution
      */
-    BT::NodeStatus tick() override;
+    void on_tick() override;
 
-    /**
-     * @brief Function to halt the node
-     */
-    void halt() override {}
+    BT::NodeStatus on_completion(std::shared_ptr<proto::GetCosts::Response> response) override;
+
+    static BT::PortsList providedPorts() {
+        // Register JSON definitions for the types used in the ports
+        return providedBasicPorts(
+            {BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Original goals to remove from"),
+             BT::InputPort<double>("cost_threshold", 254.0, "Cost threshold for considering a goal in collision"),
+             BT::InputPort<bool>("use_footprint", true, "Whether to use footprint cost"),
+             BT::InputPort<bool>("consider_unknown_as_obstacle", false, "Whether to consider unknown cost as obstacle"),
+             BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Goals with in-collision goals removed"),
+             BT::InputPort<std::vector<proto::WaypointStatus>>(
+                 "input_waypoint_statuses", "Original waypoint_statuses to mark waypoint status from"),
+             BT::OutputPort<std::vector<proto::WaypointStatus>>(
+                 "output_waypoint_statuses", "Waypoint_statuses with in-collision waypoints marked")});
+    }
+
+private:
+    bool use_footprint_;
+    bool consider_unknown_as_obstacle_;
+    double cost_threshold_;
+    commsgs::planning_msgs::Goals input_goals_;
 };
 
 }  // namespace action

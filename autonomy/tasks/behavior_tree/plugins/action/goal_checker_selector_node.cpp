@@ -22,13 +22,55 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-GoalCheckerSelector::GoalCheckerSelector(const std::string& xml_tag_name,
-                                         const BT::NodeConfiguration& conf)
-    : BT::SyncActionNode(xml_tag_name, conf) {}
+GoalCheckerSelector::GoalCheckerSelector(const std::string& name, const BT::NodeConfiguration& conf)
+    : BT::SyncActionNode(name, conf) {
+    initialize();
+}
+
+void GoalCheckerSelector::initialize() {
+    createROSInterfaces();
+}
+
+void GoalCheckerSelector::createROSInterfaces() {
+    std::string topic_new;
+    getInput("topic_name", topic_new);
+    if (topic_new != topic_name_ || !goal_checker_selector_sub_) {
+        topic_name_ = topic_new;
+        node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+
+        goal_checker_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
+            topic_name_,
+            [this](std::shared_ptr<const commsgs::std_msgs::String> msg) { callbackGoalCheckerSelect(msg); });
+    }
+}
 
 BT::NodeStatus GoalCheckerSelector::tick() {
-    // TODO: Implement goal checker selector
+    if (!BT::isStatusActive(status())) {
+        initialize();
+    }
+
+    // This behavior always use the last selected goal checker received from the
+    // topic input. When no input is specified it uses the default goal checker.
+    // If the default goal checker is not specified then we work in "required
+    // goal checker mode": In this mode, the behavior returns failure if the
+    // goal checker selection is not received from the topic input.
+    if (last_selected_goal_checker_.empty()) {
+        std::string default_goal_checker;
+        getInput("default_goal_checker", default_goal_checker);
+        if (default_goal_checker.empty()) {
+            return BT::NodeStatus::FAILURE;
+        } else {
+            last_selected_goal_checker_ = default_goal_checker;
+        }
+    }
+
+    setOutput("selected_goal_checker", last_selected_goal_checker_);
+
     return BT::NodeStatus::SUCCESS;
+}
+
+void GoalCheckerSelector::callbackGoalCheckerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg) {
+    last_selected_goal_checker_ = msg->data;
 }
 
 }  // namespace action
@@ -39,7 +81,6 @@ BT::NodeStatus GoalCheckerSelector::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::action::GoalCheckerSelector>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GoalCheckerSelector>(
         "GoalCheckerSelector");
 }

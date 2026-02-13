@@ -28,18 +28,16 @@ class PcdWritingPointsProcessor : public PointsProcessor
 {
 public:
     constexpr static const char* kConfigurationFileActionName = "write_pcd";
-    PcdWritingPointsProcessor(std::unique_ptr<FileWriter> file_writer,
-                              PointsProcessor* next);
+    PcdWritingPointsProcessor(std::unique_ptr<FileWriter> file_writer, PointsProcessor* next);
 
-    static std::unique_ptr<PcdWritingPointsProcessor> FromDictionary(
-        FileWriterFactory file_writer_factory,
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<PcdWritingPointsProcessor> FromDictionary(FileWriterFactory file_writer_factory,
+                                                                     common::LuaParameterDictionary* dictionary,
+                                                                     PointsProcessor* next);
 
     ~PcdWritingPointsProcessor() override {}
 
     PcdWritingPointsProcessor(const PcdWritingPointsProcessor&) = delete;
-    PcdWritingPointsProcessor& operator=(const PcdWritingPointsProcessor&) =
-        delete;
+    PcdWritingPointsProcessor& operator=(const PcdWritingPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

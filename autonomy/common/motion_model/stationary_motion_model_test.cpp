@@ -34,18 +34,15 @@ TEST(StationaryMotionModelTest, Predict) {
     FloatState<X, Y> state{};
     state.at<X>() = 42.0F;
     state.at<Y>() = 23.0F;
-    EXPECT_FLOAT_EQ(model.predict(state, std::chrono::milliseconds{42}).at<X>(),
-                    state.at<X>());
-    EXPECT_FLOAT_EQ(model.predict(state, std::chrono::milliseconds{42}).at<Y>(),
-                    state.at<Y>());
+    EXPECT_FLOAT_EQ(model.predict(state, std::chrono::milliseconds{42}).at<X>(), state.at<X>());
+    EXPECT_FLOAT_EQ(model.predict(state, std::chrono::milliseconds{42}).at<Y>(), state.at<Y>());
 }
 
 /// @test Test that prediction on independent x, y works as expected.
 TEST(StationaryMotionModelTest, Jacobian) {
     StationaryMotionModel<FloatState<X, Y>> model{};
     FloatState<X, Y> state{};
-    EXPECT_TRUE(model.jacobian(state, std::chrono::milliseconds{42})
-                    .isApprox(Eigen::Matrix2f::Identity()));
+    EXPECT_TRUE(model.jacobian(state, std::chrono::milliseconds{42}).isApprox(Eigen::Matrix2f::Identity()));
 }
 
 }  // namespace motion_model

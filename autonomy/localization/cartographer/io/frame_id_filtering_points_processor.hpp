@@ -30,20 +30,15 @@ namespace io {
 class FrameIdFilteringPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "frame_id_filter";
-    FrameIdFilteringPointsProcessor(
-        const absl::flat_hash_set<std::string>& keep_frame_ids,
-        const absl::flat_hash_set<std::string>& drop_frame_ids,
-        PointsProcessor* next);
-    static std::unique_ptr<FrameIdFilteringPointsProcessor> FromDictionary(
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    constexpr static const char* kConfigurationFileActionName = "frame_id_filter";
+    FrameIdFilteringPointsProcessor(const absl::flat_hash_set<std::string>& keep_frame_ids,
+                                    const absl::flat_hash_set<std::string>& drop_frame_ids, PointsProcessor* next);
+    static std::unique_ptr<FrameIdFilteringPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                           PointsProcessor* next);
     ~FrameIdFilteringPointsProcessor() override {}
 
-    FrameIdFilteringPointsProcessor(const FrameIdFilteringPointsProcessor&) =
-        delete;
-    FrameIdFilteringPointsProcessor& operator=(
-        const FrameIdFilteringPointsProcessor&) = delete;
+    FrameIdFilteringPointsProcessor(const FrameIdFilteringPointsProcessor&) = delete;
+    FrameIdFilteringPointsProcessor& operator=(const FrameIdFilteringPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace decorator {
 
-SingleTrigger::SingleTrigger(const std::string& name,
-                             const BT::NodeConfiguration& conf)
+SingleTrigger::SingleTrigger(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf), first_time_(true) {}
 
 BT::NodeStatus SingleTrigger::tick() {
@@ -63,7 +62,5 @@ BT::NodeStatus SingleTrigger::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::decorator::SingleTrigger>(
-        "SingleTrigger");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::decorator::SingleTrigger>("SingleTrigger");
 }

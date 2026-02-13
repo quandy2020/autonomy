@@ -16,21 +16,14 @@
 
 #include "autonomy/system/system.hpp"
 
-#include "autonomy/tasks/task_manager.hpp"
-
 namespace autonomy {
 namespace system {
 
-AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
-    : options_{options} {
+AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options) : options_{options} {
     tf_buffer_ = TfBuffer::Instance();
     map_server_ = std::make_shared<map::MapServer>(options_.map_options());
-    controller_server_ = std::make_shared<control::ControllerServer>(
-        options_.controller_options());
-    planner_server_ =
-        std::make_shared<planning::PlannerServer>(options_.planner_options());
-
-    tasks_ = std::make_shared<tasks::TaskManager>(options_.task_options());
+    controller_server_ = std::make_shared<control::ControllerServer>(options_.controller_options());
+    planner_server_ = std::make_shared<planning::PlannerServer>(options_.planner_options());
 }
 
 void AutonomyNode::Start() {
@@ -45,10 +38,6 @@ void AutonomyNode::Start() {
     if (planner_server_ != nullptr) {
         planner_server_->Start();
     }
-
-    if (tasks_ != nullptr) {
-        tasks_->Start();
-    }
 }
 
 void AutonomyNode::Shutdown() {
@@ -62,10 +51,6 @@ void AutonomyNode::Shutdown() {
 
     if (planner_server_ != nullptr) {
         planner_server_->Shutdown();
-    }
-
-    if (tasks_ != nullptr) {
-        tasks_->Shutdown();
     }
 }
 

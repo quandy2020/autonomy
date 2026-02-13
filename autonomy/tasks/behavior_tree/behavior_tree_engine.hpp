@@ -48,9 +48,8 @@ public:
      * autonomy::tasks::behavior_tree::BehaviorTreeEngine
      * @param plugin_libraries vector of BT plugin library names to load
      */
-    explicit BehaviorTreeEngine(
-        const std::vector<std::string>& plugin_libraries,
-        std::shared_ptr<::autolink::Node> node);
+    explicit BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries,
+                                std::shared_ptr<::autolink::Node> node);
 
     virtual ~BehaviorTreeEngine() {}
 
@@ -63,10 +62,8 @@ public:
      * @param loopTimeout Time period for each iteration of BT execution
      * @return nav2_behavior_tree::BtStatus Status of BT execution
      */
-    BtStatus Run(
-        BT::Tree* tree, std::function<void()> onLoop,
-        std::function<bool()> cancelRequested,
-        std::chrono::milliseconds loopTimeout = std::chrono::milliseconds(10));
+    BtStatus Run(BT::Tree* tree, std::function<void()> onLoop, std::function<bool()> cancelRequested,
+                 std::chrono::milliseconds loopTimeout = std::chrono::milliseconds(10));
 
     /**
      * @brief Function to create a BT from a XML string
@@ -74,8 +71,7 @@ public:
      * @param blackboard Blackboard for BT
      * @return BT::Tree Created behavior tree
      */
-    BT::Tree CreateTreeFromText(const std::string& xml_string,
-                                BT::Blackboard::Ptr blackboard);
+    BT::Tree CreateTreeFromText(const std::string& xml_string, BT::Blackboard::Ptr blackboard);
 
     /**
      * @brief Function to create a BT from an XML file
@@ -83,8 +79,7 @@ public:
      * @param blackboard Blackboard for BT
      * @return BT::Tree Created behavior tree
      */
-    BT::Tree CreateTreeFromFile(const std::string& file_path,
-                                BT::Blackboard::Ptr blackboard);
+    BT::Tree CreateTreeFromFile(const std::string& file_path, BT::Blackboard::Ptr blackboard);
 
     /**
      * @brief Function to explicitly reset all BT nodes to initial state
@@ -95,8 +90,6 @@ public:
 protected:
     // The factory that will be used to dynamically construct the behavior tree
     BT::BehaviorTreeFactory factory_;
-
-    // Clock (singleton, no need to store)
 
     // Groot2 monitor
     std::unique_ptr<BT::Groot2Publisher> groot_monitor_;

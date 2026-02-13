@@ -3,8 +3,7 @@
 template <typename Scalar>
 struct scalar_sum_of_finites_op {
     EIGEN_EMPTY_STRUCT_CTOR(scalar_sum_of_finites_op)
-    EIGEN_STRONG_INLINE const Scalar operator()(const Scalar& a,
-                                                const Scalar& b) const {
+    EIGEN_STRONG_INLINE const Scalar operator()(const Scalar& a, const Scalar& b) const {
         using std::isfinite;
         if (isfinite(a) && isfinite(b))
             return a + b;
@@ -17,17 +16,13 @@ struct scalar_sum_of_finites_op {
 };
 template <typename Scalar>
 struct functor_traits<scalar_sum_of_finites_op<Scalar> > {
-    enum {
-        Cost = 2 * NumTraits<Scalar>::ReadCost + NumTraits<Scalar>::AddCost,
-        PacketAccess = false
-    };
+    enum { Cost = 2 * NumTraits<Scalar>::ReadCost + NumTraits<Scalar>::AddCost, PacketAccess = false };
 };
 
 template <typename Scalar>
 struct scalar_min_of_finites_op {
     EIGEN_EMPTY_STRUCT_CTOR(scalar_min_of_finites_op)
-    EIGEN_STRONG_INLINE const Scalar operator()(const Scalar& a,
-                                                const Scalar& b) const {
+    EIGEN_STRONG_INLINE const Scalar operator()(const Scalar& a, const Scalar& b) const {
         using std::isfinite;
         using std::min;
         if (isfinite(a) && isfinite(b))
@@ -47,8 +42,7 @@ struct functor_traits<scalar_min_of_finites_op<Scalar> > {
 template <typename Scalar>
 struct scalar_max_of_finites_op {
     EIGEN_EMPTY_STRUCT_CTOR(scalar_max_of_finites_op)
-    EIGEN_STRONG_INLINE const Scalar operator()(const Scalar& a,
-                                                const Scalar& b) const {
+    EIGEN_STRONG_INLINE const Scalar operator()(const Scalar& a, const Scalar& b) const {
         using std::isfinite;
         using std::max;
         if (isfinite(a) && isfinite(b))

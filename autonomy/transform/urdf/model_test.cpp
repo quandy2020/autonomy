@@ -28,8 +28,7 @@ namespace transform {
 namespace {
 
 TEST(ModelTest, UpcastSharedPtr) {
-    std::shared_ptr<autonomy::transform::Model> model(
-        new autonomy::transform::Model);
+    std::shared_ptr<autonomy::transform::Model> model(new autonomy::transform::Model);
     model->name_ = "UpcastSharedPtr";
     ::urdf::ModelInterfaceSharedPtr interface = model;
     EXPECT_EQ(std::string("UpcastSharedPtr"), interface->getName());

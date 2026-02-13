@@ -32,8 +32,7 @@ struct TimestampedTransform {
 TimestampedTransform FromProto(const proto::TimestampedTransform& proto);
 proto::TimestampedTransform ToProto(const TimestampedTransform& transform);
 
-TimestampedTransform Interpolate(const TimestampedTransform& start,
-                                 const TimestampedTransform& end,
+TimestampedTransform Interpolate(const TimestampedTransform& start, const TimestampedTransform& end,
                                  const common::Time time);
 
 }  // namespace transform

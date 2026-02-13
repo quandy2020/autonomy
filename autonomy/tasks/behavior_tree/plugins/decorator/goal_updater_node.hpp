@@ -48,8 +48,7 @@ public:
      * @param xml_tag_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    GoalUpdater(const std::string& xml_tag_name,
-                const BT::NodeConfiguration& conf);
+    GoalUpdater(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
@@ -60,14 +59,10 @@ public:
         BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
         BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
 
-        return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                    "input_goal", "Original Goal"),
-                BT::InputPort<commsgs::planning_msgs::Goals>("input_goals",
-                                                             "Original Goals"),
-                BT::OutputPort<commsgs::geometry_msgs::PoseStamped>(
-                    "output_goal", "Received Goal by subscription"),
-                BT::OutputPort<commsgs::planning_msgs::Goals>(
-                    "output_goals", "Received Goals by subscription")};
+        return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>("input_goal", "Original Goal"),
+                BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Original Goals"),
+                BT::OutputPort<commsgs::geometry_msgs::PoseStamped>("output_goal", "Received Goal by subscription"),
+                BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Received Goals by subscription")};
     }
 
 private:
@@ -89,20 +84,16 @@ private:
      * @brief Callback function for goal update topic
      * @param msg Shared pointer to geometry_msgs::msg::PoseStamped message
      */
-    void callback_updated_goal(
-        const commsgs::geometry_msgs::PoseStamped::SharedPtr msg);
+    void callback_updated_goal(const commsgs::geometry_msgs::PoseStamped::SharedPtr msg);
 
     /**
      * @brief Callback function for goals update topic
      * @param msg Shared pointer to commsgs::planning_msgs::Goals message
      */
-    void callback_updated_goals(
-        const commsgs::planning_msgs::Goals::SharedPtr msg);
+    void callback_updated_goals(const commsgs::planning_msgs::Goals::SharedPtr msg);
 
-    std::shared_ptr<::autolink::Reader<commsgs::geometry_msgs::PoseStamped>>
-        goal_sub_;
-    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Goals>>
-        goals_sub_;
+    std::shared_ptr<::autolink::Reader<commsgs::geometry_msgs::PoseStamped>> goal_sub_;
+    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Goals>> goals_sub_;
 
     commsgs::geometry_msgs::PoseStamped last_goal_received_;
     bool last_goal_received_set_{false};

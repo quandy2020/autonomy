@@ -50,13 +50,11 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options,
-                                   const std::string& name,
+Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name,
                                    autolink::Node* node)
     : options_{options},
       default_plugins_{"static_layer", "obstacle_layer", "inflation_layer"},
-      default_types_{"autonomy::map::costmap_2d::StaticLayer",
-                     "autonomy::map::costmap_2d::ObstacleLayer",
+      default_types_{"autonomy::map::costmap_2d::StaticLayer", "autonomy::map::costmap_2d::ObstacleLayer",
                      "autonomy::map::costmap_2d::InflationLayer"},
       node_{node} {
     // declare_parameter("map_topic",
@@ -129,8 +127,7 @@ void Costmap2DWrapper::init() {
         for (int i = 0; i < footprint_proto.points_size(); ++i) {
             if (i > 0)
                 ss << ", ";
-            ss << "[" << footprint_proto.points(i).x() << ", "
-               << footprint_proto.points(i).y() << "]";
+            ss << "[" << footprint_proto.points(i).x() << ", " << footprint_proto.points(i).y() << "]";
         }
         ss << "]";
         footprint_ = ss.str();
@@ -196,6 +193,12 @@ void Costmap2DWrapper::init() {
     if (options_.plugins_size() > 0) {
         for (int i = 0; i < options_.plugins_size(); ++i) {
             std::string plugin_str = options_.plugins(i);
+            // Special cases:
+            // - "noop_layer"/"none": explicitly request no plugins (for lightweight demos/tests).
+            //   When user explicitly provides plugins list, we should not fall back to defaults.
+            if (plugin_str.empty() || plugin_str == "noop_layer" || plugin_str == "none") {
+                continue;
+            }
             // Check if it's in format "name:type" or just "name"
             size_t colon_pos = plugin_str.find(':');
             if (colon_pos != std::string::npos) {
@@ -219,41 +222,36 @@ void Costmap2DWrapper::init() {
     filter_types_.clear();
 
     // Create the costmap itself
-    layered_costmap_ = std::make_unique<LayeredCostmap>(
-        global_frame_, rolling_window_, track_unknown_space_);
+    layered_costmap_ = std::make_unique<LayeredCostmap>(global_frame_, rolling_window_, track_unknown_space_);
 
     if (!layered_costmap_->isSizeLocked()) {
-        layered_costmap_->resizeMap(
-            (unsigned int)(map_width_meters_ / resolution_),
-            (unsigned int)(map_height_meters_ / resolution_), resolution_,
-            origin_x_, origin_y_);
+        layered_costmap_->resizeMap((unsigned int)(map_width_meters_ / resolution_),
+                                    (unsigned int)(map_height_meters_ / resolution_), resolution_, origin_x_,
+                                    origin_y_);
     }
 
     // Helper function to get library path for a plugin
-    auto GetPluginLibraryPath =
-        [](const std::string& plugin_name) -> std::string {
+    auto GetPluginLibraryPath = [](const std::string& plugin_name) -> std::string {
         // Try install directory first
         std::string install_path =
-            std::string(::autonomy::common::kLibraryInstallDir) +
-            "/lib/libautonomy_map_layers_" + plugin_name + ".so";
+            std::string(::autonomy::common::kLibraryInstallDir) + "/lib/libautonomy_map_layers_" + plugin_name + ".so";
         if (autolink::common::PathExists(install_path)) {
             return install_path;
         }
         // Try build directory
         std::string build_path =
-            std::string(::autonomy::common::kLibraryBuildDir) +
-            "/lib/libautonomy_map_layers_" + plugin_name + ".so";
+            std::string(::autonomy::common::kLibraryBuildDir) + "/lib/libautonomy_map_layers_" + plugin_name + ".so";
         if (autolink::common::PathExists(build_path)) {
             return build_path;
         }
         // Try with filter prefix for filters
-        install_path = std::string(::autonomy::common::kLibraryInstallDir) +
-                       "/lib/libautonomy_map_filters_" + plugin_name + ".so";
+        install_path =
+            std::string(::autonomy::common::kLibraryInstallDir) + "/lib/libautonomy_map_filters_" + plugin_name + ".so";
         if (autolink::common::PathExists(install_path)) {
             return install_path;
         }
-        build_path = std::string(::autonomy::common::kLibraryBuildDir) +
-                     "/lib/libautonomy_map_filters_" + plugin_name + ".so";
+        build_path =
+            std::string(::autonomy::common::kLibraryBuildDir) + "/lib/libautonomy_map_filters_" + plugin_name + ".so";
         if (autolink::common::PathExists(build_path)) {
             return build_path;
         }
@@ -261,8 +259,7 @@ void Costmap2DWrapper::init() {
     };
 
     // Then load and add the plug-ins to the costmap
-    AINFO << "Loading " << plugin_names_.size()
-          << " costmap layer plugin(s)...";
+    AINFO << "Loading " << plugin_names_.size() << " costmap layer plugin(s)...";
     for (unsigned int i = 0; i < plugin_names_.size(); ++i) {
         const auto& plugin_name = plugin_names_[i];
         const auto& plugin_type = plugin_types_[i];
@@ -273,16 +270,14 @@ void Costmap2DWrapper::init() {
             // Load the library if not already loaded
             if (!plugin_loader_manager_.IsLibraryValid(library_path)) {
                 if (!plugin_loader_manager_.LoadLibrary(library_path)) {
-                    AERROR << "  [x] " << plugin_name
-                           << " - failed to load library";
+                    AERROR << "  [x] " << plugin_name << " - failed to load library";
                     continue;
                 }
             }
         }
 
         // Create plugin instance using ClassLoaderManager
-        std::shared_ptr<Layer> plugin =
-            plugin_loader_manager_.CreateClassObj<Layer>(plugin_type);
+        std::shared_ptr<Layer> plugin = plugin_loader_manager_.CreateClassObj<Layer>(plugin_type);
         if (!plugin) {
             AERROR << "  [x] " << plugin_name << " - failed to create instance";
             continue;
@@ -290,11 +285,9 @@ void Costmap2DWrapper::init() {
 
         // Lock the costmap because no update is allowed until the plugin is
         // initialized
-        std::unique_lock<Costmap2D::mutex_t> lock(
-            *(layered_costmap_->getCostmap()->getMutex()));
+        std::unique_lock<Costmap2D::mutex_t> lock(*(layered_costmap_->getCostmap()->getMutex()));
         layered_costmap_->addPlugin(plugin);
-        plugin->initialize(layered_costmap_.get(), plugin_name, node_,
-                           &options_);
+        plugin->initialize(layered_costmap_.get(), plugin_name, node_, &options_);
         lock.unlock();
 
         AINFO << "Initialized " << plugin_name << " success";
@@ -314,16 +307,14 @@ void Costmap2DWrapper::init() {
             // Load the library if not already loaded
             if (!plugin_loader_manager_.IsLibraryValid(library_path)) {
                 if (!plugin_loader_manager_.LoadLibrary(library_path)) {
-                    AERROR << "  [x] " << filter_name
-                           << " - failed to load library";
+                    AERROR << "  [x] " << filter_name << " - failed to load library";
                     continue;
                 }
             }
         }
 
         // Create filter instance using ClassLoaderManager
-        std::shared_ptr<Layer> filter =
-            plugin_loader_manager_.CreateClassObj<Layer>(filter_type);
+        std::shared_ptr<Layer> filter = plugin_loader_manager_.CreateClassObj<Layer>(filter_type);
         if (!filter) {
             AERROR << "  [x] " << filter_name << " - failed to create instance";
             continue;
@@ -331,11 +322,9 @@ void Costmap2DWrapper::init() {
 
         // Lock the costmap because no update is allowed until the filter is
         // initialized
-        std::unique_lock<Costmap2D::mutex_t> lock(
-            *(layered_costmap_->getCostmap()->getMutex()));
+        std::unique_lock<Costmap2D::mutex_t> lock(*(layered_costmap_->getCostmap()->getMutex()));
         layered_costmap_->addFilter(filter);
-        filter->initialize(layered_costmap_.get(), filter_name, node_,
-                           &options_);
+        filter->initialize(layered_costmap_.get(), filter_name, node_, &options_);
         lock.unlock();
 
         AINFO << " Initialized " << filter_name << " success";
@@ -360,8 +349,7 @@ void Costmap2DWrapper::init() {
         setRobotFootprint(makeFootprintFromRadius(robot_radius_));
     } else {
         std::vector<commsgs::geometry_msgs::Point> new_footprint;
-        if (!footprint_.empty() &&
-            makeFootprintFromString(footprint_, new_footprint)) {
+        if (!footprint_.empty() && makeFootprintFromString(footprint_, new_footprint)) {
             if (new_footprint.size() >= 3) {
                 setRobotFootprint(new_footprint);
             } else {
@@ -398,8 +386,7 @@ void Costmap2DWrapper::Start() {
 
         // 如果路径是相对路径，使用地图数据目录拼接完整路径
         if (filename[0] != '/') {
-            filename =
-                ::autonomy::map::utils::GetMapDataFilesDirectory() + filename;
+            filename = ::autonomy::map::utils::GetMapDataFilesDirectory() + filename;
         }
 
         if (!loadMap(filename)) {
@@ -412,50 +399,45 @@ void Costmap2DWrapper::Start() {
 
     // 确定发布频率：优先使用 map_publish_frequency_，否则使用
     // update_frequency，最后使用默认值 1.0 Hz
-    double publish_frequency =
-        map_publish_frequency_ > 0.0
-            ? map_publish_frequency_
-            : (options_.update_frequency() > 0.0 ? options_.update_frequency()
-                                                 : 1.0);
+    double publish_frequency = map_publish_frequency_ > 0.0
+                                   ? map_publish_frequency_
+                                   : (options_.update_frequency() > 0.0 ? options_.update_frequency() : 1.0);
 
     int publish_interval_ms = static_cast<int>(1000.0 / publish_frequency);
     if (publish_interval_ms <= 0) {
         publish_interval_ms = 1000;  // 默认 1 秒
     }
 
-    AINFO << "Starting Costmap2D with publish frequency: " << publish_frequency
-          << " Hz";
+    AINFO << "Starting Costmap2D with publish frequency: " << publish_frequency << " Hz";
 
     // 启动后台线程进行周期性发布，而不是阻塞当前线程
     stop_updates_ = false;
     map_update_thread_shutdown_ = false;
 
-    map_update_thread_ =
-        std::make_unique<std::thread>([this, publish_interval_ms]() {
-            AINFO << "Costmap2D update thread started.";
-            while (!stop_updates_) {
-                // 更新 costmap（调用所有 layer 的 updateBounds 和 updateCosts）
-                // 使用机器人位置 (0,0,0) 作为默认值，实际应从定位模块获取
-                double robot_x = 0.0, robot_y = 0.0, robot_yaw = 0.0;
-                try {
-                    layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
-                    // 标记 costmap 已经至少更新过一次
-                    if (!ready_) {
-                        ready_ = true;
-                        AINFO << "Costmap2D is now ready after first update.";
-                    }
-                } catch (const std::exception& e) {
-                    AERROR << "Failed to update costmap: " << e.what();
+    map_update_thread_ = std::make_unique<std::thread>([this, publish_interval_ms]() {
+        AINFO << "Costmap2D update thread started.";
+        while (!stop_updates_) {
+            // 更新 costmap（调用所有 layer 的 updateBounds 和 updateCosts）
+            // 使用机器人位置 (0,0,0) 作为默认值，实际应从定位模块获取
+            double robot_x = 0.0, robot_y = 0.0, robot_yaw = 0.0;
+            try {
+                layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
+                // 标记 costmap 已经至少更新过一次
+                if (!ready_) {
+                    ready_ = true;
+                    AINFO << "Costmap2D is now ready after first update.";
                 }
-
-                // 发布更新后的地图
-                publishMap();
-                std::this_thread::sleep_for(
-                    std::chrono::milliseconds(publish_interval_ms));
+            } catch (const std::exception& e) {
+                AERROR << "Failed to update costmap: " << e.what();
             }
-            map_update_thread_shutdown_ = true;
-            AINFO << "Costmap2D update thread stopped.";
-        });
+
+            // 发布更新后的地图
+            publishMap();
+            std::this_thread::sleep_for(std::chrono::milliseconds(publish_interval_ms));
+        }
+        map_update_thread_shutdown_ = true;
+        AINFO << "Costmap2D update thread stopped.";
+    });
 }
 
 void Costmap2DWrapper::Stop() {
@@ -469,18 +451,14 @@ void Costmap2DWrapper::Stop() {
 
     // layered_costmap_ is set only if on_configure has been called
     if (layered_costmap_) {
-        std::vector<std::shared_ptr<Layer>>* plugins =
-            layered_costmap_->getPlugins();
-        std::vector<std::shared_ptr<Layer>>* filters =
-            layered_costmap_->getFilters();
+        std::vector<std::shared_ptr<Layer>>* plugins = layered_costmap_->getPlugins();
+        std::vector<std::shared_ptr<Layer>>* filters = layered_costmap_->getFilters();
 
         // unsubscribe from topics
-        for (auto plugin = plugins->begin(); plugin != plugins->end();
-             ++plugin) {
+        for (auto plugin = plugins->begin(); plugin != plugins->end(); ++plugin) {
             // (*plugin)->deactivate();
         }
-        for (auto filter = filters->begin(); filter != filters->end();
-             ++filter) {
+        for (auto filter = filters->begin(); filter != filters->end(); ++filter) {
             // (*filter)->deactivate();
         }
     }
@@ -507,10 +485,8 @@ void Costmap2DWrapper::resetLayers() {
     top->resetMap(0, 0, top->getSizeInCellsX(), top->getSizeInCellsY());
 
     // Reset each of the plugins
-    std::vector<std::shared_ptr<Layer>>* plugins =
-        layered_costmap_->getPlugins();
-    std::vector<std::shared_ptr<Layer>>* filters =
-        layered_costmap_->getFilters();
+    std::vector<std::shared_ptr<Layer>>* plugins = layered_costmap_->getPlugins();
+    std::vector<std::shared_ptr<Layer>>* filters = layered_costmap_->getFilters();
     for (auto plugin = plugins->begin(); plugin != plugins->end(); ++plugin) {
         (*plugin)->reset();
     }
@@ -519,21 +495,18 @@ void Costmap2DWrapper::resetLayers() {
     }
 }
 
-void Costmap2DWrapper::setRobotFootprint(
-    const std::vector<commsgs::geometry_msgs::Point>& points) {
+void Costmap2DWrapper::setRobotFootprint(const std::vector<commsgs::geometry_msgs::Point>& points) {
     unpadded_footprint_ = points;
     padded_footprint_ = points;
     padFootprint(padded_footprint_, footprint_padding_);
     layered_costmap_->setFootprint(padded_footprint_);
 }
 
-void Costmap2DWrapper::setRobotFootprintPolygon(
-    const commsgs::geometry_msgs::Polygon::SharedPtr footprint) {
+void Costmap2DWrapper::setRobotFootprintPolygon(const commsgs::geometry_msgs::Polygon::SharedPtr footprint) {
     setRobotFootprint(toPointVector(footprint));
 }
 
-void Costmap2DWrapper::getOrientedFootprint(
-    std::vector<commsgs::geometry_msgs::Point>& oriented_footprint) {
+void Costmap2DWrapper::getOrientedFootprint(std::vector<commsgs::geometry_msgs::Point>& oriented_footprint) {
     commsgs::geometry_msgs::PoseStamped global_pose;
     if (!getRobotPose(global_pose)) {
         return;
@@ -547,17 +520,15 @@ void Costmap2DWrapper::getOrientedFootprint(
 
 void Costmap2DWrapper::mapUpdateLoop(double frequency) {}
 
-bool Costmap2DWrapper::getRobotPose(
-    commsgs::geometry_msgs::PoseStamped& global_pose) {
+bool Costmap2DWrapper::getRobotPose(commsgs::geometry_msgs::PoseStamped& global_pose) {
     return true;
     // return nav2_util::getCurrentPose(
     //     global_pose, *tf_buffer_,
     //     global_frame_, robot_base_frame_, transform_tolerance_);
 }
 
-bool Costmap2DWrapper::transformPoseToGlobalFrame(
-    const commsgs::geometry_msgs::PoseStamped& input_pose,
-    commsgs::geometry_msgs::PoseStamped& transformed_pose) {
+bool Costmap2DWrapper::transformPoseToGlobalFrame(const commsgs::geometry_msgs::PoseStamped& input_pose,
+                                                  commsgs::geometry_msgs::PoseStamped& transformed_pose) {
     // if (input_pose.header.frame_id == global_frame_) {
     //     transformed_pose = input_pose;
     //     return true;
@@ -571,15 +542,13 @@ bool Costmap2DWrapper::transformPoseToGlobalFrame(
 }
 
 bool Costmap2DWrapper::loadMap(const std::string& filename) {
-    if (loadMapFromYaml(filename, occupancy_grid_) !=
-        LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
+    if (loadMapFromYaml(filename, occupancy_grid_) != LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
         AERROR << "Load yaml file error.";
         return false;
     }
 
     // 根据加载的地图尺寸更新 layered_costmap_
-    if (layered_costmap_ && occupancy_grid_.info.width > 0 &&
-        occupancy_grid_.info.height > 0) {
+    if (layered_costmap_ && occupancy_grid_.info.width > 0 && occupancy_grid_.info.height > 0) {
         unsigned int size_x = occupancy_grid_.info.width;
         unsigned int size_y = occupancy_grid_.info.height;
         double resolution = occupancy_grid_.info.resolution;
@@ -594,12 +563,10 @@ bool Costmap2DWrapper::loadMap(const std::string& filename) {
         origin_y_ = origin_y;
 
         // 调整 layered_costmap 尺寸
-        layered_costmap_->resizeMap(size_x, size_y, resolution, origin_x,
-                                    origin_y);
+        layered_costmap_->resizeMap(size_x, size_y, resolution, origin_x, origin_y);
 
-        AINFO << "Map loaded and resized: " << size_x << "x" << size_y << " @ "
-              << resolution << " m/cell, origin: (" << origin_x << ", "
-              << origin_y << ")";
+        AINFO << "Map loaded and resized: " << size_x << "x" << size_y << " @ " << resolution << " m/cell, origin: ("
+              << origin_x << ", " << origin_y << ")";
     }
 
     // 标记地图已加载，避免重复加载
@@ -612,8 +579,7 @@ void Costmap2DWrapper::publishMap() {
     // 检查是否有有效的 costmap
     if (!layered_costmap_ || !layered_costmap_->getCostmap()) {
         static int not_initialized_warn_count = 0;
-        if (not_initialized_warn_count < 5 ||
-            not_initialized_warn_count % 100 == 0) {
+        if (not_initialized_warn_count < 5 || not_initialized_warn_count % 100 == 0) {
             AWARN << "Costmap not initialized, cannot publish map.";
         }
         ++not_initialized_warn_count;
@@ -685,10 +651,8 @@ void Costmap2DWrapper::publishMap() {
             // 线性映射：从 [FREE_SPACE+1, LETHAL_OBSTACLE-1] 映射到 [1, 99]
             // 这样可以保留 costmap 中的中间值信息
             double normalized =
-                static_cast<double>(cost - FREE_SPACE) /
-                static_cast<double>(LETHAL_OBSTACLE - FREE_SPACE);
-            occ_value = static_cast<int8_t>(
-                std::round(normalized * (utils::OCC_GRID_OCCUPIED - 1) + 1));
+                static_cast<double>(cost - FREE_SPACE) / static_cast<double>(LETHAL_OBSTACLE - FREE_SPACE);
+            occ_value = static_cast<int8_t>(std::round(normalized * (utils::OCC_GRID_OCCUPIED - 1) + 1));
         }
 
         occupancy_grid_.data.push_back(occ_value);
@@ -700,8 +664,7 @@ void Costmap2DWrapper::publishMap() {
     // 只在需要时输出详细信息（避免频繁日志）
     static int publish_count = 0;
     if (++publish_count % 10 == 0) {
-        AINFO << "Map updated: " << size_x << "x" << size_y
-              << " resolution: " << resolution
+        AINFO << "Map updated: " << size_x << "x" << size_y << " resolution: " << resolution
               << " m/cell, frame: " << global_frame_;
     }
 }

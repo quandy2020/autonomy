@@ -64,8 +64,7 @@ private:
     std::ofstream out_;
 };
 
-using FileWriterFactory =
-    std::function<std::unique_ptr<FileWriter>(const std::string& filename)>;
+using FileWriterFactory = std::function<std::unique_ptr<FileWriter>(const std::string& filename)>;
 
 }  // namespace io
 }  // namespace cartographer

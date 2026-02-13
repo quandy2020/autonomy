@@ -1,0 +1,47 @@
+"""
+Bazel BUILD file for autonomy/control/controller/pure_pursuit_controller
+
+This file defines rules to build the Regulated Pure Pursuit controller plugin library.
+It follows the same dynamic-library plugin pattern as the MPPI and graceful controllers.
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_cc_library")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Regulated Pure Pursuit Controller shared library (dynamic library)
+# This is a plugin-based controller implementation for path tracking.
+autonomy_cc_library(
+    name = "pure_pursuit_controller",
+    srcs_glob = [
+        "*.cpp",
+        "*.cc",
+    ],
+    hdrs_glob = [
+        "*.hpp",
+        "*.h",
+    ],
+    exclude_patterns = [
+        "**/*_test.cpp",
+        "**/*_test.cc",
+        "**/*_test.hpp",
+        "**/*_test.h",
+        "**/test/**",
+        "**/testing/**",
+        "**/*.xml",
+        "**/*.cmake",
+        "**/*.md",
+    ],
+    deps = [
+        "//autonomy/control:control_cc_proto",
+        "//autonomy/common:common",
+        "//autonomy/commsgs:commsgs_cc",
+        "//autonomy/map:map",
+        "//autonomy/tasks:tasks",
+    ],
+    linkstatic = False,  # Build as shared library (.so/.dylib)
+    alwayslink = 1,      # Always link all symbols (important for plugins)
+)
+

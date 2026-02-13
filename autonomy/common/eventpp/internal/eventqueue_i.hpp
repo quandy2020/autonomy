@@ -10,12 +10,10 @@ namespace eventpp {
 namespace internal_ {
 
 template <size_t... Indexes>
-struct IndexSequence {
-};
+struct IndexSequence {};
 
 template <size_t N, size_t... Indexes>
-struct MakeIndexSequence : MakeIndexSequence<N - 1, N - 1, Indexes...> {
-};
+struct MakeIndexSequence : MakeIndexSequence<N - 1, N - 1, Indexes...> {};
 
 template <std::size_t... Indexes>
 struct MakeIndexSequence<0, Indexes...> {
@@ -116,8 +114,7 @@ public:
 
     template <typename U>
     void set(U&& item) {
-        static_assert(sizeof(U) <= Size,
-                      "Item is too large to fit in BufferedUnion");
+        static_assert(sizeof(U) <= Size, "Item is too large to fit in BufferedUnion");
         assert(dtor == nullptr);
 
         new (buffer.data()) U(std::forward<U>(item));

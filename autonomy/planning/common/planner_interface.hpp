@@ -63,10 +63,8 @@ public:
      * later)
      * @return True if the planner was successfully configured, false otherwise
      */
-    virtual bool Configure(const proto::PlannerOptions& options,
-                           const std::string& name,
-                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                               costmap = nullptr) = 0;
+    virtual bool Configure(const proto::PlannerOptions& options, const std::string& name,
+                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap = nullptr) = 0;
 
     /**
      * @brief Method to cleanup resources used on shutdown.
@@ -112,8 +110,7 @@ public:
      *         - 71..99: Reserved for plugin specific errors
      */
     virtual uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
-                              const commsgs::geometry_msgs::PoseStamped& goal,
-                              commsgs::planning_msgs::Path& plan,
+                              const commsgs::geometry_msgs::PoseStamped& goal, commsgs::planning_msgs::Path& plan,
                               std::function<bool()> cancel_checker) = 0;
 };
 

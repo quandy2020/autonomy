@@ -19,8 +19,20 @@ set(SPHINX_PDF_OUTPUT "${PROJECT_BINARY_DIR}/docs/Autonomy.pdf")
 # Find python
 find_package(Python REQUIRED COMPONENTS Interpreter)
 
-# Build HTML documentation
-add_custom_target(build_doc ALL
+# If required theme isn't available, skip docs to avoid build failures.
+execute_process(
+    COMMAND ${Python_EXECUTABLE} -c "import sphinx_rtd_theme"
+    RESULT_VARIABLE SPHINX_RTD_THEME_RESULT
+    OUTPUT_QUIET
+    ERROR_QUIET
+)
+if(NOT SPHINX_RTD_THEME_RESULT EQUAL 0)
+    message(WARNING "sphinx_rtd_theme not found; skipping docs build target.")
+    return()
+endif()
+
+# Build HTML documentation (NOT built by default)
+add_custom_target(build_doc
     ${SPHINX_EXECUTABLE} -b html
     ${CMAKE_CURRENT_SOURCE_DIR}/source
     ${CMAKE_CURRENT_BINARY_DIR}/html
@@ -52,7 +64,10 @@ else()
 endif()
 
 # Install documentation
-install(DIRECTORY ${PROJECT_BINARY_DIR}/docs/html/ DESTINATION docs)
+# build_doc 目标默认不构建，可能导致 ${SPHINX_HTML_DIR} 不存在，从而在 `make install` 阶段失败。
+# 这里提前创建目录，保证安装阶段不会因为缺失目录而报错（即使目录为空也可正常安装）。
+file(MAKE_DIRECTORY "${SPHINX_HTML_DIR}")
+install(DIRECTORY "${SPHINX_HTML_DIR}/" DESTINATION docs)
 if(HTML2PDF_SCRIPT AND EXISTS ${SPHINX_PDF_OUTPUT})
     install(FILES ${SPHINX_PDF_OUTPUT} DESTINATION docs)
 endif()

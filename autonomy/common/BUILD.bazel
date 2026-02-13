@@ -1,0 +1,22 @@
+"""
+Bazel BUILD file for autonomy/common
+
+This file defines rules to build the common utilities library.
+Uses simplified macros from tools/autonomy_module.bzl
+"""
+
+load("//autonomy/tools:autonomy_module.bzl", "autonomy_cc_library")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Main C++ library containing all common utilities
+autonomy_cc_library(
+    name = "common",
+    deps = [
+        # TODO: Add external dependencies when available:
+        # "@eigen//:eigen",
+        # "@boost//:boost",
+    ],
+)

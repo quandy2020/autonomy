@@ -43,57 +43,47 @@ constexpr int kMaxRetries = 5;
 
 }  // namespace
 
-MapBuilderStub::MapBuilderStub(const std::string& server_address,
-                               const std::string& client_id)
-    : client_channel_(::grpc::CreateChannel(
-          server_address, ::grpc::InsecureChannelCredentials())),
+MapBuilderStub::MapBuilderStub(const std::string& server_address, const std::string& client_id)
+    : client_channel_(::grpc::CreateChannel(server_address, ::grpc::InsecureChannelCredentials())),
       pose_graph_stub_(make_unique<PoseGraphStub>(client_channel_, client_id)),
       client_id_(client_id) {
-    LOG(INFO) << "Connecting to SLAM process at " << server_address
-              << " with client_id " << client_id;
-    std::chrono::system_clock::time_point deadline(
-        std::chrono::system_clock::now() +
-        std::chrono::seconds(kChannelTimeoutSeconds));
+    LOG(INFO) << "Connecting to SLAM process at " << server_address << " with client_id " << client_id;
+    std::chrono::system_clock::time_point deadline(std::chrono::system_clock::now() +
+                                                   std::chrono::seconds(kChannelTimeoutSeconds));
     if (!client_channel_->WaitForConnected(deadline)) {
         LOG(FATAL) << "Failed to connect to " << server_address;
     }
 }
 
-int MapBuilderStub::AddTrajectoryBuilder(
-    const std::set<SensorId>& expected_sensor_ids,
-    const mapping::proto::TrajectoryBuilderOptions& trajectory_options,
-    LocalSlamResultCallback local_slam_result_callback) {
+int MapBuilderStub::AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_ids,
+                                         const mapping::proto::TrajectoryBuilderOptions& trajectory_options,
+                                         LocalSlamResultCallback local_slam_result_callback) {
     proto::AddTrajectoryRequest request;
     request.set_client_id(client_id_);
     *request.mutable_trajectory_builder_options() = trajectory_options;
     for (const auto& sensor_id : expected_sensor_ids) {
         *request.add_expected_sensor_ids() = cloud::ToProto(sensor_id);
     }
-    autonomy::common::async_grpc::Client<handlers::AddTrajectorySignature>
-        client(client_channel_, common::FromSeconds(kChannelTimeoutSeconds),
-               autonomy::common::async_grpc::CreateLimitedBackoffStrategy(
-                   common::FromMilliseconds(kRetryBaseDelayMilliseconds),
-                   kRetryDelayFactor, kMaxRetries));
+    autonomy::common::async_grpc::Client<handlers::AddTrajectorySignature> client(
+        client_channel_, common::FromSeconds(kChannelTimeoutSeconds),
+        autonomy::common::async_grpc::CreateLimitedBackoffStrategy(
+            common::FromMilliseconds(kRetryBaseDelayMilliseconds), kRetryDelayFactor, kMaxRetries));
     CHECK(client.Write(request));
 
     // Construct trajectory builder stub.
     trajectory_builder_stubs_.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(client.response().trajectory_id()),
-        std::forward_as_tuple(make_unique<TrajectoryBuilderStub>(
-            client_channel_, client.response().trajectory_id(), client_id_,
-            local_slam_result_callback)));
+        std::piecewise_construct, std::forward_as_tuple(client.response().trajectory_id()),
+        std::forward_as_tuple(make_unique<TrajectoryBuilderStub>(client_channel_, client.response().trajectory_id(),
+                                                                 client_id_, local_slam_result_callback)));
     return client.response().trajectory_id();
 }
 
 int MapBuilderStub::AddTrajectoryForDeserialization(
-    const mapping::proto::TrajectoryBuilderOptionsWithSensorIds&
-        options_with_sensor_ids_proto) {
+    const mapping::proto::TrajectoryBuilderOptionsWithSensorIds& options_with_sensor_ids_proto) {
     LOG(FATAL) << "Not implemented";
 }
 
-mapping::TrajectoryBuilderInterface* MapBuilderStub::GetTrajectoryBuilder(
-    int trajectory_id) const {
+mapping::TrajectoryBuilderInterface* MapBuilderStub::GetTrajectoryBuilder(int trajectory_id) const {
     auto it = trajectory_builder_stubs_.find(trajectory_id);
     if (it == trajectory_builder_stubs_.end()) {
         return nullptr;
@@ -105,41 +95,34 @@ void MapBuilderStub::FinishTrajectory(int trajectory_id) {
     proto::FinishTrajectoryRequest request;
     request.set_client_id(client_id_);
     request.set_trajectory_id(trajectory_id);
-    autonomy::common::async_grpc::Client<handlers::FinishTrajectorySignature>
-        client(client_channel_);
+    autonomy::common::async_grpc::Client<handlers::FinishTrajectorySignature> client(client_channel_);
     ::grpc::Status status;
     client.Write(request, &status);
     if (!status.ok()) {
-        LOG(ERROR) << "Failed to finish trajectory " << trajectory_id
-                   << " for client_id " << client_id_ << ": "
+        LOG(ERROR) << "Failed to finish trajectory " << trajectory_id << " for client_id " << client_id_ << ": "
                    << status.error_message();
         return;
     }
     trajectory_builder_stubs_.erase(trajectory_id);
 }
 
-std::string MapBuilderStub::SubmapToProto(
-    const mapping::SubmapId& submap_id,
-    mapping::proto::SubmapQuery::Response* submap_query_response) {
+std::string MapBuilderStub::SubmapToProto(const mapping::SubmapId& submap_id,
+                                          mapping::proto::SubmapQuery::Response* submap_query_response) {
     proto::GetSubmapRequest request;
     submap_id.ToProto(request.mutable_submap_id());
-    autonomy::common::async_grpc::Client<handlers::GetSubmapSignature> client(
-        client_channel_);
+    autonomy::common::async_grpc::Client<handlers::GetSubmapSignature> client(client_channel_);
     CHECK(client.Write(request));
     submap_query_response->CopyFrom(client.response().submap_query_response());
     return client.response().error_msg();
 }
 
-void MapBuilderStub::SerializeState(bool include_unfinished_submaps,
-                                    io::ProtoStreamWriterInterface* writer) {
+void MapBuilderStub::SerializeState(bool include_unfinished_submaps, io::ProtoStreamWriterInterface* writer) {
     if (include_unfinished_submaps) {
-        LOG(WARNING)
-            << "Serializing unfinished submaps is currently unsupported. "
-               "Proceeding to write the state without them.";
+        LOG(WARNING) << "Serializing unfinished submaps is currently unsupported. "
+                        "Proceeding to write the state without them.";
     }
     google::protobuf::Empty request;
-    autonomy::common::async_grpc::Client<handlers::WriteStateSignature> client(
-        client_channel_);
+    autonomy::common::async_grpc::Client<handlers::WriteStateSignature> client(client_channel_);
     CHECK(client.Write(request));
     proto::WriteStateResponse response;
     while (client.StreamRead(&response)) {
@@ -156,30 +139,24 @@ void MapBuilderStub::SerializeState(bool include_unfinished_submaps,
     }
 }
 
-bool MapBuilderStub::SerializeStateToFile(bool include_unfinished_submaps,
-                                          const std::string& filename) {
+bool MapBuilderStub::SerializeStateToFile(bool include_unfinished_submaps, const std::string& filename) {
     if (include_unfinished_submaps) {
-        LOG(WARNING)
-            << "Serializing unfinished submaps is currently unsupported. "
-               "Proceeding to write the state without them.";
+        LOG(WARNING) << "Serializing unfinished submaps is currently unsupported. "
+                        "Proceeding to write the state without them.";
     }
     proto::WriteStateToFileRequest request;
     request.set_filename(filename);
     ::grpc::Status status;
-    autonomy::common::async_grpc::Client<handlers::WriteStateToFileSignature>
-        client(client_channel_);
+    autonomy::common::async_grpc::Client<handlers::WriteStateToFileSignature> client(client_channel_);
     if (!client.Write(request, &status)) {
         LOG(ERROR) << "WriteStateToFileRequest failed - "
-                   << "code: " << status.error_code()
-                   << " reason: " << status.error_message();
+                   << "code: " << status.error_code() << " reason: " << status.error_message();
     }
     return client.response().success();
 }
 
-std::map<int, int> MapBuilderStub::LoadState(
-    io::ProtoStreamReaderInterface* reader, const bool load_frozen_state) {
-    autonomy::common::async_grpc::Client<handlers::LoadStateSignature> client(
-        client_channel_);
+std::map<int, int> MapBuilderStub::LoadState(io::ProtoStreamReaderInterface* reader, const bool load_frozen_state) {
+    autonomy::common::async_grpc::Client<handlers::LoadStateSignature> client(client_channel_);
     {
         proto::LoadStateRequest request;
         request.set_client_id(client_id_);
@@ -198,8 +175,7 @@ std::map<int, int> MapBuilderStub::LoadState(
     // Request with a PoseGraph proto is sent second.
     {
         proto::LoadStateRequest request;
-        *request.mutable_serialized_data()->mutable_pose_graph() =
-            deserializer.pose_graph();
+        *request.mutable_serialized_data()->mutable_pose_graph() = deserializer.pose_graph();
         request.set_load_frozen_state(load_frozen_state);
         CHECK(client.Write(request));
     }
@@ -207,8 +183,7 @@ std::map<int, int> MapBuilderStub::LoadState(
     // Request with an AllTrajectoryBuilderOptions should be third.
     {
         proto::LoadStateRequest request;
-        *request.mutable_serialized_data()
-             ->mutable_all_trajectory_builder_options() =
+        *request.mutable_serialized_data()->mutable_all_trajectory_builder_options() =
             deserializer.all_trajectory_builder_options();
         request.set_load_frozen_state(load_frozen_state);
         CHECK(client.Write(request));
@@ -216,8 +191,7 @@ std::map<int, int> MapBuilderStub::LoadState(
 
     // Multiple requests with SerializedData are sent after.
     proto::LoadStateRequest request;
-    while (deserializer.ReadNextSerializedData(
-        request.mutable_serialized_data())) {
+    while (deserializer.ReadNextSerializedData(request.mutable_serialized_data())) {
         request.set_load_frozen_state(load_frozen_state);
         CHECK(client.Write(request));
     }
@@ -228,14 +202,12 @@ std::map<int, int> MapBuilderStub::LoadState(
     return FromProto(client.response().trajectory_remapping());
 }
 
-std::map<int, int> MapBuilderStub::LoadStateFromFile(
-    const std::string& filename, const bool load_frozen_state) {
+std::map<int, int> MapBuilderStub::LoadStateFromFile(const std::string& filename, const bool load_frozen_state) {
     proto::LoadStateFromFileRequest request;
     request.set_file_path(filename);
     request.set_client_id(client_id_);
     request.set_load_frozen_state(load_frozen_state);
-    autonomy::common::async_grpc::Client<handlers::LoadStateFromFileSignature>
-        client(client_channel_);
+    autonomy::common::async_grpc::Client<handlers::LoadStateFromFileSignature> client(client_channel_);
     CHECK(client.Write(request));
     return FromProto(client.response().trajectory_remapping());
 }

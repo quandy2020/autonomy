@@ -30,20 +30,15 @@ namespace io {
 class VerticalRangeFilteringPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "vertical_range_filter";
-    VerticalRangeFilteringPointsProcessor(double min_z, double max_z,
-                                          PointsProcessor* next);
-    static std::unique_ptr<VerticalRangeFilteringPointsProcessor>
-    FromDictionary(common::LuaParameterDictionary* dictionary,
-                   PointsProcessor* next);
+    constexpr static const char* kConfigurationFileActionName = "vertical_range_filter";
+    VerticalRangeFilteringPointsProcessor(double min_z, double max_z, PointsProcessor* next);
+    static std::unique_ptr<VerticalRangeFilteringPointsProcessor> FromDictionary(
+        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
     ~VerticalRangeFilteringPointsProcessor() override {}
 
-    VerticalRangeFilteringPointsProcessor(
-        const VerticalRangeFilteringPointsProcessor&) = delete;
-    VerticalRangeFilteringPointsProcessor& operator=(
-        const VerticalRangeFilteringPointsProcessor&) = delete;
+    VerticalRangeFilteringPointsProcessor(const VerticalRangeFilteringPointsProcessor&) = delete;
+    VerticalRangeFilteringPointsProcessor& operator=(const VerticalRangeFilteringPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

@@ -43,9 +43,7 @@ public:
 
 protected:
     T filter_impl(T value, std::chrono::nanoseconds duration) override {
-        const auto dt =
-            std::chrono::duration_cast<std::chrono::duration<T>>(duration)
-                .count();
+        const auto dt = std::chrono::duration_cast<std::chrono::duration<T>>(duration).count();
         // From https://stackoverflow.com/a/1027808
         const auto alpha = T{1.0} - std::exp(-dt * m_rc_inv);
         m_signal += alpha * (value - m_signal);

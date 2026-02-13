@@ -39,8 +39,7 @@ public:
      * @param origin The origin of the global bounding box
      * @param dim The dimension of the global bounding box
      */
-    IterativeDecomp(const Vecf<Dim>& origin, const Vecf<Dim>& dim)
-        : EllipsoidDecomp<Dim>(origin, dim) {}
+    IterativeDecomp(const Vecf<Dim>& origin, const Vecf<Dim>& dim) : EllipsoidDecomp<Dim>(origin, dim) {}
     /**
      * @brief Decomposition thread
      * @param path_raw The path to dilate
@@ -48,8 +47,7 @@ public:
      * @param offset_x offset added to the long semi-axis, default is 0
      * @param res Resolution to downsample the path
      */
-    void dilate_iter(const vec_Vecf<Dim>& path_raw, int iter_num = 5,
-                     decimal_t res = 0, decimal_t offset_x = 0) {
+    void dilate_iter(const vec_Vecf<Dim>& path_raw, int iter_num = 5, decimal_t res = 0, decimal_t offset_x = 0) {
         vec_Vecf<Dim> path = res > 0 ? downsample(path_raw, res) : path_raw;
         this->dilate(path, offset_x);
         vec_Vecf<Dim> new_path = simplify(path);
@@ -102,8 +100,7 @@ protected:
         new_path.push_back(ref_pt);
 
         for (size_t i = 2; i < path.size(); i++) {
-            if (this->polyhedrons_[i - 1].inside(ref_pt) &&
-                cal_closest_dist(ref_pt, this->polyhedrons_[i - 1]) > 0.1) {
+            if (this->polyhedrons_[i - 1].inside(ref_pt) && cal_closest_dist(ref_pt, this->polyhedrons_[i - 1]) > 0.1) {
             } else {
                 ref_pt = path[i - 1];
                 new_path.push_back(ref_pt);

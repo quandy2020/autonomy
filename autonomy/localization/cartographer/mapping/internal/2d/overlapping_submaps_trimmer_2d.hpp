@@ -28,9 +28,7 @@ namespace mapping {
 class OverlappingSubmapsTrimmer2D : public PoseGraphTrimmer
 {
 public:
-    OverlappingSubmapsTrimmer2D(uint16 fresh_submaps_count,
-                                double min_covered_area,
-                                uint16 min_added_submaps_count)
+    OverlappingSubmapsTrimmer2D(uint16 fresh_submaps_count, double min_covered_area, uint16 min_added_submaps_count)
         : fresh_submaps_count_(fresh_submaps_count),
           min_covered_area_(min_covered_area),
           min_added_submaps_count_(min_added_submaps_count) {}

@@ -34,8 +34,15 @@ message DiagnosticStatus
     // byte WARN=1
     // byte ERROR=2
     // byte STALE=3
+    enum Level {
+        OK = 0;
+        WARN = 1;
+        ERROR = 2;
+        STALE = 3;
+    }
+    
     // Level of operation enumerated above.
-    bytes level = 1;
+    Level level = 1;
     // A description of the test/component reporting.
     string name = 2;
     // A description of the status.

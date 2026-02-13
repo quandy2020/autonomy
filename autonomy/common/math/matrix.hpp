@@ -38,8 +38,7 @@ void DecomposeMatrixRQ(const MatrixType& A, MatrixType* R, MatrixType* Q);
 
 template <typename MatrixType>
 void DecomposeMatrixRQ(const MatrixType& A, MatrixType* R, MatrixType* Q) {
-    const MatrixType A_flipud_transpose =
-        A.transpose().rowwise().reverse().eval();
+    const MatrixType A_flipud_transpose = A.transpose().rowwise().reverse().eval();
 
     const Eigen::HouseholderQR<MatrixType> QR(A_flipud_transpose);
     const MatrixType& Q0 = QR.householderQ();
@@ -48,8 +47,7 @@ void DecomposeMatrixRQ(const MatrixType& A, MatrixType* R, MatrixType* Q) {
     *R = R0.transpose().colwise().reverse().eval();
     *R = R->rowwise().reverse().eval();
     for (int i = 0; i < R->rows(); ++i) {
-        for (int j = 0; j < R->cols() && (R->cols() - j) > (R->rows() - i);
-             ++j) {
+        for (int j = 0; j < R->cols() && (R->cols() - j) > (R->rows() - i); ++j) {
             (*R)(i, j) = 0;
         }
     }

@@ -55,8 +55,7 @@ namespace tf2 {
  * This method needs to be implemented by client library developers
  */
 template <class T>
-void doTransform(const T& data_in, T& data_out,
-                 const geometry_msgs::TransformStamped& transform);
+void doTransform(const T& data_in, T& data_out, const geometry_msgs::TransformStamped& transform);
 
 /**\brief Get the timestamp from data
  * \param t The data input.

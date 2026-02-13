@@ -37,16 +37,13 @@
 namespace cartographer {
 namespace mapping {
 
-proto::SubmapsOptions2D CreateSubmapsOptions2D(
-    common::LuaParameterDictionary* parameter_dictionary);
+proto::SubmapsOptions2D CreateSubmapsOptions2D(common::LuaParameterDictionary* parameter_dictionary);
 
 class Submap2D : public Submap
 {
 public:
-    Submap2D(const Eigen::Vector2f& origin, std::unique_ptr<Grid2D> grid,
-             ValueConversionTables* conversion_tables);
-    explicit Submap2D(const proto::Submap2D& proto,
-                      ValueConversionTables* conversion_tables);
+    Submap2D(const Eigen::Vector2f& origin, std::unique_ptr<Grid2D> grid, ValueConversionTables* conversion_tables);
+    explicit Submap2D(const proto::Submap2D& proto, ValueConversionTables* conversion_tables);
 
     proto::Submap ToProto(bool include_grid_data) const override;
     void UpdateFromProto(const proto::Submap& proto) override;
@@ -60,8 +57,7 @@ public:
 
     // Insert 'range_data' into this submap using 'range_data_inserter'. The
     // submap must not be finished yet.
-    void InsertRangeData(const sensor::RangeData& range_data,
-                         const RangeDataInserterInterface* range_data_inserter);
+    void InsertRangeData(const sensor::RangeData& range_data, const RangeDataInserterInterface* range_data_inserter);
     void Finish();
 
 private:
@@ -88,8 +84,7 @@ public:
     ActiveSubmaps2D& operator=(const ActiveSubmaps2D&) = delete;
 
     // Inserts 'range_data' into the Submap collection.
-    std::vector<std::shared_ptr<const Submap2D>> InsertRangeData(
-        const sensor::RangeData& range_data);
+    std::vector<std::shared_ptr<const Submap2D>> InsertRangeData(const sensor::RangeData& range_data);
 
     std::vector<std::shared_ptr<const Submap2D>> submaps() const;
 

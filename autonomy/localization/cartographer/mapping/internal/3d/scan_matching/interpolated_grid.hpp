@@ -36,12 +36,10 @@ template <class HybridGridType>
 class InterpolatedGrid
 {
 public:
-    explicit InterpolatedGrid(const HybridGridType& hybrid_grid)
-        : hybrid_grid_(hybrid_grid) {}
+    explicit InterpolatedGrid(const HybridGridType& hybrid_grid) : hybrid_grid_(hybrid_grid) {}
 
     InterpolatedGrid(const InterpolatedGrid<HybridGridType>&) = delete;
-    InterpolatedGrid& operator=(const InterpolatedGrid<HybridGridType>&) =
-        delete;
+    InterpolatedGrid& operator=(const InterpolatedGrid<HybridGridType>&) = delete;
 
     // Returns the interpolated value at (x, y, z) of the HybridGrid
     // used to perform the interpolation.
@@ -55,23 +53,15 @@ public:
         double x1, y1, z1, x2, y2, z2;
         ComputeInterpolationDataPoints(x, y, z, &x1, &y1, &z1, &x2, &y2, &z2);
 
-        const Eigen::Array3i index1 =
-            hybrid_grid_.GetCellIndex(Eigen::Vector3f(x1, y1, z1));
+        const Eigen::Array3i index1 = hybrid_grid_.GetCellIndex(Eigen::Vector3f(x1, y1, z1));
         const double q111 = GetValue(hybrid_grid_, index1);
-        const double q112 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(0, 0, 1));
-        const double q121 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(0, 1, 0));
-        const double q122 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(0, 1, 1));
-        const double q211 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 0, 0));
-        const double q212 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 0, 1));
-        const double q221 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 1, 0));
-        const double q222 =
-            GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 1, 1));
+        const double q112 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(0, 0, 1));
+        const double q121 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(0, 1, 0));
+        const double q122 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(0, 1, 1));
+        const double q211 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 0, 0));
+        const double q212 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 0, 1));
+        const double q221 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 1, 0));
+        const double q222 = GetValue(hybrid_grid_, index1 + Eigen::Array3i(1, 1, 1));
 
         const T normalized_x = (x - x1) / (x2 - x1);
         const T normalized_y = (y - y1) / (y2 - y1);
@@ -90,28 +80,19 @@ public:
         // same scheme: A * (2t^3 - 3t^2 + 1) + B * (-2t^3 + 3t^2). The first
         // polynomial is 1 at t=0, 0 at t=1, the second polynomial is 0 at t=0,
         // 1 at t=1. Both polynomials have derivative zero at t=0 and t=1.
-        const T q11 = (q111 - q112) * normalized_zzz * 2. +
-                      (q112 - q111) * normalized_zz * 3. + q111;
-        const T q12 = (q121 - q122) * normalized_zzz * 2. +
-                      (q122 - q121) * normalized_zz * 3. + q121;
-        const T q21 = (q211 - q212) * normalized_zzz * 2. +
-                      (q212 - q211) * normalized_zz * 3. + q211;
-        const T q22 = (q221 - q222) * normalized_zzz * 2. +
-                      (q222 - q221) * normalized_zz * 3. + q221;
-        const T q1 = (q11 - q12) * normalized_yyy * 2. +
-                     (q12 - q11) * normalized_yy * 3. + q11;
-        const T q2 = (q21 - q22) * normalized_yyy * 2. +
-                     (q22 - q21) * normalized_yy * 3. + q21;
-        return (q1 - q2) * normalized_xxx * 2. +
-               (q2 - q1) * normalized_xx * 3. + q1;
+        const T q11 = (q111 - q112) * normalized_zzz * 2. + (q112 - q111) * normalized_zz * 3. + q111;
+        const T q12 = (q121 - q122) * normalized_zzz * 2. + (q122 - q121) * normalized_zz * 3. + q121;
+        const T q21 = (q211 - q212) * normalized_zzz * 2. + (q212 - q211) * normalized_zz * 3. + q211;
+        const T q22 = (q221 - q222) * normalized_zzz * 2. + (q222 - q221) * normalized_zz * 3. + q221;
+        const T q1 = (q11 - q12) * normalized_yyy * 2. + (q12 - q11) * normalized_yy * 3. + q11;
+        const T q2 = (q21 - q22) * normalized_yyy * 2. + (q22 - q21) * normalized_yy * 3. + q21;
+        return (q1 - q2) * normalized_xxx * 2. + (q2 - q1) * normalized_xx * 3. + q1;
     }
 
 private:
     template <typename T>
-    void ComputeInterpolationDataPoints(const T& x, const T& y, const T& z,
-                                        double* x1, double* y1, double* z1,
-                                        double* x2, double* y2,
-                                        double* z2) const {
+    void ComputeInterpolationDataPoints(const T& x, const T& y, const T& z, double* x1, double* y1, double* z1,
+                                        double* x2, double* y2, double* z2) const {
         const Eigen::Vector3f lower = CenterOfLowerVoxel(x, y, z);
         *x1 = lower.x();
         *y1 = lower.y();
@@ -124,11 +105,9 @@ private:
     // Center of the next lower voxel, i.e., not necessarily the voxel
     // containing (x, y, z). For each dimension, the largest voxel index so that
     // the corresponding center is at most the given coordinate.
-    Eigen::Vector3f CenterOfLowerVoxel(const double x, const double y,
-                                       const double z) const {
+    Eigen::Vector3f CenterOfLowerVoxel(const double x, const double y, const double z) const {
         // Center of the cell containing (x, y, z).
-        Eigen::Vector3f center = hybrid_grid_.GetCenterOfCell(
-            hybrid_grid_.GetCellIndex(Eigen::Vector3f(x, y, z)));
+        Eigen::Vector3f center = hybrid_grid_.GetCenterOfCell(hybrid_grid_.GetCellIndex(Eigen::Vector3f(x, y, z)));
         // Move to the next lower voxel center.
         if (center.x() > x) {
             center.x() -= hybrid_grid_.resolution();
@@ -144,18 +123,15 @@ private:
 
     // Uses the scalar part of a Ceres Jet.
     template <typename T>
-    Eigen::Vector3f CenterOfLowerVoxel(const T& jet_x, const T& jet_y,
-                                       const T& jet_z) const {
+    Eigen::Vector3f CenterOfLowerVoxel(const T& jet_x, const T& jet_y, const T& jet_z) const {
         return CenterOfLowerVoxel(jet_x.a, jet_y.a, jet_z.a);
     }
 
-    static float GetValue(const HybridGrid& probability_grid,
-                          const Eigen::Array3i& index) {
+    static float GetValue(const HybridGrid& probability_grid, const Eigen::Array3i& index) {
         return probability_grid.GetProbability(index);
     }
 
-    static float GetValue(const IntensityHybridGrid& intensity_grid,
-                          const Eigen::Array3i& index) {
+    static float GetValue(const IntensityHybridGrid& intensity_grid, const Eigen::Array3i& index) {
         return intensity_grid.GetIntensity(index);
     }
 

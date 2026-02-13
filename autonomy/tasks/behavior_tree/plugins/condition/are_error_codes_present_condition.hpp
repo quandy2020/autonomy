@@ -34,16 +34,14 @@ namespace condition {
 class AreErrorCodesPresent : public BT::ConditionNode
 {
 public:
-    AreErrorCodesPresent(const std::string& condition_name,
-                         const BT::NodeConfiguration& conf)
+    AreErrorCodesPresent(const std::string& condition_name, const BT::NodeConfiguration& conf)
         : BT::ConditionNode(condition_name, conf) {
         std::vector<int> error_codes_to_check_vector;
         getInput("error_codes_to_check",
                  error_codes_to_check_vector);  // NOLINT
 
         error_codes_to_check_ =
-            std::set<uint16_t>(error_codes_to_check_vector.begin(),
-                               error_codes_to_check_vector.end());
+            std::set<uint16_t>(error_codes_to_check_vector.begin(), error_codes_to_check_vector.end());
     }
 
     AreErrorCodesPresent() = delete;
@@ -51,8 +49,7 @@ public:
     BT::NodeStatus tick() {
         getInput<uint16_t>("error_code", error_code_);  // NOLINT
 
-        if (error_codes_to_check_.find(error_code_) !=
-            error_codes_to_check_.end()) {
+        if (error_codes_to_check_.find(error_code_) != error_codes_to_check_.end()) {
             return BT::NodeStatus::SUCCESS;
         }
 
