@@ -53,8 +53,7 @@ public:
      * @param options 地图服务配置选项
      * @param node_name 可选的节点名称，如果为空则使用默认名称
      */
-    MapServer(const proto::MapOptions& options,
-              const std::string& node_name = "");
+    MapServer(const proto::MapOptions& options, const std::string& node_name = "");
 
     /**
      * @brief 析构函数
@@ -103,9 +102,8 @@ protected:
     proto::MapOptions options_;
 
     // autolink 节点
-    std::unique_ptr<::autolink::Node> node_{nullptr};
-    std::shared_ptr<autolink::Writer<commsgs::map_msgs::OccupancyGrid>>
-        static_map_writer_{nullptr};
+    std::shared_ptr<::autolink::Node> node_{nullptr};
+    std::shared_ptr<autolink::Writer<commsgs::map_msgs::OccupancyGrid>> static_map_writer_{nullptr};
     std::shared_ptr<::autolink::Timer> static_map_timer_{nullptr};
 
     // map message

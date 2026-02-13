@@ -28,12 +28,8 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void RunFinalOptimizationHandler::OnRequest(
-    const google::protobuf::Empty& request) {
-    GetContext<MapBuilderContextInterface>()
-        ->map_builder()
-        .pose_graph()
-        ->RunFinalOptimization();
+void RunFinalOptimizationHandler::OnRequest(const google::protobuf::Empty& request) {
+    GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->RunFinalOptimization();
     Send(absl::make_unique<google::protobuf::Empty>());
 }
 

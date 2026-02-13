@@ -30,9 +30,8 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ComputePathToPoseAction::ComputePathToPoseAction(
-    const std::string& xml_tag_name, const std::string& action_name,
-    const BT::NodeConfiguration& conf)
+ComputePathToPoseAction::ComputePathToPoseAction(const std::string& xml_tag_name, const std::string& action_name,
+                                                 const BT::NodeConfiguration& conf)
     : BtActionNode<Action>(xml_tag_name, action_name, conf) {}
 
 void ComputePathToPoseAction::on_tick() {
@@ -55,10 +54,9 @@ void ComputePathToPoseAction::on_tick() {
         if (use_start && !getInput("start", start_pose)) {
             // in case we don't have a "start" pose
             use_start = false;
-            AERROR
-                << "use_start is set to true but no start pose was provided, "
-                   "falling back to default behavior, i.e. using the current "
-                   "robot pose";
+            AERROR << "use_start is set to true but no start pose was provided, "
+                      "falling back to default behavior, i.e. using the current "
+                      "robot pose";
         } else if (use_start) {
             auto* proto_start = goal_.mutable_start();
             *proto_start = commsgs::geometry_msgs::ToProto(start_pose);
@@ -91,11 +89,9 @@ BT::NodeStatus ComputePathToPoseAction::on_success() {
         setOutput("path", empty_path);
     }
     // Set empty error code, action was successful
-    setOutput(
-        "error_code_id",
-        static_cast<int32_t>(
-            autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::
-                COMPUTE_PATH_TO_POSE_ERROR_NONE));
+    setOutput("error_code_id",
+              static_cast<int32_t>(
+                  autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
     setOutput("error_msg", std::string(""));
     return BT::NodeStatus::SUCCESS;
 }
@@ -104,15 +100,13 @@ BT::NodeStatus ComputePathToPoseAction::on_aborted() {
     commsgs::planning_msgs::Path empty_path;
     setOutput("path", empty_path);
     if (result_.result) {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(result_.result->error_code()));
+        setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
         setOutput("error_msg", result_.result->error_msg());
     } else {
         setOutput(
             "error_code_id",
-            static_cast<int32_t>(autonomy::tasks::behavior_tree::proto::
-                                     ComputePathToPoseErrorCode::
-                                         COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN));
+            static_cast<int32_t>(
+                autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN));
         setOutput("error_msg", std::string("Unknown error"));
     }
     return BT::NodeStatus::FAILURE;
@@ -122,11 +116,9 @@ BT::NodeStatus ComputePathToPoseAction::on_cancelled() {
     commsgs::planning_msgs::Path empty_path;
     setOutput("path", empty_path);
     // Set empty error code, action was cancelled
-    setOutput(
-        "error_code_id",
-        static_cast<int32_t>(
-            autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::
-                COMPUTE_PATH_TO_POSE_ERROR_NONE));
+    setOutput("error_code_id",
+              static_cast<int32_t>(
+                  autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
     setOutput("error_msg", std::string(""));
     return BT::NodeStatus::SUCCESS;
 }
@@ -135,10 +127,8 @@ void ComputePathToPoseAction::on_timeout() {
     setOutput(
         "error_code_id",
         static_cast<int32_t>(
-            autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::
-                COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT));
-    setOutput("error_msg",
-              std::string("Behavior Tree action client timed out waiting."));
+            autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT));
+    setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
 }
 
 void ComputePathToPoseAction::halt() {
@@ -157,14 +147,11 @@ void ComputePathToPoseAction::halt() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::
-                                    action::ComputePathToPoseAction>(
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction>(
             name, "compute_path_to_pose", config);
     };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::
-                                ComputePathToPoseAction>("ComputePathToPose",
-                                                         builder);
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction>(
+        "ComputePathToPose", builder);
 }

@@ -26,11 +26,8 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    AddImuDataSignature,
-    autonomy::common::async_grpc::Stream<proto::AddImuDataRequest>,
-    google::protobuf::Empty,
-    "/cartographer.cloud.proto.MapBuilderService/AddImuData")
+DEFINE_HANDLER_SIGNATURE(AddImuDataSignature, autonomy::common::async_grpc::Stream<proto::AddImuDataRequest>,
+                         google::protobuf::Empty, "/cartographer.cloud.proto.MapBuilderService/AddImuData")
 
 class AddImuDataHandler : public AddSensorDataHandlerBase<AddImuDataSignature>
 {

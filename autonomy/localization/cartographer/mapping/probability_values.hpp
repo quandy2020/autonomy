@@ -29,15 +29,10 @@ namespace mapping {
 
 namespace {
 
-inline uint16 BoundedFloatToValue(const float float_value,
-                                  const float lower_bound,
-                                  const float upper_bound) {
-    const int value =
-        common::RoundToInt(
-            (common::Clamp(float_value, lower_bound, upper_bound) -
-             lower_bound) *
-            (32766.f / (upper_bound - lower_bound))) +
-        1;
+inline uint16 BoundedFloatToValue(const float float_value, const float lower_bound, const float upper_bound) {
+    const int value = common::RoundToInt((common::Clamp(float_value, lower_bound, upper_bound) - lower_bound) *
+                                         (32766.f / (upper_bound - lower_bound))) +
+                      1;
     // DCHECK for performance.
     DCHECK_GE(value, 1);
     DCHECK_LE(value, 32767);
@@ -74,8 +69,7 @@ inline float ClampProbability(const float probability) {
 // Clamps correspondece cost to be in the range [kMinCorrespondenceCost,
 // kMaxCorrespondenceCost].
 inline float ClampCorrespondenceCost(const float correspondence_cost) {
-    return common::Clamp(correspondence_cost, kMinCorrespondenceCost,
-                         kMaxCorrespondenceCost);
+    return common::Clamp(correspondence_cost, kMinCorrespondenceCost, kMaxCorrespondenceCost);
 }
 
 constexpr uint16 kUnknownProbabilityValue = 0;
@@ -84,8 +78,7 @@ constexpr uint16 kUpdateMarker = 1u << 15;
 
 // Converts a correspondence_cost to a uint16 in the [1, 32767] range.
 inline uint16 CorrespondenceCostToValue(const float correspondence_cost) {
-    return BoundedFloatToValue(correspondence_cost, kMinCorrespondenceCost,
-                               kMaxCorrespondenceCost);
+    return BoundedFloatToValue(correspondence_cost, kMinCorrespondenceCost, kMaxCorrespondenceCost);
 }
 
 // Converts a probability to a uint16 in the [1, 32767] range.
@@ -109,8 +102,7 @@ inline float ValueToCorrespondenceCost(const uint16 value) {
     return (*kValueToCorrespondenceCost)[value];
 }
 
-inline uint16 ProbabilityValueToCorrespondenceCostValue(
-    uint16 probability_value) {
+inline uint16 ProbabilityValueToCorrespondenceCostValue(uint16 probability_value) {
     if (probability_value == kUnknownProbabilityValue) {
         return kUnknownCorrespondenceValue;
     }
@@ -119,15 +111,13 @@ inline uint16 ProbabilityValueToCorrespondenceCostValue(
         probability_value -= kUpdateMarker;
         update_carry = true;
     }
-    uint16 result = CorrespondenceCostToValue(
-        ProbabilityToCorrespondenceCost(ValueToProbability(probability_value)));
+    uint16 result = CorrespondenceCostToValue(ProbabilityToCorrespondenceCost(ValueToProbability(probability_value)));
     if (update_carry)
         result += kUpdateMarker;
     return result;
 }
 
-inline uint16 CorrespondenceCostValueToProbabilityValue(
-    uint16 correspondence_cost_value) {
+inline uint16 CorrespondenceCostValueToProbabilityValue(uint16 correspondence_cost_value) {
     if (correspondence_cost_value == kUnknownCorrespondenceValue)
         return kUnknownProbabilityValue;
     bool update_carry = false;
@@ -135,8 +125,8 @@ inline uint16 CorrespondenceCostValueToProbabilityValue(
         correspondence_cost_value -= kUpdateMarker;
         update_carry = true;
     }
-    uint16 result = ProbabilityToValue(CorrespondenceCostToProbability(
-        ValueToCorrespondenceCost(correspondence_cost_value)));
+    uint16 result =
+        ProbabilityToValue(CorrespondenceCostToProbability(ValueToCorrespondenceCost(correspondence_cost_value)));
     if (update_carry)
         result += kUpdateMarker;
     return result;

@@ -43,10 +43,8 @@ public:
     TrajectoryCollator(const TrajectoryCollator&) = delete;
     TrajectoryCollator& operator=(const TrajectoryCollator&) = delete;
 
-    void AddTrajectory(
-        int trajectory_id,
-        const absl::flat_hash_set<std::string>& expected_sensor_ids,
-        const Callback& callback) override;
+    void AddTrajectory(int trajectory_id, const absl::flat_hash_set<std::string>& expected_sensor_ids,
+                       const Callback& callback) override;
 
     void FinishTrajectory(int trajectory_id) override;
 
@@ -59,11 +57,9 @@ public:
     static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 
 private:
-    metrics::Counter* GetOrCreateSensorMetric(const std::string& sensor_id,
-                                              int trajectory_id);
+    metrics::Counter* GetOrCreateSensorMetric(const std::string& sensor_id, int trajectory_id);
 
-    static cartographer::metrics::Family<metrics::Counter>*
-        collator_metrics_family_;
+    static cartographer::metrics::Family<metrics::Counter>* collator_metrics_family_;
 
     // Holds individual counters for each trajectory/sensor pair.
     absl::flat_hash_map<std::string, metrics::Counter*> metrics_map_;

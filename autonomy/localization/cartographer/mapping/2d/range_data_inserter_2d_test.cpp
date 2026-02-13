@@ -32,19 +32,15 @@ class RangeDataInserterTest2D : public ::testing::Test
 {
 protected:
     RangeDataInserterTest2D()
-        : probability_grid_(
-              MapLimits(1., Eigen::Vector2d(1., 5.), CellLimits(5, 5)),
-              &conversion_tables_) {
+        : probability_grid_(MapLimits(1., Eigen::Vector2d(1., 5.), CellLimits(5, 5)), &conversion_tables_) {
         auto parameter_dictionary = common::MakeDictionary(
             "return { "
             "insert_free_space = true, "
             "hit_probability = 0.7, "
             "miss_probability = 0.4, "
             "}");
-        options_ = CreateProbabilityGridRangeDataInserterOptions2D(
-            parameter_dictionary.get());
-        range_data_inserter_ =
-            absl::make_unique<ProbabilityGridRangeDataInserter2D>(options_);
+        options_ = CreateProbabilityGridRangeDataInserterOptions2D(parameter_dictionary.get());
+        range_data_inserter_ = absl::make_unique<ProbabilityGridRangeDataInserter2D>(options_);
     }
 
     void InsertPointCloud() {
@@ -76,15 +72,11 @@ TEST_F(RangeDataInserterTest2D, InsertPointCloud) {
     EXPECT_EQ(5, cell_limits.num_y_cells);
 
     enum class State { UNKNOWN, MISS, HIT };
-    State expected_states[5][5] = {
-        {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN,
-         State::UNKNOWN},
-        {State::UNKNOWN, State::HIT, State::MISS, State::MISS, State::MISS},
-        {State::UNKNOWN, State::UNKNOWN, State::HIT, State::MISS, State::MISS},
-        {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::HIT,
-         State::MISS},
-        {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN,
-         State::HIT}};
+    State expected_states[5][5] = {{State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN},
+                                   {State::UNKNOWN, State::HIT, State::MISS, State::MISS, State::MISS},
+                                   {State::UNKNOWN, State::UNKNOWN, State::HIT, State::MISS, State::MISS},
+                                   {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::HIT, State::MISS},
+                                   {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::HIT}};
     for (int row = 0; row != 5; ++row) {
         for (int column = 0; column != 5; ++column) {
             Eigen::Array2i cell_index(row, column);
@@ -94,14 +86,10 @@ TEST_F(RangeDataInserterTest2D, InsertPointCloud) {
                     EXPECT_FALSE(probability_grid_.IsKnown(cell_index));
                     break;
                 case State::MISS:
-                    EXPECT_NEAR(options_.miss_probability(),
-                                probability_grid_.GetProbability(cell_index),
-                                1e-4);
+                    EXPECT_NEAR(options_.miss_probability(), probability_grid_.GetProbability(cell_index), 1e-4);
                     break;
                 case State::HIT:
-                    EXPECT_NEAR(options_.hit_probability(),
-                                probability_grid_.GetProbability(cell_index),
-                                1e-4);
+                    EXPECT_NEAR(options_.hit_probability(), probability_grid_.GetProbability(cell_index), 1e-4);
                     break;
             }
         }
@@ -111,28 +99,20 @@ TEST_F(RangeDataInserterTest2D, InsertPointCloud) {
 TEST_F(RangeDataInserterTest2D, ProbabilityProgression) {
     InsertPointCloud();
     EXPECT_NEAR(options_.hit_probability(),
-                probability_grid_.GetProbability(
-                    probability_grid_.limits().GetCellIndex(
-                        Eigen::Vector2f(-3.5f, 0.5f))),
+                probability_grid_.GetProbability(probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-3.5f, 0.5f))),
                 1e-4);
     EXPECT_NEAR(options_.miss_probability(),
-                probability_grid_.GetProbability(
-                    probability_grid_.limits().GetCellIndex(
-                        Eigen::Vector2f(-2.5f, 0.5f))),
+                probability_grid_.GetProbability(probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-2.5f, 0.5f))),
                 1e-4);
 
     for (int i = 0; i < 1000; ++i) {
         InsertPointCloud();
     }
     EXPECT_NEAR(kMaxProbability,
-                probability_grid_.GetProbability(
-                    probability_grid_.limits().GetCellIndex(
-                        Eigen::Vector2f(-3.5f, 0.5f))),
+                probability_grid_.GetProbability(probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-3.5f, 0.5f))),
                 1e-3);
     EXPECT_NEAR(kMinProbability,
-                probability_grid_.GetProbability(
-                    probability_grid_.limits().GetCellIndex(
-                        Eigen::Vector2f(-2.5f, 0.5f))),
+                probability_grid_.GetProbability(probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-2.5f, 0.5f))),
                 1e-3);
 }
 

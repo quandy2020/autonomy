@@ -33,8 +33,7 @@ public:
     ~GrpcBridgeContextInterface() = default;
 
     GrpcBridgeContextInterface(const GrpcBridgeContextInterface&) = delete;
-    GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) =
-        delete;
+    GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) = delete;
 };
 
 }  // namespace grpc

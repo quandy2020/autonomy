@@ -25,43 +25,32 @@ namespace eventpp {
 
 namespace internal_ {
 
-template <typename EventType_, typename Prototype_, typename Policies_,
-          typename MixinRoot_>
+template <typename EventType_, typename Prototype_, typename Policies_, typename MixinRoot_>
 class EventDispatcherBase;
 
-template <typename EventType_, typename Policies_, typename MixinRoot_,
-          typename ReturnType, typename... Args>
-class EventDispatcherBase<EventType_, ReturnType(Args...), Policies_,
-                          MixinRoot_>
+template <typename EventType_, typename Policies_, typename MixinRoot_, typename ReturnType, typename... Args>
+class EventDispatcherBase<EventType_, ReturnType(Args...), Policies_, MixinRoot_>
 {
 protected:
-    using ThisType = EventDispatcherBase<EventType_, ReturnType(Args...),
-                                         Policies_, MixinRoot_>;
-    using MixinRoot =
-        typename std::conditional<std::is_same<MixinRoot_, void>::value,
-                                  ThisType, MixinRoot_>::type;
+    using ThisType = EventDispatcherBase<EventType_, ReturnType(Args...), Policies_, MixinRoot_>;
+    using MixinRoot = typename std::conditional<std::is_same<MixinRoot_, void>::value, ThisType, MixinRoot_>::type;
     using Policies = Policies_;
 
-    using Threading =
-        typename SelectThreading<Policies_,
-                                 HasTypeThreading<Policies_>::value>::Type;
+    using Threading = typename SelectThreading<Policies_, HasTypeThreading<Policies_>::value>::Type;
 
-    using ArgumentPassingMode = typename SelectArgumentPassingMode<
-        Policies_, HasTypeArgumentPassingMode<Policies_>::value,
-        ArgumentPassingAutoDetect>::Type;
+    using ArgumentPassingMode =
+        typename SelectArgumentPassingMode<Policies_, HasTypeArgumentPassingMode<Policies_>::value,
+                                           ArgumentPassingAutoDetect>::Type;
 
-    using Callback_ =
-        typename SelectCallback<Policies_, HasTypeCallback<Policies_>::value,
-                                std::function<ReturnType(Args...)> >::Type;
+    using Callback_ = typename SelectCallback<Policies_, HasTypeCallback<Policies_>::value,
+                                              std::function<ReturnType(Args...)> >::Type;
     using CallbackList_ = CallbackList<ReturnType(Args...), Policies_>;
 
     using Prototype = ReturnType(Args...);
 
-    using Map = typename SelectMap<EventType_, CallbackList_, Policies_,
-                                   HasTemplateMap<Policies_>::value>::Type;
+    using Map = typename SelectMap<EventType_, CallbackList_, Policies_, HasTemplateMap<Policies_>::value>::Type;
 
-    using Mixins = typename internal_::SelectMixins<
-        Policies_, internal_::HasTypeMixins<Policies_>::value>::Type;
+    using Mixins = typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type;
 
 public:
     using Handle = typename CallbackList_::Handle;
@@ -76,8 +65,7 @@ public:
         : eventCallbackListMap(other.eventCallbackListMap), listenerMutex() {}
 
     EventDispatcherBase(EventDispatcherBase&& other) noexcept
-        : eventCallbackListMap(std::move(other.eventCallbackListMap)),
-          listenerMutex() {}
+        : eventCallbackListMap(std::move(other.eventCallbackListMap)), listenerMutex() {}
 
     EventDispatcherBase& operator=(const EventDispatcherBase& other) {
         eventCallbackListMap = other.eventCallbackListMap;
@@ -107,8 +95,7 @@ public:
         return eventCallbackListMap[event].prepend(callback);
     }
 
-    Handle insertListener(const Event& event, const Callback& callback,
-                          const Handle& before) {
+    Handle insertListener(const Event& event, const Callback& callback, const Handle& before) {
         std::lock_guard<Mutex> lockGuard(listenerMutex);
 
         return eventCallbackListMap[event].insert(callback, before);
@@ -160,44 +147,36 @@ public:
     }
 
     void dispatch(Args... args) const {
-        static_assert(
-            ArgumentPassingMode::canIncludeEventType,
-            "Dispatching arguments count doesn't match required (Event "
-            "type should be included).");
+        static_assert(ArgumentPassingMode::canIncludeEventType,
+                      "Dispatching arguments count doesn't match required (Event "
+                      "type should be included).");
 
-        using GetEvent = typename SelectGetEvent<
-            Policies_, EventType_,
-            HasFunctionGetEvent<Policies_, Args...>::value>::Type;
+        using GetEvent =
+            typename SelectGetEvent<Policies_, EventType_, HasFunctionGetEvent<Policies_, Args...>::value>::Type;
 
         // can't std::forward<Args>(args) in GetEvent::getEvent because the pass
         // by value arguments will be moved to getEvent then the other
         // std::forward<Args>(args) to directDispatch will get empty values.
-        directDispatch(GetEvent::getEvent(args...),
-                       std::forward<Args>(args)...);
+        directDispatch(GetEvent::getEvent(args...), std::forward<Args>(args)...);
     }
 
     template <typename T>
     void dispatch(T&& first, Args... args) const {
-        static_assert(
-            ArgumentPassingMode::canExcludeEventType,
-            "Dispatching arguments count doesn't match required (Event "
-            "type should NOT be included).");
+        static_assert(ArgumentPassingMode::canExcludeEventType,
+                      "Dispatching arguments count doesn't match required (Event "
+                      "type should NOT be included).");
 
-        using GetEvent = typename SelectGetEvent<
-            Policies_, EventType_,
-            HasFunctionGetEvent<Policies_, T&&, Args...>::value>::Type;
+        using GetEvent =
+            typename SelectGetEvent<Policies_, EventType_, HasFunctionGetEvent<Policies_, T&&, Args...>::value>::Type;
 
-        directDispatch(GetEvent::getEvent(std::forward<T>(first), args...),
-                       std::forward<Args>(args)...);
+        directDispatch(GetEvent::getEvent(std::forward<T>(first), args...), std::forward<Args>(args)...);
     }
 
     // Bypass any getEvent policy. The first argument is the event type.
     // Most used for internal purpose.
     void directDispatch(const Event& e, Args... args) const {
-        if (!internal_::ForEachMixins<MixinRoot, Mixins,
-                                      DoMixinBeforeDispatch>::
-                forEach(this, typename std::add_lvalue_reference<Args>::type(
-                                  args)...)) {
+        if (!internal_::ForEachMixins<MixinRoot, Mixins, DoMixinBeforeDispatch>::forEach(
+                this, typename std::add_lvalue_reference<Args>::type(args)...)) {
             return;
         }
 
@@ -220,8 +199,7 @@ private:
     // template helper to avoid code duplication in doFindCallableList
     template <typename T>
     static auto doFindCallableListHelper(T* self, const Event& e) ->
-        typename std::conditional<std::is_const<T>::value, const CallbackList_*,
-                                  CallbackList_*>::type {
+        typename std::conditional<std::is_const<T>::value, const CallbackList_*, CallbackList_*>::type {
         std::lock_guard<Mutex> lockGuard(self->listenerMutex);
 
         auto it = self->eventCallbackListMap.find(e);
@@ -237,16 +215,13 @@ private:
     struct DoMixinBeforeDispatch {
         template <typename T, typename Self, typename... A>
         static auto forEach(const Self* self, A&&... args) ->
-            typename std::enable_if<
-                HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
-            return static_cast<const T*>(self)->mixinBeforeDispatch(
-                std::forward<A>(args)...);
+            typename std::enable_if<HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
+            return static_cast<const T*>(self)->mixinBeforeDispatch(std::forward<A>(args)...);
         }
 
         template <typename T, typename Self, typename... A>
         static auto forEach(const Self* /*self*/, A&&... /*args*/) ->
-            typename std::enable_if<
-                !HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
+            typename std::enable_if<!HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
             return true;
         }
     };
@@ -258,21 +233,17 @@ private:
 
 }  // namespace internal_
 
-template <typename Event_, typename Prototype_,
-          typename Policies_ = DefaultPolicies>
+template <typename Event_, typename Prototype_, typename Policies_ = DefaultPolicies>
 class EventDispatcher
     : public internal_::InheritMixins<
           internal_::EventDispatcherBase<Event_, Prototype_, Policies_, void>,
-          typename internal_::SelectMixins<
-              Policies_,
-              internal_::HasTypeMixins<Policies_>::value>::Type>::Type,
+          typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type,
       public TagEventDispatcher
 {
 private:
     using super = typename internal_::InheritMixins<
         internal_::EventDispatcherBase<Event_, Prototype_, Policies_, void>,
-        typename internal_::SelectMixins<
-            Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type;
+        typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type;
 
 public:
     using super::super;

@@ -50,8 +50,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    GoalReachedCondition(const std::string& condition_name,
-                         const BT::NodeConfiguration& conf);
+    GoalReachedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     GoalReachedCondition() = delete;
 
@@ -86,14 +85,10 @@ public:
         // Register JSON definitions for the types used in the ports
         BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
 
-        return {
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal",
-                                                               "Destination"),
-            BT::InputPort<std::string>("robot_base_frame", "Robot base frame"),
-            BT::InputPort<double>("goal_reached_tol", 0.25,
-                                  "Tolerance for considering goal reached"),
-            BT::InputPort<double>("transform_tolerance", 0.1,
-                                  "Transform tolerance")};
+        return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Destination"),
+                BT::InputPort<std::string>("robot_base_frame", "Robot base frame"),
+                BT::InputPort<double>("goal_reached_tol", 0.25, "Tolerance for considering goal reached"),
+                BT::InputPort<double>("transform_tolerance", 0.1, "Transform tolerance")};
     }
 
 protected:

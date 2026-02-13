@@ -36,8 +36,7 @@ class CompletionQueue
 public:
     struct ClientEvent {
         enum class Event { FINISH = 0, READ = 1, WRITE = 2 };
-        ClientEvent(Event event, AsyncClientInterface* async_client)
-            : event(event), async_client(async_client) {}
+        ClientEvent(Event event, AsyncClientInterface* async_client) : event(event), async_client(async_client) {}
         Event event;
         AsyncClientInterface* async_client;
         bool ok = false;

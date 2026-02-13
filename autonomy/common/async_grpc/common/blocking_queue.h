@@ -51,17 +51,14 @@ public:
     // Pushes a value onto the queue. Blocks if the queue is full.
     void Push(T t) {
         MutexLocker lock(&mutex_);
-        lock.Await([this]()
-                       REQUIRES(mutex_) { return QueueNotFullCondition(); });
+        lock.Await([this]() REQUIRES(mutex_) { return QueueNotFullCondition(); });
         deque_.push_back(std::move(t));
     }
 
     // Like push, but returns false if 'timeout' is reached.
     bool PushWithTimeout(T t, const common::Duration timeout) {
         MutexLocker lock(&mutex_);
-        if (!lock.AwaitWithTimeout(
-                [this]() REQUIRES(mutex_) { return QueueNotFullCondition(); },
-                timeout)) {
+        if (!lock.AwaitWithTimeout([this]() REQUIRES(mutex_) { return QueueNotFullCondition(); }, timeout)) {
             return false;
         }
         deque_.push_back(std::move(t));
@@ -71,8 +68,7 @@ public:
     // Pops the next value from the queue. Blocks until a value is available.
     T Pop() {
         MutexLocker lock(&mutex_);
-        lock.Await([this]()
-                       REQUIRES(mutex_) { return !QueueEmptyCondition(); });
+        lock.Await([this]() REQUIRES(mutex_) { return !QueueEmptyCondition(); });
 
         T t = std::move(deque_.front());
         deque_.pop_front();
@@ -82,9 +78,7 @@ public:
     // Like Pop, but can timeout. Returns nullptr in this case.
     T PopWithTimeout(const common::Duration timeout) {
         MutexLocker lock(&mutex_);
-        if (!lock.AwaitWithTimeout(
-                [this]() REQUIRES(mutex_) { return !QueueEmptyCondition(); },
-                timeout)) {
+        if (!lock.AwaitWithTimeout([this]() REQUIRES(mutex_) { return !QueueEmptyCondition(); }, timeout)) {
             return nullptr;
         }
         T t = std::move(deque_.front());

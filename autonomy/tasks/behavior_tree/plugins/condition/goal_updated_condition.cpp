@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-GoalUpdatedCondition::GoalUpdatedCondition(const std::string& condition_name,
-                                           const BT::NodeConfiguration& conf)
+GoalUpdatedCondition::GoalUpdatedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf) {}
 
 BT::NodeStatus GoalUpdatedCondition::tick() {
@@ -39,14 +38,13 @@ BT::NodeStatus GoalUpdatedCondition::tick() {
     GetInputOrBlackboard("goal", current_goal);
 
     // Manual comparison for PoseStamped
-    bool goal_changed =
-        (goal_.pose.position.x != current_goal.pose.position.x ||
-         goal_.pose.position.y != current_goal.pose.position.y ||
-         goal_.pose.position.z != current_goal.pose.position.z ||
-         goal_.pose.orientation.x != current_goal.pose.orientation.x ||
-         goal_.pose.orientation.y != current_goal.pose.orientation.y ||
-         goal_.pose.orientation.z != current_goal.pose.orientation.z ||
-         goal_.pose.orientation.w != current_goal.pose.orientation.w);
+    bool goal_changed = (goal_.pose.position.x != current_goal.pose.position.x ||
+                         goal_.pose.position.y != current_goal.pose.position.y ||
+                         goal_.pose.position.z != current_goal.pose.position.z ||
+                         goal_.pose.orientation.x != current_goal.pose.orientation.x ||
+                         goal_.pose.orientation.y != current_goal.pose.orientation.y ||
+                         goal_.pose.orientation.z != current_goal.pose.orientation.z ||
+                         goal_.pose.orientation.w != current_goal.pose.orientation.w);
 
     // Manual comparison for Goals
     bool goals_changed = (goals_.goals.size() != current_goals.goals.size());
@@ -54,12 +52,9 @@ BT::NodeStatus GoalUpdatedCondition::tick() {
         for (size_t i = 0; i < goals_.goals.size(); ++i) {
             const auto& g1 = goals_.goals[i];
             const auto& g2 = current_goals.goals[i];
-            if (g1.pose.position.x != g2.pose.position.x ||
-                g1.pose.position.y != g2.pose.position.y ||
-                g1.pose.position.z != g2.pose.position.z ||
-                g1.pose.orientation.x != g2.pose.orientation.x ||
-                g1.pose.orientation.y != g2.pose.orientation.y ||
-                g1.pose.orientation.z != g2.pose.orientation.z ||
+            if (g1.pose.position.x != g2.pose.position.x || g1.pose.position.y != g2.pose.position.y ||
+                g1.pose.position.z != g2.pose.position.z || g1.pose.orientation.x != g2.pose.orientation.x ||
+                g1.pose.orientation.y != g2.pose.orientation.y || g1.pose.orientation.z != g2.pose.orientation.z ||
                 g1.pose.orientation.w != g2.pose.orientation.w) {
                 goals_changed = true;
                 break;
@@ -84,7 +79,5 @@ BT::NodeStatus GoalUpdatedCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::GoalUpdatedCondition>(
-        "GoalUpdated");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::GoalUpdatedCondition>("GoalUpdated");
 }

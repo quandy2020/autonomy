@@ -23,11 +23,13 @@
 
 #include "autolink/class_loader/class_loader.hpp"
 #include "autonomy/common/macros.hpp"
+#include "autonomy/common/simple_action_server.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
+#include "autonomy/tasks/navigator/proto/action.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
 // Forward declarations for autolink communication
@@ -68,8 +70,13 @@ public:
     /**
      * Define PlannerMap type
      */
-    using PlannerMap =
-        std::unordered_map<std::string, common::GlobalPlanner::SharedPtr>;
+    using PlannerMap = std::unordered_map<std::string, common::GlobalPlanner::SharedPtr>;
+
+    /**
+     * Action types
+     */
+    using Action = autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction;
+    using ActionServer = autonomy::common::SimpleActionServer<Action>;
 
     /**
      * Define TaskBridge::SharedPtr type
@@ -105,10 +112,9 @@ public:
      * @param cancel_checker A function to check if the action has been canceled
      * @return Path
      */
-    commsgs::planning_msgs::Path GetPlan(
-        const commsgs::geometry_msgs::PoseStamped& start,
-        const commsgs::geometry_msgs::PoseStamped& goal,
-        const std::string& planner_id, std::function<bool()> cancel_checker);
+    commsgs::planning_msgs::Path GetPlan(const commsgs::geometry_msgs::PoseStamped& start,
+                                         const commsgs::geometry_msgs::PoseStamped& goal, const std::string& planner_id,
+                                         std::function<bool()> cancel_checker);
 
 protected:
     /**
@@ -131,9 +137,8 @@ protected:
      * @param goal Goal pose to transform
      * @return bool If successful in transforming poses
      */
-    bool TransformPosesToGlobalFrame(
-        commsgs::geometry_msgs::PoseStamped& curr_start,
-        commsgs::geometry_msgs::PoseStamped& curr_goal);
+    bool TransformPosesToGlobalFrame(commsgs::geometry_msgs::PoseStamped& curr_start,
+                                     commsgs::geometry_msgs::PoseStamped& curr_goal);
 
     /**
      * @brief Validate that the path contains a meaningful path
@@ -143,8 +148,7 @@ protected:
      * @param planner_id The planner ID used to generate the path
      * @return bool If path is valid
      */
-    bool ValidatePath(const commsgs::geometry_msgs::PoseStamped& curr_goal,
-                      const commsgs::planning_msgs::Path& path,
+    bool ValidatePath(const commsgs::geometry_msgs::PoseStamped& curr_goal, const commsgs::planning_msgs::Path& path,
                       const std::string& planner_id);
 
     /**
@@ -163,8 +167,7 @@ protected:
      * @brief Print wanning info
      */
     void ExceptionWarning(const commsgs::geometry_msgs::PoseStamped& start,
-                          const commsgs::geometry_msgs::PoseStamped& goal,
-                          const std::string& planner_id,
+                          const commsgs::geometry_msgs::PoseStamped& goal, const std::string& planner_id,
                           const std::exception& ex);
 
     // Options planners
@@ -189,9 +192,9 @@ protected:
     map::costmap_2d::Costmap2D* costmap_{nullptr};
 
     // Node
-    std::unique_ptr<::autolink::Node> node_{nullptr};
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-        path_publisher_{nullptr};
+    std::shared_ptr<::autolink::Node> node_{nullptr};
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> path_publisher_{nullptr};
+    std::shared_ptr<ActionServer> action_server_{nullptr};
     std::atomic<bool> costmap_received_{false};
     std::mutex costmap_update_mutex_;
 

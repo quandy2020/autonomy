@@ -69,8 +69,7 @@ std::weak_ptr<Task> ThreadPool::Schedule(std::unique_ptr<Task> task) {
     std::shared_ptr<Task> shared_task;
     {
         absl::MutexLock locker(&mutex_);
-        auto insert_result = tasks_not_ready_.insert(
-            std::make_pair(task.get(), std::move(task)));
+        auto insert_result = tasks_not_ready_.insert(std::make_pair(task.get(), std::move(task)));
         CHECK(insert_result.second) << "Schedule called twice";
         shared_task = insert_result.first->second;
     }
@@ -85,9 +84,7 @@ void ThreadPool::DoWork() {
     // away CPU resources from more important foreground threads.
     CHECK_NE(nice(10), -1);
 #endif
-    const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-        return !task_queue_.empty() || !running_;
-    };
+    const auto predicate = [this]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return !task_queue_.empty() || !running_; };
     for (;;) {
         std::shared_ptr<Task> task;
         {

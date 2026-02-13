@@ -25,10 +25,8 @@ namespace converter {
 namespace impl {
 
 // planning_msgs
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::planning_msgs::Path& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::planning_msgs::Odometry& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::planning_msgs::Path& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::planning_msgs::Odometry& message);
 
 }  // namespace impl
 }  // namespace converter

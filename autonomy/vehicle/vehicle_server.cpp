@@ -24,8 +24,7 @@ using ::autonomy::vehicle::proto::Vehicle;
 using ::autonomy::vehicle::proto::VehicleInfo;
 using ::autonomy::vehicle::proto::VehicleModel;
 
-VehicleServer::VehicleServer(const VehicleModel& model,
-                             VehicleInterface::SharedPtr iface)
+VehicleServer::VehicleServer(const VehicleModel& model, VehicleInterface::SharedPtr iface)
     : interface_(std::move(iface)), kinematics_(model) {
     // 初始化内部 Vehicle 消息中的模型配置
     *vehicle_.mutable_model() = model;
@@ -34,20 +33,15 @@ VehicleServer::VehicleServer(const VehicleModel& model,
     node_ = ::autolink::CreateNode("vehicle_server", "");
     if (node_) {
         // 订阅外部 Vehicle 消息（例如远程监控 / 仿真）
-        vehicle_reader_ =
-            node_->CreateReader<::autonomy::vehicle::proto::Vehicle>(
-                "vehicle",
-                [this](
-                    const std::shared_ptr<::autonomy::vehicle::proto::Vehicle>&
-                        msg) {
-                    if (msg) {
-                        this->HandleVehicleMessage(*msg);
-                    }
-                });
+        vehicle_reader_ = node_->CreateReader<::autonomy::vehicle::proto::Vehicle>(
+            "vehicle", [this](const std::shared_ptr<::autonomy::vehicle::proto::Vehicle>& msg) {
+                if (msg) {
+                    this->HandleVehicleMessage(*msg);
+                }
+            });
 
         // 发布本地聚合的 Vehicle 状态
-        vehicle_writer_ =
-            node_->CreateWriter<::autonomy::vehicle::proto::Vehicle>("vehicle");
+        vehicle_writer_ = node_->CreateWriter<::autonomy::vehicle::proto::Vehicle>("vehicle");
     }
 }
 
@@ -94,8 +88,7 @@ void VehicleServer::SetCommand(const KinematicsControlCommand& command) {
     }
 }
 
-void VehicleServer::HandleVehicleMessage(
-    const ::autonomy::vehicle::proto::Vehicle& vehicle_msg) {
+void VehicleServer::HandleVehicleMessage(const ::autonomy::vehicle::proto::Vehicle& vehicle_msg) {
     // 简单地覆盖当前缓存，后续可在此处增加一致性 / 权限检查
     vehicle_ = vehicle_msg;
 }

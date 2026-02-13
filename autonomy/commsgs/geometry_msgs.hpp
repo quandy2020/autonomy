@@ -475,20 +475,16 @@ proto::geometry_msgs::AccelStamped ToProto(const AccelStamped& data);
 AccelStamped FromProto(const proto::geometry_msgs::AccelStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::AccelWithCovariance.
-proto::geometry_msgs::AccelWithCovariance ToProto(
-    const AccelWithCovariance& data);
+proto::geometry_msgs::AccelWithCovariance ToProto(const AccelWithCovariance& data);
 
 // Converts 'proto' to AccelWithCovariance.
-AccelWithCovariance FromProto(
-    const proto::geometry_msgs::AccelWithCovariance& proto);
+AccelWithCovariance FromProto(const proto::geometry_msgs::AccelWithCovariance& proto);
 
 // Converts 'data' to a proto::geometry_msgs::AccelWithCovarianceStamped.
-proto::geometry_msgs::AccelWithCovarianceStamped ToProto(
-    const AccelWithCovarianceStamped& data);
+proto::geometry_msgs::AccelWithCovarianceStamped ToProto(const AccelWithCovarianceStamped& data);
 
 // Converts 'proto' to AccelWithCovarianceStamped.
-AccelWithCovarianceStamped FromProto(
-    const proto::geometry_msgs::AccelWithCovarianceStamped& proto);
+AccelWithCovarianceStamped FromProto(const proto::geometry_msgs::AccelWithCovarianceStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Inertia.
 proto::geometry_msgs::Inertia ToProto(const Inertia& data);
@@ -575,27 +571,22 @@ proto::geometry_msgs::PoseStamped ToProto(const PoseStamped& data);
 PoseStamped FromProto(const proto::geometry_msgs::PoseStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::PoseWithCovariance.
-proto::geometry_msgs::PoseWithCovariance ToProto(
-    const PoseWithCovariance& data);
+proto::geometry_msgs::PoseWithCovariance ToProto(const PoseWithCovariance& data);
 
 // Converts 'proto' to PoseWithCovariance.
-PoseWithCovariance FromProto(
-    const proto::geometry_msgs::PoseWithCovariance& proto);
+PoseWithCovariance FromProto(const proto::geometry_msgs::PoseWithCovariance& proto);
 
 // Converts 'data' to a proto::geometry_msgs::PoseWithCovarianceStamped.
-proto::geometry_msgs::PoseWithCovarianceStamped ToProto(
-    const PoseWithCovarianceStamped& data);
+proto::geometry_msgs::PoseWithCovarianceStamped ToProto(const PoseWithCovarianceStamped& data);
 
 // Converts 'proto' to PoseWithCovarianceStamped.
-PoseWithCovarianceStamped FromProto(
-    const proto::geometry_msgs::PoseWithCovarianceStamped& proto);
+PoseWithCovarianceStamped FromProto(const proto::geometry_msgs::PoseWithCovarianceStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::QuaternionStamped.
 proto::geometry_msgs::QuaternionStamped ToProto(const QuaternionStamped& data);
 
 // Converts 'proto' to QuaternionStamped.
-QuaternionStamped FromProto(
-    const proto::geometry_msgs::QuaternionStamped& proto);
+QuaternionStamped FromProto(const proto::geometry_msgs::QuaternionStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Transform.
 proto::geometry_msgs::Transform ToProto(const Transform& data);
@@ -613,8 +604,7 @@ TransformStamped FromProto(const proto::geometry_msgs::TransformStamped& proto);
 proto::geometry_msgs::TransformStampeds ToProto(const TransformStampeds& data);
 
 // Converts 'proto' to TransformStampeds.
-TransformStampeds FromProto(
-    const proto::geometry_msgs::TransformStampeds& proto);
+TransformStampeds FromProto(const proto::geometry_msgs::TransformStampeds& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Twist.
 proto::geometry_msgs::Twist ToProto(const Twist& data);
@@ -629,20 +619,16 @@ proto::geometry_msgs::TwistStamped ToProto(const TwistStamped& data);
 TwistStamped FromProto(const proto::geometry_msgs::TwistStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::TwistWithCovariance.
-proto::geometry_msgs::TwistWithCovariance ToProto(
-    const TwistWithCovariance& data);
+proto::geometry_msgs::TwistWithCovariance ToProto(const TwistWithCovariance& data);
 
 // Converts 'proto' to TwistWithCovariance.
-TwistWithCovariance FromProto(
-    const proto::geometry_msgs::TwistWithCovariance& proto);
+TwistWithCovariance FromProto(const proto::geometry_msgs::TwistWithCovariance& proto);
 
 // Converts 'data' to a proto::geometry_msgs::TwistWithCovarianceStamped.
-proto::geometry_msgs::TwistWithCovarianceStamped ToProto(
-    const TwistWithCovarianceStamped& data);
+proto::geometry_msgs::TwistWithCovarianceStamped ToProto(const TwistWithCovarianceStamped& data);
 
 // Converts 'proto' to TwistWithCovarianceStamped.
-TwistWithCovarianceStamped FromProto(
-    const proto::geometry_msgs::TwistWithCovarianceStamped& proto);
+TwistWithCovarianceStamped FromProto(const proto::geometry_msgs::TwistWithCovarianceStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Vector3Stamped.
 proto::geometry_msgs::Vector3Stamped ToProto(const Vector3Stamped& data);

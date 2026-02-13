@@ -49,8 +49,7 @@ protected:
     // ports etc.
     struct Options {
         Options() = default;
-        Options(size_t num_grpc_threads, size_t num_event_threads,
-                const std::string& server_address)
+        Options(size_t num_grpc_threads, size_t num_event_threads, const std::string& server_address)
             : num_grpc_threads(num_grpc_threads),
               num_event_threads(num_event_threads),
               server_address(server_address) {}
@@ -93,54 +92,42 @@ public:
             std::string method_full_name = RpcServiceMethod::MethodName();
             std::string service_full_name;
             std::string method_name;
-            std::tie(service_full_name, method_name) =
-                ParseMethodFullName(method_full_name);
-            CheckHandlerCompatibility<RpcHandlerType>(service_full_name,
-                                                      method_name);
+            std::tie(service_full_name, method_name) = ParseMethodFullName(method_full_name);
+            CheckHandlerCompatibility<RpcHandlerType>(service_full_name, method_name);
             rpc_handlers_[service_full_name].emplace(
-                method_name,
-                RpcHandlerInfo{
-                    RequestType::default_instance().GetDescriptor(),
-                    ResponseType::default_instance().GetDescriptor(),
-                    [](Rpc* const rpc,
-                       ExecutionContext* const execution_context) {
-                        std::unique_ptr<RpcHandlerInterface> rpc_handler =
-                            common::make_unique<RpcHandlerType>();
-                        rpc_handler->SetRpc(rpc);
-                        rpc_handler->SetExecutionContext(execution_context);
-                        rpc_handler->Initialize();
-                        return rpc_handler;
-                    },
-                    RpcServiceMethod::StreamType, method_full_name});
+                method_name, RpcHandlerInfo{RequestType::default_instance().GetDescriptor(),
+                                            ResponseType::default_instance().GetDescriptor(),
+                                            [](Rpc* const rpc, ExecutionContext* const execution_context) {
+                                                std::unique_ptr<RpcHandlerInterface> rpc_handler =
+                                                    common::make_unique<RpcHandlerType>();
+                                                rpc_handler->SetRpc(rpc);
+                                                rpc_handler->SetExecutionContext(execution_context);
+                                                rpc_handler->Initialize();
+                                                return rpc_handler;
+                                            },
+                                            RpcServiceMethod::StreamType, method_full_name});
         }
-        static std::tuple<std::string /* service_full_name */,
-                          std::string /* method_name */>
-        ParseMethodFullName(const std::string& method_full_name);
+        static std::tuple<std::string /* service_full_name */, std::string /* method_name */> ParseMethodFullName(
+            const std::string& method_full_name);
 
     private:
         using ServiceInfo = std::map<std::string, RpcHandlerInfo>;
 
         template <typename RpcHandlerType>
-        void CheckHandlerCompatibility(const std::string& service_full_name,
-                                       const std::string& method_name) {
+        void CheckHandlerCompatibility(const std::string& service_full_name, const std::string& method_name) {
             using RpcServiceMethod = typename RpcHandlerType::RpcServiceMethod;
             using RequestType = typename RpcServiceMethod::RequestType;
             using ResponseType = typename RpcServiceMethod::ResponseType;
 
-            const auto* pool =
-                google::protobuf::DescriptorPool::generated_pool();
+            const auto* pool = google::protobuf::DescriptorPool::generated_pool();
             const auto* service = pool->FindServiceByName(service_full_name);
             CHECK(service) << "Unknown service " << service_full_name;
-            const auto* method_descriptor =
-                service->FindMethodByName(method_name);
-            CHECK(method_descriptor) << "Unknown method " << method_name
-                                     << " in service " << service_full_name;
+            const auto* method_descriptor = service->FindMethodByName(method_name);
+            CHECK(method_descriptor) << "Unknown method " << method_name << " in service " << service_full_name;
             const auto* request_type = method_descriptor->input_type();
-            CHECK_EQ(RequestType::default_instance().GetDescriptor(),
-                     request_type);
+            CHECK_EQ(RequestType::default_instance().GetDescriptor(), request_type);
             const auto* response_type = method_descriptor->output_type();
-            CHECK_EQ(ResponseType::default_instance().GetDescriptor(),
-                     response_type);
+            CHECK_EQ(ResponseType::default_instance().GetDescriptor(), response_type);
             const auto rpc_type = RpcServiceMethod::StreamType;
             switch (rpc_type) {
                 case ::grpc::internal::RpcMethod::NORMAL_RPC:
@@ -180,8 +167,7 @@ public:
     void Shutdown();
 
     // Sets the server-wide context object shared between RPC handlers.
-    void SetExecutionContext(
-        std::unique_ptr<ExecutionContext> execution_context);
+    void SetExecutionContext(std::unique_ptr<ExecutionContext> execution_context);
 
     template <typename T>
     ExecutionContext::Synchronized<T> GetContext() {
@@ -195,9 +181,7 @@ public:
 
 protected:
     Server(const Options& options);
-    void AddService(
-        const std::string& service_name,
-        const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos);
+    void AddService(const std::string& service_name, const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos);
 
 private:
     Server(const Server&) = delete;

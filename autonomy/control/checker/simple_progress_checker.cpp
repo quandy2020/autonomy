@@ -27,14 +27,12 @@ void SimpleProgressChecker::Initialize(const std::string& plugin_name) {
     radius_ = 0.5;  // Default value, can be configured via parameters
 }
 
-bool SimpleProgressChecker::Check(
-    commsgs::geometry_msgs::PoseStamped& current_pose) {
+bool SimpleProgressChecker::Check(commsgs::geometry_msgs::PoseStamped& current_pose) {
     // Convert Pose to Pose2D
     commsgs::geometry_msgs::Pose2D current_pose2d;
     current_pose2d.x = current_pose.pose.position.x;
     current_pose2d.y = current_pose.pose.position.y;
-    current_pose2d.theta =
-        transform::tf2::getYaw(current_pose.pose.orientation);
+    current_pose2d.theta = transform::tf2::getYaw(current_pose.pose.orientation);
 
     if ((!baseline_pose_set_) || (IsRobotMovedEnough(current_pose2d))) {
         ResetBaselinePose(current_pose2d);
@@ -48,21 +46,18 @@ void SimpleProgressChecker::Reset() {
     baseline_pose_set_ = false;
 }
 
-void SimpleProgressChecker::ResetBaselinePose(
-    const commsgs::geometry_msgs::Pose2D& pose) {
+void SimpleProgressChecker::ResetBaselinePose(const commsgs::geometry_msgs::Pose2D& pose) {
     baseline_pose_ = pose;
     // baseline_time_ = clock_->now();
     baseline_pose_set_ = true;
 }
 
-bool SimpleProgressChecker::IsRobotMovedEnough(
-    const commsgs::geometry_msgs::Pose2D& pose) {
+bool SimpleProgressChecker::IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose) {
     return PoseDistance(pose, baseline_pose_) > radius_;
 }
 
-double SimpleProgressChecker::PoseDistance(
-    const commsgs::geometry_msgs::Pose2D& pose1,
-    const commsgs::geometry_msgs::Pose2D& pose2) {
+double SimpleProgressChecker::PoseDistance(const commsgs::geometry_msgs::Pose2D& pose1,
+                                           const commsgs::geometry_msgs::Pose2D& pose2) {
     double dx = pose1.x - pose2.x;
     double dy = pose1.y - pose2.y;
 
@@ -72,3 +67,7 @@ double SimpleProgressChecker::PoseDistance(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
+
+// Plugins
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::SimpleProgressChecker,
+                            autonomy::control::common::ProgressChecker)

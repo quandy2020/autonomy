@@ -34,10 +34,9 @@ public:
     }
 
     void WaitForNumberSequence(const std::vector<int>& expected_numbers) {
-        const auto predicate =
-            [this, &expected_numbers]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
-                return (received_numbers_.size() >= expected_numbers.size());
-            };
+        const auto predicate = [this, &expected_numbers]() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
+            return (received_numbers_.size() >= expected_numbers.size());
+        };
         absl::MutexLock locker(&mutex_);
         mutex_.Await(absl::Condition(&predicate));
         EXPECT_EQ(expected_numbers, received_numbers_);

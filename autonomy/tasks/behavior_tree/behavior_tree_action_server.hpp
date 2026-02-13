@@ -23,11 +23,10 @@
 #include <vector>
 
 #include "behaviortree_cpp/json_export.h"
-#include "behaviortree_cpp/service_node.h"
 
 #include "autolink/autolink.hpp"
-#include "autolink/task/behavior_tree/behavior_tree_engine.hpp"
-#include "autolink/time/clock.hpp"
+#include "autonomy/common/simple_action_server.hpp"
+#include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
 
@@ -36,65 +35,34 @@ namespace tasks {
 namespace behavior_tree {
 
 /**
- * @class nav2_behavior_tree::BtActionServer
+ * @class BtActionServer
  * @brief An action server that uses behavior tree to execute an action
+ *        (design aligned with nav2_behavior_tree::BtActionServer)
  */
 template <class ActionT>
 class BtActionServer
 {
 public:
-    //   using ActionServer = nav2_util::SimpleActionServer<ActionT>;
+    using ActionServer = autonomy::common::SimpleActionServer<ActionT>;
 
-    using OnGoalReceivedCallback =
-        std::function<bool(typename ActionT::Goal::ConstSharedPtr)>;
+    using OnGoalReceivedCallback = std::function<bool(std::shared_ptr<const typename ActionT::Goal>)>;
     using OnLoopCallback = std::function<void()>;
-    using OnPreemptCallback =
-        std::function<void(typename ActionT::Goal::ConstSharedPtr)>;
-    using OnCompletionCallback =
-        std::function<void(typename ActionT::Result::SharedPtr, BtStatus)>;
+    using OnPreemptCallback = std::function<void(std::shared_ptr<const typename ActionT::Goal>)>;
+    using OnCompletionCallback = std::function<void(std::shared_ptr<typename ActionT::Result>, BtStatus)>;
 
     /**
      * @brief A constructor for nav2_behavior_tree::BtActionServer class
      */
-    explicit BtActionServer(const std::shared_ptr<autolink::Node>& parent,
-                            const std::string& action_name,
+    explicit BtActionServer(const std::shared_ptr<autolink::Node>& parent, const std::string& action_name,
                             const std::vector<std::string>& plugin_lib_names,
                             const std::string& default_bt_xml_filename,
-                            OnGoalReceivedCallback on_goal_received_callback,
-                            OnLoopCallback on_loop_callback,
-                            OnPreemptCallback on_preempt_callback,
-                            OnCompletionCallback on_completion_callback);
+                            OnGoalReceivedCallback on_goal_received_callback, OnLoopCallback on_loop_callback,
+                            OnPreemptCallback on_preempt_callback, OnCompletionCallback on_completion_callback);
 
     /**
      * @brief A destructor for nav2_behavior_tree::BtActionServer class
      */
     ~BtActionServer();
-
-    /**
-     * @brief Configures member variables
-     * Initializes action server for, builds behavior tree from xml file,
-     * and calls user-defined onConfigure.
-     * @return bool true on SUCCESS and false on FAILURE
-     */
-    bool Configure();
-
-    /**
-     * @brief Activates action server
-     * @return bool true on SUCCESS and false on FAILURE
-     */
-    bool Activate();
-
-    /**
-     * @brief Deactivates action server
-     * @return bool true on SUCCESS and false on FAILURE
-     */
-    bool Deactivate();
-
-    /**
-     * @brief Resets member variables
-     * @return bool true on SUCCESS and false on FAILURE
-     */
-    bool Cleanup();
 
     /**
      * @brief Enable (or disable) Groot2 monitoring of BT
@@ -130,53 +98,51 @@ public:
         return current_bt_xml_filename_;
     }
 
-    // /**
-    //  * @brief Wrapper function to accept pending goal if a preempt has been
-    //  requested
-    //  * @return Shared pointer to pending action goal
-    //  */
-    // const std::shared_ptr<const typename ActionT::Goal> AcceptPendingGoal()
-    // {
-    //     return action_server_->AcceptPendingGoal();
-    // }
+    /**
+     * @brief Getter function for default BT XML filename
+     */
+    std::string GetDefaultBTFilename() const {
+        return default_bt_xml_filename_;
+    }
 
-    // /**
-    //  * @brief Wrapper function to terminate pending goal if a preempt has
-    //  been requested
-    //  */
-    // void TerminatePendingGoal()
-    // {
-    //     action_server_->terminate_pending_goal();
-    // }
+    /**
+     * @brief Wrapper to accept pending goal if a preempt has been requested
+     */
+    const std::shared_ptr<const typename ActionT::Goal> AcceptPendingGoal() {
+        return action_server_ ? action_server_->AcceptPendingGoal() : nullptr;
+    }
 
-    // /**
-    //  * @brief Wrapper function to get current goal
-    //  * @return Shared pointer to current action goal
-    //  */
-    // const std::shared_ptr<const typename ActionT::Goal> GetCurrentGoal()
-    // const
-    // {
-    //     return action_server_->get_current_goal();
-    // }
+    /**
+     * @brief Wrapper to terminate pending goal if a preempt has been requested
+     */
+    void TerminatePendingGoal() {
+        if (action_server_) {
+            action_server_->TerminatePendingGoal();
+        }
+    }
 
-    //   /**
-    //    * @brief Wrapper function to get pending goal
-    //    * @return Shared pointer to pending action goal
-    //    */
-    //   const std::shared_ptr<const typename ActionT::Goal> getPendingGoal()
-    //   const
-    //   {
-    //     return action_server_->get_pending_goal();
-    //   }
+    /**
+     * @brief Wrapper to get current goal
+     */
+    const std::shared_ptr<const typename ActionT::Goal> GetCurrentGoal() const {
+        return action_server_ ? action_server_->GetCurrentGoal() : nullptr;
+    }
 
-    //   /**
-    //    * @brief Wrapper function to publish action feedback
-    //    */
-    //   void publishFeedback(typename std::shared_ptr<typename
-    //   ActionT::Feedback> feedback)
-    //   {
-    //     action_server_->publish_feedback(feedback);
-    //   }
+    /**
+     * @brief Wrapper to get pending goal
+     */
+    const std::shared_ptr<const typename ActionT::Goal> GetPendingGoal() const {
+        return action_server_ ? action_server_->GetPendingGoal() : nullptr;
+    }
+
+    /**
+     * @brief Wrapper to publish action feedback
+     */
+    void PublishFeedback(std::shared_ptr<typename ActionT::Feedback> feedback) {
+        if (action_server_) {
+            action_server_->PublishFeedback(feedback);
+        }
+    }
 
     /**
      * @brief Getter function for the current BT tree
@@ -213,8 +179,7 @@ public:
      * @param result the action server result to be updated
      * @return bool action server result was changed
      */
-    bool PopulateInternalError(
-        typename std::shared_ptr<typename ActionT::Result> result);
+    bool PopulateInternalError(typename std::shared_ptr<typename ActionT::Result> result);
 
 protected:
     /**
@@ -227,8 +192,7 @@ protected:
      * code posted on the blackboard
      * @param result the action server result to be updated
      */
-    void PopulateErrorCode(
-        typename std::shared_ptr<typename ActionT::Result> result);
+    void PopulateErrorCode(typename std::shared_ptr<typename ActionT::Result> result);
 
     /**
      * @brief Setting BT error codes to success. Used to clean blackboard
@@ -239,8 +203,11 @@ protected:
     // Action name
     std::string action_name_;
 
-    // // Our action server implements the template action
-    // std::shared_ptr<ActionServer> action_server_;
+    // Parent node for creating the action server
+    std::shared_ptr<autolink::Node> node_;
+
+    // Action server (design aligned with nav2_util::SimpleActionServer)
+    std::shared_ptr<ActionServer> action_server_;
 
     // Behavior Tree to be executed when goal is received
     BT::Tree tree_;
@@ -263,9 +230,6 @@ protected:
 
     // // A regular, non-spinning ROS node that we can use for calls to the
     // action client rclcpp::Node::SharedPtr client_node_;
-
-    // // Parent node
-    // rclcpp_lifecycle::LifecycleNode::WeakPtr node_;
 
     // Duration for each iteration of BT execution
     std::chrono::milliseconds bt_loop_duration_;

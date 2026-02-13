@@ -54,8 +54,7 @@ proto::std_msgs::MultiArrayDimension ToProto(const MultiArrayDimension& data) {
     return proto;
 }
 
-MultiArrayDimension FromProto(
-    const proto::std_msgs::MultiArrayDimension& proto) {
+MultiArrayDimension FromProto(const proto::std_msgs::MultiArrayDimension& proto) {
     return {proto.label(), proto.size(), proto.stride()};
 }
 

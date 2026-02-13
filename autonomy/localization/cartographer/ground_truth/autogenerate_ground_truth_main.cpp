@@ -46,25 +46,18 @@ namespace cartographer {
 namespace ground_truth {
 namespace {
 
-void Run(const std::string& pose_graph_filename,
-         const std::string& output_filename, const double min_covered_distance,
-         const double outlier_threshold_meters,
-         const double outlier_threshold_radians) {
+void Run(const std::string& pose_graph_filename, const std::string& output_filename, const double min_covered_distance,
+         const double outlier_threshold_meters, const double outlier_threshold_radians) {
     LOG(INFO) << "Reading pose graph from '" << pose_graph_filename << "'...";
-    mapping::proto::PoseGraph pose_graph =
-        io::DeserializePoseGraphFromFile(pose_graph_filename);
+    mapping::proto::PoseGraph pose_graph = io::DeserializePoseGraphFromFile(pose_graph_filename);
 
     LOG(INFO) << "Autogenerating ground truth relations...";
-    const proto::GroundTruth ground_truth = GenerateGroundTruth(
-        pose_graph, min_covered_distance, outlier_threshold_meters,
-        outlier_threshold_radians);
-    LOG(INFO) << "Writing " << ground_truth.relation_size() << " relations to '"
-              << output_filename << "'.";
+    const proto::GroundTruth ground_truth =
+        GenerateGroundTruth(pose_graph, min_covered_distance, outlier_threshold_meters, outlier_threshold_radians);
+    LOG(INFO) << "Writing " << ground_truth.relation_size() << " relations to '" << output_filename << "'.";
     {
-        std::ofstream output_stream(output_filename,
-                                    std::ios_base::out | std::ios_base::binary);
-        CHECK(ground_truth.SerializeToOstream(&output_stream))
-            << "Could not serialize ground truth data.";
+        std::ofstream output_stream(output_filename, std::ios_base::out | std::ios_base::binary);
+        CHECK(ground_truth.SerializeToOstream(&output_stream)) << "Could not serialize ground truth data.";
         output_stream.close();
         CHECK(output_stream) << "Could not write ground truth data.";
     }
@@ -93,12 +86,9 @@ int main(int argc, char** argv) {
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (FLAGS_pose_graph_filename.empty() || FLAGS_output_filename.empty()) {
-        google::ShowUsageWithFlagsRestrict(argv[0],
-                                           "autogenerate_ground_truth");
+        google::ShowUsageWithFlagsRestrict(argv[0], "autogenerate_ground_truth");
         return EXIT_FAILURE;
     }
-    ::cartographer::ground_truth::Run(
-        FLAGS_pose_graph_filename, FLAGS_output_filename,
-        FLAGS_min_covered_distance, FLAGS_outlier_threshold_meters,
-        FLAGS_outlier_threshold_radians);
+    ::cartographer::ground_truth::Run(FLAGS_pose_graph_filename, FLAGS_output_filename, FLAGS_min_covered_distance,
+                                      FLAGS_outlier_threshold_meters, FLAGS_outlier_threshold_radians);
 }

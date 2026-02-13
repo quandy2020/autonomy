@@ -29,34 +29,36 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A BT::ActionNode that truncates a path
+ * @brief A BT::ActionNodeBase to shorten path by some distance
  */
-class TruncatePathAction : public BT::ActionNodeBase
+class TruncatePath : public BT::ActionNodeBase
 {
 public:
     /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::TruncatePathAction
+     * @brief A nav2_behavior_tree::TruncatePath constructor
      * @param xml_tag_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    TruncatePathAction(const std::string& xml_tag_name,
-                       const BT::NodeConfiguration& conf);
+    TruncatePath(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
+     * @return BT::PortsList Containing basic ports along with node-specific
+     * ports
      */
     static BT::PortsList providedPorts() {
         return {
-            BT::InputPort<commsgs::planning_msgs::Path>(
-                "path", "Input path to truncate"),
-            BT::InputPort<double>("distance", 0.0,
-                                  "Distance to truncate from the end"),
-            BT::OutputPort<commsgs::planning_msgs::Path>("path",
-                                                         "Truncated path"),
+            BT::InputPort<commsgs::planning_msgs::Path>("input_path", "Original Path"),
+            BT::OutputPort<commsgs::planning_msgs::Path>("output_path", "Path truncated to a certain distance"),
+            BT::InputPort<double>("distance", 1.0, "distance"),
         };
     }
+
+private:
+    /**
+     * @brief The other (optional) override required by a BT action.
+     */
+    void halt() override {}
 
     /**
      * @brief The main override required by a BT action
@@ -64,10 +66,7 @@ public:
      */
     BT::NodeStatus tick() override;
 
-    /**
-     * @brief Function to halt the node
-     */
-    void halt() override {}
+    double distance_;
 };
 
 }  // namespace action

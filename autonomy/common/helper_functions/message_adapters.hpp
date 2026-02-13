@@ -32,12 +32,10 @@ using TimeStamp = builtin_interfaces::Time;
 /// \brief Helper class to check existence of header file in compile time:
 /// https://stackoverflow.com/a/16000226/2325407
 template <typename T, typename = nullptr_t>
-struct HasHeader : std::false_type {
-};
+struct HasHeader : std::false_type {};
 
 template <typename T>
-struct HasHeader<T, decltype((void)T::header, nullptr)> : std::true_type {
-};
+struct HasHeader<T, decltype((void)T::header, nullptr)> : std::true_type {};
 
 /////////// Template declarations
 
@@ -78,26 +76,22 @@ template <typename T, nullptr_t>
 TimeStamp& get_stamp(T& msg) noexcept;
 
 /////////////// Default specializations for message types that contain a header.
-template <class T, typename std::enable_if<HasHeader<T>::value,
-                                           nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
 const std::string& get_frame_id(const T& msg) noexcept {
     return msg.header.frame_id;
 }
 
-template <class T, typename std::enable_if<HasHeader<T>::value,
-                                           nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
 std::string& get_frame_id(T& msg) noexcept {
     return msg.header.frame_id;
 }
 
-template <class T, typename std::enable_if<HasHeader<T>::value,
-                                           nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
 TimeStamp& get_stamp(T& msg) noexcept {
     return msg.header.stamp;
 }
 
-template <class T, typename std::enable_if<HasHeader<T>::value,
-                                           nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
 TimeStamp get_stamp(const T& msg) noexcept {
     return msg.header.stamp;
 }

@@ -76,17 +76,15 @@ TEST(TestKalmanFilter, PredictionsIncreaseUncertainty) {
     using Matrix = State::Matrix;
     LinearMotionModel<ConstAccelerationXY32> motion_model{};
     WienerNoise<ConstAccelerationXY32> noise_model{{{1.0F, 1.0F}}};
-    auto kf = make_kalman_filter(motion_model, noise_model, State{},
-                                 Matrix::Identity());
+    auto kf = make_kalman_filter(motion_model, noise_model, State{}, Matrix::Identity());
     EXPECT_TRUE(kf.state().vector().isApproxToConstant(0.0F));
     auto covariance = kf.covariance();
     for (int i = 0; i < 20; ++i) {
         kf.predict(std::chrono::milliseconds{100LL});
         const auto diff = kf.covariance() - covariance;
-        EXPECT_TRUE((diff.diagonal().array() > 0.0F).all())
-            << "New covariance: \n"
-            << kf.covariance() << "\nis not bigger than old one:\n"
-            << covariance;
+        EXPECT_TRUE((diff.diagonal().array() > 0.0F).all()) << "New covariance: \n"
+                                                            << kf.covariance() << "\nis not bigger than old one:\n"
+                                                            << covariance;
         covariance = kf.covariance();
     }
 }
@@ -95,23 +93,18 @@ TEST(TestKalmanFilter, PredictionsIncreaseUncertainty) {
 TEST(TestKalmanFilter, TrackStaticObjectWithDirectMeasurements) {
     using State = LinearMotionModel<ConstAccelerationXY32>::State;
     using Matrix = State::Matrix;
-    using MeasurementState = FloatState<X, X_VELOCITY, X_ACCELERATION, Y,
-                                        Y_VELOCITY, Y_ACCELERATION>;
+    using MeasurementState = FloatState<X, X_VELOCITY, X_ACCELERATION, Y, Y_VELOCITY, Y_ACCELERATION>;
     LinearMotionModel<ConstAccelerationXY32> motion_model{};
     WienerNoise<ConstAccelerationXY32> noise_model{{{1.0F, 1.0F}}};
-    auto kf = make_kalman_filter(motion_model, noise_model, State{},
-                                 Matrix::Identity());
+    auto kf = make_kalman_filter(motion_model, noise_model, State{}, Matrix::Identity());
     EXPECT_TRUE(kf.state().vector().isApproxToConstant(0.0F));
     auto covariance = kf.covariance();
-    const MeasurementState::Vector stddev =
-        MeasurementState::Vector::Constant(0.1F);
+    const MeasurementState::Vector stddev = MeasurementState::Vector::Constant(0.1F);
     for (int i = 0; i < 10; ++i) {
         kf.predict(std::chrono::milliseconds{100LL});
-        kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(
-            MeasurementState::Vector::Zero(), stddev));
+        kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(MeasurementState::Vector::Zero(), stddev));
         EXPECT_TRUE(kf.state().vector().isApproxToConstant(0.0F))
-            << "Vector " << kf.state().vector().transpose()
-            << " is not a zero vector.";
+            << "Vector " << kf.state().vector().transpose() << " is not a zero vector.";
         const auto covariance_difference = kf.covariance() - covariance;
         EXPECT_TRUE((covariance_difference.diagonal().array() < 0.0F).all())
             << "New covariance: \n"
@@ -128,19 +121,15 @@ TEST(TestKalmanFilter, TrackStaticObjectHiddenState) {
     using MeasurementState = FloatState<X, Y>;
     LinearMotionModel<ConstAccelerationXY32> motion_model{};
     WienerNoise<ConstAccelerationXY32> noise_model{{{1.0F, 1.0F}}};
-    auto kf = make_kalman_filter(motion_model, noise_model, State{},
-                                 10.0F * Matrix::Identity());
+    auto kf = make_kalman_filter(motion_model, noise_model, State{}, 10.0F * Matrix::Identity());
     EXPECT_TRUE(kf.state().vector().isApproxToConstant(0.0F));
     auto covariance = kf.covariance();
-    const MeasurementState::Vector stddev =
-        MeasurementState::Vector::Constant(0.1F);
+    const MeasurementState::Vector stddev = MeasurementState::Vector::Constant(0.1F);
     for (int i = 0; i < 10; ++i) {
         kf.predict(std::chrono::milliseconds{100LL});
-        kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(
-            MeasurementState::Vector::Zero(), stddev));
+        kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(MeasurementState::Vector::Zero(), stddev));
         EXPECT_TRUE(kf.state().vector().isApproxToConstant(0.0F))
-            << "Vector " << kf.state().vector().transpose()
-            << " is not a zero vector.";
+            << "Vector " << kf.state().vector().transpose() << " is not a zero vector.";
     }
     // Perform this check only in the end as the covariance of the unobserved
     // variables _can_ grow initially but will eventually fall below the
@@ -165,32 +154,24 @@ TEST(TestKalmanFilter, TrackMovingObject) {
     LinearMotionModel<ConstAccelerationXYYaw32> motion_model{};
     WienerNoise<ConstAccelerationXYYaw32> noise_model{{{1.0F, 1.0F, 1.0F}}};
     const auto initial_covariance = Matrix::Identity();
-    auto kf = make_kalman_filter(motion_model, noise_model, State{},
-                                 initial_covariance);
+    auto kf = make_kalman_filter(motion_model, noise_model, State{}, initial_covariance);
     EXPECT_TRUE(kf.state().vector().isApproxToConstant(0.0F));
     const auto speed = 10.0F;  // m/s
     const std::chrono::milliseconds dt{100LL};
     const std::chrono::seconds total_time{5};
-    const MeasurementState::Vector stddev =
-        MeasurementState::Vector::Constant(0.1F);
+    const MeasurementState::Vector stddev = MeasurementState::Vector::Constant(0.1F);
     for (auto t = dt; t <= total_time; t += dt) {
         const auto float_seconds = std::chrono::duration<float32_t>{t}.count();
         const auto travelled_distance = float_seconds * speed;
-        const auto observation =
-            travelled_distance * MeasurementState::Vector::Ones();
+        const auto observation = travelled_distance * MeasurementState::Vector::Ones();
         kf.predict(std::chrono::milliseconds{100LL});
-        kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(
-            observation, stddev));
+        kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(observation, stddev));
     }
-    const auto total_float_seconds =
-        std::chrono::duration<float32_t>{total_time}.count();
+    const auto total_float_seconds = std::chrono::duration<float32_t>{total_time}.count();
     const float32_t eps = 0.001F;
     EXPECT_NEAR(kf.state().at<X>(), total_float_seconds * speed, eps);
     EXPECT_NEAR(kf.state().at<Y>(), total_float_seconds * speed, eps);
-    EXPECT_NEAR(kf.state().at<YAW>(),
-                autonomy::common::helper_functions::wrap_angle(
-                    total_float_seconds * speed),
-                eps);
+    EXPECT_NEAR(kf.state().at<YAW>(), autonomy::common::helper_functions::wrap_angle(total_float_seconds * speed), eps);
     EXPECT_NEAR(kf.state().at<X_VELOCITY>(), speed, eps);
     EXPECT_NEAR(kf.state().at<Y_VELOCITY>(), speed, eps);
     EXPECT_NEAR(kf.state().at<YAW_CHANGE_RATE>(), speed, eps);
@@ -226,51 +207,37 @@ TEST(TestKalmanFilter, TrackThrownBall) {
     initial_state.at<Y_VELOCITY>() = initial_speed;
     initial_state.at<Y_ACCELERATION>() = g;
     const auto initial_covariance = Matrix::Identity();
-    auto kf = make_kalman_filter(motion_model, noise_model, initial_state,
-                                 initial_covariance);
+    auto kf = make_kalman_filter(motion_model, noise_model, initial_state, initial_covariance);
     // In the way we model the ball it is going to reach the ground at this
     // time.
-    const std::chrono::system_clock::time_point start_time{
-        std::chrono::system_clock::now()};
+    const std::chrono::system_clock::time_point start_time{std::chrono::system_clock::now()};
     const auto duration = 2000ms;
     const auto expected_end_time = start_time + duration;
 
     const auto increment = 10ms;
     const float32_t seconds_increment{FloatSeconds{increment}.count()};
     State expected_state{initial_state};
-    const MeasurementState::Vector stddev =
-        MeasurementState::Vector::Constant(0.1F);
-    for (auto timestamp = start_time; timestamp <= expected_end_time;
-         timestamp += increment) {
-        expected_state.at<X>() +=
-            seconds_increment * expected_state.at<X_VELOCITY>();
-        expected_state.at<Y>() +=
-            seconds_increment * expected_state.at<Y_VELOCITY>();
-        expected_state.at<X_VELOCITY>() +=
-            seconds_increment * expected_state.at<X_ACCELERATION>();
-        expected_state.at<Y_VELOCITY>() +=
-            seconds_increment * expected_state.at<Y_ACCELERATION>();
+    const MeasurementState::Vector stddev = MeasurementState::Vector::Constant(0.1F);
+    for (auto timestamp = start_time; timestamp <= expected_end_time; timestamp += increment) {
+        expected_state.at<X>() += seconds_increment * expected_state.at<X_VELOCITY>();
+        expected_state.at<Y>() += seconds_increment * expected_state.at<Y_VELOCITY>();
+        expected_state.at<X_VELOCITY>() += seconds_increment * expected_state.at<X_ACCELERATION>();
+        expected_state.at<Y_VELOCITY>() += seconds_increment * expected_state.at<Y_ACCELERATION>();
 
         kf.predict(increment);
         kf.correct(LinearMeasurement<MeasurementState>::create_with_stddev(
-            MeasurementState::Vector{expected_state.at<X>(),
-                                     expected_state.at<Y>()},
-            stddev));
+            MeasurementState::Vector{expected_state.at<X>(), expected_state.at<Y>()}, stddev));
     }
     // Quickly check our "simulation" of the ball.
-    const auto duration_seconds =
-        std::chrono::duration<float32_t>{duration}.count();
+    const auto duration_seconds = std::chrono::duration<float32_t>{duration}.count();
     const auto kRelaxedEpsilon = 0.2F;  // Allow up to 20 cm error.
-    EXPECT_NEAR(expected_state.at<X>(), initial_speed * duration_seconds,
-                kRelaxedEpsilon);
+    EXPECT_NEAR(expected_state.at<X>(), initial_speed * duration_seconds, kRelaxedEpsilon);
     EXPECT_NEAR(expected_state.at<Y>(), 0.0F, kRelaxedEpsilon);
 
     EXPECT_NEAR(expected_state.at<X>(), kf.state().at<X>(), 0.001F);
     EXPECT_NEAR(expected_state.at<Y>(), kf.state().at<Y>(), 0.001F);
-    EXPECT_NEAR(expected_state.at<X_VELOCITY>(), kf.state().at<X_VELOCITY>(),
-                kRelaxedEpsilon);
-    EXPECT_NEAR(expected_state.at<Y_VELOCITY>(), kf.state().at<Y_VELOCITY>(),
-                kRelaxedEpsilon);
+    EXPECT_NEAR(expected_state.at<X_VELOCITY>(), kf.state().at<X_VELOCITY>(), kRelaxedEpsilon);
+    EXPECT_NEAR(expected_state.at<Y_VELOCITY>(), kf.state().at<Y_VELOCITY>(), kRelaxedEpsilon);
     EXPECT_NEAR(expected_state.at<X_ACCELERATION>(), 0.0F, kRelaxedEpsilon);
     EXPECT_NEAR(expected_state.at<Y_ACCELERATION>(), g, kRelaxedEpsilon);
 }
@@ -287,34 +254,29 @@ TEST(KalmanFilterWrapperTest, TrafficLightState) {
 
     using TrafficLightState = FloatState<RED, GREEN, ORANGE>;
     const auto uniform_probability = 1.0F / TrafficLightState::size();
-    const auto uniform_vector =
-        TrafficLightState::Vector::Constant(uniform_probability);
+    const auto uniform_vector = TrafficLightState::Vector::Constant(uniform_probability);
     TrafficLightState traffic_light_state{uniform_vector};
     EXPECT_FLOAT_EQ(traffic_light_state.at<RED>(), uniform_probability);
     EXPECT_FLOAT_EQ(traffic_light_state.at<GREEN>(), uniform_probability);
     EXPECT_FLOAT_EQ(traffic_light_state.at<ORANGE>(), uniform_probability);
 
-    auto filter = make_correction_only_kalman_filter(
-        traffic_light_state, TrafficLightState::Matrix::Identity());
+    auto filter = make_correction_only_kalman_filter(traffic_light_state, TrafficLightState::Matrix::Identity());
 
     // Observe a red light.
     const auto red_light_measurement =
-        LinearMeasurement<TrafficLightState>::create_with_stddev(
-            {1.0F, 0.0F, 0.0F}, {0.1F, 0.1F, 0.1F});
+        LinearMeasurement<TrafficLightState>::create_with_stddev({1.0F, 0.0F, 0.0F}, {0.1F, 0.1F, 0.1F});
     EXPECT_FLOAT_EQ(filter.state().at<RED>(), uniform_probability);
     EXPECT_FLOAT_EQ(filter.state().at<GREEN>(), uniform_probability);
     EXPECT_FLOAT_EQ(filter.state().at<ORANGE>(), uniform_probability);
     filter.correct(red_light_measurement);
-    const auto epsilon =
-        0.1F;  // An epsilon chosen to match the observation covariance.
+    const auto epsilon = 0.1F;  // An epsilon chosen to match the observation covariance.
     EXPECT_GT(filter.state().at<RED>(), uniform_probability + epsilon);
     EXPECT_LT(filter.state().at<GREEN>(), uniform_probability - epsilon);
     EXPECT_LT(filter.state().at<ORANGE>(), uniform_probability - epsilon);
 
     // Observe a green light.
     const auto green_light_measurement =
-        LinearMeasurement<TrafficLightState>::create_with_stddev(
-            {0.0F, 1.0F, 0.0F}, {0.1F, 0.1F, 0.1F});
+        LinearMeasurement<TrafficLightState>::create_with_stddev({0.0F, 1.0F, 0.0F}, {0.1F, 0.1F, 0.1F});
     filter.correct(green_light_measurement);
     // We have now seen both green and red once, so it should be roughly 50/50
     // probability for either of these states of the traffic light, but

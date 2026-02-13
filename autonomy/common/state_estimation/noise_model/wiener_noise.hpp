@@ -34,10 +34,8 @@ namespace state_estimation {
 /// @tparam     StateT  A state vector type.
 ///
 template <typename StateT>
-struct number_of_acceleration_components
-    : public std::integral_constant<std::size_t, 0UL> {
-    static_assert(sizeof(StateT) == 0,
-                  "This class must be specialized to a specific state type.");
+struct number_of_acceleration_components : public std::integral_constant<std::size_t, 0UL> {
+    static_assert(sizeof(StateT) == 0, "This class must be specialized to a specific state type.");
 };
 
 ///
@@ -50,9 +48,7 @@ struct number_of_acceleration_components
 template <typename StateT>
 class WienerNoise : public NoiseInterface<WienerNoise<StateT>>
 {
-    using AccelerationArray =
-        std::array<typename StateT::Scalar,
-                   number_of_acceleration_components<StateT>::value>;
+    using AccelerationArray = std::array<typename StateT::Scalar, number_of_acceleration_components<StateT>::value>;
 
 public:
     using State = StateT;
@@ -84,26 +80,19 @@ protected:
     ///
     /// @return     A covariance of the noise process over given time.
     ///
-    typename State::Matrix crtp_covariance(
-        const std::chrono::nanoseconds&) const;
+    typename State::Matrix crtp_covariance(const std::chrono::nanoseconds&) const;
 
 private:
     AccelerationArray m_acceleration_variances{};
 };
 
 template <typename StateT, typename OtherScalarT>
-auto make_wiener_noise(
-    const std::vector<OtherScalarT>& acceleration_variances) {
-    std::array<typename StateT::Scalar,
-               number_of_acceleration_components<StateT>::value>
-        variances;
+auto make_wiener_noise(const std::vector<OtherScalarT>& acceleration_variances) {
+    std::array<typename StateT::Scalar, number_of_acceleration_components<StateT>::value> variances;
     if (acceleration_variances.size() != variances.size()) {
-        throw std::runtime_error("There must be " +
-                                 std::to_string(variances.size()) +
-                                 " acceleration variances");
+        throw std::runtime_error("There must be " + std::to_string(variances.size()) + " acceleration variances");
     }
-    std::copy(acceleration_variances.begin(), acceleration_variances.end(),
-              variances.begin());
+    std::copy(acceleration_variances.begin(), acceleration_variances.end(), variances.begin());
     return WienerNoise<StateT>{variances};
 }
 
@@ -113,10 +102,8 @@ auto make_wiener_noise(
 ///             common::state_vector::ConstAccelerationXY.
 ///
 template <typename ScalarT>
-struct number_of_acceleration_components<
-    common::state_vector::ConstAccelerationXY<ScalarT>>
-    : public std::integral_constant<std::size_t, 2UL> {
-};
+struct number_of_acceleration_components<common::state_vector::ConstAccelerationXY<ScalarT>>
+    : public std::integral_constant<std::size_t, 2UL> {};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -124,10 +111,8 @@ struct number_of_acceleration_components<
 ///             common::state_vector::ConstAccelerationXYZ.
 ///
 template <typename ScalarT>
-struct number_of_acceleration_components<
-    common::state_vector::ConstAccelerationXYZ<ScalarT>>
-    : public std::integral_constant<std::size_t, 3UL> {
-};
+struct number_of_acceleration_components<common::state_vector::ConstAccelerationXYZ<ScalarT>>
+    : public std::integral_constant<std::size_t, 3UL> {};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -135,10 +120,8 @@ struct number_of_acceleration_components<
 ///             common::state_vector::ConstAccelerationXYYaw.
 ///
 template <typename ScalarT>
-struct number_of_acceleration_components<
-    common::state_vector::ConstAccelerationXYYaw<ScalarT>>
-    : public std::integral_constant<std::size_t, 3UL> {
-};
+struct number_of_acceleration_components<common::state_vector::ConstAccelerationXYYaw<ScalarT>>
+    : public std::integral_constant<std::size_t, 3UL> {};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -146,10 +129,8 @@ struct number_of_acceleration_components<
 ///             common::state_vector::ConstAccelerationXYZYaw.
 ///
 template <typename ScalarT>
-struct number_of_acceleration_components<
-    common::state_vector::ConstAccelerationXYZYaw<ScalarT>>
-    : public std::integral_constant<std::size_t, 4UL> {
-};
+struct number_of_acceleration_components<common::state_vector::ConstAccelerationXYZYaw<ScalarT>>
+    : public std::integral_constant<std::size_t, 4UL> {};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -157,10 +138,8 @@ struct number_of_acceleration_components<
 ///             common::state_vector::ConstAccelerationXYZRPY.
 ///
 template <typename ScalarT>
-struct number_of_acceleration_components<
-    common::state_vector::ConstAccelerationXYZRPY<ScalarT>>
-    : public std::integral_constant<std::size_t, 6UL> {
-};
+struct number_of_acceleration_components<common::state_vector::ConstAccelerationXYZRPY<ScalarT>>
+    : public std::integral_constant<std::size_t, 6UL> {};
 
 }  // namespace state_estimation
 }  // namespace common

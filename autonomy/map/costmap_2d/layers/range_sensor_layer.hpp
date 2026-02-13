@@ -64,9 +64,8 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw,
-                              double* min_x, double* min_y, double* max_x,
-                              double* max_y);
+    virtual void updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                              double* max_x, double* max_y);
 
     /**
      * @brief Update the costs in the master costmap in the window
@@ -76,8 +75,7 @@ public:
      * @param max_x X max map coord of the window to update
      * @param max_y Y max map coord of the window to update
      */
-    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                             int max_i, int max_j);
+    virtual void updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j);
 
     /**
      * @brief Reset this costmap
@@ -104,8 +102,7 @@ public:
     /**
      * @brief Handle an incoming Range message to populate into costmap
      */
-    void bufferIncomingRangeMsg(
-        const commsgs::sensor_msgs::Range::SharedPtr range_message);
+    void bufferIncomingRangeMsg(const commsgs::sensor_msgs::Range::SharedPtr range_message);
 
 protected:
     /**
@@ -115,8 +112,7 @@ protected:
     /**
      * @brief Update the actual costmap with the values processed
      */
-    void updateCostmap(commsgs::sensor_msgs::Range& range_message,
-                       bool clear_sensor_cone);
+    void updateCostmap(commsgs::sensor_msgs::Range& range_message, bool clear_sensor_cone);
 
     /**
      * @brief Process general incoming range sensor data. If min=max ranges,
@@ -162,8 +158,7 @@ protected:
     /**
      * @brief Update the cost in a cell with information
      */
-    inline void update_cell(double ox, double oy, double ot, double r,
-                            double nx, double ny, bool clear);
+    inline void update_cell(double ox, double oy, double ot, double r, double nx, double ny, bool clear);
 
     /**
      * @brief Find probability value of a cost
@@ -179,8 +174,7 @@ protected:
         return static_cast<unsigned char>(p * LETHAL_OBSTACLE);
     }
 
-    std::function<void(commsgs::sensor_msgs::Range& range_message)>
-        processRangeMessageFunc_;
+    std::function<void(commsgs::sensor_msgs::Range& range_message)> processRangeMessageFunc_;
     std::mutex range_message_mutex_;
     std::list<commsgs::sensor_msgs::Range> range_msgs_buffer_;
 

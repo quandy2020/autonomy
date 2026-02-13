@@ -25,8 +25,7 @@ namespace eventpp {
 
 template <typename Func, typename Condition>
 struct ConditionalFunctor {
-    ConditionalFunctor(Func f, Condition condition)
-        : func(std::move(f)), condition(std::move(condition)) {}
+    ConditionalFunctor(Func f, Condition condition) : func(std::move(f)), condition(std::move(condition)) {}
 
     template <typename... A>
     void operator()(A&&... args) {
@@ -40,10 +39,8 @@ struct ConditionalFunctor {
 };
 
 template <typename Func, typename Condition>
-ConditionalFunctor<Func, Condition> conditionalFunctor(Func func,
-                                                       Condition condition) {
-    return ConditionalFunctor<Func, Condition>(std::move(func),
-                                               std::move(condition));
+ConditionalFunctor<Func, Condition> conditionalFunctor(Func func, Condition condition) {
+    return ConditionalFunctor<Func, Condition>(std::move(func), std::move(condition));
 }
 
 }  // namespace eventpp

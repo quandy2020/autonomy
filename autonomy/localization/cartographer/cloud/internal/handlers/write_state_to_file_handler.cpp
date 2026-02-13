@@ -27,17 +27,13 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void WriteStateToFileHandler::OnRequest(
-    const proto::WriteStateToFileRequest& request) {
+void WriteStateToFileHandler::OnRequest(const proto::WriteStateToFileRequest& request) {
     if (request.filename().empty()) {
         Finish(::grpc::Status(::grpc::INVALID_ARGUMENT, "Filename empty."));
         return;
     }
-    bool success =
-        GetContext<MapBuilderContextInterface>()
-            ->map_builder()
-            .SerializeStateToFile(
-                /*include_unfinished_submaps=*/false, request.filename());
+    bool success = GetContext<MapBuilderContextInterface>()->map_builder().SerializeStateToFile(
+        /*include_unfinished_submaps=*/false, request.filename());
     auto response = absl::make_unique<proto::WriteStateToFileResponse>();
     response->set_success(success);
     Send(std::move(response));

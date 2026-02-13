@@ -42,12 +42,9 @@ const std::array<double, 5> kObserveScores = {{-1, 0.11, 0.2, 0.5, 2}};
 class Algorithm
 {
 public:
-    static void RegisterMetrics(
-        ::cartographer::metrics::FamilyFactory* factory) {
-        auto boundaries =
-            ::cartographer::metrics::Histogram::FixedWidth(0.05, 20);
-        auto* scores_family = factory->NewHistogramFamily(
-            "/algorithm/scores", "Scores achieved", boundaries);
+    static void RegisterMetrics(::cartographer::metrics::FamilyFactory* factory) {
+        auto boundaries = ::cartographer::metrics::Histogram::FixedWidth(0.05, 20);
+        auto* scores_family = factory->NewHistogramFamily("/algorithm/scores", "Scores achieved", boundaries);
         kScoresMetric = scores_family->Add({{kLabelKey, kLabelValue}});
     }
     void Run() {
@@ -72,19 +69,15 @@ TEST(MetricsTest, CollectCounter) {
     }
     ASSERT_EQ(collected.size(), 1);
     ASSERT_EQ(collected[0].metric.size(), 1);
-    EXPECT_THAT(
-        collected[0].metric.at(0).label,
-        testing::AllOf(
-            testing::ElementsAre(testing::Field(&Label::name, kLabelKey)),
-            testing::ElementsAre(testing::Field(&Label::value, kLabelValue))));
-    EXPECT_THAT(collected[0].metric.at(0).counter.value,
-                testing::DoubleEq(expected_value));
+    EXPECT_THAT(collected[0].metric.at(0).label,
+                testing::AllOf(testing::ElementsAre(testing::Field(&Label::name, kLabelKey)),
+                               testing::ElementsAre(testing::Field(&Label::value, kLabelValue))));
+    EXPECT_THAT(collected[0].metric.at(0).counter.value, testing::DoubleEq(expected_value));
 }
 
 TEST(MetricsTest, CollectGauge) {
     FamilyFactory factory;
-    auto* gauge_family =
-        factory.NewGaugeFamily("/test/queue/length", "Length of some queue");
+    auto* gauge_family = factory.NewGaugeFamily("/test/queue/length", "Length of some queue");
     kGauge = gauge_family->Add({{kLabelKey, kLabelValue}});
     kGauge->Increment();
     kGauge->Increment(5);
@@ -99,13 +92,10 @@ TEST(MetricsTest, CollectGauge) {
     }
     ASSERT_EQ(collected.size(), 1);
     ASSERT_EQ(collected[0].metric.size(), 1);
-    EXPECT_THAT(
-        collected[0].metric.at(0).label,
-        testing::AllOf(
-            testing::ElementsAre(testing::Field(&Label::name, kLabelKey)),
-            testing::ElementsAre(testing::Field(&Label::value, kLabelValue))));
-    EXPECT_THAT(collected[0].metric.at(0).gauge.value,
-                testing::DoubleEq(expected_value));
+    EXPECT_THAT(collected[0].metric.at(0).label,
+                testing::AllOf(testing::ElementsAre(testing::Field(&Label::name, kLabelKey)),
+                               testing::ElementsAre(testing::Field(&Label::value, kLabelValue))));
+    EXPECT_THAT(collected[0].metric.at(0).gauge.value, testing::DoubleEq(expected_value));
 }
 
 TEST(MetricsTest, CollectHistogram) {
@@ -122,15 +112,11 @@ TEST(MetricsTest, CollectHistogram) {
     }
     ASSERT_EQ(collected.size(), 1);
     ASSERT_EQ(collected[0].metric.size(), 1);
-    EXPECT_THAT(
-        collected[0].metric.at(0).label,
-        testing::AllOf(
-            testing::ElementsAre(testing::Field(&Label::name, kLabelKey)),
-            testing::ElementsAre(testing::Field(&Label::value, kLabelValue))));
-    EXPECT_THAT(collected[0].metric.at(0).histogram.sample_count,
-                testing::Eq(kObserveScores.size()));
-    EXPECT_EQ(collected[0].metric.at(0).histogram.bucket.at(0).cumulative_count,
-              1);
+    EXPECT_THAT(collected[0].metric.at(0).label,
+                testing::AllOf(testing::ElementsAre(testing::Field(&Label::name, kLabelKey)),
+                               testing::ElementsAre(testing::Field(&Label::value, kLabelValue))));
+    EXPECT_THAT(collected[0].metric.at(0).histogram.sample_count, testing::Eq(kObserveScores.size()));
+    EXPECT_EQ(collected[0].metric.at(0).histogram.bucket.at(0).cumulative_count, 1);
 }
 
 TEST(MetricsTest, RunExposerServer) {

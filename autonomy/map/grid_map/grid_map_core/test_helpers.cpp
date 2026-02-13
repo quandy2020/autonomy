@@ -37,9 +37,7 @@ AnalyticalFunctions createRationalFunctionWorld(grid_map::GridMap* map) {
     const double y0 = shift(rndGenerator);
     const double s = scale(rndGenerator);
 
-    func.f_ = [x0, y0, s](double x, double y) {
-        return s / (1 + std::pow(x - x0, 2.0) + std::pow(y - y0, 2.0));
-    };
+    func.f_ = [x0, y0, s](double x, double y) { return s / (1 + std::pow(x - x0, 2.0) + std::pow(y - y0, 2.0)); };
 
     fillGridMap(map, func);
 
@@ -49,9 +47,7 @@ AnalyticalFunctions createRationalFunctionWorld(grid_map::GridMap* map) {
 AnalyticalFunctions createSecondOrderPolyWorld(grid_map::GridMap* map) {
     AnalyticalFunctions func;
 
-    func.f_ = [](double x, double y) {
-        return (-x * x - y * y + 2.0 * x * y + x * x * y * y);
-    };
+    func.f_ = [](double x, double y) { return (-x * x - y * y + 2.0 * x * y + x * x * y * y); };
 
     fillGridMap(map, func);
 
@@ -78,8 +74,7 @@ AnalyticalFunctions createSineWorld(grid_map::GridMap* map) {
     const double w4 = Uw(rndGenerator);
 
     func.f_ = [w1, w2, w3, w4](double x, double y) {
-        return std::cos(w1 * x) + std::sin(w2 * y) + std::cos(w3 * x) +
-               std::sin(w4 * y);
+        return std::cos(w1 * x) + std::sin(w2 * y) + std::cos(w3 * x) + std::sin(w4 * y);
     };
 
     fillGridMap(map, func);
@@ -133,8 +128,7 @@ AnalyticalFunctions createGaussianWorld(grid_map::GridMap* map) {
             const double varX = i.varX;
             const double varY = i.varY;
             const double s = i.s;
-            value += s * std::exp(-(x - x0) * (x - x0) / (2.0 * varX) -
-                                  (y - y0) * (y - y0) / (2.0 * varY));
+            value += s * std::exp(-(x - x0) * (x - x0) / (2.0 * varX) - (y - y0) * (y - y0) / (2.0 * varY));
         }
 
         return value;
@@ -157,13 +151,11 @@ void fillGridMap(grid_map::GridMap* map, const AnalyticalFunctions& functions) {
         const Index index(*iterator);
         Position pos;
         map->getPosition(index, pos);
-        data(index(0), index(1)) =
-            static_cast<DataType>(functions.f_(pos.x(), pos.y()));
+        data(index(0), index(1)) = static_cast<DataType>(functions.f_(pos.x(), pos.y()));
     }
 }
 
-grid_map::GridMap createMap(const grid_map::Length& length, double resolution,
-                            const grid_map::Position& pos) {
+grid_map::GridMap createMap(const grid_map::Length& length, double resolution, const grid_map::Position& pos) {
     grid_map::GridMap map;
 
     map.setGeometry(length, resolution, pos);
@@ -173,8 +165,7 @@ grid_map::GridMap createMap(const grid_map::Length& length, double resolution,
     return map;
 }
 
-std::vector<Point2D> uniformlyDitributedPointsWithinMap(
-    const grid_map::GridMap& map, unsigned int numPoints) {
+std::vector<Point2D> uniformlyDitributedPointsWithinMap(const grid_map::GridMap& map, unsigned int numPoints) {
     // stay away from the edges
     // on the edges the cubic interp is invalid. Not enough points.
     const double dimX = map.getLength().x() / 2.0 - 3.0 * map.getResolution();
@@ -191,17 +182,14 @@ std::vector<Point2D> uniformlyDitributedPointsWithinMap(
     return points;
 }
 
-void verifyValuesAtQueryPointsAreClose(
-    const grid_map::GridMap& map, const AnalyticalFunctions& trueValues,
-    const std::vector<Point2D>& queryPoints,
-    grid_map::InterpolationMethods interpolationMethod) {
+void verifyValuesAtQueryPointsAreClose(const grid_map::GridMap& map, const AnalyticalFunctions& trueValues,
+                                       const std::vector<Point2D>& queryPoints,
+                                       grid_map::InterpolationMethods interpolationMethod) {
     for (const auto point : queryPoints) {
         const grid_map::Position p(point.x_, point.y_);
         const double trueValue = trueValues.f_(p.x(), p.y());
-        const double interpolatedValue =
-            map.atPosition(grid_map_test::testLayer, p, interpolationMethod);
-        EXPECT_NEAR(trueValue, interpolatedValue,
-                    grid_map_test::maxAbsErrorValue);
+        const double interpolatedValue = map.atPosition(grid_map_test::testLayer, p, interpolationMethod);
+        EXPECT_NEAR(trueValue, interpolatedValue, grid_map_test::maxAbsErrorValue);
     }
 }
 

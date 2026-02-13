@@ -27,28 +27,22 @@ namespace planning {
 
 namespace {
 
-proto::NavFnPlanner LoadNavFnPlannerOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::NavFnPlanner LoadNavFnPlannerOptions(autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::NavFnPlanner options;
     options.set_tolerance(parameter_dictionary->GetDouble("tolerance"));
     options.set_use_astar(parameter_dictionary->GetBool("use_astar"));
     options.set_allow_unknown(parameter_dictionary->GetBool("allow_unknown"));
-    options.set_use_final_approach_orientation(
-        parameter_dictionary->GetBool("use_final_approach_orientation"));
+    options.set_use_final_approach_orientation(parameter_dictionary->GetBool("use_final_approach_orientation"));
     return options;
 }
 
 }  // namespace
 
-proto::PlannerOptions LoadOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::PlannerOptions LoadOptions(autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::PlannerOptions options;
-    options.set_expected_planner_frequency(
-        parameter_dictionary->GetDouble("expected_planner_frequency"));
-    *options.mutable_navfn() = LoadNavFnPlannerOptions(
-        parameter_dictionary->GetDictionary("navfn_planner").get());
-    *options.mutable_costmap() = map::CreateCostmap2DOptions(
-        parameter_dictionary->GetDictionary("costmap").get());
+    options.set_expected_planner_frequency(parameter_dictionary->GetDouble("expected_planner_frequency"));
+    *options.mutable_navfn() = LoadNavFnPlannerOptions(parameter_dictionary->GetDictionary("navfn_planner").get());
+    *options.mutable_costmap() = map::CreateCostmap2DOptions(parameter_dictionary->GetDictionary("costmap").get());
     return options;
 }
 

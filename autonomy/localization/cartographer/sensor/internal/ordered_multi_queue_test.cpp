@@ -46,8 +46,7 @@ protected:
 
     std::unique_ptr<Data> MakeImu(const int ordinal) {
         return MakeDispatchable(
-            "imu", ImuData{common::FromUniversal(ordinal),
-                           Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()});
+            "imu", ImuData{common::FromUniversal(ordinal), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()});
     }
 
     std::vector<std::unique_ptr<Data>> values_;

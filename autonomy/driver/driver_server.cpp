@@ -26,8 +26,7 @@
 namespace autonomy {
 namespace driver {
 
-DriverServer::DriverServer(const proto::DriverOptions& options)
-    : options_(options) {
+DriverServer::DriverServer(const proto::DriverOptions& options) : options_(options) {
     // 创建 autolink 节点
     node_ptr_ = ::autolink::CreateNode("driver_server_node", "");
     node_ = node_ptr_.get();

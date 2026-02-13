@@ -189,8 +189,7 @@ namespace impl {
  * supported) C is the type of the pointcloud to intialize from (const or not)
  * V is the derived class (yop, curiously recurring template pattern)
  */
-template <typename T, typename TT, typename U, typename C,
-          template <typename> class V>
+template <typename T, typename TT, typename U, typename C, template <typename> class V>
 class PointCloud2IteratorBase
 {
 public:
@@ -295,9 +294,7 @@ private:
  * and then access R,G,B through  iter_rgb[0], iter_rgb[1], iter_rgb[2]
  */
 template <typename T>
-class PointCloud2Iterator
-    : public impl::PointCloud2IteratorBase<T, T, unsigned char, PointCloud2,
-                                           PointCloud2Iterator>
+class PointCloud2Iterator : public impl::PointCloud2IteratorBase<T, T, unsigned char, PointCloud2, PointCloud2Iterator>
 {
 public:
     /**
@@ -309,8 +306,8 @@ public:
      */
     PointCloud2Iterator(PointCloud2& cloud_msg, const std::string& field_name)
         : impl::PointCloud2IteratorBase<T, T, unsigned char, PointCloud2,
-                                        sensor_msgs::PointCloud2Iterator>::
-              PointCloud2IteratorBase(cloud_msg, field_name) {}
+                                        sensor_msgs::PointCloud2Iterator>::PointCloud2IteratorBase(cloud_msg,
+                                                                                                   field_name) {}
 };
 
 /**
@@ -318,9 +315,7 @@ public:
  */
 template <typename T>
 class PointCloud2ConstIterator
-    : public impl::PointCloud2IteratorBase<T, const T, const unsigned char,
-                                           const PointCloud2,
-                                           PointCloud2ConstIterator>
+    : public impl::PointCloud2IteratorBase<T, const T, const unsigned char, const PointCloud2, PointCloud2ConstIterator>
 {
 public:
     /**
@@ -330,16 +325,15 @@ public:
      * @param cloud_msg the cloud message to use
      * @param field_name the field to iterate over
      */
-    PointCloud2ConstIterator(const PointCloud2& cloud_msg,
-                             const std::string& field_name)
-        : impl::PointCloud2IteratorBase<T, const T, const unsigned char,
-                                        const PointCloud2,
-                                        sensor_msgs::PointCloud2ConstIterator>::
-              PointCloud2IteratorBase(cloud_msg, field_name) {}
+    PointCloud2ConstIterator(const PointCloud2& cloud_msg, const std::string& field_name)
+        : impl::PointCloud2IteratorBase<T, const T, const unsigned char, const PointCloud2,
+                                        sensor_msgs::PointCloud2ConstIterator>::PointCloud2IteratorBase(cloud_msg,
+                                                                                                        field_name) {}
 };
+
+// Include implementation file while namespaces are still open
+#include "autonomy/commsgs/impl/point_cloud2_iterator.hpp"  // NOLINT
 
 }  // namespace sensor_msgs
 }  // namespace commsgs
 }  // namespace autonomy
-
-#include "autonomy/sensor_msgs/impl/point_cloud2_iterator.hpp"  // NOLINT

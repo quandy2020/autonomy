@@ -33,16 +33,14 @@ namespace async_grpc {
 class OpencensusSpan : public Span
 {
 public:
-    static std::unique_ptr<Span> StartSpan(
-        const std::string& name, const OpencensusSpan* parent = nullptr);
+    static std::unique_ptr<Span> StartSpan(const std::string& name, const OpencensusSpan* parent = nullptr);
 
     std::unique_ptr<Span> CreateChildSpan(const std::string& name) override;
     void SetStatus(const ::grpc::Status& status) override;
     void End() override;
 
 private:
-    OpencensusSpan(const std::string& name,
-                   const OpencensusSpan* parent = nullptr);
+    OpencensusSpan(const std::string& name, const OpencensusSpan* parent = nullptr);
 
     opencensus::trace::Span span_;
 };

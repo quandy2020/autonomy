@@ -10,8 +10,7 @@ namespace io {
 
 namespace {
 
-void WriteXyzPoint(const Eigen::Vector3f& point,
-                   FileWriter* const file_writer) {
+void WriteXyzPoint(const Eigen::Vector3f& point, FileWriter* const file_writer) {
     std::ostringstream stream;
     stream << std::setprecision(6);
     stream << point.x() << " " << point.y() << " " << point.z() << "\n";
@@ -21,17 +20,13 @@ void WriteXyzPoint(const Eigen::Vector3f& point,
 
 }  // namespace
 
-XyzWriterPointsProcessor::XyzWriterPointsProcessor(
-    std::unique_ptr<FileWriter> file_writer, PointsProcessor* const next)
+XyzWriterPointsProcessor::XyzWriterPointsProcessor(std::unique_ptr<FileWriter> file_writer, PointsProcessor* const next)
     : next_(next), file_writer_(std::move(file_writer)) {}
 
-std::unique_ptr<XyzWriterPointsProcessor>
-XyzWriterPointsProcessor::FromDictionary(
-    const FileWriterFactory& file_writer_factory,
-    common::LuaParameterDictionary* const dictionary,
+std::unique_ptr<XyzWriterPointsProcessor> XyzWriterPointsProcessor::FromDictionary(
+    const FileWriterFactory& file_writer_factory, common::LuaParameterDictionary* const dictionary,
     PointsProcessor* const next) {
-    return absl::make_unique<XyzWriterPointsProcessor>(
-        file_writer_factory(dictionary->GetString("filename")), next);
+    return absl::make_unique<XyzWriterPointsProcessor>(file_writer_factory(dictionary->GetString("filename")), next);
 }
 
 PointsProcessor::FlushResult XyzWriterPointsProcessor::Flush() {
@@ -41,9 +36,8 @@ PointsProcessor::FlushResult XyzWriterPointsProcessor::Flush() {
             return FlushResult::kFinished;
 
         case FlushResult::kRestartStream:
-            LOG(FATAL)
-                << "XYZ generation must be configured to occur after any "
-                   "stages that require multiple passes.";
+            LOG(FATAL) << "XYZ generation must be configured to occur after any "
+                          "stages that require multiple passes.";
     }
     LOG(FATAL);
 }

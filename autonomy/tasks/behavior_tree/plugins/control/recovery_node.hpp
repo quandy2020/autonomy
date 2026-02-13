@@ -67,8 +67,7 @@ public:
      * ports
      */
     static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<int>("number_of_retries", 1, "Number of retries")};
+        return {BT::InputPort<int>("number_of_retries", 1, "Number of retries")};
     }
 
 private:

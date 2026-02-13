@@ -67,8 +67,7 @@ public:
      * @brief 传感器数据处理器函数类型
      */
     using SensorDataHandler =
-        std::function<void(const std::string& sensor_id,
-                           const std::shared_ptr<sensor::Data>& data)>;
+        std::function<void(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data)>;
 
     /**
      * @brief 构造函数
@@ -107,8 +106,7 @@ public:
      * @param handler 数据处理器函数
      * @return true 成功，false 失败
      */
-    bool RegisterSensorHandler(const std::string& sensor_id,
-                               SensorDataHandler handler);
+    bool RegisterSensorHandler(const std::string& sensor_id, SensorDataHandler handler);
 
     /**
      * @brief 取消注册传感器数据处理器
@@ -123,8 +121,7 @@ public:
      * @param sensor_type 传感器类型
      * @return true 成功，false 失败
      */
-    bool SubscribeSensor(const std::string& sensor_id, const std::string& topic,
-                         const std::string& sensor_type);
+    bool SubscribeSensor(const std::string& sensor_id, const std::string& topic, const std::string& sensor_type);
 
     /**
      * @brief 取消订阅传感器数据
@@ -142,71 +139,56 @@ public:
      * @param sensor_id 传感器ID
      * @param message 激光扫描消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& message);
 
     /**
      * @brief 添加点云数据（PointCloud2）
      * @param sensor_id 传感器ID
      * @param message 点云消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& message);
 
     /**
      * @brief 添加点云数据（PointCloud）
      * @param sensor_id 传感器ID
      * @param message 点云消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::PointCloud>& message);
 
     /**
      * @brief 添加IMU数据
      * @param sensor_id 传感器ID
      * @param message IMU消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::Imu>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Imu>& message);
 
     /**
      * @brief 添加里程计数据
      * @param sensor_id 传感器ID
      * @param message 里程计消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::planning_msgs::Odometry>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::planning_msgs::Odometry>& message);
 
     /**
      * @brief 添加图像数据
      * @param sensor_id 传感器ID
      * @param message 图像消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::Image>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Image>& message);
 
     /**
      * @brief 添加测距传感器数据
      * @param sensor_id 传感器ID
      * @param message 测距消息
      */
-    void AddSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::Range>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Range>& message);
 
     /**
      * @brief 添加GPS/导航卫星数据
      * @param sensor_id 传感器ID
      * @param message GPS消息（TODO: 需要定义 NavSatFix 消息类型）
      */
-    void AddSensorData(const std::string& sensor_id,
-                       const std::shared_ptr<void>& message);
+    void AddSensorData(const std::string& sensor_id, const std::shared_ptr<void>& message);
 
     /**
      * @brief 获取已注册的传感器ID列表
@@ -227,8 +209,7 @@ public:
      * @param driver 硬件驱动接口（生命周期由外部管理）
      * @return true 成功，false 失败
      */
-    bool RegisterHardwareDriver(const std::string& sensor_id,
-                                common::DriverInterface* driver);
+    bool RegisterHardwareDriver(const std::string& sensor_id, common::DriverInterface* driver);
 
     /**
      * @brief 取消注册硬件驱动
@@ -273,16 +254,14 @@ private:
      * @param sensor_id 传感器ID
      * @param data 传感器数据
      */
-    void ForwardSensorData(const std::string& sensor_id,
-                           const std::shared_ptr<sensor::Data>& data);
+    void ForwardSensorData(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data);
 
     /**
      * @brief 从硬件驱动读取数据并转发（内部方法，由驱动回调调用）
      * @param sensor_id 传感器ID
      * @param data 传感器数据
      */
-    void OnHardwareDriverData(const std::string& sensor_id,
-                              const std::shared_ptr<sensor::Data>& data);
+    void OnHardwareDriverData(const std::string& sensor_id, const std::shared_ptr<sensor::Data>& data);
 
     // Autolink节点（生命周期由外部管理）
     ::autolink::Node* node_;

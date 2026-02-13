@@ -57,8 +57,7 @@ public:
     bool PushWithTimeout(T t, const common::Duration timeout) {
         const auto predicate = [this]() { return QueueNotFullCondition(); };
         absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate), absl::FromChrono(timeout))) {
             return false;
         }
         deque_.push_back(std::move(t));
@@ -80,8 +79,7 @@ public:
     T PopWithTimeout(const common::Duration timeout) {
         const auto predicate = [this]() { return !QueueEmptyCondition(); };
         absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate), absl::FromChrono(timeout))) {
             return nullptr;
         }
         T t = std::move(deque_.front());
@@ -94,8 +92,7 @@ public:
     R* PeekWithTimeout(const common::Duration timeout) {
         const auto predicate = [this]() { return !QueueEmptyCondition(); };
         absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate), absl::FromChrono(timeout))) {
             return nullptr;
         }
         return deque_.front().get();

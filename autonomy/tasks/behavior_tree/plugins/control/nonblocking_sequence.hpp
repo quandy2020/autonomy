@@ -89,8 +89,7 @@ public:
      * @param name Name for the XML tag for this node
      * @param config BT node configuration
      */
-    NonblockingSequence(const std::string& name,
-                        const BT::NodeConfiguration& config);
+    NonblockingSequence(const std::string& name, const BT::NodeConfiguration& config);
 
     /**
      * @brief Creates list of BT ports

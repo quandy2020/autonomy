@@ -25,13 +25,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    WriteStateToFileSignature, proto::WriteStateToFileRequest,
-    proto::WriteStateToFileResponse,
-    "/cartographer.cloud.proto.MapBuilderService/WriteStateToFile")
+DEFINE_HANDLER_SIGNATURE(WriteStateToFileSignature, proto::WriteStateToFileRequest, proto::WriteStateToFileResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/WriteStateToFile")
 
-class WriteStateToFileHandler
-    : public autonomy::common::async_grpc::RpcHandler<WriteStateToFileSignature>
+class WriteStateToFileHandler : public autonomy::common::async_grpc::RpcHandler<WriteStateToFileSignature>
 {
 public:
     void OnRequest(const proto::WriteStateToFileRequest& request) override;

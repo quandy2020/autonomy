@@ -37,9 +37,8 @@ SimpleGoalChecker::SimpleGoalChecker()
       check_xy_(true),
       xy_goal_tolerance_sq_(0.0625) {}
 
-void SimpleGoalChecker::Initialize(
-    const std::string& plugin_name,
-    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+void SimpleGoalChecker::Initialize(const std::string& plugin_name,
+                                   const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     plugin_name_ = plugin_name;
 
     // TODO: Load parameters from configuration
@@ -55,10 +54,9 @@ void SimpleGoalChecker::Reset() {
     check_xy_ = true;
 }
 
-bool SimpleGoalChecker::IsGoalReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity) {
+bool SimpleGoalChecker::IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
+                                      const commsgs::geometry_msgs::Pose& goal_pose,
+                                      const commsgs::geometry_msgs::Twist& velocity) {
     if (check_xy_) {
         double dx = query_pose.position.x - goal_pose.position.x;
         double dy = query_pose.position.y - goal_pose.position.y;
@@ -71,22 +69,19 @@ bool SimpleGoalChecker::IsGoalReached(
             check_xy_ = false;
         }
     }
-    double dyaw = autonomy::common::math::AngleDiff(
-        transform::tf2::getYaw(query_pose.orientation),
-        transform::tf2::getYaw(goal_pose.orientation));
+    double dyaw = autonomy::common::math::AngleDiff(transform::tf2::getYaw(query_pose.orientation),
+                                                    transform::tf2::getYaw(goal_pose.orientation));
     return std::abs(dyaw) <= yaw_goal_tolerance_;
 }
 
-bool SimpleGoalChecker::GetTolerances(
-    commsgs::geometry_msgs::Pose& pose_tolerance,
-    commsgs::geometry_msgs::Twist& vel_tolerance) {
+bool SimpleGoalChecker::GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                                      commsgs::geometry_msgs::Twist& vel_tolerance) {
     double invalid_field = std::numeric_limits<double>::lowest();
 
     pose_tolerance.position.x = xy_goal_tolerance_;
     pose_tolerance.position.y = xy_goal_tolerance_;
     pose_tolerance.position.z = invalid_field;
-    pose_tolerance.orientation =
-        map::costmap_2d::utils::OrientationAroundZAxis(yaw_goal_tolerance_);
+    pose_tolerance.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw_goal_tolerance_);
 
     vel_tolerance.linear.x = invalid_field;
     vel_tolerance.linear.y = invalid_field;
@@ -102,3 +97,6 @@ bool SimpleGoalChecker::GetTolerances(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
+
+// Plugins
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::SimpleGoalChecker, autonomy::control::common::GoalChecker)

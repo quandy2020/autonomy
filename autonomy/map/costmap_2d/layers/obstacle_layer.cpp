@@ -275,9 +275,8 @@ void ObstacleLayer::onInitialize() {
     // }
 }
 
-void ObstacleLayer::laserScanCallback(
-    commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
-    const std::shared_ptr<ObservationBuffer>& buffer) {
+void ObstacleLayer::laserScanCallback(commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
+                                      const std::shared_ptr<ObservationBuffer>& buffer) {
     // project the laser into a point cloud
     commsgs::sensor_msgs::PointCloud2 cloud;
     cloud.header = message->header;
@@ -306,9 +305,8 @@ void ObstacleLayer::laserScanCallback(
     buffer->unlock();
 }
 
-void ObstacleLayer::laserScanValidInfCallback(
-    commsgs::sensor_msgs::LaserScan::ConstSharedPtr raw_message,
-    const std::shared_ptr<ObservationBuffer>& buffer) {
+void ObstacleLayer::laserScanValidInfCallback(commsgs::sensor_msgs::LaserScan::ConstSharedPtr raw_message,
+                                              const std::shared_ptr<ObservationBuffer>& buffer) {
     // // Filter positive infinities ("Inf"s) to max_range.
     // float epsilon = 0.0001;  // a tenth of a millimeter
     // commsgs::sensor_msgs::LaserScan message = *raw_message;
@@ -347,17 +345,15 @@ void ObstacleLayer::laserScanValidInfCallback(
     // buffer->unlock();
 }
 
-void ObstacleLayer::pointCloud2Callback(
-    commsgs::sensor_msgs::PointCloud2::ConstSharedPtr message,
-    const std::shared_ptr<ObservationBuffer>& buffer) {
+void ObstacleLayer::pointCloud2Callback(commsgs::sensor_msgs::PointCloud2::ConstSharedPtr message,
+                                        const std::shared_ptr<ObservationBuffer>& buffer) {
     // buffer the point cloud
     buffer->lock();
     buffer->bufferCloud(*message);
     buffer->unlock();
 }
 
-void ObstacleLayer::updateBounds(double robot_x, double robot_y,
-                                 double robot_yaw, double* min_x, double* min_y,
+void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
                                  double* max_x, double* max_y) {
     // std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
     // if (rolling_window_) {
@@ -454,24 +450,19 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y,
     updateFootprint(robot_x, robot_y, robot_yaw, min_x, min_y, max_x, max_y);
 }
 
-void ObstacleLayer::updateFootprint(double robot_x, double robot_y,
-                                    double robot_yaw, double* min_x,
-                                    double* min_y, double* max_x,
-                                    double* max_y) {
+void ObstacleLayer::updateFootprint(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
+                                    double* max_x, double* max_y) {
     if (!footprint_clearing_enabled_) {
         return;
     }
-    transformFootprint(robot_x, robot_y, robot_yaw, getFootprint(),
-                       transformed_footprint_);
+    transformFootprint(robot_x, robot_y, robot_yaw, getFootprint(), transformed_footprint_);
 
     for (unsigned int i = 0; i < transformed_footprint_.size(); i++) {
-        touch(transformed_footprint_[i].x, transformed_footprint_[i].y, min_x,
-              min_y, max_x, max_y);
+        touch(transformed_footprint_[i].x, transformed_footprint_[i].y, min_x, min_y, max_x, max_y);
     }
 }
 
-void ObstacleLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
-                                int max_i, int max_j) {
+void ObstacleLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j) {
     std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
     if (!enabled_) {
         return;
@@ -502,8 +493,7 @@ void ObstacleLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
     // }
 }
 
-void ObstacleLayer::addStaticObservation(Observation& obs, bool marking,
-                                         bool clearing) {
+void ObstacleLayer::addStaticObservation(Observation& obs, bool marking, bool clearing) {
     if (marking) {
         static_marking_observations_.push_back(obs);
     }
@@ -521,8 +511,7 @@ void ObstacleLayer::clearStaticObservations(bool marking, bool clearing) {
     }
 }
 
-bool ObstacleLayer::getMarkingObservations(
-    std::vector<Observation>& marking_observations) const {
+bool ObstacleLayer::getMarkingObservations(std::vector<Observation>& marking_observations) const {
     bool current = true;
     // get the marking observations
     for (unsigned int i = 0; i < marking_buffers_.size(); ++i) {
@@ -531,14 +520,12 @@ bool ObstacleLayer::getMarkingObservations(
         current = marking_buffers_[i]->isCurrent() && current;
         marking_buffers_[i]->unlock();
     }
-    marking_observations.insert(marking_observations.end(),
-                                static_marking_observations_.begin(),
+    marking_observations.insert(marking_observations.end(), static_marking_observations_.begin(),
                                 static_marking_observations_.end());
     return current;
 }
 
-bool ObstacleLayer::getClearingObservations(
-    std::vector<Observation>& clearing_observations) const {
+bool ObstacleLayer::getClearingObservations(std::vector<Observation>& clearing_observations) const {
     bool current = true;
     // get the clearing observations
     for (unsigned int i = 0; i < clearing_buffers_.size(); ++i) {
@@ -547,14 +534,12 @@ bool ObstacleLayer::getClearingObservations(
         current = clearing_buffers_[i]->isCurrent() && current;
         clearing_buffers_[i]->unlock();
     }
-    clearing_observations.insert(clearing_observations.end(),
-                                 static_clearing_observations_.begin(),
+    clearing_observations.insert(clearing_observations.end(), static_clearing_observations_.begin(),
                                  static_clearing_observations_.end());
     return current;
 }
 
-void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation,
-                                      double* min_x, double* min_y,
+void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation, double* min_x, double* min_y,
                                       double* max_x, double* max_y) {
     // double ox = clearing_observation.origin_.x;
     // double oy = clearing_observation.origin_.y;
@@ -664,11 +649,8 @@ void ObstacleLayer::deactivate() {
     //     }
 }
 
-void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx,
-                                         double wy, double max_range,
-                                         double min_range, double* min_x,
-                                         double* min_y, double* max_x,
-                                         double* max_y) {
+void ObstacleLayer::updateRaytraceBounds(double ox, double oy, double wx, double wy, double max_range, double min_range,
+                                         double* min_x, double* min_y, double* max_x, double* max_y) {
     double dx = wx - ox, dy = wy - oy;
     double full_distance = hypot(dx, dy);
     if (full_distance < min_range) {
@@ -699,5 +681,4 @@ void ObstacleLayer::resetBuffersLastUpdated() {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::ObstacleLayer,
-                            autonomy::map::costmap_2d::Layer)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::ObstacleLayer, autonomy::map::costmap_2d::Layer)

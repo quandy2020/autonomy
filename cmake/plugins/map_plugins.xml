@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<library path="@PLUGIN_LIBRARY_PATH@">
+  <!-- Costmap Layers -->
+  <!-- Voxel Layer -->
+  <class name="autonomy_map/voxel_layer" 
+         type="autonomy::map::costmap_2d::VoxelLayer" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Voxel layer plugin for 3D costmap representation</description>
+  </class>
+
+  <!-- Static Layer -->
+  <class name="autonomy_map/static_layer" 
+         type="autonomy::map::costmap_2d::StaticLayer" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Static layer plugin for static map costmap</description>
+  </class>
+
+  <!-- Obstacle Layer -->
+  <class name="autonomy_map/obstacle_layer" 
+         type="autonomy::map::costmap_2d::ObstacleLayer" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Obstacle layer plugin for dynamic obstacle costmap</description>
+  </class>
+
+  <!-- Inflation Layer -->
+  <class name="autonomy_map/inflation_layer" 
+         type="autonomy::map::costmap_2d::InflationLayer" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Inflation layer plugin for costmap inflation</description>
+  </class>
+
+  <!-- Denoise Layer -->
+  <class name="autonomy_map/denoise_layer" 
+         type="autonomy::map::costmap_2d::DenoiseLayer" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Denoise layer plugin for costmap denoising</description>
+  </class>
+
+  <!-- Range Sensor Layer -->
+  <class name="autonomy_map/range_sensor_layer" 
+         type="autonomy::map::costmap_2d::RangeSensorLayer" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Range sensor layer plugin for range sensor data</description>
+  </class>
+
+  <!-- Costmap Filters -->
+  <!-- Binary Filter -->
+  <class name="autonomy_map/binary_filter" 
+         type="autonomy::map::costmap_2d::BinaryFilter" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Binary filter plugin for binary costmap filtering</description>
+  </class>
+
+  <!-- Speed Filter -->
+  <class name="autonomy_map/speed_filter" 
+         type="autonomy::map::costmap_2d::SpeedFilter" 
+         base_class="autonomy::map::costmap_2d::CostmapFilter">
+    <description>Speed filter plugin for speed-based costmap filtering</description>
+  </class>
+
+  <!-- Keepout Filter -->
+  <class name="autonomy_map/keepout_filter" 
+         type="autonomy::map::costmap_2d::KeepoutFilter" 
+         base_class="autonomy::map::costmap_2d::Layer">
+    <description>Keepout filter plugin for keepout zone filtering</description>
+  </class>
+</library>

@@ -37,8 +37,7 @@ namespace localization {
 class Cartographer : public LocalizationInterface
 {
 public:
-    explicit Cartographer(const proto::LocalizationOptions& options,
-                          const std::string& node_name = "cartographer");
+    explicit Cartographer(const proto::LocalizationOptions& options, const std::string& node_name = "cartographer");
     ~Cartographer() override;
 
     bool Start();
@@ -47,8 +46,7 @@ public:
     bool GetPose(commsgs::geometry_msgs::PoseWithCovariance& pose);
 
 private:
-    void HandleLaserScan(
-        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& laser_scan);
+    void HandleLaserScan(const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& laser_scan);
 };
 
 }  // namespace localization

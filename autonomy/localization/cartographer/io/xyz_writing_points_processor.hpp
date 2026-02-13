@@ -34,18 +34,16 @@ class XyzWriterPointsProcessor : public PointsProcessor
 public:
     constexpr static const char* kConfigurationFileActionName = "write_xyz";
 
-    XyzWriterPointsProcessor(std::unique_ptr<FileWriter>,
-                             PointsProcessor* next);
+    XyzWriterPointsProcessor(std::unique_ptr<FileWriter>, PointsProcessor* next);
 
-    static std::unique_ptr<XyzWriterPointsProcessor> FromDictionary(
-        const FileWriterFactory& file_writer_factory,
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<XyzWriterPointsProcessor> FromDictionary(const FileWriterFactory& file_writer_factory,
+                                                                    common::LuaParameterDictionary* dictionary,
+                                                                    PointsProcessor* next);
 
     ~XyzWriterPointsProcessor() override {}
 
     XyzWriterPointsProcessor(const XyzWriterPointsProcessor&) = delete;
-    XyzWriterPointsProcessor& operator=(const XyzWriterPointsProcessor&) =
-        delete;
+    XyzWriterPointsProcessor& operator=(const XyzWriterPointsProcessor&) = delete;
 
     void Process(std::unique_ptr<PointsBatch> batch) override;
     FlushResult Flush() override;

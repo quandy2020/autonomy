@@ -41,8 +41,7 @@ bool ImuManager::LoadDriverPlugin(const std::string& library_path) {
     }
 
     // 创建 ClassLoader
-    auto class_loader =
-        std::make_shared<::autolink::class_loader::ClassLoader>(library_path);
+    auto class_loader = std::make_shared<::autolink::class_loader::ClassLoader>(library_path);
 
     if (!class_loader->LoadLibrary()) {
         AERROR << "Failed to load plugin library: " << library_path;
@@ -50,8 +49,7 @@ bool ImuManager::LoadDriverPlugin(const std::string& library_path) {
     }
 
     // 获取所有可用的驱动类名
-    std::vector<std::string> driver_classes =
-        class_loader->GetValidClassNames<ImuBase>();
+    std::vector<std::string> driver_classes = class_loader->GetValidClassNames<ImuBase>();
 
     if (driver_classes.empty()) {
         AWARN << "No IMU driver classes found in library: " << library_path;
@@ -67,8 +65,7 @@ bool ImuManager::LoadDriverPlugin(const std::string& library_path) {
 
     plugin_libraries_[library_path] = plugin_lib;
 
-    AINFO << "Loaded IMU driver plugin: " << library_path << " with "
-          << driver_classes.size() << " driver classes";
+    AINFO << "Loaded IMU driver plugin: " << library_path << " with " << driver_classes.size() << " driver classes";
     for (const auto& class_name : driver_classes) {
         AINFO << "  - " << class_name;
     }
@@ -112,8 +109,7 @@ std::vector<std::string> ImuManager::GetAvailableDriverClasses() const {
     return all_classes;
 }
 
-ImuBase::SharedPtr ImuManager::CreateDriver(
-    const std::string& driver_class_name, const std::string& driver_name) {
+ImuBase::SharedPtr ImuManager::CreateDriver(const std::string& driver_class_name, const std::string& driver_name) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     // 在所有已加载的插件库中查找驱动类
@@ -121,32 +117,27 @@ ImuBase::SharedPtr ImuManager::CreateDriver(
         auto& plugin_lib = plugin_pair.second;
 
         // 检查此插件库是否包含该驱动类
-        auto it = std::find(plugin_lib.driver_classes.begin(),
-                            plugin_lib.driver_classes.end(), driver_class_name);
+        auto it = std::find(plugin_lib.driver_classes.begin(), plugin_lib.driver_classes.end(), driver_class_name);
         if (it != plugin_lib.driver_classes.end()) {
             // 从此插件库创建驱动实例
-            auto driver = plugin_lib.class_loader->CreateClassObj<ImuBase>(
-                driver_class_name);
+            auto driver = plugin_lib.class_loader->CreateClassObj<ImuBase>(driver_class_name);
             if (driver != nullptr) {
-                AINFO << "Created IMU driver instance: " << driver_name
-                      << " (class: " << driver_class_name
+                AINFO << "Created IMU driver instance: " << driver_name << " (class: " << driver_class_name
                       << ", library: " << plugin_lib.library_path << ")";
                 return driver;
             } else {
-                AERROR << "Failed to create driver instance: "
-                       << driver_class_name
+                AERROR << "Failed to create driver instance: " << driver_class_name
                        << " from library: " << plugin_lib.library_path;
             }
         }
     }
 
-    AERROR << "Driver class not found in any loaded plugin: "
-           << driver_class_name;
+    AERROR << "Driver class not found in any loaded plugin: " << driver_class_name;
     return nullptr;
 }
 
-ImuBase::SharedPtr ImuManager::CreateDriverFromPlugin(
-    const std::string& library_path, const std::string& driver_class_name) {
+ImuBase::SharedPtr ImuManager::CreateDriverFromPlugin(const std::string& library_path,
+                                                      const std::string& driver_class_name) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = plugin_libraries_.find(library_path);
@@ -155,18 +146,15 @@ ImuBase::SharedPtr ImuManager::CreateDriverFromPlugin(
         return nullptr;
     }
 
-    auto driver =
-        it->second.class_loader->CreateClassObj<ImuBase>(driver_class_name);
+    auto driver = it->second.class_loader->CreateClassObj<ImuBase>(driver_class_name);
     if (driver != nullptr) {
-        AINFO << "Created IMU driver from plugin: " << driver_class_name
-              << " (library: " << library_path << ")";
+        AINFO << "Created IMU driver from plugin: " << driver_class_name << " (library: " << library_path << ")";
     }
 
     return driver;
 }
 
-bool ImuManager::RegisterDriver(const std::string& driver_name,
-                                ImuBase::SharedPtr driver) {
+bool ImuManager::RegisterDriver(const std::string& driver_name, ImuBase::SharedPtr driver) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (driver == nullptr) {
@@ -246,10 +234,9 @@ bool ImuManager::ConfigureFromOptions(const proto::DriverOptions& options) {
 
         // 检查驱动是否已存在
         if (drivers_.find(driver_name) == drivers_.end()) {
-            AWARN
-                << "IMU driver configuration found but driver creation not yet "
-                   "implemented. "
-                << "Sensor ID: " << imu_option.sensor_id();
+            AWARN << "IMU driver configuration found but driver creation not yet "
+                     "implemented. "
+                  << "Sensor ID: " << imu_option.sensor_id();
             // 需要扩展配置来支持驱动类名和插件库路径
         }
     }

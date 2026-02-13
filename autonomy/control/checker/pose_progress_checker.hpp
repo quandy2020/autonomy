@@ -49,8 +49,7 @@ protected:
      */
     bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
 
-    static double PoseAngleDistance(const commsgs::geometry_msgs::Pose2D&,
-                                    const commsgs::geometry_msgs::Pose2D&);
+    static double PoseAngleDistance(const commsgs::geometry_msgs::Pose2D&, const commsgs::geometry_msgs::Pose2D&);
 
     double required_movement_angle_;
     std::string plugin_name_;

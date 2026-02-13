@@ -57,8 +57,7 @@ public:
     /**
      * @brief 使用车辆 / 机器人模型参数初始化底层接口
      */
-    bool Initialize(
-        const ::autonomy::vehicle::proto::VehicleModel& model) override;
+    bool Initialize(const ::autonomy::vehicle::proto::VehicleModel& model) override;
 
     /**
      * @brief 从内部缓存或底层读取当前车辆 / 机器人状态
@@ -68,9 +67,7 @@ public:
     /**
      * @brief 向底层发送运动学控制指令（当前仅缓存并更新 info）
      */
-    bool ApplyCommand(
-        const ::autonomy::vehicle::proto::KinematicsControlCommand& command)
-        override;
+    bool ApplyCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command) override;
 
 private:
     // 顶层 Vehicle 聚合消息（header + model + info + command）

@@ -21,6 +21,7 @@
 #include "behaviortree_cpp/action_node.h"
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -29,30 +30,36 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A BT::ActionNode that gets the current robot pose
+ * @brief A BT::ActionNodeBase to shorten path by some distance
  */
 class GetCurrentPoseAction : public BT::ActionNodeBase
 {
 public:
     /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::GetCurrentPoseAction
+     * @brief A nav2_behavior_tree::GetCurrentPoseAction constructor
      * @param xml_tag_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    GetCurrentPoseAction(const std::string& xml_tag_name,
-                         const BT::NodeConfiguration& conf);
+    GetCurrentPoseAction(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
+     * @return BT::PortsList Containing basic ports along with node-specific
+     * ports
      */
     static BT::PortsList providedPorts() {
         return {
-            BT::OutputPort<commsgs::geometry_msgs::PoseStamped>(
-                "pose", "Current robot pose"),
+            BT::InputPort<std::string>("global_frame", "Global reference frame"),
+            BT::InputPort<std::string>("robot_base_frame", "robot base frame"),
+            BT::OutputPort<commsgs::geometry_msgs::PoseStamped>("current_pose", "Current pose output"),
         };
     }
+
+private:
+    /**
+     * @brief The other (optional) override required by a BT action.
+     */
+    void halt() override {}
 
     /**
      * @brief The main override required by a BT action
@@ -60,10 +67,10 @@ public:
      */
     BT::NodeStatus tick() override;
 
-    /**
-     * @brief Function to halt the node
-     */
-    void halt() override {}
+    std::shared_ptr<::autolink::Node> node_;
+    std::string global_frame_, robot_base_frame_;
+    std::shared_ptr<autonomy::transform::Buffer> tf_;
+    float transform_tolerance_;
 };
 
 }  // namespace action

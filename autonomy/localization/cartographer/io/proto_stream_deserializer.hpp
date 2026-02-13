@@ -26,8 +26,7 @@ namespace cartographer {
 namespace io {
 
 // Helper function for deserializing the PoseGraph from a proto stream file.
-mapping::proto::PoseGraph DeserializePoseGraphFromFile(
-    const std::string& file_name);
+mapping::proto::PoseGraph DeserializePoseGraphFromFile(const std::string& file_name);
 
 // Helper for deserializing a previously serialized mapping state from a
 // proto stream, abstracting away the format parsing logic.
@@ -51,8 +50,7 @@ public:
         return pose_graph_.pose_graph();
     }
 
-    const mapping::proto::AllTrajectoryBuilderOptions&
-    all_trajectory_builder_options() {
+    const mapping::proto::AllTrajectoryBuilderOptions& all_trajectory_builder_options() {
         return all_trajectory_builder_options_.all_trajectory_builder_options();
     }
 

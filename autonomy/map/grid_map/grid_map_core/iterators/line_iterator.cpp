@@ -12,8 +12,7 @@
 
 namespace grid_map {
 
-LineIterator::LineIterator(const grid_map::GridMap& gridMap,
-                           const Position& start, const Position& end) {
+LineIterator::LineIterator(const grid_map::GridMap& gridMap, const Position& start, const Position& end) {
     Index startIndex;
     Index endIndex;
     if (getIndexLimitedToMapRange(gridMap, start, end, startIndex) &&
@@ -24,8 +23,7 @@ LineIterator::LineIterator(const grid_map::GridMap& gridMap,
     }
 }
 
-LineIterator::LineIterator(const grid_map::GridMap& gridMap, const Index& start,
-                           const Index& end) {
+LineIterator::LineIterator(const grid_map::GridMap& gridMap, const Index& start, const Index& end) {
     initialize(gridMap, start, end);
 }
 
@@ -38,21 +36,14 @@ const Index& LineIterator::operator*() const {
 }
 
 LineIterator& LineIterator::operator++() {
-    numerator_ +=
-        numeratorAdd_;  // Increase the numerator by the top of the fraction.
+    numerator_ += numeratorAdd_;  // Increase the numerator by the top of the fraction.
     if (numerator_ >= denominator_) {
         numerator_ -= denominator_;
-        const Index unwrappedIndex =
-            getIndexFromBufferIndex(index_, bufferSize_, bufferStartIndex_) +
-            increment1_;
-        index_ = getBufferIndexFromIndex(unwrappedIndex, bufferSize_,
-                                         bufferStartIndex_);
+        const Index unwrappedIndex = getIndexFromBufferIndex(index_, bufferSize_, bufferStartIndex_) + increment1_;
+        index_ = getBufferIndexFromIndex(unwrappedIndex, bufferSize_, bufferStartIndex_);
     }
-    const Index unwrappedIndex =
-        getIndexFromBufferIndex(index_, bufferSize_, bufferStartIndex_) +
-        increment2_;
-    index_ =
-        getBufferIndexFromIndex(unwrappedIndex, bufferSize_, bufferStartIndex_);
+    const Index unwrappedIndex = getIndexFromBufferIndex(index_, bufferSize_, bufferStartIndex_) + increment2_;
+    index_ = getBufferIndexFromIndex(unwrappedIndex, bufferSize_, bufferStartIndex_);
     ++iCell_;
     return *this;
 }
@@ -61,8 +52,7 @@ bool LineIterator::isPastEnd() const {
     return iCell_ >= nCells_;
 }
 
-bool LineIterator::initialize(const grid_map::GridMap& gridMap,
-                              const Index& start, const Index& end) {
+bool LineIterator::initialize(const grid_map::GridMap& gridMap, const Index& start, const Index& end) {
     start_ = start;
     end_ = end;
     mapLength_ = gridMap.getLength();
@@ -74,18 +64,13 @@ bool LineIterator::initialize(const grid_map::GridMap& gridMap,
     return true;
 }
 
-bool LineIterator::getIndexLimitedToMapRange(const grid_map::GridMap& gridMap,
-                                             const Position& start,
-                                             const Position& end,
-                                             Index& index) {
+bool LineIterator::getIndexLimitedToMapRange(const grid_map::GridMap& gridMap, const Position& start,
+                                             const Position& end, Index& index) {
     Position newStart = start;
     Vector direction = (end - start).normalized();
     while (!gridMap.getIndex(newStart, index)) {
-        newStart +=
-            (gridMap.getResolution() - std::numeric_limits<double>::epsilon()) *
-            direction;
-        if ((end - newStart).norm() <
-            gridMap.getResolution() - std::numeric_limits<double>::epsilon()) {
+        newStart += (gridMap.getResolution() - std::numeric_limits<double>::epsilon()) * direction;
+        if ((end - newStart).norm() < gridMap.getResolution() - std::numeric_limits<double>::epsilon()) {
             return false;
         }
     }
@@ -96,10 +81,8 @@ void LineIterator::initializeIterationParameters() {
     iCell_ = 0;
     index_ = start_;
 
-    const Index unwrappedStart =
-        getIndexFromBufferIndex(start_, bufferSize_, bufferStartIndex_);
-    const Index unwrappedEnd =
-        getIndexFromBufferIndex(end_, bufferSize_, bufferStartIndex_);
+    const Index unwrappedStart = getIndexFromBufferIndex(start_, bufferSize_, bufferStartIndex_);
+    const Index unwrappedEnd = getIndexFromBufferIndex(end_, bufferSize_, bufferStartIndex_);
     const Size delta = (unwrappedEnd - unwrappedStart).abs();
 
     if (unwrappedEnd.x() >= unwrappedStart.x()) {
@@ -124,8 +107,7 @@ void LineIterator::initializeIterationParameters() {
 
     if (delta.x() >= delta.y()) {
         // There is at least one x-value for every y-value.
-        increment1_.x() =
-            0;  // Do not change the x when numerator >= denominator.
+        increment1_.x() = 0;  // Do not change the x when numerator >= denominator.
         increment2_.y() = 0;  // Do not change the y for every iteration.
         denominator_ = delta.x();
         numerator_ = delta.x() / 2;
@@ -134,8 +116,7 @@ void LineIterator::initializeIterationParameters() {
     } else {
         // There is at least one y-value for every x-value
         increment2_.x() = 0;  // Do not change the x for every iteration.
-        increment1_.y() =
-            0;  // Do not change the y when numerator >= denominator.
+        increment1_.y() = 0;  // Do not change the y when numerator >= denominator.
         denominator_ = delta.y();
         numerator_ = delta.y() / 2;
         numeratorAdd_ = delta.x();

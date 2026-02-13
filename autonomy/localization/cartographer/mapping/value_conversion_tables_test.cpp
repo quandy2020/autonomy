@@ -26,19 +26,15 @@ namespace {
 
 TEST(ValueConversionTablesTest, EqualTables) {
     ValueConversionTables value_conversion_tables;
-    const std::vector<float>* reference_table =
-        value_conversion_tables.GetConversionTable(0.1f, 0.1f, 0.5f);
-    const std::vector<float>* test_table =
-        value_conversion_tables.GetConversionTable(0.1f, 0.1f, 0.5f);
+    const std::vector<float>* reference_table = value_conversion_tables.GetConversionTable(0.1f, 0.1f, 0.5f);
+    const std::vector<float>* test_table = value_conversion_tables.GetConversionTable(0.1f, 0.1f, 0.5f);
     EXPECT_EQ(reference_table, test_table);
 }
 
 TEST(ValueConversionTablesTest, InequalTables) {
     ValueConversionTables value_conversion_tables;
-    const std::vector<float>* reference_table =
-        value_conversion_tables.GetConversionTable(0.1f, 0.1f, 0.5f);
-    const std::vector<float>* test_table =
-        value_conversion_tables.GetConversionTable(0.1f, 0.4f, 0.5f);
+    const std::vector<float>* reference_table = value_conversion_tables.GetConversionTable(0.1f, 0.1f, 0.5f);
+    const std::vector<float>* test_table = value_conversion_tables.GetConversionTable(0.1f, 0.4f, 0.5f);
     EXPECT_FALSE(reference_table == test_table);
 }
 
@@ -53,13 +49,11 @@ TEST(ValueConversionTablesTest, ValueConversion) {
         const float upper_bound = std::max(bound_sample_0, bound_sample_1);
         const float undefined_value = bound_distribution(rng);
         const std::vector<float>* conversion_table =
-            value_conversion_tables.GetConversionTable(
-                undefined_value, lower_bound, upper_bound);
+            value_conversion_tables.GetConversionTable(undefined_value, lower_bound, upper_bound);
         EXPECT_EQ((*conversion_table)[0], undefined_value);
         const float scale = (upper_bound - lower_bound) / 32766.f;
         for (uint16 i = 1; i < 32768; ++i) {
-            EXPECT_EQ((*conversion_table)[i],
-                      i * scale + (lower_bound - scale));
+            EXPECT_EQ((*conversion_table)[i], i * scale + (lower_bound - scale));
         }
     }
 }

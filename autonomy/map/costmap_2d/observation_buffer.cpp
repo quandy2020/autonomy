@@ -31,13 +31,11 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-ObservationBuffer::ObservationBuffer(
-    std::string topic_name, double observation_keep_time,
-    double expected_update_rate, double min_obstacle_height,
-    double max_obstacle_height, double obstacle_max_range,
-    double obstacle_min_range, double raytrace_max_range,
-    double raytrace_min_range, TfBuffer& tf_buffer, std::string global_frame,
-    std::string sensor_frame, transform::tf2::Duration tf_tolerance)
+ObservationBuffer::ObservationBuffer(std::string topic_name, double observation_keep_time, double expected_update_rate,
+                                     double min_obstacle_height, double max_obstacle_height, double obstacle_max_range,
+                                     double obstacle_min_range, double raytrace_max_range, double raytrace_min_range,
+                                     TfBuffer& tf_buffer, std::string global_frame, std::string sensor_frame,
+                                     transform::tf2::Duration tf_tolerance)
     : tf_buffer_(tf_buffer),
       //   observation_keep_time_(rclcpp::Duration::from_seconds(observation_keep_time)),
       //   expected_update_rate_(rclcpp::Duration::from_seconds(expected_update_rate)),
@@ -56,8 +54,7 @@ ObservationBuffer::ObservationBuffer(
 
 ObservationBuffer::~ObservationBuffer() {}
 
-void ObservationBuffer::bufferCloud(
-    const commsgs::sensor_msgs::PointCloud2& cloud) {
+void ObservationBuffer::bufferCloud(const commsgs::sensor_msgs::PointCloud2& cloud) {
     commsgs::geometry_msgs::PointStamped global_origin;
 
     // create a new observation on the list to be populated
@@ -65,8 +62,7 @@ void ObservationBuffer::bufferCloud(
 
     // check whether the origin frame has been set explicitly
     // or whether we should get it from the cloud
-    std::string origin_frame =
-        sensor_frame_ == "" ? cloud.header.frame_id : sensor_frame_;
+    std::string origin_frame = sensor_frame_ == "" ? cloud.header.frame_id : sensor_frame_;
 
     try {
         // given these observations come from sensors...
@@ -97,8 +93,7 @@ void ObservationBuffer::bufferCloud(
 
         // now we need to remove observations from the cloud that are below
         // or above our height thresholds
-        commsgs::sensor_msgs::PointCloud2& observation_cloud =
-            *(observation_list_.front().cloud_);
+        commsgs::sensor_msgs::PointCloud2& observation_cloud = *(observation_list_.front().cloud_);
         observation_cloud.height = global_frame_cloud.height;
         observation_cloud.width = global_frame_cloud.width;
         observation_cloud.fields = global_frame_cloud.fields;
@@ -155,15 +150,13 @@ void ObservationBuffer::bufferCloud(
 }
 
 // returns a copy of the observations
-void ObservationBuffer::getObservations(
-    std::vector<Observation>& observations) {
+void ObservationBuffer::getObservations(std::vector<Observation>& observations) {
     // first... let's make sure that we don't have any stale observations
     purgeStaleObservations();
 
     // now we'll just copy the observations for the caller
     std::list<Observation>::iterator obs_it;
-    for (obs_it = observation_list_.begin(); obs_it != observation_list_.end();
-         ++obs_it) {
+    for (obs_it = observation_list_.begin(); obs_it != observation_list_.end(); ++obs_it) {
         observations.push_back(*obs_it);
     }
 }
@@ -180,8 +173,7 @@ void ObservationBuffer::purgeStaleObservations() {
 
         // otherwise... we'll have to loop through the observations to see which
         // ones are stale
-        for (obs_it = observation_list_.begin();
-             obs_it != observation_list_.end(); ++obs_it) {
+        for (obs_it = observation_list_.begin(); obs_it != observation_list_.end(); ++obs_it) {
             Observation& obs = *obs_it;
             // // check if the observation is out of date... and if it is,
             // // remove it and those that follow from the list

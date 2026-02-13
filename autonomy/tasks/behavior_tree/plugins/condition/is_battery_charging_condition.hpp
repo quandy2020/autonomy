@@ -45,8 +45,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    IsBatteryChargingCondition(const std::string& condition_name,
-                               const BT::NodeConfiguration& conf);
+    IsBatteryChargingCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     IsBatteryChargingCondition() = delete;
 
@@ -61,8 +60,7 @@ public:
      * @return BT::PortsList Containing node-specific ports
      */
     static BT::PortsList providedPorts() {
-        return {BT::InputPort<std::string>(
-            "battery_topic", std::string("/battery_status"), "Battery topic")};
+        return {BT::InputPort<std::string>("battery_topic", std::string("/battery_status"), "Battery topic")};
     }
 
 private:
@@ -79,11 +77,9 @@ private:
      * @brief Callback function for battery topic
      * @param msg Shared pointer to sensor_msgs::BatteryState message
      */
-    void batteryCallback(
-        const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg);
+    void batteryCallback(const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg);
 
-    std::shared_ptr<::autolink::Reader<commsgs::sensor_msgs::BatteryState>>
-        battery_reader_;
+    std::shared_ptr<::autolink::Reader<commsgs::sensor_msgs::BatteryState>> battery_reader_;
     std::string battery_topic_;
     bool is_battery_charging_;
 };

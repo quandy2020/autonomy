@@ -34,8 +34,7 @@ public:
      * Constructor.
      * @param submap the buffer region of a grid map to iterate over.
      */
-    SubmapIterator(const grid_map::GridMap& gridMap,
-                   const grid_map::BufferRegion& bufferRegion);
+    SubmapIterator(const grid_map::GridMap& gridMap, const grid_map::BufferRegion& bufferRegion);
 
     /*!
      * Constructor.
@@ -44,8 +43,7 @@ public:
      * index.
      * @param submapSize the size of the submap to iterate on.
      */
-    SubmapIterator(const grid_map::GridMap& gridMap,
-                   const Index& submapStartIndex, const Size& submapSize);
+    SubmapIterator(const grid_map::GridMap& gridMap, const Index& submapStartIndex, const Size& submapSize);
 
     /*!
      * Copy constructor.

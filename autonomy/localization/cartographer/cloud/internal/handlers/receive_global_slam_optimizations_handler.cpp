@@ -30,40 +30,31 @@ namespace {
 std::unique_ptr<proto::ReceiveGlobalSlamOptimizationsResponse> GenerateResponse(
     const std::map<int, mapping::SubmapId>& last_optimized_submap_ids,
     const std::map<int, mapping::NodeId>& last_optimized_node_ids) {
-    auto response =
-        absl::make_unique<proto::ReceiveGlobalSlamOptimizationsResponse>();
+    auto response = absl::make_unique<proto::ReceiveGlobalSlamOptimizationsResponse>();
     for (const auto& entry : last_optimized_submap_ids) {
-        entry.second.ToProto(
-            &(*response->mutable_last_optimized_submap_ids())[entry.first]);
+        entry.second.ToProto(&(*response->mutable_last_optimized_submap_ids())[entry.first]);
     }
     for (const auto& entry : last_optimized_node_ids) {
-        entry.second.ToProto(
-            &(*response->mutable_last_optimized_node_ids())[entry.first]);
+        entry.second.ToProto(&(*response->mutable_last_optimized_node_ids())[entry.first]);
     }
     return response;
 }
 
 }  // namespace
 
-void ReceiveGlobalSlamOptimizationsHandler::OnRequest(
-    const google::protobuf::Empty& request) {
+void ReceiveGlobalSlamOptimizationsHandler::OnRequest(const google::protobuf::Empty& request) {
     auto writer = GetWriter();
     const int subscription_index =
-        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-            ->SubscribeGlobalSlamOptimizations(
-                [writer](const std::map<int, mapping::SubmapId>&
-                             last_optimized_submap_ids,
-                         const std::map<int, mapping::NodeId>&
-                             last_optimized_node_ids) {
-                    if (!writer.Write(
-                            GenerateResponse(last_optimized_submap_ids,
-                                             last_optimized_node_ids))) {
-                        // Client closed connection.
-                        LOG(INFO) << "Client closed connection.";
-                        return false;
-                    }
-                    return true;
-                });
+        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->SubscribeGlobalSlamOptimizations(
+            [writer](const std::map<int, mapping::SubmapId>& last_optimized_submap_ids,
+                     const std::map<int, mapping::NodeId>& last_optimized_node_ids) {
+                if (!writer.Write(GenerateResponse(last_optimized_submap_ids, last_optimized_node_ids))) {
+                    // Client closed connection.
+                    LOG(INFO) << "Client closed connection.";
+                    return false;
+                }
+                return true;
+            });
 
     LOG(INFO) << "Added subscription: " << subscription_index;
     subscription_index_ = subscription_index;
@@ -72,8 +63,8 @@ void ReceiveGlobalSlamOptimizationsHandler::OnRequest(
 void ReceiveGlobalSlamOptimizationsHandler::OnFinish() {
     if (subscription_index_.has_value()) {
         LOG(INFO) << "Removing subscription " << subscription_index_.value();
-        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-            ->UnsubscribeGlobalSlamOptimizations(subscription_index_.value());
+        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->UnsubscribeGlobalSlamOptimizations(
+            subscription_index_.value());
     }
 }
 

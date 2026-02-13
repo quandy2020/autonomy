@@ -77,8 +77,7 @@ public:
      * @param name Name for the XML tag for this node
      * @param config Behavior Tree node configuration
      */
-    RoundRobinNode(const std::string& name,
-                   const BT::NodeConfiguration& config);
+    RoundRobinNode(const std::string& name, const BT::NodeConfiguration& config);
 
     /**
      * @brief The main override required by a BT action

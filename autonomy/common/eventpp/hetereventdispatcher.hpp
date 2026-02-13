@@ -25,39 +25,30 @@ namespace eventpp {
 
 namespace internal_ {
 
-template <typename EventType_, typename PrototypeList_, typename Policies_,
-          typename MixinRoot_>
+template <typename EventType_, typename PrototypeList_, typename Policies_, typename MixinRoot_>
 class HeterEventDispatcherBase
 {
 protected:
-    using ThisType = HeterEventDispatcherBase<EventType_, PrototypeList_,
-                                              Policies_, MixinRoot_>;
-    using MixinRoot =
-        typename std::conditional<std::is_same<MixinRoot_, void>::value,
-                                  ThisType, MixinRoot_>::type;
+    using ThisType = HeterEventDispatcherBase<EventType_, PrototypeList_, Policies_, MixinRoot_>;
+    using MixinRoot = typename std::conditional<std::is_same<MixinRoot_, void>::value, ThisType, MixinRoot_>::type;
     using Policies = Policies_;
 
-    using Threading =
-        typename SelectThreading<Policies,
-                                 HasTypeThreading<Policies_>::value>::Type;
+    using Threading = typename SelectThreading<Policies, HasTypeThreading<Policies_>::value>::Type;
 
-    using ArgumentPassingMode = typename SelectArgumentPassingMode<
-        Policies_, HasTypeArgumentPassingMode<Policies_>::value,
-        ArgumentPassingExcludeEvent>::Type;
+    using ArgumentPassingMode =
+        typename SelectArgumentPassingMode<Policies_, HasTypeArgumentPassingMode<Policies_>::value,
+                                           ArgumentPassingExcludeEvent>::Type;
 
-    static_assert(
-        !std::is_same<ArgumentPassingMode, ArgumentPassingAutoDetect>::value,
-        "ArgumentPassingMode can't be ArgumentPassingAutoDetect in "
-        "heterogeneous "
-        "dispatcher.");
+    static_assert(!std::is_same<ArgumentPassingMode, ArgumentPassingAutoDetect>::value,
+                  "ArgumentPassingMode can't be ArgumentPassingAutoDetect in "
+                  "heterogeneous "
+                  "dispatcher.");
 
     using CallbackList_ = HeterCallbackList<PrototypeList_, Policies_>;
 
-    using Map = typename SelectMap<EventType_, CallbackList_, Policies_,
-                                   HasTemplateMap<Policies_>::value>::Type;
+    using Map = typename SelectMap<EventType_, CallbackList_, Policies_, HasTemplateMap<Policies_>::value>::Type;
 
-    using Mixins = typename internal_::SelectMixins<
-        Policies_, internal_::HasTypeMixins<Policies_>::value>::Type;
+    using Mixins = typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type;
 
 public:
     using PrototypeList = PrototypeList_;
@@ -72,16 +63,14 @@ public:
         : eventCallbackListMap(other.eventCallbackListMap), listenerMutex() {}
 
     HeterEventDispatcherBase(HeterEventDispatcherBase&& other) noexcept
-        : eventCallbackListMap(std::move(other.eventCallbackListMap)),
-          listenerMutex() {}
+        : eventCallbackListMap(std::move(other.eventCallbackListMap)), listenerMutex() {}
 
     HeterEventDispatcherBase& operator=(const HeterEventDispatcherBase& other) {
         eventCallbackListMap = other.eventCallbackListMap;
         return *this;
     }
 
-    HeterEventDispatcherBase& operator=(
-        HeterEventDispatcherBase&& other) noexcept {
+    HeterEventDispatcherBase& operator=(HeterEventDispatcherBase&& other) noexcept {
         eventCallbackListMap = std::move(other.eventCallbackListMap);
         return *this;
     }
@@ -107,8 +96,7 @@ public:
     }
 
     template <typename C>
-    Handle insertListener(const Event& event, const C& callback,
-                          const Handle& before) {
+    Handle insertListener(const Event& event, const C& callback, const Handle& before) {
         std::lock_guard<Mutex> lockGuard(listenerMutex);
 
         return eventCallbackListMap[event].insert(callback, before);
@@ -144,8 +132,7 @@ public:
     bool forEachIf(const Event& event, Func&& func) const {
         const CallbackList_* callableList = doFindCallableList(event);
         if (callableList) {
-            return callableList->template forEachIf<Prototype>(
-                std::forward<Func>(func));
+            return callableList->template forEachIf<Prototype>(std::forward<Func>(func));
         }
 
         return true;
@@ -153,18 +140,15 @@ public:
 
     template <typename T, typename... Args>
     void dispatch(T&& first, Args&&... args) const {
-        doDispatch<ArgumentPassingMode>(std::forward<T>(first),
-                                        std::forward<Args>(args)...);
+        doDispatch<ArgumentPassingMode>(std::forward<T>(first), std::forward<Args>(args)...);
     }
 
     // Bypass any getEvent policy. The first argument is the event type.
     // Most used for internal purpose.
     template <typename... Args>
     void directDispatch(const Event& e, Args&&... args) const {
-        if (!internal_::ForEachMixins<MixinRoot, Mixins,
-                                      DoMixinBeforeDispatch>::
-                forEach(this, typename std::add_lvalue_reference<Args>::type(
-                                  args)...)) {
+        if (!internal_::ForEachMixins<MixinRoot, Mixins, DoMixinBeforeDispatch>::forEach(
+                this, typename std::add_lvalue_reference<Args>::type(args)...)) {
             return;
         }
 
@@ -176,40 +160,33 @@ public:
 
 protected:
     template <typename ArgumentMode, typename T, typename... Args>
-    auto doDispatch(T&& first, Args&&... args) const -> typename std::enable_if<
-        std::is_same<ArgumentMode, ArgumentPassingIncludeEvent>::value>::type {
-        if (!internal_::ForEachMixins<MixinRoot, Mixins,
-                                      DoMixinBeforeDispatch>::
-                forEach(
-                    this, typename std::add_lvalue_reference<T>::type(first),
-                    typename std::add_lvalue_reference<Args>::type(args)...)) {
+    auto doDispatch(T&& first, Args&&... args) const ->
+        typename std::enable_if<std::is_same<ArgumentMode, ArgumentPassingIncludeEvent>::value>::type {
+        if (!internal_::ForEachMixins<MixinRoot, Mixins, DoMixinBeforeDispatch>::forEach(
+                this, typename std::add_lvalue_reference<T>::type(first),
+                typename std::add_lvalue_reference<Args>::type(args)...)) {
             return;
         }
 
-        using GetEvent = typename SelectGetEvent<
-            Policies_, EventType_,
-            HasFunctionGetEvent<Policies_, T&&, Args...>::value>::Type;
+        using GetEvent =
+            typename SelectGetEvent<Policies_, EventType_, HasFunctionGetEvent<Policies_, T&&, Args...>::value>::Type;
         const auto e = GetEvent::getEvent(std::forward<T>(first), args...);
         const CallbackList_* callableList = doFindCallableList(e);
         if (callableList) {
-            (*callableList)(std::forward<T>(first),
-                            std::forward<Args>(args)...);
+            (*callableList)(std::forward<T>(first), std::forward<Args>(args)...);
         }
     }
 
     template <typename ArgumentMode, typename T, typename... Args>
-    auto doDispatch(T&& first, Args&&... args) const -> typename std::enable_if<
-        std::is_same<ArgumentMode, ArgumentPassingExcludeEvent>::value>::type {
-        if (!internal_::ForEachMixins<MixinRoot, Mixins,
-                                      DoMixinBeforeDispatch>::
-                forEach(this, typename std::add_lvalue_reference<Args>::type(
-                                  args)...)) {
+    auto doDispatch(T&& first, Args&&... args) const ->
+        typename std::enable_if<std::is_same<ArgumentMode, ArgumentPassingExcludeEvent>::value>::type {
+        if (!internal_::ForEachMixins<MixinRoot, Mixins, DoMixinBeforeDispatch>::forEach(
+                this, typename std::add_lvalue_reference<Args>::type(args)...)) {
             return;
         }
 
-        using GetEvent = typename SelectGetEvent<
-            Policies_, EventType_,
-            HasFunctionGetEvent<Policies_, T&&, Args...>::value>::Type;
+        using GetEvent =
+            typename SelectGetEvent<Policies_, EventType_, HasFunctionGetEvent<Policies_, T&&, Args...>::value>::Type;
         const auto e = GetEvent::getEvent(std::forward<T>(first), args...);
         const CallbackList_* callableList = doFindCallableList(e);
         if (callableList) {
@@ -229,8 +206,7 @@ private:
     // template helper to avoid code duplication in doFindCallableList
     template <typename T>
     static auto doFindCallableListHelper(T* self, const Event& e) ->
-        typename std::conditional<std::is_const<T>::value, const CallbackList_*,
-                                  CallbackList_*>::type {
+        typename std::conditional<std::is_const<T>::value, const CallbackList_*, CallbackList_*>::type {
         std::lock_guard<Mutex> lockGuard(self->listenerMutex);
 
         auto it = self->eventCallbackListMap.find(e);
@@ -248,16 +224,13 @@ private:
     struct DoMixinBeforeDispatch {
         template <typename T, typename Self, typename... A>
         static auto forEach(const Self* self, A&&... args) ->
-            typename std::enable_if<
-                HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
-            return static_cast<const T*>(self)->mixinBeforeDispatch(
-                std::forward<A>(args)...);
+            typename std::enable_if<HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
+            return static_cast<const T*>(self)->mixinBeforeDispatch(std::forward<A>(args)...);
         }
 
         template <typename T, typename Self, typename... A>
         static auto forEach(const Self* self, A&&... args) ->
-            typename std::enable_if<
-                !HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
+            typename std::enable_if<!HasFunctionMixinBeforeDispatch<T, A...>::value, bool>::type {
             return true;
         }
     };
@@ -269,30 +242,23 @@ private:
 
 }  // namespace internal_
 
-template <typename Event_, typename PrototypeList_,
-          typename Policies_ = DefaultPolicies>
+template <typename Event_, typename PrototypeList_, typename Policies_ = DefaultPolicies>
 class HeterEventDispatcher
     : public internal_::InheritMixins<
-          internal_::HeterEventDispatcherBase<Event_, PrototypeList_, Policies_,
-                                              void>,
-          typename internal_::SelectMixins<
-              Policies_,
-              internal_::HasTypeMixins<Policies_>::value>::Type>::Type,
+          internal_::HeterEventDispatcherBase<Event_, PrototypeList_, Policies_, void>,
+          typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type,
       public TagEventDispatcher,
       public TagHeterEventDispatcher
 {
 private:
     using super = typename internal_::InheritMixins<
-        internal_::HeterEventDispatcherBase<Event_, PrototypeList_, Policies_,
-                                            void>,
-        typename internal_::SelectMixins<
-            Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type;
+        internal_::HeterEventDispatcherBase<Event_, PrototypeList_, Policies_, void>,
+        typename internal_::SelectMixins<Policies_, internal_::HasTypeMixins<Policies_>::value>::Type>::Type;
 
 public:
     using super::super;
 
-    friend void swap(HeterEventDispatcher& first,
-                     HeterEventDispatcher& second) noexcept {
+    friend void swap(HeterEventDispatcher& first, HeterEventDispatcher& second) noexcept {
         first.swap(second);
     }
 };

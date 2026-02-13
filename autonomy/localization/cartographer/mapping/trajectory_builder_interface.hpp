@@ -58,32 +58,21 @@ public:
     // 'sensor::RangeData'. If the data was inserted into a submap, reports the
     // assigned 'NodeId', otherwise 'nullptr' if the data was filtered out.
     using LocalSlamResultCallback =
-        std::function<void(int /* trajectory ID */, common::Time,
-                           transform::Rigid3d /* local pose estimate */,
-                           sensor::RangeData /* in local frame */,
-                           std::unique_ptr<const InsertionResult>)>;
+        std::function<void(int /* trajectory ID */, common::Time, transform::Rigid3d /* local pose estimate */,
+                           sensor::RangeData /* in local frame */, std::unique_ptr<const InsertionResult>)>;
 
     struct SensorId {
-        enum class SensorType {
-            RANGE = 0,
-            IMU,
-            ODOMETRY,
-            FIXED_FRAME_POSE,
-            LANDMARK,
-            LOCAL_SLAM_RESULT
-        };
+        enum class SensorType { RANGE = 0, IMU, ODOMETRY, FIXED_FRAME_POSE, LANDMARK, LOCAL_SLAM_RESULT };
 
         SensorType type;
         std::string id;
 
         bool operator==(const SensorId& other) const {
-            return std::forward_as_tuple(type, id) ==
-                   std::forward_as_tuple(other.type, other.id);
+            return std::forward_as_tuple(type, id) == std::forward_as_tuple(other.type, other.id);
         }
 
         bool operator<(const SensorId& other) const {
-            return std::forward_as_tuple(type, id) <
-                   std::forward_as_tuple(other.type, other.id);
+            return std::forward_as_tuple(type, id) < std::forward_as_tuple(other.type, other.id);
         }
     };
 
@@ -91,36 +80,26 @@ public:
     virtual ~TrajectoryBuilderInterface() {}
 
     TrajectoryBuilderInterface(const TrajectoryBuilderInterface&) = delete;
-    TrajectoryBuilderInterface& operator=(const TrajectoryBuilderInterface&) =
-        delete;
-
-    virtual void AddSensorData(
-        const std::string& sensor_id,
-        const sensor::TimedPointCloudData& timed_point_cloud_data) = 0;
+    TrajectoryBuilderInterface& operator=(const TrajectoryBuilderInterface&) = delete;
 
     virtual void AddSensorData(const std::string& sensor_id,
-                               const sensor::ImuData& imu_data) = 0;
+                               const sensor::TimedPointCloudData& timed_point_cloud_data) = 0;
 
-    virtual void AddSensorData(const std::string& sensor_id,
-                               const sensor::OdometryData& odometry_data) = 0;
+    virtual void AddSensorData(const std::string& sensor_id, const sensor::ImuData& imu_data) = 0;
 
-    virtual void AddSensorData(
-        const std::string& sensor_id,
-        const sensor::FixedFramePoseData& fixed_frame_pose) = 0;
+    virtual void AddSensorData(const std::string& sensor_id, const sensor::OdometryData& odometry_data) = 0;
 
-    virtual void AddSensorData(const std::string& sensor_id,
-                               const sensor::LandmarkData& landmark_data) = 0;
+    virtual void AddSensorData(const std::string& sensor_id, const sensor::FixedFramePoseData& fixed_frame_pose) = 0;
+
+    virtual void AddSensorData(const std::string& sensor_id, const sensor::LandmarkData& landmark_data) = 0;
     // Allows to directly add local SLAM results to the 'PoseGraph'. Note that
     // it is invalid to add local SLAM results for a trajectory that has a
     // 'LocalTrajectoryBuilder2D/3D'.
-    virtual void AddLocalSlamResultData(
-        std::unique_ptr<mapping::LocalSlamResultData>
-            local_slam_result_data) = 0;
+    virtual void AddLocalSlamResultData(std::unique_ptr<mapping::LocalSlamResultData> local_slam_result_data) = 0;
 };
 
 proto::SensorId ToProto(const TrajectoryBuilderInterface::SensorId& sensor_id);
-TrajectoryBuilderInterface::SensorId FromProto(
-    const proto::SensorId& sensor_id_proto);
+TrajectoryBuilderInterface::SensorId FromProto(const proto::SensorId& sensor_id_proto);
 
 }  // namespace mapping
 }  // namespace cartographer

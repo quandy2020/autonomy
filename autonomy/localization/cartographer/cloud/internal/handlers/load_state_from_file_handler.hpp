@@ -24,14 +24,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    LoadStateFromFileSignature, proto::LoadStateFromFileRequest,
-    proto::LoadStateFromFileResponse,
-    "/cartographer.cloud.proto.MapBuilderService/LoadStateFromFile")
+DEFINE_HANDLER_SIGNATURE(LoadStateFromFileSignature, proto::LoadStateFromFileRequest, proto::LoadStateFromFileResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/LoadStateFromFile")
 
-class LoadStateFromFileHandler
-    : public autonomy::common::async_grpc::RpcHandler<
-          LoadStateFromFileSignature>
+class LoadStateFromFileHandler : public autonomy::common::async_grpc::RpcHandler<LoadStateFromFileSignature>
 {
 public:
     void OnRequest(const proto::LoadStateFromFileRequest& request) override;

@@ -99,10 +99,8 @@ std::vector<Span> SliceByAltitudeChange(const proto::Trajectory& trajectory) {
 double SpanLength(const proto::Trajectory& trajectory, const Span& span) {
     double length = 0;
     for (int i = span.start_index + 1; i < span.end_index; ++i) {
-        const auto a =
-            transform::ToEigen(trajectory.node(i - 1).pose().translation());
-        const auto b =
-            transform::ToEigen(trajectory.node(i).pose().translation());
+        const auto a = transform::ToEigen(trajectory.node(i - 1).pose().translation());
+        const auto b = transform::ToEigen(trajectory.node(i).pose().translation());
         length += (a - b).head<2>().norm();
     }
     return length;
@@ -115,21 +113,17 @@ bool IsShort(const proto::Trajectory& trajectory, const Span& span) {
 }
 
 // Merges all 'spans' that have similar median z value into the same level.
-void GroupSegmentsByAltitude(const proto::Trajectory& trajectory,
-                             const std::vector<Span>& spans, Levels* levels) {
+void GroupSegmentsByAltitude(const proto::Trajectory& trajectory, const std::vector<Span>& spans, Levels* levels) {
     for (size_t i = 0; i < spans.size(); ++i) {
         for (size_t j = i + 1; j < spans.size(); ++j) {
-            if (std::abs(Median(spans[i].z_values) -
-                         Median(spans[j].z_values)) <
-                kMinLevelSeparationMeters) {
+            if (std::abs(Median(spans[i].z_values) - Median(spans[j].z_values)) < kMinLevelSeparationMeters) {
                 LevelUnion(i, j, levels);
             }
         }
     }
 }
 
-std::vector<Floor> FindFloors(const proto::Trajectory& trajectory,
-                              const std::vector<Span>& spans,
+std::vector<Floor> FindFloors(const proto::Trajectory& trajectory, const std::vector<Span>& spans,
                               const Levels& levels) {
     std::map<int, std::vector<Span>> level_spans;
 
@@ -183,14 +177,11 @@ std::vector<Floor> FindFloors(const proto::Trajectory& trajectory,
                 // for the long pieces that are guaranteed to be in the
                 // structure. This is a heuristic to leave out intermediate
                 // (short) levels.
-                z_values.insert(z_values.end(), span.z_values.begin(),
-                                span.z_values.end());
+                z_values.insert(z_values.end(), span.z_values.begin(), span.z_values.end());
             }
             floors.back().timespans.push_back(
-                Timespan{common::FromUniversal(
-                             trajectory.node(span.start_index).timestamp()),
-                         common::FromUniversal(
-                             trajectory.node(span.end_index - 1).timestamp())});
+                Timespan{common::FromUniversal(trajectory.node(span.start_index).timestamp()),
+                         common::FromUniversal(trajectory.node(span.end_index - 1).timestamp())});
         }
         if (!z_values.empty()) {
             std::sort(z_values.begin(), z_values.end());
@@ -214,8 +205,7 @@ std::vector<Floor> DetectFloors(const proto::Trajectory& trajectory) {
     GroupSegmentsByAltitude(trajectory, spans, &levels);
 
     std::vector<Floor> floors = FindFloors(trajectory, spans, levels);
-    std::sort(floors.begin(), floors.end(),
-              [](const Floor& a, const Floor& b) { return a.z < b.z; });
+    std::sort(floors.begin(), floors.end(), [](const Floor& a, const Floor& b) { return a.z < b.z; });
     return floors;
 }
 

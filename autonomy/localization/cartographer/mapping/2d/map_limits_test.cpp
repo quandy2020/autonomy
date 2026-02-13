@@ -28,8 +28,7 @@ TEST(MapLimitsTest, ToProto) {
     EXPECT_EQ(limits.resolution(), proto.resolution());
     EXPECT_EQ(limits.max().x(), proto.max().x());
     EXPECT_EQ(limits.max().y(), proto.max().y());
-    EXPECT_EQ(ToProto(limits.cell_limits()).DebugString(),
-              proto.cell_limits().DebugString());
+    EXPECT_EQ(ToProto(limits.cell_limits()).DebugString(), proto.cell_limits().DebugString());
 }
 
 TEST(MapLimitsTest, ProtoConstructor) {
@@ -44,8 +43,7 @@ TEST(MapLimitsTest, ProtoConstructor) {
     EXPECT_EQ(limits.resolution(), native.resolution());
     EXPECT_EQ(limits.max().x(), native.max().x());
     EXPECT_EQ(limits.max().y(), native.max().y());
-    EXPECT_EQ(limits.cell_limits().DebugString(),
-              ToProto(native.cell_limits()).DebugString());
+    EXPECT_EQ(limits.cell_limits().DebugString(), ToProto(native.cell_limits()).DebugString());
 }
 
 TEST(MapLimitsTest, ConstructAndGet) {

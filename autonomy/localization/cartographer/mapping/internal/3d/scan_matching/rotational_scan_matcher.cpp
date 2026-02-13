@@ -32,8 +32,7 @@ constexpr float kMinDistance = 0.2f;
 constexpr float kMaxDistance = 0.9f;
 constexpr float kSliceHeight = 0.2f;
 
-void AddValueToHistogram(float angle, const float value,
-                         Eigen::VectorXf* histogram) {
+void AddValueToHistogram(float angle, const float value, Eigen::VectorXf* histogram) {
     // Map the angle to [0, pi), i.e. a vector and its inverse are considered to
     // represent the same angle.
     while (angle > static_cast<float>(M_PI)) {
@@ -43,9 +42,8 @@ void AddValueToHistogram(float angle, const float value,
         angle += static_cast<float>(M_PI);
     }
     const float zero_to_one = angle / static_cast<float>(M_PI);
-    const int bucket = common::Clamp<int>(
-        common::RoundToInt(histogram->size() * zero_to_one - 0.5f), 0,
-        histogram->size() - 1);
+    const int bucket =
+        common::Clamp<int>(common::RoundToInt(histogram->size() * zero_to_one - 0.5f), 0, histogram->size() - 1);
     (*histogram)(bucket) += value;
 }
 
@@ -58,8 +56,7 @@ Eigen::Vector3f ComputeCentroid(const sensor::PointCloud& slice) {
     return sum / static_cast<float>(slice.size());
 }
 
-void AddPointCloudSliceToHistogram(const sensor::PointCloud& slice,
-                                   Eigen::VectorXf* const histogram) {
+void AddPointCloudSliceToHistogram(const sensor::PointCloud& slice, Eigen::VectorXf* const histogram) {
     if (slice.empty()) {
         return;
     }
@@ -71,8 +68,7 @@ void AddPointCloudSliceToHistogram(const sensor::PointCloud& slice,
     const Eigen::Vector3f centroid = ComputeCentroid(slice);
     Eigen::Vector3f last_point_position = slice.points().front().position;
     for (const sensor::RangefinderPoint& point : slice) {
-        const Eigen::Vector2f delta =
-            (point.position - last_point_position).head<2>();
+        const Eigen::Vector2f delta = (point.position - last_point_position).head<2>();
         const Eigen::Vector2f direction = (point.position - centroid).head<2>();
         const float distance = delta.norm();
         if (distance < kMinDistance || direction.norm() < kMinDistance) {
@@ -83,9 +79,7 @@ void AddPointCloudSliceToHistogram(const sensor::PointCloud& slice,
             continue;
         }
         const float angle = common::atan2(delta);
-        const float value = std::max(
-            0.f,
-            1.f - std::abs(delta.normalized().dot(direction.normalized())));
+        const float value = std::max(0.f, 1.f - std::abs(delta.normalized().dot(direction.normalized())));
         AddValueToHistogram(angle, value, histogram);
     }
 }
@@ -120,8 +114,7 @@ sensor::PointCloud SortSlice(const sensor::PointCloud& slice) {
     return result;
 }
 
-float MatchHistograms(const Eigen::VectorXf& submap_histogram,
-                      const Eigen::VectorXf& scan_histogram) {
+float MatchHistograms(const Eigen::VectorXf& submap_histogram, const Eigen::VectorXf& scan_histogram) {
     // We compute the dot product of normalized histograms as a measure of
     // similarity.
     const float scan_histogram_norm = scan_histogram.norm();
@@ -135,13 +128,11 @@ float MatchHistograms(const Eigen::VectorXf& submap_histogram,
 
 }  // namespace
 
-RotationalScanMatcher::RotationalScanMatcher(const Eigen::VectorXf* histogram)
-    : histogram_(histogram) {}
+RotationalScanMatcher::RotationalScanMatcher(const Eigen::VectorXf* histogram) : histogram_(histogram) {}
 
 // Rotates the given 'histogram' by the given 'angle'. This might lead to
 // rotations of a fractional bucket which is handled by linearly interpolating.
-Eigen::VectorXf RotationalScanMatcher::RotateHistogram(
-    const Eigen::VectorXf& histogram, const float angle) {
+Eigen::VectorXf RotationalScanMatcher::RotateHistogram(const Eigen::VectorXf& histogram, const float angle) {
     if (histogram.size() == 0) {
         return histogram;
     }
@@ -152,27 +143,21 @@ Eigen::VectorXf RotationalScanMatcher::RotateHistogram(
     while (full_buckets < 0) {
         full_buckets += histogram.size();
     }
-    Eigen::VectorXf rotated_histogram_0 =
-        Eigen::VectorXf::Zero(histogram.size());
-    Eigen::VectorXf rotated_histogram_1 =
-        Eigen::VectorXf::Zero(histogram.size());
+    Eigen::VectorXf rotated_histogram_0 = Eigen::VectorXf::Zero(histogram.size());
+    Eigen::VectorXf rotated_histogram_1 = Eigen::VectorXf::Zero(histogram.size());
     for (int i = 0; i != histogram.size(); ++i) {
-        rotated_histogram_0[i] =
-            histogram[(i + full_buckets) % histogram.size()];
-        rotated_histogram_1[i] =
-            histogram[(i + 1 + full_buckets) % histogram.size()];
+        rotated_histogram_0[i] = histogram[(i + full_buckets) % histogram.size()];
+        rotated_histogram_1[i] = histogram[(i + 1 + full_buckets) % histogram.size()];
     }
-    return fraction * rotated_histogram_1 +
-           (1.f - fraction) * rotated_histogram_0;
+    return fraction * rotated_histogram_1 + (1.f - fraction) * rotated_histogram_0;
 }
 
-Eigen::VectorXf RotationalScanMatcher::ComputeHistogram(
-    const sensor::PointCloud& point_cloud, const int histogram_size) {
+Eigen::VectorXf RotationalScanMatcher::ComputeHistogram(const sensor::PointCloud& point_cloud,
+                                                        const int histogram_size) {
     Eigen::VectorXf histogram = Eigen::VectorXf::Zero(histogram_size);
     std::map<int, sensor::PointCloud> slices;
     for (const sensor::RangefinderPoint& point : point_cloud) {
-        slices[common::RoundToInt(point.position.z() / kSliceHeight)].push_back(
-            point);
+        slices[common::RoundToInt(point.position.z() / kSliceHeight)].push_back(point);
     }
     for (const auto& slice : slices) {
         AddPointCloudSliceToHistogram(SortSlice(slice.second), &histogram);
@@ -180,14 +165,12 @@ Eigen::VectorXf RotationalScanMatcher::ComputeHistogram(
     return histogram;
 }
 
-std::vector<float> RotationalScanMatcher::Match(
-    const Eigen::VectorXf& histogram, const float initial_angle,
-    const std::vector<float>& angles) const {
+std::vector<float> RotationalScanMatcher::Match(const Eigen::VectorXf& histogram, const float initial_angle,
+                                                const std::vector<float>& angles) const {
     std::vector<float> result;
     result.reserve(angles.size());
     for (const float angle : angles) {
-        const Eigen::VectorXf scan_histogram =
-            RotateHistogram(histogram, initial_angle + angle);
+        const Eigen::VectorXf scan_histogram = RotateHistogram(histogram, initial_angle + angle);
         result.push_back(MatchHistograms(*histogram_, scan_histogram));
     }
     return result;

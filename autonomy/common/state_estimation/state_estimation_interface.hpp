@@ -59,10 +59,8 @@ public:
     ///
     template <typename MeasurementT>
     auto correct(const MeasurementT& measurement) {
-        static_assert(
-            std::is_base_of<MeasurementInterface<MeasurementT>,
-                            MeasurementT>::value,
-            "\n\nMeasurement must inherit from MeasurementInterface\n\n");
+        static_assert(std::is_base_of<MeasurementInterface<MeasurementT>, MeasurementT>::value,
+                      "\n\nMeasurement must inherit from MeasurementInterface\n\n");
         return this->impl().template crtp_correct<MeasurementT>(measurement);
     }
 

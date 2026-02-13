@@ -23,6 +23,48 @@ import "autonomy/commsgs/proto/geometry_msgs.proto";
 import "autonomy/commsgs/proto/map_msgs.proto";
 import "autonomy/tasks/navigator/proto/msg.proto";
 
+
+message Empty
+{
+    message Request
+    {
+        // Empty request
+        google.protobuf.Empty request = 1;
+    }
+
+    message Response
+    {
+        // Empty request
+        google.protobuf.Empty response = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message SetBool
+{
+    message Request
+    {
+        bool data = 1; // e.g. for hardware enabling / disabling
+    }
+
+    message Response
+    {
+        bool success = 1; // indicate successful run of triggered service
+        string message = 2; // informational, e.g. for error messages
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
 message Trigger
 {
     message Request

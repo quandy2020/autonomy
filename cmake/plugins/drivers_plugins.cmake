@@ -12,65 +12,96 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-################################ Camera Driver Plugins #################################
+# Include autolink_export_plugin function
+include("${PROJECT_SOURCE_DIR}/autolink/cmake/autolink_export_plugin.cmake")
 
-# RealSense D435i Driver Plugin
-add_library(${PROJECT_NAME}_driver_camera_realsense_d435i SHARED
-    "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/camera/realsense_d435i.cpp"
+# ============================================================================
+# Helper Function: Create and Export Driver Plugin
+# ============================================================================
+# Creates a driver plugin library, links dependencies, exports it, and adds to plugin_libs
+function(_create_driver_plugin plugin_name source_file index_name install_subdir)
+  set(lib_name "${PROJECT_NAME}_driver_${plugin_name}")
+  
+  add_library(${lib_name} SHARED ${source_file})
+  
+  target_link_libraries(${lib_name} PUBLIC
+    ${PROJECT_NAME}
+    autolink
+  )
+  
+  # Get the directory where this file is located
+  get_filename_component(PLUGINS_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
+  
+  autolink_export_plugin(
+    LIBRARY ${lib_name}
+    DESCRIPTION_FILE ${PLUGINS_CMAKE_DIR}/drivers_plugins.xml
+    INDEX_NAME ${index_name}
+    INSTALL_SUBDIR ${install_subdir}
+  )
+  
+  list(APPEND plugin_libs ${lib_name})
+  set(plugin_libs ${plugin_libs} PARENT_SCOPE)
+endfunction()
+
+# ============================================================================
+# Camera Driver Plugins
+# ============================================================================
+
+# RealSense D435i Driver
+_create_driver_plugin(
+  "camera_realsense_d435i"
+  "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/camera/realsense_d435i.cpp"
+  "camera_realsense_d435i"
+  "driver/sensor/camera"
 )
-list(APPEND plugin_libs ${PROJECT_NAME}_driver_camera_realsense_d435i)
 
-################################ IMU Driver Plugins ####################################
+# ============================================================================
+# IMU Driver Plugins
+# ============================================================================
 
-# MPU6050 Driver Plugin
-add_library(${PROJECT_NAME}_driver_imu_mpu6050 SHARED
-    "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/imu/mpu_6050.cpp"
+# MPU6050 Driver
+_create_driver_plugin(
+  "imu_mpu6050"
+  "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/imu/mpu_6050.cpp"
+  "imu_mpu6050"
+  "driver/sensor/imu"
 )
-list(APPEND plugin_libs ${PROJECT_NAME}_driver_imu_mpu6050)
 
-################################ Range Driver Plugins ##################################
+# ============================================================================
+# Range Driver Plugins
+# ============================================================================
 
 # TODO: 添加测距传感器驱动插件
 # 当有具体的测距传感器驱动实现时，可以在这里添加，例如：
-# add_library(${PROJECT_NAME}_range_hcsr04_plugin SHARED
-#     "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/range/hcsr04.cpp"
+# _create_driver_plugin(
+#   "range_hcsr04"
+#   "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/range/hcsr04.cpp"
+#   "range_hcsr04"
+#   "driver/sensor/range"
 # )
-# target_include_directories(${PROJECT_NAME}_range_hcsr04_plugin
-#     PRIVATE
-#     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-#     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
-# )
-# target_link_libraries(${PROJECT_NAME}_range_hcsr04_plugin ${PROJECT_NAME})
-# list(APPEND plugin_libs ${PROJECT_NAME}_range_hcsr04_plugin)
 
-################################ Lidar Driver Plugins ##################################
+# ============================================================================
+# Lidar Driver Plugins
+# ============================================================================
 
 # TODO: 添加激光雷达驱动插件
 # 当有具体的激光雷达驱动实现时，可以在这里添加，例如：
-# add_library(${PROJECT_NAME}_lidar_rplidar_a1_plugin SHARED
-#     "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/lidar/rplidar_a1.cpp"
+# _create_driver_plugin(
+#   "lidar_rplidar_a1"
+#   "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/lidar/rplidar_a1.cpp"
+#   "lidar_rplidar_a1"
+#   "driver/sensor/lidar"
 # )
-# target_include_directories(${PROJECT_NAME}_lidar_rplidar_a1_plugin
-#     PRIVATE
-#     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-#     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
-# )
-# target_link_libraries(${PROJECT_NAME}_lidar_rplidar_a1_plugin ${PROJECT_NAME})
-# list(APPEND plugin_libs ${PROJECT_NAME}_lidar_rplidar_a1_plugin)
 
-################################ GPS Driver Plugins ###################################
+# ============================================================================
+# GPS Driver Plugins
+# ============================================================================
 
 # TODO: 添加GPS驱动插件
 # 当有具体的GPS驱动实现时，可以在这里添加，例如：
-# add_library(${PROJECT_NAME}_gps_ublox_m8n_plugin SHARED
-#     "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/gps/ublox_m8n.cpp"
+# _create_driver_plugin(
+#   "gps_ublox_m8n"
+#   "${PROJECT_SOURCE_DIR}/autonomy/driver/sensor/gps/ublox_m8n.cpp"
+#   "gps_ublox_m8n"
+#   "driver/sensor/gps"
 # )
-# target_include_directories(${PROJECT_NAME}_gps_ublox_m8n_plugin
-#     PRIVATE
-#     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-#     "$<INSTALL_INTERFACE:include/${PROJECT_NAME}>"
-# )
-# target_link_libraries(${PROJECT_NAME}_gps_ublox_m8n_plugin ${PROJECT_NAME})
-# list(APPEND plugin_libs ${PROJECT_NAME}_gps_ublox_m8n_plugin)
-
-#########################################################################################

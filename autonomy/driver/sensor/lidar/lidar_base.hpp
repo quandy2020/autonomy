@@ -79,8 +79,7 @@ public:
      * @param options 驱动器配置选项
      * @return true 成功，false 失败
      */
-    bool Configure(const std::string& name,
-                   const proto::DriverOptions& options) override;
+    bool Configure(const std::string& name, const proto::DriverOptions& options) override;
 
     /**
      * @brief 初始化驱动器
@@ -130,9 +129,7 @@ public:
      */
     bool RegisterSensorHandler(
         const std::string& sensor_id,
-        std::function<void(const std::string&,
-                           const std::shared_ptr<autonomy::sensor::Data>&)>
-            handler) override;
+        std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) override;
 
     /**
      * @brief 取消注册传感器数据处理器
@@ -167,8 +164,7 @@ protected:
      * @param sensor_id 传感器ID
      * @return 激光扫描数据消息，如果读取失败返回 nullptr
      */
-    virtual std::shared_ptr<commsgs::sensor_msgs::LaserScan> ReadLaserScanData(
-        const std::string& sensor_id) {
+    virtual std::shared_ptr<commsgs::sensor_msgs::LaserScan> ReadLaserScanData(const std::string& sensor_id) {
         (void)sensor_id;
         return nullptr;
     }
@@ -178,8 +174,7 @@ protected:
      * @param sensor_id 传感器ID
      * @return 点云数据消息，如果读取失败返回 nullptr
      */
-    virtual std::shared_ptr<commsgs::sensor_msgs::PointCloud2>
-    ReadPointCloudData(const std::string& sensor_id) {
+    virtual std::shared_ptr<commsgs::sensor_msgs::PointCloud2> ReadPointCloudData(const std::string& sensor_id) {
         (void)sensor_id;
         return nullptr;
     }
@@ -189,18 +184,16 @@ protected:
      * @param sensor_id 传感器ID
      * @param scan_msg 激光扫描消息
      */
-    void ProcessLaserScanData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& scan_msg);
+    void ProcessLaserScanData(const std::string& sensor_id,
+                              const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& scan_msg);
 
     /**
      * @brief 处理读取到的点云数据并转发
      * @param sensor_id 传感器ID
      * @param cloud_msg 点云消息
      */
-    void ProcessPointCloudData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& cloud_msg);
+    void ProcessPointCloudData(const std::string& sensor_id,
+                               const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& cloud_msg);
 
     /**
      * @brief 数据读取线程函数
@@ -214,9 +207,7 @@ protected:
     std::map<std::string, proto::LidarOptions> lidar_configs_;
 
     // 传感器数据处理器映射表（sensor_id -> handler）
-    std::map<std::string, std::function<void(
-                              const std::string&,
-                              const std::shared_ptr<autonomy::sensor::Data>&)>>
+    std::map<std::string, std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)>>
         handlers_;
 
     // 互斥锁

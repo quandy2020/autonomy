@@ -53,8 +53,7 @@ public:
         doSort();
     }
 
-    void splice(const_iterator pos, OrderedQueueList& other,
-                const_iterator it) {
+    void splice(const_iterator pos, OrderedQueueList& other, const_iterator it) {
         super::splice(pos, other, it);
         doSort();
     }

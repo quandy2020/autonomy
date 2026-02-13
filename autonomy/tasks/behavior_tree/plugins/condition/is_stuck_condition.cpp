@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-IsStuckCondition::IsStuckCondition(const std::string& condition_name,
-                                   const BT::NodeConfiguration& conf)
+IsStuckCondition::IsStuckCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf),
       is_stuck_(false),
       odom_history_size_(10),
@@ -31,8 +30,7 @@ IsStuckCondition::IsStuckCondition(const std::string& condition_name,
       brake_accel_limit_(-10.0) {
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     odom_sub_ = node_->CreateReader<commsgs::planning_msgs::Odometry>(
-        "odom", std::bind(&IsStuckCondition::onOdomReceived, this,
-                          std::placeholders::_1));
+        "odom", std::bind(&IsStuckCondition::onOdomReceived, this, std::placeholders::_1));
 
     AINFO << "Initialized an IsStuckCondition BT node";
 }
@@ -41,8 +39,7 @@ IsStuckCondition::~IsStuckCondition() {
     AINFO << "Shutting down IsStuckCondition BT node";
 }
 
-void IsStuckCondition::onOdomReceived(
-    const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg) {
+void IsStuckCondition::onOdomReceived(const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg) {
     while (odom_history_.size() >= odom_history_size_) {
         odom_history_.pop_front();
     }
@@ -77,17 +74,14 @@ void IsStuckCondition::updateStates() {
     if (odom_history_.size() > 2) {
         auto curr_odom = odom_history_.end()[-1];
         double curr_time = static_cast<double>(curr_odom.header.stamp.sec);
-        curr_time +=
-            (static_cast<double>(curr_odom.header.stamp.nanosec)) * 1e-9;
+        curr_time += (static_cast<double>(curr_odom.header.stamp.nanosec)) * 1e-9;
 
         auto prev_odom = odom_history_.end()[-2];
         double prev_time = static_cast<double>(prev_odom.header.stamp.sec);
-        prev_time +=
-            (static_cast<double>(prev_odom.header.stamp.nanosec)) * 1e-9;
+        prev_time += (static_cast<double>(prev_odom.header.stamp.nanosec)) * 1e-9;
 
         double dt = curr_time - prev_time;
-        double vel_diff = static_cast<double>(curr_odom.twist.twist.linear.x -
-                                              prev_odom.twist.twist.linear.x);
+        double vel_diff = static_cast<double>(curr_odom.twist.twist.linear.x - prev_odom.twist.twist.linear.x);
         current_accel_ = vel_diff / dt;
     }
 
@@ -97,8 +91,7 @@ void IsStuckCondition::updateStates() {
 bool IsStuckCondition::isStuck() {
     if (current_accel_ < brake_accel_limit_) {
         AINFO << "Current deceleration is beyond brake limit."
-              << " brake limit: " << brake_accel_limit_
-              << ", current accel: " << current_accel_;
+              << " brake limit: " << brake_accel_limit_ << ", current accel: " << current_accel_;
         return true;
     }
 
@@ -113,7 +106,5 @@ bool IsStuckCondition::isStuck() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::condition::IsStuckCondition>(
-        "IsStuck");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsStuckCondition>("IsStuck");
 }

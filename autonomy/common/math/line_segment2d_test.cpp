@@ -33,10 +33,9 @@ TEST(LineSegment2dTest, Accessors) {
     EXPECT_NEAR(ls.heading(), std::atan2(2, 4), 1e-5);
     EXPECT_NEAR(ls.cos_heading(), 4.0 / std::sqrt(20.0), 1e-5);
     EXPECT_NEAR(ls.sin_heading(), 2.0 / std::sqrt(20.0), 1e-5);
-    EXPECT_EQ(
-        ls.DebugString(),
-        "segment2d ( start = vec2d ( x = 1  y = 2 )  end = vec2d ( x = 5  "
-        "y = 4 ) )");
+    EXPECT_EQ(ls.DebugString(),
+              "segment2d ( start = vec2d ( x = 1  y = 2 )  end = vec2d ( x = 5  "
+              "y = 4 ) )");
 }
 
 TEST(LineSegment2dTest, DistanceTo) {
@@ -55,16 +54,14 @@ TEST(LineSegment2dTest, DistanceTo) {
     EXPECT_NEAR(nearest_pt.DistanceTo({5, 4}), 0, 1e-5);
     EXPECT_NEAR(ls.DistanceTo({3, 3}, &nearest_pt), 0, 1e-5);
     EXPECT_NEAR(nearest_pt.DistanceTo({3, 3}), 0, 1e-5);
-    EXPECT_NEAR(ls.DistanceTo({4, 4}, &nearest_pt), 2.0 / std::sqrt(20.0),
-                1e-5);
+    EXPECT_NEAR(ls.DistanceTo({4, 4}, &nearest_pt), 2.0 / std::sqrt(20.0), 1e-5);
     EXPECT_NEAR(nearest_pt.DistanceTo({4, 4}), 2.0 / std::sqrt(20.0), 1e-5);
 }
 
 TEST(LineSegment2dTest, GetPerpendicularFoot) {
     const LineSegment2d ls({1, 2}, {5, 4});
     Vec2d foot_pt;
-    EXPECT_NEAR(ls.GetPerpendicularFoot({0, 0}, &foot_pt), 0.6 * std::sqrt(5.0),
-                1e-5);
+    EXPECT_NEAR(ls.GetPerpendicularFoot({0, 0}, &foot_pt), 0.6 * std::sqrt(5.0), 1e-5);
     EXPECT_NEAR(foot_pt.x(), -0.6, 1e-5);
     EXPECT_NEAR(foot_pt.y(), 1.2, 1e-5);
     EXPECT_NEAR(ls.GetPerpendicularFoot({3, 3}, &foot_pt), 0.0, 1e-5);

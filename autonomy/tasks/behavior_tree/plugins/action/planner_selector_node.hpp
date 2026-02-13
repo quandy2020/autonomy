@@ -47,8 +47,7 @@ public:
      * @param xml_tag_name Name for the XML tag for this node
      * @param conf  BT node configuration
      */
-    PlannerSelector(const std::string& xml_tag_name,
-                    const BT::NodeConfiguration& conf);
+    PlannerSelector(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
@@ -56,17 +55,14 @@ public:
      * ports
      */
     static BT::PortsList providedPorts() {
-        return {BT::InputPort<std::string>(
-                    "default_planner",
-                    "the default planner to use if there is not "
-                    "any external topic message received."),
+        return {
+            BT::InputPort<std::string>("default_planner",
+                                       "the default planner to use if there is not "
+                                       "any external topic message received."),
 
-                BT::InputPort<std::string>(
-                    "topic_name", "planner_selector",
-                    "the input topic name to select the planner"),
+            BT::InputPort<std::string>("topic_name", "planner_selector", "the input topic name to select the planner"),
 
-                BT::OutputPort<std::string>(
-                    "selected_planner", "Selected planner by subscription")};
+            BT::OutputPort<std::string>("selected_planner", "Selected planner by subscription")};
     }
 
 private:
@@ -90,10 +86,9 @@ private:
      *
      * @param msg the message with the id of the planner_selector
      */
-    void callbackPlannerSelect(const commsgs::std_msgs::String& msg);
+    void callbackPlannerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg);
 
-    //    rclcpp::Subscription<commsgs::std_msgs::String>::SharedPtr
-    //    planner_selector_sub_;
+    std::shared_ptr<autolink::Reader<commsgs::std_msgs::String>> planner_selector_sub_;
 
     std::string last_selected_planner_;
 

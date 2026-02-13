@@ -32,8 +32,7 @@ template <typename Request, typename Response>
 class ClientWrapper
 {
 public:
-    ClientWrapper(const std::shared_ptr<::autolink::Node>& node,
-                  const std::string& service_name);
+    ClientWrapper(const std::shared_ptr<::autolink::Node>& node, const std::string& service_name);
     /**
      * @brief Request the Service with a shared ptr Request type
      *
@@ -41,9 +40,8 @@ public:
      * @param timeout_s request timeout, if timeout, response will be empty
      * @return std::shared_ptr<Response> result of this request
      */
-    std::shared_ptr<Response> SendRequest(
-        std::shared_ptr<Request> request,
-        const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
+    std::shared_ptr<Response> SendRequest(std::shared_ptr<Request> request,
+                                          const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
 
     /**
      * @brief Request the Service with a Request object
@@ -52,15 +50,13 @@ public:
      * @param timeout_s request timeout, if timeout, response will be empty
      * @return std::shared_ptr<Response> result of this request
      */
-    std::shared_ptr<Response> SendRequest(
-        const Request& request,
-        const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
+    std::shared_ptr<Response> SendRequest(const Request& request,
+                                          const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
 
     /**
      * @brief Send Request shared ptr asynchronously
      */
-    std::shared_future<Response> AsyncSendRequest(
-        std::shared_ptr<Request> request);
+    std::shared_future<Response> AsyncSendRequest(std::shared_ptr<Request> request);
 
     /**
      * @brief Send Request object asynchronously
@@ -77,9 +73,7 @@ public:
      * shared ptr
      */
     std::shared_future<Response> AsyncSendRequest(
-        std::shared_ptr<Request> request,
-        std::function<void(std::shared_future<std::shared_ptr<Response>>)>&&
-            cb);
+        std::shared_ptr<Request> request, std::function<void(std::shared_future<std::shared_ptr<Response>>)>&& cb);
 
 private:
     std::shared_ptr<::autolink::Client<Request, Response>> client_;
@@ -87,31 +81,36 @@ private:
 };
 
 template <typename Request, typename Response>
-ClientWrapper<Request, Response>::ClientWrapper(
-    const std::shared_ptr<::autolink::Node>& node,
-    const std::string& service_name)
+ClientWrapper<Request, Response>::ClientWrapper(const std::shared_ptr<::autolink::Node>& node,
+                                                const std::string& service_name)
     : client_(node->CreateClient<Request, Response>(service_name)),
       request_writer_(node->CreateWriter<Request>(service_name)) {}
 
 template <typename Request, typename Response>
-std::shared_ptr<Response> ClientWrapper<Request, Response>::SendRequest(
-    std::shared_ptr<Request> request, const std::chrono::seconds& timeout_s) {
+std::shared_ptr<Response> ClientWrapper<Request, Response>::SendRequest(std::shared_ptr<Request> request,
+                                                                        const std::chrono::seconds& timeout_s) {
     auto response = client_->SendRequest(request);
     request_writer_->Write(request);
     return response;
 }
 
 template <typename Request, typename Response>
-std::shared_ptr<Response> ClientWrapper<Request, Response>::SendRequest(
-    const Request& request, const std::chrono::seconds& timeout_s) {
+std::shared_ptr<Response> ClientWrapper<Request, Response>::SendRequest(const Request& request,
+                                                                        const std::chrono::seconds& timeout_s) {
     auto response = client_->SendRequest(request);
     request_writer_->Write(request);
     return response;
 }
 
 template <typename Request, typename Response>
-std::shared_future<Response> ClientWrapper<Request, Response>::AsyncSendRequest(
-    std::shared_ptr<Request> request) {
+std::shared_future<Response> ClientWrapper<Request, Response>::AsyncSendRequest(std::shared_ptr<Request> request) {
+    auto response = client_->AsyncSendRequest(request);
+    request_writer_->Write(request);
+    return response;
+}
+
+template <typename Request, typename Response>
+std::shared_future<Response> ClientWrapper<Request, Response>::AsyncSendRequest(const Request& request) {
     auto response = client_->AsyncSendRequest(request);
     request_writer_->Write(request);
     return response;
@@ -119,16 +118,7 @@ std::shared_future<Response> ClientWrapper<Request, Response>::AsyncSendRequest(
 
 template <typename Request, typename Response>
 std::shared_future<Response> ClientWrapper<Request, Response>::AsyncSendRequest(
-    const Request& request) {
-    auto response = client_->AsyncSendRequest(request);
-    request_writer_->Write(request);
-    return response;
-}
-
-template <typename Request, typename Response>
-std::shared_future<Response> ClientWrapper<Request, Response>::AsyncSendRequest(
-    std::shared_ptr<Request> request,
-    std::function<void(std::shared_future<std::shared_ptr<Response>>)>&& cb) {
+    std::shared_ptr<Request> request, std::function<void(std::shared_future<std::shared_ptr<Response>>)>&& cb) {
     auto response = client_->AsyncSendRequest(request, cb);
     request_writer_->Write(request);
     return response;

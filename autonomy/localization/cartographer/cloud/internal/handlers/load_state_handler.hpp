@@ -25,14 +25,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    LoadStateSignature,
-    autonomy::common::async_grpc::Stream<proto::LoadStateRequest>,
-    proto::LoadStateResponse,
-    "/cartographer.cloud.proto.MapBuilderService/LoadState")
+DEFINE_HANDLER_SIGNATURE(LoadStateSignature, autonomy::common::async_grpc::Stream<proto::LoadStateRequest>,
+                         proto::LoadStateResponse, "/cartographer.cloud.proto.MapBuilderService/LoadState")
 
-class LoadStateHandler
-    : public autonomy::common::async_grpc::RpcHandler<LoadStateSignature>
+class LoadStateHandler : public autonomy::common::async_grpc::RpcHandler<LoadStateSignature>
 {
 public:
     void OnRequest(const proto::LoadStateRequest& request) override;

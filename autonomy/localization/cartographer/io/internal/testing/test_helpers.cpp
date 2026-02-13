@@ -23,20 +23,13 @@ namespace io {
 namespace testing {
 
 std::unique_ptr<InMemoryProtoStreamReader> ProtoReaderFromStrings(
-    const std::string& header_textpb,
-    const std::initializer_list<std::string>& data_textpbs) {
+    const std::string& header_textpb, const std::initializer_list<std::string>& data_textpbs) {
     std::queue<std::unique_ptr<::google::protobuf::Message>> proto_queue;
-    proto_queue.emplace(
-        absl::make_unique<::cartographer::mapping::proto::SerializationHeader>(
-            ProtoFromStringOrDie<
-                ::cartographer::mapping::proto::SerializationHeader>(
-                header_textpb)));
+    proto_queue.emplace(absl::make_unique<::cartographer::mapping::proto::SerializationHeader>(
+        ProtoFromStringOrDie<::cartographer::mapping::proto::SerializationHeader>(header_textpb)));
     for (const std::string& data_textpb : data_textpbs) {
-        proto_queue.emplace(
-            absl::make_unique<::cartographer::mapping::proto::SerializedData>(
-                ProtoFromStringOrDie<
-                    ::cartographer::mapping::proto::SerializedData>(
-                    data_textpb)));
+        proto_queue.emplace(absl::make_unique<::cartographer::mapping::proto::SerializedData>(
+            ProtoFromStringOrDie<::cartographer::mapping::proto::SerializedData>(data_textpb)));
     }
     return absl::make_unique<InMemoryProtoStreamReader>(std::move(proto_queue));
 }

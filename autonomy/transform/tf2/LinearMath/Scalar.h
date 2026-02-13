@@ -40,8 +40,7 @@ namespace tf2 {
 
 #ifdef _WIN32
 
-#if defined(__MINGW32__) || defined(__CYGWIN__) || \
-    (defined(_MSC_VER) && _MSC_VER < 1300)
+#if defined(__MINGW32__) || defined(__CYGWIN__) || (defined(_MSC_VER) && _MSC_VER < 1300)
 
 #define TF2SIMD_FORCE_INLINE inline
 #define ATTRIBUTE_ALIGNED16(a) a
@@ -240,9 +239,7 @@ TF2SIMD_FORCE_INLINE tf2Scalar tf2Fmod(tf2Scalar x, tf2Scalar y) {
 #define TF2SIMD_DEGS_PER_RAD (tf2Scalar(360.0) / TF2SIMD_2_PI)
 #define TF2SIMDSQRT12 tf2Scalar(0.7071067811865475244008443621048490)
 
-#define tf2RecipSqrt(x)           \
-    ((tf2Scalar)(tf2Scalar(1.0) / \
-                 tf2Sqrt(tf2Scalar(x)))) /* reciprocal square root */
+#define tf2RecipSqrt(x) ((tf2Scalar)(tf2Scalar(1.0) / tf2Sqrt(tf2Scalar(x)))) /* reciprocal square root */
 
 #define TF2SIMD_EPSILON DBL_EPSILON
 #define TF2SIMD_INFINITY DBL_MAX
@@ -287,7 +284,7 @@ TF2SIMD_FORCE_INLINE tf2Scalar tf2Degrees(tf2Scalar x) {
 #define TF2_DECLARE_HANDLE(name) \
     typedef struct name##__ {    \
         int unused;              \
-    }* name
+    } * name
 
 #ifndef tf2Fsel
 TF2SIMD_FORCE_INLINE tf2Scalar tf2Fsel(tf2Scalar a, tf2Scalar b, tf2Scalar c) {
@@ -308,8 +305,7 @@ TF2SIMD_FORCE_INLINE bool tf2MachineIsLittleEndian() {
 /// tf2Select avoids branches, which makes performance much better for consoles
 /// like Playstation 3 and XBox 360 Thanks Phil Knight. See also
 /// http://www.cellperformance.com/articles/2006/04/more_techniques_for_eliminatin_1.html
-TF2SIMD_FORCE_INLINE unsigned tf2Select(unsigned condition,
-                                        unsigned valueIfConditionNonZero,
+TF2SIMD_FORCE_INLINE unsigned tf2Select(unsigned condition, unsigned valueIfConditionNonZero,
                                         unsigned valueIfConditionZero) {
     // Set testNz to 0xFFFFFFFF if condition is nonzero, 0x00000000 if condition
     // is zero Rely on positive value or'ed with its negative having sign bit on
@@ -318,23 +314,16 @@ TF2SIMD_FORCE_INLINE unsigned tf2Select(unsigned condition,
     // bits
     unsigned testNz = (unsigned)(((int)condition | -(int)condition) >> 31);
     unsigned testEqz = ~testNz;
-    return ((valueIfConditionNonZero & testNz) |
-            (valueIfConditionZero & testEqz));
+    return ((valueIfConditionNonZero & testNz) | (valueIfConditionZero & testEqz));
 }
-TF2SIMD_FORCE_INLINE int tf2Select(unsigned condition,
-                                   int valueIfConditionNonZero,
-                                   int valueIfConditionZero) {
+TF2SIMD_FORCE_INLINE int tf2Select(unsigned condition, int valueIfConditionNonZero, int valueIfConditionZero) {
     unsigned testNz = (unsigned)(((int)condition | -(int)condition) >> 31);
     unsigned testEqz = ~testNz;
-    return static_cast<int>((valueIfConditionNonZero & testNz) |
-                            (valueIfConditionZero & testEqz));
+    return static_cast<int>((valueIfConditionNonZero & testNz) | (valueIfConditionZero & testEqz));
 }
-TF2SIMD_FORCE_INLINE float tf2Select(unsigned condition,
-                                     float valueIfConditionNonZero,
-                                     float valueIfConditionZero) {
+TF2SIMD_FORCE_INLINE float tf2Select(unsigned condition, float valueIfConditionNonZero, float valueIfConditionZero) {
 #ifdef TF2_HAVE_NATIVE_FSEL
-    return (float)tf2Fsel((tf2Scalar)condition - tf2Scalar(1.0f),
-                          valueIfConditionNonZero, valueIfConditionZero);
+    return (float)tf2Fsel((tf2Scalar)condition - tf2Scalar(1.0f), valueIfConditionNonZero, valueIfConditionZero);
 #else
     return (condition != 0) ? valueIfConditionNonZero : valueIfConditionZero;
 #endif
@@ -349,13 +338,12 @@ TF2SIMD_FORCE_INLINE void tf2Swap(T& a, T& b) {
 
 // PCK: endian swapping functions
 TF2SIMD_FORCE_INLINE unsigned tf2SwapEndian(unsigned val) {
-    return (((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >> 8) |
-            ((val & 0x0000ff00) << 8) | ((val & 0x000000ff) << 24));
+    return (((val & 0xff000000) >> 24) | ((val & 0x00ff0000) >> 8) | ((val & 0x0000ff00) << 8) |
+            ((val & 0x000000ff) << 24));
 }
 
 TF2SIMD_FORCE_INLINE unsigned short tf2SwapEndian(unsigned short val) {
-    return static_cast<unsigned short>(((val & 0xff00) >> 8) |
-                                       ((val & 0x00ff) << 8));
+    return static_cast<unsigned short>(((val & 0xff00) >> 8) | ((val & 0x00ff) << 8));
 }
 
 TF2SIMD_FORCE_INLINE unsigned tf2SwapEndian(int val) {

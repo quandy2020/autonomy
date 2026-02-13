@@ -89,8 +89,7 @@ template <>
 struct hash<IntPoint> {
     size_t operator()(const IntPoint& p) const noexcept {
         // 简单组合 x,y 的哈希
-        return (static_cast<size_t>(p.x) * 73856093u) ^
-               (static_cast<size_t>(p.y) * 19349663u);
+        return (static_cast<size_t>(p.x) * 73856093u) ^ (static_cast<size_t>(p.y) * 19349663u);
     }
 };
 }  // namespace std
@@ -118,8 +117,7 @@ public:
         return std::chrono::duration<double>(end - start_).count();
     }
     void print(const std::string& msg = " ") const {
-        AINFO << " [TimeCost]: " << (name_.empty() ? " " : name_ + " ") << msg
-              << " " << elapsedMs() << " ms.";
+        AINFO << " [TimeCost]: " << (name_.empty() ? " " : name_ + " ") << msg << " " << elapsedMs() << " ms.";
     }
 
 private:
@@ -216,16 +214,13 @@ struct GraphNode {
     using WeakPtr = std::weak_ptr<GraphNode>;
     enum NODE_TYPE { None = 0, Strong = 1, Weak = 2 };
 
-    GraphNode(int x, int y, NODE_TYPE type_)
-        : pos(x, y), type(type_), parent() {
+    GraphNode(int x, int y, NODE_TYPE type_) : pos(x, y), type(type_), parent() {
         node_state = NOT_EXPAND_GVG;
     }
 
     // 使用WeakPtr来打破循环引用
-    void addNeighbor(WeakPtr neighbor, const std::vector<IntPoint>& path,
-                     bool sample_check = true) {
-        if (this->type != Strong && !neighbor.lock() &&
-            neighbor.lock()->type != Strong) {
+    void addNeighbor(WeakPtr neighbor, const std::vector<IntPoint>& path, bool sample_check = true) {
+        if (this->type != Strong && !neighbor.lock() && neighbor.lock()->type != Strong) {
             AERROR << "Error: Only strong nodes can have neighbors.";
             return;
         }
@@ -239,11 +234,9 @@ struct GraphNode {
             for (size_t i = 0; i < this->neighbors.size(); ++i) {
                 auto nb_ptr = this->neighbors[i].lock();
                 auto neighbor_ptr = neighbor.lock();
-                if (nb_ptr && neighbor_ptr &&
-                    nb_ptr->pos == neighbor_ptr->pos) {
+                if (nb_ptr && neighbor_ptr && nb_ptr->pos == neighbor_ptr->pos) {
                     // 判断路径是否也完全相同
-                    if (i < neighbor_paths.size() &&
-                        neighbor_paths[i].path == path) {
+                    if (i < neighbor_paths.size() && neighbor_paths[i].path == path) {
                         return;
                     }
                 }
@@ -260,9 +253,8 @@ struct GraphNode {
             neighbor_path.path_length_y += std::abs(path[j].y - path[j - 1].y);
         }
         // 计算路径长度为欧式距离
-        neighbor_path.path_length = std::sqrt(
-            neighbor_path.path_length_x * neighbor_path.path_length_x +
-            neighbor_path.path_length_y * neighbor_path.path_length_y);
+        neighbor_path.path_length = std::sqrt(neighbor_path.path_length_x * neighbor_path.path_length_x +
+                                              neighbor_path.path_length_y * neighbor_path.path_length_y);
         neighbor_paths.emplace_back(neighbor_path);
         this->neighbors.emplace_back(neighbor);
     }
@@ -273,11 +265,7 @@ struct GraphNode {
     std::vector<WeakPtr> neighbors;    // 邻居节点（使用WeakPtr）
     std::vector<Path> neighbor_paths;  // 到邻居的路径
 
-    enum NODE_STATE {
-        IN_CLOSE_SET_GVG = 0,
-        IN_OPEN_SET_GVG = 1,
-        NOT_EXPAND_GVG = 2
-    };
+    enum NODE_STATE { IN_CLOSE_SET_GVG = 0, IN_OPEN_SET_GVG = 1, NOT_EXPAND_GVG = 2 };
     double g_score = 0.0, f_score = 0.0;  // 用于A*算法
     GraphNode::WeakPtr parent;
     char node_state;
@@ -364,18 +352,15 @@ private:
 
     // DFS 搜索
     // 每次从这个节点开始搜索、或者由别的节点搜索到该节点，都要从grid_adjs_中删除掉这个节点的邻接方向
-    std::unordered_map<IntPoint, GraphNode::Ptr> DFSSearch(
-        const IntPoint& start);
+    std::unordered_map<IntPoint, GraphNode::Ptr> DFSSearch(const IntPoint& start);
 
-    void DFSSearch2(GraphNode::Ptr& center_node,
-                    const std::vector<IntPoint>& cluster_points);
+    void DFSSearch2(GraphNode::Ptr& center_node, const std::vector<IntPoint>& cluster_points);
 
     int getNumVoronoiNeighbors(int x, int y, uint8_t& dir_code);
 
     void completeConnection(int x, int y, const DynamicVoronoi& voronoi);
     // 封装补全Voronoi点的函数
-    void tryCompleteVoronoi(int x, int y, int idx1, int idx2,
-                            const DynamicVoronoi& voronoi);
+    void tryCompleteVoronoi(int x, int y, int idx1, int idx2, const DynamicVoronoi& voronoi);
 
     bool deleteblock(int x, int y);
 
@@ -389,20 +374,18 @@ private:
 
     enum GRID_TYPE { None = 0, Strong = 1, Weak = 2, Edge = 3 };
 
-    std::vector<std::unordered_map<IntPoint, GraphNode::Ptr>>
-        graphs_;  // 图结构
+    std::vector<std::unordered_map<IntPoint, GraphNode::Ptr>> graphs_;  // 图结构
     // std::vector<bool> grid_visited_;        // 访问标记 //
     // 现在不要这个了，全部用grid_adjs_中剩下的邻居方向来表示是否还可以扩展
-    std::vector<GRID_TYPE>
-        grid_types_;  // 网格类型,
-                      // 0表示none，1表示强节点，2表示弱节点，3表示edge
+    std::vector<GRID_TYPE> grid_types_;       // 网格类型,
+                                              // 0表示none，1表示强节点，2表示弱节点，3表示edge
     std::vector<uint8_t> grid_adjs_;          // 邻接方向
     std::vector<uint8_t> grid_adjs_origin_;   // 邻接方向，保留最初数据
     std::vector<IntPoint> truncated_points_;  // 被cle_thr_sq_high_截断的点
     std::vector<IntPoint> completeCoonction_points_;
     std::vector<bool> voronoi_new;  // 在gvg里面单独弄一个紧凑维诺图
     int sizeX_, sizeY_;             // 网格大小
-    float cle_thr_sq_low_;  // 单位是网格数，平方，小于这个数的被维诺点不被考虑
+    float cle_thr_sq_low_;          // 单位是网格数，平方，小于这个数的被维诺点不被考虑
     float cle_thr_sq_high_,
         cle_thr_sq_high2_;  // dis大于这个数的维诺点不被考虑，用来构建更加紧凑的维诺图结构
     bool use_EGVG_ = true;
@@ -446,8 +429,7 @@ struct GridNode {
     IntPoint pos;
     double g, f;
     GridNode* parent;
-    GridNode(const IntPoint& p, double g_, double f_, GridNode* par)
-        : pos(p), g(g_), f(f_), parent(par) {}
+    GridNode(const IntPoint& p, double g_, double f_, GridNode* par) : pos(p), g(g_), f(f_), parent(par) {}
 };
 
 struct GridNodeCmp {

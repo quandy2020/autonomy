@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  启动 autonomy bridge 模块（gRPC/MQTT 桥接、外部指令等）。
+  二进制：autonomy.bridge.launcher
+-->
+<autolink>
+  <module>
+    <name>bridge</name>
+    <type>binary</type>
+    <process_name>autonomy.bridge.launcher</process_name>
+  </module>
+</autolink>

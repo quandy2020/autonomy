@@ -47,8 +47,7 @@ public:
      * @param options Additional options to control creation of the grid map.
      * @param name Optional name for the grid map.
      */
-    GridMapWrapper(const proto::GridMapOptions& options,
-                   const std::string& name = "");
+    GridMapWrapper(const proto::GridMapOptions& options, const std::string& name = "");
 
     /**
      * @brief A Destructor for autonomy::map::grid_map::GridMapWrapper
@@ -129,8 +128,7 @@ protected:
     proto::GridMapOptions options_;
 };
 
-proto::GridMapOptions CreateGridMapOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::GridMapOptions CreateGridMapOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace grid_map
 }  // namespace map

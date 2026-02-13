@@ -34,17 +34,14 @@ using Time = autonomy::common::Time;
 class ImuSensorData : public autonomy::sensor::Data
 {
 public:
-    ImuSensorData(const std::string& sensor_id,
-                  const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg)
+    ImuSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg)
         : autonomy::sensor::Data(sensor_id), message_(msg) {}
 
     Time GetTime() const override {
         // 将 builtin_interfaces::Time 转换为 common::Time
-        int64_t total_ns =
-            static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
-            static_cast<int64_t>(message_->header.stamp.nanosec);
-        return autonomy::common::FromUniversal(total_ns /
-                                               100);  // 转换为 100ns ticks
+        int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                           static_cast<int64_t>(message_->header.stamp.nanosec);
+        return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
     }
 
     void AddToCostmap(map::common::MapInterface* costmap_builder) override {
@@ -67,8 +64,7 @@ ImuBase::~ImuBase() {
     Cleanup();
 }
 
-bool ImuBase::Configure(const std::string& name,
-                        const proto::DriverOptions& options) {
+bool ImuBase::Configure(const std::string& name, const proto::DriverOptions& options) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (configured_) {
@@ -83,8 +79,7 @@ bool ImuBase::Configure(const std::string& name,
     for (const auto& imu_option : options.imus()) {
         if (imu_option.enabled()) {
             imu_configs_[imu_option.sensor_id()] = imu_option;
-            AINFO << "Configured IMU sensor: " << imu_option.sensor_id()
-                  << " (hardware: " << GetHardwareModel() << ")";
+            AINFO << "Configured IMU sensor: " << imu_option.sensor_id() << " (hardware: " << GetHardwareModel() << ")";
         }
     }
 
@@ -94,8 +89,7 @@ bool ImuBase::Configure(const std::string& name,
     }
 
     configured_ = true;
-    AINFO << "ImuBase configured: " << name_ << " with " << imu_configs_.size()
-          << " IMU sensors";
+    AINFO << "ImuBase configured: " << name_ << " with " << imu_configs_.size() << " IMU sensors";
     return true;
 }
 
@@ -123,8 +117,7 @@ bool ImuBase::Initialize() {
         const auto& config = pair.second;
         sampling_rate_ = config.sampling_rate();
         last_sample_time_[pair.first] = commsgs::builtin_interfaces::Time{0, 0};
-        AINFO << "Initialized IMU sensor: " << pair.first
-              << " (sampling_rate: " << sampling_rate_ << " Hz)";
+        AINFO << "Initialized IMU sensor: " << pair.first << " (sampling_rate: " << sampling_rate_ << " Hz)";
     }
 
     initialized_ = true;
@@ -204,9 +197,7 @@ bool ImuBase::IsSensorRegistered(const std::string& sensor_id) const {
 
 bool ImuBase::RegisterSensorHandler(
     const std::string& sensor_id,
-    std::function<void(const std::string&,
-                       const std::shared_ptr<autonomy::sensor::Data>&)>
-        handler) {
+    std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!IsSensorRegistered(sensor_id)) {
@@ -234,9 +225,7 @@ void ImuBase::UnregisterSensorHandler(const std::string& sensor_id) {
     }
 }
 
-void ImuBase::ProcessImuData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::Imu>& imu_msg) {
+void ImuBase::ProcessImuData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Imu>& imu_msg) {
     if (imu_msg == nullptr) {
         AERROR << "Received null IMU message for sensor: " << sensor_id;
         return;
@@ -248,11 +237,9 @@ void ImuBase::ProcessImuData(
         auto it = last_sample_time_.find(sensor_id);
         if (it != last_sample_time_.end()) {
             // 计算时间差（秒）
-            int64_t time_diff_ns = (static_cast<int64_t>(current_time.sec) -
-                                    static_cast<int64_t>(it->second.sec)) *
-                                       1000000000LL +
-                                   (static_cast<int64_t>(current_time.nanosec) -
-                                    static_cast<int64_t>(it->second.nanosec));
+            int64_t time_diff_ns =
+                (static_cast<int64_t>(current_time.sec) - static_cast<int64_t>(it->second.sec)) * 1000000000LL +
+                (static_cast<int64_t>(current_time.nanosec) - static_cast<int64_t>(it->second.nanosec));
             double time_diff = static_cast<double>(time_diff_ns) / 1e9;
             double min_interval = 1.0 / sampling_rate_;
             if (time_diff < min_interval) {
@@ -311,8 +298,7 @@ void ImuBase::DataReadingThread() {
     // 计算读取间隔（如果采样率 > 0）
     std::chrono::milliseconds read_interval(10);  // 默认 100Hz
     if (sampling_rate_ > 0.0) {
-        read_interval = std::chrono::milliseconds(
-            static_cast<int>(1000.0 / sampling_rate_));
+        read_interval = std::chrono::milliseconds(static_cast<int>(1000.0 / sampling_rate_));
     }
 
     while (!stop_thread_) {

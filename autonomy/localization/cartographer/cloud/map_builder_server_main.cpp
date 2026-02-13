@@ -36,8 +36,7 @@ DEFINE_string(configuration_basename, "",
 namespace cartographer {
 namespace cloud {
 
-void Run(const std::string& configuration_directory,
-         const std::string& configuration_basename) {
+void Run(const std::string& configuration_directory, const std::string& configuration_basename) {
 #if USE_PROMETHEUS
     metrics::prometheus::FamilyFactory registry;
     ::cartographer::metrics::RegisterAllMetrics(&registry);
@@ -48,13 +47,10 @@ void Run(const std::string& configuration_directory,
 #endif
 
     proto::MapBuilderServerOptions map_builder_server_options =
-        LoadMapBuilderServerOptions(configuration_directory,
-                                    configuration_basename);
-    auto map_builder = mapping::CreateMapBuilder(
-        map_builder_server_options.map_builder_options());
+        LoadMapBuilderServerOptions(configuration_directory, configuration_basename);
+    auto map_builder = mapping::CreateMapBuilder(map_builder_server_options.map_builder_options());
     std::unique_ptr<MapBuilderServerInterface> map_builder_server =
-        CreateMapBuilderServer(map_builder_server_options,
-                               std::move(map_builder));
+        CreateMapBuilderServer(map_builder_server_options, std::move(map_builder));
     map_builder_server->Start();
     map_builder_server->WaitForShutdown();
 }
@@ -69,11 +65,9 @@ int main(int argc, char** argv) {
         "\n\n"
         "This program offers a MapBuilder service via a gRPC interface.\n");
     google::ParseCommandLineFlags(&argc, &argv, true);
-    if (FLAGS_configuration_directory.empty() ||
-        FLAGS_configuration_basename.empty()) {
+    if (FLAGS_configuration_directory.empty() || FLAGS_configuration_basename.empty()) {
         google::ShowUsageWithFlagsRestrict(argv[0], "map_builder_server");
         return EXIT_FAILURE;
     }
-    cartographer::cloud::Run(FLAGS_configuration_directory,
-                             FLAGS_configuration_basename);
+    cartographer::cloud::Run(FLAGS_configuration_directory, FLAGS_configuration_basename);
 }

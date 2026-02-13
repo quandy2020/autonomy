@@ -51,20 +51,16 @@ protected:
     ~TestParser() {}
 
     bool traverse_tree(::urdf::LinkConstSharedPtr link, int level = 0) {
-        fprintf(stderr, "Traversing tree at level %d, link size %lu\n", level,
-                link->child_links.size());
+        fprintf(stderr, "Traversing tree at level %d, link size %lu\n", level, link->child_links.size());
         level += 2;
         bool retval = true;
-        for (auto child = link->child_links.begin();
-             child != link->child_links.end(); child++) {
+        for (auto child = link->child_links.begin(); child != link->child_links.end(); child++) {
             ++num_links;
             if (*child && (*child)->parent_joint) {
                 ++num_joints;
                 // check rpy
                 double roll, pitch, yaw;
-                (*child)
-                    ->parent_joint->parent_to_joint_origin_transform.rotation
-                    .getRPY(roll, pitch, yaw);
+                (*child)->parent_joint->parent_to_joint_origin_transform.rotation.getRPY(roll, pitch, yaw);
 
                 if (std::isnan(roll) || std::isnan(pitch) || std::isnan(yaw)) {
                     fprintf(stderr, "getRPY() returned nan!\n");
@@ -73,8 +69,7 @@ protected:
                 // recurse down the tree
                 retval &= this->traverse_tree(*child, level);
             } else {
-                fprintf(stderr, "root link: %s has a null child!\n",
-                        link->name.c_str());
+                fprintf(stderr, "root link: %s has a null child!\n", link->name.c_str());
                 return false;
             }
         }
@@ -93,8 +88,7 @@ TEST_F(TestParser, test) {
     std::string file = std::string(g_argv[2]);
     bool expect_success = (file.substr(0, 5) != "fail_");
     autonomy::transform::Model robot;
-    fprintf(stderr, "Parsing file %s, expecting %d\n", (folder + file).c_str(),
-            expect_success);
+    fprintf(stderr, "Parsing file %s, expecting %d\n", (folder + file).c_str(), expect_success);
     if (!expect_success) {
         ASSERT_FALSE(robot.initFile(folder + file));
         return;

@@ -23,8 +23,7 @@
 namespace cartographer {
 namespace io {
 namespace {
-mapping::proto::SerializationHeader ReadHeaderOrDie(
-    ProtoStreamReaderInterface* const reader) {
+mapping::proto::SerializationHeader ReadHeaderOrDie(ProtoStreamReaderInterface* const reader) {
     mapping::proto::SerializationHeader header;
     CHECK(reader->ReadProto(&header)) << "Failed to read SerializationHeader.";
     return header;
@@ -37,25 +36,20 @@ bool IsVersionSupported(const mapping::proto::SerializationHeader& header) {
 
 }  // namespace
 
-mapping::proto::PoseGraph DeserializePoseGraphFromFile(
-    const std::string& file_name) {
+mapping::proto::PoseGraph DeserializePoseGraphFromFile(const std::string& file_name) {
     ProtoStreamReader reader(file_name);
     ProtoStreamDeserializer deserializer(&reader);
     return deserializer.pose_graph();
 }
 
-ProtoStreamDeserializer::ProtoStreamDeserializer(
-    ProtoStreamReaderInterface* const reader)
+ProtoStreamDeserializer::ProtoStreamDeserializer(ProtoStreamReaderInterface* const reader)
     : reader_(reader), header_(ReadHeaderOrDie(reader)) {
-    CHECK(IsVersionSupported(header_)) << "Unsupported serialization format \""
-                                       << header_.format_version() << "\"";
+    CHECK(IsVersionSupported(header_)) << "Unsupported serialization format \"" << header_.format_version() << "\"";
 
-    CHECK(ReadNextSerializedData(&pose_graph_))
-        << "Serialized stream misses PoseGraph.";
-    CHECK(pose_graph_.has_pose_graph())
-        << "Serialized stream order corrupt. Expecting `PoseGraph` after "
-           "`SerializationHeader`, but got field tag "
-        << pose_graph_.data_case();
+    CHECK(ReadNextSerializedData(&pose_graph_)) << "Serialized stream misses PoseGraph.";
+    CHECK(pose_graph_.has_pose_graph()) << "Serialized stream order corrupt. Expecting `PoseGraph` after "
+                                           "`SerializationHeader`, but got field tag "
+                                        << pose_graph_.data_case();
 
     CHECK(ReadNextSerializedData(&all_trajectory_builder_options_))
         << "Serialized stream misses `AllTrajectoryBuilderOptions`.";
@@ -66,12 +60,10 @@ ProtoStreamDeserializer::ProtoStreamDeserializer(
         << all_trajectory_builder_options_.data_case();
 
     CHECK_EQ(pose_graph_.pose_graph().trajectory_size(),
-             all_trajectory_builder_options_.all_trajectory_builder_options()
-                 .options_with_sensor_ids_size());
+             all_trajectory_builder_options_.all_trajectory_builder_options().options_with_sensor_ids_size());
 }
 
-bool ProtoStreamDeserializer::ReadNextSerializedData(
-    mapping::proto::SerializedData* data) {
+bool ProtoStreamDeserializer::ReadNextSerializedData(mapping::proto::SerializedData* data) {
     return reader_->ReadProto(data);
 }
 

@@ -12,60 +12,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Include autolink_export_plugin function
+include("${PROJECT_SOURCE_DIR}/autolink/cmake/autolink_export_plugin.cmake")
 
-################################ layers plugins #################################
-# voxel_layer
-add_library(${PROJECT_NAME}_map_layers_voxel_layer SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/voxel_layer.cpp"
+# ============================================================================
+# Helper Function: Create and Export Map Plugin
+# ============================================================================
+# Creates a map plugin library, links dependencies, exports it, and adds to plugin_libs
+function(_create_map_plugin plugin_name source_file index_name install_subdir)
+  set(lib_name "${PROJECT_NAME}_map_${plugin_name}")
+  
+  add_library(${lib_name} SHARED ${source_file})
+  
+  target_link_libraries(${lib_name} PUBLIC
+    ${PROJECT_NAME}
+    autolink
+  )
+  
+  # Get the directory where this file is located
+  get_filename_component(PLUGINS_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" DIRECTORY)
+  
+  autolink_export_plugin(
+    LIBRARY ${lib_name}
+    DESCRIPTION_FILE ${PLUGINS_CMAKE_DIR}/map_plugins.xml
+    INDEX_NAME ${index_name}
+    INSTALL_SUBDIR ${install_subdir}
+  )
+  
+  list(APPEND plugin_libs ${lib_name})
+  set(plugin_libs ${plugin_libs} PARENT_SCOPE)
+endfunction()
+
+# ============================================================================
+# Costmap Layer Plugins
+# ============================================================================
+
+set(COSTMAP_LAYERS
+  layers_voxel_layer
+  layers_static_layer
+  layers_obstacle_layer
+  layers_inflation_layer
+  layers_denoise_layer
+  layers_range_sensor_layer
 )
-list(APPEND plugin_libs ${PROJECT_NAME}_map_layers_voxel_layer)
 
-# static_layer
-add_library(${PROJECT_NAME}_map_layers_static_layer SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/static_layer.cpp"
+foreach(layer ${COSTMAP_LAYERS})
+  # Extract the layer name (e.g., "voxel_layer" from "layers_voxel_layer")
+  string(REPLACE "layers_" "" layer_name ${layer})
+  
+  _create_map_plugin(
+    "${layer}"
+    "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/${layer_name}.cpp"
+    "${layer_name}"
+    "map/costmap_2d/layers"
+  )
+endforeach()
+
+# ============================================================================
+# Costmap Filter Plugins
+# ============================================================================
+
+set(COSTMAP_FILTERS
+  filters_binary_filter
+  filters_speed_filter
+  filters_keepout_filter
 )
-list(APPEND plugin_libs ${PROJECT_NAME}_map_layers_static_layer)
 
-# obstacle_layer
-add_library(${PROJECT_NAME}_map_layers_obstacle_layer SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/obstacle_layer.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_layers_obstacle_layer)
-
-# inflation_layer
-add_library(${PROJECT_NAME}_map_layers_inflation_layer SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/inflation_layer.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_layers_inflation_layer)
-
-# denoise_layer
-add_library(${PROJECT_NAME}_map_layers_denoise_layer SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/denoise_layer.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_layers_denoise_layer)
-
-# range_sensor_layer
-add_library(${PROJECT_NAME}_map_layers_range_sensor_layer SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/range_sensor_layer.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_layers_range_sensor_layer)
-
-
-################################ filters plugins #################################
-# binary_filter
-add_library(${PROJECT_NAME}_map_filters_binary_filter SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/filters/binary_filter.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_filters_binary_filter)
-
-# speed_filter
-add_library(${PROJECT_NAME}_map_filters_speed_filter SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/filters/speed_filter.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_filters_speed_filter)
-
-# keepout_filter
-add_library(${PROJECT_NAME}_map_filters_keepout_filter SHARED 
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/filters/keepout_filter.cpp"
-)
-list(APPEND plugin_libs ${PROJECT_NAME}_map_filters_keepout_filter)
+foreach(filter ${COSTMAP_FILTERS})
+  # Extract the filter name (e.g., "binary_filter" from "filters_binary_filter")
+  string(REPLACE "filters_" "" filter_name ${filter})
+  
+  _create_map_plugin(
+    "${filter}"
+    "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/filters/${filter_name}.cpp"
+    "${filter_name}"
+    "map/costmap_2d/filters"
+  )
+endforeach()

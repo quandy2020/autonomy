@@ -59,9 +59,8 @@ public:
      * @param tf TF buffer
      * @param costmap_ros Costmap2DROS object of environment
      */
-    void Configure(std::string name, std::shared_ptr<transform::Buffer> tf,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                       costmap_wrapper) override;
+    void Configure(const proto::ControllerOptions& options, std::string name, std::shared_ptr<transform::Buffer> tf,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
 
     /**
      * @brief Cleanup controller state machine.
@@ -86,11 +85,10 @@ public:
      * in computing commands
      * @return          Best command
      */
-    uint32 ComputeVelocityCommands(
-        const commsgs::geometry_msgs::PoseStamped& pose,
-        const commsgs::geometry_msgs::TwistStamped& velocity,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel,
-        common::GoalChecker* goal_checker, std::string& message) override;
+    uint32 ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
+                                   const commsgs::geometry_msgs::TwistStamped& velocity,
+                                   commsgs::geometry_msgs::TwistStamped& cmd_vel, common::GoalChecker* goal_checker,
+                                   std::string& message) override;
 
     /**
      * @brief Check if the goal pose has been achieved by the local planner
@@ -115,8 +113,7 @@ public:
      * @param percentage setting speed limit in percentage if true
      * or in absolute values in false case
      */
-    void SetSpeedLimit(const double& speed_limit,
-                       const bool& percentage) override;
+    void SetSpeedLimit(const double& speed_limit, const bool& percentage) override;
 
 protected:
     /**
@@ -129,11 +126,10 @@ protected:
      * @param cmd_vel Initial command velocity to validate in simulation
      * @return true if target pose is valid, false otherwise
      */
-    bool ValidateTargetPose(
-        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-        double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
-        commsgs::geometry_msgs::TransformStamped& costmap_transform,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel);
+    bool ValidateTargetPose(commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+                            double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
+                            commsgs::geometry_msgs::TransformStamped& costmap_transform,
+                            commsgs::geometry_msgs::TwistStamped& cmd_vel);
 
     /**
      * @brief Simulate trajectory calculating in every step the new velocity
@@ -146,11 +142,10 @@ protected:
      * @param backward Flag to indicate if the robot is moving backward
      * @return true if the trajectory is collision free, false otherwise
      */
-    bool SimulateTrajectory(
-        const commsgs::geometry_msgs::PoseStamped& motion_target,
-        const commsgs::geometry_msgs::TransformStamped& costmap_transform,
-        commsgs::planning_msgs::Path& trajectory,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward);
+    bool SimulateTrajectory(const commsgs::geometry_msgs::PoseStamped& motion_target,
+                            const commsgs::geometry_msgs::TransformStamped& costmap_transform,
+                            commsgs::planning_msgs::Path& trajectory, commsgs::geometry_msgs::TwistStamped& cmd_vel,
+                            bool backward);
 
     /**
      * @brief Rotate the robot to face the motion target with maximum angular
@@ -175,24 +170,20 @@ protected:
      * @param poses Poses to compute distances with
      * @param distances Computed distances
      */
-    void ComputeDistanceAlongPath(
-        const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
-        std::vector<double>& distances);
+    void ComputeDistanceAlongPath(const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
+                                  std::vector<double>& distances);
 
     /**
      * @brief Control law requires proper orientations, not all planners provide
      * them
      * @param path Path to add orientations into, if required
      */
-    void ValidateOrientations(
-        std::vector<commsgs::geometry_msgs::PoseStamped>& path);
+    void ValidateOrientations(std::vector<commsgs::geometry_msgs::PoseStamped>& path);
 
     std::shared_ptr<transform::Buffer> tf_buffer_;
     std::string plugin_name_;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-    std::unique_ptr<
-        map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
-        collision_checker_;
+    std::unique_ptr<map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>> collision_checker_;
 
     double goal_dist_tolerance_;
     bool goal_reached_;
@@ -201,14 +192,10 @@ protected:
     // rotation
     bool do_initial_rotation_;
 
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-        transformed_plan_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-        local_plan_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>>
-        motion_target_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::Marker>>
-        slowdown_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> transformed_plan_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> local_plan_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>> motion_target_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::Marker>> slowdown_pub_;
     std::unique_ptr<PathHandler> path_handler_;
     std::unique_ptr<SmoothControlLaw> control_law_;
 };

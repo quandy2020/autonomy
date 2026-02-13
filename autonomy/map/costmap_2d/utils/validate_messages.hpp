@@ -141,8 +141,7 @@ bool validateMsg(const commsgs::geometry_msgs::Quaternion& msg) {
         return false;
     }
 
-    if (abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w -
-            1.0) >= epsilon) {
+    if (abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w - 1.0) >= epsilon) {
         return false;
     }
 

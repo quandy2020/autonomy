@@ -92,8 +92,7 @@ public:
      * @param driver_name 驱动实例名称
      * @return 驱动实例指针，失败返回 nullptr
      */
-    LidarBase::SharedPtr CreateDriver(const std::string& driver_class_name,
-                                      const std::string& driver_name);
+    LidarBase::SharedPtr CreateDriver(const std::string& driver_class_name, const std::string& driver_name);
 
     /**
      * @brief 注册驱动实例
@@ -101,8 +100,7 @@ public:
      * @param driver 驱动实例指针
      * @return true 成功，false 失败
      */
-    bool RegisterDriver(const std::string& driver_name,
-                        LidarBase::SharedPtr driver);
+    bool RegisterDriver(const std::string& driver_name, LidarBase::SharedPtr driver);
 
     /**
      * @brief 取消注册驱动实例
@@ -161,8 +159,7 @@ private:
      * @param driver_class_name 驱动类名
      * @return 驱动实例指针
      */
-    LidarBase::SharedPtr CreateDriverFromPlugin(
-        const std::string& library_path, const std::string& driver_class_name);
+    LidarBase::SharedPtr CreateDriverFromPlugin(const std::string& library_path, const std::string& driver_class_name);
 
     // 插件库映射表（library_path -> PluginLibrary）
     std::map<std::string, PluginLibrary> plugin_libraries_;

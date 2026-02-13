@@ -164,3 +164,54 @@ macro(google_enable_testing)
   enable_testing()
   find_package(GMock REQUIRED)
 endmacro()
+
+# Setup code formatting before build
+# Usage: google_format_code(TARGET_NAME <target> ENABLED <bool> PROJECT_SOURCE_DIR <dir>)
+function(google_format_code)
+  cmake_parse_arguments(ARG
+    ""
+    "TARGET_NAME;ENABLED;PROJECT_SOURCE_DIR"
+    ""
+    ${ARGN}
+  )
+
+  if(NOT ARG_TARGET_NAME)
+    message(FATAL_ERROR "google_format_code: TARGET_NAME is required")
+  endif()
+
+  if(NOT ARG_PROJECT_SOURCE_DIR)
+    message(FATAL_ERROR "google_format_code: PROJECT_SOURCE_DIR is required")
+  endif()
+
+  # Check if formatting is enabled
+  if(ARG_ENABLED)
+    find_program(PYTHON3_EXECUTABLE python3)
+    if(PYTHON3_EXECUTABLE)
+      set(FORMAT_SCRIPT "${ARG_PROJECT_SOURCE_DIR}/scripts/format.py")
+      if(EXISTS ${FORMAT_SCRIPT})
+        # Format target that doesn't fail the build if formatting fails
+        add_custom_target(format_code_before_build
+          COMMAND ${PYTHON3_EXECUTABLE} ${FORMAT_SCRIPT} || true
+          WORKING_DIRECTORY ${ARG_PROJECT_SOURCE_DIR}
+          COMMENT "Formatting code before build..."
+          VERBATIM
+        )
+        # Make format target available for manual execution
+        add_custom_target(format_code
+          COMMAND ${PYTHON3_EXECUTABLE} ${FORMAT_SCRIPT}
+          WORKING_DIRECTORY ${ARG_PROJECT_SOURCE_DIR}
+          COMMENT "Formatting code..."
+          VERBATIM
+        )
+        # Add dependency on format target if the target exists
+        if(TARGET ${ARG_TARGET_NAME} AND TARGET format_code_before_build)
+          add_dependencies(${ARG_TARGET_NAME} format_code_before_build)
+        endif()
+      else()
+        message(WARNING "Format script not found: ${FORMAT_SCRIPT}")
+      endif()
+    else()
+      message(WARNING "python3 not found, skipping auto-format")
+    endif()
+  endif()
+endfunction()

@@ -44,8 +44,7 @@ public:
         float x1, y1, x2, y2;
         ComputeInterpolationDataPoints(x, y, &x1, &y1, &x2, &y2);
 
-        const Eigen::Array2i index1 =
-            tsdf_.limits().GetCellIndex(Eigen::Vector2f(x1, y1));
+        const Eigen::Array2i index1 = tsdf_.limits().GetCellIndex(Eigen::Vector2f(x1, y1));
 
         const float w11 = tsdf_.GetWeight(index1);
         const float w12 = tsdf_.GetWeight(index1 + Eigen::Array2i(-1, 0));
@@ -56,12 +55,9 @@ public:
         }
 
         const float q11 = tsdf_.GetCorrespondenceCost(index1);
-        const float q12 =
-            tsdf_.GetCorrespondenceCost(index1 + Eigen::Array2i(-1, 0));
-        const float q21 =
-            tsdf_.GetCorrespondenceCost(index1 + Eigen::Array2i(0, -1));
-        const float q22 =
-            tsdf_.GetCorrespondenceCost(index1 + Eigen::Array2i(-1, -1));
+        const float q12 = tsdf_.GetCorrespondenceCost(index1 + Eigen::Array2i(-1, 0));
+        const float q21 = tsdf_.GetCorrespondenceCost(index1 + Eigen::Array2i(0, -1));
+        const float q22 = tsdf_.GetCorrespondenceCost(index1 + Eigen::Array2i(-1, -1));
 
         return InterpolateBilinear(x, y, x1, y1, x2, y2, q11, q12, q21, q22);
     }
@@ -72,8 +68,7 @@ public:
         float x1, y1, x2, y2;
         ComputeInterpolationDataPoints(x, y, &x1, &y1, &x2, &y2);
 
-        const Eigen::Array2i index1 =
-            tsdf_.limits().GetCellIndex(Eigen::Vector2f(x1, y1));
+        const Eigen::Array2i index1 = tsdf_.limits().GetCellIndex(Eigen::Vector2f(x1, y1));
         const float q11 = tsdf_.GetWeight(index1);
         const float q12 = tsdf_.GetWeight(index1 + Eigen::Array2i(-1, 0));
         const float q21 = tsdf_.GetWeight(index1 + Eigen::Array2i(0, -1));
@@ -84,8 +79,7 @@ public:
 
 private:
     template <typename T>
-    void ComputeInterpolationDataPoints(const T& x, const T& y, float* x1,
-                                        float* y1, float* x2, float* y2) const {
+    void ComputeInterpolationDataPoints(const T& x, const T& y, float* x1, float* y1, float* x2, float* y2) const {
         const Eigen::Vector2f lower = CenterOfLowerPixel(x, y);
         *x1 = lower.x();
         *y1 = lower.y();
@@ -94,9 +88,8 @@ private:
     }
 
     template <typename T>
-    T InterpolateBilinear(const T& x, const T& y, float x1, float y1, float x2,
-                          float y2, float q11, float q12, float q21,
-                          float q22) const {
+    T InterpolateBilinear(const T& x, const T& y, float x1, float y1, float x2, float y2, float q11, float q12,
+                          float q21, float q22) const {
         const T normalized_x = (x - T(x1)) / T(x2 - x1);
         const T normalized_y = (y - T(y1)) / T(y2 - y1);
         const T q1 = T(q12 - q11) * normalized_y + T(q11);
@@ -109,8 +102,7 @@ private:
     // the corresponding center is at most the given coordinate.
     Eigen::Vector2f CenterOfLowerPixel(double x, double y) const {
         // Center of the cell containing (x, y).
-        Eigen::Vector2f center = tsdf_.limits().GetCellCenter(
-            tsdf_.limits().GetCellIndex(Eigen::Vector2f(x, y)));
+        Eigen::Vector2f center = tsdf_.limits().GetCellCenter(tsdf_.limits().GetCellIndex(Eigen::Vector2f(x, y)));
         // Move to the next lower pixel center.
         if (center.x() > x) {
             center.x() -= tsdf_.limits().resolution();

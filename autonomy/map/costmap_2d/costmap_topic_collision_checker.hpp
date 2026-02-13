@@ -58,8 +58,7 @@ public:
      * multiple poses at once, data should be fetched in the first check but
      * fetching can be skipped in consequent checks for speedup
      */
-    double scorePose(const commsgs::geometry_msgs::Pose2D& pose,
-                     bool fetch_costmap_and_footprint = true);
+    double scorePose(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_costmap_and_footprint = true);
 
     /**
      * @brief Returns if a pose is collision free
@@ -69,8 +68,7 @@ public:
      * multiple poses at once, data should be fetched in the first check but
      * fetching can be skipped in consequent checks for speedup
      */
-    bool isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose,
-                         bool fetch_costmap_and_footprint = true);
+    bool isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_costmap_and_footprint = true);
 
 protected:
     /**
@@ -81,8 +79,7 @@ protected:
      * multiple poses at once, footprint should be fetched in the first check
      * but fetching can be skipped in consequent checks for speedup
      */
-    Footprint getFootprint(const commsgs::geometry_msgs::Pose2D& pose,
-                           bool fetch_latest_footprint = true);
+    Footprint getFootprint(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint = true);
 
     // Name used for logging
     std::string name_;

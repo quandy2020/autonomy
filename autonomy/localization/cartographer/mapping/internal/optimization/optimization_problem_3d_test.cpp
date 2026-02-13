@@ -34,8 +34,7 @@ namespace {
 class OptimizationProblem3DTest : public ::testing::Test
 {
 protected:
-    OptimizationProblem3DTest()
-        : optimization_problem_(CreateOptions()), rng_(45387) {}
+    OptimizationProblem3DTest() : optimization_problem_(CreateOptions()), rng_(45387) {}
 
     optimization::proto::OptimizationProblemOptions CreateOptions() {
         auto parameter_dictionary = common::MakeDictionary(R"text(
@@ -61,61 +60,47 @@ protected:
             num_threads = 4,
           },
         })text");
-        return optimization::CreateOptimizationProblemOptions(
-            parameter_dictionary.get());
+        return optimization::CreateOptimizationProblemOptions(parameter_dictionary.get());
     }
 
-    transform::Rigid3d RandomTransform(double translation_size,
-                                       double rotation_size) {
-        std::uniform_real_distribution<double> translation_distribution(
-            -translation_size, translation_size);
+    transform::Rigid3d RandomTransform(double translation_size, double rotation_size) {
+        std::uniform_real_distribution<double> translation_distribution(-translation_size, translation_size);
         const double x = translation_distribution(rng_);
         const double y = translation_distribution(rng_);
         const double z = translation_distribution(rng_);
-        std::uniform_real_distribution<double> rotation_distribution(
-            -rotation_size, rotation_size);
+        std::uniform_real_distribution<double> rotation_distribution(-rotation_size, rotation_size);
         const double rx = rotation_distribution(rng_);
         const double ry = rotation_distribution(rng_);
         const double rz = rotation_distribution(rng_);
-        return transform::Rigid3d(
-            Eigen::Vector3d(x, y, z),
-            transform::AngleAxisVectorToRotationQuaternion(
-                Eigen::Vector3d(rx, ry, rz)));
+        return transform::Rigid3d(Eigen::Vector3d(x, y, z),
+                                  transform::AngleAxisVectorToRotationQuaternion(Eigen::Vector3d(rx, ry, rz)));
     }
 
-    transform::Rigid3d RandomYawOnlyTransform(double translation_size,
-                                              double rotation_size) {
-        std::uniform_real_distribution<double> translation_distribution(
-            -translation_size, translation_size);
+    transform::Rigid3d RandomYawOnlyTransform(double translation_size, double rotation_size) {
+        std::uniform_real_distribution<double> translation_distribution(-translation_size, translation_size);
         const double x = translation_distribution(rng_);
         const double y = translation_distribution(rng_);
         const double z = translation_distribution(rng_);
-        std::uniform_real_distribution<double> rotation_distribution(
-            -rotation_size, rotation_size);
+        std::uniform_real_distribution<double> rotation_distribution(-rotation_size, rotation_size);
         const double rz = rotation_distribution(rng_);
-        return transform::Rigid3d(
-            Eigen::Vector3d(x, y, z),
-            transform::AngleAxisVectorToRotationQuaternion(
-                Eigen::Vector3d(0., 0., rz)));
+        return transform::Rigid3d(Eigen::Vector3d(x, y, z),
+                                  transform::AngleAxisVectorToRotationQuaternion(Eigen::Vector3d(0., 0., rz)));
     }
 
     OptimizationProblem3D optimization_problem_;
     std::mt19937 rng_;
 };
 
-transform::Rigid3d AddNoise(const transform::Rigid3d& transform,
-                            const transform::Rigid3d& noise) {
-    const Eigen::Quaterniond noisy_rotation(noise.rotation() *
-                                            transform.rotation());
-    return transform::Rigid3d(transform.translation() + noise.translation(),
-                              noisy_rotation);
+transform::Rigid3d AddNoise(const transform::Rigid3d& transform, const transform::Rigid3d& noise) {
+    const Eigen::Quaterniond noisy_rotation(noise.rotation() * transform.rotation());
+    return transform::Rigid3d(transform.translation() + noise.translation(), noisy_rotation);
 }
 
 TEST_F(OptimizationProblem3DTest, ReducesNoise) {
     constexpr int kNumNodes = 100;
     const transform::Rigid3d kSubmap0Transform = transform::Rigid3d::Identity();
-    const transform::Rigid3d kSubmap2Transform = transform::Rigid3d::Rotation(
-        Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ()));
+    const transform::Rigid3d kSubmap2Transform =
+        transform::Rigid3d::Rotation(Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ()));
     const int kTrajectoryId = 0;
 
     struct NoisyNode {
@@ -124,19 +109,15 @@ TEST_F(OptimizationProblem3DTest, ReducesNoise) {
     };
     std::vector<NoisyNode> test_data;
     for (int j = 0; j != kNumNodes; ++j) {
-        test_data.push_back(NoisyNode{RandomTransform(10., 3.),
-                                      RandomYawOnlyTransform(0.2, 0.3)});
+        test_data.push_back(NoisyNode{RandomTransform(10., 3.), RandomYawOnlyTransform(0.2, 0.3)});
     }
 
     common::Time now = common::FromUniversal(0);
     for (const NoisyNode& node : test_data) {
-        const transform::Rigid3d pose =
-            AddNoise(node.ground_truth_pose, node.noise);
+        const transform::Rigid3d pose = AddNoise(node.ground_truth_pose, node.noise);
         optimization_problem_.AddImuData(
-            kTrajectoryId, sensor::ImuData{now, Eigen::Vector3d::UnitZ() * 9.81,
-                                           Eigen::Vector3d::Zero()});
-        optimization_problem_.AddTrajectoryNode(kTrajectoryId,
-                                                NodeSpec3D{now, pose, pose});
+            kTrajectoryId, sensor::ImuData{now, Eigen::Vector3d::UnitZ() * 9.81, Eigen::Vector3d::Zero()});
+        optimization_problem_.AddTrajectoryNode(kTrajectoryId, NodeSpec3D{now, pose, pose});
         now += common::FromSeconds(0.1);
     }
 
@@ -144,57 +125,47 @@ TEST_F(OptimizationProblem3DTest, ReducesNoise) {
     for (int j = 0; j != kNumNodes; ++j) {
         constraints.push_back(OptimizationProblem3D::Constraint{
             SubmapId{kTrajectoryId, 0}, NodeId{kTrajectoryId, j},
-            OptimizationProblem3D::Constraint::Pose{
-                AddNoise(test_data[j].ground_truth_pose, test_data[j].noise),
-                1., 1.}});
+            OptimizationProblem3D::Constraint::Pose{AddNoise(test_data[j].ground_truth_pose, test_data[j].noise), 1.,
+                                                    1.}});
         // We add an additional independent, but equally noisy observation.
         constraints.push_back(OptimizationProblem3D::Constraint{
             SubmapId{kTrajectoryId, 1}, NodeId{kTrajectoryId, j},
             OptimizationProblem3D::Constraint::Pose{
-                AddNoise(test_data[j].ground_truth_pose,
-                         RandomYawOnlyTransform(0.2, 0.3)),
-                1., 1.}});
+                AddNoise(test_data[j].ground_truth_pose, RandomYawOnlyTransform(0.2, 0.3)), 1., 1.}});
         // We add very noisy data with a low weight to verify it is mostly
         // ignored.
         constraints.push_back(OptimizationProblem3D::Constraint{
             SubmapId{kTrajectoryId, 2}, NodeId{kTrajectoryId, j},
             OptimizationProblem3D::Constraint::Pose{
-                kSubmap2Transform.inverse() * test_data[j].ground_truth_pose *
-                    RandomTransform(1e3, 3.),
-                1e-9, 1e-9}});
+                kSubmap2Transform.inverse() * test_data[j].ground_truth_pose * RandomTransform(1e3, 3.), 1e-9, 1e-9}});
     }
 
     double translation_error_before = 0.;
     double rotation_error_before = 0.;
     const auto& node_data = optimization_problem_.node_data();
     for (int j = 0; j != kNumNodes; ++j) {
-        translation_error_before +=
-            (test_data[j].ground_truth_pose.translation() -
-             node_data.at(NodeId{kTrajectoryId, j}).global_pose.translation())
-                .norm();
-        rotation_error_before += transform::GetAngle(
-            test_data[j].ground_truth_pose.inverse() *
-            node_data.at(NodeId{kTrajectoryId, j}).global_pose);
+        translation_error_before += (test_data[j].ground_truth_pose.translation() -
+                                     node_data.at(NodeId{kTrajectoryId, j}).global_pose.translation())
+                                        .norm();
+        rotation_error_before += transform::GetAngle(test_data[j].ground_truth_pose.inverse() *
+                                                     node_data.at(NodeId{kTrajectoryId, j}).global_pose);
     }
 
     optimization_problem_.AddSubmap(kTrajectoryId, kSubmap0Transform);
     optimization_problem_.AddSubmap(kTrajectoryId, kSubmap0Transform);
     optimization_problem_.AddSubmap(kTrajectoryId, kSubmap2Transform);
-    const std::map<int, PoseGraphInterface::TrajectoryState>
-        kTrajectoriesState = {
-            {kTrajectoryId, PoseGraphInterface::TrajectoryState::ACTIVE}};
+    const std::map<int, PoseGraphInterface::TrajectoryState> kTrajectoriesState = {
+        {kTrajectoryId, PoseGraphInterface::TrajectoryState::ACTIVE}};
     optimization_problem_.Solve(constraints, kTrajectoriesState, {});
 
     double translation_error_after = 0.;
     double rotation_error_after = 0.;
     for (int j = 0; j != kNumNodes; ++j) {
-        translation_error_after +=
-            (test_data[j].ground_truth_pose.translation() -
-             node_data.at(NodeId{kTrajectoryId, j}).global_pose.translation())
-                .norm();
-        rotation_error_after += transform::GetAngle(
-            test_data[j].ground_truth_pose.inverse() *
-            node_data.at(NodeId{kTrajectoryId, j}).global_pose);
+        translation_error_after += (test_data[j].ground_truth_pose.translation() -
+                                    node_data.at(NodeId{kTrajectoryId, j}).global_pose.translation())
+                                       .norm();
+        rotation_error_after += transform::GetAngle(test_data[j].ground_truth_pose.inverse() *
+                                                    node_data.at(NodeId{kTrajectoryId, j}).global_pose);
     }
 
     EXPECT_GT(0.8 * translation_error_before, translation_error_after);

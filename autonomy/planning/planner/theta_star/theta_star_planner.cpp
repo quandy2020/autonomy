@@ -32,9 +32,8 @@ namespace planning {
 namespace planner {
 namespace theta_star {
 
-bool ThetaStarPlanner::Configure(
-    const proto::PlannerOptions& options, const std::string& name,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+bool ThetaStarPlanner::Configure(const proto::PlannerOptions& options, const std::string& name,
+                                 std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     planner_ = std::make_unique<ThetaStar>();
     name_ = name;
     costmap_ = costmap_wrapper;
@@ -50,23 +49,17 @@ bool ThetaStarPlanner::Configure(
     planner_->how_many_corners_ = options_.how_many_corners();
     if (planner_->how_many_corners_ != 8 && planner_->how_many_corners_ != 4) {
         planner_->how_many_corners_ = 8;
-        AWARN
-            << "Your value for how_many_corners was overridden, and is now set "
-               "to 8";
+        AWARN << "Your value for how_many_corners was overridden, and is now set "
+                 "to 8";
     }
 
     // Set other parameters with default values if not set in proto
     planner_->allow_unknown_ = options_.allow_unknown();
-    planner_->w_euc_cost_ =
-        options_.w_euc_cost() > 0.0 ? options_.w_euc_cost() : 2.0;
-    planner_->w_traversal_cost_ =
-        options_.w_traversal_cost() > 0.0 ? options_.w_traversal_cost() : 1.0;
-    planner_->w_heuristic_cost_ =
-        planner_->w_euc_cost_ < 1.0 ? planner_->w_euc_cost_ : 1.0;
+    planner_->w_euc_cost_ = options_.w_euc_cost() > 0.0 ? options_.w_euc_cost() : 2.0;
+    planner_->w_traversal_cost_ = options_.w_traversal_cost() > 0.0 ? options_.w_traversal_cost() : 1.0;
+    planner_->w_heuristic_cost_ = planner_->w_euc_cost_ < 1.0 ? planner_->w_euc_cost_ : 1.0;
     planner_->terminal_checking_interval_ =
-        options_.terminal_checking_interval() > 0
-            ? options_.terminal_checking_interval()
-            : 5000;
+        options_.terminal_checking_interval() > 0 ? options_.terminal_checking_interval() : 5000;
 
     AINFO << "ThetaStarPlanner configured: " << name_;
     return true;
@@ -85,46 +78,37 @@ void ThetaStarPlanner::Deactivate() {
     AINFO << "Deactivating plugin " << name_ << " of type theta_star_planner";
 }
 
-uint32_t ThetaStarPlanner::CreatePlan(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
+uint32_t ThetaStarPlanner::CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
+                                      const commsgs::geometry_msgs::PoseStamped& goal,
+                                      commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
     if (!costmap_ || !planner_->costmap_) {
         AERROR << "Costmap is not set for planner " << name_;
-        return static_cast<uint32_t>(
-            proto::PlannerResultCode::PLANNER_NOT_INITIALIZED);
+        return static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_NOT_INITIALIZED);
     }
 
     auto* costmap_ptr = planner_->costmap_;
 
     // Set frame_id from start pose
-    plan.header.frame_id =
-        start.header.frame_id.empty() ? "map" : start.header.frame_id;
+    plan.header.frame_id = start.header.frame_id.empty() ? "map" : start.header.frame_id;
     plan.header.stamp = commsgs::builtin_interfaces::Time::Now();
 
     // Check if start and goal are the same
     unsigned int mx_start, my_start, mx_goal, my_goal;
-    if (!costmap_ptr->worldToMap(start.pose.position.x, start.pose.position.y,
-                                 mx_start, my_start)) {
-        AERROR << "Start coordinates (" << start.pose.position.x << ", "
-               << start.pose.position.y << ") are outside map bounds";
-        return static_cast<uint32_t>(
-            proto::PlannerResultCode::PLANNER_INVALID_START);
+    if (!costmap_ptr->worldToMap(start.pose.position.x, start.pose.position.y, mx_start, my_start)) {
+        AERROR << "Start coordinates (" << start.pose.position.x << ", " << start.pose.position.y
+               << ") are outside map bounds";
+        return static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_INVALID_START);
     }
-    if (!costmap_ptr->worldToMap(goal.pose.position.x, goal.pose.position.y,
-                                 mx_goal, my_goal)) {
-        AERROR << "Goal coordinates (" << goal.pose.position.x << ", "
-               << goal.pose.position.y << ") are outside map bounds";
-        return static_cast<uint32_t>(
-            proto::PlannerResultCode::PLANNER_INVALID_GOAL);
+    if (!costmap_ptr->worldToMap(goal.pose.position.x, goal.pose.position.y, mx_goal, my_goal)) {
+        AERROR << "Goal coordinates (" << goal.pose.position.x << ", " << goal.pose.position.y
+               << ") are outside map bounds";
+        return static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_INVALID_GOAL);
     }
 
-    if (costmap_ptr->getCost(mx_goal, my_goal) ==
-        map::costmap_2d::LETHAL_OBSTACLE) {
-        AERROR << "Goal coordinates (" << goal.pose.position.x << ", "
-               << goal.pose.position.y << ") are in lethal cost";
-        return static_cast<uint32_t>(
-            proto::PlannerResultCode::PLANNER_BLOCKED_GOAL);
+    if (costmap_ptr->getCost(mx_goal, my_goal) == map::costmap_2d::LETHAL_OBSTACLE) {
+        AERROR << "Goal coordinates (" << goal.pose.position.x << ", " << goal.pose.position.y
+               << ") are in lethal cost";
+        return static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_BLOCKED_GOAL);
     }
 
     if (mx_start == mx_goal && my_start == my_goal) {
@@ -141,9 +125,8 @@ uint32_t ThetaStarPlanner::CreatePlan(
     planner_->clearStart();
     planner_->setStartAndGoal(start, goal);
 
-    AINFO << "ThetaStar: Got start (" << planner_->src_.x << ", "
-          << planner_->src_.y << ") and goal (" << planner_->dst_.x << ", "
-          << planner_->dst_.y << ")";
+    AINFO << "ThetaStar: Got start (" << planner_->src_.x << ", " << planner_->src_.y << ") and goal ("
+          << planner_->dst_.x << ", " << planner_->dst_.y << ")";
 
     getPlan(plan, cancel_checker);
 
@@ -151,24 +134,20 @@ uint32_t ThetaStarPlanner::CreatePlan(
     size_t plan_size = plan.poses.size();
     if (plan_size == 0) {
         AERROR << "No path found";
-        return static_cast<uint32_t>(
-            proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
+        return static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
     }
 
     // Set goal orientation on last pose
     plan.poses.back().pose.orientation = goal.pose.orientation;
 
     auto stop_time = std::chrono::steady_clock::now();
-    auto dur = std::chrono::duration_cast<std::chrono::microseconds>(
-        stop_time - start_time);
-    AINFO << "ThetaStar plan generated in " << dur.count()
-          << " microseconds, nodes_opened: " << planner_->nodes_opened;
+    auto dur = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+    AINFO << "ThetaStar plan generated in " << dur.count() << " microseconds, nodes_opened: " << planner_->nodes_opened;
 
     return static_cast<uint32_t>(proto::PlannerResultCode::PLANNER_SUCCESS);
 }
 
-void ThetaStarPlanner::getPlan(commsgs::planning_msgs::Path& plan,
-                               std::function<bool()> cancel_checker) {
+void ThetaStarPlanner::getPlan(commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
     if (!planner_->costmap_) {
         plan.poses.clear();
         return;
@@ -189,8 +168,8 @@ void ThetaStarPlanner::getPlan(commsgs::planning_msgs::Path& plan,
     }
 }
 
-commsgs::planning_msgs::Path ThetaStarPlanner::linearInterpolation(
-    const std::vector<coordsW>& raw_path, const double& dist_bw_points) {
+commsgs::planning_msgs::Path ThetaStarPlanner::linearInterpolation(const std::vector<coordsW>& raw_path,
+                                                                   const double& dist_bw_points) {
     commsgs::planning_msgs::Path plan;
     commsgs::geometry_msgs::PoseStamped p1;
     p1.pose.position.z = 0.0;
@@ -234,6 +213,5 @@ commsgs::planning_msgs::Path ThetaStarPlanner::linearInterpolation(
 }  // namespace autonomy
 
 // Plugins
-CLASS_LOADER_REGISTER_CLASS(
-    autonomy::planning::planner::theta_star::ThetaStarPlanner,
-    autonomy::planning::common::GlobalPlanner)
+CLASS_LOADER_REGISTER_CLASS(autonomy::planning::planner::theta_star::ThetaStarPlanner,
+                            autonomy::planning::common::GlobalPlanner)

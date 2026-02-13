@@ -73,8 +73,7 @@ public:
      * @return true If the parameter is found
      * @return false If the parameter is not found
      */
-    bool GetString(const std::string& category, const std::string& key,
-                   std::string& str_value);
+    bool GetString(const std::string& category, const std::string& key, std::string& str_value);
 
     /**
      * @brief Get vector value
@@ -104,8 +103,7 @@ public:
      * @return false If the parameter is not found
      */
     template <typename T>
-    bool GetVector(const std::string& category, const std::string& key,
-                   std::vector<T>& vec_value) {
+    bool GetVector(const std::string& category, const std::string& key, std::vector<T>& vec_value) {
         try {
             vec_value = config_[category][key].as<std::vector<T> >();
         } catch (std::exception& e) {
@@ -115,11 +113,9 @@ public:
     }
 
     template <typename T>
-    bool Get2DArray(const std::string& category, const std::string& key,
-                    std::vector<std::vector<T> >& vec_value) {
+    bool Get2DArray(const std::string& category, const std::string& key, std::vector<std::vector<T> >& vec_value) {
         try {
-            vec_value =
-                config_[category][key].as<std::vector<std::vector<T> > >();
+            vec_value = config_[category][key].as<std::vector<std::vector<T> > >();
         } catch (std::exception& e) {
             return false;
         }
@@ -154,8 +150,7 @@ public:
      * @return false If the parameter is not found
      */
     template <typename T>
-    bool GetValue(const std::string& category, const std::string& key,
-                  T& value) {
+    bool GetValue(const std::string& category, const std::string& key, T& value) {
         try {
             value = config_[category][key].as<T>();
             return true;
@@ -173,8 +168,7 @@ public:
      * @return true If the parameter is found
      * @return false If the parameter is not found
      */
-    bool GetBoolean(const std::string& category, const std::string& key,
-                    bool& bool_value) {
+    bool GetBoolean(const std::string& category, const std::string& key, bool& bool_value) {
         return GetValue(category, key, bool_value);
     }
 

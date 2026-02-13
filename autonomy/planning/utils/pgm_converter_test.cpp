@@ -33,8 +33,8 @@ namespace utils {
 namespace {
 
 // Helper function to create a simple test costmap.
-std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
-    unsigned int width, unsigned int height, double resolution) {
+std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(unsigned int width, unsigned int height,
+                                                              double resolution) {
     commsgs::map_msgs::OccupancyGrid grid;
     grid.info.width = width;
     grid.info.height = height;
@@ -50,8 +50,7 @@ std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
     // Add some obstacles in the center
     for (unsigned int y = height / 3; y < 2 * height / 3; ++y) {
         for (unsigned int x = width / 3; x < 2 * width / 3; ++x) {
-            grid.data[y * width + x] =
-                map::costmap_2d::utils::OCC_GRID_OCCUPIED;
+            grid.data[y * width + x] = map::costmap_2d::utils::OCC_GRID_OCCUPIED;
         }
     }
 
@@ -59,8 +58,7 @@ std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
 }
 
 // Helper function to create a simple test path.
-commsgs::planning_msgs::Path CreateTestPath(double start_x, double start_y,
-                                            double goal_x, double goal_y,
+commsgs::planning_msgs::Path CreateTestPath(double start_x, double start_y, double goal_x, double goal_y,
                                             int num_points) {
     commsgs::planning_msgs::Path path;
     for (int i = 0; i < num_points; ++i) {
@@ -96,8 +94,7 @@ TEST(PgmConverterTest, SavePathToImageSuccess) {
 
     const std::string output_path = "/tmp/test_path_output.png";
     PgmConverter::RenderParameters params;
-    bool success =
-        PgmConverter::savePathToImage(*costmap, path, output_path, params);
+    bool success = PgmConverter::savePathToImage(*costmap, path, output_path, params);
 
     EXPECT_TRUE(success);
 
@@ -115,8 +112,7 @@ TEST(PgmConverterTest, SavePathToImageEmptyPath) {
     commsgs::planning_msgs::Path empty_path;
 
     const std::string output_path = "/tmp/test_empty_path.png";
-    bool success =
-        PgmConverter::savePathToImage(*costmap, empty_path, output_path);
+    bool success = PgmConverter::savePathToImage(*costmap, empty_path, output_path);
 
     EXPECT_TRUE(success);
 
@@ -133,8 +129,7 @@ TEST(PgmConverterTest, SavePathToImageJpegFormat) {
     const std::string output_path = "/tmp/test_path_jpeg";
     PgmConverter::RenderParameters params;
     params.output_format = "jpg";
-    bool success =
-        PgmConverter::savePathToImage(*costmap, path, output_path, params);
+    bool success = PgmConverter::savePathToImage(*costmap, path, output_path, params);
 
     EXPECT_TRUE(success);
 
@@ -157,8 +152,7 @@ TEST(PgmConverterTest, SavePathToImageWithMarkers) {
     params.goal_marker_size = 8.0;
     params.path_line_width = 3.0;
 
-    bool success =
-        PgmConverter::savePathToImage(*costmap, path, output_path, params);
+    bool success = PgmConverter::savePathToImage(*costmap, path, output_path, params);
 
     EXPECT_TRUE(success);
 
@@ -178,8 +172,7 @@ TEST(PgmConverterTest, SavePathToImageWithoutMarkers) {
     params.draw_goal_marker = false;
     params.draw_path_points = false;
 
-    bool success =
-        PgmConverter::savePathToImage(*costmap, path, output_path, params);
+    bool success = PgmConverter::savePathToImage(*costmap, path, output_path, params);
 
     EXPECT_TRUE(success);
 

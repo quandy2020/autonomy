@@ -26,8 +26,7 @@ class LuaParameterDictionary;
 }
 namespace planning {
 
-proto::PlannerOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::PlannerOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace planning
 }  // namespace autonomy

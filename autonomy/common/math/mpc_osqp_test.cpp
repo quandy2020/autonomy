@@ -70,10 +70,8 @@ TEST(MPCOSQPSolverTest, ComputationTimeTest) {
     std::vector<Eigen::MatrixXd> reference(horizon, reference_state);
 
     // OSQP
-    MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_control_bound,
-                            upper_control_bound, lower_state_bound,
-                            upper_state_bound, reference_state, max_iter,
-                            horizon, eps);
+    MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_control_bound, upper_control_bound, lower_state_bound,
+                            upper_state_bound, reference_state, max_iter, horizon, eps);
     auto start_time_osqp = std::chrono::system_clock::now();
     mpc_osqp_solver.Solve(&control_cmd);
     auto end_time_osqp = std::chrono::system_clock::now();
@@ -121,8 +119,7 @@ TEST(MPCOSQPSolverTest, NonFullRankMatrix) {
 
     std::vector<double> control_cmd(controls, 0);
 
-    MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_bound, upper_bound,
-                            state_lower_bound, state_upper_bound,
+    MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_bound, upper_bound, state_lower_bound, state_upper_bound,
                             reference_state, max_iter, horizon, eps);
     mpc_osqp_solver.Solve(&control_cmd);
     EXPECT_FLOAT_EQ(upper_bound(0), control_cmd[0]);
@@ -167,8 +164,7 @@ TEST(MPCOSQPSolverTest, NullMatrix) {
 
     std::vector<double> control_cmd(controls, 0);
 
-    MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_bound, upper_bound,
-                            state_lower_bound, state_upper_bound,
+    MpcOsqp mpc_osqp_solver(A, B, Q, R, initial_state, lower_bound, upper_bound, state_lower_bound, state_upper_bound,
                             reference_state, max_iter, horizon, eps);
     mpc_osqp_solver.Solve(&control_cmd);
     EXPECT_NEAR(0.0, control_cmd[0], 1e-7);

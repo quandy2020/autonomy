@@ -30,8 +30,7 @@ namespace io {
 class FakeFileWriter : public FileWriter
 {
 public:
-    FakeFileWriter(const std::string& filename,
-                   std::shared_ptr<std::vector<char>> content);
+    FakeFileWriter(const std::string& filename, std::shared_ptr<std::vector<char>> content);
     ~FakeFileWriter() override = default;
 
     bool WriteHeader(const char* data, size_t len) override;

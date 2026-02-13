@@ -45,8 +45,7 @@ protected:
         // kMinProbability) to unknown space (== kMinProbability).
         for (float t = 0.f; t < 2.f * M_PI; t += 0.005f) {
             const float r = (std::sin(20.f * t) + 2.f) * std::sin(t + 2.f);
-            point_cloud_.push_back(
-                {Eigen::Vector3f{r * std::sin(t), r * std::cos(t), 0.f}});
+            point_cloud_.push_back({Eigen::Vector3f{r * std::sin(t), r * std::cos(t), 0.f}});
         }
 
         {
@@ -79,8 +78,8 @@ protected:
             },
           },
         })text");
-            active_submaps_ = absl::make_unique<ActiveSubmaps2D>(
-                mapping::CreateSubmapsOptions2D(parameter_dictionary.get()));
+            active_submaps_ =
+                absl::make_unique<ActiveSubmaps2D>(mapping::CreateSubmapsOptions2D(parameter_dictionary.get()));
         }
 
         {
@@ -162,40 +161,34 @@ protected:
           })text");
             auto options = CreatePoseGraphOptions(parameter_dictionary.get());
             pose_graph_ = absl::make_unique<PoseGraph2D>(
-                options,
-                absl::make_unique<optimization::OptimizationProblem2D>(
-                    options.optimization_problem_options()),
+                options, absl::make_unique<optimization::OptimizationProblem2D>(options.optimization_problem_options()),
                 &thread_pool_);
         }
 
         current_pose_ = transform::Rigid2d::Identity();
     }
 
-    void MoveRelativeWithNoise(const transform::Rigid2d& movement,
-                               const transform::Rigid2d& noise) {
+    void MoveRelativeWithNoise(const transform::Rigid2d& movement, const transform::Rigid2d& noise) {
         current_pose_ = current_pose_ * movement;
-        const sensor::PointCloud new_point_cloud = sensor::TransformPointCloud(
-            point_cloud_,
-            transform::Embed3D(current_pose_.inverse().cast<float>()));
-        const sensor::RangeData range_data{
-            Eigen::Vector3f::Zero(), new_point_cloud, {}};
+        const sensor::PointCloud new_point_cloud =
+            sensor::TransformPointCloud(point_cloud_, transform::Embed3D(current_pose_.inverse().cast<float>()));
+        const sensor::RangeData range_data{Eigen::Vector3f::Zero(), new_point_cloud, {}};
         const transform::Rigid2d pose_estimate = noise * current_pose_;
         constexpr int kTrajectoryId = 0;
-        active_submaps_->InsertRangeData(TransformRangeData(
-            range_data, transform::Embed3D(pose_estimate.cast<float>())));
+        active_submaps_->InsertRangeData(
+            TransformRangeData(range_data, transform::Embed3D(pose_estimate.cast<float>())));
         std::vector<std::shared_ptr<const Submap2D>> insertion_submaps;
         for (const auto& submap : active_submaps_->submaps()) {
             insertion_submaps.push_back(submap);
         }
         pose_graph_->AddNode(
-            std::make_shared<const TrajectoryNode::Data>(
-                TrajectoryNode::Data{common::FromUniversal(0),
-                                     Eigen::Quaterniond::Identity(),
-                                     range_data.returns,
-                                     {},
-                                     {},
-                                     {},
-                                     transform::Embed3D(pose_estimate)}),
+            std::make_shared<const TrajectoryNode::Data>(TrajectoryNode::Data{common::FromUniversal(0),
+                                                                              Eigen::Quaterniond::Identity(),
+                                                                              range_data.returns,
+                                                                              {},
+                                                                              {},
+                                                                              {},
+                                                                              transform::Embed3D(pose_estimate)}),
             kTrajectoryId, insertion_submaps);
     }
 
@@ -227,15 +220,11 @@ TEST_F(PoseGraph2DTest, NoMovement) {
     MoveRelative(transform::Rigid2d::Identity());
     pose_graph_->RunFinalOptimization();
     const auto nodes = pose_graph_->GetTrajectoryNodes();
-    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()),
-                ::testing::ContainerEq(std::vector<int>{0}));
+    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()), ::testing::ContainerEq(std::vector<int>{0}));
     EXPECT_THAT(nodes.SizeOfTrajectoryOrZero(0), ::testing::Eq(3u));
-    EXPECT_THAT(nodes.at(NodeId{0, 0}).global_pose,
-                transform::IsNearly(transform::Rigid3d::Identity(), 1e-2));
-    EXPECT_THAT(nodes.at(NodeId{0, 1}).global_pose,
-                transform::IsNearly(transform::Rigid3d::Identity(), 1e-2));
-    EXPECT_THAT(nodes.at(NodeId{0, 2}).global_pose,
-                transform::IsNearly(transform::Rigid3d::Identity(), 1e-2));
+    EXPECT_THAT(nodes.at(NodeId{0, 0}).global_pose, transform::IsNearly(transform::Rigid3d::Identity(), 1e-2));
+    EXPECT_THAT(nodes.at(NodeId{0, 1}).global_pose, transform::IsNearly(transform::Rigid3d::Identity(), 1e-2));
+    EXPECT_THAT(nodes.at(NodeId{0, 2}).global_pose, transform::IsNearly(transform::Rigid3d::Identity(), 1e-2));
 }
 
 TEST_F(PoseGraph2DTest, NoOverlappingNodes) {
@@ -248,14 +237,9 @@ TEST_F(PoseGraph2DTest, NoOverlappingNodes) {
     }
     pose_graph_->RunFinalOptimization();
     const auto nodes = pose_graph_->GetTrajectoryNodes();
-    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()),
-                ::testing::ContainerEq(std::vector<int>{0}));
+    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()), ::testing::ContainerEq(std::vector<int>{0}));
     for (int i = 0; i != 4; ++i) {
-        EXPECT_THAT(
-            poses[i],
-            IsNearly(transform::Project2D(nodes.at(NodeId{0, i}).global_pose),
-                     1e-2))
-            << i;
+        EXPECT_THAT(poses[i], IsNearly(transform::Project2D(nodes.at(NodeId{0, i}).global_pose), 1e-2)) << i;
     }
 }
 
@@ -269,14 +253,9 @@ TEST_F(PoseGraph2DTest, ConsecutivelyOverlappingNodes) {
     }
     pose_graph_->RunFinalOptimization();
     const auto nodes = pose_graph_->GetTrajectoryNodes();
-    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()),
-                ::testing::ContainerEq(std::vector<int>{0}));
+    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()), ::testing::ContainerEq(std::vector<int>{0}));
     for (int i = 0; i != 5; ++i) {
-        EXPECT_THAT(
-            poses[i],
-            IsNearly(transform::Project2D(nodes.at(NodeId{0, i}).global_pose),
-                     1e-2))
-            << i;
+        EXPECT_THAT(poses[i], IsNearly(transform::Project2D(nodes.at(NodeId{0, i}).global_pose), 1e-2)) << i;
     }
 }
 
@@ -290,28 +269,21 @@ TEST_F(PoseGraph2DTest, OverlappingNodes) {
         const double noise_y = 0.1 * distribution(rng);
         const double noise_orientation = 0.1 * distribution(rng);
         transform::Rigid2d noise({noise_x, noise_y}, noise_orientation);
-        MoveRelativeWithNoise(
-            transform::Rigid2d({0.15 * distribution(rng), 0.4}, 0.), noise);
+        MoveRelativeWithNoise(transform::Rigid2d({0.15 * distribution(rng), 0.4}, 0.), noise);
         ground_truth.emplace_back(current_pose_);
         poses.emplace_back(noise * current_pose_);
     }
     pose_graph_->RunFinalOptimization();
     const auto nodes = pose_graph_->GetTrajectoryNodes();
-    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()),
-                ::testing::ContainerEq(std::vector<int>{0}));
-    transform::Rigid2d true_movement =
-        ground_truth.front().inverse() * ground_truth.back();
+    ASSERT_THAT(ToVectorInt(nodes.trajectory_ids()), ::testing::ContainerEq(std::vector<int>{0}));
+    transform::Rigid2d true_movement = ground_truth.front().inverse() * ground_truth.back();
     transform::Rigid2d movement_before = poses.front().inverse() * poses.back();
     transform::Rigid2d error_before = movement_before.inverse() * true_movement;
     transform::Rigid3d optimized_movement =
-        nodes.BeginOfTrajectory(0)->data.global_pose.inverse() *
-        std::prev(nodes.EndOfTrajectory(0))->data.global_pose;
-    transform::Rigid2d optimized_error =
-        transform::Project2D(optimized_movement).inverse() * true_movement;
-    EXPECT_THAT(std::abs(optimized_error.normalized_angle()),
-                ::testing::Lt(std::abs(error_before.normalized_angle())));
-    EXPECT_THAT(optimized_error.translation().norm(),
-                ::testing::Lt(error_before.translation().norm()));
+        nodes.BeginOfTrajectory(0)->data.global_pose.inverse() * std::prev(nodes.EndOfTrajectory(0))->data.global_pose;
+    transform::Rigid2d optimized_error = transform::Project2D(optimized_movement).inverse() * true_movement;
+    EXPECT_THAT(std::abs(optimized_error.normalized_angle()), ::testing::Lt(std::abs(error_before.normalized_angle())));
+    EXPECT_THAT(optimized_error.translation().norm(), ::testing::Lt(error_before.translation().norm()));
 }
 
 }  // namespace

@@ -25,8 +25,7 @@ namespace cartographer {
 namespace mapping {
 namespace scan_matching {
 
-proto::RealTimeCorrelativeScanMatcherOptions
-CreateRealTimeCorrelativeScanMatcherOptions(
+proto::RealTimeCorrelativeScanMatcherOptions CreateRealTimeCorrelativeScanMatcherOptions(
     common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace scan_matching

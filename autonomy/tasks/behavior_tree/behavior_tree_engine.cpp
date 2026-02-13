@@ -33,9 +33,8 @@ namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-BehaviorTreeEngine::BehaviorTreeEngine(
-    const std::vector<std::string>& plugin_libraries,
-    std::shared_ptr<::autolink::Node> node) {
+BehaviorTreeEngine::BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries,
+                                       std::shared_ptr<::autolink::Node> node) {
     BT::SharedLibrary loader;
     for (const auto& p : plugin_libraries) {
         factory_.registerFromPlugin(loader.getOSName(p));
@@ -48,8 +47,7 @@ BehaviorTreeEngine::BehaviorTreeEngine(
     BT::ReactiveFallback::EnableException(false);
 }
 
-BtStatus BehaviorTreeEngine::Run(BT::Tree* tree, std::function<void()> onLoop,
-                                 std::function<bool()> cancelRequested,
+BtStatus BehaviorTreeEngine::Run(BT::Tree* tree, std::function<void()> onLoop, std::function<bool()> cancelRequested,
                                  std::chrono::milliseconds loopTimeout) {
     BT::NodeStatus result = BT::NodeStatus::RUNNING;
 
@@ -69,22 +67,18 @@ BtStatus BehaviorTreeEngine::Run(BT::Tree* tree, std::function<void()> onLoop,
             std::this_thread::sleep_for(loopTimeout);
         }
     } catch (const std::exception& ex) {
-        AERROR << "Behavior tree threw exception: " << ex.what()
-               << ". Exiting with failure.";
+        AERROR << "Behavior tree threw exception: " << ex.what() << ". Exiting with failure.";
         return BtStatus::FAILED;
     }
 
-    return (result == BT::NodeStatus::SUCCESS) ? BtStatus::SUCCEEDED
-                                               : BtStatus::FAILED;
+    return (result == BT::NodeStatus::SUCCESS) ? BtStatus::SUCCEEDED : BtStatus::FAILED;
 }
 
-BT::Tree BehaviorTreeEngine::CreateTreeFromText(
-    const std::string& xml_string, BT::Blackboard::Ptr blackboard) {
+BT::Tree BehaviorTreeEngine::CreateTreeFromText(const std::string& xml_string, BT::Blackboard::Ptr blackboard) {
     return factory_.createTreeFromText(xml_string, blackboard);
 }
 
-BT::Tree BehaviorTreeEngine::CreateTreeFromFile(
-    const std::string& file_path, BT::Blackboard::Ptr blackboard) {
+BT::Tree BehaviorTreeEngine::CreateTreeFromFile(const std::string& file_path, BT::Blackboard::Ptr blackboard) {
     return factory_.createTreeFromFile(file_path, blackboard);
 }
 

@@ -34,11 +34,10 @@ public:
     virtual ~RpcHandlerInterface() = default;
     virtual void SetExecutionContext(ExecutionContext* execution_context) = 0;
     virtual void SetRpc(Rpc* rpc) = 0;
-    virtual void Initialize() {};
-    virtual void OnRequestInternal(
-        const ::google::protobuf::Message* request) = 0;
-    virtual void OnReadsDone() {};
-    virtual void OnFinish() {};
+    virtual void Initialize(){};
+    virtual void OnRequestInternal(const ::google::protobuf::Message* request) = 0;
+    virtual void OnReadsDone(){};
+    virtual void OnFinish(){};
     virtual Span* trace_span() = 0;
     template <class RpcHandlerType>
     static std::unique_ptr<RpcHandlerType> Instantiate() {
@@ -46,8 +45,7 @@ public:
     }
 };
 
-using RpcHandlerFactory = std::function<std::unique_ptr<RpcHandlerInterface>(
-    Rpc*, ExecutionContext*)>;
+using RpcHandlerFactory = std::function<std::unique_ptr<RpcHandlerInterface>(Rpc*, ExecutionContext*)>;
 
 struct RpcHandlerInfo {
     const google::protobuf::Descriptor* request_descriptor;

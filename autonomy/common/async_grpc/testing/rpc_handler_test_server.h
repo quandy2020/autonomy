@@ -41,25 +41,18 @@ template <typename RpcServiceMethodConcept, typename RpcHandlerType>
 class RpcHandlerTestServer : public Server
 {
 public:
-    using RequestType =
-        StripStream<typename RpcServiceMethodConcept::IncomingType>;
-    using ResponseType =
-        StripStream<typename RpcServiceMethodConcept::OutgoingType>;
+    using RequestType = StripStream<typename RpcServiceMethodConcept::IncomingType>;
+    using ResponseType = StripStream<typename RpcServiceMethodConcept::OutgoingType>;
 
     RpcHandlerTestServer(std::unique_ptr<ExecutionContext> execution_context)
         : Server(Options(1, 1, kServerAddress)),
-          channel_(::grpc::CreateChannel(kServerAddress,
-                                         ::grpc::InsecureChannelCredentials())),
+          channel_(::grpc::CreateChannel(kServerAddress, ::grpc::InsecureChannelCredentials())),
           client_(channel_) {
-        std::string method_full_name_under_test =
-            RpcServiceMethodConcept::MethodName();
+        std::string method_full_name_under_test = RpcServiceMethodConcept::MethodName();
         std::string service_full_name;
         std::string method_name;
-        std::tie(service_full_name, method_name) =
-            Server::Builder::ParseMethodFullName(method_full_name_under_test);
-        this->AddService(
-            service_full_name,
-            {{method_name, GetRpcHandlerInfo(method_full_name_under_test)}});
+        std::tie(service_full_name, method_name) = Server::Builder::ParseMethodFullName(method_full_name_under_test);
+        this->AddService(service_full_name, {{method_name, GetRpcHandlerInfo(method_full_name_under_test)}});
         this->SetExecutionContext(std::move(execution_context));
         this->Start();
     }
@@ -68,8 +61,7 @@ public:
         this->Shutdown();
     };
 
-    bool SendWrite(const RequestType& message,
-                   ::grpc::Status* status = nullptr) {
+    bool SendWrite(const RequestType& message, ::grpc::Status* status = nullptr) {
         bool success = client_.Write(message, status);
         WaitForHandlerCompletion(RpcHandlerWrapper<RpcHandlerType>::ON_REQUEST);
         return success;
@@ -88,8 +80,7 @@ public:
     // to finish processing the READS_DONE event before returning.
     void SendWritesDone() {
         EXPECT_TRUE(client_.StreamWritesDone());
-        WaitForHandlerCompletion(
-            RpcHandlerWrapper<RpcHandlerType>::ON_READS_DONE);
+        WaitForHandlerCompletion(RpcHandlerWrapper<RpcHandlerType>::ON_READS_DONE);
     }
 
     // Sends a FINISH event to the handler under test, waits for the
@@ -106,39 +97,32 @@ public:
 private:
     using ClientWriter = ::grpc::internal::ClientWriterFactory<RequestType>;
 
-    void WaitForHandlerCompletion(
-        typename RpcHandlerWrapper<RpcHandlerType>::RpcHandlerEvent event) {
+    void WaitForHandlerCompletion(typename RpcHandlerWrapper<RpcHandlerType>::RpcHandlerEvent event) {
         CHECK_EQ(rpc_handler_event_queue_.Pop(), event);
     }
 
     RpcHandlerInfo GetRpcHandlerInfo(const std::string& method_full_name) {
-        ::grpc::internal::RpcMethod::RpcType rpc_type =
-            RpcType<typename RpcServiceMethodConcept::IncomingType,
-                    typename RpcServiceMethodConcept::OutgoingType>::value;
-        auto event_callback =
-            [this](typename RpcHandlerWrapper<RpcHandlerType>::RpcHandlerEvent
-                       event) { rpc_handler_event_queue_.Push(event); };
-        auto handler_instantiator =
-            [event_callback](Rpc* const rpc,
-                             ExecutionContext* const execution_context) {
-                std::unique_ptr<RpcHandlerInterface> rpc_handler =
-                    common::make_unique<RpcHandlerWrapper<RpcHandlerType>>(
-                        event_callback);
-                rpc_handler->SetRpc(rpc);
-                rpc_handler->SetExecutionContext(execution_context);
-                rpc_handler->Initialize();
-                return rpc_handler;
-            };
+        ::grpc::internal::RpcMethod::RpcType rpc_type = RpcType<typename RpcServiceMethodConcept::IncomingType,
+                                                                typename RpcServiceMethodConcept::OutgoingType>::value;
+        auto event_callback = [this](typename RpcHandlerWrapper<RpcHandlerType>::RpcHandlerEvent event) {
+            rpc_handler_event_queue_.Push(event);
+        };
+        auto handler_instantiator = [event_callback](Rpc* const rpc, ExecutionContext* const execution_context) {
+            std::unique_ptr<RpcHandlerInterface> rpc_handler =
+                common::make_unique<RpcHandlerWrapper<RpcHandlerType>>(event_callback);
+            rpc_handler->SetRpc(rpc);
+            rpc_handler->SetExecutionContext(execution_context);
+            rpc_handler->Initialize();
+            return rpc_handler;
+        };
         return RpcHandlerInfo{RequestType::default_instance().GetDescriptor(),
-                              ResponseType::default_instance().GetDescriptor(),
-                              handler_instantiator, rpc_type, method_full_name};
+                              ResponseType::default_instance().GetDescriptor(), handler_instantiator, rpc_type,
+                              method_full_name};
     }
 
     std::shared_ptr<::grpc::Channel> channel_;
     Client<RpcServiceMethodConcept> client_;
-    common::BlockingQueue<
-        typename RpcHandlerWrapper<RpcHandlerType>::RpcHandlerEvent>
-        rpc_handler_event_queue_;
+    common::BlockingQueue<typename RpcHandlerWrapper<RpcHandlerType>::RpcHandlerEvent> rpc_handler_event_queue_;
 };
 
 }  // namespace testing

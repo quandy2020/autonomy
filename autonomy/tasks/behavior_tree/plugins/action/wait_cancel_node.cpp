@@ -22,14 +22,9 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-WaitCancelNode::WaitCancelNode(const std::string& xml_tag_name,
-                               const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
-
-BT::NodeStatus WaitCancelNode::tick() {
-    // TODO: Implement wait cancel behavior
-    return BT::NodeStatus::SUCCESS;
-}
+WaitCancel::WaitCancel(const std::string& xml_tag_name, const std::string& action_name,
+                       const BT::NodeConfiguration& conf)
+    : BtCancelActionNode<proto::WaitAction>(xml_tag_name, action_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -39,7 +34,9 @@ BT::NodeStatus WaitCancelNode::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::action::WaitCancelNode>(
-        "CancelWait");
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::WaitCancel>(name, "wait", config);
+    };
+
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::WaitCancel>("CancelWait", builder);
 }

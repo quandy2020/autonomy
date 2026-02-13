@@ -31,8 +31,7 @@ bool isEqual(const Eigen::Array2i& lhs, const Eigen::Array2i& rhs) {
 // 'scaled_begin' and 'scaled_end'. 'scaled_begin' and 'scaled_end' are scaled
 // by 'subpixel_scale'. 'scaled_begin' and 'scaled_end' are expected to be
 // greater than zero. Return values are in pixels and not scaled.
-std::vector<Eigen::Array2i> RayToPixelMask(const Eigen::Array2i& scaled_begin,
-                                           const Eigen::Array2i& scaled_end,
+std::vector<Eigen::Array2i> RayToPixelMask(const Eigen::Array2i& scaled_begin, const Eigen::Array2i& scaled_end,
                                            int subpixel_scale) {
     // For simplicity, we order 'scaled_begin' and 'scaled_end' by their x
     // coordinate.
@@ -47,12 +46,10 @@ std::vector<Eigen::Array2i> RayToPixelMask(const Eigen::Array2i& scaled_begin,
     // Special case: We have to draw a vertical line in full pixels, as
     // 'scaled_begin' and 'scaled_end' have the same full pixel x coordinate.
     if (scaled_begin.x() / subpixel_scale == scaled_end.x() / subpixel_scale) {
-        Eigen::Array2i current(
-            scaled_begin.x() / subpixel_scale,
-            std::min(scaled_begin.y(), scaled_end.y()) / subpixel_scale);
+        Eigen::Array2i current(scaled_begin.x() / subpixel_scale,
+                               std::min(scaled_begin.y(), scaled_end.y()) / subpixel_scale);
         pixel_mask.push_back(current);
-        const int end_y =
-            std::max(scaled_begin.y(), scaled_end.y()) / subpixel_scale;
+        const int end_y = std::max(scaled_begin.y(), scaled_end.y()) / subpixel_scale;
         for (; current.y() <= end_y; ++current.y()) {
             if (!isEqual(pixel_mask.back(), current))
                 pixel_mask.push_back(current);
@@ -84,14 +81,12 @@ std::vector<Eigen::Array2i> RayToPixelMask(const Eigen::Array2i& scaled_begin,
 
     // The distance from the from 'scaled_begin' to the right pixel border, to
     // be divided by 2 * 'subpixel_scale'.
-    const int first_pixel =
-        2 * subpixel_scale - 2 * (scaled_begin.x() % subpixel_scale) - 1;
+    const int first_pixel = 2 * subpixel_scale - 2 * (scaled_begin.x() % subpixel_scale) - 1;
     // The same from the left pixel border to 'scaled_end'.
     const int last_pixel = 2 * (scaled_end.x() % subpixel_scale) + 1;
 
     // The full pixel x coordinate of 'scaled_end'.
-    const int end_x =
-        std::max(scaled_begin.x(), scaled_end.x()) / subpixel_scale;
+    const int end_x = std::max(scaled_begin.x(), scaled_end.x()) / subpixel_scale;
 
     // Move from 'scaled_begin' to the next pixel border to the right.
     sub_y += dy * first_pixel;

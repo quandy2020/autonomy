@@ -198,8 +198,7 @@ public:
      * @param polygon The convex hull of the points.
      * @return If successfully compute the convex hull.
      */
-    static bool ComputeConvexHull(const std::vector<Vec2d>& points,
-                                  Polygon2d* const polygon);
+    static bool ComputeConvexHull(const std::vector<Vec2d>& points, Polygon2d* const polygon);
 
     /**
      * @brief Check if a line segment has overlap with this polygon.
@@ -219,8 +218,7 @@ public:
      * @param second Second end of the overlapped line segment.
      * @return If the target line segment has overlap with this polygon.
      */
-    bool GetOverlap(const LineSegment2d& line_segment, Vec2d* const first,
-                    Vec2d* const last) const;
+    bool GetOverlap(const LineSegment2d& line_segment, Vec2d* const first, Vec2d* const last) const;
 
     /**
      * @brief Get all vertices of the polygon
@@ -241,8 +239,7 @@ public:
      *        line segments with this polygon.
      * @return A group of overlapped line segments.
      */
-    std::vector<LineSegment2d> GetAllOverlaps(
-        const LineSegment2d& line_segment) const;
+    std::vector<LineSegment2d> GetAllOverlaps(const LineSegment2d& line_segment) const;
 
     /**
      * @brief Check if this polygon has overlap with another polygon.
@@ -262,8 +259,7 @@ public:
      * @param overlap_polygon The overlapped polygon.
      * @param If there is an overlapped polygon.
      */
-    bool ComputeOverlap(const Polygon2d& other_polygon,
-                        Polygon2d* const overlap_polygon) const;
+    bool ComputeOverlap(const Polygon2d& other_polygon, Polygon2d* const overlap_polygon) const;
 
     // Only compute intersection over union ratio between two convex polygons.
     /**
@@ -304,8 +300,7 @@ public:
      * @param last The point on the boundary of this polygon with the maximal
      *        projection onto the heading direction.
      */
-    void ExtremePoints(const double heading, Vec2d* const first,
-                       Vec2d* const last) const;
+    void ExtremePoints(const double heading, Vec2d* const first, Vec2d* const last) const;
 
     /**
      * @brief Expand this polygon by a distance.
@@ -343,8 +338,7 @@ protected:
     int Next(int at) const;
     int Prev(int at) const;
 
-    static bool ClipConvexHull(const LineSegment2d& line_segment,
-                               std::vector<Vec2d>* const points);
+    static bool ClipConvexHull(const LineSegment2d& line_segment, std::vector<Vec2d>* const points);
 
     std::vector<Vec2d> points_;
     int num_points_ = 0;

@@ -26,15 +26,11 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void GetLocalToGlobalTransformHandler::OnRequest(
-    const proto::GetLocalToGlobalTransformRequest& request) {
-    auto response =
-        absl::make_unique<proto::GetLocalToGlobalTransformResponse>();
+void GetLocalToGlobalTransformHandler::OnRequest(const proto::GetLocalToGlobalTransformRequest& request) {
+    auto response = absl::make_unique<proto::GetLocalToGlobalTransformResponse>();
     auto local_to_global =
-        GetContext<MapBuilderContextInterface>()
-            ->map_builder()
-            .pose_graph()
-            ->GetLocalToGlobalTransform(request.trajectory_id());
+        GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->GetLocalToGlobalTransform(
+            request.trajectory_id());
     *response->mutable_local_to_global() = transform::ToProto(local_to_global);
     Send(std::move(response));
 }

@@ -22,8 +22,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
     }
     graphs_.clear();
     if (grid_types_.size() != voronoi.getSizeX() * voronoi.getSizeY()) {
-        grid_types_.resize(voronoi.getSizeX() * voronoi.getSizeY(),
-                           GRID_TYPE::None);
+        grid_types_.resize(voronoi.getSizeX() * voronoi.getSizeY(), GRID_TYPE::None);
         grid_adjs_.resize(voronoi.getSizeX() * voronoi.getSizeY(), (uint8_t)0);
         voronoi_new.resize(voronoi.getSizeX() * voronoi.getSizeY(), false);
         sizeX_ = voronoi.getSizeX();
@@ -83,14 +82,13 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 strong_grid_vec.emplace_back(x, y);
             } else {  // 这是由于设置了阈值，导致某些地方的连接会断掉
                 grid_types_[y * sizeX_ + x] = GRID_TYPE::None;  // none
-                voronoi_new[y * sizeX_ + x] = false;  // 标记为非voronoi点
+                voronoi_new[y * sizeX_ + x] = false;            // 标记为非voronoi点
             }
         }
     }
 
 #ifdef DEBUG_IMG
-    cv::Mat voronoi_img0(sizeY_, sizeX_, CV_8UC3,
-                         cv::Scalar(255, 255, 255));  // 创建白色背景的图像
+    cv::Mat voronoi_img0(sizeY_, sizeX_, CV_8UC3, cv::Scalar(255, 255, 255));  // 创建白色背景的图像
     drawVoronoiByGrid(voronoi_img0);
 #endif
     // // std::cout << "--------在修剪后的voronoi图上进行搜索---------" <<
@@ -125,12 +123,9 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
         for (const auto& node : graph) {
             if (node.second->type == GraphNode::Weak) {
                 auto pos = node.second->pos;
-                if ((pos.x < skip_border &&
-                     (pos.y < skip_border ||
-                      pos.y >= sizeY_ - skip_border)) ||  // 左上/左下
+                if ((pos.x < skip_border && (pos.y < skip_border || pos.y >= sizeY_ - skip_border)) ||  // 左上/左下
                     (pos.x >= sizeX_ - skip_border &&
-                     (pos.y < skip_border ||
-                      pos.y >= sizeY_ - skip_border))  // 右上/右下
+                     (pos.y < skip_border || pos.y >= sizeY_ - skip_border))  // 右上/右下
                 ) {
                     node.second->type = GraphNode::Strong;
                     continue;
@@ -180,53 +175,35 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
             //     int debug = 0; // debug
             // }
             if (neighbor_week_count == 2) {
-                if (voronoi.getDistance(strong_node_pt->pos.x,
-                                        strong_node_pt->pos.y) <
+                if (voronoi.getDistance(strong_node_pt->pos.x, strong_node_pt->pos.y) <
                     2.0 * std::sqrt(cle_thr_sq_low_)) {
                     // 将其标记为弱节点
                     strong_node_pt->type = GraphNode::Weak;
                     // 将邻接的强节点加入队列
-                    for (int i = 0;
-                         i < static_cast<int>(neighbor_strong_idx.size());
-                         ++i) {
-                        auto neighbor_strong_lock =
-                            strong_node_pt->neighbors[neighbor_strong_idx[i]]
-                                .lock();
+                    for (int i = 0; i < static_cast<int>(neighbor_strong_idx.size()); ++i) {
+                        auto neighbor_strong_lock = strong_node_pt->neighbors[neighbor_strong_idx[i]].lock();
                         if (neighbor_strong_lock)
                             strong_node_queue.push(neighbor_strong_lock);
                     }
                 } else {
                     // 使用theta_SMA方法来判断
-                    for (int i = 0;
-                         i < static_cast<int>(neighbor_strong_idx.size());
-                         ++i) {
-                        auto neighbor_strong_pt =
-                            strong_node_pt->neighbors[neighbor_strong_idx[i]]
-                                .lock();
-                        IntPoint dir1 =
-                            neighbor_strong_pt->pos - strong_node_pt->pos;
-                        IntPoint neighbor_parent = IntPoint(
-                            voronoi.getObstacleX(neighbor_strong_pt->pos.x,
-                                                 neighbor_strong_pt->pos.y),
-                            voronoi.getObstacleY(neighbor_strong_pt->pos.x,
-                                                 neighbor_strong_pt->pos.y));
+                    for (int i = 0; i < static_cast<int>(neighbor_strong_idx.size()); ++i) {
+                        auto neighbor_strong_pt = strong_node_pt->neighbors[neighbor_strong_idx[i]].lock();
+                        IntPoint dir1 = neighbor_strong_pt->pos - strong_node_pt->pos;
+                        IntPoint neighbor_parent =
+                            IntPoint(voronoi.getObstacleX(neighbor_strong_pt->pos.x, neighbor_strong_pt->pos.y),
+                                     voronoi.getObstacleY(neighbor_strong_pt->pos.x, neighbor_strong_pt->pos.y));
                         IntPoint dir2 = neighbor_parent - strong_node_pt->pos;
                         // 计算两个dir的夹角
                         float angle_cos =
-                            (dir1.x * dir2.x + dir1.y * dir2.y) /
-                            (std::sqrt(dir1.x * dir1.x + dir1.y * dir1.y) *
-                             std::sqrt(dir2.x * dir2.x + dir2.y * dir2.y));
+                            (dir1.x * dir2.x + dir1.y * dir2.y) / (std::sqrt(dir1.x * dir1.x + dir1.y * dir1.y) *
+                                                                   std::sqrt(dir2.x * dir2.x + dir2.y * dir2.y));
                         if (angle_cos < -0.5) {  // 夹角大于120度
                             // 将其标记为弱节点
                             strong_node_pt->type = GraphNode::Weak;
                             // 将邻接的强节点加入队列
-                            for (int j = 0; j < static_cast<int>(
-                                                    neighbor_strong_idx.size());
-                                 ++j) {
-                                strong_node_queue.push(
-                                    strong_node_pt
-                                        ->neighbors[neighbor_strong_idx[j]]
-                                        .lock());
+                            for (int j = 0; j < static_cast<int>(neighbor_strong_idx.size()); ++j) {
+                                strong_node_queue.push(strong_node_pt->neighbors[neighbor_strong_idx[j]].lock());
                             }
                         }
                     }
@@ -257,8 +234,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 if (node_ptr->neighbors[i].lock()->type == GraphNode::Weak)
                     continue;
                 for (size_t j = 0; j < path.path.size(); ++j) {
-                    voronoi_new[path.path[j].y * sizeX_ + path.path[j].x] =
-                        true;  // 标记为Voronoi起点
+                    voronoi_new[path.path[j].y * sizeX_ + path.path[j].x] = true;  // 标记为Voronoi起点
                 }
             }
         }
@@ -270,8 +246,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
     graphs_.clear();
 
 #ifdef DEBUG_IMG
-    cv::Mat voronoi_img1(sizeY_, sizeX_, CV_8UC3,
-                         cv::Scalar(255, 255, 255));  // 创建白色背景的图像
+    cv::Mat voronoi_img1(sizeY_, sizeX_, CV_8UC3, cv::Scalar(255, 255, 255));  // 创建白色背景的图像
     drawVoronoiByGrid(voronoi_img1);
 #endif
 
@@ -289,8 +264,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                     }
                 }
                 // 等高线点
-                if (dis_sq >= cle_thr_sq_high_ - 1e-3 &&
-                    dis_sq <= cle_thr_sq_high2_ - 1e-3) {
+                if (dis_sq >= cle_thr_sq_high_ - 1e-3 && dis_sq <= cle_thr_sq_high2_ - 1e-3) {
                     truncated_points_.emplace_back(x, y);  // 记录被截断的点
                     voronoi_new[y * sizeX_ + x] = true;    // 标记为已voronoi点
                     if (x >= 2 && x < sizeX_ - 2 && y >= 2 && y < sizeY_ - 2) {
@@ -345,14 +319,13 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 strong_grid_vec2.emplace_back(x, y);
             } else {
                 grid_types_[y * sizeX_ + x] = GRID_TYPE::None;  // none
-                voronoi_new[y * sizeX_ + x] = false;  // 标记为非voronoi点
+                voronoi_new[y * sizeX_ + x] = false;            // 标记为非voronoi点
             }
         }
     }
 
 #ifdef DEBUG_IMG
-    cv::Mat voronoi_img2(sizeY_, sizeX_, CV_8UC3,
-                         cv::Scalar(255, 255, 255));  // 创建白色背景的图像
+    cv::Mat voronoi_img2(sizeY_, sizeX_, CV_8UC3, cv::Scalar(255, 255, 255));  // 创建白色背景的图像
     drawVoronoiByGrid(voronoi_img2);
 #endif
 
@@ -416,19 +389,16 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 if (!nb_ptr)
                     continue;
                 // 不在聚类内，且是强节点
-                if (std::find(cluster_points.begin(), cluster_points.end(),
-                              nb_ptr->pos) == cluster_points.end() &&
+                if (std::find(cluster_points.begin(), cluster_points.end(), nb_ptr->pos) == cluster_points.end() &&
                     nb_ptr->type == GraphNode::Strong) {
                     pre_outside_strong_neighbors.push_back(nb_ptr->pos);
                 }
             }
         }
         // 去重
-        std::sort(pre_outside_strong_neighbors.begin(),
-                  pre_outside_strong_neighbors.end());
+        std::sort(pre_outside_strong_neighbors.begin(), pre_outside_strong_neighbors.end());
         pre_outside_strong_neighbors.erase(
-            std::unique(pre_outside_strong_neighbors.begin(),
-                        pre_outside_strong_neighbors.end()),
+            std::unique(pre_outside_strong_neighbors.begin(), pre_outside_strong_neighbors.end()),
             pre_outside_strong_neighbors.end());
 
         // 把第一个点作为中心点
@@ -450,8 +420,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 continue;  // 这里可能碰到中心节点自成环的情况。
             center_neighbors.push_back(nb_ptr->pos);
             // 检查是否有聚类内邻居
-            if (std::find(cluster_points.begin(), cluster_points.end(),
-                          nb_ptr->pos) != cluster_points.end()
+            if (std::find(cluster_points.begin(), cluster_points.end(), nb_ptr->pos) != cluster_points.end()
                 // && !(nb_ptr->pos == center_node->pos)
             ) {
                 // TODO: 这个地方还是有点错误。
@@ -462,9 +431,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
         }
         // 去重
         std::sort(center_neighbors.begin(), center_neighbors.end());
-        center_neighbors.erase(
-            std::unique(center_neighbors.begin(), center_neighbors.end()),
-            center_neighbors.end());
+        center_neighbors.erase(std::unique(center_neighbors.begin(), center_neighbors.end()), center_neighbors.end());
 
         // 检查是否完全覆盖
         if (center_neighbors == pre_outside_strong_neighbors) {
@@ -480,8 +447,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
             if (!node)
                 continue;
             if (!node->neighbors.empty()) {
-                AERROR << "Error: Non-center cluster node " << pt.x << ","
-                       << pt.y << " still has neighbors!";
+                AERROR << "Error: Non-center cluster node " << pt.x << "," << pt.y << " still has neighbors!";
             }
         }
     }
@@ -495,8 +461,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
             int x = node_ptr->pos.x, y = node_ptr->pos.y;
             if (node_ptr->type == GraphNode::Strong)
                 voronoi_new[y * sizeX_ + x] = true;
-            if (node_ptr->type == GraphNode::Weak &&
-                node_ptr->neighbor_paths[0].path_length > 50) {
+            if (node_ptr->type == GraphNode::Weak && node_ptr->neighbor_paths[0].path_length > 50) {
                 // 如果是弱节点，但是路径长度大于200，则认为是强节点
                 node_ptr->type = GraphNode::Strong;  // 将其标记为强节点
                 voronoi_new[y * sizeX_ + x] = true;  // 标记为Voronoi起点
@@ -512,8 +477,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 if (path.path.empty())
                     continue;
                 for (size_t j = 0; j < path.path.size(); ++j) {
-                    voronoi_new[sizeX_ * path.path[j].y + path.path[j].x] =
-                        true;
+                    voronoi_new[sizeX_ * path.path[j].y + path.path[j].x] = true;
                 }
             }
         }
@@ -569,8 +533,7 @@ bool GVG::isVoronoi(IntPoint pt) {
 void GVG::setClearanceThresholdSq(float threshold_low, float threshold_high) {
     cle_thr_sq_low_ = threshold_low;
     cle_thr_sq_high_ = threshold_high;
-    cle_thr_sq_high2_ =
-        (std::sqrt(threshold_high) + 1.0f) * (std::sqrt(threshold_high) + 1.0f);
+    cle_thr_sq_high2_ = (std::sqrt(threshold_high) + 1.0f) * (std::sqrt(threshold_high) + 1.0f);
 }
 
 const std::vector<IntPoint>& GVG::getTruncatedPoints() const {
@@ -627,8 +590,7 @@ void GVG::insertNodeToGraph(const GraphNode::Ptr& node, int graph_id) {
         return;
     }
     if (findNodeInGraphs(node->pos, graph_id)) {
-        AERROR << "insertNodeToGraph: node already exists in graph "
-               << graph_id;
+        AERROR << "insertNodeToGraph: node already exists in graph " << graph_id;
         return;
     }
     graphs_[graph_id][node->pos] = node;
@@ -710,14 +672,12 @@ ExpansionResult GVG::expandGrid(const IntPoint& start, Direction dir) {
             }
         }
     }
-    result.path.path_length =
-        std::sqrt(result.path.path_length_x * result.path.path_length_x +
-                  result.path.path_length_y * result.path.path_length_y);
+    result.path.path_length = std::sqrt(result.path.path_length_x * result.path.path_length_x +
+                                        result.path.path_length_y * result.path.path_length_y);
     return result;
 }
 
-std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(
-    const IntPoint& start) {
+std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(const IntPoint& start) {
     std::unordered_map<IntPoint, GraphNode::Ptr> local_graph;  // 局部图结构
     std::stack<IntPoint> stack;                                // 使用栈代替队列
     stack.push(start);
@@ -742,9 +702,8 @@ std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(
             current_node = local_graph[current];  // 如果已经存在，直接使用
         } else {
             // 创建新的节点
-            current_node = std::make_shared<GraphNode>(
-                current.x, current.y,
-                current_type == 1 ? GraphNode::Strong : GraphNode::Weak);
+            current_node = std::make_shared<GraphNode>(current.x, current.y,
+                                                       current_type == 1 ? GraphNode::Strong : GraphNode::Weak);
             local_graph[current] = current_node;
         }
 
@@ -771,13 +730,11 @@ std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(
             // 创建终点节点
             GraphNode::Ptr end_node;
             if (local_graph.find(result.end_point) != local_graph.end()) {
-                end_node =
-                    local_graph[result.end_point];  // 如果已经存在，直接使用
+                end_node = local_graph[result.end_point];  // 如果已经存在，直接使用
             } else {
                 // 创建新的节点
-                end_node = std::make_shared<GraphNode>(
-                    result.end_point.x, result.end_point.y,
-                    next_type == 1 ? GraphNode::Strong : GraphNode::Weak);
+                end_node = std::make_shared<GraphNode>(result.end_point.x, result.end_point.y,
+                                                       next_type == 1 ? GraphNode::Strong : GraphNode::Weak);
                 local_graph[result.end_point] = end_node;
             }
             if (end_node->pos == current_node->pos) {
@@ -791,17 +748,14 @@ std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(
                 if (nb_ptr == end_node) {
                     found = true;
                     // 如果新路径更短，则更新
-                    if (result.path.path_length <
-                        current_node->neighbor_paths[i].path_length) {
+                    if (result.path.path_length < current_node->neighbor_paths[i].path_length) {
                         current_node->neighbor_paths[i] = result.path;
                         // 反向也更新
-                        for (size_t j = 0; j < end_node->neighbors.size();
-                             ++j) {
+                        for (size_t j = 0; j < end_node->neighbors.size(); ++j) {
                             auto back_ptr = end_node->neighbors[j].lock();
                             if (back_ptr == current_node) {
                                 Path reverse_path = result.path;
-                                std::reverse(reverse_path.path.begin(),
-                                             reverse_path.path.end());
+                                std::reverse(reverse_path.path.begin(), reverse_path.path.end());
                                 end_node->neighbor_paths[j] = reverse_path;
                                 break;
                             }
@@ -835,8 +789,7 @@ std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(
     return local_graph;
 }
 
-void GVG::DFSSearch2(GraphNode::Ptr& center_node,
-                     const std::vector<IntPoint>& cluster_points) {
+void GVG::DFSSearch2(GraphNode::Ptr& center_node, const std::vector<IntPoint>& cluster_points) {
     // 不用标记所有聚类内节点未访问，因为初始化就是false
     using PathPair = std::pair<GraphNode::Ptr, std::vector<IntPoint>>;
     std::stack<PathPair> stack;
@@ -855,13 +808,11 @@ void GVG::DFSSearch2(GraphNode::Ptr& center_node,
                 continue;  // 跳过弱节点。这样可能会把弱节点的连接直接断开。应该没有什么关系吧
 
             std::vector<IntPoint> new_path = path;
-            new_path.insert(new_path.end(),
-                            cur_node->neighbor_paths[i].path.begin(),
+            new_path.insert(new_path.end(), cur_node->neighbor_paths[i].path.begin(),
                             cur_node->neighbor_paths[i].path.end());
 
             // 判断是否在聚类内
-            if (std::find(cluster_points.begin(), cluster_points.end(),
-                          nb_ptr->pos) != cluster_points.end()) {
+            if (std::find(cluster_points.begin(), cluster_points.end(), nb_ptr->pos) != cluster_points.end()) {
                 if (nb_ptr->IsVisitedStage3)
                     continue;
                 new_path.push_back(nb_ptr->pos);
@@ -870,10 +821,7 @@ void GVG::DFSSearch2(GraphNode::Ptr& center_node,
                 // 只用addNeighbor即可，内部已做重复判断
                 center_node->addNeighbor(nb_ptr, new_path, false);
                 // 反向也加
-                nb_ptr->addNeighbor(
-                    center_node,
-                    std::vector<IntPoint>(new_path.rbegin(), new_path.rend()),
-                    false);
+                nb_ptr->addNeighbor(center_node, std::vector<IntPoint>(new_path.rbegin(), new_path.rend()), false);
             }
         }
     }
@@ -891,15 +839,13 @@ void GVG::DFSSearch2(GraphNode::Ptr& center_node,
             if (!nb_ptr)
                 continue;
             // 如果邻居不在聚类内（即为聚类外邻居）
-            if (std::find(cluster_points.begin(), cluster_points.end(),
-                          nb_ptr->pos) == cluster_points.end()) {
+            if (std::find(cluster_points.begin(), cluster_points.end(), nb_ptr->pos) == cluster_points.end()) {
                 // 在邻居的neighbors中移除对node的连接
                 for (size_t i = 0; i < nb_ptr->neighbors.size();) {
                     auto back_ptr = nb_ptr->neighbors[i].lock();
                     if (back_ptr && back_ptr->pos == pt) {
                         nb_ptr->neighbors.erase(nb_ptr->neighbors.begin() + i);
-                        nb_ptr->neighbor_paths.erase(
-                            nb_ptr->neighbor_paths.begin() + i);
+                        nb_ptr->neighbor_paths.erase(nb_ptr->neighbor_paths.begin() + i);
                     } else {
                         ++i;
                     }
@@ -921,16 +867,14 @@ void GVG::DFSSearch2(GraphNode::Ptr& center_node,
             continue;
         if (nb_ptr->pos == center_node->pos)
             continue;  // 跳过中心节点自身.这是由于有时候成环造成的
-        if (std::find(cluster_points.begin(), cluster_points.end(),
-                      nb_ptr->pos) != cluster_points.end() &&
+        if (std::find(cluster_points.begin(), cluster_points.end(), nb_ptr->pos) != cluster_points.end() &&
             !(nb_ptr->pos == center_node->pos)) {
             remove_indices.push_back(i);
         }
     }
     for (auto it = remove_indices.rbegin(); it != remove_indices.rend(); ++it) {
         center_node->neighbors.erase(center_node->neighbors.begin() + *it);
-        center_node->neighbor_paths.erase(center_node->neighbor_paths.begin() +
-                                          *it);
+        center_node->neighbor_paths.erase(center_node->neighbor_paths.begin() + *it);
     }
 }
 
@@ -1024,8 +968,7 @@ void GVG::completeConnection(int x, int y, const DynamicVoronoi& voronoi) {
     }
 }
 
-void GVG::tryCompleteVoronoi(int x, int y, int idx1, int idx2,
-                             const DynamicVoronoi& voronoi) {
+void GVG::tryCompleteVoronoi(int x, int y, int idx1, int idx2, const DynamicVoronoi& voronoi) {
     int x1 = x + ne_offset_[idx1].x;
     int y1 = y + ne_offset_[idx1].y;
     int x2 = x + ne_offset_[idx2].x;
@@ -1080,14 +1023,11 @@ bool GVG::deleteblock(int x, int y) {
 
     // 这里要先处理6方格的情况
     if (voroCount >= 5) {
-        if ((f[0] && f[1] && f[2] && f[3] && f[4] && !f[6]) ||
-            (f[3] && f[4] && f[5] && f[6] && f[7] && !f[1]) ||
-            (f[0] && f[1] && f[3] && f[5] && f[6] && !f[4]) ||
-            (f[1] && f[2] && f[4] && f[6] && f[7] && !f[3])) {
+        if ((f[0] && f[1] && f[2] && f[3] && f[4] && !f[6]) || (f[3] && f[4] && f[5] && f[6] && f[7] && !f[1]) ||
+            (f[0] && f[1] && f[3] && f[5] && f[6] && !f[4]) || (f[1] && f[2] && f[4] && f[6] && f[7] && !f[3])) {
             // 6方格的情况，直接删除当前节点
-            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] =
-                false;     // 删除当前节点
-            return false;  // 不需要重试
+            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] = false;  // 删除当前节点
+            return false;                                             // 不需要重试
         }
     }
 
@@ -1105,19 +1045,15 @@ bool GVG::deleteblock(int x, int y) {
     if (f[0] && f[1] && f[3]) {
         retry = true;
         // curr
-        if (!(voronoiAt(pt_curr + ne_offset_[4]) ||
-              voronoiAt(pt_curr + ne_offset_[6]))) {
-            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] =
-                false;  // 删除当前节点
+        if (!(voronoiAt(pt_curr + ne_offset_[4]) || voronoiAt(pt_curr + ne_offset_[6]))) {
+            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] = false;  // 删除当前节点
             retry = false;
             return retry;
         }
     }
     if (f[1] && f[2] && f[4]) {
-        if (!(voronoiAt(pt_curr + ne_offset_[3]) ||
-              voronoiAt(pt_curr + ne_offset_[6]))) {
-            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] =
-                false;  // 删除当前节点
+        if (!(voronoiAt(pt_curr + ne_offset_[3]) || voronoiAt(pt_curr + ne_offset_[6]))) {
+            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] = false;  // 删除当前节点
             retry = false;
             return retry;
         }
@@ -1125,10 +1061,8 @@ bool GVG::deleteblock(int x, int y) {
     if (f[3] && f[5] && f[6]) {
         retry = true;
         // curr
-        if (!(voronoiAt(pt_curr + ne_offset_[4]) ||
-              voronoiAt(pt_curr + ne_offset_[1]))) {
-            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] =
-                false;  // 删除当前节点
+        if (!(voronoiAt(pt_curr + ne_offset_[4]) || voronoiAt(pt_curr + ne_offset_[1]))) {
+            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] = false;  // 删除当前节点
             retry = false;
             return retry;
         }
@@ -1136,10 +1070,8 @@ bool GVG::deleteblock(int x, int y) {
     if (f[4] && f[6] && f[7]) {
         retry = true;
         // curr
-        if (!(voronoiAt(pt_curr + ne_offset_[3]) ||
-              voronoiAt(pt_curr + ne_offset_[1]))) {
-            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] =
-                false;  // 删除当前节点
+        if (!(voronoiAt(pt_curr + ne_offset_[3]) || voronoiAt(pt_curr + ne_offset_[1]))) {
+            voronoi_new[(pt_curr.y) * sizeX_ + (pt_curr.x)] = false;  // 删除当前节点
             retry = false;
             return retry;
         }
@@ -1164,11 +1096,9 @@ void GVG::drawVoronoiByGraphs(cv::Mat& img) const {
             auto node_ptr = node.second;
             IntPoint node_pos = node_ptr->pos;
             if (node_ptr->type == GraphNode::Strong) {
-                img.at<cv::Vec3b>(sizeY_ - node_pos.y - 1, node_pos.x) =
-                    cv::Vec3b(0, 0, 255);  // 红色
+                img.at<cv::Vec3b>(sizeY_ - node_pos.y - 1, node_pos.x) = cv::Vec3b(0, 0, 255);  // 红色
             } else if (node_ptr->type == GraphNode::Weak) {
-                img.at<cv::Vec3b>(sizeY_ - node_pos.y - 1, node_pos.x) =
-                    cv::Vec3b(255, 0, 0);  // 蓝色
+                img.at<cv::Vec3b>(sizeY_ - node_pos.y - 1, node_pos.x) = cv::Vec3b(255, 0, 0);  // 蓝色
             }
             const std::vector<Path>& paths = node_ptr->neighbor_paths;
             for (const auto& path : paths) {
@@ -1177,10 +1107,9 @@ void GVG::drawVoronoiByGraphs(cv::Mat& img) const {
                 for (size_t j = 0; j < path.path.size(); ++j) {
                     int px = path.path[j].x;
                     int py = path.path[j].y;
-                    img.at<cv::Vec3b>(sizeY_ - py - 1, px)[0] = 0;  // 蓝色通道
-                    img.at<cv::Vec3b>(sizeY_ - py - 1, px)[1] =
-                        255;                                        // 绿色通道
-                    img.at<cv::Vec3b>(sizeY_ - py - 1, px)[2] = 0;  // 红色通道
+                    img.at<cv::Vec3b>(sizeY_ - py - 1, px)[0] = 0;    // 蓝色通道
+                    img.at<cv::Vec3b>(sizeY_ - py - 1, px)[1] = 255;  // 绿色通道
+                    img.at<cv::Vec3b>(sizeY_ - py - 1, px)[2] = 0;    // 红色通道
                 }
             }
         }
@@ -1192,19 +1121,16 @@ void GVG::drawVoronoiByGrid(cv::Mat& img) const {
     for (int y = 0; y < sizeY_; ++y) {
         for (int x = 0; x < sizeX_; ++x) {
             if (voronoiAt(x, y)) {
-                img.at<cv::Vec3b>(sizeY_ - y - 1, x) =
-                    cv::Vec3b(0, 0, 255);  // 红色
+                img.at<cv::Vec3b>(sizeY_ - y - 1, x) = cv::Vec3b(0, 0, 255);  // 红色
             }
         }
     }
     for (int y = 0; y < sizeY_; ++y) {
         for (int x = 0; x < sizeX_; ++x) {
             if (grid_types_[y * sizeX_ + x] == GRID_TYPE::Strong) {
-                img.at<cv::Vec3b>(sizeY_ - y - 1, x) =
-                    cv::Vec3b(255, 0, 255);  // 紫色
+                img.at<cv::Vec3b>(sizeY_ - y - 1, x) = cv::Vec3b(255, 0, 255);  // 紫色
             } else if (grid_types_[y * sizeX_ + x] == GRID_TYPE::Weak) {
-                img.at<cv::Vec3b>(sizeY_ - y - 1, x) =
-                    cv::Vec3b(0, 255, 0);  // 绿色
+                img.at<cv::Vec3b>(sizeY_ - y - 1, x) = cv::Vec3b(0, 255, 0);  // 绿色
             }
         }
     }

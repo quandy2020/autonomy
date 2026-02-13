@@ -53,30 +53,21 @@ TEST(BlockingQueueTest, testPushPopSharedPtr) {
 
 TEST(BlockingQueueTest, testPopWithTimeout) {
     BlockingQueue<std::unique_ptr<int>> blocking_queue;
-    EXPECT_EQ(nullptr,
-              blocking_queue.PopWithTimeout(common::FromMilliseconds(150)));
+    EXPECT_EQ(nullptr, blocking_queue.PopWithTimeout(common::FromMilliseconds(150)));
 }
 
 TEST(BlockingQueueTest, testPushWithTimeout) {
     BlockingQueue<std::unique_ptr<int>> blocking_queue(1);
-    EXPECT_EQ(true,
-              blocking_queue.PushWithTimeout(absl::make_unique<int>(42),
-                                             common::FromMilliseconds(150)));
-    EXPECT_EQ(false,
-              blocking_queue.PushWithTimeout(absl::make_unique<int>(15),
-                                             common::FromMilliseconds(150)));
+    EXPECT_EQ(true, blocking_queue.PushWithTimeout(absl::make_unique<int>(42), common::FromMilliseconds(150)));
+    EXPECT_EQ(false, blocking_queue.PushWithTimeout(absl::make_unique<int>(15), common::FromMilliseconds(150)));
     EXPECT_EQ(42, *blocking_queue.Pop());
     EXPECT_EQ(0, blocking_queue.Size());
 }
 
 TEST(BlockingQueueTest, testPushWithTimeoutInfinteQueue) {
     BlockingQueue<std::unique_ptr<int>> blocking_queue;
-    EXPECT_EQ(true,
-              blocking_queue.PushWithTimeout(absl::make_unique<int>(42),
-                                             common::FromMilliseconds(150)));
-    EXPECT_EQ(true,
-              blocking_queue.PushWithTimeout(absl::make_unique<int>(45),
-                                             common::FromMilliseconds(150)));
+    EXPECT_EQ(true, blocking_queue.PushWithTimeout(absl::make_unique<int>(42), common::FromMilliseconds(150)));
+    EXPECT_EQ(true, blocking_queue.PushWithTimeout(absl::make_unique<int>(45), common::FromMilliseconds(150)));
     EXPECT_EQ(42, *blocking_queue.Pop());
     EXPECT_EQ(45, *blocking_queue.Pop());
     EXPECT_EQ(0, blocking_queue.Size());
@@ -88,8 +79,7 @@ TEST(BlockingQueueTest, testBlockingPop) {
 
     int pop = 0;
 
-    std::thread thread(
-        [&blocking_queue, &pop] { pop = *blocking_queue.Pop(); });
+    std::thread thread([&blocking_queue, &pop] { pop = *blocking_queue.Pop(); });
 
     std::this_thread::sleep_for(common::FromMilliseconds(100));
     blocking_queue.Push(absl::make_unique<int>(42));
@@ -104,9 +94,8 @@ TEST(BlockingQueueTest, testBlockingPopWithTimeout) {
 
     int pop = 0;
 
-    std::thread thread([&blocking_queue, &pop] {
-        pop = *blocking_queue.PopWithTimeout(common::FromMilliseconds(2500));
-    });
+    std::thread thread(
+        [&blocking_queue, &pop] { pop = *blocking_queue.PopWithTimeout(common::FromMilliseconds(2500)); });
 
     std::this_thread::sleep_for(common::FromMilliseconds(100));
     blocking_queue.Push(absl::make_unique<int>(42));

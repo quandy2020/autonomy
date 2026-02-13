@@ -77,8 +77,7 @@ public:
      * @param position the 2d position of the grid map in the grid map frame
      * [m].
      */
-    void setGeometry(const Length& length, const double resolution,
-                     const Position& position = Position::Zero());
+    void setGeometry(const Length& length, const double resolution, const Position& position = Position::Zero());
 
     /*!
      * Set the geometry of the grid map from submap geometry information.
@@ -204,8 +203,7 @@ public:
      * implemented.
      */
     float atPosition(const std::string& layer, const Position& position,
-                     InterpolationMethods interpolationMethod =
-                         InterpolationMethods::INTER_NEAREST) const;
+                     InterpolationMethods interpolationMethod = InterpolationMethods::INTER_NEAREST) const;
 
     /*!
      * Get cell data for requested index.
@@ -272,8 +270,7 @@ public:
      * @param layers the layers to be checked for validity.
      * @return true if cell is valid, false otherwise.
      */
-    bool isValid(const Index& index,
-                 const std::vector<std::string>& layers) const;
+    bool isValid(const Index& index, const std::vector<std::string>& layers) const;
 
     /*!
      * Gets the 3d position of a data point (x, y of cell position & cell value
@@ -284,8 +281,7 @@ public:
      * @param position the position of the data point in the parent frame.
      * @return true if successful, false if no valid data available.
      */
-    bool getPosition3(const std::string& layer, const Index& index,
-                      Position3& position) const;
+    bool getPosition3(const std::string& layer, const Index& index, Position3& position) const;
 
     /*!
      * Gets the 3d vector of three layers with suffixes 'x', 'y', and 'z'.
@@ -294,8 +290,7 @@ public:
      * @param vector the vector with the values of the data type.
      * @return true if successful, false if no valid data available.
      */
-    bool getVector(const std::string& layerPrefix, const Index& index,
-                   Eigen::Vector3d& vector) const;
+    bool getVector(const std::string& layerPrefix, const Index& index, Eigen::Vector3d& vector) const;
 
     /*!
      * Gets a submap from the map. The requested submap is specified with the
@@ -307,8 +302,7 @@ public:
      * @param[out] isSuccess true if successful, false otherwise.
      * @return submap (is empty if success is false).
      */
-    GridMap getSubmap(const Position& position, const Length& length,
-                      bool& isSuccess) const;
+    GridMap getSubmap(const Position& position, const Length& length, bool& isSuccess) const;
 
     /*!
      * Gets a submap from the map. The requested submap is specified with the
@@ -322,8 +316,7 @@ public:
      * @param[out] isSuccess true if successful, false otherwise.
      * @return submap (is empty if success is false).
      */
-    GridMap getSubmap(const Position& position, const Length& length,
-                      Index& indexInSubmap, bool& isSuccess) const;
+    GridMap getSubmap(const Position& position, const Length& length, Index& indexInSubmap, bool& isSuccess) const;
 
     /*!
      * Apply isometric transformation (rotation + offset) to grid map and
@@ -343,10 +336,8 @@ public:
      * @throw std::out_of_range if no map layer with name `heightLayerName` is
      * present.
      */
-    GridMap getTransformedMap(const Eigen::Isometry3d& transform,
-                              const std::string& heightLayerName,
-                              const std::string& newFrameId,
-                              const double sampleRatio = 0.0) const;
+    GridMap getTransformedMap(const Eigen::Isometry3d& transform, const std::string& heightLayerName,
+                              const std::string& newFrameId, const double sampleRatio = 0.0) const;
 
     /*!
      * Set the position of the grid map.
@@ -406,10 +397,8 @@ public:
      * @param layers the layers that are copied if not all layers are used.
      * @return true if successful.
      */
-    bool addDataFrom(
-        const GridMap& other, bool extendMap, bool overwriteData,
-        bool copyAllLayers,
-        std::vector<std::string> layers = std::vector<std::string>());
+    bool addDataFrom(const GridMap& other, bool extendMap, bool overwriteData, bool copyAllLayers,
+                     std::vector<std::string> layers = std::vector<std::string>());
 
     /*!
      * Extends the size of the grip map such that the other grid map fits
@@ -554,9 +543,7 @@ private:
      * @param value the data of the cell.
      * @return true if linear interpolation was successful.
      */
-    bool atPositionLinearInterpolated(const std::string& layer,
-                                      const Position& position,
-                                      float& value) const;
+    bool atPositionLinearInterpolated(const std::string& layer, const Position& position, float& value) const;
 
     /*!
      * Get cell data at requested position, cubic convolution
@@ -569,8 +556,7 @@ private:
      * @param[out] value the data of the cell.
      * @return true if bicubic convolution interpolation was successful.
      */
-    bool atPositionBicubicConvolutionInterpolated(const std::string& layer,
-                                                  const Position& position,
+    bool atPositionBicubicConvolutionInterpolated(const std::string& layer, const Position& position,
                                                   float& value) const;
 
     /*!
@@ -584,9 +570,7 @@ private:
      * @param[out] value the data of the cell.
      * @return true if bicubic interpolation was successful.
      */
-    bool atPositionBicubicInterpolated(const std::string& layer,
-                                       const Position& position,
-                                       float& value) const;
+    bool atPositionBicubicInterpolated(const std::string& layer, const Position& position, float& value) const;
 
     /*!
      * Resize the buffer.

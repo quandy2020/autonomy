@@ -26,8 +26,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace decorator {
 
-SpeedController::SpeedController(const std::string& name,
-                                 const BT::NodeConfiguration& conf)
+SpeedController::SpeedController(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf),
       first_tick_(false),
       period_(1.0),
@@ -53,9 +52,7 @@ SpeedController::SpeedController(const std::string& name,
     d_rate_ = max_rate_ - min_rate_;
     d_speed_ = max_speed_ - min_speed_;
 
-    odom_smoother_ =
-        config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>(
-            "odom_smoother");
+    odom_smoother_ = config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>("odom_smoother");
     // TODO: Implement odom_smoother for autonomy framework
 }
 
@@ -74,14 +71,13 @@ inline BT::NodeStatus SpeedController::tick() {
     GetInputOrBlackboard("goal", current_goal);
 
     // Compare goals by checking position and orientation
-    bool goal_changed =
-        (goal_.pose.position.x != current_goal.pose.position.x ||
-         goal_.pose.position.y != current_goal.pose.position.y ||
-         goal_.pose.position.z != current_goal.pose.position.z ||
-         goal_.pose.orientation.x != current_goal.pose.orientation.x ||
-         goal_.pose.orientation.y != current_goal.pose.orientation.y ||
-         goal_.pose.orientation.z != current_goal.pose.orientation.z ||
-         goal_.pose.orientation.w != current_goal.pose.orientation.w);
+    bool goal_changed = (goal_.pose.position.x != current_goal.pose.position.x ||
+                         goal_.pose.position.y != current_goal.pose.position.y ||
+                         goal_.pose.position.z != current_goal.pose.position.z ||
+                         goal_.pose.orientation.x != current_goal.pose.orientation.x ||
+                         goal_.pose.orientation.y != current_goal.pose.orientation.y ||
+                         goal_.pose.orientation.z != current_goal.pose.orientation.z ||
+                         goal_.pose.orientation.w != current_goal.pose.orientation.w);
 
     if (goal_changed) {
         // Reset state and set period to max since we have a new goal
@@ -95,19 +91,15 @@ inline BT::NodeStatus SpeedController::tick() {
 
     // Calculate elapsed time manually
     auto current_time = commsgs::builtin_interfaces::Time::Now();
-    int64_t current_ns = static_cast<int64_t>(current_time.sec) * 1000000000LL +
-                         current_time.nanosec;
-    int64_t start_ns =
-        static_cast<int64_t>(start_.sec) * 1000000000LL + start_.nanosec;
+    int64_t current_ns = static_cast<int64_t>(current_time.sec) * 1000000000LL + current_time.nanosec;
+    int64_t start_ns = static_cast<int64_t>(start_.sec) * 1000000000LL + start_.nanosec;
     int64_t elapsed_ns = current_ns - start_ns;
-    auto elapsed =
-        commsgs::builtin_interfaces::Duration::FromNanoseconds(elapsed_ns);
+    auto elapsed = commsgs::builtin_interfaces::Duration::FromNanoseconds(elapsed_ns);
 
     // The child gets ticked the first time through and any time the period has
     // expired. In addition, once the child begins to run, it is ticked each
     // time 'til completion
-    if (first_tick_ || (child_node_->status() == BT::NodeStatus::RUNNING) ||
-        elapsed.Seconds() >= period_) {
+    if (first_tick_ || (child_node_->status() == BT::NodeStatus::RUNNING) || elapsed.Seconds() >= period_) {
         first_tick_ = false;
 
         // update period if the last period is exceeded
@@ -130,7 +122,5 @@ inline BT::NodeStatus SpeedController::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::decorator::SpeedController>(
-        "SpeedController");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::decorator::SpeedController>("SpeedController");
 }

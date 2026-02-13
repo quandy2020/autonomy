@@ -16,20 +16,28 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <algorithm>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
 
-#include "autonomy/common/macros.hpp"
-#include "autonomy/control/controller/pure_pursuit_controller/path_handler.hpp"
+#include "autolink/autolink.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/control/proto/pure_pursuit_controller_options.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
 namespace autonomy {
 namespace control {
 namespace controller {
+namespace pure_pursuit_controller {
+
+namespace heuristics {
 
 /**
  * @brief apply curvature constraint regulation on the linear velocity
@@ -38,13 +46,10 @@ namespace controller {
  * @param min_radius Minimum path radius to apply the heuristic
  * @return Velocity after applying the curvature constraint
  */
-inline double curvatureConstraint(const double raw_linear_vel,
-                                  const double curvature,
-                                  const double min_radius) {
+inline double curvatureConstraint(const double raw_linear_vel, const double curvature, const double min_radius) {
     const double radius = fabs(1.0 / curvature);
     if (radius < min_radius) {
-        return raw_linear_vel *
-               (1.0 - (fabs(radius - min_radius) / min_radius));
+        return raw_linear_vel * (1.0 - (fabs(radius - min_radius) / min_radius));
     } else {
         return raw_linear_vel;
     }
@@ -55,27 +60,23 @@ inline double curvatureConstraint(const double raw_linear_vel,
  * @param raw_linear_velocity Raw linear velocity desired
  * @param pose_cost Cost at the robot pose
  * @param costmap_ros Costmap object to query
- * @param params Parameters
+ * @param options Controller options
  * @return Velocity after applying the curvature constraint
  */
-inline double costConstraint(
-    const double raw_linear_vel, const double pose_cost,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper,
-    Parameters* params) {
+inline double costConstraint(const double raw_linear_vel, const double pose_cost,
+                             std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper,
+                             const proto::PurePursuitControllerOptions& options) {
     if (pose_cost != static_cast<double>(map::costmap_2d::NO_INFORMATION) &&
         pose_cost != static_cast<double>(map::costmap_2d::FREE_SPACE)) {
-        const double& inscribed_radius =
-            costmap_wrapper->getLayeredCostmap()->getInscribedRadius();
+        const double& inscribed_radius = costmap_wrapper->getLayeredCostmap()->getInscribedRadius();
 
         const double min_distance_to_obstacle =
-            (params->inflation_cost_scaling_factor * inscribed_radius -
-             log(pose_cost) + log(253.0f)) /
-            params->inflation_cost_scaling_factor;
+            (options.inflation_cost_scaling_factor() * inscribed_radius - log(pose_cost) + log(253.0f)) /
+            options.inflation_cost_scaling_factor();
 
-        if (min_distance_to_obstacle < params->cost_scaling_dist) {
+        if (min_distance_to_obstacle < options.cost_scaling_dist()) {
             return raw_linear_vel *
-                   (params->cost_scaling_gain * min_distance_to_obstacle /
-                    params->cost_scaling_dist);
+                   (options.cost_scaling_gain() * min_distance_to_obstacle / options.cost_scaling_dist());
         }
     }
 
@@ -83,28 +84,25 @@ inline double costConstraint(
 }
 
 /**
- * @brief Compute the scale factor to apply for linear velocity regulation on
- * approach to goal
+ * @brief Compute the scale factor to apply for linear velocity regulation on approach to goal
  * @param transformed_path Path to use to calculate distances to goal
- * @param approach_velocity_scaling_dist Minimum distance away to which to apply
- * the heuristic
- * @return A scale from 0.0-1.0 of the distance to goal scaled by minimum
- * distance
+ * @param approach_velocity_scaling_dist Minimum distance away to which to apply the heuristic
+ * @return A scale from 0.0-1.0 of the distance to goal scaled by minimum distance
  */
-inline double approachVelocityScalingFactor(
-    const commsgs::planning_msgs::Path& transformed_path,
-    const double approach_velocity_scaling_dist) {
-    // Waiting to apply the threshold based on integrated distance ensures we
-    // don't erroneously apply approach scaling on curvy paths that are
-    // contained in a large local costmap.
-    const double remaining_distance =
-        map::costmap_2d::utils::calculate_path_length(transformed_path);
+inline double approachVelocityScalingFactor(const commsgs::planning_msgs::Path& transformed_path,
+                                            const double approach_velocity_scaling_dist) {
+    // Waiting to apply the threshold based on integrated distance ensures we don't
+    // erroneously apply approach scaling on curvy paths that are contained in a large local costmap.
+    double remaining_distance = 0.0;
+    for (size_t i = 1; i < transformed_path.poses.size(); ++i) {
+        remaining_distance +=
+            map::costmap_2d::utils::euclidean_distance(transformed_path.poses[i - 1], transformed_path.poses[i]);
+    }
     if (remaining_distance < approach_velocity_scaling_dist) {
         auto& last = transformed_path.poses.back();
-        // Here we will use a regular euclidean distance from the robot frame
-        // (origin) to get smooth scaling, regardless of path density.
-        return std::hypot(last.pose.position.x, last.pose.position.y) /
-               approach_velocity_scaling_dist;
+        // Here we will use a regular euclidean distance from the robot frame (origin)
+        // to get smooth scaling, regardless of path density.
+        return std::hypot(last.pose.position.x, last.pose.position.y) / approach_velocity_scaling_dist;
     } else {
         return 1.0;
     }
@@ -112,21 +110,16 @@ inline double approachVelocityScalingFactor(
 
 /**
  * @brief Velocity on approach to goal heuristic regulation term
- * @param constrained_linear_vel Linear velocity already constrained by
- * heuristics
+ * @param constrained_linear_vel Linear velocity already constrained by heuristics
  * @param path The path plan in the robot base frame coordinates
  * @param min_approach_velocity Minimum velocity to use on approach to goal
- * @param approach_velocity_scaling_dist Distance away from goal to start
- * applying this heuristic
+ * @param approach_velocity_scaling_dist Distance away from goal to start applying this heuristic
  * @return Velocity after regulation via approach to goal slow-down
  */
-inline double approachVelocityConstraint(
-    const double constrained_linear_vel,
-    const commsgs::planning_msgs::Path& path,
-    const double min_approach_velocity,
-    const double approach_velocity_scaling_dist) {
-    double velocity_scaling =
-        approachVelocityScalingFactor(path, approach_velocity_scaling_dist);
+inline double approachVelocityConstraint(const double constrained_linear_vel, const commsgs::planning_msgs::Path& path,
+                                         const double min_approach_velocity,
+                                         const double approach_velocity_scaling_dist) {
+    double velocity_scaling = approachVelocityScalingFactor(path, approach_velocity_scaling_dist);
     double approach_vel = constrained_linear_vel * velocity_scaling;
 
     if (approach_vel < min_approach_velocity) {
@@ -136,6 +129,8 @@ inline double approachVelocityConstraint(
     return std::min(constrained_linear_vel, approach_vel);
 }
 
+}  // namespace heuristics
+}  // namespace pure_pursuit_controller
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy

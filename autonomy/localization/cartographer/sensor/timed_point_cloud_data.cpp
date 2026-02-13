@@ -22,8 +22,7 @@
 namespace cartographer {
 namespace sensor {
 
-proto::TimedPointCloudData ToProto(
-    const TimedPointCloudData& timed_point_cloud_data) {
+proto::TimedPointCloudData ToProto(const TimedPointCloudData& timed_point_cloud_data) {
     proto::TimedPointCloudData proto;
     proto.set_timestamp(common::ToUniversal(timed_point_cloud_data.time));
     *proto.mutable_origin() = transform::ToProto(timed_point_cloud_data.origin);
@@ -38,8 +37,7 @@ proto::TimedPointCloudData ToProto(
 }
 
 TimedPointCloudData FromProto(const proto::TimedPointCloudData& proto) {
-    CHECK(proto.intensities().size() == 0 ||
-          proto.intensities().size() == proto.point_data().size());
+    CHECK(proto.intensities().size() == 0 || proto.intensities().size() == proto.point_data().size());
     TimedPointCloud timed_point_cloud;
     if (proto.point_data().size() > 0) {
         timed_point_cloud.reserve(proto.point_data().size());
@@ -49,17 +47,13 @@ TimedPointCloudData FromProto(const proto::TimedPointCloudData& proto) {
     } else {
         timed_point_cloud.reserve(proto.point_data_legacy().size());
         for (const auto& timed_point_proto : proto.point_data_legacy()) {
-            const Eigen::Vector4f timed_point =
-                transform::ToEigen(timed_point_proto);
-            timed_point_cloud.push_back(
-                {timed_point.head<3>(), timed_point[3]});
+            const Eigen::Vector4f timed_point = transform::ToEigen(timed_point_proto);
+            timed_point_cloud.push_back({timed_point.head<3>(), timed_point[3]});
         }
     }
-    return TimedPointCloudData{common::FromUniversal(proto.timestamp()),
-                               transform::ToEigen(proto.origin()),
+    return TimedPointCloudData{common::FromUniversal(proto.timestamp()), transform::ToEigen(proto.origin()),
                                timed_point_cloud,
-                               std::vector<float>(proto.intensities().begin(),
-                                                  proto.intensities().end())};
+                               std::vector<float>(proto.intensities().begin(), proto.intensities().end())};
 }
 
 }  // namespace sensor

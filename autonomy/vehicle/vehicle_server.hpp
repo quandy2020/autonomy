@@ -56,8 +56,7 @@ public:
      * @param model  车辆 / 机器人模型配置参数
      * @param iface  底层 VehicleInterface 实现（差速 / 阿克曼 / UAV 等）
      */
-    VehicleServer(const ::autonomy::vehicle::proto::VehicleModel& model,
-                  VehicleInterface::SharedPtr iface);
+    VehicleServer(const ::autonomy::vehicle::proto::VehicleModel& model, VehicleInterface::SharedPtr iface);
 
     /**
      * @brief 析构函数
@@ -77,8 +76,7 @@ public:
      * - 再将指令缓存到内部 Vehicle 消息中
      * - 最后调用 VehicleInterface::ApplyCommand 下发到底层
      */
-    void SetCommand(
-        const ::autonomy::vehicle::proto::KinematicsControlCommand& command);
+    void SetCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command);
 
     /**
      * @brief 获取当前聚合的 Vehicle proto（包含 header + model + info +
@@ -105,8 +103,7 @@ public:
     /**
      * @brief 只读访问当前控制指令
      */
-    const ::autonomy::vehicle::proto::KinematicsControlCommand& command()
-        const {
+    const ::autonomy::vehicle::proto::KinematicsControlCommand& command() const {
         return vehicle_.command();
     }
 
@@ -122,17 +119,14 @@ private:
 
     // Node for publishing and subscribing vehicle messages via autolink
     std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Reader<::autonomy::vehicle::proto::Vehicle>>
-        vehicle_reader_;
-    std::shared_ptr<::autolink::Writer<::autonomy::vehicle::proto::Vehicle>>
-        vehicle_writer_;
+    std::shared_ptr<::autolink::Reader<::autonomy::vehicle::proto::Vehicle>> vehicle_reader_;
+    std::shared_ptr<::autolink::Writer<::autonomy::vehicle::proto::Vehicle>> vehicle_writer_;
 
     /**
      * @brief 处理从外部收到的 Vehicle 消息（例如来自远程监控 / 仿真）
      *        当前实现简单地用外部消息覆盖内部缓存，后续可在此处做权限/一致性检查。
      */
-    void HandleVehicleMessage(
-        const ::autonomy::vehicle::proto::Vehicle& vehicle);
+    void HandleVehicleMessage(const ::autonomy::vehicle::proto::Vehicle& vehicle);
 };
 
 }  // namespace vehicle

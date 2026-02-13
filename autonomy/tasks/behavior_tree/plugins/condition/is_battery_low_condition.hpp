@@ -46,8 +46,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    IsBatteryLowCondition(const std::string& condition_name,
-                          const BT::NodeConfiguration& conf);
+    IsBatteryLowCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     IsBatteryLowCondition() = delete;
 
@@ -73,14 +72,9 @@ public:
      */
     static BT::PortsList providedPorts() {
         return {
-            BT::InputPort<double>("min_battery",
-                                  "Minimum battery percentage/voltage"),
-            BT::InputPort<std::string>("battery_topic",
-                                       std::string("/battery_status"),
-                                       "Battery topic"),
-            BT::InputPort<bool>(
-                "is_voltage", false,
-                "If true voltage will be used to check for low battery"),
+            BT::InputPort<double>("min_battery", "Minimum battery percentage/voltage"),
+            BT::InputPort<std::string>("battery_topic", std::string("/battery_status"), "Battery topic"),
+            BT::InputPort<bool>("is_voltage", false, "If true voltage will be used to check for low battery"),
         };
     }
 
@@ -89,12 +83,10 @@ private:
      * @brief Callback function for battery topic
      * @param msg Shared pointer to commsgs::sensor_msgs::BatteryState message
      */
-    void batteryCallback(
-        const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg);
+    void batteryCallback(const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg);
 
     std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Reader<commsgs::sensor_msgs::BatteryState>>
-        battery_sub_;
+    std::shared_ptr<::autolink::Reader<commsgs::sensor_msgs::BatteryState>> battery_sub_;
     std::string battery_topic_;
     double min_battery_;
     bool is_voltage_;

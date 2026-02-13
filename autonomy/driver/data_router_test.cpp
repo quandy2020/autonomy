@@ -39,8 +39,7 @@ protected:
         driver_engine_ = std::make_unique<DriverEngine>(node_.get());
 
         // 创建数据路由器
-        data_router_ =
-            std::make_unique<DataRouter>(node_.get(), driver_engine_.get());
+        data_router_ = std::make_unique<DataRouter>(node_.get(), driver_engine_.get());
     }
 
     void TearDown() override {
@@ -55,7 +54,7 @@ protected:
         node_.reset();
     }
 
-    std::unique_ptr<::autolink::Node> node_;
+    std::shared_ptr<::autolink::Node> node_;
     std::unique_ptr<DriverEngine> driver_engine_;
     std::unique_ptr<DataRouter> data_router_;
 };
@@ -102,13 +101,11 @@ TEST_F(DataRouterTest, SetGetDataSource) {
 
     // 设置数据源为 ROS2
     data_router_->SetDataSource(sensor_id, DataRouter::DataSource::ROS2);
-    EXPECT_EQ(data_router_->GetDataSource(sensor_id),
-              DataRouter::DataSource::ROS2);
+    EXPECT_EQ(data_router_->GetDataSource(sensor_id), DataRouter::DataSource::ROS2);
 
     // 设置数据源为 DRIVER
     data_router_->SetDataSource(sensor_id, DataRouter::DataSource::DRIVER);
-    EXPECT_EQ(data_router_->GetDataSource(sensor_id),
-              DataRouter::DataSource::DRIVER);
+    EXPECT_EQ(data_router_->GetDataSource(sensor_id), DataRouter::DataSource::DRIVER);
 }
 
 // 测试从 ROS2 转发数据
@@ -138,9 +135,7 @@ TEST_F(DataRouterTest, ForwardFromRos2) {
     // 注册目标处理器
     bool handler_called = false;
     data_router_->RegisterTargetHandler(
-        "map",
-        [&handler_called, sensor_id](const std::string& id,
-                                     const std::shared_ptr<sensor::Data>& d) {
+        "map", [&handler_called, sensor_id](const std::string& id, const std::shared_ptr<sensor::Data>& d) {
             if (id == sensor_id) {
                 handler_called = true;
             }
@@ -163,10 +158,7 @@ TEST_F(DataRouterTest, RegisterUnregisterTargetHandler) {
 
     // 注册处理器
     data_router_->RegisterTargetHandler(
-        target, [&handler_called](const std::string&,
-                                  const std::shared_ptr<sensor::Data>&) {
-            handler_called = true;
-        });
+        target, [&handler_called](const std::string&, const std::shared_ptr<sensor::Data>&) { handler_called = true; });
 
     // 取消注册
     data_router_->UnregisterTargetHandler(target);
@@ -198,9 +190,7 @@ TEST_F(DataRouterTest, ForwardToTargets) {
     // 注册目标处理器
     bool handler_called = false;
     data_router_->RegisterTargetHandler(
-        "map",
-        [&handler_called, sensor_id](const std::string& id,
-                                     const std::shared_ptr<sensor::Data>&) {
+        "map", [&handler_called, sensor_id](const std::string& id, const std::shared_ptr<sensor::Data>&) {
             if (id == sensor_id) {
                 handler_called = true;
             }

@@ -22,7 +22,6 @@
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
-#include "autonomy/tasks/task_manager.hpp"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
@@ -99,9 +98,6 @@ private:
 
     // planner
     planning::PlannerServer::SharedPtr planner_server_{nullptr};
-
-    // task manager
-    tasks::TaskManager::SharedPtr tasks_{nullptr};
 };
 
 AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options);

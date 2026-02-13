@@ -49,10 +49,8 @@ public:
      * @param R covariance matrix for measurement model
      * @param P initial covariance of estimated state
      */
-    KalmanFilter(const Eigen::MatrixXd& x, const Eigen::MatrixXd& A,
-                 const Eigen::MatrixXd& B, const Eigen::MatrixXd& C,
-                 const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
-                 const Eigen::MatrixXd& P);
+    KalmanFilter(const Eigen::MatrixXd& x, const Eigen::MatrixXd& A, const Eigen::MatrixXd& B, const Eigen::MatrixXd& C,
+                 const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const Eigen::MatrixXd& P);
 
     /**
      * @brief destructor
@@ -69,10 +67,8 @@ public:
      * @param R covariance matrix for measurement model
      * @param P initial covariance of estimated state
      */
-    bool init(const Eigen::MatrixXd& x, const Eigen::MatrixXd& A,
-              const Eigen::MatrixXd& B, const Eigen::MatrixXd& C,
-              const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R,
-              const Eigen::MatrixXd& P);
+    bool init(const Eigen::MatrixXd& x, const Eigen::MatrixXd& A, const Eigen::MatrixXd& B, const Eigen::MatrixXd& C,
+              const Eigen::MatrixXd& Q, const Eigen::MatrixXd& R, const Eigen::MatrixXd& P);
 
     /**
      * @brief initialization of kalman filter
@@ -139,8 +135,8 @@ public:
      * @param Q covariance matrix for process model
      * @return bool to check matrix operations are being performed properly
      */
-    bool predict(const Eigen::MatrixXd& u, const Eigen::MatrixXd& A,
-                 const Eigen::MatrixXd& B, const Eigen::MatrixXd& Q);
+    bool predict(const Eigen::MatrixXd& u, const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
+                 const Eigen::MatrixXd& Q);
 
     /**
      * @brief calculate kalman filter covariance with prediction model with x,
@@ -150,8 +146,7 @@ public:
      * @param Q covariance matrix for process model
      * @return bool to check matrix operations are being performed properly
      */
-    bool predict(const Eigen::MatrixXd& x_next, const Eigen::MatrixXd& A,
-                 const Eigen::MatrixXd& Q);
+    bool predict(const Eigen::MatrixXd& x_next, const Eigen::MatrixXd& A, const Eigen::MatrixXd& Q);
 
     /**
      * @brief calculate kalman filter covariance with prediction model with x,
@@ -179,8 +174,8 @@ public:
      * @param R covariance matrix for measurement model
      * @return bool to check matrix operations are being performed properly
      */
-    bool update(const Eigen::MatrixXd& y, const Eigen::MatrixXd& y_pred,
-                const Eigen::MatrixXd& C, const Eigen::MatrixXd& R);
+    bool update(const Eigen::MatrixXd& y, const Eigen::MatrixXd& y_pred, const Eigen::MatrixXd& C,
+                const Eigen::MatrixXd& R);
 
     /**
      * @brief calculate kalman filter state by measurement model with C and R
@@ -190,8 +185,7 @@ public:
      * @param R covariance matrix for measurement model
      * @return bool to check matrix operations are being performed properly
      */
-    bool update(const Eigen::MatrixXd& y, const Eigen::MatrixXd& C,
-                const Eigen::MatrixXd& R);
+    bool update(const Eigen::MatrixXd& y, const Eigen::MatrixXd& C, const Eigen::MatrixXd& R);
 
     /**
      * @brief calculate kalman filter state by measurement model with C and R
@@ -211,8 +205,7 @@ protected:
                          //!< model y[k] = C * x[k]
     Eigen::MatrixXd Q_;  //!< @brief covariance matrix for process model x[k+1]
                          //!< = A*x[k] + B*u[k]
-    Eigen::MatrixXd
-        R_;  //!< @brief covariance matrix for measurement model y[k] = C * x[k]
+    Eigen::MatrixXd R_;  //!< @brief covariance matrix for measurement model y[k] = C * x[k]
     Eigen::MatrixXd P_;  //!< @brief covariance of estimated state
 };
 

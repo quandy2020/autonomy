@@ -79,8 +79,7 @@ public:
      * @param options 驱动器配置选项
      * @return true 成功，false 失败
      */
-    bool Configure(const std::string& name,
-                   const proto::DriverOptions& options) override;
+    bool Configure(const std::string& name, const proto::DriverOptions& options) override;
 
     /**
      * @brief 初始化驱动器
@@ -130,9 +129,7 @@ public:
      */
     bool RegisterSensorHandler(
         const std::string& sensor_id,
-        std::function<void(const std::string&,
-                           const std::shared_ptr<autonomy::sensor::Data>&)>
-            handler) override;
+        std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) override;
 
     /**
      * @brief 取消注册传感器数据处理器
@@ -166,17 +163,14 @@ protected:
      * @param sensor_id 传感器ID
      * @return IMU 数据消息，如果读取失败返回 nullptr
      */
-    virtual std::shared_ptr<commsgs::sensor_msgs::Imu> ReadImuData(
-        const std::string& sensor_id) = 0;
+    virtual std::shared_ptr<commsgs::sensor_msgs::Imu> ReadImuData(const std::string& sensor_id) = 0;
 
     /**
      * @brief 处理读取到的 IMU 数据并转发
      * @param sensor_id 传感器ID
      * @param imu_msg IMU 消息
      */
-    void ProcessImuData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::Imu>& imu_msg);
+    void ProcessImuData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::Imu>& imu_msg);
 
     /**
      * @brief 数据读取线程函数
@@ -190,9 +184,7 @@ protected:
     std::map<std::string, proto::ImuOptions> imu_configs_;
 
     // 传感器数据处理器映射表（sensor_id -> handler）
-    std::map<std::string, std::function<void(
-                              const std::string&,
-                              const std::shared_ptr<autonomy::sensor::Data>&)>>
+    std::map<std::string, std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)>>
         handlers_;
 
     // 互斥锁

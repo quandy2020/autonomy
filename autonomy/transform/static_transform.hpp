@@ -40,8 +40,7 @@ public:
      * @param options The options for the static transform
      * @param node The node to use for the static transform
      */
-    StaticTransform(const autonomy::transform::proto::TransformOptions& options,
-                    ::autolink::Node* node = nullptr);
+    StaticTransform(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node = nullptr);
 
     /**
      * @brief Destructor
@@ -52,8 +51,7 @@ public:
      * @brief Get the transform stampeds
      * @return The transform stampeds
      */
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
-        const {
+    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds() const {
         return transform_stampeds_;
     }
 
@@ -67,8 +65,7 @@ private:
      * @brief Send the transform to the writer
      * @param msgtf The transform to send
      */
-    void SendTransform(
-        const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
+    void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
 
     /**
      * @brief Parse static transforms from the yaml file
@@ -76,9 +73,7 @@ private:
      * @param transforms Output vector of transforms
      * @return True if parsed successfully, false otherwise
      */
-    bool ParseFromYaml(
-        const std::string& file_path,
-        std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
+    bool ParseFromYaml(const std::string& file_path, std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
 
     // node
     ::autolink::Node* node_;
@@ -87,9 +82,7 @@ private:
     commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
 
     // writer
-    std::shared_ptr<
-        ::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>>
-        writer_;
+    std::shared_ptr<::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>> writer_;
 
     // static_transform_options
     autonomy::transform::proto::TransformOptions static_transform_options_;

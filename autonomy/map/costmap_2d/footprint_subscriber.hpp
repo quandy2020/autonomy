@@ -38,8 +38,7 @@ public:
     /**
      * @brief A constructor
      */
-    FootprintSubscriber(const std::string& topic_name,
-                        std::string robot_base_frame = "base_link",
+    FootprintSubscriber(const std::string& topic_name, std::string robot_base_frame = "base_link",
                         double transform_tolerance = 0.1);
 
     /**
@@ -69,16 +68,14 @@ public:
      * @return False if no footprint has been received or if transformation
      * failed
      */
-    bool getFootprintInRobotFrame(
-        std::vector<commsgs::geometry_msgs::Point>& footprint,
-        commsgs::std_msgs::Header& footprint_header);
+    bool getFootprintInRobotFrame(std::vector<commsgs::geometry_msgs::Point>& footprint,
+                                  commsgs::std_msgs::Header& footprint_header);
 
 protected:
     /**
      * @brief Callback to process new footprint updates.
      */
-    void footprint_callback(
-        const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg);
+    void footprint_callback(const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg);
 
     std::string robot_base_frame_;
     double transform_tolerance_;

@@ -56,8 +56,7 @@ public:
     /**
      * @brief Find the footprint cost a a post with an unoriented footprint
      */
-    double footprintCostAtPose(double x, double y, double theta,
-                               const Footprint& footprint);
+    double footprintCostAtPose(double x, double y, double theta, const Footprint& footprint);
 
     /**
      * @brief Get the cost for a line segment

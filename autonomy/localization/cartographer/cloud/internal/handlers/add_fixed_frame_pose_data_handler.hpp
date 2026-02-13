@@ -26,18 +26,14 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    AddFixedFramePoseDataSignature,
-    autonomy::common::async_grpc::Stream<proto::AddFixedFramePoseDataRequest>,
-    google::protobuf::Empty,
-    "/cartographer.cloud.proto.MapBuilderService/AddFixedFramePoseData")
+DEFINE_HANDLER_SIGNATURE(AddFixedFramePoseDataSignature,
+                         autonomy::common::async_grpc::Stream<proto::AddFixedFramePoseDataRequest>,
+                         google::protobuf::Empty, "/cartographer.cloud.proto.MapBuilderService/AddFixedFramePoseData")
 
-class AddFixedFramePoseDataHandler
-    : public AddSensorDataHandlerBase<AddFixedFramePoseDataSignature>
+class AddFixedFramePoseDataHandler : public AddSensorDataHandlerBase<AddFixedFramePoseDataSignature>
 {
 public:
-    void OnSensorData(
-        const proto::AddFixedFramePoseDataRequest& request) override;
+    void OnSensorData(const proto::AddFixedFramePoseDataRequest& request) override;
 };
 
 }  // namespace handlers

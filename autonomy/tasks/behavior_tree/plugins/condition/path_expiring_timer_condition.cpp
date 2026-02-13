@@ -24,8 +24,8 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-PathExpiringTimerCondition::PathExpiringTimerCondition(
-    const std::string& condition_name, const BT::NodeConfiguration& conf)
+PathExpiringTimerCondition::PathExpiringTimerCondition(const std::string& condition_name,
+                                                       const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), period_(1.0), first_time_(true) {
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 }
@@ -50,12 +50,9 @@ BT::NodeStatus PathExpiringTimerCondition::tick() {
         for (size_t i = 0; i < prev_path_.poses.size(); ++i) {
             const auto& p1 = prev_path_.poses[i];
             const auto& p2 = path.poses[i];
-            if (p1.pose.position.x != p2.pose.position.x ||
-                p1.pose.position.y != p2.pose.position.y ||
-                p1.pose.position.z != p2.pose.position.z ||
-                p1.pose.orientation.x != p2.pose.orientation.x ||
-                p1.pose.orientation.y != p2.pose.orientation.y ||
-                p1.pose.orientation.z != p2.pose.orientation.z ||
+            if (p1.pose.position.x != p2.pose.position.x || p1.pose.position.y != p2.pose.position.y ||
+                p1.pose.position.z != p2.pose.position.z || p1.pose.orientation.x != p2.pose.orientation.x ||
+                p1.pose.orientation.y != p2.pose.orientation.y || p1.pose.orientation.z != p2.pose.orientation.z ||
                 p1.pose.orientation.w != p2.pose.orientation.w) {
                 path_changed = true;
                 break;
@@ -68,8 +65,7 @@ BT::NodeStatus PathExpiringTimerCondition::tick() {
     }
 
     // Now, get that in seconds
-    auto elapsed =
-        (autonomy::commsgs::builtin_interfaces::Time::Now() - start_).Seconds();
+    auto elapsed = (autonomy::commsgs::builtin_interfaces::Time::Now() - start_).Seconds();
     if (elapsed < period_) {
         return BT::NodeStatus::FAILURE;
     }
@@ -84,7 +80,6 @@ BT::NodeStatus PathExpiringTimerCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::PathExpiringTimerCondition>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::PathExpiringTimerCondition>(
         "PathExpiringTimer");
 }

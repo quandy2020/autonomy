@@ -34,8 +34,7 @@ namespace common {
 class ConfigurationFileResolver : public FileResolver
 {
 public:
-    explicit ConfigurationFileResolver(
-        const std::vector<std::string>& configuration_files_directories);
+    explicit ConfigurationFileResolver(const std::vector<std::string>& configuration_files_directories);
 
     std::string GetFullPathOrDie(const std::string& basename) override;
     std::string GetFileContentOrDie(const std::string& basename) override;

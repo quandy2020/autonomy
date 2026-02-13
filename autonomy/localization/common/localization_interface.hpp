@@ -54,8 +54,7 @@ public:
      * @param name 算法名称
      * @return true 成功，false 失败
      */
-    virtual bool Start(const proto::LocalizationOptions& options,
-                       const std::string& name) = 0;
+    virtual bool Start(const proto::LocalizationOptions& options, const std::string& name) = 0;
 
     /**
      * @brief 停止定位算法（停用、清理并关闭）
@@ -68,8 +67,7 @@ public:
      * @param pose 初始位姿（带协方差）
      * @return true 成功，false 失败
      */
-    virtual bool SetInitialPose(
-        const commsgs::geometry_msgs::PoseWithCovariance& pose) = 0;
+    virtual bool SetInitialPose(const commsgs::geometry_msgs::PoseWithCovariance& pose) = 0;
 
     /**
      * @brief 获取当前位姿估计
@@ -79,8 +77,7 @@ public:
     virtual bool GetPose(commsgs::geometry_msgs::PoseWithCovariance& pose) = 0;
 };
 
-proto::LocalizationOptions LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::LocalizationOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace localization

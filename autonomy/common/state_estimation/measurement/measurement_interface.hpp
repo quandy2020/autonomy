@@ -77,11 +77,8 @@ struct MeasurementInterface : public common::helper_functions::crtp<Derived> {
     ///
     template <typename OtherStateT>
     auto create_new_instance_from(const OtherStateT& other_state) const {
-        static_assert(common::state_vector::is_state<OtherStateT>::value,
-                      "\n\nThe other state must be a state.\n\n");
-        using ReturnType =
-            std::decay_t<decltype(this->impl().crtp_create_new_instance_from(
-                other_state))>;
+        static_assert(common::state_vector::is_state<OtherStateT>::value, "\n\nThe other state must be a state.\n\n");
+        using ReturnType = std::decay_t<decltype(this->impl().crtp_create_new_instance_from(other_state))>;
         static_assert(common::state_vector::is_state<ReturnType>::value,
                       "\n\nFunction crtp_create_new_instance_from must return "
                       "a state.\n\n");
@@ -105,8 +102,7 @@ struct MeasurementInterface : public common::helper_functions::crtp<Derived> {
     ///
     template <typename OtherStateT>
     OtherStateT map_into(const OtherStateT& other_state) const {
-        static_assert(common::state_vector::is_state<OtherStateT>::value,
-                      "\n\nThe other state must be a state.\n\n");
+        static_assert(common::state_vector::is_state<OtherStateT>::value, "\n\nThe other state must be a state.\n\n");
         return this->impl().crtp_map_into(other_state);
     }
 
@@ -132,8 +128,7 @@ struct MeasurementInterface : public common::helper_functions::crtp<Derived> {
     ///
     template <typename OtherStateT>
     auto mapping_matrix_from(const OtherStateT& other_state) const {
-        static_assert(common::state_vector::is_state<OtherStateT>::value,
-                      "The other state must be a state.");
+        static_assert(common::state_vector::is_state<OtherStateT>::value, "The other state must be a state.");
         return this->impl().crtp_mapping_matrix_from(other_state);
     }
 };

@@ -84,8 +84,7 @@ void BinaryFilter::initializeFilter(const std::string& filter_info_topic) {
     changeState(default_state_);
 }
 
-void BinaryFilter::filterInfoCallback(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg) {
+void BinaryFilter::filterInfoCallback(const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg) {
     // std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     // rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
@@ -129,8 +128,7 @@ void BinaryFilter::filterInfoCallback(
     //     std::bind(&BinaryFilter::maskCallback, this, std::placeholders::_1));
 }
 
-void BinaryFilter::maskCallback(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
+void BinaryFilter::maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!filter_mask_) {
@@ -150,8 +148,7 @@ void BinaryFilter::maskCallback(
     filter_mask_ = msg;
 }
 
-void BinaryFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
-                           int /*min_j*/, int /*max_i*/, int /*max_j*/,
+void BinaryFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/, int /*min_j*/, int /*max_i*/, int /*max_j*/,
                            const commsgs::geometry_msgs::Pose2D& pose) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
@@ -163,20 +160,17 @@ void BinaryFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
         return;
     }
 
-    commsgs::geometry_msgs::Pose2D
-        mask_pose;  // robot coordinates in mask frame
+    commsgs::geometry_msgs::Pose2D mask_pose;  // robot coordinates in mask frame
 
     // Transforming robot pose from current layer frame to mask frame
-    if (!transformPose(global_frame_, pose, filter_mask_->header.frame_id,
-                       mask_pose)) {
+    if (!transformPose(global_frame_, pose, filter_mask_->header.frame_id, mask_pose)) {
         return;
     }
 
     // Converting mask_pose robot position to filter_mask_ indexes
     // (mask_robot_i, mask_robot_j)
     unsigned int mask_robot_i, mask_robot_j;
-    if (!worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i,
-                     mask_robot_j)) {
+    if (!worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i, mask_robot_j)) {
         // // Robot went out of mask range. Set "false" state by-default
         // RCLCPP_WARN(
         // logger_,
@@ -250,5 +244,4 @@ void BinaryFilter::changeState(const bool state) {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::BinaryFilter,
-                            autonomy::map::costmap_2d::Layer)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::BinaryFilter, autonomy::map::costmap_2d::Layer)

@@ -34,8 +34,7 @@ public:
     TrajectoryConnectivityState() {}
 
     TrajectoryConnectivityState(const TrajectoryConnectivityState&) = delete;
-    TrajectoryConnectivityState& operator=(const TrajectoryConnectivityState&) =
-        delete;
+    TrajectoryConnectivityState& operator=(const TrajectoryConnectivityState&) = delete;
 
     // Add a trajectory which is initially connected to only itself.
     void Add(int trajectory_id);

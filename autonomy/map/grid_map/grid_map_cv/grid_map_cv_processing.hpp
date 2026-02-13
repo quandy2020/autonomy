@@ -41,10 +41,8 @@ public:
      * @param[in](optional) interpolationAlgorithm the interpolation method.
      * @return true if successful, false otherwise.
      */
-    static bool changeResolution(
-        const GridMap& gridMapSource, GridMap& gridMapResult,
-        const double resolution,
-        const int interpolationAlgorithm = cv::INTER_CUBIC);
+    static bool changeResolution(const GridMap& gridMapSource, GridMap& gridMapResult, const double resolution,
+                                 const int interpolationAlgorithm = cv::INTER_CUBIC);
 
     /*!
      * Apply isometric transformation (rotation + offset) to grid map and
@@ -68,10 +66,8 @@ public:
      * @throw std::invalid_argument if the transform is not approximately
      * z-aligned.
      */
-    static GridMap getTransformedMap(GridMap&& gridMapSource,
-                                     const Eigen::Isometry3d& transform,
-                                     const std::string& heightLayerName,
-                                     const std::string& newFrameId);
+    static GridMap getTransformedMap(GridMap&& gridMapSource, const Eigen::Isometry3d& transform,
+                                     const std::string& heightLayerName, const std::string& newFrameId);
 };
 
 }  // namespace grid_map

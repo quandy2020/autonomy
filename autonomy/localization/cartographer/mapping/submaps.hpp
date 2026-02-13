@@ -44,9 +44,7 @@ const float kMinLogOdds = Logit(kMinProbability);
 // Converts a probability to a log odds integer. 0 means unknown, [kMinLogOdds,
 // kMaxLogOdds] is mapped to [1, 255].
 inline uint8 ProbabilityToLogOddsInteger(const float probability) {
-    const int value = common::RoundToInt((Logit(probability) - kMinLogOdds) *
-                                         254.f / (kMaxLogOdds - kMinLogOdds)) +
-                      1;
+    const int value = common::RoundToInt((Logit(probability) - kMinLogOdds) * 254.f / (kMaxLogOdds - kMinLogOdds)) + 1;
     CHECK_LE(1, value);
     CHECK_GE(255, value);
     return value;
@@ -59,17 +57,15 @@ inline uint8 ProbabilityToLogOddsInteger(const float probability) {
 class Submap
 {
 public:
-    Submap(const transform::Rigid3d& local_submap_pose)
-        : local_pose_(local_submap_pose) {}
+    Submap(const transform::Rigid3d& local_submap_pose) : local_pose_(local_submap_pose) {}
     virtual ~Submap() {}
 
     virtual proto::Submap ToProto(bool include_grid_data) const = 0;
     virtual void UpdateFromProto(const proto::Submap& proto) = 0;
 
     // Fills data into the 'response'.
-    virtual void ToResponseProto(
-        const transform::Rigid3d& global_submap_pose,
-        proto::SubmapQuery::Response* response) const = 0;
+    virtual void ToResponseProto(const transform::Rigid3d& global_submap_pose,
+                                 proto::SubmapQuery::Response* response) const = 0;
 
     // Pose of this submap in the local map frame.
     transform::Rigid3d local_pose() const {

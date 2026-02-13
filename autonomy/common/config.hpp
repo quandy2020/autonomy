@@ -20,7 +20,8 @@
 namespace autonomy {
 namespace common {
 
-constexpr char kConfigurationFilesDirectory[] = "/workspace/autonomy/install/autonomy/share/autonomy/configuration_files";
+constexpr char kConfigurationFilesDirectory[] =
+    "/workspace/autonomy/install/autonomy/share/autonomy/configuration_files";
 constexpr char kSourceDirectory[] = "/workspace/autonomy/src/autonomy";
 
 // Library install dir

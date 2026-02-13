@@ -34,13 +34,11 @@ namespace mapping {
 class ImuBasedPoseExtrapolator : public PoseExtrapolatorInterface
 {
 public:
-    explicit ImuBasedPoseExtrapolator(
-        const proto::ImuBasedPoseExtrapolatorOptions& options);
+    explicit ImuBasedPoseExtrapolator(const proto::ImuBasedPoseExtrapolatorOptions& options);
     ~ImuBasedPoseExtrapolator() override;
 
     static std::unique_ptr<PoseExtrapolatorInterface> InitializeWithImu(
-        const proto::ImuBasedPoseExtrapolatorOptions& options,
-        const std::vector<sensor::ImuData>& imu_data,
+        const proto::ImuBasedPoseExtrapolatorOptions& options, const std::vector<sensor::ImuData>& imu_data,
         const std::vector<transform::TimestampedTransform>& initial_poses);
 
     // Returns the time of the last added pose or Time::min() if no pose was
@@ -54,8 +52,7 @@ public:
 
     transform::Rigid3d ExtrapolatePose(common::Time time) override;
 
-    ExtrapolationResult ExtrapolatePosesWithGravity(
-        const std::vector<common::Time>& times) override;
+    ExtrapolationResult ExtrapolatePosesWithGravity(const std::vector<common::Time>& times) override;
 
     // Gravity alignment estimate.
     Eigen::Quaterniond EstimateGravityOrientation(common::Time time) override;
@@ -70,22 +67,17 @@ private:
     // Odometry methods.
     bool HasOdometryData() const;
     bool HasOdometryDataForTime(const common::Time& first_time) const;
-    transform::Rigid3d InterpolateOdometry(
-        const common::Time& first_time) const;
-    transform::Rigid3d CalculateOdometryBetweenNodes(
-        const transform::Rigid3d& first_node_odometry,
-        const transform::Rigid3d& second_node_odometry) const;
+    transform::Rigid3d InterpolateOdometry(const common::Time& first_time) const;
+    transform::Rigid3d CalculateOdometryBetweenNodes(const transform::Rigid3d& first_node_odometry,
+                                                     const transform::Rigid3d& second_node_odometry) const;
 
-    std::vector<transform::Rigid3f> InterpolatePoses(
-        const ::cartographer::transform::TimestampedTransform& start,
-        const ::cartographer::transform::TimestampedTransform& end,
-        const std::vector<common::Time>::const_iterator times_begin,
-        const std::vector<common::Time>::const_iterator times_end);
+    std::vector<transform::Rigid3f> InterpolatePoses(const ::cartographer::transform::TimestampedTransform& start,
+                                                     const ::cartographer::transform::TimestampedTransform& end,
+                                                     const std::vector<common::Time>::const_iterator times_begin,
+                                                     const std::vector<common::Time>::const_iterator times_end);
 
-    std::deque<::cartographer::transform::TimestampedTransform>
-        timed_pose_queue_;
-    std::deque<::cartographer::transform::TimestampedTransform>
-        previous_solution_;
+    std::deque<::cartographer::transform::TimestampedTransform> timed_pose_queue_;
+    std::deque<::cartographer::transform::TimestampedTransform> previous_solution_;
 
     std::deque<sensor::ImuData> imu_data_;
     std::deque<sensor::OdometryData> odometry_data_;

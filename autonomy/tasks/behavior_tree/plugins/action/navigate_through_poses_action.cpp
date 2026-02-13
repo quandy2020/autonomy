@@ -16,6 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/navigate_through_poses_action.hpp"
 
+#include "autolink/common/log.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
@@ -24,13 +26,51 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-NavigateThroughPosesAction::NavigateThroughPosesAction(
-    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
+NavigateThroughPosesAction::NavigateThroughPosesAction(const std::string& xml_tag_name, const std::string& action_name,
+                                                       const BT::NodeConfiguration& conf)
+    : BtActionNode<proto::NavigateToPoseAction>(xml_tag_name, action_name, conf) {}
 
-BT::NodeStatus NavigateThroughPosesAction::tick() {
-    // TODO: Implement navigate through poses behavior
+void NavigateThroughPosesAction::on_tick() {
+    commsgs::geometry_msgs::PoseStamped pose;
+    if (!getInput("goals", pose)) {
+        AERROR << "NavigateThroughPosesAction: goal not provided";
+        return;
+    }
+    *goal_.mutable_pose() = commsgs::geometry_msgs::ToProto(pose);
+
+    std::string behavior_tree;
+    if (getInput("behavior_tree", behavior_tree)) {
+        goal_.set_behavior_tree(behavior_tree);
+    }
+}
+
+BT::NodeStatus NavigateThroughPosesAction::on_success() {
+    setOutput("error_code_id", static_cast<int32_t>(proto::NavigateToPoseErrorCode::NAVIGATE_TO_POSE_ERROR_NONE));
+    setOutput("error_msg", std::string(""));
     return BT::NodeStatus::SUCCESS;
+}
+
+BT::NodeStatus NavigateThroughPosesAction::on_aborted() {
+    if (result_.result) {
+        setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
+        setOutput("error_msg", result_.result->error_msg());
+    } else {
+        setOutput("error_code_id",
+                  static_cast<int32_t>(proto::NavigateToPoseErrorCode::NAVIGATE_TO_POSE_ERROR_UNKNOWN));
+        setOutput("error_msg", std::string("Unknown error"));
+    }
+    return BT::NodeStatus::FAILURE;
+}
+
+BT::NodeStatus NavigateThroughPosesAction::on_cancelled() {
+    setOutput("error_code_id", static_cast<int32_t>(proto::NavigateToPoseErrorCode::NAVIGATE_TO_POSE_ERROR_NONE));
+    setOutput("error_msg", std::string(""));
+    return BT::NodeStatus::SUCCESS;
+}
+
+void NavigateThroughPosesAction::on_timeout() {
+    setOutput("error_code_id", static_cast<int32_t>(proto::NavigateToPoseErrorCode::NAVIGATE_TO_POSE_ERROR_TIMEOUT));
+    setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
 }
 
 }  // namespace action
@@ -41,7 +81,11 @@ BT::NodeStatus NavigateThroughPosesAction::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
-                                 NavigateThroughPosesAction>(
-        "NavigateThroughPoses");
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::NavigateThroughPosesAction>(
+            name, "navigate_through_poses", config);
+    };
+
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::NavigateThroughPosesAction>(
+        "NavigateThroughPoses", builder);
 }

@@ -135,6 +135,60 @@ message BackUpAction
     Result result = 3;
 }
 
+
+enum ComputeRouteActionErrorCode
+{
+    COMPUTE_ROUTE_ERROR_NONE=0;
+    COMPUTE_ROUTE_ERROR_UNKNOWN=400;
+    COMPUTE_ROUTE_ERROR_TF_ERROR=401;
+    COMPUTE_ROUTE_ERROR_NO_VALID_GRAPH=402;
+    COMPUTE_ROUTE_ERROR_INDETERMINANT_NODES_ON_GRAPH=403;
+    COMPUTE_ROUTE_ERROR_TIMEOUT=404;
+    COMPUTE_ROUTE_ERROR_NO_VALID_ROUTE=405;
+    COMPUTE_ROUTE_IERROR_NVALID_EDGE_SCORER_USE=407;
+}
+
+message ComputeRouteAction
+{
+    // goal definition
+    message Goal
+    {
+        uint32 start_id = 1;
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped start = 2;
+        uint32 goal_id = 3;
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped goal = 4;
+
+        // Whether to use the start field or find the start pose in TF
+        bool use_start = 5; 
+
+        // Whether to use the poses or the IDs fields for request
+        bool use_poses = 6; 
+    }
+
+    message Feedback
+    {
+         google.protobuf.Empty empty = 1;
+    }
+
+    message Result
+    {
+        autonomy.commsgs.proto.builtin_interfaces.Duration planning_time = 1;
+        autonomy.commsgs.proto.planning_msgs.Path path = 2;
+        Route route = 3;
+        uint32 error_code = 4;
+        string error_msg = 5;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
 // ============================================================================
 // ComputeAndTrackRoute Action
 // ============================================================================
@@ -152,6 +206,7 @@ enum ComputeAndTrackRouteErrorCode
     COMPUTE_AND_TRACK_ROUTE_ERROR_OPERATION_FAILED = 406;
     COMPUTE_AND_TRACK_ROUTE_ERROR_INVALID_EDGE_SCORER_USE = 407;
 }
+
 
 message ComputeAndTrackRouteAction
 {
@@ -207,6 +262,48 @@ message ComputeAndTrackRouteAction
         
         // Error code
         ComputeAndTrackRouteErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+enum TrackToTargetErrorCode
+{
+    TRACK_TO_TARGET_ERROR_NONE = 0;
+    TRACK_TO_TARGET_ERROR_UNKNOWN = 500;
+    TRACK_TO_TARGET_ERROR_TF_ERROR = 501;
+    TRACK_TO_TARGET_ERROR_NO_VALID_GRAPH = 502;
+    TRACK_TO_TARGET_ERROR_INDETERMINANT_NODES_ON_GRAPH = 503;
+}
+
+message TrackToTargetAction
+{
+    message Goal
+    {
+        // Target ID
+        uint32 target_id = 1;
+    }
+
+    message Feedback
+    {
+        // Current target ID
+        uint32 current_target_id = 1;
+    }
+
+    message Result
+    {
+        // Error code
+        TrackToTargetErrorCode error_code = 2;
         
         // Error message
         string error_msg = 3;
@@ -793,6 +890,58 @@ message NavigateToPoseAction
 }
 
 // ============================================================================
+// NavigateThroughPoses Action (multi-waypoint navigation)
+// ============================================================================
+
+// Error codes for NavigateThroughPoses
+enum NavigateThroughPosesErrorCode
+{
+    NAVIGATE_THROUGH_POSES_ERROR_NONE = 0;
+    NAVIGATE_THROUGH_POSES_ERROR_UNKNOWN = 9100;
+    NAVIGATE_THROUGH_POSES_ERROR_FAILED_TO_LOAD_BEHAVIOR_TREE = 9101;
+    NAVIGATE_THROUGH_POSES_ERROR_TF_ERROR = 9102;
+    NAVIGATE_THROUGH_POSES_ERROR_TIMEOUT = 9103;
+    NAVIGATE_THROUGH_POSES_ERROR_INVALID_GOALS = 9104;
+}
+
+message NavigateThroughPosesAction
+{
+    message Goal
+    {
+        // Ordered list of poses to navigate through (via points)
+        autonomy.commsgs.proto.planning_msgs.Goals poses = 1;
+
+        // Optional behavior tree file path
+        string behavior_tree = 2;
+    }
+
+    message Feedback
+    {
+        // Index of the current pose being navigated to (0-based)
+        uint32 current_pose_index = 1;
+
+        // Total number of poses
+        uint32 total_poses = 2;
+
+        // Current pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped current_pose = 3;
+
+        // Navigation time so far
+        autonomy.commsgs.proto.builtin_interfaces.Duration navigation_time = 4;
+    }
+
+    message Result
+    {
+        NavigateThroughPosesErrorCode error_code = 1;
+        string error_msg = 2;
+    }
+
+    Goal goal = 1;
+    Feedback feedback = 2;
+    Result result = 3;
+}
+
+// ============================================================================
 // SmoothPath Action
 // ============================================================================
 
@@ -969,6 +1118,42 @@ message UndockRobotAction
     Feedback feedback = 2;
 
     // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// ExploreToAnywhere Action
+// ============================================================================
+
+enum ExploreToAnywhereErrorCode
+{
+    EXPLORE_TO_ANYWHERE_ERROR_NONE = 0;
+    EXPLORE_TO_ANYWHERE_ERROR_UNKNOWN = 800;
+    EXPLORE_TO_ANYWHERE_ERROR_TF_ERROR = 801;
+    EXPLORE_TO_ANYWHERE_ERROR_TIMEOUT = 802;
+}
+
+message ExploreToAnywhereAction
+{
+    message Goal
+    {
+        // Optional time allowance; 0 means no limit
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 1;
+    }
+
+    message Feedback
+    {
+        autonomy.commsgs.proto.builtin_interfaces.Duration exploration_time = 1;
+    }
+
+    message Result
+    {
+        ExploreToAnywhereErrorCode error_code = 1;
+        string error_msg = 2;
+    }
+
+    Goal goal = 1;
+    Feedback feedback = 2;
     Result result = 3;
 }
 

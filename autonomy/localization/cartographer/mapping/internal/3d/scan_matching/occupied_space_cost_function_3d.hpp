@@ -34,47 +34,34 @@ namespace scan_matching {
 class OccupiedSpaceCostFunction3D
 {
 public:
-    static ceres::CostFunction* CreateAutoDiffCostFunction(
-        const double scaling_factor, const sensor::PointCloud& point_cloud,
-        const mapping::HybridGrid& hybrid_grid) {
-        return new ceres::AutoDiffCostFunction<
-            OccupiedSpaceCostFunction3D, ceres::DYNAMIC /* residuals */,
-            3 /* translation variables */, 4 /* rotation variables */>(
-            new OccupiedSpaceCostFunction3D(scaling_factor, point_cloud,
-                                            hybrid_grid),
-            point_cloud.size());
+    static ceres::CostFunction* CreateAutoDiffCostFunction(const double scaling_factor,
+                                                           const sensor::PointCloud& point_cloud,
+                                                           const mapping::HybridGrid& hybrid_grid) {
+        return new ceres::AutoDiffCostFunction<OccupiedSpaceCostFunction3D, ceres::DYNAMIC /* residuals */,
+                                               3 /* translation variables */, 4 /* rotation variables */>(
+            new OccupiedSpaceCostFunction3D(scaling_factor, point_cloud, hybrid_grid), point_cloud.size());
     }
 
     template <typename T>
-    bool operator()(const T* const translation, const T* const rotation,
-                    T* const residual) const {
-        const transform::Rigid3<T> transform(
-            Eigen::Map<const Eigen::Matrix<T, 3, 1>>(translation),
-            Eigen::Quaternion<T>(rotation[0], rotation[1], rotation[2],
-                                 rotation[3]));
+    bool operator()(const T* const translation, const T* const rotation, T* const residual) const {
+        const transform::Rigid3<T> transform(Eigen::Map<const Eigen::Matrix<T, 3, 1>>(translation),
+                                             Eigen::Quaternion<T>(rotation[0], rotation[1], rotation[2], rotation[3]));
         return Evaluate(transform, residual);
     }
 
 private:
-    OccupiedSpaceCostFunction3D(const double scaling_factor,
-                                const sensor::PointCloud& point_cloud,
+    OccupiedSpaceCostFunction3D(const double scaling_factor, const sensor::PointCloud& point_cloud,
                                 const mapping::HybridGrid& hybrid_grid)
-        : scaling_factor_(scaling_factor),
-          point_cloud_(point_cloud),
-          interpolated_grid_(hybrid_grid) {}
+        : scaling_factor_(scaling_factor), point_cloud_(point_cloud), interpolated_grid_(hybrid_grid) {}
 
     OccupiedSpaceCostFunction3D(const OccupiedSpaceCostFunction3D&) = delete;
-    OccupiedSpaceCostFunction3D& operator=(const OccupiedSpaceCostFunction3D&) =
-        delete;
+    OccupiedSpaceCostFunction3D& operator=(const OccupiedSpaceCostFunction3D&) = delete;
 
     template <typename T>
-    bool Evaluate(const transform::Rigid3<T>& transform,
-                  T* const residual) const {
+    bool Evaluate(const transform::Rigid3<T>& transform, T* const residual) const {
         for (size_t i = 0; i < point_cloud_.size(); ++i) {
-            const Eigen::Matrix<T, 3, 1> world =
-                transform * point_cloud_[i].position.cast<T>();
-            const T probability = interpolated_grid_.GetInterpolatedValue(
-                world[0], world[1], world[2]);
+            const Eigen::Matrix<T, 3, 1> world = transform * point_cloud_[i].position.cast<T>();
+            const T probability = interpolated_grid_.GetInterpolatedValue(world[0], world[1], world[2]);
             residual[i] = scaling_factor_ * (1. - probability);
         }
         return true;

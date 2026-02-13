@@ -22,13 +22,7 @@ public:
     /*!
      * The definition of the buffer region positions.
      */
-    enum class Quadrant {
-        Undefined,
-        TopLeft,
-        TopRight,
-        BottomLeft,
-        BottomRight
-    };
+    enum class Quadrant { Undefined, TopLeft, TopRight, BottomLeft, BottomRight };
 
     constexpr static unsigned int nQuadrants = 4;
 

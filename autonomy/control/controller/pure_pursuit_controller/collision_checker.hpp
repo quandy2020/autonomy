@@ -22,35 +22,38 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/common/macros.hpp"
+#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
-#include "autonomy/control/controller/pure_pursuit_controller/parameter_handler.hpp"
+#include "autonomy/control/proto/pure_pursuit_controller_options.pb.h"
+#include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
-#include "autonomy/map/costmap_2d/utils/odometry_utils.hpp"
+#include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
 namespace autonomy {
 namespace control {
 namespace controller {
+namespace pure_pursuit_controller {
 
 /**
- * @class CollisionChecker
+ * @class nav2_regulated_pure_pursuit_controller::CollisionChecker
  * @brief Checks for collision based on a RPP control command
  */
 class CollisionChecker
 {
 public:
     /**
-     * @brief Constructor for CollisionChecker
+     * @brief Constructor for nav2_regulated_pure_pursuit_controller::CollisionChecker
      */
-    CollisionChecker(
-        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper,
-        Parameters* params);
+    CollisionChecker(std::shared_ptr<::autolink::Node> node,
+                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper,
+                     const proto::PurePursuitControllerOptions* options);
 
     /**
-     * @brief Destrructor for CollisionChecker
+     * @brief Destrructor for nav2_regulated_pure_pursuit_controller::CollisionChecker
      */
     ~CollisionChecker() = default;
 
@@ -63,8 +66,7 @@ public:
      * @param carrot_dist Distance to the carrot for PP
      * @return Whether collision is imminent
      */
-    bool isCollisionImminent(const commsgs::geometry_msgs::PoseStamped&,
-                             const double&, const double&, const double&);
+    bool isCollisionImminent(const commsgs::geometry_msgs::PoseStamped&, const double&, const double&, const double&);
 
     /**
      * @brief checks for collision at projected pose
@@ -86,12 +88,13 @@ public:
 protected:
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
     map::costmap_2d::Costmap2D* costmap_;
-    std::unique_ptr<
-        map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
+    std::unique_ptr<map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
         footprint_collision_checker_;
-    Parameters* params_;
+    const proto::PurePursuitControllerOptions* options_ = nullptr;
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>> carrot_arc_pub_;
 };
 
+}  // namespace pure_pursuit_controller
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy

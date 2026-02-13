@@ -33,9 +33,8 @@ namespace signal_filters {
 struct DummyClock {
     static auto now() {
         return std::chrono::steady_clock::now();
-    }  // Just for test convenience
-    using time_point =
-        std::chrono::steady_clock::time_point;  // Just for test convenience
+    }                                                          // Just for test convenience
+    using time_point = std::chrono::steady_clock::time_point;  // Just for test convenience
 };
 
 /// Interface class for filters in the signal processing sense; attenuate
@@ -48,10 +47,8 @@ struct DummyClock {
 template <typename T, typename ClockT = DummyClock>
 class FilterBase
 {
-    static_assert(std::is_floating_point<T>::value,
-                  "Filters require a floating point type");
-    constexpr static bool use_time_point_api =
-        !std::is_same<ClockT, DummyClock>::value;
+    static_assert(std::is_floating_point<T>::value, "Filters require a floating point type");
+    constexpr static bool use_time_point_api = !std::is_same<ClockT, DummyClock>::value;
 
 public:
     using clock_type = ClockT;
@@ -66,13 +63,11 @@ public:
     /// \throw std::domain_error If time_stamp goes back in time
     /// \throw std::domain_error If value is not normal
     /// \tparam DummyT Dummy type to get SFINAE to work
-    template <typename DummyT = T,
-              typename = std::enable_if_t<use_time_point_api, DummyT>>
+    template <typename DummyT = T, typename = std::enable_if_t<use_time_point_api, DummyT>>
     T filter(T value, typename clock_type::time_point time_stamp) {
         const auto dt = time_stamp - m_last_observation_stamp;
         const auto ret = filter_impl_checked(value, dt);
-        m_last_observation_stamp =
-            time_stamp;  // Goes after just in case there's an exception
+        m_last_observation_stamp = time_stamp;  // Goes after just in case there's an exception
         return ret;
     }
     /// Primary API: receives a value and outputs the result of the filter
@@ -82,8 +77,7 @@ public:
     /// \throw std::domain_error If duration is negative
     /// \throw std::domain_error If value is not normal
     /// \tparam DummyT Dummy type to get SFINAE to work
-    template <typename DummyT = T,
-              typename = std::enable_if_t<!use_time_point_api, DummyT>>
+    template <typename DummyT = T, typename = std::enable_if_t<!use_time_point_api, DummyT>>
     T filter(T value, std::chrono::nanoseconds duration) {
         return filter_impl_checked(value, duration);
     }

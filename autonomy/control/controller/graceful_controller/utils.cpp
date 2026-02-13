@@ -20,9 +20,8 @@ namespace autonomy {
 namespace control {
 namespace controller {
 
-commsgs::visualization_msgs::Marker CreateSlowdownMarker(
-    const commsgs::geometry_msgs::PoseStamped& motion_target,
-    const double& slowdown_radius) {
+commsgs::visualization_msgs::Marker CreateSlowdownMarker(const commsgs::geometry_msgs::PoseStamped& motion_target,
+                                                         const double& slowdown_radius) {
     commsgs::visualization_msgs::Marker slowdown_marker;
     slowdown_marker.header = motion_target.header;
     slowdown_marker.ns = "slowdown";

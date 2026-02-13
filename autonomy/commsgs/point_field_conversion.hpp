@@ -53,8 +53,7 @@ namespace sensor_msgs {
  * \brief Enum to type mapping.
  */
 template <int>
-struct pointFieldTypeAsType {
-};
+struct pointFieldTypeAsType {};
 /** \brief Concrete templatization of Enum to type for INT8 */
 template <>
 struct pointFieldTypeAsType<PointField::INT8> {
@@ -108,8 +107,7 @@ struct pointFieldTypeAsType<PointField::FLOAT64> {
  * \brief Type to enum mapping.
  */
 template <typename T>
-struct typeAsPointFieldType {
-};
+struct typeAsPointFieldType {};
 /** \brief Concrete templatization of type to enum for int8_t */
 template <>
 struct typeAsPointFieldType<int8_t> {
@@ -182,8 +180,7 @@ inline T readPointCloud2BufferValue(const unsigned char* data_ptr) {
  * \tparam T          return type
  */
 template <typename T>
-inline T readPointCloud2BufferValue(const unsigned char* data_ptr,
-                                    const unsigned char datatype) {
+inline T readPointCloud2BufferValue(const unsigned char* data_ptr, const unsigned char datatype) {
     switch (datatype) {
         case PointField::INT8:
             return readPointCloud2BufferValue<PointField::INT8, T>(data_ptr);

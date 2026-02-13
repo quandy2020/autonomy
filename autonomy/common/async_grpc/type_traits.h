@@ -29,54 +29,51 @@
 //   struct Foo { static char* foo() { return nullptr; } };
 //   DEFINE_HAS_SIGNATURE(has_foo, T::foo, char*(*)(void));
 //   static_assert(has_foo_v<Foo>, "foo() is not implemented")
-#define DEFINE_HAS_SIGNATURE(traitsName, funcName, signature)     \
-    template <typename U>                                         \
-    class traitsName                                              \
-    {                                                             \
-    private:                                                      \
-        template <typename T, T>                                  \
-        struct helper;                                            \
-                                                                  \
-        template <typename T>                                     \
-        static std::uint8_t check(helper<signature, &funcName>*); \
-        template <typename T>                                     \
-        static std::uint16_t check(...);                          \
-                                                                  \
-    public:                                                       \
-        static constexpr bool value =                             \
-            sizeof(check<U>(0)) == sizeof(std::uint8_t);          \
+#define DEFINE_HAS_SIGNATURE(traitsName, funcName, signature)                      \
+    template <typename U>                                                          \
+    class traitsName                                                               \
+    {                                                                              \
+    private:                                                                       \
+        template <typename T, T>                                                   \
+        struct helper;                                                             \
+                                                                                   \
+        template <typename T>                                                      \
+        static std::uint8_t check(helper<signature, &funcName>*);                  \
+        template <typename T>                                                      \
+        static std::uint16_t check(...);                                           \
+                                                                                   \
+    public:                                                                        \
+        static constexpr bool value = sizeof(check<U>(0)) == sizeof(std::uint8_t); \
     }
 
-#define DEFINE_HAS_MEMBER_TYPE(traitsName, Type)               \
-    template <class T>                                         \
-    class traitsName                                           \
-    {                                                          \
-    private:                                                   \
-        struct Fallback {                                      \
-            struct Type {                                      \
-            };                                                 \
-        };                                                     \
-        struct Derived : T, Fallback {                         \
-        };                                                     \
-                                                               \
-        template <class U>                                     \
-        static std::uint16_t& check(typename U::Type*);        \
-        template <typename U>                                  \
-        static std::uint8_t& check(U*);                        \
-                                                               \
-    public:                                                    \
-        static constexpr bool value =                          \
-            sizeof(check<Derived>(0)) == sizeof(std::uint8_t); \
+#define DEFINE_HAS_MEMBER_TYPE(traitsName, Type)                                         \
+    template <class T>                                                                   \
+    class traitsName                                                                     \
+    {                                                                                    \
+    private:                                                                             \
+        struct Fallback {                                                                \
+            struct Type {                                                                \
+            };                                                                           \
+        };                                                                               \
+        struct Derived : T, Fallback {                                                   \
+        };                                                                               \
+                                                                                         \
+        template <class U>                                                               \
+        static std::uint16_t& check(typename U::Type*);                                  \
+        template <typename U>                                                            \
+        static std::uint8_t& check(U*);                                                  \
+                                                                                         \
+    public:                                                                              \
+        static constexpr bool value = sizeof(check<Derived>(0)) == sizeof(std::uint8_t); \
     }
 
-#define DEFINE_HANDLER_SIGNATURE(traitsName, incomingType, outgoingType, \
-                                 methodName)                             \
-    struct traitsName {                                                  \
-        using IncomingType = incomingType;                               \
-        using OutgoingType = outgoingType;                               \
-        static const char* MethodName() {                                \
-            return methodName;                                           \
-        }                                                                \
+#define DEFINE_HANDLER_SIGNATURE(traitsName, incomingType, outgoingType, methodName) \
+    struct traitsName {                                                              \
+        using IncomingType = incomingType;                                           \
+        using OutgoingType = outgoingType;                                           \
+        static const char* MethodName() {                                            \
+            return methodName;                                                       \
+        }                                                                            \
     };
 
 namespace autonomy {
@@ -104,29 +101,21 @@ using StripStream = typename Strip<Stream, T>::type;
 
 template <typename Incoming, typename Outgoing>
 struct RpcType
-    : public std::integral_constant<::grpc::internal::RpcMethod::RpcType,
-                                    ::grpc::internal::RpcMethod::NORMAL_RPC> {
-};
+    : public std::integral_constant<::grpc::internal::RpcMethod::RpcType, ::grpc::internal::RpcMethod::NORMAL_RPC> {};
 
 template <typename Incoming, typename Outgoing>
 struct RpcType<Stream<Incoming>, Outgoing>
-    : public std::integral_constant<
-          ::grpc::internal::RpcMethod::RpcType,
-          ::grpc::internal::RpcMethod::CLIENT_STREAMING> {
-};
+    : public std::integral_constant<::grpc::internal::RpcMethod::RpcType,
+                                    ::grpc::internal::RpcMethod::CLIENT_STREAMING> {};
 
 template <typename Incoming, typename Outgoing>
 struct RpcType<Incoming, Stream<Outgoing>>
-    : public std::integral_constant<
-          ::grpc::internal::RpcMethod::RpcType,
-          ::grpc::internal::RpcMethod::SERVER_STREAMING> {
-};
+    : public std::integral_constant<::grpc::internal::RpcMethod::RpcType,
+                                    ::grpc::internal::RpcMethod::SERVER_STREAMING> {};
 
 template <typename Incoming, typename Outgoing>
 struct RpcType<Stream<Incoming>, Stream<Outgoing>>
-    : public std::integral_constant<
-          ::grpc::internal::RpcMethod::RpcType,
-          ::grpc::internal::RpcMethod::BIDI_STREAMING> {
+    : public std::integral_constant<::grpc::internal::RpcMethod::RpcType, ::grpc::internal::RpcMethod::BIDI_STREAMING> {
 };
 
 }  // namespace async_grpc

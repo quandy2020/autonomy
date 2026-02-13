@@ -118,10 +118,8 @@ public:
     }
 
     TF2SIMD_FORCE_INLINE bool operator==(const QuadWord& other) const {
-        return ((m_floats[3] == other.m_floats[3]) &&
-                (m_floats[2] == other.m_floats[2]) &&
-                (m_floats[1] == other.m_floats[1]) &&
-                (m_floats[0] == other.m_floats[0]));
+        return ((m_floats[3] == other.m_floats[3]) && (m_floats[2] == other.m_floats[2]) &&
+                (m_floats[1] == other.m_floats[1]) && (m_floats[0] == other.m_floats[0]));
     }
 
     TF2SIMD_FORCE_INLINE bool operator!=(const QuadWord& other) const {
@@ -133,8 +131,7 @@ public:
      * @param y Value of y
      * @param z Value of z
      */
-    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y,
-                                       const tf2Scalar& z) {
+    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z) {
         m_floats[0] = x;
         m_floats[1] = y;
         m_floats[2] = z;
@@ -154,8 +151,7 @@ public:
      * @param z Value of z
      * @param w Value of w
      */
-    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y,
-                                       const tf2Scalar& z, const tf2Scalar& w) {
+    TF2SIMD_FORCE_INLINE void setValue(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z, const tf2Scalar& w) {
         m_floats[0] = x;
         m_floats[1] = y;
         m_floats[2] = z;
@@ -171,8 +167,7 @@ public:
      * @param y Value of y
      * @param z Value of z
      */
-    TF2SIMD_FORCE_INLINE QuadWord(const tf2Scalar& x, const tf2Scalar& y,
-                                  const tf2Scalar& z) {
+    TF2SIMD_FORCE_INLINE QuadWord(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z) {
         m_floats[0] = x, m_floats[1] = y, m_floats[2] = z, m_floats[3] = 0.0f;
     }
 
@@ -182,8 +177,7 @@ public:
      * @param z Value of z
      * @param w Value of w
      */
-    TF2SIMD_FORCE_INLINE QuadWord(const tf2Scalar& x, const tf2Scalar& y,
-                                  const tf2Scalar& z, const tf2Scalar& w) {
+    TF2SIMD_FORCE_INLINE QuadWord(const tf2Scalar& x, const tf2Scalar& y, const tf2Scalar& z, const tf2Scalar& w) {
         m_floats[0] = x, m_floats[1] = y, m_floats[2] = z, m_floats[3] = w;
     }
 

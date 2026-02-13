@@ -23,10 +23,8 @@ namespace cartographer {
 namespace sensor {
 
 PointCloud::PointCloud() {}
-PointCloud::PointCloud(std::vector<PointCloud::PointType> points)
-    : points_(std::move(points)) {}
-PointCloud::PointCloud(std::vector<PointType> points,
-                       std::vector<float> intensities)
+PointCloud::PointCloud(std::vector<PointCloud::PointType> points) : points_(std::move(points)) {}
+PointCloud::PointCloud(std::vector<PointType> points, std::vector<float> intensities)
     : points_(std::move(points)), intensities_(std::move(intensities)) {
     if (!intensities_.empty()) {
         CHECK_EQ(points_.size(), intensities_.size());
@@ -61,8 +59,7 @@ void PointCloud::push_back(PointCloud::PointType value) {
     points_.push_back(std::move(value));
 }
 
-PointCloud TransformPointCloud(const PointCloud& point_cloud,
-                               const transform::Rigid3f& transform) {
+PointCloud TransformPointCloud(const PointCloud& point_cloud, const transform::Rigid3f& transform) {
     std::vector<RangefinderPoint> points;
     points.reserve(point_cloud.size());
     for (const RangefinderPoint& point : point_cloud.points()) {
@@ -71,8 +68,7 @@ PointCloud TransformPointCloud(const PointCloud& point_cloud,
     return PointCloud(points, point_cloud.intensities());
 }
 
-TimedPointCloud TransformTimedPointCloud(const TimedPointCloud& point_cloud,
-                                         const transform::Rigid3f& transform) {
+TimedPointCloud TransformTimedPointCloud(const TimedPointCloud& point_cloud, const transform::Rigid3f& transform) {
     TimedPointCloud result;
     result.reserve(point_cloud.size());
     for (const TimedRangefinderPoint& point : point_cloud) {
@@ -81,8 +77,7 @@ TimedPointCloud TransformTimedPointCloud(const TimedPointCloud& point_cloud,
     return result;
 }
 
-PointCloud CropPointCloud(const PointCloud& point_cloud, const float min_z,
-                          const float max_z) {
+PointCloud CropPointCloud(const PointCloud& point_cloud, const float min_z, const float max_z) {
     return point_cloud.copy_if([min_z, max_z](const RangefinderPoint& point) {
         return min_z <= point.position.z() && point.position.z() <= max_z;
     });

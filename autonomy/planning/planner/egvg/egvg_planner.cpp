@@ -28,9 +28,7 @@ void Planner::reset() {
     expanded_nodes_.clear();
     path_nodes_.clear();
 
-    std::priority_queue<GraphNode::Ptr, std::vector<GraphNode::Ptr>,
-                        NodeComparator0>
-        empty_queue;
+    std::priority_queue<GraphNode::Ptr, std::vector<GraphNode::Ptr>, NodeComparator0> empty_queue;
     open_set_.swap(empty_queue);
 
     for (int i = 0; i < use_node_num_; ++i) {
@@ -52,8 +50,7 @@ bool Planner::serachPath(GraphNode::Ptr start_node, GraphNode::Ptr goal_node) {
     GraphNode::Ptr current_node = start_node;
     current_node->parent.reset();
     current_node->g_score = 0.0;
-    current_node->f_score =
-        lambda_heu_ * getDiagHeu(current_node->pos, goal_node->pos);
+    current_node->f_score = lambda_heu_ * getDiagHeu(current_node->pos, goal_node->pos);
     current_node->node_state = GraphNode::IN_OPEN_SET_GVG;
 
     open_set_.push(current_node);
@@ -73,31 +70,24 @@ bool Planner::serachPath(GraphNode::Ptr start_node, GraphNode::Ptr goal_node) {
         iter_num_++;
 
         // 扩展邻居
-        for (int i = 0; i < static_cast<int>(current_node->neighbors.size());
-             ++i) {
+        for (int i = 0; i < static_cast<int>(current_node->neighbors.size()); ++i) {
             neighbor_node = current_node->neighbors[i].lock();
             if (!neighbor_node) {
                 continue;
             }
 
             IntPoint neighborPoint = neighbor_node->pos;
-            if (neighbor_node->type != GraphNode::Strong ||
-                neighbor_node->RemovedByPVS) {
+            if (neighbor_node->type != GraphNode::Strong || neighbor_node->RemovedByPVS) {
                 continue;
             }
             auto expanded_node = expanded_nodes_.find(neighborPoint);
-            if (expanded_node &&
-                expanded_node->node_state == GraphNode::IN_CLOSE_SET_GVG) {
+            if (expanded_node && expanded_node->node_state == GraphNode::IN_CLOSE_SET_GVG) {
                 continue;
             }
 
             double tentative_g_score =
-                current_node->g_score +
-                current_node->neighbor_paths[i].path_length +
-                1.0;  // 假设网格的距离为 1
-            double tentative_f_score =
-                tentative_g_score +
-                lambda_heu_ * getEuclHeu(neighborPoint, goal_node->pos);
+                current_node->g_score + current_node->neighbor_paths[i].path_length + 1.0;  // 假设网格的距离为 1
+            double tentative_f_score = tentative_g_score + lambda_heu_ * getEuclHeu(neighborPoint, goal_node->pos);
 
             if (!expanded_node) {
                 neighbor_node->g_score = tentative_g_score;
@@ -107,20 +97,17 @@ bool Planner::serachPath(GraphNode::Ptr start_node, GraphNode::Ptr goal_node) {
                 open_set_.push(neighbor_node);
                 expanded_nodes_.insert(neighborPoint, neighbor_node);
                 if (use_node_num_ == allocate_num_) {
-                    std::cout << "A star on GVG run out of memory."
-                              << std::endl;
+                    std::cout << "A star on GVG run out of memory." << std::endl;
                     return false;
                 }
-            } else if (neighbor_node->node_state ==
-                       GraphNode::IN_OPEN_SET_GVG) {
+            } else if (neighbor_node->node_state == GraphNode::IN_OPEN_SET_GVG) {
                 if (tentative_g_score < neighbor_node->g_score) {
                     neighbor_node->f_score = tentative_f_score;
                     neighbor_node->g_score = tentative_g_score;
                     neighbor_node->parent = current_node;
                 }
             } else {
-                std::cout << "A star on GVG error type in searching: "
-                          << static_cast<int>(neighbor_node->node_state)
+                std::cout << "A star on GVG error type in searching: " << static_cast<int>(neighbor_node->node_state)
                           << std::endl;
             }
         }
@@ -207,9 +194,8 @@ std::vector<IntPoint> Planner::getVisitedNodes() {
     return visited;
 }
 
-std::vector<IntPoint> Planner::AstarOnVoronoi(const IntPoint& pt1,
-                                              const IntPoint& pt2, int sizeX,
-                                              int sizeY, int graph_id) {
+std::vector<IntPoint> Planner::AstarOnVoronoi(const IntPoint& pt1, const IntPoint& pt2, int sizeX, int sizeY,
+                                              int graph_id) {
     (void)sizeX;
     (void)sizeY;
     // 1. 检查起点和终点是否在骨架上
@@ -281,12 +267,10 @@ std::vector<IntPoint> Planner::AstarOnVoronoi(const IntPoint& pt1,
                 open_set_.push(new_node);
                 expanded_nodes_.insert(nb, new_node);
                 if (use_node_num_ == allocate_num_) {
-                    std::cout << "A star on GVG run out of memory."
-                              << std::endl;
+                    std::cout << "A star on GVG run out of memory." << std::endl;
                     return {};
                 }
-            } else if (nb_node->node_state == GraphNode::IN_OPEN_SET_GVG &&
-                       g_new < nb_node->g_score) {
+            } else if (nb_node->node_state == GraphNode::IN_OPEN_SET_GVG && g_new < nb_node->g_score) {
                 nb_node->g_score = g_new;
                 nb_node->f_score = f_new;
                 nb_node->parent = cur;
@@ -299,9 +283,9 @@ std::vector<IntPoint> Planner::AstarOnVoronoi(const IntPoint& pt1,
     return {};
 }
 
-std::vector<std::vector<IntPoint>> Planner::expand_voronoi_grid(
-    const IntPoint& voronoi_grid, const std::vector<IntPoint> strong_nodes,
-    const int& sizeX, const int& sizeY) {
+std::vector<std::vector<IntPoint>> Planner::expand_voronoi_grid(const IntPoint& voronoi_grid,
+                                                                const std::vector<IntPoint> strong_nodes,
+                                                                const int& sizeX, const int& sizeY) {
     // 1. 检查起点是否在骨架上 isVoronoi, 并且不在 graph 上；
     if (!gvg_->isVoronoi(voronoi_grid)) {
         std::cout << "Start point is not on skeleton!" << std::endl;
@@ -339,8 +323,7 @@ std::vector<std::vector<IntPoint>> Planner::expand_voronoi_grid(
             path = current_pair.second;
             queue.pop();
 
-            if (std::find(strong_nodes.begin(), strong_nodes.end(),
-                          current_point) != strong_nodes.end()) {
+            if (std::find(strong_nodes.begin(), strong_nodes.end(), current_point) != strong_nodes.end()) {
                 result_paths.push_back(path);
                 break;  // 找到强节点，结束扩展
             }
@@ -352,8 +335,7 @@ std::vector<std::vector<IntPoint>> Planner::expand_voronoi_grid(
                     continue;  // 跳过当前方向
 
                 IntPoint candidate = current_point + expand_dir;
-                if (candidate.x < 0 || candidate.x >= sizeX ||
-                    candidate.y < 0 || candidate.y >= sizeY)
+                if (candidate.x < 0 || candidate.x >= sizeX || candidate.y < 0 || candidate.y >= sizeY)
                     continue;
                 if (!gvg_->isVoronoi(candidate))
                     continue;
@@ -365,25 +347,22 @@ std::vector<std::vector<IntPoint>> Planner::expand_voronoi_grid(
         }
     }
     // 检查两个路径是否有相同的强节点
-    if (result_paths.size() == 2 &&
-        result_paths[0].back() == result_paths[1].back()) {
+    if (result_paths.size() == 2 && result_paths[0].back() == result_paths[1].back()) {
         // 两条路径的终点是同一个强节点，表示成环了
         std::cout << "Found a loop!" << std::endl;
-        return {result_paths[0].size() < result_paths[1].size()
-                    ? result_paths[0]
-                    : result_paths[1]};  // 返回只包含一条路径的二维vector
+        return {result_paths[0].size() < result_paths[1].size() ? result_paths[0]
+                                                                : result_paths[1]};  // 返回只包含一条路径的二维vector
     }
     return result_paths;  // 返回两条路径
 }
 
-void Planner::DFSSearch(std::vector<GraphNode::Ptr>& vis, GraphNode::Ptr goal,
-                        int max_path_num) {
+void Planner::DFSSearch(std::vector<GraphNode::Ptr>& vis, GraphNode::Ptr goal, int max_path_num) {
     GraphNode::Ptr cur = vis.back();
 
     for (int i = 0; i < static_cast<int>(cur->neighbors.size()); ++i) {
         // 到达终点
         if (cur->neighbors[i].lock() == goal) {
-            raw_topo_paths_.push_back(vis);  // 直接存 GraphNode::Ptr 序列
+            raw_topo_paths_.push_back(vis);          // 直接存 GraphNode::Ptr 序列
             raw_topo_paths_.back().push_back(goal);  // 添加终点节点
             if (static_cast<int>(raw_topo_paths_.size()) >= max_path_num)
                 return;
@@ -414,11 +393,8 @@ void Planner::DFSSearch(std::vector<GraphNode::Ptr>& vis, GraphNode::Ptr goal,
 
         neighbor_scores.emplace_back(dis, i);
     }
-    std::sort(
-        neighbor_scores.begin(), neighbor_scores.end(),
-        [](const std::pair<double, int>& a, const std::pair<double, int>& b) {
-            return a.first < b.first;
-        });
+    std::sort(neighbor_scores.begin(), neighbor_scores.end(),
+              [](const std::pair<double, int>& a, const std::pair<double, int>& b) { return a.first < b.first; });
 
     for (const auto& item : neighbor_scores) {
         int idx = item.second;
@@ -448,8 +424,8 @@ void Planner::DFSSearch(std::vector<GraphNode::Ptr>& vis, GraphNode::Ptr goal,
     }
 }
 
-std::vector<std::vector<IntPoint>> Planner::searchTopoPaths(
-    GraphNode::Ptr start_node, GraphNode::Ptr goal_node, int max_path_num) {
+std::vector<std::vector<IntPoint>> Planner::searchTopoPaths(GraphNode::Ptr start_node, GraphNode::Ptr goal_node,
+                                                            int max_path_num) {
     raw_topo_paths_.clear();
     std::vector<GraphNode::Ptr> vis;
     vis.push_back(start_node);
@@ -486,12 +462,10 @@ std::vector<std::vector<IntPoint>> Planner::searchTopoPaths(
         }
         topo_paths.push_back(path);
     }
-    std::cout << "Found " << raw_topo_paths_.size() << " topological paths."
-              << std::endl;
+    std::cout << "Found " << raw_topo_paths_.size() << " topological paths." << std::endl;
     for (int i = 0; i < static_cast<int>(raw_topo_paths_.size()); ++i) {
-        std::cout << "Path " << i << ": " << raw_topo_paths_[i].size()
-                  << " nodes, " << topo_paths[i].size() << " points, "
-                  << std::endl;
+        std::cout << "Path " << i << ": " << raw_topo_paths_[i].size() << " nodes, " << topo_paths[i].size()
+                  << " points, " << std::endl;
     }
     return topo_paths;
 }
@@ -511,8 +485,7 @@ double Planner::getManhHeu(const IntPoint& p1, const IntPoint& p2) {
 }
 
 double Planner::getEuclHeu(const IntPoint& p1, const IntPoint& p2) {
-    return tie_breaker_ *
-           std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2));
+    return tie_breaker_ * std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2));
 }
 
 }  // namespace egvg

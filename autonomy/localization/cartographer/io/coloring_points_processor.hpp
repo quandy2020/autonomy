@@ -32,13 +32,12 @@ class ColoringPointsProcessor : public PointsProcessor
 public:
     constexpr static const char* kConfigurationFileActionName = "color_points";
 
-    ColoringPointsProcessor(const FloatColor& color,
-                            const std::string& frame_id, PointsProcessor* next);
+    ColoringPointsProcessor(const FloatColor& color, const std::string& frame_id, PointsProcessor* next);
 
-    static std::unique_ptr<ColoringPointsProcessor> FromDictionary(
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<ColoringPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                   PointsProcessor* next);
 
-    ~ColoringPointsProcessor() override {};
+    ~ColoringPointsProcessor() override{};
 
     ColoringPointsProcessor(const ColoringPointsProcessor&) = delete;
     ColoringPointsProcessor& operator=(const ColoringPointsProcessor&) = delete;

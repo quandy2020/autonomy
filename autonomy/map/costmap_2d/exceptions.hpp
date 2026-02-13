@@ -32,8 +32,7 @@ namespace costmap_2d {
 class CollisionCheckerException : public std::runtime_error
 {
 public:
-    explicit CollisionCheckerException(const std::string description)
-        : std::runtime_error(description) {}
+    explicit CollisionCheckerException(const std::string description) : std::runtime_error(description) {}
 };
 
 /**

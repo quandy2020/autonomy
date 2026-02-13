@@ -28,10 +28,8 @@ namespace cartographer {
 namespace common {
 namespace {
 
-std::unique_ptr<LuaParameterDictionary> MakeNonReferenceCounted(
-    const std::string& code) {
-    return LuaParameterDictionary::NonReferenceCounted(
-        code, absl::make_unique<DummyFileResolver>());
+std::unique_ptr<LuaParameterDictionary> MakeNonReferenceCounted(const std::string& code) {
+    return LuaParameterDictionary::NonReferenceCounted(code, absl::make_unique<DummyFileResolver>());
 }
 
 class LuaParameterDictionaryTest : public ::testing::Test
@@ -70,11 +68,9 @@ TEST_F(LuaParameterDictionaryTest, GetBoolFalse) {
 }
 
 TEST_F(LuaParameterDictionaryTest, GetDictionary) {
-    auto dict = MakeDictionary(
-        "return { blah = { blue = 100, red = 200 }, fasel = 10 }");
+    auto dict = MakeDictionary("return { blah = { blue = 100, red = 200 }, fasel = 10 }");
 
-    std::unique_ptr<LuaParameterDictionary> sub_dict(
-        dict->GetDictionary("blah"));
+    std::unique_ptr<LuaParameterDictionary> sub_dict(dict->GetDictionary("blah"));
     std::vector<std::string> keys = sub_dict->GetKeys();
     ASSERT_EQ(keys.size(), 2);
     std::sort(keys.begin(), keys.end());
@@ -198,8 +194,7 @@ TEST_F(LuaParameterDictionaryTest, GetArrayValuesAsDoubles) {
 TEST_F(LuaParameterDictionaryTest, GetArrayValuesAsDictionaries) {
     auto dict = MakeDictionary("return { { a = 1 }, { b = 3 } }");
     EXPECT_EQ(0, dict->GetKeys().size());
-    const std::vector<std::unique_ptr<LuaParameterDictionary>> values =
-        dict->GetArrayValuesAsDictionaries();
+    const std::vector<std::unique_ptr<LuaParameterDictionary>> values = dict->GetArrayValuesAsDictionaries();
     EXPECT_EQ(2, values.size());
     EXPECT_EQ(1., values[0]->GetInt("a"));
     EXPECT_EQ(3., values[1]->GetInt("b"));
@@ -216,8 +211,7 @@ TEST_F(LuaParameterDictionaryTest, TestChoseFalse) {
 }
 
 TEST_F(LuaParameterDictionaryTest, TestChooseInvalidArgument) {
-    EXPECT_DEATH(MakeDictionary("return { a = choose('truish', 1, 0) }"),
-                 "condition is not a boolean value.");
+    EXPECT_DEATH(MakeDictionary("return { a = choose('truish', 1, 0) }"), "condition is not a boolean value.");
 }
 
 }  // namespace

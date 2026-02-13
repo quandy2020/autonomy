@@ -45,11 +45,9 @@ void LoadStateHandler::OnRequest(const proto::LoadStateRequest& request) {
 
 void LoadStateHandler::OnReadsDone() {
     auto trajectory_remapping =
-        GetContext<MapBuilderContextInterface>()->map_builder().LoadState(
-            &reader_, load_frozen_state_);
+        GetContext<MapBuilderContextInterface>()->map_builder().LoadState(&reader_, load_frozen_state_);
     for (const auto& entry : trajectory_remapping) {
-        GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(
-            client_id_, entry.second);
+        GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(client_id_, entry.second);
     }
     auto response = absl::make_unique<proto::LoadStateResponse>();
     *response->mutable_trajectory_remapping() = ToProto(trajectory_remapping);

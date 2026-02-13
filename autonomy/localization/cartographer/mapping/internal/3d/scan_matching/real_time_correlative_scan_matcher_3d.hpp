@@ -34,27 +34,21 @@ class RealTimeCorrelativeScanMatcher3D
 {
 public:
     explicit RealTimeCorrelativeScanMatcher3D(
-        const scan_matching::proto::RealTimeCorrelativeScanMatcherOptions&
-            options);
+        const scan_matching::proto::RealTimeCorrelativeScanMatcherOptions& options);
 
-    RealTimeCorrelativeScanMatcher3D(const RealTimeCorrelativeScanMatcher3D&) =
-        delete;
-    RealTimeCorrelativeScanMatcher3D& operator=(
-        const RealTimeCorrelativeScanMatcher3D&) = delete;
+    RealTimeCorrelativeScanMatcher3D(const RealTimeCorrelativeScanMatcher3D&) = delete;
+    RealTimeCorrelativeScanMatcher3D& operator=(const RealTimeCorrelativeScanMatcher3D&) = delete;
 
     // Aligns 'point_cloud' within the 'hybrid_grid' given an
     // 'initial_pose_estimate' then updates 'pose_estimate' with the result and
     // returns the score.
-    float Match(const transform::Rigid3d& initial_pose_estimate,
-                const sensor::PointCloud& point_cloud,
-                const HybridGrid& hybrid_grid,
-                transform::Rigid3d* pose_estimate) const;
+    float Match(const transform::Rigid3d& initial_pose_estimate, const sensor::PointCloud& point_cloud,
+                const HybridGrid& hybrid_grid, transform::Rigid3d* pose_estimate) const;
 
 private:
-    std::vector<transform::Rigid3f> GenerateExhaustiveSearchTransforms(
-        float resolution, const sensor::PointCloud& point_cloud) const;
-    float ScoreCandidate(const HybridGrid& hybrid_grid,
-                         const sensor::PointCloud& transformed_point_cloud,
+    std::vector<transform::Rigid3f> GenerateExhaustiveSearchTransforms(float resolution,
+                                                                       const sensor::PointCloud& point_cloud) const;
+    float ScoreCandidate(const HybridGrid& hybrid_grid, const sensor::PointCloud& transformed_point_cloud,
                          const transform::Rigid3f& transform) const;
 
     const proto::RealTimeCorrelativeScanMatcherOptions options_;

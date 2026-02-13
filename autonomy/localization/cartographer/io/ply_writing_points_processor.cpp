@@ -32,16 +32,13 @@ namespace {
 
 // Writes the PLY header claiming 'num_points' will follow it into
 // 'output_file'.
-void WriteBinaryPlyHeader(const bool has_color, const bool has_intensities,
-                          const std::vector<std::string>& comments,
-                          const int64 num_points,
-                          FileWriter* const file_writer) {
+void WriteBinaryPlyHeader(const bool has_color, const bool has_intensities, const std::vector<std::string>& comments,
+                          const int64 num_points, FileWriter* const file_writer) {
     const std::string color_header = !has_color ? ""
                                                 : "property uchar red\n"
                                                   "property uchar green\n"
                                                   "property uchar blue\n";
-    const std::string intensity_header =
-        !has_intensities ? "" : "property float intensity\n";
+    const std::string intensity_header = !has_intensities ? "" : "property float intensity\n";
     std::ostringstream stream;
     stream << "ply\n"
            << "format binary_little_endian 1.0\n"
@@ -49,8 +46,7 @@ void WriteBinaryPlyHeader(const bool has_color, const bool has_intensities,
     for (const std::string& comment : comments) {
         stream << "comment " << comment << "\n";
     }
-    stream << "element vertex " << std::setw(15) << std::setfill('0')
-           << num_points << "\n"
+    stream << "element vertex " << std::setw(15) << std::setfill('0') << num_points << "\n"
            << "property float x\n"
            << "property float y\n"
            << "property float z\n"
@@ -59,8 +55,7 @@ void WriteBinaryPlyHeader(const bool has_color, const bool has_intensities,
     CHECK(file_writer->WriteHeader(out.data(), out.size()));
 }
 
-void WriteBinaryPlyPointCoordinate(const Eigen::Vector3f& point,
-                                   FileWriter* const file_writer) {
+void WriteBinaryPlyPointCoordinate(const Eigen::Vector3f& point, FileWriter* const file_writer) {
     // TODO(sirver): This ignores endianness.
     char buffer[12];
     memcpy(buffer, &point[0], sizeof(float));
@@ -69,43 +64,31 @@ void WriteBinaryPlyPointCoordinate(const Eigen::Vector3f& point,
     CHECK(file_writer->Write(buffer, 12));
 }
 
-void WriteBinaryIntensity(const float intensity,
-                          FileWriter* const file_writer) {
+void WriteBinaryIntensity(const float intensity, FileWriter* const file_writer) {
     // TODO(sirver): This ignores endianness.
-    CHECK(file_writer->Write(reinterpret_cast<const char*>(&intensity),
-                             sizeof(float)));
+    CHECK(file_writer->Write(reinterpret_cast<const char*>(&intensity), sizeof(float)));
 }
 
-void WriteBinaryPlyPointColor(const Uint8Color& color,
-                              FileWriter* const file_writer) {
-    CHECK(file_writer->Write(reinterpret_cast<const char*>(color.data()),
-                             color.size()));
+void WriteBinaryPlyPointColor(const Uint8Color& color, FileWriter* const file_writer) {
+    CHECK(file_writer->Write(reinterpret_cast<const char*>(color.data()), color.size()));
 }
 
 }  // namespace
 
-std::unique_ptr<PlyWritingPointsProcessor>
-PlyWritingPointsProcessor::FromDictionary(
-    const FileWriterFactory& file_writer_factory,
-    common::LuaParameterDictionary* const dictionary,
+std::unique_ptr<PlyWritingPointsProcessor> PlyWritingPointsProcessor::FromDictionary(
+    const FileWriterFactory& file_writer_factory, common::LuaParameterDictionary* const dictionary,
     PointsProcessor* const next) {
-    return absl::make_unique<PlyWritingPointsProcessor>(
-        file_writer_factory(dictionary->GetString("filename")),
-        std::vector<std::string>(), next);
+    return absl::make_unique<PlyWritingPointsProcessor>(file_writer_factory(dictionary->GetString("filename")),
+                                                        std::vector<std::string>(), next);
 }
 
-PlyWritingPointsProcessor::PlyWritingPointsProcessor(
-    std::unique_ptr<FileWriter> file_writer,
-    const std::vector<std::string>& comments, PointsProcessor* const next)
-    : next_(next),
-      comments_(comments),
-      num_points_(0),
-      has_colors_(false),
-      file_(std::move(file_writer)) {}
+PlyWritingPointsProcessor::PlyWritingPointsProcessor(std::unique_ptr<FileWriter> file_writer,
+                                                     const std::vector<std::string>& comments,
+                                                     PointsProcessor* const next)
+    : next_(next), comments_(comments), num_points_(0), has_colors_(false), file_(std::move(file_writer)) {}
 
 PointsProcessor::FlushResult PlyWritingPointsProcessor::Flush() {
-    WriteBinaryPlyHeader(has_colors_, has_intensities_, comments_, num_points_,
-                         file_.get());
+    WriteBinaryPlyHeader(has_colors_, has_intensities_, comments_, num_points_, file_.get());
     CHECK(file_->Close()) << "Closing PLY file_writer failed.";
 
     switch (next_->Flush()) {
@@ -113,9 +96,8 @@ PointsProcessor::FlushResult PlyWritingPointsProcessor::Flush() {
             return FlushResult::kFinished;
 
         case FlushResult::kRestartStream:
-            LOG(FATAL)
-                << "PLY generation must be configured to occur after any "
-                   "stages that require multiple passes.";
+            LOG(FATAL) << "PLY generation must be configured to occur after any "
+                          "stages that require multiple passes.";
     }
     LOG(FATAL);
 }
@@ -129,8 +111,7 @@ void PlyWritingPointsProcessor::Process(std::unique_ptr<PointsBatch> batch) {
     if (num_points_ == 0) {
         has_colors_ = !batch->colors.empty();
         has_intensities_ = !batch->intensities.empty();
-        WriteBinaryPlyHeader(has_colors_, has_intensities_, comments_, 0,
-                             file_.get());
+        WriteBinaryPlyHeader(has_colors_, has_intensities_, comments_, 0, file_.get());
     }
     if (has_colors_) {
         CHECK_EQ(batch->points.size(), batch->colors.size())
@@ -149,8 +130,7 @@ void PlyWritingPointsProcessor::Process(std::unique_ptr<PointsBatch> batch) {
     for (size_t i = 0; i < batch->points.size(); ++i) {
         WriteBinaryPlyPointCoordinate(batch->points[i].position, file_.get());
         if (has_colors_) {
-            WriteBinaryPlyPointColor(ToUint8Color(batch->colors[i]),
-                                     file_.get());
+            WriteBinaryPlyPointColor(ToUint8Color(batch->colors[i]), file_.get());
         }
         if (has_intensities_) {
             WriteBinaryIntensity(batch->intensities[i], file_.get());

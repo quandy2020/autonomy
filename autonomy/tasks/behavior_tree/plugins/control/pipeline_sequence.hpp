@@ -80,8 +80,7 @@ public:
      * @param name Name for the XML tag for this node
      * @param config BT node configuration
      */
-    PipelineSequence(const std::string& name,
-                     const BT::NodeConfiguration& config);
+    PipelineSequence(const std::string& name, const BT::NodeConfiguration& config);
 
     /**
      * @brief The other (optional) override required by a BT action to reset

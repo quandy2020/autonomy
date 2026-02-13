@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<library path="@PLUGIN_LIBRARY_PATH@">
+  <!-- Navigators -->
+  <!-- Navigate To Pose -->
+  <class name="autonomy_tasks/navigate_to_pose"
+         type="autonomy::tasks::navigator::navigation::NavigateToPoseNavigator"
+         base_class="autonomy::tasks::common::NavigatorBase">
+    <description>Navigate to pose navigator plugin for navigating to a specified pose using behavior tree</description>
+  </class>
+
+  <!-- Navigate Through Poses -->
+  <class name="autonomy_tasks/navigate_through_poses"
+         type="autonomy::tasks::navigator::navigation::NavigateThroughPosesNavigator"
+         base_class="autonomy::tasks::common::NavigatorBase">
+    <description>Navigate through poses navigator plugin for multi-waypoint navigation using behavior tree</description>
+  </class>
+
+  <!-- Navigate To Docking -->
+  <class name="autonomy_tasks/navigate_to_docking"
+         type="autonomy::tasks::navigator::docking::NavigateToDockingNavigator"
+         base_class="autonomy::tasks::common::NavigatorBase">
+    <description>Navigate to docking navigator plugin for docking the robot using behavior tree</description>
+  </class>
+
+  <!-- Explore To Anywhere -->
+  <class name="autonomy_tasks/explore_to_anywhere"
+         type="autonomy::tasks::navigator::exploration::ExploreToAnywhereNavigator"
+         base_class="autonomy::tasks::common::NavigatorBase">
+    <description>Explore to anywhere navigator plugin for autonomous exploration using behavior tree</description>
+  </class>
+
+  <!-- Track To Target -->
+  <class name="autonomy_tasks/track_to_target"
+         type="autonomy::tasks::navigator::track::TrackToTargetNavigator"
+         base_class="autonomy::tasks::common::NavigatorBase">
+    <description>Track to target navigator plugin for following a target using behavior tree</description>
+  </class>
+</library>

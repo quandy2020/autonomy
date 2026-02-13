@@ -37,17 +37,12 @@ class HandlerTest : public Test
 {
 public:
     void SetUp() override {
-        test_server_ = absl::make_unique<
-            autonomy::common::async_grpc::testing::RpcHandlerTestServer<
-                HandlerConcept, HandlerType>>(
-            absl::make_unique<MockMapBuilderContext>());
-        mock_map_builder_context_ =
-            test_server_
-                ->template GetUnsynchronizedContext<MockMapBuilderContext>();
-        mock_local_trajectory_uploader_ =
-            absl::make_unique<MockLocalTrajectoryUploader>();
-        mock_map_builder_ =
-            absl::make_unique<mapping::testing::MockMapBuilder>();
+        test_server_ =
+            absl::make_unique<autonomy::common::async_grpc::testing::RpcHandlerTestServer<HandlerConcept, HandlerType>>(
+                absl::make_unique<MockMapBuilderContext>());
+        mock_map_builder_context_ = test_server_->template GetUnsynchronizedContext<MockMapBuilderContext>();
+        mock_local_trajectory_uploader_ = absl::make_unique<MockLocalTrajectoryUploader>();
+        mock_map_builder_ = absl::make_unique<mapping::testing::MockMapBuilder>();
         mock_pose_graph_ = absl::make_unique<mapping::testing::MockPoseGraph>();
 
         EXPECT_CALL(*mock_map_builder_context_, map_builder())
@@ -59,8 +54,7 @@ public:
     }
 
     void SetNoLocalTrajectoryUploader() {
-        EXPECT_CALL(*mock_map_builder_context_, local_trajectory_uploader())
-            .WillOnce(Return(nullptr));
+        EXPECT_CALL(*mock_map_builder_context_, local_trajectory_uploader()).WillOnce(Return(nullptr));
     }
 
     void SetMockLocalTrajectoryUploader() {
@@ -69,12 +63,10 @@ public:
     }
 
 protected:
-    std::unique_ptr<autonomy::common::async_grpc::testing::RpcHandlerTestServer<
-        HandlerConcept, HandlerType>>
+    std::unique_ptr<autonomy::common::async_grpc::testing::RpcHandlerTestServer<HandlerConcept, HandlerType>>
         test_server_;
     MockMapBuilderContext* mock_map_builder_context_;
-    std::unique_ptr<MockLocalTrajectoryUploader>
-        mock_local_trajectory_uploader_;
+    std::unique_ptr<MockLocalTrajectoryUploader> mock_local_trajectory_uploader_;
     std::unique_ptr<mapping::testing::MockMapBuilder> mock_map_builder_;
     std::unique_ptr<mapping::testing::MockPoseGraph> mock_pose_graph_;
 };

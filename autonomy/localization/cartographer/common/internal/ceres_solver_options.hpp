@@ -24,11 +24,9 @@
 namespace cartographer {
 namespace common {
 
-proto::CeresSolverOptions CreateCeresSolverOptionsProto(
-    common::LuaParameterDictionary* parameter_dictionary);
+proto::CeresSolverOptions CreateCeresSolverOptionsProto(common::LuaParameterDictionary* parameter_dictionary);
 
-ceres::Solver::Options CreateCeresSolverOptions(
-    const proto::CeresSolverOptions& proto);
+ceres::Solver::Options CreateCeresSolverOptions(const proto::CeresSolverOptions& proto);
 
 }  // namespace common
 }  // namespace cartographer

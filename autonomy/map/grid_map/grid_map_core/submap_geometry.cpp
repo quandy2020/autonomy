@@ -11,13 +11,11 @@
 
 namespace grid_map {
 
-SubmapGeometry::SubmapGeometry(const GridMap& gridMap, const Position& position,
-                               const Length& length, bool& isSuccess)
+SubmapGeometry::SubmapGeometry(const GridMap& gridMap, const Position& position, const Length& length, bool& isSuccess)
     : gridMap_(gridMap) {
-    isSuccess = getSubmapInformation(
-        startIndex_, size_, position_, length_, requestedIndexInSubmap_,
-        position, length, gridMap_.getLength(), gridMap_.getPosition(),
-        gridMap_.getResolution(), gridMap_.getSize(), gridMap_.getStartIndex());
+    isSuccess = getSubmapInformation(startIndex_, size_, position_, length_, requestedIndexInSubmap_, position, length,
+                                     gridMap_.getLength(), gridMap_.getPosition(), gridMap_.getResolution(),
+                                     gridMap_.getSize(), gridMap_.getStartIndex());
 }
 
 const GridMap& SubmapGeometry::getGridMap() const {

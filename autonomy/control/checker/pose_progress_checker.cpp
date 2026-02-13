@@ -26,36 +26,30 @@ namespace checker {
 void PoseProgressChecker::Initialize(const std::string& plugin_name) {
     plugin_name_ = plugin_name;
     SimpleProgressChecker::Initialize(plugin_name);
-    required_movement_angle_ =
-        0.5;  // Default value, can be configured via parameters
+    required_movement_angle_ = 0.5;  // Default value, can be configured via parameters
 }
 
-bool PoseProgressChecker::Check(
-    commsgs::geometry_msgs::PoseStamped& current_pose) {
+bool PoseProgressChecker::Check(commsgs::geometry_msgs::PoseStamped& current_pose) {
     // Convert Pose to Pose2D
     commsgs::geometry_msgs::Pose2D current_pose2d;
     current_pose2d.x = current_pose.pose.position.x;
     current_pose2d.y = current_pose.pose.position.y;
-    current_pose2d.theta =
-        transform::tf2::getYaw(current_pose.pose.orientation);
+    current_pose2d.theta = transform::tf2::getYaw(current_pose.pose.orientation);
 
-    if (!baseline_pose_set_ ||
-        PoseProgressChecker::IsRobotMovedEnough(current_pose2d)) {
+    if (!baseline_pose_set_ || PoseProgressChecker::IsRobotMovedEnough(current_pose2d)) {
         ResetBaselinePose(current_pose2d);
         return true;
     }
     return false;
 }
 
-bool PoseProgressChecker::IsRobotMovedEnough(
-    const commsgs::geometry_msgs::Pose2D& pose) {
+bool PoseProgressChecker::IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose) {
     return PoseDistance(pose, baseline_pose_) > radius_ ||
            PoseAngleDistance(pose, baseline_pose_) > required_movement_angle_;
 }
 
-double PoseProgressChecker::PoseAngleDistance(
-    const commsgs::geometry_msgs::Pose2D& pose1,
-    const commsgs::geometry_msgs::Pose2D& pose2) {
+double PoseProgressChecker::PoseAngleDistance(const commsgs::geometry_msgs::Pose2D& pose1,
+                                              const commsgs::geometry_msgs::Pose2D& pose2) {
     // Calculate shortest angular distance between two angles
     double diff = pose1.theta - pose2.theta;
     return std::abs(autonomy::common::math::NormalizeAngleDifference(diff));
@@ -64,3 +58,6 @@ double PoseProgressChecker::PoseAngleDistance(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
+
+// Plugins
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::PoseProgressChecker, autonomy::control::common::ProgressChecker)

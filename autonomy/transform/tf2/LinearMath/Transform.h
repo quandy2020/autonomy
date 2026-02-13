@@ -44,21 +44,18 @@ public:
     /**@brief Constructor from Quaternion (optional Vector3 )
      * @param q Rotation from quaternion
      * @param c Translation from Vector (default 0,0,0) */
-    explicit TF2SIMD_FORCE_INLINE Transform(
-        const Quaternion& q,
-        const Vector3& c = Vector3(tf2Scalar(0), tf2Scalar(0), tf2Scalar(0)))
+    explicit TF2SIMD_FORCE_INLINE Transform(const Quaternion& q,
+                                            const Vector3& c = Vector3(tf2Scalar(0), tf2Scalar(0), tf2Scalar(0)))
         : m_basis(q), m_origin(c) {}
 
     /**@brief Constructor from Matrix3x3 (optional Vector3)
      * @param b Rotation from Matrix
      * @param c Translation from Vector default (0,0,0)*/
-    explicit TF2SIMD_FORCE_INLINE Transform(
-        const Matrix3x3& b,
-        const Vector3& c = Vector3(tf2Scalar(0), tf2Scalar(0), tf2Scalar(0)))
+    explicit TF2SIMD_FORCE_INLINE Transform(const Matrix3x3& b,
+                                            const Vector3& c = Vector3(tf2Scalar(0), tf2Scalar(0), tf2Scalar(0)))
         : m_basis(b), m_origin(c) {}
     /**@brief Copy constructor */
-    TF2SIMD_FORCE_INLINE Transform(const Transform& other)
-        : m_basis(other.m_basis), m_origin(other.m_origin) {}
+    TF2SIMD_FORCE_INLINE Transform(const Transform& other) : m_basis(other.m_basis), m_origin(other.m_origin) {}
     /**@brief Assignment Operator */
     TF2SIMD_FORCE_INLINE Transform& operator=(const Transform& other) {
         m_basis = other.m_basis;
@@ -85,8 +82,7 @@ public:
 
     /**@brief Return the transform of the vector */
     TF2SIMD_FORCE_INLINE Vector3 operator()(const Vector3& x) const {
-        return Vector3(m_basis[0].dot(x) + m_origin.x(),
-                       m_basis[1].dot(x) + m_origin.y(),
+        return Vector3(m_basis[0].dot(x) + m_origin.x(), m_basis[1].dot(x) + m_origin.y(),
                        m_basis[2].dot(x) + m_origin.z());
     }
 
@@ -212,8 +208,7 @@ TF2SIMD_FORCE_INLINE Vector3 Transform::invXform(const Vector3& inVec) const {
     return (m_basis.transpose() * v);
 }
 
-TF2SIMD_FORCE_INLINE Transform
-Transform::inverseTimes(const Transform& t) const {
+TF2SIMD_FORCE_INLINE Transform Transform::inverseTimes(const Transform& t) const {
     Vector3 v = t.getOrigin() - m_origin;
     return Transform(m_basis.transposeTimes(t.m_basis), v * m_basis);
 }
@@ -243,8 +238,7 @@ TF2SIMD_FORCE_INLINE void Transform::serialize(TransformData& dataOut) const {
     m_origin.serialize(dataOut.m_origin);
 }
 
-TF2SIMD_FORCE_INLINE void Transform::serializeFloat(
-    TransformFloatData& dataOut) const {
+TF2SIMD_FORCE_INLINE void Transform::serializeFloat(TransformFloatData& dataOut) const {
     m_basis.serializeFloat(dataOut.m_basis);
     m_origin.serializeFloat(dataOut.m_origin);
 }
@@ -254,14 +248,12 @@ TF2SIMD_FORCE_INLINE void Transform::deSerialize(const TransformData& dataIn) {
     m_origin.deSerialize(dataIn.m_origin);
 }
 
-TF2SIMD_FORCE_INLINE void Transform::deSerializeFloat(
-    const TransformFloatData& dataIn) {
+TF2SIMD_FORCE_INLINE void Transform::deSerializeFloat(const TransformFloatData& dataIn) {
     m_basis.deSerializeFloat(dataIn.m_basis);
     m_origin.deSerializeFloat(dataIn.m_origin);
 }
 
-TF2SIMD_FORCE_INLINE void Transform::deSerializeDouble(
-    const TransformDoubleData& dataIn) {
+TF2SIMD_FORCE_INLINE void Transform::deSerializeDouble(const TransformDoubleData& dataIn) {
     m_basis.deSerializeDouble(dataIn.m_basis);
     m_origin.deSerializeDouble(dataIn.m_origin);
 }

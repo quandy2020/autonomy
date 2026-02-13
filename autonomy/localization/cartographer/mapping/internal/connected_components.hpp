@@ -81,8 +81,7 @@ private:
 };
 
 // Returns a proto encoding connected components.
-proto::ConnectedComponents ToProto(
-    std::vector<std::vector<int>> connected_components);
+proto::ConnectedComponents ToProto(std::vector<std::vector<int>> connected_components);
 
 }  // namespace mapping
 }  // namespace cartographer

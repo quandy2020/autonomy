@@ -20,7 +20,7 @@
 set -e
 
 cd /thirdparty
-git clone -b v6.0.0 https://gitee.com/quanduyong/assimp.git
+git clone -b v6.0.0 https://github.com/assimp/assimp.git
 cd assimp && git submodule init && git submodule update
 
 # assimp

@@ -20,8 +20,7 @@ namespace cartographer {
 namespace transform {
 
 Rigid2d ToRigid2(const proto::Rigid2d& transform) {
-    return Rigid2d({transform.translation().x(), transform.translation().y()},
-                   transform.rotation());
+    return Rigid2d({transform.translation().x(), transform.translation().y()}, transform.rotation());
 }
 
 Eigen::Vector2d ToEigen(const proto::Vector2d& vector) {
@@ -41,8 +40,7 @@ Eigen::Vector3d ToEigen(const proto::Vector3d& vector) {
 }
 
 Eigen::Quaterniond ToEigen(const proto::Quaterniond& quaternion) {
-    return Eigen::Quaterniond(quaternion.w(), quaternion.x(), quaternion.y(),
-                              quaternion.z());
+    return Eigen::Quaterniond(quaternion.w(), quaternion.x(), quaternion.y(), quaternion.z());
 }
 
 proto::Rigid2d ToProto(const transform::Rigid2d& transform) {
@@ -69,8 +67,7 @@ proto::Rigid3d ToProto(const transform::Rigid3d& rigid) {
 }
 
 transform::Rigid3d ToRigid3(const proto::Rigid3d& rigid) {
-    return transform::Rigid3d(ToEigen(rigid.translation()),
-                              ToEigen(rigid.rotation()));
+    return transform::Rigid3d(ToEigen(rigid.translation()), ToEigen(rigid.rotation()));
 }
 
 proto::Rigid3f ToProto(const transform::Rigid3f& rigid) {

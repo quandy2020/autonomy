@@ -28,17 +28,14 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void AddRangefinderDataHandler::OnSensorData(
-    const proto::AddRangefinderDataRequest& request) {
+void AddRangefinderDataHandler::OnSensorData(const proto::AddRangefinderDataRequest& request) {
     // The 'BlockingQueue' returned by 'sensor_data_queue()' is already
     // thread-safe. Therefore it suffices to get an unsynchronized reference to
     // the 'MapBuilderContext'.
-    this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-        ->EnqueueSensorData(
-            request.sensor_metadata().trajectory_id(),
-            sensor::MakeDispatchable(
-                request.sensor_metadata().sensor_id(),
-                sensor::FromProto(request.timed_point_cloud_data())));
+    this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->EnqueueSensorData(
+        request.sensor_metadata().trajectory_id(),
+        sensor::MakeDispatchable(request.sensor_metadata().sensor_id(),
+                                 sensor::FromProto(request.timed_point_cloud_data())));
 }
 
 }  // namespace handlers

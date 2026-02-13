@@ -13,16 +13,12 @@
 namespace grid_map {
 
 SubmapIterator::SubmapIterator(const grid_map::SubmapGeometry& submap)
-    : SubmapIterator(submap.getGridMap(), submap.getStartIndex(),
-                     submap.getSize()) {}
+    : SubmapIterator(submap.getGridMap(), submap.getStartIndex(), submap.getSize()) {}
 
-SubmapIterator::SubmapIterator(const grid_map::GridMap& gridMap,
-                               const grid_map::BufferRegion& bufferRegion)
-    : SubmapIterator(gridMap, bufferRegion.getStartIndex(),
-                     bufferRegion.getSize()) {}
+SubmapIterator::SubmapIterator(const grid_map::GridMap& gridMap, const grid_map::BufferRegion& bufferRegion)
+    : SubmapIterator(gridMap, bufferRegion.getStartIndex(), bufferRegion.getSize()) {}
 
-SubmapIterator::SubmapIterator(const grid_map::GridMap& gridMap,
-                               const Index& submapStartIndex,
+SubmapIterator::SubmapIterator(const grid_map::GridMap& gridMap, const Index& submapStartIndex,
                                const Size& submapSize) {
     size_ = gridMap.getSize();
     startIndex_ = gridMap.getStartIndex();
@@ -56,9 +52,7 @@ const Index& SubmapIterator::getSubmapIndex() const {
 }
 
 SubmapIterator& SubmapIterator::operator++() {
-    isPastEnd_ =
-        !incrementIndexForSubmap(submapIndex_, index_, submapStartIndex_,
-                                 submapSize_, size_, startIndex_);
+    isPastEnd_ = !incrementIndexForSubmap(submapIndex_, index_, submapStartIndex_, submapSize_, size_, startIndex_);
     return *this;
 }
 

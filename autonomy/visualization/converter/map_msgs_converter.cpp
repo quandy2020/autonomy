@@ -28,8 +28,7 @@ using detail::ExtractFrameId;
 using detail::ExtractTimestamp;
 using detail::SetGridHeader;
 
-foxglove::schemas::Grid ToFoxgloveImpl(
-    const autonomy::commsgs::proto::map_msgs::OccupancyGrid& message) {
+foxglove::schemas::Grid ToFoxgloveImpl(const autonomy::commsgs::proto::map_msgs::OccupancyGrid& message) {
     foxglove::schemas::Grid grid;
 
     if (!message.has_info()) {
@@ -74,8 +73,7 @@ foxglove::schemas::Grid ToFoxgloveImpl(
     foxglove::schemas::PackedElementField green_field;
     green_field.name = "green";
     green_field.offset = 1;
-    green_field.type =
-        foxglove::schemas::PackedElementField::NumericType::UINT8;
+    green_field.type = foxglove::schemas::PackedElementField::NumericType::UINT8;
     grid.fields.push_back(green_field);
 
     foxglove::schemas::PackedElementField blue_field;
@@ -87,8 +85,7 @@ foxglove::schemas::Grid ToFoxgloveImpl(
     foxglove::schemas::PackedElementField alpha_field;
     alpha_field.name = "alpha";
     alpha_field.offset = 3;
-    alpha_field.type =
-        foxglove::schemas::PackedElementField::NumericType::UINT8;
+    alpha_field.type = foxglove::schemas::PackedElementField::NumericType::UINT8;
     grid.fields.push_back(alpha_field);
 
     grid.cell_stride = 4;
@@ -97,13 +94,11 @@ foxglove::schemas::Grid ToFoxgloveImpl(
     // 转换数据：int32 -> RGBA
     uint32_t expected_size = info.width() * info.height();
     if (message.data_size() != static_cast<int>(expected_size)) {
-        AWARN << "OccupancyGrid data size mismatch: expected " << expected_size
-              << ", got " << message.data_size();
+        AWARN << "OccupancyGrid data size mismatch: expected " << expected_size << ", got " << message.data_size();
     }
 
     grid.data.reserve(expected_size * grid.cell_stride);
-    for (int i = 0;
-         i < message.data_size() && i < static_cast<int>(expected_size); ++i) {
+    for (int i = 0; i < message.data_size() && i < static_cast<int>(expected_size); ++i) {
         int32_t occupancy_value = message.data(i);
         uint8_t r, g, b, a;
 
@@ -123,8 +118,7 @@ foxglove::schemas::Grid ToFoxgloveImpl(
             b = 0;
             a = 255;
         } else if (occupancy_value > 0 && occupancy_value < 100) {
-            uint8_t gray =
-                static_cast<uint8_t>(255 - (occupancy_value * 255 / 100));
+            uint8_t gray = static_cast<uint8_t>(255 - (occupancy_value * 255 / 100));
             r = gray;
             g = gray;
             b = gray;
@@ -142,8 +136,8 @@ foxglove::schemas::Grid ToFoxgloveImpl(
         grid.data.push_back(static_cast<std::byte>(a));
     }
 
-    AINFO << "Converted OccupancyGrid to Grid: " << info.width() << "x"
-          << info.height() << " cells, resolution=" << info.resolution() << "m";
+    AINFO << "Converted OccupancyGrid to Grid: " << info.width() << "x" << info.height()
+          << " cells, resolution=" << info.resolution() << "m";
 
     return grid;
 }

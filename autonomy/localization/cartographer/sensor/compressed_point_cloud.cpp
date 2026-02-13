@@ -37,8 +37,7 @@ constexpr int kMaxBitsPerDirection = 23;
 
 }  // namespace
 
-CompressedPointCloud::ConstIterator::ConstIterator(
-    const CompressedPointCloud* compressed_point_cloud)
+CompressedPointCloud::ConstIterator::ConstIterator(const CompressedPointCloud* compressed_point_cloud)
     : compressed_point_cloud_(compressed_point_cloud),
       remaining_points_(compressed_point_cloud->num_points_),
       remaining_points_in_current_block_(0),
@@ -48,8 +47,7 @@ CompressedPointCloud::ConstIterator::ConstIterator(
     }
 }
 
-CompressedPointCloud::ConstIterator
-CompressedPointCloud::ConstIterator::EndIterator(
+CompressedPointCloud::ConstIterator CompressedPointCloud::ConstIterator::EndIterator(
     const CompressedPointCloud* compressed_point_cloud) {
     ConstIterator end_iterator(compressed_point_cloud);
     end_iterator.remaining_points_ = 0;
@@ -61,8 +59,7 @@ RangefinderPoint CompressedPointCloud::ConstIterator::operator*() const {
     return {current_point_};
 }
 
-CompressedPointCloud::ConstIterator&
-CompressedPointCloud::ConstIterator::operator++() {
+CompressedPointCloud::ConstIterator& CompressedPointCloud::ConstIterator::operator++() {
     --remaining_points_;
     if (remaining_points_ > 0) {
         ReadNextPoint();
@@ -70,8 +67,7 @@ CompressedPointCloud::ConstIterator::operator++() {
     return *this;
 }
 
-bool CompressedPointCloud::ConstIterator::operator!=(
-    const ConstIterator& it) const {
+bool CompressedPointCloud::ConstIterator::operator!=(const ConstIterator& it) const {
     CHECK(compressed_point_cloud_ == it.compressed_point_cloud_);
     return remaining_points_ != it.remaining_points_;
 }
@@ -86,18 +82,12 @@ void CompressedPointCloud::ConstIterator::ReadNextPoint() {
     --remaining_points_in_current_block_;
     const int point = *input_++;
     constexpr int kMask = (1 << kBitsPerCoordinate) - 1;
-    current_point_[0] =
-        (current_block_coordinates_[0] + (point & kMask)) * kPrecision;
-    current_point_[1] = (current_block_coordinates_[1] +
-                         ((point >> kBitsPerCoordinate) & kMask)) *
-                        kPrecision;
-    current_point_[2] =
-        (current_block_coordinates_[2] + (point >> (2 * kBitsPerCoordinate))) *
-        kPrecision;
+    current_point_[0] = (current_block_coordinates_[0] + (point & kMask)) * kPrecision;
+    current_point_[1] = (current_block_coordinates_[1] + ((point >> kBitsPerCoordinate) & kMask)) * kPrecision;
+    current_point_[2] = (current_block_coordinates_[2] + (point >> (2 * kBitsPerCoordinate))) * kPrecision;
 }
 
-CompressedPointCloud::CompressedPointCloud(const PointCloud& point_cloud)
-    : num_points_(point_cloud.size()) {
+CompressedPointCloud::CompressedPointCloud(const PointCloud& point_cloud) : num_points_(point_cloud.size()) {
     // Distribute points into blocks.
     struct RasterPoint {
         Eigen::Array3i point;
@@ -107,17 +97,14 @@ CompressedPointCloud::CompressedPointCloud(const PointCloud& point_cloud)
     Blocks blocks(kPrecision);
     int num_blocks = 0;
     CHECK_LE(point_cloud.size(), std::numeric_limits<int>::max());
-    for (int point_index = 0;
-         point_index < static_cast<int>(point_cloud.size()); ++point_index) {
+    for (int point_index = 0; point_index < static_cast<int>(point_cloud.size()); ++point_index) {
         const RangefinderPoint& point = point_cloud[point_index];
-        CHECK_LT(point.position.cwiseAbs().maxCoeff() / kPrecision,
-                 1 << kMaxBitsPerDirection)
+        CHECK_LT(point.position.cwiseAbs().maxCoeff() / kPrecision, 1 << kMaxBitsPerDirection)
             << "Point out of bounds: " << point.position;
         Eigen::Array3i raster_point;
         Eigen::Array3i block_coordinate;
         for (int i = 0; i < 3; ++i) {
-            raster_point[i] =
-                common::RoundToInt(point.position[i] / kPrecision);
+            raster_point[i] = common::RoundToInt(point.position[i] / kPrecision);
             block_coordinate[i] = raster_point[i] >> kBitsPerCoordinate;
             raster_point[i] &= kCoordinateMask;
         }
@@ -138,17 +125,14 @@ CompressedPointCloud::CompressedPointCloud(const PointCloud& point_cloud)
         point_data_.push_back(block_coordinate.z());
         for (const RasterPoint& raster_point : raster_points) {
             point_data_.push_back(
-                (((raster_point.point.z() << kBitsPerCoordinate) +
-                  raster_point.point.y())
-                 << kBitsPerCoordinate) +
+                (((raster_point.point.z() << kBitsPerCoordinate) + raster_point.point.y()) << kBitsPerCoordinate) +
                 raster_point.point.x());
         }
     }
     CHECK_EQ(num_blocks, 0);
 }
 
-CompressedPointCloud::CompressedPointCloud(
-    const proto::CompressedPointCloud& proto) {
+CompressedPointCloud::CompressedPointCloud(const proto::CompressedPointCloud& proto) {
     num_points_ = proto.num_points();
     const int data_size = proto.point_data_size();
     point_data_.reserve(data_size);
@@ -182,10 +166,8 @@ PointCloud CompressedPointCloud::Decompress() const {
     return decompressed;
 }
 
-bool CompressedPointCloud::operator==(
-    const CompressedPointCloud& right_hand_container) const {
-    return point_data_ == right_hand_container.point_data_ &&
-           num_points_ == right_hand_container.num_points_;
+bool CompressedPointCloud::operator==(const CompressedPointCloud& right_hand_container) const {
+    return point_data_ == right_hand_container.point_data_ && num_points_ == right_hand_container.num_points_;
 }
 
 proto::CompressedPointCloud CompressedPointCloud::ToProto() const {

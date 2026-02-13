@@ -25,25 +25,17 @@ namespace cloud {
 namespace handlers {
 
 template <typename HandlerSignatureType>
-class AddSensorDataHandlerBase
-    : public autonomy::common::async_grpc::RpcHandler<HandlerSignatureType>
+class AddSensorDataHandlerBase : public autonomy::common::async_grpc::RpcHandler<HandlerSignatureType>
 {
 public:
-    using SensorDataType = autonomy::common::async_grpc::StripStream<
-        typename HandlerSignatureType::IncomingType>;
+    using SensorDataType = autonomy::common::async_grpc::StripStream<typename HandlerSignatureType::IncomingType>;
 
     void OnRequest(const SensorDataType& request) override {
-        if (!this->template GetContext<
-                     cartographer::cloud::MapBuilderContextInterface>()
-                 ->CheckClientIdForTrajectory(
-                     request.sensor_metadata().client_id(),
-                     request.sensor_metadata().trajectory_id())) {
-            LOG(ERROR) << "Unknown trajectory with ID "
-                       << request.sensor_metadata().trajectory_id()
-                       << " and client_id "
-                       << request.sensor_metadata().client_id();
-            this->template Finish(
-                ::grpc::Status(::grpc::NOT_FOUND, "Unknown trajectory"));
+        if (!this->template GetContext<cartographer::cloud::MapBuilderContextInterface>()->CheckClientIdForTrajectory(
+                request.sensor_metadata().client_id(), request.sensor_metadata().trajectory_id())) {
+            LOG(ERROR) << "Unknown trajectory with ID " << request.sensor_metadata().trajectory_id()
+                       << " and client_id " << request.sensor_metadata().client_id();
+            this->template Finish(::grpc::Status(::grpc::NOT_FOUND, "Unknown trajectory"));
             return;
         }
         OnSensorData(request);

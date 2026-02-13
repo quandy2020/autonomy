@@ -37,9 +37,8 @@ namespace autonomy {
 namespace transform {
 namespace tf2 {
 
-bool StaticCache::getData(
-    Time time, TransformStorage& data_out,
-    std::string* error_str)  // returns false if data not available
+bool StaticCache::getData(Time time, TransformStorage& data_out,
+                          std::string* error_str)  // returns false if data not available
 {
     data_out = storage_;
     data_out.stamp_ = time;

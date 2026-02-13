@@ -71,8 +71,7 @@ public:
             BT::InputPort<double>("max_speed", 0.5, "Maximum speed"),
             // BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of
             // navigation goals"), // Goals type not yet implemented
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                "goal", "Navigation goal"),
+            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
         };
     }
 
@@ -88,10 +87,7 @@ private:
      * @return double Rate scaled by speed limits and clamped
      */
     inline double getScaledRate(const double& speed) {
-        return std::max(
-            std::min((((speed - min_speed_) / d_speed_) * d_rate_) + min_rate_,
-                     max_rate_),
-            min_rate_);
+        return std::max(std::min((((speed - min_speed_) / d_speed_) * d_rate_) + min_rate_, max_rate_), min_rate_);
     }
 
     /**

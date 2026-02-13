@@ -40,13 +40,11 @@ public:
     ~PositionGoalChecker() override = default;
 
     void Initialize(const std::string& plugin_name,
-                    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                        costmap_wrapper) override;
+                    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
 
     void Reset() override;
 
-    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
-                       const commsgs::geometry_msgs::Pose& goal_pose,
+    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose, const commsgs::geometry_msgs::Pose& goal_pose,
                        const commsgs::geometry_msgs::Twist& velocity) override;
 
     bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,

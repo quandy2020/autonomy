@@ -19,7 +19,7 @@
 # Fail on first error.
 set -e
 cd /thirdparty
-git clone --single-branch --branch v14.4.0 https://gitee.com/quanduyong/ogre.git
+git clone --single-branch --branch v14.4.0 https://github.com/OGRECave/ogre.git
 cd ogre && git submodule init && git submodule update
 
 # update

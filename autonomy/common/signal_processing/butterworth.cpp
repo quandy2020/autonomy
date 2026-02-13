@@ -36,12 +36,10 @@ namespace signal_processing {
  *  @param As [in] stop-band ripple [dB]
  * */
 
-void ButterworthFilter::Buttord(const double& Wp, const double& Ws,
-                                const double& Ap, const double& As) {
+void ButterworthFilter::Buttord(const double& Wp, const double& Ws, const double& Ap, const double& As) {
     // N*ln(alpha) > ln(beta)
     auto alpha = Ws / Wp;
-    auto beta = std::sqrt((std::pow(10, As / 10.0) - 1.0) /
-                          (std::pow(10, Ap / 10.0) - 1.0));
+    auto beta = std::sqrt((std::pow(10, As / 10.0) - 1.0) / (std::pow(10, Ap / 10.0) - 1.0));
     auto order = static_cast<int>(std::ceil(std::log(beta) / std::log(alpha)));
 
     setOrder(order);
@@ -54,8 +52,7 @@ void ButterworthFilter::Buttord(const double& Wp, const double& Ws,
      * definition and commented out.
      * */
 
-    double right_lim =
-        Ws * (std::pow((std::pow(10.0, As / 10.0) - 1.0), -1.0 / (2. * order)));
+    double right_lim = Ws * (std::pow((std::pow(10.0, As / 10.0) - 1.0), -1.0 / (2. * order)));
     // double left_lim = Wp * (std::pow((std::pow(10.0, Ap / 10.0) - 1.0), -1.0
     // / (2. * order)));
 
@@ -98,8 +95,7 @@ sOrderCutOff ButterworthFilter::getOrderCutOff() const {
 /**
  * @brief Matlab equivalent : [b, a]  = butter(n, Wn, 's')
  * */
-void ButterworthFilter::computeContinuousTimeTF(
-    const bool& use_sampling_frequency) {
+void ButterworthFilter::computeContinuousTimeTF(const bool& use_sampling_frequency) {
     // First compute  the phase angles of the roots
     computePhaseAngles();
     computeContinuousTimeRoots(use_sampling_frequency);
@@ -108,8 +104,7 @@ void ButterworthFilter::computeContinuousTimeTF(
     auto order = filter_specs_.N;
 
     ct_tf_.continuous_time_denominator_ = poly(ct_tf_.continuous_time_roots_);
-    ct_tf_.continuous_time_numerator_ =
-        std::pow(cutoff_frequency_rad_sec, order);
+    ct_tf_.continuous_time_numerator_ = std::pow(cutoff_frequency_rad_sec, order);
 }
 
 void ButterworthFilter::computePhaseAngles() {
@@ -118,13 +113,11 @@ void ButterworthFilter::computePhaseAngles() {
 
     for (size_t i = 0; i < ct_tf_.phase_angles_.size(); ++i) {
         auto& x = ct_tf_.phase_angles_.at(i);
-        x = M_PI_2 +
-            (M_PI * (2.0 * static_cast<double>((i + 1)) - 1.0) / (2.0 * order));
+        x = M_PI_2 + (M_PI * (2.0 * static_cast<double>((i + 1)) - 1.0) / (2.0 * order));
     }
 }
 
-void ButterworthFilter::computeContinuousTimeRoots(
-    const bool& use_sampling_frequency) {
+void ButterworthFilter::computeContinuousTimeRoots(const bool& use_sampling_frequency) {
     const auto& order = filter_specs_.N;
     const auto& sampling_frequency_hz = filter_specs_.fs;
     const auto& cutoff_frequency_rad_sec = filter_specs_.Wc_rad_sec;
@@ -133,8 +126,7 @@ void ButterworthFilter::computeContinuousTimeRoots(
 
     if (use_sampling_frequency) {
         const double& Fc =
-            (sampling_frequency_hz / M_PI) *
-            tan(cutoff_frequency_rad_sec / (sampling_frequency_hz * 2.0));
+            (sampling_frequency_hz / M_PI) * tan(cutoff_frequency_rad_sec / (sampling_frequency_hz * 2.0));
 
         for (size_t i = 0; i < ct_tf_.continuous_time_roots_.size(); ++i) {
             auto& x = ct_tf_.continuous_time_roots_[i];
@@ -150,8 +142,7 @@ void ButterworthFilter::computeContinuousTimeRoots(
              cutoff_frequency_rad_sec * sin(ct_tf_.phase_angles_[i])};
     }
 }
-std::vector<std::complex<double>> ButterworthFilter::poly(
-    std::vector<std::complex<double>> const& roots) {
+std::vector<std::complex<double>> ButterworthFilter::poly(std::vector<std::complex<double>> const& roots) {
     std::vector<std::complex<double>> coefficients(roots.size() + 1, {0, 0});
 
     const int n{static_cast<int>(roots.size())};
@@ -160,8 +151,7 @@ std::vector<std::complex<double>> ButterworthFilter::poly(
 
     for (int i = 0; i < n; i++) {
         for (int j = i; j != -1; j--) {
-            coefficients[j + 1] =
-                coefficients[j + 1] - (roots[i] * coefficients[j]);
+            coefficients[j + 1] = coefficients[j + 1] - (roots[i] * coefficients[j]);
         }
     }
 
@@ -182,8 +172,7 @@ void ButterworthFilter::printFilterContinuousTimeRoots() const {
         stream << std::fixed << std::setprecision(2) << std::real(x) << " j";
 
         auto txt = std::imag(x) < 0 ? " - j " : " + j ";
-        stream << std::fixed << std::setprecision(2) << txt
-               << std::abs(std::imag(x)) << " \n";
+        stream << std::fixed << std::setprecision(2) << txt << std::abs(std::imag(x)) << " \n";
     }
 
     LOG(INFO) << stream.str().c_str();
@@ -194,17 +183,14 @@ void ButterworthFilter::printContinuousTimeTF() const {
     LOG(INFO) << "The Continuous Time Transfer Function of the Filter is ;\n";
 
     std::stringstream stream;
-    stream << std::fixed << std::setprecision(2)
-           << ct_tf_.continuous_time_numerator_ << " / \n";
+    stream << std::fixed << std::setprecision(2) << ct_tf_.continuous_time_numerator_ << " / \n";
 
     for (int i = n; i > 0; i--) {
-        stream << std::fixed << std::setprecision(2)
-               << ct_tf_.continuous_time_denominator_[n - i].real() << " * s ["
+        stream << std::fixed << std::setprecision(2) << ct_tf_.continuous_time_denominator_[n - i].real() << " * s ["
                << i << "] + ";
     }
 
-    stream << std::fixed << std::setprecision(2)
-           << ct_tf_.continuous_time_denominator_[n].real();
+    stream << std::fixed << std::setprecision(2) << ct_tf_.continuous_time_denominator_[n].real();
 
     const auto& tf_text = stream.str();
     LOG(INFO) << tf_text.c_str();
@@ -221,8 +207,7 @@ void ButterworthFilter::printContinuousTimeTF() const {
  * [numd, dend] = bilinear(sys_filt.Numerator{1}, sys_filt.Denominator{1}, 1/Td)
  * where sys_filt is the continuous time transfer function.
  * */
-void ButterworthFilter::computeDiscreteTimeTF(
-    const bool& use_sampling_frequency) {
+void ButterworthFilter::computeDiscreteTimeTF(const bool& use_sampling_frequency) {
     const auto& order = filter_specs_.N;
     const auto& sampling_frequency_hz = filter_specs_.fs;
 
@@ -244,10 +229,8 @@ void ButterworthFilter::computeDiscreteTimeTF(
         for (size_t i = 0; i < dt_tf_.discrete_time_roots_.size(); ++i) {
             auto& dr = dt_tf_.discrete_time_roots_[i];
 
-            dr = (1.0 + ct_tf_.continuous_time_roots_[i] /
-                            (sampling_frequency_hz * 2.0)) /
-                 (1.0 - ct_tf_.continuous_time_roots_[i] /
-                            (sampling_frequency_hz * 2.0));
+            dr = (1.0 + ct_tf_.continuous_time_roots_[i] / (sampling_frequency_hz * 2.0)) /
+                 (1.0 - ct_tf_.continuous_time_roots_[i] / (sampling_frequency_hz * 2.0));
         }
 
         dt_tf_.discrete_time_denominator_ = poly(dt_tf_.discrete_time_roots_);
@@ -256,13 +239,11 @@ void ButterworthFilter::computeDiscreteTimeTF(
         dt_tf_.discrete_time_numerator_ = poly(dt_tf_.discrete_time_zeros_);
 
         // Compute Discrete Time Gain
-        const auto& sum_num = std::accumulate(
-            dt_tf_.discrete_time_numerator_.cbegin(),
-            dt_tf_.discrete_time_numerator_.cend(), std::complex<double>{});
+        const auto& sum_num = std::accumulate(dt_tf_.discrete_time_numerator_.cbegin(),
+                                              dt_tf_.discrete_time_numerator_.cend(), std::complex<double>{});
 
-        const auto& sum_den = std::accumulate(
-            dt_tf_.discrete_time_denominator_.cbegin(),
-            dt_tf_.discrete_time_denominator_.cend(), std::complex<double>{});
+        const auto& sum_den = std::accumulate(dt_tf_.discrete_time_denominator_.cbegin(),
+                                              dt_tf_.discrete_time_denominator_.cend(), std::complex<double>{});
 
         dt_tf_.discrete_time_gain_ = std::abs(sum_den / sum_num);
 
@@ -282,11 +263,10 @@ void ButterworthFilter::computeDiscreteTimeTF(
 
     for (size_t i = 0; i < dt_tf_.discrete_time_roots_.size(); ++i) {
         auto& dr = dt_tf_.discrete_time_roots_[i];
-        dr = (1.0 + Td_ * ct_tf_.continuous_time_roots_[i] / 2.0) /
-             (1.0 - Td_ * ct_tf_.continuous_time_roots_[i] / 2.0);
+        dr =
+            (1.0 + Td_ * ct_tf_.continuous_time_roots_[i] / 2.0) / (1.0 - Td_ * ct_tf_.continuous_time_roots_[i] / 2.0);
 
-        dt_tf_.discrete_time_gain_ = dt_tf_.discrete_time_gain_ /
-                                     (1.0 - ct_tf_.continuous_time_roots_[i]);
+        dt_tf_.discrete_time_gain_ = dt_tf_.discrete_time_gain_ / (1.0 - ct_tf_.continuous_time_roots_[i]);
     }
 
     // Obtain the coefficients of numerator and denominator
@@ -311,21 +291,17 @@ void ButterworthFilter::printDiscreteTimeTF() const {
     stream << "\nThe Discrete Time Transfer Function of the Filter is ;\n";
 
     for (int i = n; i > 0; i--) {
-        stream << std::fixed << std::setprecision(2)
-               << dt_tf_.discrete_time_numerator_[n - i].real();
+        stream << std::fixed << std::setprecision(2) << dt_tf_.discrete_time_numerator_[n - i].real();
         stream << " z[-" << i << " ] + ";
     }
 
-    stream << std::fixed << std::setprecision(2)
-           << dt_tf_.discrete_time_numerator_[n].real() << " / \n";
+    stream << std::fixed << std::setprecision(2) << dt_tf_.discrete_time_numerator_[n].real() << " / \n";
 
     for (int i = n; i > 0; i--) {
-        stream << std::fixed << std::setprecision(2)
-               << dt_tf_.discrete_time_denominator_[n - i].real();
+        stream << std::fixed << std::setprecision(2) << dt_tf_.discrete_time_denominator_[n - i].real();
         stream << " z[-" << i << " ] + ";
     }
-    stream << std::fixed << std::setprecision(2)
-           << dt_tf_.discrete_time_denominator_[n].real() << " \n\n";
+    stream << std::fixed << std::setprecision(2) << dt_tf_.discrete_time_denominator_[n].real() << " \n\n";
 
     LOG(INFO) << stream.str().c_str();
 }
@@ -346,8 +322,7 @@ void ButterworthFilter::printFilterSpecs() const {
      *
      * */
     LOG(INFO) << "The order of the filter : " << this->filter_specs_.N
-              << " Cut-off Frequency :" << this->filter_specs_.Wc_rad_sec
-              << " rad/sec";
+              << " Cut-off Frequency :" << this->filter_specs_.Wc_rad_sec << " rad/sec";
 }
 
 }  // namespace signal_processing

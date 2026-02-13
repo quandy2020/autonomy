@@ -87,8 +87,7 @@ TEST(IsLittleBigEndian, Nominal) {
 template <typename T>
 void TestIntNativeToLitteBigEndian() {
     std::default_random_engine prng;
-    std::uniform_int_distribution<T> distribution(
-        std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
+    std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
     for (int i = 0; i < 100; ++i) {
         const T x = distribution(prng);
         EXPECT_EQ(LittleEndianToNative<T>(NativeToLittleEndian<T>(x)), x);
@@ -99,8 +98,7 @@ void TestIntNativeToLitteBigEndian() {
 template <typename T>
 void TestRealNativeToLitteBigEndian() {
     std::default_random_engine prng;
-    std::uniform_real_distribution<T> distribution(
-        std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
+    std::uniform_real_distribution<T> distribution(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
     for (int i = 0; i < 100; ++i) {
         const T x = distribution(prng);
         EXPECT_EQ(LittleEndianToNative<T>(NativeToLittleEndian<T>(x)), x);
@@ -130,8 +128,7 @@ TEST(NativeToLitteBigEndian, Nominal) {
 template <typename T>
 void TestIntReadWriteBinaryLittleEndian() {
     std::default_random_engine prng;
-    std::uniform_int_distribution<T> distribution(
-        std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
+    std::uniform_int_distribution<T> distribution(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
     for (int i = 0; i < 100; ++i) {
         std::stringstream file;
         const T orig_value = distribution(prng);
@@ -141,8 +138,7 @@ void TestIntReadWriteBinaryLittleEndian() {
 
         std::stringstream file_vector;
         std::vector<T> orig_vector(100);
-        std::generate(orig_vector.begin(), orig_vector.end(),
-                      [&]() { return distribution(prng); });
+        std::generate(orig_vector.begin(), orig_vector.end(), [&]() { return distribution(prng); });
         WriteBinaryLittleEndian<T>(&file_vector, orig_vector);
         std::vector<T> read_vector(orig_vector.size());
         ReadBinaryLittleEndian<T>(&file_vector, &read_vector);
@@ -155,8 +151,7 @@ void TestIntReadWriteBinaryLittleEndian() {
 template <typename T>
 void TestFloatReadWriteBinaryLittleEndian() {
     std::default_random_engine prng;
-    std::uniform_real_distribution<T> distribution(
-        std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
+    std::uniform_real_distribution<T> distribution(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max());
     for (int i = 0; i < 100; ++i) {
         std::stringstream file;
         const T orig_value = distribution(prng);
@@ -166,8 +161,7 @@ void TestFloatReadWriteBinaryLittleEndian() {
 
         std::stringstream file_vector;
         std::vector<T> orig_vector(100);
-        std::generate(orig_vector.begin(), orig_vector.end(),
-                      [&]() { return distribution(prng); });
+        std::generate(orig_vector.begin(), orig_vector.end(), [&]() { return distribution(prng); });
         WriteBinaryLittleEndian<T>(&file_vector, orig_vector);
         std::vector<T> read_vector(orig_vector.size());
         ReadBinaryLittleEndian<T>(&file_vector, &read_vector);

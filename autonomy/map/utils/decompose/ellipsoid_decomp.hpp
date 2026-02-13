@@ -76,8 +76,7 @@ public:
         constraints.resize(polyhedrons_.size());
         for (unsigned int i = 0; i < polyhedrons_.size(); i++) {
             const Vecf<Dim> pt = (path_[i] + path_[i + 1]) / 2;
-            constraints[i] =
-                LinearConstraint<Dim>(pt, polyhedrons_[i].hyperplanes());
+            constraints[i] = LinearConstraint<Dim>(pt, polyhedrons_[i].hyperplanes());
         }
         return constraints;
     }
@@ -94,8 +93,7 @@ public:
         polyhedrons_.resize(N);
 
         for (unsigned int i = 0; i < N; i++) {
-            lines_[i] =
-                std::make_shared<LineSegment<Dim>>(path[i], path[i + 1]);
+            lines_[i] = std::make_shared<LineSegment<Dim>>(path[i], path[i + 1]);
             lines_[i]->set_local_bbox(local_bbox_);
             lines_[i]->set_obs(obs_);
             lines_[i]->dilate(offset_x);

@@ -1,0 +1,16 @@
+# Example DAG for autonomy mainboard.
+# Copy and edit for your components; module_library paths are resolved via AUTOLINK_LIB_PATH.
+#
+# Format: autolink.proto.DagConfig (see autolink/proto/dag_conf.proto).
+# Uncomment and set class_name / config once you have an autolink ComponentBase in autonomy.
+#
+# module_config {
+#   module_library: "autonomy/path/to/libyour_component.so"
+#   components {
+#     class_name: "YourComponentClassName"
+#     config {
+#       name: "your_component"
+#       # config_file_path, readers, etc.
+#     }
+#   }
+# }

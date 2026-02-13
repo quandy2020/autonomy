@@ -88,8 +88,7 @@ public:
      * @param node Optional autolink Node pointer for creating
      * publishers/subscribers in layers
      */
-    Costmap2DWrapper(const proto::Costmap2DOptions& options,
-                     const std::string& name = "",
+    Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name = "",
                      autolink::Node* node = nullptr);
 
     /**
@@ -135,14 +134,11 @@ public:
      */
     void resetLayers();
 
-    void setRobotFootprint(
-        const std::vector<commsgs::geometry_msgs::Point>& points);
+    void setRobotFootprint(const std::vector<commsgs::geometry_msgs::Point>& points);
 
-    void setRobotFootprintPolygon(
-        const commsgs::geometry_msgs::Polygon::SharedPtr footprint);
+    void setRobotFootprintPolygon(const commsgs::geometry_msgs::Polygon::SharedPtr footprint);
 
-    void getOrientedFootprint(
-        std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
+    void getOrientedFootprint(std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
 
     /**
      * @brief Same as getLayeredCostmap()->isCurrent().
@@ -165,9 +161,8 @@ public:
      * @param transformed_pose pose transformed
      * @return True if the pose was transformed successfully, false otherwise
      */
-    bool transformPoseToGlobalFrame(
-        const commsgs::geometry_msgs::PoseStamped& input_pose,
-        commsgs::geometry_msgs::PoseStamped& transformed_pose);
+    bool transformPoseToGlobalFrame(const commsgs::geometry_msgs::PoseStamped& input_pose,
+                                    commsgs::geometry_msgs::PoseStamped& transformed_pose);
 
     /**
      * @brief Returns costmap name
@@ -305,8 +300,7 @@ protected:
     std::atomic<bool> initialized_{false};
     std::atomic<bool> stopped_{true};
     std::mutex _dynamic_parameter_mutex;
-    std::unique_ptr<std::thread>
-        map_update_thread_;  ///< @brief A thread for updating the map
+    std::unique_ptr<std::thread> map_update_thread_;  ///< @brief A thread for updating the map
     commsgs::builtin_interfaces::Time last_publish_{0, 0};
     // builtin_interfaces::builtin_interfaces::Duration publish_cycle_{1, 0};
     // ClassLoaderManager for loading Layer plugins
@@ -331,18 +325,14 @@ protected:
     double resolution_{0};
     std::string robot_base_frame_;  ///< The frame_id of the robot base
     double robot_radius_;
-    bool rolling_window_{
-        false};  ///< Whether to use a rolling window version of the costmap
+    bool rolling_window_{false};  ///< Whether to use a rolling window version of the costmap
     bool track_unknown_space_{false};
-    double transform_tolerance_{0};  ///< The timeout before transform errors
-    double initial_transform_timeout_{
-        0};  ///< The timeout before activation of the node errors
-    double map_vis_z_{
-        0};  ///< The height of map, allows to avoid flickering at -0.008
+    double transform_tolerance_{0};        ///< The timeout before transform errors
+    double initial_transform_timeout_{0};  ///< The timeout before activation of the node errors
+    double map_vis_z_{0};                  ///< The height of map, allows to avoid flickering at -0.008
 
-    bool is_lifecycle_follower_{
-        true};  ///< whether is a child-LifecycleNode or an independent node
-    bool ready_{false};  ///< whether the costmap has been updated at least once
+    bool is_lifecycle_follower_{true};  ///< whether is a child-LifecycleNode or an independent node
+    bool ready_{false};                 ///< whether the costmap has been updated at least once
 
     // Map data
     commsgs::map_msgs::OccupancyGrid occupancy_grid_;

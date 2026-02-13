@@ -135,24 +135,20 @@ void SpeedFilter::initializeFilter(const std::string& filter_info_topic) {
 //         std::bind(&SpeedFilter::maskCallback, this, std::placeholders::_1));
 // }
 
-void SpeedFilter::maskCallback(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
+void SpeedFilter::maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!filter_mask_) {
-        LOG(INFO) << absl::StrCat("SpeedFilter: Received filter mask from ",
-                                  mask_topic_, " topic.");
+        LOG(INFO) << absl::StrCat("SpeedFilter: Received filter mask from ", mask_topic_, " topic.");
     } else {
-        LOG(WARNING) << absl::StrCat(
-            "SpeedFilter: New filter mask arrived from ", mask_topic_,
-            "topic. Updating old filter mask.");
+        LOG(WARNING) << absl::StrCat("SpeedFilter: New filter mask arrived from ", mask_topic_,
+                                     "topic. Updating old filter mask.");
         filter_mask_.reset();
     }
     filter_mask_ = msg;
 }
 
-void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
-                          int /*min_j*/, int /*max_i*/, int /*max_j*/,
+void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/, int /*min_j*/, int /*max_i*/, int /*max_j*/,
                           const commsgs::geometry_msgs::Pose2D& pose) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
@@ -162,27 +158,23 @@ void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
         return;
     }
 
-    commsgs::geometry_msgs::Pose2D
-        mask_pose;  // robot coordinates in mask frame
+    commsgs::geometry_msgs::Pose2D mask_pose;  // robot coordinates in mask frame
 
     // Transforming robot pose from current layer frame to mask frame
-    if (!transformPose(global_frame_, pose, filter_mask_->header.frame_id,
-                       mask_pose)) {
+    if (!transformPose(global_frame_, pose, filter_mask_->header.frame_id, mask_pose)) {
         return;
     }
 
     // Converting mask_pose robot position to filter_mask_ indexes
     // (mask_robot_i, mask_robot_j)
     unsigned int mask_robot_i, mask_robot_j;
-    if (!worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i,
-                     mask_robot_j)) {
+    if (!worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i, mask_robot_j)) {
         return;
     }
 
     // Getting filter_mask data from cell where the robot placed and
     // calculating speed limit value
-    int8_t speed_mask_data =
-        getMaskData(filter_mask_, mask_robot_i, mask_robot_j);
+    int8_t speed_mask_data = getMaskData(filter_mask_, mask_robot_i, mask_robot_j);
     if (speed_mask_data == SPEED_MASK_NO_LIMIT) {
         // Corresponding filter mask cell is free.
         // Setting no speed limit there.
@@ -190,9 +182,8 @@ void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
     } else if (speed_mask_data == SPEED_MASK_UNKNOWN) {
         // Corresponding filter mask cell is unknown.
         // Do nothing.
-        LOG(ERROR) << absl::StrCat(
-            "SpeedFilter: Found unknown cell in filter_mask[", mask_robot_i,
-            mask_robot_j, "] which is invalid for this kind of filter");
+        LOG(ERROR) << absl::StrCat("SpeedFilter: Found unknown cell in filter_mask[", mask_robot_i, mask_robot_j,
+                                   "] which is invalid for this kind of filter");
         return;
     } else {
         // Normal case: speed_mask_data in range of [1..100]
@@ -220,8 +211,7 @@ void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
         if (speed_limit_ != NO_SPEED_LIMIT) {
             DLOG(INFO) << "SpeedFilter: Speed limit is set to " << speed_limit_;
         } else {
-            DLOG(INFO)
-                << "SpeedFilter: Speed limit is set to its default value";
+            DLOG(INFO) << "SpeedFilter: Speed limit is set to its default value";
         }
 
         // // Forming and publishing new SpeedLimit message
@@ -262,5 +252,4 @@ bool SpeedFilter::isActive() {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::SpeedFilter,
-                            autonomy::map::costmap_2d::CostmapFilter)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::SpeedFilter, autonomy::map::costmap_2d::CostmapFilter)

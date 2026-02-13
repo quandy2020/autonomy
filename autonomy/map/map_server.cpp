@@ -27,12 +27,9 @@
 namespace autonomy {
 namespace map {
 
-MapServer::MapServer(const proto::MapOptions& options,
-                     const std::string& node_name)
-    : options_{options} {
+MapServer::MapServer(const proto::MapOptions& options, const std::string& node_name) : options_{options} {
     // 创建 autolink 节点
-    std::string actual_node_name =
-        node_name.empty() ? kMapServerNodeName : node_name;
+    std::string actual_node_name = node_name.empty() ? kMapServerNodeName : node_name;
     // 添加进程ID以确保节点名唯一（避免共享内存冲突）
     actual_node_name += "_" + std::to_string(getpid());
     node_ = ::autolink::CreateNode(actual_node_name, "");
@@ -43,23 +40,18 @@ MapServer::MapServer(const proto::MapOptions& options,
     bool has_static_map = !options_.map_file().empty();
     if (has_static_map) {
         // 静态地图名称
-        static_map_name_ =
-            options_.map_name().empty() ? "map" : options_.map_name();
+        static_map_name_ = options_.map_name().empty() ? "map" : options_.map_name();
 
-        AINFO << "Static map configuration: map_file=" << options_.map_file()
-              << ", map_name=" << static_map_name_;
+        AINFO << "Static map configuration: map_file=" << options_.map_file() << ", map_name=" << static_map_name_;
     } else {
         AWARN << "Static map file is not configured.";
     }
 
     // 创建静态地图发布器
-    std::string static_map_topic =
-        options_.map_topic().empty() ? "map" : options_.map_topic();
-    static_map_writer_ =
-        node_->CreateWriter<commsgs::map_msgs::OccupancyGrid>(static_map_topic);
+    std::string static_map_topic = options_.map_topic().empty() ? "map" : options_.map_topic();
+    static_map_writer_ = node_->CreateWriter<commsgs::map_msgs::OccupancyGrid>(static_map_topic);
 
-    AINFO << "MapServer initialized successfully. Static map topic: "
-          << static_map_topic;
+    AINFO << "MapServer initialized successfully. Static map topic: " << static_map_topic;
 }
 
 MapServer::~MapServer() {
@@ -80,16 +72,14 @@ void MapServer::Start() {
     // 如果配置了发布频率 > 0，启动周期性发布定时器
     if (!static_map_name_.empty() && options_.publish_frequency() > 0.0) {
         double static_publish_freq = options_.publish_frequency();
-        uint32_t period_ms =
-            static_cast<uint32_t>(1000.0 / static_publish_freq);
+        uint32_t period_ms = static_cast<uint32_t>(1000.0 / static_publish_freq);
 
         static_map_timer_ = std::make_shared<::autolink::Timer>(
             period_ms,
             [this]() {
                 // 只在第一次读取地图，后续直接使用缓存
                 if (!static_map_msg_) {
-                    static_map_msg_ =
-                        std::make_shared<commsgs::map_msgs::OccupancyGrid>();
+                    static_map_msg_ = std::make_shared<commsgs::map_msgs::OccupancyGrid>();
                     if (GetRawStaticMap(*static_map_msg_)) {
                         AINFO << "Static map loaded and cached.";
                     } else {
@@ -108,8 +98,8 @@ void MapServer::Start() {
             false  // 周期性执行
         );
         static_map_timer_->Start();
-        AINFO << "Static map publish timer started with frequency: "
-              << static_publish_freq << " Hz (" << period_ms << " ms).";
+        AINFO << "Static map publish timer started with frequency: " << static_publish_freq << " Hz (" << period_ms
+              << " ms).";
     }
 
     AINFO << "MapServer started.";
@@ -131,12 +121,10 @@ void MapServer::Shutdown() {
     AINFO << "MapServer shutdown.";
 }
 
-bool MapServer::GetRawStaticMap(
-    commsgs::map_msgs::OccupancyGrid& static_map) const {
+bool MapServer::GetRawStaticMap(commsgs::map_msgs::OccupancyGrid& static_map) const {
     AINFO << "MapServer::Start: Publishing static map";
 
-    std::string map_file =
-        utils::GetMapDataFilesDirectory() + options_.map_file();
+    std::string map_file = utils::GetMapDataFilesDirectory() + options_.map_file();
 
     if (map_file.empty()) {
         AWARN << "Static map file is not configured.";

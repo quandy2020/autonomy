@@ -34,18 +34,14 @@ using Time = autonomy::common::Time;
 class LaserScanSensorData : public autonomy::sensor::Data
 {
 public:
-    LaserScanSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg)
+    LaserScanSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg)
         : autonomy::sensor::Data(sensor_id), message_(msg) {}
 
     Time GetTime() const override {
         // 将 builtin_interfaces::Time 转换为 common::Time
-        int64_t total_ns =
-            static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
-            static_cast<int64_t>(message_->header.stamp.nanosec);
-        return autonomy::common::FromUniversal(total_ns /
-                                               100);  // 转换为 100ns ticks
+        int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                           static_cast<int64_t>(message_->header.stamp.nanosec);
+        return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
     }
 
     void AddToCostmap(map::common::MapInterface* costmap_builder) override {
@@ -65,18 +61,14 @@ private:
 class PointCloudSensorData : public autonomy::sensor::Data
 {
 public:
-    PointCloudSensorData(
-        const std::string& sensor_id,
-        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg)
+    PointCloudSensorData(const std::string& sensor_id, const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg)
         : autonomy::sensor::Data(sensor_id), message_(msg) {}
 
     Time GetTime() const override {
         // 将 builtin_interfaces::Time 转换为 common::Time
-        int64_t total_ns =
-            static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
-            static_cast<int64_t>(message_->header.stamp.nanosec);
-        return autonomy::common::FromUniversal(total_ns /
-                                               100);  // 转换为 100ns ticks
+        int64_t total_ns = static_cast<int64_t>(message_->header.stamp.sec) * 1000000000LL +
+                           static_cast<int64_t>(message_->header.stamp.nanosec);
+        return autonomy::common::FromUniversal(total_ns / 100);  // 转换为 100ns ticks
     }
 
     void AddToCostmap(map::common::MapInterface* costmap_builder) override {
@@ -84,8 +76,7 @@ public:
         // 点云数据可以添加到 costmap（待实现）
     }
 
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& GetMessage()
-        const {
+    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& GetMessage() const {
         return message_;
     }
 
@@ -100,8 +91,7 @@ LidarBase::~LidarBase() {
     Cleanup();
 }
 
-bool LidarBase::Configure(const std::string& name,
-                          const proto::DriverOptions& options) {
+bool LidarBase::Configure(const std::string& name, const proto::DriverOptions& options) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (configured_) {
@@ -116,8 +106,8 @@ bool LidarBase::Configure(const std::string& name,
     for (const auto& lidar_option : options.lidars()) {
         if (lidar_option.enabled()) {
             lidar_configs_[lidar_option.sensor_id()] = lidar_option;
-            AINFO << "Configured lidar sensor: " << lidar_option.sensor_id()
-                  << " (hardware: " << GetHardwareModel() << ")";
+            AINFO << "Configured lidar sensor: " << lidar_option.sensor_id() << " (hardware: " << GetHardwareModel()
+                  << ")";
         }
     }
 
@@ -127,8 +117,7 @@ bool LidarBase::Configure(const std::string& name,
     }
 
     configured_ = true;
-    AINFO << "LidarBase configured: " << name_ << " with "
-          << lidar_configs_.size() << " lidar sensors";
+    AINFO << "LidarBase configured: " << name_ << " with " << lidar_configs_.size() << " lidar sensors";
     return true;
 }
 
@@ -232,9 +221,7 @@ bool LidarBase::IsSensorRegistered(const std::string& sensor_id) const {
 
 bool LidarBase::RegisterSensorHandler(
     const std::string& sensor_id,
-    std::function<void(const std::string&,
-                       const std::shared_ptr<autonomy::sensor::Data>&)>
-        handler) {
+    std::function<void(const std::string&, const std::shared_ptr<autonomy::sensor::Data>&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!IsSensorRegistered(sensor_id)) {
@@ -262,17 +249,15 @@ void LidarBase::UnregisterSensorHandler(const std::string& sensor_id) {
     }
 }
 
-void LidarBase::ProcessLaserScanData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& scan_msg) {
+void LidarBase::ProcessLaserScanData(const std::string& sensor_id,
+                                     const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& scan_msg) {
     if (scan_msg == nullptr) {
         AERROR << "Received null laser scan message for sensor: " << sensor_id;
         return;
     }
 
     // 转换为 sensor::Data 并转发
-    auto sensor_data =
-        std::make_shared<LaserScanSensorData>(sensor_id, scan_msg);
+    auto sensor_data = std::make_shared<LaserScanSensorData>(sensor_id, scan_msg);
 
     std::lock_guard<std::mutex> lock(mutex_);
     auto handler_it = handlers_.find(sensor_id);
@@ -283,17 +268,15 @@ void LidarBase::ProcessLaserScanData(
     }
 }
 
-void LidarBase::ProcessPointCloudData(
-    const std::string& sensor_id,
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& cloud_msg) {
+void LidarBase::ProcessPointCloudData(const std::string& sensor_id,
+                                      const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& cloud_msg) {
     if (cloud_msg == nullptr) {
         AERROR << "Received null point cloud message for sensor: " << sensor_id;
         return;
     }
 
     // 转换为 sensor::Data 并转发
-    auto sensor_data =
-        std::make_shared<PointCloudSensorData>(sensor_id, cloud_msg);
+    auto sensor_data = std::make_shared<PointCloudSensorData>(sensor_id, cloud_msg);
 
     std::lock_guard<std::mutex> lock(mutex_);
     auto handler_it = handlers_.find(sensor_id);

@@ -31,8 +31,7 @@ proto::sensor_msgs::RegionOfInterest ToProto(const RegionOfInterest& data) {
 }
 
 RegionOfInterest FromProto(const proto::sensor_msgs::RegionOfInterest& proto) {
-    return {proto.x_offset(), proto.y_offset(), proto.height(), proto.width(),
-            proto.do_rectify()};
+    return {proto.x_offset(), proto.y_offset(), proto.height(), proto.width(), proto.do_rectify()};
 }
 
 proto::sensor_msgs::CameraInfo ToProto(const CameraInfo& data) {
@@ -93,8 +92,7 @@ proto::sensor_msgs::Illuminance ToProto(const Illuminance& data) {
 }
 
 Illuminance FromProto(const proto::sensor_msgs::Illuminance& proto) {
-    return {std_msgs::FromProto(proto.header()), proto.illuminance(),
-            proto.variance()};
+    return {std_msgs::FromProto(proto.header()), proto.illuminance(), proto.variance()};
 }
 
 proto::sensor_msgs::Image ToProto(const Image& data) {

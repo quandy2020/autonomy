@@ -72,8 +72,7 @@ public:
     explicit ConstIterator(const CompressedPointCloud* compressed_point_cloud);
 
     // Creates end iterator.
-    static ConstIterator EndIterator(
-        const CompressedPointCloud* compressed_point_cloud);
+    static ConstIterator EndIterator(const CompressedPointCloud* compressed_point_cloud);
 
     RangefinderPoint operator*() const;
     ConstIterator& operator++();

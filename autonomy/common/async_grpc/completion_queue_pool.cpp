@@ -33,8 +33,7 @@ size_t kDefaultNumberCompletionQueues = 2;
 
 void CompletionQueue::Start() {
     CHECK(!thread_) << "CompletionQueue already started.";
-    thread_ =
-        common::make_unique<std::thread>([this]() { RunCompletionQueue(); });
+    thread_ = common::make_unique<std::thread>([this]() { RunCompletionQueue(); });
 }
 
 void CompletionQueue::Shutdown() {
@@ -59,11 +58,9 @@ CompletionQueuePool* CompletionQueuePool::completion_queue_pool() {
     return kInstance;
 }
 
-void CompletionQueuePool::SetNumberCompletionQueues(
-    size_t number_completion_queues) {
+void CompletionQueuePool::SetNumberCompletionQueues(size_t number_completion_queues) {
     CompletionQueuePool* pool = completion_queue_pool();
-    CHECK(!pool->initialized_)
-        << "Can't change number of completion queues after initialization.";
+    CHECK(!pool->initialized_) << "Can't change number of completion queues after initialization.";
     CHECK_GT(number_completion_queues, 0u);
     pool->number_completion_queues_ = number_completion_queues;
 }
@@ -91,8 +88,7 @@ void CompletionQueuePool::Shutdown() {
     pool->initialized_ = false;
 }
 
-CompletionQueuePool::CompletionQueuePool()
-    : number_completion_queues_(kDefaultNumberCompletionQueues) {}
+CompletionQueuePool::CompletionQueuePool() : number_completion_queues_(kDefaultNumberCompletionQueues) {}
 
 CompletionQueuePool::~CompletionQueuePool() {
     LOG(INFO) << "~CompletionQueuePool";

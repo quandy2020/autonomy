@@ -24,17 +24,14 @@ namespace behavior_tree {
 namespace plugins {
 namespace control {
 
-PauseResumeController::PauseResumeController(const std::string& xml_tag_name,
-                                             const BT::NodeConfiguration& conf)
+PauseResumeController::PauseResumeController(const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
     : BT::ControlNode(xml_tag_name, conf), state_(RESUMED) {
-    auto node =
-        config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+    auto node = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     std::string pause_service_name;
     getInput("pause_service_name", pause_service_name);
     pause_srv_ = node->CreateService<Trigger::Request, Trigger::Response>(
         pause_service_name,
-        [this](const std::shared_ptr<Trigger::Request>& request,
-               std::shared_ptr<Trigger::Response>& response) {
+        [this](const std::shared_ptr<Trigger::Request>& request, std::shared_ptr<Trigger::Response>& response) {
             this->pauseServiceCallback(request, response);
         });
 
@@ -42,8 +39,7 @@ PauseResumeController::PauseResumeController(const std::string& xml_tag_name,
     getInput("resume_service_name", resume_service_name);
     resume_srv_ = node->CreateService<Trigger::Request, Trigger::Response>(
         resume_service_name,
-        [this](const std::shared_ptr<Trigger::Request>& request,
-               std::shared_ptr<Trigger::Response>& response) {
+        [this](const std::shared_ptr<Trigger::Request>& request, std::shared_ptr<Trigger::Response>& response) {
             this->resumeServiceCallback(request, response);
         });
 }
@@ -77,8 +73,7 @@ BT::NodeStatus PauseResumeController::tick() {
     }
 
     // If child is used, tick it
-    const BT::NodeStatus child_status =
-        children_nodes_[child_indices.at(state_)]->executeTick();
+    const BT::NodeStatus child_status = children_nodes_[child_indices.at(state_)]->executeTick();
 
     switch (child_status) {
         case BT::NodeStatus::RUNNING:
@@ -93,8 +88,7 @@ BT::NodeStatus PauseResumeController::tick() {
             // If any branch other than RESUMED returned SUCCESS, keep ticking
             return BT::NodeStatus::RUNNING;
         case BT::NodeStatus::FAILURE:
-            AERROR << state_names.at(state_).c_str()
-                   << " child returned FAILURE";
+            AERROR << state_names.at(state_).c_str() << " child returned FAILURE";
             return BT::NodeStatus::FAILURE;
         default:
             throw std::runtime_error("A child node must never return IDLE");
@@ -108,10 +102,7 @@ void PauseResumeController::halt() {
 
 void PauseResumeController::switchToNextState() {
     static const std::map<state_t, state_t> next_states = {
-        {PAUSE_REQUESTED, ON_PAUSE},
-        {ON_PAUSE, PAUSED},
-        {RESUME_REQUESTED, ON_RESUME},
-        {ON_RESUME, RESUMED}};
+        {PAUSE_REQUESTED, ON_PAUSE}, {ON_PAUSE, PAUSED}, {RESUME_REQUESTED, ON_RESUME}, {ON_RESUME, RESUMED}};
 
     if (state_ == PAUSED || state_ == RESUMED) {
         // No next state, do nothing
@@ -122,9 +113,8 @@ void PauseResumeController::switchToNextState() {
     AINFO << state_names.at(state_).c_str() << " switched to state";
 }
 
-void PauseResumeController::pauseServiceCallback(
-    const std::shared_ptr<Trigger::Request>& /*request*/,
-    std::shared_ptr<Trigger::Response>& response) {
+void PauseResumeController::pauseServiceCallback(const std::shared_ptr<Trigger::Request>& /*request*/,
+                                                 std::shared_ptr<Trigger::Response>& response) {
     if (state_ != PAUSED) {
         AINFO << "Received pause request";
         response->set_success(true);
@@ -132,17 +122,15 @@ void PauseResumeController::pauseServiceCallback(
         return;
     }
 
-    std::string warn_message =
-        "PauseResumeController BT node already in state PAUSED ";
+    std::string warn_message = "PauseResumeController BT node already in state PAUSED ";
 
     AWARN << warn_message.c_str();
     response->set_success(false);
     response->set_message(warn_message);
 }
 
-void PauseResumeController::resumeServiceCallback(
-    const std::shared_ptr<Trigger::Request>& /*request*/,
-    std::shared_ptr<Trigger::Response>& response) {
+void PauseResumeController::resumeServiceCallback(const std::shared_ptr<Trigger::Request>& /*request*/,
+                                                  std::shared_ptr<Trigger::Response>& response) {
     if (state_ == PAUSED) {
         AINFO << "Received resume request";
         response->set_success(true);
@@ -150,8 +138,7 @@ void PauseResumeController::resumeServiceCallback(
         return;
     }
 
-    std::string warn_message =
-        "PauseResumeController BT node not in state PAUSED ";
+    std::string warn_message = "PauseResumeController BT node not in state PAUSED ";
     AWARN << warn_message.c_str();
     response->set_success(false);
     response->set_message(warn_message);
@@ -164,14 +151,10 @@ void PauseResumeController::resumeServiceCallback(
 }  // namespace autonomy
 
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::
-                                    control::PauseResumeController>(name,
-                                                                    config);
+    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::control::PauseResumeController>(name, config);
     };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::control::
-                                PauseResumeController>("PauseResumeController",
-                                                       builder);
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::control::PauseResumeController>(
+        "PauseResumeController", builder);
 }

@@ -33,7 +33,7 @@ class LineSegment : public DecompBase<Dim>
 {
 public:
     /// Simple constructor
-    LineSegment() {};
+    LineSegment(){};
     /**
      * @brief Basic constructor
      * @param p1 One end of the line seg
@@ -128,8 +128,7 @@ protected:
             const auto pw = E.closest_point(obs_inside);
             Vecf<Dim> p = Ri.transpose() * (pw - E.d());  // to ellipsoid frame
             if (p(0) < axes(0))
-                axes(1) =
-                    std::abs(p(1)) / std::sqrt(1 - std::pow(p(0) / axes(0), 2));
+                axes(1) = std::abs(p(1)) / std::sqrt(1 - std::pow(p(0) / axes(0), 2));
             Matf<Dim, Dim> new_C = Matf<Dim, Dim>::Identity();
             new_C(0, 0) = axes(0);
             new_C(1, 1) = axes(1);
@@ -178,8 +177,7 @@ protected:
             p = Rf.transpose() * (pw - E.d());
 
             if (p(0) < axes(0))
-                axes(1) =
-                    std::abs(p(1)) / std::sqrt(1 - std::pow(p(0) / axes(0), 2));
+                axes(1) = std::abs(p(1)) / std::sqrt(1 - std::pow(p(0) / axes(0), 2));
             Matf<Dim, Dim> new_C = Matf<Dim, Dim>::Identity();
             new_C(0, 0) = axes(0);
             new_C(1, 1) = axes(1);
@@ -205,8 +203,7 @@ protected:
         while (!obs_inside.empty()) {
             const auto pw = E.closest_point(obs_inside);
             Vec3f p = Rf.transpose() * (pw - E.d());
-            decimal_t dd =
-                1 - std::pow(p(0) / axes(0), 2) - std::pow(p(1) / axes(1), 2);
+            decimal_t dd = 1 - std::pow(p(0) / axes(0), 2) - std::pow(p(1) / axes(1), 2);
             if (dd > epsilon_)
                 axes(2) = std::abs(p(2)) / std::sqrt(dd);
             Matf<Dim, Dim> new_C = Matf<Dim, Dim>::Identity();

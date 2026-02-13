@@ -41,35 +41,25 @@ ThetaStar::ThetaStar()
     exp_node = new tree_node;
 }
 
-void ThetaStar::setStartAndGoal(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal) {
+void ThetaStar::setStartAndGoal(const commsgs::geometry_msgs::PoseStamped& start,
+                                const commsgs::geometry_msgs::PoseStamped& goal) {
     if (!costmap_) {
         return;
     }
     unsigned int s[2], d[2];
-    costmap_->worldToMap(start.pose.position.x, start.pose.position.y, s[0],
-                         s[1]);
-    costmap_->worldToMap(goal.pose.position.x, goal.pose.position.y, d[0],
-                         d[1]);
+    costmap_->worldToMap(start.pose.position.x, start.pose.position.y, s[0], s[1]);
+    costmap_->worldToMap(goal.pose.position.x, goal.pose.position.y, d[0], d[1]);
 
     src_ = {static_cast<int>(s[0]), static_cast<int>(s[1])};
     dst_ = {static_cast<int>(d[0]), static_cast<int>(d[1])};
 }
 
-bool ThetaStar::generatePath(std::vector<coordsW>& raw_path,
-                             std::function<bool()> cancel_checker) {
+bool ThetaStar::generatePath(std::vector<coordsW>& raw_path, std::function<bool()> cancel_checker) {
     resetContainers();
     addToNodesData(index_generated_);
-    double src_g_cost = getTraversalCost(src_.x, src_.y),
-           src_h_cost = getHCost(src_.x, src_.y);
-    nodes_data_[index_generated_] = {src_.x,
-                                     src_.y,
-                                     src_g_cost,
-                                     src_h_cost,
-                                     &nodes_data_[index_generated_],
-                                     true,
-                                     src_g_cost + src_h_cost};
+    double src_g_cost = getTraversalCost(src_.x, src_.y), src_h_cost = getHCost(src_.x, src_.y);
+    nodes_data_[index_generated_] = {
+        src_.x, src_.y, src_g_cost, src_h_cost, &nodes_data_[index_generated_], true, src_g_cost + src_h_cost};
     queue_.push({&nodes_data_[index_generated_]});
     addIndex(src_.x, src_.y, &nodes_data_[index_generated_]);
     tree_node* curr_data = &nodes_data_[index_generated_];
@@ -79,11 +69,9 @@ bool ThetaStar::generatePath(std::vector<coordsW>& raw_path,
     while (!queue_.empty()) {
         nodes_opened++;
 
-        if (nodes_opened % terminal_checking_interval_ == 0 &&
-            cancel_checker()) {
+        if (nodes_opened % terminal_checking_interval_ == 0 && cancel_checker()) {
             clearQueue();
-            throw ::autonomy::planning::common::PlannerCancelled(
-                "Planner was canceled");
+            throw ::autonomy::planning::common::PlannerCancelled("Planner was canceled");
         }
 
         if (isGoal(*curr_data)) {
@@ -114,12 +102,8 @@ void ThetaStar::resetParent(tree_node* curr_data) {
     const tree_node* curr_par = curr_data->parent_id;
     const tree_node* maybe_par = curr_par->parent_id;
 
-    if (losCheck(curr_data->x, curr_data->y, maybe_par->x, maybe_par->y,
-                 los_cost)) {
-        g_cost = maybe_par->g +
-                 getEuclideanCost(curr_data->x, curr_data->y, maybe_par->x,
-                                  maybe_par->y) +
-                 los_cost;
+    if (losCheck(curr_data->x, curr_data->y, maybe_par->x, maybe_par->y, los_cost)) {
+        g_cost = maybe_par->g + getEuclideanCost(curr_data->x, curr_data->y, maybe_par->x, maybe_par->y) + los_cost;
 
         if (g_cost < curr_data->g) {
             curr_data->parent_id = maybe_par;
@@ -146,9 +130,7 @@ void ThetaStar::setNeighbors(const tree_node* curr_data) {
             continue;
         }
 
-        g_cost = curr_data->g +
-                 getEuclideanCost(curr_data->x, curr_data->y, mx, my) +
-                 getTraversalCost(mx, my);
+        g_cost = curr_data->g + getEuclideanCost(curr_data->x, curr_data->y, mx, my) + getTraversalCost(mx, my);
         m_id = getIndex(mx, my);
 
         if (m_id == nullptr) {
@@ -177,8 +159,7 @@ void ThetaStar::setNeighbors(const tree_node* curr_data) {
     }
 }
 
-void ThetaStar::backtrace(std::vector<coordsW>& raw_points,
-                          const tree_node* curr_n) const {
+void ThetaStar::backtrace(std::vector<coordsW>& raw_points, const tree_node* curr_n) const {
     if (!costmap_) {
         return;
     }
@@ -200,8 +181,7 @@ void ThetaStar::backtrace(std::vector<coordsW>& raw_points,
     }
 }
 
-bool ThetaStar::losCheck(const int& x0, const int& y0, const int& x1,
-                         const int& y1, double& sl_cost) const {
+bool ThetaStar::losCheck(const int& x0, const int& y0, const int& x1, const int& y1, double& sl_cost) const {
     sl_cost = 0;
 
     int cx, cy;
@@ -228,8 +208,7 @@ bool ThetaStar::losCheck(const int& x0, const int& y0, const int& x1,
             if (f != 0 && !isSafe(cx + u_x, cy + u_y, sl_cost)) {
                 return false;
             }
-            if (dy == 0 && !isSafe(cx + u_x, cy, sl_cost) &&
-                !isSafe(cx + u_x, cy - 1, sl_cost)) {
+            if (dy == 0 && !isSafe(cx + u_x, cy, sl_cost) && !isSafe(cx + u_x, cy - 1, sl_cost)) {
                 return false;
             }
             cx += sx;
@@ -248,8 +227,7 @@ bool ThetaStar::losCheck(const int& x0, const int& y0, const int& x1,
                 return false;
             }
 
-            if (dx == 0 && !isSafe(cx, cy + u_y, sl_cost) &&
-                !isSafe(cx - 1, cy + u_y, sl_cost)) {
+            if (dx == 0 && !isSafe(cx, cy + u_y, sl_cost) && !isSafe(cx - 1, cy + u_y, sl_cost)) {
                 return false;
             }
             cy += sy;

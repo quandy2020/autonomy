@@ -30,11 +30,9 @@ namespace autonomy {
 namespace common {
 namespace math {
 
-double IntegrateBySimpson(const std::vector<double>& funv_vec, const double dx,
-                          const std::size_t nsteps);
+double IntegrateBySimpson(const std::vector<double>& funv_vec, const double dx, const std::size_t nsteps);
 
-double IntegrateByTrapezoidal(const std::vector<double>& funv_vec,
-                              const double dx, const std::size_t nsteps);
+double IntegrateByTrapezoidal(const std::vector<double>& funv_vec, const double dx, const std::size_t nsteps);
 
 /**
  * @brief Get the points and weights for different ordered Gauss-Legendre
@@ -42,12 +40,10 @@ double IntegrateByTrapezoidal(const std::vector<double>& funv_vec,
  *        trigger compiling error.
  */
 template <std::size_t N>
-std::pair<std::array<double, N>, std::array<double, N>>
-GetGaussLegendrePoints();
+std::pair<std::array<double, N>, std::array<double, N>> GetGaussLegendrePoints();
 
 template <>
-inline std::pair<std::array<double, 2>, std::array<double, 2>>
-GetGaussLegendrePoints<2>() {
+inline std::pair<std::array<double, 2>, std::array<double, 2>> GetGaussLegendrePoints<2>() {
     std::array<double, 2> x;
     x[0] = -5.77350269189625764507e-01;
     x[1] = 5.77350269189625764507e-01;
@@ -60,8 +56,7 @@ GetGaussLegendrePoints<2>() {
 }
 
 template <>
-inline std::pair<std::array<double, 3>, std::array<double, 3>>
-GetGaussLegendrePoints<3>() {
+inline std::pair<std::array<double, 3>, std::array<double, 3>> GetGaussLegendrePoints<3>() {
     std::array<double, 3> x;
     x[0] = 0.00000000000000000000e+00;
     x[1] = 7.74596669241483377010e-01;
@@ -76,8 +71,7 @@ GetGaussLegendrePoints<3>() {
 }
 
 template <>
-inline std::pair<std::array<double, 4>, std::array<double, 4>>
-GetGaussLegendrePoints<4>() {
+inline std::pair<std::array<double, 4>, std::array<double, 4>> GetGaussLegendrePoints<4>() {
     std::array<double, 4> x;
     x[0] = 3.39981043584856264792e-01;
     x[1] = -3.39981043584856264792e-01;
@@ -94,8 +88,7 @@ GetGaussLegendrePoints<4>() {
 }
 
 template <>
-inline std::pair<std::array<double, 5>, std::array<double, 5>>
-GetGaussLegendrePoints<5>() {
+inline std::pair<std::array<double, 5>, std::array<double, 5>> GetGaussLegendrePoints<5>() {
     std::array<double, 5> x;
     x[0] = 0.00000000000000000000e+00;
     x[1] = 5.38469310105683091018e-01;
@@ -114,8 +107,7 @@ GetGaussLegendrePoints<5>() {
 }
 
 template <>
-inline std::pair<std::array<double, 6>, std::array<double, 6>>
-GetGaussLegendrePoints<6>() {
+inline std::pair<std::array<double, 6>, std::array<double, 6>> GetGaussLegendrePoints<6>() {
     std::array<double, 6> x;
     x[0] = 6.61209386466264513688e-01;
     x[1] = -6.61209386466264513688e-01;
@@ -136,8 +128,7 @@ GetGaussLegendrePoints<6>() {
 }
 
 template <>
-inline std::pair<std::array<double, 7>, std::array<double, 7>>
-GetGaussLegendrePoints<7>() {
+inline std::pair<std::array<double, 7>, std::array<double, 7>> GetGaussLegendrePoints<7>() {
     std::array<double, 7> x;
     x[0] = 0.00000000000000000000e+00;
     x[1] = 4.05845151377397166917e-01;
@@ -160,8 +151,7 @@ GetGaussLegendrePoints<7>() {
 }
 
 template <>
-inline std::pair<std::array<double, 8>, std::array<double, 8>>
-GetGaussLegendrePoints<8>() {
+inline std::pair<std::array<double, 8>, std::array<double, 8>> GetGaussLegendrePoints<8>() {
     std::array<double, 8> x;
     x[0] = 1.83434642495649804936e-01;
     x[1] = -1.83434642495649804936e-01;
@@ -186,8 +176,7 @@ GetGaussLegendrePoints<8>() {
 }
 
 template <>
-inline std::pair<std::array<double, 9>, std::array<double, 9>>
-GetGaussLegendrePoints<9>() {
+inline std::pair<std::array<double, 9>, std::array<double, 9>> GetGaussLegendrePoints<9>() {
     std::array<double, 9> x;
     x[0] = 0.00000000000000000000e+00;
     x[1] = 8.36031107326635794313e-01;
@@ -214,8 +203,7 @@ GetGaussLegendrePoints<9>() {
 }
 
 template <>
-inline std::pair<std::array<double, 10>, std::array<double, 10>>
-GetGaussLegendrePoints<10>() {
+inline std::pair<std::array<double, 10>, std::array<double, 10>> GetGaussLegendrePoints<10>() {
     std::array<double, 10> x;
     x[0] = 1.48874338981631210881e-01;
     x[1] = -1.48874338981631210881e-01;
@@ -264,8 +252,7 @@ GetGaussLegendrePoints<10>() {
  * @return The integral result
  */
 template <std::size_t N>
-double IntegrateByGaussLegendre(const std::function<double(double)>& func,
-                                const double lower_bound,
+double IntegrateByGaussLegendre(const std::function<double(double)>& func, const double lower_bound,
                                 const double upper_bound) {
     auto p = GetGaussLegendrePoints<N>();
 

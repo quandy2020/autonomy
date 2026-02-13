@@ -43,8 +43,7 @@ inline Mat2f vec2_to_rotation(const Vec2f& v) {
 
 inline Mat3f vec3_to_rotation(const Vec3f& v) {
     // zero roll
-    Vec3f rpy(0, std::atan2(-v(2), v.topRows<2>().norm()),
-              std::atan2(v(1), v(0)));
+    Vec3f rpy(0, std::atan2(-v(2), v.topRows<2>().norm()), std::atan2(v(1), v(0)));
     Quatf qx(cos(rpy(0) / 2), sin(rpy(0) / 2), 0, 0);
     Quatf qy(cos(rpy(1) / 2), 0, sin(rpy(1) / 2), 0);
     Quatf qz(cos(rpy(2) / 2), 0, 0, sin(rpy(2) / 2));
@@ -72,8 +71,7 @@ inline vec_Vec2f sort_pts(const vec_Vec2f& pts) {
 
     std::sort(
         pts_valued.begin(), pts_valued.end(),
-        [](const std::pair<decimal_t, Vec2f>& i,
-           const std::pair<decimal_t, Vec2f>& j) { return i.first < j.first; });
+        [](const std::pair<decimal_t, Vec2f>& i, const std::pair<decimal_t, Vec2f>& j) { return i.first < j.first; });
     vec_Vec2f pts_sorted(pts_valued.size());
     for (size_t i = 0; i < pts_valued.size(); i++)
         pts_sorted[i] = pts_valued[i].second;
@@ -82,8 +80,7 @@ inline vec_Vec2f sort_pts(const vec_Vec2f& pts) {
 
 /// Find intersection between two lines on the same plane, return false if they
 /// are not intersected
-inline bool line_intersect(const std::pair<Vec2f, Vec2f>& v1,
-                           const std::pair<Vec2f, Vec2f>& v2, Vec2f& pi) {
+inline bool line_intersect(const std::pair<Vec2f, Vec2f>& v1, const std::pair<Vec2f, Vec2f>& v2, Vec2f& pi) {
     decimal_t a1 = -v1.first(1);
     decimal_t b1 = v1.first(0);
     decimal_t c1 = a1 * v1.second(0) + b1 * v1.second(1);
@@ -161,7 +158,7 @@ inline vec_E<vec_Vec3f> cal_vertices(const Polyhedron3D& poly) {
             Vec3f nb = R.transpose() * nw;
             decimal_t bb = vts[j].p_.dot(nw) - nw.dot(t);
             Vec2f v = Vec3f(0, 0, 1).cross(nb).topRows<2>();  // line direction
-            Vec2f p;  // point on the line
+            Vec2f p;                                          // point on the line
             if (nb(1) != 0)
                 p << 0, bb / nb(1);
             else if (nb(0) != 0)
@@ -222,8 +219,7 @@ inline vec_Vec2f cal_convex_hull(const vec_Vec2f& pts) {
             Hyperplane2D hp(ref_pt, Vec2f(-dir(1), dir(0)));
             bool most_left_hp = true;
             for (size_t j = 0; j < pts.size(); j++) {
-                if (hp.signed_dist(pts[j]) > 0 && pts[j] != pts[i] &&
-                    pts[j] != ref_pt) {
+                if (hp.signed_dist(pts[j]) > 0 && pts[j] != pts[i] && pts[j] != ref_pt) {
                     // if(hp.signed_dist(pts[j]) > 0) {
                     most_left_hp = false;
                     break;
@@ -249,8 +245,7 @@ inline Polyhedron2D get_convex_hull(const vec_Vec2f& pts) {
         size_t j = i + 1;
         Vec2f dir = (pts[j] - pts[i]).normalized();
         if (dir != prev_dir) {
-            poly.add(
-                Hyperplane2D((pts[i] + pts[j]) / 2, Vec2f(-dir(1), dir(0))));
+            poly.add(Hyperplane2D((pts[i] + pts[j]) / 2, Vec2f(-dir(1), dir(0))));
             prev_dir = dir;
         }
     }
@@ -259,8 +254,7 @@ inline Polyhedron2D get_convex_hull(const vec_Vec2f& pts) {
 }
 
 /// Minkowski sum, add B to A with center Bc
-inline Polyhedron2D minkowski_sum(const Polyhedron2D& A, const Polyhedron2D& B,
-                                  const Vec2f& Bc) {
+inline Polyhedron2D minkowski_sum(const Polyhedron2D& A, const Polyhedron2D& B, const Vec2f& Bc) {
     const auto A_vertices = cal_vertices(A);
     const auto B_vertices = cal_vertices(B);
 

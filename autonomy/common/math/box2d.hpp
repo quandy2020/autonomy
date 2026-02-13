@@ -61,8 +61,7 @@ public:
      * @param length The size of the heading-axis.
      * @param width The size of the axis perpendicular to the heading-axis.
      */
-    Box2d(const Vec2d& center, const double heading, const double length,
-          const double width);
+    Box2d(const Vec2d& center, const double heading, const double length, const double width);
 
     /**
      * @brief Constructor which takes the point on the axis, front length, back
@@ -74,8 +73,7 @@ public:
      * @param back_length The length from the end point to the given point.
      * @param width The size of the axis perpendicular to the heading-axis.
      */
-    Box2d(const Vec2d& point, double heading, double front_length,
-          double back_length, double width);
+    Box2d(const Vec2d& point, double heading, double front_length, double back_length, double width);
 
     /**
      * @brief Constructor which takes the heading-axis and the width of the box
@@ -97,8 +95,7 @@ public:
      * @param opposite_corner The opposite corner to the first one
      * @return An axes-aligned Box2d
      */
-    static Box2d CreateAABox(const Vec2d& one_corner,
-                             const Vec2d& opposite_corner);
+    static Box2d CreateAABox(const Vec2d& one_corner, const Vec2d& opposite_corner);
 
     /**
      * @brief Getter of the center of the box
@@ -307,8 +304,7 @@ public:
 
 private:
     inline bool is_inside_rectangle(const Vec2d& point) const {
-        return (point.x() >= 0.0 && point.x() <= width_ && point.y() >= 0.0 &&
-                point.y() <= length_);
+        return (point.x() >= 0.0 && point.x() <= width_ && point.y() >= 0.0 && point.y() <= length_);
     }
 
     Vec2d center_;

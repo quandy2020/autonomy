@@ -43,8 +43,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    IsStuckCondition(const std::string& condition_name,
-                     const BT::NodeConfiguration& conf);
+    IsStuckCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     IsStuckCondition() = delete;
 
@@ -57,8 +56,7 @@ public:
      * @brief Callback function for odom topic
      * @param msg Shared pointer to nav_msgs::msg::Odometry::SharedPtr message
      */
-    void onOdomReceived(
-        const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
+    void onOdomReceived(const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
 
     /**
      * @brief The main override required by a BT action
@@ -97,8 +95,7 @@ private:
     std::atomic<bool> is_stuck_;
 
     // Listen to odometry
-    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>>
-        odom_sub_;
+    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>> odom_sub_;
     // Store history of odometry measurements
     std::deque<commsgs::planning_msgs::Odometry> odom_history_;
     std::deque<commsgs::planning_msgs::Odometry>::size_type odom_history_size_;

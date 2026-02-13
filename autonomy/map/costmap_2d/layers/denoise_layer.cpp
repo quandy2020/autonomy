@@ -96,13 +96,10 @@ bool DenoiseLayer::isClearable() {
     return false;
 }
 
-void DenoiseLayer::updateBounds(double /*robot_x*/, double /*robot_y*/,
-                                double /*robot_yaw*/, double* /*min_x*/,
-                                double* /*min_y*/, double* /*max_x*/,
-                                double* /*max_y*/) {}
+void DenoiseLayer::updateBounds(double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/, double* /*min_x*/,
+                                double* /*min_y*/, double* /*max_x*/, double* /*max_y*/) {}
 
-void DenoiseLayer::updateCosts(Costmap2D& master_grid, int min_x, int min_y,
-                               int max_x, int max_y) {
+void DenoiseLayer::updateCosts(Costmap2D& master_grid, int min_x, int min_y, int max_x, int max_y) {
     if (!enabled_) {
         return;
     }
@@ -110,8 +107,7 @@ void DenoiseLayer::updateCosts(Costmap2D& master_grid, int min_x, int min_y,
     if (min_x >= max_x || min_y >= max_y) {
         return;
     }
-    no_information_is_obstacle_ =
-        master_grid.getDefaultValue() != NO_INFORMATION;
+    no_information_is_obstacle_ = master_grid.getDefaultValue() != NO_INFORMATION;
 
     // wrap roi_image over existing costmap2d buffer
     unsigned char* master_array = master_grid.getCharMap();
@@ -119,8 +115,7 @@ void DenoiseLayer::updateCosts(Costmap2D& master_grid, int min_x, int min_y,
 
     const size_t width = max_x - min_x;
     const size_t height = max_y - min_y;
-    Image<uint8_t> roi_image(height, width, master_array + min_y * step + min_x,
-                             step);
+    Image<uint8_t> roi_image(height, width, master_array + min_y * step + min_x, step);
 
     try {
         denoise(roi_image);
@@ -150,50 +145,41 @@ void DenoiseLayer::denoise(Image<uint8_t>& image) const {
 }
 
 void DenoiseLayer::removeGroups(Image<uint8_t>& image) const {
-    groups_remover_.removeGroups(
-        image, buffer_, group_connectivity_type_, minimal_group_size_,
-        [this](uint8_t pixel) { return isBackground(pixel); });
+    groups_remover_.removeGroups(image, buffer_, group_connectivity_type_, minimal_group_size_,
+                                 [this](uint8_t pixel) { return isBackground(pixel); });
 }
 
 void DenoiseLayer::removeSinglePixels(Image<uint8_t>& image) const {
     // Building a map of 4 or 8-connected neighbors.
     // The pixel of the map is 255 if there is an obstacle nearby
     uint8_t* buf = buffer_.get<uint8_t>(image.rows() * image.columns());
-    Image<uint8_t> max_neighbors_image(image.rows(), image.columns(), buf,
-                                       image.columns());
+    Image<uint8_t> max_neighbors_image(image.rows(), image.columns(), buf, image.columns());
 
     // If NO_INFORMATION (=255) isn't obstacle, we can't use a simple max() to
     // check any obstacle nearby. In this case, we interpret NO_INFORMATION as
     // an empty space.
     if (!no_information_is_obstacle_) {
-        auto replace_to_free = [](uint8_t v) {
-            return v == NO_INFORMATION ? FREE_SPACE : v;
-        };
+        auto replace_to_free = [](uint8_t v) { return v == NO_INFORMATION ? FREE_SPACE : v; };
         auto max = [&](const std::initializer_list<uint8_t> lst) {
-            std::array<uint8_t, 3> rbuf = {replace_to_free(*lst.begin()),
-                                           replace_to_free(*(lst.begin() + 1)),
+            std::array<uint8_t, 3> rbuf = {replace_to_free(*lst.begin()), replace_to_free(*(lst.begin() + 1)),
                                            replace_to_free(*(lst.begin() + 2))};
             return *std::max_element(rbuf.begin(), rbuf.end());
         };
         dilate(image, max_neighbors_image, group_connectivity_type_, max);
     } else {
-        auto max = [](const std::initializer_list<uint8_t> lst) {
-            return std::max(lst);
-        };
+        auto max = [](const std::initializer_list<uint8_t> lst) { return std::max(lst); };
         dilate(image, max_neighbors_image, group_connectivity_type_, max);
     }
 
-    max_neighbors_image.convert(
-        image, [this](uint8_t maxNeighbor, uint8_t& img) {
-            if (!isBackground(img) && isBackground(maxNeighbor)) {
-                img = FREE_SPACE;
-            }
-        });
+    max_neighbors_image.convert(image, [this](uint8_t maxNeighbor, uint8_t& img) {
+        if (!isBackground(img) && isBackground(maxNeighbor)) {
+            img = FREE_SPACE;
+        }
+    });
 }
 
 bool DenoiseLayer::isBackground(uint8_t pixel) const {
-    bool is_obstacle = pixel == LETHAL_OBSTACLE ||
-                       pixel == INSCRIBED_INFLATED_OBSTACLE ||
+    bool is_obstacle = pixel == LETHAL_OBSTACLE || pixel == INSCRIBED_INFLATED_OBSTACLE ||
                        (pixel == NO_INFORMATION && no_information_is_obstacle_);
     return !is_obstacle;
 }
@@ -203,5 +189,4 @@ bool DenoiseLayer::isBackground(uint8_t pixel) const {
 }  // namespace autonomy
 
 // Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::DenoiseLayer,
-                            autonomy::map::costmap_2d::Layer)
+CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::DenoiseLayer, autonomy::map::costmap_2d::Layer)

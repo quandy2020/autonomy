@@ -24,8 +24,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-TimeExpiredCondition::TimeExpiredCondition(const std::string& condition_name,
-                                           const BT::NodeConfiguration& conf)
+TimeExpiredCondition::TimeExpiredCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), period_(1.0) {}
 
 void TimeExpiredCondition::initialize() {
@@ -46,13 +45,10 @@ BT::NodeStatus TimeExpiredCondition::tick() {
 
     // Determine how long it's been since we've started this iteration
     auto current_time = autonomy::commsgs::builtin_interfaces::Time::Now();
-    int64_t current_ns = static_cast<int64_t>(current_time.sec) * 1000000000LL +
-                         current_time.nanosec;
-    int64_t start_ns =
-        static_cast<int64_t>(start_.sec) * 1000000000LL + start_.nanosec;
+    int64_t current_ns = static_cast<int64_t>(current_time.sec) * 1000000000LL + current_time.nanosec;
+    int64_t start_ns = static_cast<int64_t>(start_.sec) * 1000000000LL + start_.nanosec;
     int64_t elapsed_ns = current_ns - start_ns;
-    auto elapsed =
-        commsgs::builtin_interfaces::Duration::FromNanoseconds(elapsed_ns);
+    auto elapsed = commsgs::builtin_interfaces::Duration::FromNanoseconds(elapsed_ns);
 
     // Now, get that in seconds
     double seconds = elapsed.Seconds();
@@ -73,7 +69,5 @@ BT::NodeStatus TimeExpiredCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::TimeExpiredCondition>(
-        "TimeExpired");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::TimeExpiredCondition>("TimeExpired");
 }

@@ -37,12 +37,9 @@ namespace action {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class ComputePathToPoseAction
-    : public BtActionNode<
-          autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction>
+class ComputePathToPoseAction : public BtActionNode<autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction>
 {
-    using Action =
-        autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction;
+    using Action = autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction;
     using ActionResult = Action::Result;
 
 public:
@@ -53,8 +50,7 @@ public:
      * @param action_name Action name this node creates a client for
      * @param conf BT node configuration
      */
-    ComputePathToPoseAction(const std::string& xml_tag_name,
-                            const std::string& action_name,
+    ComputePathToPoseAction(const std::string& xml_tag_name, const std::string& action_name,
                             const BT::NodeConfiguration& conf);
 
     /**
@@ -104,8 +100,7 @@ public:
         BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
 
         return providedBasicPorts({
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
-                "goal", "Destination to plan to"),
+            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Destination to plan to"),
             BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
                 "start",
                 "Used as the planner start pose instead of the current robot "
@@ -115,15 +110,10 @@ public:
             BT::InputPort<bool>("use_start",
                                 "For using or not using (i.e. ignoring) the "
                                 "provided start pose"),
-            BT::InputPort<std::string>(
-                "planner_id", "",
-                "Mapped name to the planner plugin type to use"),
-            BT::OutputPort<commsgs::planning_msgs::Path>(
-                "path", "Path created by ComputePathToPose node"),
-            BT::OutputPort<int32_t>("error_code_id",
-                                    "The compute path to pose error code"),
-            BT::OutputPort<std::string>("error_msg",
-                                        "The compute path to pose error msg"),
+            BT::InputPort<std::string>("planner_id", "", "Mapped name to the planner plugin type to use"),
+            BT::OutputPort<commsgs::planning_msgs::Path>("path", "Path created by ComputePathToPose node"),
+            BT::OutputPort<int32_t>("error_code_id", "The compute path to pose error code"),
+            BT::OutputPort<std::string>("error_msg", "The compute path to pose error msg"),
         });
     }
 };

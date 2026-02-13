@@ -22,20 +22,16 @@ namespace io {
 class HybridGridPointsProcessor : public PointsProcessor
 {
 public:
-    constexpr static const char* kConfigurationFileActionName =
-        "write_hybrid_grid";
+    constexpr static const char* kConfigurationFileActionName = "write_hybrid_grid";
     HybridGridPointsProcessor(double voxel_size,
-                              const mapping::proto::RangeDataInserterOptions3D&
-                                  range_data_inserter_options,
-                              std::unique_ptr<FileWriter> file_writer,
-                              PointsProcessor* next);
+                              const mapping::proto::RangeDataInserterOptions3D& range_data_inserter_options,
+                              std::unique_ptr<FileWriter> file_writer, PointsProcessor* next);
     HybridGridPointsProcessor(const HybridGridPointsProcessor&) = delete;
-    HybridGridPointsProcessor& operator=(const HybridGridPointsProcessor&) =
-        delete;
+    HybridGridPointsProcessor& operator=(const HybridGridPointsProcessor&) = delete;
 
-    static std::unique_ptr<HybridGridPointsProcessor> FromDictionary(
-        const FileWriterFactory& file_writer_factory,
-        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
+    static std::unique_ptr<HybridGridPointsProcessor> FromDictionary(const FileWriterFactory& file_writer_factory,
+                                                                     common::LuaParameterDictionary* dictionary,
+                                                                     PointsProcessor* next);
 
     ~HybridGridPointsProcessor() override {}
 

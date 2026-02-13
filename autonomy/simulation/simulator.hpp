@@ -61,8 +61,7 @@ private:
     proto::SimulationOption options_;
 };
 
-proto::SimulationOption LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::SimulationOption LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace simulation
 }  // namespace autonomy

@@ -24,17 +24,15 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-WouldAPlannerRecoveryHelp::WouldAPlannerRecoveryHelp(
-    const std::string& condition_name, const BT::NodeConfiguration& conf)
+WouldAPlannerRecoveryHelp::WouldAPlannerRecoveryHelp(const std::string& condition_name,
+                                                     const BT::NodeConfiguration& conf)
     : AreErrorCodesPresent(condition_name, conf) {
-    error_codes_to_check_ = {
-        static_cast<uint16_t>(proto::COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN),
-        static_cast<uint16_t>(proto::COMPUTE_PATH_TO_POSE_ERROR_NO_VALID_PATH),
-        static_cast<uint16_t>(proto::COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT),
-        static_cast<uint16_t>(proto::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
-        static_cast<uint16_t>(proto::COMPUTE_PATH_THROUGH_POSES_ERROR_TIMEOUT),
-        static_cast<uint16_t>(
-            proto::COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VALID_PATH)};
+    error_codes_to_check_ = {static_cast<uint16_t>(proto::COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN),
+                             static_cast<uint16_t>(proto::COMPUTE_PATH_TO_POSE_ERROR_NO_VALID_PATH),
+                             static_cast<uint16_t>(proto::COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT),
+                             static_cast<uint16_t>(proto::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
+                             static_cast<uint16_t>(proto::COMPUTE_PATH_THROUGH_POSES_ERROR_TIMEOUT),
+                             static_cast<uint16_t>(proto::COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VALID_PATH)};
 }
 
 }  // namespace condition
@@ -45,7 +43,6 @@ WouldAPlannerRecoveryHelp::WouldAPlannerRecoveryHelp(
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::WouldAPlannerRecoveryHelp>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::WouldAPlannerRecoveryHelp>(
         "WouldAPlannerRecoveryHelp");
 }

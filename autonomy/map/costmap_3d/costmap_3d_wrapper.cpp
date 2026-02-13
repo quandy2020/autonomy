@@ -20,8 +20,7 @@ namespace autonomy {
 namespace map {
 namespace costmap_3d {
 
-Costmap3DWrapper::Costmap3DWrapper(const proto::Costmap3DOptions& options)
-    : options_{options} {}
+Costmap3DWrapper::Costmap3DWrapper(const proto::Costmap3DOptions& options) : options_{options} {}
 
 Costmap3DWrapper::~Costmap3DWrapper() {}
 

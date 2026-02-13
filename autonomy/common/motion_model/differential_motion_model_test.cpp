@@ -49,8 +49,7 @@ TEST(CvtrMotionModelTest, PredictStaticObject) {
     initial_state.at<X>() = 42.0F;
     initial_state.at<Y>() = 42.0F;
     initial_state.at<YAW>() = 1.0F;
-    EXPECT_EQ(initial_state,
-              model.predict(initial_state, std::chrono::milliseconds{100LL}));
+    EXPECT_EQ(initial_state, model.predict(initial_state, std::chrono::milliseconds{100LL}));
 }
 
 /// @test Make sure a static object stays static.
@@ -60,8 +59,7 @@ TEST(CatrMotionModelTest, PredictStaticObject) {
     initial_state.at<X>() = 42.0F;
     initial_state.at<Y>() = 42.0F;
     initial_state.at<YAW>() = 1.0F;
-    EXPECT_EQ(initial_state,
-              model.predict(initial_state, std::chrono::milliseconds{100LL}));
+    EXPECT_EQ(initial_state, model.predict(initial_state, std::chrono::milliseconds{100LL}));
 }
 
 /// @test Check that the Jacobian matches one computed symbolically when turn
@@ -76,20 +74,16 @@ TEST(CvtrMotionModelTest, TestJacobianNonZeroTurnRate) {
 
     // Computed with SymPy.
     CvtrMotionModel32::State::Matrix expected_jacobian{
-        (CvtrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.112740374605884F,
-         0.082396074316744F, -0.00591185558829518F, 0.0F, 1.0F,
-         0.164792148633488F, 0.0563701873029421F, 0.00805158142082696F, 0.0F,
-         0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.1F, 0.0F, 0.0F, 0.0F,
-         0.0F, 1.0F)
+        (CvtrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.112740374605884F, 0.082396074316744F,
+         -0.00591185558829518F, 0.0F, 1.0F, 0.164792148633488F, 0.0563701873029421F, 0.00805158142082696F, 0.0F, 0.0F,
+         1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.1F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F)
             .finished()};
 
     CvtrMotionModel32 model;
-    const auto jacobian =
-        model.jacobian(state, std::chrono::milliseconds{100LL});
-    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon))
-        << "Jacobians don't match: \nExpected:\n"
-        << expected_jacobian << "\nActual:\n"
-        << jacobian;
+    const auto jacobian = model.jacobian(state, std::chrono::milliseconds{100LL});
+    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon)) << "Jacobians don't match: \nExpected:\n"
+                                                                << expected_jacobian << "\nActual:\n"
+                                                                << jacobian;
 }
 
 /// @test Check that the Jacobian matches one computed symbolically when turn
@@ -105,20 +99,16 @@ TEST(CatrMotionModelTest, TestJacobianNonZeroTurnRate) {
 
     // Computed with SymPy.
     CatrMotionModel32::State::Matrix expected_jacobian{
-        (CatrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.1186522F,
-         0.0823960F, -0.0063150F, 0.0040257F, 0.0F, 1.0F, 0.1728437F,
-         0.0563701F, 0.0085819F, 0.0029559277F, 0.0F, 0.0F, 1.0F, 0.0F, 0.1F,
-         0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.1F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F,
-         0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F)
+        (CatrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.1186522F, 0.0823960F, -0.0063150F, 0.0040257F, 0.0F, 1.0F,
+         0.1728437F, 0.0563701F, 0.0085819F, 0.0029559277F, 0.0F, 0.0F, 1.0F, 0.0F, 0.1F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F,
+         0.0F, 0.1F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F)
             .finished()};
 
     CatrMotionModel32 model;
-    const auto jacobian =
-        model.jacobian(state, std::chrono::milliseconds{100LL});
-    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon))
-        << "Jacobians don't match: \nExpected:\n"
-        << expected_jacobian << "\nActual:\n"
-        << jacobian;
+    const auto jacobian = model.jacobian(state, std::chrono::milliseconds{100LL});
+    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon)) << "Jacobians don't match: \nExpected:\n"
+                                                                << expected_jacobian << "\nActual:\n"
+                                                                << jacobian;
 }
 
 /// @test Check that the Jacobian matches one computed symbolically when turn
@@ -133,20 +123,16 @@ TEST(CvtrMotionModelTest, TestJacobianZeroTurnRate) {
 
     // Computed with SymPy.
     CvtrMotionModel32::State::Matrix expected_jacobian{
-        (CvtrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.0958851077208406F,
-         0.0877582561890373F, -0.00958851077208406F, 0.0F, 1.0F,
-         0.175516512378075F, 0.0479425538604203F, 0.0175516512378075F, 0.0F,
-         0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F,
-         0.0F, 1.0F)
+        (CvtrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.0958851077208406F, 0.0877582561890373F,
+         -0.00958851077208406F, 0.0F, 1.0F, 0.175516512378075F, 0.0479425538604203F, 0.0175516512378075F, 0.0F, 0.0F,
+         1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F)
             .finished()};
 
     CvtrMotionModel32 model;
-    const auto jacobian =
-        model.jacobian(state, std::chrono::milliseconds{100LL});
-    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon))
-        << "Jacobians don't match: \nExpected:\n"
-        << expected_jacobian << "\nActual:\n"
-        << jacobian;
+    const auto jacobian = model.jacobian(state, std::chrono::milliseconds{100LL});
+    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon)) << "Jacobians don't match: \nExpected:\n"
+                                                                << expected_jacobian << "\nActual:\n"
+                                                                << jacobian;
 }
 
 /// @test Check that the Jacobian matches one computed symbolically when turn
@@ -162,20 +148,16 @@ TEST(CatrMotionModelTest, TestJacobianZeroTurnRate) {
 
     // Computed with SymPy.
     CatrMotionModel32::State::Matrix expected_jacobian{
-        (CatrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.1006793F,
-         0.0877582F, -0.0100679F, 0.0043879F, 0.0F, 1.0F, 0.1842923F,
-         0.0479425F, 0.0184292F, 0.0023971F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F,
-         0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.1F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F,
-         0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F)
+        (CatrMotionModel32::State::Matrix{} << 1.0F, 0.0F, -0.1006793F, 0.0877582F, -0.0100679F, 0.0043879F, 0.0F, 1.0F,
+         0.1842923F, 0.0479425F, 0.0184292F, 0.0023971F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F,
+         0.0F, 0.1F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F)
             .finished()};
 
     CatrMotionModel32 model;
-    const auto jacobian =
-        model.jacobian(state, std::chrono::milliseconds{100LL});
-    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon))
-        << "Jacobians don't match: \nExpected:\n"
-        << expected_jacobian << "\nActual:\n"
-        << jacobian;
+    const auto jacobian = model.jacobian(state, std::chrono::milliseconds{100LL});
+    EXPECT_TRUE(expected_jacobian.isApprox(jacobian, kEpsilon)) << "Jacobians don't match: \nExpected:\n"
+                                                                << expected_jacobian << "\nActual:\n"
+                                                                << jacobian;
 }
 
 /// @test Predict the linear movement with zero turn rate.
@@ -188,15 +170,13 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<XY_VELOCITY>() = 1.0F;
     CvtrMotionModel32::State expected_state{initial_state};
     expected_state.at<X>() += 1.0F;
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::seconds{1LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::seconds{1LL}));
     // Movement in negative X direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = -1.0F;
     expected_state = initial_state;
     expected_state.at<X>() -= 1.0F;
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::seconds{1LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::seconds{1LL}));
 
     // Movement in Y direction.
     initial_state = CvtrMotionModel32::State{};
@@ -204,16 +184,14 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<YAW>() = 0.5F * M_PIf32;
     expected_state = initial_state;
     expected_state.at<Y>() += 1.0F;
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::seconds{1LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::seconds{1LL}));
     // Movement in negative Y direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
     initial_state.at<YAW>() = -0.5F * M_PIf32;
     expected_state = initial_state;
     expected_state.at<Y>() -= 1.0F;
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::seconds{1LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::seconds{1LL}));
 
     // Movement in XY direction.
     initial_state = CvtrMotionModel32::State{};
@@ -222,8 +200,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     expected_state = initial_state;
     expected_state.at<X>() += 0.5F * sqrt(2.0F);
     expected_state.at<Y>() += 0.5F * sqrt(2.0F);
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::seconds{1LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::seconds{1LL}));
     // Movement in negative XY direction.
     initial_state = CvtrMotionModel32::State{};
     initial_state.at<XY_VELOCITY>() = 1.0F;
@@ -231,8 +208,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     expected_state = initial_state;
     expected_state.at<X>() -= 0.5F * sqrt(2.0F);
     expected_state.at<Y>() -= 0.5F * sqrt(2.0F);
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::seconds{1LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::seconds{1LL}));
 }
 
 /// @test Predict the linear movement with zero turn rate.
@@ -248,10 +224,8 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     const auto dt{std::chrono::duration<float32_t>{time_difference}.count()};
     CatrMotionModel32::State expected_state{initial_state};
     expected_state.at<X>() +=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
-    expected_state.at<XY_VELOCITY>() +=
-        dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+    expected_state.at<XY_VELOCITY>() += dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
     // Movement in negative X direction.
     initial_state = CatrMotionModel32::State{};
@@ -259,10 +233,8 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<XY_ACCELERATION>() = -1.0F;
     expected_state = initial_state;
     expected_state.at<X>() +=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
-    expected_state.at<XY_VELOCITY>() +=
-        dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+    expected_state.at<XY_VELOCITY>() += dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
 
     // Movement in Y direction.
@@ -272,10 +244,8 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<YAW>() = 0.5F * M_PIf32;
     expected_state = initial_state;
     expected_state.at<Y>() +=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
-    expected_state.at<XY_VELOCITY>() +=
-        dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+    expected_state.at<XY_VELOCITY>() += dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
     // Movement in negative Y direction.
     initial_state = CatrMotionModel32::State{};
@@ -284,10 +254,8 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<YAW>() = -0.5F * M_PIf32;
     expected_state = initial_state;
     expected_state.at<Y>() -=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
-    expected_state.at<XY_VELOCITY>() +=
-        dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+    expected_state.at<XY_VELOCITY>() += dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
 
     // Movement in XY direction.
@@ -296,12 +264,10 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<XY_ACCELERATION>() = 1.0F;
     initial_state.at<YAW>() = 0.25F * M_PIf32;
     expected_state = initial_state;
-    const auto distance = dt * initial_state.at<XY_VELOCITY>() +
-                          0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+    const auto distance = dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<X>() += sqrt(0.5F * distance * distance);
     expected_state.at<Y>() += sqrt(0.5F * distance * distance);
-    expected_state.at<XY_VELOCITY>() +=
-        dt * initial_state.at<XY_ACCELERATION>();
+    expected_state.at<XY_VELOCITY>() += dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
     // Movement in negative XY direction.
     initial_state = CatrMotionModel32::State{};
@@ -311,8 +277,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     expected_state = initial_state;
     expected_state.at<X>() -= sqrt(0.5F * distance * distance);
     expected_state.at<Y>() -= sqrt(0.5F * distance * distance);
-    expected_state.at<XY_VELOCITY>() +=
-        dt * initial_state.at<XY_ACCELERATION>();
+    expected_state.at<XY_VELOCITY>() += dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
 }
 
@@ -330,8 +295,7 @@ TEST(CvtrMotionModelTest, PredictLinearMovementWithNonzeroTurnRate) {
     expected_state.at<X>() = 42.1647921486335F;
     expected_state.at<Y>() = 23.1127403746059F;
     expected_state.at<YAW>() = 0.7F;
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::milliseconds{100LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::milliseconds{100LL}));
 }
 
 /// @test Predict the linear movement with non-zero turn rate.
@@ -350,8 +314,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithNonzeroTurnRate) {
     expected_state.at<Y>() = 23.1186522301942F;
     expected_state.at<YAW>() = 0.7F;
     expected_state.at<XY_VELOCITY>() = 2.2F;
-    EXPECT_EQ(expected_state,
-              model.predict(initial_state, std::chrono::milliseconds{100LL}));
+    EXPECT_EQ(expected_state, model.predict(initial_state, std::chrono::milliseconds{100LL}));
 }
 
 }  // namespace motion_model

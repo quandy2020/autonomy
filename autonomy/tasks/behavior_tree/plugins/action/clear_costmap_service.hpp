@@ -39,8 +39,7 @@ namespace action {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class ClearEntireCostmapService
-    : public BtServiceNode<proto::ClearEntireCostmap>
+class ClearEntireCostmapService : public BtServiceNode<proto::ClearEntireCostmap>
 {
 public:
     /**
@@ -49,8 +48,7 @@ public:
      * @param service_node_name Service name this node creates a client for
      * @param conf BT node configuration
      */
-    ClearEntireCostmapService(const std::string& service_node_name,
-                              const BT::NodeConfiguration& conf);
+    ClearEntireCostmapService(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief The main override required by a BT service
@@ -65,8 +63,7 @@ public:
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class ClearCostmapExceptRegionService
-    : public BtServiceNode<proto::ClearCostmapExceptRegion>
+class ClearCostmapExceptRegionService : public BtServiceNode<proto::ClearCostmapExceptRegion>
 {
 public:
     /**
@@ -75,8 +72,7 @@ public:
      * @param service_node_name Service name this node creates a client for
      * @param conf BT node configuration
      */
-    ClearCostmapExceptRegionService(const std::string& service_node_name,
-                                    const BT::NodeConfiguration& conf);
+    ClearCostmapExceptRegionService(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief The main override required by a BT service
@@ -90,9 +86,8 @@ public:
      * ports
      */
     static BT::PortsList providedPorts() {
-        return providedBasicPorts({BT::InputPort<double>(
-            "reset_distance", 1,
-            "Distance from the robot above which obstacles are cleared")});
+        return providedBasicPorts(
+            {BT::InputPort<double>("reset_distance", 1, "Distance from the robot above which obstacles are cleared")});
     }
 };
 
@@ -102,8 +97,7 @@ public:
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class ClearCostmapAroundRobotService
-    : public BtServiceNode<proto::ClearCostmapAroundRobot>
+class ClearCostmapAroundRobotService : public BtServiceNode<proto::ClearCostmapAroundRobot>
 {
 public:
     /**
@@ -112,8 +106,7 @@ public:
      * @param service_node_name Service name this node creates a client for
      * @param conf BT node configuration
      */
-    ClearCostmapAroundRobotService(const std::string& service_node_name,
-                                   const BT::NodeConfiguration& conf);
+    ClearCostmapAroundRobotService(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief The main override required by a BT service
@@ -127,9 +120,8 @@ public:
      * ports
      */
     static BT::PortsList providedPorts() {
-        return providedBasicPorts({BT::InputPort<double>(
-            "reset_distance", 1,
-            "Distance from the robot under which obstacles are cleared")});
+        return providedBasicPorts(
+            {BT::InputPort<double>("reset_distance", 1, "Distance from the robot under which obstacles are cleared")});
     }
 };
 

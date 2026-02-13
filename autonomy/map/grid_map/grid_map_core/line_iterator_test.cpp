@@ -19,8 +19,7 @@ TEST(LineIterator, StartOutsideMap) {
     GridMap map({"types"});
     map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
 
-    EXPECT_NO_THROW(
-        LineIterator iterator(map, Position(2.0, 2.0), Position(0.0, 0.0)));
+    EXPECT_NO_THROW(LineIterator iterator(map, Position(2.0, 2.0), Position(0.0, 0.0)));
     LineIterator iterator(map, Position(2.0, 2.0), Position(0.0, 0.0));
 
     EXPECT_FALSE(iterator.isPastEnd());
@@ -45,8 +44,7 @@ TEST(LineIterator, EndOutsideMap) {
     GridMap map({"types"});
     map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
 
-    EXPECT_NO_THROW(
-        LineIterator iterator(map, Position(0.0, 0.0), Position(9.0, 6.0)));
+    EXPECT_NO_THROW(LineIterator iterator(map, Position(0.0, 0.0), Position(9.0, 6.0)));
     LineIterator iterator(map, Position(0.0, 0.0), Position(9.0, 6.0));
 
     EXPECT_FALSE(iterator.isPastEnd());
@@ -75,8 +73,7 @@ TEST(LineIterator, StartAndEndOutsideMap) {
     GridMap map({"types"});
     map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
 
-    EXPECT_NO_THROW(
-        LineIterator iterator(map, Position(-7.0, -9.0), Position(8.0, 8.0)));
+    EXPECT_NO_THROW(LineIterator iterator(map, Position(-7.0, -9.0), Position(8.0, 8.0)));
     LineIterator iterator(map, Position(-7.0, -9.0), Position(8.0, 8.0));
 
     EXPECT_FALSE(iterator.isPastEnd());
@@ -103,9 +100,7 @@ TEST(LineIterator, StartAndEndOutsideMapWithoutIntersectingMap) {
     GridMap map({"types"});
     map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
 
-    EXPECT_THROW(
-        LineIterator iterator(map, Position(-8.0, 8.0), Position(8.0, 8.0)),
-        std::invalid_argument);
+    EXPECT_THROW(LineIterator iterator(map, Position(-8.0, 8.0), Position(8.0, 8.0)), std::invalid_argument);
 }
 
 TEST(LineIterator, MovedMap) {
@@ -113,8 +108,7 @@ TEST(LineIterator, MovedMap) {
     map.setGeometry(Length(7.0, 5.0), 1.0, Position(0.0, 0.0));
     map.move(Position(2.0, 2.0));
 
-    EXPECT_NO_THROW(
-        LineIterator iterator(map, Position(0.0, 0.0), Position(2.0, 2.0)));
+    EXPECT_NO_THROW(LineIterator iterator(map, Position(0.0, 0.0), Position(2.0, 2.0)));
     LineIterator iterator(map, Position(0.0, 0.0), Position(2.0, 2.0));
     Position point;
 
@@ -144,8 +138,7 @@ TEST(LineIterator, StartAndEndOutsideMovedMap) {
     map.setGeometry(Length(7.0, 5.0), 1.0, Position(0.0, 0.0));
     map.move(Position(2.0, 2.0));
 
-    EXPECT_NO_THROW(
-        LineIterator iterator(map, Position(0.0, 0.0), Position(8.0, 8.0)));
+    EXPECT_NO_THROW(LineIterator iterator(map, Position(0.0, 0.0), Position(8.0, 8.0)));
     LineIterator iterator(map, Position(0.0, 0.0), Position(8.0, 8.0));
     Position point;
 

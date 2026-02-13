@@ -30,8 +30,7 @@ namespace common {
 namespace math {
 namespace {
 
-double PtSegDistance(double query_x, double query_y, double start_x,
-                     double start_y, double end_x, double end_y,
+double PtSegDistance(double query_x, double query_y, double start_x, double start_y, double end_x, double end_y,
                      double length) {
     const double x0 = query_x - start_x;
     const double y0 = query_y - start_y;
@@ -49,8 +48,7 @@ double PtSegDistance(double query_x, double query_y, double start_x,
 
 }  // namespace
 
-Box2d::Box2d(const Vec2d& center, const double heading, const double length,
-             const double width)
+Box2d::Box2d(const Vec2d& center, const double heading, const double length, const double width)
     : center_(center),
       length_(length),
       width_(width),
@@ -64,8 +62,7 @@ Box2d::Box2d(const Vec2d& center, const double heading, const double length,
     InitCorners();
 }
 
-Box2d::Box2d(const Vec2d& point, double heading, double front_length,
-             double back_length, double width)
+Box2d::Box2d(const Vec2d& point, double heading, double front_length, double back_length, double width)
     : length_(front_length + back_length),
       width_(width),
       half_length_(length_ / 2.0),
@@ -76,8 +73,7 @@ Box2d::Box2d(const Vec2d& point, double heading, double front_length,
     CHECK_GT(length_, -kMathEpsilon);
     CHECK_GT(width_, -kMathEpsilon);
     double delta_length = (front_length - back_length) / 2.0;
-    center_ = Vec2d(point.x() + cos_heading_ * delta_length,
-                    point.y() + sin_heading_ * delta_length);
+    center_ = Vec2d(point.x() + cos_heading_ * delta_length, point.y() + sin_heading_ * delta_length);
     InitCorners();
 }
 
@@ -127,8 +123,7 @@ Box2d::Box2d(const AABox2d& aabox)
     CHECK_GT(width_, -kMathEpsilon);
 }
 
-Box2d Box2d::CreateAABox(const Vec2d& one_corner,
-                         const Vec2d& opposite_corner) {
+Box2d Box2d::CreateAABox(const Vec2d& one_corner, const Vec2d& opposite_corner) {
     const double x1 = std::min(one_corner.x(), opposite_corner.x());
     const double x2 = std::max(one_corner.x(), opposite_corner.x());
     const double y1 = std::min(one_corner.y(), opposite_corner.y());
@@ -152,8 +147,7 @@ bool Box2d::IsPointIn(const Vec2d& point) const {
     const double y0 = point.y() - center_.y();
     const double dx = std::abs(x0 * cos_heading_ + y0 * sin_heading_);
     const double dy = std::abs(-x0 * sin_heading_ + y0 * cos_heading_);
-    return dx <= half_length_ + kMathEpsilon &&
-           dy <= half_width_ + kMathEpsilon;
+    return dx <= half_length_ + kMathEpsilon && dy <= half_width_ + kMathEpsilon;
 }
 
 bool Box2d::IsPointOnBoundary(const Vec2d& point) const {
@@ -161,19 +155,15 @@ bool Box2d::IsPointOnBoundary(const Vec2d& point) const {
     const double y0 = point.y() - center_.y();
     const double dx = std::abs(x0 * cos_heading_ + y0 * sin_heading_);
     const double dy = std::abs(x0 * sin_heading_ - y0 * cos_heading_);
-    return (std::abs(dx - half_length_) <= kMathEpsilon &&
-            dy <= half_width_ + kMathEpsilon) ||
-           (std::abs(dy - half_width_) <= kMathEpsilon &&
-            dx <= half_length_ + kMathEpsilon);
+    return (std::abs(dx - half_length_) <= kMathEpsilon && dy <= half_width_ + kMathEpsilon) ||
+           (std::abs(dy - half_width_) <= kMathEpsilon && dx <= half_length_ + kMathEpsilon);
 }
 
 double Box2d::DistanceTo(const Vec2d& point) const {
     const double x0 = point.x() - center_.x();
     const double y0 = point.y() - center_.y();
-    const double dx =
-        std::abs(x0 * cos_heading_ + y0 * sin_heading_) - half_length_;
-    const double dy =
-        std::abs(x0 * sin_heading_ - y0 * cos_heading_) - half_width_;
+    const double dx = std::abs(x0 * cos_heading_ + y0 * sin_heading_) - half_length_;
+    const double dy = std::abs(x0 * sin_heading_ - y0 * cos_heading_) - half_width_;
     if (dx <= 0.0) {
         return std::max(0.0, dy);
     }
@@ -290,52 +280,39 @@ double Box2d::DistanceTo(const LineSegment2d& line_segment) const {
     if (gx1 == 1 && gy1 == 1) {
         switch (gx2 * 3 + gy2) {
             case 4:
-                return PtSegDistance(box_x, box_y, x1, y1, x2, y2,
-                                     line_segment.length());
+                return PtSegDistance(box_x, box_y, x1, y1, x2, y2, line_segment.length());
             case 3:
-                return (x1 > x2) ? (x2 - box_x)
-                                 : PtSegDistance(box_x, box_y, x1, y1, x2, y2,
-                                                 line_segment.length());
+                return (x1 > x2) ? (x2 - box_x) : PtSegDistance(box_x, box_y, x1, y1, x2, y2, line_segment.length());
             case 2:
-                return (x1 > x2) ? PtSegDistance(box_x, -box_y, x1, y1, x2, y2,
-                                                 line_segment.length())
-                                 : PtSegDistance(box_x, box_y, x1, y1, x2, y2,
-                                                 line_segment.length());
+                return (x1 > x2) ? PtSegDistance(box_x, -box_y, x1, y1, x2, y2, line_segment.length())
+                                 : PtSegDistance(box_x, box_y, x1, y1, x2, y2, line_segment.length());
             case -1:
                 return CrossProd({x1, y1}, {x2, y2}, {box_x, -box_y}) >= 0.0
                            ? 0.0
-                           : PtSegDistance(box_x, -box_y, x1, y1, x2, y2,
-                                           line_segment.length());
+                           : PtSegDistance(box_x, -box_y, x1, y1, x2, y2, line_segment.length());
             case -4:
                 return CrossProd({x1, y1}, {x2, y2}, {box_x, -box_y}) <= 0.0
-                           ? PtSegDistance(box_x, -box_y, x1, y1, x2, y2,
-                                           line_segment.length())
-                           : (CrossProd({x1, y1}, {x2, y2}, {-box_x, box_y}) <=
-                                      0.0
+                           ? PtSegDistance(box_x, -box_y, x1, y1, x2, y2, line_segment.length())
+                           : (CrossProd({x1, y1}, {x2, y2}, {-box_x, box_y}) <= 0.0
                                   ? 0.0
-                                  : PtSegDistance(-box_x, box_y, x1, y1, x2, y2,
-                                                  line_segment.length()));
+                                  : PtSegDistance(-box_x, box_y, x1, y1, x2, y2, line_segment.length()));
         }
     } else {
         switch (gx2 * 3 + gy2) {
             case 4:
-                return (x1 < x2) ? (x1 - box_x)
-                                 : PtSegDistance(box_x, box_y, x1, y1, x2, y2,
-                                                 line_segment.length());
+                return (x1 < x2) ? (x1 - box_x) : PtSegDistance(box_x, box_y, x1, y1, x2, y2, line_segment.length());
             case 3:
                 return std::min(x1, x2) - box_x;
             case 1:
             case -2:
                 return CrossProd({x1, y1}, {x2, y2}, {box_x, box_y}) <= 0.0
                            ? 0.0
-                           : PtSegDistance(box_x, box_y, x1, y1, x2, y2,
-                                           line_segment.length());
+                           : PtSegDistance(box_x, box_y, x1, y1, x2, y2, line_segment.length());
             case -3:
                 return 0.0;
         }
     }
-    CHECK(0) << "unimplemented state: " << gx1 << " " << gy1 << " " << gx2
-             << " " << gy2;
+    CHECK(0) << "unimplemented state: " << gx1 << " " << gy1 << " " << gx2 << " " << gy2;
     return 0.0;
 }
 
@@ -344,8 +321,7 @@ double Box2d::DistanceTo(const Box2d& box) const {
 }
 
 bool Box2d::HasOverlap(const Box2d& box) const {
-    if (box.max_x() < min_x() || box.min_x() > max_x() ||
-        box.max_y() < min_y() || box.min_y() > max_y()) {
+    if (box.max_x() < min_x() || box.min_x() > max_x() || box.max_y() < min_y() || box.min_y() > max_y()) {
         return false;
     }
 
@@ -362,23 +338,17 @@ bool Box2d::HasOverlap(const Box2d& box) const {
     const double dy4 = -box.cos_heading() * box.half_width();
 
     return std::abs(shift_x * cos_heading_ + shift_y * sin_heading_) <=
-               std::abs(dx3 * cos_heading_ + dy3 * sin_heading_) +
-                   std::abs(dx4 * cos_heading_ + dy4 * sin_heading_) +
+               std::abs(dx3 * cos_heading_ + dy3 * sin_heading_) + std::abs(dx4 * cos_heading_ + dy4 * sin_heading_) +
                    half_length_ &&
            std::abs(shift_x * sin_heading_ - shift_y * cos_heading_) <=
-               std::abs(dx3 * sin_heading_ - dy3 * cos_heading_) +
-                   std::abs(dx4 * sin_heading_ - dy4 * cos_heading_) +
+               std::abs(dx3 * sin_heading_ - dy3 * cos_heading_) + std::abs(dx4 * sin_heading_ - dy4 * cos_heading_) +
                    half_width_ &&
-           std::abs(shift_x * box.cos_heading() +
-                    shift_y * box.sin_heading()) <=
+           std::abs(shift_x * box.cos_heading() + shift_y * box.sin_heading()) <=
                std::abs(dx1 * box.cos_heading() + dy1 * box.sin_heading()) +
-                   std::abs(dx2 * box.cos_heading() + dy2 * box.sin_heading()) +
-                   box.half_length() &&
-           std::abs(shift_x * box.sin_heading() -
-                    shift_y * box.cos_heading()) <=
+                   std::abs(dx2 * box.cos_heading() + dy2 * box.sin_heading()) + box.half_length() &&
+           std::abs(shift_x * box.sin_heading() - shift_y * box.cos_heading()) <=
                std::abs(dx1 * box.sin_heading() - dy1 * box.cos_heading()) +
-                   std::abs(dx2 * box.sin_heading() - dy2 * box.cos_heading()) +
-                   box.half_width();
+                   std::abs(dx2 * box.sin_heading() - dy2 * box.cos_heading()) + box.half_width();
 }
 
 AABox2d Box2d::GetAABox() const {
@@ -422,8 +392,7 @@ void Box2d::LateralExtend(const double extension_length) {
 }
 
 std::string Box2d::DebugString() const {
-    return absl::StrCat("box2d ( center = ", center_.DebugString(),
-                        "  heading = ", heading_, "  length = ", length_,
+    return absl::StrCat("box2d ( center = ", center_.DebugString(), "  heading = ", heading_, "  length = ", length_,
                         "  width = ", width_, " )");
 }
 

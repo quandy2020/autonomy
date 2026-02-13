@@ -22,8 +22,7 @@ namespace builtin_interfaces {
 
 Time::Time() : sec(0), nanosec(0) {}
 
-Time::Time(int32_t seconds, uint32_t nanoseconds)
-    : sec{seconds}, nanosec{nanoseconds} {}
+Time::Time(int32_t seconds, uint32_t nanoseconds) : sec{seconds}, nanosec{nanoseconds} {}
 
 bool Time::operator==(const Time& rhs) const {
     return this->nanosec == rhs.nanosec;
@@ -71,15 +70,12 @@ Time Time::Now() {
     const auto duration = now.time_since_epoch();
     const int64_t total_ns = duration.count();
 
-    return Time{static_cast<int32_t>(total_ns / 1'000'000'000),
-                static_cast<uint32_t>(total_ns % 1'000'000'000)};
+    return Time{static_cast<int32_t>(total_ns / 1'000'000'000), static_cast<uint32_t>(total_ns % 1'000'000'000)};
 }
 
 Duration Time::operator-(const Time& rhs) const {
-    int64_t lhs_ns = static_cast<int64_t>(sec) * 1'000'000'000LL +
-                     static_cast<int64_t>(nanosec);
-    int64_t rhs_ns = static_cast<int64_t>(rhs.sec) * 1'000'000'000LL +
-                     static_cast<int64_t>(rhs.nanosec);
+    int64_t lhs_ns = static_cast<int64_t>(sec) * 1'000'000'000LL + static_cast<int64_t>(nanosec);
+    int64_t rhs_ns = static_cast<int64_t>(rhs.sec) * 1'000'000'000LL + static_cast<int64_t>(rhs.nanosec);
     int64_t diff_ns = lhs_ns - rhs_ns;
     return Duration::FromNanoseconds(diff_ns);
 }
@@ -96,9 +92,7 @@ Time FromProto(const proto::builtin_interfaces::Time& proto) {
 }
 
 Duration::Duration(int32_t seconds, uint32_t nanoseconds) {
-    duration_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    std::chrono::duration<double>(seconds))
-                    .count();
+    duration_ = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(seconds)).count();
     duration_ += nanoseconds;
 }
 
@@ -148,32 +142,27 @@ void bounds_check_duration_sum(int64_t lhsns, int64_t rhsns, uint64_t max) {
 }
 
 Duration Duration::operator+(const Duration& rhs) const {
-    bounds_check_duration_sum(this->duration_, rhs.duration_,
-                              std::numeric_limits<int64_t>::max());
+    bounds_check_duration_sum(this->duration_, rhs.duration_, std::numeric_limits<int64_t>::max());
     return Duration::FromNanoseconds(duration_ + rhs.duration_);
 }
 
-void bounds_check_duration_difference(int64_t lhsns, int64_t rhsns,
-                                      uint64_t max) {
+void bounds_check_duration_difference(int64_t lhsns, int64_t rhsns, uint64_t max) {
     auto abs_lhs = static_cast<uint64_t>(std::abs(lhsns));
     auto abs_rhs = static_cast<uint64_t>(std::abs(rhsns));
 
     if (lhsns > 0 && rhsns < 0) {
         if (abs_lhs + abs_rhs > max) {
-            throw std::overflow_error(
-                "duration subtraction leads to int64_t overflow");
+            throw std::overflow_error("duration subtraction leads to int64_t overflow");
         }
     } else if (lhsns < 0 && rhsns > 0) {
         if (abs_lhs + abs_rhs > max) {
-            throw std::underflow_error(
-                "duration subtraction leads to int64_t underflow");
+            throw std::underflow_error("duration subtraction leads to int64_t underflow");
         }
     }
 }
 
 Duration Duration::operator-(const Duration& rhs) const {
-    bounds_check_duration_difference(this->duration_, rhs.duration_,
-                                     std::numeric_limits<int64_t>::max());
+    bounds_check_duration_difference(this->duration_, rhs.duration_, std::numeric_limits<int64_t>::max());
 
     return Duration::FromNanoseconds(duration_ - rhs.duration_);
 }
@@ -182,14 +171,11 @@ void bounds_check_duration_scale(int64_t dns, double scale, uint64_t max) {
     auto abs_dns = static_cast<uint64_t>(std::abs(dns));
     auto abs_scale = std::abs(scale);
     if (abs_scale > 1.0 &&
-        abs_dns > static_cast<uint64_t>(static_cast<long double>(max) /
-                                        static_cast<long double>(abs_scale))) {
+        abs_dns > static_cast<uint64_t>(static_cast<long double>(max) / static_cast<long double>(abs_scale))) {
         if ((dns > 0 && scale > 0) || (dns < 0 && scale < 0)) {
-            throw std::overflow_error(
-                "duration scaling leads to int64_t overflow");
+            throw std::overflow_error("duration scaling leads to int64_t overflow");
         } else {
-            throw std::underflow_error(
-                "duration scaling leads to int64_t underflow");
+            throw std::underflow_error("duration scaling leads to int64_t underflow");
         }
     }
 }
@@ -198,11 +184,9 @@ Duration Duration::operator*(double scale) const {
     if (!std::isfinite(scale)) {
         throw std::runtime_error("abnormal scale in rclcpp::Duration");
     }
-    bounds_check_duration_scale(this->duration_, scale,
-                                std::numeric_limits<int64_t>::max());
+    bounds_check_duration_scale(this->duration_, scale, std::numeric_limits<int64_t>::max());
     long double scale_ld = static_cast<long double>(scale);
-    return Duration::FromNanoseconds(
-        static_cast<int64_t>(static_cast<long double>(duration_) * scale_ld));
+    return Duration::FromNanoseconds(static_cast<int64_t>(static_cast<long double>(duration_) * scale_ld));
 }
 
 int64_t Duration::Nanoseconds() const {
@@ -214,15 +198,13 @@ Duration Duration::Max() {
 }
 
 double Duration::Seconds() const {
-    return std::chrono::duration<double>(std::chrono::nanoseconds(duration_))
-        .count();
+    return std::chrono::duration<double>(std::chrono::nanoseconds(duration_)).count();
 }
 
 Duration Duration::FromSeconds(double seconds) {
     Duration ret;
-    ret.duration_ = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::duration<double>(seconds))
-                        .count();
+    ret.duration_ =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(seconds)).count();
     return ret;
 }
 

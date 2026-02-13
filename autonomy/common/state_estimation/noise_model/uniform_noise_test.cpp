@@ -63,10 +63,8 @@ TEST_P(CreationTest, CreateFromVariances) {
 
 /// @test Test that the noise model is correctly created.
 TEST(UniformNoiseTest, FailWhenWrongNumberOfVariancesPassed) {
-    EXPECT_THROW((UniformNoise<StateXY>{std::vector<float32_t>{1.F, 2.F, 3.F}}),
-                 std::runtime_error);
-    EXPECT_THROW((UniformNoise<StateXY>{std::vector<float32_t>{1.0F}}),
-                 std::runtime_error);
+    EXPECT_THROW((UniformNoise<StateXY>{std::vector<float32_t>{1.F, 2.F, 3.F}}), std::runtime_error);
+    EXPECT_THROW((UniformNoise<StateXY>{std::vector<float32_t>{1.0F}}), std::runtime_error);
 }
 
 }  // namespace state_estimation

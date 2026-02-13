@@ -33,8 +33,7 @@ namespace motion_model {
 /// @tparam     StateT  State with which the motion model works.
 ///
 template <typename StateT>
-class StationaryMotionModel
-    : public MotionModelInterface<StationaryMotionModel<StateT>>
+class StationaryMotionModel : public MotionModelInterface<StationaryMotionModel<StateT>>
 {
 public:
     using State = StateT;
@@ -50,8 +49,7 @@ protected:
     ///
     /// @return     A const reference to the unchanged input state.
     ///
-    inline const State& crtp_predict(const State& state,
-                                     const std::chrono::nanoseconds&) const {
+    inline const State& crtp_predict(const State& state, const std::chrono::nanoseconds&) const {
         return state;
     }
 
@@ -61,10 +59,8 @@ protected:
     ///
     /// @return     An identity matrix.
     ///
-    typename State::Matrix crtp_jacobian(
-        const State&, const std::chrono::nanoseconds&) const {
-        return Eigen::Matrix<typename State::Scalar, State::size(),
-                             State::size()>::Identity();
+    typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds&) const {
+        return Eigen::Matrix<typename State::Scalar, State::size(), State::size()>::Identity();
     }
 };
 

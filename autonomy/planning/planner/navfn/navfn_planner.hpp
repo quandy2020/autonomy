@@ -62,10 +62,8 @@ public:
      * later)
      * @return True if the planner was successfully configured, false otherwise
      */
-    bool Configure(const proto::PlannerOptions& options,
-                   const std::string& name,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap =
-                       nullptr) override;
+    bool Configure(const proto::PlannerOptions& options, const std::string& name,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap = nullptr) override;
 
     /**
      * @brief Cleanup the planner
@@ -90,10 +88,8 @@ public:
      * @param cancel_checker Function to check if the task has been canceled
      * @return Result code from PlannerResultCode enum
      */
-    uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
-                      const commsgs::geometry_msgs::PoseStamped& goal,
-                      commsgs::planning_msgs::Path& plan,
-                      std::function<bool()> cancel_checker) override;
+    uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start, const commsgs::geometry_msgs::PoseStamped& goal,
+                      commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) override;
 
 protected:
     /**
@@ -106,10 +102,8 @@ protected:
      * @param plan Path to be computed
      * @return true if can find the path
      */
-    bool makePlan(const commsgs::geometry_msgs::Pose& start,
-                  const commsgs::geometry_msgs::Pose& goal, double tolerance,
-                  std::function<bool()> cancel_checker,
-                  commsgs::planning_msgs::Path& plan);
+    bool makePlan(const commsgs::geometry_msgs::Pose& start, const commsgs::geometry_msgs::Pose& goal, double tolerance,
+                  std::function<bool()> cancel_checker, commsgs::planning_msgs::Path& plan);
 
     /**
      * @brief Compute the navigation function given a seed point in the world to
@@ -126,8 +120,7 @@ protected:
      * @param plan Path to be computed
      * @return true if can compute a plan path
      */
-    bool getPlanFromPotential(const commsgs::geometry_msgs::Pose& goal,
-                              commsgs::planning_msgs::Path& plan);
+    bool getPlanFromPotential(const commsgs::geometry_msgs::Pose& goal, commsgs::planning_msgs::Path& plan);
 
     /**
      * @brief Remove artifacts at the end of the path - originated from planning
@@ -135,8 +128,7 @@ protected:
      * @param goal Goal pose
      * @param plan Computed path
      */
-    void smoothApproachToGoal(const commsgs::geometry_msgs::Pose& goal,
-                              commsgs::planning_msgs::Path& plan);
+    void smoothApproachToGoal(const commsgs::geometry_msgs::Pose& goal, commsgs::planning_msgs::Path& plan);
 
     /**
      * @brief Compute the potential, or navigation cost, at a given point in the
@@ -159,8 +151,7 @@ protected:
      * @param p2 Point 2
      * @return double squared distance between two points
      */
-    inline double squared_distance(const commsgs::geometry_msgs::Pose& p1,
-                                   const commsgs::geometry_msgs::Pose& p2) {
+    inline double squared_distance(const commsgs::geometry_msgs::Pose& p1, const commsgs::geometry_msgs::Pose& p2) {
         double dx = p1.position.x - p2.position.x;
         double dy = p1.position.y - p2.position.y;
         return dx * dx + dy * dy;

@@ -22,13 +22,11 @@ using grid_map::SlidingWindowIterator;
 
 TEST(SlidingWindowIterator, WindowSize3Cutoff) {
     GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
     map.add("layer");
     map["layer"].setRandom();
 
-    SlidingWindowIterator iterator(
-        map, "layer", SlidingWindowIterator::EdgeHandling::CROP, 3);
+    SlidingWindowIterator iterator(map, "layer", SlidingWindowIterator::EdgeHandling::CROP, 3);
     EXPECT_EQ(iterator.getData().rows(), 2);
     EXPECT_EQ(iterator.getData().cols(), 2);
     EXPECT_TRUE(iterator.getData().isApprox(map["layer"].block(0, 0, 2, 2)));
@@ -71,13 +69,11 @@ TEST(SlidingWindowIterator, WindowSize3Cutoff) {
 
 TEST(SlidingWindowIterator, WindowSize5) {
     GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
     map.add("layer");
     map["layer"].setRandom();
 
-    SlidingWindowIterator iterator(
-        map, "layer", SlidingWindowIterator::EdgeHandling::CROP, 5);
+    SlidingWindowIterator iterator(map, "layer", SlidingWindowIterator::EdgeHandling::CROP, 5);
     EXPECT_EQ(iterator.getData().rows(), 3);
     EXPECT_EQ(iterator.getData().cols(), 3);
     EXPECT_TRUE(iterator.getData().isApprox(map["layer"].block(0, 0, 3, 3)));
@@ -120,13 +116,11 @@ TEST(SlidingWindowIterator, WindowSize5) {
 
 TEST(SlidingWindowIterator, WindowSize3Inside) {
     GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
     map.add("layer");
     map["layer"].setRandom();
 
-    SlidingWindowIterator iterator(
-        map, "layer", SlidingWindowIterator::EdgeHandling::INSIDE, 3);
+    SlidingWindowIterator iterator(map, "layer", SlidingWindowIterator::EdgeHandling::INSIDE, 3);
     EXPECT_EQ(iterator.getData().rows(), 3);
     EXPECT_EQ(iterator.getData().cols(), 3);
     EXPECT_TRUE(iterator.getData().isApprox(map["layer"].block(0, 0, 3, 3)));

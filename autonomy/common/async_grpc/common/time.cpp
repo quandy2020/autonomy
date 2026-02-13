@@ -24,13 +24,11 @@ namespace async_grpc {
 namespace common {
 
 Duration FromSeconds(const double seconds) {
-    return std::chrono::duration_cast<Duration>(
-        std::chrono::duration<double>(seconds));
+    return std::chrono::duration_cast<Duration>(std::chrono::duration<double>(seconds));
 }
 
 double ToSeconds(const Duration duration) {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(duration)
-        .count();
+    return std::chrono::duration_cast<std::chrono::duration<double>>(duration).count();
 }
 
 Time FromUniversal(const int64 ticks) {
@@ -47,8 +45,7 @@ std::ostream& operator<<(std::ostream& os, const Time time) {
 }
 
 common::Duration FromMilliseconds(const int64 milliseconds) {
-    return std::chrono::duration_cast<Duration>(
-        std::chrono::milliseconds(milliseconds));
+    return std::chrono::duration_cast<Duration>(std::chrono::milliseconds(milliseconds));
 }
 
 }  // namespace common

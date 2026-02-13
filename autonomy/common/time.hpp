@@ -26,8 +26,7 @@
 namespace autonomy {
 namespace common {
 
-constexpr int64 kUtsEpochOffsetFromUnixEpochInSeconds =
-    (719162ll * 24ll * 60ll * 60ll);
+constexpr int64 kUtsEpochOffsetFromUnixEpochInSeconds = (719162ll * 24ll * 60ll * 60ll);
 
 struct UniversalTimeScaleClock {
     using rep = int64;

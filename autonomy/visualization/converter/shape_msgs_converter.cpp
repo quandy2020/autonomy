@@ -35,8 +35,7 @@ using detail::SetEntityHeader;
 // visualizable. We return an empty SceneUpdate for now.
 // In the future, this could visualize a plane by creating a large rectangular
 // surface aligned with the plane.
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::shape_msgs::Plane& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::Plane& message) {
     (void)message;  // Unused for now
     AWARN << "Plane messages are not directly visualizable, "
           << "returning empty SceneUpdate";
@@ -44,8 +43,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 }
 
 // SolidPrimitive conversion
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::shape_msgs::SolidPrimitive& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::SolidPrimitive& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     foxglove::schemas::SceneEntity entity;
@@ -191,13 +189,11 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
             break;
         }
         default:
-            AWARN << "Unknown SolidPrimitive type: " << type
-                  << ", returning empty SceneUpdate";
+            AWARN << "Unknown SolidPrimitive type: " << type << ", returning empty SceneUpdate";
             return scene_update;
     }
 
-    if (!entity.cubes.empty() || !entity.spheres.empty() ||
-        !entity.cylinders.empty()) {
+    if (!entity.cubes.empty() || !entity.spheres.empty() || !entity.cylinders.empty()) {
         scene_update.entities.push_back(entity);
     }
 
@@ -210,8 +206,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 // Note: Foxglove may not have direct Mesh primitive support.
 // For now, we convert mesh to lines/points for visualization.
 // In the future, this could be converted to a proper mesh representation.
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::shape_msgs::Mesh& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::Mesh& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     if (message.triangles_size() == 0 || message.vertices_size() == 0) {
@@ -242,9 +237,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
             uint32_t idx2 = triangle.vertex_indices(2);
 
             // Check bounds
-            if (idx0 < message.vertices_size() &&
-                idx1 < message.vertices_size() &&
-                idx2 < message.vertices_size()) {
+            if (idx0 < message.vertices_size() && idx1 < message.vertices_size() && idx2 < message.vertices_size()) {
                 const auto& v0 = message.vertices(idx0);
                 const auto& v1 = message.vertices(idx1);
                 const auto& v2 = message.vertices(idx2);
@@ -285,8 +278,8 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted Mesh to SceneUpdate: " << message.vertices_size()
-          << " vertices, " << message.triangles_size() << " triangles";
+    AINFO << "Converted Mesh to SceneUpdate: " << message.vertices_size() << " vertices, " << message.triangles_size()
+          << " triangles";
 
     return scene_update;
 }
@@ -295,8 +288,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
 // Note: A single MeshTriangle doesn't have enough information for standalone
 // visualization (it only has indices, not vertices). We return an empty
 // SceneUpdate. Use Mesh message instead.
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::shape_msgs::MeshTriangle& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::MeshTriangle& message) {
     (void)message;  // Unused
     AWARN << "MeshTriangle requires vertex data from Mesh message, "
           << "returning empty SceneUpdate. Use Mesh message instead.";

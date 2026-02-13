@@ -27,25 +27,18 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void GetTrajectoryNodePosesHandler::OnRequest(
-    const google::protobuf::Empty& request) {
-    auto node_poses = GetContext<MapBuilderContextInterface>()
-                          ->map_builder()
-                          .pose_graph()
-                          ->GetTrajectoryNodePoses();
+void GetTrajectoryNodePosesHandler::OnRequest(const google::protobuf::Empty& request) {
+    auto node_poses = GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->GetTrajectoryNodePoses();
     auto response = absl::make_unique<proto::GetTrajectoryNodePosesResponse>();
     for (const auto& node_id_pose : node_poses) {
         auto* node_pose = response->add_node_poses();
         node_id_pose.id.ToProto(node_pose->mutable_node_id());
-        *node_pose->mutable_global_pose() =
-            transform::ToProto(node_id_pose.data.global_pose);
+        *node_pose->mutable_global_pose() = transform::ToProto(node_id_pose.data.global_pose);
         if (node_id_pose.data.constant_pose_data.has_value()) {
             node_pose->mutable_constant_pose_data()->set_timestamp(
-                common::ToUniversal(
-                    node_id_pose.data.constant_pose_data.value().time));
+                common::ToUniversal(node_id_pose.data.constant_pose_data.value().time));
             *node_pose->mutable_constant_pose_data()->mutable_local_pose() =
-                transform::ToProto(
-                    node_id_pose.data.constant_pose_data.value().local_pose);
+                transform::ToProto(node_id_pose.data.constant_pose_data.value().local_pose);
         }
     }
     Send(std::move(response));

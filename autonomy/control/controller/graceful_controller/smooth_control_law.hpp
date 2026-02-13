@@ -49,9 +49,8 @@ public:
      * @param v_linear_max Maximum linear velocity.
      * @param v_angular_max Maximum angular velocity.
      */
-    SmoothControlLaw(double k_phi, double k_delta, double beta, double lambda,
-                     double slowdown_radius, double v_linear_min,
-                     double v_linear_max, double v_angular_max);
+    SmoothControlLaw(double k_phi, double k_delta, double beta, double lambda, double slowdown_radius,
+                     double v_linear_min, double v_linear_max, double v_angular_max);
 
     /**
      * @brief Destructor for nav2_graceful_controller::SmoothControlLaw
@@ -69,8 +68,7 @@ public:
      * @param lambda Constant factor applied to the path curvature for
      * sharpness.
      */
-    void SetCurvatureConstants(const double k_phi, const double k_delta,
-                               const double beta, const double lambda);
+    void SetCurvatureConstants(const double k_phi, const double k_delta, const double beta, const double lambda);
 
     /**
      * @brief Set the slowdown radius
@@ -89,8 +87,7 @@ public:
      * @param v_angular_max The maximum absolute velocity in the angular
      * direction.
      */
-    void SetSpeedLimit(const double v_linear_min, const double v_linear_max,
-                       const double v_angular_max);
+    void SetSpeedLimit(const double v_linear_min, const double v_linear_max, const double v_angular_max);
 
     /**
      * @brief Compute linear and angular velocities command using the curvature.
@@ -101,10 +98,9 @@ public:
      * false.
      * @return Velocity command.
      */
-    commsgs::geometry_msgs::Twist CalculateRegularVelocity(
-        const commsgs::geometry_msgs::Pose& target,
-        const commsgs::geometry_msgs::Pose& current,
-        const bool& backward = false);
+    commsgs::geometry_msgs::Twist CalculateRegularVelocity(const commsgs::geometry_msgs::Pose& target,
+                                                           const commsgs::geometry_msgs::Pose& current,
+                                                           const bool& backward = false);
 
     /**
      * @brief Compute linear and angular velocities command using the curvature.
@@ -114,9 +110,8 @@ public:
      * false.
      * @return Velocity command.
      */
-    commsgs::geometry_msgs::Twist CalculateRegularVelocity(
-        const commsgs::geometry_msgs::Pose& target,
-        const bool& backward = false);
+    commsgs::geometry_msgs::Twist CalculateRegularVelocity(const commsgs::geometry_msgs::Pose& target,
+                                                           const bool& backward = false);
 
     /**
      * @brief Calculate the next pose of the robot by generating a velocity
@@ -129,10 +124,9 @@ public:
      * false.
      * @return commsgs::geometry_msgs::Pose
      */
-    commsgs::geometry_msgs::Pose CalculateNextPose(
-        const double dt, const commsgs::geometry_msgs::Pose& target,
-        const commsgs::geometry_msgs::Pose& current,
-        const bool& backward = false);
+    commsgs::geometry_msgs::Pose CalculateNextPose(const double dt, const commsgs::geometry_msgs::Pose& target,
+                                                   const commsgs::geometry_msgs::Pose& current,
+                                                   const bool& backward = false);
 
 protected:
     /**

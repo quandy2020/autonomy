@@ -38,9 +38,8 @@ namespace costmap_2d {
 //   collision_checker_(nullptr)
 // {}
 
-bool CostmapTopicCollisionChecker::isCollisionFree(
-    const commsgs::geometry_msgs::Pose2D& pose,
-    bool fetch_costmap_and_footprint) {
+bool CostmapTopicCollisionChecker::isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose,
+                                                   bool fetch_costmap_and_footprint) {
     try {
         if (scorePose(pose, fetch_costmap_and_footprint) >= LETHAL_OBSTACLE) {
             return false;
@@ -58,9 +57,8 @@ bool CostmapTopicCollisionChecker::isCollisionFree(
     }
 }
 
-double CostmapTopicCollisionChecker::scorePose(
-    const commsgs::geometry_msgs::Pose2D& pose,
-    bool fetch_costmap_and_footprint) {
+double CostmapTopicCollisionChecker::scorePose(const commsgs::geometry_msgs::Pose2D& pose,
+                                               bool fetch_costmap_and_footprint) {
     if (fetch_costmap_and_footprint) {
         try {
             // collision_checker_.setCostmap(costmap_sub_.getCostmap());
@@ -76,12 +74,11 @@ double CostmapTopicCollisionChecker::scorePose(
         throw IllegalPoseException(name_, "Pose Goes Off Grid.");
     }
 
-    return collision_checker_.footprintCost(
-        getFootprint(pose, fetch_costmap_and_footprint));
+    return collision_checker_.footprintCost(getFootprint(pose, fetch_costmap_and_footprint));
 }
 
-Footprint CostmapTopicCollisionChecker::getFootprint(
-    const commsgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint) {
+Footprint CostmapTopicCollisionChecker::getFootprint(const commsgs::geometry_msgs::Pose2D& pose,
+                                                     bool fetch_latest_footprint) {
     if (fetch_latest_footprint) {
         commsgs::std_msgs::Header header;
         // if (!footprint_sub_.getFootprintInRobotFrame(footprint_, header)) {

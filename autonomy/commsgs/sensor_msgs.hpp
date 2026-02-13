@@ -242,9 +242,8 @@ struct CompressedImage {
 //  - Luminance (nits/light output per area)
 //  - Irradiance (watt/area), etc.
 struct Illuminance {
-    std_msgs::Header
-        header;  // timestamp is the time the illuminance was measured
-                 // frame_id is the location and direction of the reading
+    std_msgs::Header header;  // timestamp is the time the illuminance was measured
+                              // frame_id is the location and direction of the reading
 
     float illuminance;  // Measurement of the Photometric Illuminance in Lux.
 
@@ -311,14 +310,12 @@ struct Imu {
     std_msgs::Header header;
 
     geometry_msgs::Quaternion orientation;
-    std::vector<double>
-        orientation_covariance;  // float64[9] orientation_covariance
-                                 // Row major about x, y, z axes
+    std::vector<double> orientation_covariance;  // float64[9] orientation_covariance
+                                                 // Row major about x, y, z axes
 
     geometry_msgs::Vector3 angular_velocity;
-    std::vector<double>
-        angular_velocity_covariance;  // float64[9] angular_velocity_covariance
-                                      // Row major about x, y, z axes
+    std::vector<double> angular_velocity_covariance;  // float64[9] angular_velocity_covariance
+                                                      // Row major about x, y, z axes
 
     geometry_msgs::Vector3 linear_acceleration;
     std::vector<double> linear_acceleration_covariance;
@@ -335,13 +332,12 @@ struct LaserScan {
     // Define LaserScan::SharedPtr type
     AUTONOMY_SMART_PTR_DEFINITIONS(LaserScan)
 
-    std_msgs::Header
-        header;  // timestamp in the header is the acquisition time of
-                 // the first ray in the scan.
-                 //
-                 // in frame frame_id, angles are measured around
-                 // the positive Z axis (counterclockwise, if Z is up)
-                 // with zero angle being forward along the x axis
+    std_msgs::Header header;  // timestamp in the header is the acquisition time of
+                              // the first ray in the scan.
+                              //
+                              // in frame frame_id, angles are measured around
+                              // the positive Z axis (counterclockwise, if Z is up)
+                              // with zero angle being forward along the x axis
 
     float angle_min;        // start angle of the scan [rad]
     float angle_max;        // end angle of the scan [rad]
@@ -355,13 +351,12 @@ struct LaserScan {
     float range_min;  // minimum range value [m]
     float range_max;  // maximum range value [m]
 
-    std::vector<float> ranges;  // range data [m]
-                                // (Note: values < range_min or > range_max
-                                // should be discarded)
-    std::vector<float>
-        intensities;  // intensity data [device-specific units]. If
-                      // your device does not provide intensities,
-                      // please leave the array empty.
+    std::vector<float> ranges;       // range data [m]
+                                     // (Note: values < range_min or > range_max
+                                     // should be discarded)
+    std::vector<float> intensities;  // intensity data [device-specific units]. If
+                                     // your device does not provide intensities,
+                                     // please leave the array empty.
 };
 
 // THIS MESSAGE IS DEPRECATED AS OF FOXY
@@ -397,6 +392,9 @@ struct PointCloud {
 // uint8 FLOAT32
 // uint8 FLOAT64
 struct PointField {
+    // Datatype enumeration
+    enum { INT8 = 1, UINT8 = 2, INT16 = 3, UINT16 = 4, INT32 = 5, UINT32 = 6, FLOAT32 = 7, FLOAT64 = 8 };
+
     // Common PointField names are x, y, z, intensity, rgb, rgba
     std::string name;  // Name of field
     uint32 offset;     // Offset from start of point struct
@@ -428,10 +426,10 @@ struct PointCloud2 {
     // Describes the channels and their layout in the binary data blob.
     std::vector<PointField> fields;
 
-    bool is_bigendian;         // Is this data bigendian?
-    uint32 point_step;         // Length of a point in bytes
-    uint32 row_step;           // Length of a row in bytes
-    std::vector<uint32> data;  // Actual point data, size is (row_step*height)
+    bool is_bigendian;        // Is this data bigendian?
+    uint32 point_step;        // Length of a point in bytes
+    uint32 row_step;          // Length of a row in bytes
+    std::vector<uint8> data;  // Actual point data, size is (row_step*height)
 
     bool is_dense;  // True if there are no invalid points
 };

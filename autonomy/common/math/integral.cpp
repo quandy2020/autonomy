@@ -24,8 +24,7 @@ namespace autonomy {
 namespace common {
 namespace math {
 
-double IntegrateBySimpson(const std::vector<double>& func, const double dx,
-                          const std::size_t nsteps) {
+double IntegrateBySimpson(const std::vector<double>& func, const double dx, const std::size_t nsteps) {
     CHECK_EQ(1U, nsteps & 1);
     double sum1 = 0.0;
     double sum2 = 0.0;
@@ -39,8 +38,7 @@ double IntegrateBySimpson(const std::vector<double>& func, const double dx,
     return dx / 3.0 * (4.0 * sum1 + 2.0 * sum2 + func[0] + func[nsteps - 1]);
 }
 
-double IntegrateByTrapezoidal(const std::vector<double>& func, const double dx,
-                              const std::size_t nsteps) {
+double IntegrateByTrapezoidal(const std::vector<double>& func, const double dx, const std::size_t nsteps) {
     double sum = 0;
     for (std::size_t i = 1; i + 1 < nsteps; ++i) {
         sum += func[i];

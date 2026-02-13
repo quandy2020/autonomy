@@ -42,27 +42,22 @@ public:
     virtual ~AsyncClientInterface() = default;
 
 private:
-    virtual void HandleEvent(
-        const CompletionQueue::ClientEvent& client_event) = 0;
+    virtual void HandleEvent(const CompletionQueue::ClientEvent& client_event) = 0;
 };
 
 template <typename RpcServiceMethodConcept,
-          ::grpc::internal::RpcMethod::RpcType StreamType =
-              RpcServiceMethodTraits<RpcServiceMethodConcept>::StreamType>
+          ::grpc::internal::RpcMethod::RpcType StreamType = RpcServiceMethodTraits<RpcServiceMethodConcept>::StreamType>
 class AsyncClient
 {
 };
 
 template <typename RpcServiceMethodConcept>
-class AsyncClient<RpcServiceMethodConcept,
-                  ::grpc::internal::RpcMethod::NORMAL_RPC>
-    : public AsyncClientInterface
+class AsyncClient<RpcServiceMethodConcept, ::grpc::internal::RpcMethod::NORMAL_RPC> : public AsyncClientInterface
 {
     using RpcServiceMethod = RpcServiceMethodTraits<RpcServiceMethodConcept>;
     using RequestType = typename RpcServiceMethod::RequestType;
     using ResponseType = typename RpcServiceMethod::ResponseType;
-    using CallbackType =
-        std::function<void(const ::grpc::Status&, const ResponseType*)>;
+    using CallbackType = std::function<void(const ::grpc::Status&, const ResponseType*)>;
 
 public:
     AsyncClient(std::shared_ptr<::grpc::Channel> channel, CallbackType callback)
@@ -70,31 +65,25 @@ public:
           callback_(callback),
           completion_queue_(CompletionQueuePool::GetCompletionQueue()),
           rpc_method_name_(RpcServiceMethod::MethodName()),
-          rpc_method_(rpc_method_name_.c_str(), RpcServiceMethod::StreamType,
-                      channel_),
+          rpc_method_(rpc_method_name_.c_str(), RpcServiceMethod::StreamType, channel_),
           finish_event_(CompletionQueue::ClientEvent::Event::FINISH, this) {}
 
     void WriteAsync(const RequestType& request) {
-        response_reader_ =
-            std::unique_ptr<::grpc::ClientAsyncResponseReader<ResponseType>>(
-                ::grpc::internal::ClientAsyncResponseReaderFactory<
-                    ResponseType>::Create(channel_.get(), completion_queue_,
-                                          rpc_method_, &client_context_,
-                                          request,
-                                          /*start=*/false));
+        response_reader_ = std::unique_ptr<::grpc::ClientAsyncResponseReader<ResponseType>>(
+            ::grpc::internal::ClientAsyncResponseReaderFactory<ResponseType>::Create(
+                channel_.get(), completion_queue_, rpc_method_, &client_context_, request,
+                /*start=*/false));
         response_reader_->StartCall();
         response_reader_->Finish(&response_, &status_, (void*)&finish_event_);
     }
 
-    void HandleEvent(
-        const CompletionQueue::ClientEvent& client_event) override {
+    void HandleEvent(const CompletionQueue::ClientEvent& client_event) override {
         switch (client_event.event) {
             case CompletionQueue::ClientEvent::Event::FINISH:
                 HandleFinishEvent(client_event);
                 break;
             default:
-                LOG(FATAL) << "Unhandled event type: "
-                           << (int)client_event.event;
+                LOG(FATAL) << "Unhandled event type: " << (int)client_event.event;
         }
     }
 
@@ -111,23 +100,19 @@ private:
     ::grpc::CompletionQueue* completion_queue_;
     const std::string rpc_method_name_;
     const ::grpc::internal::RpcMethod rpc_method_;
-    std::unique_ptr<::grpc::ClientAsyncResponseReader<ResponseType>>
-        response_reader_;
+    std::unique_ptr<::grpc::ClientAsyncResponseReader<ResponseType>> response_reader_;
     CompletionQueue::ClientEvent finish_event_;
     ::grpc::Status status_;
     ResponseType response_;
 };
 
 template <typename RpcServiceMethodConcept>
-class AsyncClient<RpcServiceMethodConcept,
-                  ::grpc::internal::RpcMethod::SERVER_STREAMING>
-    : public AsyncClientInterface
+class AsyncClient<RpcServiceMethodConcept, ::grpc::internal::RpcMethod::SERVER_STREAMING> : public AsyncClientInterface
 {
     using RpcServiceMethod = RpcServiceMethodTraits<RpcServiceMethodConcept>;
     using RequestType = typename RpcServiceMethod::RequestType;
     using ResponseType = typename RpcServiceMethod::ResponseType;
-    using CallbackType =
-        std::function<void(const ::grpc::Status&, const ResponseType*)>;
+    using CallbackType = std::function<void(const ::grpc::Status&, const ResponseType*)>;
 
 public:
     AsyncClient(std::shared_ptr<::grpc::Channel> channel, CallbackType callback)
@@ -135,24 +120,20 @@ public:
           callback_(callback),
           completion_queue_(CompletionQueuePool::GetCompletionQueue()),
           rpc_method_name_(RpcServiceMethod::MethodName()),
-          rpc_method_(rpc_method_name_.c_str(), RpcServiceMethod::StreamType,
-                      channel_),
+          rpc_method_(rpc_method_name_.c_str(), RpcServiceMethod::StreamType, channel_),
           write_event_(CompletionQueue::ClientEvent::Event::WRITE, this),
           read_event_(CompletionQueue::ClientEvent::Event::READ, this),
           finish_event_(CompletionQueue::ClientEvent::Event::FINISH, this) {}
 
     void WriteAsync(const RequestType& request) {
         // Start the call.
-        response_reader_ = std::unique_ptr<
-            ::grpc::ClientAsyncReader<ResponseType>>(
-            ::grpc::internal::ClientAsyncReaderFactory<ResponseType>::Create(
-                channel_.get(), completion_queue_, rpc_method_,
-                &client_context_, request,
-                /*start=*/true, (void*)&write_event_));
+        response_reader_ = std::unique_ptr<::grpc::ClientAsyncReader<ResponseType>>(
+            ::grpc::internal::ClientAsyncReaderFactory<ResponseType>::Create(channel_.get(), completion_queue_,
+                                                                             rpc_method_, &client_context_, request,
+                                                                             /*start=*/true, (void*)&write_event_));
     }
 
-    void HandleEvent(
-        const CompletionQueue::ClientEvent& client_event) override {
+    void HandleEvent(const CompletionQueue::ClientEvent& client_event) override {
         switch (client_event.event) {
             case CompletionQueue::ClientEvent::Event::WRITE:
                 HandleWriteEvent(client_event);
@@ -164,16 +145,14 @@ public:
                 HandleFinishEvent(client_event);
                 break;
             default:
-                LOG(FATAL) << "Unhandled event type: "
-                           << (int)client_event.event;
+                LOG(FATAL) << "Unhandled event type: " << (int)client_event.event;
         }
     }
 
     void HandleWriteEvent(const CompletionQueue::ClientEvent& client_event) {
         if (!client_event.ok) {
             LOG(ERROR) << "Write failed in async server streaming.";
-            ::grpc::Status status(::grpc::INTERNAL,
-                                  "Write failed in async server streaming.");
+            ::grpc::Status status(::grpc::INTERNAL, "Write failed in async server streaming.");
             if (callback_) {
                 callback_(status, nullptr);
                 callback_ = nullptr;
@@ -205,11 +184,8 @@ public:
             if (!client_event.ok) {
                 LOG(ERROR) << "Finish failed in async server streaming.";
             }
-            callback_(client_event.ok
-                          ? ::grpc::Status()
-                          : ::grpc::Status(
-                                ::grpc::INTERNAL,
-                                "Finish failed in async server streaming."),
+            callback_(client_event.ok ? ::grpc::Status()
+                                      : ::grpc::Status(::grpc::INTERNAL, "Finish failed in async server streaming."),
                       nullptr);
             callback_ = nullptr;
         }

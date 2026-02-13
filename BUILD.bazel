@@ -1,0 +1,163 @@
+"""
+Bazel BUILD file for autonomy project root
+
+This is the main BUILD file for the autonomy project.
+Since src/autonomy is the workspace root, all paths are relative to this directory.
+
+The project structure:
+  autonomy/
+    ├── commsgs/      # Message definitions
+    ├── common/       # Common utilities
+    ├── control/      # Control system
+    ├── map/          # Map management
+    ├── planning/     # Path planning
+    ├── localization/ # Localization
+    ├── perception/   # Perception
+    ├── prediction/   # Prediction
+    ├── tasks/        # Task management
+    ├── transform/    # Transform utilities
+    ├── vehicle/      # Vehicle interface
+    ├── bridge/       # Bridge services
+    └── system/       # System integration
+"""
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+# Convenience aliases for main modules
+# These allow importing modules with shorter paths from the workspace root
+alias(
+    name = "commsgs",
+    actual = "//autonomy/commsgs:commsgs_cc",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "common",
+    actual = "//autonomy/common:common",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "control",
+    actual = "//autonomy/control:control",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "driver",
+    actual = "//autonomy/driver:driver",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "map",
+    actual = "//autonomy/map:map",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "perception",
+    actual = "//autonomy/perception:perception",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "planning",
+    actual = "//autonomy/planning:planning",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "prediction",
+    actual = "//autonomy/prediction:prediction",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "sensor",
+    actual = "//autonomy/sensor:sensor",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "simulation",
+    actual = "//autonomy/simulation:simulation",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "system",
+    actual = "//autonomy/system:system",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "tasks",
+    actual = "//autonomy/tasks:tasks",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "tools",
+    actual = "//autonomy/tools:tools",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "transform",
+    actual = "//autonomy/transform:transform",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "vehicle",
+    actual = "//autonomy/vehicle:vehicle",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "visualization",
+    actual = "//autonomy/visualization:visualization",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "bridge",
+    actual = "//autonomy/bridge:bridge",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "localization",
+    actual = "//autonomy/localization:localization",
+    visibility = ["//visibility:public"],
+)
+
+# Aggregate all main modules into a single target
+# This allows building everything with: bazel build //:all
+cc_library(
+    name = "all",
+    deps = [
+        ":bridge",
+        ":commsgs",
+        ":common",
+        ":control",
+        ":driver",
+        ":localization",
+        ":map",
+        ":perception",
+        ":planning",
+        ":prediction",
+        ":sensor",
+        ":simulation",
+        ":system",
+        ":tasks",
+        ":tools",
+        ":transform",
+        ":vehicle",
+        ":visualization",
+    ],
+    visibility = ["//visibility:public"],
+)

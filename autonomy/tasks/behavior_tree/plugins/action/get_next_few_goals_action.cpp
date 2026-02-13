@@ -24,12 +24,26 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-GetNextFewGoalsAction::GetNextFewGoalsAction(const std::string& xml_tag_name,
-                                             const BT::NodeConfiguration& conf)
-    : BT::ActionNodeBase(xml_tag_name, conf) {}
+GetNextFewGoals::GetNextFewGoals(const std::string& name, const BT::NodeConfiguration& conf)
+    : BT::ActionNodeBase(name, conf) {}
 
-BT::NodeStatus GetNextFewGoalsAction::tick() {
-    // TODO: Implement get next few goals behavior
+inline BT::NodeStatus GetNextFewGoals::tick() {
+    setStatus(BT::NodeStatus::RUNNING);
+
+    commsgs::planning_msgs::Goals input_goals, output_goals;
+    unsigned int num_goals;
+    getInput("input_goals", input_goals);
+    getInput("num_goals", num_goals);
+
+    if (input_goals.goals.empty()) {
+        return BT::NodeStatus::FAILURE;
+    }
+
+    output_goals.header = input_goals.header;
+    for (unsigned int i = 0; i < num_goals && i < input_goals.goals.size(); ++i) {
+        output_goals.goals.push_back(input_goals.goals[i]);
+    }
+    setOutput("output_goals", output_goals);
     return BT::NodeStatus::SUCCESS;
 }
 
@@ -41,7 +55,5 @@ BT::NodeStatus GetNextFewGoalsAction::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::action::GetNextFewGoalsAction>(
-        "GetNextFewGoals");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetNextFewGoals>("GetNextFewGoals");
 }

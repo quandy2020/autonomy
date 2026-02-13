@@ -30,12 +30,8 @@ namespace {
 class OccupiedSpaceCostFunction2D
 {
 public:
-    OccupiedSpaceCostFunction2D(const double scaling_factor,
-                                const sensor::PointCloud& point_cloud,
-                                const Grid2D& grid)
-        : scaling_factor_(scaling_factor),
-          point_cloud_(point_cloud),
-          grid_(grid) {}
+    OccupiedSpaceCostFunction2D(const double scaling_factor, const sensor::PointCloud& point_cloud, const Grid2D& grid)
+        : scaling_factor_(scaling_factor), point_cloud_(point_cloud), grid_(grid) {}
 
     template <typename T>
     bool operator()(const T* const pose, T* residual) const {
@@ -52,15 +48,12 @@ public:
         for (size_t i = 0; i < point_cloud_.size(); ++i) {
             // Note that this is a 2D point. The third component is a scaling
             // factor.
-            const Eigen::Matrix<T, 3, 1> point(
-                (T(point_cloud_[i].position.x())),
-                (T(point_cloud_[i].position.y())), T(1.));
+            const Eigen::Matrix<T, 3, 1> point((T(point_cloud_[i].position.x())), (T(point_cloud_[i].position.y())),
+                                               T(1.));
             const Eigen::Matrix<T, 3, 1> world = transform * point;
             interpolator.Evaluate(
-                (limits.max().x() - world[0]) / limits.resolution() - 0.5 +
-                    static_cast<double>(kPadding),
-                (limits.max().y() - world[1]) / limits.resolution() - 0.5 +
-                    static_cast<double>(kPadding),
+                (limits.max().x() - world[0]) / limits.resolution() - 0.5 + static_cast<double>(kPadding),
+                (limits.max().y() - world[1]) / limits.resolution() - 0.5 + static_cast<double>(kPadding),
                 &residual[i]);
             residual[i] = scaling_factor_ * residual[i];
         }
@@ -76,14 +69,12 @@ private:
 
         explicit GridArrayAdapter(const Grid2D& grid) : grid_(grid) {}
 
-        void GetValue(const int row, const int column,
-                      double* const value) const {
-            if (row < kPadding || column < kPadding ||
-                row >= NumRows() - kPadding || column >= NumCols() - kPadding) {
+        void GetValue(const int row, const int column, double* const value) const {
+            if (row < kPadding || column < kPadding || row >= NumRows() - kPadding || column >= NumCols() - kPadding) {
                 *value = kMaxCorrespondenceCost;
             } else {
-                *value = static_cast<double>(grid_.GetCorrespondenceCost(
-                    Eigen::Array2i(column - kPadding, row - kPadding)));
+                *value =
+                    static_cast<double>(grid_.GetCorrespondenceCost(Eigen::Array2i(column - kPadding, row - kPadding)));
             }
         }
 
@@ -100,8 +91,7 @@ private:
     };
 
     OccupiedSpaceCostFunction2D(const OccupiedSpaceCostFunction2D&) = delete;
-    OccupiedSpaceCostFunction2D& operator=(const OccupiedSpaceCostFunction2D&) =
-        delete;
+    OccupiedSpaceCostFunction2D& operator=(const OccupiedSpaceCostFunction2D&) = delete;
 
     const double scaling_factor_;
     const sensor::PointCloud& point_cloud_;
@@ -110,14 +100,11 @@ private:
 
 }  // namespace
 
-ceres::CostFunction* CreateOccupiedSpaceCostFunction2D(
-    const double scaling_factor, const sensor::PointCloud& point_cloud,
-    const Grid2D& grid) {
-    return new ceres::AutoDiffCostFunction<OccupiedSpaceCostFunction2D,
-                                           ceres::DYNAMIC /* residuals */,
+ceres::CostFunction* CreateOccupiedSpaceCostFunction2D(const double scaling_factor,
+                                                       const sensor::PointCloud& point_cloud, const Grid2D& grid) {
+    return new ceres::AutoDiffCostFunction<OccupiedSpaceCostFunction2D, ceres::DYNAMIC /* residuals */,
                                            3 /* pose variables */>(
-        new OccupiedSpaceCostFunction2D(scaling_factor, point_cloud, grid),
-        point_cloud.size());
+        new OccupiedSpaceCostFunction2D(scaling_factor, point_cloud, grid), point_cloud.size());
 }
 
 }  // namespace scan_matching

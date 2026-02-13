@@ -25,11 +25,11 @@ namespace {
 class NullGauge : public Gauge
 {
 public:
-    void Increment() override {};
-    void Increment(double) override {};
-    void Decrement() override {};
-    void Decrement(double) override {};
-    void Set(double) override {};
+    void Increment() override{};
+    void Increment(double) override{};
+    void Decrement() override{};
+    void Decrement(double) override{};
+    void Set(double) override{};
 };
 
 }  // namespace

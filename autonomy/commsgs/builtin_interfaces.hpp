@@ -99,10 +99,8 @@ struct Duration {
     // intentionally not using explicit to create a conversion constructor
     template <class Rep, class Period>
     // cppcheck-suppress noExplicitConstructor
-    Duration(const std::chrono::duration<Rep, Period>&
-                 duration)  // NOLINT(runtime/explicit)
-        : Duration(
-              std::chrono::duration_cast<std::chrono::nanoseconds>(duration)) {}
+    Duration(const std::chrono::duration<Rep, Period>& duration)  // NOLINT(runtime/explicit)
+        : Duration(std::chrono::duration_cast<std::chrono::nanoseconds>(duration)) {}
 
     // Duration(const Duration& rhs);
 
@@ -157,8 +155,7 @@ struct Duration {
     /// Convert Duration into a std::chrono::Duration.
     template <class DurationT>
     DurationT ToChrono() const {
-        return std::chrono::duration_cast<DurationT>(
-            std::chrono::nanoseconds(this->Nanoseconds()));
+        return std::chrono::duration_cast<DurationT>(std::chrono::nanoseconds(this->Nanoseconds()));
     }
 
     // Nanoseconds

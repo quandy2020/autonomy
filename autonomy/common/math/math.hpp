@@ -76,8 +76,7 @@ T NormalizeAngleDifference(T difference) {
 // }
 
 template <typename T>
-inline void QuaternionProduct(const double* const z, const T* const w,
-                              T* const zw) {
+inline void QuaternionProduct(const double* const z, const T* const w, T* const zw) {
     zw[0] = z[0] * w[0] - z[1] * w[1] - z[2] * w[2] - z[3] * w[3];
     zw[1] = z[0] * w[1] + z[1] * w[0] + z[2] * w[3] - z[3] * w[2];
     zw[2] = z[0] * w[2] - z[1] * w[3] + z[2] * w[0] + z[3] * w[1];
@@ -150,8 +149,7 @@ T Percentile(const std::vector<T>& elems, double p);
 namespace internal {
 
 template <class Iterator>
-bool NextCombination(Iterator first1, Iterator last1, Iterator first2,
-                     Iterator last2) {
+bool NextCombination(Iterator first1, Iterator last1, Iterator first2, Iterator last2) {
     if ((first1 == last1) || (first2 == last2)) {
         return false;
     }
@@ -204,13 +202,11 @@ double Median(const std::vector<T>& elems) {
     const size_t mid_idx = elems.size() / 2;
 
     std::vector<T> ordered_elems = elems;
-    std::nth_element(ordered_elems.begin(), ordered_elems.begin() + mid_idx,
-                     ordered_elems.end());
+    std::nth_element(ordered_elems.begin(), ordered_elems.begin() + mid_idx, ordered_elems.end());
 
     if (elems.size() % 2 == 0) {
         const T mid_element1 = ordered_elems[mid_idx];
-        const T mid_element2 = *std::max_element(
-            ordered_elems.begin(), ordered_elems.begin() + mid_idx);
+        const T mid_element2 = *std::max_element(ordered_elems.begin(), ordered_elems.begin() + mid_idx);
         return 0.5 * mid_element1 + 0.5 * mid_element2;
     } else {
         return ordered_elems[mid_idx];
@@ -224,13 +220,10 @@ T Percentile(const std::vector<T>& elems, const double p) {
     THROW_CHECK_LE(p, 100);
 
     const int idx = static_cast<int>(std::round(p / 100 * (elems.size() - 1)));
-    const size_t percentile_idx =
-        std::max(0, std::min(static_cast<int>(elems.size() - 1), idx));
+    const size_t percentile_idx = std::max(0, std::min(static_cast<int>(elems.size() - 1), idx));
 
     std::vector<T> ordered_elems = elems;
-    std::nth_element(ordered_elems.begin(),
-                     ordered_elems.begin() + percentile_idx,
-                     ordered_elems.end());
+    std::nth_element(ordered_elems.begin(), ordered_elems.begin() + percentile_idx, ordered_elems.end());
 
     return ordered_elems.at(percentile_idx);
 }
@@ -281,9 +274,8 @@ T ScaleSigmoid(T x, const T alpha, const T x0) {
 
 template <typename T1, typename T2>
 T2 TruncateCast(const T1 value) {
-    return static_cast<T2>(std::min(
-        static_cast<T1>(std::numeric_limits<T2>::max()),
-        std::max(static_cast<T1>(std::numeric_limits<T2>::min()), value)));
+    return static_cast<T2>(std::min(static_cast<T1>(std::numeric_limits<T2>::max()),
+                                    std::max(static_cast<T1>(std::numeric_limits<T2>::min()), value)));
 }
 
 }  // namespace common

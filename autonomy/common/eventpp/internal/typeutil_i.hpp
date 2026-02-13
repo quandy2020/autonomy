@@ -46,13 +46,11 @@ template <int N, int M>
 struct IntToConstantHelper {
     template <typename C, typename... Args>
     static auto find(const int index, C&& c, Args&&... args)
-        -> decltype(std::declval<C>().template operator()<0>(
-            std::declval<Args>()...)) {
+        -> decltype(std::declval<C>().template operator()<0>(std::declval<Args>()...)) {
         if (N == index) {
             return c.template operator()<N>(std::forward<Args>(args)...);
         } else {
-            return IntToConstantHelper<N + 1, M>::find(
-                index, std::forward<C>(c), std::forward<Args>(args)...);
+            return IntToConstantHelper<N + 1, M>::find(index, std::forward<C>(c), std::forward<Args>(args)...);
         }
     }
 };
@@ -61,26 +59,21 @@ template <int M>
 struct IntToConstantHelper<M, M> {
     template <typename C, typename... Args>
     static auto find(const int /*index*/, C&& c, Args&&... args)
-        -> decltype(std::declval<C>().template operator()<0>(
-            std::declval<Args>()...)) {
-        return decltype(c.template operator()<0>(
-            std::forward<Args>(args)...))();
+        -> decltype(std::declval<C>().template operator()<0>(std::declval<Args>()...)) {
+        return decltype(c.template operator()<0>(std::forward<Args>(args)...))();
     }
 };
 
 template <int M, typename C, typename... Args>
 auto intToConstant(const int index, C&& c, Args&&... args)
-    -> decltype(std::declval<C>().template operator()<0>(
-        std::declval<Args>()...)) {
-    return IntToConstantHelper<0, M>::find(index, std::forward<C>(c),
-                                           std::forward<Args>(args)...);
+    -> decltype(std::declval<C>().template operator()<0>(std::declval<Args>()...)) {
+    return IntToConstantHelper<0, M>::find(index, std::forward<C>(c), std::forward<Args>(args)...);
 }
 
 template <typename F, typename... Args>
 struct CanInvoke {
     template <typename U, typename... X>
-    static auto invoke(int)
-        -> decltype(std::declval<U>()(std::declval<X>()...), std::true_type());
+    static auto invoke(int) -> decltype(std::declval<U>()(std::declval<X>()...), std::true_type());
 
     template <typename U, typename... X>
     static auto invoke(...) -> std::false_type;
@@ -104,8 +97,7 @@ struct ShiftTuple<std::tuple<> > {
 // for compile time debug
 template <typename T>
 void printTypeInCompileTime(T* = 0) {
-    static_assert(std::is_same<T, int>::value && !std::is_same<T, int>::value,
-                  "The error shows the type name.");
+    static_assert(std::is_same<T, int>::value && !std::is_same<T, int>::value, "The error shows the type name.");
 }
 template <int N>
 void printIntInCompileTime() {

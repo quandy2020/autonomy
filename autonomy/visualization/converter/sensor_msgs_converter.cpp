@@ -36,8 +36,7 @@ using detail::SetEntityHeader;
 using detail::SetPointCloudHeader;
 using detail::SetRawImageHeader;
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::LaserScan& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::LaserScan& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     if (message.ranges_size() == 0) {
@@ -82,14 +81,12 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     entity.lines.push_back(line);
     scene_update.entities.push_back(entity);
 
-    AINFO << "Converted LaserScan with " << message.ranges_size()
-          << " ranges to SceneUpdate";
+    AINFO << "Converted LaserScan with " << message.ranges_size() << " ranges to SceneUpdate";
 
     return scene_update;
 }
 
-foxglove::schemas::PointCloud ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::PointCloud2& message) {
+foxglove::schemas::PointCloud ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::PointCloud2& message) {
     foxglove::schemas::PointCloud pointcloud;
 
     if (message.width() == 0 || message.height() == 0) {
@@ -98,8 +95,7 @@ foxglove::schemas::PointCloud ToFoxgloveImpl(
     }
 
     // 设置时间戳和 frame_id
-    SetPointCloudHeader(pointcloud, ExtractTimestamp(message),
-                        ExtractFrameId(message));
+    SetPointCloudHeader(pointcloud, ExtractTimestamp(message), ExtractFrameId(message));
 
     // 转换 PointField 到 PackedElementField
     for (const auto& field : message.fields()) {
@@ -112,42 +108,32 @@ foxglove::schemas::PointCloud ToFoxgloveImpl(
         // FLOAT64=8
         switch (field.datatype()) {
             case 1:  // INT8
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::INT8;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::INT8;
                 break;
             case 2:  // UINT8
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::UINT8;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::UINT8;
                 break;
             case 3:  // INT16
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::INT16;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::INT16;
                 break;
             case 4:  // UINT16
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::UINT16;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::UINT16;
                 break;
             case 5:  // INT32
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::INT32;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::INT32;
                 break;
             case 6:  // UINT32
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::UINT32;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::UINT32;
                 break;
             case 7:  // FLOAT32
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::FLOAT32;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::FLOAT32;
                 break;
             case 8:  // FLOAT64
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::FLOAT64;
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::FLOAT64;
                 break;
             default:
-                AWARN << "Unknown PointField datatype: " << field.datatype()
-                      << ", defaulting to FLOAT32";
-                fg_field.type =
-                    foxglove::schemas::PackedElementField::NumericType::FLOAT32;
+                AWARN << "Unknown PointField datatype: " << field.datatype() << ", defaulting to FLOAT32";
+                fg_field.type = foxglove::schemas::PackedElementField::NumericType::FLOAT32;
                 break;
         }
         pointcloud.fields.push_back(fg_field);
@@ -160,20 +146,17 @@ foxglove::schemas::PointCloud ToFoxgloveImpl(
     if (message.data_size() > 0) {
         pointcloud.data.reserve(message.data_size());
         for (int i = 0; i < message.data_size(); ++i) {
-            pointcloud.data.push_back(
-                static_cast<std::byte>(message.data(i) & 0xFF));
+            pointcloud.data.push_back(static_cast<std::byte>(message.data(i) & 0xFF));
         }
     }
 
-    AINFO << "Converted PointCloud2 to PointCloud: " << message.width() << "x"
-          << message.height() << " points, " << pointcloud.fields.size()
-          << " fields, " << pointcloud.data.size() << " bytes";
+    AINFO << "Converted PointCloud2 to PointCloud: " << message.width() << "x" << message.height() << " points, "
+          << pointcloud.fields.size() << " fields, " << pointcloud.data.size() << " bytes";
 
     return pointcloud;
 }
 
-foxglove::schemas::PointCloud ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::PointCloud& message) {
+foxglove::schemas::PointCloud ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::PointCloud& message) {
     foxglove::schemas::PointCloud pointcloud;
 
     if (message.points_size() == 0) {
@@ -182,12 +165,10 @@ foxglove::schemas::PointCloud ToFoxgloveImpl(
     }
 
     // 设置时间戳和 frame_id
-    SetPointCloudHeader(pointcloud, ExtractTimestamp(message),
-                        ExtractFrameId(message));
+    SetPointCloudHeader(pointcloud, ExtractTimestamp(message), ExtractFrameId(message));
 
     // PointCloud 使用 PointXYZIT，需要转换为二进制格式
-    constexpr size_t POINT_SIZE =
-        16;  // 4 floats (x, y, z) + 1 uint32 (intensity) = 16 bytes
+    constexpr size_t POINT_SIZE = 16;  // 4 floats (x, y, z) + 1 uint32 (intensity) = 16 bytes
 
     // 定义字段
     foxglove::schemas::PackedElementField x_field;
@@ -211,8 +192,7 @@ foxglove::schemas::PointCloud ToFoxgloveImpl(
     foxglove::schemas::PackedElementField intensity_field;
     intensity_field.name = "intensity";
     intensity_field.offset = 12;
-    intensity_field.type =
-        foxglove::schemas::PackedElementField::NumericType::UINT32;
+    intensity_field.type = foxglove::schemas::PackedElementField::NumericType::UINT32;
     pointcloud.fields.push_back(intensity_field);
 
     // 设置 point_stride
@@ -228,30 +208,23 @@ foxglove::schemas::PointCloud ToFoxgloveImpl(
         const std::byte* x_bytes = reinterpret_cast<const std::byte*>(&x);
         const std::byte* y_bytes = reinterpret_cast<const std::byte*>(&y);
         const std::byte* z_bytes = reinterpret_cast<const std::byte*>(&z);
-        pointcloud.data.insert(pointcloud.data.end(), x_bytes,
-                               x_bytes + sizeof(float));
-        pointcloud.data.insert(pointcloud.data.end(), y_bytes,
-                               y_bytes + sizeof(float));
-        pointcloud.data.insert(pointcloud.data.end(), z_bytes,
-                               z_bytes + sizeof(float));
+        pointcloud.data.insert(pointcloud.data.end(), x_bytes, x_bytes + sizeof(float));
+        pointcloud.data.insert(pointcloud.data.end(), y_bytes, y_bytes + sizeof(float));
+        pointcloud.data.insert(pointcloud.data.end(), z_bytes, z_bytes + sizeof(float));
 
         // 写入 intensity (uint32, 4 bytes)
         uint32_t intensity = point.intensity();
-        const std::byte* intensity_bytes =
-            reinterpret_cast<const std::byte*>(&intensity);
-        pointcloud.data.insert(pointcloud.data.end(), intensity_bytes,
-                               intensity_bytes + sizeof(uint32_t));
+        const std::byte* intensity_bytes = reinterpret_cast<const std::byte*>(&intensity);
+        pointcloud.data.insert(pointcloud.data.end(), intensity_bytes, intensity_bytes + sizeof(uint32_t));
     }
 
-    AINFO << "Converted PointCloud to PointCloud: " << message.points_size()
-          << " points, " << pointcloud.fields.size() << " fields, "
-          << pointcloud.data.size() << " bytes";
+    AINFO << "Converted PointCloud to PointCloud: " << message.points_size() << " points, " << pointcloud.fields.size()
+          << " fields, " << pointcloud.data.size() << " bytes";
 
     return pointcloud;
 }
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::Imu& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::Imu& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     // 创建场景实体
@@ -328,14 +301,12 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
         scene_update.entities.push_back(entity);
     }
 
-    AINFO << "Converted Imu to SceneUpdate with " << entity.arrows.size()
-          << " arrows";
+    AINFO << "Converted Imu to SceneUpdate with " << entity.arrows.size() << " arrows";
 
     return scene_update;
 }
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::Range& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::Range& message) {
     foxglove::schemas::SceneUpdate scene_update;
 
     // 创建场景实体
@@ -346,8 +317,7 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     entity.frame_locked = false;
 
     // 创建圆锥体显示传感器范围
-    if (message.range() >= message.min_range() &&
-        message.range() <= message.max_range()) {
+    if (message.range() >= message.min_range() && message.range() <= message.max_range()) {
         foxglove::schemas::CylinderPrimitive cone;
         cone.pose = foxglove::schemas::Pose();
         cone.pose->position = foxglove::schemas::Vector3();
@@ -385,19 +355,16 @@ foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     return scene_update;
 }
 
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::ChannelFloat32& message) {
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::ChannelFloat32& message) {
     // ChannelFloat32 是 PointCloud 的辅助数据，不需要单独可视化
     (void)message;
     return foxglove::schemas::SceneUpdate();
 }
 
-foxglove::schemas::RawImage ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::CompressedImage& message) {
+foxglove::schemas::RawImage ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::CompressedImage& message) {
     foxglove::schemas::RawImage raw_image;
 
-    SetRawImageHeader(raw_image, ExtractTimestamp(message),
-                      ExtractFrameId(message));
+    SetRawImageHeader(raw_image, ExtractTimestamp(message), ExtractFrameId(message));
 
     raw_image.width = 0;
     raw_image.height = 0;
@@ -407,23 +374,19 @@ foxglove::schemas::RawImage ToFoxgloveImpl(
     // 复制压缩图像数据
     if (message.data().size() > 0) {
         raw_image.data.resize(message.data().size());
-        std::memcpy(raw_image.data.data(), message.data().data(),
-                    message.data().size());
+        std::memcpy(raw_image.data.data(), message.data().data(), message.data().size());
     }
 
     AINFO << "Converted CompressedImage to RawImage: "
-          << "format=" << raw_image.encoding
-          << ", data_size=" << raw_image.data.size() << " bytes";
+          << "format=" << raw_image.encoding << ", data_size=" << raw_image.data.size() << " bytes";
 
     return raw_image;
 }
 
-foxglove::schemas::RawImage ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::Image& message) {
+foxglove::schemas::RawImage ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::Image& message) {
     foxglove::schemas::RawImage raw_image;
 
-    SetRawImageHeader(raw_image, ExtractTimestamp(message),
-                      ExtractFrameId(message));
+    SetRawImageHeader(raw_image, ExtractTimestamp(message), ExtractFrameId(message));
 
     raw_image.width = message.width();
     raw_image.height = message.height();
@@ -433,13 +396,11 @@ foxglove::schemas::RawImage ToFoxgloveImpl(
     // 复制图像数据
     if (message.data().size() > 0) {
         raw_image.data.resize(message.data().size());
-        std::memcpy(raw_image.data.data(), message.data().data(),
-                    message.data().size());
+        std::memcpy(raw_image.data.data(), message.data().data(), message.data().size());
     }
 
-    AINFO << "Converted Image to RawImage: " << raw_image.width << "x"
-          << raw_image.height << ", encoding=" << raw_image.encoding
-          << ", data_size=" << raw_image.data.size() << " bytes";
+    AINFO << "Converted Image to RawImage: " << raw_image.width << "x" << raw_image.height
+          << ", encoding=" << raw_image.encoding << ", data_size=" << raw_image.data.size() << " bytes";
 
     return raw_image;
 }
@@ -493,8 +454,7 @@ foxglove::schemas::RawImage ToFoxgloveImpl(const cv::Mat& image) {
             raw_image.encoding = "64FC1";
             break;
         default:
-            AWARN << "Unknown cv::Mat type: " << image.type()
-                  << ", defaulting to unknown encoding";
+            AWARN << "Unknown cv::Mat type: " << image.type() << ", defaulting to unknown encoding";
             raw_image.encoding = "unknown";
             break;
     }
@@ -506,9 +466,8 @@ foxglove::schemas::RawImage ToFoxgloveImpl(const cv::Mat& image) {
         std::memcpy(raw_image.data.data(), image.data, data_size);
     }
 
-    AINFO << "Converted cv::Mat to RawImage: " << raw_image.width << "x"
-          << raw_image.height << ", encoding=" << raw_image.encoding
-          << ", type=" << image.type() << ", data_size=" << data_size
+    AINFO << "Converted cv::Mat to RawImage: " << raw_image.width << "x" << raw_image.height
+          << ", encoding=" << raw_image.encoding << ", type=" << image.type() << ", data_size=" << data_size
           << " bytes";
 
     return raw_image;

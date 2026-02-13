@@ -30,22 +30,14 @@ namespace converter {
 namespace impl {
 
 // sensor_msgs
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::LaserScan& message);
-foxglove::schemas::PointCloud ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::PointCloud2& message);
-foxglove::schemas::PointCloud ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::PointCloud& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::Imu& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::Range& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::ChannelFloat32& message);
-foxglove::schemas::RawImage ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::CompressedImage& message);
-foxglove::schemas::RawImage ToFoxgloveImpl(
-    const autonomy::commsgs::proto::sensor_msgs::Image& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::LaserScan& message);
+foxglove::schemas::PointCloud ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::PointCloud2& message);
+foxglove::schemas::PointCloud ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::PointCloud& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::Imu& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::Range& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::ChannelFloat32& message);
+foxglove::schemas::RawImage ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::CompressedImage& message);
+foxglove::schemas::RawImage ToFoxgloveImpl(const autonomy::commsgs::proto::sensor_msgs::Image& message);
 foxglove::schemas::RawImage ToFoxgloveImpl(const cv::Mat& image);
 
 }  // namespace impl

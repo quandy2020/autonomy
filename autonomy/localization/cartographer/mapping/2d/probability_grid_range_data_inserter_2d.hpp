@@ -32,24 +32,19 @@
 namespace cartographer {
 namespace mapping {
 
-proto::ProbabilityGridRangeDataInserterOptions2D
-CreateProbabilityGridRangeDataInserterOptions2D(
+proto::ProbabilityGridRangeDataInserterOptions2D CreateProbabilityGridRangeDataInserterOptions2D(
     common::LuaParameterDictionary* parameter_dictionary);
 
 class ProbabilityGridRangeDataInserter2D : public RangeDataInserterInterface
 {
 public:
-    explicit ProbabilityGridRangeDataInserter2D(
-        const proto::ProbabilityGridRangeDataInserterOptions2D& options);
+    explicit ProbabilityGridRangeDataInserter2D(const proto::ProbabilityGridRangeDataInserterOptions2D& options);
 
-    ProbabilityGridRangeDataInserter2D(
-        const ProbabilityGridRangeDataInserter2D&) = delete;
-    ProbabilityGridRangeDataInserter2D& operator=(
-        const ProbabilityGridRangeDataInserter2D&) = delete;
+    ProbabilityGridRangeDataInserter2D(const ProbabilityGridRangeDataInserter2D&) = delete;
+    ProbabilityGridRangeDataInserter2D& operator=(const ProbabilityGridRangeDataInserter2D&) = delete;
 
     // Inserts 'range_data' into 'probability_grid'.
-    virtual void Insert(const sensor::RangeData& range_data,
-                        GridInterface* grid) const override;
+    virtual void Insert(const sensor::RangeData& range_data, GridInterface* grid) const override;
 
 private:
     const proto::ProbabilityGridRangeDataInserterOptions2D options_;

@@ -29,17 +29,14 @@ namespace eventpp {
 namespace internal_ {
 
 template <typename Item, typename Handle, typename Mutex>
-bool removeHandleFromScopedRemoverItemList(std::vector<Item>& itemList,
-                                           Handle& handle, Mutex& mutex) {
+bool removeHandleFromScopedRemoverItemList(std::vector<Item>& itemList, Handle& handle, Mutex& mutex) {
     if (!handle) {
         return false;
     }
     auto handlePointer = handle.lock();
     std::unique_lock<Mutex> lock(mutex);
-    auto it = std::find_if(
-        itemList.begin(), itemList.end(), [&handlePointer](Item& item) {
-            return item.handle && item.handle.lock() == handlePointer;
-        });
+    auto it = std::find_if(itemList.begin(), itemList.end(),
+                           [&handlePointer](Item& item) { return item.handle && item.handle.lock() == handlePointer; });
     if (it != itemList.end()) {
         itemList.erase(it);
         return true;
@@ -54,8 +51,7 @@ class ScopedRemover;
 
 template <typename DispatcherType>
 class ScopedRemover<DispatcherType,
-                    typename std::enable_if<std::is_base_of<
-                        TagEventDispatcher, DispatcherType>::value>::type>
+                    typename std::enable_if<std::is_base_of<TagEventDispatcher, DispatcherType>::value>::type>
 {
 private:
     struct Item {
@@ -66,12 +62,10 @@ private:
 public:
     ScopedRemover() : dispatcher(nullptr) {}
 
-    explicit ScopedRemover(DispatcherType& dispatcher)
-        : dispatcher(&dispatcher) {}
+    explicit ScopedRemover(DispatcherType& dispatcher) : dispatcher(&dispatcher) {}
 
     ScopedRemover(ScopedRemover&& other) noexcept
-        : dispatcher(std::move(other.dispatcher)),
-          itemList(std::move(other.itemList)) {
+        : dispatcher(std::move(other.dispatcher)), itemList(std::move(other.itemList)) {
         other.reset();
     }
 
@@ -112,13 +106,12 @@ public:
     }
 
     template <typename Callback>
-    typename DispatcherType::Handle appendListener(
-        const typename DispatcherType::Event& event, const Callback& listener) {
+    typename DispatcherType::Handle appendListener(const typename DispatcherType::Event& event,
+                                                   const Callback& listener) {
         Item item{event, dispatcher->appendListener(event, listener)};
 
         {
-            std::unique_lock<typename DispatcherType::Mutex> lock(
-                itemListMutex);
+            std::unique_lock<typename DispatcherType::Mutex> lock(itemListMutex);
             itemList.push_back(item);
         }
 
@@ -126,13 +119,12 @@ public:
     }
 
     template <typename Callback>
-    typename DispatcherType::Handle prependListener(
-        const typename DispatcherType::Event& event, const Callback& listener) {
+    typename DispatcherType::Handle prependListener(const typename DispatcherType::Event& event,
+                                                    const Callback& listener) {
         Item item{event, dispatcher->prependListener(event, listener)};
 
         {
-            std::unique_lock<typename DispatcherType::Mutex> lock(
-                itemListMutex);
+            std::unique_lock<typename DispatcherType::Mutex> lock(itemListMutex);
             itemList.push_back(item);
         }
 
@@ -140,24 +132,21 @@ public:
     }
 
     template <typename Callback>
-    typename DispatcherType::Handle insertListener(
-        const typename DispatcherType::Event& event, const Callback& listener,
-        const typename DispatcherType::Handle& before) {
+    typename DispatcherType::Handle insertListener(const typename DispatcherType::Event& event,
+                                                   const Callback& listener,
+                                                   const typename DispatcherType::Handle& before) {
         Item item{event, dispatcher->insertListener(event, listener, before)};
 
         {
-            std::unique_lock<typename DispatcherType::Mutex> lock(
-                itemListMutex);
+            std::unique_lock<typename DispatcherType::Mutex> lock(itemListMutex);
             itemList.push_back(item);
         }
 
         return item.handle;
     }
 
-    bool removeListener(const typename DispatcherType::Event& event,
-                        const typename DispatcherType::Handle handle) {
-        if (internal_::removeHandleFromScopedRemoverItemList(itemList, handle,
-                                                             itemListMutex)) {
+    bool removeListener(const typename DispatcherType::Event& event, const typename DispatcherType::Handle handle) {
+        if (internal_::removeHandleFromScopedRemoverItemList(itemList, handle, itemListMutex)) {
             return dispatcher->removeListener(event, handle);
         }
         return false;
@@ -171,8 +160,7 @@ private:
 
 template <typename CallbackListType>
 class ScopedRemover<CallbackListType,
-                    typename std::enable_if<std::is_base_of<
-                        TagCallbackList, CallbackListType>::value>::type>
+                    typename std::enable_if<std::is_base_of<TagCallbackList, CallbackListType>::value>::type>
 {
 private:
     struct Item {
@@ -182,12 +170,10 @@ private:
 public:
     ScopedRemover() : callbackList(nullptr) {}
 
-    explicit ScopedRemover(CallbackListType& callbackList)
-        : callbackList(&callbackList) {}
+    explicit ScopedRemover(CallbackListType& callbackList) : callbackList(&callbackList) {}
 
     ScopedRemover(ScopedRemover&& other) noexcept
-        : callbackList(std::move(other.callbackList)),
-          itemList(std::move(other.itemList)) {
+        : callbackList(std::move(other.callbackList)), itemList(std::move(other.itemList)) {
         other.reset();
     }
 
@@ -232,8 +218,7 @@ public:
         Item item{callbackList->append(callback)};
 
         {
-            std::unique_lock<typename CallbackListType::Mutex> lock(
-                itemListMutex);
+            std::unique_lock<typename CallbackListType::Mutex> lock(itemListMutex);
             itemList.push_back(item);
         }
 
@@ -245,8 +230,7 @@ public:
         Item item{callbackList->prepend(callback)};
 
         {
-            std::unique_lock<typename CallbackListType::Mutex> lock(
-                itemListMutex);
+            std::unique_lock<typename CallbackListType::Mutex> lock(itemListMutex);
             itemList.push_back(item);
         }
 
@@ -254,14 +238,12 @@ public:
     }
 
     template <typename Callback>
-    typename CallbackListType::Handle insert(
-        const Callback& callback,
-        const typename CallbackListType::Handle& before) {
+    typename CallbackListType::Handle insert(const Callback& callback,
+                                             const typename CallbackListType::Handle& before) {
         Item item{callbackList->insert(callback, before)};
 
         {
-            std::unique_lock<typename CallbackListType::Mutex> lock(
-                itemListMutex);
+            std::unique_lock<typename CallbackListType::Mutex> lock(itemListMutex);
             itemList.push_back(item);
         }
 
@@ -269,8 +251,7 @@ public:
     }
 
     bool remove(const typename CallbackListType::Handle handle) {
-        if (internal_::removeHandleFromScopedRemoverItemList(itemList, handle,
-                                                             itemListMutex)) {
+        if (internal_::removeHandleFromScopedRemoverItemList(itemList, handle, itemListMutex)) {
             return callbackList->remove(handle);
         }
         return false;

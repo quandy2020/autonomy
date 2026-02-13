@@ -34,8 +34,7 @@ public:
      * @brief Convert proto to a json string.
      * @return A json with two fields: {type:<json_type>, data:<proto_to_json>}.
      */
-    static nlohmann::json ProtoToTypedJson(
-        const std::string& json_type, const google::protobuf::Message& proto);
+    static nlohmann::json ProtoToTypedJson(const std::string& json_type, const google::protobuf::Message& proto);
 
     /**
      * @brief  Convert proto to a json string.
@@ -47,16 +46,14 @@ public:
      * @brief Get a string value from the given json[key].
      * @return Whether the field exists and is a valid string.
      */
-    static bool GetString(const nlohmann::json& json, const std::string& key,
-                          std::string* value);
+    static bool GetString(const nlohmann::json& json, const std::string& key, std::string* value);
 
     /**
      * @brief Get a number value from the given json[key].
      * @return Whether the field exists and is a valid number.
      */
     template <class T>
-    static bool GetNumber(const nlohmann::json& json, const std::string& key,
-                          T* value) {
+    static bool GetNumber(const nlohmann::json& json, const std::string& key, T* value) {
         const auto iter = json.find(key);
         if (iter == json.end()) {
             LOG(ERROR) << "The json has no such key: " << key;
@@ -74,41 +71,34 @@ public:
      * @brief Get a boolean value from the given json[key].
      * @return Whether the field exists and is a valid boolean.
      */
-    static bool GetBoolean(const nlohmann::json& json, const std::string& key,
-                           bool* value);
+    static bool GetBoolean(const nlohmann::json& json, const std::string& key, bool* value);
 
     /**
      * @brief Get a string vector from the given json[key].
      * @return Whether the field exists and is a valid string vector.
      */
-    static bool GetStringVector(const nlohmann::json& json,
-                                const std::string& key,
-                                std::vector<std::string>* value);
+    static bool GetStringVector(const nlohmann::json& json, const std::string& key, std::vector<std::string>* value);
 
     /**
      * @brief Get the json from the given json and path.
      * @param path eg:"a.b.c" json[a][b][c]
      * @return Whether the field exists and is a json.
      */
-    static bool GetJsonByPath(const nlohmann::json& json,
-                              const std::vector<std::string>& paths,
-                              nlohmann::json* value);
+    static bool GetJsonByPath(const nlohmann::json& json, const std::vector<std::string>& paths, nlohmann::json* value);
 
     /**
      * @brief Get a string value from the given json and path.
      * @param path eg:"a.b.c" json[a][b][c]
      * @return Whether the field exists and is a valid string.
      */
-    static bool GetStringByPath(const nlohmann::json& json,
-                                const std::string& path, std::string* value);
+    static bool GetStringByPath(const nlohmann::json& json, const std::string& path, std::string* value);
 
     /**
      * @brief Get a bool value from the given json and path.
      * @param path eg:"a.b.c" json[a][b][c]
      * @return Whether the field exists and is a valid string.
      */
-    static bool GetBooleanByPath(const nlohmann::json& json,
-                                 const std::string& path, bool* value);
+    static bool GetBooleanByPath(const nlohmann::json& json, const std::string& path, bool* value);
 
     /**
      * @brief Get a number value from the given json and path.
@@ -116,8 +106,7 @@ public:
      * @return Whether the field exists and is a valid number.
      */
     template <class T>
-    static bool GetNumberByPath(const nlohmann::json& json,
-                                const std::string& path, T* value) {
+    static bool GetNumberByPath(const nlohmann::json& json, const std::string& path, T* value) {
         std::vector<std::string> paths = absl::StrSplit(path, '.');
         std::string key = paths.back();
         paths.pop_back();

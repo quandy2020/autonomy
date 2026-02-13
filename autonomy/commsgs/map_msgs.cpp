@@ -41,8 +41,7 @@ GridCells FromProto(const proto::map_msgs::GridCells& proto) {
 
 proto::map_msgs::MapMetaData ToProto(const MapMetaData& data) {
     proto::map_msgs::MapMetaData proto;
-    *proto.mutable_map_load_time() =
-        builtin_interfaces::ToProto(data.map_load_time);
+    *proto.mutable_map_load_time() = builtin_interfaces::ToProto(data.map_load_time);
     proto.set_width(data.width);
     proto.set_height(data.height);
     *proto.mutable_origin() = geometry_msgs::ToProto(data.origin);
@@ -100,9 +99,7 @@ proto::map_msgs::OctomapWithPose ToProto(const OctomapWithPose& data) {
 }
 
 OctomapWithPose FromProto(const proto::map_msgs::OctomapWithPose& proto) {
-    return {std_msgs::FromProto(proto.header()),
-            geometry_msgs::FromProto(proto.origin()),
-            FromProto(proto.octomap())};
+    return {std_msgs::FromProto(proto.header()), geometry_msgs::FromProto(proto.origin()), FromProto(proto.octomap())};
 }
 
 }  // namespace map_msgs

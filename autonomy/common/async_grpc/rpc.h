@@ -42,18 +42,11 @@ class Rpc
 {
 public:
     using WeakPtrFactory = std::function<std::weak_ptr<Rpc>(Rpc*)>;
-    enum class Event {
-        NEW_CONNECTION = 0,
-        READ,
-        WRITE_NEEDED,
-        WRITE,
-        FINISH,
-        DONE
-    };
+    enum class Event { NEW_CONNECTION = 0, READ, WRITE_NEEDED, WRITE, FINISH, DONE };
 
     struct EventBase {
         explicit EventBase(Event event) : event(event) {}
-        virtual ~EventBase() {};
+        virtual ~EventBase(){};
         virtual void Handle() = 0;
 
         const Event event;
@@ -84,11 +77,9 @@ public:
 
     // Flows through gRPC's CompletionQueue and then our EventQueue.
     struct CompletionQueueRpcEvent : public EventBase {
-        CompletionQueueRpcEvent(Event event, Rpc* rpc)
-            : EventBase(event), rpc_ptr(rpc), ok(false), pending(false) {}
+        CompletionQueueRpcEvent(Event event, Rpc* rpc) : EventBase(event), rpc_ptr(rpc), ok(false), pending(false) {}
         void PushToEventQueue() {
-            rpc_ptr->event_queue()->Push(UniqueEventPtr(
-                this, EventDeleter(EventDeleter::DO_NOT_DELETE)));
+            rpc_ptr->event_queue()->Push(UniqueEventPtr(this, EventDeleter(EventDeleter::DO_NOT_DELETE)));
         }
         void Handle() override;
 
@@ -99,17 +90,14 @@ public:
 
     // Flows only through our EventQueue.
     struct InternalRpcEvent : public EventBase {
-        InternalRpcEvent(Event event, std::weak_ptr<Rpc> rpc)
-            : EventBase(event), rpc(rpc) {}
+        InternalRpcEvent(Event event, std::weak_ptr<Rpc> rpc) : EventBase(event), rpc(rpc) {}
         void Handle() override;
 
         std::weak_ptr<Rpc> rpc;
     };
 
-    Rpc(int method_index,
-        ::grpc::ServerCompletionQueue* server_completion_queue,
-        EventQueue* event_queue, ExecutionContext* execution_context,
-        const RpcHandlerInfo& rpc_handler_info, Service* service,
+    Rpc(int method_index, ::grpc::ServerCompletionQueue* server_completion_queue, EventQueue* event_queue,
+        ExecutionContext* execution_context, const RpcHandlerInfo& rpc_handler_info, Service* service,
         WeakPtrFactory weak_ptr_factory);
     std::unique_ptr<Rpc> Clone();
     void OnConnection();
@@ -145,21 +133,16 @@ private:
 
     Rpc(const Rpc&) = delete;
     Rpc& operator=(const Rpc&) = delete;
-    void InitializeReadersAndWriters(
-        ::grpc::internal::RpcMethod::RpcType rpc_type);
+    void InitializeReadersAndWriters(::grpc::internal::RpcMethod::RpcType rpc_type);
     CompletionQueueRpcEvent* GetRpcEvent(Event event);
     bool* GetRpcEventState(Event event);
     void SetRpcEventState(Event event, bool pending);
     void EnqueueMessage(SendItem&& send_item);
-    void PerformFinish(std::unique_ptr<::google::protobuf::Message> message,
-                       ::grpc::Status status);
-    void PerformWrite(std::unique_ptr<::google::protobuf::Message> message,
-                      ::grpc::Status status);
+    void PerformFinish(std::unique_ptr<::google::protobuf::Message> message, ::grpc::Status status);
+    void PerformWrite(std::unique_ptr<::google::protobuf::Message> message, ::grpc::Status status);
 
-    ::grpc::internal::AsyncReaderInterface<::google::protobuf::Message>*
-    async_reader_interface();
-    ::grpc::internal::AsyncWriterInterface<::google::protobuf::Message>*
-    async_writer_interface();
+    ::grpc::internal::AsyncReaderInterface<::google::protobuf::Message>* async_reader_interface();
+    ::grpc::internal::AsyncWriterInterface<::google::protobuf::Message>* async_writer_interface();
 
     ::grpc::internal::ServerAsyncStreamingInterface* streaming_interface();
 
@@ -183,17 +166,12 @@ private:
 
     std::unique_ptr<RpcHandlerInterface> handler_;
 
-    std::unique_ptr<
-        ::grpc::ServerAsyncResponseWriter<google::protobuf::Message>>
-        server_async_response_writer_;
-    std::unique_ptr<::grpc::ServerAsyncReader<google::protobuf::Message,
-                                              google::protobuf::Message>>
+    std::unique_ptr<::grpc::ServerAsyncResponseWriter<google::protobuf::Message>> server_async_response_writer_;
+    std::unique_ptr<::grpc::ServerAsyncReader<google::protobuf::Message, google::protobuf::Message>>
         server_async_reader_;
-    std::unique_ptr<::grpc::ServerAsyncReaderWriter<google::protobuf::Message,
-                                                    google::protobuf::Message>>
+    std::unique_ptr<::grpc::ServerAsyncReaderWriter<google::protobuf::Message, google::protobuf::Message>>
         server_async_reader_writer_;
-    std::unique_ptr<::grpc::ServerAsyncWriter<google::protobuf::Message>>
-        server_async_writer_;
+    std::unique_ptr<::grpc::ServerAsyncWriter<google::protobuf::Message>> server_async_writer_;
 
     common::Mutex send_queue_lock_;
     std::queue<SendItem> send_queue_;

@@ -29,14 +29,10 @@ TEST(TypeTraitsTest, StreamStripping) {
 }
 
 TEST(TypeTraitsTest, RpcTypes) {
-    EXPECT_EQ((RpcType<int, int>::value),
-              ::grpc::internal::RpcMethod::NORMAL_RPC);
-    EXPECT_EQ((RpcType<Stream<int>, int>::value),
-              ::grpc::internal::RpcMethod::CLIENT_STREAMING);
-    EXPECT_EQ((RpcType<int, Stream<int>>::value),
-              ::grpc::internal::RpcMethod::SERVER_STREAMING);
-    EXPECT_EQ((RpcType<Stream<int>, Stream<int>>::value),
-              ::grpc::internal::RpcMethod::BIDI_STREAMING);
+    EXPECT_EQ((RpcType<int, int>::value), ::grpc::internal::RpcMethod::NORMAL_RPC);
+    EXPECT_EQ((RpcType<Stream<int>, int>::value), ::grpc::internal::RpcMethod::CLIENT_STREAMING);
+    EXPECT_EQ((RpcType<int, Stream<int>>::value), ::grpc::internal::RpcMethod::SERVER_STREAMING);
+    EXPECT_EQ((RpcType<Stream<int>, Stream<int>>::value), ::grpc::internal::RpcMethod::BIDI_STREAMING);
 }
 
 }  // namespace

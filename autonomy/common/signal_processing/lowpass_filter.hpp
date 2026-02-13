@@ -33,7 +33,7 @@ class LowpassFilterInterface
 {
 protected:
     boost::optional<T> x_;  //!< @brief current filtered value
-    double gain_;  //!< @brief gain value of first-order low-pass filter
+    double gain_;           //!< @brief gain value of first-order low-pass filter
 
 public:
     explicit LowpassFilterInterface(const double gain) : gain_(gain) {}
@@ -52,15 +52,12 @@ public:
     virtual T filter(const T& u) = 0;
 };
 
-class LowpassFilterTwist
-    : public LowpassFilterInterface<commsgs::geometry_msgs::Twist>
+class LowpassFilterTwist : public LowpassFilterInterface<commsgs::geometry_msgs::Twist>
 {
 public:
-    explicit LowpassFilterTwist(const double gain)
-        : LowpassFilterInterface<commsgs::geometry_msgs::Twist>(gain) {}
+    explicit LowpassFilterTwist(const double gain) : LowpassFilterInterface<commsgs::geometry_msgs::Twist>(gain) {}
 
-    commsgs::geometry_msgs::Twist filter(
-        const commsgs::geometry_msgs::Twist& u) override;
+    commsgs::geometry_msgs::Twist filter(const commsgs::geometry_msgs::Twist& u) override;
 };
 
 }  // namespace signal_processing

@@ -55,10 +55,8 @@ public:
      * @brief A constructor for control::common::GoalChecker
      * @param parent Node pointer for grabbing parameters
      */
-    virtual void Initialize(
-        const std::string& plugin_name,
-        const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-            costmap_wraper) = 0;
+    virtual void Initialize(const std::string& plugin_name,
+                            const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wraper) = 0;
 
     virtual void Reset() = 0;
 
@@ -69,10 +67,9 @@ public:
      * @param velocity The robot's current velocity
      * @return True if goal is reached
      */
-    virtual bool IsGoalReached(
-        const commsgs::geometry_msgs::Pose& query_pose,
-        const commsgs::geometry_msgs::Pose& goal_pose,
-        const commsgs::geometry_msgs::Twist& velocity) = 0;
+    virtual bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
+                               const commsgs::geometry_msgs::Pose& goal_pose,
+                               const commsgs::geometry_msgs::Twist& velocity) = 0;
 
     /**
      * @brief Get the maximum possible tolerances used for goal checking in the
@@ -86,9 +83,8 @@ public:
      * @param vel_tolerance The tolerance used for checking velocity fields
      * @return True if the tolerances are valid to use
      */
-    virtual bool GetTolerances(
-        commsgs::geometry_msgs::Pose& pose_tolerance,
-        commsgs::geometry_msgs::Twist& vel_tolerance) = 0;
+    virtual bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                               commsgs::geometry_msgs::Twist& vel_tolerance) = 0;
 };
 
 }  // namespace common

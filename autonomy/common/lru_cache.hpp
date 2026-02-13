@@ -34,16 +34,14 @@ struct Node {
     Node() : prev(nullptr), next(nullptr) {}
 
     template <typename VV>
-    Node(const K& key, VV&& val)
-        : key(key), val(std::forward<VV>(val)), prev(nullptr), next(nullptr) {}
+    Node(const K& key, VV&& val) : key(key), val(std::forward<VV>(val)), prev(nullptr), next(nullptr) {}
 };
 
 template <class K, class V>
 class LRUCache
 {
 public:
-    explicit LRUCache(const size_t capacity = kDefaultCapacity)
-        : capacity_(capacity), head_(), tail_() {
+    explicit LRUCache(const size_t capacity = kDefaultCapacity) : capacity_(capacity), head_(), tail_() {
         Init();
     }
 
@@ -249,8 +247,7 @@ private:
     }
 
     template <typename VV>
-    bool Update(const K& key, VV&& val, K* obs, bool add_only,
-                bool silent_update) {
+    bool Update(const K& key, VV&& val, K* obs, bool add_only, bool silent_update) {
         if (obs == nullptr) {
             return false;
         }

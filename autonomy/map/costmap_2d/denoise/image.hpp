@@ -139,24 +139,17 @@ private:
 };
 
 template <class T>
-Image<T>::Image(size_t rows, size_t columns, T* data, size_t step)
-    : rows_{rows}, columns_{columns}, step_{step} {
+Image<T>::Image(size_t rows, size_t columns, T* data, size_t step) : rows_{rows}, columns_{columns}, step_{step} {
     data_start_ = data;
 }
 
 template <class T>
 Image<T>::Image(const Image& other)
-    : data_start_{other.data_start_},
-      rows_{other.rows_},
-      columns_{other.columns_},
-      step_{other.step_} {}
+    : data_start_{other.data_start_}, rows_{other.rows_}, columns_{other.columns_}, step_{other.step_} {}
 
 template <class T>
 Image<T>::Image(Image&& other) noexcept
-    : data_start_{other.data_start_},
-      rows_{other.rows_},
-      columns_{other.columns_},
-      step_{other.step_} {}
+    : data_start_{other.data_start_}, rows_{other.rows_}, columns_{other.columns_}, step_{other.step_} {}
 
 template <class T>
 T* Image<T>::row(size_t row) {
@@ -171,8 +164,7 @@ const T* Image<T>::row(size_t row) const {
 template <class T>
 template <class Functor>
 void Image<T>::forEach(Functor&& fn) {
-    static_cast<const Image<T>&>(*this).forEach(
-        [&](const T& pixel) { fn(const_cast<T&>(pixel)); });
+    static_cast<const Image<T>&>(*this).forEach([&](const T& pixel) { fn(const_cast<T&>(pixel)); });
 }
 
 template <class T>
@@ -191,11 +183,9 @@ void Image<T>::forEach(Functor&& fn) const {
 
 template <class T>
 template <class TargetElement, class Converter>
-void Image<T>::convert(Image<TargetElement>& target,
-                       Converter&& converter) const {
+void Image<T>::convert(Image<TargetElement>& target, Converter&& converter) const {
     if (rows() != target.rows() || columns() != target.columns()) {
-        throw std::logic_error(
-            "Image::convert. The source and target images size are different");
+        throw std::logic_error("Image::convert. The source and target images size are different");
     }
     const T* source_row = row(0);
     TargetElement* target_row = target.row(0);

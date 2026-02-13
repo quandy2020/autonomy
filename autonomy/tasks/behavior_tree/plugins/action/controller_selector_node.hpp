@@ -19,10 +19,10 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
 #include "behaviortree_cpp/action_node.h"
 
+#include "autolink/autolink.hpp"
+#include "autonomy/commsgs/std_msgs.hpp"
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
@@ -46,8 +46,7 @@ public:
      * @param xml_tag_name Name for the XML tag for this node
      * @param conf  BT node configuration
      */
-    ControllerSelector(const std::string& xml_tag_name,
-                       const BT::NodeConfiguration& conf);
+    ControllerSelector(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
@@ -55,18 +54,14 @@ public:
      * ports
      */
     static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<std::string>(
-                "default_controller",
-                "the default controller to use if there is "
-                "not any external topic message received."),
+        return {BT::InputPort<std::string>("default_controller",
+                                           "the default controller to use if there is not any external "
+                                           "topic message received."),
 
-            BT::InputPort<std::string>(
-                "topic_name", "controller_selector",
-                "the input topic name to select the controller"),
+                BT::InputPort<std::string>("topic_name", "controller_selector",
+                                           "the input topic name to select the controller"),
 
-            BT::OutputPort<std::string>("selected_controller",
-                                        "Selected controller by subscription")};
+                BT::OutputPort<std::string>("selected_controller", "Selected controller by subscription")};
     }
 
 private:
@@ -89,13 +84,13 @@ private:
      *
      * @param msg the message with the id of the controller_selector
      */
-    void callbackControllerSelect(const commsgs::std_msgs::String& msg);
+    void callbackControllerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg);
 
-    //    rclcpp::Subscription<commsgs::std_msgs::String>::SharedPtr
-    //    controller_selector_sub_;
+    std::shared_ptr<autolink::Reader<commsgs::std_msgs::String>> controller_selector_sub_;
 
     std::string last_selected_controller_;
-    std::shared_ptr<::autolink::Node> node_;
+
+    std::shared_ptr<autolink::Node> node_;
 
     std::string topic_name_;
 };

@@ -22,9 +22,8 @@ namespace autonomy {
 namespace control {
 namespace utils {
 
-commsgs::geometry_msgs::Point CircleSegmentIntersection(
-    const commsgs::geometry_msgs::Point& p1,
-    const commsgs::geometry_msgs::Point& p2, double r) {
+commsgs::geometry_msgs::Point CircleSegmentIntersection(const commsgs::geometry_msgs::Point& p1,
+                                                        const commsgs::geometry_msgs::Point& p2, double r) {
     // Formula for intersection of a line with a circle centered at the origin,
     // modified to always return the point that is on the segment between the
     // two points. https://mathworld.wolfram.com/Circle-LineIntersection.html
@@ -56,9 +55,8 @@ commsgs::geometry_msgs::Point CircleSegmentIntersection(
     return p;
 }
 
-commsgs::geometry_msgs::Point LinearInterpolation(
-    const commsgs::geometry_msgs::Point& p1,
-    const commsgs::geometry_msgs::Point& p2, const double target_dist) {
+commsgs::geometry_msgs::Point LinearInterpolation(const commsgs::geometry_msgs::Point& p1,
+                                                  const commsgs::geometry_msgs::Point& p2, const double target_dist) {
     commsgs::geometry_msgs::Point result;
 
     double dx = p2.x - p1.x;
@@ -72,10 +70,9 @@ commsgs::geometry_msgs::Point LinearInterpolation(
     return result;
 }
 
-commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
-    double& lookahead_dist,
-    const commsgs::planning_msgs::Path& transformed_plan,
-    const bool interpolate_after_goal) {
+commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(double& lookahead_dist,
+                                                      const commsgs::planning_msgs::Path& transformed_plan,
+                                                      const bool interpolate_after_goal) {
     // Find the first pose which is at a distance greater than the lookahead
     // distance Using distance along the path
     const auto& poses = transformed_plan.poses;
@@ -88,8 +85,7 @@ commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
         const auto& prev_pose = poses[i - 1].pose.position;
         const auto& curr_pose = poses[i].pose.position;
 
-        const double d =
-            std::hypot(curr_pose.x - prev_pose.x, curr_pose.y - prev_pose.y);
+        const double d = std::hypot(curr_pose.x - prev_pose.x, curr_pose.y - prev_pose.y);
         if (path_dist + d >= lookahead_dist) {
             goal_pose_it = poses.begin() + i;
             pose_found = true;
@@ -109,11 +105,8 @@ commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
             auto last_pose_it = std::prev(transformed_plan.poses.end());
             auto prev_last_pose_it = std::prev(last_pose_it);
 
-            double end_path_orientation =
-                atan2(last_pose_it->pose.position.y -
-                          prev_last_pose_it->pose.position.y,
-                      last_pose_it->pose.position.x -
-                          prev_last_pose_it->pose.position.x);
+            double end_path_orientation = atan2(last_pose_it->pose.position.y - prev_last_pose_it->pose.position.y,
+                                                last_pose_it->pose.position.x - prev_last_pose_it->pose.position.x);
 
             // Project the last segment out to guarantee it is beyond the look
             // ahead distance
@@ -124,8 +117,7 @@ commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
             // Use the linear interpolation to find the position at the correct
             // look ahead distance
             const auto interpolated_position =
-                LinearInterpolation(last_pose_it->pose.position,
-                                    projected_position, interpolation_dist);
+                LinearInterpolation(last_pose_it->pose.position, projected_position, interpolation_dist);
 
             commsgs::geometry_msgs::PoseStamped interpolated_pose;
             interpolated_pose.header = last_pose_it->header;
@@ -144,21 +136,17 @@ commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
         // prev_pose and the goal_pose, moving interpolation_dist starting from
         // prev_pose in the direction of goal_pose.
         auto prev_pose_it = std::prev(goal_pose_it);
-        auto point = LinearInterpolation(prev_pose_it->pose.position,
-                                         goal_pose_it->pose.position,
-                                         interpolation_dist);
+        auto point = LinearInterpolation(prev_pose_it->pose.position, goal_pose_it->pose.position, interpolation_dist);
 
         // Calculate orientation towards interpolated position
         // Convert yaw to quaternion
-        double yaw = atan2(point.y - prev_pose_it->pose.position.y,
-                           point.x - prev_pose_it->pose.position.x);
+        double yaw = atan2(point.y - prev_pose_it->pose.position.y, point.x - prev_pose_it->pose.position.x);
 
         commsgs::geometry_msgs::PoseStamped pose;
         pose.header.frame_id = prev_pose_it->header.frame_id;
         pose.header.stamp = goal_pose_it->header.stamp;
         pose.pose.position = point;
-        pose.pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+        pose.pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
         return pose;
     }
 

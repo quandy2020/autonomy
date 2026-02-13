@@ -16,6 +16,12 @@ syntax = "proto3";
 
 package autonomy.control.proto;
 
+import "autonomy/map/proto/map_2d_option.proto";
+import "autonomy/control/proto/mppi_controller.proto";
+import "autonomy/control/proto/checker_options.proto";
+import "autonomy/control/proto/graceful_controller.proto";
+import "autonomy/control/proto/pure_pursuit_controller_options.proto";
+
 // Controller result codes for ComputeVelocityCommands return value
 enum ControllerResultCode {
     // Success result
@@ -50,8 +56,10 @@ enum ControllerResultCode {
 
 message ControllerOptions
 {
-    
-
+    autonomy.map.proto.Costmap2DOptions costmap_2d_options = 1;
+    autonomy.control.proto.MPPIControllerOptions mppi_controller_options = 2;
+    autonomy.control.proto.GracefulControllerOptions graceful_controller_options = 3;
+    autonomy.control.proto.PurePursuitControllerOptions pure_pursuit_controller_options = 4;
 }
 
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  启动 autonomy system 模块（AutonomyNode：map、planner、controller、tasks 等）。
+  二进制：autonomy.system.launcher
+  参数：--configuration_directory、--configuration_basename（Lua 配置）
+-->
+<autolink>
+  <module>
+    <name>system</name>
+    <type>binary</type>
+    <process_name>autonomy.system.launcher --configuration_directory /opt/autonomy/configuration_files --configuration_basename autonomy.lua</process_name>
+  </module>
+</autolink>

@@ -21,17 +21,14 @@
 namespace autonomy {
 namespace transform {
 
-TransformBroadcaster::TransformBroadcaster(
-    const std::shared_ptr<::autolink::Node>& node)
-    : node_(node) {
+TransformBroadcaster::TransformBroadcaster(const std::shared_ptr<::autolink::Node>& node) : node_(node) {
     if (!node_) {
         AERROR << "TransformBroadcaster: Node is null.";
         return;
     }
     ::autolink::proto::RoleAttributes attr;
     attr.set_channel_name("/tf");
-    writer_ =
-        node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
+    writer_ = node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
 }
 
 TransformBroadcaster::TransformBroadcaster(::autolink::Node* node) {
@@ -41,26 +38,21 @@ TransformBroadcaster::TransformBroadcaster(::autolink::Node* node) {
     }
     ::autolink::proto::RoleAttributes attr;
     attr.set_channel_name("/tf");
-    writer_ =
-        node->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
+    writer_ = node->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
 }
 
-void TransformBroadcaster::SendTransform(
-    const commsgs::geometry_msgs::TransformStamped& transform) {
+void TransformBroadcaster::SendTransform(const commsgs::geometry_msgs::TransformStamped& transform) {
     std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
     transforms.emplace_back(transform);
     SendTransform(transforms);
 }
 
-void TransformBroadcaster::SendTransform(
-    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
+void TransformBroadcaster::SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
     if (!writer_) {
-        AERROR
-            << "TransformBroadcaster: Writer is null, cannot send transform.";
+        AERROR << "TransformBroadcaster: Writer is null, cannot send transform.";
         return;
     }
-    auto message =
-        std::make_shared<commsgs::geometry_msgs::TransformStampeds>();
+    auto message = std::make_shared<commsgs::geometry_msgs::TransformStampeds>();
     message->transforms = transforms;
     writer_->Write(message);
 }

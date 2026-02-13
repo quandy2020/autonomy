@@ -28,8 +28,7 @@ BridgeServer::BridgeServer() {
     grpc_bridge_ = std::make_unique<plugins::grpc::GrpcBridgeServer>();
 }
 
-BridgeServer::BridgeServer(const proto::BridgeOptions& options)
-    : options_{options} {}
+BridgeServer::BridgeServer(const proto::BridgeOptions& options) : options_{options} {}
 
 void BridgeServer::Start() {
     if (options_.use_grpc()) {

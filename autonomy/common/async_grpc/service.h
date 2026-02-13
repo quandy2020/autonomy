@@ -38,11 +38,9 @@ public:
     using EventQueueSelector = std::function<EventQueue*()>;
     friend class Rpc;
 
-    Service(const std::string& service_name,
-            const std::map<std::string, RpcHandlerInfo>& rpc_handlers,
+    Service(const std::string& service_name, const std::map<std::string, RpcHandlerInfo>& rpc_handlers,
             EventQueueSelector event_queue_selector);
-    void StartServing(std::vector<CompletionQueueThread>& completion_queues,
-                      ExecutionContext* execution_context);
+    void StartServing(std::vector<CompletionQueueThread>& completion_queues, ExecutionContext* execution_context);
     void HandleEvent(Rpc::Event event, Rpc* rpc, bool ok);
     void StopServing();
 

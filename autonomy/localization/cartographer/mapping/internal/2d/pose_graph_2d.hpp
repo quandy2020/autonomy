@@ -65,8 +65,7 @@ class PoseGraph2D : public PoseGraph
 {
 public:
     PoseGraph2D(const proto::PoseGraphOptions& options,
-                std::unique_ptr<optimization::OptimizationProblem2D>
-                    optimization_problem,
+                std::unique_ptr<optimization::OptimizationProblem2D> optimization_problem,
                 common::ThreadPool* thread_pool);
     ~PoseGraph2D() override;
 
@@ -78,50 +77,36 @@ public:
     // node data was inserted into the 'insertion_submaps'. If
     // 'insertion_submaps.front().finished()' is 'true', data was inserted into
     // this submap for the last time.
-    NodeId AddNode(
-        std::shared_ptr<const TrajectoryNode::Data> constant_data,
-        int trajectory_id,
-        const std::vector<std::shared_ptr<const Submap2D>>& insertion_submaps);
+    NodeId AddNode(std::shared_ptr<const TrajectoryNode::Data> constant_data, int trajectory_id,
+                   const std::vector<std::shared_ptr<const Submap2D>>& insertion_submaps);
 
-    void AddImuData(int trajectory_id,
-                    const sensor::ImuData& imu_data) override;
-    void AddOdometryData(int trajectory_id,
-                         const sensor::OdometryData& odometry_data) override;
-    void AddFixedFramePoseData(
-        int trajectory_id,
-        const sensor::FixedFramePoseData& fixed_frame_pose_data) override;
-    void AddLandmarkData(int trajectory_id,
-                         const sensor::LandmarkData& landmark_data) override;
+    void AddImuData(int trajectory_id, const sensor::ImuData& imu_data) override;
+    void AddOdometryData(int trajectory_id, const sensor::OdometryData& odometry_data) override;
+    void AddFixedFramePoseData(int trajectory_id, const sensor::FixedFramePoseData& fixed_frame_pose_data) override;
+    void AddLandmarkData(int trajectory_id, const sensor::LandmarkData& landmark_data) override;
 
     void DeleteTrajectory(int trajectory_id) override;
     void FinishTrajectory(int trajectory_id) override;
     bool IsTrajectoryFinished(int trajectory_id) const override;
     void FreezeTrajectory(int trajectory_id) override;
     bool IsTrajectoryFrozen(int trajectory_id) const override;
-    void AddSubmapFromProto(const transform::Rigid3d& global_submap_pose,
-                            const proto::Submap& submap) override;
-    void AddNodeFromProto(const transform::Rigid3d& global_pose,
-                          const proto::Node& node) override;
+    void AddSubmapFromProto(const transform::Rigid3d& global_submap_pose, const proto::Submap& submap) override;
+    void AddNodeFromProto(const transform::Rigid3d& global_pose, const proto::Node& node) override;
     void SetTrajectoryDataFromProto(const proto::TrajectoryData& data) override;
-    void AddNodeToSubmap(const NodeId& node_id,
-                         const SubmapId& submap_id) override;
-    void AddSerializedConstraints(
-        const std::vector<Constraint>& constraints) override;
+    void AddNodeToSubmap(const NodeId& node_id, const SubmapId& submap_id) override;
+    void AddSerializedConstraints(const std::vector<Constraint>& constraints) override;
     void AddTrimmer(std::unique_ptr<PoseGraphTrimmer> trimmer) override;
     void RunFinalOptimization() override;
 
     std::vector<std::vector<int>> GetConnectedTrajectories() const override;
 
-    PoseGraphInterface::SubmapData GetSubmapData(
-        const SubmapId& submap_id) const override;
+    PoseGraphInterface::SubmapData GetSubmapData(const SubmapId& submap_id) const override;
 
-    MapById<SubmapId, PoseGraphInterface::SubmapData> GetAllSubmapData()
-        const override;
+    MapById<SubmapId, PoseGraphInterface::SubmapData> GetAllSubmapData() const override;
 
     MapById<SubmapId, SubmapPose> GetAllSubmapPoses() const override;
 
-    transform::Rigid3d GetLocalToGlobalTransform(
-        int trajectory_id) const override;
+    transform::Rigid3d GetLocalToGlobalTransform(int trajectory_id) const override;
 
     MapById<NodeId, TrajectoryNode> GetTrajectoryNodes() const override;
 
@@ -131,39 +116,32 @@ public:
 
     std::map<std::string, transform::Rigid3d> GetLandmarkPoses() const override;
 
-    void SetLandmarkPose(const std::string& landmark_id,
-                         const transform::Rigid3d& global_pose,
+    void SetLandmarkPose(const std::string& landmark_id, const transform::Rigid3d& global_pose,
                          const bool frozen = false) override;
 
     sensor::MapByTime<sensor::ImuData> GetImuData() const override;
 
     sensor::MapByTime<sensor::OdometryData> GetOdometryData() const override;
 
-    sensor::MapByTime<sensor::FixedFramePoseData> GetFixedFramePoseData()
-        const override;
+    sensor::MapByTime<sensor::FixedFramePoseData> GetFixedFramePoseData() const override;
 
-    std::map<std::string /* landmark ID */, PoseGraph::LandmarkNode>
-    GetLandmarkNodes() const override;
+    std::map<std::string /* landmark ID */, PoseGraph::LandmarkNode> GetLandmarkNodes() const override;
 
     std::map<int, TrajectoryData> GetTrajectoryData() const override;
 
     std::vector<Constraint> constraints() const override;
 
-    void SetInitialTrajectoryPose(int from_trajectory_id, int to_trajectory_id,
-                                  const transform::Rigid3d& pose,
+    void SetInitialTrajectoryPose(int from_trajectory_id, int to_trajectory_id, const transform::Rigid3d& pose,
                                   const common::Time time) override;
 
-    void SetGlobalSlamOptimizationCallback(
-        PoseGraphInterface::GlobalSlamOptimizationCallback callback) override;
+    void SetGlobalSlamOptimizationCallback(PoseGraphInterface::GlobalSlamOptimizationCallback callback) override;
 
-    transform::Rigid3d GetInterpolatedGlobalTrajectoryPose(
-        int trajectory_id, const common::Time time) const;
+    transform::Rigid3d GetInterpolatedGlobalTrajectoryPose(int trajectory_id, const common::Time time) const;
 
     static void RegisterMetrics(metrics::FamilyFactory* family_factory);
 
 private:
-    MapById<SubmapId, PoseGraphInterface::SubmapData> GetSubmapDataUnderLock()
-        const;
+    MapById<SubmapId, PoseGraphInterface::SubmapData> GetSubmapDataUnderLock() const;
 
     // Handles a new work item.
     void AddWorkItem(const std::function<WorkItem::Result()>& work_item);
@@ -173,11 +151,9 @@ private:
 
     // Appends the new node and submap (if needed) to the internal data
     // structures.
-    NodeId AppendNode(
-        std::shared_ptr<const TrajectoryNode::Data> constant_data,
-        int trajectory_id,
-        const std::vector<std::shared_ptr<const Submap2D>>& insertion_submaps,
-        const transform::Rigid3d& optimized_pose);
+    NodeId AppendNode(std::shared_ptr<const TrajectoryNode::Data> constant_data, int trajectory_id,
+                      const std::vector<std::shared_ptr<const Submap2D>>& insertion_submaps,
+                      const transform::Rigid3d& optimized_pose);
 
     // Grows the optimization problem to have an entry for every element of
     // 'insertion_submaps'. Returns the IDs for the 'insertion_submaps'.
@@ -186,10 +162,9 @@ private:
         const std::vector<std::shared_ptr<const Submap2D>>& insertion_submaps);
 
     // Adds constraints for a node, and starts scan matching in the background.
-    WorkItem::Result ComputeConstraintsForNode(
-        const NodeId& node_id,
-        std::vector<std::shared_ptr<const Submap2D>> insertion_submaps,
-        bool newly_finished_submap);
+    WorkItem::Result ComputeConstraintsForNode(const NodeId& node_id,
+                                               std::vector<std::shared_ptr<const Submap2D>> insertion_submaps,
+                                               bool newly_finished_submap);
 
     // Computes constraints for a node and submap pair.
     void ComputeConstraint(const NodeId& node_id, const SubmapId& submap_id);
@@ -200,8 +175,7 @@ private:
 
     // Runs the optimization, executes the trimmers and processes the work
     // queue.
-    void HandleWorkQueue(
-        const constraints::ConstraintBuilder2D::Result& result);
+    void HandleWorkQueue(const constraints::ConstraintBuilder2D::Result& result);
 
     // Process pending tasks in the work queue on the calling thread, until the
     // queue is either empty or an optimization is required.
@@ -220,14 +194,11 @@ private:
     // Computes the local to global map frame transform based on the given
     // 'global_submap_poses'.
     transform::Rigid3d ComputeLocalToGlobalTransform(
-        const MapById<SubmapId, optimization::SubmapSpec2D>&
-            global_submap_poses,
-        int trajectory_id) const;
+        const MapById<SubmapId, optimization::SubmapSpec2D>& global_submap_poses, int trajectory_id) const;
 
     SubmapData GetSubmapDataUnderLock(const SubmapId& submap_id) const;
 
-    common::Time GetLatestNodeTime(const NodeId& node_id,
-                                   const SubmapId& submap_id) const;
+    common::Time GetLatestNodeTime(const NodeId& node_id, const SubmapId& submap_id) const;
 
     // Updates the trajectory connectivity structure with a new constraint.
     void UpdateTrajectoryConnectivity(const Constraint& constraint);
@@ -242,8 +213,7 @@ private:
     std::unique_ptr<WorkQueue> work_queue_;
 
     // We globally localize a fraction of the nodes from each trajectory.
-    absl::flat_hash_map<int, std::unique_ptr<common::FixedRatioSampler>>
-        global_localization_samplers_;
+    absl::flat_hash_map<int, std::unique_ptr<common::FixedRatioSampler>> global_localization_samplers_;
 
     // Number of nodes added since last loop closure.
     int num_nodes_since_last_loop_closure_ = 0;
@@ -276,8 +246,7 @@ private:
 
         MapById<SubmapId, SubmapData> GetOptimizedSubmapData() const override;
 
-        const MapById<NodeId, TrajectoryNode>& GetTrajectoryNodes()
-            const override;
+        const MapById<NodeId, TrajectoryNode>& GetTrajectoryNodes() const override;
 
         const std::vector<Constraint>& GetConstraints() const override;
 
@@ -285,8 +254,7 @@ private:
 
         bool IsFinished(int trajectory_id) const override;
 
-        void SetTrajectoryState(int trajectory_id,
-                                TrajectoryState state) override;
+        void SetTrajectoryState(int trajectory_id, TrajectoryState state) override;
 
     private:
         PoseGraph2D* const parent_;

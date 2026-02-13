@@ -43,24 +43,20 @@ namespace navfn {
 NavfnPlanner::NavfnPlanner() : name_("NavfnPlanner"), costmap_(nullptr) {}
 
 NavfnPlanner::~NavfnPlanner() {
-    AINFO << absl::StrCat("Destroying plugin ", name_,
-                          " of type NavfnPlanner.");
+    AINFO << absl::StrCat("Destroying plugin ", name_, " of type NavfnPlanner.");
 }
 
-bool NavfnPlanner::Configure(
-    const proto::PlannerOptions& options, const std::string& name,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
+bool NavfnPlanner::Configure(const proto::PlannerOptions& options, const std::string& name,
+                             std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
     name_ = name;
-    AINFO << absl::StrCat("Configuring plugin ", name_,
-                          " of type NavfnPlanner");
+    AINFO << absl::StrCat("Configuring plugin ", name_, " of type NavfnPlanner");
 
     // Initialize parameters
     const auto& navfn_opts = options.navfn();
     tolerance_ = navfn_opts.tolerance();
     allow_unknown_ = navfn_opts.allow_unknown();
     use_astar_ = navfn_opts.use_astar();
-    use_final_approach_orientation_ =
-        navfn_opts.use_final_approach_orientation();
+    use_final_approach_orientation_ = navfn_opts.use_final_approach_orientation();
 
     // Set costmap if provided
     costmap_ = costmap;
@@ -69,11 +65,9 @@ bool NavfnPlanner::Configure(
         auto* costmap_ptr = costmap_->getCostmap();
         if (costmap_ptr) {
             // Initialize planner with costmap dimensions
-            planner_ = std::make_unique<NavFn>(
-                static_cast<int>(costmap_ptr->getSizeInCellsX()),
-                static_cast<int>(costmap_ptr->getSizeInCellsY()));
-            AINFO << "NavfnPlanner costmap set: "
-                  << costmap_ptr->getSizeInCellsX() << "x"
+            planner_ = std::make_unique<NavFn>(static_cast<int>(costmap_ptr->getSizeInCellsX()),
+                                               static_cast<int>(costmap_ptr->getSizeInCellsY()));
+            AINFO << "NavfnPlanner costmap set: " << costmap_ptr->getSizeInCellsX() << "x"
                   << costmap_ptr->getSizeInCellsY();
         }
     } else {
@@ -83,14 +77,12 @@ bool NavfnPlanner::Configure(
     return true;
 }
 
-uint32 NavfnPlanner::CreatePlan(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
+uint32 NavfnPlanner::CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
+                                const commsgs::geometry_msgs::PoseStamped& goal, commsgs::planning_msgs::Path& plan,
+                                std::function<bool()> cancel_checker) {
     if (!costmap_) {
         AERROR << "Costmap is not set for planner " << name_;
-        return static_cast<uint32>(
-            proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
+        return static_cast<uint32>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
     }
 
     // Set global_frame_ from start pose if not already set
@@ -101,29 +93,25 @@ uint32 NavfnPlanner::CreatePlan(
     auto* costmap_ptr = costmap_->getCostmap();
     if (!costmap_ptr) {
         AERROR << "Failed to get costmap from wrapper";
-        return static_cast<uint32>(
-            proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
+        return static_cast<uint32>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
     }
 
     if (!planner_) {
         // Initialize planner if not already initialized
-        planner_ = std::make_unique<NavFn>(
-            static_cast<int>(costmap_ptr->getSizeInCellsX()),
-            static_cast<int>(costmap_ptr->getSizeInCellsY()));
+        planner_ = std::make_unique<NavFn>(static_cast<int>(costmap_ptr->getSizeInCellsX()),
+                                           static_cast<int>(costmap_ptr->getSizeInCellsY()));
     }
 
     // Check if planner needs to be recreated
     if (isPlannerOutOfDate()) {
-        planner_ = std::make_unique<NavFn>(
-            static_cast<int>(costmap_ptr->getSizeInCellsX()),
-            static_cast<int>(costmap_ptr->getSizeInCellsY()));
+        planner_ = std::make_unique<NavFn>(static_cast<int>(costmap_ptr->getSizeInCellsX()),
+                                           static_cast<int>(costmap_ptr->getSizeInCellsY()));
     }
 
     if (makePlan(start.pose, goal.pose, tolerance_, cancel_checker, plan)) {
         return static_cast<uint32>(proto::PlannerResultCode::PLANNER_SUCCESS);
     } else {
-        return static_cast<uint32>(
-            proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
+        return static_cast<uint32>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
     }
 }
 
@@ -142,18 +130,15 @@ bool NavfnPlanner::isPlannerOutOfDate() {
         return true;
     }
 
-    if (!planner_ ||
-        planner_->nx != static_cast<int>(costmap_ptr->getSizeInCellsX()) ||
+    if (!planner_ || planner_->nx != static_cast<int>(costmap_ptr->getSizeInCellsX()) ||
         planner_->ny != static_cast<int>(costmap_ptr->getSizeInCellsY())) {
         return true;
     }
     return false;
 }
 
-bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
-                            const commsgs::geometry_msgs::Pose& goal,
-                            double tolerance,
-                            std::function<bool()> cancel_checker,
+bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start, const commsgs::geometry_msgs::Pose& goal,
+                            double tolerance, std::function<bool()> cancel_checker,
                             commsgs::planning_msgs::Path& plan) {
     // clear the plan, just in case
     plan.poses.clear();
@@ -167,8 +152,7 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
 
     unsigned int mx, my;
     if (!worldToMap(wx, wy, mx, my)) {
-        AERROR << "Start position (" << wx << ", " << wy
-               << ") is outside map bounds";
+        AERROR << "Start position (" << wx << ", " << wy << ") is outside map bounds";
         return false;
     }
 
@@ -182,12 +166,10 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
         return false;
     }
 
-    std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> lock(
-        *(costmap_ptr->getMutex()));
+    std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> lock(*(costmap_ptr->getMutex()));
 
     // make sure to resize the underlying array that Navfn uses
-    planner_->setNavArr(costmap_ptr->getSizeInCellsX(),
-                        costmap_ptr->getSizeInCellsY());
+    planner_->setNavArr(costmap_ptr->getSizeInCellsX(), costmap_ptr->getSizeInCellsY());
 
     planner_->setCostmap(costmap_ptr->getCharMap(), true, allow_unknown_);
 
@@ -201,8 +183,7 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
     wy = goal.position.y;
 
     if (!worldToMap(wx, wy, mx, my)) {
-        AERROR << "Goal position (" << wx << ", " << wy
-               << ") is outside map bounds";
+        AERROR << "Goal position (" << wx << ", " << wy << ") is outside map bounds";
         return false;
     }
     int map_goal[2];
@@ -234,8 +215,7 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
         found_legal = true;
     } else if (potential == std::numeric_limits<double>::max()) {
         // Point is outside map bounds
-        AERROR << "Goal position (" << goal.position.x << ", "
-               << goal.position.y << ") is outside map bounds";
+        AERROR << "Goal position (" << goal.position.x << ", " << goal.position.y << ") is outside map bounds";
     } else {
         // Goal is not reachable. Trying to find nearest to the goal
         // reachable point within its tolerance region
@@ -274,20 +254,17 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
                 } else if (plan_size > 1) {
                     double dx, dy, theta;
                     auto last_pose = plan.poses.back().pose.position;
-                    auto approach_pose =
-                        plan.poses[plan_size - 2].pose.position;
+                    auto approach_pose = plan.poses[plan_size - 2].pose.position;
                     // Deal with the case of NavFn producing a path with two
                     // equal last poses
                     if (std::abs(last_pose.x - approach_pose.x) < 0.0001 &&
-                        std::abs(last_pose.y - approach_pose.y) < 0.0001 &&
-                        plan_size > 2) {
+                        std::abs(last_pose.y - approach_pose.y) < 0.0001 && plan_size > 2) {
                         approach_pose = plan.poses[plan_size - 3].pose.position;
                     }
                     dx = last_pose.x - approach_pose.x;
                     dy = last_pose.y - approach_pose.y;
                     theta = atan2(dy, dx);
-                    plan.poses.back().pose.orientation =
-                        map::costmap_2d::utils::OrientationAroundZAxis(theta);
+                    plan.poses.back().pose.orientation = map::costmap_2d::utils::OrientationAroundZAxis(theta);
                 }
             }
         } else {
@@ -299,9 +276,7 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
     return !plan.poses.empty();
 }
 
-void NavfnPlanner::smoothApproachToGoal(
-    const commsgs::geometry_msgs::Pose& goal,
-    commsgs::planning_msgs::Path& plan) {
+void NavfnPlanner::smoothApproachToGoal(const commsgs::geometry_msgs::Pose& goal, commsgs::planning_msgs::Path& plan) {
     // Replace the last pose of the computed path if it's actually further away
     // to the second to last pose than the goal pose.
     if (plan.poses.size() >= 2) {
@@ -318,9 +293,7 @@ void NavfnPlanner::smoothApproachToGoal(
     plan.poses.push_back(goal_copy);
 }
 
-bool NavfnPlanner::getPlanFromPotential(
-    const commsgs::geometry_msgs::Pose& goal,
-    commsgs::planning_msgs::Path& plan) {
+bool NavfnPlanner::getPlanFromPotential(const commsgs::geometry_msgs::Pose& goal, commsgs::planning_msgs::Path& plan) {
     // clear the plan, just in case
     plan.poses.clear();
 
@@ -332,8 +305,7 @@ bool NavfnPlanner::getPlanFromPotential(
     // the costmap
     unsigned int mx, my;
     if (!worldToMap(wx, wy, mx, my)) {
-        AERROR << "Goal position (" << wx << ", " << wy
-               << ") is outside map bounds in getPlanFromPotential";
+        AERROR << "Goal position (" << wx << ", " << wy << ") is outside map bounds in getPlanFromPotential";
         return false;
     }
 
@@ -349,10 +321,9 @@ bool NavfnPlanner::getPlanFromPotential(
         return false;
     }
 
-    const int& max_cycles =
-        (costmap_ptr->getSizeInCellsX() >= costmap_ptr->getSizeInCellsY())
-            ? (costmap_ptr->getSizeInCellsX() * 4)
-            : (costmap_ptr->getSizeInCellsY() * 4);
+    const int& max_cycles = (costmap_ptr->getSizeInCellsX() >= costmap_ptr->getSizeInCellsY())
+                                ? (costmap_ptr->getSizeInCellsX() * 4)
+                                : (costmap_ptr->getSizeInCellsY() * 4);
 
     int path_len = planner_->calcPath(max_cycles);
     if (path_len == 0) {
@@ -385,8 +356,7 @@ bool NavfnPlanner::getPlanFromPotential(
     return !plan.poses.empty();
 }
 
-double NavfnPlanner::getPointPotential(
-    const commsgs::geometry_msgs::Point& world_point) {
+double NavfnPlanner::getPointPotential(const commsgs::geometry_msgs::Point& world_point) {
     unsigned int mx, my;
     if (!worldToMap(world_point.x, world_point.y, mx, my)) {
         return std::numeric_limits<double>::max();
@@ -400,8 +370,7 @@ double NavfnPlanner::getPointPotential(
     return planner_->potarr[index];
 }
 
-bool NavfnPlanner::worldToMap(double wx, double wy, unsigned int& mx,
-                              unsigned int& my) {
+bool NavfnPlanner::worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my) {
     auto* costmap = costmap_->getCostmap();
     if (!costmap) {
         return false;
@@ -412,18 +381,15 @@ bool NavfnPlanner::worldToMap(double wx, double wy, unsigned int& mx,
         return false;
     }
 
-    mx = static_cast<unsigned int>((wx - costmap->getOriginX()) /
-                                   costmap->getResolution());
-    my = static_cast<unsigned int>((wy - costmap->getOriginY()) /
-                                   costmap->getResolution());
+    mx = static_cast<unsigned int>((wx - costmap->getOriginX()) / costmap->getResolution());
+    my = static_cast<unsigned int>((wy - costmap->getOriginY()) / costmap->getResolution());
 
     if (mx < costmap->getSizeInCellsX() && my < costmap->getSizeInCellsY()) {
         return true;
     }
 
-    AERROR << absl::StrCat("worldToMap failed: mx,my: ", mx, ",", my,
-                           ", size_x,size_y: ", costmap->getSizeInCellsX(), ",",
-                           costmap->getSizeInCellsY());
+    AERROR << absl::StrCat("worldToMap failed: mx,my: ", mx, ",", my, ", size_x,size_y: ", costmap->getSizeInCellsX(),
+                           ",", costmap->getSizeInCellsY());
 
     return false;
 }
@@ -453,5 +419,4 @@ void NavfnPlanner::clearRobotCell(unsigned int mx, unsigned int my) {
 }  // namespace autonomy
 
 // Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::planning::planner::navfn::NavfnPlanner,
-                            autonomy::planning::common::GlobalPlanner)
+CLASS_LOADER_REGISTER_CLASS(autonomy::planning::planner::navfn::NavfnPlanner, autonomy::planning::common::GlobalPlanner)

@@ -46,8 +46,7 @@ public:
      * @param condition_name Name for the XML tag for this node
      * @param conf BT node configuration
      */
-    TransformAvailableCondition(const std::string& condition_name,
-                                const BT::NodeConfiguration& conf);
+    TransformAvailableCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
     TransformAvailableCondition() = delete;
 
@@ -72,10 +71,8 @@ public:
      * @return BT::PortsList Containing node-specific ports
      */
     static BT::PortsList providedPorts() {
-        return {BT::InputPort<std::string>("child", std::string(),
-                                           "Child frame for transform"),
-                BT::InputPort<std::string>("parent", std::string(),
-                                           "parent frame for transform")};
+        return {BT::InputPort<std::string>("child", std::string(), "Child frame for transform"),
+                BT::InputPort<std::string>("parent", std::string(), "parent frame for transform")};
     }
 
 private:

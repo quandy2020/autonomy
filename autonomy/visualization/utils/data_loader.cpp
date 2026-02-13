@@ -32,8 +32,7 @@ namespace utils {
 
 // ========== 图片加载功能 ==========
 
-bool DataLoader::LoadImageFromFile(const std::string& file_path,
-                                   commsgs::proto::sensor_msgs::Image& image,
+bool DataLoader::LoadImageFromFile(const std::string& file_path, commsgs::proto::sensor_msgs::Image& image,
                                    const std::string& frame_id) {
     // 检查文件是否存在
     if (!std::filesystem::exists(file_path)) {
@@ -52,10 +51,9 @@ bool DataLoader::LoadImageFromFile(const std::string& file_path,
     return ConvertCvMatToImage(cv_image, image, frame_id);
 }
 
-bool DataLoader::LoadImagesFromDirectory(
-    const std::string& directory_path,
-    std::vector<commsgs::proto::sensor_msgs::Image>& images,
-    const std::string& frame_id) {
+bool DataLoader::LoadImagesFromDirectory(const std::string& directory_path,
+                                         std::vector<commsgs::proto::sensor_msgs::Image>& images,
+                                         const std::string& frame_id) {
     // 检查目录是否存在
     if (!std::filesystem::exists(directory_path)) {
         AERROR << "Directory does not exist: " << directory_path;
@@ -68,20 +66,16 @@ bool DataLoader::LoadImagesFromDirectory(
     }
 
     // 支持的图片格式扩展名
-    std::vector<std::string> supported_extensions = {".jpg", ".jpeg", ".png",
-                                                     ".bmp", ".tiff", ".tif"};
+    std::vector<std::string> supported_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif"};
 
     // 遍历目录中的所有文件
-    for (const auto& entry :
-         std::filesystem::directory_iterator(directory_path)) {
+    for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
         if (std::filesystem::is_regular_file(entry)) {
             std::string extension = entry.path().extension().string();
-            std::transform(extension.begin(), extension.end(),
-                           extension.begin(), ::tolower);
+            std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
-            if (std::find(supported_extensions.begin(),
-                          supported_extensions.end(),
-                          extension) != supported_extensions.end()) {
+            if (std::find(supported_extensions.begin(), supported_extensions.end(), extension) !=
+                supported_extensions.end()) {
                 commsgs::proto::sensor_msgs::Image image;
                 if (LoadImageFromFile(entry.path().string(), image, frame_id)) {
                     images.push_back(image);
@@ -96,8 +90,7 @@ bool DataLoader::LoadImagesFromDirectory(
     return !images.empty();
 }
 
-bool DataLoader::ConvertCvMatToImage(const cv::Mat& cv_image,
-                                     commsgs::proto::sensor_msgs::Image& image,
+bool DataLoader::ConvertCvMatToImage(const cv::Mat& cv_image, commsgs::proto::sensor_msgs::Image& image,
                                      const std::string& frame_id) {
     if (cv_image.empty()) {
         AERROR << "Input cv::Mat is empty";
@@ -146,9 +139,8 @@ bool DataLoader::ConvertCvMatToImage(const cv::Mat& cv_image,
 
 // ========== 路径生成功能 ==========
 
-commsgs::proto::planning_msgs::Path DataLoader::GenerateCircularPath(
-    double center_x, double center_y, double radius, int num_points,
-    const std::string& frame_id) {
+commsgs::proto::planning_msgs::Path DataLoader::GenerateCircularPath(double center_x, double center_y, double radius,
+                                                                     int num_points, const std::string& frame_id) {
     commsgs::proto::planning_msgs::Path path;
 
     // 设置 header
@@ -164,8 +156,7 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateCircularPath(
 
         auto* pose_stamped = path.add_poses();
         pose_stamped->mutable_header()->set_frame_id(frame_id);
-        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(
-            *header->mutable_stamp());
+        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(*header->mutable_stamp());
 
         auto* pose = pose_stamped->mutable_pose();
         pose->mutable_position()->set_x(x);
@@ -179,9 +170,9 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateCircularPath(
     return path;
 }
 
-commsgs::proto::planning_msgs::Path DataLoader::GenerateStraightPath(
-    double start_x, double start_y, double end_x, double end_y, int num_points,
-    const std::string& frame_id) {
+commsgs::proto::planning_msgs::Path DataLoader::GenerateStraightPath(double start_x, double start_y, double end_x,
+                                                                     double end_y, int num_points,
+                                                                     const std::string& frame_id) {
     commsgs::proto::planning_msgs::Path path;
 
     // 设置 header
@@ -202,8 +193,7 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateStraightPath(
 
         auto* pose_stamped = path.add_poses();
         pose_stamped->mutable_header()->set_frame_id(frame_id);
-        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(
-            *header->mutable_stamp());
+        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(*header->mutable_stamp());
 
         auto* pose = pose_stamped->mutable_pose();
         pose->mutable_position()->set_x(x);
@@ -217,9 +207,9 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateStraightPath(
     return path;
 }
 
-commsgs::proto::planning_msgs::Path DataLoader::GenerateRectangularPath(
-    double center_x, double center_y, double width, double height,
-    int num_points_per_side, const std::string& frame_id) {
+commsgs::proto::planning_msgs::Path DataLoader::GenerateRectangularPath(double center_x, double center_y, double width,
+                                                                        double height, int num_points_per_side,
+                                                                        const std::string& frame_id) {
     commsgs::proto::planning_msgs::Path path;
 
     // 设置 header
@@ -253,8 +243,7 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateRectangularPath(
 
             auto* pose_stamped = path.add_poses();
             pose_stamped->mutable_header()->set_frame_id(frame_id);
-            pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(
-                *header->mutable_stamp());
+            pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(*header->mutable_stamp());
 
             auto* pose = pose_stamped->mutable_pose();
             pose->mutable_position()->set_x(x);
@@ -273,8 +262,7 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateRectangularPath(
 }
 
 commsgs::proto::planning_msgs::Path DataLoader::GeneratePathFromPoints(
-    const std::vector<std::pair<double, double>>& points,
-    const std::string& frame_id) {
+    const std::vector<std::pair<double, double>>& points, const std::string& frame_id) {
     commsgs::proto::planning_msgs::Path path;
 
     if (points.empty()) {
@@ -294,8 +282,7 @@ commsgs::proto::planning_msgs::Path DataLoader::GeneratePathFromPoints(
 
         auto* pose_stamped = path.add_poses();
         pose_stamped->mutable_header()->set_frame_id(frame_id);
-        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(
-            *header->mutable_stamp());
+        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(*header->mutable_stamp());
 
         auto* pose = pose_stamped->mutable_pose();
         pose->mutable_position()->set_x(x);
@@ -320,9 +307,10 @@ commsgs::proto::planning_msgs::Path DataLoader::GeneratePathFromPoints(
     return path;
 }
 
-commsgs::proto::planning_msgs::Path DataLoader::GenerateSpiralPath(
-    double center_x, double center_y, double start_radius, double end_radius,
-    int num_turns, int num_points, const std::string& frame_id) {
+commsgs::proto::planning_msgs::Path DataLoader::GenerateSpiralPath(double center_x, double center_y,
+                                                                   double start_radius, double end_radius,
+                                                                   int num_turns, int num_points,
+                                                                   const std::string& frame_id) {
     commsgs::proto::planning_msgs::Path path;
 
     // 设置 header
@@ -341,8 +329,7 @@ commsgs::proto::planning_msgs::Path DataLoader::GenerateSpiralPath(
 
         auto* pose_stamped = path.add_poses();
         pose_stamped->mutable_header()->set_frame_id(frame_id);
-        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(
-            *header->mutable_stamp());
+        pose_stamped->mutable_header()->mutable_stamp()->CopyFrom(*header->mutable_stamp());
 
         auto* pose = pose_stamped->mutable_pose();
         pose->mutable_position()->set_x(x);
@@ -363,14 +350,12 @@ void DataLoader::SetTimestamp(commsgs::proto::builtin_interfaces::Time& stamp) {
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        duration - seconds);
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration - seconds);
     stamp.set_sec(seconds.count());
     stamp.set_nanosec(nanoseconds.count());
 }
 
-void DataLoader::SetPoseOrientation(commsgs::proto::geometry_msgs::Pose& pose,
-                                    double angle) {
+void DataLoader::SetPoseOrientation(commsgs::proto::geometry_msgs::Pose& pose, double angle) {
     // 将角度转换为四元数
     pose.mutable_orientation()->set_x(0.0);
     pose.mutable_orientation()->set_y(0.0);

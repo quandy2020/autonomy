@@ -23,24 +23,20 @@
 namespace cartographer {
 namespace io {
 
-std::unique_ptr<VerticalRangeFilteringPointsProcessor>
-VerticalRangeFilteringPointsProcessor::FromDictionary(
-    common::LuaParameterDictionary* const dictionary,
-    PointsProcessor* const next) {
-    return absl::make_unique<VerticalRangeFilteringPointsProcessor>(
-        dictionary->GetDouble("min_z"), dictionary->GetDouble("max_z"), next);
+std::unique_ptr<VerticalRangeFilteringPointsProcessor> VerticalRangeFilteringPointsProcessor::FromDictionary(
+    common::LuaParameterDictionary* const dictionary, PointsProcessor* const next) {
+    return absl::make_unique<VerticalRangeFilteringPointsProcessor>(dictionary->GetDouble("min_z"),
+                                                                    dictionary->GetDouble("max_z"), next);
 }
 
-VerticalRangeFilteringPointsProcessor::VerticalRangeFilteringPointsProcessor(
-    const double min_z, const double max_z, PointsProcessor* next)
+VerticalRangeFilteringPointsProcessor::VerticalRangeFilteringPointsProcessor(const double min_z, const double max_z,
+                                                                             PointsProcessor* next)
     : min_z_(min_z), max_z_(max_z), next_(next) {}
 
-void VerticalRangeFilteringPointsProcessor::Process(
-    std::unique_ptr<PointsBatch> batch) {
+void VerticalRangeFilteringPointsProcessor::Process(std::unique_ptr<PointsBatch> batch) {
     absl::flat_hash_set<int> to_remove;
     for (size_t i = 0; i < batch->points.size(); ++i) {
-        const float distance_z =
-            batch->points[i].position.z() - batch->origin.z();
+        const float distance_z = batch->points[i].position.z() - batch->origin.z();
         if (!(min_z_ <= distance_z && distance_z <= max_z_)) {
             to_remove.insert(i);
         }

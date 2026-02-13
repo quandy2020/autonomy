@@ -49,8 +49,7 @@ public:
     // Removes data no longer needed once 'node_id' gets removed from 'nodes'.
     // 'NodeType' must contain a 'time' member of type common::Time.
     template <typename NodeType>
-    void Trim(const mapping::MapById<mapping::NodeId, NodeType>& nodes,
-              const mapping::NodeId& node_id) {
+    void Trim(const mapping::MapById<mapping::NodeId, NodeType>& nodes, const mapping::NodeId& node_id) {
         const int trajectory_id = node_id.trajectory_id;
         CHECK_GE(trajectory_id, 0);
         if (data_.count(trajectory_id) == 0) {
@@ -64,14 +63,10 @@ public:
         const auto node_it = nodes.find(node_id);
         CHECK(node_it != nodes.end());
         const common::Time gap_start =
-            node_it != nodes.BeginOfTrajectory(trajectory_id)
-                ? std::prev(node_it)->data.time
-                : common::Time::min();
+            node_it != nodes.BeginOfTrajectory(trajectory_id) ? std::prev(node_it)->data.time : common::Time::min();
         const auto next_it = std::next(node_it);
         const common::Time gap_end =
-            next_it != nodes.EndOfTrajectory(trajectory_id)
-                ? next_it->data.time
-                : common::Time::max();
+            next_it != nodes.EndOfTrajectory(trajectory_id) ? next_it->data.time : common::Time::max();
         CHECK_LT(gap_start, gap_end);
 
         auto& trajectory = data_.at(trajectory_id);
@@ -112,8 +107,7 @@ public:
         using pointer = const DataType*;
         using reference = const DataType&;
 
-        explicit ConstIterator(
-            typename std::map<common::Time, DataType>::const_iterator iterator)
+        explicit ConstIterator(typename std::map<common::Time, DataType>::const_iterator iterator)
             : iterator_(iterator) {}
 
         const DataType& operator*() const {
@@ -156,9 +150,7 @@ public:
         using reference = const int&;
 
         explicit ConstTrajectoryIterator(
-            typename std::map<int,
-                              std::map<common::Time, DataType>>::const_iterator
-                current_trajectory)
+            typename std::map<int, std::map<common::Time, DataType>>::const_iterator current_trajectory)
             : current_trajectory_(current_trajectory) {}
 
         int operator*() const {
@@ -184,8 +176,7 @@ public:
         }
 
     private:
-        typename std::map<int, std::map<common::Time, DataType>>::const_iterator
-            current_trajectory_;
+        typename std::map<int, std::map<common::Time, DataType>>::const_iterator current_trajectory_;
     };
 
     ConstIterator BeginOfTrajectory(const int trajectory_id) const {
@@ -198,22 +189,19 @@ public:
 
     // Returns Range object for range-based loops over the trajectory IDs.
     mapping::Range<ConstTrajectoryIterator> trajectory_ids() const {
-        return mapping::Range<ConstTrajectoryIterator>(
-            ConstTrajectoryIterator(data_.begin()),
-            ConstTrajectoryIterator(data_.end()));
+        return mapping::Range<ConstTrajectoryIterator>(ConstTrajectoryIterator(data_.begin()),
+                                                       ConstTrajectoryIterator(data_.end()));
     }
 
     mapping::Range<ConstIterator> trajectory(const int trajectory_id) const {
-        return mapping::Range<ConstIterator>(BeginOfTrajectory(trajectory_id),
-                                             EndOfTrajectory(trajectory_id));
+        return mapping::Range<ConstIterator>(BeginOfTrajectory(trajectory_id), EndOfTrajectory(trajectory_id));
     }
 
     // Returns an iterator to the first element in the container belonging to
     // trajectory 'trajectory_id' whose time is not considered to go before
     // 'time', or EndOfTrajectory(trajectory_id) if all keys are considered to
     // go before 'time'. 'trajectory_id' must refer to an existing trajectory.
-    ConstIterator lower_bound(const int trajectory_id,
-                              const common::Time time) const {
+    ConstIterator lower_bound(const int trajectory_id, const common::Time time) const {
         return ConstIterator(data_.at(trajectory_id).lower_bound(time));
     }
 

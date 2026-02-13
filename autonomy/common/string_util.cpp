@@ -30,8 +30,7 @@ namespace autonomy {
 namespace common {
 namespace {
 
-static const char kBase64Array[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char kBase64Array[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 std::string Base64Piece(const char in0, const char in1, const char in2) {
     const int triplet = in0 << 16 | in1 << 8 | in2;
@@ -88,8 +87,7 @@ void StringAppendV(std::string* dst, const char* format, va_list ap) {
 
     // Restore the va_list before we use it again.
     va_copy(backup_ap, ap);
-    result = vsnprintf(variable_buffer.get(), variable_buffer_size, format,
-                       backup_ap);
+    result = vsnprintf(variable_buffer.get(), variable_buffer_size, format, backup_ap);
     va_end(backup_ap);
 
     if (result >= 0 && result < variable_buffer_size) {
@@ -98,8 +96,7 @@ void StringAppendV(std::string* dst, const char* format, va_list ap) {
 }
 
 bool IsNotWhiteSpace(const int character) {
-    return character != ' ' && character != '\n' && character != '\r' &&
-           character != '\t';
+    return character != ' ' && character != '\n' && character != '\r' && character != '\t';
 }
 
 }  // namespace
@@ -133,8 +130,7 @@ std::string StringPrintf(const char* format, ...) {
     return result;
 }
 
-std::string StringReplace(const std::string& str, const std::string& old_str,
-                          const std::string& new_str) {
+std::string StringReplace(const std::string& str, const std::string& old_str, const std::string& new_str) {
     if (old_str.empty()) {
         return str;
     }
@@ -153,14 +149,12 @@ std::string StringGetAfter(const std::string& str, const std::string& key) {
     }
     std::size_t found = str.rfind(key);
     if (found != std::string::npos) {
-        return str.substr(found + key.length(),
-                          str.length() - (found + key.length()));
+        return str.substr(found + key.length(), str.length() - (found + key.length()));
     }
     return "";
 }
 
-std::vector<std::string> StringSplit(const std::string& str,
-                                     const std::string& delim) {
+std::vector<std::string> StringSplit(const std::string& str, const std::string& delim) {
     std::vector<std::string> elems;
     // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
     boost::split(elems, str, boost::is_any_of(delim), boost::token_compress_on);
@@ -168,18 +162,15 @@ std::vector<std::string> StringSplit(const std::string& str,
 }
 
 bool StringStartsWith(const std::string& str, const std::string& prefix) {
-    return !prefix.empty() && prefix.size() <= str.size() &&
-           str.substr(0, prefix.size()) == prefix;
+    return !prefix.empty() && prefix.size() <= str.size() && str.substr(0, prefix.size()) == prefix;
 }
 
 void StringLeftTrim(std::string* str) {
-    str->erase(str->begin(),
-               std::find_if(str->begin(), str->end(), IsNotWhiteSpace));
+    str->erase(str->begin(), std::find_if(str->begin(), str->end(), IsNotWhiteSpace));
 }
 
 void StringRightTrim(std::string* str) {
-    str->erase(std::find_if(str->rbegin(), str->rend(), IsNotWhiteSpace).base(),
-               str->end());
+    str->erase(std::find_if(str->rbegin(), str->rend(), IsNotWhiteSpace).base(), str->end());
 }
 
 void StringTrim(std::string* str) {

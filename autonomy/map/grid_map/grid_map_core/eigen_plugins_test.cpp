@@ -36,8 +36,7 @@ TEST(EigenMatrixBaseAddons, sumOfFinites) {
     Matrix<double, 7, 18> matrix;
     matrix.setRandom();
     EXPECT_NEAR(matrix.sum(), matrix.sumOfFinites(), 1e-10);
-    double finiteSum = matrix.sum() - matrix(0, 0) - matrix(1, 2) -
-                       matrix(3, 6) - matrix(6, 12);
+    double finiteSum = matrix.sum() - matrix(0, 0) - matrix(1, 2) - matrix(3, 6) - matrix(6, 12);
     matrix(0, 0) = NAN;
     matrix(1, 2) = NAN;
     matrix(3, 6) = NAN;

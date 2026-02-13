@@ -20,8 +20,7 @@ namespace autonomy {
 namespace common {
 namespace signal_processing {
 
-commsgs::geometry_msgs::Twist LowpassFilterTwist::filter(
-    const commsgs::geometry_msgs::Twist& u) {
+commsgs::geometry_msgs::Twist LowpassFilterTwist::filter(const commsgs::geometry_msgs::Twist& u) {
     if (x_) {
         x_->linear.x = gain_ * x_->linear.x + (1.0 - gain_) * u.linear.x;
         x_->linear.y = gain_ * x_->linear.y + (1.0 - gain_) * u.linear.y;

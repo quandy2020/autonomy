@@ -44,8 +44,7 @@ bool ReadSizeAsLittleEndian(std::istream* in, uint64* size) {
 
 }  // namespace
 
-ProtoStreamWriter::ProtoStreamWriter(const std::string& filename)
-    : out_(filename, std::ios::out | std::ios::binary) {
+ProtoStreamWriter::ProtoStreamWriter(const std::string& filename) : out_(filename, std::ios::out | std::ios::binary) {
     WriteSizeAsLittleEndian(kMagic, &out_);
 }
 
@@ -67,8 +66,7 @@ bool ProtoStreamWriter::Close() {
     return !out_.fail();
 }
 
-ProtoStreamReader::ProtoStreamReader(const std::string& filename)
-    : in_(filename, std::ios::in | std::ios::binary) {
+ProtoStreamReader::ProtoStreamReader(const std::string& filename) : in_(filename, std::ios::in | std::ios::binary) {
     uint64 magic;
     if (!ReadSizeAsLittleEndian(&in_, &magic) || magic != kMagic) {
         in_.setstate(std::ios::failbit);
@@ -91,8 +89,7 @@ bool ProtoStreamReader::Read(std::string* decompressed_data) {
 
 bool ProtoStreamReader::ReadProto(google::protobuf::Message* proto) {
     std::string decompressed_data;
-    return Read(&decompressed_data) &&
-           proto->ParseFromString(decompressed_data);
+    return Read(&decompressed_data) && proto->ParseFromString(decompressed_data);
 }
 
 bool ProtoStreamReader::eof() const {

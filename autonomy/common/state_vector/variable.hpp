@@ -46,9 +46,7 @@ struct AngleVariable : Variable {
 /// @tparam     T     Query type.
 ///
 template <typename T>
-struct is_variable : std::conditional_t<std::is_base_of<Variable, T>::value,
-                                        std::true_type, std::false_type> {
-};
+struct is_variable : std::conditional_t<std::is_base_of<Variable, T>::value, std::true_type, std::false_type> {};
 
 ///
 /// @brief      A trait to check if a variable represents an angle.
@@ -56,9 +54,7 @@ struct is_variable : std::conditional_t<std::is_base_of<Variable, T>::value,
 /// @tparam     T     Variable type.
 ///
 template <typename T>
-struct is_angle : std::conditional_t<std::is_base_of<AngleVariable, T>::value,
-                                     std::true_type, std::false_type> {
-};
+struct is_angle : std::conditional_t<std::is_base_of<AngleVariable, T>::value, std::true_type, std::false_type> {};
 
 }  // namespace state_vector
 }  // namespace common

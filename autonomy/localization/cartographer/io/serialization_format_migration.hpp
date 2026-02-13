@@ -27,15 +27,12 @@ namespace io {
 // This helper function migrates the input stream, which is supposed
 // to contain submaps without histograms (stream format version 1) to
 // an output stream containing submaps with histograms (version 2).
-void MigrateStreamVersion1ToVersion2(
-    cartographer::io::ProtoStreamReaderInterface* const input,
-    cartographer::io::ProtoStreamWriterInterface* const output,
-    bool include_unfinished_submaps);
+void MigrateStreamVersion1ToVersion2(cartographer::io::ProtoStreamReaderInterface* const input,
+                                     cartographer::io::ProtoStreamWriterInterface* const output,
+                                     bool include_unfinished_submaps);
 
-mapping::MapById<mapping::SubmapId, mapping::proto::Submap>
-MigrateSubmapFormatVersion1ToVersion2(
-    const mapping::MapById<mapping::SubmapId, mapping::proto::Submap>&
-        submap_id_to_submaps,
+mapping::MapById<mapping::SubmapId, mapping::proto::Submap> MigrateSubmapFormatVersion1ToVersion2(
+    const mapping::MapById<mapping::SubmapId, mapping::proto::Submap>& submap_id_to_submaps,
     mapping::MapById<mapping::NodeId, mapping::proto::Node>& node_id_to_nodes,
     const mapping::proto::PoseGraph& pose_graph_proto);
 

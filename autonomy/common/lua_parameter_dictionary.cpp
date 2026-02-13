@@ -51,11 +51,11 @@ void QuoteStringOnStack(lua_State* L) {
     lua_getfield(L, -1,
                  "format");  // S: ... string globals <string module> format
     lua_pushstring(L,
-                   "%q");  // S: ... string globals <string module> format "%q"
+                   "%q");             // S: ... string globals <string module> format "%q"
     lua_pushvalue(L, current_index);  // S: ... string globals <string module>
                                       // format "%q" string
 
-    lua_call(L, 2, 1);  // S: ... string globals <string module> quoted
+    lua_call(L, 2, 1);              // S: ... string globals <string module> quoted
     lua_replace(L, current_index);  // S: ... quoted globals <string module>
 
     lua_pop(L, 2);  // S: ... quoted
@@ -148,21 +148,17 @@ void GetArrayValues(lua_State* L, const std::function<void()>& pop_value) {
 
 }  // namespace
 
-std::unique_ptr<LuaParameterDictionary>
-LuaParameterDictionary::NonReferenceCounted(
+std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::NonReferenceCounted(
     const std::string& code, std::unique_ptr<FileResolver> file_resolver) {
-    return std::unique_ptr<LuaParameterDictionary>(new LuaParameterDictionary(
-        code, ReferenceCount::NO, std::move(file_resolver)));
+    return std::unique_ptr<LuaParameterDictionary>(
+        new LuaParameterDictionary(code, ReferenceCount::NO, std::move(file_resolver)));
 }
 
-LuaParameterDictionary::LuaParameterDictionary(
-    const std::string& code, std::unique_ptr<FileResolver> file_resolver)
-    : LuaParameterDictionary(code, ReferenceCount::YES,
-                             std::move(file_resolver)) {}
+LuaParameterDictionary::LuaParameterDictionary(const std::string& code, std::unique_ptr<FileResolver> file_resolver)
+    : LuaParameterDictionary(code, ReferenceCount::YES, std::move(file_resolver)) {}
 
-LuaParameterDictionary::LuaParameterDictionary(
-    const std::string& code, ReferenceCount reference_count,
-    std::unique_ptr<FileResolver> file_resolver)
+LuaParameterDictionary::LuaParameterDictionary(const std::string& code, ReferenceCount reference_count,
+                                               std::unique_ptr<FileResolver> file_resolver)
     : L_(luaL_newstate()),
       index_into_reference_table_(-1),
       file_resolver_(std::move(file_resolver)),
@@ -181,12 +177,9 @@ LuaParameterDictionary::LuaParameterDictionary(
     CheckTableIsAtTopOfStack(L_);
 }
 
-LuaParameterDictionary::LuaParameterDictionary(
-    lua_State* const L, ReferenceCount reference_count,
-    std::shared_ptr<FileResolver> file_resolver)
-    : L_(lua_newthread(L)),
-      file_resolver_(std::move(file_resolver)),
-      reference_count_(reference_count) {
+LuaParameterDictionary::LuaParameterDictionary(lua_State* const L, ReferenceCount reference_count,
+                                               std::shared_ptr<FileResolver> file_resolver)
+    : L_(lua_newthread(L)), file_resolver_(std::move(file_resolver)), reference_count_(reference_count) {
     CHECK_NOTNULL(L_);
 
     // Make sure this is never garbage collected.
@@ -283,30 +276,25 @@ bool LuaParameterDictionary::PopBool() const {
     return value;
 }
 
-std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::GetDictionary(
-    const std::string& key) {
+std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::GetDictionary(const std::string& key) {
     CheckHasKeyAndReference(key);
     GetValueFromLuaTable(L_, key);
     return PopDictionary(reference_count_);
 }
 
-std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::PopDictionary(
-    ReferenceCount reference_count) const {
+std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::PopDictionary(ReferenceCount reference_count) const {
     CheckTableIsAtTopOfStack(L_);
-    std::unique_ptr<LuaParameterDictionary> value(
-        new LuaParameterDictionary(L_, reference_count, file_resolver_));
+    std::unique_ptr<LuaParameterDictionary> value(new LuaParameterDictionary(L_, reference_count, file_resolver_));
     // The constructor lua_xmove()s the value, no need to pop it.
     CheckTableIsAtTopOfStack(L_);
     return value;
 }
 
-std::string LuaParameterDictionary::DoToString(
-    const std::string& indent) const {
+std::string LuaParameterDictionary::DoToString(const std::string& indent) const {
     std::string result = "{";
     bool dictionary_is_empty = true;
 
-    const auto top_of_stack_to_string =
-        [this, indent, &dictionary_is_empty]() -> std::string {
+    const auto top_of_stack_to_string = [this, indent, &dictionary_is_empty]() -> std::string {
         dictionary_is_empty = false;
 
         const int value_type = lua_type(L_, -1);
@@ -326,8 +314,7 @@ std::string LuaParameterDictionary::DoToString(
                 }
             } break;
             case LUA_TTABLE: {
-                std::unique_ptr<LuaParameterDictionary> subdict(
-                    PopDictionary(ReferenceCount::NO));
+                std::unique_ptr<LuaParameterDictionary> subdict(PopDictionary(ReferenceCount::NO));
                 return subdict->DoToString(indent + "  ");
             } break;
             default:
@@ -384,25 +371,20 @@ std::vector<double> LuaParameterDictionary::GetArrayValuesAsDoubles() {
     return values;
 }
 
-std::vector<std::unique_ptr<LuaParameterDictionary>>
-LuaParameterDictionary::GetArrayValuesAsDictionaries() {
+std::vector<std::unique_ptr<LuaParameterDictionary>> LuaParameterDictionary::GetArrayValuesAsDictionaries() {
     std::vector<std::unique_ptr<LuaParameterDictionary>> values;
-    GetArrayValues(L_, [&values, this] {
-        values.push_back(PopDictionary(reference_count_));
-    });
+    GetArrayValues(L_, [&values, this] { values.push_back(PopDictionary(reference_count_)); });
     return values;
 }
 
 std::vector<std::string> LuaParameterDictionary::GetArrayValuesAsStrings() {
     std::vector<std::string> values;
-    GetArrayValues(
-        L_, [&values, this] { values.push_back(PopString(Quoted::NO)); });
+    GetArrayValues(L_, [&values, this] { values.push_back(PopString(Quoted::NO)); });
     return values;
 }
 
 void LuaParameterDictionary::CheckHasKey(const std::string& key) const {
-    CHECK(HasKey(key)) << "Key '" << key << "' not in dictionary:\n"
-                       << ToString();
+    CHECK(HasKey(key)) << "Key '" << key << "' not in dictionary:\n" << ToString();
 }
 
 void LuaParameterDictionary::CheckHasKeyAndReference(const std::string& key) {
@@ -412,10 +394,8 @@ void LuaParameterDictionary::CheckHasKeyAndReference(const std::string& key) {
 
 void LuaParameterDictionary::CheckAllKeysWereUsedExactlyOnceAndReset() {
     for (const auto& key : GetKeys()) {
-        CHECK_EQ(1, reference_counts_.count(key))
-            << "Key '" << key << "' was used the wrong number of times.";
-        CHECK_EQ(1, reference_counts_.at(key))
-            << "Key '" << key << "' was used the wrong number of times.";
+        CHECK_EQ(1, reference_counts_.count(key)) << "Key '" << key << "' was used the wrong number of times.";
+        CHECK_EQ(1, reference_counts_.at(key)) << "Key '" << key << "' was used the wrong number of times.";
     }
     reference_counts_.clear();
 }
@@ -434,16 +414,12 @@ int LuaParameterDictionary::LuaInclude(lua_State* L) {
 
     LuaParameterDictionary* parameter_dictionary = GetDictionaryFromRegistry(L);
     const std::string basename = lua_tostring(L, -1);
-    const std::string filename =
-        parameter_dictionary->file_resolver_->GetFullPathOrDie(basename);
-    if (std::find(parameter_dictionary->included_files_.begin(),
-                  parameter_dictionary->included_files_.end(),
+    const std::string filename = parameter_dictionary->file_resolver_->GetFullPathOrDie(basename);
+    if (std::find(parameter_dictionary->included_files_.begin(), parameter_dictionary->included_files_.end(),
                   filename) != parameter_dictionary->included_files_.end()) {
         std::string error_msg =
-            "Tried to include " + filename +
-            " twice. Already included files in order of inclusion: ";
-        for (const std::string& filename :
-             parameter_dictionary->included_files_) {
+            "Tried to include " + filename + " twice. Already included files in order of inclusion: ";
+        for (const std::string& filename : parameter_dictionary->included_files_) {
             error_msg.append(filename);
             error_msg.append("\n");
         }
@@ -453,10 +429,8 @@ int LuaParameterDictionary::LuaInclude(lua_State* L) {
     lua_pop(L, 1);
     CHECK_EQ(lua_gettop(L), 0);
 
-    const std::string content =
-        parameter_dictionary->file_resolver_->GetFileContentOrDie(basename);
-    CheckForLuaErrors(L, luaL_loadbuffer(L, content.c_str(), content.size(),
-                                         filename.c_str()));
+    const std::string content = parameter_dictionary->file_resolver_->GetFileContentOrDie(basename);
+    CheckForLuaErrors(L, luaL_loadbuffer(L, content.c_str(), content.size(), filename.c_str()));
     CheckForLuaErrors(L, lua_pcall(L, 0, LUA_MULTRET, 0));
 
     return lua_gettop(L);
@@ -468,9 +442,7 @@ int LuaParameterDictionary::LuaRead(lua_State* L) {
     CHECK(lua_isstring(L, -1)) << "read takes a filename.";
 
     LuaParameterDictionary* parameter_dictionary = GetDictionaryFromRegistry(L);
-    const std::string file_content =
-        parameter_dictionary->file_resolver_->GetFileContentOrDie(
-            lua_tostring(L, -1));
+    const std::string file_content = parameter_dictionary->file_resolver_->GetFileContentOrDie(lua_tostring(L, -1));
     lua_pushstring(L, file_content.c_str());
     return 1;
 }

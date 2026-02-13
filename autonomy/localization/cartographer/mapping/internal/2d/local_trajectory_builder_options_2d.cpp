@@ -33,40 +33,26 @@ proto::LocalTrajectoryBuilderOptions2D CreateLocalTrajectoryBuilderOptions2D(
     options.set_max_range(parameter_dictionary->GetDouble("max_range"));
     options.set_min_z(parameter_dictionary->GetDouble("min_z"));
     options.set_max_z(parameter_dictionary->GetDouble("max_z"));
-    options.set_missing_data_ray_length(
-        parameter_dictionary->GetDouble("missing_data_ray_length"));
-    options.set_num_accumulated_range_data(
-        parameter_dictionary->GetInt("num_accumulated_range_data"));
-    options.set_voxel_filter_size(
-        parameter_dictionary->GetDouble("voxel_filter_size"));
+    options.set_missing_data_ray_length(parameter_dictionary->GetDouble("missing_data_ray_length"));
+    options.set_num_accumulated_range_data(parameter_dictionary->GetInt("num_accumulated_range_data"));
+    options.set_voxel_filter_size(parameter_dictionary->GetDouble("voxel_filter_size"));
     options.set_use_online_correlative_scan_matching(
         parameter_dictionary->GetBool("use_online_correlative_scan_matching"));
     *options.mutable_adaptive_voxel_filter_options() =
-        sensor::CreateAdaptiveVoxelFilterOptions(
-            parameter_dictionary->GetDictionary("adaptive_voxel_filter").get());
-    *options.mutable_loop_closure_adaptive_voxel_filter_options() =
-        sensor::CreateAdaptiveVoxelFilterOptions(
-            parameter_dictionary
-                ->GetDictionary("loop_closure_adaptive_voxel_filter")
-                .get());
+        sensor::CreateAdaptiveVoxelFilterOptions(parameter_dictionary->GetDictionary("adaptive_voxel_filter").get());
+    *options.mutable_loop_closure_adaptive_voxel_filter_options() = sensor::CreateAdaptiveVoxelFilterOptions(
+        parameter_dictionary->GetDictionary("loop_closure_adaptive_voxel_filter").get());
     *options.mutable_real_time_correlative_scan_matcher_options() =
         mapping::scan_matching::CreateRealTimeCorrelativeScanMatcherOptions(
-            parameter_dictionary
-                ->GetDictionary("real_time_correlative_scan_matcher")
-                .get());
-    *options.mutable_ceres_scan_matcher_options() =
-        mapping::scan_matching::CreateCeresScanMatcherOptions2D(
-            parameter_dictionary->GetDictionary("ceres_scan_matcher").get());
+            parameter_dictionary->GetDictionary("real_time_correlative_scan_matcher").get());
+    *options.mutable_ceres_scan_matcher_options() = mapping::scan_matching::CreateCeresScanMatcherOptions2D(
+        parameter_dictionary->GetDictionary("ceres_scan_matcher").get());
     *options.mutable_motion_filter_options() =
-        mapping::CreateMotionFilterOptions(
-            parameter_dictionary->GetDictionary("motion_filter").get());
+        mapping::CreateMotionFilterOptions(parameter_dictionary->GetDictionary("motion_filter").get());
     *options.mutable_pose_extrapolator_options() =
-        CreatePoseExtrapolatorOptions(
-            parameter_dictionary->GetDictionary("pose_extrapolator").get());
-    options.set_imu_gravity_time_constant(
-        parameter_dictionary->GetDouble("imu_gravity_time_constant"));
-    *options.mutable_submaps_options() = CreateSubmapsOptions2D(
-        parameter_dictionary->GetDictionary("submaps").get());
+        CreatePoseExtrapolatorOptions(parameter_dictionary->GetDictionary("pose_extrapolator").get());
+    options.set_imu_gravity_time_constant(parameter_dictionary->GetDouble("imu_gravity_time_constant"));
+    *options.mutable_submaps_options() = CreateSubmapsOptions2D(parameter_dictionary->GetDictionary("submaps").get());
     options.set_use_imu_data(parameter_dictionary->GetBool("use_imu_data"));
     return options;
 }

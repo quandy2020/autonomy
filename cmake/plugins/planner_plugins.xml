@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<library path="@PLUGIN_LIBRARY_PATH@">
+  <!-- Navfn Planner -->
+  <class name="autonomy_planning/navfn_planner" 
+         type="autonomy::planning::planner::navfn::NavfnPlanner" 
+         base_class="autonomy::planning::common::GlobalPlanner">
+    <description>Navfn planner plugin for global path planning using navigation function</description>
+  </class>
+
+  <!-- Theta Star Planner -->
+  <class name="autonomy_planning/theta_star_planner" 
+         type="autonomy::planning::planner::theta_star::ThetaStarPlanner" 
+         base_class="autonomy::planning::common::GlobalPlanner">
+    <description>Theta Star planner plugin for global path planning using Theta* algorithm</description>
+  </class>
+</library>

@@ -48,14 +48,12 @@ void Server::Builder::SetServerAddress(const std::string& server_address) {
 }
 
 void Server::Builder::SetMaxReceiveMessageSize(int max_receive_message_size) {
-    CHECK_GT(max_receive_message_size, 0)
-        << "max_receive_message_size must be larger than 0.";
+    CHECK_GT(max_receive_message_size, 0) << "max_receive_message_size must be larger than 0.";
     options_.max_receive_message_size = max_receive_message_size;
 }
 
 void Server::Builder::SetMaxSendMessageSize(int max_send_message_size) {
-    CHECK_GT(max_send_message_size, 0)
-        << "max_send_message_size must be larger than 0.";
+    CHECK_GT(max_send_message_size, 0) << "max_send_message_size must be larger than 0.";
     options_.max_send_message_size = max_send_message_size;
 }
 
@@ -71,8 +69,7 @@ void Server::Builder::DisableTracing() {
     options_.enable_tracing = false;
 }
 
-void Server::Builder::SetTracingSamplerProbability(
-    double tracing_sampler_probability) {
+void Server::Builder::SetTracingSamplerProbability(double tracing_sampler_probability) {
     options_.tracing_sampler_probability = tracing_sampler_probability;
 }
 
@@ -80,13 +77,11 @@ void Server::Builder::SetTracingTaskName(const std::string& tracing_task_name) {
     options_.tracing_task_name = tracing_task_name;
 }
 
-void Server::Builder::SetTracingGcpProjectId(
-    const std::string& tracing_gcp_project_id) {
+void Server::Builder::SetTracingGcpProjectId(const std::string& tracing_gcp_project_id) {
     options_.tracing_gcp_project_id = tracing_gcp_project_id;
 }
 
-std::tuple<std::string, std::string> Server::Builder::ParseMethodFullName(
-    const std::string& method_full_name) {
+std::tuple<std::string, std::string> Server::Builder::ParseMethodFullName(const std::string& method_full_name) {
     CHECK(method_full_name.at(0) == '/') << "Invalid method name.";
     std::stringstream stream(method_full_name.substr(1));
     std::string service_full_name;
@@ -106,39 +101,32 @@ std::unique_ptr<Server> Server::Builder::Build() {
 }
 
 Server::Server(const Options& options) : options_(options) {
-    server_builder_.AddListeningPort(options_.server_address,
-                                     ::grpc::InsecureServerCredentials());
+    server_builder_.AddListeningPort(options_.server_address, ::grpc::InsecureServerCredentials());
 
     // Set max message sizes.
     server_builder_.SetMaxReceiveMessageSize(options.max_receive_message_size);
     server_builder_.SetMaxSendMessageSize(options.max_send_message_size);
 
     // Set up event queue threads.
-    event_queue_threads_ =
-        std::vector<EventQueueThread>(options_.num_event_threads);
+    event_queue_threads_ = std::vector<EventQueueThread>(options_.num_event_threads);
 
     // Set up completion queues threads.
     for (size_t i = 0; i < options_.num_grpc_threads; ++i) {
-        completion_queue_threads_.emplace_back(
-            server_builder_.AddCompletionQueue());
+        completion_queue_threads_.emplace_back(server_builder_.AddCompletionQueue());
     }
 }
 
-void Server::AddService(
-    const std::string& service_name,
-    const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos) {
+void Server::AddService(const std::string& service_name,
+                        const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos) {
     // Instantiate and register service.
     const auto result = services_.emplace(
         std::piecewise_construct, std::make_tuple(service_name),
-        std::make_tuple(service_name, rpc_handler_infos,
-                        [this]() { return SelectNextEventQueueRoundRobin(); }));
-    CHECK(result.second) << "A service named " << service_name
-                         << " already exists.";
+        std::make_tuple(service_name, rpc_handler_infos, [this]() { return SelectNextEventQueueRoundRobin(); }));
+    CHECK(result.second) << "A service named " << service_name << " already exists.";
     server_builder_.RegisterService(&result.first->second);
 }
 
-void Server::RunCompletionQueue(
-    ::grpc::ServerCompletionQueue* completion_queue) {
+void Server::RunCompletionQueue(::grpc::ServerCompletionQueue* completion_queue) {
     bool ok;
     void* tag;
     while (completion_queue->Next(&tag, &ok)) {
@@ -150,23 +138,20 @@ void Server::RunCompletionQueue(
 
 EventQueue* Server::SelectNextEventQueueRoundRobin() {
     common::MutexLocker locker(&current_event_queue_id_lock_);
-    current_event_queue_id_ =
-        (current_event_queue_id_ + 1) % options_.num_event_threads;
+    current_event_queue_id_ = (current_event_queue_id_ + 1) % options_.num_event_threads;
     return event_queue_threads_.at(current_event_queue_id_).event_queue();
 }
 
 void Server::RunEventQueue(EventQueue* event_queue) {
     while (!shutting_down_) {
-        Rpc::UniqueEventPtr rpc_event =
-            event_queue->PopWithTimeout(kPopEventTimeout);
+        Rpc::UniqueEventPtr rpc_event = event_queue->PopWithTimeout(kPopEventTimeout);
         if (rpc_event) {
             rpc_event->Handle();
         }
     }
 
     // Finish processing the rest of the items.
-    while (Rpc::UniqueEventPtr rpc_event =
-               event_queue->PopWithTimeout(kPopEventTimeout)) {
+    while (Rpc::UniqueEventPtr rpc_event = event_queue->PopWithTimeout(kPopEventTimeout)) {
         rpc_event->Handle();
     }
 }
@@ -174,13 +159,10 @@ void Server::RunEventQueue(EventQueue* event_queue) {
 void Server::Start() {
 #if BUILD_TRACING
     if (options_.enable_tracing) {
-        opencensus::exporters::trace::StackdriverExporter::Register(
-            options_.tracing_gcp_project_id);
+        opencensus::exporters::trace::StackdriverExporter::Register(options_.tracing_gcp_project_id);
         opencensus::trace::TraceConfig::SetCurrentTraceParams(
-            {kDefaultTracingMaxAttributes, kDefaultTracingMaxAnnotations,
-             kDefaultTracingMaxMessageEvents, kDefaultTracingMaxLinks,
-             opencensus::trace::ProbabilitySampler(
-                 options_.tracing_sampler_probability)});
+            {kDefaultTracingMaxAttributes, kDefaultTracingMaxAnnotations, kDefaultTracingMaxMessageEvents,
+             kDefaultTracingMaxLinks, opencensus::trace::ProbabilitySampler(options_.tracing_sampler_probability)});
     }
 #endif
 
@@ -189,22 +171,18 @@ void Server::Start() {
 
     // Start serving all services on all completion queues.
     for (auto& service : services_) {
-        service.second.StartServing(completion_queue_threads_,
-                                    execution_context_.get());
+        service.second.StartServing(completion_queue_threads_, execution_context_.get());
     }
 
     // Start threads to process all event queues.
     for (auto& event_queue_thread : event_queue_threads_) {
-        event_queue_thread.Start(
-            [this](EventQueue* event_queue) { RunEventQueue(event_queue); });
+        event_queue_thread.Start([this](EventQueue* event_queue) { RunEventQueue(event_queue); });
     }
 
     // Start threads to process all completion queues.
     for (auto& completion_queue_threads : completion_queue_threads_) {
         completion_queue_threads.Start(
-            [this](::grpc::ServerCompletionQueue* completion_queue) {
-                RunCompletionQueue(completion_queue);
-            });
+            [this](::grpc::ServerCompletionQueue* completion_queue) { RunCompletionQueue(completion_queue); });
     }
 }
 
@@ -242,8 +220,7 @@ void Server::Shutdown() {
     LOG(INFO) << "Shutdown complete.";
 }
 
-void Server::SetExecutionContext(
-    std::unique_ptr<ExecutionContext> execution_context) {
+void Server::SetExecutionContext(std::unique_ptr<ExecutionContext> execution_context) {
     // After the server has been started the 'ExecutionHandle' cannot be changed
     // anymore.
     CHECK(!server_);

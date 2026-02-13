@@ -24,8 +24,7 @@ namespace cartographer {
 namespace mapping {
 namespace constraints {
 
-proto::ConstraintBuilderOptions CreateConstraintBuilderOptions(
-    common::LuaParameterDictionary* parameter_dictionary);
+proto::ConstraintBuilderOptions CreateConstraintBuilderOptions(common::LuaParameterDictionary* parameter_dictionary);
 
 }  // namespace constraints
 }  // namespace mapping

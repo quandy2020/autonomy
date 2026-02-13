@@ -49,8 +49,8 @@ class TransformStorage
 {
 public:
     TransformStorage();
-    TransformStorage(const geometry_msgs::TransformStamped& data,
-                     CompactFrameID frame_id, CompactFrameID child_frame_id);
+    TransformStorage(const geometry_msgs::TransformStamped& data, CompactFrameID frame_id,
+                     CompactFrameID child_frame_id);
 
     TransformStorage(const TransformStorage& rhs) {
         *this = rhs;

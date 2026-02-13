@@ -24,8 +24,7 @@
 namespace autonomy {
 namespace simulation {
 
-Simulator::Simulator(const proto::SimulationOption& option)
-    : options_(option) {}
+Simulator::Simulator(const proto::SimulationOption& option) : options_(option) {}
 
 Simulator::~Simulator() {
     Shutdown();
@@ -39,8 +38,7 @@ bool Simulator::Start() {
 
 void Simulator::Shutdown() {}
 
-proto::SimulationOption LoadOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::SimulationOption LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::SimulationOption option;
     return option;
 }

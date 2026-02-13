@@ -1,0 +1,11 @@
+<autolink>
+  <module>
+    <name>common_component_example</name>
+    <!-- 相对于 AUTOLINK_PATH 的 DAG 配置路径 -->
+    <dag_conf>/autonomy/examples/basic/component/common.dag</dag_conf>
+    <cpuprofile>/autonomy/examples/basic/component/common_cpu.prof</cpuprofile>
+    <memprofile>/autonomy/examples/basic/component/common_mem.prof</memprofile>
+    <process_name>common_component_example</process_name>
+  </module>
+</autolink>
+

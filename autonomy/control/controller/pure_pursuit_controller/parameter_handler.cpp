@@ -16,196 +16,122 @@
 
 #include "autonomy/control/controller/pure_pursuit_controller/parameter_handler.hpp"
 
+#include <limits>
+
+#include "autolink/common/log.hpp"
+
 namespace autonomy {
 namespace control {
 namespace controller {
+namespace pure_pursuit_controller {
 
-ParameterHandler::ParameterHandler(std::string& plugin_name,
-                                   const double costmap_size_x) {
-    plugin_name_ = plugin_name;
+namespace {
 
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".desired_linear_vel",
-    //     rclcpp::ParameterValue(0.5));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".lookahead_dist", rclcpp::ParameterValue(0.6));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".min_lookahead_dist",
-    //     rclcpp::ParameterValue(0.3));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".max_lookahead_dist",
-    //     rclcpp::ParameterValue(0.9));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".lookahead_time", rclcpp::ParameterValue(1.5));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".rotate_to_heading_angular_vel",
-    //     rclcpp::ParameterValue(1.8));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".transform_tolerance",
-    //     rclcpp::ParameterValue(0.1));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_velocity_scaled_lookahead_dist",
-    //     rclcpp::ParameterValue(false));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".min_approach_linear_velocity",
-    //     rclcpp::ParameterValue(0.05));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".approach_velocity_scaling_dist",
-    //     rclcpp::ParameterValue(0.6));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".max_allowed_time_to_collision_up_to_carrot",
-    //     rclcpp::ParameterValue(1.0));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_regulated_linear_velocity_scaling",
-    //     rclcpp::ParameterValue(true));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_cost_regulated_linear_velocity_scaling",
-    //     rclcpp::ParameterValue(true));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".cost_scaling_dist",
-    //     rclcpp::ParameterValue(0.6));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".cost_scaling_gain",
-    //     rclcpp::ParameterValue(1.0));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".inflation_cost_scaling_factor",
-    //     rclcpp::ParameterValue(3.0));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".regulated_linear_scaling_min_radius",
-    //     rclcpp::ParameterValue(0.90));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".regulated_linear_scaling_min_speed",
-    //     rclcpp::ParameterValue(0.25));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_fixed_curvature_lookahead",
-    //     rclcpp::ParameterValue(false));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".curvature_lookahead_dist",
-    //     rclcpp::ParameterValue(0.6));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_rotate_to_heading",
-    //     rclcpp::ParameterValue(true));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".rotate_to_heading_min_angle",
-    //     rclcpp::ParameterValue(0.785));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".max_angular_accel",
-    //     rclcpp::ParameterValue(3.2));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_cancel_deceleration",
-    //     rclcpp::ParameterValue(false));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".cancel_deceleration",
-    //     rclcpp::ParameterValue(3.2));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".allow_reversing",
-    //     rclcpp::ParameterValue(false));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".max_robot_pose_search_dist",
-    //     rclcpp::ParameterValue(costmap_size_x / 2.0));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".interpolate_curvature_after_goal",
-    //     rclcpp::ParameterValue(false));
-    // declare_parameter_if_not_declared(
-    //     node, plugin_name_ + ".use_collision_detection",
-    //     rclcpp::ParameterValue(true));
-
-    // node->get_parameter(plugin_name_ + ".desired_linear_vel",
-    // params_.desired_linear_vel); params_.base_desired_linear_vel =
-    // params_.desired_linear_vel; node->get_parameter(plugin_name_ +
-    // ".lookahead_dist", params_.lookahead_dist);
-    // node->get_parameter(plugin_name_ + ".min_lookahead_dist",
-    // params_.min_lookahead_dist); node->get_parameter(plugin_name_ +
-    // ".max_lookahead_dist", params_.max_lookahead_dist);
-    // node->get_parameter(plugin_name_ + ".lookahead_time",
-    // params_.lookahead_time); node->get_parameter(
-    //     plugin_name_ + ".rotate_to_heading_angular_vel",
-    //     params_.rotate_to_heading_angular_vel);
-    // node->get_parameter(plugin_name_ + ".transform_tolerance",
-    // params_.transform_tolerance); node->get_parameter(
-    //     plugin_name_ + ".use_velocity_scaled_lookahead_dist",
-    //     params_.use_velocity_scaled_lookahead_dist);
-    // node->get_parameter(
-    //     plugin_name_ + ".min_approach_linear_velocity",
-    //     params_.min_approach_linear_velocity);
-    // node->get_parameter(
-    //     plugin_name_ + ".approach_velocity_scaling_dist",
-    //     params_.approach_velocity_scaling_dist);
-    // if (params_.approach_velocity_scaling_dist > costmap_size_x / 2.0) {
-    //     RCLCPP_WARN(
-    //     logger_, "approach_velocity_scaling_dist is larger than forward
-    //     costmap extent, " "leading to permanent slowdown");
-    // }
-    // node->get_parameter(
-    //     plugin_name_ + ".max_allowed_time_to_collision_up_to_carrot",
-    //     params_.max_allowed_time_to_collision_up_to_carrot);
-    // node->get_parameter(
-    //     plugin_name_ + ".use_regulated_linear_velocity_scaling",
-    //     params_.use_regulated_linear_velocity_scaling);
-    // node->get_parameter(
-    //     plugin_name_ + ".use_cost_regulated_linear_velocity_scaling",
-    //     params_.use_cost_regulated_linear_velocity_scaling);
-    // node->get_parameter(plugin_name_ + ".cost_scaling_dist",
-    // params_.cost_scaling_dist); node->get_parameter(plugin_name_ +
-    // ".cost_scaling_gain", params_.cost_scaling_gain); node->get_parameter(
-    //     plugin_name_ + ".inflation_cost_scaling_factor",
-    //     params_.inflation_cost_scaling_factor);
-    // node->get_parameter(
-    //     plugin_name_ + ".regulated_linear_scaling_min_radius",
-    //     params_.regulated_linear_scaling_min_radius);
-    // node->get_parameter(
-    //     plugin_name_ + ".regulated_linear_scaling_min_speed",
-    //     params_.regulated_linear_scaling_min_speed);
-    // node->get_parameter(
-    //     plugin_name_ + ".use_fixed_curvature_lookahead",
-    //     params_.use_fixed_curvature_lookahead);
-    // node->get_parameter(
-    //     plugin_name_ + ".curvature_lookahead_dist",
-    //     params_.curvature_lookahead_dist);
-    // node->get_parameter(plugin_name_ + ".use_rotate_to_heading",
-    // params_.use_rotate_to_heading); node->get_parameter(
-    //     plugin_name_ + ".rotate_to_heading_min_angle",
-    //     params_.rotate_to_heading_min_angle);
-    // node->get_parameter(plugin_name_ + ".max_angular_accel",
-    // params_.max_angular_accel); node->get_parameter(plugin_name_ +
-    // ".use_cancel_deceleration", params_.use_cancel_deceleration);
-    // node->get_parameter(plugin_name_ + ".cancel_deceleration",
-    // params_.cancel_deceleration); node->get_parameter(plugin_name_ +
-    // ".allow_reversing", params_.allow_reversing); node->get_parameter(
-    //     plugin_name_ + ".max_robot_pose_search_dist",
-    //     params_.max_robot_pose_search_dist);
-    // if (params_.max_robot_pose_search_dist < 0.0) {
-    //     RCLCPP_WARN(
-    //     logger_, "Max robot search distance is negative, setting to max to
-    //     search" " every point on path for the closest value.");
-    //     params_.max_robot_pose_search_dist =
-    //     std::numeric_limits<double>::max();
-    // }
-
-    // node->get_parameter(
-    //     plugin_name_ + ".interpolate_curvature_after_goal",
-    //     params_.interpolate_curvature_after_goal);
-    // if (!params_.use_fixed_curvature_lookahead &&
-    // params_.interpolate_curvature_after_goal) {
-    //     RCLCPP_WARN(
-    //     logger_, "For interpolate_curvature_after_goal to be set to true, "
-    //     "use_fixed_curvature_lookahead should be true, it is currently set to
-    //     false. Disabling."); params_.interpolate_curvature_after_goal =
-    //     false;
-    // }
-    // node->get_parameter(
-    //     plugin_name_ + ".use_collision_detection",
-    //     params_.use_collision_detection);
-
-    // if (params_.inflation_cost_scaling_factor <= 0.0) {
-    //     RCLCPP_WARN(
-    //     logger_, "The value inflation_cost_scaling_factor is incorrectly set,
-    //     " "it should be >0. Disabling cost regulated linear velocity
-    //     scaling."); params_.use_cost_regulated_linear_velocity_scaling =
-    //     false;
-    // }
+proto::PurePursuitControllerOptions DefaultOptions() {
+    proto::PurePursuitControllerOptions o;
+    // nav2 defaults (see nav2_regulated_pure_pursuit_controller ParameterHandler)
+    o.set_desired_linear_vel(0.5);
+    o.set_lookahead_dist(0.6);
+    o.set_min_lookahead_dist(0.3);
+    o.set_max_lookahead_dist(0.9);
+    o.set_lookahead_time(1.5);
+    o.set_rotate_to_heading_angular_vel(1.8);
+    o.set_transform_tolerance(0.1);
+    o.set_use_velocity_scaled_lookahead_dist(false);
+    o.set_min_approach_linear_velocity(0.05);
+    o.set_approach_velocity_scaling_dist(0.6);
+    o.set_max_allowed_time_to_collision_up_to_carrot(1.0);
+    o.set_use_regulated_linear_velocity_scaling(true);
+    o.set_use_cost_regulated_linear_velocity_scaling(true);
+    o.set_cost_scaling_dist(0.6);
+    o.set_cost_scaling_gain(1.0);
+    o.set_inflation_cost_scaling_factor(3.0);
+    o.set_regulated_linear_scaling_min_radius(0.90);
+    o.set_regulated_linear_scaling_min_speed(0.25);
+    o.set_use_fixed_curvature_lookahead(false);
+    o.set_curvature_lookahead_dist(0.6);
+    o.set_use_rotate_to_heading(true);
+    o.set_rotate_to_heading_min_angle(0.785);
+    o.set_max_angular_accel(3.2);
+    o.set_use_cancel_deceleration(false);
+    o.set_cancel_deceleration(3.2);
+    o.set_allow_reversing(false);
+    // max_robot_pose_search_dist depends on costmap size, handled later
+    o.set_interpolate_curvature_after_goal(false);
+    o.set_use_collision_detection(true);
+    o.set_stateful(true);
+    return o;
 }
 
+bool MergeWithDefaultsIfEmpty(const proto::PurePursuitControllerOptions& in, proto::PurePursuitControllerOptions* out) {
+    if (!out) {
+        return false;
+    }
+    // If this message is empty (all fields default), treat it as "unset" and use defaults.
+    if (in.ByteSizeLong() == 0) {
+        *out = DefaultOptions();
+        return true;
+    }
+    *out = in;
+    return true;
+}
+
+}  // namespace
+
+ParameterHandler::ParameterHandler(const proto::PurePursuitControllerOptions& options, const double costmap_size_x) {
+    std::string error;
+    if (!Update(options, costmap_size_x, &error)) {
+        AWARN << "PurePursuit parameter init adjusted: " << error;
+    }
+}
+
+bool ParameterHandler::Update(const proto::PurePursuitControllerOptions& options, const double costmap_size_x,
+                              std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    proto::PurePursuitControllerOptions effective;
+    MergeWithDefaultsIfEmpty(options, &effective);
+
+    // Fill in defaults that depend on runtime context.
+    if (effective.max_robot_pose_search_dist() == 0.0) {
+        effective.set_max_robot_pose_search_dist(costmap_size_x / 2.0);
+    }
+
+    // Validate / normalize options (nav2-compatible behavior).
+    std::string local_error;
+    if (effective.inflation_cost_scaling_factor() <= 0.0) {
+        local_error += "inflation_cost_scaling_factor<=0, disabling cost regulated scaling; ";
+        effective.set_use_cost_regulated_linear_velocity_scaling(false);
+    }
+
+    if (effective.max_robot_pose_search_dist() < 0.0) {
+        local_error += "max_robot_pose_search_dist<0, setting to max; ";
+        effective.set_max_robot_pose_search_dist(std::numeric_limits<double>::max());
+    }
+
+    if (!effective.use_fixed_curvature_lookahead() && effective.interpolate_curvature_after_goal()) {
+        local_error += "interpolate_curvature_after_goal requires use_fixed_curvature_lookahead, disabling; ";
+        effective.set_interpolate_curvature_after_goal(false);
+    }
+
+    // nav2 rejects: allow_reversing=true and use_rotate_to_heading=true simultaneously.
+    // Here we resolve by disabling allow_reversing.
+    if (effective.use_rotate_to_heading() && effective.allow_reversing()) {
+        local_error += "use_rotate_to_heading && allow_reversing conflict, disabling allow_reversing; ";
+        effective.set_allow_reversing(false);
+    }
+
+    // Apply to stored proto and runtime params.
+    options_ = effective;
+    base_desired_linear_vel_ = options_.desired_linear_vel();
+
+    if (error) {
+        *error = local_error;
+    }
+    return local_error.empty();
+}
+
+}  // namespace pure_pursuit_controller
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy

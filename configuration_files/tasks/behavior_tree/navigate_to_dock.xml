@@ -1,0 +1,11 @@
+<!--
+  对接导航（NavigateToDock）行为树占位。
+  当前无专用 DockRobot BT 节点，使用最小可执行树；后续可替换为完整对接逻辑。
+-->
+<root BTCPP_format="4" main_tree_to_execute="NavigateToDock">
+  <BehaviorTree ID="NavigateToDock">
+    <PipelineSequence name="DockPipeline">
+      <Wait wait_duration="0.1"/>
+    </PipelineSequence>
+  </BehaviorTree>
+</root>

@@ -24,32 +24,26 @@ namespace autonomy {
 namespace common {
 namespace async_grpc {
 
-Service::Service(const std::string& service_name,
-                 const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos,
+Service::Service(const std::string& service_name, const std::map<std::string, RpcHandlerInfo>& rpc_handler_infos,
                  EventQueueSelector event_queue_selector)
-    : rpc_handler_infos_(rpc_handler_infos),
-      event_queue_selector_(event_queue_selector) {
+    : rpc_handler_infos_(rpc_handler_infos), event_queue_selector_(event_queue_selector) {
     for (const auto& rpc_handler_info : rpc_handler_infos_) {
         // The 'handler' below is set to 'nullptr' indicating that we want to
         // handle this method asynchronously.
-        this->AddMethod(new ::grpc::internal::RpcServiceMethod(
-            rpc_handler_info.second.fully_qualified_name.c_str(),
-            rpc_handler_info.second.rpc_type, nullptr /* handler */));
+        this->AddMethod(new ::grpc::internal::RpcServiceMethod(rpc_handler_info.second.fully_qualified_name.c_str(),
+                                                               rpc_handler_info.second.rpc_type,
+                                                               nullptr /* handler */));
     }
 }
 
-void Service::StartServing(
-    std::vector<CompletionQueueThread>& completion_queue_threads,
-    ExecutionContext* execution_context) {
+void Service::StartServing(std::vector<CompletionQueueThread>& completion_queue_threads,
+                           ExecutionContext* execution_context) {
     int i = 0;
     for (const auto& rpc_handler_info : rpc_handler_infos_) {
         for (auto& completion_queue_thread : completion_queue_threads) {
-            std::shared_ptr<Rpc> rpc =
-                active_rpcs_.Add(common::make_unique<Rpc>(
-                    i, completion_queue_thread.completion_queue(),
-                    event_queue_selector_(), execution_context,
-                    rpc_handler_info.second, this,
-                    active_rpcs_.GetWeakPtrFactory()));
+            std::shared_ptr<Rpc> rpc = active_rpcs_.Add(common::make_unique<Rpc>(
+                i, completion_queue_thread.completion_queue(), event_queue_selector_(), execution_context,
+                rpc_handler_info.second, this, active_rpcs_.GetWeakPtrFactory()));
             rpc->RequestNextMethodInvocation();
         }
         ++i;
@@ -84,8 +78,7 @@ void Service::HandleEvent(Rpc::Event event, Rpc* rpc, bool ok) {
 void Service::HandleNewConnection(Rpc* rpc, bool ok) {
     if (shutting_down_) {
         if (ok) {
-            LOG(WARNING)
-                << "Server shutting down. Refusing to handle new RPCs.";
+            LOG(WARNING) << "Server shutting down. Refusing to handle new RPCs.";
         }
         active_rpcs_.Remove(rpc);
         return;

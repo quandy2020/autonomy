@@ -48,19 +48,15 @@ TEST(TransformInterpolationBufferTest, testLookup) {
     buffer.Push(common::FromUniversal(50), transform::Rigid3d::Identity());
     // The rotation needs to be relatively small in order for the interpolation
     // to remain a z-axis rotation.
-    buffer.Push(
-        common::FromUniversal(100),
-        transform::Rigid3d::Translation(Eigen::Vector3d(10., 10., 10.)) *
-            transform::Rigid3d::Rotation(
-                Eigen::AngleAxisd(2., Eigen::Vector3d::UnitZ())));
+    buffer.Push(common::FromUniversal(100),
+                transform::Rigid3d::Translation(Eigen::Vector3d(10., 10., 10.)) *
+                    transform::Rigid3d::Rotation(Eigen::AngleAxisd(2., Eigen::Vector3d::UnitZ())));
     const common::Time time = common::FromUniversal(75);
     const transform::Rigid3d interpolated = buffer.Lookup(time);
-    EXPECT_THAT(
-        interpolated,
-        IsNearly(transform::Rigid3d::Translation(Eigen::Vector3d(5., 5., 5.)) *
-                     transform::Rigid3d::Rotation(
-                         Eigen::AngleAxisd(1., Eigen::Vector3d::UnitZ())),
-                 1e-6));
+    EXPECT_THAT(interpolated,
+                IsNearly(transform::Rigid3d::Translation(Eigen::Vector3d(5., 5., 5.)) *
+                             transform::Rigid3d::Rotation(Eigen::AngleAxisd(1., Eigen::Vector3d::UnitZ())),
+                         1e-6));
 }
 
 TEST(TransformInterpolationBufferTest, testLookupSingleTransform) {

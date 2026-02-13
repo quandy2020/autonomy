@@ -21,10 +21,9 @@ namespace visualization {
 namespace converter {
 namespace detail {
 
-void SetEntityHeader(
-    foxglove::schemas::SceneEntity& entity,
-    const std::optional<foxglove::schemas::Timestamp>& timestamp,
-    const std::optional<std::string>& frame_id) {
+void SetEntityHeader(foxglove::schemas::SceneEntity& entity,
+                     const std::optional<foxglove::schemas::Timestamp>& timestamp,
+                     const std::optional<std::string>& frame_id) {
     if (timestamp) {
         entity.timestamp = *timestamp;
     }
@@ -33,10 +32,9 @@ void SetEntityHeader(
     }
 }
 
-void SetRawImageHeader(
-    foxglove::schemas::RawImage& raw_image,
-    const std::optional<foxglove::schemas::Timestamp>& timestamp,
-    const std::optional<std::string>& frame_id) {
+void SetRawImageHeader(foxglove::schemas::RawImage& raw_image,
+                       const std::optional<foxglove::schemas::Timestamp>& timestamp,
+                       const std::optional<std::string>& frame_id) {
     if (timestamp) {
         raw_image.timestamp = *timestamp;
     }
@@ -45,8 +43,7 @@ void SetRawImageHeader(
     }
 }
 
-void SetGridHeader(foxglove::schemas::Grid& grid,
-                   const std::optional<foxglove::schemas::Timestamp>& timestamp,
+void SetGridHeader(foxglove::schemas::Grid& grid, const std::optional<foxglove::schemas::Timestamp>& timestamp,
                    const std::optional<std::string>& frame_id) {
     if (timestamp) {
         grid.timestamp = *timestamp;
@@ -56,10 +53,9 @@ void SetGridHeader(foxglove::schemas::Grid& grid,
     }
 }
 
-void SetPointCloudHeader(
-    foxglove::schemas::PointCloud& pointcloud,
-    const std::optional<foxglove::schemas::Timestamp>& timestamp,
-    const std::optional<std::string>& frame_id) {
+void SetPointCloudHeader(foxglove::schemas::PointCloud& pointcloud,
+                         const std::optional<foxglove::schemas::Timestamp>& timestamp,
+                         const std::optional<std::string>& frame_id) {
     if (timestamp) {
         pointcloud.timestamp = *timestamp;
     }
@@ -68,8 +64,7 @@ void SetPointCloudHeader(
     }
 }
 
-foxglove::schemas::Pose CreatePose(
-    const autonomy::commsgs::proto::geometry_msgs::Pose& pose) {
+foxglove::schemas::Pose CreatePose(const autonomy::commsgs::proto::geometry_msgs::Pose& pose) {
     foxglove::schemas::Pose fp;
     fp.position = foxglove::schemas::Vector3();
     fp.position->x = pose.position().x();

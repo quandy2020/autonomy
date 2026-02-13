@@ -22,12 +22,9 @@ namespace autonomy {
 namespace map {
 namespace grid_map {
 
-GridMapWrapper::GridMapWrapper(const proto::GridMapOptions& options,
-                               const std::string& name)
+GridMapWrapper::GridMapWrapper(const proto::GridMapOptions& options, const std::string& name)
     : options_{options},
-      name_{name.empty()
-                ? (options.name().empty() ? "grid_map" : options.name())
-                : name},
+      name_{name.empty() ? (options.name().empty() ? "grid_map" : options.name()) : name},
       stopped_{true},
       paused_{false} {
     // Extract layers from options
@@ -50,11 +47,9 @@ GridMapWrapper::GridMapWrapper(const proto::GridMapOptions& options,
     }
 
     // Set geometry if provided
-    if (options.resolution() > 0 && options.length_x() > 0 &&
-        options.length_y() > 0) {
+    if (options.resolution() > 0 && options.length_x() > 0 && options.length_y() > 0) {
         ::grid_map::Length length(options.length_x(), options.length_y());
-        ::grid_map::Position position(options.position_x(),
-                                      options.position_y());
+        ::grid_map::Position position(options.position_x(), options.position_y());
         grid_map_->setGeometry(length, options.resolution(), position);
     }
 
@@ -79,8 +74,7 @@ void GridMapWrapper::Start() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (!stopped_) {
-        LOG(WARNING) << "[GridMapWrapper] GridMap is already started: "
-                     << name_;
+        LOG(WARNING) << "[GridMapWrapper] GridMap is already started: " << name_;
         return;
     }
 
@@ -107,8 +101,7 @@ void GridMapWrapper::Pause() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (stopped_) {
-        LOG(WARNING) << "[GridMapWrapper] Cannot pause stopped GridMap: "
-                     << name_;
+        LOG(WARNING) << "[GridMapWrapper] Cannot pause stopped GridMap: " << name_;
         return;
     }
 
@@ -125,8 +118,7 @@ void GridMapWrapper::Resume() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (stopped_) {
-        LOG(WARNING) << "[GridMapWrapper] Cannot resume stopped GridMap: "
-                     << name_;
+        LOG(WARNING) << "[GridMapWrapper] Cannot resume stopped GridMap: " << name_;
         return;
     }
 
@@ -149,8 +141,7 @@ bool GridMapWrapper::loadMap(const std::string& filename) {
 
     // TODO: Implement file loading based on file format
     // This could support bag files, yaml files, or other formats
-    LOG(WARNING) << "[GridMapWrapper] GridMap file loading from " << filename
-                 << " is not fully implemented.";
+    LOG(WARNING) << "[GridMapWrapper] GridMap file loading from " << filename << " is not fully implemented.";
 
     // For now, just log the request
     options_.set_map_file(filename);
@@ -162,8 +153,7 @@ void GridMapWrapper::publishMap() {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (stopped_) {
-        LOG(WARNING) << "[GridMapWrapper] Cannot publish stopped GridMap: "
-                     << name_;
+        LOG(WARNING) << "[GridMapWrapper] Cannot publish stopped GridMap: " << name_;
         return;
     }
 
@@ -172,8 +162,7 @@ void GridMapWrapper::publishMap() {
     LOG(INFO) << "[GridMapWrapper] Publish map (publisher disabled): " << name_;
 }
 
-proto::GridMapOptions CreateGridMapOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+proto::GridMapOptions CreateGridMapOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::GridMapOptions options;
 
     if (parameter_dictionary->HasKey("map_file")) {
@@ -216,8 +205,7 @@ proto::GridMapOptions CreateGridMapOptions(
     }
 
     if (parameter_dictionary->HasKey("basic_layers")) {
-        auto basic_layers_dict =
-            parameter_dictionary->GetDictionary("basic_layers");
+        auto basic_layers_dict = parameter_dictionary->GetDictionary("basic_layers");
         // Similar to layers
     }
 

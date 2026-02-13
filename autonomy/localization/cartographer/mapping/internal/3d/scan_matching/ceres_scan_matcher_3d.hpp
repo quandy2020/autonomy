@@ -31,8 +31,7 @@ namespace cartographer {
 namespace mapping {
 namespace scan_matching {
 
-proto::CeresScanMatcherOptions3D CreateCeresScanMatcherOptions3D(
-    common::LuaParameterDictionary* parameter_dictionary);
+proto::CeresScanMatcherOptions3D CreateCeresScanMatcherOptions3D(common::LuaParameterDictionary* parameter_dictionary);
 
 struct PointCloudAndHybridGridsPointers {
     const sensor::PointCloud* point_cloud;
@@ -44,8 +43,7 @@ struct PointCloudAndHybridGridsPointers {
 class CeresScanMatcher3D
 {
 public:
-    explicit CeresScanMatcher3D(
-        const proto::CeresScanMatcherOptions3D& options);
+    explicit CeresScanMatcher3D(const proto::CeresScanMatcherOptions3D& options);
 
     CeresScanMatcher3D(const CeresScanMatcher3D&) = delete;
     CeresScanMatcher3D& operator=(const CeresScanMatcher3D&) = delete;
@@ -53,12 +51,9 @@ public:
     // Aligns 'point_clouds' within the 'hybrid_grids' given an
     // 'initial_pose_estimate' and returns a 'pose_estimate' and the solver
     // 'summary'.
-    void Match(const Eigen::Vector3d& target_translation,
-               const transform::Rigid3d& initial_pose_estimate,
-               const std::vector<PointCloudAndHybridGridsPointers>&
-                   point_clouds_and_hybrid_grids,
-               transform::Rigid3d* pose_estimate,
-               ceres::Solver::Summary* summary) const;
+    void Match(const Eigen::Vector3d& target_translation, const transform::Rigid3d& initial_pose_estimate,
+               const std::vector<PointCloudAndHybridGridsPointers>& point_clouds_and_hybrid_grids,
+               transform::Rigid3d* pose_estimate, ceres::Solver::Summary* summary) const;
 
 private:
     const proto::CeresScanMatcherOptions3D options_;

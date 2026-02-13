@@ -89,8 +89,7 @@ BT_JSON_CONVERTER(autonomy::commsgs::planning_msgs::Goals, msg) {
 
 namespace std {
 
-inline void from_json(const nlohmann::json& js,
-                      std::chrono::milliseconds& dest) {
+inline void from_json(const nlohmann::json& js, std::chrono::milliseconds& dest) {
     if (js.contains("ms")) {
         dest = std::chrono::milliseconds(js.at("ms").get<int>());
     } else {

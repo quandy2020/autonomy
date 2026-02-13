@@ -27,8 +27,7 @@
 namespace cartographer {
 namespace mapping {
 
-proto::MotionFilterOptions CreateMotionFilterOptions(
-    common::LuaParameterDictionary* parameter_dictionary);
+proto::MotionFilterOptions CreateMotionFilterOptions(common::LuaParameterDictionary* parameter_dictionary);
 
 // Takes poses as input and filters them to get fewer poses.
 class MotionFilter

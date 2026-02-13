@@ -33,10 +33,8 @@ public:
     /**
      * @brief  Constructor for the Costmap2DPublisher
      */
-    Costmap2DPublisher(Costmap2D* costmap, std::string global_frame,
-                       std::string topic_name,
-                       bool always_send_full_costmap = false,
-                       double map_vis_z = 0.0);
+    Costmap2DPublisher(Costmap2D* costmap, std::string global_frame, std::string topic_name,
+                       bool always_send_full_costmap = false, double map_vis_z = 0.0);
 
     /**
      * @brief  Destructor
@@ -46,8 +44,7 @@ public:
     /**
      * @brief Include the given bounds in the changed-rectangle.
      */
-    void updateBounds(unsigned int x0, unsigned int xn, unsigned int y0,
-                      unsigned int yn) {
+    void updateBounds(unsigned int x0, unsigned int xn, unsigned int y0, unsigned int yn) {
         x0_ = std::min(x0, x0_);
         xn_ = std::max(xn, xn_);
         y0_ = std::min(y0, y0_);

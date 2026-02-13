@@ -127,8 +127,7 @@ ColorRGBA FromProto(const proto::std_msgs::ColorRGBA& proto);
 proto::std_msgs::MultiArrayDimension ToProto(const MultiArrayDimension& data);
 
 // Converts 'proto' to MultiArrayDimension.
-MultiArrayDimension FromProto(
-    const proto::std_msgs::MultiArrayDimension& proto);
+MultiArrayDimension FromProto(const proto::std_msgs::MultiArrayDimension& proto);
 
 // Converts 'data' to a proto::std_msgs::MultiArrayLayout.
 proto::std_msgs::MultiArrayLayout ToProto(const MultiArrayLayout& data);

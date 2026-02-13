@@ -39,8 +39,7 @@ TEST(RotationalScanMatcher3DTest, InterpolatesAsExpected) {
     constexpr int kNumBuckets = 10;
     constexpr float kAnglePerBucket = M_PI / kNumBuckets;
     constexpr float kNoInitialRotation = 0.f;
-    const Eigen::VectorXf histogram_no_initial_rotation =
-        Eigen::VectorXf::Unit(kNumBuckets, 3);
+    const Eigen::VectorXf histogram_no_initial_rotation = Eigen::VectorXf::Unit(kNumBuckets, 3);
     RotationalScanMatcher matcher(&histogram_no_initial_rotation);
     for (float t = 0.f; t < 1.f; t += 0.1f) {
         // 't' is the fraction of overlap and we have to divide by the norm of
@@ -48,19 +47,16 @@ TEST(RotationalScanMatcher3DTest, InterpolatesAsExpected) {
         const float expected_score = t / std::hypot(t, 1 - t);
         // We rotate the 't'-th fraction of a bucket into the matcher's
         // histogram.
-        auto scores = matcher.Match(Eigen::VectorXf::Unit(kNumBuckets, 2),
-                                    kNoInitialRotation, {t * kAnglePerBucket});
+        auto scores = matcher.Match(Eigen::VectorXf::Unit(kNumBuckets, 2), kNoInitialRotation, {t * kAnglePerBucket});
         ASSERT_EQ(1, scores.size());
         EXPECT_NEAR(expected_score, scores[0], 1e-6);
         // Also verify rotating out of a bucket.
-        scores = matcher.Match(Eigen::VectorXf::Unit(kNumBuckets, 2),
-                               kNoInitialRotation, {(2 - t) * kAnglePerBucket});
+        scores = matcher.Match(Eigen::VectorXf::Unit(kNumBuckets, 2), kNoInitialRotation, {(2 - t) * kAnglePerBucket});
         ASSERT_EQ(1, scores.size());
         EXPECT_NEAR(expected_score, scores[0], 1e-6);
         // And into and out of a bucket with negative angle.
-        scores = matcher.Match(
-            Eigen::VectorXf::Unit(kNumBuckets, 4), kNoInitialRotation,
-            {-t * kAnglePerBucket, (t - 2) * kAnglePerBucket});
+        scores = matcher.Match(Eigen::VectorXf::Unit(kNumBuckets, 4), kNoInitialRotation,
+                               {-t * kAnglePerBucket, (t - 2) * kAnglePerBucket});
         ASSERT_EQ(2, scores.size());
         EXPECT_NEAR(expected_score, scores[0], 1e-6);
         EXPECT_NEAR(expected_score, scores[1], 1e-6);

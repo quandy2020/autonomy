@@ -26,25 +26,17 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void AddTrajectoryHandler::OnRequest(
-    const proto::AddTrajectoryRequest& request) {
-    auto local_slam_result_callback =
-        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-            ->GetLocalSlamResultCallbackForSubscriptions();
+void AddTrajectoryHandler::OnRequest(const proto::AddTrajectoryRequest& request) {
+    auto local_slam_result_callback = this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
+                                          ->GetLocalSlamResultCallbackForSubscriptions();
     std::set<mapping::TrajectoryBuilderInterface::SensorId> expected_sensor_ids;
     for (const auto& sensor_id : request.expected_sensor_ids()) {
         expected_sensor_ids.insert(FromProto(sensor_id));
     }
-    const int trajectory_id =
-        GetContext<MapBuilderContextInterface>()
-            ->map_builder()
-            .AddTrajectoryBuilder(expected_sensor_ids,
-                                  request.trajectory_builder_options(),
-                                  local_slam_result_callback);
-    GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(
-        request.client_id(), trajectory_id);
-    if (this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-            ->local_trajectory_uploader()) {
+    const int trajectory_id = GetContext<MapBuilderContextInterface>()->map_builder().AddTrajectoryBuilder(
+        expected_sensor_ids, request.trajectory_builder_options(), local_slam_result_callback);
+    GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(request.client_id(), trajectory_id);
+    if (this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->local_trajectory_uploader()) {
         auto trajectory_builder_options = request.trajectory_builder_options();
 
         // Clear the trajectory builder options to convey to the cloud
@@ -60,11 +52,8 @@ void AddTrajectoryHandler::OnRequest(
         // Ignore initial poses in trajectory_builder_options.
         trajectory_builder_options.clear_initial_trajectory_pose();
 
-        auto status = GetContext<MapBuilderContextInterface>()
-                          ->local_trajectory_uploader()
-                          ->AddTrajectory(request.client_id(), trajectory_id,
-                                          expected_sensor_ids,
-                                          trajectory_builder_options);
+        auto status = GetContext<MapBuilderContextInterface>()->local_trajectory_uploader()->AddTrajectory(
+            request.client_id(), trajectory_id, expected_sensor_ids, trajectory_builder_options);
         if (!status.ok()) {
             LOG(ERROR) << "Failed to create trajectory_id " << trajectory_id
                        << " in uplink. Error: " << status.error_message();

@@ -33,8 +33,7 @@ TEST(SubmapIterator, Simple) {
     vector<string> types;
     types.emplace_back("type");
     GridMap map(types);
-    map.setGeometry(Eigen::Array2d(8.1, 5.1), 1.0,
-                    Eigen::Vector2d(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Eigen::Array2d(8.1, 5.1), 1.0, Eigen::Vector2d(0.0, 0.0));  // bufferSize(8, 5)
 
     SubmapIterator iterator(map, submapTopLeftIndex, submapBufferSize);
 
@@ -96,9 +95,8 @@ TEST(SubmapIterator, CircularBuffer) {
     vector<string> types;
     types.emplace_back("type");
     GridMap map(types);
-    map.setGeometry(Length(8.1, 5.1), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
-    map.move(Position(-3.0, -2.0));       // bufferStartIndex(3, 2)
+    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.move(Position(-3.0, -2.0));                              // bufferStartIndex(3, 2)
 
     SubmapIterator iterator(map, submapTopLeftIndex, submapBufferSize);
 
@@ -195,8 +193,7 @@ TEST(SubmapIterator, InterleavedExecutionWithMove) {
 
     GridMap map({"layer"});
 
-    map.setGeometry(Length(10, 10), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Length(10, 10), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
 
     auto& layer = map.get("layer");
 

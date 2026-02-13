@@ -82,8 +82,7 @@ commsgs::sensor_msgs::Image FromCV(const cv::Mat& mat) {
     return image;
 }
 
-bool ReadImage(const std::string& directory_path,
-               std::vector<cv::Mat>& images) {
+bool ReadImage(const std::string& directory_path, std::vector<cv::Mat>& images) {
     // 检查目录是否存在
     if (!std::filesystem::exists(directory_path)) {
         LOG(ERROR) << "Directory does not exist: " << directory_path;
@@ -97,25 +96,20 @@ bool ReadImage(const std::string& directory_path,
     }
 
     // 支持的图片格式扩展名
-    std::vector<std::string> supported_extensions = {".jpg", ".jpeg", ".png",
-                                                     ".bmp"};
+    std::vector<std::string> supported_extensions = {".jpg", ".jpeg", ".png", ".bmp"};
 
     // 遍历目录中的所有文件
-    for (const auto& entry :
-         std::filesystem::directory_iterator(directory_path)) {
+    for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
         if (std::filesystem::is_regular_file(entry)) {
             std::string extension = entry.path().extension().string();
-            std::transform(extension.begin(), extension.end(),
-                           extension.begin(), ::tolower);
-            if (std::find(supported_extensions.begin(),
-                          supported_extensions.end(),
-                          extension) != supported_extensions.end()) {
+            std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+            if (std::find(supported_extensions.begin(), supported_extensions.end(), extension) !=
+                supported_extensions.end()) {
                 cv::Mat image = cv::imread(entry.path().string());
                 if (!image.empty()) {
                     images.push_back(image);
                 } else {
-                    LOG(ERROR)
-                        << "Failed to read image: " << entry.path().string();
+                    LOG(ERROR) << "Failed to read image: " << entry.path().string();
                 }
             }
         }
@@ -124,8 +118,7 @@ bool ReadImage(const std::string& directory_path,
     return true;
 }
 
-bool ReadImage(const std::string& directory_path,
-               std::vector<commsgs::sensor_msgs::Image>& images) {
+bool ReadImage(const std::string& directory_path, std::vector<commsgs::sensor_msgs::Image>& images) {
     std::vector<cv::Mat> cv_images;
     if (!ReadImage(directory_path, cv_images)) {
         return false;

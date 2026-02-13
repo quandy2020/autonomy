@@ -50,8 +50,7 @@ Eigen::VectorXd RemoveTrailingZeros(const Eigen::VectorXd& coeffs) {
 
 }  // namespace
 
-bool FindLinearPolynomialRoots(const Eigen::VectorXd& coeffs,
-                               Eigen::VectorXd* real, Eigen::VectorXd* imag) {
+bool FindLinearPolynomialRoots(const Eigen::VectorXd& coeffs, Eigen::VectorXd* real, Eigen::VectorXd* imag) {
     THROW_CHECK_EQ(coeffs.size(), 2);
 
     if (coeffs(0) == 0) {
@@ -71,9 +70,7 @@ bool FindLinearPolynomialRoots(const Eigen::VectorXd& coeffs,
     return true;
 }
 
-bool FindQuadraticPolynomialRoots(const Eigen::VectorXd& coeffs,
-                                  Eigen::VectorXd* real,
-                                  Eigen::VectorXd* imag) {
+bool FindQuadraticPolynomialRoots(const Eigen::VectorXd& coeffs, Eigen::VectorXd* real, Eigen::VectorXd* imag) {
     THROW_CHECK_EQ(coeffs.size(), 3);
 
     const double a = coeffs(0);
@@ -128,8 +125,7 @@ bool FindQuadraticPolynomialRoots(const Eigen::VectorXd& coeffs,
     return true;
 }
 
-int FindCubicPolynomialRoots(double c2, double c1, double c0,
-                             Eigen::Vector3d* real) {
+int FindCubicPolynomialRoots(double c2, double c1, double c0, Eigen::Vector3d* real) {
     constexpr double k2PiOver3 = 2.09439510239319526263557236234192;
     constexpr double k4PiOver3 = 4.18879020478639052527114472468384;
     const double c2_over_3 = c2 / 3.0;
@@ -157,17 +153,14 @@ int FindCubicPolynomialRoots(double c2, double c1, double c0,
         const double x = (*real)[i];
         const double x2 = x * x;
         const double x3 = x * x2;
-        const double dx =
-            -(x3 + c2 * x2 + c1 * x + c0) / (3 * x2 + 2 * c2 * x + c1);
+        const double dx = -(x3 + c2 * x2 + c1 * x + c0) / (3 * x2 + 2 * c2 * x + c1);
         (*real)[i] += dx;
     }
 
     return num_roots;
 }
 
-bool FindPolynomialRootsDurandKerner(const Eigen::VectorXd& coeffs_all,
-                                     Eigen::VectorXd* real,
-                                     Eigen::VectorXd* imag) {
+bool FindPolynomialRootsDurandKerner(const Eigen::VectorXd& coeffs_all, Eigen::VectorXd* real, Eigen::VectorXd* imag) {
     THROW_CHECK_GE(coeffs_all.size(), 2);
 
     const Eigen::VectorXd coeffs = RemoveLeadingZeros(coeffs_all);
@@ -206,10 +199,8 @@ bool FindPolynomialRootsDurandKerner(const Eigen::VectorXd& coeffs_all,
             }
             const std::complex<double> root_i_change = numerator / denominator;
             roots(i) = root_i - root_i_change;
-            max_root_change =
-                std::max(max_root_change, std::abs(root_i_change.real()));
-            max_root_change =
-                std::max(max_root_change, std::abs(root_i_change.imag()));
+            max_root_change = std::max(max_root_change, std::abs(root_i_change.real()));
+            max_root_change = std::max(max_root_change, std::abs(root_i_change.imag()));
         }
 
         // Break, if roots do not change anymore.
@@ -230,8 +221,7 @@ bool FindPolynomialRootsDurandKerner(const Eigen::VectorXd& coeffs_all,
     return true;
 }
 
-bool FindPolynomialRootsCompanionMatrix(const Eigen::VectorXd& coeffs_all,
-                                        Eigen::VectorXd* real,
+bool FindPolynomialRootsCompanionMatrix(const Eigen::VectorXd& coeffs_all, Eigen::VectorXd* real,
                                         Eigen::VectorXd* imag) {
     THROW_CHECK_GE(coeffs_all.size(), 2);
 
@@ -278,8 +268,7 @@ bool FindPolynomialRootsCompanionMatrix(const Eigen::VectorXd& coeffs_all,
     }
 
     // If there are trailing zeros, we must add zero as a solution.
-    const int effective_degree =
-        coeffs.size() - 1 < degree ? coeffs.size() : coeffs.size() - 1;
+    const int effective_degree = coeffs.size() - 1 < degree ? coeffs.size() : coeffs.size() - 1;
 
     if (real != nullptr) {
         real->resize(effective_degree);

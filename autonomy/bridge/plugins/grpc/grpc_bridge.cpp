@@ -29,8 +29,7 @@ namespace {
 
 // static auto* kIncomingDataQueueMetric = metrics::Gauge::Null();
 constexpr int kMaxMessageSize = 100 * 1024 * 1024;  // 100 MB
-const autonomy::common::Duration kPopTimeout =
-    autonomy::common::FromMilliseconds(100);
+const autonomy::common::Duration kPopTimeout = autonomy::common::FromMilliseconds(100);
 
 }  // namespace
 
@@ -90,8 +89,7 @@ void GrpcBridgeServer::StartThread() {
     CHECK(!task_thread_);
 
     // Start the ask handler processing thread.
-    task_thread_ = std::make_unique<std::thread>(
-        [this]() { this->ProcessSensorDataQueue(); });
+    task_thread_ = std::make_unique<std::thread>([this]() { this->ProcessSensorDataQueue(); });
 }
 
 }  // namespace grpc

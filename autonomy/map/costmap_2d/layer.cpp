@@ -27,11 +27,9 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-Layer::Layer()
-    : layered_costmap_(nullptr), name_(), current_(false), enabled_(false) {}
+Layer::Layer() : layered_costmap_(nullptr), name_(), current_(false), enabled_(false) {}
 
-void Layer::initialize(LayeredCostmap* parent, std::string name,
-                       autolink::Node* node,
+void Layer::initialize(LayeredCostmap* parent, std::string name, autolink::Node* node,
                        const proto::Costmap2DOptions* options) {
     layered_costmap_ = parent;
     name_ = name;

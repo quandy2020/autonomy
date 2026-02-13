@@ -22,8 +22,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-PlannerSelector::PlannerSelector(const std::string& name,
-                                 const BT::NodeConfiguration& conf)
+PlannerSelector::PlannerSelector(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::SyncActionNode(name, conf) {
     initialize();
 }
@@ -35,17 +34,11 @@ void PlannerSelector::initialize() {
 void PlannerSelector::createROSInterfaces() {
     std::string topic_new;
     getInput("topic_name", topic_new);
-    if (topic_new != topic_name_) {
+    if (topic_new != topic_name_ || !planner_selector_sub_) {
         topic_name_ = topic_new;
-        // node_ =
-        // config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-        // TODO: Implement subscription for planner selector
-        // planner_selector_sub_ =
-        // node_->create_subscription<commsgs::std_msgs::String>(
-        //     topic_name_,
-        //     qos,
-        //     std::bind(&PlannerSelector::callbackPlannerSelect, this, _1),
-        //     sub_option);
+        node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+        planner_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
+            topic_name_, [this](std::shared_ptr<const commsgs::std_msgs::String> msg) { callbackPlannerSelect(msg); });
     }
 }
 
@@ -74,9 +67,8 @@ BT::NodeStatus PlannerSelector::tick() {
     return BT::NodeStatus::SUCCESS;
 }
 
-void PlannerSelector::callbackPlannerSelect(
-    const commsgs::std_msgs::String& msg) {
-    last_selected_planner_ = msg.data;
+void PlannerSelector::callbackPlannerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg) {
+    last_selected_planner_ = msg->data;
 }
 
 }  // namespace action
@@ -87,7 +79,5 @@ void PlannerSelector::callbackPlannerSelect(
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::plugins::action::PlannerSelector>(
-        "PlannerSelector");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::PlannerSelector>("PlannerSelector");
 }

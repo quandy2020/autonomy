@@ -49,24 +49,17 @@ const std::string kMessage = R"(
     }
   })";
 
-using AddRangefinderDataHandlerTest =
-    testing::HandlerTest<AddRangefinderDataSignature,
-                         AddRangefinderDataHandler>;
+using AddRangefinderDataHandlerTest = testing::HandlerTest<AddRangefinderDataSignature, AddRangefinderDataHandler>;
 
 TEST_F(AddRangefinderDataHandlerTest, NoLocalSlamUploader) {
     proto::AddRangefinderDataRequest request;
-    EXPECT_TRUE(
-        google::protobuf::TextFormat::ParseFromString(kMessage, &request));
-    EXPECT_CALL(*mock_map_builder_context_,
-                CheckClientIdForTrajectory(
-                    Eq(request.sensor_metadata().client_id()),
-                    Eq(request.sensor_metadata().trajectory_id())))
+    EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &request));
+    EXPECT_CALL(*mock_map_builder_context_, CheckClientIdForTrajectory(Eq(request.sensor_metadata().client_id()),
+                                                                       Eq(request.sensor_metadata().trajectory_id())))
         .WillOnce(::testing::Return(true));
-    EXPECT_CALL(
-        *mock_map_builder_context_,
-        DoEnqueueSensorData(
-            Eq(request.sensor_metadata().trajectory_id()),
-            Pointee(Truly(testing::BuildDataPredicateEquals(request)))));
+    EXPECT_CALL(*mock_map_builder_context_,
+                DoEnqueueSensorData(Eq(request.sensor_metadata().trajectory_id()),
+                                    Pointee(Truly(testing::BuildDataPredicateEquals(request)))));
     test_server_->SendWrite(request);
     test_server_->SendWritesDone();
     test_server_->SendFinish();

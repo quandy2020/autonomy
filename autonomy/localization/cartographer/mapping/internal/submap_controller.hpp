@@ -29,10 +29,8 @@ template <class SubmapType>
 class SubmapController
 {
 public:
-    std::shared_ptr<SubmapType> UpdateSubmap(
-        const mapping::proto::Submap& proto) {
-        mapping::SubmapId submap_id{proto.submap_id().trajectory_id(),
-                                    proto.submap_id().submap_index()};
+    std::shared_ptr<SubmapType> UpdateSubmap(const mapping::proto::Submap& proto) {
+        mapping::SubmapId submap_id{proto.submap_id().trajectory_id(), proto.submap_id().submap_index()};
         std::shared_ptr<SubmapType> submap_ptr;
         auto submap_it = unfinished_submaps_.find(submap_id);
         if (submap_it == unfinished_submaps_.end()) {
@@ -59,23 +57,19 @@ public:
     }
 
 private:
-    std::shared_ptr<SubmapType> CreateSubmap(
-        const mapping::proto::Submap& proto);
+    std::shared_ptr<SubmapType> CreateSubmap(const mapping::proto::Submap& proto);
 
-    mapping::MapById<mapping::SubmapId, std::shared_ptr<SubmapType>>
-        unfinished_submaps_;
+    mapping::MapById<mapping::SubmapId, std::shared_ptr<SubmapType>> unfinished_submaps_;
 
     ValueConversionTables conversion_tables_;
 };
 
 template <>
-std::shared_ptr<mapping::Submap2D>
-SubmapController<mapping::Submap2D>::CreateSubmap(
+std::shared_ptr<mapping::Submap2D> SubmapController<mapping::Submap2D>::CreateSubmap(
     const mapping::proto::Submap& proto);
 
 template <>
-std::shared_ptr<mapping::Submap3D>
-SubmapController<mapping::Submap3D>::CreateSubmap(
+std::shared_ptr<mapping::Submap3D> SubmapController<mapping::Submap3D>::CreateSubmap(
     const mapping::proto::Submap& proto);
 
 }  // namespace mapping

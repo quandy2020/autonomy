@@ -22,8 +22,7 @@ namespace autonomy {
 namespace common {
 namespace async_grpc {
 
-std::unique_ptr<Span> OpencensusSpan::StartSpan(const std::string& name,
-                                                const OpencensusSpan* parent) {
+std::unique_ptr<Span> OpencensusSpan::StartSpan(const std::string& name, const OpencensusSpan* parent) {
     return std::unique_ptr<OpencensusSpan>(new OpencensusSpan(name, parent));
 }
 
@@ -39,10 +38,8 @@ void OpencensusSpan::End() {
     span_.End();
 }
 
-OpencensusSpan::OpencensusSpan(const std::string& name,
-                               const OpencensusSpan* parent)
-    : span_(opencensus::trace::Span::StartSpan(
-          name, parent ? &parent->span_ : nullptr)) {}
+OpencensusSpan::OpencensusSpan(const std::string& name, const OpencensusSpan* parent)
+    : span_(opencensus::trace::Span::StartSpan(name, parent ? &parent->span_ : nullptr)) {}
 
 }  // namespace async_grpc
 }  // namespace common

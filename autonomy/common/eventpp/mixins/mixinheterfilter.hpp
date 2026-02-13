@@ -29,11 +29,9 @@ class MixinHeterFilter : public Base
 private:
     using super = Base;
 
-    using BoolReferencePrototypeList =
-        typename internal_::ReplaceReturnTypeList<
-            typename internal_::TransformArgumentsList<
-                typename super::PrototypeList, std::add_lvalue_reference>::Type,
-            bool>::Type;
+    using BoolReferencePrototypeList = typename internal_::ReplaceReturnTypeList<
+        typename internal_::TransformArgumentsList<typename super::PrototypeList, std::add_lvalue_reference>::Type,
+        bool>::Type;
 
     using FilterList = HeterCallbackList<BoolReferencePrototypeList>;
 
@@ -53,8 +51,7 @@ public:
     template <typename... Args>
     bool mixinBeforeDispatch(Args&&... args) const {
         if (!filterList.template forEachIf<void(Args...)>(
-                [&args...](const typename std::function<bool(Args...)>&
-                               callback) -> bool {
+                [&args...](const typename std::function<bool(Args...)>& callback) -> bool {
                     return callback(std::forward<Args>(args)...);
                 })) {
             return false;

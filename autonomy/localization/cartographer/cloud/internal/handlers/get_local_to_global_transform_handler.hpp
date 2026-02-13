@@ -25,18 +25,15 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    GetLocalToGlobalTransformSignature, proto::GetLocalToGlobalTransformRequest,
-    proto::GetLocalToGlobalTransformResponse,
-    "/cartographer.cloud.proto.MapBuilderService/GetLocalToGlobalTransform")
+DEFINE_HANDLER_SIGNATURE(GetLocalToGlobalTransformSignature, proto::GetLocalToGlobalTransformRequest,
+                         proto::GetLocalToGlobalTransformResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/GetLocalToGlobalTransform")
 
 class GetLocalToGlobalTransformHandler
-    : public autonomy::common::async_grpc::RpcHandler<
-          GetLocalToGlobalTransformSignature>
+    : public autonomy::common::async_grpc::RpcHandler<GetLocalToGlobalTransformSignature>
 {
 public:
-    void OnRequest(
-        const proto::GetLocalToGlobalTransformRequest& request) override;
+    void OnRequest(const proto::GetLocalToGlobalTransformRequest& request) override;
 };
 
 }  // namespace handlers

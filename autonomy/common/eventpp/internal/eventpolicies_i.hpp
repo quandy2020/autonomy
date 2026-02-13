@@ -103,8 +103,7 @@ struct SelectGetEvent<T, Key, false> {
 template <typename T, typename... Args>
 struct HasFunctionCanContinueInvoking {
     template <typename C>
-    static std::true_type test(
-        decltype(C::canContinueInvoking(std::declval<Args>()...))*);
+    static std::true_type test(decltype(C::canContinueInvoking(std::declval<Args>()...))*);
     template <typename C>
     static std::false_type test(...);
 
@@ -151,9 +150,8 @@ struct SelectMap {
 };
 template <typename Key, typename Value, typename T>
 struct SelectMap<Key, Value, T, false> {
-    using Type = typename std::conditional<HasHash<Key>::value,
-                                           std::unordered_map<Key, Value>,
-                                           std::map<Key, Value> >::type;
+    using Type =
+        typename std::conditional<HasHash<Key>::value, std::unordered_map<Key, Value>, std::map<Key, Value> >::type;
 };
 
 template <typename T>
@@ -195,8 +193,7 @@ struct SelectMixins<T, false> {
 template <typename Root, typename TList>
 struct InheritMixins;
 
-template <typename Root, template <typename> class T,
-          template <typename> class... Args>
+template <typename Root, template <typename> class T, template <typename> class... Args>
 struct InheritMixins<Root, MixinList<T, Args...> > {
     using Type = T<typename InheritMixins<Root, MixinList<Args...> >::Type>;
 };
@@ -209,16 +206,14 @@ struct InheritMixins<Root, MixinList<> > {
 template <typename Root, typename TList, typename Func>
 struct ForEachMixins;
 
-template <typename Func, typename Root, template <typename> class T,
-          template <typename> class... Args>
+template <typename Func, typename Root, template <typename> class T, template <typename> class... Args>
 struct ForEachMixins<Root, MixinList<T, Args...>, Func> {
     using Type = typename InheritMixins<Root, MixinList<T, Args...> >::Type;
 
     template <typename... A>
     static bool forEach(A&&... args) {
         if (Func::template forEach<Type>(args...)) {
-            return ForEachMixins<Root, MixinList<Args...>, Func>::forEach(
-                std::forward<A>(args)...);
+            return ForEachMixins<Root, MixinList<Args...>, Func>::forEach(std::forward<A>(args)...);
         }
         return false;
     }
@@ -237,8 +232,7 @@ struct ForEachMixins<Root, MixinList<>, Func> {
 template <typename T, typename... Args>
 struct HasFunctionMixinBeforeDispatch {
     template <typename C>
-    static std::true_type test(decltype(std::declval<C>().mixinBeforeDispatch(
-        std::declval<Args>()...))*);
+    static std::true_type test(decltype(std::declval<C>().mixinBeforeDispatch(std::declval<Args>()...))*);
     template <typename C>
     static std::false_type test(...);
 

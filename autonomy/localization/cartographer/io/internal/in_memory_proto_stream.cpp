@@ -21,8 +21,7 @@
 namespace cartographer {
 namespace io {
 
-void ForwardingProtoStreamWriter::WriteProto(
-    const google::protobuf::Message& proto) {
+void ForwardingProtoStreamWriter::WriteProto(const google::protobuf::Message& proto) {
     CHECK(writer_callback_(&proto));
 }
 

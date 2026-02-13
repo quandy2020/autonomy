@@ -35,8 +35,7 @@ struct RangeData {
     PointCloud misses;
 };
 
-RangeData TransformRangeData(const RangeData& range_data,
-                             const transform::Rigid3f& transform);
+RangeData TransformRangeData(const RangeData& range_data, const transform::Rigid3f& transform);
 
 // Crops 'range_data' according to the region defined by 'min_z' and 'max_z'.
 RangeData CropRangeData(const RangeData& range_data, float min_z, float max_z);

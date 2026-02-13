@@ -46,8 +46,7 @@ public:
      * @param options The options for the transform server
      * @param node The node to use for the transform server
      */
-    TransformServer(const autonomy::transform::proto::TransformOptions& options,
-                    ::autolink::Node* node = nullptr);
+    TransformServer(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node = nullptr);
 
     /**
      * @brief Destructor
@@ -82,8 +81,7 @@ public:
      * @brief Get the transform stampeds
      * @return The transform stampeds
      */
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData()
-        const {
+    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData() const {
         return static_transform_->GetTransformStampeds();
     }
 

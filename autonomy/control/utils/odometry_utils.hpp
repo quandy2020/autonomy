@@ -48,8 +48,7 @@ public:
      * @param filter_duration Duration for odom history (seconds)
      * @param odom_topic Topic on which odometry should be received
      */
-    explicit OdomSmoother(const std::shared_ptr<::autolink::Node>& parent,
-                          double filter_duration = 0.3,
+    explicit OdomSmoother(const std::shared_ptr<::autolink::Node>& parent, double filter_duration = 0.3,
                           const std::string& odom_topic = "odom");
 
     /**
@@ -119,8 +118,7 @@ protected:
      * @brief Callback of odometry subscriber to process
      * @param msg Odometry msg to smooth
      */
-    void odomCallback(
-        const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
+    void odomCallback(const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
 
     /**
      * @brief Update internal state of the smoother after getting new data
@@ -128,8 +126,7 @@ protected:
     void updateState();
 
     bool received_odom_;
-    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>>
-        odom_sub_;
+    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>> odom_sub_;
     commsgs::planning_msgs::Odometry odom_cumulate_;
     commsgs::geometry_msgs::TwistStamped vel_smooth_;
     std::mutex odom_mutex_;

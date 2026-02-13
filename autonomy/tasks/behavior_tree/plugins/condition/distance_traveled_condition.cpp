@@ -27,25 +27,19 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-DistanceTraveledCondition::DistanceTraveledCondition(
-    const std::string& condition_name, const BT::NodeConfiguration& conf)
-    : BT::ConditionNode(condition_name, conf),
-      distance_(1.0),
-      transform_tolerance_(0.1) {}
+DistanceTraveledCondition::DistanceTraveledCondition(const std::string& condition_name,
+                                                     const BT::NodeConfiguration& conf)
+    : BT::ConditionNode(condition_name, conf), distance_(1.0), transform_tolerance_(0.1) {}
 
 void DistanceTraveledCondition::initialize() {
     getInput("distance", distance_);
 
     node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    tf_ =
-        config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
-            "tf_buffer");
+    tf_ = config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>("tf_buffer");
     getInput("transform_tolerance", transform_tolerance_);
 
-    global_frame_ =
-        DeconflictPortAndParamFrame<std::string>(node_, "global_frame", this);
-    robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(
-        node_, "robot_base_frame", this);
+    global_frame_ = DeconflictPortAndParamFrame<std::string>(node_, "global_frame", this);
+    robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(node_, "robot_base_frame", this);
 }
 
 BT::NodeStatus DistanceTraveledCondition::tick() {
@@ -54,9 +48,8 @@ BT::NodeStatus DistanceTraveledCondition::tick() {
     }
 
     if (!BT::isStatusActive(status())) {
-        if (!autonomy::tasks::utils::getCurrentPose(
-                start_pose_, tf_, global_frame_, robot_base_frame_,
-                static_cast<float>(transform_tolerance_))) {
+        if (!autonomy::tasks::utils::getCurrentPose(start_pose_, tf_, global_frame_, robot_base_frame_,
+                                                    static_cast<float>(transform_tolerance_))) {
             ADEBUG << "Current robot pose is not available.";
         }
         return BT::NodeStatus::FAILURE;
@@ -64,16 +57,14 @@ BT::NodeStatus DistanceTraveledCondition::tick() {
 
     // Determine distance travelled since we've started this iteration
     commsgs::geometry_msgs::PoseStamped current_pose;
-    if (!autonomy::tasks::utils::getCurrentPose(
-            current_pose, tf_, global_frame_, robot_base_frame_,
-            static_cast<float>(transform_tolerance_))) {
+    if (!autonomy::tasks::utils::getCurrentPose(current_pose, tf_, global_frame_, robot_base_frame_,
+                                                static_cast<float>(transform_tolerance_))) {
         ADEBUG << "Current robot pose is not available.";
         return BT::NodeStatus::FAILURE;
     }
 
     // Get euclidean distance
-    auto travelled = autonomy::map::costmap_2d::utils::euclidean_distance(
-        start_pose_.pose, current_pose.pose);
+    auto travelled = autonomy::map::costmap_2d::utils::euclidean_distance(start_pose_.pose, current_pose.pose);
 
     if (travelled < distance_) {
         return BT::NodeStatus::FAILURE;
@@ -93,7 +84,6 @@ BT::NodeStatus DistanceTraveledCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
-                                 condition::DistanceTraveledCondition>(
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::DistanceTraveledCondition>(
         "DistanceTraveled");
 }

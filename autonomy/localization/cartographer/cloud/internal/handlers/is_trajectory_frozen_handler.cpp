@@ -25,13 +25,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void IsTrajectoryFrozenHandler::OnRequest(
-    const proto::IsTrajectoryFrozenRequest& request) {
+void IsTrajectoryFrozenHandler::OnRequest(const proto::IsTrajectoryFrozenRequest& request) {
     auto response = absl::make_unique<proto::IsTrajectoryFrozenResponse>();
-    response->set_is_frozen(GetContext<MapBuilderContextInterface>()
-                                ->map_builder()
-                                .pose_graph()
-                                ->IsTrajectoryFrozen(request.trajectory_id()));
+    response->set_is_frozen(GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->IsTrajectoryFrozen(
+        request.trajectory_id()));
     Send(std::move(response));
 }
 

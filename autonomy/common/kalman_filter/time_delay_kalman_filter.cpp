@@ -22,9 +22,7 @@ namespace kalman_filter {
 
 TimeDelayKalmanFilter::TimeDelayKalmanFilter() {}
 
-void TimeDelayKalmanFilter::init(const Eigen::MatrixXd& x,
-                                 const Eigen::MatrixXd& P0,
-                                 const int max_delay_step) {
+void TimeDelayKalmanFilter::init(const Eigen::MatrixXd& x, const Eigen::MatrixXd& P0, const int max_delay_step) {
     max_delay_step_ = max_delay_step;
     dim_x_ = x.rows();
     dim_x_ex_ = dim_x_ * max_delay_step;
@@ -46,8 +44,7 @@ Eigen::MatrixXd TimeDelayKalmanFilter::getLatestP() const {
     return P_.block(0, 0, dim_x_, dim_x_);
 }
 
-bool TimeDelayKalmanFilter::predictWithDelay(const Eigen::MatrixXd& x_next,
-                                             const Eigen::MatrixXd& A,
+bool TimeDelayKalmanFilter::predictWithDelay(const Eigen::MatrixXd& x_next, const Eigen::MatrixXd& A,
                                              const Eigen::MatrixXd& Q) {
     /*
      * time delay model:
@@ -73,26 +70,19 @@ bool TimeDelayKalmanFilter::predictWithDelay(const Eigen::MatrixXd& x_next,
 
     /* update P with delayed measurement A matrix structure */
     Eigen::MatrixXd P_tmp = Eigen::MatrixXd::Zero(dim_x_ex_, dim_x_ex_);
-    P_tmp.block(0, 0, dim_x_, dim_x_) =
-        A * P_.block(0, 0, dim_x_, dim_x_) * A.transpose() + Q;
-    P_tmp.block(0, dim_x_, dim_x_, d_dim_x) =
-        A * P_.block(0, 0, dim_x_, d_dim_x);
-    P_tmp.block(dim_x_, 0, d_dim_x, dim_x_) =
-        P_.block(0, 0, d_dim_x, dim_x_) * A.transpose();
-    P_tmp.block(dim_x_, dim_x_, d_dim_x, d_dim_x) =
-        P_.block(0, 0, d_dim_x, d_dim_x);
+    P_tmp.block(0, 0, dim_x_, dim_x_) = A * P_.block(0, 0, dim_x_, dim_x_) * A.transpose() + Q;
+    P_tmp.block(0, dim_x_, dim_x_, d_dim_x) = A * P_.block(0, 0, dim_x_, d_dim_x);
+    P_tmp.block(dim_x_, 0, d_dim_x, dim_x_) = P_.block(0, 0, d_dim_x, dim_x_) * A.transpose();
+    P_tmp.block(dim_x_, dim_x_, d_dim_x, d_dim_x) = P_.block(0, 0, d_dim_x, d_dim_x);
     P_ = P_tmp;
 
     return true;
 }
 
-bool TimeDelayKalmanFilter::updateWithDelay(const Eigen::MatrixXd& y,
-                                            const Eigen::MatrixXd& C,
-                                            const Eigen::MatrixXd& R,
-                                            const int delay_step) {
+bool TimeDelayKalmanFilter::updateWithDelay(const Eigen::MatrixXd& y, const Eigen::MatrixXd& C,
+                                            const Eigen::MatrixXd& R, const int delay_step) {
     if (delay_step >= max_delay_step_) {
-        std::cerr << "delay step is larger than max_delay_step. ignore update."
-                  << std::endl;
+        std::cerr << "delay step is larger than max_delay_step. ignore update." << std::endl;
         return false;
     }
 

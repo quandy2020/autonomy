@@ -32,7 +32,7 @@ class SeedDecomp : public DecompBase<Dim>
 {
 public:
     /// Simple constructor
-    SeedDecomp() {};
+    SeedDecomp(){};
     /**
      * @brief Basic constructor
      * @param p1 One end of the line seg
@@ -44,8 +44,7 @@ public:
      * @param radius Robot radius
      */
     void dilate(decimal_t radius) {
-        this->ellipsoid_ =
-            Ellipsoid<Dim>(radius * Matf<Dim, Dim>::Identity(), p_);
+        this->ellipsoid_ = Ellipsoid<Dim>(radius * Matf<Dim, Dim>::Identity(), p_);
         this->find_polyhedron();
         add_local_bbox(this->polyhedron_);
     }

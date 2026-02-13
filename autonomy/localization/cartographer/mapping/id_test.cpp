@@ -59,11 +59,9 @@ static MapById<IdType, int> CreateTestMapById() {
 TEST(IdTest, EmptyMapById) {
     MapById<NodeId, int> map_by_id;
     EXPECT_TRUE(map_by_id.empty());
-    EXPECT_EQ(map_by_id.trajectory_ids().begin(),
-              map_by_id.trajectory_ids().end());
+    EXPECT_EQ(map_by_id.trajectory_ids().begin(), map_by_id.trajectory_ids().end());
     int unknown_trajectory_id = 3;
-    EXPECT_EQ(map_by_id.trajectory(unknown_trajectory_id).begin(),
-              map_by_id.trajectory(unknown_trajectory_id).end());
+    EXPECT_EQ(map_by_id.trajectory(unknown_trajectory_id).begin(), map_by_id.trajectory(unknown_trajectory_id).end());
     const NodeId id = map_by_id.Append(42, 42);
     EXPECT_FALSE(map_by_id.empty());
     map_by_id.Trim(id);
@@ -79,21 +77,16 @@ TEST(IdTest, DeleteTrajectory) {
     map_by_id.Insert(NodeId{trajectory_id, 5}, 7);
     map_by_id.Insert(NodeId{other_trajectory_id, 1}, 3);
     EXPECT_EQ(map_by_id.size(), 3);
-    EXPECT_EQ(2, std::distance(map_by_id.trajectory_ids().begin(),
-                               map_by_id.trajectory_ids().end()));
+    EXPECT_EQ(2, std::distance(map_by_id.trajectory_ids().begin(), map_by_id.trajectory_ids().end()));
     map_by_id.Trim(NodeId{trajectory_id, 4});
     map_by_id.Trim(NodeId{trajectory_id, 5});
-    EXPECT_EQ(0, std::distance(map_by_id.trajectory(trajectory_id).begin(),
-                               map_by_id.trajectory(trajectory_id).end()));
+    EXPECT_EQ(0, std::distance(map_by_id.trajectory(trajectory_id).begin(), map_by_id.trajectory(trajectory_id).end()));
     int invalid_trajectory_id = 2;
-    EXPECT_EQ(map_by_id.trajectory(invalid_trajectory_id).begin(),
-              map_by_id.trajectory(invalid_trajectory_id).end());
+    EXPECT_EQ(map_by_id.trajectory(invalid_trajectory_id).begin(), map_by_id.trajectory(invalid_trajectory_id).end());
     EXPECT_EQ(map_by_id.size(), 1);
-    EXPECT_EQ(1,
-              std::distance(map_by_id.trajectory(other_trajectory_id).begin(),
-                            map_by_id.trajectory(other_trajectory_id).end()));
-    EXPECT_EQ(1, std::distance(map_by_id.trajectory_ids().begin(),
-                               map_by_id.trajectory_ids().end()));
+    EXPECT_EQ(1, std::distance(map_by_id.trajectory(other_trajectory_id).begin(),
+                               map_by_id.trajectory(other_trajectory_id).end()));
+    EXPECT_EQ(1, std::distance(map_by_id.trajectory_ids().begin(), map_by_id.trajectory_ids().end()));
     EXPECT_FALSE(map_by_id.empty());
 }
 
@@ -101,8 +94,7 @@ TEST(IdTest, MapByIdIterator) {
     MapById<NodeId, int> map_by_id = CreateTestMapById<NodeId>();
     EXPECT_EQ(4, map_by_id.size());
     EXPECT_EQ(2, map_by_id.BeginOfTrajectory(7)->data);
-    EXPECT_TRUE(std::next(map_by_id.BeginOfTrajectory(7)) ==
-                map_by_id.EndOfTrajectory(7));
+    EXPECT_TRUE(std::next(map_by_id.BeginOfTrajectory(7)) == map_by_id.EndOfTrajectory(7));
     std::deque<std::pair<NodeId, int>> expected_id_data = {
         {NodeId{0, 0}, 0},
         {NodeId{0, 1}, 1},
@@ -203,12 +195,9 @@ TEST(IdTest, LowerBoundEdgeCases) {
     MapById<SubmapId, Data> map_by_id;
     map_by_id.Append(0, Data(1));
     map_by_id.Append(2, Data(2));
-    CHECK(map_by_id.lower_bound(1, CreateTime(10)) ==
-          map_by_id.EndOfTrajectory(1));
-    CHECK(map_by_id.lower_bound(2, CreateTime(3)) ==
-          map_by_id.EndOfTrajectory(2));
-    CHECK(map_by_id.lower_bound(2, CreateTime(1)) ==
-          map_by_id.BeginOfTrajectory(2));
+    CHECK(map_by_id.lower_bound(1, CreateTime(10)) == map_by_id.EndOfTrajectory(1));
+    CHECK(map_by_id.lower_bound(2, CreateTime(3)) == map_by_id.EndOfTrajectory(2));
+    CHECK(map_by_id.lower_bound(2, CreateTime(1)) == map_by_id.BeginOfTrajectory(2));
 }
 
 TEST(IdTest, LowerBound) {
@@ -243,16 +232,13 @@ TEST(IdTest, LowerBoundFuzz) {
             t = t + dt_dist(rng);
             map_by_id.Append(kTrajectoryId, Data(t));
         }
-        std::uniform_int_distribution<int> t0_dist(1,
-                                                   N * kMaxTimeIncrement + 1);
+        std::uniform_int_distribution<int> t0_dist(1, N * kMaxTimeIncrement + 1);
         int t0 = t0_dist(rng);
         auto it = map_by_id.lower_bound(kTrajectoryId, CreateTime(t0));
 
         auto ground_truth = std::lower_bound(
-            map_by_id.BeginOfTrajectory(kTrajectoryId),
-            map_by_id.EndOfTrajectory(kTrajectoryId), CreateTime(t0),
-            [](MapById<SubmapId, Data>::IdDataReference a,
-               const common::Time& t) { return a.data.time() < t; });
+            map_by_id.BeginOfTrajectory(kTrajectoryId), map_by_id.EndOfTrajectory(kTrajectoryId), CreateTime(t0),
+            [](MapById<SubmapId, Data>::IdDataReference a, const common::Time& t) { return a.data.time() < t; });
 
         CHECK(ground_truth == it);
     }
@@ -273,20 +259,17 @@ TEST(IdTest, LowerBoundTrimmedTrajectory) {
     }
 
     // Choose random length of a trim segment.
-    std::uniform_int_distribution<int> dt_trim_segment_length(
-        1, static_cast<int>(N / 2));
+    std::uniform_int_distribution<int> dt_trim_segment_length(1, static_cast<int>(N / 2));
     size_t trim_segment_length = dt_trim_segment_length(rng);
     // Choose random start for a trim_segment.
-    std::uniform_int_distribution<int> dt_trim_segment_start(
-        2, N - trim_segment_length - 1);
+    std::uniform_int_distribution<int> dt_trim_segment_start(2, N - trim_segment_length - 1);
     size_t trim_segment_start_index = dt_trim_segment_start(rng);
 
     auto trim_segment_start = map_by_id.begin();
     std::advance(trim_segment_start, trim_segment_start_index);
 
     auto trim_segment_end = map_by_id.begin();
-    std::advance(trim_segment_end,
-                 trim_segment_start_index + trim_segment_length);
+    std::advance(trim_segment_end, trim_segment_start_index + trim_segment_length);
 
     for (auto it = trim_segment_start; it != trim_segment_end;) {
         const auto this_it = it;
@@ -297,11 +280,8 @@ TEST(IdTest, LowerBoundTrimmedTrajectory) {
     auto it = map_by_id.lower_bound(kTrajectoryId, CreateTime(0));
 
     auto ground_truth = std::lower_bound(
-        map_by_id.BeginOfTrajectory(kTrajectoryId),
-        map_by_id.EndOfTrajectory(kTrajectoryId), CreateTime(0),
-        [](MapById<SubmapId, Data>::IdDataReference a, const common::Time& t) {
-            return a.data.time() < t;
-        });
+        map_by_id.BeginOfTrajectory(kTrajectoryId), map_by_id.EndOfTrajectory(kTrajectoryId), CreateTime(0),
+        [](MapById<SubmapId, Data>::IdDataReference a, const common::Time& t) { return a.data.time() < t; });
 
     EXPECT_EQ(ground_truth, it);
 }
@@ -328,16 +308,13 @@ TEST(IdTest, LowerBoundFuzzWithStruct) {
             t = t + dt_dist(rng);
             map_by_id.Append(kTrajectoryId, DataStruct{CreateTime(t)});
         }
-        std::uniform_int_distribution<int> t0_dist(1,
-                                                   N * kMaxTimeIncrement + 1);
+        std::uniform_int_distribution<int> t0_dist(1, N * kMaxTimeIncrement + 1);
         int t0 = t0_dist(rng);
         auto it = map_by_id.lower_bound(kTrajectoryId, CreateTime(t0));
 
         auto ground_truth = std::lower_bound(
-            map_by_id.BeginOfTrajectory(kTrajectoryId),
-            map_by_id.EndOfTrajectory(kTrajectoryId), CreateTime(t0),
-            [](MapById<SubmapId, DataStruct>::IdDataReference a,
-               const common::Time& t) { return a.data.time < t; });
+            map_by_id.BeginOfTrajectory(kTrajectoryId), map_by_id.EndOfTrajectory(kTrajectoryId), CreateTime(t0),
+            [](MapById<SubmapId, DataStruct>::IdDataReference a, const common::Time& t) { return a.data.time < t; });
 
         CHECK(ground_truth == it);
     }

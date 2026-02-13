@@ -21,9 +21,7 @@
 namespace autonomy {
 namespace transform {
 
-TransformServer::TransformServer(
-    const autonomy::transform::proto::TransformOptions& options,
-    ::autolink::Node* node)
+TransformServer::TransformServer(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node)
     : transform_options_(options), node_(node) {
     AINFO << "TransformServer created";
 }
@@ -36,8 +34,7 @@ bool TransformServer::Initialize() {
 
     // Create Static Transform component
     if (node_) {
-        static_transform_ =
-            std::make_unique<StaticTransform>(transform_options_, node_);
+        static_transform_ = std::make_unique<StaticTransform>(transform_options_, node_);
     }
 
     initialized_ = true;

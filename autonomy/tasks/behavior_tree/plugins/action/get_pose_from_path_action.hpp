@@ -19,9 +19,11 @@
 #include <string>
 
 #include "behaviortree_cpp/action_node.h"
+#include "behaviortree_cpp/json_export.h"
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/tasks/behavior_tree/json_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -29,45 +31,26 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-/**
- * @brief A BT::ActionNode that gets a pose from a path at a specific index
- */
-class GetPoseFromPathAction : public BT::ActionNodeBase
+class GetPoseFromPath : public BT::ActionNodeBase
 {
 public:
-    /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::GetPoseFromPathAction
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    GetPoseFromPathAction(const std::string& xml_tag_name,
-                          const BT::NodeConfiguration& conf);
+    GetPoseFromPath(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
     static BT::PortsList providedPorts() {
+        // Register JSON definitions for the types used in the ports
+        BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
+        BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
+
         return {
-            BT::InputPort<commsgs::planning_msgs::Path>("path", "Input path"),
-            BT::InputPort<size_t>("index", 0,
-                                  "Index of the pose to extract from path"),
-            BT::OutputPort<commsgs::geometry_msgs::PoseStamped>(
-                "pose", "Extracted pose from path"),
+            BT::InputPort<commsgs::planning_msgs::Path>("path", "Path to extract pose from"),
+            BT::OutputPort<commsgs::geometry_msgs::PoseStamped>("pose", "Stamped Extracted Pose"),
+            BT::InputPort<int>("index", 0, "Index of pose to extract from. -1 is end of list"),
         };
     }
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
-
-    /**
-     * @brief Function to halt the node
-     */
+private:
     void halt() override {}
+    BT::NodeStatus tick() override;
 };
 
 }  // namespace action

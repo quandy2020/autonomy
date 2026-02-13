@@ -36,9 +36,7 @@
 namespace autonomy {
 namespace common {
 
-template <typename T, typename std::enable_if<
-                          std::is_base_of<google::protobuf::Message, T>::value,
-                          int>::type = 0>
+template <typename T, typename std::enable_if<std::is_base_of<google::protobuf::Message, T>::value, int>::type = 0>
 static void FillHeader(const std::string& module_name, T* msg) {
     static std::atomic<uint64_t> sequence_num = {0};
     auto* header = msg->mutable_header();

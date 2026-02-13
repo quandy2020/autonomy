@@ -24,8 +24,7 @@ namespace plugins {
 namespace grpc {
 namespace handlers {
 
-void SendExplorationHandler::OnRequest(
-    const proto::ExplorationCommandRequest& request) {
+void SendExplorationHandler::OnRequest(const proto::ExplorationCommandRequest& request) {
     // if
     // (!GetContext<MapBuilderContextInterface>()->CheckClientIdForTrajectory(
     //         request.client_id(), request.trajectory_id())) {

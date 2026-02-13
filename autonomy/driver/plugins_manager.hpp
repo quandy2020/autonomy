@@ -93,8 +93,8 @@ public:
      * @param driver_name 驱动实例名称
      * @return 驱动实例指针（DriverInterface），失败返回 nullptr
      */
-    common::DriverInterface::SharedPtr CreateDriver(
-        const std::string& driver_class_name, const std::string& driver_name);
+    common::DriverInterface::SharedPtr CreateDriver(const std::string& driver_class_name,
+                                                    const std::string& driver_name);
 
     /**
      * @brief 创建驱动实例（类型安全版本）
@@ -104,11 +104,10 @@ public:
      * @return 驱动实例指针，失败返回 nullptr
      */
     template <typename DriverType>
-    std::shared_ptr<DriverType> CreateDriverTyped(
-        const std::string& driver_class_name, const std::string& driver_name) {
-        static_assert(
-            std::is_base_of<common::DriverInterface, DriverType>::value,
-            "DriverType must inherit from DriverInterface");
+    std::shared_ptr<DriverType> CreateDriverTyped(const std::string& driver_class_name,
+                                                  const std::string& driver_name) {
+        static_assert(std::is_base_of<common::DriverInterface, DriverType>::value,
+                      "DriverType must inherit from DriverInterface");
 
         auto driver = CreateDriver(driver_class_name, driver_name);
         if (driver == nullptr) {
@@ -130,8 +129,7 @@ public:
      * @param driver 驱动实例指针
      * @return true 成功，false 失败
      */
-    bool RegisterDriver(const std::string& driver_name,
-                        common::DriverInterface::SharedPtr driver);
+    bool RegisterDriver(const std::string& driver_name, common::DriverInterface::SharedPtr driver);
 
     /**
      * @brief 取消注册驱动实例
@@ -144,8 +142,7 @@ public:
      * @param driver_name 驱动实例名称
      * @return 驱动实例指针，不存在返回 nullptr
      */
-    common::DriverInterface::SharedPtr GetDriver(
-        const std::string& driver_name) const;
+    common::DriverInterface::SharedPtr GetDriver(const std::string& driver_name) const;
 
     /**
      * @brief 获取驱动实例（类型安全版本）
@@ -154,11 +151,9 @@ public:
      * @return 驱动实例指针，不存在或类型不匹配返回 nullptr
      */
     template <typename DriverType>
-    std::shared_ptr<DriverType> GetDriverTyped(
-        const std::string& driver_name) const {
-        static_assert(
-            std::is_base_of<common::DriverInterface, DriverType>::value,
-            "DriverType must inherit from DriverInterface");
+    std::shared_ptr<DriverType> GetDriverTyped(const std::string& driver_name) const {
+        static_assert(std::is_base_of<common::DriverInterface, DriverType>::value,
+                      "DriverType must inherit from DriverInterface");
 
         auto driver = GetDriver(driver_name);
         if (driver == nullptr) {
@@ -204,16 +199,14 @@ public:
      */
     template <typename DriverType>
     std::vector<std::shared_ptr<DriverType>> GetDriversByType() const {
-        static_assert(
-            std::is_base_of<common::DriverInterface, DriverType>::value,
-            "DriverType must inherit from DriverInterface");
+        static_assert(std::is_base_of<common::DriverInterface, DriverType>::value,
+                      "DriverType must inherit from DriverInterface");
 
         std::lock_guard<std::mutex> lock(mutex_);
         std::vector<std::shared_ptr<DriverType>> typed_drivers;
 
         for (const auto& pair : drivers_) {
-            auto typed_driver =
-                std::dynamic_pointer_cast<DriverType>(pair.second);
+            auto typed_driver = std::dynamic_pointer_cast<DriverType>(pair.second);
             if (typed_driver != nullptr) {
                 typed_drivers.push_back(typed_driver);
             }
@@ -238,8 +231,8 @@ private:
      * @param driver_class_name 驱动类名
      * @return 驱动实例指针
      */
-    common::DriverInterface::SharedPtr CreateDriverFromPlugin(
-        const std::string& library_path, const std::string& driver_class_name);
+    common::DriverInterface::SharedPtr CreateDriverFromPlugin(const std::string& library_path,
+                                                              const std::string& driver_class_name);
 
     // 插件库映射表（library_path -> PluginLibrary）
     std::map<std::string, PluginLibrary> plugin_libraries_;

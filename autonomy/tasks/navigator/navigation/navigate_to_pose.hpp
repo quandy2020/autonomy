@@ -12,123 +12,80 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Design aligned with nav2_bt_navigator::NavigateToPoseNavigator.
  */
 
 #pragma once
 
+#include <chrono>
+#include <memory>
+#include <string>
+
 #include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/navigator/navigator.hpp"
+#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
 namespace tasks {
 namespace navigator {
 namespace navigation {
 
+using autonomy::tasks::common::BtStatus;
+using autonomy::tasks::common::OdomSmoother;
+
 /**
  * @class NavigateToPoseNavigator
- * @brief A navigator for navigating to a specified pose
+ * @brief 导航到指定位姿的 Navigator，使用行为树实现（与 nav2 NavigateToPoseNavigator 对齐）。
  */
 class NavigateToPoseNavigator
-    : public Navigator<
-          autonomy::tasks::behavior_tree::proto::NavigateToPoseAction>
+    : public autonomy::tasks::common::BehaviorTreeNavigator<autonomy::tasks::behavior_tree::proto::NavigateToPoseAction>
 {
 public:
-    AUTONOMY_SMART_PTR_DEFINITIONS(NavigateToPoseNavigator)
+    /**
+     * Define ActionT type
+     */
     using ActionT = autonomy::tasks::behavior_tree::proto::NavigateToPoseAction;
 
     /**
-     * @brief A constructor for NavigateToPoseNavigator
+     * Define NavigateToPoseNavigator::SharedPtr type
      */
-    NavigateToPoseNavigator() : Navigator<ActionT>() {}
+    AUTONOMY_SMART_PTR_DEFINITIONS(NavigateToPoseNavigator)
+
+    /** Default constructor for plugin loading; use (node, options) ctor for normal construction. */
+    NavigateToPoseNavigator() = default;
 
     /**
-     * @brief A configure state transition to configure navigator's state
-     * @param node Shared pointer to the autolink node
+     * @brief 使用节点与 TaskOptions 构造
+     * @param node 用于创建 action server、tf、odom 等的节点
+     * @param options 任务选项（navigators、plugin_lib_names、坐标系、odom 等）
      */
-    bool Configure(const std::shared_ptr<autolink::Node> node);
+    NavigateToPoseNavigator(std::shared_ptr<::autolink::Node> node, const autonomy::tasks::proto::TaskOptions& options);
 
     /**
-     * @brief A cleanup state transition to remove memory allocated
+     * @brief 获取 Navigator 名称
+     * @return Navigator 名称
      */
-    bool Cleanup() override;
+    std::string GetName() override;
 
-    /**
-     * @brief A subscription and callback to handle the topic-based goal
-     * published from rviz
-     * @param pose Pose received via atopic
-     */
-    void OnGoalPoseReceived(
-        const commsgs::geometry_msgs::PoseStamped::SharedPtr pose);
-
-    /**
-     * @brief Get action name for this navigator
-     * @return string Name of action server
-     */
-    std::string GetName() override {
-        return std::string("navigate_to_pose");
-    }
-
-    /**
-     * @brief Get navigator's default BT
-     * @param node WeakPtr to the lifecycle node
-     * @return string Filepath to default XML
-     */
-    std::string GetDefaultBTFilepath(
-        std::weak_ptr<autolink::Node> node) override;
-
-protected:
-    /**
-     * @brief A callback to be called when a new goal is received by the BT
-     * action server Can be used to check if goal is valid and put values on the
-     * blackboard which depend on the received goal
-     * @param goal Action template's goal message
-     * @return bool if goal was received successfully to be processed
-     */
-    bool GoalReceived(
-        const std::shared_ptr<typename ActionT::Goal> goal) override;
-
-    /**
-     * @brief A callback that defines execution that happens on one iteration
-     * through the BT Can be used to publish action feedback
-     */
+    std::string GetDefaultBTFilepath() override;
+    bool GoalReceived(std::shared_ptr<const typename ActionT::Goal> goal) override;
     void OnLoop() override;
+    void OnPreempt(std::shared_ptr<const typename ActionT::Goal> goal) override;
+    void GoalCompleted(std::shared_ptr<typename ActionT::Result> result, const BtStatus final_bt_status) override;
 
     /**
-     * @brief A callback that is called when a preempt is requested
+     * @brief 将 goal 位姿变换到 global_frame 并写入 blackboard，重置 number_recoveries
+     * @return 成功返回 true
      */
-    void OnPreempt(const typename ActionT::Goal& goal) override;
+    bool InitializeGoalPose(std::shared_ptr<const typename ActionT::Goal> goal);
 
-    /**
-     * @brief A callback that is called when a the action is completed, can fill
-     * in action result message or indicate that this action is done.
-     * @param result Action template result message to populate
-     * @param final_bt_status Resulting status of the behavior tree execution
-     * that may be referenced while populating the result.
-     */
-    void GoalCompleted(const std::shared_ptr<typename ActionT::Result> result,
-                       const autonomy::tasks::behavior_tree::BtStatus
-                           final_bt_status) override;
-
-    /**
-     * @brief Goal pose initialization on the blackboard
-     * @param goal Action template's goal message to process
-     */
-    void InitializeGoalPose(const std::shared_ptr<ActionT::Goal> goal);
-
-    commsgs::builtin_interfaces::Time start_time_;
-
-    // rclcpp::Subscription<commsgs::geometry_msgs::PoseStamped>::SharedPtr
-    // goal_sub_; rclcpp_action::Client<ActionT>::SharedPtr self_client_;
-
+    std::chrono::steady_clock::time_point start_time_;
     std::string goal_blackboard_id_;
     std::string path_blackboard_id_;
-
-    // Odometry smoother object
-    // std::shared_ptr<nav2_util::OdomSmoother> odom_smoother_;
+    std::shared_ptr<OdomSmoother> odom_smoother_;
 };
 
 }  // namespace navigation

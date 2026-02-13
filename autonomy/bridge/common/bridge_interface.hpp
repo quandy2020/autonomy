@@ -38,8 +38,7 @@ public:
     virtual ~BridgeInterface() = default;
 };
 
-proto::BridgeOptions LoadOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::BridgeOptions LoadOptions(autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace bridge

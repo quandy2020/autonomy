@@ -27,16 +27,12 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void GetTrajectoryStatesHandler::OnRequest(
-    const google::protobuf::Empty& request) {
-    auto trajectories_state = GetContext<MapBuilderContextInterface>()
-                                  ->map_builder()
-                                  .pose_graph()
-                                  ->GetTrajectoryStates();
+void GetTrajectoryStatesHandler::OnRequest(const google::protobuf::Empty& request) {
+    auto trajectories_state =
+        GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->GetTrajectoryStates();
     auto response = absl::make_unique<proto::GetTrajectoryStatesResponse>();
     for (const auto& entry : trajectories_state) {
-        (*response->mutable_trajectories_state())[entry.first] =
-            ToProto(entry.second);
+        (*response->mutable_trajectories_state())[entry.first] = ToProto(entry.second);
     }
     Send(std::move(response));
 }

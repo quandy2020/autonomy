@@ -23,8 +23,7 @@ using grid_map::Position;
 
 TEST(GridMapIterator, Simple) {
     GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
     map.add("layer", 0.0);
     GridMapIterator iterator(map);
 
@@ -41,8 +40,7 @@ TEST(GridMapIterator, Simple) {
 
 TEST(GridMapIterator, LinearIndex) {
     GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0,
-                    Position(0.0, 0.0));  // bufferSize(8, 5)
+    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
     map.add("layer", 0.0);
     GridMapIterator iterator(map);
 

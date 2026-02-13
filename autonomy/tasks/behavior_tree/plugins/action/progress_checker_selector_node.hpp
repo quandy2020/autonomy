@@ -20,9 +20,10 @@
 #include <string>
 #include <vector>
 
+#include "behaviortree_cpp/action_node.h"
+
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
-#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -32,41 +33,69 @@ namespace action {
 
 /**
  * @brief The ProgressCheckerSelector behavior is used to switch the progress
- * checker that will be used by the controller server
+ * checker of the controller server. It subscribes to a topic
+ * "progress_checker_selector" to get the decision about what progress_checker
+ * must be used. It is usually used before of the FollowPath. The
+ * selected_progress_checker output port is passed to progress_checker_id input
+ * port of the FollowPath
  * @note This is an Asynchronous node. It will re-initialize when halted.
  */
 class ProgressCheckerSelector : public BT::SyncActionNode
 {
 public:
     /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::ProgressCheckerSelector
+     * @brief A constructor for nav2_behavior_tree::ProgressCheckerSelector
+     *
      * @param xml_tag_name Name for the XML tag for this node
-     * @param conf BT node configuration
+     * @param conf  BT node configuration
      */
-    ProgressCheckerSelector(const std::string& xml_tag_name,
-                            const BT::NodeConfiguration& conf);
+    ProgressCheckerSelector(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
     /**
      * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
+     * @return BT::PortsList Containing basic ports along with node-specific
+     * ports
      */
     static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<std::string>("topic_name", "",
-                                       "Topic name to select progress checker"),
-            BT::InputPort<std::string>("default_progress_checker", "",
-                                       "Default progress checker name"),
-            BT::OutputPort<std::string>("selected_progress_checker",
-                                        "Selected progress checker name"),
-        };
+        return {BT::InputPort<std::string>("default_progress_checker",
+                                           "the default progress_checker to use if there is not any "
+                                           "external topic message received."),
+
+                BT::InputPort<std::string>("topic_name", "progress_checker_selector",
+                                           "the input topic name to select the progress_checker"),
+
+                BT::OutputPort<std::string>("selected_progress_checker", "Selected progress_checker by subscription")};
     }
 
+private:
     /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
+     * @brief Function to read parameters and initialize class variables
+     */
+    void initialize();
+    /**
+     * @brief Function to create ROS interfaces
+     */
+    void createROSInterfaces();
+
+    /**
+     * @brief Function to perform some user-defined operation on tick
      */
     BT::NodeStatus tick() override;
+
+    /**
+     * @brief callback function for the progress_checker_selector topic
+     *
+     * @param msg the message with the id of the progress_checker_selector
+     */
+    void callbackProgressCheckerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg);
+
+    std::shared_ptr<autolink::Reader<commsgs::std_msgs::String>> progress_checker_selector_sub_;
+
+    std::string last_selected_progress_checker_;
+
+    std::shared_ptr<::autolink::Node> node_;
+
+    std::string topic_name_;
 };
 
 }  // namespace action

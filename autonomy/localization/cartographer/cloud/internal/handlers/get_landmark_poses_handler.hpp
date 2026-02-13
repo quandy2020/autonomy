@@ -25,13 +25,10 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(
-    GetLandmarkPosesSignature, google::protobuf::Empty,
-    proto::GetLandmarkPosesResponse,
-    "/cartographer.cloud.proto.MapBuilderService/GetLandmarkPoses")
+DEFINE_HANDLER_SIGNATURE(GetLandmarkPosesSignature, google::protobuf::Empty, proto::GetLandmarkPosesResponse,
+                         "/cartographer.cloud.proto.MapBuilderService/GetLandmarkPoses")
 
-class GetLandmarkPosesHandler
-    : public autonomy::common::async_grpc::RpcHandler<GetLandmarkPosesSignature>
+class GetLandmarkPosesHandler : public autonomy::common::async_grpc::RpcHandler<GetLandmarkPosesSignature>
 {
 public:
     void OnRequest(const google::protobuf::Empty& request) override;
