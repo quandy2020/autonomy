@@ -1,0 +1,7 @@
+<autolink>
+    <module>
+        <name>common</name>
+        <dag_conf>/autolink/examples/common_component_example/common.dag</dag_conf>
+        <process_name>common</process_name>
+    </module>
+</autolink>

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+import "qos_profile.proto";
+
+message ReaderOption {
+  string channel = 1;
+  QosProfile qos_profile =
+      2;  // depth: used to define capacity of processed messages
+  uint32 pending_queue_size = 3;  // used to define capacity of unprocessed messages
+}
+
+message ComponentConfig {
+  string name = 1;
+  string config_file_path = 2;
+  string flag_file_path = 3;
+  repeated ReaderOption readers = 4;
+}
+
+message TimerComponentConfig {
+  string name = 1;
+  string config_file_path = 2;
+  string flag_file_path = 3;
+  uint32 interval = 4;  // In milliseconds.
+}

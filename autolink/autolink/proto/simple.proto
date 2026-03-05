@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+message SimpleMessage {
+  int32 integer = 1;
+  string text = 2;
+}
+
+message SimpleRepeatedMessage {
+  repeated SimpleMessage message = 1;
+}

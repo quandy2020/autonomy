@@ -1,0 +1,64 @@
+#!/bin/bash
+# Setup script for autolink Python environment
+# This script sets up the necessary environment variables to run autolink Python scripts
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Assume install root is one level up from bin directory
+INSTALL_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Set AUTOLINK_DISTRIBUTION_HOME to the install root
+export AUTOLINK_DISTRIBUTION_HOME="${INSTALL_ROOT}"
+
+# Set AUTOLINK_PATH for configuration files
+if [ -d "${INSTALL_ROOT}/share/autolink/conf" ]; then
+    export AUTOLINK_PATH="${INSTALL_ROOT}/share/autolink"
+elif [ -d "${INSTALL_ROOT}/etc/autolink" ]; then
+    export AUTOLINK_PATH="${INSTALL_ROOT}/etc/autolink"
+fi
+
+# Add Python autolink modules to PYTHONPATH
+# The import is: from autolink.python.autolink_py3 import autolink
+# So we need to add the python directory to PYTHONPATH
+if [ -d "${INSTALL_ROOT}/python" ]; then
+    export PYTHONPATH="${INSTALL_ROOT}/python:${PYTHONPATH}"
+fi
+# Also add source directory if running from source (for development)
+if [ -d "${INSTALL_ROOT}/../src/autonomy/autolink" ]; then
+    export PYTHONPATH="${INSTALL_ROOT}/../src/autonomy/autolink:${PYTHONPATH}"
+fi
+
+# Add autolink libraries to LD_LIBRARY_PATH
+if [ -d "${INSTALL_ROOT}/lib" ]; then
+    export LD_LIBRARY_PATH="${INSTALL_ROOT}/lib:${LD_LIBRARY_PATH}"
+fi
+
+# Add Python extension modules path to PYTHONPATH
+# The _autolink_wrapper modules are in lib/autolink/python/internal
+if [ -d "${INSTALL_ROOT}/lib/autolink/python/internal" ]; then
+    export PYTHONPATH="${INSTALL_ROOT}/lib/autolink/python/internal:${PYTHONPATH}"
+fi
+
+# Add ROS 2 libraries (FastDDS is typically here)
+if [ -d "/opt/ros/humble/lib" ]; then
+    export LD_LIBRARY_PATH="/opt/ros/humble/lib:${LD_LIBRARY_PATH}"
+fi
+
+# Try to find FastDDS library in other common locations
+for path in /usr/lib /usr/local/lib /opt/fastdds/lib; do
+    if [ -f "${path}/libfastrtps.so.2.6" ] || [ -f "${path}/libfastrtps.so" ]; then
+        export LD_LIBRARY_PATH="${path}:${LD_LIBRARY_PATH}"
+        break
+    fi
+done
+
+# If sourced, don't execute anything else
+if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+    return 0
+fi
+
+# If executed directly, run the command passed as arguments
+if [ $# -gt 0 ]; then
+    exec "$@"
+fi
+

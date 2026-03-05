@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+message ProtoDesc {
+  bytes desc = 1;
+  repeated ProtoDesc dependencies = 2;
+}

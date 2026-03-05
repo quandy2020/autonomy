@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+enum RunMode {
+  MODE_REALITY = 0;
+  MODE_SIMULATION = 1;
+}
+
+enum ClockMode {
+  MODE_AUTOLINK = 0;
+  MODE_MOCK = 1;
+}
+
+message RunModeConf {
+  RunMode run_mode = 1;
+  ClockMode clock_mode = 2;
+}

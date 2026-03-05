@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+message ChoreographyTask {
+  string name = 1;
+  int32 processor = 2;
+  uint32 prio = 3;
+}
+
+message ChoreographyConf {
+  uint32 choreography_processor_num = 1;
+  string choreography_affinity = 2;
+  string choreography_processor_policy = 3;
+  int32 choreography_processor_prio = 4;
+  string choreography_cpuset = 5;
+  uint32 pool_processor_num = 6;
+  string pool_affinity = 7;
+  string pool_processor_policy = 8;
+  int32 pool_processor_prio = 9;
+  string pool_cpuset = 10;
+  repeated ChoreographyTask tasks = 11;
+}
