@@ -15,11 +15,10 @@
  *****************************************************************************/
 #include <memory>
 
-#include "examples.pb.h"
-
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/component/component.hpp"
 #include "autolink/component/timer_component.hpp"
+#include "examples.pb.h"
 
 using autolink::Component;
 using autolink::ComponentBase;

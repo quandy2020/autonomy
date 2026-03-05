@@ -17,6 +17,7 @@
 #include "autolink/service_discovery/container/single_value_warehouse.hpp"
 
 #include <utility>
+
 #include "gtest/gtest.h"
 
 namespace autolink {

@@ -25,26 +25,25 @@ namespace io {
 
 // Passes through points, but keeps track of how many points it saw and output
 // that on Flush.
-class CountingPointsProcessor : public PointsProcessor
-{
-public:
-    constexpr static const char* kConfigurationFileActionName = "dump_num_points";
-    explicit CountingPointsProcessor(PointsProcessor* next);
+class CountingPointsProcessor : public PointsProcessor {
+ public:
+  constexpr static const char* kConfigurationFileActionName = "dump_num_points";
+  explicit CountingPointsProcessor(PointsProcessor* next);
 
-    static std::unique_ptr<CountingPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
-                                                                   PointsProcessor* next);
+  static std::unique_ptr<CountingPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                 PointsProcessor* next);
 
-    ~CountingPointsProcessor() override {}
+  ~CountingPointsProcessor() override {}
 
-    CountingPointsProcessor(const CountingPointsProcessor&) = delete;
-    CountingPointsProcessor& operator=(const CountingPointsProcessor&) = delete;
+  CountingPointsProcessor(const CountingPointsProcessor&) = delete;
+  CountingPointsProcessor& operator=(const CountingPointsProcessor&) = delete;
 
-    void Process(std::unique_ptr<PointsBatch> points) override;
-    FlushResult Flush() override;
+  void Process(std::unique_ptr<PointsBatch> points) override;
+  FlushResult Flush() override;
 
-private:
-    int64 num_points_;
-    PointsProcessor* next_;
+ private:
+  int64 num_points_;
+  PointsProcessor* next_;
 };
 
 }  // namespace io

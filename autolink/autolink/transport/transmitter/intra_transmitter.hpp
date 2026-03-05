@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 
@@ -57,9 +56,7 @@ bool IntraTransmitter<M>::AcquireMessage(std::shared_ptr<M>& msg) {
 
 template <typename M>
 IntraTransmitter<M>::IntraTransmitter(const RoleAttributes& attr)
-    : Transmitter<M>(attr),
-      channel_id_(attr.channel_id()),
-      dispatcher_(nullptr) {}
+    : Transmitter<M>(attr), channel_id_(attr.channel_id()), dispatcher_(nullptr) {}
 
 template <typename M>
 IntraTransmitter<M>::~IntraTransmitter() {
@@ -95,8 +92,7 @@ void IntraTransmitter<M>::Disable() {
 }
 
 template <typename M>
-bool IntraTransmitter<M>::Transmit(const MessagePtr& msg,
-                                   const MessageInfo& msg_info) {
+bool IntraTransmitter<M>::Transmit(const MessagePtr& msg, const MessageInfo& msg_info) {
   if (!this->enabled_) {
     ADEBUG << "not enable.";
     return false;
@@ -108,4 +104,3 @@ bool IntraTransmitter<M>::Transmit(const MessagePtr& msg,
 
 }  // namespace transport
 }  // namespace autolink
-

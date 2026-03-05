@@ -21,11 +21,11 @@ namespace plugins {
 namespace robot {
 
 TfLinkUpdater::TfLinkUpdater() {
-    // TODO: Initialize
+  // TODO: Initialize
 }
 
 TfLinkUpdater::~TfLinkUpdater() {
-    // TODO: Cleanup
+  // TODO: Cleanup
 }
 
 }  // namespace robot

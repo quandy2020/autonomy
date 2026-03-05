@@ -23,32 +23,24 @@ namespace plugins {
 namespace displays {
 
 TwistDisplay::TwistDisplay(const QString& name) : aviz::common::Display() {
-    setClassId("aviz/Twist");
-    setName(name);
+  setClassId("aviz/Twist");
+  setName(name);
 }
 
 TwistDisplay::~TwistDisplay() = default;
 
-void TwistDisplay::onInitialize() {
-    aviz::common::Display::onInitialize();
-}
+void TwistDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
 
-void TwistDisplay::onEnable() {
-    aviz::common::Display::onEnable();
-}
+void TwistDisplay::onEnable() { aviz::common::Display::onEnable(); }
 
-void TwistDisplay::onDisable() {
-    aviz::common::Display::onDisable();
-}
+void TwistDisplay::onDisable() { aviz::common::Display::onDisable(); }
 
 void TwistDisplay::update(float wall_dt, float ros_dt) {
-    (void)wall_dt;
-    (void)ros_dt;
+  (void)wall_dt;
+  (void)ros_dt;
 }
 
-void TwistDisplay::reset() {
-    aviz::common::Display::reset();
-}
+void TwistDisplay::reset() { aviz::common::Display::reset(); }
 
 }  // namespace displays
 }  // namespace plugins

@@ -19,10 +19,9 @@
 #include <cstdlib>
 #include <thread>
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/environment.hpp"
 #include "autolink/scheduler/scheduler_factory.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 

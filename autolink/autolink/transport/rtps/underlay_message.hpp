@@ -16,10 +16,8 @@
 
 #pragma once
 
-
-#include <cstdint>
-
 #include <array>
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -137,9 +135,7 @@ class UnderlayMessage {
    * @brief This function moves the value in member datatype
    * @param _datatype New value to be moved in member datatype
    */
-  inline void datatype(std::string&& _datatype) {
-    m_datatype = std::move(_datatype);
-  }
+  inline void datatype(std::string&& _datatype) { m_datatype = std::move(_datatype); }
 
   /*!
    * @brief This function returns a constant reference to member datatype
@@ -168,8 +164,7 @@ class UnderlayMessage {
    * @param current_alignment Buffer alignment.
    * @return Serialized size.
    */
-  static size_t getCdrSerializedSize(const UnderlayMessage& data,
-                                     size_t current_alignment = 0);
+  static size_t getCdrSerializedSize(const UnderlayMessage& data, size_t current_alignment = 0);
 
   /*!
    * @brief This function serializes an object using CDR serialization.
@@ -213,4 +208,3 @@ class UnderlayMessage {
 
 }  // namespace transport
 }  // namespace autolink
-

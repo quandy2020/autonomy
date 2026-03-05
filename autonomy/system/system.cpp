@@ -20,42 +20,42 @@ namespace autonomy {
 namespace system {
 
 AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options) : options_{options} {
-    tf_buffer_ = TfBuffer::Instance();
-    map_server_ = std::make_shared<map::MapServer>(options_.map_options());
-    controller_server_ = std::make_shared<control::ControllerServer>(options_.controller_options());
-    planner_server_ = std::make_shared<planning::PlannerServer>(options_.planner_options());
+  tf_buffer_ = TfBuffer::Instance();
+  map_server_ = std::make_shared<map::MapServer>(options_.map_options());
+  controller_server_ = std::make_shared<control::ControllerServer>(options_.controller_options());
+  planner_server_ = std::make_shared<planning::PlannerServer>(options_.planner_options());
 }
 
 void AutonomyNode::Start() {
-    if (map_server_ != nullptr) {
-        map_server_->Start();
-    }
+  if (map_server_ != nullptr) {
+    map_server_->Start();
+  }
 
-    if (controller_server_ != nullptr) {
-        controller_server_->Start();
-    }
+  if (controller_server_ != nullptr) {
+    controller_server_->Start();
+  }
 
-    if (planner_server_ != nullptr) {
-        planner_server_->Start();
-    }
+  if (planner_server_ != nullptr) {
+    planner_server_->Start();
+  }
 }
 
 void AutonomyNode::Shutdown() {
-    if (map_server_ != nullptr) {
-        map_server_->Shutdown();
-    }
+  if (map_server_ != nullptr) {
+    map_server_->Shutdown();
+  }
 
-    if (controller_server_ != nullptr) {
-        controller_server_->Shutdown();
-    }
+  if (controller_server_ != nullptr) {
+    controller_server_->Shutdown();
+  }
 
-    if (planner_server_ != nullptr) {
-        planner_server_->Shutdown();
-    }
+  if (planner_server_ != nullptr) {
+    planner_server_->Shutdown();
+  }
 }
 
 AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options) {
-    return std::make_unique<AutonomyNode>(options);
+  return std::make_unique<AutonomyNode>(options);
 }
 
 }  // namespace system

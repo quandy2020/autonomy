@@ -16,12 +16,10 @@
 
 #include "autolink/blocker/blocker_manager.hpp"
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/blocker/intra_reader.hpp"
 #include "autolink/blocker/intra_writer.hpp"
+#include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace blocker {

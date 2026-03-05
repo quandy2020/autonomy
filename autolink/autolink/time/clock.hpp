@@ -16,13 +16,11 @@
 
 #pragma once
 
-
 #include <mutex>
-
-#include "autolink/proto/run_mode_conf.pb.h"
 
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/common/macros.hpp"
+#include "autolink/proto/run_mode_conf.pb.h"
 #include "autolink/time/time.hpp"
 
 namespace autolink {
@@ -38,8 +36,7 @@ using ::autolink::proto::ClockMode;
 class Clock {
  public:
   static constexpr int64_t PRECISION =
-      std::chrono::system_clock::duration::period::den /
-      std::chrono::system_clock::duration::period::num;
+      std::chrono::system_clock::duration::period::den / std::chrono::system_clock::duration::period::num;
 
   /// PRECISION >= 1000000 means the precision is at least 1us.
   static_assert(PRECISION >= 1000000,
@@ -80,9 +77,7 @@ class Clock {
    * @brief This is for mock clock mode only. It will set the timestamp
    * for the mock clock with UNIX timestamp in seconds.
    */
-  static void SetNowInSeconds(const double seconds) {
-    Clock::SetNow(Time(seconds));
-  }
+  static void SetNowInSeconds(const double seconds) { Clock::SetNow(Time(seconds)); }
 
  private:
   ClockMode mode_;
@@ -93,4 +88,3 @@ class Clock {
 };
 
 }  // namespace autolink
-

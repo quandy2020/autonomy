@@ -16,12 +16,10 @@
 
 #pragma once
 
-
 #include <string>
 
-#include "autolink/proto/parameter.pb.h"
-
 #include "autolink/common/log.hpp"
+#include "autolink/proto/parameter.pb.h"
 
 /**
  * @namespace autolink.parameter
@@ -121,8 +119,8 @@ class Parameter {
    * @param full_name the proto full name
    * @param proto_desc the proto's description
    */
-  Parameter(const std::string& name, const std::string& msg_str,
-            const std::string& full_name, const std::string& proto_desc);
+  Parameter(const std::string& name, const std::string& msg_str, const std::string& full_name,
+            const std::string& proto_desc);
 
   /**
    * @brief use a google::protobuf::Message type value to construct the
@@ -222,10 +220,7 @@ std::is_base_of<google::protobuf::Message, ValueType>::value,
 ValueType>::type protobuf::Message type result
    */
   template <typename ValueType>
-  typename std::enable_if<
-      std::is_base_of<google::protobuf::Message, ValueType>::value,
-      ValueType>::type
-  value() const;
+  typename std::enable_if<std::is_base_of<google::protobuf::Message, ValueType>::value, ValueType>::type value() const;
 
   /**
    * @brief Translate paramter value to int type
@@ -236,9 +231,7 @@ ValueType>::type protobuf::Message type result
 ValueType>::type int type result
    */
   template <typename ValueType>
-  typename std::enable_if<std::is_integral<ValueType>::value &&
-                              !std::is_same<ValueType, bool>::value,
-                          ValueType>::type
+  typename std::enable_if<std::is_integral<ValueType>::value && !std::is_same<ValueType, bool>::value, ValueType>::type
   value() const;
 
   /**
@@ -249,9 +242,7 @@ ValueType>::type int type result
 ValueType>::type floating type result
    */
   template <typename ValueType>
-  typename std::enable_if<std::is_floating_point<ValueType>::value,
-                          ValueType>::type
-  value() const;
+  typename std::enable_if<std::is_floating_point<ValueType>::value, ValueType>::type value() const;
 
   /**
    * @brief Translate paramter value to string type
@@ -261,9 +252,7 @@ ValueType>::type floating type result
 const std::string&>::type string type result
    */
   template <typename ValueType>
-  typename std::enable_if<std::is_convertible<ValueType, std::string>::value,
-                          const std::string&>::type
-  value() const;
+  typename std::enable_if<std::is_convertible<ValueType, std::string>::value, const std::string&>::type value() const;
 
   /**
    * @brief Translate paramter value to bool type
@@ -273,67 +262,53 @@ const std::string&>::type string type result
    * bool type result
    */
   template <typename ValueType>
-  typename std::enable_if<std::is_same<ValueType, bool>::value, bool>::type
-  value() const;
+  typename std::enable_if<std::is_same<ValueType, bool>::value, bool>::type value() const;
 
  private:
   Param param_;
 };
 
 template <typename ValueType>
-typename std::enable_if<
-    std::is_base_of<google::protobuf::Message, ValueType>::value,
-    ValueType>::type
+typename std::enable_if<std::is_base_of<google::protobuf::Message, ValueType>::value, ValueType>::type
 Parameter::value() const {
   ValueType message;
   if (!message.ParseFromString(param_.string_value())) {
-    AERROR << "The type of parameter \"" << param_.name() << "\" is "
-           << TypeName() << ", not " << ValueType::descriptor()->full_name();
+    AERROR << "The type of parameter \"" << param_.name() << "\" is " << TypeName() << ", not "
+           << ValueType::descriptor()->full_name();
   }
   return message;
 }
 
 template <typename ValueType>
-typename std::enable_if<std::is_integral<ValueType>::value &&
-                            !std::is_same<ValueType, bool>::value,
-                        ValueType>::type
+typename std::enable_if<std::is_integral<ValueType>::value && !std::is_same<ValueType, bool>::value, ValueType>::type
 Parameter::value() const {
   if (param_.type() != proto::ParamType::INT) {
-    AERROR << "The type of parameter \"" << param_.name() << "\" is "
-           << TypeName() << ", not INT";
+    AERROR << "The type of parameter \"" << param_.name() << "\" is " << TypeName() << ", not INT";
   }
   return static_cast<ValueType>(param_.int_value());
 }
 
 template <typename ValueType>
-typename std::enable_if<std::is_floating_point<ValueType>::value,
-                        ValueType>::type
-Parameter::value() const {
+typename std::enable_if<std::is_floating_point<ValueType>::value, ValueType>::type Parameter::value() const {
   if (param_.type() != proto::ParamType::DOUBLE) {
-    AERROR << "The type of parameter \"" << param_.name() << "\" is "
-           << TypeName() << ", not DOUBLE";
+    AERROR << "The type of parameter \"" << param_.name() << "\" is " << TypeName() << ", not DOUBLE";
   }
   return static_cast<ValueType>(param_.double_value());
 }
 
 template <typename ValueType>
-typename std::enable_if<std::is_convertible<ValueType, std::string>::value,
-                        const std::string&>::type
-Parameter::value() const {
-  if (param_.type() != proto::ParamType::STRING &&
-      param_.type() != proto::ParamType::PROTOBUF) {
-    AERROR << "The type of parameter \"" << param_.name() << "\" is "
-           << TypeName() << ", not STRING";
+typename std::enable_if<std::is_convertible<ValueType, std::string>::value, const std::string&>::type Parameter::value()
+    const {
+  if (param_.type() != proto::ParamType::STRING && param_.type() != proto::ParamType::PROTOBUF) {
+    AERROR << "The type of parameter \"" << param_.name() << "\" is " << TypeName() << ", not STRING";
   }
   return param_.string_value();
 }
 
 template <typename ValueType>
-typename std::enable_if<std::is_same<ValueType, bool>::value, bool>::type
-Parameter::value() const {
+typename std::enable_if<std::is_same<ValueType, bool>::value, bool>::type Parameter::value() const {
   if (param_.type() != proto::ParamType::BOOL) {
-    AERROR << "The type of parameter \"" << param_.name() << "\" is "
-           << TypeName() << ", not BOOL";
+    AERROR << "The type of parameter \"" << param_.name() << "\" is " << TypeName() << ", not BOOL";
   }
   return param_.bool_value();
 }
@@ -355,4 +330,3 @@ inline double Parameter::AsDouble() const { return value<double>(); }
 const std::string Parameter::AsString() const { return value<std::string>(); }
 
 }  // namespace autolink
-

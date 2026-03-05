@@ -28,42 +28,41 @@ namespace bridge {
 namespace plugins {
 namespace grpc {
 
-class GrpcBridgeServer : public GrpcBridgeServerInterface
-{
-public:
-    /**
-     * Define GrpcBridgeServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(GrpcBridgeServer)
+class GrpcBridgeServer : public GrpcBridgeServerInterface {
+ public:
+  /**
+   * Define GrpcBridgeServer::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(GrpcBridgeServer)
 
-    GrpcBridgeServer();
-    ~GrpcBridgeServer() = default;
+  GrpcBridgeServer();
+  ~GrpcBridgeServer() = default;
 
-    // Starts the gRPC server
-    void Start() final;
+  // Starts the gRPC server
+  void Start() final;
 
-    // Waits for the 'GrpcBridgeServer' to shut down. Note: The server must be
-    // either shutting down or some other thread must call 'Shutdown()' for this
-    // function to ever return.
-    void WaitForShutdown() final;
+  // Waits for the 'GrpcBridgeServer' to shut down. Note: The server must be
+  // either shutting down or some other thread must call 'Shutdown()' for this
+  // function to ever return.
+  void WaitForShutdown() final;
 
-    // Waits until all computation is finished (for testing).
-    void WaitUntilIdle() final;
+  // Waits until all computation is finished (for testing).
+  void WaitUntilIdle() final;
 
-    // Shuts down the gRPC server, the 'LocalTrajectoryUploader' and the SLAM
-    // thread.
-    void Shutdown() final;
+  // Shuts down the gRPC server, the 'LocalTrajectoryUploader' and the SLAM
+  // thread.
+  void Shutdown() final;
 
-private:
-    void ProcessSensorDataQueue();
-    void StartThread();
+ private:
+  void ProcessSensorDataQueue();
+  void StartThread();
 
-    ///> grpc options
-    const proto::GrpcOptions options_;
+  ///> grpc options
+  const proto::GrpcOptions options_;
 
-    bool shutting_down_{false};
-    std::unique_ptr<std::thread> task_thread_;
-    std::unique_ptr<autonomy::common::async_grpc::Server> grpc_server_{nullptr};
+  bool shutting_down_{false};
+  std::unique_ptr<std::thread> task_thread_;
+  std::unique_ptr<autonomy::common::async_grpc::Server> grpc_server_{nullptr};
 };
 
 }  // namespace grpc

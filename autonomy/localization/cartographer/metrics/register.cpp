@@ -29,14 +29,14 @@ namespace cartographer {
 namespace metrics {
 
 void RegisterAllMetrics(FamilyFactory* registry) {
-    mapping::constraints::ConstraintBuilder2D::RegisterMetrics(registry);
-    mapping::constraints::ConstraintBuilder3D::RegisterMetrics(registry);
-    mapping::GlobalTrajectoryBuilderRegisterMetrics(registry);
-    mapping::LocalTrajectoryBuilder2D::RegisterMetrics(registry);
-    mapping::LocalTrajectoryBuilder3D::RegisterMetrics(registry);
-    mapping::PoseGraph2D::RegisterMetrics(registry);
-    mapping::PoseGraph3D::RegisterMetrics(registry);
-    sensor::TrajectoryCollator::RegisterMetrics(registry);
+  mapping::constraints::ConstraintBuilder2D::RegisterMetrics(registry);
+  mapping::constraints::ConstraintBuilder3D::RegisterMetrics(registry);
+  mapping::GlobalTrajectoryBuilderRegisterMetrics(registry);
+  mapping::LocalTrajectoryBuilder2D::RegisterMetrics(registry);
+  mapping::LocalTrajectoryBuilder3D::RegisterMetrics(registry);
+  mapping::PoseGraph2D::RegisterMetrics(registry);
+  mapping::PoseGraph3D::RegisterMetrics(registry);
+  sensor::TrajectoryCollator::RegisterMetrics(registry);
 }
 
 }  // namespace metrics

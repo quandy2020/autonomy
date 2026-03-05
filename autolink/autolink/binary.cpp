@@ -21,7 +21,7 @@
 
 namespace {
 std::mutex m;
-std::string binary_name; // NOLINT
+std::string binary_name;  // NOLINT
 }  // namespace
 
 namespace autolink {

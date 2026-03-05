@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <utility>
@@ -31,7 +30,6 @@
 
 namespace autolink {
 
-std::shared_ptr<Node> CreateNode(const std::string& node_name,
-                                 const std::string& name_space = "");
+std::shared_ptr<Node> CreateNode(const std::string& node_name, const std::string& name_space = "");
 
 }  // namespace autolink

@@ -42,27 +42,26 @@ namespace utils {
  */
 bool transformPose(const TFListenerPtr tf, const std::string frame, const commsgs::geometry_msgs::PoseStamped& in_pose,
                    commsgs::geometry_msgs::PoseStamped& out_pose, const bool extrapolation_fallback = true) {
-    if (in_pose.header.frame_id == frame) {
-        out_pose = in_pose;
-        return true;
-    }
+  if (in_pose.header.frame_id == frame) {
+    out_pose = in_pose;
+    return true;
+  }
 
-    try {
-        tf->transform(in_pose, out_pose, frame);
-        return true;
-    } catch (tf::ExtrapolationException& ex) {
-        if (!extrapolation_fallback)
-            throw;
-        commsgs::geometry_msgs::PoseStamped latest_in_pose;
-        latest_in_pose.header.frame_id = in_pose.header.frame_id;
-        latest_in_pose.pose = in_pose.pose;
-        tf->transform(latest_in_pose, out_pose, frame);
-        return true;
-    } catch (tf::TransformException& ex) {
-        AERROR << "Exception in transformPose: " << ex.what();
-        return false;
-    }
+  try {
+    tf->transform(in_pose, out_pose, frame);
+    return true;
+  } catch (tf::ExtrapolationException& ex) {
+    if (!extrapolation_fallback) throw;
+    commsgs::geometry_msgs::PoseStamped latest_in_pose;
+    latest_in_pose.header.frame_id = in_pose.header.frame_id;
+    latest_in_pose.pose = in_pose.pose;
+    tf->transform(latest_in_pose, out_pose, frame);
+    return true;
+  } catch (tf::TransformException& ex) {
+    AERROR << "Exception in transformPose: " << ex.what();
     return false;
+  }
+  return false;
 }
 
 /**
@@ -80,22 +79,22 @@ bool transformPose(const TFListenerPtr tf, const std::string frame, const commsg
 bool transformPose(const TFListenerPtr tf, const std::string frame,
                    const commsgs::planning_msgs::Pose2DStamped& in_pose, commsgs::planing_msgs::Pose2DStamped& out_pose,
                    const bool extrapolation_fallback = true) {
-    commsgs::geometry_msgs::PoseStamped in_3d_pose = pose2DToPoseStamped(in_pose);
-    commsgs::geometry_msgs::PoseStamped out_3d_pose;
+  commsgs::geometry_msgs::PoseStamped in_3d_pose = pose2DToPoseStamped(in_pose);
+  commsgs::geometry_msgs::PoseStamped out_3d_pose;
 
-    bool ret = transformPose(tf, frame, in_3d_pose, out_3d_pose, extrapolation_fallback);
-    if (ret) {
-        out_pose = poseStampedToPose2D(out_3d_pose);
-    }
-    return ret;
+  bool ret = transformPose(tf, frame, in_3d_pose, out_3d_pose, extrapolation_fallback);
+  if (ret) {
+    out_pose = poseStampedToPose2D(out_3d_pose);
+  }
+  return ret;
 }
 
 commsgs::geometry_msgs::Pose2D transformStampedPose(const TFListenerPtr tf,
                                                     const commsgs::planning_msgs::Pose2DStamped& pose,
                                                     const std::string& frame_id) {
-    commsgs::planning_msgs::Pose2DStamped local_pose;
-    commsgs::nav_2d_utils::transformPose(tf, frame_id, pose, local_pose);
-    return local_pose.pose;
+  commsgs::planning_msgs::Pose2DStamped local_pose;
+  commsgs::nav_2d_utils::transformPose(tf, frame_id, pose, local_pose);
+  return local_pose.pose;
 }
 
 }  // namespace utils

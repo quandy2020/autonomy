@@ -31,47 +31,46 @@ namespace common {
  * @brief smoother interface that acts as a virtual base class for all smoother
  * plugins
  */
-class Smoother
-{
-public:
-    /**
-     * Define Smoother::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Smoother)
+class Smoother {
+ public:
+  /**
+   * Define Smoother::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(Smoother)
 
-    /**
-     * @brief Virtual destructor
-     */
-    virtual ~Smoother() {}
+  /**
+   * @brief Virtual destructor
+   */
+  virtual ~Smoother() {}
 
-    virtual void Configure(std::string name, std::shared_ptr<void> /*costmap_sub*/,
-                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) = 0;
+  virtual void Configure(std::string name, std::shared_ptr<void> /*costmap_sub*/,
+                         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) = 0;
 
-    /**
-     * @brief Method to cleanup resources.
-     */
-    virtual void Cleanup() = 0;
+  /**
+   * @brief Method to cleanup resources.
+   */
+  virtual void Cleanup() = 0;
 
-    /**
-     * @brief Method to activate smoother and any threads involved in execution.
-     */
-    virtual void Activate() = 0;
+  /**
+   * @brief Method to activate smoother and any threads involved in execution.
+   */
+  virtual void Activate() = 0;
 
-    /**
-     * @brief Method to deactivate smoother and any threads involved in
-     * execution.
-     */
-    virtual void Deactivate() = 0;
+  /**
+   * @brief Method to deactivate smoother and any threads involved in
+   * execution.
+   */
+  virtual void Deactivate() = 0;
 
-    /**
-     * @brief Method to smooth given path
-     *
-     * @param path In-out path to be smoothed
-     * @param max_time Maximum duration smoothing should take
-     * @return If smoothing was completed (true) or interrupted by time limit
-     * (false)
-     */
-    virtual bool Smooth(commsgs::planning_msgs::Path& path, const std::chrono::milliseconds& max_time) = 0;
+  /**
+   * @brief Method to smooth given path
+   *
+   * @param path In-out path to be smoothed
+   * @param max_time Maximum duration smoothing should take
+   * @return If smoothing was completed (true) or interrupted by time limit
+   * (false)
+   */
+  virtual bool Smooth(commsgs::planning_msgs::Path& path, const std::chrono::milliseconds& max_time) = 0;
 };
 
 }  // namespace common

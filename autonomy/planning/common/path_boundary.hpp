@@ -28,42 +28,34 @@ namespace planning {
 
 // Obstacle corner constraint for piecewise jerk path problem
 struct ObsCornerConstraint {
-    int left_index;
-    int right_index;
-    double left_weight;
-    double right_weight;
-    double lower_bound;
-    double upper_bound;
+  int left_index;
+  int right_index;
+  double left_weight;
+  double right_weight;
+  double lower_bound;
+  double upper_bound;
 };
 
 using ObsCornerConstraints = std::vector<ObsCornerConstraint>;
 
 // ADC vertex constraint for piecewise jerk path problem
 struct ADCVertexConstraint {
-    int left_index;
-    int right_index;
-    double left_weight;
-    double right_weight;
-    double lower_bound;
-    double upper_bound;
+  int left_index;
+  int right_index;
+  double left_weight;
+  double right_weight;
+  double lower_bound;
+  double upper_bound;
 };
 
 struct ADCVertexConstraints {
-    std::vector<ADCVertexConstraint> constraints;
-    double front_edge_to_center = 0.0;
+  std::vector<ADCVertexConstraint> constraints;
+  double front_edge_to_center = 0.0;
 
-    size_t size() const {
-        return constraints.size();
-    }
-    const ADCVertexConstraint& operator[](size_t i) const {
-        return constraints[i];
-    }
-    ADCVertexConstraint& operator[](size_t i) {
-        return constraints[i];
-    }
-    void push_back(const ADCVertexConstraint& constraint) {
-        constraints.push_back(constraint);
-    }
+  size_t size() const { return constraints.size(); }
+  const ADCVertexConstraint& operator[](size_t i) const { return constraints[i]; }
+  ADCVertexConstraint& operator[](size_t i) { return constraints[i]; }
+  void push_back(const ADCVertexConstraint& constraint) { constraints.push_back(constraint); }
 };
 
 }  // namespace planning

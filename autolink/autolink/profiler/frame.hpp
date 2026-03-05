@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <list>
 #include <stack>
 #include <string>
@@ -45,4 +44,3 @@ class Frame {
 
 }  // namespace profiler
 }  // namespace autolink
-

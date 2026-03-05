@@ -29,20 +29,19 @@ double lowpassFilter(const double current_val, const double prev_val, const doub
  * @class First-order low-pass filter
  * @brief filtering values
  */
-class LowpassFilter1d
-{
-private:
-    boost::optional<double> x_;  //!< @brief current filtered value
-    double gain_;                //!< @brief gain value of first-order low-pass filter
+class LowpassFilter1d {
+ private:
+  boost::optional<double> x_;  //!< @brief current filtered value
+  double gain_;                //!< @brief gain value of first-order low-pass filter
 
-public:
-    explicit LowpassFilter1d(const double gain);
+ public:
+  explicit LowpassFilter1d(const double gain);
 
-    void reset();
-    void reset(const double x);
+  void reset();
+  void reset(const double x);
 
-    boost::optional<double> getValue() const;
-    double filter(const double u);
+  boost::optional<double> getValue() const;
+  double filter(const double u);
 };
 
 }  // namespace signal_processing

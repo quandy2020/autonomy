@@ -24,44 +24,39 @@ namespace common {
 namespace eventpp {
 
 template <typename Base>
-class MixinHeterFilter : public Base
-{
-private:
-    using super = Base;
+class MixinHeterFilter : public Base {
+ private:
+  using super = Base;
 
-    using BoolReferencePrototypeList = typename internal_::ReplaceReturnTypeList<
-        typename internal_::TransformArgumentsList<typename super::PrototypeList, std::add_lvalue_reference>::Type,
-        bool>::Type;
+  using BoolReferencePrototypeList = typename internal_::ReplaceReturnTypeList<
+      typename internal_::TransformArgumentsList<typename super::PrototypeList, std::add_lvalue_reference>::Type,
+      bool>::Type;
 
-    using FilterList = HeterCallbackList<BoolReferencePrototypeList>;
+  using FilterList = HeterCallbackList<BoolReferencePrototypeList>;
 
-public:
-    using FilterHandle = typename FilterList::Handle;
+ public:
+  using FilterHandle = typename FilterList::Handle;
 
-public:
-    template <typename Callback>
-    FilterHandle appendFilter(const Callback& filter) {
-        return filterList.append(filter);
+ public:
+  template <typename Callback>
+  FilterHandle appendFilter(const Callback& filter) {
+    return filterList.append(filter);
+  }
+
+  bool removeFilter(const FilterHandle& filterHandle) { return filterList.remove(filterHandle); }
+
+  template <typename... Args>
+  bool mixinBeforeDispatch(Args&&... args) const {
+    if (!filterList.template forEachIf<void(Args...)>([&args...](const typename std::function<bool(Args...)>& callback)
+                                                          -> bool { return callback(std::forward<Args>(args)...); })) {
+      return false;
     }
 
-    bool removeFilter(const FilterHandle& filterHandle) {
-        return filterList.remove(filterHandle);
-    }
+    return true;
+  }
 
-    template <typename... Args>
-    bool mixinBeforeDispatch(Args&&... args) const {
-        if (!filterList.template forEachIf<void(Args...)>(
-                [&args...](const typename std::function<bool(Args...)>& callback) -> bool {
-                    return callback(std::forward<Args>(args)...);
-                })) {
-            return false;
-        }
-
-        return true;
-    }
-
-private:
-    FilterList filterList;
+ private:
+  FilterList filterList;
 };
 
 }  // namespace eventpp

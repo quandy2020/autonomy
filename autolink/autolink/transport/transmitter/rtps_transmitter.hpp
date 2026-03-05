@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 
@@ -39,8 +38,7 @@ class RtpsTransmitter : public Transmitter<M> {
  public:
   using MessagePtr = std::shared_ptr<M>;
 
-  RtpsTransmitter(const RoleAttributes& attr,
-                  const ParticipantPtr& participant);
+  RtpsTransmitter(const RoleAttributes& attr, const ParticipantPtr& participant);
   virtual ~RtpsTransmitter();
 
   void Enable() override;
@@ -66,8 +64,7 @@ bool RtpsTransmitter<M>::AcquireMessage(std::shared_ptr<M>& msg) {
 }
 
 template <typename M>
-RtpsTransmitter<M>::RtpsTransmitter(const RoleAttributes& attr,
-                                    const ParticipantPtr& participant)
+RtpsTransmitter<M>::RtpsTransmitter(const RoleAttributes& attr, const ParticipantPtr& participant)
     : Transmitter<M>(attr), participant_(participant), publisher_(nullptr) {}
 
 template <typename M>
@@ -96,10 +93,8 @@ void RtpsTransmitter<M>::Enable() {
   RETURN_IF_NULL(participant_);
 
   eprosima::fastrtps::PublisherAttributes pub_attr;
-  RETURN_IF(!AttributesFiller::FillInPubAttr(
-      this->attr_.channel_name(), this->attr_.qos_profile(), &pub_attr));
-  publisher_ = eprosima::fastrtps::Domain::createPublisher(
-      participant_->fastrtps_participant(), pub_attr);
+  RETURN_IF(!AttributesFiller::FillInPubAttr(this->attr_.channel_name(), this->attr_.qos_profile(), &pub_attr));
+  publisher_ = eprosima::fastrtps::Domain::createPublisher(participant_->fastrtps_participant(), pub_attr);
   RETURN_IF_NULL(publisher_);
   this->enabled_ = true;
 }
@@ -113,8 +108,7 @@ void RtpsTransmitter<M>::Disable() {
 }
 
 template <typename M>
-bool RtpsTransmitter<M>::Transmit(const MessagePtr& msg,
-                                  const MessageInfo& msg_info) {
+bool RtpsTransmitter<M>::Transmit(const MessagePtr& msg, const MessageInfo& msg_info) {
   return Transmit(*msg, msg_info);
 }
 
@@ -135,16 +129,13 @@ bool RtpsTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
 
   eprosima::fastrtps::rtps::WriteParams wparams;
 
-  char* ptr =
-      reinterpret_cast<char*>(&wparams.related_sample_identity().writer_guid());
+  char* ptr = reinterpret_cast<char*>(&wparams.related_sample_identity().writer_guid());
 
   memcpy(ptr, msg_info.sender_id().data(), ID_SIZE);
   memcpy(ptr + ID_SIZE, msg_info.spare_id().data(), ID_SIZE);
 
-  wparams.related_sample_identity().sequence_number().high =
-      (int32_t)((msg_info.seq_num() & 0xFFFFFFFF00000000) >> 32);
-  wparams.related_sample_identity().sequence_number().low =
-      (int32_t)(msg_info.seq_num() & 0xFFFFFFFF);
+  wparams.related_sample_identity().sequence_number().high = (int32_t)((msg_info.seq_num() & 0xFFFFFFFF00000000) >> 32);
+  wparams.related_sample_identity().sequence_number().low = (int32_t)(msg_info.seq_num() & 0xFFFFFFFF);
 
   if (participant_->is_shutdown()) {
     return false;
@@ -154,4 +145,3 @@ bool RtpsTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
 
 }  // namespace transport
 }  // namespace autolink
-

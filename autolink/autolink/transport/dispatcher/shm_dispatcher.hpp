@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstring>
 #include <memory>
 #include <string>
@@ -55,32 +54,25 @@ class ShmDispatcher : public Dispatcher {
   void Shutdown() override;
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
+  void AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener);
+
+  template <typename MessageT>
+  void AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                    const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const RoleAttributes& opposite_attr,
-                   const MessageListener<MessageT>& listener);
+  void AddArenaListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
-  void AddArenaListener(const RoleAttributes& self_attr,
-                        const MessageListener<MessageT>& listener);
-
-  template <typename MessageT>
-  void AddArenaListener(const RoleAttributes& self_attr,
-                        const RoleAttributes& opposite_attr,
+  void AddArenaListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                         const MessageListener<MessageT>& listener);
 
  private:
   void AddSegment(const RoleAttributes& self_attr);
   void ReadMessage(uint64_t channel_id, uint32_t block_index);
-  void OnMessage(uint64_t channel_id, const std::shared_ptr<ReadableBlock>& rb,
-                 const MessageInfo& msg_info);
+  void OnMessage(uint64_t channel_id, const std::shared_ptr<ReadableBlock>& rb, const MessageInfo& msg_info);
   void ReadArenaMessage(uint64_t channel_id, uint32_t arena_block_index);
-  void OnArenaMessage(uint64_t channel_id,
-                      const std::shared_ptr<ReadableBlock>& rb,
-                      const MessageInfo& msg_info);
+  void OnArenaMessage(uint64_t channel_id, const std::shared_ptr<ReadableBlock>& rb, const MessageInfo& msg_info);
   void ThreadFunc();
   bool Init();
 
@@ -97,9 +89,7 @@ class ShmDispatcher : public Dispatcher {
 };
 
 template <typename MessageT>
-void ShmDispatcher::AddArenaListener(
-    const RoleAttributes& self_attr,
-    const MessageListener<MessageT>& listener) {
+void ShmDispatcher::AddArenaListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener) {
   if (is_shutdown_.load()) {
     return;
   }
@@ -108,17 +98,14 @@ void ShmDispatcher::AddArenaListener(
   std::shared_ptr<ListenerHandler<MessageT>> handler;
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (arena_msg_listeners_.Get(channel_id, &handler_base)) {
-    handler =
-        std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
+    handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
     if (handler == nullptr) {
-      AERROR << "please ensure that readers with the same channel["
-             << self_attr.channel_name()
+      AERROR << "please ensure that readers with the same channel[" << self_attr.channel_name()
              << "] in the same process have the same message type";
       return;
     }
   } else {
-    ADEBUG << "new reader for channel:"
-           << GlobalData::GetChannelById(channel_id);
+    ADEBUG << "new reader for channel:" << GlobalData::GetChannelById(channel_id);
     handler.reset(new ListenerHandler<MessageT>());
     arena_msg_listeners_.Set(channel_id, handler);
   }
@@ -126,9 +113,8 @@ void ShmDispatcher::AddArenaListener(
 }
 
 template <typename MessageT>
-void ShmDispatcher::AddArenaListener(
-    const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
-    const MessageListener<MessageT>& listener) {
+void ShmDispatcher::AddArenaListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
+                                     const MessageListener<MessageT>& listener) {
   if (is_shutdown_.load()) {
     return;
   }
@@ -136,17 +122,14 @@ void ShmDispatcher::AddArenaListener(
   std::shared_ptr<ListenerHandler<MessageT>> handler;
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (arena_msg_listeners_.Get(channel_id, &handler_base)) {
-    handler =
-        std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
+    handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
     if (handler == nullptr) {
-      AERROR << "please ensuore that readers with the same channel["
-             << self_attr.channel_name()
+      AERROR << "please ensuore that readers with the same channel[" << self_attr.channel_name()
              << "] in the same process have the same message type";
       return;
     }
   } else {
-    ADEBUG << "new reader for channel:"
-           << GlobalData::GetChannelById(channel_id);
+    ADEBUG << "new reader for channel:" << GlobalData::GetChannelById(channel_id);
     handler.reset(new ListenerHandler<MessageT>());
     arena_msg_listeners_.Set(channel_id, handler);
   }
@@ -154,49 +137,41 @@ void ShmDispatcher::AddArenaListener(
 }
 
 template <typename MessageT>
-void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
-                                const MessageListener<MessageT>& listener) {
+void ShmDispatcher::AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener) {
   // FIXME: make it more clean
-  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
-          self_attr.channel_id()) &&
+  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(self_attr.channel_id()) &&
       self_attr.message_type() != message::MessageType<message::RawMessage>() &&
-      self_attr.message_type() !=
-          message::MessageType<message::PyMessageWrap>()) {
-    auto listener_adapter = [listener, self_attr](
-                                const std::shared_ptr<ReadableBlock>& rb,
-                                const MessageInfo& msg_info) {
+      self_attr.message_type() != message::MessageType<message::PyMessageWrap>()) {
+    auto listener_adapter = [listener, self_attr](const std::shared_ptr<ReadableBlock>& rb,
+                                                  const MessageInfo& msg_info) {
       auto msg = std::make_shared<MessageT>();
       // TODO(ALL): read config from msg_info
       auto arena_manager = ProtobufArenaManager::Instance();
       auto msg_wrapper = arena_manager->CreateMessageWrapper();
       memcpy(msg_wrapper->GetData(), rb->buf, 1024);
       MessageT* msg_p;
-      if (!message::ParseFromArenaMessageWrapper(msg_wrapper.get(), msg.get(),
-                                                 &msg_p)) {
+      if (!message::ParseFromArenaMessageWrapper(msg_wrapper.get(), msg.get(), &msg_p)) {
         AERROR << "ParseFromArenaMessageWrapper failed";
       }
       // msg->CopyFrom(*msg_p);
       // msg = arena_manager->LoadMessage<MessageT>(msg_wrapper.get())
       auto segment = arena_manager->GetSegment(self_attr.channel_id());
       auto msg_addr = reinterpret_cast<uint64_t>(msg_p);
-      msg.reset(reinterpret_cast<MessageT*>(msg_addr),
-                [arena_manager, segment, msg_wrapper](MessageT* p) {
-                  // fprintf(stderr, "msg deleter invoked\n");
-                  // auto related_blocks =
-                  //     arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
-                  // for (auto block_index : related_blocks) {
-                  //   // segment->ReleaseBlockForReadByIndex(block_index);
-                  //   segment->RemoveBlockReadLock(block_index);
-                  // }
-                });
-      for (auto block_index :
-           arena_manager->GetMessageRelatedBlocks(msg_wrapper.get())) {
+      msg.reset(reinterpret_cast<MessageT*>(msg_addr), [arena_manager, segment, msg_wrapper](MessageT* p) {
+        // fprintf(stderr, "msg deleter invoked\n");
+        // auto related_blocks =
+        //     arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
+        // for (auto block_index : related_blocks) {
+        //   // segment->ReleaseBlockForReadByIndex(block_index);
+        //   segment->RemoveBlockReadLock(block_index);
+        // }
+      });
+      for (auto block_index : arena_manager->GetMessageRelatedBlocks(msg_wrapper.get())) {
         segment->AddBlockReadLock(block_index);
       }
 
       listener(msg, msg_info);
-      auto related_blocks =
-          arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
+      auto related_blocks = arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
       for (auto block_index : related_blocks) {
         // segment->ReleaseBlockForReadByIndex(block_index);
         segment->RemoveBlockReadLock(block_index);
@@ -205,13 +180,10 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
 
     AddArenaListener<ReadableBlock>(self_attr, listener_adapter);
   } else {
-    auto listener_adapter = [listener](
-                                const std::shared_ptr<ReadableBlock>& rb,
-                                const MessageInfo& msg_info) {
+    auto listener_adapter = [listener](const std::shared_ptr<ReadableBlock>& rb, const MessageInfo& msg_info) {
       auto msg = std::make_shared<MessageT>();
       // TODO(ALL): read config from msg_info
-      RETURN_IF(!message::ParseFromArray(
-          rb->buf, static_cast<int>(rb->block->msg_size()), msg.get()));
+      RETURN_IF(!message::ParseFromArray(rb->buf, static_cast<int>(rb->block->msg_size()), msg.get()));
       listener(msg, msg_info);
     };
 
@@ -221,49 +193,41 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
 }
 
 template <typename MessageT>
-void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
-                                const RoleAttributes& opposite_attr,
+void ShmDispatcher::AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                                 const MessageListener<MessageT>& listener) {
   // FIXME: make it more clean
-  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
-          self_attr.channel_id()) &&
+  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(self_attr.channel_id()) &&
       self_attr.message_type() != message::MessageType<message::RawMessage>() &&
-      self_attr.message_type() !=
-          message::MessageType<message::PyMessageWrap>()) {
-    auto listener_adapter = [listener, self_attr](
-                                const std::shared_ptr<ReadableBlock>& rb,
-                                const MessageInfo& msg_info) {
+      self_attr.message_type() != message::MessageType<message::PyMessageWrap>()) {
+    auto listener_adapter = [listener, self_attr](const std::shared_ptr<ReadableBlock>& rb,
+                                                  const MessageInfo& msg_info) {
       auto msg = std::make_shared<MessageT>();
       auto arena_manager = ProtobufArenaManager::Instance();
       auto msg_wrapper = arena_manager->CreateMessageWrapper();
       memcpy(msg_wrapper->GetData(), rb->buf, 1024);
       MessageT* msg_p;
-      if (!message::ParseFromArenaMessageWrapper(msg_wrapper.get(), msg.get(),
-                                                 &msg_p)) {
+      if (!message::ParseFromArenaMessageWrapper(msg_wrapper.get(), msg.get(), &msg_p)) {
         AERROR << "ParseFromArenaMessageWrapper failed";
       }
       // msg->CopyFrom(*msg_p);
       // msg = arena_manager->LoadMessage<MessageT>(msg_wrapper.get())
       auto segment = arena_manager->GetSegment(self_attr.channel_id());
       auto msg_addr = reinterpret_cast<uint64_t>(msg_p);
-      msg.reset(reinterpret_cast<MessageT*>(msg_addr),
-                [arena_manager, segment, msg_wrapper](MessageT* p) {
-                  // fprintf(stderr, "msg deleter invoked\n");
-                  // auto related_blocks =
-                  //     arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
-                  // for (auto block_index : related_blocks) {
-                  //   // segment->ReleaseBlockForReadByIndex(block_index);
-                  //   segment->RemoveBlockReadLock(block_index);
-                  // }
-                });
-      for (auto block_index :
-           arena_manager->GetMessageRelatedBlocks(msg_wrapper.get())) {
+      msg.reset(reinterpret_cast<MessageT*>(msg_addr), [arena_manager, segment, msg_wrapper](MessageT* p) {
+        // fprintf(stderr, "msg deleter invoked\n");
+        // auto related_blocks =
+        //     arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
+        // for (auto block_index : related_blocks) {
+        //   // segment->ReleaseBlockForReadByIndex(block_index);
+        //   segment->RemoveBlockReadLock(block_index);
+        // }
+      });
+      for (auto block_index : arena_manager->GetMessageRelatedBlocks(msg_wrapper.get())) {
         segment->AddBlockReadLock(block_index);
       }
 
       listener(msg, msg_info);
-      auto related_blocks =
-          arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
+      auto related_blocks = arena_manager->GetMessageRelatedBlocks(msg_wrapper.get());
       for (auto block_index : related_blocks) {
         // segment->ReleaseBlockForReadByIndex(block_index);
         segment->RemoveBlockReadLock(block_index);
@@ -272,21 +236,16 @@ void ShmDispatcher::AddListener(const RoleAttributes& self_attr,
 
     AddArenaListener<ReadableBlock>(self_attr, opposite_attr, listener_adapter);
   } else {
-    auto listener_adapter = [listener](
-                                const std::shared_ptr<ReadableBlock>& rb,
-                                const MessageInfo& msg_info) {
+    auto listener_adapter = [listener](const std::shared_ptr<ReadableBlock>& rb, const MessageInfo& msg_info) {
       auto msg = std::make_shared<MessageT>();
-      RETURN_IF(!message::ParseFromArray(
-          rb->buf, static_cast<int>(rb->block->msg_size()), msg.get()));
+      RETURN_IF(!message::ParseFromArray(rb->buf, static_cast<int>(rb->block->msg_size()), msg.get()));
       listener(msg, msg_info);
     };
 
-    Dispatcher::AddListener<ReadableBlock>(self_attr, opposite_attr,
-                                           listener_adapter);
+    Dispatcher::AddListener<ReadableBlock>(self_attr, opposite_attr, listener_adapter);
   }
   AddSegment(self_attr);
 }
 
 }  // namespace transport
 }  // namespace autolink
-

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <list>
 #include <memory>
 #include <mutex>
@@ -41,4 +40,3 @@ class TimerBucket {
 };
 
 }  // namespace autolink
-

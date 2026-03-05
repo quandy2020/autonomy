@@ -14,9 +14,9 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "gtest/gtest.h"
-
 #include "autolink/profiler/profiler.hpp"
+
+#include "gtest/gtest.h"
 
 TEST(ProfilerTest, single_block) {
   PERF_BLOCK("block")

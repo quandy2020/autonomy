@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 #include <typeinfo>
 #include <vector>
@@ -30,8 +29,7 @@ namespace utility {
 
 class AbstractClassFactoryBase {
  public:
-  AbstractClassFactoryBase(const std::string& class_name,
-                           const std::string& base_class_name);
+  AbstractClassFactoryBase(const std::string& class_name, const std::string& base_class_name);
   virtual ~AbstractClassFactoryBase();
 
   void SetRelativeLibraryPath(const std::string& library_path);
@@ -54,8 +52,7 @@ class AbstractClassFactoryBase {
 template <typename Base>
 class AbstractClassFactory : public AbstractClassFactoryBase {
  public:
-  AbstractClassFactory(const std::string& class_name,
-                       const std::string& base_class_name)
+  AbstractClassFactory(const std::string& class_name, const std::string& base_class_name)
       : AbstractClassFactoryBase(class_name, base_class_name) {}
 
   virtual Base* CreateObj() const = 0;
@@ -69,8 +66,7 @@ class AbstractClassFactory : public AbstractClassFactoryBase {
 template <typename ClassObject, typename Base>
 class ClassFactory : public AbstractClassFactory<Base> {
  public:
-  ClassFactory(const std::string& class_name,
-               const std::string& base_class_name)
+  ClassFactory(const std::string& class_name, const std::string& base_class_name)
       : AbstractClassFactory<Base>(class_name, base_class_name) {}
 
   Base* CreateObj() const { return new ClassObject; }
@@ -79,4 +75,3 @@ class ClassFactory : public AbstractClassFactory<Base> {
 }  // namespace utility
 }  // namespace class_loader
 }  // namespace autolink
-

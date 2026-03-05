@@ -47,13 +47,9 @@ auto NotifierFactory::CreateNotifier() -> NotifierPtr {
   return CreateConditionNotifier();
 }
 
-auto NotifierFactory::CreateConditionNotifier() -> NotifierPtr {
-  return ConditionNotifier::Instance();
-}
+auto NotifierFactory::CreateConditionNotifier() -> NotifierPtr { return ConditionNotifier::Instance(); }
 
-auto NotifierFactory::CreateMulticastNotifier() -> NotifierPtr {
-  return MulticastNotifier::Instance();
-}
+auto NotifierFactory::CreateMulticastNotifier() -> NotifierPtr { return MulticastNotifier::Instance(); }
 
 }  // namespace transport
 }  // namespace autolink

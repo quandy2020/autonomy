@@ -20,9 +20,9 @@
 
 #include <memory>
 #include <utility>
-#include "gtest/gtest.h"
 
 #include "autolink/transport/common/identity.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -56,8 +56,7 @@ TEST(MessageInfoTest, test) {
   msgStr2.resize(msgStr.size());
 
   EXPECT_FALSE(msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), 2));
-  EXPECT_TRUE(
-      msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), msgStr2.size()));
+  EXPECT_TRUE(msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), msgStr2.size()));
 
   EXPECT_EQ(msgStr, msgStr2);
 

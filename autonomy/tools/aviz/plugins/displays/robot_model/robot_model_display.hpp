@@ -35,38 +35,37 @@ namespace displays {
  *
  * Displays robot model from URDF
  */
-class RobotModelDisplay : public aviz::common::Display
-{
-    Q_OBJECT
+class RobotModelDisplay : public aviz::common::Display {
+  Q_OBJECT
 
-public:
-    explicit RobotModelDisplay(const QString& name = "RobotModelDisplay");
-    ~RobotModelDisplay() override;
+ public:
+  explicit RobotModelDisplay(const QString& name = "RobotModelDisplay");
+  ~RobotModelDisplay() override;
 
-    void onInitialize() override;
-    void onEnable() override;
-    void onDisable() override;
-    void update(float wall_dt, float ros_dt) override;
-    void reset() override;
+  void onInitialize() override;
+  void onEnable() override;
+  void onDisable() override;
+  void update(float wall_dt, float ros_dt) override;
+  void reset() override;
 
-private Q_SLOTS:
-    void updateRobotDescription();
-    void updateVisualVisible();
-    void updateCollisionVisible();
-    void updateAlpha();
+ private Q_SLOTS:
+  void updateRobotDescription();
+  void updateVisualVisible();
+  void updateCollisionVisible();
+  void updateAlpha();
 
-private:
-    bool loadURDF();
-    void updateRobot();
+ private:
+  bool loadURDF();
+  void updateRobot();
 
-    aviz::common::properties::StringProperty* robot_description_property_;
-    aviz::common::properties::BoolProperty* visual_enabled_property_;
-    aviz::common::properties::BoolProperty* collision_enabled_property_;
-    aviz::common::properties::FloatProperty* alpha_property_;
+  aviz::common::properties::StringProperty* robot_description_property_;
+  aviz::common::properties::BoolProperty* visual_enabled_property_;
+  aviz::common::properties::BoolProperty* collision_enabled_property_;
+  aviz::common::properties::FloatProperty* alpha_property_;
 
-    std::string robot_description_;
-    bool robot_loaded_;
-    // TODO: Add URDF model and rendering objects
+  std::string robot_description_;
+  bool robot_loaded_;
+  // TODO: Add URDF model and rendering objects
 };
 
 }  // namespace displays

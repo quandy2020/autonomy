@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <cstdint>
 
@@ -34,9 +33,7 @@ class Block {
   void set_msg_size(uint64_t msg_size) { msg_size_ = msg_size; }
 
   uint64_t msg_info_size() const { return msg_info_size_; }
-  void set_msg_info_size(uint64_t msg_info_size) {
-    msg_info_size_ = msg_info_size;
-  }
+  void set_msg_info_size(uint64_t msg_info_size) { msg_info_size_ = msg_info_size; }
 
   static const int32_t kRWLockFree;
   static const int32_t kWriteExclusive;
@@ -56,4 +53,3 @@ class Block {
 
 }  // namespace transport
 }  // namespace autolink
-

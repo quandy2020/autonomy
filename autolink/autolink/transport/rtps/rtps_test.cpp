@@ -17,10 +17,6 @@
 #include <string>
 #include <utility>
 
-#include "fastcdr/Cdr.h"
-#include "fastcdr/exceptions/BadParamException.h"
-#include "gtest/gtest.h"
-
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/transport/qos/qos_profile_conf.hpp"
@@ -28,6 +24,9 @@
 #include "autolink/transport/rtps/participant.hpp"
 #include "autolink/transport/rtps/underlay_message.hpp"
 #include "autolink/transport/rtps/underlay_message_type.hpp"
+#include "fastcdr/Cdr.h"
+#include "fastcdr/exceptions/BadParamException.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -41,19 +40,15 @@ TEST(AttributesFillerTest, fill_in_pub_attr_test) {
   qos.set_reliability(QosReliabilityPolicy::RELIABILITY_BEST_EFFORT);
   qos.set_mps(32);
   filler.FillInPubAttr("channel", qos, &attrs);
-  EXPECT_EQ(eprosima::fastrtps::KEEP_LAST_HISTORY_QOS,
-            attrs.topic.historyQos.kind);
-  EXPECT_EQ(eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS,
-            attrs.qos.m_durability.kind);
-  EXPECT_EQ(eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS,
-            attrs.qos.m_reliability.kind);
+  EXPECT_EQ(eprosima::fastrtps::KEEP_LAST_HISTORY_QOS, attrs.topic.historyQos.kind);
+  EXPECT_EQ(eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS, attrs.qos.m_durability.kind);
+  EXPECT_EQ(eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS, attrs.qos.m_reliability.kind);
   AINFO << "heartbeat period: " << attrs.times.heartbeatPeriod.seconds << ", "
         << attrs.times.heartbeatPeriod.fraction();
   qos.set_depth(1024);
   attrs.topic.historyQos.depth = 512;
   filler.FillInPubAttr("channel", qos, &attrs);
-  AINFO << qos.depth() << ", "
-        << QosProfileConf::QOS_HISTORY_DEPTH_SYSTEM_DEFAULT << ", "
+  AINFO << qos.depth() << ", " << QosProfileConf::QOS_HISTORY_DEPTH_SYSTEM_DEFAULT << ", "
         << attrs.topic.historyQos.depth;
   EXPECT_EQ(qos.depth(), attrs.topic.historyQos.depth);
 
@@ -62,12 +57,9 @@ TEST(AttributesFillerTest, fill_in_pub_attr_test) {
   qos.set_reliability(QosReliabilityPolicy::RELIABILITY_RELIABLE);
   qos.set_mps(65);
   filler.FillInPubAttr("channel", qos, &attrs);
-  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS,
-            attrs.topic.historyQos.kind);
-  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS,
-            attrs.qos.m_durability.kind);
-  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS,
-            attrs.qos.m_reliability.kind);
+  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS, attrs.topic.historyQos.kind);
+  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS, attrs.qos.m_durability.kind);
+  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS, attrs.qos.m_reliability.kind);
   AINFO << "heartbeat period: " << attrs.times.heartbeatPeriod.seconds << ", "
         << attrs.times.heartbeatPeriod.fraction();
 
@@ -76,12 +68,9 @@ TEST(AttributesFillerTest, fill_in_pub_attr_test) {
   qos.set_reliability(QosReliabilityPolicy::RELIABILITY_SYSTEM_DEFAULT);
   qos.set_mps(1025);
   filler.FillInPubAttr("channel", qos, &attrs);
-  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS,
-            attrs.topic.historyQos.kind);
-  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS,
-            attrs.qos.m_durability.kind);
-  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS,
-            attrs.qos.m_reliability.kind);
+  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS, attrs.topic.historyQos.kind);
+  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS, attrs.qos.m_durability.kind);
+  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS, attrs.qos.m_reliability.kind);
   AINFO << "heartbeat period: " << attrs.times.heartbeatPeriod.seconds << ", "
         << attrs.times.heartbeatPeriod.fraction();
   qos.set_mps(0);
@@ -99,12 +88,9 @@ TEST(AttributesFillerTest, fill_in_sub_attr_test) {
   qos.set_reliability(QosReliabilityPolicy::RELIABILITY_BEST_EFFORT);
   qos.set_mps(32);
   filler.FillInSubAttr("channel", qos, &attrs);
-  EXPECT_EQ(eprosima::fastrtps::KEEP_LAST_HISTORY_QOS,
-            attrs.topic.historyQos.kind);
-  EXPECT_EQ(eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS,
-            attrs.qos.m_durability.kind);
-  EXPECT_EQ(eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS,
-            attrs.qos.m_reliability.kind);
+  EXPECT_EQ(eprosima::fastrtps::KEEP_LAST_HISTORY_QOS, attrs.topic.historyQos.kind);
+  EXPECT_EQ(eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS, attrs.qos.m_durability.kind);
+  EXPECT_EQ(eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS, attrs.qos.m_reliability.kind);
   qos.set_depth(1024);
   attrs.topic.historyQos.depth = 512;
   filler.FillInSubAttr("channel", qos, &attrs);
@@ -115,24 +101,18 @@ TEST(AttributesFillerTest, fill_in_sub_attr_test) {
   qos.set_reliability(QosReliabilityPolicy::RELIABILITY_RELIABLE);
   qos.set_mps(65);
   filler.FillInSubAttr("channel", qos, &attrs);
-  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS,
-            attrs.topic.historyQos.kind);
-  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS,
-            attrs.qos.m_durability.kind);
-  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS,
-            attrs.qos.m_reliability.kind);
+  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS, attrs.topic.historyQos.kind);
+  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS, attrs.qos.m_durability.kind);
+  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS, attrs.qos.m_reliability.kind);
 
   qos.set_history(QosHistoryPolicy::HISTORY_SYSTEM_DEFAULT);
   qos.set_durability(QosDurabilityPolicy::DURABILITY_SYSTEM_DEFAULT);
   qos.set_reliability(QosReliabilityPolicy::RELIABILITY_SYSTEM_DEFAULT);
   qos.set_mps(1025);
   filler.FillInSubAttr("channel", qos, &attrs);
-  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS,
-            attrs.topic.historyQos.kind);
-  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS,
-            attrs.qos.m_durability.kind);
-  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS,
-            attrs.qos.m_reliability.kind);
+  EXPECT_EQ(eprosima::fastrtps::KEEP_ALL_HISTORY_QOS, attrs.topic.historyQos.kind);
+  EXPECT_EQ(eprosima::fastrtps::VOLATILE_DURABILITY_QOS, attrs.qos.m_durability.kind);
+  EXPECT_EQ(eprosima::fastrtps::RELIABLE_RELIABILITY_QOS, attrs.qos.m_reliability.kind);
 }
 
 TEST(ParticipantTest, participant_test) {

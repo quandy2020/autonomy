@@ -28,22 +28,21 @@ namespace displays {
  * @brief RangeDisplay
  * Range display
  */
-class RangeDisplay : public aviz::common::Display
-{
-public:
-    explicit RangeDisplay(const QString& name = "RangeDisplay");
-    ~RangeDisplay() override;
+class RangeDisplay : public aviz::common::Display {
+ public:
+  explicit RangeDisplay(const QString& name = "RangeDisplay");
+  ~RangeDisplay() override;
 
-    // Overrides from Display
-    void onInitialize() override;
+  // Overrides from Display
+  void onInitialize() override;
 
-    void onEnable() override;
-    void onDisable() override;
-    void update(float wall_dt, float ros_dt) override;
-    void reset() override;
+  void onEnable() override;
+  void onDisable() override;
+  void update(float wall_dt, float ros_dt) override;
+  void reset() override;
 
-private:
-    // Implementation details
+ private:
+  // Implementation details
 };
 
 }  // namespace displays

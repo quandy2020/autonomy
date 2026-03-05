@@ -19,9 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "behaviortree_cpp/action_node.h"
-
 #include "autonomy/commsgs/planning_msgs.hpp"
+#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -32,40 +31,39 @@ namespace action {
 /**
  * @brief A BT::ActionNodeBase to shorten path by some distance
  */
-class ConcatenatePaths : public BT::ActionNodeBase
-{
-public:
-    /**
-     * @brief A nav2_behavior_tree::ConcatenatePaths constructor
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    ConcatenatePaths(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class ConcatenatePaths : public BT::ActionNodeBase {
+ public:
+  /**
+   * @brief A nav2_behavior_tree::ConcatenatePaths constructor
+   * @param xml_tag_name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
+  ConcatenatePaths(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
-    static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<commsgs::planning_msgs::Path>("input_path1", "Input Path 1 to cancatenate"),
-            BT::InputPort<commsgs::planning_msgs::Path>("input_path2", "Input Path 2 to cancatenate"),
-            BT::OutputPort<commsgs::planning_msgs::Path>("output_path", "Paths concatenated"),
-        };
-    }
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing basic ports along with node-specific
+   * ports
+   */
+  static BT::PortsList providedPorts() {
+    return {
+        BT::InputPort<commsgs::planning_msgs::Path>("input_path1", "Input Path 1 to cancatenate"),
+        BT::InputPort<commsgs::planning_msgs::Path>("input_path2", "Input Path 2 to cancatenate"),
+        BT::OutputPort<commsgs::planning_msgs::Path>("output_path", "Paths concatenated"),
+    };
+  }
 
-private:
-    /**
-     * @brief The other (optional) override required by a BT action.
-     */
-    void halt() override {}
+ private:
+  /**
+   * @brief The other (optional) override required by a BT action.
+   */
+  void halt() override {}
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 };
 
 }  // namespace action

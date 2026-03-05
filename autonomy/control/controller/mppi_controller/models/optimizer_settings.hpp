@@ -31,17 +31,17 @@ namespace models {
  * @brief Settings for the optimizer to use
  */
 struct OptimizerSettings {
-    ControlConstraints base_constraints{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    ControlConstraints constraints{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    SamplingStd sampling_std{0.0f, 0.0f, 0.0f};
-    float model_dt{0.0f};
-    float temperature{0.0f};
-    float gamma{0.0f};
-    unsigned int batch_size{0u};
-    unsigned int time_steps{0u};
-    unsigned int iteration_count{0u};
-    bool shift_control_sequence{false};
-    size_t retry_attempt_limit{0};
+  ControlConstraints base_constraints{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  ControlConstraints constraints{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  SamplingStd sampling_std{0.0f, 0.0f, 0.0f};
+  float model_dt{0.0f};
+  float temperature{0.0f};
+  float gamma{0.0f};
+  unsigned int batch_size{0u};
+  unsigned int time_steps{0u};
+  unsigned int iteration_count{0u};
+  bool shift_control_sequence{false};
+  size_t retry_attempt_limit{0};
 };
 
 }  // namespace models

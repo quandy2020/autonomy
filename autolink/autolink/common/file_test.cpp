@@ -20,10 +20,9 @@
 #include <string>
 #include <vector>
 
+#include "autolink/proto/unit_test.pb.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
 
 namespace autolink {
 namespace common {
@@ -37,10 +36,8 @@ TEST(FileTest, proto_set_get_test) {
   EXPECT_TRUE(SetProtoToASCIIFile(message, "message.ascii"));
   EXPECT_TRUE(SetProtoToBinaryFile(message, "message.binary"));
 
-  EXPECT_FALSE(
-      GetProtoFromASCIIFile("not_exists_dir/message.proto", &read_message));
-  EXPECT_FALSE(
-      GetProtoFromBinaryFile("not_exists_dir/message.proto", &read_message));
+  EXPECT_FALSE(GetProtoFromASCIIFile("not_exists_dir/message.proto", &read_message));
+  EXPECT_FALSE(GetProtoFromBinaryFile("not_exists_dir/message.proto", &read_message));
   EXPECT_TRUE(GetProtoFromASCIIFile("message.ascii", &read_message));
   EXPECT_TRUE(GetProtoFromBinaryFile("message.binary", &read_message));
 
@@ -100,13 +97,10 @@ TEST(FileTest, ListSubPaths) {
   const auto root_subdirs = ListSubPaths("/");
 
   // Some common root subdirs should exist.
-  EXPECT_NE(root_subdirs.end(),
-            std::find(root_subdirs.begin(), root_subdirs.end(), "home"));
-  EXPECT_NE(root_subdirs.end(),
-            std::find(root_subdirs.begin(), root_subdirs.end(), "root"));
+  EXPECT_NE(root_subdirs.end(), std::find(root_subdirs.begin(), root_subdirs.end(), "home"));
+  EXPECT_NE(root_subdirs.end(), std::find(root_subdirs.begin(), root_subdirs.end(), "root"));
   // Something shouldn't exist.
-  EXPECT_EQ(root_subdirs.end(),
-            std::find(root_subdirs.begin(), root_subdirs.end(), "impossible"));
+  EXPECT_EQ(root_subdirs.end(), std::find(root_subdirs.begin(), root_subdirs.end(), "impossible"));
 }
 
 TEST(FileTest, Glob) {
@@ -116,12 +110,10 @@ TEST(FileTest, Glob) {
   EXPECT_THAT(Glob("/autolink"), testing::ElementsAre(std::string("/autolink")));
   EXPECT_THAT(Glob("/autol?nk"), testing::ElementsAre(std::string("/autolink")));
   // Match multiple.
-  EXPECT_THAT(
-      Glob("/apol?o/modules/p*"),
-      testing::AllOf(
-          testing::Contains(std::string("/autolink/modules/perception")),
-          testing::Contains(std::string("/autolink/modules/planning")),
-          testing::Contains(std::string("/autolink/modules/prediction"))));
+  EXPECT_THAT(Glob("/apol?o/modules/p*"),
+              testing::AllOf(testing::Contains(std::string("/autolink/modules/perception")),
+                             testing::Contains(std::string("/autolink/modules/planning")),
+                             testing::Contains(std::string("/autolink/modules/prediction"))));
 }
 
 TEST(FileTest, GetAbsolutePath) {

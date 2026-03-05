@@ -36,67 +36,65 @@ namespace mapping {
 
 // Collates sensor data using a sensor::CollatorInterface, then passes it on to
 // a mapping::TrajectoryBuilderInterface which is common for 2D and 3D.
-class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface
-{
-public:
-    using SensorId = TrajectoryBuilderInterface::SensorId;
+class CollatedTrajectoryBuilder : public TrajectoryBuilderInterface {
+ public:
+  using SensorId = TrajectoryBuilderInterface::SensorId;
 
-    CollatedTrajectoryBuilder(const proto::TrajectoryBuilderOptions& trajectory_options,
-                              sensor::CollatorInterface* sensor_collator, int trajectory_id,
-                              const std::set<SensorId>& expected_sensor_ids,
-                              std::unique_ptr<TrajectoryBuilderInterface> wrapped_trajectory_builder);
-    ~CollatedTrajectoryBuilder() override {}
+  CollatedTrajectoryBuilder(const proto::TrajectoryBuilderOptions& trajectory_options,
+                            sensor::CollatorInterface* sensor_collator, int trajectory_id,
+                            const std::set<SensorId>& expected_sensor_ids,
+                            std::unique_ptr<TrajectoryBuilderInterface> wrapped_trajectory_builder);
+  ~CollatedTrajectoryBuilder() override {}
 
-    CollatedTrajectoryBuilder(const CollatedTrajectoryBuilder&) = delete;
-    CollatedTrajectoryBuilder& operator=(const CollatedTrajectoryBuilder&) = delete;
+  CollatedTrajectoryBuilder(const CollatedTrajectoryBuilder&) = delete;
+  CollatedTrajectoryBuilder& operator=(const CollatedTrajectoryBuilder&) = delete;
 
-    void AddSensorData(const std::string& sensor_id,
-                       const sensor::TimedPointCloudData& timed_point_cloud_data) override {
-        AddData(sensor::MakeDispatchable(sensor_id, timed_point_cloud_data));
+  void AddSensorData(const std::string& sensor_id, const sensor::TimedPointCloudData& timed_point_cloud_data) override {
+    AddData(sensor::MakeDispatchable(sensor_id, timed_point_cloud_data));
+  }
+
+  void AddSensorData(const std::string& sensor_id, const sensor::ImuData& imu_data) override {
+    AddData(sensor::MakeDispatchable(sensor_id, imu_data));
+  }
+
+  void AddSensorData(const std::string& sensor_id, const sensor::OdometryData& odometry_data) override {
+    AddData(sensor::MakeDispatchable(sensor_id, odometry_data));
+  }
+
+  void AddSensorData(const std::string& sensor_id, const sensor::FixedFramePoseData& fixed_frame_pose_data) override {
+    if (collate_fixed_frame_) {
+      AddData(sensor::MakeDispatchable(sensor_id, fixed_frame_pose_data));
+      return;
     }
+    wrapped_trajectory_builder_->AddSensorData(sensor_id, fixed_frame_pose_data);
+  }
 
-    void AddSensorData(const std::string& sensor_id, const sensor::ImuData& imu_data) override {
-        AddData(sensor::MakeDispatchable(sensor_id, imu_data));
+  void AddSensorData(const std::string& sensor_id, const sensor::LandmarkData& landmark_data) override {
+    if (collate_landmarks_) {
+      AddData(sensor::MakeDispatchable(sensor_id, landmark_data));
+      return;
     }
+    wrapped_trajectory_builder_->AddSensorData(sensor_id, landmark_data);
+  }
 
-    void AddSensorData(const std::string& sensor_id, const sensor::OdometryData& odometry_data) override {
-        AddData(sensor::MakeDispatchable(sensor_id, odometry_data));
-    }
+  void AddLocalSlamResultData(std::unique_ptr<mapping::LocalSlamResultData> local_slam_result_data) override {
+    AddData(std::move(local_slam_result_data));
+  }
 
-    void AddSensorData(const std::string& sensor_id, const sensor::FixedFramePoseData& fixed_frame_pose_data) override {
-        if (collate_fixed_frame_) {
-            AddData(sensor::MakeDispatchable(sensor_id, fixed_frame_pose_data));
-            return;
-        }
-        wrapped_trajectory_builder_->AddSensorData(sensor_id, fixed_frame_pose_data);
-    }
+ private:
+  void AddData(std::unique_ptr<sensor::Data> data);
 
-    void AddSensorData(const std::string& sensor_id, const sensor::LandmarkData& landmark_data) override {
-        if (collate_landmarks_) {
-            AddData(sensor::MakeDispatchable(sensor_id, landmark_data));
-            return;
-        }
-        wrapped_trajectory_builder_->AddSensorData(sensor_id, landmark_data);
-    }
+  void HandleCollatedSensorData(const std::string& sensor_id, std::unique_ptr<sensor::Data> data);
 
-    void AddLocalSlamResultData(std::unique_ptr<mapping::LocalSlamResultData> local_slam_result_data) override {
-        AddData(std::move(local_slam_result_data));
-    }
+  sensor::CollatorInterface* const sensor_collator_;
+  const bool collate_landmarks_;
+  const bool collate_fixed_frame_;
+  const int trajectory_id_;
+  std::unique_ptr<TrajectoryBuilderInterface> wrapped_trajectory_builder_;
 
-private:
-    void AddData(std::unique_ptr<sensor::Data> data);
-
-    void HandleCollatedSensorData(const std::string& sensor_id, std::unique_ptr<sensor::Data> data);
-
-    sensor::CollatorInterface* const sensor_collator_;
-    const bool collate_landmarks_;
-    const bool collate_fixed_frame_;
-    const int trajectory_id_;
-    std::unique_ptr<TrajectoryBuilderInterface> wrapped_trajectory_builder_;
-
-    // Time at which we last logged the rates of incoming sensor data.
-    std::chrono::steady_clock::time_point last_logging_time_;
-    std::map<std::string, common::RateTimer<>> rate_timers_;
+  // Time at which we last logged the rates of incoming sensor data.
+  std::chrono::steady_clock::time_point last_logging_time_;
+  std::map<std::string, common::RateTimer<>> rate_timers_;
 };
 
 }  // namespace mapping

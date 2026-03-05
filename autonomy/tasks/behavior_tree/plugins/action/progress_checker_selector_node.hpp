@@ -20,10 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "behaviortree_cpp/action_node.h"
-
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
+#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -40,62 +39,61 @@ namespace action {
  * port of the FollowPath
  * @note This is an Asynchronous node. It will re-initialize when halted.
  */
-class ProgressCheckerSelector : public BT::SyncActionNode
-{
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::ProgressCheckerSelector
-     *
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param conf  BT node configuration
-     */
-    ProgressCheckerSelector(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class ProgressCheckerSelector : public BT::SyncActionNode {
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::ProgressCheckerSelector
+   *
+   * @param xml_tag_name Name for the XML tag for this node
+   * @param conf  BT node configuration
+   */
+  ProgressCheckerSelector(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
-    static BT::PortsList providedPorts() {
-        return {BT::InputPort<std::string>("default_progress_checker",
-                                           "the default progress_checker to use if there is not any "
-                                           "external topic message received."),
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing basic ports along with node-specific
+   * ports
+   */
+  static BT::PortsList providedPorts() {
+    return {BT::InputPort<std::string>("default_progress_checker",
+                                       "the default progress_checker to use if there is not any "
+                                       "external topic message received."),
 
-                BT::InputPort<std::string>("topic_name", "progress_checker_selector",
-                                           "the input topic name to select the progress_checker"),
+            BT::InputPort<std::string>("topic_name", "progress_checker_selector",
+                                       "the input topic name to select the progress_checker"),
 
-                BT::OutputPort<std::string>("selected_progress_checker", "Selected progress_checker by subscription")};
-    }
+            BT::OutputPort<std::string>("selected_progress_checker", "Selected progress_checker by subscription")};
+  }
 
-private:
-    /**
-     * @brief Function to read parameters and initialize class variables
-     */
-    void initialize();
-    /**
-     * @brief Function to create ROS interfaces
-     */
-    void createROSInterfaces();
+ private:
+  /**
+   * @brief Function to read parameters and initialize class variables
+   */
+  void initialize();
+  /**
+   * @brief Function to create ROS interfaces
+   */
+  void createROSInterfaces();
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
-    BT::NodeStatus tick() override;
+  /**
+   * @brief Function to perform some user-defined operation on tick
+   */
+  BT::NodeStatus tick() override;
 
-    /**
-     * @brief callback function for the progress_checker_selector topic
-     *
-     * @param msg the message with the id of the progress_checker_selector
-     */
-    void callbackProgressCheckerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg);
+  /**
+   * @brief callback function for the progress_checker_selector topic
+   *
+   * @param msg the message with the id of the progress_checker_selector
+   */
+  void callbackProgressCheckerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg);
 
-    std::shared_ptr<autolink::Reader<commsgs::std_msgs::String>> progress_checker_selector_sub_;
+  std::shared_ptr<autolink::Reader<commsgs::std_msgs::String>> progress_checker_selector_sub_;
 
-    std::string last_selected_progress_checker_;
+  std::string last_selected_progress_checker_;
 
-    std::shared_ptr<::autolink::Node> node_;
+  std::shared_ptr<::autolink::Node> node_;
 
-    std::string topic_name_;
+  std::string topic_name_;
 };
 
 }  // namespace action

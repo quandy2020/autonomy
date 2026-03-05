@@ -42,87 +42,82 @@ class DataRouter;
  * 3. 提供统一的启动、停止接口
  * 4. 支持从配置文件加载配置
  */
-class DriverServer
-{
-public:
-    /**
-     * Define DriverServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(DriverServer)
+class DriverServer {
+ public:
+  /**
+   * Define DriverServer::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(DriverServer)
 
-    /**
-     * @brief 构造函数
-     * @param options 驱动配置选项
-     */
-    explicit DriverServer(const proto::DriverOptions& options);
+  /**
+   * @brief 构造函数
+   * @param options 驱动配置选项
+   */
+  explicit DriverServer(const proto::DriverOptions& options);
 
-    /**
-     * @brief 析构函数
-     */
-    ~DriverServer();
+  /**
+   * @brief 析构函数
+   */
+  ~DriverServer();
 
-    DriverServer(const DriverServer&) = delete;
-    DriverServer& operator=(const DriverServer&) = delete;
+  DriverServer(const DriverServer&) = delete;
+  DriverServer& operator=(const DriverServer&) = delete;
 
-    /**
-     * @brief 初始化驱动服务器
-     * @return true 成功，false 失败
-     */
-    bool Initialize();
+  /**
+   * @brief 初始化驱动服务器
+   * @return true 成功，false 失败
+   */
+  bool Initialize();
 
-    /**
-     * @brief 启动驱动服务器
-     */
-    void Start();
+  /**
+   * @brief 启动驱动服务器
+   */
+  void Start();
 
-    /**
-     * @brief 停止驱动服务器
-     */
-    void Stop();
+  /**
+   * @brief 停止驱动服务器
+   */
+  void Stop();
 
-    /**
-     * @brief 等待关闭（阻塞直到服务停止）
-     */
-    void WaitForShutdown();
+  /**
+   * @brief 等待关闭（阻塞直到服务停止）
+   */
+  void WaitForShutdown();
 
-    /**
-     * @brief 获取驱动引擎
-     * @return DriverEngine 的共享指针
-     */
-    std::shared_ptr<DriverEngine> GetDriverEngine() const {
-        return driver_engine_;
-    }
+  /**
+   * @brief 获取驱动引擎
+   * @return DriverEngine 的共享指针
+   */
+  std::shared_ptr<DriverEngine> GetDriverEngine() const { return driver_engine_; }
 
-    /**
-     * @brief 获取数据路由器
-     * @return DataRouter 的共享指针
-     */
-    std::shared_ptr<DataRouter> GetDataRouter() const {
-        return data_router_;
-    }
+  /**
+   * @brief 获取数据路由器
+   * @return DataRouter 的共享指针
+   */
+  std::shared_ptr<DataRouter> GetDataRouter() const { return data_router_; }
 
-protected:
-    // Autolink 节点（使用 shared_ptr 管理生命周期）
-    std::shared_ptr<::autolink::Node> node_ptr_{nullptr};
+ protected:
+  // Autolink 节点（使用 shared_ptr 管理生命周期）
+  std::shared_ptr<::autolink::Node> node_ptr_{nullptr};
 
-    // Autolink 节点指针（用于传递给其他组件）
-    ::autolink::Node* node_{nullptr};
+  // Autolink 节点指针（用于传递给其他组件）
+  ::autolink::Node* node_{nullptr};
 
-    // 驱动引擎（管理传感器订阅和处理）
-    std::shared_ptr<DriverEngine> driver_engine_{nullptr};
+  // 驱动引擎（管理传感器订阅和处理）
+  std::shared_ptr<DriverEngine> driver_engine_{nullptr};
 
-    // 数据路由器（管理数据路由）
-    std::shared_ptr<DataRouter> data_router_{nullptr};
+  // 数据路由器（管理数据路由）
+  std::shared_ptr<DataRouter> data_router_{nullptr};
 
-    // 配置选项
-    proto::DriverOptions options_;
+  // 配置选项
+  proto::DriverOptions options_;
 
-    // 状态标志
-    bool initialized_{false};
-    bool started_{false};
+  // 状态标志
+  bool initialized_{false};
+  bool started_{false};
 
-    // 互斥锁（用于保护状态标志）
-    mutable std::mutex mutex_;
+  // 互斥锁（用于保护状态标志）
+  mutable std::mutex mutex_;
 };
 
 }  // namespace driver

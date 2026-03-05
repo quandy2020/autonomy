@@ -26,25 +26,24 @@ namespace monitor {
  * 封装 gperftools (gperf) CPU/堆分析启停，便于通过 MonitorOptions 参数选定。
  * 当未安装 gperftools 时接口为空实现。
  */
-class GperfProfiler
-{
-public:
-    GperfProfiler() = default;
+class GperfProfiler {
+ public:
+  GperfProfiler() = default;
 
-    /// 开始 CPU 分析，filename 为输出 .prof 路径
-    void StartCpuProfile(const std::string& filename);
-    /// 停止 CPU 分析并写文件
-    void StopCpuProfile();
+  /// 开始 CPU 分析，filename 为输出 .prof 路径
+  void StartCpuProfile(const std::string& filename);
+  /// 停止 CPU 分析并写文件
+  void StopCpuProfile();
 
-    /// 开始堆分析，filename 为输出路径
-    void StartHeapProfile(const std::string& filename);
-    /// 停止堆分析
-    void StopHeapProfile();
+  /// 开始堆分析，filename 为输出路径
+  void StartHeapProfile(const std::string& filename);
+  /// 停止堆分析
+  void StopHeapProfile();
 
-    /// 是否支持 CPU 分析（编译时是否链接了 gperftools）
-    static bool IsCpuProfilingAvailable();
-    /// 是否支持堆分析
-    static bool IsHeapProfilingAvailable();
+  /// 是否支持 CPU 分析（编译时是否链接了 gperftools）
+  static bool IsCpuProfilingAvailable();
+  /// 是否支持堆分析
+  static bool IsHeapProfilingAvailable();
 };
 
 }  // namespace monitor

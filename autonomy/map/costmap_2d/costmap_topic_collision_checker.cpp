@@ -40,55 +40,55 @@ namespace costmap_2d {
 
 bool CostmapTopicCollisionChecker::isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose,
                                                    bool fetch_costmap_and_footprint) {
-    try {
-        if (scorePose(pose, fetch_costmap_and_footprint) >= LETHAL_OBSTACLE) {
-            return false;
-        }
-        return true;
-    } catch (const IllegalPoseException& e) {
-        LOG(ERROR) << e.what();
-        return false;
-    } catch (const CollisionCheckerException& e) {
-        LOG(ERROR) << e.what();
-        return false;
-    } catch (...) {
-        LOG(ERROR) << "Failed to check pose score!";
-        return false;
+  try {
+    if (scorePose(pose, fetch_costmap_and_footprint) >= LETHAL_OBSTACLE) {
+      return false;
     }
+    return true;
+  } catch (const IllegalPoseException& e) {
+    LOG(ERROR) << e.what();
+    return false;
+  } catch (const CollisionCheckerException& e) {
+    LOG(ERROR) << e.what();
+    return false;
+  } catch (...) {
+    LOG(ERROR) << "Failed to check pose score!";
+    return false;
+  }
 }
 
 double CostmapTopicCollisionChecker::scorePose(const commsgs::geometry_msgs::Pose2D& pose,
                                                bool fetch_costmap_and_footprint) {
-    if (fetch_costmap_and_footprint) {
-        try {
-            // collision_checker_.setCostmap(costmap_sub_.getCostmap());
-        } catch (const std::runtime_error& e) {
-            throw CollisionCheckerException(e.what());
-        }
+  if (fetch_costmap_and_footprint) {
+    try {
+      // collision_checker_.setCostmap(costmap_sub_.getCostmap());
+    } catch (const std::runtime_error& e) {
+      throw CollisionCheckerException(e.what());
     }
+  }
 
-    unsigned int cell_x, cell_y;
-    if (!collision_checker_.worldToMap(pose.x, pose.y, cell_x, cell_y)) {
-        // RCLCPP_DEBUG(rclcpp::get_logger(name_), "Map Cell: [%d, %d]", cell_x,
-        // cell_y);
-        throw IllegalPoseException(name_, "Pose Goes Off Grid.");
-    }
+  unsigned int cell_x, cell_y;
+  if (!collision_checker_.worldToMap(pose.x, pose.y, cell_x, cell_y)) {
+    // RCLCPP_DEBUG(rclcpp::get_logger(name_), "Map Cell: [%d, %d]", cell_x,
+    // cell_y);
+    throw IllegalPoseException(name_, "Pose Goes Off Grid.");
+  }
 
-    return collision_checker_.footprintCost(getFootprint(pose, fetch_costmap_and_footprint));
+  return collision_checker_.footprintCost(getFootprint(pose, fetch_costmap_and_footprint));
 }
 
 Footprint CostmapTopicCollisionChecker::getFootprint(const commsgs::geometry_msgs::Pose2D& pose,
                                                      bool fetch_latest_footprint) {
-    if (fetch_latest_footprint) {
-        commsgs::std_msgs::Header header;
-        // if (!footprint_sub_.getFootprintInRobotFrame(footprint_, header)) {
-        //     throw CollisionCheckerException("Current footprint not
-        //     available.");
-        // }
-    }
-    Footprint footprint;
-    transformFootprint(pose.x, pose.y, pose.theta, footprint_, footprint);
-    return footprint;
+  if (fetch_latest_footprint) {
+    commsgs::std_msgs::Header header;
+    // if (!footprint_sub_.getFootprintInRobotFrame(footprint_, header)) {
+    //     throw CollisionCheckerException("Current footprint not
+    //     available.");
+    // }
+  }
+  Footprint footprint;
+  transformFootprint(pose.x, pose.y, pose.theta, footprint_, footprint);
+  return footprint;
 }
 
 }  // namespace costmap_2d

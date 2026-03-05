@@ -22,8 +22,7 @@
 
 namespace {
 
-const std::string& SAMPLE_LIB =
-    "/autolink/bazel-bin/autolink/class_loader/shared_library/libautolink_sample.so";
+const std::string& SAMPLE_LIB = "/autolink/bazel-bin/autolink/class_loader/shared_library/libautolink_sample.so";
 constexpr double epsilon = 1.0e-8;
 
 }  // namespace

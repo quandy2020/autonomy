@@ -27,27 +27,27 @@ namespace cartographer {
 namespace io {
 
 int pbstream_migrate(int argc, char** argv) {
-    std::stringstream ss;
-    ss << "\n\nTool for migrating files that use submaps without histograms "
-          "to the new submap format, which includes a histogram. You can "
-          "set --include_unfinished_submaps to false if you want to exclude "
-          "unfinished submaps in the output."
-       << "\nUsage: " << argv[0] << " " << argv[1] << " <input_filename> <output_filename> [flags]";
-    google::SetUsageMessage(ss.str());
+  std::stringstream ss;
+  ss << "\n\nTool for migrating files that use submaps without histograms "
+        "to the new submap format, which includes a histogram. You can "
+        "set --include_unfinished_submaps to false if you want to exclude "
+        "unfinished submaps in the output."
+     << "\nUsage: " << argv[0] << " " << argv[1] << " <input_filename> <output_filename> [flags]";
+  google::SetUsageMessage(ss.str());
 
-    if (argc < 4) {
-        google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_migrate");
-        return EXIT_FAILURE;
-    }
+  if (argc < 4) {
+    google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_migrate");
+    return EXIT_FAILURE;
+  }
 
-    cartographer::io::ProtoStreamReader input(argv[2]);
-    cartographer::io::ProtoStreamWriter output(argv[3]);
-    LOG(INFO) << "Migrating serialization format 1 in \"" << argv[2] << "\" to serialization format 2 in \"" << argv[3]
-              << "\"";
-    cartographer::io::MigrateStreamVersion1ToVersion2(&input, &output, FLAGS_include_unfinished_submaps);
-    CHECK(output.Close()) << "Could not write migrated pbstream file to: " << argv[3];
+  cartographer::io::ProtoStreamReader input(argv[2]);
+  cartographer::io::ProtoStreamWriter output(argv[3]);
+  LOG(INFO) << "Migrating serialization format 1 in \"" << argv[2] << "\" to serialization format 2 in \"" << argv[3]
+            << "\"";
+  cartographer::io::MigrateStreamVersion1ToVersion2(&input, &output, FLAGS_include_unfinished_submaps);
+  CHECK(output.Close()) << "Could not write migrated pbstream file to: " << argv[3];
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }
 
 }  // namespace io

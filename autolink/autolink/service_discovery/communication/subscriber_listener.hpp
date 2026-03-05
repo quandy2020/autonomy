@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <functional>
 #include <mutex>
 #include <string>
@@ -47,4 +46,3 @@ class SubscriberListener : public eprosima::fastrtps::SubscriberListener {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

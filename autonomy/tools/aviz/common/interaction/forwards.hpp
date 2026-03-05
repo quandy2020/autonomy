@@ -17,12 +17,11 @@
 #ifndef AVIZ_COMMON__INTERACTION__FORWARDS_HPP_
 #define AVIZ_COMMON__INTERACTION__FORWARDS_HPP_
 
+#include <QColor>  // NOLINT: cpplint is unable to handle the include order here
 #include <map>
 #include <set>
 #include <unordered_map>
 #include <vector>
-
-#include <QColor>  // NOLINT: cpplint is unable to handle the include order here
 
 #include "autonomy/tools/aviz/common/logging.hpp"
 
@@ -39,24 +38,24 @@ using S_uint64 = std::set<uint64_t>;
 using V_uint64 = std::vector<uint64_t>;
 
 struct Picked {
-    explicit Picked(CollObjectHandle _handle = 0) : handle(_handle), pixel_count(1) {}
+  explicit Picked(CollObjectHandle _handle = 0) : handle(_handle), pixel_count(1) {}
 
-    CollObjectHandle handle;
-    int pixel_count;
-    S_uint64 extra_handles;
+  CollObjectHandle handle;
+  int pixel_count;
+  S_uint64 extra_handles;
 };
 
 using M_Picked = std::unordered_map<CollObjectHandle, Picked>;
 
 /// Convert QColor to handle (for selection picking)
 inline uint32_t colorToHandle(const QColor& color) {
-    return (static_cast<int>(color.red()) << 16) | (static_cast<int>(color.green()) << 8) |
-           static_cast<int>(color.blue());
+  return (static_cast<int>(color.red()) << 16) | (static_cast<int>(color.green()) << 8) |
+         static_cast<int>(color.blue());
 }
 
 /// Convert handle to QColor (for selection picking)
 inline QColor handleToColor(CollObjectHandle handle) {
-    return QColor((handle >> 16) & 0xFF, (handle >> 8) & 0xFF, handle & 0xFF);
+  return QColor((handle >> 16) & 0xFF, (handle >> 8) & 0xFF, handle & 0xFF);
 }
 
 }  // namespace interaction

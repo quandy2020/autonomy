@@ -32,37 +32,36 @@ namespace common {
  * position of the robot to make sure that it is actually progressing
  * towards a goal.
  */
-class ProgressChecker
-{
-public:
-    /**
-     * Define ProgressChecker::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(ProgressChecker)
+class ProgressChecker {
+ public:
+  /**
+   * Define ProgressChecker::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(ProgressChecker)
 
-    /**
-     * @brief A Destructor for ProgressChecker
-     */
-    virtual ~ProgressChecker() = default;
+  /**
+   * @brief A Destructor for ProgressChecker
+   */
+  virtual ~ProgressChecker() = default;
 
-    /**
-     * @brief Initialize parameters for ProgressChecker
-     */
-    virtual void Initialize(const std::string& plugin_name) = 0;
+  /**
+   * @brief Initialize parameters for ProgressChecker
+   */
+  virtual void Initialize(const std::string& plugin_name) = 0;
 
-    /**
-     * @brief Checks if the robot has moved compare to previous
-     * pose
-     * @param current_pose Current pose of the robot
-     * @return True if progress is made
-     */
+  /**
+   * @brief Checks if the robot has moved compare to previous
+   * pose
+   * @param current_pose Current pose of the robot
+   * @return True if progress is made
+   */
 
-    virtual bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) = 0;
+  virtual bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) = 0;
 
-    /**
-     * @brief Reset class state upon calling
-     */
-    virtual void Reset() = 0;
+  /**
+   * @brief Reset class state upon calling
+   */
+  virtual void Reset() = 0;
 };
 
 }  // namespace common

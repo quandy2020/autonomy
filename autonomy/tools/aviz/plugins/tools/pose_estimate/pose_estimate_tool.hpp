@@ -27,13 +27,12 @@ namespace tools {
  * @brief PoseEstimateTool
  * Pose estimate tool for the visualizer
  */
-class PoseEstimateTool
-{
-public:
-    explicit PoseEstimateTool();
-    virtual ~PoseEstimateTool();
+class PoseEstimateTool {
+ public:
+  explicit PoseEstimateTool();
+  virtual ~PoseEstimateTool();
 
-    // TODO: Implement tool interface
+  // TODO: Implement tool interface
 };
 
 }  // namespace tools

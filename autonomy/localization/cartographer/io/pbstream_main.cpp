@@ -23,28 +23,28 @@
 #include "glog/logging.h"
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
+  google::InitGoogleLogging(argv[0]);
 
-    FLAGS_logtostderr = true;
-    const std::string usage_message =
-        "Swiss Army knife for pbstreams.\n\n"
-        "Currently supported subcommands are:\n"
-        "\tinfo    - Prints summary of pbstream.\n"
-        "\tmigrate - Migrates pbstream to the new submap format.";
-    google::ParseCommandLineFlags(&argc, &argv, true);
+  FLAGS_logtostderr = true;
+  const std::string usage_message =
+      "Swiss Army knife for pbstreams.\n\n"
+      "Currently supported subcommands are:\n"
+      "\tinfo    - Prints summary of pbstream.\n"
+      "\tmigrate - Migrates pbstream to the new submap format.";
+  google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (argc < 2) {
-        google::SetUsageMessage(usage_message);
-        google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_main");
-        return EXIT_FAILURE;
-    } else if (std::string(argv[1]) == "info") {
-        return ::cartographer::io::pbstream_info(argc, argv);
-    } else if (std::string(argv[1]) == "migrate") {
-        return ::cartographer::io::pbstream_migrate(argc, argv);
-    } else {
-        LOG(INFO) << "Unknown subtool: \"" << argv[1];
-        google::SetUsageMessage(usage_message);
-        google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_main");
-        return EXIT_FAILURE;
-    }
+  if (argc < 2) {
+    google::SetUsageMessage(usage_message);
+    google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_main");
+    return EXIT_FAILURE;
+  } else if (std::string(argv[1]) == "info") {
+    return ::cartographer::io::pbstream_info(argc, argv);
+  } else if (std::string(argv[1]) == "migrate") {
+    return ::cartographer::io::pbstream_migrate(argc, argv);
+  } else {
+    LOG(INFO) << "Unknown subtool: \"" << argv[1];
+    google::SetUsageMessage(usage_message);
+    google::ShowUsageWithFlagsRestrict(argv[0], "pbstream_main");
+    return EXIT_FAILURE;
+  }
 }

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -35,8 +34,7 @@ class History {
  public:
   using MessagePtr = std::shared_ptr<MessageT>;
   struct CachedMessage {
-    CachedMessage(const MessagePtr& message, const MessageInfo& message_info)
-        : msg(message), msg_info(message_info) {}
+    CachedMessage(const MessagePtr& message, const MessageInfo& message_info) : msg(message), msg_info(message_info) {}
 
     MessagePtr msg;
     MessageInfo msg_info;
@@ -65,12 +63,10 @@ class History {
 };
 
 template <typename MessageT>
-History<MessageT>::History(const HistoryAttributes& attr)
-    : enabled_(false), max_depth_(1000) {
+History<MessageT>::History(const HistoryAttributes& attr) : enabled_(false), max_depth_(1000) {
   auto& global_conf = common::GlobalData::Instance()->Config();
   if (global_conf.transport_conf().resource_limit().max_history_depth() != 0) {
-    max_depth_ =
-        global_conf.transport_conf().resource_limit().max_history_depth();
+    max_depth_ = global_conf.transport_conf().resource_limit().max_history_depth();
   }
 
   if (attr.history_policy == proto::QosHistoryPolicy::HISTORY_KEEP_ALL) {
@@ -89,8 +85,7 @@ History<MessageT>::~History() {
 }
 
 template <typename MessageT>
-void History<MessageT>::Add(const MessagePtr& msg,
-                            const MessageInfo& msg_info) {
+void History<MessageT>::Add(const MessagePtr& msg, const MessageInfo& msg_info) {
   if (!enabled_) {
     return;
   }
@@ -108,8 +103,7 @@ void History<MessageT>::Clear() {
 }
 
 template <typename MessageT>
-void History<MessageT>::GetCachedMessage(
-    std::vector<CachedMessage>* msgs) const {
+void History<MessageT>::GetCachedMessage(std::vector<CachedMessage>* msgs) const {
   if (msgs == nullptr) {
     return;
   }
@@ -127,4 +121,3 @@ size_t History<MessageT>::GetSize() const {
 
 }  // namespace transport
 }  // namespace autolink
-

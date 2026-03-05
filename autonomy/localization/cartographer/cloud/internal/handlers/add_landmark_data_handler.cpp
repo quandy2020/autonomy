@@ -30,24 +30,24 @@ namespace cloud {
 namespace handlers {
 
 void AddLandmarkDataHandler::OnSensorData(const proto::AddLandmarkDataRequest& request) {
-    // The 'BlockingQueue' returned by 'sensor_data_queue()' is already
-    // thread-safe. Therefore it suffices to get an unsynchronized reference to
-    // the 'MapBuilderContext'.
-    this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->EnqueueSensorData(
-        request.sensor_metadata().trajectory_id(),
-        sensor::MakeDispatchable(request.sensor_metadata().sensor_id(), sensor::FromProto(request.landmark_data())));
+  // The 'BlockingQueue' returned by 'sensor_data_queue()' is already
+  // thread-safe. Therefore it suffices to get an unsynchronized reference to
+  // the 'MapBuilderContext'.
+  this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->EnqueueSensorData(
+      request.sensor_metadata().trajectory_id(),
+      sensor::MakeDispatchable(request.sensor_metadata().sensor_id(), sensor::FromProto(request.landmark_data())));
 
-    // The 'BlockingQueue' in 'LocalTrajectoryUploader' is thread-safe.
-    // Therefore it suffices to get an unsynchronized reference to the
-    // 'MapBuilderContext'.
-    if (this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->local_trajectory_uploader()) {
-        auto sensor_data = absl::make_unique<proto::SensorData>();
-        *sensor_data->mutable_sensor_metadata() = request.sensor_metadata();
-        *sensor_data->mutable_landmark_data() = request.landmark_data();
-        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-            ->local_trajectory_uploader()
-            ->EnqueueSensorData(std::move(sensor_data));
-    }
+  // The 'BlockingQueue' in 'LocalTrajectoryUploader' is thread-safe.
+  // Therefore it suffices to get an unsynchronized reference to the
+  // 'MapBuilderContext'.
+  if (this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->local_trajectory_uploader()) {
+    auto sensor_data = absl::make_unique<proto::SensorData>();
+    *sensor_data->mutable_sensor_metadata() = request.sensor_metadata();
+    *sensor_data->mutable_landmark_data() = request.landmark_data();
+    this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
+        ->local_trajectory_uploader()
+        ->EnqueueSensorData(std::move(sensor_data));
+  }
 }
 
 }  // namespace handlers

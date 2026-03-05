@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <map>
 #include <memory>
 #include <string>
@@ -46,8 +45,7 @@ class Node {
   friend class Component;
   friend class TimerComponent;
   friend bool Init(const char*, const std::string&);
-  friend std::shared_ptr<Node> CreateNode(const std::string&,
-                                          const std::string&);
+  friend std::shared_ptr<Node> CreateNode(const std::string&, const std::string&);
   virtual ~Node();
 
   /**
@@ -65,8 +63,7 @@ class Node {
    * @return std::shared_ptr<Writer<MessageT>> result Writer Object
    */
   template <typename MessageT>
-  auto CreateWriter(const proto::RoleAttributes& role_attr)
-      -> std::shared_ptr<Writer<MessageT>>;
+  auto CreateWriter(const proto::RoleAttributes& role_attr) -> std::shared_ptr<Writer<MessageT>>;
 
   /**
    * @brief Create a Writer with specific message type.
@@ -76,8 +73,7 @@ class Node {
    * @return std::shared_ptr<Writer<MessageT>> result Writer Object
    */
   template <typename MessageT>
-  auto CreateWriter(const std::string& channel_name)
-      -> std::shared_ptr<Writer<MessageT>>;
+  auto CreateWriter(const std::string& channel_name) -> std::shared_ptr<Writer<MessageT>>;
 
   /**
    * @brief Create a Reader with specific message type with channel name
@@ -90,8 +86,7 @@ class Node {
    * @return std::shared_ptr<autolink::Reader<MessageT>> result Reader Object
    */
   template <typename MessageT>
-  auto CreateReader(const std::string& channel_name,
-                    const CallbackFunc<MessageT>& reader_func = nullptr)
+  auto CreateReader(const std::string& channel_name, const CallbackFunc<MessageT>& reader_func = nullptr)
       -> std::shared_ptr<autolink::Reader<MessageT>>;
 
   /**
@@ -104,8 +99,7 @@ class Node {
    * @return std::shared_ptr<autolink::Reader<MessageT>> result Reader Object
    */
   template <typename MessageT>
-  auto CreateReader(const ReaderConfig& config,
-                    const CallbackFunc<MessageT>& reader_func = nullptr)
+  auto CreateReader(const ReaderConfig& config, const CallbackFunc<MessageT>& reader_func = nullptr)
       -> std::shared_ptr<autolink::Reader<MessageT>>;
 
   /**
@@ -118,8 +112,7 @@ class Node {
    * @return std::shared_ptr<autolink::Reader<MessageT>> result Reader Object
    */
   template <typename MessageT>
-  auto CreateReader(const proto::RoleAttributes& role_attr,
-                    const CallbackFunc<MessageT>& reader_func = nullptr)
+  auto CreateReader(const proto::RoleAttributes& role_attr, const CallbackFunc<MessageT>& reader_func = nullptr)
       -> std::shared_ptr<autolink::Reader<MessageT>>;
 
   /**
@@ -133,8 +126,7 @@ class Node {
    */
   template <typename Request, typename Response>
   auto CreateService(const std::string& service_name,
-                     const typename Service<Request, Response>::ServiceCallback&
-                         service_callback)
+                     const typename Service<Request, Response>::ServiceCallback& service_callback)
       -> std::shared_ptr<Service<Request, Response>>;
 
   /**
@@ -146,8 +138,7 @@ class Node {
    * @return std::shared_ptr<Client<Request, Response>> result `Client`
    */
   template <typename Request, typename Response>
-  auto CreateClient(const std::string& service_name)
-      -> std::shared_ptr<Client<Request, Response>>;
+  auto CreateClient(const std::string& service_name) -> std::shared_ptr<Client<Request, Response>>;
 
   bool DeleteReader(const std::string& channel_name);
   bool DeleteReader(const ReaderConfig& config);
@@ -170,12 +161,10 @@ class Node {
    * @return std::shared_ptr<Reader<MessageT>> result reader
    */
   template <typename MessageT>
-  auto GetReader(const std::string& channel_name)
-      -> std::shared_ptr<Reader<MessageT>>;
+  auto GetReader(const std::string& channel_name) -> std::shared_ptr<Reader<MessageT>>;
 
  private:
-  explicit Node(const std::string& node_name,
-                const std::string& name_space = "");
+  explicit Node(const std::string& node_name, const std::string& name_space = "");
 
   std::string node_name_;
   std::string name_space_;
@@ -188,20 +177,17 @@ class Node {
 };
 
 template <typename MessageT>
-auto Node::CreateWriter(const proto::RoleAttributes& role_attr)
-    -> std::shared_ptr<Writer<MessageT>> {
+auto Node::CreateWriter(const proto::RoleAttributes& role_attr) -> std::shared_ptr<Writer<MessageT>> {
   return node_channel_impl_->template CreateWriter<MessageT>(role_attr);
 }
 
 template <typename MessageT>
-auto Node::CreateWriter(const std::string& channel_name)
-    -> std::shared_ptr<Writer<MessageT>> {
+auto Node::CreateWriter(const std::string& channel_name) -> std::shared_ptr<Writer<MessageT>> {
   return node_channel_impl_->template CreateWriter<MessageT>(channel_name);
 }
 
 template <typename MessageT>
-auto Node::CreateReader(const proto::RoleAttributes& role_attr,
-                        const CallbackFunc<MessageT>& reader_func)
+auto Node::CreateReader(const proto::RoleAttributes& role_attr, const CallbackFunc<MessageT>& reader_func)
     -> std::shared_ptr<Reader<MessageT>> {
   std::lock_guard<std::mutex> lg(readers_mutex_);
   if (readers_.find(role_attr.channel_name()) != readers_.end()) {
@@ -209,8 +195,7 @@ auto Node::CreateReader(const proto::RoleAttributes& role_attr,
              "exists.";
     return nullptr;
   }
-  auto reader = node_channel_impl_->template CreateReader<MessageT>(
-      role_attr, reader_func);
+  auto reader = node_channel_impl_->template CreateReader<MessageT>(role_attr, reader_func);
   if (reader != nullptr) {
     readers_.emplace(std::make_pair(role_attr.channel_name(), reader));
   }
@@ -218,8 +203,7 @@ auto Node::CreateReader(const proto::RoleAttributes& role_attr,
 }
 
 template <typename MessageT>
-auto Node::CreateReader(const ReaderConfig& config,
-                        const CallbackFunc<MessageT>& reader_func)
+auto Node::CreateReader(const ReaderConfig& config, const CallbackFunc<MessageT>& reader_func)
     -> std::shared_ptr<autolink::Reader<MessageT>> {
   std::lock_guard<std::mutex> lg(readers_mutex_);
   if (readers_.find(config.channel_name) != readers_.end()) {
@@ -227,8 +211,7 @@ auto Node::CreateReader(const ReaderConfig& config,
              "exists.";
     return nullptr;
   }
-  auto reader =
-      node_channel_impl_->template CreateReader<MessageT>(config, reader_func);
+  auto reader = node_channel_impl_->template CreateReader<MessageT>(config, reader_func);
   if (reader != nullptr) {
     readers_.emplace(std::make_pair(config.channel_name, reader));
   }
@@ -236,8 +219,7 @@ auto Node::CreateReader(const ReaderConfig& config,
 }
 
 template <typename MessageT>
-auto Node::CreateReader(const std::string& channel_name,
-                        const CallbackFunc<MessageT>& reader_func)
+auto Node::CreateReader(const std::string& channel_name, const CallbackFunc<MessageT>& reader_func)
     -> std::shared_ptr<Reader<MessageT>> {
   std::lock_guard<std::mutex> lg(readers_mutex_);
   if (readers_.find(channel_name) != readers_.end()) {
@@ -245,8 +227,7 @@ auto Node::CreateReader(const std::string& channel_name,
              "exists.";
     return nullptr;
   }
-  auto reader = node_channel_impl_->template CreateReader<MessageT>(
-      channel_name, reader_func);
+  auto reader = node_channel_impl_->template CreateReader<MessageT>(channel_name, reader_func);
   if (reader != nullptr) {
     readers_.emplace(std::make_pair(channel_name, reader));
   }
@@ -254,24 +235,19 @@ auto Node::CreateReader(const std::string& channel_name,
 }
 
 template <typename Request, typename Response>
-auto Node::CreateService(
-    const std::string& service_name,
-    const typename Service<Request, Response>::ServiceCallback&
-        service_callback) -> std::shared_ptr<Service<Request, Response>> {
-  return node_service_impl_->template CreateService<Request, Response>(
-      service_name, service_callback);
+auto Node::CreateService(const std::string& service_name,
+                         const typename Service<Request, Response>::ServiceCallback& service_callback)
+    -> std::shared_ptr<Service<Request, Response>> {
+  return node_service_impl_->template CreateService<Request, Response>(service_name, service_callback);
 }
 
 template <typename Request, typename Response>
-auto Node::CreateClient(const std::string& service_name)
-    -> std::shared_ptr<Client<Request, Response>> {
-  return node_service_impl_->template CreateClient<Request, Response>(
-      service_name);
+auto Node::CreateClient(const std::string& service_name) -> std::shared_ptr<Client<Request, Response>> {
+  return node_service_impl_->template CreateClient<Request, Response>(service_name);
 }
 
 template <typename MessageT>
-auto Node::GetReader(const std::string& name)
-    -> std::shared_ptr<Reader<MessageT>> {
+auto Node::GetReader(const std::string& name) -> std::shared_ptr<Reader<MessageT>> {
   std::lock_guard<std::mutex> lg(readers_mutex_);
   auto it = readers_.find(name);
   if (it != readers_.end()) {
@@ -281,4 +257,3 @@ auto Node::GetReader(const std::string& name)
 }
 
 }  // namespace autolink
-

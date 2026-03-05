@@ -26,19 +26,16 @@ namespace profiler {
 constexpr char kModuleName[] = "perf";
 
 void Frame::Push(Block* block) {
-  if (block != nullptr)
-    stack_.push(block);
+  if (block != nullptr) stack_.push(block);
 }
 
 Block* Frame::Top() {
-  if (stack_.empty())
-    return nullptr;
+  if (stack_.empty()) return nullptr;
   return stack_.top();
 }
 
 void Frame::Pop() {
-  if (stack_.empty())
-    return;
+  if (stack_.empty()) return;
 
   Block* block_ptr = stack_.top();
   stack_.pop();
@@ -49,17 +46,13 @@ bool Frame::DumpToFile(const std::string& routine_name) {
   // Use 'ALOG_MODULE' instead of 'AINFO' to specify the log file
   ALOG_MODULE(kModuleName, INFO) << "Frame : " << routine_name;
   for (const Block& block : storage_) {
-    ALOG_MODULE(kModuleName, INFO)
-        << block.depth() << "," << block.name() << "," << block.duration()
-        << "," << block.begin_time_since_epoch()
-        << "," << block.end_time_since_epoch();
+    ALOG_MODULE(kModuleName, INFO) << block.depth() << "," << block.name() << "," << block.duration() << ","
+                                   << block.begin_time_since_epoch() << "," << block.end_time_since_epoch();
   }
   return true;
 }
 
-void Frame::Clear() {
-  storage_.clear();
-}
+void Frame::Clear() { storage_.clear(); }
 
 }  // namespace profiler
 }  // namespace autolink

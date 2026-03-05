@@ -18,18 +18,16 @@
 
 #include <memory>
 #include <vector>
-#include "gtest/gtest.h"
 
 #include "autolink/common/global_data.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace service_discovery {
 
 class ServiceManagerTest : public ::testing::Test {
  protected:
-  ServiceManagerTest() {
-    service_manager_ = std::make_shared<ServiceManager>();
-  }
+  ServiceManagerTest() { service_manager_ = std::make_shared<ServiceManager>(); }
   virtual ~ServiceManagerTest() { service_manager_->Shutdown(); }
 
   virtual void SetUp() {}

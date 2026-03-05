@@ -23,21 +23,12 @@
 namespace autolink {
 namespace transport {
 
-const size_t ReadableInfo::kSize = sizeof(uint64_t) * 2 + \
-                                   sizeof(int32_t) + sizeof(int32_t);
+const size_t ReadableInfo::kSize = sizeof(uint64_t) * 2 + sizeof(int32_t) + sizeof(int32_t);
 
-ReadableInfo::ReadableInfo()
-    : host_id_(0),
-      block_index_(0),
-      arena_block_index_(-1),
-      channel_id_(0) {}
+ReadableInfo::ReadableInfo() : host_id_(0), block_index_(0), arena_block_index_(-1), channel_id_(0) {}
 
-ReadableInfo::ReadableInfo(uint64_t host_id, int32_t block_index,
-                           uint64_t channel_id, int32_t arena_block_index)
-    : host_id_(host_id),
-      block_index_(block_index),
-      arena_block_index_(arena_block_index),
-      channel_id_(channel_id) {}
+ReadableInfo::ReadableInfo(uint64_t host_id, int32_t block_index, uint64_t channel_id, int32_t arena_block_index)
+    : host_id_(host_id), block_index_(block_index), arena_block_index_(arena_block_index), channel_id_(channel_id) {}
 
 ReadableInfo::~ReadableInfo() {}
 
@@ -54,20 +45,14 @@ ReadableInfo& ReadableInfo::operator=(const ReadableInfo& other) {
 bool ReadableInfo::SerializeTo(std::string* dst) const {
   RETURN_VAL_IF_NULL(dst, false);
 
-  dst->assign(reinterpret_cast<char*>(const_cast<uint64_t*>(&host_id_)),
-              sizeof(host_id_));
-  dst->append(reinterpret_cast<char*>(const_cast<int32_t*>(&block_index_)),
-              sizeof(block_index_));
-  dst->append(reinterpret_cast<char*>(const_cast<uint64_t*>(&channel_id_)),
-              sizeof(channel_id_));
-  dst->append(reinterpret_cast<char*>(const_cast<int32_t*>(
-                &arena_block_index_)), sizeof(arena_block_index_));
+  dst->assign(reinterpret_cast<char*>(const_cast<uint64_t*>(&host_id_)), sizeof(host_id_));
+  dst->append(reinterpret_cast<char*>(const_cast<int32_t*>(&block_index_)), sizeof(block_index_));
+  dst->append(reinterpret_cast<char*>(const_cast<uint64_t*>(&channel_id_)), sizeof(channel_id_));
+  dst->append(reinterpret_cast<char*>(const_cast<int32_t*>(&arena_block_index_)), sizeof(arena_block_index_));
   return true;
 }
 
-bool ReadableInfo::DeserializeFrom(const std::string& src) {
-  return DeserializeFrom(src.data(), src.size());
-}
+bool ReadableInfo::DeserializeFrom(const std::string& src) { return DeserializeFrom(src.data(), src.size()); }
 
 bool ReadableInfo::DeserializeFrom(const char* src, std::size_t len) {
   RETURN_VAL_IF_NULL(src, false);
@@ -83,8 +68,7 @@ bool ReadableInfo::DeserializeFrom(const char* src, std::size_t len) {
   ptr += sizeof(block_index_);
   memcpy(reinterpret_cast<char*>(&channel_id_), ptr, sizeof(channel_id_));
   ptr += sizeof(channel_id_);
-  memcpy(reinterpret_cast<char*>(&arena_block_index_),
-         ptr, sizeof(arena_block_index_));
+  memcpy(reinterpret_cast<char*>(&arena_block_index_), ptr, sizeof(arena_block_index_));
   return true;
 }
 

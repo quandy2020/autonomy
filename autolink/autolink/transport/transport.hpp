@@ -16,14 +16,12 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 #include <string>
 
-#include "autolink/proto/transport_conf.pb.h"
-
 #include "autolink/common/macros.hpp"
+#include "autolink/proto/transport_conf.pb.h"
 #include "autolink/transport/dispatcher/intra_dispatcher.hpp"
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
 #include "autolink/transport/dispatcher/shm_dispatcher.hpp"
@@ -53,15 +51,12 @@ class Transport {
   void Shutdown();
 
   template <typename M>
-  auto CreateTransmitter(const RoleAttributes& attr,
-                         const OptionalMode& mode = OptionalMode::HYBRID) ->
+  auto CreateTransmitter(const RoleAttributes& attr, const OptionalMode& mode = OptionalMode::HYBRID) ->
       typename std::shared_ptr<Transmitter<M>>;
 
   template <typename M>
-  auto CreateReceiver(const RoleAttributes& attr,
-                      const typename Receiver<M>::MessageListener& msg_listener,
-                      const OptionalMode& mode = OptionalMode::HYBRID) ->
-      typename std::shared_ptr<Receiver<M>>;
+  auto CreateReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener,
+                      const OptionalMode& mode = OptionalMode::HYBRID) -> typename std::shared_ptr<Receiver<M>>;
 
   ParticipantPtr participant() const { return participant_; }
 
@@ -79,8 +74,7 @@ class Transport {
 };
 
 template <typename M>
-auto Transport::CreateTransmitter(const RoleAttributes& attr,
-                                  const OptionalMode& mode) ->
+auto Transport::CreateTransmitter(const RoleAttributes& attr, const OptionalMode& mode) ->
     typename std::shared_ptr<Transmitter<M>> {
   if (is_shutdown_.load()) {
     AINFO << "transport has been shut down.";
@@ -90,8 +84,7 @@ auto Transport::CreateTransmitter(const RoleAttributes& attr,
   std::shared_ptr<Transmitter<M>> transmitter = nullptr;
   RoleAttributes modified_attr = attr;
   if (modified_attr.qos_profile().depth() == 0) {
-    modified_attr.mutable_qos_profile()->CopyFrom(
-        QosProfileConf::QOS_PROFILE_DEFAULT);
+    modified_attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
   }
 
   switch (mode) {
@@ -104,13 +97,11 @@ auto Transport::CreateTransmitter(const RoleAttributes& attr,
       break;
 
     case OptionalMode::RTPS:
-      transmitter =
-          std::make_shared<RtpsTransmitter<M>>(modified_attr, participant());
+      transmitter = std::make_shared<RtpsTransmitter<M>>(modified_attr, participant());
       break;
 
     default:
-      transmitter =
-          std::make_shared<HybridTransmitter<M>>(modified_attr, participant());
+      transmitter = std::make_shared<HybridTransmitter<M>>(modified_attr, participant());
       break;
   }
 
@@ -122,10 +113,8 @@ auto Transport::CreateTransmitter(const RoleAttributes& attr,
 }
 
 template <typename M>
-auto Transport::CreateReceiver(
-    const RoleAttributes& attr,
-    const typename Receiver<M>::MessageListener& msg_listener,
-    const OptionalMode& mode) -> typename std::shared_ptr<Receiver<M>> {
+auto Transport::CreateReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener,
+                               const OptionalMode& mode) -> typename std::shared_ptr<Receiver<M>> {
   if (is_shutdown_.load()) {
     AINFO << "transport has been shut down.";
     return nullptr;
@@ -134,14 +123,12 @@ auto Transport::CreateReceiver(
   std::shared_ptr<Receiver<M>> receiver = nullptr;
   RoleAttributes modified_attr = attr;
   if (modified_attr.qos_profile().depth() == 0) {
-    modified_attr.mutable_qos_profile()->CopyFrom(
-        QosProfileConf::QOS_PROFILE_DEFAULT);
+    modified_attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
   }
 
   switch (mode) {
     case OptionalMode::INTRA:
-      receiver =
-          std::make_shared<IntraReceiver<M>>(modified_attr, msg_listener);
+      receiver = std::make_shared<IntraReceiver<M>>(modified_attr, msg_listener);
       break;
 
     case OptionalMode::SHM:
@@ -153,8 +140,7 @@ auto Transport::CreateReceiver(
       break;
 
     default:
-      receiver = std::make_shared<HybridReceiver<M>>(
-          modified_attr, msg_listener, participant());
+      receiver = std::make_shared<HybridReceiver<M>>(modified_attr, msg_listener, participant());
       break;
   }
 
@@ -167,4 +153,3 @@ auto Transport::CreateReceiver(
 
 }  // namespace transport
 }  // namespace autolink
-

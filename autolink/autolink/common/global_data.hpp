@@ -16,25 +16,23 @@
 
 #pragma once
 
-
 #include <string>
 #include <unordered_map>
-
-#include "autolink/proto/autolink_conf.pb.h"
-#include "autolink/proto/transport_conf.pb.h"
 
 #include "autolink/base/atomic_hash_map.hpp"
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/common/macros.hpp"
 #include "autolink/common/util.hpp"
+#include "autolink/proto/autolink_conf.pb.h"
+#include "autolink/proto/transport_conf.pb.h"
 
 namespace autolink {
 namespace common {
 
 using ::autolink::base::AtomicHashMap;
-using ::autolink::proto::ClockMode;
 using ::autolink::proto::AutolinkConfig;
+using ::autolink::proto::ClockMode;
 using ::autolink::proto::RunMode;
 
 class GlobalData {
@@ -66,14 +64,10 @@ class GlobalData {
 
   bool IsChannelEnableArenaShm(std::string channel_name) const;
   bool IsChannelEnableArenaShm(uint64_t channel_id) const;
-  autolink::proto::ArenaChannelConf GetChannelArenaConf(
-      std::string channel_name) const&;
-  autolink::proto::ArenaChannelConf GetChannelArenaConf(
-      uint64_t channel_id) const&;
+  autolink::proto::ArenaChannelConf GetChannelArenaConf(std::string channel_name) const&;
+  autolink::proto::ArenaChannelConf GetChannelArenaConf(uint64_t channel_id) const&;
 
-  static uint64_t GenerateHashId(const std::string& name) {
-    return common::Hash(name);
-  }
+  static uint64_t GenerateHashId(const std::string& name) { return common::Hash(name); }
 
   static uint64_t RegisterNode(const std::string& node_name);
   static std::string GetNodeById(uint64_t id);
@@ -121,4 +115,3 @@ class GlobalData {
 
 }  // namespace common
 }  // namespace autolink
-

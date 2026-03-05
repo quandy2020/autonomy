@@ -31,10 +31,9 @@ DEFINE_HANDLER_SIGNATURE(SendNavigationSignature, proto::NavigationCommandReques
                          autonomy::common::async_grpc::Stream<proto::NavigationCommandResponse>,
                          "/autonomy.bridge.proto.AutonomyService/SendNavigationCommand")
 
-class SendNavigationHandler : public autonomy::common::async_grpc::RpcHandler<SendNavigationSignature>
-{
-public:
-    void OnRequest(const proto::NavigationCommandRequest& request) override;
+class SendNavigationHandler : public autonomy::common::async_grpc::RpcHandler<SendNavigationSignature> {
+ public:
+  void OnRequest(const proto::NavigationCommandRequest& request) override;
 };
 
 }  // namespace handlers

@@ -17,7 +17,6 @@
 #pragma once
 
 #include "autonomy/commsgs/visualization_msgs.hpp"
-
 #include "autonomy/tools/aviz/common/autolink_topic_display.hpp"
 
 namespace aviz {
@@ -31,23 +30,22 @@ namespace displays {
  * Displays visualization_msgs::MarkerArray messages
  * This is essentially a wrapper around MarkerDisplay that processes arrays
  */
-class MarkerArrayDisplay : public AutolinkTopicDisplay<autonomy::commsgs::visualization_msgs::MarkerArray>
-{
-    Q_OBJECT
+class MarkerArrayDisplay : public AutolinkTopicDisplay<autonomy::commsgs::visualization_msgs::MarkerArray> {
+  Q_OBJECT
 
-public:
-    explicit MarkerArrayDisplay(const QString& name = "MarkerArrayDisplay");
-    ~MarkerArrayDisplay() override;
+ public:
+  explicit MarkerArrayDisplay(const QString& name = "MarkerArrayDisplay");
+  ~MarkerArrayDisplay() override;
 
-    void onInitialize() override;
-    void reset() override;
+  void onInitialize() override;
+  void reset() override;
 
-protected:
-    void processMessage(const std::shared_ptr<autonomy::commsgs::visualization_msgs::MarkerArray>& msg) override;
+ protected:
+  void processMessage(const std::shared_ptr<autonomy::commsgs::visualization_msgs::MarkerArray>& msg) override;
 
-private:
-    // Use internal marker display to handle individual markers
-    class MarkerDisplay* marker_display_;
+ private:
+  // Use internal marker display to handle individual markers
+  class MarkerDisplay* marker_display_;
 };
 
 }  // namespace displays

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <functional>
 #include <list>
@@ -103,10 +102,8 @@ class Signal {
 
   void ClearDisconnectedSlots() {
     std::lock_guard<std::mutex> lock(mutex_);
-    slots_.erase(
-        std::remove_if(slots_.begin(), slots_.end(),
-                       [](const SlotPtr& slot) { return !slot->connected(); }),
-        slots_.end());
+    slots_.erase(std::remove_if(slots_.begin(), slots_.end(), [](const SlotPtr& slot) { return !slot->connected(); }),
+                 slots_.end());
   }
 
   SlotList slots_;
@@ -120,8 +117,7 @@ class Connection {
   using SignalPtr = Signal<Args...>*;
 
   Connection() : slot_(nullptr), signal_(nullptr) {}
-  Connection(const SlotPtr& slot, const SignalPtr& signal)
-      : slot_(slot), signal_(signal) {}
+  Connection(const SlotPtr& slot, const SignalPtr& signal) : slot_(slot), signal_(signal) {}
   virtual ~Connection() {
     slot_ = nullptr;
     signal_ = nullptr;
@@ -165,10 +161,8 @@ template <typename... Args>
 class Slot {
  public:
   using Callback = std::function<void(Args...)>;
-  Slot(const Slot& another)
-      : cb_(another.cb_), connected_(another.connected_) {}
-  explicit Slot(const Callback& cb, bool connected = true)
-      : cb_(cb), connected_(connected) {}
+  Slot(const Slot& another) : cb_(another.cb_), connected_(another.connected_) {}
+  explicit Slot(const Callback& cb, bool connected = true) : cb_(cb), connected_(connected) {}
   virtual ~Slot() {}
 
   void operator()(Args... args) {
@@ -187,4 +181,3 @@ class Slot {
 
 }  // namespace base
 }  // namespace autolink
-

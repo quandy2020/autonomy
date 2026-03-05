@@ -31,133 +31,132 @@ ComputeRouteAction::ComputeRouteAction(const std::string& xml_tag_name, const st
     : BtActionNode<Action>(xml_tag_name, action_name, conf) {}
 
 void ComputeRouteAction::on_tick() {
-    bool use_poses = false, use_start = false;
-    getInput("use_poses", use_poses);
-    goal_.set_use_poses(use_poses);
+  bool use_poses = false, use_start = false;
+  getInput("use_poses", use_poses);
+  goal_.set_use_poses(use_poses);
 
-    if (use_poses) {
-        commsgs::geometry_msgs::PoseStamped goal;
-        getInput("goal", goal);
-        *goal_.mutable_goal() = commsgs::geometry_msgs::ToProto(goal);
+  if (use_poses) {
+    commsgs::geometry_msgs::PoseStamped goal;
+    getInput("goal", goal);
+    *goal_.mutable_goal() = commsgs::geometry_msgs::ToProto(goal);
 
-        getInput("use_start", use_start);
-        goal_.set_use_start(use_start);
-        if (use_start) {
-            commsgs::geometry_msgs::PoseStamped start;
-            getInput("start", start);
-            *goal_.mutable_start() = commsgs::geometry_msgs::ToProto(start);
-        }
-    } else {
-        uint32_t start_id = 0;
-        uint32_t goal_id = 0;
-        getInput("start_id", start_id);
-        getInput("goal_id", goal_id);
-        goal_.set_start_id(start_id);
-        goal_.set_goal_id(goal_id);
-        goal_.set_use_start(false);
+    getInput("use_start", use_start);
+    goal_.set_use_start(use_start);
+    if (use_start) {
+      commsgs::geometry_msgs::PoseStamped start;
+      getInput("start", start);
+      *goal_.mutable_start() = commsgs::geometry_msgs::ToProto(start);
     }
+  } else {
+    uint32_t start_id = 0;
+    uint32_t goal_id = 0;
+    getInput("start_id", start_id);
+    getInput("goal_id", goal_id);
+    goal_.set_start_id(start_id);
+    goal_.set_goal_id(goal_id);
+    goal_.set_use_start(false);
+  }
 }
 
 BT::NodeStatus ComputeRouteAction::on_success() {
-    if (result_.result) {
-        if (result_.result->has_path()) {
-            const auto& proto_path = result_.result->path();
-            commsgs::planning_msgs::Path path;
-            path.header = commsgs::std_msgs::FromProto(proto_path.header());
-            for (const auto& proto_pose : proto_path.poses()) {
-                path.poses.push_back(commsgs::geometry_msgs::FromProto(proto_pose));
-            }
-            setOutput("path", path);
-        } else {
-            commsgs::planning_msgs::Path empty_path;
-            setOutput("path", empty_path);
-        }
-
-        if (result_.result->has_planning_time()) {
-            const auto& proto_duration = result_.result->planning_time();
-            commsgs::builtin_interfaces::Duration duration = commsgs::builtin_interfaces::FromProto(proto_duration);
-            setOutput("planning_time", duration);
-        } else {
-            commsgs::builtin_interfaces::Duration empty_duration;
-            setOutput("planning_time", empty_duration);
-        }
-
-        if (result_.result->has_route()) {
-            setOutput("route", result_.result->route());
-        } else {
-            proto::Route empty_route;
-            setOutput("route", empty_route);
-        }
+  if (result_.result) {
+    if (result_.result->has_path()) {
+      const auto& proto_path = result_.result->path();
+      commsgs::planning_msgs::Path path;
+      path.header = commsgs::std_msgs::FromProto(proto_path.header());
+      for (const auto& proto_pose : proto_path.poses()) {
+        path.poses.push_back(commsgs::geometry_msgs::FromProto(proto_pose));
+      }
+      setOutput("path", path);
     } else {
-        commsgs::planning_msgs::Path empty_path;
-        setOutput("path", empty_path);
-        commsgs::builtin_interfaces::Duration empty_duration;
-        setOutput("planning_time", empty_duration);
-        proto::Route empty_route;
-        setOutput("route", empty_route);
+      commsgs::planning_msgs::Path empty_path;
+      setOutput("path", empty_path);
     }
 
-    setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
+    if (result_.result->has_planning_time()) {
+      const auto& proto_duration = result_.result->planning_time();
+      commsgs::builtin_interfaces::Duration duration = commsgs::builtin_interfaces::FromProto(proto_duration);
+      setOutput("planning_time", duration);
+    } else {
+      commsgs::builtin_interfaces::Duration empty_duration;
+      setOutput("planning_time", empty_duration);
+    }
+
+    if (result_.result->has_route()) {
+      setOutput("route", result_.result->route());
+    } else {
+      proto::Route empty_route;
+      setOutput("route", empty_route);
+    }
+  } else {
+    commsgs::planning_msgs::Path empty_path;
+    setOutput("path", empty_path);
+    commsgs::builtin_interfaces::Duration empty_duration;
+    setOutput("planning_time", empty_duration);
+    proto::Route empty_route;
+    setOutput("route", empty_route);
+  }
+
+  setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_NONE));
+  setOutput("error_msg", std::string(""));
+  return BT::NodeStatus::SUCCESS;
 }
 
 BT::NodeStatus ComputeRouteAction::on_aborted() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    commsgs::builtin_interfaces::Duration empty_duration;
-    setOutput("planning_time", empty_duration);
-    proto::Route empty_route;
-    setOutput("route", empty_route);
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  commsgs::builtin_interfaces::Duration empty_duration;
+  setOutput("planning_time", empty_duration);
+  proto::Route empty_route;
+  setOutput("route", empty_route);
 
-    if (result_.result) {
-        setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
-    } else {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Unknown error"));
-    }
-    return BT::NodeStatus::FAILURE;
+  if (result_.result) {
+    setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
+    setOutput("error_msg", result_.result->error_msg());
+  } else {
+    setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_UNKNOWN));
+    setOutput("error_msg", std::string("Unknown error"));
+  }
+  return BT::NodeStatus::FAILURE;
 }
 
 BT::NodeStatus ComputeRouteAction::on_cancelled() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    commsgs::builtin_interfaces::Duration empty_duration;
-    setOutput("planning_time", empty_duration);
-    proto::Route empty_route;
-    setOutput("route", empty_route);
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  commsgs::builtin_interfaces::Duration empty_duration;
+  setOutput("planning_time", empty_duration);
+  proto::Route empty_route;
+  setOutput("route", empty_route);
 
-    setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
+  setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_NONE));
+  setOutput("error_msg", std::string(""));
+  return BT::NodeStatus::SUCCESS;
 }
 
 void ComputeRouteAction::on_timeout() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    commsgs::builtin_interfaces::Duration empty_duration;
-    setOutput("planning_time", empty_duration);
-    proto::Route empty_route;
-    setOutput("route", empty_route);
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  commsgs::builtin_interfaces::Duration empty_duration;
+  setOutput("planning_time", empty_duration);
+  proto::Route empty_route;
+  setOutput("route", empty_route);
 
-    setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_TIMEOUT));
-    setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
+  setOutput("error_code_id", static_cast<int32_t>(proto::ComputeRouteActionErrorCode::COMPUTE_ROUTE_ERROR_TIMEOUT));
+  setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
 }
 
 void ComputeRouteAction::halt() {
-    resetPorts();
-    BtActionNode<Action>::halt();
+  resetPorts();
+  BtActionNode<Action>::halt();
 }
 
 void ComputeRouteAction::resetPorts() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    commsgs::builtin_interfaces::Duration empty_duration;
-    setOutput("planning_time", empty_duration);
-    proto::Route empty_route;
-    setOutput("route", empty_route);
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  commsgs::builtin_interfaces::Duration empty_duration;
+  setOutput("planning_time", empty_duration);
+  proto::Route empty_route;
+  setOutput("route", empty_route);
 }
 
 }  // namespace action
@@ -168,11 +167,10 @@ void ComputeRouteAction::resetPorts() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputeRouteAction>(
-            name, "compute_route", config);
-    };
+  BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+    return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputeRouteAction>(name, "compute_route",
+                                                                                                 config);
+  };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputeRouteAction>("ComputeRoute",
-                                                                                                 builder);
+  factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputeRouteAction>("ComputeRoute", builder);
 }

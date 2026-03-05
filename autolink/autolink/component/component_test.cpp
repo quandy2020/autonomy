@@ -18,10 +18,9 @@
 
 #include <memory>
 
-#include "gtest/gtest.h"
-
 #include "autolink/init.hpp"
 #include "autolink/message/raw_message.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 
@@ -31,16 +30,15 @@ using autolink::proto::ComponentConfig;
 using autolink::proto::TimerComponentConfig;
 static bool ret_proc = true;
 static bool ret_init = true;
-template <typename M0, typename M1 = NullType, typename M2 = NullType,
-          typename M3 = NullType>
+template <typename M0, typename M1 = NullType, typename M2 = NullType, typename M3 = NullType>
 class Component_A : public Component<M0, M1, M2, M3> {
  public:
   Component_A() {}
   bool Init() { return ret_init; }
 
  private:
-  bool Proc(const std::shared_ptr<M0> &msg0, const std::shared_ptr<M1> &msg1,
-            const std::shared_ptr<M2> &msg2, const std::shared_ptr<M3> &msg3) {
+  bool Proc(const std::shared_ptr<M0> &msg0, const std::shared_ptr<M1> &msg1, const std::shared_ptr<M2> &msg2,
+            const std::shared_ptr<M3> &msg3) {
     return ret_proc;
   }
 };
@@ -52,9 +50,7 @@ class Component_B : public Component<M0, M1> {
   bool Init() { return ret_init; }
 
  private:
-  bool Proc(const std::shared_ptr<M0> &, const std::shared_ptr<M1> &) {
-    return ret_proc;
-  }
+  bool Proc(const std::shared_ptr<M0> &, const std::shared_ptr<M1> &) { return ret_proc; }
 };
 
 template <typename M0>
@@ -96,8 +92,7 @@ TEST(CommonComponent, init) {
   compcfg.set_name("perception4");
   autolink::proto::ReaderOption *read_opt4 = compcfg.add_readers();
   read_opt4->set_channel("/driver/channel3");
-  auto comA = std::make_shared<
-      Component_A<RawMessage, RawMessage, RawMessage, RawMessage>>();
+  auto comA = std::make_shared<Component_A<RawMessage, RawMessage, RawMessage, RawMessage>>();
   EXPECT_TRUE(comA->Initialize(compcfg));
   EXPECT_TRUE(comA->Process(msg_str1, msg_str2, msg_str3, msg_str4));
 }
@@ -131,8 +126,7 @@ TEST(CommonComponentFail, init) {
   read_opt3->set_channel("/driver/channel2");
   autolink::proto::ReaderOption *read_opt4 = compcfg.add_readers();
   read_opt4->set_channel("/driver/channel3");
-  auto comA = std::make_shared<
-      Component_A<RawMessage, RawMessage, RawMessage, RawMessage>>();
+  auto comA = std::make_shared<Component_A<RawMessage, RawMessage, RawMessage, RawMessage>>();
   EXPECT_FALSE(comA->Initialize(compcfg));
   EXPECT_FALSE(comA->Process(msg_str1, msg_str2, msg_str3, msg_str4));
 }

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -68,13 +67,11 @@ std::vector<std::string> ClassLoader::GetValidClassNames() {
 template <typename Base>
 bool ClassLoader::IsClassValid(const std::string& class_name) {
   std::vector<std::string> valid_classes = GetValidClassNames<Base>();
-  return (std::find(valid_classes.begin(), valid_classes.end(), class_name) !=
-          valid_classes.end());
+  return (std::find(valid_classes.begin(), valid_classes.end(), class_name) != valid_classes.end());
 }
 
 template <typename Base>
-std::shared_ptr<Base> ClassLoader::CreateClassObj(
-    const std::string& class_name) {
+std::shared_ptr<Base> ClassLoader::CreateClassObj(const std::string& class_name) {
   if (!IsLibraryLoaded()) {
     LoadLibrary();
   }
@@ -88,9 +85,8 @@ std::shared_ptr<Base> ClassLoader::CreateClassObj(
 
   std::lock_guard<std::mutex> lck(classobj_ref_count_mutex_);
   classobj_ref_count_ = classobj_ref_count_ + 1;
-  std::shared_ptr<Base> classObjSharePtr(
-      class_object, std::bind(&ClassLoader::OnClassObjDeleter<Base>, this,
-                              std::placeholders::_1));
+  std::shared_ptr<Base> classObjSharePtr(class_object,
+                                         std::bind(&ClassLoader::OnClassObjDeleter<Base>, this, std::placeholders::_1));
   return classObjSharePtr;
 }
 

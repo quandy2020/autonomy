@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 
 #include "autolink/common/log.hpp"
@@ -29,4 +28,3 @@ void Clear();
 void OnShutdown(int sig);
 
 }  // namespace autolink
-

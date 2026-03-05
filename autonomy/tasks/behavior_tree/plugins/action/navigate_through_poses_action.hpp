@@ -18,13 +18,11 @@
 
 #include <string>
 
-#include "behaviortree_cpp/action_node.h"
-
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-
 #include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -38,67 +36,66 @@ namespace action {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class NavigateThroughPosesAction : public BtActionNode<proto::NavigateToPoseAction>
-{
-    using Action = proto::NavigateToPoseAction;
-    using ActionResult = Action::Result;
+class NavigateThroughPosesAction : public BtActionNode<proto::NavigateToPoseAction> {
+  using Action = proto::NavigateToPoseAction;
+  using ActionResult = Action::Result;
 
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::NavigateThroughPosesAction
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param action_name Action name this node creates a client for
-     * @param conf BT node configuration
-     */
-    NavigateThroughPosesAction(const std::string& xml_tag_name, const std::string& action_name,
-                               const BT::NodeConfiguration& conf);
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::NavigateThroughPosesAction
+   * @param xml_tag_name Name for the XML tag for this node
+   * @param action_name Action name this node creates a client for
+   * @param conf BT node configuration
+   */
+  NavigateThroughPosesAction(const std::string& xml_tag_name, const std::string& action_name,
+                             const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
-    void on_tick() override;
+  /**
+   * @brief Function to perform some user-defined operation on tick
+   */
+  void on_tick() override;
 
-    /**
-     * @brief Function to perform some user-defined operation upon successful
-     * completion of the action
-     */
-    BT::NodeStatus on_success() override;
+  /**
+   * @brief Function to perform some user-defined operation upon successful
+   * completion of the action
+   */
+  BT::NodeStatus on_success() override;
 
-    /**
-     * @brief Function to perform some user-defined operation upon abortion of
-     * the action
-     */
-    BT::NodeStatus on_aborted() override;
+  /**
+   * @brief Function to perform some user-defined operation upon abortion of
+   * the action
+   */
+  BT::NodeStatus on_aborted() override;
 
-    /**
-     * @brief Function to perform some user-defined operation upon cancellation
-     * of the action
-     */
-    BT::NodeStatus on_cancelled() override;
+  /**
+   * @brief Function to perform some user-defined operation upon cancellation
+   * of the action
+   */
+  BT::NodeStatus on_cancelled() override;
 
-    /**
-     * @brief Function to perform work in a BT Node when the action server times
-     * out Such as setting the error code ID status to timed out for action
-     * clients.
-     */
-    void on_timeout() override;
+  /**
+   * @brief Function to perform work in a BT Node when the action server times
+   * out Such as setting the error code ID status to timed out for action
+   * clients.
+   */
+  void on_timeout() override;
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
-    static BT::PortsList providedPorts() {
-        // Register JSON definitions for the types used in the ports
-        BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing basic ports along with node-specific
+   * ports
+   */
+  static BT::PortsList providedPorts() {
+    // Register JSON definitions for the types used in the ports
+    BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
 
-        return providedBasicPorts({
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goals", "Destination to navigate to"),
-            BT::InputPort<std::string>("behavior_tree", "Behavior tree to run"),
-            BT::OutputPort<int32_t>("error_code_id", "The navigate through poses error code"),
-            BT::OutputPort<std::string>("error_msg", "The navigate through poses error msg"),
-        });
-    }
+    return providedBasicPorts({
+        BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goals", "Destination to navigate to"),
+        BT::InputPort<std::string>("behavior_tree", "Behavior tree to run"),
+        BT::OutputPort<int32_t>("error_code_id", "The navigate through poses error code"),
+        BT::OutputPort<std::string>("error_msg", "The navigate through poses error msg"),
+    });
+  }
 };
 
 }  // namespace action

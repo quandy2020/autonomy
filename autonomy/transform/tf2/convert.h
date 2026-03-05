@@ -76,13 +76,13 @@ const std::string& getFrameId(const T& t);
 /* An implementation for Stamped<P> datatypes */
 template <class P>
 const Time& getTimestamp(const tf2::Stamped<P>& t) {
-    return t.stamp_;
+  return t.stamp_;
 }
 
 /* An implementation for Stamped<P> datatypes */
 template <class P>
 const std::string& getFrameId(const tf2::Stamped<P>& t) {
-    return t.frame_id_;
+  return t.frame_id_;
 }
 
 /** Function that converts from one type to a ROS message type. It has to be
@@ -112,16 +112,15 @@ void fromMsg(const A&, B& b);
  */
 template <class A, class B>
 void convert(const A& a, B& b) {
-    // printf("In double type convert\n");
-    //  impl::Converter<ros::message_traits::IsMessage<A>::value,
-    //  ros::message_traits::IsMessage<B>::value>::convert(a, b);
+  // printf("In double type convert\n");
+  //  impl::Converter<ros::message_traits::IsMessage<A>::value,
+  //  ros::message_traits::IsMessage<B>::value>::convert(a, b);
 }
 
 template <class A>
 void convert(const A& a1, A& a2) {
-    // printf("In single type convert\n");
-    if (&a1 != &a2)
-        a2 = a1;
+  // printf("In single type convert\n");
+  if (&a1 != &a2) a2 = a1;
 }
 
 }  // namespace tf2

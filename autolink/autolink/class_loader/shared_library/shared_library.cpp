@@ -32,9 +32,7 @@ std::mutex SharedLibrary::mutex_;
 
 SharedLibrary::SharedLibrary(const std::string& path) { Load(path, 0); }
 
-SharedLibrary::SharedLibrary(const std::string& path, int flags) {
-  Load(path, flags);
-}
+SharedLibrary::SharedLibrary(const std::string& path, int flags) { Load(path, flags); }
 
 void SharedLibrary::Load(const std::string& path) { Load(path, 0); }
 
@@ -70,9 +68,7 @@ bool SharedLibrary::IsLoaded() {
   return handle_ != nullptr;
 }
 
-bool SharedLibrary::HasSymbol(const std::string& name) {
-  return GetSymbol(name) != nullptr;
-}
+bool SharedLibrary::HasSymbol(const std::string& name) { return GetSymbol(name) != nullptr; }
 
 void* SharedLibrary::GetSymbol(const std::string& name) {
   std::lock_guard<std::mutex> lock(mutex_);

@@ -23,32 +23,24 @@ namespace plugins {
 namespace displays {
 
 PolygonDisplay::PolygonDisplay(const QString& name) : aviz::common::Display() {
-    setClassId("aviz/Polygon");
-    setName(name);
+  setClassId("aviz/Polygon");
+  setName(name);
 }
 
 PolygonDisplay::~PolygonDisplay() = default;
 
-void PolygonDisplay::onInitialize() {
-    aviz::common::Display::onInitialize();
-}
+void PolygonDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
 
-void PolygonDisplay::onEnable() {
-    aviz::common::Display::onEnable();
-}
+void PolygonDisplay::onEnable() { aviz::common::Display::onEnable(); }
 
-void PolygonDisplay::onDisable() {
-    aviz::common::Display::onDisable();
-}
+void PolygonDisplay::onDisable() { aviz::common::Display::onDisable(); }
 
 void PolygonDisplay::update(float wall_dt, float ros_dt) {
-    (void)wall_dt;
-    (void)ros_dt;
+  (void)wall_dt;
+  (void)ros_dt;
 }
 
-void PolygonDisplay::reset() {
-    aviz::common::Display::reset();
-}
+void PolygonDisplay::reset() { aviz::common::Display::reset(); }
 
 }  // namespace displays
 }  // namespace plugins

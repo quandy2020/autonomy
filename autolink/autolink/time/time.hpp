@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <limits>
 #include <string>
 
@@ -108,4 +107,3 @@ class Time {
 std::ostream& operator<<(std::ostream& os, const Time& rhs);
 
 }  // namespace autolink
-

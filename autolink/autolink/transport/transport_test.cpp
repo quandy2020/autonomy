@@ -19,12 +19,10 @@
 #include <memory>
 #include <typeinfo>
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/init.hpp"
+#include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -47,14 +45,10 @@ TEST(TransportTest, create_transmitter) {
   Identity id;
   attr.set_id(id.HashValue());
 
-  TransmitterPtr intra =
-      Transport::Instance()->CreateTransmitter<proto::UnitTest>(
-          attr, OptionalMode::INTRA);
+  TransmitterPtr intra = Transport::Instance()->CreateTransmitter<proto::UnitTest>(attr, OptionalMode::INTRA);
   EXPECT_EQ(typeid(*intra), typeid(IntraTransmitter<proto::UnitTest>));
 
-  TransmitterPtr shm =
-      Transport::Instance()->CreateTransmitter<proto::UnitTest>(
-          attr, OptionalMode::SHM);
+  TransmitterPtr shm = Transport::Instance()->CreateTransmitter<proto::UnitTest>(attr, OptionalMode::SHM);
   EXPECT_EQ(typeid(*shm), typeid(ShmTransmitter<proto::UnitTest>));
 }
 
@@ -64,15 +58,12 @@ TEST(TransportTest, create_receiver) {
   Identity id;
   attr.set_id(id.HashValue());
 
-  auto listener = [](const std::shared_ptr<proto::UnitTest>&,
-                     const MessageInfo&, const RoleAttributes&) {};
+  auto listener = [](const std::shared_ptr<proto::UnitTest>&, const MessageInfo&, const RoleAttributes&) {};
 
-  ReceiverPtr intra = Transport::Instance()->CreateReceiver<proto::UnitTest>(
-      attr, listener, OptionalMode::INTRA);
+  ReceiverPtr intra = Transport::Instance()->CreateReceiver<proto::UnitTest>(attr, listener, OptionalMode::INTRA);
   EXPECT_EQ(typeid(*intra), typeid(IntraReceiver<proto::UnitTest>));
 
-  ReceiverPtr shm = Transport::Instance()->CreateReceiver<proto::UnitTest>(
-      attr, listener, OptionalMode::SHM);
+  ReceiverPtr shm = Transport::Instance()->CreateReceiver<proto::UnitTest>(attr, listener, OptionalMode::SHM);
   EXPECT_EQ(typeid(*shm), typeid(ShmReceiver<proto::UnitTest>));
 }
 

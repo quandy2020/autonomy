@@ -19,11 +19,10 @@
 #include <memory>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
 #include "autolink/message/protobuf_factory.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 
@@ -46,9 +45,7 @@ class ParameterServerTest : public ::testing::Test {
   std::unique_ptr<ParameterServer> ps_;
 };
 
-TEST_F(ParameterServerTest, set_parameter) {
-  ps_->SetParameter(Parameter("int", 1));
-}
+TEST_F(ParameterServerTest, set_parameter) { ps_->SetParameter(Parameter("int", 1)); }
 
 TEST_F(ParameterServerTest, get_parameter) {
   ps_->SetParameter(Parameter("int", 1));

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <cstdlib>
 #include <cstring>
@@ -38,10 +37,10 @@ class CCObjectPool : public std::enable_shared_from_this<CCObjectPool<T>> {
   virtual ~CCObjectPool();
 
   template <typename... Args>
-  void ConstructAll(Args &&... args);
+  void ConstructAll(Args &&...args);
 
   template <typename... Args>
-  std::shared_ptr<T> ConstructObject(Args &&... args);
+  std::shared_ptr<T> ConstructObject(Args &&...args);
 
   std::shared_ptr<T> GetObject();
   void ReleaseObject(T *);
@@ -78,10 +77,8 @@ CCObjectPool<T>::CCObjectPool(uint32_t size) : capacity_(size) {
 
 template <typename T>
 template <typename... Args>
-void CCObjectPool<T>::ConstructAll(Args &&... args) {
-  FOR_EACH(i, 0, capacity_) {
-    new (node_arena_ + i) T(std::forward<Args>(args)...);
-  }
+void CCObjectPool<T>::ConstructAll(Args &&...args) {
+  FOR_EACH(i, 0, capacity_) { new (node_arena_ + i) T(std::forward<Args>(args)...); }
 }
 
 template <typename T>
@@ -99,9 +96,7 @@ bool CCObjectPool<T>::FindFreeHead(Head *head) {
     }
     new_head.node = old_head.node->next;
     new_head.count = old_head.count + 1;
-  } while (!free_head_.compare_exchange_weak(old_head, new_head,
-                                             std::memory_order_acq_rel,
-                                             std::memory_order_acquire));
+  } while (!free_head_.compare_exchange_weak(old_head, new_head, std::memory_order_acq_rel, std::memory_order_acquire));
   *head = old_head;
   return true;
 }
@@ -113,13 +108,12 @@ std::shared_ptr<T> CCObjectPool<T>::GetObject() {
     return nullptr;
   }
   auto self = this->shared_from_this();
-  return std::shared_ptr<T>(reinterpret_cast<T *>(free_head.node),
-                            [self](T *object) { self->ReleaseObject(object); });
+  return std::shared_ptr<T>(reinterpret_cast<T *>(free_head.node), [self](T *object) { self->ReleaseObject(object); });
 }
 
 template <typename T>
 template <typename... Args>
-std::shared_ptr<T> CCObjectPool<T>::ConstructObject(Args &&... args) {
+std::shared_ptr<T> CCObjectPool<T>::ConstructObject(Args &&...args) {
   Head free_head;
   if (autolink_unlikely(!FindFreeHead(&free_head))) {
     return nullptr;
@@ -141,11 +135,8 @@ void CCObjectPool<T>::ReleaseObject(T *object) {
     node->next = old_head.node;
     new_head.node = node;
     new_head.count = old_head.count + 1;
-  } while (!free_head_.compare_exchange_weak(old_head, new_head,
-                                             std::memory_order_acq_rel,
-                                             std::memory_order_acquire));
+  } while (!free_head_.compare_exchange_weak(old_head, new_head, std::memory_order_acq_rel, std::memory_order_acquire));
 }
 
 }  // namespace base
 }  // namespace autolink
-

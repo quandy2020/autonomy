@@ -31,37 +31,28 @@ using GoalUUID = std::array<uint8_t, UUID_SIZE>;
 
 // Goal status enumeration
 enum class GoalStatus : int8_t {
-    UNKNOWN = 0,
-    ACCEPTED = 1,
-    EXECUTING = 2,
-    CANCELING = 3,
-    SUCCEEDED = 4,
-    CANCELED = 5,
-    ABORTED = 6
+  UNKNOWN = 0,
+  ACCEPTED = 1,
+  EXECUTING = 2,
+  CANCELING = 3,
+  SUCCEEDED = 4,
+  CANCELED = 5,
+  ABORTED = 6
 };
 
 // Goal response enumeration
-enum class GoalResponse : int8_t {
-    REJECT = 1,
-    ACCEPT_AND_EXECUTE = 2,
-    ACCEPT_AND_DEFER = 3
-};
+enum class GoalResponse : int8_t { REJECT = 1, ACCEPT_AND_EXECUTE = 2, ACCEPT_AND_DEFER = 3 };
 
 // Cancel response enumeration
 enum class CancelResponse : int8_t { REJECT = 1, ACCEPT = 2 };
 
 // Result code enumeration
-enum class ResultCode : int8_t {
-    UNKNOWN = 0,
-    SUCCEEDED = 4,
-    CANCELED = 5,
-    ABORTED = 6
-};
+enum class ResultCode : int8_t { UNKNOWN = 0, SUCCEEDED = 4, CANCELED = 5, ABORTED = 6 };
 
 // Goal info structure
 struct GoalInfo {
-    GoalUUID goal_id;
-    int64_t stamp;  // Timestamp in nanoseconds
+  GoalUUID goal_id;
+  int64_t stamp;  // Timestamp in nanoseconds
 };
 
 /**
@@ -94,25 +85,24 @@ bool IsValidGoalUUID(const GoalUUID& goal_id);
 namespace std {
 template <>
 struct hash<autolink::action::GoalUUID> {
-    size_t operator()(const autolink::action::GoalUUID& uuid) const noexcept {
-        // Using the FNV-1a hash algorithm
-        constexpr size_t FNV_prime = 1099511628211u;
-        size_t result = 14695981039346656037u;
+  size_t operator()(const autolink::action::GoalUUID& uuid) const noexcept {
+    // Using the FNV-1a hash algorithm
+    constexpr size_t FNV_prime = 1099511628211u;
+    size_t result = 14695981039346656037u;
 
-        for (const auto& byte : uuid) {
-            result ^= byte;
-            result *= FNV_prime;
-        }
-        return result;
+    for (const auto& byte : uuid) {
+      result ^= byte;
+      result *= FNV_prime;
     }
+    return result;
+  }
 };
 
 // Less than operator for GoalUUID to use in map
 template <>
 struct less<autolink::action::GoalUUID> {
-    bool operator()(const autolink::action::GoalUUID& lhs,
-                    const autolink::action::GoalUUID& rhs) const {
-        return lhs < rhs;
-    }
+  bool operator()(const autolink::action::GoalUUID& lhs, const autolink::action::GoalUUID& rhs) const {
+    return lhs < rhs;
+  }
 };
 }  // namespace std

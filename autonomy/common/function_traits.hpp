@@ -41,33 +41,33 @@ struct tuple_tail;
 
 template <typename Head, typename... Tail>
 struct tuple_tail<std::tuple<Head, Tail...>> {
-    using type = std::tuple<Tail...>;
+  using type = std::tuple<Tail...>;
 };
 
 // std::function
 template <typename FunctionT>
 struct function_traits {
-    using arguments = typename tuple_tail<typename function_traits<decltype(&FunctionT::operator())>::arguments>::type;
+  using arguments = typename tuple_tail<typename function_traits<decltype(&FunctionT::operator())>::arguments>::type;
 
-    static constexpr std::size_t arity = std::tuple_size<arguments>::value;
+  static constexpr std::size_t arity = std::tuple_size<arguments>::value;
 
-    template <std::size_t N>
-    using argument_type = typename std::tuple_element<N, arguments>::type;
+  template <std::size_t N>
+  using argument_type = typename std::tuple_element<N, arguments>::type;
 
-    using return_type = typename function_traits<decltype(&FunctionT::operator())>::return_type;
+  using return_type = typename function_traits<decltype(&FunctionT::operator())>::return_type;
 };
 
 // Free functions
 template <typename ReturnTypeT, typename... Args>
 struct function_traits<ReturnTypeT(Args...)> {
-    using arguments = std::tuple<Args...>;
+  using arguments = std::tuple<Args...>;
 
-    static constexpr std::size_t arity = std::tuple_size<arguments>::value;
+  static constexpr std::size_t arity = std::tuple_size<arguments>::value;
 
-    template <std::size_t N>
-    using argument_type = typename std::tuple_element<N, arguments>::type;
+  template <std::size_t N>
+  using argument_type = typename std::tuple_element<N, arguments>::type;
 
-    using return_type = ReturnTypeT;
+  using return_type = ReturnTypeT;
 };
 
 // Function pointers
@@ -157,15 +157,15 @@ struct as_std_function_helper;
 
 template <typename ReturnTypeT, typename... Args>
 struct as_std_function_helper<ReturnTypeT, std::tuple<Args...>> {
-    using type = std::function<ReturnTypeT(Args...)>;
+  using type = std::function<ReturnTypeT(Args...)>;
 };
 
 }  // namespace detail
 
 template <typename FunctorT, typename FunctionTraits = function_traits<FunctorT>>
 struct as_std_function {
-    using type = typename detail::as_std_function_helper<typename FunctionTraits::return_type,
-                                                         typename FunctionTraits::arguments>::type;
+  using type = typename detail::as_std_function_helper<typename FunctionTraits::return_type,
+                                                       typename FunctionTraits::arguments>::type;
 };
 
 }  // namespace function_traits

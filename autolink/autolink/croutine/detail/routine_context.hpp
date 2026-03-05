@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -55,4 +54,3 @@ inline void SwapContext(char** src_sp, char** dest_sp) {
 
 }  // namespace croutine
 }  // namespace autolink
-

@@ -18,11 +18,11 @@
 
 #include <memory>
 #include <vector>
-#include "gtest/gtest.h"
 
 #include "autolink/common/util.hpp"
 #include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -53,21 +53,18 @@ class DispatcherTest : public ::testing::Test {
 
   virtual void SetUp() {
     for (int i = 0; i < attr_num_; ++i) {
-      dispatcher_.AddListener<proto::Chatter>(
-          self_attrs_[i],
-          [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+      dispatcher_.AddListener<proto::Chatter>(self_attrs_[i],
+                                              [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 
-      dispatcher_.AddListener<proto::Chatter>(
-          self_attrs_[i], oppo_attrs_[i],
-          [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+      dispatcher_.AddListener<proto::Chatter>(self_attrs_[i], oppo_attrs_[i],
+                                              [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
     }
   }
 
   virtual void TearDown() {
     for (int i = 0; i < attr_num_; ++i) {
       dispatcher_.RemoveListener<proto::Chatter>(self_attrs_[i]);
-      dispatcher_.RemoveListener<proto::Chatter>(self_attrs_[i],
-                                                 oppo_attrs_[i]);
+      dispatcher_.RemoveListener<proto::Chatter>(self_attrs_[i], oppo_attrs_[i]);
     }
   }
 
@@ -96,27 +93,21 @@ TEST_F(DispatcherTest, add_and_remove_listener) {
   dispatcher_.RemoveListener<proto::Chatter>(self_attr, oppo_attr);
 
   dispatcher_.AddListener<proto::Chatter>(
-      self_attr, [](const std::shared_ptr<proto::Chatter>&,
-                    const MessageInfo&) { AINFO << "I'm listener a."; });
+      self_attr, [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) { AINFO << "I'm listener a."; });
   EXPECT_TRUE(dispatcher_.HasChannel(common::Hash("add_listener")));
 
   dispatcher_.AddListener<proto::Chatter>(
-      self_attr, [](const std::shared_ptr<proto::Chatter>&,
-                    const MessageInfo&) { AINFO << "I'm listener b."; });
+      self_attr, [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) { AINFO << "I'm listener b."; });
   dispatcher_.RemoveListener<proto::Chatter>(self_attr);
   dispatcher_.Shutdown();
 
   dispatcher_.AddListener<proto::Chatter>(
       self_attr, oppo_attr,
-      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {
-        AINFO << "I'm listener c.";
-      });
+      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) { AINFO << "I'm listener c."; });
 
   dispatcher_.AddListener<proto::Chatter>(
       self_attr, oppo_attr,
-      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {
-        AINFO << "I'm listener d.";
-      });
+      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) { AINFO << "I'm listener d."; });
 
   dispatcher_.RemoveListener<proto::Chatter>(self_attr, oppo_attr);
 }

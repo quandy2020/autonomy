@@ -24,23 +24,16 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-class GpuMonitor : public MonitorBase
-{
-public:
-    std::string Name() const override {
-        return "gpu";
-    }
-    void Collect() override;
-    void RegisterWithPrometheus(void* registry) override;
+class GpuMonitor : public MonitorBase {
+ public:
+  std::string Name() const override { return "gpu"; }
+  void Collect() override;
+  void RegisterWithPrometheus(void* registry) override;
 
-    static std::unique_ptr<GpuMonitor> Create() {
-        return std::make_unique<GpuMonitor>();
-    }
+  static std::unique_ptr<GpuMonitor> Create() { return std::make_unique<GpuMonitor>(); }
 };
 
-inline std::unique_ptr<GpuMonitor> CreateGpuMonitor() {
-    return GpuMonitor::Create();
-}
+inline std::unique_ptr<GpuMonitor> CreateGpuMonitor() { return GpuMonitor::Create(); }
 
 }  // namespace monitor
 }  // namespace system

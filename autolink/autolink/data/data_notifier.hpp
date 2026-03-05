@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -43,8 +42,7 @@ class DataNotifier {
   using NotifyVector = std::vector<std::shared_ptr<Notifier>>;
   ~DataNotifier() {}
 
-  void AddNotifier(uint64_t channel_id,
-                   const std::shared_ptr<Notifier>& notifier);
+  void AddNotifier(uint64_t channel_id, const std::shared_ptr<Notifier>& notifier);
 
   bool Notify(const uint64_t channel_id);
 
@@ -57,8 +55,7 @@ class DataNotifier {
 
 inline DataNotifier::DataNotifier() {}
 
-inline void DataNotifier::AddNotifier(
-    uint64_t channel_id, const std::shared_ptr<Notifier>& notifier) {
+inline void DataNotifier::AddNotifier(uint64_t channel_id, const std::shared_ptr<Notifier>& notifier) {
   std::lock_guard<std::mutex> lock(notifies_map_mutex_);
   NotifyVector* notifies = nullptr;
   if (notifies_map_.Get(channel_id, &notifies)) {
@@ -84,4 +81,3 @@ inline bool DataNotifier::Notify(const uint64_t channel_id) {
 
 }  // namespace data
 }  // namespace autolink
-

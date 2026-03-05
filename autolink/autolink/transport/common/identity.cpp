@@ -48,13 +48,9 @@ Identity& Identity::operator=(const Identity& rhs) {
   return *this;
 }
 
-bool Identity::operator==(const Identity& rhs) const {
-  return std::memcmp(data_, rhs.data_, ID_SIZE) == 0;
-}
+bool Identity::operator==(const Identity& rhs) const { return std::memcmp(data_, rhs.data_, ID_SIZE) == 0; }
 
-bool Identity::operator!=(const Identity& rhs) const {
-  return std::memcmp(data_, rhs.data_, ID_SIZE) != 0;
-}
+bool Identity::operator!=(const Identity& rhs) const { return std::memcmp(data_, rhs.data_, ID_SIZE) != 0; }
 
 std::string Identity::ToString() const { return std::to_string(hash_value_); }
 
@@ -62,9 +58,7 @@ size_t Identity::Length() const { return ID_SIZE; }
 
 uint64_t Identity::HashValue() const { return hash_value_; }
 
-void Identity::Update() {
-  hash_value_ = common::Hash(std::string(data_, ID_SIZE));
-}
+void Identity::Update() { hash_value_ = common::Hash(std::string(data_, ID_SIZE)); }
 
 }  // namespace transport
 }  // namespace autolink

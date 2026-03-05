@@ -19,11 +19,10 @@
 #include <memory>
 #include <string>
 
-#include "behaviortree_cpp/bt_factory.h"
-#include "behaviortree_cpp/control_node.h"
-
 #include "autolink/autolink.hpp"
 #include "autonomy/tasks/navigator/proto/srv.pb.h"
+#include "behaviortree_cpp/bt_factory.h"
+#include "behaviortree_cpp/control_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -77,55 +76,52 @@ of the tree
  * The controller returns failure if any child returns failure.
  * In any other case, it returns running.
  */
-class PauseResumeController : public BT::ControlNode
-{
-public:
-    //! @brief Constructor
-    PauseResumeController(const std::string& name, const BT::NodeConfiguration& conf);
+class PauseResumeController : public BT::ControlNode {
+ public:
+  //! @brief Constructor
+  PauseResumeController(const std::string& name, const BT::NodeConfiguration& conf);
 
-    //! @brief Reset state and go to Idle
-    void halt() override;
+  //! @brief Reset state and go to Idle
+  void halt() override;
 
-    //! @brief Handle transitions if requested and tick child related to the
-    // actual state
-    BT::NodeStatus tick() override;
+  //! @brief Handle transitions if requested and tick child related to the
+  // actual state
+  BT::NodeStatus tick() override;
 
-    //! @brief Declare ports
-    static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<std::string>("pause_service_name", "Name of the service to pause"),
-            BT::InputPort<std::string>("resume_service_name", "Name of the service to resume"),
-        };
-    }
+  //! @brief Declare ports
+  static BT::PortsList providedPorts() {
+    return {
+        BT::InputPort<std::string>("pause_service_name", "Name of the service to pause"),
+        BT::InputPort<std::string>("resume_service_name", "Name of the service to resume"),
+    };
+  }
 
-    [[nodiscard]] inline state_t getState() const {
-        return state_;
-    }
+  [[nodiscard]] inline state_t getState() const { return state_; }
 
-private:
-    //! @brief Set state to PAUSE_REQUESTED
-    void pauseServiceCallback(const std::shared_ptr<Trigger::Request>& request,
-                              std::shared_ptr<Trigger::Response>& response);
+ private:
+  //! @brief Set state to PAUSE_REQUESTED
+  void pauseServiceCallback(const std::shared_ptr<Trigger::Request>& request,
+                            std::shared_ptr<Trigger::Response>& response);
 
-    //! @brief Set state to RESUME_REQUESTED
-    void resumeServiceCallback(const std::shared_ptr<Trigger::Request>& request,
-                               std::shared_ptr<Trigger::Response>& response);
+  //! @brief Set state to RESUME_REQUESTED
+  void resumeServiceCallback(const std::shared_ptr<Trigger::Request>& request,
+                             std::shared_ptr<Trigger::Response>& response);
 
-    /** @brief Switch to the next state based on the current state
-     *
-     * PAUSE_REQUESTED -> ON_PAUSE
-     * ON_PAUSE -> PAUSED
-     *
-     * RESUME_REQUESTED -> ON_RESUME
-     * ON_RESUME -> RESUMED
-     *
-     * Do nothing if in end state
-     */
-    void switchToNextState();
+  /** @brief Switch to the next state based on the current state
+   *
+   * PAUSE_REQUESTED -> ON_PAUSE
+   * ON_PAUSE -> PAUSED
+   *
+   * RESUME_REQUESTED -> ON_RESUME
+   * ON_RESUME -> RESUMED
+   *
+   * Do nothing if in end state
+   */
+  void switchToNextState();
 
-    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>> pause_srv_;
-    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>> resume_srv_;
-    state_t state_;
+  std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>> pause_srv_;
+  std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>> resume_srv_;
+  state_t state_;
 };
 
 }  // namespace control

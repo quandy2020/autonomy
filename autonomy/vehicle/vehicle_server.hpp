@@ -43,90 +43,81 @@ namespace vehicle {
  * 该类本身不直接依赖具体硬件平台，通过 VehicleInterface 抽象适配差速车、
  * 阿克曼车、UGV/UAV 等不同类型的移动机器人。
  */
-class VehicleServer
-{
-public:
-    /**
-     *  @brief SharedPtr typedef
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(VehicleServer);
+class VehicleServer {
+ public:
+  /**
+   *  @brief SharedPtr typedef
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(VehicleServer);
 
-    /**
-     * @brief 构造函数
-     * @param model  车辆 / 机器人模型配置参数
-     * @param iface  底层 VehicleInterface 实现（差速 / 阿克曼 / UAV 等）
-     */
-    VehicleServer(const ::autonomy::vehicle::proto::VehicleModel& model, VehicleInterface::SharedPtr iface);
+  /**
+   * @brief 构造函数
+   * @param model  车辆 / 机器人模型配置参数
+   * @param iface  底层 VehicleInterface 实现（差速 / 阿克曼 / UAV 等）
+   */
+  VehicleServer(const ::autonomy::vehicle::proto::VehicleModel& model, VehicleInterface::SharedPtr iface);
 
-    /**
-     * @brief 析构函数
-     */
-    ~VehicleServer();
+  /**
+   * @brief 析构函数
+   */
+  ~VehicleServer();
 
-    /**
-     * @brief 从底层接口更新一次 VehicleInfo
-     * @return true 成功，false 失败
-     */
-    bool UpdateInfoFromInterface();
+  /**
+   * @brief 从底层接口更新一次 VehicleInfo
+   * @return true 成功，false 失败
+   */
+  bool UpdateInfoFromInterface();
 
-    /**
-     * @brief 设置（并下发）新的运动学控制指令
-     *
-     * - 先通过 KinematicsControl 进行限幅
-     * - 再将指令缓存到内部 Vehicle 消息中
-     * - 最后调用 VehicleInterface::ApplyCommand 下发到底层
-     */
-    void SetCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command);
+  /**
+   * @brief 设置（并下发）新的运动学控制指令
+   *
+   * - 先通过 KinematicsControl 进行限幅
+   * - 再将指令缓存到内部 Vehicle 消息中
+   * - 最后调用 VehicleInterface::ApplyCommand 下发到底层
+   */
+  void SetCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command);
 
-    /**
-     * @brief 获取当前聚合的 Vehicle proto（包含 header + model + info +
-     * command）
-     */
-    const ::autonomy::vehicle::proto::Vehicle& vehicle() const {
-        return vehicle_;
-    }
+  /**
+   * @brief 获取当前聚合的 Vehicle proto（包含 header + model + info +
+   * command）
+   */
+  const ::autonomy::vehicle::proto::Vehicle& vehicle() const { return vehicle_; }
 
-    /**
-     * @brief 只读访问当前模型配置
-     */
-    const ::autonomy::vehicle::proto::VehicleModel& model() const {
-        return vehicle_.model();
-    }
+  /**
+   * @brief 只读访问当前模型配置
+   */
+  const ::autonomy::vehicle::proto::VehicleModel& model() const { return vehicle_.model(); }
 
-    /**
-     * @brief 只读访问当前运行时状态
-     */
-    const ::autonomy::vehicle::proto::VehicleInfo& info() const {
-        return vehicle_.info();
-    }
+  /**
+   * @brief 只读访问当前运行时状态
+   */
+  const ::autonomy::vehicle::proto::VehicleInfo& info() const { return vehicle_.info(); }
 
-    /**
-     * @brief 只读访问当前控制指令
-     */
-    const ::autonomy::vehicle::proto::KinematicsControlCommand& command() const {
-        return vehicle_.command();
-    }
+  /**
+   * @brief 只读访问当前控制指令
+   */
+  const ::autonomy::vehicle::proto::KinematicsControlCommand& command() const { return vehicle_.command(); }
 
-private:
-    // 顶层 Vehicle 聚合消息（header + model + info + command）
-    ::autonomy::vehicle::proto::Vehicle vehicle_;
+ private:
+  // 顶层 Vehicle 聚合消息（header + model + info + command）
+  ::autonomy::vehicle::proto::Vehicle vehicle_;
 
-    // 底层硬件 / 仿真接口
-    VehicleInterface::SharedPtr interface_;
+  // 底层硬件 / 仿真接口
+  VehicleInterface::SharedPtr interface_;
 
-    // 运动学限幅工具
-    motion::KinematicsControl kinematics_;
+  // 运动学限幅工具
+  motion::KinematicsControl kinematics_;
 
-    // Node for publishing and subscribing vehicle messages via autolink
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Reader<::autonomy::vehicle::proto::Vehicle>> vehicle_reader_;
-    std::shared_ptr<::autolink::Writer<::autonomy::vehicle::proto::Vehicle>> vehicle_writer_;
+  // Node for publishing and subscribing vehicle messages via autolink
+  std::shared_ptr<::autolink::Node> node_;
+  std::shared_ptr<::autolink::Reader<::autonomy::vehicle::proto::Vehicle>> vehicle_reader_;
+  std::shared_ptr<::autolink::Writer<::autonomy::vehicle::proto::Vehicle>> vehicle_writer_;
 
-    /**
-     * @brief 处理从外部收到的 Vehicle 消息（例如来自远程监控 / 仿真）
-     *        当前实现简单地用外部消息覆盖内部缓存，后续可在此处做权限/一致性检查。
-     */
-    void HandleVehicleMessage(const ::autonomy::vehicle::proto::Vehicle& vehicle);
+  /**
+   * @brief 处理从外部收到的 Vehicle 消息（例如来自远程监控 / 仿真）
+   *        当前实现简单地用外部消息覆盖内部缓存，后续可在此处做权限/一致性检查。
+   */
+  void HandleVehicleMessage(const ::autonomy::vehicle::proto::Vehicle& vehicle);
 };
 
 }  // namespace vehicle

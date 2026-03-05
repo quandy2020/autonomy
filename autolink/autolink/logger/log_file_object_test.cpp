@@ -18,12 +18,10 @@
 
 #include <string>
 
-#include "gtest/gtest.h"
-
-#include "glog/logging.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/time/time.hpp"
+#include "glog/logging.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace logger {

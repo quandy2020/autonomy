@@ -29,30 +29,29 @@
 namespace autonomy {
 namespace sensor {
 
-class Collator : public CollatorInterface
-{
-public:
-    Collator() {}
+class Collator : public CollatorInterface {
+ public:
+  Collator() {}
 
-    Collator(const Collator&) = delete;
-    Collator& operator=(const Collator&) = delete;
+  Collator(const Collator&) = delete;
+  Collator& operator=(const Collator&) = delete;
 
-    // void AddToCostmap(
-    //     const absl::flat_hash_set<std::string>& expected_sensor_ids,
-    //     const Callback& callback) override;
+  // void AddToCostmap(
+  //     const absl::flat_hash_set<std::string>& expected_sensor_ids,
+  //     const Callback& callback) override;
 
-    void FinishCostmap() override;
+  void FinishCostmap() override;
 
-    void AddSensorData(std::unique_ptr<Data> data) override;
+  void AddSensorData(std::unique_ptr<Data> data) override;
 
-    void Flush() override;
+  void Flush() override;
 
-private:
-    // Queue keys are a pair of trajectory ID and sensor identifier.
-    //   OrderedMultiQueue queue_;
+ private:
+  // Queue keys are a pair of trajectory ID and sensor identifier.
+  //   OrderedMultiQueue queue_;
 
-    //   // Map of trajectory ID to all associated QueueKeys.
-    //   absl::flat_hash_set<std::vector<QueueKey>> queue_keys_;
+  //   // Map of trajectory ID to all associated QueueKeys.
+  //   absl::flat_hash_set<std::vector<QueueKey>> queue_keys_;
 };
 
 }  // namespace sensor

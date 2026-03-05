@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <string>
 
@@ -80,4 +79,3 @@ class ShmConf {
 
 }  // namespace transport
 }  // namespace autolink
-

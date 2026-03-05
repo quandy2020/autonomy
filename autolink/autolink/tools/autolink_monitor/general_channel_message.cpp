@@ -33,8 +33,7 @@ using autolink::record::kKB;
 using autolink::record::kMB;
 }  // namespace
 
-const char* GeneralChannelMessage::ErrCode2Str(
-    GeneralChannelMessage::ErrorCode errCode) {
+const char* GeneralChannelMessage::ErrCode2Str(GeneralChannelMessage::ErrorCode errCode) {
   const char* ret;
   switch (errCode) {
     case GeneralChannelMessage::ErrorCode::NewSubClassFailed:
@@ -68,8 +67,7 @@ const char* GeneralChannelMessage::ErrCode2Str(
 }
 
 bool GeneralChannelMessage::IsErrorCode(void* ptr) {
-  GeneralChannelMessage::ErrorCode err =
-      (GeneralChannelMessage::ErrorCode)(reinterpret_cast<intptr_t>(ptr));
+  GeneralChannelMessage::ErrorCode err = (GeneralChannelMessage::ErrorCode)(reinterpret_cast<intptr_t>(ptr));
   switch (err) {
     case ErrorCode::NewSubClassFailed:
     case ErrorCode::CreateNodeFailed:
@@ -107,8 +105,7 @@ double GeneralChannelMessage::frame_ratio(void) {
   return frame_ratio_;
 }
 
-GeneralChannelMessage* GeneralChannelMessage::OpenChannel(
-    const std::string& channel_name) {
+GeneralChannelMessage* GeneralChannelMessage::OpenChannel(const std::string& channel_name) {
   if (channel_name.empty() || node_name_.empty()) {
     return CastErrorCode2Ptr(ErrorCode::ChannelNameOrNodeNameIsEmpty);
   }
@@ -121,16 +118,12 @@ GeneralChannelMessage* GeneralChannelMessage::OpenChannel(
     return CastErrorCode2Ptr(ErrorCode::CreateNodeFailed);
   }
 
-  auto callback =
-      [this, channel_name](
-          const std::shared_ptr<autolink::message::RawMessage>& raw_msg) {
-        UpdateRawMessage(raw_msg);
-        UpdateChannelName(channel_name);
-      };
+  auto callback = [this, channel_name](const std::shared_ptr<autolink::message::RawMessage>& raw_msg) {
+    UpdateRawMessage(raw_msg);
+    UpdateChannelName(channel_name);
+  };
 
-  channel_reader_ =
-      channel_node_->CreateReader<autolink::message::RawMessage>(
-          channel_name, callback);
+  channel_reader_ = channel_node_->CreateReader<autolink::message::RawMessage>(channel_name, callback);
   if (channel_reader_ == nullptr) {
     channel_node_.reset();
     return CastErrorCode2Ptr(ErrorCode::CreateReaderFailed);
@@ -184,9 +177,7 @@ int GeneralChannelMessage::Render(const Screen* s, int key) {
 
 void GeneralChannelMessage::RenderInfo(const Screen* s, int key, int* line_no) {
   page_item_count_ = s->Height() - *line_no;
-  pages_ = static_cast<int>(readers_.size() + writers_.size() + *line_no) /
-               page_item_count_ +
-           1;
+  pages_ = static_cast<int>(readers_.size() + writers_.size() + *line_no) / page_item_count_ + 1;
   SplitPages(key);
 
   bool has_reader = true;
@@ -227,8 +218,7 @@ void GeneralChannelMessage::RenderInfo(const Screen* s, int key, int* line_no) {
   }
 }
 
-void GeneralChannelMessage::RenderDebugString(const Screen* s, int key,
-                                              int* line_no) {
+void GeneralChannelMessage::RenderDebugString(const Screen* s, int key, int* line_no) {
   if (has_message_come()) {
     if (raw_msg_class_ == nullptr) {
       auto rawFactory = autolink::message::ProtobufFactory::Instance();
@@ -241,8 +231,7 @@ void GeneralChannelMessage::RenderDebugString(const Screen* s, int key,
       s->AddStr(0, (*line_no)++, "FrameRatio: ");
 
       std::ostringstream out_str;
-      out_str << std::fixed << std::setprecision(FrameRatio_Precision)
-              << frame_ratio();
+      out_str << std::fixed << std::setprecision(FrameRatio_Precision) << frame_ratio();
       s->AddStr(out_str.str().c_str());
 
       decltype(channel_message_) channel_msg = CopyMsgPtr();
@@ -252,17 +241,11 @@ void GeneralChannelMessage::RenderDebugString(const Screen* s, int key,
         out_str.str("");
         out_str << channel_msg->message.size() << " Bytes";
         if (channel_msg->message.size() >= kGB) {
-          out_str << " ("
-                  << static_cast<float>(channel_msg->message.size()) / kGB
-                  << " GB)";
+          out_str << " (" << static_cast<float>(channel_msg->message.size()) / kGB << " GB)";
         } else if (channel_msg->message.size() >= kMB) {
-          out_str << " ("
-                  << static_cast<float>(channel_msg->message.size()) / kMB
-                  << " MB)";
+          out_str << " (" << static_cast<float>(channel_msg->message.size()) / kMB << " MB)";
         } else if (channel_msg->message.size() >= kKB) {
-          out_str << " ("
-                  << static_cast<float>(channel_msg->message.size()) / kKB
-                  << " KB)";
+          out_str << " (" << static_cast<float>(channel_msg->message.size()) / kKB << " KB)";
         }
         s->AddStr(out_str.str().c_str());
         if (raw_msg_class_->ParseFromString(channel_msg->message)) {
@@ -273,8 +256,7 @@ void GeneralChannelMessage::RenderDebugString(const Screen* s, int key,
           int jump_lines = page_index_ * page_item_count_;
           jump_lines <<= 2;
           jump_lines /= 5;
-          GeneralMessageBase::PrintMessage(this, *raw_msg_class_, &jump_lines,
-                                           s, line_no, 0);
+          GeneralMessageBase::PrintMessage(this, *raw_msg_class_, &jump_lines, s, line_no, 0);
         } else {
           s->AddStr(0, (*line_no)++, "Cannot parse the raw message");
         }

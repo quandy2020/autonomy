@@ -18,9 +18,8 @@
 
 #include <string>
 
-#include "gtest/gtest.h"
-
 #include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace message {

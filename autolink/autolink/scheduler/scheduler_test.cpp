@@ -19,15 +19,13 @@
 #include <string>
 #include <thread>
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/scheduler_conf.pb.h"
-
-#include "autolink/common/global_data.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/global_data.hpp"
 #include "autolink/init.hpp"
+#include "autolink/proto/scheduler_conf.pb.h"
 #include "autolink/scheduler/processor_context.hpp"
 #include "autolink/scheduler/scheduler_factory.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace scheduler {

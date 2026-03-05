@@ -50,8 +50,7 @@ void Transport::Shutdown() {
 
 void Transport::CreateParticipant() {
   std::string participant_name =
-      common::GlobalData::Instance()->HostName() + "+" +
-      std::to_string(common::GlobalData::Instance()->ProcessId());
+      common::GlobalData::Instance()->HostName() + "+" + std::to_string(common::GlobalData::Instance()->ProcessId());
   participant_ = std::make_shared<Participant>(participant_name, 11512);
 }
 

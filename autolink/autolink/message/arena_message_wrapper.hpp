@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -55,22 +54,18 @@ class ArenaMessageWrapper {
     data_.struct_.meta_.struct_.addr_offset_ = 0;
   }
 
-  explicit ArenaMessageWrapper(ArenaManagerBase* arena_manager)
-      : arena_manager_(arena_manager) {
+  explicit ArenaMessageWrapper(ArenaManagerBase* arena_manager) : arena_manager_(arena_manager) {
     data_.struct_.meta_.struct_.version_ = kDefaultVersion;
     data_.struct_.meta_.struct_.addr_offset_ = 0;
   }
 
   virtual ~ArenaMessageWrapper() {}
 
-  void SetVersion(uint64_t version) {
-    data_.struct_.meta_.struct_.version_ = version;
-  }
+  void SetVersion(uint64_t version) { data_.struct_.meta_.struct_.version_ = version; }
   uint64_t GetVersion() const { return data_.struct_.meta_.struct_.version_; }
 
   uint64_t GetMessageAddress() const {
-    return arena_manager_->GetBaseAddress(this) +
-           data_.struct_.meta_.struct_.addr_offset_;
+    return arena_manager_->GetBaseAddress(this) + data_.struct_.meta_.struct_.addr_offset_;
   }
 
   void* GetData() { return reinterpret_cast<void*>(data_.bytes_); }
@@ -83,10 +78,7 @@ class ArenaMessageWrapper {
     return true;
   }
 
-  ArenaMessageWrapperMeta* GetMeta() {
-    return reinterpret_cast<ArenaMessageWrapperMeta*>(
-        data_.struct_.meta_.bytes_);
-  }
+  ArenaMessageWrapperMeta* GetMeta() { return reinterpret_cast<ArenaMessageWrapperMeta*>(data_.struct_.meta_.bytes_); }
 
   bool FillExtended(void* extended, uint64_t size) {
     if (size > 256) {
@@ -140,4 +132,3 @@ class ArenaMessageWrapper {
 
 }  // namespace message
 }  // namespace autolink
-

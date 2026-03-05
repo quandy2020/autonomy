@@ -14,8 +14,8 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "examples.pb.h"
 #include "autolink/autolink.hpp"
+#include "examples.pb.h"
 
 void MessageCallback(const std::shared_ptr<autolink::examples::Chatter>& msg) {
   AINFO << "Received message seq-> " << msg->seq();
@@ -25,9 +25,7 @@ void MessageCallback(const std::shared_ptr<autolink::examples::Chatter>& msg) {
 int main(int argc, char* argv[]) {
   if (!autolink::Init(argv[0])) return 1;
   auto listener_node = autolink::CreateNode("listener");
-  auto listener =
-      listener_node->CreateReader<autolink::examples::Chatter>(
-          "channel/chatter", MessageCallback);
+  auto listener = listener_node->CreateReader<autolink::examples::Chatter>("channel/chatter", MessageCallback);
   AINFO << "listener subscribed to channel/chatter, waiting for messages";
   AINFO << "  (run autolink_example_talker in another terminal; "
            "if no 'SHM receiver enabled for channel' in log, see "

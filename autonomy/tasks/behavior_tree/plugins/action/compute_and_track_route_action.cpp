@@ -30,131 +30,131 @@ ComputeAndTrackRouteAction::ComputeAndTrackRouteAction(const std::string& xml_ta
     : BtActionNode<Action>(xml_tag_name, action_name, conf) {}
 
 void ComputeAndTrackRouteAction::on_tick() {
-    bool use_poses = false, use_start = false;
-    getInput("use_poses", use_poses);
-    goal_.set_use_poses(use_poses);
+  bool use_poses = false, use_start = false;
+  getInput("use_poses", use_poses);
+  goal_.set_use_poses(use_poses);
 
-    if (use_poses) {
-        commsgs::geometry_msgs::PoseStamped goal;
-        getInput("goal", goal);
-        *goal_.mutable_goal() = commsgs::geometry_msgs::ToProto(goal);
+  if (use_poses) {
+    commsgs::geometry_msgs::PoseStamped goal;
+    getInput("goal", goal);
+    *goal_.mutable_goal() = commsgs::geometry_msgs::ToProto(goal);
 
-        getInput("use_start", use_start);
-        goal_.set_use_start(use_start);
-        if (use_start) {
-            commsgs::geometry_msgs::PoseStamped start;
-            getInput("start", start);
-            *goal_.mutable_start() = commsgs::geometry_msgs::ToProto(start);
-        }
-    } else {
-        uint32_t start_id = 0;
-        uint32_t goal_id = 0;
-        getInput("start_id", start_id);
-        getInput("goal_id", goal_id);
-        goal_.set_start_id(start_id);
-        goal_.set_goal_id(goal_id);
-        goal_.set_use_start(false);
+    getInput("use_start", use_start);
+    goal_.set_use_start(use_start);
+    if (use_start) {
+      commsgs::geometry_msgs::PoseStamped start;
+      getInput("start", start);
+      *goal_.mutable_start() = commsgs::geometry_msgs::ToProto(start);
     }
+  } else {
+    uint32_t start_id = 0;
+    uint32_t goal_id = 0;
+    getInput("start_id", start_id);
+    getInput("goal_id", goal_id);
+    goal_.set_start_id(start_id);
+    goal_.set_goal_id(goal_id);
+    goal_.set_use_start(false);
+  }
 }
 
 BT::NodeStatus ComputeAndTrackRouteAction::on_success() {
-    if (result_.result && result_.result->has_execution_duration()) {
-        const auto& proto_duration = result_.result->execution_duration();
-        commsgs::builtin_interfaces::Duration duration = commsgs::builtin_interfaces::FromProto(proto_duration);
-        setOutput("execution_duration", duration);
-    } else {
-        commsgs::builtin_interfaces::Duration empty_duration;
-        setOutput("execution_duration", empty_duration);
-    }
+  if (result_.result && result_.result->has_execution_duration()) {
+    const auto& proto_duration = result_.result->execution_duration();
+    commsgs::builtin_interfaces::Duration duration = commsgs::builtin_interfaces::FromProto(proto_duration);
+    setOutput("execution_duration", duration);
+  } else {
+    commsgs::builtin_interfaces::Duration empty_duration;
+    setOutput("execution_duration", empty_duration);
+  }
 
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
+  setOutput("error_code_id",
+            static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_NONE));
+  setOutput("error_msg", std::string(""));
+  return BT::NodeStatus::SUCCESS;
 }
 
 BT::NodeStatus ComputeAndTrackRouteAction::on_aborted() {
-    commsgs::builtin_interfaces::Duration empty_duration;
-    setOutput("execution_duration", empty_duration);
+  commsgs::builtin_interfaces::Duration empty_duration;
+  setOutput("execution_duration", empty_duration);
 
-    if (result_.result) {
-        setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
-    } else {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Unknown error"));
-    }
-    return BT::NodeStatus::FAILURE;
+  if (result_.result) {
+    setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
+    setOutput("error_msg", result_.result->error_msg());
+  } else {
+    setOutput("error_code_id",
+              static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_UNKNOWN));
+    setOutput("error_msg", std::string("Unknown error"));
+  }
+  return BT::NodeStatus::FAILURE;
 }
 
 BT::NodeStatus ComputeAndTrackRouteAction::on_cancelled() {
-    commsgs::builtin_interfaces::Duration empty_duration;
-    setOutput("execution_duration", empty_duration);
+  commsgs::builtin_interfaces::Duration empty_duration;
+  setOutput("execution_duration", empty_duration);
 
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
+  setOutput("error_code_id",
+            static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_NONE));
+  setOutput("error_msg", std::string(""));
+  return BT::NodeStatus::SUCCESS;
 }
 
 void ComputeAndTrackRouteAction::on_timeout() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_TIMEOUT));
-    setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
+  setOutput("error_code_id",
+            static_cast<int32_t>(proto::ComputeAndTrackRouteErrorCode::COMPUTE_AND_TRACK_ROUTE_ERROR_TIMEOUT));
+  setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
 }
 
 void ComputeAndTrackRouteAction::on_wait_for_result(std::shared_ptr<const Action::Feedback> /*feedback*/) {
-    // Check for request updates to the goal
-    bool use_poses = false, use_start = false;
-    getInput("use_start", use_start);
-    getInput("use_poses", use_poses);
+  // Check for request updates to the goal
+  bool use_poses = false, use_start = false;
+  getInput("use_start", use_start);
+  getInput("use_poses", use_poses);
 
-    if (goal_.use_poses() != use_poses) {
+  if (goal_.use_poses() != use_poses) {
+    goal_updated_ = true;
+  }
+
+  if (use_poses) {
+    commsgs::geometry_msgs::PoseStamped goal;
+    getInput("goal", goal);
+    auto proto_goal = commsgs::geometry_msgs::ToProto(goal);
+    // Compare proto messages
+    if (!goal_.has_goal() || goal_.goal().pose().position().x() != proto_goal.pose().position().x() ||
+        goal_.goal().pose().position().y() != proto_goal.pose().position().y()) {
+      goal_updated_ = true;
+    }
+
+    if (goal_.use_start() != use_start) {
+      goal_updated_ = true;
+    }
+    if (use_start) {
+      commsgs::geometry_msgs::PoseStamped start;
+      getInput("start", start);
+      auto proto_start = commsgs::geometry_msgs::ToProto(start);
+      if (!goal_.has_start() || goal_.start().pose().position().x() != proto_start.pose().position().x() ||
+          goal_.start().pose().position().y() != proto_start.pose().position().y()) {
         goal_updated_ = true;
+      }
     }
-
-    if (use_poses) {
-        commsgs::geometry_msgs::PoseStamped goal;
-        getInput("goal", goal);
-        auto proto_goal = commsgs::geometry_msgs::ToProto(goal);
-        // Compare proto messages
-        if (!goal_.has_goal() || goal_.goal().pose().position().x() != proto_goal.pose().position().x() ||
-            goal_.goal().pose().position().y() != proto_goal.pose().position().y()) {
-            goal_updated_ = true;
-        }
-
-        if (goal_.use_start() != use_start) {
-            goal_updated_ = true;
-        }
-        if (use_start) {
-            commsgs::geometry_msgs::PoseStamped start;
-            getInput("start", start);
-            auto proto_start = commsgs::geometry_msgs::ToProto(start);
-            if (!goal_.has_start() || goal_.start().pose().position().x() != proto_start.pose().position().x() ||
-                goal_.start().pose().position().y() != proto_start.pose().position().y()) {
-                goal_updated_ = true;
-            }
-        }
-    } else {
-        // Check if the start and goal IDs have changed
-        uint32_t start_id = 0;
-        uint32_t goal_id = 0;
-        getInput("start_id", start_id);
-        getInput("goal_id", goal_id);
-        if (goal_.start_id() != start_id) {
-            goal_updated_ = true;
-        }
-        if (goal_.goal_id() != goal_id) {
-            goal_updated_ = true;
-        }
+  } else {
+    // Check if the start and goal IDs have changed
+    uint32_t start_id = 0;
+    uint32_t goal_id = 0;
+    getInput("start_id", start_id);
+    getInput("goal_id", goal_id);
+    if (goal_.start_id() != start_id) {
+      goal_updated_ = true;
     }
-
-    // If we're updating the request, we need to fully update the goal
-    // Easier to call on_tick() again than to duplicate the code
-    if (goal_updated_) {
-        on_tick();
+    if (goal_.goal_id() != goal_id) {
+      goal_updated_ = true;
     }
+  }
+
+  // If we're updating the request, we need to fully update the goal
+  // Easier to call on_tick() again than to duplicate the code
+  if (goal_updated_) {
+    on_tick();
+  }
 }
 
 }  // namespace action
@@ -165,11 +165,11 @@ void ComputeAndTrackRouteAction::on_wait_for_result(std::shared_ptr<const Action
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputeAndTrackRouteAction>(
-            name, "compute_and_track_route", config);
-    };
+  BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+    return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputeAndTrackRouteAction>(
+        name, "compute_and_track_route", config);
+  };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputeAndTrackRouteAction>(
-        "ComputeAndTrackRoute", builder);
+  factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputeAndTrackRouteAction>(
+      "ComputeAndTrackRoute", builder);
 }

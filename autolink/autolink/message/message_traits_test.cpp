@@ -18,9 +18,8 @@
 
 #include <string>
 
-#include "gtest/gtest.h"
-
 #include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace message {
@@ -37,8 +36,7 @@ class Message {
   std::size_t ByteSizeLong() const { return content.size(); }
 
   bool SerializeToArray(void* data, int size) const {
-    if (data == nullptr || size < 0 ||
-        static_cast<size_t>(size) < ByteSizeLong()) {
+    if (data == nullptr || size < 0 || static_cast<size_t>(size) < ByteSizeLong()) {
       return false;
     }
 
@@ -64,9 +62,7 @@ class Message {
     return true;
   }
 
-  static void GetDescriptorString(const std::string&, std::string* str) {
-    *str = "message";
-  }
+  static void GetDescriptorString(const std::string&, std::string* str) { *str = "message"; }
 
   std::string TypeName() const { return "type"; }
 };
@@ -245,23 +241,18 @@ TEST(MessageTraitsTest, serialize_parse_hc) {
   auto pb_msg = std::make_shared<proto::Chatter>();
   auto raw_msg = std::make_shared<RawMessage>();
 
-  EXPECT_TRUE(
-      ParseFromHC(const_cast<char*>(buffer.data()), size, pb_msg.get()));
-  EXPECT_TRUE(
-      ParseFromHC(const_cast<char*>(buffer.data()), size, raw_msg.get()));
+  EXPECT_TRUE(ParseFromHC(const_cast<char*>(buffer.data()), size, pb_msg.get()));
+  EXPECT_TRUE(ParseFromHC(const_cast<char*>(buffer.data()), size, raw_msg.get()));
 
   std::string new_buffer;
   new_buffer.resize(size);
-  EXPECT_TRUE(
-      SerializeToHC(*pb_msg, const_cast<char*>(new_buffer.data()), size));
+  EXPECT_TRUE(SerializeToHC(*pb_msg, const_cast<char*>(new_buffer.data()), size));
   EXPECT_EQ(new_buffer, buffer);
   new_buffer.clear();
 
   new_buffer.resize(size);
-  EXPECT_TRUE(
-      SerializeToHC(*raw_msg, const_cast<char*>(new_buffer.data()), size));
-  EXPECT_TRUE(
-      ParseFromHC(const_cast<char*>(new_buffer.data()), size, pb_msg.get()));
+  EXPECT_TRUE(SerializeToHC(*raw_msg, const_cast<char*>(new_buffer.data()), size));
+  EXPECT_TRUE(ParseFromHC(const_cast<char*>(new_buffer.data()), size, pb_msg.get()));
   EXPECT_EQ(pb_msg->timestamp(), 12345);
   EXPECT_EQ(pb_msg->seq(), 1);
   EXPECT_EQ(pb_msg->content(), "chatter msg");

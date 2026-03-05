@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <unistd.h>
 
 #include <atomic>
@@ -28,8 +27,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "autolink/proto/choreography_conf.pb.h"
-
 #include "autolink/base/atomic_hash_map.hpp"
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/common/log.hpp"
@@ -37,6 +34,7 @@
 #include "autolink/common/types.hpp"
 #include "autolink/croutine/croutine.hpp"
 #include "autolink/croutine/routine_factory.hpp"
+#include "autolink/proto/choreography_conf.pb.h"
 #include "autolink/scheduler/common/mutex_wrapper.hpp"
 #include "autolink/scheduler/common/pin_thread.hpp"
 
@@ -78,10 +76,7 @@ class Scheduler {
 
   void CheckSchedStatus();
 
-  void SetInnerThreadConfs(
-      const std::unordered_map<std::string, InnerThread>& confs) {
-    inner_thr_confs_ = confs;
-  }
+  void SetInnerThreadConfs(const std::unordered_map<std::string, InnerThread>& confs) { inner_thr_confs_ = confs; }
 
  protected:
   Scheduler() : stop_(false) {}
@@ -104,4 +99,3 @@ class Scheduler {
 
 }  // namespace scheduler
 }  // namespace autolink
-

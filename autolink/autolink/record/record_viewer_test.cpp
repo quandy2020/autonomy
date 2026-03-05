@@ -23,11 +23,10 @@
 #include <memory>
 #include <string>
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/log.hpp"
 #include "autolink/record/record_reader.hpp"
 #include "autolink/record/record_writer.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace record {
@@ -39,8 +38,7 @@ constexpr char kMessageType1[] = "autolink.proto.Test";
 constexpr char kProtoDesc1[] = "1234567890";
 constexpr char kTestFile[] = "viewer_test.record";
 
-static void ConstructRecord(uint64_t msg_num, uint64_t begin_time,
-                            uint64_t time_step, bool reverse = false) {
+static void ConstructRecord(uint64_t msg_num, uint64_t begin_time, uint64_t time_step, bool reverse = false) {
   RecordWriter writer;
   writer.SetSizeOfFileSegmentation(0);
   writer.SetIntervalOfFileSegmentation(0);
@@ -183,8 +181,7 @@ TEST(RecordTest, filter_test) {
   EXPECT_NE(it_1, it_2);
 
   // pick 2 frame
-  RecordViewer viewer_5(reader, begin_time + 12 * step_time,
-                        begin_time + 13 * step_time);
+  RecordViewer viewer_5(reader, begin_time + 12 * step_time, begin_time + 13 * step_time);
   EXPECT_EQ(CheckCount(viewer_5), 2);
 
   // filter with not exist channel

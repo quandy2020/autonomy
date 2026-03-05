@@ -16,6 +16,7 @@
 
 #include <getopt.h>
 #include <libgen.h>
+
 #include <string>
 #include <vector>
 
@@ -23,20 +24,20 @@
 #include "autolink/benchmark/benchmark_msg.pb.h"
 
 #if __has_include("gperftools/profiler.h")
-#include "gperftools/profiler.h"
 #include "gperftools/heap-profiler.h"
 #include "gperftools/malloc_extension.h"
+#include "gperftools/profiler.h"
 #endif
 
 using autolink::benchmark::BenchmarkMsg;
 
-std::string BINARY_NAME = "autolink_benchmark_reader"; // NOLINT
+std::string BINARY_NAME = "autolink_benchmark_reader";  // NOLINT
 
 int nums_of_reader = 1;
 bool enable_cpuprofile = false;
 bool enable_heapprofile = false;
-std::string profile_filename = "autolink_benchmark_reader_cpu.prof"; // NOLINT
-std::string heapprofile_filename = "autolink_benchmark_reader_mem.prof"; // NOLINT
+std::string profile_filename = "autolink_benchmark_reader_cpu.prof";      // NOLINT
+std::string heapprofile_filename = "autolink_benchmark_reader_mem.prof";  // NOLINT
 
 void DisplayUsage() {
   AINFO << "Usage: \n    " << BINARY_NAME << " [OPTION]...\n"
@@ -46,12 +47,12 @@ void DisplayUsage() {
            "default value is 1\n"
         << "    -c, --cpuprofile: enable gperftools cpu profile\n"
         << "    -o, --profile_filename=filename: the filename to dump the "
-            "profile to, default value is autolink_benchmark_writer_cpu.prof.  "
-            "Only work with -c option\n"
+           "profile to, default value is autolink_benchmark_writer_cpu.prof.  "
+           "Only work with -c option\n"
         << "    -H, --heapprofile: enable gperftools heap profile\n"
         << "    -O, --heapprofile_filename=filename: the filename "
-            " to dump the profile to, default value is "
-            "autolink_benchmark_writer_mem.prof. Only work with -H option\n"
+           " to dump the profile to, default value is "
+           "autolink_benchmark_writer_mem.prof. Only work with -H option\n"
         << "Example:\n"
         << "    " << BINARY_NAME << " -h\n"
         << "    " << BINARY_NAME << " -n 1\n"
@@ -62,14 +63,13 @@ void GetOptions(const int argc, char* const argv[]) {
   opterr = 0;  // extern int opterr
   int long_index = 0;
   const std::string short_opts = "hn:co:HO:";
-  static const struct option long_opts[] = {
-      {"help", no_argument, nullptr, 'h'},
-      {"nums_of_reader", required_argument, nullptr, 'n'},
-      {"cpuprofile", no_argument, nullptr, 'c'},
-      {"profile_filename", required_argument, nullptr, 'o'},
-      {"heapprofile", no_argument, nullptr, 'H'},
-      {"heapprofile_filename", required_argument, nullptr, 'O'},
-      {NULL, no_argument, nullptr, 0}};
+  static const struct option long_opts[] = {{"help", no_argument, nullptr, 'h'},
+                                            {"nums_of_reader", required_argument, nullptr, 'n'},
+                                            {"cpuprofile", no_argument, nullptr, 'c'},
+                                            {"profile_filename", required_argument, nullptr, 'o'},
+                                            {"heapprofile", no_argument, nullptr, 'H'},
+                                            {"heapprofile_filename", required_argument, nullptr, 'O'},
+                                            {NULL, no_argument, nullptr, 0}};
 
   // log command for info
   std::string cmd("");
@@ -85,8 +85,7 @@ void GetOptions(const int argc, char* const argv[]) {
   }
 
   do {
-    int opt =
-        getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
+    int opt = getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
     if (opt == -1) {
       break;
     }
@@ -143,8 +142,8 @@ int main(int argc, char** argv) {
   for (int i = 0; i < nums_of_reader; i++) {
     std::string node_name = BINARY_NAME + "-" + std::to_string(i);
     auto node = autolink::CreateNode(node_name);
-    vec.push_back(std::move(node->CreateReader<BenchmarkMsg>(
-      reader_config, [](const std::shared_ptr<BenchmarkMsg> m){})));
+    vec.push_back(
+        std::move(node->CreateReader<BenchmarkMsg>(reader_config, [](const std::shared_ptr<BenchmarkMsg> m) {})));
   }
 
 #ifndef NO_TCMALLOC

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <condition_variable>
 
 namespace autolink {
@@ -33,4 +32,3 @@ class CvWrapper {
 
 }  // namespace scheduler
 }  // namespace autolink
-

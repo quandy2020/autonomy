@@ -27,55 +27,55 @@ namespace mppi_controller {
 namespace critics {
 
 void GoalAngleCritic::initialize() {
-    if (!options_) {
-        AWARN << "Options not set, using defaults";
-        power_ = 1;
-        weight_ = 3.0f;
-        threshold_to_consider_ = 0.5f;
-        return;
-    }
+  if (!options_) {
+    AWARN << "Options not set, using defaults";
+    power_ = 1;
+    weight_ = 3.0f;
+    threshold_to_consider_ = 0.5f;
+    return;
+  }
 
-    // Load from proto options
-    if (options_->has_goal_angle_critic()) {
-        const auto& critic = options_->goal_angle_critic();
-        enabled_ = critic.enabled();
-        power_ = critic.cost_power();
-        weight_ = static_cast<float>(critic.cost_weight());
-        threshold_to_consider_ = static_cast<float>(critic.threshold_to_consider());
-    } else {
-        enabled_ = true;
-        power_ = 1;
-        weight_ = 3.0f;                 // Default
-        threshold_to_consider_ = 0.5f;  // Default
-    }
+  // Load from proto options
+  if (options_->has_goal_angle_critic()) {
+    const auto& critic = options_->goal_angle_critic();
+    enabled_ = critic.enabled();
+    power_ = critic.cost_power();
+    weight_ = static_cast<float>(critic.cost_weight());
+    threshold_to_consider_ = static_cast<float>(critic.threshold_to_consider());
+  } else {
+    enabled_ = true;
+    power_ = 1;
+    weight_ = 3.0f;                 // Default
+    threshold_to_consider_ = 0.5f;  // Default
+  }
 
-    AINFO << "GoalAngleCritic instantiated with " << power_ << " power, " << weight_ << " weight, and "
-          << threshold_to_consider_ << " angular threshold.";
+  AINFO << "GoalAngleCritic instantiated with " << power_ << " power, " << weight_ << " weight, and "
+        << threshold_to_consider_ << " angular threshold.";
 }
 
 void GoalAngleCritic::score(CriticData& data) {
-    if (!enabled_) {
-        return;
-    }
+  if (!enabled_) {
+    return;
+  }
 
-    commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
+  commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
 
-    if (!tools::withinPositionGoalTolerance(threshold_to_consider_, data.state.pose.pose, goal)) {
-        return;
-    }
+  if (!tools::withinPositionGoalTolerance(threshold_to_consider_, data.state.pose.pose, goal)) {
+    return;
+  }
 
-    double goal_yaw = autonomy::transform::tf2::getYaw(goal.orientation);
+  double goal_yaw = autonomy::transform::tf2::getYaw(goal.orientation);
 
-    if (power_ > 1u) {
-        data.costs +=
-            (((tools::shortest_angular_distance(data.trajectories.yaws, goal_yaw).abs()).rowwise().mean()) * weight_)
-                .pow(power_)
-                .eval();
-    } else {
-        data.costs +=
-            (((tools::shortest_angular_distance(data.trajectories.yaws, goal_yaw).abs()).rowwise().mean()) * weight_)
-                .eval();
-    }
+  if (power_ > 1u) {
+    data.costs +=
+        (((tools::shortest_angular_distance(data.trajectories.yaws, goal_yaw).abs()).rowwise().mean()) * weight_)
+            .pow(power_)
+            .eval();
+  } else {
+    data.costs +=
+        (((tools::shortest_angular_distance(data.trajectories.yaws, goal_yaw).abs()).rowwise().mean()) * weight_)
+            .eval();
+  }
 }
 
 }  // namespace critics

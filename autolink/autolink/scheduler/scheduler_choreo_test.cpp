@@ -16,15 +16,14 @@
 
 #include <algorithm>
 
-#include "gtest/gtest.h"
-
-#include "autolink/common/global_data.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/global_data.hpp"
 #include "autolink/scheduler/policy/choreography_context.hpp"
 #include "autolink/scheduler/policy/classic_context.hpp"
 #include "autolink/scheduler/policy/scheduler_choreography.hpp"
 #include "autolink/scheduler/processor.hpp"
 #include "autolink/scheduler/scheduler_factory.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace scheduler {
@@ -58,8 +57,7 @@ TEST(SchedulerChoreoTest, sched_choreo) {
   cr1->set_processor_id(0);
   EXPECT_TRUE(sched->DispatchTask(cr1));
 
-  auto& croutines =
-      ClassicContext::cr_group_[DEFAULT_GROUP_NAME].at(cr->priority());
+  auto& croutines = ClassicContext::cr_group_[DEFAULT_GROUP_NAME].at(cr->priority());
   std::vector<std::string> cr_names;
   for (auto& croutine : croutines) {
     cr_names.emplace_back(croutine->name());

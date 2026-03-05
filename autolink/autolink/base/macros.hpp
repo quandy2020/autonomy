@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdlib>
 #include <new>
 
@@ -71,4 +70,3 @@ inline void* CheckedCalloc(size_t num, size_t size) {
   }
   return ptr;
 }
-

@@ -18,9 +18,9 @@
 
 #include <memory>
 #include <vector>
-#include "gtest/gtest.h"
 
 #include "autolink/common/global_data.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace service_discovery {
@@ -77,8 +77,7 @@ TEST_F(NodeManagerTest, topo_module_leave) {
 
 TEST_F(NodeManagerTest, add_and_remove_change_listener) {
   bool recv_flag = false;
-  auto conn = node_manager_->AddChangeListener(
-      [&recv_flag](const ChangeMsg& msg) { recv_flag = true; });
+  auto conn = node_manager_->AddChangeListener([&recv_flag](const ChangeMsg& msg) { recv_flag = true; });
 
   RoleAttributes role_attr;
   role_attr.set_host_name("caros");

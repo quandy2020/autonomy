@@ -29,54 +29,53 @@ using google::protobuf::Message;
 using mapping::proto::PoseGraph;
 using mapping::proto::SerializedData;
 
-class InMemoryProtoStreamTest : public ::testing::Test
-{
-protected:
-    void SetUp() override {
-        pose_graph_.add_trajectory()->set_trajectory_id(1);
-        serialized_data_.mutable_odometry_data()->set_trajectory_id(2);
-    }
+class InMemoryProtoStreamTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    pose_graph_.add_trajectory()->set_trajectory_id(1);
+    serialized_data_.mutable_odometry_data()->set_trajectory_id(2);
+  }
 
-    PoseGraph pose_graph_;
-    SerializedData serialized_data_;
+  PoseGraph pose_graph_;
+  SerializedData serialized_data_;
 };
 
 TEST_F(InMemoryProtoStreamTest, ReadStreamInitializedFromQueue) {
-    std::queue<std::unique_ptr<Message>> proto_queue;
-    proto_queue.push(make_unique<PoseGraph>(pose_graph_));
-    proto_queue.push(make_unique<SerializedData>(serialized_data_));
+  std::queue<std::unique_ptr<Message>> proto_queue;
+  proto_queue.push(make_unique<PoseGraph>(pose_graph_));
+  proto_queue.push(make_unique<SerializedData>(serialized_data_));
 
-    InMemoryProtoStreamReader reader(std::move(proto_queue));
+  InMemoryProtoStreamReader reader(std::move(proto_queue));
 
-    PoseGraph actual_pose_graph;
-    EXPECT_FALSE(reader.eof());
-    EXPECT_TRUE(reader.ReadProto(&actual_pose_graph));
-    EXPECT_EQ(1, actual_pose_graph.trajectory(0).trajectory_id());
+  PoseGraph actual_pose_graph;
+  EXPECT_FALSE(reader.eof());
+  EXPECT_TRUE(reader.ReadProto(&actual_pose_graph));
+  EXPECT_EQ(1, actual_pose_graph.trajectory(0).trajectory_id());
 
-    SerializedData actual_serialized_data;
-    EXPECT_FALSE(reader.eof());
-    EXPECT_TRUE(reader.ReadProto(&actual_serialized_data));
-    EXPECT_EQ(2, actual_serialized_data.odometry_data().trajectory_id());
+  SerializedData actual_serialized_data;
+  EXPECT_FALSE(reader.eof());
+  EXPECT_TRUE(reader.ReadProto(&actual_serialized_data));
+  EXPECT_EQ(2, actual_serialized_data.odometry_data().trajectory_id());
 
-    EXPECT_TRUE(reader.eof());
+  EXPECT_TRUE(reader.eof());
 }
 
 TEST_F(InMemoryProtoStreamTest, ReadStreamInitializedIncrementally) {
-    InMemoryProtoStreamReader reader;
-    reader.AddProto(pose_graph_);
-    reader.AddProto(serialized_data_);
+  InMemoryProtoStreamReader reader;
+  reader.AddProto(pose_graph_);
+  reader.AddProto(serialized_data_);
 
-    PoseGraph actual_pose_graph;
-    EXPECT_FALSE(reader.eof());
-    EXPECT_TRUE(reader.ReadProto(&actual_pose_graph));
-    EXPECT_EQ(1, actual_pose_graph.trajectory(0).trajectory_id());
+  PoseGraph actual_pose_graph;
+  EXPECT_FALSE(reader.eof());
+  EXPECT_TRUE(reader.ReadProto(&actual_pose_graph));
+  EXPECT_EQ(1, actual_pose_graph.trajectory(0).trajectory_id());
 
-    SerializedData actual_serialized_data;
-    EXPECT_FALSE(reader.eof());
-    EXPECT_TRUE(reader.ReadProto(&actual_serialized_data));
-    EXPECT_EQ(2, actual_serialized_data.odometry_data().trajectory_id());
+  SerializedData actual_serialized_data;
+  EXPECT_FALSE(reader.eof());
+  EXPECT_TRUE(reader.ReadProto(&actual_serialized_data));
+  EXPECT_EQ(2, actual_serialized_data.odometry_data().trajectory_id());
 
-    EXPECT_TRUE(reader.eof());
+  EXPECT_TRUE(reader.eof());
 }
 
 }  // namespace

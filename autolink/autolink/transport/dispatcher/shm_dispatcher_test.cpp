@@ -17,7 +17,6 @@
 #include "autolink/transport/dispatcher/shm_dispatcher.hpp"
 
 #include <memory>
-#include "gtest/gtest.h"
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
@@ -27,6 +26,7 @@
 #include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
 #include "autolink/transport/transport.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -39,18 +39,15 @@ TEST(ShmDispatcherTest, add_listener) {
   Identity self_id;
   self_attr.set_id(self_id.HashValue());
 
-  dispatcher->AddListener<proto::Chatter>(
-      self_attr,
-      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+  dispatcher->AddListener<proto::Chatter>(self_attr, [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 
   RoleAttributes oppo_attr;
   oppo_attr.CopyFrom(self_attr);
   Identity oppo_id;
   oppo_attr.set_id(oppo_id.HashValue());
 
-  dispatcher->AddListener<proto::Chatter>(
-      self_attr, oppo_attr,
-      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+  dispatcher->AddListener<proto::Chatter>(self_attr, oppo_attr,
+                                          [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 }
 
 TEST(ShmDispatcherTest, on_message) {
@@ -64,9 +61,7 @@ TEST(ShmDispatcherTest, on_message) {
   Identity oppo_id;
   oppo_attr.set_id(oppo_id.HashValue());
 
-  auto transmitter =
-      Transport::Instance()->CreateTransmitter<message::RawMessage>(
-          oppo_attr, proto::OptionalMode::SHM);
+  auto transmitter = Transport::Instance()->CreateTransmitter<message::RawMessage>(oppo_attr, proto::OptionalMode::SHM);
   EXPECT_NE(transmitter, nullptr);
 
   auto send_msg = std::make_shared<message::RawMessage>("raw_message");
@@ -82,8 +77,7 @@ TEST(ShmDispatcherTest, on_message) {
 
   auto recv_msg = std::make_shared<message::RawMessage>();
   dispatcher->AddListener<message::RawMessage>(
-      self_attr, [&recv_msg](const std::shared_ptr<message::RawMessage>& msg,
-                             const MessageInfo& msg_info) {
+      self_attr, [&recv_msg](const std::shared_ptr<message::RawMessage>& msg, const MessageInfo& msg_info) {
         (void)msg_info;
         recv_msg->message = msg->message;
       });

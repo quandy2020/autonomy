@@ -20,22 +20,18 @@ namespace aviz {
 namespace common {
 
 void ToolManager::addTool(Tool* tool) {
-    (void)tool;
-    // TODO: Implement
+  (void)tool;
+  // TODO: Implement
 }
 
 void ToolManager::removeTool(Tool* tool) {
-    (void)tool;
-    // TODO: Implement
+  (void)tool;
+  // TODO: Implement
 }
 
-Tool* ToolManager::getCurrentTool() const {
-    return current_tool_;
-}
+Tool* ToolManager::getCurrentTool() const { return current_tool_; }
 
-void ToolManager::setCurrentTool(Tool* tool) {
-    current_tool_ = tool;
-}
+void ToolManager::setCurrentTool(Tool* tool) { current_tool_ = tool; }
 
 }  // namespace common
 }  // namespace aviz

@@ -29,10 +29,9 @@ namespace handlers {
 DEFINE_HANDLER_SIGNATURE(AddImuDataSignature, autonomy::common::async_grpc::Stream<proto::AddImuDataRequest>,
                          google::protobuf::Empty, "/cartographer.cloud.proto.MapBuilderService/AddImuData")
 
-class AddImuDataHandler : public AddSensorDataHandlerBase<AddImuDataSignature>
-{
-public:
-    void OnSensorData(const proto::AddImuDataRequest& request) override;
+class AddImuDataHandler : public AddSensorDataHandlerBase<AddImuDataSignature> {
+ public:
+  void OnSensorData(const proto::AddImuDataRequest& request) override;
 };
 
 }  // namespace handlers

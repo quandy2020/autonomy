@@ -33,35 +33,34 @@ namespace checker {
  * @class PositionGoalChecker
  * @brief Goal Checker plugin that only checks XY position, ignoring orientation
  */
-class PositionGoalChecker : public common::GoalChecker
-{
-public:
-    PositionGoalChecker();
-    ~PositionGoalChecker() override = default;
+class PositionGoalChecker : public common::GoalChecker {
+ public:
+  PositionGoalChecker();
+  ~PositionGoalChecker() override = default;
 
-    void Initialize(const std::string& plugin_name,
-                    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
+  void Initialize(const std::string& plugin_name,
+                  const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
 
-    void Reset() override;
+  void Reset() override;
 
-    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose, const commsgs::geometry_msgs::Pose& goal_pose,
-                       const commsgs::geometry_msgs::Twist& velocity) override;
+  bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose, const commsgs::geometry_msgs::Pose& goal_pose,
+                     const commsgs::geometry_msgs::Twist& velocity) override;
 
-    bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                       commsgs::geometry_msgs::Twist& vel_tolerance) override;
+  bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                     commsgs::geometry_msgs::Twist& vel_tolerance) override;
 
-    /**
-     * @brief Set the XY goal tolerance
-     * @param tolerance New tolerance value
-     */
-    void SetXYGoalTolerance(double tolerance);
+  /**
+   * @brief Set the XY goal tolerance
+   * @param tolerance New tolerance value
+   */
+  void SetXYGoalTolerance(double tolerance);
 
-protected:
-    double xy_goal_tolerance_;
-    double xy_goal_tolerance_sq_;
-    bool stateful_;
-    bool position_reached_;
-    std::string plugin_name_;
+ protected:
+  double xy_goal_tolerance_;
+  double xy_goal_tolerance_sq_;
+  bool stateful_;
+  bool position_reached_;
+  std::string plugin_name_;
 };
 
 }  // namespace checker

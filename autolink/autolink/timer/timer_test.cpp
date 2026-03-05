@@ -21,11 +21,10 @@
 #include <memory>
 #include <utility>
 
-#include "gtest/gtest.h"
-
-#include "autolink/common/util.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/util.hpp"
 #include "autolink/init.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace timer {

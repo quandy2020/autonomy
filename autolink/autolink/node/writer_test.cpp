@@ -16,12 +16,10 @@
 
 #include "autolink/node/writer.hpp"
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
+#include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace writer {

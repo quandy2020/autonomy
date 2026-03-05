@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 GoalPoseTool::GoalPoseTool() {
-    // TODO: Initialize tool
+  // TODO: Initialize tool
 }
 
 GoalPoseTool::~GoalPoseTool() {
-    // TODO: Cleanup
+  // TODO: Cleanup
 }
 
 }  // namespace tools

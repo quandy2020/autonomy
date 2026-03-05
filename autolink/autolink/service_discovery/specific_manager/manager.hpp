@@ -16,22 +16,20 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <functional>
 #include <mutex>
 #include <string>
 
+#include "autolink/base/signal.hpp"
+#include "autolink/proto/topology_change.pb.h"
+#include "autolink/service_discovery/communication/subscriber_listener.hpp"
 #include "fastrtps/Domain.h"
 #include "fastrtps/attributes/PublisherAttributes.h"
 #include "fastrtps/attributes/SubscriberAttributes.h"
 #include "fastrtps/participant/Participant.h"
 #include "fastrtps/publisher/Publisher.h"
 #include "fastrtps/subscriber/Subscriber.h"
-
-#include "autolink/base/signal.hpp"
-#include "autolink/proto/topology_change.pb.h"
-#include "autolink/service_discovery/communication/subscriber_listener.hpp"
 
 namespace autolink {
 namespace service_discovery {
@@ -95,8 +93,7 @@ class Manager {
    * @return true if Join topology successfully
    * @return false if Join topology failed
    */
-  bool Join(const RoleAttributes& attr, RoleType role,
-            bool need_publish = true);
+  bool Join(const RoleAttributes& attr, RoleType role, bool need_publish = true);
 
   /**
    * @brief Leave the topology
@@ -131,8 +128,7 @@ class Manager {
    * @param host_name is the process's host's name
    * @param process_id is the process' id
    */
-  virtual void OnTopoModuleLeave(const std::string& host_name,
-                                 int process_id) = 0;
+  virtual void OnTopoModuleLeave(const std::string& host_name, int process_id) = 0;
 
  protected:
   bool CreatePublisher(RtpsParticipant* participant);
@@ -142,8 +138,7 @@ class Manager {
   virtual void Dispose(const ChangeMsg& msg) = 0;
   virtual bool NeedPublish(const ChangeMsg& msg) const;
 
-  void Convert(const RoleAttributes& attr, RoleType role, OperateType opt,
-               ChangeMsg* msg);
+  void Convert(const RoleAttributes& attr, RoleType role, OperateType opt, ChangeMsg* msg);
 
   void Notify(const ChangeMsg& msg);
   bool Publish(const ChangeMsg& msg);
@@ -167,4 +162,3 @@ class Manager {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

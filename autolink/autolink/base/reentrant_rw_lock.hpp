@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <unistd.h>
 
 #include <atomic>
@@ -70,8 +69,7 @@ inline void ReentrantRWLock::ReadLock() {
   int32_t lock_num = lock_num_.load(std::memory_order_acquire);
   if (write_first_) {
     do {
-      while (lock_num < RW_LOCK_FREE ||
-             write_lock_wait_num_.load(std::memory_order_acquire) > 0) {
+      while (lock_num < RW_LOCK_FREE || write_lock_wait_num_.load(std::memory_order_acquire) > 0) {
         if (++retry_times == MAX_RETRY_TIMES) {
           // saving cpu
           std::this_thread::yield();
@@ -79,9 +77,8 @@ inline void ReentrantRWLock::ReadLock() {
         }
         lock_num = lock_num_.load(std::memory_order_acquire);
       }
-    } while (!lock_num_.compare_exchange_weak(lock_num, lock_num + 1,
-                                              std::memory_order_acq_rel,
-                                              std::memory_order_relaxed));
+    } while (
+        !lock_num_.compare_exchange_weak(lock_num, lock_num + 1, std::memory_order_acq_rel, std::memory_order_relaxed));
   } else {
     do {
       while (lock_num < RW_LOCK_FREE) {
@@ -92,9 +89,8 @@ inline void ReentrantRWLock::ReadLock() {
         }
         lock_num = lock_num_.load(std::memory_order_acquire);
       }
-    } while (!lock_num_.compare_exchange_weak(lock_num, lock_num + 1,
-                                              std::memory_order_acq_rel,
-                                              std::memory_order_relaxed));
+    } while (
+        !lock_num_.compare_exchange_weak(lock_num, lock_num + 1, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
 }
 
@@ -107,8 +103,7 @@ inline void ReentrantRWLock::WriteLock() {
   int32_t rw_lock_free = RW_LOCK_FREE;
   uint32_t retry_times = 0;
   write_lock_wait_num_.fetch_add(1);
-  while (!lock_num_.compare_exchange_weak(rw_lock_free, WRITE_EXCLUSIVE,
-                                          std::memory_order_acq_rel,
+  while (!lock_num_.compare_exchange_weak(rw_lock_free, WRITE_EXCLUSIVE, std::memory_order_acq_rel,
                                           std::memory_order_relaxed)) {
     // rw_lock_free will change after CAS fail, so init agin
     rw_lock_free = RW_LOCK_FREE;
@@ -137,4 +132,3 @@ inline void ReentrantRWLock::WriteUnlock() {
 
 }  // namespace base
 }  // namespace autolink
-

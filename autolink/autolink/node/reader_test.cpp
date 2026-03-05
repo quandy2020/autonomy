@@ -18,21 +18,17 @@
 
 #include <string>
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
+#include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace reader {
 
 using proto::Chatter;
 
-auto callback = [](const std::shared_ptr<proto::Chatter>& msg) {
-  AINFO << "msg size = " << msg->ByteSizeLong();
-};
+auto callback = [](const std::shared_ptr<proto::Chatter>& msg) { AINFO << "msg size = " << msg->ByteSizeLong(); };
 
 TEST(ReaderTest, test1) {
   proto::RoleAttributes role;

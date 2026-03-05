@@ -23,32 +23,24 @@ namespace plugins {
 namespace displays {
 
 GridCellsDisplay::GridCellsDisplay(const QString& name) : aviz::common::Display() {
-    setClassId("aviz/GridCells");
-    setName(name);
+  setClassId("aviz/GridCells");
+  setName(name);
 }
 
 GridCellsDisplay::~GridCellsDisplay() = default;
 
-void GridCellsDisplay::onInitialize() {
-    aviz::common::Display::onInitialize();
-}
+void GridCellsDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
 
-void GridCellsDisplay::onEnable() {
-    aviz::common::Display::onEnable();
-}
+void GridCellsDisplay::onEnable() { aviz::common::Display::onEnable(); }
 
-void GridCellsDisplay::onDisable() {
-    aviz::common::Display::onDisable();
-}
+void GridCellsDisplay::onDisable() { aviz::common::Display::onDisable(); }
 
 void GridCellsDisplay::update(float wall_dt, float ros_dt) {
-    (void)wall_dt;
-    (void)ros_dt;
+  (void)wall_dt;
+  (void)ros_dt;
 }
 
-void GridCellsDisplay::reset() {
-    aviz::common::Display::reset();
-}
+void GridCellsDisplay::reset() { aviz::common::Display::reset(); }
 
 }  // namespace displays
 }  // namespace plugins

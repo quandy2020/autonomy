@@ -19,15 +19,14 @@
 #include <string>
 #include <vector>
 
-#include "behaviortree_cpp/condition_node.h"
-#include "behaviortree_cpp/json_export.h"
-
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "autonomy/tasks/navigator/proto/msg.pb.h"
+#include "behaviortree_cpp/condition_node.h"
+#include "behaviortree_cpp/json_export.h"
 
 namespace autonomy {
 namespace tasks {
@@ -41,42 +40,41 @@ namespace condition {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class GoalUpdatedCondition : public BT::ConditionNode
-{
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::GoalUpdatedCondition
-     * @param condition_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    GoalUpdatedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class GoalUpdatedCondition : public BT::ConditionNode {
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::GoalUpdatedCondition
+   * @param condition_name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
+  GoalUpdatedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
-    GoalUpdatedCondition() = delete;
+  GoalUpdatedCondition() = delete;
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        // Register JSON definitions for the types used in the ports
-        BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
-        BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing node-specific ports
+   */
+  static BT::PortsList providedPorts() {
+    // Register JSON definitions for the types used in the ports
+    BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
+    BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
 
-        return {
-            BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of navigation goals"),
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
-        };
-    }
+    return {
+        BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of navigation goals"),
+        BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
+    };
+  }
 
-private:
-    commsgs::geometry_msgs::PoseStamped goal_;
-    commsgs::planning_msgs::Goals goals_;
+ private:
+  commsgs::geometry_msgs::PoseStamped goal_;
+  commsgs::planning_msgs::Goals goals_;
 };
 
 }  // namespace condition

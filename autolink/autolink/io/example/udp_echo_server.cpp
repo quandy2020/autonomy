@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -40,14 +41,12 @@ void Echo(const std::shared_ptr<Session>& session) {
 
   while (true) {
     nbytes = static_cast<int>(
-        session->RecvFrom(recv_buffer.data(), recv_buffer.size(), 0,
-                          (struct sockaddr*)&client_addr, &sock_len));
+        session->RecvFrom(recv_buffer.data(), recv_buffer.size(), 0, (struct sockaddr*)&client_addr, &sock_len));
     if (nbytes < 0) {
       std::cout << "recv from client failed." << std::endl;
       continue;
     }
-    session->SendTo(recv_buffer.data(), nbytes, 0,
-                    (const struct sockaddr*)&client_addr, sock_len);
+    session->SendTo(recv_buffer.data(), nbytes, 0, (const struct sockaddr*)&client_addr, sock_len);
   }
 }
 
@@ -69,10 +68,8 @@ int main(int argc, char* argv[]) {
 
         auto session = std::make_shared<Session>();
         session->Socket(AF_INET, SOCK_DGRAM, 0);
-        if (session->Bind((struct sockaddr*)&server_addr, sizeof(server_addr)) <
-            0) {
-          std::cout << "bind to port[" << server_port << "] failed."
-                    << std::endl;
+        if (session->Bind((struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+          std::cout << "bind to port[" << server_port << "] failed." << std::endl;
           return;
         }
         Echo(session);

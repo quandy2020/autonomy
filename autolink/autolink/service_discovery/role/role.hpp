@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -44,8 +43,7 @@ using RoleClientPtr = std::shared_ptr<RoleClient>;
 class RoleBase {
  public:
   RoleBase();
-  explicit RoleBase(const proto::RoleAttributes& attr,
-                    uint64_t timestamp_ns = 0);
+  explicit RoleBase(const proto::RoleAttributes& attr, uint64_t timestamp_ns = 0);
   virtual ~RoleBase() = default;
 
   virtual bool Match(const proto::RoleAttributes& target_attr) const;
@@ -65,8 +63,7 @@ class RoleBase {
 class RoleWriter : public RoleBase {
  public:
   RoleWriter() {}
-  explicit RoleWriter(const proto::RoleAttributes& attr,
-                      uint64_t timestamp_ns = 0);
+  explicit RoleWriter(const proto::RoleAttributes& attr, uint64_t timestamp_ns = 0);
   virtual ~RoleWriter() = default;
 
   bool Match(const proto::RoleAttributes& target_attr) const override;
@@ -75,8 +72,7 @@ class RoleWriter : public RoleBase {
 class RoleServer : public RoleBase {
  public:
   RoleServer() {}
-  explicit RoleServer(const proto::RoleAttributes& attr,
-                      uint64_t timestamp_ns = 0);
+  explicit RoleServer(const proto::RoleAttributes& attr, uint64_t timestamp_ns = 0);
   virtual ~RoleServer() = default;
 
   bool Match(const proto::RoleAttributes& target_attr) const override;
@@ -84,4 +80,3 @@ class RoleServer : public RoleBase {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

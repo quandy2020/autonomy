@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstddef>
 #include <functional>
 #include <list>
@@ -48,12 +47,9 @@ class BlockerBase {
 
 struct BlockerAttr {
   BlockerAttr() : capacity(10), channel_name("") {}
-  explicit BlockerAttr(const std::string& channel)
-      : capacity(10), channel_name(channel) {}
-  BlockerAttr(size_t cap, const std::string& channel)
-      : capacity(cap), channel_name(channel) {}
-  BlockerAttr(const BlockerAttr& attr)
-      : capacity(attr.capacity), channel_name(attr.channel_name) {}
+  explicit BlockerAttr(const std::string& channel) : capacity(10), channel_name(channel) {}
+  BlockerAttr(size_t cap, const std::string& channel) : capacity(cap), channel_name(channel) {}
+  BlockerAttr(const BlockerAttr& attr) : capacity(attr.capacity), channel_name(attr.channel_name) {}
 
   size_t capacity;
   std::string channel_name;
@@ -179,8 +175,7 @@ bool Blocker<T>::IsPublishedEmpty() const {
 }
 
 template <typename T>
-bool Blocker<T>::Subscribe(const std::string& callback_id,
-                           const Callback& callback) {
+bool Blocker<T>::Subscribe(const std::string& callback_id, const Callback& callback) {
   std::lock_guard<std::mutex> lock(cb_mutex_);
   if (published_callbacks_.find(callback_id) != published_callbacks_.end()) {
     return false;
@@ -282,4 +277,3 @@ void Blocker<T>::Notify(const MessagePtr& msg) {
 
 }  // namespace blocker
 }  // namespace autolink
-

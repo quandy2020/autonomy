@@ -25,9 +25,9 @@ namespace cartographer {
 namespace sensor {
 
 struct ImuData {
-    common::Time time;
-    Eigen::Vector3d linear_acceleration;
-    Eigen::Vector3d angular_velocity;
+  common::Time time;
+  Eigen::Vector3d linear_acceleration;
+  Eigen::Vector3d angular_velocity;
 };
 
 // Converts 'imu_data' to a proto::ImuData.

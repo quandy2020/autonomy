@@ -28,152 +28,149 @@ class ConditionalRemover;
 
 template <typename DispatcherType>
 class ConditionalRemover<DispatcherType,
-                         typename std::enable_if<std::is_base_of<TagEventDispatcher, DispatcherType>::value>::type>
-{
-private:
-    template <typename Callback, typename Condition>
-    struct ItemByCondition {
-        struct Data {
-            Condition shouldRemove;
-            DispatcherType& dispatcher;
-            typename DispatcherType::Event event;
-            Callback listener;
-            typename DispatcherType::Handle handle;
-        };
-
-        template <typename... Args>
-        auto operator()(Args&&... args) const ->
-            typename std::enable_if<internal_::CanInvoke<Condition, Args...>::value>::type {
-            if (data->shouldRemove(args...)) {
-                data->dispatcher.removeListener(data->event, data->handle);
-            }
-            data->listener(std::forward<Args>(args)...);
-        }
-
-        template <typename... Args>
-        auto operator()(Args&&... args) const ->
-            typename std::enable_if<!internal_::CanInvoke<Condition, Args...>::value>::type {
-            if (data->shouldRemove()) {
-                data->dispatcher.removeListener(data->event, data->handle);
-            }
-            data->listener(std::forward<Args>(args)...);
-        }
-
-        std::shared_ptr<Data> data;
+                         typename std::enable_if<std::is_base_of<TagEventDispatcher, DispatcherType>::value>::type> {
+ private:
+  template <typename Callback, typename Condition>
+  struct ItemByCondition {
+    struct Data {
+      Condition shouldRemove;
+      DispatcherType& dispatcher;
+      typename DispatcherType::Event event;
+      Callback listener;
+      typename DispatcherType::Handle handle;
     };
 
-public:
-    explicit ConditionalRemover(DispatcherType& dispatcher) : dispatcher(dispatcher) {}
-
-    template <typename Callback, typename Condition>
-    typename DispatcherType::Handle appendListener(const typename DispatcherType::Event& event,
-                                                   const Callback& listener, const Condition& condition) {
-        using Wrapper = ItemByCondition<Callback, Condition>;
-        auto data = std::make_shared<typename Wrapper::Data>(
-            typename Wrapper::Data{condition, dispatcher, event, listener, typename DispatcherType::Handle()});
-        data->handle = dispatcher.appendListener(event, Wrapper{data});
-        return data->handle;
+    template <typename... Args>
+    auto operator()(Args&&... args) const ->
+        typename std::enable_if<internal_::CanInvoke<Condition, Args...>::value>::type {
+      if (data->shouldRemove(args...)) {
+        data->dispatcher.removeListener(data->event, data->handle);
+      }
+      data->listener(std::forward<Args>(args)...);
     }
 
-    template <typename Callback, typename Condition>
-    typename DispatcherType::Handle prependListener(const typename DispatcherType::Event& event,
-                                                    const Callback& listener, const Condition& condition) {
-        using Wrapper = ItemByCondition<Callback, Condition>;
-        auto data = std::make_shared<typename Wrapper::Data>(
-            typename Wrapper::Data{condition, dispatcher, event, listener, typename DispatcherType::Handle()});
-        data->handle = dispatcher.prependListener(event, Wrapper{data});
-        return data->handle;
+    template <typename... Args>
+    auto operator()(Args&&... args) const ->
+        typename std::enable_if<!internal_::CanInvoke<Condition, Args...>::value>::type {
+      if (data->shouldRemove()) {
+        data->dispatcher.removeListener(data->event, data->handle);
+      }
+      data->listener(std::forward<Args>(args)...);
     }
 
-    template <typename Callback, typename Condition>
-    typename DispatcherType::Handle insertListener(const typename DispatcherType::Event& event,
-                                                   const Callback& listener,
-                                                   const typename DispatcherType::Handle& before,
-                                                   const Condition& condition) {
-        using Wrapper = ItemByCondition<Callback, Condition>;
-        auto data = std::make_shared<typename Wrapper::Data>(
-            typename Wrapper::Data{condition, dispatcher, event, listener, typename DispatcherType::Handle()});
-        data->handle = dispatcher.insertListener(event, Wrapper{data}, before);
-        return data->handle;
-    }
+    std::shared_ptr<Data> data;
+  };
 
-private:
-    DispatcherType& dispatcher;
+ public:
+  explicit ConditionalRemover(DispatcherType& dispatcher) : dispatcher(dispatcher) {}
+
+  template <typename Callback, typename Condition>
+  typename DispatcherType::Handle appendListener(const typename DispatcherType::Event& event, const Callback& listener,
+                                                 const Condition& condition) {
+    using Wrapper = ItemByCondition<Callback, Condition>;
+    auto data = std::make_shared<typename Wrapper::Data>(
+        typename Wrapper::Data{condition, dispatcher, event, listener, typename DispatcherType::Handle()});
+    data->handle = dispatcher.appendListener(event, Wrapper{data});
+    return data->handle;
+  }
+
+  template <typename Callback, typename Condition>
+  typename DispatcherType::Handle prependListener(const typename DispatcherType::Event& event, const Callback& listener,
+                                                  const Condition& condition) {
+    using Wrapper = ItemByCondition<Callback, Condition>;
+    auto data = std::make_shared<typename Wrapper::Data>(
+        typename Wrapper::Data{condition, dispatcher, event, listener, typename DispatcherType::Handle()});
+    data->handle = dispatcher.prependListener(event, Wrapper{data});
+    return data->handle;
+  }
+
+  template <typename Callback, typename Condition>
+  typename DispatcherType::Handle insertListener(const typename DispatcherType::Event& event, const Callback& listener,
+                                                 const typename DispatcherType::Handle& before,
+                                                 const Condition& condition) {
+    using Wrapper = ItemByCondition<Callback, Condition>;
+    auto data = std::make_shared<typename Wrapper::Data>(
+        typename Wrapper::Data{condition, dispatcher, event, listener, typename DispatcherType::Handle()});
+    data->handle = dispatcher.insertListener(event, Wrapper{data}, before);
+    return data->handle;
+  }
+
+ private:
+  DispatcherType& dispatcher;
 };
 
 template <typename CallbackListType>
 class ConditionalRemover<CallbackListType,
-                         typename std::enable_if<std::is_base_of<TagCallbackList, CallbackListType>::value>::type>
-{
-private:
-    template <typename Callback, typename Condition>
-    struct ItemByCondition {
-        struct Data {
-            Condition shouldRemove;
-            CallbackListType& callbackList;
-            Callback listener;
-            typename CallbackListType::Handle handle;
-        };
-
-        template <typename... Args>
-        auto operator()(Args&&... args) const ->
-            typename std::enable_if<internal_::CanInvoke<Condition, Args...>::value>::type const {
-            if (data->shouldRemove(args...)) {
-                data->callbackList.remove(data->handle);
-            }
-            data->listener(std::forward<Args>(args)...);
-        }
-
-        template <typename... Args>
-        auto operator()(Args&&... args) const ->
-            typename std::enable_if<!internal_::CanInvoke<Condition, Args...>::value>::type {
-            if (data->shouldRemove()) {
-                data->callbackList.remove(data->handle);
-            }
-            data->listener(std::forward<Args>(args)...);
-        }
-
-        std::shared_ptr<Data> data;
+                         typename std::enable_if<std::is_base_of<TagCallbackList, CallbackListType>::value>::type> {
+ private:
+  template <typename Callback, typename Condition>
+  struct ItemByCondition {
+    struct Data {
+      Condition shouldRemove;
+      CallbackListType& callbackList;
+      Callback listener;
+      typename CallbackListType::Handle handle;
     };
 
-public:
-    explicit ConditionalRemover(CallbackListType& callbackList) : callbackList(callbackList) {}
-
-    template <typename Callback, typename Condition>
-    typename CallbackListType::Handle append(const Callback& listener, const Condition& condition) {
-        using Wrapper = ItemByCondition<Callback, Condition>;
-        auto data = std::make_shared<typename Wrapper::Data>(
-            typename Wrapper::Data{condition, callbackList, listener, typename CallbackListType::Handle()});
-        data->handle = callbackList.append(Wrapper{data});
-        return data->handle;
+    template <typename... Args>
+    auto operator()(Args&&... args) const ->
+        typename std::enable_if<internal_::CanInvoke<Condition, Args...>::value>::type const {
+      if (data->shouldRemove(args...)) {
+        data->callbackList.remove(data->handle);
+      }
+      data->listener(std::forward<Args>(args)...);
     }
 
-    template <typename Callback, typename Condition>
-    typename CallbackListType::Handle prepend(const Callback& listener, const Condition& condition) {
-        using Wrapper = ItemByCondition<Callback, Condition>;
-        auto data = std::make_shared<typename Wrapper::Data>(
-            typename Wrapper::Data{condition, callbackList, listener, typename CallbackListType::Handle()});
-        data->handle = callbackList.prepend(Wrapper{data});
-        return data->handle;
+    template <typename... Args>
+    auto operator()(Args&&... args) const ->
+        typename std::enable_if<!internal_::CanInvoke<Condition, Args...>::value>::type {
+      if (data->shouldRemove()) {
+        data->callbackList.remove(data->handle);
+      }
+      data->listener(std::forward<Args>(args)...);
     }
 
-    template <typename Callback, typename Condition>
-    typename CallbackListType::Handle insert(const Callback& listener, const typename CallbackListType::Handle& before,
-                                             const Condition& condition) {
-        using Wrapper = ItemByCondition<Callback, Condition>;
-        auto data = std::make_shared<typename Wrapper::Data>(
-            typename Wrapper::Data{condition, callbackList, listener, typename CallbackListType::Handle()});
-        data->handle = callbackList.insert(Wrapper{data}, before);
-        return data->handle;
-    }
+    std::shared_ptr<Data> data;
+  };
 
-private:
-    CallbackListType& callbackList;
+ public:
+  explicit ConditionalRemover(CallbackListType& callbackList) : callbackList(callbackList) {}
+
+  template <typename Callback, typename Condition>
+  typename CallbackListType::Handle append(const Callback& listener, const Condition& condition) {
+    using Wrapper = ItemByCondition<Callback, Condition>;
+    auto data = std::make_shared<typename Wrapper::Data>(
+        typename Wrapper::Data{condition, callbackList, listener, typename CallbackListType::Handle()});
+    data->handle = callbackList.append(Wrapper{data});
+    return data->handle;
+  }
+
+  template <typename Callback, typename Condition>
+  typename CallbackListType::Handle prepend(const Callback& listener, const Condition& condition) {
+    using Wrapper = ItemByCondition<Callback, Condition>;
+    auto data = std::make_shared<typename Wrapper::Data>(
+        typename Wrapper::Data{condition, callbackList, listener, typename CallbackListType::Handle()});
+    data->handle = callbackList.prepend(Wrapper{data});
+    return data->handle;
+  }
+
+  template <typename Callback, typename Condition>
+  typename CallbackListType::Handle insert(const Callback& listener, const typename CallbackListType::Handle& before,
+                                           const Condition& condition) {
+    using Wrapper = ItemByCondition<Callback, Condition>;
+    auto data = std::make_shared<typename Wrapper::Data>(
+        typename Wrapper::Data{condition, callbackList, listener, typename CallbackListType::Handle()});
+    data->handle = callbackList.insert(Wrapper{data}, before);
+    return data->handle;
+  }
+
+ private:
+  CallbackListType& callbackList;
 };
 
 template <typename DispatcherType>
 ConditionalRemover<DispatcherType> conditionalRemover(DispatcherType& dispatcher) {
-    return ConditionalRemover<DispatcherType>(dispatcher);
+  return ConditionalRemover<DispatcherType>(dispatcher);
 }
 
 }  // namespace eventpp

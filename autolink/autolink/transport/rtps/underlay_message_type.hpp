@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/transport/rtps/underlay_message.hpp"
 #include "fastrtps/TopicDataType.h"
 
@@ -37,8 +36,7 @@ class UnderlayMessageType : public eprosima::fastrtps::TopicDataType {
   bool serialize(void* data, eprosima::fastrtps::rtps::SerializedPayload_t* payload);
   bool deserialize(eprosima::fastrtps::rtps::SerializedPayload_t* payload, void* data);
   std::function<uint32_t()> getSerializedSizeProvider(void* data);
-  bool getKey(void* data, eprosima::fastrtps::rtps::InstanceHandle_t* ihandle,
-              bool force_serialization) override;
+  bool getKey(void* data, eprosima::fastrtps::rtps::InstanceHandle_t* ihandle, bool force_serialization) override;
   void* createData();
   void deleteData(void* data);
   MD5 m_md5;
@@ -47,4 +45,3 @@ class UnderlayMessageType : public eprosima::fastrtps::TopicDataType {
 
 }  // namespace transport
 }  // namespace autolink
-

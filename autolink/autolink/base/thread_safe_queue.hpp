@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <condition_variable>
 #include <mutex>
 #include <queue>
@@ -86,4 +85,3 @@ class ThreadSafeQueue {
 
 }  // namespace base
 }  // namespace autolink
-

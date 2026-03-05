@@ -18,9 +18,8 @@
 
 #include <thread>
 
-#include "gtest/gtest.h"
-
 #include "autolink/base/reentrant_rw_lock.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace base {

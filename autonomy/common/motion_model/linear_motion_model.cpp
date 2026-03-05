@@ -24,21 +24,21 @@ using autonomy::common::types::float64_t;
 
 template <typename ScalarT>
 Eigen::Matrix<ScalarT, 3, 3> create_single_variable_block(const std::chrono::nanoseconds& dt) {
-    const auto t = std::chrono::duration<float64_t>{dt}.count();
-    const auto t2 = t * t;
-    return (Eigen::Matrix3d{} << 1.0, t, 0.5 * t2, 0.0, 1.0, t, 0.0, 0.0, 1.0).finished().cast<ScalarT>();
+  const auto t = std::chrono::duration<float64_t>{dt}.count();
+  const auto t2 = t * t;
+  return (Eigen::Matrix3d{} << 1.0, t, 0.5 * t2, 0.0, 1.0, t, 0.0, 0.0, 1.0).finished().cast<ScalarT>();
 }
 
 template <typename ScalarT, int size>
 Eigen::Matrix<ScalarT, size, size> create_jacobian(const std::chrono::nanoseconds& dt) {
-    // For now we just create a new matrix on every call. If this is too slow,
-    // we can create a new class that caches a certain number of results.
-    const Eigen::Matrix<ScalarT, 3, 3> single_variable_block{create_single_variable_block<ScalarT>(dt)};
-    Eigen::Matrix<ScalarT, size, size> m{Eigen::Matrix<ScalarT, size, size>::Zero()};
-    for (int i = 0; i < size; i += 3) {
-        m.template block<3, 3>(i, i) = single_variable_block;
-    }
-    return m;
+  // For now we just create a new matrix on every call. If this is too slow,
+  // we can create a new class that caches a certain number of results.
+  const Eigen::Matrix<ScalarT, 3, 3> single_variable_block{create_single_variable_block<ScalarT>(dt)};
+  Eigen::Matrix<ScalarT, size, size> m{Eigen::Matrix<ScalarT, size, size>::Zero()};
+  for (int i = 0; i < size; i += 3) {
+    m.template block<3, 3>(i, i) = single_variable_block;
+  }
+  return m;
 }
 
 }  // namespace
@@ -50,7 +50,7 @@ namespace motion_model {
 template <typename StateT>
 typename StateT::Matrix LinearMotionModel<StateT>::crtp_jacobian(const State&,
                                                                  const std::chrono::nanoseconds& dt) const {
-    return create_jacobian<typename State::Scalar, State::size()>(dt);
+  return create_jacobian<typename State::Scalar, State::size()>(dt);
 }
 
 /// \cond DO_NOT_DOCUMENT

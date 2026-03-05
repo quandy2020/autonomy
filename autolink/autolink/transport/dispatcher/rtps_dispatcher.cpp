@@ -14,8 +14,9 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "autolink/transport/common/endpoint.hpp"
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
+
+#include "autolink/transport/common/endpoint.hpp"
 
 namespace autolink {
 namespace transport {
@@ -54,26 +55,20 @@ void RtpsDispatcher::AddSubscriber(const RoleAttributes& self_attr) {
   Subscriber new_sub;
   eprosima::fastrtps::SubscriberAttributes sub_attr;
   auto& qos = self_attr.qos_profile();
-  RETURN_IF(!AttributesFiller::FillInSubAttr(self_attr.channel_name(), qos,
-                                             &sub_attr));
+  RETURN_IF(!AttributesFiller::FillInSubAttr(self_attr.channel_name(), qos, &sub_attr));
 
-  auto listener_adapter = [this](uint64_t channel_id,
-                                const std::shared_ptr<std::string>& msg_str,
-                                const MessageInfo& msg_info) {
-    this->OnMessage(channel_id, msg_str, msg_info);
-  };
+  auto listener_adapter = [this](uint64_t channel_id, const std::shared_ptr<std::string>& msg_str,
+                                 const MessageInfo& msg_info) { this->OnMessage(channel_id, msg_str, msg_info); };
 
   new_sub.sub_listener = std::make_shared<SubListener>(listener_adapter);
 
-  new_sub.sub = eprosima::fastrtps::Domain::createSubscriber(
-      participant_->fastrtps_participant(), sub_attr,
-      new_sub.sub_listener.get());
+  new_sub.sub = eprosima::fastrtps::Domain::createSubscriber(participant_->fastrtps_participant(), sub_attr,
+                                                             new_sub.sub_listener.get());
   RETURN_IF_NULL(new_sub.sub);
   subs_[channel_id] = new_sub;
 }
 
-void RtpsDispatcher::OnMessage(uint64_t channel_id,
-                               const std::shared_ptr<std::string>& msg_str,
+void RtpsDispatcher::OnMessage(uint64_t channel_id, const std::shared_ptr<std::string>& msg_str,
                                const MessageInfo& msg_info) {
   if (is_shutdown_.load()) {
     return;
@@ -81,8 +76,7 @@ void RtpsDispatcher::OnMessage(uint64_t channel_id,
 
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (msg_listeners_.Get(channel_id, &handler_base)) {
-    auto handler =
-        std::dynamic_pointer_cast<ListenerHandler<std::string>>(*handler_base);
+    auto handler = std::dynamic_pointer_cast<ListenerHandler<std::string>>(*handler_base);
     handler->Run(msg_str, msg_info);
   }
 }

@@ -32,93 +32,92 @@ namespace detail {
 /// 用于向不同类型的 Foxglove channel 发布消息
 template <typename ChType, typename ProtoMsgs>
 struct ChannelPublishTraits {
-    // 默认实现：不支持
-    static bool Publish(ChType* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
-                        const std::string& topic_name) {
-        (void)channel;
-        (void)message;
-        (void)timestamp_ns;
-        (void)topic_name;
-        return false;
-    }
+  // 默认实现：不支持
+  static bool Publish(ChType* channel, const ProtoMsgs& message, uint64_t timestamp_ns, const std::string& topic_name) {
+    (void)channel;
+    (void)message;
+    (void)timestamp_ns;
+    (void)topic_name;
+    return false;
+  }
 };
 
 /// SceneUpdateChannel 特化：发布 3D 场景更新
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::SceneUpdateChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::SceneUpdateChannel* channel, const ProtoMsgs& message,
-                        uint64_t timestamp_ns, const std::string& topic_name) {
-        (void)topic_name;
-        if (channel) {
-            auto scene_update = ToFoxglove(message);
-            channel->log(scene_update, timestamp_ns);
-            return true;
-        }
-        return false;
+  static bool Publish(::foxglove::schemas::SceneUpdateChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
+                      const std::string& topic_name) {
+    (void)topic_name;
+    if (channel) {
+      auto scene_update = ToFoxglove(message);
+      channel->log(scene_update, timestamp_ns);
+      return true;
     }
+    return false;
+  }
 };
 
 /// GridChannel 特化：发布 2D 栅格地图
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::GridChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::GridChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
-                        const std::string& topic_name) {
-        (void)topic_name;
-        if (channel) {
-            auto grid = ToFoxglove(message);
-            channel->log(grid, timestamp_ns);
-            return true;
-        }
-        return false;
+  static bool Publish(::foxglove::schemas::GridChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
+                      const std::string& topic_name) {
+    (void)topic_name;
+    if (channel) {
+      auto grid = ToFoxglove(message);
+      channel->log(grid, timestamp_ns);
+      return true;
     }
+    return false;
+  }
 };
 
 /// RawImageChannel 特化：发布图像数据
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::RawImageChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::RawImageChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
-                        const std::string& topic_name) {
-        (void)topic_name;
-        if (channel) {
-            auto raw_image = ToFoxglove(message);
-            channel->log(raw_image, timestamp_ns);
-            return true;
-        }
-        return false;
+  static bool Publish(::foxglove::schemas::RawImageChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
+                      const std::string& topic_name) {
+    (void)topic_name;
+    if (channel) {
+      auto raw_image = ToFoxglove(message);
+      channel->log(raw_image, timestamp_ns);
+      return true;
     }
+    return false;
+  }
 };
 
 /// PointCloudChannel 特化：发布点云数据
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::schemas::PointCloudChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::schemas::PointCloudChannel* channel, const ProtoMsgs& message,
-                        uint64_t timestamp_ns, const std::string& topic_name) {
-        (void)topic_name;
-        if (channel) {
-            auto pointcloud = ToFoxglove(message);
-            channel->log(pointcloud, timestamp_ns);
-            return true;
-        }
-        return false;
+  static bool Publish(::foxglove::schemas::PointCloudChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
+                      const std::string& topic_name) {
+    (void)topic_name;
+    if (channel) {
+      auto pointcloud = ToFoxglove(message);
+      channel->log(pointcloud, timestamp_ns);
+      return true;
     }
+    return false;
+  }
 };
 
 /// RawChannel 特化：发布原始 protobuf 消息
 template <typename ProtoMsgs>
 struct ChannelPublishTraits<::foxglove::RawChannel, ProtoMsgs> {
-    static bool Publish(::foxglove::RawChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
-                        const std::string& topic_name) {
-        std::string serialized = message.SerializeAsString();
-        if (serialized.empty()) {
-            AERROR << "Failed to serialize message for channel: " << topic_name;
-            return false;
-        }
-        if (channel) {
-            channel->log(reinterpret_cast<const std::byte*>(serialized.data()), serialized.size(), timestamp_ns);
-            return true;
-        }
-        return false;
+  static bool Publish(::foxglove::RawChannel* channel, const ProtoMsgs& message, uint64_t timestamp_ns,
+                      const std::string& topic_name) {
+    std::string serialized = message.SerializeAsString();
+    if (serialized.empty()) {
+      AERROR << "Failed to serialize message for channel: " << topic_name;
+      return false;
     }
+    if (channel) {
+      channel->log(reinterpret_cast<const std::byte*>(serialized.data()), serialized.size(), timestamp_ns);
+      return true;
+    }
+    return false;
+  }
 };
 
 }  // namespace detail

@@ -26,7 +26,6 @@
 
 #pragma once
 
-
 #include <mutex>
 #include <string>
 
@@ -118,4 +117,3 @@ class SharedLibrary {
 
 }  // namespace class_loader
 }  // namespace autolink
-

@@ -37,11 +37,11 @@ using Time = uint64_t;
  * first derivatives.
  */
 enum class InterpolationMethods {
-    INTER_NEAREST,            // nearest neighbor interpolation
-    INTER_LINEAR,             // bilinear interpolation
-    INTER_CUBIC_CONVOLUTION,  // piecewise bicubic interpolation using
-                              // convolution algorithm
-    INTER_CUBIC               // standard bicubic interpolation
+  INTER_NEAREST,            // nearest neighbor interpolation
+  INTER_LINEAR,             // bilinear interpolation
+  INTER_CUBIC_CONVOLUTION,  // piecewise bicubic interpolation using
+                            // convolution algorithm
+  INTER_CUBIC               // standard bicubic interpolation
 };
 
 }  // namespace grid_map

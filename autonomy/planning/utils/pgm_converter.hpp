@@ -27,47 +27,46 @@ namespace planning {
 namespace utils {
 
 // Utility for converting PGM maps to Costmap2D and rendering paths.
-class PgmConverter
-{
-public:
-    struct LoadParameters {
-        double resolution{0.05};       // meters/pixel
-        double origin_x{0.0};          // meters
-        double origin_y{0.0};          // meters
-        double origin_yaw{0.0};        // radians
-        double free_thresh{0.196};     // [0, 1]
-        double occupied_thresh{0.65};  // [0, 1]
-        bool negate{false};
-    };
+class PgmConverter {
+ public:
+  struct LoadParameters {
+    double resolution{0.05};       // meters/pixel
+    double origin_x{0.0};          // meters
+    double origin_y{0.0};          // meters
+    double origin_yaw{0.0};        // radians
+    double free_thresh{0.196};     // [0, 1]
+    double occupied_thresh{0.65};  // [0, 1]
+    bool negate{false};
+  };
 
-    // Loads PGM file and converts to Costmap2D. Returns nullptr on failure.
-    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(const std::string& pgm_file_path,
-                                                             const LoadParameters& params);
+  // Loads PGM file and converts to Costmap2D. Returns nullptr on failure.
+  static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(const std::string& pgm_file_path,
+                                                           const LoadParameters& params);
 
-    // Overload with default parameters.
-    static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(const std::string& pgm_file_path);
+  // Overload with default parameters.
+  static map::costmap_2d::Costmap2D::SharedPtr loadFromPgm(const std::string& pgm_file_path);
 
-    // Loads map from YAML metadata file. Returns nullptr on failure.
-    static map::costmap_2d::Costmap2D::SharedPtr loadFromYaml(const std::string& yaml_file_path);
+  // Loads map from YAML metadata file. Returns nullptr on failure.
+  static map::costmap_2d::Costmap2D::SharedPtr loadFromYaml(const std::string& yaml_file_path);
 
-    struct RenderParameters {
-        std::string output_format{"png"};
-        double path_line_width{2.0};
-        double start_marker_size{5.0};
-        double goal_marker_size{5.0};
-        bool draw_start_marker{true};
-        bool draw_goal_marker{true};
-        bool draw_path_points{false};
-    };
+  struct RenderParameters {
+    std::string output_format{"png"};
+    double path_line_width{2.0};
+    double start_marker_size{5.0};
+    double goal_marker_size{5.0};
+    bool draw_start_marker{true};
+    bool draw_goal_marker{true};
+    bool draw_path_points{false};
+  };
 
-    // Renders costmap with path overlay and saves as image. Returns false on
-    // failure.
-    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap, const commsgs::planning_msgs::Path& path,
-                                const std::string& output_file_path, const RenderParameters& params);
+  // Renders costmap with path overlay and saves as image. Returns false on
+  // failure.
+  static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap, const commsgs::planning_msgs::Path& path,
+                              const std::string& output_file_path, const RenderParameters& params);
 
-    // Overload with default parameters.
-    static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap, const commsgs::planning_msgs::Path& path,
-                                const std::string& output_file_path);
+  // Overload with default parameters.
+  static bool savePathToImage(const map::costmap_2d::Costmap2D& costmap, const commsgs::planning_msgs::Path& path,
+                              const std::string& output_file_path);
 };
 
 }  // namespace utils

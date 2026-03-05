@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <vector>
 
@@ -41,22 +40,16 @@ class WarehouseBase {
 
   virtual bool Search(uint64_t key) = 0;
   virtual bool Search(uint64_t key, RolePtr* first_matched_role) = 0;
-  virtual bool Search(uint64_t key,
-                      proto::RoleAttributes* first_matched_role_attr) = 0;
+  virtual bool Search(uint64_t key, proto::RoleAttributes* first_matched_role_attr) = 0;
   virtual bool Search(uint64_t key, std::vector<RolePtr>* matched_roles) = 0;
-  virtual bool Search(
-      uint64_t key, std::vector<proto::RoleAttributes>* matched_roles_attr) = 0;
+  virtual bool Search(uint64_t key, std::vector<proto::RoleAttributes>* matched_roles_attr) = 0;
 
   virtual bool Search(const proto::RoleAttributes& target_attr) = 0;
+  virtual bool Search(const proto::RoleAttributes& target_attr, RolePtr* first_matched) = 0;
+  virtual bool Search(const proto::RoleAttributes& target_attr, proto::RoleAttributes* first_matched_role_attr) = 0;
+  virtual bool Search(const proto::RoleAttributes& target_attr, std::vector<RolePtr>* matched_roles) = 0;
   virtual bool Search(const proto::RoleAttributes& target_attr,
-                      RolePtr* first_matched) = 0;
-  virtual bool Search(const proto::RoleAttributes& target_attr,
-                      proto::RoleAttributes* first_matched_role_attr) = 0;
-  virtual bool Search(const proto::RoleAttributes& target_attr,
-                      std::vector<RolePtr>* matched_roles) = 0;
-  virtual bool Search(
-      const proto::RoleAttributes& target_attr,
-      std::vector<proto::RoleAttributes>* matched_roles_attr) = 0;
+                      std::vector<proto::RoleAttributes>* matched_roles_attr) = 0;
 
   virtual void GetAllRoles(std::vector<RolePtr>* roles) = 0;
   virtual void GetAllRoles(std::vector<proto::RoleAttributes>* roles_attr) = 0;
@@ -64,4 +57,3 @@ class WarehouseBase {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

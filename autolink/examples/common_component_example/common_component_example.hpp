@@ -15,10 +15,9 @@
  *****************************************************************************/
 #include <memory>
 
-#include "examples.pb.h"
-
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/component/component.hpp"
+#include "examples.pb.h"
 
 using autolink::Component;
 using autolink::ComponentBase;
@@ -27,7 +26,6 @@ using autolink::examples::Driver;
 class CommonComponentSample : public Component<Driver, Driver> {
  public:
   bool Init() override;
-  bool Proc(const std::shared_ptr<Driver>& msg0,
-            const std::shared_ptr<Driver>& msg1) override;
+  bool Proc(const std::shared_ptr<Driver>& msg0, const std::shared_ptr<Driver>& msg1) override;
 };
 AUTOLINK_REGISTER_COMPONENT(CommonComponentSample)

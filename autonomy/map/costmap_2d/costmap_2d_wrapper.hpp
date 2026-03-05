@@ -69,285 +69,258 @@ namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-class Costmap2DWrapper : public common::MapInterface
-{
-public:
-    using TfBuffer = autonomy::transform::Buffer;
-    using ClassLoader = ::autolink::class_loader::ClassLoader;
-    using ClassLoaderManager = ::autolink::class_loader::ClassLoaderManager;
+class Costmap2DWrapper : public common::MapInterface {
+ public:
+  using TfBuffer = autonomy::transform::Buffer;
+  using ClassLoader = ::autolink::class_loader::ClassLoader;
+  using ClassLoaderManager = ::autolink::class_loader::ClassLoaderManager;
 
-    /**
-     * Define Costmap2DWrapper::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Costmap2DWrapper)
+  /**
+   * Define Costmap2DWrapper::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(Costmap2DWrapper)
 
-    /**
-     * @brief A constructor for nautonomy::map::costmap_2d::Costmap2DWrapper
-     * @param options Additional options to control creation of the node.
-     * @param name The name of the costmap wrapper
-     * @param node Optional autolink Node pointer for creating
-     * publishers/subscribers in layers
-     */
-    Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name = "",
-                     autolink::Node* node = nullptr);
+  /**
+   * @brief A constructor for nautonomy::map::costmap_2d::Costmap2DWrapper
+   * @param options Additional options to control creation of the node.
+   * @param name The name of the costmap wrapper
+   * @param node Optional autolink Node pointer for creating
+   * publishers/subscribers in layers
+   */
+  Costmap2DWrapper(const proto::Costmap2DOptions& options, const std::string& name = "",
+                   autolink::Node* node = nullptr);
 
-    /**
-     * @brief A Destructor for autonomy::map::costmap_2d::Costmap2DWrapper
-     */
-    ~Costmap2DWrapper();
+  /**
+   * @brief A Destructor for autonomy::map::costmap_2d::Costmap2DWrapper
+   */
+  ~Costmap2DWrapper();
 
-    /**
-     * @brief Common initialization for constructors
-     */
-    void init();
+  /**
+   * @brief Common initialization for constructors
+   */
+  void init();
 
-    /**
-     * @brief  Subscribes to sensor topics if necessary and starts costmap
-     * updates, can be called to restart the costmap after calls to either
-     * stop() or pause()
-     */
-    void Start() override;
+  /**
+   * @brief  Subscribes to sensor topics if necessary and starts costmap
+   * updates, can be called to restart the costmap after calls to either
+   * stop() or pause()
+   */
+  void Start() override;
 
-    /**
-     * @brief  Stops costmap updates and unsubscribes from sensor topics
-     */
-    void Stop() override;
+  /**
+   * @brief  Stops costmap updates and unsubscribes from sensor topics
+   */
+  void Stop() override;
 
-    /**
-     * @brief  Stops the costmap from updating, but sensor data still comes in
-     * over the wire
-     */
-    void Pause() override;
+  /**
+   * @brief  Stops the costmap from updating, but sensor data still comes in
+   * over the wire
+   */
+  void Pause() override;
 
-    /**
-     * @brief  Resumes costmap updates
-     */
-    void Resume() override;
+  /**
+   * @brief  Resumes costmap updates
+   */
+  void Resume() override;
 
-    /**
-     * @brief Update the map with the layered costmap / plugins
-     */
-    void updateMap();
+  /**
+   * @brief Update the map with the layered costmap / plugins
+   */
+  void updateMap();
 
-    /**
-     * @brief Reset each individual layer
-     */
-    void resetLayers();
+  /**
+   * @brief Reset each individual layer
+   */
+  void resetLayers();
 
-    void setRobotFootprint(const std::vector<commsgs::geometry_msgs::Point>& points);
+  void setRobotFootprint(const std::vector<commsgs::geometry_msgs::Point>& points);
 
-    void setRobotFootprintPolygon(const commsgs::geometry_msgs::Polygon::SharedPtr footprint);
+  void setRobotFootprintPolygon(const commsgs::geometry_msgs::Polygon::SharedPtr footprint);
 
-    void getOrientedFootprint(std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
+  void getOrientedFootprint(std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
 
-    /**
-     * @brief Same as getLayeredCostmap()->isCurrent().
-     */
-    bool isCurrent() {
-        return layered_costmap_->isCurrent();
-    }
+  /**
+   * @brief Same as getLayeredCostmap()->isCurrent().
+   */
+  bool isCurrent() { return layered_costmap_->isCurrent(); }
 
-    /**
-     * @brief Get the pose of the robot in the global frame of the costmap
-     * @param global_pose Will be set to the pose of the robot in the global
-     * frame of the costmap
-     * @return True if the pose was set successfully, false otherwise
-     */
-    bool getRobotPose(commsgs::geometry_msgs::PoseStamped& global_pose);
+  /**
+   * @brief Get the pose of the robot in the global frame of the costmap
+   * @param global_pose Will be set to the pose of the robot in the global
+   * frame of the costmap
+   * @return True if the pose was set successfully, false otherwise
+   */
+  bool getRobotPose(commsgs::geometry_msgs::PoseStamped& global_pose);
 
-    /**
-     * @brief Transform the input_pose in the global frame of the costmap
-     * @param input_pose pose to be transformed
-     * @param transformed_pose pose transformed
-     * @return True if the pose was transformed successfully, false otherwise
-     */
-    bool transformPoseToGlobalFrame(const commsgs::geometry_msgs::PoseStamped& input_pose,
-                                    commsgs::geometry_msgs::PoseStamped& transformed_pose);
+  /**
+   * @brief Transform the input_pose in the global frame of the costmap
+   * @param input_pose pose to be transformed
+   * @param transformed_pose pose transformed
+   * @return True if the pose was transformed successfully, false otherwise
+   */
+  bool transformPoseToGlobalFrame(const commsgs::geometry_msgs::PoseStamped& input_pose,
+                                  commsgs::geometry_msgs::PoseStamped& transformed_pose);
 
-    /**
-     * @brief Returns costmap name
-     */
-    std::string getName() const {
-        return name_;
-    }
+  /**
+   * @brief Returns costmap name
+   */
+  std::string getName() const { return name_; }
 
-    /**
-     * @brief Returns the delay in transform (tf) data that is tolerable in
-     * seconds
-     */
-    double getTransformTolerance() const {
-        return transform_tolerance_;
-    }
+  /**
+   * @brief Returns the delay in transform (tf) data that is tolerable in
+   * seconds
+   */
+  double getTransformTolerance() const { return transform_tolerance_; }
 
-    /**
-     * @brief Return a pointer to the "master" costmap which receives updates
-     * from all the layers.
-     *
-     * Same as calling getLayeredCostmap()->getCostmap().
-     */
-    Costmap2D* getCostmap() {
-        return layered_costmap_->getCostmap();
-    }
+  /**
+   * @brief Return a pointer to the "master" costmap which receives updates
+   * from all the layers.
+   *
+   * Same as calling getLayeredCostmap()->getCostmap().
+   */
+  Costmap2D* getCostmap() { return layered_costmap_->getCostmap(); }
 
-    /**
-     * @brief Check if the costmap has been updated at least once and is ready
-     * for use.
-     * @return True if the costmap is ready, false otherwise.
-     */
-    bool isReady() const {
-        return ready_;
-    }
+  /**
+   * @brief Check if the costmap has been updated at least once and is ready
+   * for use.
+   * @return True if the costmap is ready, false otherwise.
+   */
+  bool isReady() const { return ready_; }
 
-    /**
-     * @brief  Returns the global frame of the costmap
-     * @return The global frame of the costmap
-     */
-    std::string getGlobalFrameID() {
-        return global_frame_;
-    }
+  /**
+   * @brief  Returns the global frame of the costmap
+   * @return The global frame of the costmap
+   */
+  std::string getGlobalFrameID() { return global_frame_; }
 
-    /**
-     * @brief  Returns the local frame of the costmap
-     * @return The local frame of the costmap
-     */
-    std::string getBaseFrameID() {
-        return robot_base_frame_;
-    }
+  /**
+   * @brief  Returns the local frame of the costmap
+   * @return The local frame of the costmap
+   */
+  std::string getBaseFrameID() { return robot_base_frame_; }
 
-    /**
-     * @brief Get the layered costmap object used in the node
-     */
-    LayeredCostmap* getLayeredCostmap() {
-        return layered_costmap_.get();
-    }
+  /**
+   * @brief Get the layered costmap object used in the node
+   */
+  LayeredCostmap* getLayeredCostmap() { return layered_costmap_.get(); }
 
-    /**
-     * @brief Returns the current padded footprint as a
-     * geometry_msgs::msg::Polygon.
-     */
-    commsgs::geometry_msgs::Polygon getRobotFootprintPolygon() {
-        return toPolygon(padded_footprint_);
-    }
+  /**
+   * @brief Returns the current padded footprint as a
+   * geometry_msgs::msg::Polygon.
+   */
+  commsgs::geometry_msgs::Polygon getRobotFootprintPolygon() { return toPolygon(padded_footprint_); }
 
-    /**
-     * @brief Return the current footprint of the robot as a vector of points.
-     *
-     * This version of the footprint is padded by the footprint_padding_
-     * distance, set in the rosparam "footprint_padding".
-     *
-     * The footprint initially comes from the rosparam "footprint" but
-     * can be overwritten by dynamic reconfigure or by messages received
-     * on the "footprint" topic. */
-    std::vector<commsgs::geometry_msgs::Point> getRobotFootprint() {
-        return padded_footprint_;
-    }
+  /**
+   * @brief Return the current footprint of the robot as a vector of points.
+   *
+   * This version of the footprint is padded by the footprint_padding_
+   * distance, set in the rosparam "footprint_padding".
+   *
+   * The footprint initially comes from the rosparam "footprint" but
+   * can be overwritten by dynamic reconfigure or by messages received
+   * on the "footprint" topic. */
+  std::vector<commsgs::geometry_msgs::Point> getRobotFootprint() { return padded_footprint_; }
 
-    /** @brief Return the current unpadded footprint of the robot as a vector of
-     * points.
-     *
-     * This is the raw version of the footprint without padding.
-     *
-     * The footprint initially comes from the rosparam "footprint" but
-     * can be overwritten by dynamic reconfigure or by messages received
-     * on the "footprint" topic. */
-    std::vector<commsgs::geometry_msgs::Point> getUnpaddedRobotFootprint() {
-        return unpadded_footprint_;
-    }
+  /** @brief Return the current unpadded footprint of the robot as a vector of
+   * points.
+   *
+   * This is the raw version of the footprint without padding.
+   *
+   * The footprint initially comes from the rosparam "footprint" but
+   * can be overwritten by dynamic reconfigure or by messages received
+   * on the "footprint" topic. */
+  std::vector<commsgs::geometry_msgs::Point> getUnpaddedRobotFootprint() { return unpadded_footprint_; }
 
-    /**
-     * @brief Load the map metadata into the costmap
-     * @param map_meta_data The map metadata to load
-     * @return Whether the map was loaded successfully
-     */
-    bool loadMap(const std::string& filename);
+  /**
+   * @brief Load the map metadata into the costmap
+   * @param map_meta_data The map metadata to load
+   * @return Whether the map was loaded successfully
+   */
+  bool loadMap(const std::string& filename);
 
-    /**
-     * @brief Publish the map to the topic
-     */
-    void publishMap();
+  /**
+   * @brief Publish the map to the topic
+   */
+  void publishMap();
 
-    /**
-     * @brief  Get the costmap's use_radius_ parameter, corresponding to
-     * whether the footprint for the robot is a circle with radius robot_radius_
-     * or an arbitrarily defined footprint in footprint_.
-     * @return  use_radius_
-     */
-    bool getUseRadius() {
-        return use_radius_;
-    }
+  /**
+   * @brief  Get the costmap's use_radius_ parameter, corresponding to
+   * whether the footprint for the robot is a circle with radius robot_radius_
+   * or an arbitrarily defined footprint in footprint_.
+   * @return  use_radius_
+   */
+  bool getUseRadius() { return use_radius_; }
 
-    /**
-     * @brief  Get the costmap's robot_radius_ parameter, corresponding to
-     * raidus of the robot footprint when it is defined as as circle
-     * (i.e. when use_radius_ == true).
-     * @return  robot_radius_
-     */
-    double getRobotRadius() {
-        return robot_radius_;
-    }
+  /**
+   * @brief  Get the costmap's robot_radius_ parameter, corresponding to
+   * raidus of the robot footprint when it is defined as as circle
+   * (i.e. when use_radius_ == true).
+   * @return  robot_radius_
+   */
+  double getRobotRadius() { return robot_radius_; }
 
-protected:
-    std::unique_ptr<LayeredCostmap> layered_costmap_{nullptr};
-    std::string name_;
+ protected:
+  std::unique_ptr<LayeredCostmap> layered_costmap_{nullptr};
+  std::string name_;
 
-    /**
-     * @brief Function on timer for costmap update
-     */
-    void mapUpdateLoop(double frequency);
+  /**
+   * @brief Function on timer for costmap update
+   */
+  void mapUpdateLoop(double frequency);
 
-    bool map_update_thread_shutdown_{false};
-    std::atomic<bool> stop_updates_{false};
-    std::atomic<bool> initialized_{false};
-    std::atomic<bool> stopped_{true};
-    std::mutex _dynamic_parameter_mutex;
-    std::unique_ptr<std::thread> map_update_thread_;  ///< @brief A thread for updating the map
-    commsgs::builtin_interfaces::Time last_publish_{0, 0};
-    // builtin_interfaces::builtin_interfaces::Duration publish_cycle_{1, 0};
-    // ClassLoaderManager for loading Layer plugins
-    ClassLoaderManager plugin_loader_manager_;
+  bool map_update_thread_shutdown_{false};
+  std::atomic<bool> stop_updates_{false};
+  std::atomic<bool> initialized_{false};
+  std::atomic<bool> stopped_{true};
+  std::mutex _dynamic_parameter_mutex;
+  std::unique_ptr<std::thread> map_update_thread_;  ///< @brief A thread for updating the map
+  commsgs::builtin_interfaces::Time last_publish_{0, 0};
+  // builtin_interfaces::builtin_interfaces::Duration publish_cycle_{1, 0};
+  // ClassLoaderManager for loading Layer plugins
+  ClassLoaderManager plugin_loader_manager_;
 
-    bool always_send_full_costmap_{false};
-    std::string footprint_;
-    float footprint_padding_{0};
-    std::string global_frame_;  ///< The global frame for the costmap
-    int map_height_meters_{0};
-    double map_publish_frequency_{0};
-    double map_update_frequency_{0};
-    int map_width_meters_{0};
-    double origin_x_{0};
-    double origin_y_{0};
-    std::vector<std::string> default_plugins_;
-    std::vector<std::string> default_types_;
-    std::vector<std::string> plugin_names_;
-    std::vector<std::string> plugin_types_;
-    std::vector<std::string> filter_names_;
-    std::vector<std::string> filter_types_;
-    double resolution_{0};
-    std::string robot_base_frame_;  ///< The frame_id of the robot base
-    double robot_radius_;
-    bool rolling_window_{false};  ///< Whether to use a rolling window version of the costmap
-    bool track_unknown_space_{false};
-    double transform_tolerance_{0};        ///< The timeout before transform errors
-    double initial_transform_timeout_{0};  ///< The timeout before activation of the node errors
-    double map_vis_z_{0};                  ///< The height of map, allows to avoid flickering at -0.008
+  bool always_send_full_costmap_{false};
+  std::string footprint_;
+  float footprint_padding_{0};
+  std::string global_frame_;  ///< The global frame for the costmap
+  int map_height_meters_{0};
+  double map_publish_frequency_{0};
+  double map_update_frequency_{0};
+  int map_width_meters_{0};
+  double origin_x_{0};
+  double origin_y_{0};
+  std::vector<std::string> default_plugins_;
+  std::vector<std::string> default_types_;
+  std::vector<std::string> plugin_names_;
+  std::vector<std::string> plugin_types_;
+  std::vector<std::string> filter_names_;
+  std::vector<std::string> filter_types_;
+  double resolution_{0};
+  std::string robot_base_frame_;  ///< The frame_id of the robot base
+  double robot_radius_;
+  bool rolling_window_{false};  ///< Whether to use a rolling window version of the costmap
+  bool track_unknown_space_{false};
+  double transform_tolerance_{0};        ///< The timeout before transform errors
+  double initial_transform_timeout_{0};  ///< The timeout before activation of the node errors
+  double map_vis_z_{0};                  ///< The height of map, allows to avoid flickering at -0.008
 
-    bool is_lifecycle_follower_{true};  ///< whether is a child-LifecycleNode or an independent node
-    bool ready_{false};                 ///< whether the costmap has been updated at least once
+  bool is_lifecycle_follower_{true};  ///< whether is a child-LifecycleNode or an independent node
+  bool ready_{false};                 ///< whether the costmap has been updated at least once
 
-    // Map data
-    commsgs::map_msgs::OccupancyGrid occupancy_grid_;
+  // Map data
+  commsgs::map_msgs::OccupancyGrid occupancy_grid_;
 
-    // Derived parameters
-    bool use_radius_{false};
-    bool map_loaded_{false};  // 标记地图是否已加载，避免重复加载
-    std::vector<commsgs::geometry_msgs::Point> unpadded_footprint_;
-    std::vector<commsgs::geometry_msgs::Point> padded_footprint_;
+  // Derived parameters
+  bool use_radius_{false};
+  bool map_loaded_{false};  // 标记地图是否已加载，避免重复加载
+  std::vector<commsgs::geometry_msgs::Point> unpadded_footprint_;
+  std::vector<commsgs::geometry_msgs::Point> padded_footprint_;
 
-    // options for costmap 2D
-    proto::Costmap2DOptions options_;
+  // options for costmap 2D
+  proto::Costmap2DOptions options_;
 
-    // autolink Node pointer for layers and filters
-    autolink::Node* node_{nullptr};
+  // autolink Node pointer for layers and filters
+  autolink::Node* node_{nullptr};
 };
 
 }  // namespace costmap_2d

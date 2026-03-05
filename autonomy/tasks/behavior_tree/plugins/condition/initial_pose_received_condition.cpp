@@ -28,9 +28,9 @@ InitialPoseReceived::InitialPoseReceived(const std::string& name, const BT::Node
     : BT::ConditionNode(name, config) {}
 
 BT::NodeStatus InitialPoseReceived::tick() {
-    bool initPoseReceived = false;
-    GetInputOrBlackboard("initial_pose_received", initPoseReceived);
-    return initPoseReceived ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
+  bool initPoseReceived = false;
+  GetInputOrBlackboard("initial_pose_received", initPoseReceived);
+  return initPoseReceived ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
 }
 
 }  // namespace condition
@@ -41,6 +41,6 @@ BT::NodeStatus InitialPoseReceived::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::InitialPoseReceived>(
-        "InitialPoseReceived");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::InitialPoseReceived>(
+      "InitialPoseReceived");
 }

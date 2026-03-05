@@ -46,8 +46,7 @@ CRoutine::CRoutine(const std::function<void()> &func) : func_(func) {
     uint32_t routine_num = common::GlobalData::Instance()->ComponentNums();
     auto &global_conf = common::GlobalData::Instance()->Config();
     if (global_conf.scheduler_conf().routine_num() != 0) {
-      routine_num =
-          std::max(routine_num, global_conf.scheduler_conf().routine_num());
+      routine_num = std::max(routine_num, global_conf.scheduler_conf().routine_num());
     }
     context_pool.reset(new base::CCObjectPool<RoutineContext>(routine_num));
   });

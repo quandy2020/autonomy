@@ -27,41 +27,40 @@ namespace aviz {
 namespace common {
 
 /// Wrapper around QMouseEvent and QWheelEvent with viewport-specific information.
-class ViewportMouseEvent
-{
-public:
-    ViewportMouseEvent();
-    ViewportMouseEvent(QMouseEvent* event, SceneViewer* viewer);
-    ViewportMouseEvent(QWheelEvent* event, SceneViewer* viewer);
+class ViewportMouseEvent {
+ public:
+  ViewportMouseEvent();
+  ViewportMouseEvent(QMouseEvent* event, SceneViewer* viewer);
+  ViewportMouseEvent(QWheelEvent* event, SceneViewer* viewer);
 
-    /// The x coordinate of the mouse event, in viewport coordinates.
-    int x;
-    /// The y coordinate of the mouse event, in viewport coordinates.
-    int y;
+  /// The x coordinate of the mouse event, in viewport coordinates.
+  int x;
+  /// The y coordinate of the mouse event, in viewport coordinates.
+  int y;
 
-    /// The type of the mouse event (QEvent::MouseButtonPress, etc.).
-    QEvent::Type type;
+  /// The type of the mouse event (QEvent::MouseButtonPress, etc.).
+  QEvent::Type type;
 
-    /// The mouse buttons that were pressed during this event.
-    Qt::MouseButtons buttons;
+  /// The mouse buttons that were pressed during this event.
+  Qt::MouseButtons buttons;
 
-    /// The keyboard modifiers that were active during this event.
-    Qt::KeyboardModifiers modifiers;
+  /// The keyboard modifiers that were active during this event.
+  Qt::KeyboardModifiers modifiers;
 
-    /// The amount the wheel was rotated (for wheel events).
-    int wheel_delta;
+  /// The amount the wheel was rotated (for wheel events).
+  int wheel_delta;
 
-    /// The orientation of the wheel (for wheel events).
-    Qt::Orientation wheel_orientation;
+  /// The orientation of the wheel (for wheel events).
+  Qt::Orientation wheel_orientation;
 
-    /// The SceneViewer this event occurred in.
-    SceneViewer* viewer;
+  /// The SceneViewer this event occurred in.
+  SceneViewer* viewer;
 
-    /// The 3D point in space corresponding to the mouse position (if available).
-    QVector3D point3d;
+  /// The 3D point in space corresponding to the mouse position (if available).
+  QVector3D point3d;
 
-    /// Whether the 3D point is valid.
-    bool point3d_valid;
+  /// Whether the 3D point is valid.
+  bool point3d_valid;
 };
 
 }  // namespace common

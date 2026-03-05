@@ -26,14 +26,13 @@ namespace bridge {
 namespace plugins {
 namespace grpc {
 
-class GrpcBridgeContextInterface : public common::async_grpc::ExecutionContext
-{
-public:
-    GrpcBridgeContextInterface() = default;
-    ~GrpcBridgeContextInterface() = default;
+class GrpcBridgeContextInterface : public common::async_grpc::ExecutionContext {
+ public:
+  GrpcBridgeContextInterface() = default;
+  ~GrpcBridgeContextInterface() = default;
 
-    GrpcBridgeContextInterface(const GrpcBridgeContextInterface&) = delete;
-    GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) = delete;
+  GrpcBridgeContextInterface(const GrpcBridgeContextInterface&) = delete;
+  GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) = delete;
 };
 
 }  // namespace grpc

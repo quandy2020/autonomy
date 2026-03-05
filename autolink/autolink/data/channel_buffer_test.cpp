@@ -19,9 +19,8 @@
 #include <memory>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/util.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace data {

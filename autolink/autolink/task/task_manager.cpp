@@ -26,9 +26,7 @@ namespace autolink {
 using autolink::common::GlobalData;
 static const char* const task_prefix = "/internal/task";
 
-TaskManager::TaskManager()
-    : task_queue_size_(1000),
-      task_queue_(new base::BoundedQueue<std::function<void()>>()) {
+TaskManager::TaskManager() : task_queue_size_(1000), task_queue_(new base::BoundedQueue<std::function<void()>>()) {
   if (!task_queue_->Init(task_queue_size_, new base::BlockWaitStrategy())) {
     AERROR << "Task queue init failed";
     throw std::runtime_error("Task queue init failed");

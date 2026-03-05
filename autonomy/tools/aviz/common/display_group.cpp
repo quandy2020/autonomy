@@ -20,85 +20,83 @@ namespace aviz {
 namespace common {
 
 DisplayGroup::DisplayGroup(const std::string& name) : aviz::common::Display() {
-    setName(QString::fromStdString(name));
-    setClassId("DisplayGroup");
+  setName(QString::fromStdString(name));
+  setClassId("DisplayGroup");
 }
 
-DisplayGroup::~DisplayGroup() {
-    clear();
-}
+DisplayGroup::~DisplayGroup() { clear(); }
 
 void DisplayGroup::addDisplay(std::unique_ptr<aviz::common::Display> display) {
-    if (!display) {
-        return;
-    }
+  if (!display) {
+    return;
+  }
 
-    // Initialize display with our context if we have one
-    if (context_) {
-        display->initialize(context_);
-    }
+  // Initialize display with our context if we have one
+  if (context_) {
+    display->initialize(context_);
+  }
 
-    displays_.push_back(std::move(display));
+  displays_.push_back(std::move(display));
 }
 
 std::unique_ptr<aviz::common::Display> DisplayGroup::removeDisplay(const std::string& name) {
-    for (auto it = displays_.begin(); it != displays_.end(); ++it) {
-        if ((*it)->getName().toStdString() == name) {
-            auto display = std::move(*it);
-            displays_.erase(it);
-            return display;
-        }
+  for (auto it = displays_.begin(); it != displays_.end(); ++it) {
+    if ((*it)->getName().toStdString() == name) {
+      auto display = std::move(*it);
+      displays_.erase(it);
+      return display;
     }
-    return nullptr;
+  }
+  return nullptr;
 }
 
 aviz::common::Display* DisplayGroup::getDisplay(const std::string& name) const {
-    for (const auto& display : displays_) {
-        if (display->getName().toStdString() == name) {
-            return display.get();
-        }
+  for (const auto& display : displays_) {
+    if (display->getName().toStdString() == name) {
+      return display.get();
     }
-    return nullptr;
+  }
+  return nullptr;
 }
 
 void DisplayGroup::clear() {
-    for (auto& display : displays_) {
-        if (display->isEnabled()) {
-            display->setEnabled(false);
-        }
+  for (auto& display : displays_) {
+    if (display->isEnabled()) {
+      display->setEnabled(false);
     }
-    displays_.clear();
+  }
+  displays_.clear();
 }
 
 void DisplayGroup::onEnable() {
-    for (auto& display : displays_) {
-        if (!display->isEnabled()) {
-            display->setEnabled(true);
-        }
+  for (auto& display : displays_) {
+    if (!display->isEnabled()) {
+      display->setEnabled(true);
     }
+  }
 }
 
 void DisplayGroup::onDisable() {
-    for (auto& display : displays_) {
-        if (display->isEnabled()) {
-            display->setEnabled(false);
-        }
+  for (auto& display : displays_) {
+    if (display->isEnabled()) {
+      display->setEnabled(false);
     }
+  }
 }
 
 void DisplayGroup::update(float wall_dt, float ros_dt) {
-    (void)ros_dt;  // Unused for now
-    for (auto& display : displays_) {
-        if (display->isEnabled()) {
-            display->update(wall_dt, ros_dt);
-        }
+  (void)ros_dt;  // Unused for now
+  for (auto& display : displays_) {
+    if (display->isEnabled()) {
+      display->update(wall_dt, ros_dt);
     }
+  }
 }
 
 void DisplayGroup::reset() {
-    for (auto& display : displays_) {
-        display->reset();
-    }
+  for (auto& display : displays_) {
+    display->reset();
+  }
 }
 
 }  // namespace common

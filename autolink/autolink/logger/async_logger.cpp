@@ -27,8 +27,7 @@
 namespace autolink {
 namespace logger {
 
-static const std::unordered_map<char, int> log_level_map = {
-    {'F', 3}, {'E', 2}, {'W', 1}, {'I', 0}};
+static const std::unordered_map<char, int> log_level_map = {{'F', 3}, {'E', 2}, {'W', 1}, {'I', 0}};
 
 AsyncLogger::AsyncLogger(google::base::Logger* wrapped) : wrapped_(wrapped) {
   active_buf_.reset(new std::deque<Msg>());
@@ -56,8 +55,7 @@ void AsyncLogger::Stop() {
   // std::cout << "Async Logger Stop!" << std::endl;
 }
 
-void AsyncLogger::Write(bool force_flush, time_t timestamp, const char* message,
-                        size_t message_len) {
+void AsyncLogger::Write(bool force_flush, time_t timestamp, const char* message, size_t message_len) {
   if (autolink_unlikely(state_.load(std::memory_order_acquire) != RUNNING)) {
     // std::cout << "Async Logger not running!" << std::endl;
     return;
@@ -67,8 +65,7 @@ void AsyncLogger::Write(bool force_flush, time_t timestamp, const char* message,
     while (flag_.test_and_set(std::memory_order_acquire)) {
       cpu_relax();
     }
-    active_buf_->emplace_back(timestamp, std::move(msg_str),
-                              log_level_map.at(message[0]));
+    active_buf_->emplace_back(timestamp, std::move(msg_str), log_level_map.at(message[0]));
     flag_.clear(std::memory_order_release);
   }
 
@@ -110,14 +107,12 @@ void AsyncLogger::FlushBuffer(const std::unique_ptr<std::deque<Msg>>& buffer) {
       if (!FLAGS_log_dir.empty()) {
         file_name = FLAGS_log_dir + "/" + file_name;
       }
-      module_logger_map_[module_name].reset(
-          new LogFileObject(google::INFO, file_name.c_str()));
+      module_logger_map_[module_name].reset(new LogFileObject(google::INFO, file_name.c_str()));
       module_logger_map_[module_name]->SetSymlinkBasename(module_name.c_str());
     }
     const bool force_flush = msg.level > 0;
     module_logger_map_.find(module_name)
-        ->second->Write(force_flush, msg.ts, msg.message.data(),
-                        static_cast<int>(msg.message.size()));
+        ->second->Write(force_flush, msg.ts, msg.message.data(), static_cast<int>(msg.message.size()));
     buffer->pop_front();
   }
   Flush();

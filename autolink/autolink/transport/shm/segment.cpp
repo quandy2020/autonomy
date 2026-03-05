@@ -36,8 +36,7 @@ Segment::Segment(uint64_t channel_id)
       block_buf_addrs_(),
       arena_block_buf_addrs_() {}
 
-bool Segment::AcquireBlockToWrite(std::size_t msg_size,
-                                  WritableBlock* writable_block) {
+bool Segment::AcquireBlockToWrite(std::size_t msg_size, WritableBlock* writable_block) {
   RETURN_VAL_IF_NULL(writable_block, false);
   if (!init_ && !OpenOrCreate()) {
     AERROR << "create shm failed, can't write now.";
@@ -50,9 +49,8 @@ bool Segment::AcquireBlockToWrite(std::size_t msg_size,
   }
 
   if (msg_size > conf_.ceiling_msg_size()) {
-    AINFO << "msg_size: " << msg_size
-          << " larger than current shm_buffer_size: "
-          << conf_.ceiling_msg_size() << " , need recreate.";
+    AINFO << "msg_size: " << msg_size << " larger than current shm_buffer_size: " << conf_.ceiling_msg_size()
+          << " , need recreate.";
     result = Recreate(msg_size);
   }
 
@@ -68,8 +66,7 @@ bool Segment::AcquireBlockToWrite(std::size_t msg_size,
   return true;
 }
 
-bool Segment::AcquireArenaBlockToWrite(std::size_t msg_size,
-                                  WritableBlock* writable_block) {
+bool Segment::AcquireArenaBlockToWrite(std::size_t msg_size, WritableBlock* writable_block) {
   RETURN_VAL_IF_NULL(writable_block, false);
   if (!init_ && !OpenOrCreate()) {
     AERROR << "create shm failed, can't write now.";

@@ -14,15 +14,16 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include "autolink/data/fusion/all_latest.hpp"
+
 #include <memory>
 #include <string>
 #include <vector>
-#include "gtest/gtest.h"
 
-#include "autolink/common/log.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/data/data_visitor.hpp"
-#include "autolink/data/fusion/all_latest.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace data {
@@ -69,8 +70,7 @@ TEST(AllLatestTest, two_channels) {
 
   // m0 overflow
   for (int i = 0; i < 100; i++) {
-    cache0->Fill(std::make_shared<RawMessage>(std::string("0-") +
-                                              std::to_string(2 + i + 1)));
+    cache0->Fill(std::make_shared<RawMessage>(std::string("0-") + std::to_string(2 + i + 1)));
   }
   // EXPECT_TRUE(fusion.buffer_fusion_->Buffer()->Full());
   EXPECT_TRUE(fusion.Fusion(&index, m0, m1));
@@ -90,8 +90,7 @@ TEST(AllLatestTest, three_channels) {
   std::shared_ptr<RawMessage> m1;
   std::shared_ptr<RawMessage> m2;
   uint64_t index = 0;
-  fusion::AllLatest<RawMessage, RawMessage, RawMessage> fusion(buffer0, buffer1,
-                                                               buffer2);
+  fusion::AllLatest<RawMessage, RawMessage, RawMessage> fusion(buffer0, buffer1, buffer2);
 
   // normal fusion
   EXPECT_FALSE(fusion.Fusion(&index, m0, m1, m2));
@@ -124,8 +123,7 @@ TEST(AllLatestTest, four_channels) {
   std::shared_ptr<RawMessage> m2;
   std::shared_ptr<RawMessage> m3;
   uint64_t index = 0;
-  fusion::AllLatest<RawMessage, RawMessage, RawMessage, RawMessage> fusion(
-      buffer0, buffer1, buffer2, buffer3);
+  fusion::AllLatest<RawMessage, RawMessage, RawMessage, RawMessage> fusion(buffer0, buffer1, buffer2, buffer3);
 
   // normal fusion
   EXPECT_FALSE(fusion.Fusion(&index, m0, m1, m2, m3));

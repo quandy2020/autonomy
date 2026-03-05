@@ -43,12 +43,12 @@ void ModuleArgument::DisplayUsage() {
            "mode of plugins, use disable_plugin_autoload to ingore autoload\n"
         << "    -c, --cpuprofile: enable gperftools cpu profile\n"
         << "    -o, --profile_filename=filename: the filename to dump the "
-            "profile to, default value is ${process_group}_cpu.prof. Only work "
-            "with -c option\n"
+           "profile to, default value is ${process_group}_cpu.prof. Only work "
+           "with -c option\n"
         << "    -H, --heapprofile: enable gperftools heap profile\n"
         << "    -O, --heapprofile_filename=filename: the filename to dump the "
-            "profile to, default value is ${process_group}_mem.prof. Only work "
-            "with -c option\n"
+           "profile to, default value is ${process_group}_mem.prof. Only work "
+           "with -c option\n"
         << "Example:\n"
         << "    " << binary_name_ << " -h\n"
         << "    " << binary_name_ << " -d dag_conf_file1 -d dag_conf_file2 "
@@ -78,8 +78,8 @@ void ModuleArgument::ParseArgument(const int argc, char* const argv[]) {
 
   GlobalData::Instance()->SetProcessGroup(process_group_);
   GlobalData::Instance()->SetSchedName(sched_name_);
-  AINFO << "binary_name_ is " << binary_name_ << ", process_group_ is "
-        << process_group_ << ", has " << dag_conf_list_.size() << " dag conf";
+  AINFO << "binary_name_ is " << binary_name_ << ", process_group_ is " << process_group_ << ", has "
+        << dag_conf_list_.size() << " dag conf";
   for (std::string& dag : dag_conf_list_) {
     AINFO << "dag_conf: " << dag;
   }
@@ -95,8 +95,7 @@ void ModuleArgument::GetOptions(const int argc, char* const argv[]) {
       {"process_name", required_argument, nullptr, 'p'},
       {"sched_name", required_argument, nullptr, 's'},
       {"plugin", required_argument, nullptr, ARGS_OPT_CODE_PLUGIN},
-      {"disable_plugin_autoload", no_argument, nullptr,
-       ARGS_OPT_CODE_DISABLE_PLUGIN_AUTOLOAD},
+      {"disable_plugin_autoload", no_argument, nullptr, ARGS_OPT_CODE_DISABLE_PLUGIN_AUTOLOAD},
       {"cpuprofile", no_argument, nullptr, 'c'},
       {"profile_filename", required_argument, nullptr, 'o'},
       {"heapprofile", no_argument, nullptr, 'H'},
@@ -117,8 +116,7 @@ void ModuleArgument::GetOptions(const int argc, char* const argv[]) {
   }
 
   do {
-    int opt =
-        getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
+    int opt = getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
     if (opt == -1) {
       break;
     }
@@ -143,7 +141,7 @@ void ModuleArgument::GetOptions(const int argc, char* const argv[]) {
         plugin_description_list_.emplace_back(std::string(optarg));
         break;
       case ARGS_OPT_CODE_DISABLE_PLUGIN_AUTOLOAD:
-          disable_plugin_autoload_ = true;
+        disable_plugin_autoload_ = true;
         break;
       case 'c':
 #ifndef BASE_PROFILER_H_

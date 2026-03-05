@@ -18,9 +18,8 @@
 
 #include <memory>
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/log.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace service_discovery {
@@ -43,14 +42,12 @@ TEST_F(TopologyTest, add_and_remove_change_listener) {
   attr.set_process_id(0);
 
   // add change listener
-  auto conn =
-      topology_->AddChangeListener([&attr](const ChangeMsg& change_msg) {
-        if (change_msg.change_type() == ChangeType::CHANGE_PARTICIPANT &&
-            change_msg.operate_type() == OperateType::OPT_JOIN &&
-            change_msg.role_type() == RoleType::ROLE_PARTICIPANT) {
-          attr.CopyFrom(change_msg.role_attr());
-        }
-      });
+  auto conn = topology_->AddChangeListener([&attr](const ChangeMsg& change_msg) {
+    if (change_msg.change_type() == ChangeType::CHANGE_PARTICIPANT &&
+        change_msg.operate_type() == OperateType::OPT_JOIN && change_msg.role_type() == RoleType::ROLE_PARTICIPANT) {
+      attr.CopyFrom(change_msg.role_attr());
+    }
+  });
 
   // remove change listener
   topology_->RemoveChangeListener(conn);

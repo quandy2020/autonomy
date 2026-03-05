@@ -26,9 +26,9 @@ namespace condition {
 
 WouldARouteRecoveryHelp::WouldARouteRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : AreErrorCodesPresent(condition_name, conf) {
-    error_codes_to_check_ = {static_cast<uint16_t>(proto::COMPUTE_AND_TRACK_ROUTE_ERROR_UNKNOWN),
-                             static_cast<uint16_t>(proto::COMPUTE_AND_TRACK_ROUTE_ERROR_NO_VALID_ROUTE),
-                             static_cast<uint16_t>(proto::COMPUTE_AND_TRACK_ROUTE_ERROR_TIMEOUT)};
+  error_codes_to_check_ = {static_cast<uint16_t>(proto::COMPUTE_AND_TRACK_ROUTE_ERROR_UNKNOWN),
+                           static_cast<uint16_t>(proto::COMPUTE_AND_TRACK_ROUTE_ERROR_NO_VALID_ROUTE),
+                           static_cast<uint16_t>(proto::COMPUTE_AND_TRACK_ROUTE_ERROR_TIMEOUT)};
 }
 
 }  // namespace condition
@@ -39,6 +39,6 @@ WouldARouteRecoveryHelp::WouldARouteRecoveryHelp(const std::string& condition_na
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::WouldARouteRecoveryHelp>(
-        "WouldARouteRecoveryHelp");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::WouldARouteRecoveryHelp>(
+      "WouldARouteRecoveryHelp");
 }

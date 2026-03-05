@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <sys/epoll.h>
 
 #include <cstdint>
@@ -46,4 +45,3 @@ struct PollCtrlParam {
 
 }  // namespace io
 }  // namespace autolink
-

@@ -28,47 +28,47 @@ IsBatteryLowCondition::IsBatteryLowCondition(const std::string& condition_name, 
       min_battery_(0.0),
       is_voltage_(false),
       is_battery_low_(false) {
-    initialize();
+  initialize();
 }
 
 void IsBatteryLowCondition::initialize() {
-    getInput("min_battery", min_battery_);
-    getInput("is_voltage", is_voltage_);
+  getInput("min_battery", min_battery_);
+  getInput("is_voltage", is_voltage_);
 
-    createROSInterfaces();
+  createROSInterfaces();
 }
 
 void IsBatteryLowCondition::createROSInterfaces() {
-    std::string battery_topic_new;
-    getInput("battery_topic", battery_topic_new);
+  std::string battery_topic_new;
+  getInput("battery_topic", battery_topic_new);
 
-    // Only create a new subscriber if the topic has changed or subscriber is
-    // empty
-    if (battery_topic_new != battery_topic_ || !battery_sub_) {
-        battery_topic_ = battery_topic_new;
-        node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-        battery_sub_ = node_->CreateReader<commsgs::sensor_msgs::BatteryState>(
-            battery_topic_, std::bind(&IsBatteryLowCondition::batteryCallback, this, std::placeholders::_1));
-    }
+  // Only create a new subscriber if the topic has changed or subscriber is
+  // empty
+  if (battery_topic_new != battery_topic_ || !battery_sub_) {
+    battery_topic_ = battery_topic_new;
+    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+    battery_sub_ = node_->CreateReader<commsgs::sensor_msgs::BatteryState>(
+        battery_topic_, std::bind(&IsBatteryLowCondition::batteryCallback, this, std::placeholders::_1));
+  }
 }
 
 BT::NodeStatus IsBatteryLowCondition::tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
-    }
+  if (!BT::isStatusActive(status())) {
+    initialize();
+  }
 
-    if (is_battery_low_) {
-        return BT::NodeStatus::SUCCESS;
-    }
-    return BT::NodeStatus::FAILURE;
+  if (is_battery_low_) {
+    return BT::NodeStatus::SUCCESS;
+  }
+  return BT::NodeStatus::FAILURE;
 }
 
 void IsBatteryLowCondition::batteryCallback(const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg) {
-    if (is_voltage_) {
-        is_battery_low_ = msg->voltage() <= min_battery_;
-    } else {
-        is_battery_low_ = msg->percentage() <= min_battery_;
-    }
+  if (is_voltage_) {
+    is_battery_low_ = msg->voltage() <= min_battery_;
+  } else {
+    is_battery_low_ = msg->percentage() <= min_battery_;
+  }
 }
 
 }  // namespace condition
@@ -79,5 +79,5 @@ void IsBatteryLowCondition::batteryCallback(const std::shared_ptr<commsgs::senso
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsBatteryLowCondition>("IsBatteryLow");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsBatteryLowCondition>("IsBatteryLow");
 }

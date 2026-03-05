@@ -32,57 +32,56 @@ namespace signal_filters {
 enum class FilterType : int32_t { None = 0, LowPassFilter };  // enum class FilterType
 
 /// Factory class to create some kind of low pass filter
-class SIGNAL_FILTERS_PUBLIC FilterFactory
-{
-public:
-    /// Create a low pass filter
-    /// \param[in] type The name of the filter type, expects one
-    /// of "none, "low_pass_filter"
-    /// \param[in] cutoff_frequency The filter starts to have
-    /// < 1.0 frequency response starting
-    ///                             around here
-    /// \tparam T The floating point type of the filter
-    /// \tparam ClockT The clock type of the filter. Use default
-    /// parameter if you want to provide
-    ///                durations between points yourself
-    template <typename T, typename ClockT = DummyClock>
-    static std::unique_ptr<FilterBase<T, ClockT>> create(const std::string& type, T cutoff_frequency) {
-        FilterType type_enum = FilterType::LowPassFilter;
-        auto type_clean = type;
-        (void)std::transform(type_clean.begin(), type_clean.end(), type_clean.begin(),
-                             [](auto c) { return std::tolower(c); });
-        if ("low_pass_filter" == type_clean) {
-            type_enum = FilterType::LowPassFilter;
-        } else if (type_clean.empty() || ("none" == type_clean)) {
-            type_enum = FilterType::None;
-        } else {
-            std::string err{"Unknown filter type: "};
-            err += type;
-            throw std::domain_error{err};
-        }
-        return create<T, ClockT>(type_enum, cutoff_frequency);
-    }  // namespace signal_filters
-
-    /// Create a low pass filter
-    /// \param[in] type The type of the filter type
-    /// \param[in] cutoff_frequency The filter starts to have < 1.0 frequency
-    /// response starting
-    ///                             around here
-    /// \tparam T The floating point type of the filter
-    /// \tparam ClockT The clock type of the filter. Use default parameter if
-    /// you want to provide
-    ///                durations between points yourself
-    template <typename T, typename ClockT = DummyClock>
-    static std::unique_ptr<FilterBase<T, ClockT>> create(FilterType type, T cutoff_frequency) {
-        switch (type) {
-            case FilterType::None:
-                return nullptr;
-            case FilterType::LowPassFilter:
-                return std::make_unique<LowPassFilter<T, ClockT>>(cutoff_frequency);
-            default:
-                throw std::domain_error{"Unknown filter type"};
-        }
+class SIGNAL_FILTERS_PUBLIC FilterFactory {
+ public:
+  /// Create a low pass filter
+  /// \param[in] type The name of the filter type, expects one
+  /// of "none, "low_pass_filter"
+  /// \param[in] cutoff_frequency The filter starts to have
+  /// < 1.0 frequency response starting
+  ///                             around here
+  /// \tparam T The floating point type of the filter
+  /// \tparam ClockT The clock type of the filter. Use default
+  /// parameter if you want to provide
+  ///                durations between points yourself
+  template <typename T, typename ClockT = DummyClock>
+  static std::unique_ptr<FilterBase<T, ClockT>> create(const std::string& type, T cutoff_frequency) {
+    FilterType type_enum = FilterType::LowPassFilter;
+    auto type_clean = type;
+    (void)std::transform(type_clean.begin(), type_clean.end(), type_clean.begin(),
+                         [](auto c) { return std::tolower(c); });
+    if ("low_pass_filter" == type_clean) {
+      type_enum = FilterType::LowPassFilter;
+    } else if (type_clean.empty() || ("none" == type_clean)) {
+      type_enum = FilterType::None;
+    } else {
+      std::string err{"Unknown filter type: "};
+      err += type;
+      throw std::domain_error{err};
     }
+    return create<T, ClockT>(type_enum, cutoff_frequency);
+  }  // namespace signal_filters
+
+  /// Create a low pass filter
+  /// \param[in] type The type of the filter type
+  /// \param[in] cutoff_frequency The filter starts to have < 1.0 frequency
+  /// response starting
+  ///                             around here
+  /// \tparam T The floating point type of the filter
+  /// \tparam ClockT The clock type of the filter. Use default parameter if
+  /// you want to provide
+  ///                durations between points yourself
+  template <typename T, typename ClockT = DummyClock>
+  static std::unique_ptr<FilterBase<T, ClockT>> create(FilterType type, T cutoff_frequency) {
+    switch (type) {
+      case FilterType::None:
+        return nullptr;
+      case FilterType::LowPassFilter:
+        return std::make_unique<LowPassFilter<T, ClockT>>(cutoff_frequency);
+      default:
+        throw std::domain_error{"Unknown filter type"};
+    }
+  }
 };  // namespace common
 
 }  // namespace signal_filters

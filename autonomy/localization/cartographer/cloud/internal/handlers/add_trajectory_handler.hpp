@@ -27,10 +27,9 @@ namespace handlers {
 DEFINE_HANDLER_SIGNATURE(AddTrajectorySignature, proto::AddTrajectoryRequest, proto::AddTrajectoryResponse,
                          "/cartographer.cloud.proto.MapBuilderService/AddTrajectory")
 
-class AddTrajectoryHandler : public autonomy::common::async_grpc::RpcHandler<AddTrajectorySignature>
-{
-public:
-    void OnRequest(const proto::AddTrajectoryRequest& request) override;
+class AddTrajectoryHandler : public autonomy::common::async_grpc::RpcHandler<AddTrajectorySignature> {
+ public:
+  void OnRequest(const proto::AddTrajectoryRequest& request) override;
 };
 
 }  // namespace handlers

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cassert>
 #include <memory>
 #include <string>
@@ -27,8 +26,7 @@ namespace autolink {
 namespace message {
 
 // Template specialization for RawMessage
-inline bool SerializeToArray(const PyMessageWrap& message, void* data,
-                             int size) {
+inline bool SerializeToArray(const PyMessageWrap& message, void* data, int size) {
   return message.SerializeToArray(data, size);
 }
 
@@ -40,4 +38,3 @@ inline int ByteSize(const PyMessageWrap& message) { return message.ByteSize(); }
 
 }  // namespace message
 }  // namespace autolink
-

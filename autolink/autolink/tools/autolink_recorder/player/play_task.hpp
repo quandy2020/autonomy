@@ -26,35 +26,27 @@
 namespace autolink {
 namespace record {
 
-class PlayTask
-{
-public:
-    using MessagePtr = std::shared_ptr<message::RawMessage>;
-    using WriterPtr = std::shared_ptr<Writer<message::RawMessage>>;
+class PlayTask {
+ public:
+  using MessagePtr = std::shared_ptr<message::RawMessage>;
+  using WriterPtr = std::shared_ptr<Writer<message::RawMessage>>;
 
-    PlayTask(const MessagePtr& msg, const WriterPtr& writer,
-             uint64_t msg_real_time_ns, uint64_t msg_play_time_ns);
-    virtual ~PlayTask() {}
+  PlayTask(const MessagePtr& msg, const WriterPtr& writer, uint64_t msg_real_time_ns, uint64_t msg_play_time_ns);
+  virtual ~PlayTask() {}
 
-    void Play();
+  void Play();
 
-    uint64_t msg_real_time_ns() const {
-        return msg_real_time_ns_;
-    }
-    uint64_t msg_play_time_ns() const {
-        return msg_play_time_ns_;
-    }
-    static uint64_t played_msg_num() {
-        return played_msg_num_.load();
-    }
+  uint64_t msg_real_time_ns() const { return msg_real_time_ns_; }
+  uint64_t msg_play_time_ns() const { return msg_play_time_ns_; }
+  static uint64_t played_msg_num() { return played_msg_num_.load(); }
 
-private:
-    MessagePtr msg_;
-    WriterPtr writer_;
-    uint64_t msg_real_time_ns_;
-    uint64_t msg_play_time_ns_;
+ private:
+  MessagePtr msg_;
+  WriterPtr writer_;
+  uint64_t msg_real_time_ns_;
+  uint64_t msg_play_time_ns_;
 
-    static std::atomic<uint64_t> played_msg_num_;
+  static std::atomic<uint64_t> played_msg_num_;
 };
 
 }  // namespace record

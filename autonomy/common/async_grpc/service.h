@@ -32,31 +32,30 @@ namespace async_grpc {
 // responsible for managing the lifetime of active RPCs issued against methods
 // of the service and distributing incoming gRPC events to their respective
 // 'Rpc' handler objects.
-class Service : public ::grpc::Service
-{
-public:
-    using EventQueueSelector = std::function<EventQueue*()>;
-    friend class Rpc;
+class Service : public ::grpc::Service {
+ public:
+  using EventQueueSelector = std::function<EventQueue*()>;
+  friend class Rpc;
 
-    Service(const std::string& service_name, const std::map<std::string, RpcHandlerInfo>& rpc_handlers,
-            EventQueueSelector event_queue_selector);
-    void StartServing(std::vector<CompletionQueueThread>& completion_queues, ExecutionContext* execution_context);
-    void HandleEvent(Rpc::Event event, Rpc* rpc, bool ok);
-    void StopServing();
+  Service(const std::string& service_name, const std::map<std::string, RpcHandlerInfo>& rpc_handlers,
+          EventQueueSelector event_queue_selector);
+  void StartServing(std::vector<CompletionQueueThread>& completion_queues, ExecutionContext* execution_context);
+  void HandleEvent(Rpc::Event event, Rpc* rpc, bool ok);
+  void StopServing();
 
-private:
-    void HandleNewConnection(Rpc* rpc, bool ok);
-    void HandleRead(Rpc* rpc, bool ok);
-    void HandleWrite(Rpc* rpc, bool ok);
-    void HandleFinish(Rpc* rpc, bool ok);
-    void HandleDone(Rpc* rpc, bool ok);
+ private:
+  void HandleNewConnection(Rpc* rpc, bool ok);
+  void HandleRead(Rpc* rpc, bool ok);
+  void HandleWrite(Rpc* rpc, bool ok);
+  void HandleFinish(Rpc* rpc, bool ok);
+  void HandleDone(Rpc* rpc, bool ok);
 
-    void RemoveIfNotPending(Rpc* rpc);
+  void RemoveIfNotPending(Rpc* rpc);
 
-    std::map<std::string, RpcHandlerInfo> rpc_handler_infos_;
-    EventQueueSelector event_queue_selector_;
-    ActiveRpcs active_rpcs_;
-    bool shutting_down_ = false;
+  std::map<std::string, RpcHandlerInfo> rpc_handler_infos_;
+  EventQueueSelector event_queue_selector_;
+  ActiveRpcs active_rpcs_;
+  bool shutting_down_ = false;
 };
 
 }  // namespace async_grpc

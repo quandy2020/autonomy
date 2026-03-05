@@ -28,46 +28,45 @@
 
 namespace autonomy {
 namespace transform {
-class TransformBroadcaster
-{
-public:
-    /**
-     * Define TransformBroadcaster::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(TransformBroadcaster)
+class TransformBroadcaster {
+ public:
+  /**
+   * Define TransformBroadcaster::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(TransformBroadcaster)
 
-    /**
-     * @brief Constructor (needs a autolink::Node reference)
-     * @param node The node to use for publishing
-     */
-    explicit TransformBroadcaster(const std::shared_ptr<::autolink::Node>& node);
+  /**
+   * @brief Constructor (needs a autolink::Node reference)
+   * @param node The node to use for publishing
+   */
+  explicit TransformBroadcaster(const std::shared_ptr<::autolink::Node>& node);
 
-    /**
-     * @brief Constructor (needs a autolink::Node pointer)
-     * @param node The node pointer to use for publishing (does not take
-     * ownership)
-     */
-    explicit TransformBroadcaster(::autolink::Node* node);
+  /**
+   * @brief Constructor (needs a autolink::Node pointer)
+   * @param node The node pointer to use for publishing (does not take
+   * ownership)
+   */
+  explicit TransformBroadcaster(::autolink::Node* node);
 
-    /**
-     * @brief Send a TransformStamped message
-     *     The stamped data structure includes frame_id, and time, and parent_id
-     * already.
-     * @param transform The transform to send
-     */
-    void SendTransform(const commsgs::geometry_msgs::TransformStamped& transform);
+  /**
+   * @brief Send a TransformStamped message
+   *     The stamped data structure includes frame_id, and time, and parent_id
+   * already.
+   * @param transform The transform to send
+   */
+  void SendTransform(const commsgs::geometry_msgs::TransformStamped& transform);
 
-    /**
-     * @brief Send a vector of TransformStamped messages
-     *       The stamped data structure includes frame_id, and time, and
-     * parent_id already.
-     * @param transforms The transforms to send
-     */
-    void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
+  /**
+   * @brief Send a vector of TransformStamped messages
+   *       The stamped data structure includes frame_id, and time, and
+   * parent_id already.
+   * @param transforms The transforms to send
+   */
+  void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
 
-private:
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>> writer_;
+ private:
+  std::shared_ptr<::autolink::Node> node_;
+  std::shared_ptr<::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>> writer_;
 };
 
 }  // namespace transform

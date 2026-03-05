@@ -15,28 +15,16 @@ BufferRegion::BufferRegion()
 BufferRegion::BufferRegion(Index index, Size size, BufferRegion::Quadrant quadrant)
     : startIndex_(std::move(index)), size_(std::move(size)), quadrant_(std::move(quadrant)) {}
 
-const Index& BufferRegion::getStartIndex() const {
-    return startIndex_;
-}
+const Index& BufferRegion::getStartIndex() const { return startIndex_; }
 
-void BufferRegion::setStartIndex(const Index& startIndex) {
-    startIndex_ = startIndex;
-}
+void BufferRegion::setStartIndex(const Index& startIndex) { startIndex_ = startIndex; }
 
-const Size& BufferRegion::getSize() const {
-    return size_;
-}
+const Size& BufferRegion::getSize() const { return size_; }
 
-void BufferRegion::setSize(const Size& size) {
-    size_ = size;
-}
+void BufferRegion::setSize(const Size& size) { size_ = size; }
 
-BufferRegion::Quadrant BufferRegion::getQuadrant() const {
-    return quadrant_;
-}
+BufferRegion::Quadrant BufferRegion::getQuadrant() const { return quadrant_; }
 
-void BufferRegion::setQuadrant(BufferRegion::Quadrant type) {
-    quadrant_ = type;
-}
+void BufferRegion::setQuadrant(BufferRegion::Quadrant type) { quadrant_ = type; }
 
 } /* namespace grid_map */

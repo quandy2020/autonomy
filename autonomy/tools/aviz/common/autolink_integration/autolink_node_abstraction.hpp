@@ -35,23 +35,22 @@ namespace autolink_integration {
  * available channels and their message types
  * topic names and types from rclcpp.
  */
-class AutolinkNodeAbstraction : public AutolinkNodeAbstractionIface
-{
-public:
-    AutolinkNodeAbstraction() = delete;
+class AutolinkNodeAbstraction : public AutolinkNodeAbstractionIface {
+ public:
+  AutolinkNodeAbstraction() = delete;
 
-    /// @brief Create a node abstraction for the given node name.
-    explicit AutolinkNodeAbstraction(const std::string& node_name);
+  /// @brief Create a node abstraction for the given node name.
+  explicit AutolinkNodeAbstraction(const std::string& node_name);
 
-    std::string get_node_name() const override;
+  std::string get_node_name() const override;
 
-    std::map<std::string, std::vector<std::string>> get_channel_names_and_types() const override;
+  std::map<std::string, std::vector<std::string>> get_channel_names_and_types() const override;
 
-    std::shared_ptr<::autolink::Node> get_raw_node() override;
+  std::shared_ptr<::autolink::Node> get_raw_node() override;
 
-private:
-    std::string node_name_;
-    std::shared_ptr<::autolink::Node> raw_node_;
+ private:
+  std::string node_name_;
+  std::shared_ptr<::autolink::Node> raw_node_;
 };
 
 }  // namespace autolink_integration

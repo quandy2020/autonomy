@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/time/duration.hpp"
 #include "autolink/time/time.hpp"
 
@@ -39,4 +38,3 @@ class Rate {
 };
 
 }  // namespace autolink
-

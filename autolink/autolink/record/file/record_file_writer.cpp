@@ -44,11 +44,9 @@ bool RecordFileWriter::Open(const std::string& path) {
   if (::autolink::common::PathExists(path_)) {
     AWARN << "File exist and overwrite, file: " << path_;
   }
-  fd_ = open(path_.data(), O_CREAT | O_WRONLY,
-             S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+  fd_ = open(path_.data(), O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
   if (fd_ < 0) {
-    AERROR << "Open file failed, file: " << path_ << ", fd: " << fd_
-           << ", errno: " << errno;
+    AERROR << "Open file failed, file: " << path_ << ", fd: " << fd_ << ", errno: " << errno;
     return false;
   }
   chunk_active_.reset(new Chunk());
@@ -110,8 +108,7 @@ void RecordFileWriter::Close() {
     }
 
     if (close(fd_) < 0) {
-      AERROR << "Close file failed, file: " << path_ << ", fd: " << fd_
-             << ", errno: " << errno;
+      AERROR << "Close file failed, file: " << path_ << ", fd: " << fd_ << ", errno: " << errno;
     }
   }
 }
@@ -132,10 +129,8 @@ bool RecordFileWriter::WriteIndex() {
     SingleIndex* single_index = index_.mutable_indexes(i);
     if (single_index->type() == SectionType::SECTION_CHANNEL) {
       ChannelCache* channel_cache = single_index->mutable_channel_cache();
-      if (channel_message_number_map_.find(channel_cache->name()) !=
-          channel_message_number_map_.end()) {
-        channel_cache->set_message_number(
-            channel_message_number_map_[channel_cache->name()]);
+      if (channel_message_number_map_.find(channel_cache->name()) != channel_message_number_map_.end()) {
+        channel_cache->set_message_number(channel_message_number_map_[channel_cache->name()]);
       }
     }
   }
@@ -167,8 +162,7 @@ bool RecordFileWriter::WriteChannel(const Channel& channel) {
   return true;
 }
 
-bool RecordFileWriter::WriteChunk(const ChunkHeader& chunk_header,
-                                  const ChunkBody& chunk_body) {
+bool RecordFileWriter::WriteChunk(const ChunkHeader& chunk_header, const ChunkBody& chunk_body) {
   std::lock_guard<std::mutex> lock(mutex_);
   uint64_t pos = CurrentPosition();
   if (!WriteSection<ChunkHeader>(chunk_header)) {
@@ -195,8 +189,7 @@ bool RecordFileWriter::WriteChunk(const ChunkHeader& chunk_header,
     header_.set_begin_time(chunk_header.begin_time());
   }
   header_.set_end_time(chunk_header.end_time());
-  header_.set_message_number(header_.message_number() +
-                             chunk_header.message_number());
+  header_.set_message_number(header_.message_number() + chunk_header.message_number());
   single_index = index_.add_indexes();
   single_index->set_type(SectionType::SECTION_CHUNK_BODY);
   single_index->set_position(pos);
@@ -212,17 +205,13 @@ bool RecordFileWriter::WriteMessage(const proto::SingleMessage& message) {
   if (it != channel_message_number_map_.end()) {
     it->second++;
   } else {
-    channel_message_number_map_.insert(
-        std::make_pair(message.channel_name(), 1));
+    channel_message_number_map_.insert(std::make_pair(message.channel_name(), 1));
   }
   bool need_flush = false;
-  if (header_.chunk_interval() > 0 &&
-      message.time() - chunk_active_->header_.begin_time() >
-          header_.chunk_interval()) {
+  if (header_.chunk_interval() > 0 && message.time() - chunk_active_->header_.begin_time() > header_.chunk_interval()) {
     need_flush = true;
   }
-  if (!in_writing_ && header_.chunk_raw_size() > 0 &&
-      chunk_active_->header_.raw_size() > header_.chunk_raw_size()) {
+  if (!in_writing_ && header_.chunk_raw_size() > 0 && chunk_active_->header_.raw_size() > header_.chunk_raw_size()) {
     need_flush = true;
   }
   if (!need_flush) {
@@ -239,8 +228,7 @@ bool RecordFileWriter::WriteMessage(const proto::SingleMessage& message) {
 void RecordFileWriter::Flush() {
   while (is_writing_) {
     std::unique_lock<std::mutex> flush_lock(flush_mutex_);
-    flush_cv_.wait(flush_lock,
-                   [this] { return !chunk_flush_->empty() || !is_writing_; });
+    flush_cv_.wait(flush_lock, [this] { return !chunk_flush_->empty() || !is_writing_; });
     if (!is_writing_) {
       break;
     }
@@ -256,8 +244,7 @@ void RecordFileWriter::Flush() {
   }
 }
 
-uint64_t RecordFileWriter::GetMessageNumber(
-    const std::string& channel_name) const {
+uint64_t RecordFileWriter::GetMessageNumber(const std::string& channel_name) const {
   auto search = channel_message_number_map_.find(channel_name);
   if (search != channel_message_number_map_.end()) {
     return search->second;

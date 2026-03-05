@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -32,10 +31,8 @@ const char* const PY_MESSAGE_FULLNAME = "autolink.message.PyMessage";
 class PyMessageWrap {
  public:
   PyMessageWrap() : type_name_("") {}
-  PyMessageWrap(const std::string& msg, const std::string& type_name)
-      : data_(msg), type_name_(type_name) {}
-  PyMessageWrap(const PyMessageWrap& msg)
-      : data_(msg.data_), type_name_(msg.type_name_) {}
+  PyMessageWrap(const std::string& msg, const std::string& type_name) : data_(msg), type_name_(type_name) {}
+  PyMessageWrap(const PyMessageWrap& msg) : data_(msg.data_), type_name_(msg.type_name_) {}
   virtual ~PyMessageWrap() {}
 
   class Descriptor {
@@ -52,8 +49,7 @@ class PyMessageWrap {
   bool ParseFromArray(const void* data, int size);
   bool ParseFromString(const std::string& msgstr);
   int ByteSize() const;
-  static void GetDescriptorString(const std::string& type,
-                                  std::string* desc_str);
+  static void GetDescriptorString(const std::string& type, std::string* desc_str);
 
   const std::string& data() const;
   void set_data(const std::string& msg);
@@ -65,8 +61,7 @@ class PyMessageWrap {
   std::string type_name_;
 };
 
-inline void PyMessageWrap::GetDescriptorString(const std::string& type,
-                                               std::string* desc_str) {
+inline void PyMessageWrap::GetDescriptorString(const std::string& type, std::string* desc_str) {
   ProtobufFactory::Instance()->GetDescriptorString(type, desc_str);
 }
 
@@ -115,15 +110,11 @@ inline bool PyMessageWrap::SerializeToString(std::string* output) const {
   return true;
 }
 
-inline int PyMessageWrap::ByteSize() const {
-  return static_cast<int>(data_.size());
-}
+inline int PyMessageWrap::ByteSize() const { return static_cast<int>(data_.size()); }
 
 inline const std::string& PyMessageWrap::type_name() { return type_name_; }
 
-inline void PyMessageWrap::set_type_name(const std::string& type_name) {
-  type_name_ = type_name;
-}
+inline void PyMessageWrap::set_type_name(const std::string& type_name) { type_name_ = type_name; }
 
 inline const PyMessageWrap::Descriptor* PyMessageWrap::descriptor() {
   static Descriptor desc;
@@ -134,4 +125,3 @@ inline std::string PyMessageWrap::TypeName() { return PY_MESSAGE_FULLNAME; }
 
 }  // namespace message
 }  // namespace autolink
-

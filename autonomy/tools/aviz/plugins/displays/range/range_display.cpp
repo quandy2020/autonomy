@@ -23,32 +23,24 @@ namespace plugins {
 namespace displays {
 
 RangeDisplay::RangeDisplay(const QString& name) : aviz::common::Display() {
-    setClassId("aviz/Range");
-    setName(name);
+  setClassId("aviz/Range");
+  setName(name);
 }
 
 RangeDisplay::~RangeDisplay() = default;
 
-void RangeDisplay::onInitialize() {
-    aviz::common::Display::onInitialize();
-}
+void RangeDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
 
-void RangeDisplay::onEnable() {
-    aviz::common::Display::onEnable();
-}
+void RangeDisplay::onEnable() { aviz::common::Display::onEnable(); }
 
-void RangeDisplay::onDisable() {
-    aviz::common::Display::onDisable();
-}
+void RangeDisplay::onDisable() { aviz::common::Display::onDisable(); }
 
 void RangeDisplay::update(float wall_dt, float ros_dt) {
-    (void)wall_dt;
-    (void)ros_dt;
+  (void)wall_dt;
+  (void)ros_dt;
 }
 
-void RangeDisplay::reset() {
-    aviz::common::Display::reset();
-}
+void RangeDisplay::reset() { aviz::common::Display::reset(); }
 
 }  // namespace displays
 }  // namespace plugins

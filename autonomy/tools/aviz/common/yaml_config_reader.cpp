@@ -39,93 +39,89 @@ namespace common {
 YamlConfigReader::YamlConfigReader() : error_(false) {}
 
 void YamlConfigReader::readFile(Config& config, const QString& filename) {
-    std::ifstream in(qPrintable(filename));
-    readStream(config, in, filename);
+  std::ifstream in(qPrintable(filename));
+  readStream(config, in, filename);
 }
 
 void YamlConfigReader::readString(Config& config, const QString& data, const QString& filename) {
-    std::stringstream ss(data.toStdString());
-    readStream(config, ss, filename);
+  std::stringstream ss(data.toStdString());
+  readStream(config, ss, filename);
 }
 
 void YamlConfigReader::readStream(Config& config, std::istream& in, const QString& filename) {
-    (void)filename;
-    try {
-        YAML::Node yaml_node;
+  (void)filename;
+  try {
+    YAML::Node yaml_node;
 #ifdef AVIZ_HAVE_YAMLCPP_05
-        yaml_node = YAML::Load(in);
+    yaml_node = YAML::Load(in);
 #else
-        YAML::Parser parser(in);
-        parser.GetNextDocument(yaml_node);
+    YAML::Parser parser(in);
+    parser.GetNextDocument(yaml_node);
 #endif
-        error_ = false;
-        message_ = "";
-        readYamlNode(config, yaml_node);
-    } catch (YAML::ParserException& ex) {
-        message_ = ex.what();
-        error_ = true;
-    }
+    error_ = false;
+    message_ = "";
+    readYamlNode(config, yaml_node);
+  } catch (YAML::ParserException& ex) {
+    message_ = ex.what();
+    error_ = true;
+  }
 }
 
 void YamlConfigReader::readYamlNode(Config& config, const YAML::Node& yaml_node) {
-    switch (yaml_node.Type()) {
-        case YAML::NodeType::Map: {
+  switch (yaml_node.Type()) {
+    case YAML::NodeType::Map: {
 #ifdef AVIZ_HAVE_YAMLCPP_05
-            for (YAML::const_iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
+      for (YAML::const_iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
 #else
-            for (YAML::Iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
+      for (YAML::Iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
 #endif
-            {
-                std::string key;
+      {
+        std::string key;
 #ifdef AVIZ_HAVE_YAMLCPP_05
-                key = it->first.as<std::string>();
+        key = it->first.as<std::string>();
 #else
-                it.first() >> key;
+        it.first() >> key;
 #endif
-                Config child = config.mapMakeChild(QString::fromStdString(key));
+        Config child = config.mapMakeChild(QString::fromStdString(key));
 #ifdef AVIZ_HAVE_YAMLCPP_05
-                readYamlNode(child, it->second);
+        readYamlNode(child, it->second);
 #else
-                readYamlNode(child, it.second());
+        readYamlNode(child, it.second());
 #endif
-            }
-            break;
-        }
-        case YAML::NodeType::Sequence: {
-#ifdef AVIZ_HAVE_YAMLCPP_05
-            for (YAML::const_iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
-#else
-            for (YAML::Iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
-#endif
-            {
-                Config child = config.listAppendNew();
-                readYamlNode(child, *it);
-            }
-            break;
-        }
-        case YAML::NodeType::Scalar: {
-            std::string s;
-#ifdef AVIZ_HAVE_YAMLCPP_05
-            s = yaml_node.as<std::string>();
-#else
-            yaml_node >> s;
-#endif
-            config.setValue(QString::fromStdString(s));
-            break;
-        }
-        case YAML::NodeType::Null:
-        default:
-            break;
+      }
+      break;
     }
+    case YAML::NodeType::Sequence: {
+#ifdef AVIZ_HAVE_YAMLCPP_05
+      for (YAML::const_iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
+#else
+      for (YAML::Iterator it = yaml_node.begin(); it != yaml_node.end(); ++it)
+#endif
+      {
+        Config child = config.listAppendNew();
+        readYamlNode(child, *it);
+      }
+      break;
+    }
+    case YAML::NodeType::Scalar: {
+      std::string s;
+#ifdef AVIZ_HAVE_YAMLCPP_05
+      s = yaml_node.as<std::string>();
+#else
+      yaml_node >> s;
+#endif
+      config.setValue(QString::fromStdString(s));
+      break;
+    }
+    case YAML::NodeType::Null:
+    default:
+      break;
+  }
 }
 
-bool YamlConfigReader::error() {
-    return error_;
-}
+bool YamlConfigReader::error() { return error_; }
 
-QString YamlConfigReader::errorMessage() {
-    return message_;
-}
+QString YamlConfigReader::errorMessage() { return message_; }
 
 }  // namespace common
 }  // namespace aviz

@@ -21,23 +21,19 @@
 
 #include "autolink/transport/rtps/underlay_message_type.hpp"
 
+#include "autolink/common/log.hpp"
 #include "fastcdr/Cdr.h"
 #include "fastcdr/FastBuffer.h"
-
-#include "autolink/common/log.hpp"
 
 namespace autolink {
 namespace transport {
 
 UnderlayMessageType::UnderlayMessageType() {
   setName("UnderlayMessage");
-  m_typeSize = (uint32_t)UnderlayMessage::getMaxCdrSerializedSize() +
-               4 /*encapsulation*/;
+  m_typeSize = (uint32_t)UnderlayMessage::getMaxCdrSerializedSize() + 4 /*encapsulation*/;
   m_isGetKeyDefined = UnderlayMessage::isKeyDefined();
-  m_keyBuffer =
-      (unsigned char*)malloc(UnderlayMessage::getKeyMaxCdrSerializedSize() > 16
-                                 ? UnderlayMessage::getKeyMaxCdrSerializedSize()
-                                 : 16);
+  m_keyBuffer = (unsigned char*)malloc(
+      UnderlayMessage::getKeyMaxCdrSerializedSize() > 16 ? UnderlayMessage::getKeyMaxCdrSerializedSize() : 16);
 }
 
 UnderlayMessageType::~UnderlayMessageType() {
@@ -48,72 +44,52 @@ UnderlayMessageType::~UnderlayMessageType() {
 
 bool UnderlayMessageType::serialize(void* data, eprosima::fastrtps::rtps::SerializedPayload_t* payload) {
   UnderlayMessage* p_type = reinterpret_cast<UnderlayMessage*>(data);
-  eprosima::fastcdr::FastBuffer fastbuffer(
-      reinterpret_cast<char*>(payload->data),
-      payload->max_size);  // Object that manages the raw buffer.
-  eprosima::fastcdr::Cdr ser(
-      fastbuffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN,
-      eprosima::fastcdr::Cdr::DDS_CDR);  // Object that serializes the data.
-  payload->encapsulation =
-      ser.endianness() == eprosima::fastcdr::Cdr::BIG_ENDIANNESS ? CDR_BE
-                                                                 : CDR_LE;
+  eprosima::fastcdr::FastBuffer fastbuffer(reinterpret_cast<char*>(payload->data),
+                                           payload->max_size);  // Object that manages the raw buffer.
+  eprosima::fastcdr::Cdr ser(fastbuffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN,
+                             eprosima::fastcdr::Cdr::DDS_CDR);  // Object that serializes the data.
+  payload->encapsulation = ser.endianness() == eprosima::fastcdr::Cdr::BIG_ENDIANNESS ? CDR_BE : CDR_LE;
   // Serialize encapsulation
   ser.serialize_encapsulation();
-  p_type->serialize(ser);  // Serialize the object:
-  payload->length =
-      (uint32_t)ser.getSerializedDataLength();  // Get the serialized length
+  p_type->serialize(ser);                                     // Serialize the object:
+  payload->length = (uint32_t)ser.getSerializedDataLength();  // Get the serialized length
   return true;
 }
 
-bool UnderlayMessageType::deserialize(eprosima::fastrtps::rtps::SerializedPayload_t* payload,
-                                      void* data) {
-  UnderlayMessage* p_type = reinterpret_cast<UnderlayMessage*>(
-      data);  // Convert DATA to pointer of your type
-  eprosima::fastcdr::FastBuffer fastbuffer(
-      reinterpret_cast<char*>(payload->data),
-      payload->length);  // Object that manages the raw buffer.
-  eprosima::fastcdr::Cdr deser(
-      fastbuffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN,
-      eprosima::fastcdr::Cdr::DDS_CDR);  // Object that deserializes the data.
+bool UnderlayMessageType::deserialize(eprosima::fastrtps::rtps::SerializedPayload_t* payload, void* data) {
+  UnderlayMessage* p_type = reinterpret_cast<UnderlayMessage*>(data);  // Convert DATA to pointer of your type
+  eprosima::fastcdr::FastBuffer fastbuffer(reinterpret_cast<char*>(payload->data),
+                                           payload->length);  // Object that manages the raw buffer.
+  eprosima::fastcdr::Cdr deser(fastbuffer, eprosima::fastcdr::Cdr::DEFAULT_ENDIAN,
+                               eprosima::fastcdr::Cdr::DDS_CDR);  // Object that deserializes the data.
   // Deserialize encapsulation.
   deser.read_encapsulation();
-  payload->encapsulation =
-      deser.endianness() == eprosima::fastcdr::Cdr::BIG_ENDIANNESS ? CDR_BE
-                                                                   : CDR_LE;
+  payload->encapsulation = deser.endianness() == eprosima::fastcdr::Cdr::BIG_ENDIANNESS ? CDR_BE : CDR_LE;
   p_type->deserialize(deser);  // Deserialize the object:
   return true;
 }
 
-std::function<uint32_t()> UnderlayMessageType::getSerializedSizeProvider(
-    void* data) {
+std::function<uint32_t()> UnderlayMessageType::getSerializedSizeProvider(void* data) {
   return [data]() -> uint32_t {
-    return (uint32_t)type::getCdrSerializedSize(
-               *static_cast<UnderlayMessage*>(data)) +
-           4 /*encapsulation*/;
+    return (uint32_t)type::getCdrSerializedSize(*static_cast<UnderlayMessage*>(data)) + 4 /*encapsulation*/;
   };
 }
 
-void* UnderlayMessageType::createData() {
-  return reinterpret_cast<void*>(new UnderlayMessage());
-}
+void* UnderlayMessageType::createData() { return reinterpret_cast<void*>(new UnderlayMessage()); }
 
-void UnderlayMessageType::deleteData(void* data) {
-  delete (reinterpret_cast<UnderlayMessage*>(data));
-}
+void UnderlayMessageType::deleteData(void* data) { delete (reinterpret_cast<UnderlayMessage*>(data)); }
 
 bool UnderlayMessageType::getKey(void* data, eprosima::fastrtps::rtps::InstanceHandle_t* handle,
                                  bool force_serialization) {
   (void)force_serialization;
   RETURN_VAL_IF((!m_isGetKeyDefined), false);
   UnderlayMessage* p_type = reinterpret_cast<UnderlayMessage*>(data);
-  eprosima::fastcdr::FastBuffer fastbuffer(
-      reinterpret_cast<char*>(m_keyBuffer),
-      UnderlayMessage::getKeyMaxCdrSerializedSize());  // Object that manages
-                                                       // the raw buffer.
-  eprosima::fastcdr::Cdr ser(
-      fastbuffer, eprosima::fastcdr::Cdr::BIG_ENDIANNESS);  // Object that
-                                                            // serializes the
-                                                            // data.
+  eprosima::fastcdr::FastBuffer fastbuffer(reinterpret_cast<char*>(m_keyBuffer),
+                                           UnderlayMessage::getKeyMaxCdrSerializedSize());  // Object that manages
+                                                                                            // the raw buffer.
+  eprosima::fastcdr::Cdr ser(fastbuffer, eprosima::fastcdr::Cdr::BIG_ENDIANNESS);           // Object that
+                                                                                            // serializes the
+                                                                                            // data.
   p_type->serializeKey(ser);
   if (UnderlayMessage::getKeyMaxCdrSerializedSize() > 16) {
     m_md5.init();

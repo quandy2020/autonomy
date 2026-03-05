@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <functional>
 #include <map>
 #include <memory>
@@ -50,10 +49,8 @@ class ChoreographyContext : public ProcessorContext {
   int notify = 0;
 
   AtomicRWLock rq_lk_;
-  std::multimap<uint32_t, std::shared_ptr<CRoutine>, std::greater<uint32_t>>
-      cr_queue_;
+  std::multimap<uint32_t, std::shared_ptr<CRoutine>, std::greater<uint32_t>> cr_queue_;
 };
 
 }  // namespace scheduler
 }  // namespace autolink
-

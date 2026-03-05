@@ -36,16 +36,15 @@ namespace {
 const std::string kSendGoalSuffix = "/send_goal";
 
 void PrintUsage() {
-  std::cout
-      << "autolink_action is a command-line tool for introspecting and "
-         "interacting with Autolink actions (ROS2-style).\n\n"
-      << "Commands:\n"
-      << "\tautolink_action list\t\tlist active action names\n"
-      << "\tautolink_action info <name>\tprint action server info\n"
-      << "\tautolink_action send_goal <name> [goal]\tsend an action goal (goal "
-         "format depends on action type; use C++/Python client for custom "
-         "types)\n\n"
-      << "Type autolink_action <command> -h for more detailed usage.\n";
+  std::cout << "autolink_action is a command-line tool for introspecting and "
+               "interacting with Autolink actions (ROS2-style).\n\n"
+            << "Commands:\n"
+            << "\tautolink_action list\t\tlist active action names\n"
+            << "\tautolink_action info <name>\tprint action server info\n"
+            << "\tautolink_action send_goal <name> [goal]\tsend an action goal (goal "
+               "format depends on action type; use C++/Python client for custom "
+               "types)\n\n"
+            << "Type autolink_action <command> -h for more detailed usage.\n";
 }
 
 // Get action names: services whose name ends with "/send_goal", strip suffix
@@ -88,8 +87,8 @@ void CmdInfo(const std::string& action_name) {
   sleep(2);
   std::string send_goal_service = action_name + kSendGoalSuffix;
   if (!topology->service_manager()->HasService(send_goal_service)) {
-    std::cerr << "Action '" << action_name << "' has no server (no service '"
-              << send_goal_service << "')." << std::endl;
+    std::cerr << "Action '" << action_name << "' has no server (no service '" << send_goal_service << "')."
+              << std::endl;
     return;
   }
   std::vector<autolink::proto::RoleAttributes> servers;
@@ -109,13 +108,12 @@ void CmdInfo(const std::string& action_name) {
 }
 
 void CmdSendGoalUsage() {
-  std::cout
-      << "usage: autolink_action send_goal <action_name> [goal_payload]\n\n"
-      << "  Send a goal to an action server. Goal payload format depends on "
-         "the action type.\n"
-      << "  For programmatic use with custom Goal types, use "
-         "autolink::action::CreateClient<ActionT> in C++ or the Python action "
-         "client.\n";
+  std::cout << "usage: autolink_action send_goal <action_name> [goal_payload]\n\n"
+            << "  Send a goal to an action server. Goal payload format depends on "
+               "the action type.\n"
+            << "  For programmatic use with custom Goal types, use "
+               "autolink::action::CreateClient<ActionT> in C++ or the Python action "
+               "client.\n";
 }
 
 void CmdSendGoal(const std::string& action_name, const std::string& goal_payload) {
@@ -156,14 +154,10 @@ int main(int argc, char* argv[]) {
     std::string action_name;
     int info_argc = argc - 2;
     char** info_argv = argv + 2;
-    static const struct option info_opts[] = {
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}};
+    static const struct option info_opts[] = {{"help", no_argument, nullptr, 'h'}, {nullptr, 0, nullptr, 0}};
     optind = 0;
     int c;
-    while (info_argc > 0 &&
-           (c = getopt_long(info_argc, info_argv, "h", info_opts, nullptr)) !=
-           -1) {
+    while (info_argc > 0 && (c = getopt_long(info_argc, info_argv, "h", info_opts, nullptr)) != -1) {
       if (c == 'h') {
         std::cout << "usage: autolink_action info <action_name>\n";
         return 0;
@@ -196,8 +190,7 @@ int main(int argc, char* argv[]) {
       }
     }
     if (action_name.empty()) {
-      std::cerr << "usage: autolink_action send_goal <action_name> [goal_payload]"
-                << std::endl;
+      std::cerr << "usage: autolink_action send_goal <action_name> [goal_payload]" << std::endl;
       CmdSendGoalUsage();
       ret = 64;
     } else {

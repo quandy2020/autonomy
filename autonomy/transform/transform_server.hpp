@@ -33,73 +33,70 @@ namespace transform {
  * This server manages:
  * - Static transforms (published once with latched QoS)
  */
-class TransformServer
-{
-public:
-    /**
-     * @brief Define TransformServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(TransformServer)
+class TransformServer {
+ public:
+  /**
+   * @brief Define TransformServer::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(TransformServer)
 
-    /**
-     * @brief Constructor
-     * @param options The options for the transform server
-     * @param node The node to use for the transform server
-     */
-    TransformServer(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node = nullptr);
+  /**
+   * @brief Constructor
+   * @param options The options for the transform server
+   * @param node The node to use for the transform server
+   */
+  TransformServer(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node = nullptr);
 
-    /**
-     * @brief Destructor
-     */
-    ~TransformServer() = default;
+  /**
+   * @brief Destructor
+   */
+  ~TransformServer() = default;
 
-    /**
-     * @brief Initialize the transform server
-     * @return True if initialization is successful, false otherwise
-     */
-    bool Initialize();
+  /**
+   * @brief Initialize the transform server
+   * @return True if initialization is successful, false otherwise
+   */
+  bool Initialize();
 
-    /**
-     * @brief Start the transform server
-     */
-    void Start();
+  /**
+   * @brief Start the transform server
+   */
+  void Start();
 
-    /**
-     * @brief Stop the transform server
-     */
-    void Stop();
+  /**
+   * @brief Stop the transform server
+   */
+  void Stop();
 
-    /**
-     * @brief Check if the server is running
-     * @return True if running, false otherwise
-     */
-    bool IsRunning() const {
-        return running_;
-    }
+  /**
+   * @brief Check if the server is running
+   * @return True if running, false otherwise
+   */
+  bool IsRunning() const { return running_; }
 
-    /**
-     * @brief Get the transform stampeds
-     * @return The transform stampeds
-     */
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData() const {
-        return static_transform_->GetTransformStampeds();
-    }
+  /**
+   * @brief Get the transform stampeds
+   * @return The transform stampeds
+   */
+  const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData() const {
+    return static_transform_->GetTransformStampeds();
+  }
 
-private:
-    // Node
-    ::autolink::Node* node_;
+ private:
+  // Node
+  ::autolink::Node* node_;
 
-    // Static transform component
-    std::unique_ptr<StaticTransform> static_transform_;
+  // Static transform component
+  std::unique_ptr<StaticTransform> static_transform_;
 
-    // Transform options
-    autonomy::transform::proto::TransformOptions transform_options_;
+  // Transform options
+  autonomy::transform::proto::TransformOptions transform_options_;
 
-    // Running state
-    bool running_{false};
+  // Running state
+  bool running_{false};
 
-    // Initialized state
-    bool initialized_{false};
+  // Initialized state
+  bool initialized_{false};
 };
 
 }  // namespace transform

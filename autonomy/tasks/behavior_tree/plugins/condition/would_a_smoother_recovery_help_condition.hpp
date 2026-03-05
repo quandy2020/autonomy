@@ -27,15 +27,14 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-class WouldASmootherRecoveryHelp : public AreErrorCodesPresent
-{
-    using Action = proto::SmoothPathAction;
-    using ActionResult = Action::Result;
+class WouldASmootherRecoveryHelp : public AreErrorCodesPresent {
+  using Action = proto::SmoothPathAction;
+  using ActionResult = Action::Result;
 
-public:
-    WouldASmootherRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
+ public:
+  WouldASmootherRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
-    WouldASmootherRecoveryHelp() = delete;
+  WouldASmootherRecoveryHelp() = delete;
 };
 
 }  // namespace condition

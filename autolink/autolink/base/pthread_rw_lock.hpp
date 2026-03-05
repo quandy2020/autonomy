@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <thread>
 
 #include "autolink/base/rw_lock_guard.hpp"
@@ -32,8 +31,7 @@ class PthreadRWLock {
   explicit PthreadRWLock(bool writer) {
     pthread_rwlockattr_init(&rwlock_attr_);
     if (writer) {
-      pthread_rwlockattr_setkind_np(
-          &rwlock_attr_, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+      pthread_rwlockattr_setkind_np(&rwlock_attr_, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
     }
     pthread_rwlockattr_setpshared(&rwlock_attr_, PTHREAD_PROCESS_SHARED);
     pthread_rwlock_init(&rwlock_, &rwlock_attr_);
@@ -68,4 +66,3 @@ inline void PthreadRWLock::WriteUnlock() { pthread_rwlock_unlock(&rwlock_); }
 
 }  // namespace base
 }  // namespace autolink
-

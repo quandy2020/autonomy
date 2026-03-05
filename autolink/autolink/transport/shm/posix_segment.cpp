@@ -29,9 +29,7 @@
 namespace autolink {
 namespace transport {
 
-PosixSegment::PosixSegment(uint64_t channel_id) : Segment(channel_id) {
-  shm_name_ = std::to_string(channel_id);
-}
+PosixSegment::PosixSegment(uint64_t channel_id) : Segment(channel_id) { shm_name_ = std::to_string(channel_id); }
 
 PosixSegment::~PosixSegment() { Destroy(); }
 
@@ -59,8 +57,7 @@ bool PosixSegment::OpenOrCreate() {
   }
 
   // attach managed_shm_
-  managed_shm_ = mmap(nullptr, conf_.managed_shm_size(), PROT_READ | PROT_WRITE,
-                      MAP_SHARED, fd, 0);
+  managed_shm_ = mmap(nullptr, conf_.managed_shm_size(), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (managed_shm_ == MAP_FAILED) {
     AERROR << "attach shm failed:" << strerror(errno);
     close(fd);
@@ -83,8 +80,7 @@ bool PosixSegment::OpenOrCreate() {
   conf_.Update(state_->ceiling_msg_size());
 
   // create field blocks_
-  blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State))
-      Block[conf_.block_num()];
+  blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State)) Block[conf_.block_num()];
   if (blocks_ == nullptr) {
     AERROR << "create blocks failed.";
     state_->~State();
@@ -96,9 +92,8 @@ bool PosixSegment::OpenOrCreate() {
   }
 
   // create field arena_blocks_
-  arena_blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State) + \
-                       conf_.block_num() * sizeof(Block)) Block[
-                        ShmConf::ARENA_BLOCK_NUM];
+  arena_blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State) + conf_.block_num() * sizeof(Block))
+      Block[ShmConf::ARENA_BLOCK_NUM];
   if (arena_blocks_ == nullptr) {
     AERROR << "create blocks failed.";
     state_->~State();
@@ -113,10 +108,8 @@ bool PosixSegment::OpenOrCreate() {
   uint32_t i = 0;
   for (; i < conf_.block_num(); ++i) {
     uint8_t* addr =
-        new (static_cast<char*>(managed_shm_) + sizeof(State) + \
-             conf_.block_num() * sizeof(Block) + \
-             ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + \
-             i * conf_.block_buf_size()) uint8_t[conf_.block_buf_size()];
+        new (static_cast<char*>(managed_shm_) + sizeof(State) + conf_.block_num() * sizeof(Block) +
+             ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + i * conf_.block_buf_size()) uint8_t[conf_.block_buf_size()];
 
     if (addr == nullptr) {
       break;
@@ -129,13 +122,9 @@ bool PosixSegment::OpenOrCreate() {
   // create arena block buf
   uint32_t ai = 0;
   for (; ai < ShmConf::ARENA_BLOCK_NUM; ++ai) {
-    uint8_t* addr = \
-        new(static_cast<char*>(managed_shm_) + sizeof(State) + \
-             conf_.block_num() * sizeof(Block) + \
-             ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + \
-             conf_.block_num() * conf_.block_buf_size() + \
-             ai * ShmConf::ARENA_MESSAGE_SIZE) uint8_t[
-              ShmConf::ARENA_MESSAGE_SIZE];
+    uint8_t* addr = new (static_cast<char*>(managed_shm_) + sizeof(State) + conf_.block_num() * sizeof(Block) +
+                         ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + conf_.block_num() * conf_.block_buf_size() +
+                         ai * ShmConf::ARENA_MESSAGE_SIZE) uint8_t[ShmConf::ARENA_MESSAGE_SIZE];
     if (addr == nullptr) {
       break;
     }
@@ -189,8 +178,7 @@ bool PosixSegment::OpenOnly() {
   }
 
   // attach managed_shm_
-  managed_shm_ = mmap(nullptr, file_attr.st_size, PROT_READ | PROT_WRITE,
-                      MAP_SHARED, fd, 0);
+  managed_shm_ = mmap(nullptr, file_attr.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
   if (managed_shm_ == MAP_FAILED) {
     AERROR << "attach shm failed: " << strerror(errno);
     close(fd);
@@ -210,8 +198,7 @@ bool PosixSegment::OpenOnly() {
   conf_.Update(state_->ceiling_msg_size());
 
   // get field blocks_
-  blocks_ = reinterpret_cast<Block*>(static_cast<char*>(managed_shm_) +
-                                     sizeof(State));
+  blocks_ = reinterpret_cast<Block*>(static_cast<char*>(managed_shm_) + sizeof(State));
   if (blocks_ == nullptr) {
     AERROR << "get blocks failed.";
     state_ = nullptr;
@@ -221,9 +208,8 @@ bool PosixSegment::OpenOnly() {
   }
 
   // get field arena_blocks_
-  arena_blocks_ = reinterpret_cast<Block*>(
-    static_cast<char*>(managed_shm_) + sizeof(State) +
-    sizeof(Block) * conf_.block_num());
+  arena_blocks_ =
+      reinterpret_cast<Block*>(static_cast<char*>(managed_shm_) + sizeof(State) + sizeof(Block) * conf_.block_num());
   if (blocks_ == nullptr) {
     AERROR << "get arena blocks failed.";
     state_ = nullptr;
@@ -235,11 +221,9 @@ bool PosixSegment::OpenOnly() {
   // get block buf
   uint32_t i = 0;
   for (; i < conf_.block_num(); ++i) {
-    uint8_t* addr = reinterpret_cast<uint8_t*>(
-        static_cast<char*>(managed_shm_) + sizeof(State) +
-        conf_.block_num() * sizeof(Block) +
-        ShmConf::ARENA_BLOCK_NUM * sizeof(Block) +
-        i * conf_.block_buf_size());
+    uint8_t* addr = reinterpret_cast<uint8_t*>(static_cast<char*>(managed_shm_) + sizeof(State) +
+                                               conf_.block_num() * sizeof(Block) +
+                                               ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + i * conf_.block_buf_size());
 
     if (addr == nullptr) {
       break;
@@ -251,11 +235,10 @@ bool PosixSegment::OpenOnly() {
   // get arena block buf
   uint32_t ai = 0;
   for (; i < ShmConf::ARENA_BLOCK_NUM; ++ai) {
-    uint8_t* addr = reinterpret_cast<uint8_t*>(
-        static_cast<char*>(managed_shm_) + sizeof(State) + \
-        conf_.block_num() * sizeof(Block) + ShmConf::ARENA_BLOCK_NUM * \
-        sizeof(Block) + conf_.block_num() * conf_.block_buf_size() + \
-        ai * ShmConf::ARENA_MESSAGE_SIZE);
+    uint8_t* addr =
+        reinterpret_cast<uint8_t*>(static_cast<char*>(managed_shm_) + sizeof(State) +
+                                   conf_.block_num() * sizeof(Block) + ShmConf::ARENA_BLOCK_NUM * sizeof(Block) +
+                                   conf_.block_num() * conf_.block_buf_size() + ai * ShmConf::ARENA_MESSAGE_SIZE);
 
     if (addr == nullptr) {
       break;

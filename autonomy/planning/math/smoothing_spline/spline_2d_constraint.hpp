@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "Eigen/Core"
-
 #include "autonomy/common/math/vec2d.hpp"
 #include "autonomy/planning/math/smoothing_spline/affine_constraint.hpp"
 #include "autonomy/planning/math/smoothing_spline/spline_2d.hpp"
@@ -32,86 +31,84 @@ namespace autonomy {
 namespace planning {
 namespace math {
 
-class Spline2dConstraint
-{
-public:
-    Spline2dConstraint(const std::vector<double>& t_knots, const uint32_t order);
+class Spline2dConstraint {
+ public:
+  Spline2dConstraint(const std::vector<double>& t_knots, const uint32_t order);
 
-    // direct method
-    bool AddInequalityConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary);
-    bool AddEqualityConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary);
+  // direct method
+  bool AddInequalityConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary);
+  bool AddEqualityConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary);
 
-    // preset method
-    /**
-     *   @brief: inequality boundary constraints
-     *   if no boundary, do specify either by std::infinity or let vector.size() =
-     *0
-     **/
-    bool Add2dBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
-                       const std::vector<autonomy::common::math::Vec2d>& ref_point,
-                       const std::vector<double>& longitudinal_bound, const std::vector<double>& lateral_bound);
+  // preset method
+  /**
+   *   @brief: inequality boundary constraints
+   *   if no boundary, do specify either by std::infinity or let vector.size() =
+   *0
+   **/
+  bool Add2dBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
+                     const std::vector<autonomy::common::math::Vec2d>& ref_point,
+                     const std::vector<double>& longitudinal_bound, const std::vector<double>& lateral_bound);
 
-    // ref point refer to derivative reference point
-    bool Add2dDerivativeBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
-                                 const std::vector<autonomy::common::math::Vec2d>& ref_point,
-                                 const std::vector<double>& longitudinal_bound,
-                                 const std::vector<double>& lateral_bound);
+  // ref point refer to derivative reference point
+  bool Add2dDerivativeBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
+                               const std::vector<autonomy::common::math::Vec2d>& ref_point,
+                               const std::vector<double>& longitudinal_bound, const std::vector<double>& lateral_bound);
 
-    // ref point refer to second derivative ref point
-    bool Add2dSecondDerivativeBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
-                                       const std::vector<autonomy::common::math::Vec2d>& ref_point,
-                                       const std::vector<double>& longitudinal_bound,
-                                       const std::vector<double>& lateral_bound);
+  // ref point refer to second derivative ref point
+  bool Add2dSecondDerivativeBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
+                                     const std::vector<autonomy::common::math::Vec2d>& ref_point,
+                                     const std::vector<double>& longitudinal_bound,
+                                     const std::vector<double>& lateral_bound);
 
-    // ref point refer to third derivative ref point
-    bool Add2dThirdDerivativeBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
-                                      const std::vector<autonomy::common::math::Vec2d>& ref_point,
-                                      const std::vector<double>& longitudinal_bound,
-                                      const std::vector<double>& lateral_bound);
+  // ref point refer to third derivative ref point
+  bool Add2dThirdDerivativeBoundary(const std::vector<double>& t_coord, const std::vector<double>& angle,
+                                    const std::vector<autonomy::common::math::Vec2d>& ref_point,
+                                    const std::vector<double>& longitudinal_bound,
+                                    const std::vector<double>& lateral_bound);
 
-    bool AddPointConstraint(const double t, const double x, const double y);
-    bool AddPointSecondDerivativeConstraint(const double t, const double ddx, const double ddy);
-    bool AddPointThirdDerivativeConstraint(const double t, const double dddx, const double dddy);
-    bool AddPointAngleConstraint(const double t, const double angle);
+  bool AddPointConstraint(const double t, const double x, const double y);
+  bool AddPointSecondDerivativeConstraint(const double t, const double ddx, const double ddy);
+  bool AddPointThirdDerivativeConstraint(const double t, const double dddx, const double dddy);
+  bool AddPointAngleConstraint(const double t, const double angle);
 
-    // guarantee up to values are joint
-    bool AddSmoothConstraint();
+  // guarantee up to values are joint
+  bool AddSmoothConstraint();
 
-    // guarantee up to derivative are joint
-    bool AddDerivativeSmoothConstraint();
+  // guarantee up to derivative are joint
+  bool AddDerivativeSmoothConstraint();
 
-    // guarantee up to second order derivative are joint
-    bool AddSecondDerivativeSmoothConstraint();
+  // guarantee up to second order derivative are joint
+  bool AddSecondDerivativeSmoothConstraint();
 
-    // guarantee up to third order derivative are joint
-    bool AddThirdDerivativeSmoothConstraint();
+  // guarantee up to third order derivative are joint
+  bool AddThirdDerivativeSmoothConstraint();
 
-    /**
-     *   @brief: output interface inequality constraint
-     **/
-    const AffineConstraint& inequality_constraint() const;
-    const AffineConstraint& equality_constraint() const;
+  /**
+   *   @brief: output interface inequality constraint
+   **/
+  const AffineConstraint& inequality_constraint() const;
+  const AffineConstraint& equality_constraint() const;
 
-private:
-    uint32_t FindIndex(const double t) const;
-    std::vector<double> AffineCoef(const double angle, const double t) const;
-    std::vector<double> AffineDerivativeCoef(const double angle, const double t) const;
-    std::vector<double> AffineSecondDerivativeCoef(const double angle, const double t) const;
-    std::vector<double> AffineThirdDerivativeCoef(const double angle, const double t) const;
-    std::vector<double> PolyCoef(const double t) const;
-    std::vector<double> DerivativeCoef(const double t) const;
-    std::vector<double> SecondDerivativeCoef(const double t) const;
-    std::vector<double> ThirdDerivativeCoef(const double t) const;
-    double SignDistance(const autonomy::common::math::Vec2d& xy_point, const double angle) const;
-    bool AddPointKthOrderDerivativeConstraint(const double t, const double x_kth_derivative,
-                                              const double y_kth_derivative, const std::vector<double>& kth_coeff);
+ private:
+  uint32_t FindIndex(const double t) const;
+  std::vector<double> AffineCoef(const double angle, const double t) const;
+  std::vector<double> AffineDerivativeCoef(const double angle, const double t) const;
+  std::vector<double> AffineSecondDerivativeCoef(const double angle, const double t) const;
+  std::vector<double> AffineThirdDerivativeCoef(const double angle, const double t) const;
+  std::vector<double> PolyCoef(const double t) const;
+  std::vector<double> DerivativeCoef(const double t) const;
+  std::vector<double> SecondDerivativeCoef(const double t) const;
+  std::vector<double> ThirdDerivativeCoef(const double t) const;
+  double SignDistance(const autonomy::common::math::Vec2d& xy_point, const double angle) const;
+  bool AddPointKthOrderDerivativeConstraint(const double t, const double x_kth_derivative,
+                                            const double y_kth_derivative, const std::vector<double>& kth_coeff);
 
-private:
-    AffineConstraint inequality_constraint_;
-    AffineConstraint equality_constraint_;
-    std::vector<double> t_knots_;
-    uint32_t spline_order_;
-    uint32_t total_param_;
+ private:
+  AffineConstraint inequality_constraint_;
+  AffineConstraint equality_constraint_;
+  std::vector<double> t_knots_;
+  uint32_t spline_order_;
+  uint32_t total_param_;
 };
 
 }  // namespace math

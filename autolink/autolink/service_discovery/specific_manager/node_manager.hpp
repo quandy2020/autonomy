@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -80,4 +79,3 @@ class NodeManager : public Manager {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

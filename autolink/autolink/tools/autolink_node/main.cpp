@@ -34,14 +34,13 @@
 namespace {
 
 void PrintUsage() {
-  std::cout
-      << "autolink_node is a command-line tool to show information about "
-         "CyberRT Nodes.\n\n"
-      << "Commands:\n"
-      << "\tautolink_node list \tList active nodes.\n"
-      << "\tautolink_node info \tPrint node info.\n\n"
-      << "Type autolink_node <command> -h for more detailed usage, e.g. "
-         "'autolink_node info -h'\n";
+  std::cout << "autolink_node is a command-line tool to show information about "
+               "CyberRT Nodes.\n\n"
+            << "Commands:\n"
+            << "\tautolink_node list \tList active nodes.\n"
+            << "\tautolink_node info \tPrint node info.\n\n"
+            << "Type autolink_node <command> -h for more detailed usage, e.g. "
+               "'autolink_node info -h'\n";
 }
 
 std::vector<std::string> GetNodes(uint8_t sleep_s = 2) {
@@ -57,8 +56,7 @@ std::vector<std::string> GetNodes(uint8_t sleep_s = 2) {
   return node_names;
 }
 
-bool GetNodeAttr(const std::string& node_name, uint8_t sleep_s,
-                 autolink::proto::RoleAttributes* out) {
+bool GetNodeAttr(const std::string& node_name, uint8_t sleep_s, autolink::proto::RoleAttributes* out) {
   if (!out) return false;
   auto* topology = autolink::service_discovery::TopologyManager::Instance();
   sleep(sleep_s);
@@ -77,8 +75,7 @@ bool GetNodeAttr(const std::string& node_name, uint8_t sleep_s,
   return false;
 }
 
-std::vector<std::string> GetReadersOfNode(const std::string& node_name,
-                                          uint8_t sleep_s = 0) {
+std::vector<std::string> GetReadersOfNode(const std::string& node_name, uint8_t sleep_s = 0) {
   auto* topology = autolink::service_discovery::TopologyManager::Instance();
   sleep(sleep_s);
   std::vector<std::string> channels;
@@ -97,8 +94,7 @@ std::vector<std::string> GetReadersOfNode(const std::string& node_name,
   return channels;
 }
 
-std::vector<std::string> GetWritersOfNode(const std::string& node_name,
-                                         uint8_t sleep_s = 0) {
+std::vector<std::string> GetWritersOfNode(const std::string& node_name, uint8_t sleep_s = 0) {
   auto* topology = autolink::service_discovery::TopologyManager::Instance();
   sleep(sleep_s);
   std::vector<std::string> channels;
@@ -197,14 +193,10 @@ int main(int argc, char* argv[]) {
     int info_argc = argc - 2;
     char** info_argv = argv + 2;
     static const struct option info_opts[] = {
-        {"all", no_argument, nullptr, 'a'},
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}};
+        {"all", no_argument, nullptr, 'a'}, {"help", no_argument, nullptr, 'h'}, {nullptr, 0, nullptr, 0}};
     optind = 0;
     int c;
-    while (info_argc > 0 &&
-           (c = getopt_long(info_argc, info_argv, "ah", info_opts, nullptr)) !=
-           -1) {
+    while (info_argc > 0 && (c = getopt_long(info_argc, info_argv, "ah", info_opts, nullptr)) != -1) {
       if (c == 'a') all_nodes = true;
       if (c == 'h') {
         std::cout << "usage: autolink_node info [OPTION...] [NODE...]\n"
@@ -217,8 +209,7 @@ int main(int argc, char* argv[]) {
       optind++;
     }
     if (all_nodes && !node_names.empty()) {
-      std::cerr << "\"-a/--all\" option is expected to run w/o node name(s)"
-                << std::endl;
+      std::cerr << "\"-a/--all\" option is expected to run w/o node name(s)" << std::endl;
       ret = 64;
     } else if (!all_nodes && node_names.empty()) {
       std::cerr << "No node name provided." << std::endl;

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/transport/shm/segment.hpp"
 
 namespace autolink {
@@ -29,4 +28,3 @@ class SegmentFactory {
 
 }  // namespace transport
 }  // namespace autolink
-

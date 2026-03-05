@@ -17,12 +17,11 @@
 #ifndef AVIZ_COMMON__TRANSFORMATION__TRANSFORMATION_MANAGER_HPP_
 #define AVIZ_COMMON__TRANSFORMATION__TRANSFORMATION_MANAGER_HPP_
 
+#include <QObject>  // NOLINT
+#include <QString>  // NOLINT
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <QObject>  // NOLINT
-#include <QString>  // NOLINT
 
 #include "autonomy/tools/aviz/common/config.hpp"
 #include "autonomy/tools/aviz/common/transformation/frame_transformer.hpp"
@@ -32,9 +31,9 @@ namespace common {
 namespace transformation {
 
 struct PluginInfo {
-    QString class_id;
-    QString name;
-    QString description;
+  QString class_id;
+  QString name;
+  QString description;
 };
 
 /// Manages frame transformers
@@ -42,44 +41,43 @@ struct PluginInfo {
  * TransformationManager manages the current frame transformer and provides
  * access to available transformers.
  */
-class TransformationManager : public QObject
-{
-    Q_OBJECT
+class TransformationManager : public QObject {
+  Q_OBJECT
 
-public:
-    explicit TransformationManager();
+ public:
+  explicit TransformationManager();
 
-    /// Load configuration from a Config object.
-    void load(const Config& config);
+  /// Load configuration from a Config object.
+  void load(const Config& config);
 
-    /// Save configuration to a Config object.
-    void save(Config config) const;
+  /// Save configuration to a Config object.
+  void save(Config config) const;
 
-    /// Get list of available transformers
-    std::vector<PluginInfo> getAvailableTransformers() const;
+  /// Get list of available transformers
+  std::vector<PluginInfo> getAvailableTransformers() const;
 
-    /// Get the current transformer
-    std::shared_ptr<FrameTransformer> getCurrentTransformer() const;
+  /// Get the current transformer
+  std::shared_ptr<FrameTransformer> getCurrentTransformer() const;
 
-    /// Get info about the current transformer
-    PluginInfo getCurrentTransformerInfo() const;
+  /// Get info about the current transformer
+  PluginInfo getCurrentTransformerInfo() const;
 
-    /// Set the transformer by plugin info
-    void setTransformer(const PluginInfo& plugin_info);
+  /// Set the transformer by plugin info
+  void setTransformer(const PluginInfo& plugin_info);
 
-    /// Set the transformer directly
-    void setTransformer(std::shared_ptr<FrameTransformer> transformer);
+  /// Set the transformer directly
+  void setTransformer(std::shared_ptr<FrameTransformer> transformer);
 
-Q_SIGNALS:
-    /// Emitted when the current transformer changes.
-    void configChanged();
+ Q_SIGNALS:
+  /// Emitted when the current transformer changes.
+  void configChanged();
 
-    /// Emitted when the current transformer changes.
-    void transformerChanged(std::shared_ptr<aviz::common::transformation::FrameTransformer> new_transformer);
+  /// Emitted when the current transformer changes.
+  void transformerChanged(std::shared_ptr<aviz::common::transformation::FrameTransformer> new_transformer);
 
-private:
-    std::shared_ptr<FrameTransformer> current_transformer_;
-    PluginInfo current_transformer_info_;
+ private:
+  std::shared_ptr<FrameTransformer> current_transformer_;
+  PluginInfo current_transformer_info_;
 };
 
 }  // namespace transformation

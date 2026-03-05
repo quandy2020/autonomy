@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <functional>
 #include <memory>
 #include <string>
@@ -48,8 +47,7 @@ class ListenerHandlerBase {
   virtual void Disconnect(uint64_t self_id) = 0;
   virtual void Disconnect(uint64_t self_id, uint64_t oppo_id) = 0;
   inline bool IsRawMessage() const { return is_raw_message_; }
-  virtual void RunFromString(const std::string& str,
-                             const MessageInfo& msg_info) = 0;
+  virtual void RunFromString(const std::string& str, const MessageInfo& msg_info) = 0;
 
  protected:
   bool is_raw_message_ = false;
@@ -62,8 +60,7 @@ class ListenerHandler : public ListenerHandlerBase {
   using MessageSignal = base::Signal<const Message&, const MessageInfo&>;
 
   using Listener = std::function<void(const Message&, const MessageInfo&)>;
-  using MessageConnection =
-      base::Connection<const Message&, const MessageInfo&>;
+  using MessageConnection = base::Connection<const Message&, const MessageInfo&>;
   using ConnectionMap = std::unordered_map<uint64_t, MessageConnection>;
 
   ListenerHandler() {}
@@ -76,8 +73,7 @@ class ListenerHandler : public ListenerHandlerBase {
   void Disconnect(uint64_t self_id, uint64_t oppo_id) override;
 
   void Run(const Message& msg, const MessageInfo& msg_info);
-  void RunFromString(const std::string& str,
-                     const MessageInfo& msg_info) override;
+  void RunFromString(const std::string& str, const MessageInfo& msg_info) override;
 
  private:
   using SignalPtr = std::shared_ptr<MessageSignal>;
@@ -100,8 +96,7 @@ inline ListenerHandler<message::RawMessage>::ListenerHandler() {
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Connect(uint64_t self_id,
-                                        const Listener& listener) {
+void ListenerHandler<MessageT>::Connect(uint64_t self_id, const Listener& listener) {
   auto connection = signal_.Connect(listener);
   if (!connection.IsConnected()) {
     return;
@@ -112,8 +107,7 @@ void ListenerHandler<MessageT>::Connect(uint64_t self_id,
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Connect(uint64_t self_id, uint64_t oppo_id,
-                                        const Listener& listener) {
+void ListenerHandler<MessageT>::Connect(uint64_t self_id, uint64_t oppo_id, const Listener& listener) {
   WriteLockGuard<AtomicRWLock> lock(rw_lock_);
   if (signals_.find(oppo_id) == signals_.end()) {
     signals_[oppo_id] = std::make_shared<MessageSignal>();
@@ -159,8 +153,7 @@ void ListenerHandler<MessageT>::Disconnect(uint64_t self_id, uint64_t oppo_id) {
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Run(const Message& msg,
-                                    const MessageInfo& msg_info) {
+void ListenerHandler<MessageT>::Run(const Message& msg, const MessageInfo& msg_info) {
   signal_(msg, msg_info);
   uint64_t oppo_id = msg_info.sender_id().HashValue();
   ReadLockGuard<AtomicRWLock> lock(rw_lock_);
@@ -172,11 +165,9 @@ void ListenerHandler<MessageT>::Run(const Message& msg,
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::RunFromString(const std::string& str,
-                                              const MessageInfo& msg_info) {
+void ListenerHandler<MessageT>::RunFromString(const std::string& str, const MessageInfo& msg_info) {
   auto msg = std::make_shared<MessageT>();
-  if (message::ParseFromHC(str.data(), static_cast<int>(str.size()),
-                           msg.get())) {
+  if (message::ParseFromHC(str.data(), static_cast<int>(str.size()), msg.get())) {
     Run(msg, msg_info);
   } else {
     AWARN << "Failed to parse message. Content: " << str;
@@ -185,4 +176,3 @@ void ListenerHandler<MessageT>::RunFromString(const std::string& str,
 
 }  // namespace transport
 }  // namespace autolink
-

@@ -34,16 +34,15 @@ namespace action {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class ReinitializeGlobalLocalizationService : public BtServiceNode<proto::Empty>
-{
-public:
-    /**
-     * @brief A constructor for
-     * nav2_behavior_tree::ReinitializeGlobalLocalizationService
-     * @param service_node_name Service name this node creates a client for
-     * @param conf BT node configuration
-     */
-    ReinitializeGlobalLocalizationService(const std::string& service_node_name, const BT::NodeConfiguration& conf);
+class ReinitializeGlobalLocalizationService : public BtServiceNode<proto::Empty> {
+ public:
+  /**
+   * @brief A constructor for
+   * nav2_behavior_tree::ReinitializeGlobalLocalizationService
+   * @param service_node_name Service name this node creates a client for
+   * @param conf BT node configuration
+   */
+  ReinitializeGlobalLocalizationService(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 };
 
 }  // namespace action

@@ -22,28 +22,27 @@
 namespace autonomy {
 namespace prediction {
 
-class PredictionServer : common::PredictionInterface
-{
-public:
-    /**
-     * Define PredictionServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(PredictionServer)
+class PredictionServer : common::PredictionInterface {
+ public:
+  /**
+   * Define PredictionServer::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(PredictionServer)
 
-    /**
-     * @brief A constructor for autonomy::prediction::PredictionServer
-     * @param options Additional options to control creation of the node.
-     */
-    explicit PredictionServer(const proto::PredictionOptions& options);
+  /**
+   * @brief A constructor for autonomy::prediction::PredictionServer
+   * @param options Additional options to control creation of the node.
+   */
+  explicit PredictionServer(const proto::PredictionOptions& options);
 
-    /**
-     * @brief A Destructor for autonomy::prediction::PredictionServer
-     */
-    ~PredictionServer();
+  /**
+   * @brief A Destructor for autonomy::prediction::PredictionServer
+   */
+  ~PredictionServer();
 
-protected:
-    // Options prediction
-    proto::PredictionOptions options_;
+ protected:
+  // Options prediction
+  proto::PredictionOptions options_;
 };
 
 }  // namespace prediction

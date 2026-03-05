@@ -32,14 +32,13 @@ DEFINE_HANDLER_SIGNATURE(SendExplorationSignature, proto::ExplorationCommandRequ
                          autonomy::common::async_grpc::Stream<proto::ExplorationCommandResponse>,
                          "/autonomy.bridge.proto.AutonomyService/SendExplorationCommand")
 
-class SendExplorationHandler : public autonomy::common::async_grpc::RpcHandler<SendExplorationSignature>
-{
-public:
-    void OnRequest(const proto::ExplorationCommandRequest& request) override;
+class SendExplorationHandler : public autonomy::common::async_grpc::RpcHandler<SendExplorationSignature> {
+ public:
+  void OnRequest(const proto::ExplorationCommandRequest& request) override;
 
-    void OnReadsDone() override {
-        // this->Send(std::make_unique<google::protobuf::Empty>());
-    }
+  void OnReadsDone() override {
+    // this->Send(std::make_unique<google::protobuf::Empty>());
+  }
 };
 
 }  // namespace handlers

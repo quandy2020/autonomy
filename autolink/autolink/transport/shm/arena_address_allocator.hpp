@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <cstdint>
 
@@ -57,48 +56,33 @@ class ArenaAddressAllocator {
   ArenaAddressAllocator();
   ~ArenaAddressAllocator();
 
-  bool Init(uint64_t capacity, void* base_address,
-            uint64_t address_segment_size);
+  bool Init(uint64_t capacity, void* base_address, uint64_t address_segment_size);
 
-  bool OpenOrCreate(uint64_t key, uint64_t size, void* base_address,
-                    void** shm_address, bool* is_created);
+  bool OpenOrCreate(uint64_t key, uint64_t size, void* base_address, void** shm_address, bool* is_created);
   bool Open(uint64_t key, void* base_address, void** shm_address);
 
-  bool OpenOrCreate(uint64_t capacity, void* base_address,
-                    uint64_t address_segment_size);
+  bool OpenOrCreate(uint64_t capacity, void* base_address, uint64_t address_segment_size);
 
-  bool OpenMetaShm(uint64_t capacity, void* base_address,
-                   uint64_t address_segment_size);
+  bool OpenMetaShm(uint64_t capacity, void* base_address, uint64_t address_segment_size);
 
-  bool OpenNodeShm(uint64_t capacity, void* base_address,
-                   uint64_t address_segment_size);
+  bool OpenNodeShm(uint64_t capacity, void* base_address, uint64_t address_segment_size);
 
   ArenaAddressNode* NewNode(uint64_t key);
   void ReclaimNode(ArenaAddressNode* node);
   ArenaAddressNode* FindNode(ArenaAddressNode* node, uint64_t key);
-  ArenaAddressNode* FindOrInsertNode(ArenaAddressNode* node,
-                                     ArenaAddressNode** node_p,
-                                     ArenaAddressNode* parent, uint64_t key);
-  void RemoveNode(ArenaAddressNode* node, ArenaAddressNode** node_addr,
-                  uint64_t key);
-  void SwapNodePosition(ArenaAddressNode* x, ArenaAddressNode** x_p,
-                        ArenaAddressNode* y, ArenaAddressNode** y_p);
+  ArenaAddressNode* FindOrInsertNode(ArenaAddressNode* node, ArenaAddressNode** node_p, ArenaAddressNode* parent,
+                                     uint64_t key);
+  void RemoveNode(ArenaAddressNode* node, ArenaAddressNode** node_addr, uint64_t key);
+  void SwapNodePosition(ArenaAddressNode* x, ArenaAddressNode** x_p, ArenaAddressNode* y, ArenaAddressNode** y_p);
   uint64_t TreeHeight(ArenaAddressNode* node);
-  ArenaAddressNode* TreeMax(ArenaAddressNode* node,
-                            ArenaAddressNode*** node_pp);
-  ArenaAddressNode* TreeMin(ArenaAddressNode* node,
-                            ArenaAddressNode*** node_pp);
+  ArenaAddressNode* TreeMax(ArenaAddressNode* node, ArenaAddressNode*** node_pp);
+  ArenaAddressNode* TreeMin(ArenaAddressNode* node, ArenaAddressNode*** node_pp);
   int64_t TreeBalanceFactor(ArenaAddressNode* node);
-  ArenaAddressNode* TreeRebalance(ArenaAddressNode* node,
-                                  ArenaAddressNode** node_p);
-  ArenaAddressNode* TreeRotateLeft(ArenaAddressNode* node,
-                                   ArenaAddressNode** node_p);
-  ArenaAddressNode* TreeRotateRight(ArenaAddressNode* node,
-                                    ArenaAddressNode** node_p);
-  ArenaAddressNode* TreeRotateLeftRight(ArenaAddressNode* node,
-                                        ArenaAddressNode** node_p);
-  ArenaAddressNode* TreeRotateRightLeft(ArenaAddressNode* node,
-                                        ArenaAddressNode** node_p);
+  ArenaAddressNode* TreeRebalance(ArenaAddressNode* node, ArenaAddressNode** node_p);
+  ArenaAddressNode* TreeRotateLeft(ArenaAddressNode* node, ArenaAddressNode** node_p);
+  ArenaAddressNode* TreeRotateRight(ArenaAddressNode* node, ArenaAddressNode** node_p);
+  ArenaAddressNode* TreeRotateLeftRight(ArenaAddressNode* node, ArenaAddressNode** node_p);
+  ArenaAddressNode* TreeRotateRightLeft(ArenaAddressNode* node, ArenaAddressNode** node_p);
   void* Allocate(uint64_t key);
   void Deallocate(uint64_t key);
 
@@ -116,4 +100,3 @@ class ArenaAddressAllocator {
 
 }  // namespace transport
 }  // namespace autolink
-

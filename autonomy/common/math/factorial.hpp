@@ -29,12 +29,12 @@ namespace math {
 
 template <uint64_t N>
 struct Factorial {
-    enum { value = N * Factorial<N - 1>::value };
+  enum { value = N * Factorial<N - 1>::value };
 };
 
 template <>
 struct Factorial<0> {
-    enum { value = 1 };
+  enum { value = 1 };
 };
 
 }  // namespace math

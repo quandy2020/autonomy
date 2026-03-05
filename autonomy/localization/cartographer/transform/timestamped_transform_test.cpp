@@ -25,12 +25,12 @@ namespace transform {
 namespace {
 
 TEST(TimestampedTransformTest, ToProtoAndBack) {
-    const TimestampedTransform expected{
-        common::FromUniversal(12345678),
-        Rigid3d(Eigen::Vector3d(1., 2., 3.), Eigen::Quaterniond(1., 2., 3., 4.).normalized())};
-    const TimestampedTransform actual = FromProto(ToProto(expected));
-    EXPECT_EQ(expected.time, actual.time);
-    EXPECT_THAT(actual.transform, IsNearly(expected.transform, 1e-6));
+  const TimestampedTransform expected{
+      common::FromUniversal(12345678),
+      Rigid3d(Eigen::Vector3d(1., 2., 3.), Eigen::Quaterniond(1., 2., 3., 4.).normalized())};
+  const TimestampedTransform actual = FromProto(ToProto(expected));
+  EXPECT_EQ(expected.time, actual.time);
+  EXPECT_THAT(actual.transform, IsNearly(expected.transform, 1e-6));
 }
 
 }  // namespace

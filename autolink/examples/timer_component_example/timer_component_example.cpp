@@ -30,7 +30,6 @@ bool TimerComponentSample::Proc() {
   auto out_msg = std::make_shared<Driver>();
   out_msg->set_msg_id(i++);
   driver_writer_->Write(out_msg);
-  AINFO << "timer_component_example: Write drivermsg->"
-        << out_msg->ShortDebugString();
+  AINFO << "timer_component_example: Write drivermsg->" << out_msg->ShortDebugString();
   return true;
 }

@@ -27,13 +27,12 @@ namespace tools {
  * @brief PointTool
  * Point tool for the visualizer
  */
-class PointTool
-{
-public:
-    explicit PointTool();
-    virtual ~PointTool();
+class PointTool {
+ public:
+  explicit PointTool();
+  virtual ~PointTool();
 
-    // TODO: Implement tool interface
+  // TODO: Implement tool interface
 };
 
 }  // namespace tools

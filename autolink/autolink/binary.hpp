@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 
 namespace autolink {
@@ -25,4 +24,3 @@ std::string GetName();
 void SetName(const std::string& name);
 }  // namespace binary
 }  // namespace autolink
-

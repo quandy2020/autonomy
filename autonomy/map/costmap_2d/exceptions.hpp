@@ -29,27 +29,23 @@ namespace costmap_2d {
  * @brief Exceptions thrown if collision checker determines a pose is in
  * collision with the environment costmap
  */
-class CollisionCheckerException : public std::runtime_error
-{
-public:
-    explicit CollisionCheckerException(const std::string description) : std::runtime_error(description) {}
+class CollisionCheckerException : public std::runtime_error {
+ public:
+  explicit CollisionCheckerException(const std::string description) : std::runtime_error(description) {}
 };
 
 /**
  * @class IllegalPoseException
  * @brief Thrown when CollisionChecker encounters a fatal error
  */
-class IllegalPoseException : public CollisionCheckerException
-{
-public:
-    IllegalPoseException(const std::string name, const std::string description)
-        : CollisionCheckerException(description), name_(name) {}
-    std::string getCriticName() const {
-        return name_;
-    }
+class IllegalPoseException : public CollisionCheckerException {
+ public:
+  IllegalPoseException(const std::string name, const std::string description)
+      : CollisionCheckerException(description), name_(name) {}
+  std::string getCriticName() const { return name_; }
 
-protected:
-    std::string name_;
+ protected:
+  std::string name_;
 };
 
 }  // namespace costmap_2d

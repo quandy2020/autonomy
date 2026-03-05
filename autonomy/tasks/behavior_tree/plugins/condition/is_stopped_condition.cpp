@@ -30,48 +30,46 @@ IsStoppedCondition::IsStoppedCondition(const std::string& condition_name, const 
       velocity_threshold_(0.01),
       duration_stopped_(1000ms),
       stopped_stamp_(commsgs::builtin_interfaces::Time(0, 0)) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    odom_smoother_ = config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>("odom_smoother");
+  node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+  odom_smoother_ = config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>("odom_smoother");
 }
 
-IsStoppedCondition::~IsStoppedCondition() {
-    AINFO << "Shutting down IsStoppedCondition BT node";
-}
+IsStoppedCondition::~IsStoppedCondition() { AINFO << "Shutting down IsStoppedCondition BT node"; }
 
 BT::NodeStatus IsStoppedCondition::tick() {
-    getInput("velocity_threshold", velocity_threshold_);
-    getInput("duration_stopped", duration_stopped_);
+  getInput("velocity_threshold", velocity_threshold_);
+  getInput("duration_stopped", duration_stopped_);
 
-    auto twist = odom_smoother_->getRawTwistStamped();
+  auto twist = odom_smoother_->getRawTwistStamped();
 
-    // if there is no timestamp, set it to now
-    if (twist.header.stamp.sec == 0 && twist.header.stamp.nanosec == 0) {
-        twist.header.stamp = commsgs::builtin_interfaces::Time::Now();
+  // if there is no timestamp, set it to now
+  if (twist.header.stamp.sec == 0 && twist.header.stamp.nanosec == 0) {
+    twist.header.stamp = commsgs::builtin_interfaces::Time::Now();
+  }
+
+  commsgs::builtin_interfaces::Time zero_time(0, 0);
+
+  if (abs(twist.twist.linear.x) < velocity_threshold_ && abs(twist.twist.linear.y) < velocity_threshold_ &&
+      abs(twist.twist.angular.z) < velocity_threshold_) {
+    if (stopped_stamp_ == zero_time) {
+      stopped_stamp_ = twist.header.stamp;
     }
 
-    commsgs::builtin_interfaces::Time zero_time(0, 0);
+    auto current_time = commsgs::builtin_interfaces::Time::Now();
+    auto elapsed_ns = current_time.Nanoseconds() - stopped_stamp_.Nanoseconds();
+    auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_stopped_).count();
 
-    if (abs(twist.twist.linear.x) < velocity_threshold_ && abs(twist.twist.linear.y) < velocity_threshold_ &&
-        abs(twist.twist.angular.z) < velocity_threshold_) {
-        if (stopped_stamp_ == zero_time) {
-            stopped_stamp_ = twist.header.stamp;
-        }
-
-        auto current_time = commsgs::builtin_interfaces::Time::Now();
-        auto elapsed_ns = current_time.Nanoseconds() - stopped_stamp_.Nanoseconds();
-        auto duration_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(duration_stopped_).count();
-
-        if (elapsed_ns > static_cast<uint32>(duration_ns)) {
-            stopped_stamp_ = zero_time;
-            return BT::NodeStatus::SUCCESS;
-        } else {
-            return BT::NodeStatus::RUNNING;
-        }
-
+    if (elapsed_ns > static_cast<uint32>(duration_ns)) {
+      stopped_stamp_ = zero_time;
+      return BT::NodeStatus::SUCCESS;
     } else {
-        stopped_stamp_ = zero_time;
-        return BT::NodeStatus::FAILURE;
+      return BT::NodeStatus::RUNNING;
     }
+
+  } else {
+    stopped_stamp_ = zero_time;
+    return BT::NodeStatus::FAILURE;
+  }
 }
 
 }  // namespace condition
@@ -82,5 +80,5 @@ BT::NodeStatus IsStoppedCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsStoppedCondition>("IsStopped");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsStoppedCondition>("IsStopped");
 }

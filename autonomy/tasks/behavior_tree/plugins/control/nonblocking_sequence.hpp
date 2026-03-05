@@ -73,39 +73,36 @@ namespace control {
  *
  * Usage in XML: <NonblockingSequence>
  */
-class NonblockingSequence : public BT::ControlNode
-{
-public:
-    /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence
-     * @param name Name for the XML tag for this node
-     */
-    explicit NonblockingSequence(const std::string& name);
+class NonblockingSequence : public BT::ControlNode {
+ public:
+  /**
+   * @brief A constructor for
+   * autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence
+   * @param name Name for the XML tag for this node
+   */
+  explicit NonblockingSequence(const std::string& name);
 
-    /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence
-     * @param name Name for the XML tag for this node
-     * @param config BT node configuration
-     */
-    NonblockingSequence(const std::string& name, const BT::NodeConfiguration& config);
+  /**
+   * @brief A constructor for
+   * autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence
+   * @param name Name for the XML tag for this node
+   * @param config BT node configuration
+   */
+  NonblockingSequence(const std::string& name, const BT::NodeConfiguration& config);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
-    static BT::PortsList providedPorts() {
-        return {};
-    }
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing basic ports along with node-specific
+   * ports
+   */
+  static BT::PortsList providedPorts() { return {}; }
 
-protected:
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+ protected:
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 };
 
 }  // namespace control

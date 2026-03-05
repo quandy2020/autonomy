@@ -32,8 +32,7 @@ bool RecordFileReader::Open(const std::string& path) {
   }
   fd_ = open(path_.data(), O_RDONLY);
   if (fd_ < 0) {
-    AERROR << "Open file failed, file: " << path_ << ", fd: " << fd_
-           << ", errno: " << errno;
+    AERROR << "Open file failed, file: " << path_ << ", fd: " << fd_ << ", errno: " << errno;
     return false;
   }
   end_of_file_ = false;
@@ -69,8 +68,7 @@ bool RecordFileReader::ReadHeader() {
   }
   if (section.type != SectionType::SECTION_HEADER) {
     AERROR << "Check section type failed"
-           << ", expect: " << SectionType::SECTION_HEADER
-           << ", actual: " << section.type;
+           << ", expect: " << SectionType::SECTION_HEADER << ", actual: " << section.type;
     return false;
   }
   if (!ReadSection<proto::Header>(section.size, &header_)) {
@@ -101,8 +99,7 @@ bool RecordFileReader::ReadIndex() {
   }
   if (section.type != SectionType::SECTION_INDEX) {
     AERROR << "Check section type failed"
-           << ", expect: " << SectionType::SECTION_INDEX
-           << ", actual: " << section.type;
+           << ", expect: " << SectionType::SECTION_INDEX << ", actual: " << section.type;
     return false;
   }
   if (!ReadSection<proto::Index>(section.size, &index_)) {
@@ -123,8 +120,7 @@ bool RecordFileReader::ReadSection(Section* section) {
     AINFO << "Reach end of file.";
     return false;
   } else if (count != sizeof(struct Section)) {
-    AERROR << "Read fd failed, fd_: " << fd_
-           << ", expect count: " << sizeof(struct Section)
+    AERROR << "Read fd failed, fd_: " << fd_ << ", expect count: " << sizeof(struct Section)
            << ", actual count: " << count;
     return false;
   }
@@ -134,21 +130,18 @@ bool RecordFileReader::ReadSection(Section* section) {
 bool RecordFileReader::SkipSection(int64_t size) {
   int64_t pos = CurrentPosition();
   if (size > INT64_MAX - pos) {
-    AERROR << "Current position plus skip count is larger than INT64_MAX, "
-           << pos << " + " << size << " > " << INT64_MAX;
+    AERROR << "Current position plus skip count is larger than INT64_MAX, " << pos << " + " << size << " > "
+           << INT64_MAX;
     return false;
   }
   if (!SetPosition(pos + size)) {
-    AERROR << "Skip failed, file: " << path_ << ", current position: " << pos
-           << "skip count: " << size;
+    AERROR << "Skip failed, file: " << path_ << ", current position: " << pos << "skip count: " << size;
     return false;
   }
   return true;
 }
 
-RecordFileReader::~RecordFileReader() {
-  Close();
-}
+RecordFileReader::~RecordFileReader() { Close(); }
 
 }  // namespace record
 }  // namespace autolink

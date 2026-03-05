@@ -20,43 +20,41 @@
 
 #include "autonomy/planning/math/curve1d/piecewise_quintic_spiral_path.hpp"
 
-#include "gtest/gtest.h"
-
 #include "autonomy/planning/math/curve1d/quintic_spiral_path.hpp"
+#include "gtest/gtest.h"
 
 namespace autonomy {
 namespace planning {
 namespace math {
 
 TEST(PiecewiseQuinticSpiralPath, Evaluate) {
-    double theta0 = 0.0;
-    double kappa0 = 0.0;
-    double dkappa0 = 0.0;
+  double theta0 = 0.0;
+  double kappa0 = 0.0;
+  double dkappa0 = 0.0;
 
-    double delta_s0 = 1.0;
+  double delta_s0 = 1.0;
 
-    double theta1 = 0.1;
-    double kappa1 = 1.0;
-    double dkappa1 = 0.0;
+  double theta1 = 0.1;
+  double kappa1 = 1.0;
+  double dkappa1 = 0.0;
 
-    QuinticSpiralPath path0(theta0, kappa0, dkappa0, theta1, kappa1, dkappa1, delta_s0);
+  QuinticSpiralPath path0(theta0, kappa0, dkappa0, theta1, kappa1, dkappa1, delta_s0);
 
-    double theta2 = 0.2;
-    double kappa2 = 1.0;
-    double dkappa2 = 0.0;
+  double theta2 = 0.2;
+  double kappa2 = 1.0;
+  double dkappa2 = 0.0;
 
-    double delta_s1 = 2.0;
-    QuinticSpiralPath path1(theta1, kappa1, dkappa1, theta2, kappa2, dkappa2, delta_s1);
+  double delta_s1 = 2.0;
+  QuinticSpiralPath path1(theta1, kappa1, dkappa1, theta2, kappa2, dkappa2, delta_s1);
 
-    PiecewiseQuinticSpiralPath piecewise_path(theta0, kappa0, dkappa0);
-    piecewise_path.Append(theta1, kappa1, dkappa1, delta_s0);
-    piecewise_path.Append(theta2, kappa2, dkappa2, delta_s1);
+  PiecewiseQuinticSpiralPath piecewise_path(theta0, kappa0, dkappa0);
+  piecewise_path.Append(theta1, kappa1, dkappa1, delta_s0);
+  piecewise_path.Append(theta2, kappa2, dkappa2, delta_s1);
 
-    EXPECT_NEAR(delta_s0 + delta_s1, piecewise_path.ParamLength(), 1.0e-8);
-    EXPECT_NEAR(path0.Evaluate(0, 0.0), piecewise_path.Evaluate(0, 0.0), 1.0e-8);
-    EXPECT_NEAR(path1.Evaluate(0, 0.0), piecewise_path.Evaluate(0, delta_s0), 1.0e-8);
-    EXPECT_NEAR(path1.Evaluate(0, path1.ParamLength()), piecewise_path.Evaluate(0, piecewise_path.ParamLength()),
-                1.0e-8);
+  EXPECT_NEAR(delta_s0 + delta_s1, piecewise_path.ParamLength(), 1.0e-8);
+  EXPECT_NEAR(path0.Evaluate(0, 0.0), piecewise_path.Evaluate(0, 0.0), 1.0e-8);
+  EXPECT_NEAR(path1.Evaluate(0, 0.0), piecewise_path.Evaluate(0, delta_s0), 1.0e-8);
+  EXPECT_NEAR(path1.Evaluate(0, path1.ParamLength()), piecewise_path.Evaluate(0, piecewise_path.ParamLength()), 1.0e-8);
 }
 
 }  // namespace math

@@ -30,47 +30,47 @@ namespace condition {
 
 IsPathValidCondition::IsPathValidCondition(const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), max_cost_(253), consider_unknown_as_obstacle_(false) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    client_ = node_->CreateClient<proto::IsPathValid::Request, proto::IsPathValid::Response>("is_path_valid");
+  node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+  client_ = node_->CreateClient<proto::IsPathValid::Request, proto::IsPathValid::Response>("is_path_valid");
 
-    server_timeout_ = config().blackboard->template get<std::chrono::milliseconds>("server_timeout");
+  server_timeout_ = config().blackboard->template get<std::chrono::milliseconds>("server_timeout");
 }
 
 void IsPathValidCondition::initialize() {
-    getInput<std::chrono::milliseconds>("server_timeout", server_timeout_);
-    getInput<unsigned int>("max_cost", max_cost_);
-    getInput<bool>("consider_unknown_as_obstacle", consider_unknown_as_obstacle_);
+  getInput<std::chrono::milliseconds>("server_timeout", server_timeout_);
+  getInput<unsigned int>("max_cost", max_cost_);
+  getInput<bool>("consider_unknown_as_obstacle", consider_unknown_as_obstacle_);
 }
 
 BT::NodeStatus IsPathValidCondition::tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
+  if (!BT::isStatusActive(status())) {
+    initialize();
+  }
+
+  commsgs::planning_msgs::Path path;
+  getInput("path", path);
+
+  auto request = std::make_shared<proto::IsPathValid::Request>();
+
+  // Convert path to proto format manually
+  auto* path_proto = request->mutable_path();
+  *path_proto->mutable_header() = commsgs::std_msgs::ToProto(path.header);
+  for (const auto& pose : path.poses) {
+    *path_proto->add_poses() = commsgs::geometry_msgs::ToProto(pose);
+  }
+  request->set_max_cost(max_cost_);
+  request->set_consider_unknown_as_obstacle(consider_unknown_as_obstacle_);
+
+  auto future_result = client_->AsyncSendRequest(request);
+  auto status = future_result.wait_for(server_timeout_);
+
+  if (status == std::future_status::ready) {
+    auto response = future_result.get();
+    if (response && response->is_valid()) {
+      return BT::NodeStatus::SUCCESS;
     }
-
-    commsgs::planning_msgs::Path path;
-    getInput("path", path);
-
-    auto request = std::make_shared<proto::IsPathValid::Request>();
-
-    // Convert path to proto format manually
-    auto* path_proto = request->mutable_path();
-    *path_proto->mutable_header() = commsgs::std_msgs::ToProto(path.header);
-    for (const auto& pose : path.poses) {
-        *path_proto->add_poses() = commsgs::geometry_msgs::ToProto(pose);
-    }
-    request->set_max_cost(max_cost_);
-    request->set_consider_unknown_as_obstacle(consider_unknown_as_obstacle_);
-
-    auto future_result = client_->AsyncSendRequest(request);
-    auto status = future_result.wait_for(server_timeout_);
-
-    if (status == std::future_status::ready) {
-        auto response = future_result.get();
-        if (response && response->is_valid()) {
-            return BT::NodeStatus::SUCCESS;
-        }
-    }
-    return BT::NodeStatus::FAILURE;
+  }
+  return BT::NodeStatus::FAILURE;
 }
 
 }  // namespace condition
@@ -81,5 +81,5 @@ BT::NodeStatus IsPathValidCondition::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsPathValidCondition>("IsPathValid");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::IsPathValidCondition>("IsPathValid");
 }

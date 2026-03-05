@@ -24,11 +24,10 @@
 #include <string>
 #include <unordered_map>
 
-#include "autolink/proto/record.pb.h"
-
 #include "autolink/common/log.hpp"
 #include "autolink/message/message_traits.hpp"
 #include "autolink/message/raw_message.hpp"
+#include "autolink/proto/record.pb.h"
 #include "autolink/record/file/record_file_writer.hpp"
 #include "autolink/record/header_builder.hpp"
 #include "autolink/record/record_base.hpp"
@@ -86,9 +85,7 @@ class RecordWriter : public RecordBase {
    *
    * @return True for success, false for fail.
    */
-  bool WriteChannel(const std::string& channel_name,
-                    const std::string& message_type,
-                    const std::string& proto_desc);
+  bool WriteChannel(const std::string& channel_name, const std::string& message_type, const std::string& proto_desc);
 
   /**
    * @brief Write a message to record.
@@ -102,8 +99,7 @@ class RecordWriter : public RecordBase {
    * @return True for success, false for fail.
    */
   template <typename MessageT>
-  bool WriteMessage(const std::string& channel_name, const MessageT& message,
-                    const uint64_t time_nanosec,
+  bool WriteMessage(const std::string& channel_name, const MessageT& message, const uint64_t time_nanosec,
                     const std::string& proto_desc = "");
 
   /**
@@ -140,8 +136,7 @@ class RecordWriter : public RecordBase {
    *
    * @return Message type.
    */
-  const std::string& GetMessageType(
-      const std::string& channel_name) const override;
+  const std::string& GetMessageType(const std::string& channel_name) const override;
 
   /**
    * @brief Get proto descriptor string by channel name.
@@ -150,8 +145,7 @@ class RecordWriter : public RecordBase {
    *
    * @return Proto descriptor string by channel name.
    */
-  const std::string& GetProtoDesc(
-      const std::string& channel_name) const override;
+  const std::string& GetProtoDesc(const std::string& channel_name) const override;
 
   /**
    * @brief Get channel list.
@@ -170,9 +164,7 @@ class RecordWriter : public RecordBase {
  private:
   bool WriteMessage(const proto::SingleMessage& single_msg);
   bool SplitOutfile();
-  void OnNewChannel(const std::string& channel_name,
-                    const std::string& message_type,
-                    const std::string& proto_desc);
+  void OnNewChannel(const std::string& channel_name, const std::string& message_type, const std::string& proto_desc);
   void OnNewMessage(const std::string& channel_name);
 
   std::string path_;
@@ -189,10 +181,8 @@ class RecordWriter : public RecordBase {
 };
 
 template <>
-inline bool RecordWriter::WriteMessage(const std::string& channel_name,
-                                       const std::string& message,
-                                       const uint64_t time_nanosec,
-                                       const std::string& proto_desc) {
+inline bool RecordWriter::WriteMessage(const std::string& channel_name, const std::string& message,
+                                       const uint64_t time_nanosec, const std::string& proto_desc) {
   proto::SingleMessage single_msg;
   single_msg.set_channel_name(channel_name);
   single_msg.set_content(message);
@@ -201,10 +191,9 @@ inline bool RecordWriter::WriteMessage(const std::string& channel_name,
 }
 
 template <>
-inline bool RecordWriter::WriteMessage(
-    const std::string& channel_name,
-    const std::shared_ptr<message::RawMessage>& message,
-    const uint64_t time_nanosec, const std::string& proto_desc) {
+inline bool RecordWriter::WriteMessage(const std::string& channel_name,
+                                       const std::shared_ptr<message::RawMessage>& message, const uint64_t time_nanosec,
+                                       const std::string& proto_desc) {
   if (message == nullptr) {
     AERROR << "nullptr error, channel: " << channel_name;
     return false;
@@ -213,16 +202,12 @@ inline bool RecordWriter::WriteMessage(
 }
 
 template <typename MessageT>
-bool RecordWriter::WriteMessage(const std::string& channel_name,
-                                const MessageT& message,
-                                const uint64_t time_nanosec,
+bool RecordWriter::WriteMessage(const std::string& channel_name, const MessageT& message, const uint64_t time_nanosec,
                                 const std::string& proto_desc) {
   const std::string& message_type = GetMessageType(channel_name);
   if (message_type.empty()) {
-    if (!WriteChannel(channel_name, message::GetMessageName<MessageT>(),
-                      proto_desc)) {
-      AERROR << "Failed to write meta data to channel [" << channel_name
-             << "].";
+    if (!WriteChannel(channel_name, message::GetMessageName<MessageT>(), proto_desc)) {
+      AERROR << "Failed to write meta data to channel [" << channel_name << "].";
       return false;
     }
   } else {
@@ -242,4 +227,3 @@ bool RecordWriter::WriteMessage(const std::string& channel_name,
 
 }  // namespace record
 }  // namespace autolink
-

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <iomanip>
 #include <mutex>
@@ -95,4 +94,3 @@ class LogFileObject : public google::base::Logger {
 
 }  // namespace logger
 }  // namespace autolink
-

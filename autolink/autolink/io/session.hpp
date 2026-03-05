@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -49,12 +48,11 @@ class Session {
   // timeout_ms == 0, try once
   // timeout_ms > 0, keep trying while there is still time left
   ssize_t Recv(void *buf, size_t len, int flags, int timeout_ms = -1);
-  ssize_t RecvFrom(void *buf, size_t len, int flags, struct sockaddr *src_addr,
-                   socklen_t *addrlen, int timeout_ms = -1);
+  ssize_t RecvFrom(void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen,
+                   int timeout_ms = -1);
 
   ssize_t Send(const void *buf, size_t len, int flags, int timeout_ms = -1);
-  ssize_t SendTo(const void *buf, size_t len, int flags,
-                 const struct sockaddr *dest_addr, socklen_t addrlen,
+  ssize_t SendTo(const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen,
                  int timeout_ms = -1);
 
   ssize_t Read(void *buf, size_t count, int timeout_ms = -1);
@@ -74,4 +72,3 @@ class Session {
 
 }  // namespace io
 }  // namespace autolink
-

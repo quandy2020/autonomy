@@ -21,11 +21,11 @@ namespace plugins {
 namespace view_controllers {
 
 FpsViewController::FpsViewController() {
-    // TODO: Initialize view controller
+  // TODO: Initialize view controller
 }
 
 FpsViewController::~FpsViewController() {
-    // TODO: Cleanup
+  // TODO: Cleanup
 }
 
 }  // namespace view_controllers

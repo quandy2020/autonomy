@@ -44,13 +44,11 @@ namespace action {
  * server.
  */
 template <typename ActionT>
-std::shared_ptr<Server<ActionT>> CreateServer(
-    std::shared_ptr<Node> node, const std::string& action_name,
-    typename Server<ActionT>::GoalCallback handle_goal,
-    typename Server<ActionT>::CancelCallback handle_cancel,
-    typename Server<ActionT>::AcceptedCallback handle_accepted) {
-    return std::make_shared<Server<ActionT>>(node, action_name, handle_goal,
-                                             handle_cancel, handle_accepted);
+std::shared_ptr<Server<ActionT>> CreateServer(std::shared_ptr<Node> node, const std::string& action_name,
+                                              typename Server<ActionT>::GoalCallback handle_goal,
+                                              typename Server<ActionT>::CancelCallback handle_cancel,
+                                              typename Server<ActionT>::AcceptedCallback handle_accepted) {
+  return std::make_shared<Server<ActionT>>(node, action_name, handle_goal, handle_cancel, handle_accepted);
 }
 
 }  // namespace action

@@ -26,58 +26,57 @@ namespace io {
 
 // Voxel filters the data and only passes on points that we believe are on
 // non-moving objects.
-class OutlierRemovingPointsProcessor : public PointsProcessor
-{
-public:
-    constexpr static const char* kConfigurationFileActionName = "voxel_filter_and_remove_moving_objects";
+class OutlierRemovingPointsProcessor : public PointsProcessor {
+ public:
+  constexpr static const char* kConfigurationFileActionName = "voxel_filter_and_remove_moving_objects";
 
-    OutlierRemovingPointsProcessor(double voxel_size, double miss_per_hit_limit, PointsProcessor* next);
+  OutlierRemovingPointsProcessor(double voxel_size, double miss_per_hit_limit, PointsProcessor* next);
 
-    static std::unique_ptr<OutlierRemovingPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
-                                                                          PointsProcessor* next);
+  static std::unique_ptr<OutlierRemovingPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
+                                                                        PointsProcessor* next);
 
-    ~OutlierRemovingPointsProcessor() override {}
+  ~OutlierRemovingPointsProcessor() override {}
 
-    OutlierRemovingPointsProcessor(const OutlierRemovingPointsProcessor&) = delete;
-    OutlierRemovingPointsProcessor& operator=(const OutlierRemovingPointsProcessor&) = delete;
+  OutlierRemovingPointsProcessor(const OutlierRemovingPointsProcessor&) = delete;
+  OutlierRemovingPointsProcessor& operator=(const OutlierRemovingPointsProcessor&) = delete;
 
-    void Process(std::unique_ptr<PointsBatch> batch) override;
-    FlushResult Flush() override;
+  void Process(std::unique_ptr<PointsBatch> batch) override;
+  FlushResult Flush() override;
 
-private:
-    // To reduce memory consumption by not having to keep all rays in memory, we
-    // filter outliers in three phases each going over all data: First we
-    // compute all voxels containing any hits, then we compute the rays passing
-    // through each of these voxels, and finally we output all hits in voxels
-    // that are considered obstructed.
-    struct VoxelData {
-        int hits = 0;
-        int rays = 0;
-    };
-    enum class State {
-        kPhase1,
-        kPhase2,
-        kPhase3,
-    };
+ private:
+  // To reduce memory consumption by not having to keep all rays in memory, we
+  // filter outliers in three phases each going over all data: First we
+  // compute all voxels containing any hits, then we compute the rays passing
+  // through each of these voxels, and finally we output all hits in voxels
+  // that are considered obstructed.
+  struct VoxelData {
+    int hits = 0;
+    int rays = 0;
+  };
+  enum class State {
+    kPhase1,
+    kPhase2,
+    kPhase3,
+  };
 
-    // First phase counts the number of hits per voxel.
-    void ProcessInPhaseOne(const PointsBatch& batch);
+  // First phase counts the number of hits per voxel.
+  void ProcessInPhaseOne(const PointsBatch& batch);
 
-    // Second phase counts how many rays pass through each voxel. This is only
-    // done for voxels that contain hits. This is to reduce memory consumption
-    // by not adding data to free voxels.
-    void ProcessInPhaseTwo(const PointsBatch& batch);
+  // Second phase counts how many rays pass through each voxel. This is only
+  // done for voxels that contain hits. This is to reduce memory consumption
+  // by not adding data to free voxels.
+  void ProcessInPhaseTwo(const PointsBatch& batch);
 
-    // Third phase produces the output containing all inliers. We consider each
-    // hit an inlier if it is inside a voxel that has a sufficiently high
-    // hit-to-ray ratio.
-    void ProcessInPhaseThree(std::unique_ptr<PointsBatch> batch);
+  // Third phase produces the output containing all inliers. We consider each
+  // hit an inlier if it is inside a voxel that has a sufficiently high
+  // hit-to-ray ratio.
+  void ProcessInPhaseThree(std::unique_ptr<PointsBatch> batch);
 
-    const double voxel_size_;
-    const double miss_per_hit_limit_;
-    PointsProcessor* const next_;
-    State state_;
-    mapping::HybridGridBase<VoxelData> voxels_;
+  const double voxel_size_;
+  const double miss_per_hit_limit_;
+  PointsProcessor* const next_;
+  State state_;
+  mapping::HybridGridBase<VoxelData> voxels_;
 };
 
 }  // namespace io

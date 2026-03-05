@@ -36,9 +36,9 @@ typedef unsigned __int64 uint64_t;
 
 // Define non-copyable or non-movable classes.
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
-#define NON_COPYABLE(class_name)            \
-    class_name(class_name const&) = delete; \
-    void operator=(class_name const& obj) = delete;
+#define NON_COPYABLE(class_name)          \
+  class_name(class_name const&) = delete; \
+  void operator=(class_name const& obj) = delete;
 // NOLINTNEXTLINE(bugprone-macro-parentheses)
 #define NON_MOVABLE(class_name) class_name(class_name&&) = delete;
 
@@ -78,34 +78,26 @@ using float64 = double;
 
 namespace common {
 
-inline int RoundToInt(const float x) {
-    return std::lround(x);
-}
+inline int RoundToInt(const float x) { return std::lround(x); }
 
-inline int RoundToInt(const double x) {
-    return std::lround(x);
-}
+inline int RoundToInt(const double x) { return std::lround(x); }
 
-inline int64 RoundToInt64(const float x) {
-    return std::lround(x);
-}
+inline int64 RoundToInt64(const float x) { return std::lround(x); }
 
-inline int64 RoundToInt64(const double x) {
-    return std::lround(x);
-}
+inline int64 RoundToInt64(const double x) { return std::lround(x); }
 
 inline void FastGzipString(const std::string& uncompressed, std::string* compressed) {
-    boost::iostreams::filtering_ostream out;
-    out.push(boost::iostreams::gzip_compressor(boost::iostreams::zlib::best_speed));
-    out.push(boost::iostreams::back_inserter(*compressed));
-    boost::iostreams::write(out, reinterpret_cast<const char*>(uncompressed.data()), uncompressed.size());
+  boost::iostreams::filtering_ostream out;
+  out.push(boost::iostreams::gzip_compressor(boost::iostreams::zlib::best_speed));
+  out.push(boost::iostreams::back_inserter(*compressed));
+  boost::iostreams::write(out, reinterpret_cast<const char*>(uncompressed.data()), uncompressed.size());
 }
 
 inline void FastGunzipString(const std::string& compressed, std::string* decompressed) {
-    boost::iostreams::filtering_ostream out;
-    out.push(boost::iostreams::gzip_decompressor());
-    out.push(boost::iostreams::back_inserter(*decompressed));
-    boost::iostreams::write(out, reinterpret_cast<const char*>(compressed.data()), compressed.size());
+  boost::iostreams::filtering_ostream out;
+  out.push(boost::iostreams::gzip_decompressor());
+  out.push(boost::iostreams::back_inserter(*decompressed));
+  boost::iostreams::write(out, reinterpret_cast<const char*>(compressed.data()), compressed.size());
 }
 
 }  // namespace common
@@ -118,10 +110,10 @@ namespace std {
 // Hash function specialization for uint32_t pairs, e.g., image_t or camera_t.
 template <>
 struct hash<std::pair<uint32_t, uint32_t>> {
-    std::size_t operator()(const std::pair<uint32_t, uint32_t>& p) const {
-        const uint64_t s = (static_cast<uint64_t>(p.first) << 32) + static_cast<uint64_t>(p.second);
-        return std::hash<uint64_t>()(s);
-    }
+  std::size_t operator()(const std::pair<uint32_t, uint32_t>& p) const {
+    const uint64_t s = (static_cast<uint64_t>(p.first) << 32) + static_cast<uint64_t>(p.second);
+    return std::hash<uint64_t>()(s);
+  }
 };
 
 }  // namespace std

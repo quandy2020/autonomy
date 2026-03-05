@@ -58,91 +58,74 @@ void ShmDispatcher::AddSegment(const RoleAttributes& self_attr) {
 }
 
 void ShmDispatcher::ReadMessage(uint64_t channel_id, uint32_t block_index) {
-  ADEBUG << "Reading sharedmem message: "
-         << GlobalData::GetChannelById(channel_id)
-         << " from block: " << block_index;
+  ADEBUG << "Reading sharedmem message: " << GlobalData::GetChannelById(channel_id) << " from block: " << block_index;
   auto rb = std::make_shared<ReadableBlock>();
   rb->index = block_index;
   if (!segments_[channel_id]->AcquireBlockToRead(rb.get())) {
-    AWARN << "fail to acquire block, channel: "
-          << GlobalData::GetChannelById(channel_id)
-          << " index: " << block_index;
+    AWARN << "fail to acquire block, channel: " << GlobalData::GetChannelById(channel_id) << " index: " << block_index;
     return;
   }
 
   MessageInfo msg_info;
-  const char* msg_info_addr =
-      reinterpret_cast<char*>(rb->buf) + rb->block->msg_size();
+  const char* msg_info_addr = reinterpret_cast<char*>(rb->buf) + rb->block->msg_size();
 
   if (msg_info.DeserializeFrom(msg_info_addr, rb->block->msg_info_size())) {
     OnMessage(channel_id, rb, msg_info);
   } else {
-    AERROR << "error msg info of channel:"
-           << GlobalData::GetChannelById(channel_id);
+    AERROR << "error msg info of channel:" << GlobalData::GetChannelById(channel_id);
   }
   segments_[channel_id]->ReleaseReadBlock(*rb);
 }
 
-void ShmDispatcher::ReadArenaMessage(uint64_t channel_id,
-                                     uint32_t arena_block_index) {
-  ADEBUG << "Reading sharedmem arena message: "
-         << GlobalData::GetChannelById(channel_id)
+void ShmDispatcher::ReadArenaMessage(uint64_t channel_id, uint32_t arena_block_index) {
+  ADEBUG << "Reading sharedmem arena message: " << GlobalData::GetChannelById(channel_id)
          << " from block: " << arena_block_index;
   auto rb = std::make_shared<ReadableBlock>();
   rb->index = arena_block_index;
   if (!segments_[channel_id]->AcquireArenaBlockToRead(rb.get())) {
-    AWARN << "fail to acquire block, channel: "
-          << GlobalData::GetChannelById(channel_id)
+    AWARN << "fail to acquire block, channel: " << GlobalData::GetChannelById(channel_id)
           << " index: " << arena_block_index;
     return;
   }
 
   MessageInfo msg_info;
-  const char* msg_info_addr =
-      reinterpret_cast<char*>(rb->buf) + rb->block->msg_size();
+  const char* msg_info_addr = reinterpret_cast<char*>(rb->buf) + rb->block->msg_size();
   if (msg_info.DeserializeFrom(msg_info_addr, rb->block->msg_info_size())) {
     OnArenaMessage(channel_id, rb, msg_info);
   } else {
-    AERROR << "error msg info of channel:"
-           << GlobalData::GetChannelById(channel_id);
+    AERROR << "error msg info of channel:" << GlobalData::GetChannelById(channel_id);
   }
   segments_[channel_id]->ReleaseArenaReadBlock(*rb);
 }
 
-void ShmDispatcher::OnMessage(uint64_t channel_id,
-                              const std::shared_ptr<ReadableBlock>& rb,
+void ShmDispatcher::OnMessage(uint64_t channel_id, const std::shared_ptr<ReadableBlock>& rb,
                               const MessageInfo& msg_info) {
   if (is_shutdown_.load()) {
     return;
   }
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (msg_listeners_.Get(channel_id, &handler_base)) {
-    auto handler = std::dynamic_pointer_cast<ListenerHandler<ReadableBlock>>(
-        *handler_base);
+    auto handler = std::dynamic_pointer_cast<ListenerHandler<ReadableBlock>>(*handler_base);
     handler->Run(rb, msg_info);
   } else {
     if (!arena_msg_listeners_.Get(channel_id, &handler_base)) {
-      AERROR << "Cannot find " << GlobalData::GetChannelById(channel_id)
-             << "'s handler.";
+      AERROR << "Cannot find " << GlobalData::GetChannelById(channel_id) << "'s handler.";
     }
   }
 }
 
-void ShmDispatcher::OnArenaMessage(uint64_t channel_id,
-                                   const std::shared_ptr<ReadableBlock>& rb,
+void ShmDispatcher::OnArenaMessage(uint64_t channel_id, const std::shared_ptr<ReadableBlock>& rb,
                                    const MessageInfo& msg_info) {
   if (is_shutdown_.load()) {
     return;
   }
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (arena_msg_listeners_.Get(channel_id, &handler_base)) {
-    auto handler = std::dynamic_pointer_cast<ListenerHandler<ReadableBlock>>(
-        *handler_base);
+    auto handler = std::dynamic_pointer_cast<ListenerHandler<ReadableBlock>>(*handler_base);
     handler->Run(rb, msg_info);
   } else {
     if (!msg_listeners_.Get(channel_id, &handler_base)) {
-      AERROR << "Cannot find " << GlobalData::GetChannelById(channel_id)
-             << "'s handler.";
+      AERROR << "Cannot find " << GlobalData::GetChannelById(channel_id) << "'s handler.";
     }
   }
 }
@@ -178,14 +161,11 @@ void ShmDispatcher::ThreadFunc() {
         uint32_t& previous_index = previous_indexes_[channel_id];
         if (block_index != 0 && previous_index != UINT32_MAX) {
           if (block_index == previous_index) {
-            ADEBUG << "Receive SAME index " << block_index << " of channel "
-                   << channel_id;
+            ADEBUG << "Receive SAME index " << block_index << " of channel " << channel_id;
           } else if (block_index < previous_index) {
-            ADEBUG << "Receive PREVIOUS message. last: " << previous_index
-                   << ", now: " << block_index;
+            ADEBUG << "Receive PREVIOUS message. last: " << previous_index << ", now: " << block_index;
           } else if (block_index - previous_index > 1) {
-            ADEBUG << "Receive JUMP message. last: " << previous_index
-                   << ", now: " << block_index;
+            ADEBUG << "Receive JUMP message. last: " << previous_index << ", now: " << block_index;
           }
         }
         previous_index = block_index;
@@ -199,14 +179,11 @@ void ShmDispatcher::ThreadFunc() {
         uint32_t& arena_previous_index = arena_previous_indexes_[channel_id];
         if (arena_block_index != 0 && arena_previous_index != UINT32_MAX) {
           if (arena_block_index == arena_previous_index) {
-            ADEBUG << "Receive SAME index " << arena_block_index
-                   << " of channel " << channel_id;
+            ADEBUG << "Receive SAME index " << arena_block_index << " of channel " << channel_id;
           } else if (arena_block_index < arena_previous_index) {
-            ADEBUG << "Receive PREVIOUS message. last: " << arena_previous_index
-                   << ", now: " << arena_block_index;
+            ADEBUG << "Receive PREVIOUS message. last: " << arena_previous_index << ", now: " << arena_block_index;
           } else if (arena_block_index - arena_previous_index > 1) {
-            ADEBUG << "Receive JUMP message. last: " << arena_previous_index
-                   << ", now: " << arena_block_index;
+            ADEBUG << "Receive JUMP message. last: " << arena_previous_index << ", now: " << arena_block_index;
           }
         }
         arena_previous_index = arena_block_index;

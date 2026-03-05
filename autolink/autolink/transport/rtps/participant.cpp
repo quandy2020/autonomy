@@ -16,8 +16,9 @@
 
 #include "autolink/transport/rtps/participant.hpp"
 
-#include <algorithm>
 #include <fastrtps/utils/IPLocator.h>
+
+#include <algorithm>
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
@@ -26,13 +27,8 @@
 namespace autolink {
 namespace transport {
 
-Participant::Participant(const std::string& name, int send_port,
-                         eprosima::fastrtps::ParticipantListener* listener)
-    : shutdown_(false),
-      name_(name),
-      send_port_(send_port),
-      listener_(listener),
-      fastrtps_participant_(nullptr) {}
+Participant::Participant(const std::string& name, int send_port, eprosima::fastrtps::ParticipantListener* listener)
+    : shutdown_(false), name_(name), send_port_(send_port), listener_(listener), fastrtps_participant_(nullptr) {}
 
 Participant::~Participant() {}
 
@@ -63,9 +59,8 @@ eprosima::fastrtps::Participant* Participant::fastrtps_participant() {
   return fastrtps_participant_;
 }
 
-void Participant::CreateFastRtpsParticipant(
-    const std::string& name, int send_port,
-    eprosima::fastrtps::ParticipantListener* listener) {
+void Participant::CreateFastRtpsParticipant(const std::string& name, int send_port,
+                                            eprosima::fastrtps::ParticipantListener* listener) {
   uint32_t domain_id = 80;
 
   const char* val = ::getenv("AUTOLINK_DOMAIN_ID");
@@ -87,16 +82,12 @@ void Participant::CreateFastRtpsParticipant(
 
   eprosima::fastrtps::ParticipantAttributes attr;
   attr.domainId = domain_id;
-  attr.rtps.port.domainIDGain =
-      static_cast<uint16_t>(part_attr_conf->domain_id_gain());
+  attr.rtps.port.domainIDGain = static_cast<uint16_t>(part_attr_conf->domain_id_gain());
   attr.rtps.port.portBase = static_cast<uint16_t>(part_attr_conf->port_base());
-  attr.rtps.builtin.discovery_config.discoveryProtocol =
-      eprosima::fastrtps::rtps::DiscoveryProtocol_t::SIMPLE;
+  attr.rtps.builtin.discovery_config.discoveryProtocol = eprosima::fastrtps::rtps::DiscoveryProtocol_t::SIMPLE;
   attr.rtps.builtin.discovery_config.use_SIMPLE_EndpointDiscoveryProtocol = true;
-  attr.rtps.builtin.discovery_config.m_simpleEDP
-      .use_PublicationReaderANDSubscriptionWriter = true;
-  attr.rtps.builtin.discovery_config.m_simpleEDP
-      .use_PublicationWriterANDSubscriptionReader = true;
+  attr.rtps.builtin.discovery_config.m_simpleEDP.use_PublicationReaderANDSubscriptionWriter = true;
+  attr.rtps.builtin.discovery_config.m_simpleEDP.use_PublicationWriterANDSubscriptionReader = true;
 
   /**
    * FastDDS requires: LeaseDuration >= leaseDuration_announcementperiod.
@@ -118,10 +109,8 @@ void Participant::CreateFastRtpsParticipant(
   if (lease_sec < announce_sec) {
     lease_sec = announce_sec + 1;
   }
-  attr.rtps.builtin.discovery_config.leaseDuration =
-      eprosima::fastrtps::Duration_t(lease_sec, 0);
-  attr.rtps.builtin.discovery_config.leaseDuration_announcementperiod =
-      eprosima::fastrtps::Duration_t(announce_sec, 0);
+  attr.rtps.builtin.discovery_config.leaseDuration = eprosima::fastrtps::Duration_t(lease_sec, 0);
+  attr.rtps.builtin.discovery_config.leaseDuration_announcementperiod = eprosima::fastrtps::Duration_t(announce_sec, 0);
 
   attr.rtps.setName(name.c_str());
 
@@ -147,12 +136,10 @@ void Participant::CreateFastRtpsParticipant(
   eprosima::fastrtps::rtps::Locator_t mcast_locator;
   mcast_locator.kind = LOCATOR_KIND_UDPv4;
   mcast_locator.port = 0;
-  RETURN_IF(
-      !eprosima::fastrtps::rtps::IPLocator::setIPv4(mcast_locator, "239.255.0.1"));
+  RETURN_IF(!eprosima::fastrtps::rtps::IPLocator::setIPv4(mcast_locator, "239.255.0.1"));
   attr.rtps.builtin.metatrafficMulticastLocatorList.push_back(mcast_locator);
 
-  fastrtps_participant_ =
-      eprosima::fastrtps::Domain::createParticipant(attr, listener);
+  fastrtps_participant_ = eprosima::fastrtps::Domain::createParticipant(attr, listener);
   RETURN_IF_NULL(fastrtps_participant_);
   eprosima::fastrtps::Domain::registerType(fastrtps_participant_, &type_);
 }

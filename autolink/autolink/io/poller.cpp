@@ -187,8 +187,7 @@ void Poller::Poll(int timeout_ms) {
   auto before_time_ns = Time::Now().ToNanosecond();
   int ready_num = epoll_wait(epoll_fd_, evt, kPollSize, timeout_ms);
   auto after_time_ns = Time::Now().ToNanosecond();
-  int interval_ms =
-      static_cast<int>((after_time_ns - before_time_ns) / 1000000);
+  int interval_ms = static_cast<int>((after_time_ns - before_time_ns) / 1000000);
   if (interval_ms == 0) {
     interval_ms = 1;
   }
@@ -269,10 +268,8 @@ void Poller::HandleChanges() {
 
   for (auto& pair : local_params) {
     auto& item = pair.second;
-    ADEBUG << "epoll ctl, op[" << item.operation << "] fd[" << item.fd
-           << "] events[" << item.event.events << "]";
-    if (epoll_ctl(epoll_fd_, item.operation, item.fd, &item.event) != 0 &&
-        errno != EBADF) {
+    ADEBUG << "epoll ctl, op[" << item.operation << "] fd[" << item.fd << "] events[" << item.event.events << "]";
+    if (epoll_ctl(epoll_fd_, item.operation, item.fd, &item.event) != 0 && errno != EBADF) {
       AERROR << "epoll ctl failed, " << strerror(errno);
     }
   }

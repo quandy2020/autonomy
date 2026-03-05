@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <map>
 #include <utility>
 
@@ -27,32 +26,22 @@ class Screen;
 
 class GeneralMessageBase : public RenderableMessage {
  protected:
-  static void PrintMessage(GeneralMessageBase* baseMsg,
-                           const google::protobuf::Message& msg,
-                           int* jump_lines, const Screen* s, int* line_no,
-                           int indent);
-  static void PrintField(GeneralMessageBase* baseMsg,
-                         const google::protobuf::Message& msg, int* jump_lines,
-                         const Screen* s, int* line_no, int indent,
-                         const google::protobuf::Reflection* ref,
-                         const google::protobuf::FieldDescriptor* field,
-                         int index);
+  static void PrintMessage(GeneralMessageBase* baseMsg, const google::protobuf::Message& msg, int* jump_lines,
+                           const Screen* s, int* line_no, int indent);
+  static void PrintField(GeneralMessageBase* baseMsg, const google::protobuf::Message& msg, int* jump_lines,
+                         const Screen* s, int* line_no, int indent, const google::protobuf::Reflection* ref,
+                         const google::protobuf::FieldDescriptor* field, int index);
 
   static int LineCount(const google::protobuf::Message& msg, int screen_width);
-  static int LineCountOfField(const google::protobuf::Message& msg,
-                              int screen_width,
+  static int LineCountOfField(const google::protobuf::Message& msg, int screen_width,
                               const google::protobuf::FieldDescriptor* field,
-                              const google::protobuf::Reflection* reflection,
-                              bool is_folded = true);
+                              const google::protobuf::Reflection* reflection, bool is_folded = true);
 
-  void InsertRepeatedMessage(int line_no, GeneralMessageBase* item) {
-    children_map_.emplace(line_no, item);
-  }
+  void InsertRepeatedMessage(int line_no, GeneralMessageBase* item) { children_map_.emplace(line_no, item); }
 
   RenderableMessage* Child(int line_no) const override;
 
-  explicit GeneralMessageBase(RenderableMessage* parent = nullptr)
-      : RenderableMessage(parent), children_map_() {}
+  explicit GeneralMessageBase(RenderableMessage* parent = nullptr) : RenderableMessage(parent), children_map_() {}
   ~GeneralMessageBase(void) { clear(); }
 
   void clear(void) {
@@ -68,4 +57,3 @@ class GeneralMessageBase : public RenderableMessage {
 
   std::map<const int, GeneralMessageBase*> children_map_;
 };
-

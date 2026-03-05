@@ -18,7 +18,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "gtest/gtest.h"
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/util.hpp"
@@ -28,6 +27,7 @@
 #include "autolink/transport/receiver/hybrid_receiver.hpp"
 #include "autolink/transport/transmitter/hybrid_transmitter.hpp"
 #include "autolink/transport/transport.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -49,13 +49,11 @@ class HybridTransceiverTest : public ::testing::Test {
     attr.set_channel_name(channel_name_);
     attr.set_channel_id(common::Hash(channel_name_));
     attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
-    transmitter_a_ = std::make_shared<HybridTransmitter<proto::UnitTest>>(
-        attr, Transport::Instance()->participant());
+    transmitter_a_ = std::make_shared<HybridTransmitter<proto::UnitTest>>(attr, Transport::Instance()->participant());
 
     attr.set_process_id(common::GlobalData::Instance()->ProcessId() + 1);
     attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
-    transmitter_b_ = std::make_shared<HybridTransmitter<proto::UnitTest>>(
-        attr, Transport::Instance()->participant());
+    transmitter_b_ = std::make_shared<HybridTransmitter<proto::UnitTest>>(attr, Transport::Instance()->participant());
   }
 
   virtual void TearDown() {
@@ -71,10 +69,9 @@ class HybridTransceiverTest : public ::testing::Test {
 TEST_F(HybridTransceiverTest, constructor) {
   RoleAttributes attr;
   TransmitterPtr transmitter =
-      std::make_shared<HybridTransmitter<proto::UnitTest>>(
-          attr, Transport::Instance()->participant());
-  ReceiverPtr receiver = std::make_shared<HybridReceiver<proto::UnitTest>>(
-      attr, nullptr, Transport::Instance()->participant());
+      std::make_shared<HybridTransmitter<proto::UnitTest>>(attr, Transport::Instance()->participant());
+  ReceiverPtr receiver =
+      std::make_shared<HybridReceiver<proto::UnitTest>>(attr, nullptr, Transport::Instance()->participant());
 
   EXPECT_EQ(transmitter->seq_num(), 0);
 
@@ -90,15 +87,13 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_no_relation) {
   attr.set_process_id(common::GlobalData::Instance()->ProcessId());
   attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
   attr.set_channel_name("enable_and_disable_with_param_no_relation");
-  attr.set_channel_id(
-      common::Hash("enable_and_disable_with_param_no_relation"));
+  attr.set_channel_id(common::Hash("enable_and_disable_with_param_no_relation"));
 
   std::mutex mtx;
   std::vector<proto::UnitTest> msgs;
   ReceiverPtr receiver_a = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -108,8 +103,7 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_no_relation) {
 
   ReceiverPtr receiver_b = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -149,8 +143,7 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_same_process) {
   std::vector<proto::UnitTest> msgs;
   ReceiverPtr receiver_a = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -160,8 +153,7 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_same_process) {
 
   ReceiverPtr receiver_b = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -207,8 +199,7 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_same_process) {
   EXPECT_EQ(msgs.size(), 0);
 }
 
-TEST_F(HybridTransceiverTest,
-       enable_and_disable_with_param_same_host_diff_proc) {
+TEST_F(HybridTransceiverTest, enable_and_disable_with_param_same_host_diff_proc) {
   RoleAttributes attr;
   attr.set_host_name(common::GlobalData::Instance()->HostName());
   attr.set_process_id(1);
@@ -220,8 +211,7 @@ TEST_F(HybridTransceiverTest,
   std::vector<proto::UnitTest> msgs;
   ReceiverPtr receiver_a = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -231,8 +221,7 @@ TEST_F(HybridTransceiverTest,
 
   ReceiverPtr receiver_b = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -287,8 +276,7 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_diff_host) {
   std::vector<proto::UnitTest> msgs;
   ReceiverPtr receiver_a = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);
@@ -298,8 +286,7 @@ TEST_F(HybridTransceiverTest, enable_and_disable_with_param_diff_host) {
 
   ReceiverPtr receiver_b = std::make_shared<HybridReceiver<proto::UnitTest>>(
       attr,
-      [&](const std::shared_ptr<proto::UnitTest>& msg,
-          const MessageInfo& msg_info, const RoleAttributes& attr) {
+      [&](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         std::lock_guard<std::mutex> lock(mtx);

@@ -26,44 +26,44 @@ namespace mppi_controller {
 namespace critics {
 
 void TwirlingCritic::initialize() {
-    if (!options_) {
-        AWARN << "Options not set, using defaults";
-        power_ = 1;
-        weight_ = 10.0f;
-        return;
-    }
+  if (!options_) {
+    AWARN << "Options not set, using defaults";
+    power_ = 1;
+    weight_ = 10.0f;
+    return;
+  }
 
-    // Load from proto options
-    if (options_->has_twirling_critic()) {
-        const auto& critic = options_->twirling_critic();
-        enabled_ = critic.enabled();
-        power_ = critic.twirling_cost_power();
-        weight_ = static_cast<float>(critic.twirling_cost_weight());
-    } else {
-        enabled_ = true;
-        power_ = 1;
-        weight_ = 10.0f;  // Default
-    }
+  // Load from proto options
+  if (options_->has_twirling_critic()) {
+    const auto& critic = options_->twirling_critic();
+    enabled_ = critic.enabled();
+    power_ = critic.twirling_cost_power();
+    weight_ = static_cast<float>(critic.twirling_cost_weight());
+  } else {
+    enabled_ = true;
+    power_ = 1;
+    weight_ = 10.0f;  // Default
+  }
 
-    AINFO << "TwirlingCritic instantiated with " << power_ << " power and " << weight_ << " weight.";
+  AINFO << "TwirlingCritic instantiated with " << power_ << " power and " << weight_ << " weight.";
 }
 
 void TwirlingCritic::score(CriticData& data) {
-    if (!enabled_) {
-        return;
-    }
+  if (!enabled_) {
+    return;
+  }
 
-    commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
+  commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
 
-    if (tools::withinPositionGoalToleranceWithChecker(data.goal_checker, data.state.pose.pose, goal)) {
-        return;
-    }
+  if (tools::withinPositionGoalToleranceWithChecker(data.goal_checker, data.state.pose.pose, goal)) {
+    return;
+  }
 
-    if (power_ > 1u) {
-        data.costs += ((data.state.wz.abs().rowwise().mean()) * weight_).pow(power_).eval();
-    } else {
-        data.costs += ((data.state.wz.abs().rowwise().mean()) * weight_).eval();
-    }
+  if (power_ > 1u) {
+    data.costs += ((data.state.wz.abs().rowwise().mean()) * weight_).pow(power_).eval();
+  } else {
+    data.costs += ((data.state.wz.abs().rowwise().mean()) * weight_).eval();
+  }
 }
 
 }  // namespace critics

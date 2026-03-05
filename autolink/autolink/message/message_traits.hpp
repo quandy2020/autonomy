@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 #include <typeinfo>
 
@@ -41,16 +40,14 @@ DEFINE_TYPE_TRAIT(HasSerializeToString, SerializeToString)
 DEFINE_TYPE_TRAIT(HasParseFromString, ParseFromString)
 DEFINE_TYPE_TRAIT(HasSerializeToArray, SerializeToArray)
 DEFINE_TYPE_TRAIT(HasParseFromArray, ParseFromArray)
-DEFINE_TYPE_TRAIT(HasSerializeToArenaMessageWrapper,
-                  SerializeToArenaMessageWrapper)
+DEFINE_TYPE_TRAIT(HasSerializeToArenaMessageWrapper, SerializeToArenaMessageWrapper)
 DEFINE_TYPE_TRAIT(HasParseFromArenaMessageWrapper, ParseFromArenaMessageWrapper)
 
 template <typename T>
 class HasSerializer {
  public:
-  static constexpr bool value =
-      HasSerializeToString<T>::value && HasParseFromString<T>::value &&
-      HasSerializeToArray<T>::value && HasParseFromArray<T>::value;
+  static constexpr bool value = HasSerializeToString<T>::value && HasParseFromString<T>::value &&
+                                HasSerializeToArray<T>::value && HasParseFromArray<T>::value;
 };
 
 // avoid potential ODR violation
@@ -58,80 +55,61 @@ template <typename T>
 constexpr bool HasSerializer<T>::value;
 
 template <typename T,
-          typename std::enable_if<HasType<T>::value &&
-                                      std::is_member_function_pointer<
-                                          decltype(&T::TypeName)>::value,
+          typename std::enable_if<HasType<T>::value && std::is_member_function_pointer<decltype(&T::TypeName)>::value,
                                   bool>::type = 0>
 std::string MessageType(const T& message) {
   return message.TypeName();
 }
 
 template <typename T,
-          typename std::enable_if<HasType<T>::value &&
-                                      !std::is_member_function_pointer<
-                                          decltype(&T::TypeName)>::value,
+          typename std::enable_if<HasType<T>::value && !std::is_member_function_pointer<decltype(&T::TypeName)>::value,
                                   bool>::type = 0>
 std::string MessageType(const T& message) {
   return T::TypeName();
 }
 
-template <typename T,
-          typename std::enable_if<
-              !HasType<T>::value &&
-                  !std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
+template <typename T, typename std::enable_if<
+                          !HasType<T>::value && !std::is_base_of<google::protobuf::Message, T>::value, bool>::type = 0>
 std::string MessageType(const T& message) {
   return typeid(T).name();
 }
 
 template <typename T,
-          typename std::enable_if<HasType<T>::value &&
-                                      !std::is_member_function_pointer<
-                                          decltype(&T::TypeName)>::value,
+          typename std::enable_if<HasType<T>::value && !std::is_member_function_pointer<decltype(&T::TypeName)>::value,
                                   bool>::type = 0>
 std::string MessageType() {
   return T::TypeName();
 }
 
-template <typename T,
-          typename std::enable_if<
-              !HasType<T>::value &&
-                  !std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
+template <typename T, typename std::enable_if<
+                          !HasType<T>::value && !std::is_base_of<google::protobuf::Message, T>::value, bool>::type = 0>
 std::string MessageType() {
   return typeid(T).name();
 }
 
-template <
-    typename T,
-    typename std::enable_if<
-        HasType<T>::value &&
-            std::is_member_function_pointer<decltype(&T::TypeName)>::value &&
-            !std::is_base_of<google::protobuf::Message, T>::value,
-        bool>::type = 0>
+template <typename T,
+          typename std::enable_if<HasType<T>::value && std::is_member_function_pointer<decltype(&T::TypeName)>::value &&
+                                      !std::is_base_of<google::protobuf::Message, T>::value,
+                                  bool>::type = 0>
 std::string MessageType() {
   return typeid(T).name();
 }
 
 template <typename T>
-typename std::enable_if<HasSetType<T>::value, void>::type SetTypeName(
-    const std::string& type_name, T* message) {
+typename std::enable_if<HasSetType<T>::value, void>::type SetTypeName(const std::string& type_name, T* message) {
   message->SetTypeName(type_name);
 }
 
 template <typename T>
-typename std::enable_if<!HasSetType<T>::value, void>::type SetTypeName(
-    const std::string& type_name, T* message) {}
+typename std::enable_if<!HasSetType<T>::value, void>::type SetTypeName(const std::string& type_name, T* message) {}
 
 template <typename T>
-typename std::enable_if<HasByteSize<T>::value, int>::type ByteSize(
-    const T& message) {
+typename std::enable_if<HasByteSize<T>::value, int>::type ByteSize(const T& message) {
   return static_cast<int>(message.ByteSizeLong());
 }
 
 template <typename T>
-typename std::enable_if<!HasByteSize<T>::value, int>::type ByteSize(
-    const T& message) {
+typename std::enable_if<!HasByteSize<T>::value, int>::type ByteSize(const T& message) {
   (void)message;
   return -1;
 }
@@ -146,19 +124,15 @@ int FullByteSize(const T& message) {
 }
 
 template <typename T>
-typename std::enable_if<HasParseFromArenaMessageWrapper<T>::value, bool>::type
-ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper, T* message,
-                             T** message_ptr) {
+typename std::enable_if<HasParseFromArenaMessageWrapper<T>::value, bool>::type ParseFromArenaMessageWrapper(
+    ArenaMessageWrapper* wrapper, T* message, T** message_ptr) {
   return message->ParseFromArenaMessageWrapper(wrapper, message_ptr);
 }
 
-template <typename T,
-          typename std::enable_if<
-              !HasParseFromArenaMessageWrapper<T>::value &&
-                  !std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
-bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper, T* message,
-                                  T** message_ptr) {
+template <typename T, typename std::enable_if<!HasParseFromArenaMessageWrapper<T>::value &&
+                                                  !std::is_base_of<google::protobuf::Message, T>::value,
+                                              bool>::type = 0>
+bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper, T* message, T** message_ptr) {
   (void)wrapper;
   (void)message;
   (void)message_ptr;
@@ -166,63 +140,53 @@ bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper, T* message,
 }
 
 template <typename T>
-typename std::enable_if<HasParseFromArray<T>::value, bool>::type ParseFromArray(
-    const void* data, int size, T* message) {
+typename std::enable_if<HasParseFromArray<T>::value, bool>::type ParseFromArray(const void* data, int size,
+                                                                                T* message) {
   return message->ParseFromArray(data, size);
 }
 
 template <typename T>
-typename std::enable_if<!HasParseFromArray<T>::value, bool>::type
-ParseFromArray(const void* data, int size, T* message) {
+typename std::enable_if<!HasParseFromArray<T>::value, bool>::type ParseFromArray(const void* data, int size,
+                                                                                 T* message) {
   return false;
 }
 
 template <typename T>
-typename std::enable_if<HasParseFromString<T>::value, bool>::type
-ParseFromString(const std::string& str, T* message) {
+typename std::enable_if<HasParseFromString<T>::value, bool>::type ParseFromString(const std::string& str, T* message) {
   return message->ParseFromString(str);
 }
 
 template <typename T>
-typename std::enable_if<!HasParseFromString<T>::value, bool>::type
-ParseFromString(const std::string& str, T* message) {
+typename std::enable_if<!HasParseFromString<T>::value, bool>::type ParseFromString(const std::string& str, T* message) {
   return false;
 }
 
 template <typename T>
-typename std::enable_if<HasParseFromArray<T>::value, bool>::type ParseFromHC(
-    const void* data, int size, T* message) {
+typename std::enable_if<HasParseFromArray<T>::value, bool>::type ParseFromHC(const void* data, int size, T* message) {
   const auto header_size = sizeof(MessageHeader);
   RETURN_VAL_IF(size < (int)header_size, false);
   const MessageHeader* header = static_cast<const MessageHeader*>(data);
   RETURN_VAL_IF((size - header_size) < header->content_size(), false);
   SetTypeName(header->msg_type(), message);
-  return message->ParseFromArray(
-      static_cast<const void*>(static_cast<const char*>(data) + header_size),
-      header->content_size());
+  return message->ParseFromArray(static_cast<const void*>(static_cast<const char*>(data) + header_size),
+                                 header->content_size());
 }
 
 template <typename T>
-typename std::enable_if<!HasParseFromArray<T>::value, bool>::type ParseFromHC(
-    const void* data, int size, T* message) {
+typename std::enable_if<!HasParseFromArray<T>::value, bool>::type ParseFromHC(const void* data, int size, T* message) {
   return false;
 }
 
 template <typename T>
-typename std::enable_if<HasSerializeToArenaMessageWrapper<T>::value, bool>::type
-SerializeToArenaMessageWrapper(const T& message, ArenaMessageWrapper* wrapper,
-                               T** message_ptr) {
+typename std::enable_if<HasSerializeToArenaMessageWrapper<T>::value, bool>::type SerializeToArenaMessageWrapper(
+    const T& message, ArenaMessageWrapper* wrapper, T** message_ptr) {
   return message->SerializeToArenaMessageWrapper(wrapper, message_ptr);
 }
 
-template <typename T,
-          typename std::enable_if<
-              !HasSerializeToArenaMessageWrapper<T>::value &&
-                  !std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
-bool SerializeToArenaMessageWrapper(const T& message,
-                                    ArenaMessageWrapper* wrapper,
-                                    T** message_ptr) {
+template <typename T, typename std::enable_if<!HasSerializeToArenaMessageWrapper<T>::value &&
+                                                  !std::is_base_of<google::protobuf::Message, T>::value,
+                                              bool>::type = 0>
+bool SerializeToArenaMessageWrapper(const T& message, ArenaMessageWrapper* wrapper, T** message_ptr) {
   (void)message;
   (void)wrapper;
   (void)message_ptr;
@@ -230,32 +194,32 @@ bool SerializeToArenaMessageWrapper(const T& message,
 }
 
 template <typename T>
-typename std::enable_if<HasSerializeToArray<T>::value, bool>::type
-SerializeToArray(const T& message, void* data, int size) {
+typename std::enable_if<HasSerializeToArray<T>::value, bool>::type SerializeToArray(const T& message, void* data,
+                                                                                    int size) {
   return message.SerializeToArray(data, size);
 }
 
 template <typename T>
-typename std::enable_if<!HasSerializeToArray<T>::value, bool>::type
-SerializeToArray(const T& message, void* data, int size) {
+typename std::enable_if<!HasSerializeToArray<T>::value, bool>::type SerializeToArray(const T& message, void* data,
+                                                                                     int size) {
   return false;
 }
 
 template <typename T>
-typename std::enable_if<HasSerializeToString<T>::value, bool>::type
-SerializeToString(const T& message, std::string* str) {
+typename std::enable_if<HasSerializeToString<T>::value, bool>::type SerializeToString(const T& message,
+                                                                                      std::string* str) {
   return message.SerializeToString(str);
 }
 
 template <typename T>
-typename std::enable_if<!HasSerializeToString<T>::value, bool>::type
-SerializeToString(const T& message, std::string* str) {
+typename std::enable_if<!HasSerializeToString<T>::value, bool>::type SerializeToString(const T& message,
+                                                                                       std::string* str) {
   return false;
 }
 
 template <typename T>
-typename std::enable_if<HasSerializeToArray<T>::value, bool>::type
-SerializeToHC(const T& message, void* data, int size) {
+typename std::enable_if<HasSerializeToArray<T>::value, bool>::type SerializeToHC(const T& message, void* data,
+                                                                                 int size) {
   int msg_size = ByteSize(message);
   if (msg_size < 0) {
     return false;
@@ -275,68 +239,53 @@ SerializeToHC(const T& message, void* data, int size) {
 }
 
 template <typename T>
-typename std::enable_if<!HasSerializeToArray<T>::value, bool>::type
-SerializeToHC(const T& message, void* data, int size) {
+typename std::enable_if<!HasSerializeToArray<T>::value, bool>::type SerializeToHC(const T& message, void* data,
+                                                                                  int size) {
   return false;
 }
 
-template <typename T, typename std::enable_if<HasGetDescriptorString<T>::value,
-                                              bool>::type = 0>
+template <typename T, typename std::enable_if<HasGetDescriptorString<T>::value, bool>::type = 0>
 void GetDescriptorString(const std::string& type, std::string* desc_str) {
   T::GetDescriptorString(type, desc_str);
 }
 
-template <typename T,
-          typename std::enable_if<
-              !HasGetDescriptorString<T>::value &&
-                  !std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
+template <typename T, typename std::enable_if<!HasGetDescriptorString<T>::value &&
+                                                  !std::is_base_of<google::protobuf::Message, T>::value,
+                                              bool>::type = 0>
 void GetDescriptorString(const std::string& type, std::string* desc_str) {}
 
 template <typename MessageT,
-          typename std::enable_if<
-              !std::is_base_of<google::protobuf::Message, MessageT>::value,
-              int>::type = 0>
+          typename std::enable_if<!std::is_base_of<google::protobuf::Message, MessageT>::value, int>::type = 0>
 void GetDescriptorString(const MessageT& message, std::string* desc_str) {}
 
-template <
-    typename T, typename Descriptor,
-    typename std::enable_if<HasFullName<Descriptor>::value, bool>::type = 0>
+template <typename T, typename Descriptor, typename std::enable_if<HasFullName<Descriptor>::value, bool>::type = 0>
 std::string GetFullName() {
   return T::descriptor()->full_name();
 }
 
-template <
-    typename T, typename Descriptor,
-    typename std::enable_if<!HasFullName<Descriptor>::value, bool>::type = 0>
+template <typename T, typename Descriptor, typename std::enable_if<!HasFullName<Descriptor>::value, bool>::type = 0>
 std::string GetFullName() {
   return typeid(T).name();
 }
 
 template <typename T,
-          typename std::enable_if<
-              HasDescriptor<T>::value &&
-                  !std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
+          typename std::enable_if<HasDescriptor<T>::value && !std::is_base_of<google::protobuf::Message, T>::value,
+                                  bool>::type = 0>
 std::string GetMessageName() {
   return GetFullName<T, decltype(*T::descriptor())>();
 }
 
 template <typename T,
-          typename std::enable_if<
-              HasDescriptor<T>::value &&
-                  std::is_base_of<google::protobuf::Message, T>::value,
-              bool>::type = 0>
+          typename std::enable_if<HasDescriptor<T>::value && std::is_base_of<google::protobuf::Message, T>::value,
+                                  bool>::type = 0>
 std::string GetMessageName() {
   return T::descriptor()->full_name();
 }
 
-template <typename T,
-          typename std::enable_if<!HasDescriptor<T>::value, bool>::type = 0>
+template <typename T, typename std::enable_if<!HasDescriptor<T>::value, bool>::type = 0>
 std::string GetMessageName() {
   return typeid(T).name();
 }
 
 }  // namespace message
 }  // namespace autolink
-

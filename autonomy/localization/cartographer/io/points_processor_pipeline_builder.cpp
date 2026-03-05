@@ -39,82 +39,82 @@ namespace io {
 
 template <typename PointsProcessorType>
 void RegisterPlainPointsProcessor(PointsProcessorPipelineBuilder* const builder) {
-    builder->Register(PointsProcessorType::kConfigurationFileActionName,
-                      [](common::LuaParameterDictionary* const dictionary,
-                         PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
-                          return PointsProcessorType::FromDictionary(dictionary, next);
-                      });
+  builder->Register(PointsProcessorType::kConfigurationFileActionName,
+                    [](common::LuaParameterDictionary* const dictionary,
+                       PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
+                      return PointsProcessorType::FromDictionary(dictionary, next);
+                    });
 }
 
 template <typename PointsProcessorType>
 void RegisterFileWritingPointsProcessor(const FileWriterFactory& file_writer_factory,
                                         PointsProcessorPipelineBuilder* const builder) {
-    builder->Register(PointsProcessorType::kConfigurationFileActionName,
-                      [file_writer_factory](common::LuaParameterDictionary* const dictionary,
-                                            PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
-                          return PointsProcessorType::FromDictionary(file_writer_factory, dictionary, next);
-                      });
+  builder->Register(PointsProcessorType::kConfigurationFileActionName,
+                    [file_writer_factory](common::LuaParameterDictionary* const dictionary,
+                                          PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
+                      return PointsProcessorType::FromDictionary(file_writer_factory, dictionary, next);
+                    });
 }
 
 template <typename PointsProcessorType>
 void RegisterFileWritingPointsProcessorWithTrajectories(const std::vector<mapping::proto::Trajectory>& trajectories,
                                                         const FileWriterFactory& file_writer_factory,
                                                         PointsProcessorPipelineBuilder* const builder) {
-    builder->Register(
-        PointsProcessorType::kConfigurationFileActionName,
-        [&trajectories, file_writer_factory](common::LuaParameterDictionary* const dictionary,
-                                             PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
-            return PointsProcessorType::FromDictionary(trajectories, file_writer_factory, dictionary, next);
-        });
+  builder->Register(
+      PointsProcessorType::kConfigurationFileActionName,
+      [&trajectories, file_writer_factory](common::LuaParameterDictionary* const dictionary,
+                                           PointsProcessor* const next) -> std::unique_ptr<PointsProcessor> {
+        return PointsProcessorType::FromDictionary(trajectories, file_writer_factory, dictionary, next);
+      });
 }
 
 void RegisterBuiltInPointsProcessors(const std::vector<mapping::proto::Trajectory>& trajectories,
                                      const FileWriterFactory& file_writer_factory,
                                      PointsProcessorPipelineBuilder* builder) {
-    RegisterPlainPointsProcessor<CountingPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<FixedRatioSamplingPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<FrameIdFilteringPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<MinMaxRangeFilteringPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<VerticalRangeFilteringPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<OutlierRemovingPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<ColoringPointsProcessor>(builder);
-    RegisterPlainPointsProcessor<IntensityToColorPointsProcessor>(builder);
-    RegisterFileWritingPointsProcessor<PcdWritingPointsProcessor>(file_writer_factory, builder);
-    RegisterFileWritingPointsProcessor<PlyWritingPointsProcessor>(file_writer_factory, builder);
-    RegisterFileWritingPointsProcessor<XyzWriterPointsProcessor>(file_writer_factory, builder);
-    RegisterFileWritingPointsProcessor<HybridGridPointsProcessor>(file_writer_factory, builder);
-    RegisterFileWritingPointsProcessorWithTrajectories<XRayPointsProcessor>(trajectories, file_writer_factory, builder);
-    RegisterFileWritingPointsProcessorWithTrajectories<ProbabilityGridPointsProcessor>(trajectories,
-                                                                                       file_writer_factory, builder);
+  RegisterPlainPointsProcessor<CountingPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<FixedRatioSamplingPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<FrameIdFilteringPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<MinMaxRangeFilteringPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<VerticalRangeFilteringPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<OutlierRemovingPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<ColoringPointsProcessor>(builder);
+  RegisterPlainPointsProcessor<IntensityToColorPointsProcessor>(builder);
+  RegisterFileWritingPointsProcessor<PcdWritingPointsProcessor>(file_writer_factory, builder);
+  RegisterFileWritingPointsProcessor<PlyWritingPointsProcessor>(file_writer_factory, builder);
+  RegisterFileWritingPointsProcessor<XyzWriterPointsProcessor>(file_writer_factory, builder);
+  RegisterFileWritingPointsProcessor<HybridGridPointsProcessor>(file_writer_factory, builder);
+  RegisterFileWritingPointsProcessorWithTrajectories<XRayPointsProcessor>(trajectories, file_writer_factory, builder);
+  RegisterFileWritingPointsProcessorWithTrajectories<ProbabilityGridPointsProcessor>(trajectories, file_writer_factory,
+                                                                                     builder);
 }
 
 void PointsProcessorPipelineBuilder::Register(const std::string& name, FactoryFunction factory) {
-    CHECK(factories_.count(name) == 0) << "A points processor named '" << name << "' has already been registered.";
-    factories_[name] = std::move(factory);
+  CHECK(factories_.count(name) == 0) << "A points processor named '" << name << "' has already been registered.";
+  factories_[name] = std::move(factory);
 }
 
 PointsProcessorPipelineBuilder::PointsProcessorPipelineBuilder() {}
 
 std::vector<std::unique_ptr<PointsProcessor>> PointsProcessorPipelineBuilder::CreatePipeline(
     common::LuaParameterDictionary* const dictionary) const {
-    std::vector<std::unique_ptr<PointsProcessor>> pipeline;
-    // The last consumer in the pipeline must exist, so that the one created
-    // after it (and being before it in the pipeline) has a valid 'next' to
-    // point to. The last consumer will just drop all points.
-    pipeline.emplace_back(absl::make_unique<NullPointsProcessor>());
+  std::vector<std::unique_ptr<PointsProcessor>> pipeline;
+  // The last consumer in the pipeline must exist, so that the one created
+  // after it (and being before it in the pipeline) has a valid 'next' to
+  // point to. The last consumer will just drop all points.
+  pipeline.emplace_back(absl::make_unique<NullPointsProcessor>());
 
-    std::vector<std::unique_ptr<common::LuaParameterDictionary>> configurations =
-        dictionary->GetArrayValuesAsDictionaries();
+  std::vector<std::unique_ptr<common::LuaParameterDictionary>> configurations =
+      dictionary->GetArrayValuesAsDictionaries();
 
-    // We construct the pipeline starting at the back.
-    for (auto it = configurations.rbegin(); it != configurations.rend(); it++) {
-        const std::string action = (*it)->GetString("action");
-        auto factory_it = factories_.find(action);
-        CHECK(factory_it != factories_.end())
-            << "Unknown action '" << action << "'. Did you register the correspoinding PointsProcessor?";
-        pipeline.push_back(factory_it->second(it->get(), pipeline.back().get()));
-    }
-    return pipeline;
+  // We construct the pipeline starting at the back.
+  for (auto it = configurations.rbegin(); it != configurations.rend(); it++) {
+    const std::string action = (*it)->GetString("action");
+    auto factory_it = factories_.find(action);
+    CHECK(factory_it != factories_.end())
+        << "Unknown action '" << action << "'. Did you register the correspoinding PointsProcessor?";
+    pipeline.push_back(factory_it->second(it->get(), pipeline.back().get()));
+  }
+  return pipeline;
 }
 
 }  // namespace io

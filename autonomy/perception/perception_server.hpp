@@ -23,17 +23,16 @@
 namespace autonomy {
 namespace perception {
 
-class PerceptionServer
-{
-public:
-    /**
-     * Define PerceptionServer::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
+class PerceptionServer {
+ public:
+  /**
+   * Define PerceptionServer::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(PerceptionServer)
 
-    PerceptionServer();
+  PerceptionServer();
 
-    ~PerceptionServer();
+  ~PerceptionServer();
 };
 
 }  // namespace perception

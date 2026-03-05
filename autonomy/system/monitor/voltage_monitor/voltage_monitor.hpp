@@ -24,22 +24,15 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-class VoltageMonitor : public MonitorBase
-{
-public:
-    std::string Name() const override {
-        return "voltage";
-    }
-    void Collect() override;
-    void RegisterWithPrometheus(void* registry) override;
-    static std::unique_ptr<VoltageMonitor> Create() {
-        return std::make_unique<VoltageMonitor>();
-    }
+class VoltageMonitor : public MonitorBase {
+ public:
+  std::string Name() const override { return "voltage"; }
+  void Collect() override;
+  void RegisterWithPrometheus(void* registry) override;
+  static std::unique_ptr<VoltageMonitor> Create() { return std::make_unique<VoltageMonitor>(); }
 };
 
-inline std::unique_ptr<VoltageMonitor> CreateVoltageMonitor() {
-    return VoltageMonitor::Create();
-}
+inline std::unique_ptr<VoltageMonitor> CreateVoltageMonitor() { return VoltageMonitor::Create(); }
 
 }  // namespace monitor
 }  // namespace system

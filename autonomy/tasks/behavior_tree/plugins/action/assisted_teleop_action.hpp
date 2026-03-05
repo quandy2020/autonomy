@@ -18,10 +18,9 @@
 
 #include <string>
 
-#include "behaviortree_cpp/action_node.h"
-
 #include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -35,73 +34,72 @@ namespace action {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class AssistedTeleopAction : public BtActionNode<proto::AssistedTeleopAction>
-{
-    using Action = proto::AssistedTeleopAction;
-    using ActionResult = Action::Result;
+class AssistedTeleopAction : public BtActionNode<proto::AssistedTeleopAction> {
+  using Action = proto::AssistedTeleopAction;
+  using ActionResult = Action::Result;
 
-public:
-    /**
-     * @brief A constructor for
-     * nav2_behavior_tree::nav2_msgs::action::AssistedTeleop
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param action_name Action name this node creates a client for
-     * @param conf BT node configuration
-     */
-    AssistedTeleopAction(const std::string& xml_tag_name, const std::string& action_name,
-                         const BT::NodeConfiguration& conf);
+ public:
+  /**
+   * @brief A constructor for
+   * nav2_behavior_tree::nav2_msgs::action::AssistedTeleop
+   * @param xml_tag_name Name for the XML tag for this node
+   * @param action_name Action name this node creates a client for
+   * @param conf BT node configuration
+   */
+  AssistedTeleopAction(const std::string& xml_tag_name, const std::string& action_name,
+                       const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
-    void on_tick() override;
+  /**
+   * @brief Function to perform some user-defined operation on tick
+   */
+  void on_tick() override;
 
-    /**
-     * @brief Function to perform some user-defined operation upon successful
-     * completion of the action
-     */
-    BT::NodeStatus on_success() override;
+  /**
+   * @brief Function to perform some user-defined operation upon successful
+   * completion of the action
+   */
+  BT::NodeStatus on_success() override;
 
-    /**
-     * @brief Function to perform some user-defined operation upon abortion of
-     * the action
-     */
-    BT::NodeStatus on_aborted() override;
+  /**
+   * @brief Function to perform some user-defined operation upon abortion of
+   * the action
+   */
+  BT::NodeStatus on_aborted() override;
 
-    /**
-     * @brief Function to perform some user-defined operation upon cancellation
-     * of the action
-     */
-    BT::NodeStatus on_cancelled() override;
+  /**
+   * @brief Function to perform some user-defined operation upon cancellation
+   * of the action
+   */
+  BT::NodeStatus on_cancelled() override;
 
-    /**
-     * @brief Function to perform work in a BT Node when the action server times
-     * out Such as setting the error code ID status to timed out for action
-     * clients.
-     */
-    void on_timeout() override;
+  /**
+   * @brief Function to perform work in a BT Node when the action server times
+   * out Such as setting the error code ID status to timed out for action
+   * clients.
+   */
+  void on_timeout() override;
 
-    /**
-     * @brief Function to read parameters and initialize class variables
-     */
-    void initialize();
+  /**
+   * @brief Function to read parameters and initialize class variables
+   */
+  void initialize();
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
-    static BT::PortsList providedPorts() {
-        return providedBasicPorts({
-            BT::InputPort<double>("time_allowance", 10.0, "Allowed time for running assisted teleop"),
-            BT::InputPort<bool>("is_recovery", false, "If true the recovery count will be incremented"),
-            BT::OutputPort<int32_t>("error_code_id", "The assisted teleop behavior server error code"),
-            BT::OutputPort<std::string>("error_msg", "The assisted teleop behavior server error msg"),
-        });
-    }
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing basic ports along with node-specific
+   * ports
+   */
+  static BT::PortsList providedPorts() {
+    return providedBasicPorts({
+        BT::InputPort<double>("time_allowance", 10.0, "Allowed time for running assisted teleop"),
+        BT::InputPort<bool>("is_recovery", false, "If true the recovery count will be incremented"),
+        BT::OutputPort<int32_t>("error_code_id", "The assisted teleop behavior server error code"),
+        BT::OutputPort<std::string>("error_msg", "The assisted teleop behavior server error msg"),
+    });
+  }
 
-private:
-    bool is_recovery_;
+ private:
+  bool is_recovery_;
 };
 
 }  // namespace action

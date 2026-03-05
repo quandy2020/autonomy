@@ -27,13 +27,13 @@ namespace common {
 
 /// Convert autonomy::commsgs::geometry_msgs::Point to Ogre::Vector3
 inline Ogre::Vector3 pointMsgToOgre(const autonomy::commsgs::geometry_msgs::Point& point) {
-    return Ogre::Vector3(static_cast<float>(point.x), static_cast<float>(point.y), static_cast<float>(point.z));
+  return Ogre::Vector3(static_cast<float>(point.x), static_cast<float>(point.y), static_cast<float>(point.z));
 }
 
 /// Convert autonomy::commsgs::geometry_msgs::Quaternion to Ogre::Quaternion
 inline Ogre::Quaternion quaternionMsgToOgre(const autonomy::commsgs::geometry_msgs::Quaternion& quat) {
-    return Ogre::Quaternion(static_cast<float>(quat.w), static_cast<float>(quat.x), static_cast<float>(quat.y),
-                            static_cast<float>(quat.z));
+  return Ogre::Quaternion(static_cast<float>(quat.w), static_cast<float>(quat.x), static_cast<float>(quat.y),
+                          static_cast<float>(quat.z));
 }
 
 }  // namespace common

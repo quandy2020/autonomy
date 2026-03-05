@@ -23,8 +23,7 @@
 namespace autolink {
 namespace service_discovery {
 
-SubscriberListener::SubscriberListener(const NewMsgCallback& callback)
-    : callback_(callback) {}
+SubscriberListener::SubscriberListener(const NewMsgCallback& callback) : callback_(callback) {}
 
 SubscriberListener::~SubscriberListener() {
   std::lock_guard<std::mutex> lck(mutex_);
@@ -43,9 +42,8 @@ void SubscriberListener::onNewDataMessage(eprosima::fastrtps::Subscriber* sub) {
   callback_(m.data());
 }
 
-void SubscriberListener::onSubscriptionMatched(
-    eprosima::fastrtps::Subscriber* sub,
-    eprosima::fastrtps::rtps::MatchingInfo& info) {
+void SubscriberListener::onSubscriptionMatched(eprosima::fastrtps::Subscriber* sub,
+                                               eprosima::fastrtps::rtps::MatchingInfo& info) {
   (void)sub;
   (void)info;
 }

@@ -29,28 +29,27 @@ namespace motion_model {
 /// be specialized for
 ///             specific motion model implementations.
 template <typename StateT>
-class DifferentialDriveMotionModel : public MotionModelInterface<DifferentialDriveMotionModel<StateT>>
-{
-public:
-    using State = StateT;
+class DifferentialDriveMotionModel : public MotionModelInterface<DifferentialDriveMotionModel<StateT>> {
+ public:
+  using State = StateT;
 
-protected:
-    // Allow the CRTP interface to call private functions.
-    friend MotionModelInterface<DifferentialDriveMotionModel<StateT>>;
+ protected:
+  // Allow the CRTP interface to call private functions.
+  friend MotionModelInterface<DifferentialDriveMotionModel<StateT>>;
 
-    /// @brief      A crtp-called function that predicts the state forward.
-    State crtp_predict(const State&, const std::chrono::nanoseconds&) const {
-        static_assert(sizeof(StateT) == 0,
-                      "Function crtp_predict is expected to be specialized for "
-                      "every state it is used with.");
-    }
+  /// @brief      A crtp-called function that predicts the state forward.
+  State crtp_predict(const State&, const std::chrono::nanoseconds&) const {
+    static_assert(sizeof(StateT) == 0,
+                  "Function crtp_predict is expected to be specialized for "
+                  "every state it is used with.");
+  }
 
-    /// @brief      A crtp-called function that computes a Jacobian.
-    typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds&) const {
-        static_assert(sizeof(StateT) == 0,
-                      "Function crtp_jacobian is expected to be specialized for "
-                      "every state it is used with.");
-    }
+  /// @brief      A crtp-called function that computes a Jacobian.
+  typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds&) const {
+    static_assert(sizeof(StateT) == 0,
+                  "Function crtp_jacobian is expected to be specialized for "
+                  "every state it is used with.");
+  }
 };
 
 /// @brief      An alias of the differential drive motion model for the

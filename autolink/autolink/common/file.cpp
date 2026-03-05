@@ -39,8 +39,7 @@ using std::istreambuf_iterator;
 using std::string;
 using std::vector;
 
-bool SetProtoToASCIIFile(const google::protobuf::Message &message,
-                         int file_descriptor) {
+bool SetProtoToASCIIFile(const google::protobuf::Message &message, int file_descriptor) {
   using google::protobuf::TextFormat;
   using google::protobuf::io::FileOutputStream;
   using google::protobuf::io::ZeroCopyOutputStream;
@@ -55,8 +54,7 @@ bool SetProtoToASCIIFile(const google::protobuf::Message &message,
   return success;
 }
 
-bool SetProtoToASCIIFile(const google::protobuf::Message &message,
-                         const std::string &file_name) {
+bool SetProtoToASCIIFile(const google::protobuf::Message &message, const std::string &file_name) {
   int fd = open(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
   if (fd < 0) {
     AERROR << "Unable to open file " << file_name << " to write.";
@@ -65,8 +63,7 @@ bool SetProtoToASCIIFile(const google::protobuf::Message &message,
   return SetProtoToASCIIFile(message, fd);
 }
 
-bool SetStringToASCIIFile(const std::string &content,
-                          const std::string &file_name) {
+bool SetStringToASCIIFile(const std::string &content, const std::string &file_name) {
   int fd = open(file_name.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
   if (fd < 0) {
     AERROR << "Unable to open file " << file_name << " to write.";
@@ -85,8 +82,7 @@ bool SetStringToASCIIFile(const std::string &content,
   return true;
 }
 
-bool GetProtoFromASCIIFile(const std::string &file_name,
-                           google::protobuf::Message *message) {
+bool GetProtoFromASCIIFile(const std::string &file_name, google::protobuf::Message *message) {
   using google::protobuf::TextFormat;
   using google::protobuf::io::FileInputStream;
   using google::protobuf::io::ZeroCopyInputStream;
@@ -107,15 +103,12 @@ bool GetProtoFromASCIIFile(const std::string &file_name,
   return success;
 }
 
-bool SetProtoToBinaryFile(const google::protobuf::Message &message,
-                          const std::string &file_name) {
-  std::fstream output(file_name,
-                      std::ios::out | std::ios::trunc | std::ios::binary);
+bool SetProtoToBinaryFile(const google::protobuf::Message &message, const std::string &file_name) {
+  std::fstream output(file_name, std::ios::out | std::ios::trunc | std::ios::binary);
   return message.SerializeToOstream(&output);
 }
 
-bool GetProtoFromBinaryFile(const std::string &file_name,
-                            google::protobuf::Message *message) {
+bool GetProtoFromBinaryFile(const std::string &file_name, google::protobuf::Message *message) {
   std::fstream input(file_name, std::ios::in | std::ios::binary);
   if (!input.good()) {
     AERROR << "Failed to open file " << file_name << " in binary mode.";
@@ -128,8 +121,7 @@ bool GetProtoFromBinaryFile(const std::string &file_name,
   return true;
 }
 
-bool GetProtoFromFile(const std::string &file_name,
-                      google::protobuf::Message *message) {
+bool GetProtoFromFile(const std::string &file_name, google::protobuf::Message *message) {
   if (!PathExists(file_name)) {
     AERROR << "File [" << file_name << "] does not exist! ";
     return false;
@@ -137,16 +129,13 @@ bool GetProtoFromFile(const std::string &file_name,
   // Try the binary parser first if it's much likely a binary proto.
   static const std::string kBinExt = ".bin";
   if (std::equal(kBinExt.rbegin(), kBinExt.rend(), file_name.rbegin())) {
-    return GetProtoFromBinaryFile(file_name, message) ||
-           GetProtoFromASCIIFile(file_name, message);
+    return GetProtoFromBinaryFile(file_name, message) || GetProtoFromASCIIFile(file_name, message);
   }
 
-  return GetProtoFromASCIIFile(file_name, message) ||
-         GetProtoFromBinaryFile(file_name, message);
+  return GetProtoFromASCIIFile(file_name, message) || GetProtoFromBinaryFile(file_name, message);
 }
 
-bool GetProtoFromJsonFile(const std::string &file_name,
-                          google::protobuf::Message *message) {
+bool GetProtoFromJsonFile(const std::string &file_name, google::protobuf::Message *message) {
   using google::protobuf::util::JsonParseOptions;
   using google::protobuf::util::JsonStringToMessage;
   std::ifstream ifs(file_name);
@@ -175,8 +164,7 @@ bool GetContent(const std::string &file_name, std::string *content) {
   return true;
 }
 
-std::string GetAbsolutePath(const std::string &prefix,
-                            const std::string &relative_path) {
+std::string GetAbsolutePath(const std::string &prefix, const std::string &relative_path) {
   if (relative_path.empty()) {
     return prefix;
   }
@@ -335,8 +323,7 @@ bool RemoveAllFiles(const std::string &directory_path) {
   return true;
 }
 
-std::vector<std::string> ListSubPaths(const std::string &directory_path,
-                                      const unsigned char d_type) {
+std::vector<std::string> ListSubPaths(const std::string &directory_path, const unsigned char d_type) {
   std::vector<std::string> result;
   DIR *directory = opendir(directory_path.c_str());
   if (directory == nullptr) {
@@ -347,8 +334,7 @@ std::vector<std::string> ListSubPaths(const std::string &directory_path,
   struct dirent *entry;
   while ((entry = readdir(directory)) != nullptr) {
     // Skip "." and "..".
-    if (entry->d_type == d_type && strcmp(entry->d_name, ".") != 0 &&
-        strcmp(entry->d_name, "..") != 0) {
+    if (entry->d_type == d_type && strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
       result.emplace_back(entry->d_name);
     }
   }
@@ -356,9 +342,8 @@ std::vector<std::string> ListSubPaths(const std::string &directory_path,
   return result;
 }
 
-size_t FindPathByPattern(const std::string &base_path, const std::string &patt,
-                         const unsigned char d_type, const bool recursive,
-                         std::vector<std::string> *result_list) {
+size_t FindPathByPattern(const std::string &base_path, const std::string &patt, const unsigned char d_type,
+                         const bool recursive, std::vector<std::string> *result_list) {
   DIR *directory = opendir(base_path.c_str());
   size_t result_cnt = 0;
   if (directory == nullptr) {
@@ -366,21 +351,18 @@ size_t FindPathByPattern(const std::string &base_path, const std::string &patt,
     return result_cnt;
   }
   struct dirent *entry;
-  for (entry = readdir(directory); entry != nullptr;
-       entry = readdir(directory)) {
+  for (entry = readdir(directory); entry != nullptr; entry = readdir(directory)) {
     std::string entry_path = base_path + "/" + std::string(entry->d_name);
     // skip `.` and `..`
     if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
       // TODO(liangjinping): support regex or glob or other pattern mode
-      if ((patt == "" || strcmp(entry->d_name, patt.c_str()) == 0) &&
-          entry->d_type == d_type) {
+      if ((patt == "" || strcmp(entry->d_name, patt.c_str()) == 0) && entry->d_type == d_type) {
         // found
         result_list->emplace_back(entry_path);
         ++result_cnt;
       }
       if (recursive && (entry->d_type == DT_DIR)) {
-        result_cnt +=
-            FindPathByPattern(entry_path, patt, d_type, recursive, result_list);
+        result_cnt += FindPathByPattern(entry_path, patt, d_type, recursive, result_list);
       }
     }
   }
@@ -418,8 +400,7 @@ std::string GetFileName(const std::string &path, const bool remove_extension) {
   return path.substr(start, len);
 }
 
-bool GetFilePathWithEnv(const std::string &path, const std::string &env_var,
-                        std::string *file_path) {
+bool GetFilePathWithEnv(const std::string &path, const std::string &env_var, std::string *file_path) {
   if (path.empty()) {
     return false;
   }
@@ -513,8 +494,7 @@ bool DeleteFile(const string &filename) {
   }
   dirent *dir_info = nullptr;
   while ((dir_info = readdir(dir)) != nullptr) {
-    if (strcmp(dir_info->d_name, ".") == 0 ||
-        strcmp(dir_info->d_name, "..") == 0) {
+    if (strcmp(dir_info->d_name, ".") == 0 || strcmp(dir_info->d_name, "..") == 0) {
       continue;
     }
     string temp_file = filename + "/" + string(dir_info->d_name);
@@ -537,8 +517,7 @@ bool DeleteFile(const string &filename) {
 bool CreateDir(const string &dir) {
   int ret = mkdir(dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
   if (ret != 0) {
-    AWARN << "failed to create dir. [dir: " << dir
-          << "] [err: " << strerror(errno) << "]";
+    AWARN << "failed to create dir. [dir: " << dir << "] [err: " << strerror(errno) << "]";
     return false;
   }
   return true;

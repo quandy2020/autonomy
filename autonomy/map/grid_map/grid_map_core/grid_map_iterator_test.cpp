@@ -22,37 +22,37 @@ using grid_map::Length;
 using grid_map::Position;
 
 TEST(GridMapIterator, Simple) {
-    GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
-    map.add("layer", 0.0);
-    GridMapIterator iterator(map);
+  GridMap map;
+  map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
+  map.add("layer", 0.0);
+  GridMapIterator iterator(map);
 
-    unsigned int i = 0;
-    for (; !iterator.isPastEnd(); ++iterator, ++i) {
-        map.at("layer", *iterator) = 1.0;
-        EXPECT_FALSE(iterator.isPastEnd());
-    }
+  unsigned int i = 0;
+  for (; !iterator.isPastEnd(); ++iterator, ++i) {
+    map.at("layer", *iterator) = 1.0;
+    EXPECT_FALSE(iterator.isPastEnd());
+  }
 
-    EXPECT_EQ(40, i);
-    EXPECT_TRUE(iterator.isPastEnd());
-    EXPECT_TRUE((map["layer"].array() == 1.0f).all());
+  EXPECT_EQ(40, i);
+  EXPECT_TRUE(iterator.isPastEnd());
+  EXPECT_TRUE((map["layer"].array() == 1.0f).all());
 }
 
 TEST(GridMapIterator, LinearIndex) {
-    GridMap map;
-    map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
-    map.add("layer", 0.0);
-    GridMapIterator iterator(map);
+  GridMap map;
+  map.setGeometry(Length(8.1, 5.1), 1.0, Position(0.0, 0.0));  // bufferSize(8, 5)
+  map.add("layer", 0.0);
+  GridMapIterator iterator(map);
 
-    auto& data = map["layer"];
-    unsigned int i = 0;
-    for (; !iterator.isPastEnd(); ++iterator, ++i) {
-        data(static_cast<long>(iterator.getLinearIndex())) = 1.0;
-        EXPECT_EQ(i, iterator.getLinearIndex());
-        EXPECT_FALSE(iterator.isPastEnd());
-    }
+  auto& data = map["layer"];
+  unsigned int i = 0;
+  for (; !iterator.isPastEnd(); ++iterator, ++i) {
+    data(static_cast<long>(iterator.getLinearIndex())) = 1.0;
+    EXPECT_EQ(i, iterator.getLinearIndex());
+    EXPECT_FALSE(iterator.isPastEnd());
+  }
 
-    EXPECT_EQ(40, i);
-    EXPECT_TRUE(iterator.isPastEnd());
-    EXPECT_TRUE((map["layer"].array() == 1.0f).all());
+  EXPECT_EQ(40, i);
+  EXPECT_TRUE(iterator.isPastEnd());
+  EXPECT_TRUE((map["layer"].array() == 1.0f).all());
 }

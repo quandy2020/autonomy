@@ -27,31 +27,31 @@ namespace cloud {
 namespace handlers {
 
 void LoadStateHandler::OnRequest(const proto::LoadStateRequest& request) {
-    switch (request.state_chunk_case()) {
-        case proto::LoadStateRequest::kSerializedData:
-            reader_.AddProto(request.serialized_data());
-            break;
-        case proto::LoadStateRequest::kSerializationHeader:
-            reader_.AddProto(request.serialization_header());
-            break;
-        case proto::LoadStateRequest::kClientId:
-            client_id_ = request.client_id();
-            break;
-        default:
-            LOG(FATAL) << "Unhandled proto::LoadStateRequest case.";
-    }
-    load_frozen_state_ = request.load_frozen_state();
+  switch (request.state_chunk_case()) {
+    case proto::LoadStateRequest::kSerializedData:
+      reader_.AddProto(request.serialized_data());
+      break;
+    case proto::LoadStateRequest::kSerializationHeader:
+      reader_.AddProto(request.serialization_header());
+      break;
+    case proto::LoadStateRequest::kClientId:
+      client_id_ = request.client_id();
+      break;
+    default:
+      LOG(FATAL) << "Unhandled proto::LoadStateRequest case.";
+  }
+  load_frozen_state_ = request.load_frozen_state();
 }
 
 void LoadStateHandler::OnReadsDone() {
-    auto trajectory_remapping =
-        GetContext<MapBuilderContextInterface>()->map_builder().LoadState(&reader_, load_frozen_state_);
-    for (const auto& entry : trajectory_remapping) {
-        GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(client_id_, entry.second);
-    }
-    auto response = absl::make_unique<proto::LoadStateResponse>();
-    *response->mutable_trajectory_remapping() = ToProto(trajectory_remapping);
-    Send(std::move(response));
+  auto trajectory_remapping =
+      GetContext<MapBuilderContextInterface>()->map_builder().LoadState(&reader_, load_frozen_state_);
+  for (const auto& entry : trajectory_remapping) {
+    GetContext<MapBuilderContextInterface>()->RegisterClientIdForTrajectory(client_id_, entry.second);
+  }
+  auto response = absl::make_unique<proto::LoadStateResponse>();
+  *response->mutable_trajectory_remapping() = ToProto(trajectory_remapping);
+  Send(std::move(response));
 }
 
 }  // namespace handlers

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <list>
 #include <memory>
 #include <string>
@@ -40,8 +39,7 @@ namespace autolink {
 template <typename Request, typename Response>
 class Service : public ServiceBase {
  public:
-  using ServiceCallback = std::function<void(const std::shared_ptr<Request>&,
-                                             std::shared_ptr<Response>&)>;
+  using ServiceCallback = std::function<void(const std::shared_ptr<Request>&, std::shared_ptr<Response>&)>;
   /**
    * @brief Construct a new Service object
    *
@@ -49,8 +47,7 @@ class Service : public ServiceBase {
    * @param service_name the service name we provide
    * @param service_callback reference of `ServiceCallback` object
    */
-  Service(const std::string& node_name, const std::string& service_name,
-          const ServiceCallback& service_callback)
+  Service(const std::string& node_name, const std::string& service_name, const ServiceCallback& service_callback)
       : ServiceBase(service_name),
         node_name_(node_name),
         service_callback_(service_callback),
@@ -64,8 +61,7 @@ class Service : public ServiceBase {
    * @param service_name the service name we provide
    * @param service_callback rvalue reference of `ServiceCallback` object
    */
-  Service(const std::string& node_name, const std::string& service_name,
-          ServiceCallback&& service_callback)
+  Service(const std::string& node_name, const std::string& service_name, ServiceCallback&& service_callback)
       : ServiceBase(service_name),
         node_name_(node_name),
         service_callback_(service_callback),
@@ -90,20 +86,16 @@ class Service : public ServiceBase {
   void destroy();
 
  private:
-  void HandleRequest(const std::shared_ptr<Request>& request,
-                     const transport::MessageInfo& message_info);
+  void HandleRequest(const std::shared_ptr<Request>& request, const transport::MessageInfo& message_info);
 
-  void SendResponse(const transport::MessageInfo& message_info,
-                    const std::shared_ptr<Response>& response);
+  void SendResponse(const transport::MessageInfo& message_info, const std::shared_ptr<Response>& response);
 
   bool IsInit(void) const { return request_receiver_ != nullptr; }
 
   std::string node_name_;
   ServiceCallback service_callback_;
 
-  std::function<void(const std::shared_ptr<Request>&,
-                     const transport::MessageInfo&)>
-      request_callback_;
+  std::function<void(const std::shared_ptr<Request>&, const transport::MessageInfo&)> request_callback_;
   std::shared_ptr<transport::Transmitter<Response>> response_transmitter_;
   std::shared_ptr<transport::Receiver<Request>> request_receiver_;
   std::string request_channel_;
@@ -166,32 +158,26 @@ bool Service<Request, Response>::Init() {
   role.set_channel_name(response_channel_);
   auto channel_id = common::GlobalData::RegisterChannel(response_channel_);
   role.set_channel_id(channel_id);
-  role.mutable_qos_profile()->CopyFrom(
-      transport::QosProfileConf::QOS_PROFILE_SERVICES_DEFAULT);
+  role.mutable_qos_profile()->CopyFrom(transport::QosProfileConf::QOS_PROFILE_SERVICES_DEFAULT);
   auto transport = transport::Transport::Instance();
-  response_transmitter_ =
-      transport->CreateTransmitter<Response>(role, proto::OptionalMode::RTPS);
+  response_transmitter_ = transport->CreateTransmitter<Response>(role, proto::OptionalMode::RTPS);
   if (response_transmitter_ == nullptr) {
     AERROR << " Create response pub failed.";
     return false;
   }
 
   request_callback_ =
-      std::bind(&Service<Request, Response>::HandleRequest, this,
-                std::placeholders::_1, std::placeholders::_2);
+      std::bind(&Service<Request, Response>::HandleRequest, this, std::placeholders::_1, std::placeholders::_2);
 
   role.set_channel_name(request_channel_);
   channel_id = common::GlobalData::RegisterChannel(request_channel_);
   role.set_channel_id(channel_id);
   request_receiver_ = transport->CreateReceiver<Request>(
       role,
-      [=](const std::shared_ptr<Request>& request,
-          const transport::MessageInfo& message_info,
+      [=](const std::shared_ptr<Request>& request, const transport::MessageInfo& message_info,
           const proto::RoleAttributes& reader_attr) {
         (void)reader_attr;
-        auto task = [this, request, message_info]() {
-          this->HandleRequest(request, message_info);
-        };
+        auto task = [this, request, message_info]() { this->HandleRequest(request, message_info); };
         Enqueue(std::move(task));
       },
       proto::OptionalMode::RTPS);
@@ -206,9 +192,8 @@ bool Service<Request, Response>::Init() {
 }
 
 template <typename Request, typename Response>
-void Service<Request, Response>::HandleRequest(
-    const std::shared_ptr<Request>& request,
-    const transport::MessageInfo& message_info) {
+void Service<Request, Response>::HandleRequest(const std::shared_ptr<Request>& request,
+                                               const transport::MessageInfo& message_info) {
   if (!IsInit()) {
     // LOG_DEBUG << "not inited error.";
     return;
@@ -223,9 +208,8 @@ void Service<Request, Response>::HandleRequest(
 }
 
 template <typename Request, typename Response>
-void Service<Request, Response>::SendResponse(
-    const transport::MessageInfo& message_info,
-    const std::shared_ptr<Response>& response) {
+void Service<Request, Response>::SendResponse(const transport::MessageInfo& message_info,
+                                              const std::shared_ptr<Response>& response) {
   if (!IsInit()) {
     // LOG_DEBUG << "not inited error.";
     return;
@@ -236,4 +220,3 @@ void Service<Request, Response>::SendResponse(
 }
 
 }  // namespace autolink
-

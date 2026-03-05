@@ -26,42 +26,42 @@ namespace autolink {
 namespace action {
 
 std::string ToString(const GoalUUID& goal_id) {
-    std::ostringstream oss;
-    oss << std::hex << std::setfill('0');
-    for (size_t i = 0; i < goal_id.size(); ++i) {
-        if (i == 4 || i == 6 || i == 8 || i == 10) {
-            oss << '-';
-        }
-        oss << std::setw(2) << static_cast<unsigned int>(goal_id[i]);
+  std::ostringstream oss;
+  oss << std::hex << std::setfill('0');
+  for (size_t i = 0; i < goal_id.size(); ++i) {
+    if (i == 4 || i == 6 || i == 8 || i == 10) {
+      oss << '-';
     }
-    return oss.str();
+    oss << std::setw(2) << static_cast<unsigned int>(goal_id[i]);
+  }
+  return oss.str();
 }
 
 GoalUUID GenerateGoalUUID() {
-    GoalUUID uuid;
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<uint8_t> dis(0, 255);
+  GoalUUID uuid;
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  static std::uniform_int_distribution<uint8_t> dis(0, 255);
 
-    // Generate random UUID
-    for (size_t i = 0; i < uuid.size(); ++i) {
-        uuid[i] = dis(gen);
-    }
+  // Generate random UUID
+  for (size_t i = 0; i < uuid.size(); ++i) {
+    uuid[i] = dis(gen);
+  }
 
-    // Set version (4) and variant bits according to RFC 4122
-    uuid[6] = (uuid[6] & 0x0F) | 0x40;  // Version 4
-    uuid[8] = (uuid[8] & 0x3F) | 0x80;  // Variant 10
+  // Set version (4) and variant bits according to RFC 4122
+  uuid[6] = (uuid[6] & 0x0F) | 0x40;  // Version 4
+  uuid[8] = (uuid[8] & 0x3F) | 0x80;  // Variant 10
 
-    return uuid;
+  return uuid;
 }
 
 bool IsValidGoalUUID(const GoalUUID& goal_id) {
-    for (const auto& byte : goal_id) {
-        if (byte != 0) {
-            return true;
-        }
+  for (const auto& byte : goal_id) {
+    if (byte != 0) {
+      return true;
     }
-    return false;
+  }
+  return false;
 }
 
 }  // namespace action

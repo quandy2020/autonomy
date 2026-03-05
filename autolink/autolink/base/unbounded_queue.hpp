@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <unistd.h>
 
 #include <atomic>
@@ -113,4 +112,3 @@ class UnboundedQueue {
 
 }  // namespace base
 }  // namespace autolink
-

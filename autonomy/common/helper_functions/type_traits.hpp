@@ -44,13 +44,13 @@ namespace type_traits {
 ///
 template <typename T>
 constexpr inline types::bool8_t impossible_branch() noexcept {
-    return sizeof(T) == 0;
+  return sizeof(T) == 0;
 }
 
 /// Find an index of a type in a tuple
 template <class QueryT, class TupleT>
 struct index {
-    static_assert(!std::is_same<TupleT, std::tuple<>>::value, "Could not find QueryT in given tuple");
+  static_assert(!std::is_same<TupleT, std::tuple<>>::value, "Could not find QueryT in given tuple");
 };
 
 /// Specialization for a tuple that starts with the HeadT type. End of
@@ -106,15 +106,15 @@ inline constexpr typename std::enable_if_t<I == sizeof...(TypesT)> visit(const s
 template <std::size_t I = 0UL, typename Callable, typename... TypesT>
 inline constexpr typename std::enable_if_t<I != sizeof...(TypesT)> visit(std::tuple<TypesT...>& tuple,
                                                                          Callable callable) noexcept {
-    callable(std::get<I>(tuple));
-    visit<I + 1UL, Callable, TypesT...>(tuple, callable);
+  callable(std::get<I>(tuple));
+  visit<I + 1UL, Callable, TypesT...>(tuple, callable);
 }
 /// @brief      Same as the previous specialization but for const tuple.
 template <std::size_t I = 0UL, typename Callable, typename... TypesT>
 inline constexpr typename std::enable_if_t<I != sizeof...(TypesT)> visit(const std::tuple<TypesT...>& tuple,
                                                                          Callable callable) noexcept {
-    callable(std::get<I>(tuple));
-    visit<I + 1UL, Callable, TypesT...>(tuple, callable);
+  callable(std::get<I>(tuple));
+  visit<I + 1UL, Callable, TypesT...>(tuple, callable);
 }
 
 /// @brief      A class to compute a conjunction over given traits.
@@ -182,22 +182,21 @@ struct has_type<QueryT, std::tuple<QueryT, TailTs...>> : std::true_type {};
 ///
 template <typename TupleT1, typename TupleT2>
 struct intersect {
-    ///
-    /// @brief      Intersect the types.
-    ///
-    /// @details    This function "iterates" over the types in TupleT1 and
-    /// checks if those are in
-    ///             TupleT2. If this is true, these types are concatenated into
-    ///             a new tuple.
-    ///
-    template <std::size_t... Indices>
-    static constexpr auto make_intersection(std::index_sequence<Indices...>) {
-        return std::tuple_cat(
-            std::conditional_t<has_type<std::tuple_element_t<Indices, TupleT1>, TupleT2>::value,
-                               std::tuple<std::tuple_element_t<Indices, TupleT1>>, std::tuple<>>{}...);
-    }
-    /// The resulting tuple type.
-    using type = decltype(make_intersection(std::make_index_sequence<std::tuple_size<TupleT1>::value>{}));
+  ///
+  /// @brief      Intersect the types.
+  ///
+  /// @details    This function "iterates" over the types in TupleT1 and
+  /// checks if those are in
+  ///             TupleT2. If this is true, these types are concatenated into
+  ///             a new tuple.
+  ///
+  template <std::size_t... Indices>
+  static constexpr auto make_intersection(std::index_sequence<Indices...>) {
+    return std::tuple_cat(std::conditional_t<has_type<std::tuple_element_t<Indices, TupleT1>, TupleT2>::value,
+                                             std::tuple<std::tuple_element_t<Indices, TupleT1>>, std::tuple<>>{}...);
+  }
+  /// The resulting tuple type.
+  using type = decltype(make_intersection(std::make_index_sequence<std::tuple_size<TupleT1>::value>{}));
 };
 
 }  // namespace type_traits

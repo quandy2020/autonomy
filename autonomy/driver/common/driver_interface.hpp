@@ -39,90 +39,89 @@ namespace common {
  * LidarDriver、ImuDriver、CameraDriver 等）
  * 提供统一的接口，支持插件化的驱动器实现。
  */
-class DriverInterface
-{
-public:
-    /**
-     * Define DriverInterface::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(DriverInterface)
+class DriverInterface {
+ public:
+  /**
+   * Define DriverInterface::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(DriverInterface)
 
-    /**
-     * @brief 构造函数
-     */
-    DriverInterface() = default;
+  /**
+   * @brief 构造函数
+   */
+  DriverInterface() = default;
 
-    /**
-     * @brief 析构函数
-     */
-    virtual ~DriverInterface() = default;
+  /**
+   * @brief 析构函数
+   */
+  virtual ~DriverInterface() = default;
 
-    DriverInterface(const DriverInterface&) = delete;
-    DriverInterface& operator=(const DriverInterface&) = delete;
+  DriverInterface(const DriverInterface&) = delete;
+  DriverInterface& operator=(const DriverInterface&) = delete;
 
-    /**
-     * @brief 配置驱动器
-     * @param name 驱动器名称
-     * @param options 驱动器配置选项（通用选项，子类可转换为具体类型）
-     * @return true 成功，false 失败
-     */
-    virtual bool Configure(const std::string& name, const proto::DriverOptions& options) = 0;
+  /**
+   * @brief 配置驱动器
+   * @param name 驱动器名称
+   * @param options 驱动器配置选项（通用选项，子类可转换为具体类型）
+   * @return true 成功，false 失败
+   */
+  virtual bool Configure(const std::string& name, const proto::DriverOptions& options) = 0;
 
-    /**
-     * @brief 初始化驱动器
-     * @return true 成功，false 失败
-     */
-    virtual bool Initialize() = 0;
+  /**
+   * @brief 初始化驱动器
+   * @return true 成功，false 失败
+   */
+  virtual bool Initialize() = 0;
 
-    /**
-     * @brief 启动驱动器
-     */
-    virtual void Start() = 0;
+  /**
+   * @brief 启动驱动器
+   */
+  virtual void Start() = 0;
 
-    /**
-     * @brief 停止驱动器
-     */
-    virtual void Stop() = 0;
+  /**
+   * @brief 停止驱动器
+   */
+  virtual void Stop() = 0;
 
-    /**
-     * @brief 清理资源
-     */
-    virtual void Cleanup() = 0;
+  /**
+   * @brief 清理资源
+   */
+  virtual void Cleanup() = 0;
 
-    /**
-     * @brief 获取驱动器名称
-     * @return 驱动器名称
-     */
-    virtual std::string GetName() const = 0;
+  /**
+   * @brief 获取驱动器名称
+   * @return 驱动器名称
+   */
+  virtual std::string GetName() const = 0;
 
-    /**
-     * @brief 获取传感器ID列表
-     * @return 传感器ID列表
-     */
-    virtual std::vector<std::string> GetSensorIds() const = 0;
+  /**
+   * @brief 获取传感器ID列表
+   * @return 传感器ID列表
+   */
+  virtual std::vector<std::string> GetSensorIds() const = 0;
 
-    /**
-     * @brief 检查传感器是否已注册
-     * @param sensor_id 传感器ID
-     * @return true 已注册，false 未注册
-     */
-    virtual bool IsSensorRegistered(const std::string& sensor_id) const = 0;
+  /**
+   * @brief 检查传感器是否已注册
+   * @param sensor_id 传感器ID
+   * @return true 已注册，false 未注册
+   */
+  virtual bool IsSensorRegistered(const std::string& sensor_id) const = 0;
 
-    /**
-     * @brief 注册传感器数据处理器
-     * @param sensor_id 传感器ID
-     * @param handler 数据处理器函数
-     * @return true 成功，false 失败
-     */
-    virtual bool RegisterSensorHandler(
-        const std::string& sensor_id,
-        std::function<void(const std::string&, const std::shared_ptr<sensor::Data>&)> handler) = 0;
+  /**
+   * @brief 注册传感器数据处理器
+   * @param sensor_id 传感器ID
+   * @param handler 数据处理器函数
+   * @return true 成功，false 失败
+   */
+  virtual bool RegisterSensorHandler(
+      const std::string& sensor_id,
+      std::function<void(const std::string&, const std::shared_ptr<sensor::Data>&)> handler) = 0;
 
-    /**
-     * @brief 取消注册传感器数据处理器
-     * @param sensor_id 传感器ID
-     */
-    virtual void UnregisterSensorHandler(const std::string& sensor_id) = 0;
+  /**
+   * @brief 取消注册传感器数据处理器
+   * @param sensor_id 传感器ID
+   */
+  virtual void UnregisterSensorHandler(const std::string& sensor_id) = 0;
 };
 
 /**

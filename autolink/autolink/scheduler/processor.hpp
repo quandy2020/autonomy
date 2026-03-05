@@ -24,9 +24,8 @@
 #include <thread>
 #include <vector>
 
-#include "autolink/proto/scheduler_conf.pb.h"
-
 #include "autolink/croutine/croutine.hpp"
+#include "autolink/proto/scheduler_conf.pb.h"
 #include "autolink/scheduler/processor_context.hpp"
 
 namespace autolink {
@@ -69,4 +68,3 @@ class Processor {
 
 }  // namespace scheduler
 }  // namespace autolink
-

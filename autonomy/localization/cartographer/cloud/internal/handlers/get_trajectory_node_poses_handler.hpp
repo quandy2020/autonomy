@@ -29,10 +29,9 @@ DEFINE_HANDLER_SIGNATURE(GetTrajectoryNodePosesSignature, google::protobuf::Empt
                          proto::GetTrajectoryNodePosesResponse,
                          "/cartographer.cloud.proto.MapBuilderService/GetTrajectoryNodePoses")
 
-class GetTrajectoryNodePosesHandler : public autonomy::common::async_grpc::RpcHandler<GetTrajectoryNodePosesSignature>
-{
-public:
-    void OnRequest(const google::protobuf::Empty& request) override;
+class GetTrajectoryNodePosesHandler : public autonomy::common::async_grpc::RpcHandler<GetTrajectoryNodePosesSignature> {
+ public:
+  void OnRequest(const google::protobuf::Empty& request) override;
 };
 
 }  // namespace handlers

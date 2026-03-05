@@ -23,55 +23,51 @@ namespace transformation {
 TransformationManager::TransformationManager() {}
 
 void TransformationManager::load(const Config& config) {
-    QString class_id;
-    if (config.mapGetString("Transformer", &class_id)) {
-        PluginInfo info;
-        info.class_id = class_id;
-        // For now, use class_id as name and description
-        info.name = class_id;
-        info.description = class_id;
-        setTransformer(info);
-    }
+  QString class_id;
+  if (config.mapGetString("Transformer", &class_id)) {
+    PluginInfo info;
+    info.class_id = class_id;
+    // For now, use class_id as name and description
+    info.name = class_id;
+    info.description = class_id;
+    setTransformer(info);
+  }
 }
 
 void TransformationManager::save(Config config) const {
-    if (current_transformer_) {
-        config.mapSetValue("Transformer", current_transformer_info_.class_id);
-    }
+  if (current_transformer_) {
+    config.mapSetValue("Transformer", current_transformer_info_.class_id);
+  }
 }
 
 std::vector<PluginInfo> TransformationManager::getAvailableTransformers() const {
-    // For now, return empty list
-    // Can be extended later to discover available transformers
-    return std::vector<PluginInfo>();
+  // For now, return empty list
+  // Can be extended later to discover available transformers
+  return std::vector<PluginInfo>();
 }
 
-std::shared_ptr<FrameTransformer> TransformationManager::getCurrentTransformer() const {
-    return current_transformer_;
-}
+std::shared_ptr<FrameTransformer> TransformationManager::getCurrentTransformer() const { return current_transformer_; }
 
-PluginInfo TransformationManager::getCurrentTransformerInfo() const {
-    return current_transformer_info_;
-}
+PluginInfo TransformationManager::getCurrentTransformerInfo() const { return current_transformer_info_; }
 
 void TransformationManager::setTransformer(const PluginInfo& plugin_info) {
-    current_transformer_info_ = plugin_info;
-    // For now, just store the info
-    // Actual transformer creation can be implemented later
-    Q_EMIT configChanged();
+  current_transformer_info_ = plugin_info;
+  // For now, just store the info
+  // Actual transformer creation can be implemented later
+  Q_EMIT configChanged();
 }
 
 void TransformationManager::setTransformer(std::shared_ptr<FrameTransformer> transformer) {
-    if (current_transformer_ != transformer) {
-        current_transformer_ = transformer;
-        if (transformer) {
-            current_transformer_info_.class_id = transformer->getClassId();
-            current_transformer_info_.name = transformer->getClassId();
-            current_transformer_info_.description = transformer->getDescription();
-        }
-        Q_EMIT transformerChanged(transformer);
-        Q_EMIT configChanged();
+  if (current_transformer_ != transformer) {
+    current_transformer_ = transformer;
+    if (transformer) {
+      current_transformer_info_.class_id = transformer->getClassId();
+      current_transformer_info_.name = transformer->getClassId();
+      current_transformer_info_.description = transformer->getDescription();
     }
+    Q_EMIT transformerChanged(transformer);
+    Q_EMIT configChanged();
+  }
 }
 
 }  // namespace transformation

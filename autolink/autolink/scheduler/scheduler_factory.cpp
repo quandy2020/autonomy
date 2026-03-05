@@ -56,8 +56,7 @@ Scheduler* Instance() {
       if (PathExists(cfg_file) && GetProtoFromFile(cfg_file, &cfg)) {
         policy = cfg.scheduler_conf().policy();
       } else {
-        ADEBUG << "Scheduler conf " << cfg_file
-               << " not found, use default (classic).";
+        ADEBUG << "Scheduler conf " << cfg_file << " not found, use default (classic).";
       }
       if (!policy.compare("classic")) {
         obj = new SchedulerClassic();

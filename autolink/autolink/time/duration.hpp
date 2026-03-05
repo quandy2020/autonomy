@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <iostream>
 
@@ -59,4 +58,3 @@ class Duration {
 std::ostream &operator<<(std::ostream &os, const Duration &rhs);
 
 }  // namespace autolink
-

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <mutex>
 
 #include "glog/logging.h"
@@ -28,8 +27,7 @@ class Logger : public google::base::Logger {
  public:
   explicit Logger(google::base::Logger* wrapped);
   ~Logger();
-  void Write(bool force_flush, time_t timestamp, const char* message,
-             size_t message_len) override;
+  void Write(bool force_flush, time_t timestamp, const char* message, size_t message_len) override;
   void Flush() override;
   uint32_t LogSize() override;
 
@@ -40,4 +38,3 @@ class Logger : public google::base::Logger {
 
 }  // namespace logger
 }  // namespace autolink
-

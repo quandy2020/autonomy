@@ -27,15 +27,15 @@ namespace models {
  * @brief Constraints on control
  */
 struct ControlConstraints {
-    float vx_max;
-    float vx_min;
-    float vy;
-    float wz;
-    float ax_max;
-    float ax_min;
-    float ay_min;
-    float ay_max;
-    float az_max;
+  float vx_max;
+  float vx_min;
+  float vy;
+  float wz;
+  float ax_max;
+  float ax_min;
+  float ay_min;
+  float ay_max;
+  float az_max;
 };
 
 /**
@@ -43,9 +43,9 @@ struct ControlConstraints {
  * @brief Noise parameters for sampling trajectories
  */
 struct SamplingStd {
-    float vx;
-    float vy;
-    float wz;
+  float vx;
+  float vy;
+  float wz;
 };
 
 }  // namespace models

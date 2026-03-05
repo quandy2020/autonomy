@@ -22,21 +22,21 @@ namespace cartographer {
 namespace mapping {
 
 void LocalSlamResult3D::AddToTrajectoryBuilder(TrajectoryBuilderInterface* const trajectory_builder) {
-    trajectory_builder->AddLocalSlamResultData(absl::make_unique<LocalSlamResult3D>(*this));
+  trajectory_builder->AddLocalSlamResultData(absl::make_unique<LocalSlamResult3D>(*this));
 }
 
 void LocalSlamResult3D::AddToPoseGraph(int trajectory_id, PoseGraph* pose_graph) const {
-    DCHECK(dynamic_cast<PoseGraph3D*>(pose_graph));
-    CHECK_GE(local_slam_result_data_.submaps().size(), 1);
-    CHECK(local_slam_result_data_.submaps(0).has_submap_3d());
-    std::vector<std::shared_ptr<const mapping::Submap3D>> submaps;
-    for (const auto& submap_proto : local_slam_result_data_.submaps()) {
-        submaps.push_back(submap_controller_->UpdateSubmap(submap_proto));
-    }
-    static_cast<PoseGraph3D*>(pose_graph)
-        ->AddNode(std::make_shared<const mapping::TrajectoryNode::Data>(
-                      mapping::FromProto(local_slam_result_data_.node_data())),
-                  trajectory_id, submaps);
+  DCHECK(dynamic_cast<PoseGraph3D*>(pose_graph));
+  CHECK_GE(local_slam_result_data_.submaps().size(), 1);
+  CHECK(local_slam_result_data_.submaps(0).has_submap_3d());
+  std::vector<std::shared_ptr<const mapping::Submap3D>> submaps;
+  for (const auto& submap_proto : local_slam_result_data_.submaps()) {
+    submaps.push_back(submap_controller_->UpdateSubmap(submap_proto));
+  }
+  static_cast<PoseGraph3D*>(pose_graph)
+      ->AddNode(std::make_shared<const mapping::TrajectoryNode::Data>(
+                    mapping::FromProto(local_slam_result_data_.node_data())),
+                trajectory_id, submaps);
 }
 
 }  // namespace mapping

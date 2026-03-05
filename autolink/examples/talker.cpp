@@ -2,10 +2,10 @@
  * Copyright 2018 The Autolink Authors. All Rights Reserved.
  *****************************************************************************/
 
-#include "examples.pb.h"
 #include "autolink/autolink.hpp"
 #include "autolink/time/rate.hpp"
 #include "autolink/time/time.hpp"
+#include "examples.pb.h"
 
 using autolink::Rate;
 using autolink::Time;

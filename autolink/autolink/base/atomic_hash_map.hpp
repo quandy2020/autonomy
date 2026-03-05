@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <cstdint>
 #include <type_traits>
@@ -33,9 +32,7 @@ namespace base {
  * @tparam 0 Type traits, use for checking types of key & value
  */
 template <typename K, typename V, std::size_t TableSize = 128,
-          typename std::enable_if<std::is_integral<K>::value &&
-                                      (TableSize & (TableSize - 1)) == 0,
-                                  int>::type = 0>
+          typename std::enable_if<std::is_integral<K>::value && (TableSize & (TableSize - 1)) == 0, int>::type = 0>
 class AtomicHashMap {
  public:
   AtomicHashMap() : capacity_(TableSize), mode_num_(capacity_ - 1) {}
@@ -80,15 +77,9 @@ class AtomicHashMap {
  private:
   struct Entry {
     Entry() {}
-    explicit Entry(K key) : key(key) {
-      value_ptr.store(new V(), std::memory_order_release);
-    }
-    Entry(K key, const V &value) : key(key) {
-      value_ptr.store(new V(value), std::memory_order_release);
-    }
-    Entry(K key, V &&value) : key(key) {
-      value_ptr.store(new V(std::forward<V>(value)), std::memory_order_release);
-    }
+    explicit Entry(K key) : key(key) { value_ptr.store(new V(), std::memory_order_release); }
+    Entry(K key, const V &value) : key(key) { value_ptr.store(new V(value), std::memory_order_release); }
+    Entry(K key, V &&value) : key(key) { value_ptr.store(new V(std::forward<V>(value)), std::memory_order_release); }
     ~Entry() { delete value_ptr.load(std::memory_order_acquire); }
 
     K key = 0;
@@ -155,9 +146,8 @@ class AtomicHashMap {
             new_value = new V(value);
           }
           auto old_val_ptr = target->value_ptr.load(std::memory_order_acquire);
-          if (target->value_ptr.compare_exchange_strong(
-                  old_val_ptr, new_value, std::memory_order_acq_rel,
-                  std::memory_order_relaxed)) {
+          if (target->value_ptr.compare_exchange_strong(old_val_ptr, new_value, std::memory_order_acq_rel,
+                                                        std::memory_order_relaxed)) {
             delete old_val_ptr;
             if (new_entry) {
               delete new_entry;
@@ -171,8 +161,7 @@ class AtomicHashMap {
             new_entry = new Entry(key, value);
           }
           new_entry->next.store(target, std::memory_order_release);
-          if (prev->next.compare_exchange_strong(target, new_entry,
-                                                 std::memory_order_acq_rel,
+          if (prev->next.compare_exchange_strong(target, new_entry, std::memory_order_acq_rel,
                                                  std::memory_order_relaxed)) {
             // Insert success
             if (new_value) {
@@ -198,9 +187,8 @@ class AtomicHashMap {
             new_value = new V(std::forward<V>(value));
           }
           auto old_val_ptr = target->value_ptr.load(std::memory_order_acquire);
-          if (target->value_ptr.compare_exchange_strong(
-                  old_val_ptr, new_value, std::memory_order_acq_rel,
-                  std::memory_order_relaxed)) {
+          if (target->value_ptr.compare_exchange_strong(old_val_ptr, new_value, std::memory_order_acq_rel,
+                                                        std::memory_order_relaxed)) {
             delete old_val_ptr;
             if (new_entry) {
               delete new_entry;
@@ -214,8 +202,7 @@ class AtomicHashMap {
             new_entry = new Entry(key, value);
           }
           new_entry->next.store(target, std::memory_order_release);
-          if (prev->next.compare_exchange_strong(target, new_entry,
-                                                 std::memory_order_acq_rel,
+          if (prev->next.compare_exchange_strong(target, new_entry, std::memory_order_acq_rel,
                                                  std::memory_order_relaxed)) {
             // Insert success
             if (new_value) {
@@ -241,9 +228,8 @@ class AtomicHashMap {
             new_value = new V();
           }
           auto old_val_ptr = target->value_ptr.load(std::memory_order_acquire);
-          if (target->value_ptr.compare_exchange_strong(
-                  old_val_ptr, new_value, std::memory_order_acq_rel,
-                  std::memory_order_relaxed)) {
+          if (target->value_ptr.compare_exchange_strong(old_val_ptr, new_value, std::memory_order_acq_rel,
+                                                        std::memory_order_relaxed)) {
             delete old_val_ptr;
             if (new_entry) {
               delete new_entry;
@@ -257,8 +243,7 @@ class AtomicHashMap {
             new_entry = new Entry(key);
           }
           new_entry->next.store(target, std::memory_order_release);
-          if (prev->next.compare_exchange_strong(target, new_entry,
-                                                 std::memory_order_acq_rel,
+          if (prev->next.compare_exchange_strong(target, new_entry, std::memory_order_acq_rel,
                                                  std::memory_order_relaxed)) {
             // Insert success
             if (new_value) {
@@ -293,4 +278,3 @@ class AtomicHashMap {
 
 }  // namespace base
 }  // namespace autolink
-

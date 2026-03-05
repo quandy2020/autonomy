@@ -23,9 +23,7 @@ namespace io {
 
 Session::Session() : Session(-1) {}
 
-Session::Session(int fd) : fd_(fd), poll_handler_(nullptr) {
-  poll_handler_.reset(new PollHandler(fd_));
-}
+Session::Session(int fd) : fd_(fd), poll_handler_(nullptr) { poll_handler_.reset(new PollHandler(fd_)); }
 
 int Session::Socket(int domain, int type, int protocol) {
   if (fd_ != -1) {
@@ -74,8 +72,7 @@ int Session::Connect(const struct sockaddr *addr, socklen_t addrlen) {
   int res = connect(fd_, addr, addrlen);
   if (res == -1 && errno == EINPROGRESS) {
     poll_handler_->Block(-1, false);
-    getsockopt(fd_, SOL_SOCKET, SO_ERROR, reinterpret_cast<void *>(&optval),
-               &optlen);
+    getsockopt(fd_, SOL_SOCKET, SO_ERROR, reinterpret_cast<void *>(&optval), &optlen);
     if (optval == 0) {
       res = 0;
     } else {
@@ -114,8 +111,7 @@ ssize_t Session::Recv(void *buf, size_t len, int flags, int timeout_ms) {
   return nbytes;
 }
 
-ssize_t Session::RecvFrom(void *buf, size_t len, int flags,
-                          struct sockaddr *src_addr, socklen_t *addrlen,
+ssize_t Session::RecvFrom(void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen,
                           int timeout_ms) {
   ACHECK(buf != nullptr);
   ACHECK(fd_ != -1);
@@ -156,8 +152,7 @@ ssize_t Session::Send(const void *buf, size_t len, int flags, int timeout_ms) {
   return nbytes;
 }
 
-ssize_t Session::SendTo(const void *buf, size_t len, int flags,
-                        const struct sockaddr *dest_addr, socklen_t addrlen,
+ssize_t Session::SendTo(const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen,
                         int timeout_ms) {
   ACHECK(buf != nullptr);
   ACHECK(dest_addr != nullptr);

@@ -25,10 +25,9 @@
 #include "autolink/mainboard/module_argument.hpp"
 #include "autolink/mainboard/module_controller.hpp"
 #include "autolink/state.hpp"
-
-#include "gperftools/profiler.h"
 #include "gperftools/heap-profiler.h"
 #include "gperftools/malloc_extension.h"
+#include "gperftools/profiler.h"
 
 using autolink::mainboard::ModuleArgument;
 using autolink::mainboard::ModuleController;
@@ -44,20 +43,18 @@ int main(int argc, char** argv) {
   for (auto&& i = dag_list.begin(); i != dag_list.end(); i++) {
     size_t pos = 0;
     for (size_t j = 0; j < (*i).length(); j++) {
-      pos = ((*i)[j] == '/') ? j: pos;
+      pos = ((*i)[j] == '/') ? j : pos;
     }
     if (i != dag_list.begin()) dag_info += "_";
 
     if (pos == 0) {
       dag_info += *i;
     } else {
-      dag_info +=
-        (pos == (*i).length()-1) ? (*i).substr(pos): (*i).substr(pos+1);
+      dag_info += (pos == (*i).length() - 1) ? (*i).substr(pos) : (*i).substr(pos + 1);
     }
   }
 
-  if (module_args.GetProcessGroup() !=
-        autolink::mainboard::DEFAULT_process_group_) {
+  if (module_args.GetProcessGroup() != autolink::mainboard::DEFAULT_process_group_) {
     dag_info = module_args.GetProcessGroup();
   }
 
@@ -66,7 +63,7 @@ int main(int argc, char** argv) {
 
   static bool enable_cpu_profile = module_args.GetEnableCpuprofile();
   static bool enable_mem_profile = module_args.GetEnableHeapprofile();
-  std::signal(SIGTERM, [](int sig){
+  std::signal(SIGTERM, [](int sig) {
     autolink::OnShutdown(sig);
     if (enable_cpu_profile) {
       ProfilerStop();

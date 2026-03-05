@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -42,9 +41,7 @@ void SetState(const State& state);
 
 inline bool OK() { return GetState() == STATE_INITIALIZED; }
 
-inline bool IsShutdown() {
-  return GetState() == STATE_SHUTTING_DOWN || GetState() == STATE_SHUTDOWN;
-}
+inline bool IsShutdown() { return GetState() == STATE_SHUTTING_DOWN || GetState() == STATE_SHUTDOWN; }
 
 inline void WaitForShutdown() {
   while (!IsShutdown()) {
@@ -60,4 +57,3 @@ inline void AsyncShutdown() {
 }
 
 }  // namespace autolink
-

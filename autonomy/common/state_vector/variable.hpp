@@ -26,8 +26,7 @@ namespace state_vector {
 ///
 /// @brief      A tag struct used to disambiguate variables from other types.
 ///
-struct Variable {
-};
+struct Variable {};
 
 ///
 /// @brief      A tag struct used to disambiguate variables that store angles
@@ -36,8 +35,7 @@ struct Variable {
 ///             Inheriting from AngleVariable allows to automatically wrap
 ///             angles upon need.
 ///
-struct AngleVariable : Variable {
-};
+struct AngleVariable : Variable {};
 
 ///
 /// @brief      A trait to check if a type is a variable by checking if it

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/common/log.hpp"
 #include "autolink/transport/dispatcher/intra_dispatcher.hpp"
 #include "autolink/transport/receiver/receiver.hpp"
@@ -27,8 +26,7 @@ namespace transport {
 template <typename M>
 class IntraReceiver : public Receiver<M> {
  public:
-  IntraReceiver(const RoleAttributes& attr,
-                const typename Receiver<M>::MessageListener& msg_listener);
+  IntraReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener);
   virtual ~IntraReceiver();
 
   void Enable() override;
@@ -42,9 +40,7 @@ class IntraReceiver : public Receiver<M> {
 };
 
 template <typename M>
-IntraReceiver<M>::IntraReceiver(
-    const RoleAttributes& attr,
-    const typename Receiver<M>::MessageListener& msg_listener)
+IntraReceiver<M>::IntraReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener)
     : Receiver<M>(attr, msg_listener) {
   dispatcher_ = IntraDispatcher::Instance();
 }
@@ -61,8 +57,7 @@ void IntraReceiver<M>::Enable() {
   }
 
   dispatcher_->AddListener<M>(
-      this->attr_, std::bind(&IntraReceiver<M>::OnNewMessage, this,
-                             std::placeholders::_1, std::placeholders::_2));
+      this->attr_, std::bind(&IntraReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2));
   this->enabled_ = true;
 }
 
@@ -80,8 +75,7 @@ template <typename M>
 void IntraReceiver<M>::Enable(const RoleAttributes& opposite_attr) {
   dispatcher_->AddListener<M>(
       this->attr_, opposite_attr,
-      std::bind(&IntraReceiver<M>::OnNewMessage, this, std::placeholders::_1,
-                std::placeholders::_2));
+      std::bind(&IntraReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 template <typename M>
@@ -91,4 +85,3 @@ void IntraReceiver<M>::Disable(const RoleAttributes& opposite_attr) {
 
 }  // namespace transport
 }  // namespace autolink
-

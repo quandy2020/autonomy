@@ -23,8 +23,7 @@
 namespace autolink {
 namespace transport {
 
-SubListener::SubListener(const NewMsgCallback& callback)
-    : callback_(callback) {}
+SubListener::SubListener(const NewMsgCallback& callback) : callback_(callback) {}
 
 SubListener::~SubListener() {}
 
@@ -43,8 +42,7 @@ void SubListener::onNewDataMessage(eprosima::fastrtps::Subscriber* sub) {
   RETURN_IF(m_info.sampleKind != eprosima::fastrtps::rtps::ALIVE);
 
   // fetch MessageInfo
-  char* ptr =
-      reinterpret_cast<char*>(&m_info.related_sample_identity.writer_guid());
+  char* ptr = reinterpret_cast<char*>(&m_info.related_sample_identity.writer_guid());
   Identity sender_id(false);
   sender_id.set_data(ptr);
   msg_info_.set_sender_id(sender_id);
@@ -53,14 +51,12 @@ void SubListener::onNewDataMessage(eprosima::fastrtps::Subscriber* sub) {
   spare_id.set_data(ptr + ID_SIZE);
   msg_info_.set_spare_id(spare_id);
 
-  uint64_t seq_num =
-      ((int64_t)m_info.related_sample_identity.sequence_number().high) << 32 |
-      m_info.related_sample_identity.sequence_number().low;
+  uint64_t seq_num = ((int64_t)m_info.related_sample_identity.sequence_number().high) << 32 |
+                     m_info.related_sample_identity.sequence_number().low;
   msg_info_.set_seq_num(seq_num);
 
   // fetch message string
-  std::shared_ptr<std::string> msg_str =
-      std::make_shared<std::string>(m.data());
+  std::shared_ptr<std::string> msg_str = std::make_shared<std::string>(m.data());
 
   uint64_t recv_time = Time::Now().ToNanosecond();
   uint64_t base_time = recv_time & 0xfffffff0000000;
@@ -75,9 +71,8 @@ void SubListener::onNewDataMessage(eprosima::fastrtps::Subscriber* sub) {
   callback_(channel_id, msg_str, msg_info_);
 }
 
-void SubListener::onSubscriptionMatched(
-    eprosima::fastrtps::Subscriber* sub,
-    eprosima::fastrtps::rtps::MatchingInfo& info) {
+void SubListener::onSubscriptionMatched(eprosima::fastrtps::Subscriber* sub,
+                                        eprosima::fastrtps::rtps::MatchingInfo& info) {
   (void)sub;
   (void)info;
 }

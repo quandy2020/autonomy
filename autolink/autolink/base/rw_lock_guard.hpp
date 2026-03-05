@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <unistd.h>
 
 #include <atomic>
@@ -46,9 +45,7 @@ class ReadLockGuard {
 template <typename RWLock>
 class WriteLockGuard {
  public:
-  explicit WriteLockGuard(RWLock& lock) : rw_lock_(lock) {
-    rw_lock_.WriteLock();
-  }
+  explicit WriteLockGuard(RWLock& lock) : rw_lock_(lock) { rw_lock_.WriteLock(); }
 
   ~WriteLockGuard() { rw_lock_.WriteUnlock(); }
 
@@ -60,4 +57,3 @@ class WriteLockGuard {
 
 }  // namespace base
 }  // namespace autolink
-

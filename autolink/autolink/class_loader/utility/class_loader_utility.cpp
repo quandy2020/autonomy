@@ -40,8 +40,7 @@ LibPathSharedLibVector& GetLibPathSharedLibVector() {
   return instance;
 }
 
-ClassClassFactoryMap& GetClassFactoryMapByBaseClass(
-    const std::string& typeid_base_class_name) {
+ClassClassFactoryMap& GetClassFactoryMapByBaseClass(const std::string& typeid_base_class_name) {
   BaseToClassFactoryMapMap& factoryMapMap = GetClassFactoryMapMap();
   std::string base_class_name = typeid_base_class_name;
   if (factoryMapMap.find(base_class_name) == factoryMapMap.end()) {
@@ -56,9 +55,7 @@ std::string& GetCurLoadingLibraryNameReference() {
   return library_name;
 }
 
-std::string GetCurLoadingLibraryName() {
-  return GetCurLoadingLibraryNameReference();
-}
+std::string GetCurLoadingLibraryName() { return GetCurLoadingLibraryNameReference(); }
 
 void SetCurLoadingLibraryName(const std::string& library_name) {
   std::string& library_name_ref = GetCurLoadingLibraryNameReference();
@@ -70,17 +67,14 @@ ClassLoader*& GetCurActiveClassLoaderReference() {
   return loader;
 }
 
-ClassLoader* GetCurActiveClassLoader() {
-  return (GetCurActiveClassLoaderReference());
-}
+ClassLoader* GetCurActiveClassLoader() { return (GetCurActiveClassLoaderReference()); }
 
 void SetCurActiveClassLoader(ClassLoader* loader) {
   ClassLoader*& loader_ref = GetCurActiveClassLoaderReference();
   loader_ref = loader;
 }
 
-ClassFactoryVector GetAllClassFactoryObjects(
-    const ClassClassFactoryMap& factories) {
+ClassFactoryVector GetAllClassFactoryObjects(const ClassClassFactoryMap& factories) {
   ClassFactoryVector all_class_factory_objs;
   for (auto& class_factory : factories) {
     all_class_factory_objs.emplace_back(class_factory.second);
@@ -96,15 +90,13 @@ ClassFactoryVector GetAllClassFactoryObjects() {
   BaseToClassFactoryMapMap& factory_map_map = GetClassFactoryMapMap();
   for (auto& baseclass_map : factory_map_map) {
     ClassFactoryVector objs = GetAllClassFactoryObjects(baseclass_map.second);
-    all_class_factory_objs.insert(all_class_factory_objs.end(), objs.begin(),
-                                  objs.end());
+    all_class_factory_objs.insert(all_class_factory_objs.end(), objs.begin(), objs.end());
   }
 
   return all_class_factory_objs;
 }
 
-ClassFactoryVector GetAllClassFactoryObjectsOfLibrary(
-    const std::string& library_path) {
+ClassFactoryVector GetAllClassFactoryObjectsOfLibrary(const std::string& library_path) {
   ClassFactoryVector all_class_factory_objs = GetAllClassFactoryObjects();
   ClassFactoryVector library_class_factory_objs;
   for (auto& class_factory_obj : all_class_factory_objs) {
@@ -115,11 +107,9 @@ ClassFactoryVector GetAllClassFactoryObjectsOfLibrary(
   return library_class_factory_objs;
 }
 
-void DestroyClassFactoryObjectsOfLibrary(
-    const std::string& library_path, const ClassLoader* class_loader,
-    ClassClassFactoryMap* class_factory_map) {
-  for (ClassClassFactoryMap::iterator itr = class_factory_map->begin();
-       itr != class_factory_map->end();) {
+void DestroyClassFactoryObjectsOfLibrary(const std::string& library_path, const ClassLoader* class_loader,
+                                         ClassClassFactoryMap* class_factory_map) {
+  for (ClassClassFactoryMap::iterator itr = class_factory_map->begin(); itr != class_factory_map->end();) {
     AbstractClassFactoryBase* class_factory_object = itr->second;
     if (class_factory_object->GetRelativeLibraryPath() == library_path &&
         class_factory_object->IsOwnedBy(class_loader)) {
@@ -137,19 +127,16 @@ void DestroyClassFactoryObjectsOfLibrary(
   }
 }
 
-void DestroyClassFactoryObjectsOfLibrary(const std::string& library_path,
-                                         const ClassLoader* loader) {
+void DestroyClassFactoryObjectsOfLibrary(const std::string& library_path, const ClassLoader* loader) {
   std::lock_guard<std::recursive_mutex> lck(GetClassFactoryMapMapMutex());
 
   BaseToClassFactoryMapMap& factory_map_map = GetClassFactoryMapMap();
   for (auto& baseclass_map : factory_map_map) {
-    DestroyClassFactoryObjectsOfLibrary(library_path, loader,
-                                        &baseclass_map.second);
+    DestroyClassFactoryObjectsOfLibrary(library_path, loader, &baseclass_map.second);
   }
 }
 
-LibPathSharedLibVector::iterator FindLoadedLibrary(
-    const std::string& library_path) {
+LibPathSharedLibVector::iterator FindLoadedLibrary(const std::string& library_path) {
   LibPathSharedLibVector& opened_libraries = GetLibPathSharedLibVector();
   LibPathSharedLibVector::iterator itr;
   for (itr = opened_libraries.begin(); itr != opened_libraries.end(); ++itr) {
@@ -168,11 +155,9 @@ bool IsLibraryLoadedByAnybody(const std::string& library_path) {
   return itr != opened_libraries.end();
 }
 
-bool IsLibraryLoaded(const std::string& library_path,
-                     ClassLoader* class_loader) {
+bool IsLibraryLoaded(const std::string& library_path, ClassLoader* class_loader) {
   bool is_lib_loaded_by_anyone = IsLibraryLoadedByAnybody(library_path);
-  ClassFactoryVector lib_class_factory_objs =
-      GetAllClassFactoryObjectsOfLibrary(library_path);
+  ClassFactoryVector lib_class_factory_objs = GetAllClassFactoryObjectsOfLibrary(library_path);
   auto num_lib_class_factory_objs = lib_class_factory_objs.size();
   if (is_lib_loaded_by_anyone && num_lib_class_factory_objs == 0) {
     return true;
@@ -186,16 +171,13 @@ bool IsLibraryLoaded(const std::string& library_path,
   }
 
   auto num_lib_loader_class_factory_objs = lib_loader_class_factory_objs.size();
-  return (is_lib_loaded_by_anyone &&
-          (num_lib_loader_class_factory_objs <= num_lib_class_factory_objs));
+  return (is_lib_loaded_by_anyone && (num_lib_loader_class_factory_objs <= num_lib_class_factory_objs));
 }
 
 bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
   if (IsLibraryLoadedByAnybody(library_path)) {
-    AINFO << "lib has been loaded by others,only attach to class factory obj."
-          << library_path;
-    ClassFactoryVector lib_class_factory_objs =
-        GetAllClassFactoryObjectsOfLibrary(library_path);
+    AINFO << "lib has been loaded by others,only attach to class factory obj." << library_path;
+    ClassFactoryVector lib_class_factory_objs = GetAllClassFactoryObjectsOfLibrary(library_path);
     for (auto& class_factory_obj : lib_class_factory_objs) {
       class_factory_obj->AddOwnedClassLoader(loader);
     }
@@ -241,8 +223,7 @@ bool LoadLibrary(const std::string& library_path, ClassLoader* loader) {
 
   std::lock_guard<std::recursive_mutex> lck(GetLibPathSharedLibMutex());
   LibPathSharedLibVector& opened_libraries = GetLibPathSharedLibVector();
-  opened_libraries.emplace_back(
-      std::pair<std::string, SharedLibraryPtr>(library_path, shared_library));
+  opened_libraries.emplace_back(std::pair<std::string, SharedLibraryPtr>(library_path, shared_library));
   return true;
 }
 
@@ -252,8 +233,7 @@ void UnloadLibrary(const std::string& library_path, ClassLoader* loader) {
     LibPathSharedLibVector& opened_libraries = GetLibPathSharedLibVector();
     LibPathSharedLibVector::iterator itr = FindLoadedLibrary(library_path);
     if (itr == opened_libraries.end()) {
-      AERROR << "Attempt to UnloadLibrary lib, but can't find lib: "
-             << library_path;
+      AERROR << "Attempt to UnloadLibrary lib, but can't find lib: " << library_path;
       return;
     }
 

@@ -16,21 +16,18 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
-
-#include "autolink/proto/component_conf.pb.h"
-
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/common/environment.hpp"
 #include "autolink/common/file.hpp"
 #include "autolink/node/node.hpp"
+#include "autolink/proto/component_conf.pb.h"
 #include "autolink/scheduler/scheduler.hpp"
+#include "gflags/gflags.h"
 
 namespace autolink {
 
@@ -70,8 +67,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
 
   void LoadConfigFiles(const ComponentConfig& config) {
     if (!config.config_file_path().empty()) {
-      if (!common::GetFilePathWithEnv(config.config_file_path(),
-                                      "AUTOLINK_CONF_PATH", &config_file_path_)) {
+      if (!common::GetFilePathWithEnv(config.config_file_path(), "AUTOLINK_CONF_PATH", &config_file_path_)) {
         AERROR << "conf file [" << config.config_file_path() << "] not found!";
         config_file_path_ = config.config_file_path();
       } else {
@@ -81,8 +77,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
 
     if (!config.flag_file_path().empty()) {
       std::string flag_file_path = config.flag_file_path();
-      if (!common::GetFilePathWithEnv(config.flag_file_path(),
-                                      "AUTOLINK_FLAG_PATH", &flag_file_path)) {
+      if (!common::GetFilePathWithEnv(config.flag_file_path(), "AUTOLINK_FLAG_PATH", &flag_file_path)) {
         AERROR << "flag file [" << config.flag_file_path() << "] not found!";
       } else {
         AINFO << "use flag file: " << flag_file_path;
@@ -93,8 +88,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
 
   void LoadConfigFiles(const TimerComponentConfig& config) {
     if (!config.config_file_path().empty()) {
-      if (!common::GetFilePathWithEnv(config.config_file_path(),
-                                      "AUTOLINK_CONF_PATH", &config_file_path_)) {
+      if (!common::GetFilePathWithEnv(config.config_file_path(), "AUTOLINK_CONF_PATH", &config_file_path_)) {
         AERROR << "conf file [" << config.config_file_path() << "] not found!";
         config_file_path_ = config.config_file_path();
       } else {
@@ -104,8 +98,7 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
 
     if (!config.flag_file_path().empty()) {
       std::string flag_file_path = config.flag_file_path();
-      if (!common::GetFilePathWithEnv(config.flag_file_path(),
-                                      "AUTOLINK_FLAG_PATH", &flag_file_path)) {
+      if (!common::GetFilePathWithEnv(config.flag_file_path(), "AUTOLINK_FLAG_PATH", &flag_file_path)) {
         AERROR << "flag file [" << config.flag_file_path() << "] not found!";
       } else {
         AINFO << "use flag file: " << flag_file_path;
@@ -121,4 +114,3 @@ class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
 };
 
 }  // namespace autolink
-

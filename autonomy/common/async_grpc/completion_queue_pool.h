@@ -31,56 +31,52 @@ namespace async_grpc {
 
 class AsyncClientInterface;
 
-class CompletionQueue
-{
-public:
-    struct ClientEvent {
-        enum class Event { FINISH = 0, READ = 1, WRITE = 2 };
-        ClientEvent(Event event, AsyncClientInterface* async_client) : event(event), async_client(async_client) {}
-        Event event;
-        AsyncClientInterface* async_client;
-        bool ok = false;
-    };
+class CompletionQueue {
+ public:
+  struct ClientEvent {
+    enum class Event { FINISH = 0, READ = 1, WRITE = 2 };
+    ClientEvent(Event event, AsyncClientInterface* async_client) : event(event), async_client(async_client) {}
+    Event event;
+    AsyncClientInterface* async_client;
+    bool ok = false;
+  };
 
-public:
-    CompletionQueue() = default;
+ public:
+  CompletionQueue() = default;
 
-    void Start();
-    void Shutdown();
+  void Start();
+  void Shutdown();
 
-    ::grpc::CompletionQueue* completion_queue() {
-        return &completion_queue_;
-    }
+  ::grpc::CompletionQueue* completion_queue() { return &completion_queue_; }
 
-private:
-    void RunCompletionQueue();
+ private:
+  void RunCompletionQueue();
 
-    ::grpc::CompletionQueue completion_queue_;
-    std::unique_ptr<std::thread> thread_;
+  ::grpc::CompletionQueue completion_queue_;
+  std::unique_ptr<std::thread> thread_;
 };
 
 // TODO(cschuet): Add unit test for CompletionQueuePool.
-class CompletionQueuePool
-{
-public:
-    static void SetNumberCompletionQueues(size_t number_completion_queues);
-    static void Start();
-    static void Shutdown();
+class CompletionQueuePool {
+ public:
+  static void SetNumberCompletionQueues(size_t number_completion_queues);
+  static void Start();
+  static void Shutdown();
 
-    // Returns a random completion queue.
-    static ::grpc::CompletionQueue* GetCompletionQueue();
+  // Returns a random completion queue.
+  static ::grpc::CompletionQueue* GetCompletionQueue();
 
-private:
-    CompletionQueuePool();
-    ~CompletionQueuePool();
+ private:
+  CompletionQueuePool();
+  ~CompletionQueuePool();
 
-    void Initialize();
-    static CompletionQueuePool* completion_queue_pool();
+  void Initialize();
+  static CompletionQueuePool* completion_queue_pool();
 
-    common::Mutex mutex_;
-    bool initialized_ = false;
-    size_t number_completion_queues_;
-    std::vector<CompletionQueue> completion_queues_;
+  common::Mutex mutex_;
+  bool initialized_ = false;
+  size_t number_completion_queues_;
+  std::vector<CompletionQueue> completion_queues_;
 };
 
 }  // namespace async_grpc

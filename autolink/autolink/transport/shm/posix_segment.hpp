@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 
 #include "autolink/transport/shm/segment.hpp"
@@ -42,4 +41,3 @@ class PosixSegment : public Segment {
 
 }  // namespace transport
 }  // namespace autolink
-

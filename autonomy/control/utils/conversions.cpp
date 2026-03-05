@@ -21,19 +21,19 @@ namespace control {
 namespace utils {
 
 commsgs::geometry_msgs::Twist twist2Dto3D(const commsgs::planning_msgs::Twist2D& cmd_vel_2d) {
-    commsgs::geometry_msgs::Twist cmd_vel;
-    cmd_vel.linear.x = cmd_vel_2d.x;
-    cmd_vel.linear.y = cmd_vel_2d.y;
-    cmd_vel.angular.z = cmd_vel_2d.theta;
-    return cmd_vel;
+  commsgs::geometry_msgs::Twist cmd_vel;
+  cmd_vel.linear.x = cmd_vel_2d.x;
+  cmd_vel.linear.y = cmd_vel_2d.y;
+  cmd_vel.angular.z = cmd_vel_2d.theta;
+  return cmd_vel;
 }
 
 commsgs::planning_msgs::Twist2D twist3Dto2D(const commsgs::geometry_msgs::Twist& cmd_vel) {
-    commsgs::planning_msgs::Twist2D cmd_vel_2d;
-    cmd_vel_2d.x = cmd_vel.linear.x;
-    cmd_vel_2d.y = cmd_vel.linear.y;
-    cmd_vel_2d.theta = cmd_vel.angular.z;
-    return cmd_vel_2d;
+  commsgs::planning_msgs::Twist2D cmd_vel_2d;
+  cmd_vel_2d.x = cmd_vel.linear.x;
+  cmd_vel_2d.y = cmd_vel.linear.y;
+  cmd_vel_2d.theta = cmd_vel.angular.z;
+  return cmd_vel_2d;
 }
 
 }  // namespace utils

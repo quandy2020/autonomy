@@ -16,11 +16,9 @@
 
 #include "autolink/logger/logger.hpp"
 
-#include "gtest/gtest.h"
-
-#include "glog/logging.h"
-
 #include "autolink/common/log.hpp"
+#include "glog/logging.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace logger {
@@ -34,11 +32,9 @@ TEST(LoggerTest, WriteAndFlush) {
   message.append("LoggerTest");
   message.append(RIGHT_BRACKET);
   message.append("logger test message\n");
-  logger.Write(false, timep, message.c_str(),
-               static_cast<int>(message.length()));
+  logger.Write(false, timep, message.c_str(), static_cast<int>(message.length()));
   EXPECT_EQ(logger.LogSize(), 0);  // always zero
-  logger.Write(true, timep, message.c_str(),
-               static_cast<int>(message.length()));
+  logger.Write(true, timep, message.c_str(), static_cast<int>(message.length()));
   EXPECT_EQ(logger.LogSize(), 0);  // always zero
   logger.Flush();
 }

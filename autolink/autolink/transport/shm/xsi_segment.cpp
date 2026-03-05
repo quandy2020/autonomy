@@ -28,9 +28,7 @@
 namespace autolink {
 namespace transport {
 
-XsiSegment::XsiSegment(uint64_t channel_id) : Segment(channel_id) {
-  key_ = static_cast<key_t>(channel_id);
-}
+XsiSegment::XsiSegment(uint64_t channel_id) : Segment(channel_id) { key_ = static_cast<key_t>(channel_id); }
 
 XsiSegment::~XsiSegment() { Destroy(); }
 
@@ -87,8 +85,7 @@ bool XsiSegment::OpenOrCreate() {
   conf_.Update(state_->ceiling_msg_size());
 
   // create field blocks_
-  blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State))
-      Block[conf_.block_num()];
+  blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State)) Block[conf_.block_num()];
   if (blocks_ == nullptr) {
     AERROR << "create blocks failed.";
     state_->~State();
@@ -100,9 +97,8 @@ bool XsiSegment::OpenOrCreate() {
   }
 
   // create field arena_blocks_
-  arena_blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State) + \
-                       conf_.block_num() * sizeof(Block)) Block[
-                        ShmConf::ARENA_BLOCK_NUM];
+  arena_blocks_ = new (static_cast<char*>(managed_shm_) + sizeof(State) + conf_.block_num() * sizeof(Block))
+      Block[ShmConf::ARENA_BLOCK_NUM];
   if (arena_blocks_ == nullptr) {
     AERROR << "create arena blocks failed.";
     state_->~State();
@@ -116,11 +112,9 @@ bool XsiSegment::OpenOrCreate() {
   // create block buf
   uint32_t i = 0;
   for (; i < conf_.block_num(); ++i) {
-    uint8_t* addr = \
-        new (static_cast<char*>(managed_shm_) + sizeof(State) + \
-             conf_.block_num() * sizeof(Block) + \
-             ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + \
-             i * conf_.block_buf_size()) uint8_t[conf_.block_buf_size()];
+    uint8_t* addr =
+        new (static_cast<char*>(managed_shm_) + sizeof(State) + conf_.block_num() * sizeof(Block) +
+             ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + i * conf_.block_buf_size()) uint8_t[conf_.block_buf_size()];
     std::lock_guard<std::mutex> _g(block_buf_lock_);
     block_buf_addrs_[i] = addr;
   }
@@ -128,13 +122,9 @@ bool XsiSegment::OpenOrCreate() {
   // create arena block buf
   uint32_t ai = 0;
   for (; ai < ShmConf::ARENA_BLOCK_NUM; ++ai) {
-    uint8_t* addr = \
-        new(static_cast<char*>(managed_shm_) + sizeof(State) + \
-             conf_.block_num() * sizeof(Block) + \
-             ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + \
-             conf_.block_num() * conf_.block_buf_size() + \
-             ai * ShmConf::ARENA_MESSAGE_SIZE) uint8_t[
-              ShmConf::ARENA_MESSAGE_SIZE];
+    uint8_t* addr = new (static_cast<char*>(managed_shm_) + sizeof(State) + conf_.block_num() * sizeof(Block) +
+                         ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + conf_.block_num() * conf_.block_buf_size() +
+                         ai * ShmConf::ARENA_MESSAGE_SIZE) uint8_t[ShmConf::ARENA_MESSAGE_SIZE];
     std::lock_guard<std::mutex> _g(arena_block_buf_lock_);
     arena_block_buf_addrs_[ai] = addr;
   }
@@ -196,8 +186,7 @@ bool XsiSegment::OpenOnly() {
   conf_.Update(state_->ceiling_msg_size());
 
   // get field blocks_
-  blocks_ = reinterpret_cast<Block*>(static_cast<char*>(managed_shm_) +
-                                     sizeof(State));
+  blocks_ = reinterpret_cast<Block*>(static_cast<char*>(managed_shm_) + sizeof(State));
   if (blocks_ == nullptr) {
     AERROR << "get blocks failed.";
     state_ = nullptr;
@@ -207,9 +196,8 @@ bool XsiSegment::OpenOnly() {
   }
 
   // get field arena_blocks_
-  arena_blocks_ = reinterpret_cast<Block*>(
-    static_cast<char*>(managed_shm_) + sizeof(State) + \
-    sizeof(Block) * conf_.block_num());
+  arena_blocks_ =
+      reinterpret_cast<Block*>(static_cast<char*>(managed_shm_) + sizeof(State) + sizeof(Block) * conf_.block_num());
   if (arena_blocks_ == nullptr) {
     AERROR << "get blocks failed.";
     state_ = nullptr;
@@ -221,11 +209,9 @@ bool XsiSegment::OpenOnly() {
   // get block buf
   uint32_t i = 0;
   for (; i < conf_.block_num(); ++i) {
-    uint8_t* addr = reinterpret_cast<uint8_t*>(
-        static_cast<char*>(managed_shm_) + sizeof(State) + \
-        conf_.block_num() * sizeof(Block) + \
-        ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + \
-        i * conf_.block_buf_size());
+    uint8_t* addr = reinterpret_cast<uint8_t*>(static_cast<char*>(managed_shm_) + sizeof(State) +
+                                               conf_.block_num() * sizeof(Block) +
+                                               ShmConf::ARENA_BLOCK_NUM * sizeof(Block) + i * conf_.block_buf_size());
 
     if (addr == nullptr) {
       break;
@@ -237,11 +223,10 @@ bool XsiSegment::OpenOnly() {
   // get arena block buf
   uint32_t ai = 0;
   for (; ai < ShmConf::ARENA_BLOCK_NUM; ++ai) {
-    uint8_t* addr = reinterpret_cast<uint8_t*>(
-        static_cast<char*>(managed_shm_) + sizeof(State) + \
-        conf_.block_num() * sizeof(Block) + ShmConf::ARENA_BLOCK_NUM * \
-        sizeof(Block) + conf_.block_num() * conf_.block_buf_size() + \
-        ai * ShmConf::ARENA_MESSAGE_SIZE);
+    uint8_t* addr =
+        reinterpret_cast<uint8_t*>(static_cast<char*>(managed_shm_) + sizeof(State) +
+                                   conf_.block_num() * sizeof(Block) + ShmConf::ARENA_BLOCK_NUM * sizeof(Block) +
+                                   conf_.block_num() * conf_.block_buf_size() + ai * ShmConf::ARENA_MESSAGE_SIZE);
 
     if (addr == nullptr) {
       break;

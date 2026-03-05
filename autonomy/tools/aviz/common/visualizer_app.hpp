@@ -25,17 +25,16 @@ namespace common {
  * @brief VisualizerApp
  * Manages view controllers
  */
-class VisualizerApp
-{
-public:
-    VisualizerApp(QApplication* qapp);
-    ~VisualizerApp();
+class VisualizerApp {
+ public:
+  VisualizerApp(QApplication* qapp);
+  ~VisualizerApp();
 
-    bool init(int argc, char** argv);
-    void run();
+  bool init(int argc, char** argv);
+  void run();
 
-private:
-    std::unique_ptr<QApplication> qapp_;
+ private:
+  std::unique_ptr<QApplication> qapp_;
 };
 
 }  // namespace common

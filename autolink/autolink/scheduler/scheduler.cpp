@@ -33,13 +33,11 @@ namespace scheduler {
 
 using autolink::common::GlobalData;
 
-bool Scheduler::CreateTask(const RoutineFactory& factory,
-                           const std::string& name) {
+bool Scheduler::CreateTask(const RoutineFactory& factory, const std::string& name) {
   return CreateTask(factory.create_routine(), name, factory.GetDataVisitor());
 }
 
-bool Scheduler::CreateTask(std::function<void()>&& func,
-                           const std::string& name,
+bool Scheduler::CreateTask(std::function<void()>&& func, const std::string& name,
                            std::shared_ptr<DataVisitorBase> visitor) {
   if (autolink_unlikely(stop_.load())) {
     ADEBUG << "scheduler is stoped, cannot create task!";
@@ -111,8 +109,7 @@ void Scheduler::CheckSchedStatus() {
           .append(":")
           .append(std::to_string(execute_time));
     } else {
-      snap_info.append(std::to_string(snap->processor_id.load()))
-          .append(":idle");
+      snap_info.append(std::to_string(snap->processor_id.load())).append(":idle");
     }
     snap_info.append(", ");
   }

@@ -62,8 +62,7 @@ void test_read(const std::string &readfile) {
   for (i = 0; i < msg_count; ++i) {
     if (reader.ReadMessage(&message)) {
       AINFO << "msg[" << i << "]-> "
-            << "channel name: " << message.channel_name
-            << "; content: " << message.content
+            << "channel name: " << message.channel_name << "; content: " << message.content
             << "; msg time: " << message.time;
       valid++;
     } else {

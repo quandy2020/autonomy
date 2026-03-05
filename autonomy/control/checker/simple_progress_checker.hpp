@@ -35,34 +35,33 @@ namespace checker {
  * that it is actually progressing towards a goal.
  */
 
-class SimpleProgressChecker : public common::ProgressChecker
-{
-public:
-    void Initialize(const std::string& plugin_name) override;
-    bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
-    void Reset() override;
+class SimpleProgressChecker : public common::ProgressChecker {
+ public:
+  void Initialize(const std::string& plugin_name) override;
+  bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
+  void Reset() override;
 
-protected:
-    /**
-     * @brief Calculates robots movement from baseline pose
-     * @param pose Current pose of the robot
-     * @return true, if movement is greater than radius_, or false
-     */
-    bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
-    /**
-     * @brief Resets baseline pose with the current pose of the robot
-     * @param pose Current pose of the robot
-     */
-    void ResetBaselinePose(const commsgs::geometry_msgs::Pose2D& pose);
+ protected:
+  /**
+   * @brief Calculates robots movement from baseline pose
+   * @param pose Current pose of the robot
+   * @return true, if movement is greater than radius_, or false
+   */
+  bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
+  /**
+   * @brief Resets baseline pose with the current pose of the robot
+   * @param pose Current pose of the robot
+   */
+  void ResetBaselinePose(const commsgs::geometry_msgs::Pose2D& pose);
 
-    static double PoseDistance(const commsgs::geometry_msgs::Pose2D&, const commsgs::geometry_msgs::Pose2D&);
+  static double PoseDistance(const commsgs::geometry_msgs::Pose2D&, const commsgs::geometry_msgs::Pose2D&);
 
-    double radius_;
-    commsgs::geometry_msgs::Pose2D baseline_pose_;
-    // commsgs::time::Time baseline_time_;
+  double radius_;
+  commsgs::geometry_msgs::Pose2D baseline_pose_;
+  // commsgs::time::Time baseline_time_;
 
-    bool baseline_pose_set_{false};
-    std::string plugin_name_;
+  bool baseline_pose_set_{false};
+  std::string plugin_name_;
 };
 
 }  // namespace checker

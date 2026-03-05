@@ -15,13 +15,13 @@
  *****************************************************************************/
 #pragma once
 
+#include <cxxabi.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <cxxabi.h>
 
 #include "autolink/class_loader/class_loader_manager.hpp"
 #include "autolink/common/environment.hpp"
@@ -44,8 +44,7 @@ class PluginManager {
    * @param file_path the path of plugin description file
    * @return process result, true for success
    */
-  bool ProcessPluginDescriptionFile(const std::string& file_path,
-                                    std::string* library_path);
+  bool ProcessPluginDescriptionFile(const std::string& file_path, std::string* library_path);
 
   /**
    * @brief load plugin clases from file
@@ -101,8 +100,7 @@ class PluginManager {
    * @return location of plugin configuration file
    */
   template <typename Base>
-  std::string GetPluginConfPath(const std::string& class_name,
-                                const std::string& conf_name);
+  std::string GetPluginConfPath(const std::string& class_name, const std::string& conf_name);
 
   /**
    * @brief load library of plugin
@@ -136,18 +134,15 @@ class PluginManager {
 
  private:
   autolink::class_loader::ClassLoaderManager class_loader_manager_;
-  std::map<std::string, std::shared_ptr<PluginDescription>>
-      plugin_description_map_;
+  std::map<std::string, std::shared_ptr<PluginDescription>> plugin_description_map_;
   std::map<std::string, bool> plugin_loaded_map_;
-  std::map<std::pair<std::string, std::string>, std::string>
-      plugin_class_plugin_name_map_;
+  std::map<std::pair<std::string, std::string>, std::string> plugin_class_plugin_name_map_;
 
   static PluginManager* instance_;
 };
 
 template <typename Base>
-std::shared_ptr<Base> PluginManager::CreateInstance(
-    const std::string& derived_class) {
+std::shared_ptr<Base> PluginManager::CreateInstance(const std::string& derived_class) {
   AINFO << "creating plugin instance of " << derived_class;
   if (!CheckAndLoadPluginLibrary<Base>(derived_class)) {
     AERROR << "plugin of class " << derived_class << " have not been loaded";
@@ -157,28 +152,23 @@ std::shared_ptr<Base> PluginManager::CreateInstance(
 }
 
 template <typename Base>
-std::string PluginManager::GetPluginClassHomePath(
-    const std::string& class_name) {
+std::string PluginManager::GetPluginClassHomePath(const std::string& class_name) {
   if (!CheckAndLoadPluginLibrary<Base>(class_name)) {
     AERROR << "plugin of class " << class_name << " have not been loaded";
     return "";
   }
-  std::string library_path =
-      class_loader_manager_.GetClassValidLibrary<Base>(class_name);
+  std::string library_path = class_loader_manager_.GetClassValidLibrary<Base>(class_name);
   if (library_path == "") {
     AWARN << "plugin of class " << class_name << " not found";
     return "";
   }
-  for (auto it = plugin_description_map_.begin();
-       it != plugin_description_map_.end(); ++it) {
+  for (auto it = plugin_description_map_.begin(); it != plugin_description_map_.end(); ++it) {
     if (it->second->actual_library_path_ == library_path) {
       // TODO(liangjinping): remove hard code of relative prefix
       std::string relative_prefix = "share/";
-      std::string relative_plugin_home_path =
-          autolink::common::GetDirName(it->second->description_path_);
+      std::string relative_plugin_home_path = autolink::common::GetDirName(it->second->description_path_);
       if (relative_plugin_home_path.rfind(relative_prefix, 0) == 0) {
-        relative_plugin_home_path =
-            relative_plugin_home_path.substr(relative_prefix.size());
+        relative_plugin_home_path = relative_plugin_home_path.substr(relative_prefix.size());
       }
       return relative_plugin_home_path;
     }
@@ -188,8 +178,7 @@ std::string PluginManager::GetPluginClassHomePath(
 }
 
 template <typename Base>
-std::string PluginManager::GetPluginConfPath(const std::string& class_name,
-                                             const std::string& conf_name) {
+std::string PluginManager::GetPluginConfPath(const std::string& class_name, const std::string& conf_name) {
   std::string plugin_home_path = GetPluginClassHomePath<Base>(class_name);
   if (autolink::common::PathIsAbsolute(plugin_home_path)) {
     // can not detect the plugin relative path
@@ -199,8 +188,7 @@ std::string PluginManager::GetPluginConfPath(const std::string& class_name,
 
   std::string relative_conf_path = plugin_home_path + "/" + conf_name;
   std::string actual_conf_path;
-  if (autolink::common::GetFilePathWithEnv(
-          relative_conf_path, "AUTOLINK_CONF_PATH", &actual_conf_path)) {
+  if (autolink::common::GetFilePathWithEnv(relative_conf_path, "AUTOLINK_CONF_PATH", &actual_conf_path)) {
     return actual_conf_path;
   }
   return plugin_home_path + "/" + conf_name;
@@ -209,15 +197,12 @@ std::string PluginManager::GetPluginConfPath(const std::string& class_name,
 template <typename Base>
 bool PluginManager::IsLibraryLoaded(const std::string& class_name) {
   int status = 0;
-  std::string base_class_name =
-      abi::__cxa_demangle(typeid(Base).name(), 0, 0, &status);
-  if (plugin_class_plugin_name_map_.find({class_name, base_class_name}) ==
-      plugin_class_plugin_name_map_.end()) {
+  std::string base_class_name = abi::__cxa_demangle(typeid(Base).name(), 0, 0, &status);
+  if (plugin_class_plugin_name_map_.find({class_name, base_class_name}) == plugin_class_plugin_name_map_.end()) {
     // not found
     return false;
   }
-  std::string plugin_name =
-      plugin_class_plugin_name_map_[{class_name, base_class_name}];
+  std::string plugin_name = plugin_class_plugin_name_map_[{class_name, base_class_name}];
   if (plugin_loaded_map_.find(plugin_name) == plugin_loaded_map_.end()) {
     // not found
     return false;
@@ -232,19 +217,15 @@ bool PluginManager::CheckAndLoadPluginLibrary(const std::string& class_name) {
     return true;
   }
   int status = 0;
-  std::string base_class_name =
-      abi::__cxa_demangle(typeid(Base).name(), 0, 0, &status);
-  if (plugin_class_plugin_name_map_.find({class_name, base_class_name}) ==
-      plugin_class_plugin_name_map_.end()) {
+  std::string base_class_name = abi::__cxa_demangle(typeid(Base).name(), 0, 0, &status);
+  if (plugin_class_plugin_name_map_.find({class_name, base_class_name}) == plugin_class_plugin_name_map_.end()) {
     // not found
     AWARN << "plugin of class " << class_name << " not found, "
           << "please check if it's registered";
     return false;
   }
-  std::string plugin_name =
-      plugin_class_plugin_name_map_[{class_name, base_class_name}];
-  if (plugin_description_map_.find(plugin_name) ==
-      plugin_description_map_.end()) {
+  std::string plugin_name = plugin_class_plugin_name_map_[{class_name, base_class_name}];
+  if (plugin_description_map_.find(plugin_name) == plugin_description_map_.end()) {
     // not found
     AWARN << "plugin description of class " << class_name << " not found, "
           << "please check if it's loaded";
@@ -257,8 +238,7 @@ bool PluginManager::CheckAndLoadPluginLibrary(const std::string& class_name) {
 template <typename Base>
 std::vector<std::string> PluginManager::GetDerivedClassNameByBaseClass() {
   int status = 0;
-  std::string base_class_name =
-      abi::__cxa_demangle(typeid(Base).name(), 0, 0, &status);
+  std::string base_class_name = abi::__cxa_demangle(typeid(Base).name(), 0, 0, &status);
   std::vector<std::string> derived_class_name;
   for (const auto& iter : plugin_class_plugin_name_map_) {
     if (iter.first.second == base_class_name) {
@@ -268,8 +248,7 @@ std::vector<std::string> PluginManager::GetDerivedClassNameByBaseClass() {
   return derived_class_name;
 }
 
-#define AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(name, base) \
-  CLASS_LOADER_REGISTER_CLASS(name, base)
+#define AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(name, base) CLASS_LOADER_REGISTER_CLASS(name, base)
 
 }  // namespace plugin_manager
 }  // namespace autolink

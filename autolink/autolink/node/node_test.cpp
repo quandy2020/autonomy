@@ -16,14 +16,12 @@
 
 #include "autolink/node/node.hpp"
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
+#include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 
@@ -44,8 +42,7 @@ TEST(NodeTest, cases) {
 
   auto writer = node->CreateWriter<Chatter>(attr);
   auto server = node->CreateService<Chatter, Chatter>(
-      "node_test_server", [](const std::shared_ptr<Chatter>& request,
-                             std::shared_ptr<Chatter>& response) {
+      "node_test_server", [](const std::shared_ptr<Chatter>& request, std::shared_ptr<Chatter>& response) {
         AINFO << "server: I am server";
         static uint64_t id = 0;
         ++id;

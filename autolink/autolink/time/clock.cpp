@@ -25,8 +25,7 @@ namespace autolink {
 using GlobalData = ::autolink::common::GlobalData;
 
 using AtomicRWLock = ::autolink::base::AtomicRWLock;
-using AtomicWriteLockGuard =
-    ::autolink::base::WriteLockGuard<AtomicRWLock>;
+using AtomicWriteLockGuard = ::autolink::base::WriteLockGuard<AtomicRWLock>;
 using AtomicReadLockGuard = ::autolink::base::ReadLockGuard<AtomicRWLock>;
 
 Clock::Clock() {
@@ -46,8 +45,7 @@ Time Clock::Now() {
     case ClockMode::MODE_MOCK:
       return clock->mock_now_;
     default:
-      AFATAL << "Unsupported clock mode: "
-             << autolink::common::ToInt(clock->mode_);
+      AFATAL << "Unsupported clock mode: " << autolink::common::ToInt(clock->mode_);
   }
   return Time::Now();
 }

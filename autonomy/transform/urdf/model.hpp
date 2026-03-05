@@ -36,21 +36,20 @@ class ModelImplementation;
 /// The chosen plugin is the one that reports the most confident score.
 /// There is no way to override this choice except by uninstalling undesirable
 /// parser plugins.
-class Model : public ::urdf::ModelInterface
-{
-public:
-    Model();
+class Model : public ::urdf::ModelInterface {
+ public:
+  Model();
 
-    ~Model();
+  ~Model();
 
-    /// \brief Load Model given a filename
-    bool initFile(const std::string& filename);
+  /// \brief Load Model given a filename
+  bool initFile(const std::string& filename);
 
-    /// \brief Load Model from a XML-string
-    bool initString(const std::string& xmlstring);
+  /// \brief Load Model from a XML-string
+  bool initString(const std::string& xmlstring);
 
-private:
-    std::unique_ptr<ModelImplementation> impl_;
+ private:
+  std::unique_ptr<ModelImplementation> impl_;
 };
 
 }  // namespace transform

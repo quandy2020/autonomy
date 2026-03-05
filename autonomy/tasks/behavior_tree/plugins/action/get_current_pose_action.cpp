@@ -29,25 +29,25 @@ namespace action {
 
 GetCurrentPoseAction::GetCurrentPoseAction(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(name, conf) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    tf_ = config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>("tf_buffer");
-    getInput("transform_tolerance", transform_tolerance_);
-    global_frame_ = DeconflictPortAndParamFrame<std::string>(node_, "global_frame", this);
-    robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(node_, "robot_base_frame", this);
+  node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+  tf_ = config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>("tf_buffer");
+  getInput("transform_tolerance", transform_tolerance_);
+  global_frame_ = DeconflictPortAndParamFrame<std::string>(node_, "global_frame", this);
+  robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(node_, "robot_base_frame", this);
 }
 
 BT::NodeStatus GetCurrentPoseAction::tick() {
-    setStatus(BT::NodeStatus::RUNNING);
-    commsgs::geometry_msgs::PoseStamped current_pose;
+  setStatus(BT::NodeStatus::RUNNING);
+  commsgs::geometry_msgs::PoseStamped current_pose;
 
-    if (!autonomy::tasks::utils::getCurrentPose(current_pose, tf_, global_frame_, robot_base_frame_,
-                                                transform_tolerance_)) {
-        AWARN << "Current robot pose is not available.";
-        return BT::NodeStatus::FAILURE;
-    }
+  if (!autonomy::tasks::utils::getCurrentPose(current_pose, tf_, global_frame_, robot_base_frame_,
+                                              transform_tolerance_)) {
+    AWARN << "Current robot pose is not available.";
+    return BT::NodeStatus::FAILURE;
+  }
 
-    setOutput("current_pose", current_pose);
-    return BT::NodeStatus::SUCCESS;
+  setOutput("current_pose", current_pose);
+  return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -58,5 +58,5 @@ BT::NodeStatus GetCurrentPoseAction::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetCurrentPoseAction>("GetCurrentPose");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetCurrentPoseAction>("GetCurrentPose");
 }

@@ -16,6 +16,7 @@
 
 #include "autolink/tools/autolink_monitor/screen.hpp"
 
+#include <ncurses.h>  // NOLINT
 #include <unistd.h>
 
 #include <algorithm>
@@ -29,8 +30,6 @@
 #include "autolink/tools/autolink_monitor/autolink_topology_message.hpp"
 #include "autolink/tools/autolink_monitor/general_channel_message.hpp"
 #include "autolink/tools/autolink_monitor/renderable_message.hpp"
-
-#include <ncurses.h> // NOLINT
 
 namespace {
 constexpr double MinHalfFrameRatio = 12.5;
@@ -214,8 +213,7 @@ void Screen::Run() {
 
   highlight_direction_ = 0;
 
-  void (Screen::*showFuncs[])(int) = {&Screen::ShowRenderMessage,
-                                      &Screen::ShowInteractiveCmd};
+  void (Screen::*showFuncs[])(int) = {&Screen::ShowRenderMessage, &Screen::ShowInteractiveCmd};
 
   do {
     int ch = getch();

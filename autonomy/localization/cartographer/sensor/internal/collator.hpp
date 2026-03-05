@@ -30,31 +30,30 @@
 namespace cartographer {
 namespace sensor {
 
-class Collator : public CollatorInterface
-{
-public:
-    Collator() {}
+class Collator : public CollatorInterface {
+ public:
+  Collator() {}
 
-    Collator(const Collator&) = delete;
-    Collator& operator=(const Collator&) = delete;
+  Collator(const Collator&) = delete;
+  Collator& operator=(const Collator&) = delete;
 
-    void AddTrajectory(int trajectory_id, const absl::flat_hash_set<std::string>& expected_sensor_ids,
-                       const Callback& callback) override;
+  void AddTrajectory(int trajectory_id, const absl::flat_hash_set<std::string>& expected_sensor_ids,
+                     const Callback& callback) override;
 
-    void FinishTrajectory(int trajectory_id) override;
+  void FinishTrajectory(int trajectory_id) override;
 
-    void AddSensorData(int trajectory_id, std::unique_ptr<Data> data) override;
+  void AddSensorData(int trajectory_id, std::unique_ptr<Data> data) override;
 
-    void Flush() override;
+  void Flush() override;
 
-    absl::optional<int> GetBlockingTrajectoryId() const override;
+  absl::optional<int> GetBlockingTrajectoryId() const override;
 
-private:
-    // Queue keys are a pair of trajectory ID and sensor identifier.
-    OrderedMultiQueue queue_;
+ private:
+  // Queue keys are a pair of trajectory ID and sensor identifier.
+  OrderedMultiQueue queue_;
 
-    // Map of trajectory ID to all associated QueueKeys.
-    absl::flat_hash_map<int, std::vector<QueueKey>> queue_keys_;
+  // Map of trajectory ID to all associated QueueKeys.
+  absl::flat_hash_map<int, std::vector<QueueKey>> queue_keys_;
 };
 
 }  // namespace sensor

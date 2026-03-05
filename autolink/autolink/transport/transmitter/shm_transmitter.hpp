@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstring>
 #include <iostream>
 #include <memory>
@@ -75,8 +74,7 @@ bool ShmTransmitter<M>::AcquireMessage(std::shared_ptr<M>& msg) {
   if (this->enabled_) {
     auto msg_o = msg.get();
     auto arena_manager = ProtobufArenaManager::Instance();
-    if (!arena_manager->Enable() ||
-        !arena_manager->EnableSegment(this->attr_.channel_id())) {
+    if (!arena_manager->Enable() || !arena_manager->EnableSegment(this->attr_.channel_id())) {
       ADEBUG << "arena manager enable failed.";
       return false;
     }
@@ -99,10 +97,8 @@ ShmTransmitter<M>::ShmTransmitter(const RoleAttributes& attr)
       serialized_receiver_count_(0),
       arena_receiver_count_(0) {
   host_id_ = common::Hash(attr.host_ip());
-  arena_transmit_ = common::GlobalData::Instance()->IsChannelEnableArenaShm(
-                        this->attr_.channel_id()) &&
-                    !type_check<M, message::RawMessage>::value &&
-                    !type_check<M, message::PyMessageWrap>::value;
+  arena_transmit_ = common::GlobalData::Instance()->IsChannelEnableArenaShm(this->attr_.channel_id()) &&
+                    !type_check<M, message::RawMessage>::value && !type_check<M, message::PyMessageWrap>::value;
 }
 
 template <typename M>
@@ -113,10 +109,8 @@ ShmTransmitter<M>::~ShmTransmitter() {
 template <typename M>
 void ShmTransmitter<M>::Enable(const RoleAttributes& opposite_attr) {
   if (arena_transmit_) {
-    if (opposite_attr.message_type() ==
-            message::MessageType<message::RawMessage>() ||
-        opposite_attr.message_type() ==
-            message::MessageType<message::PyMessageWrap>()) {
+    if (opposite_attr.message_type() == message::MessageType<message::RawMessage>() ||
+        opposite_attr.message_type() == message::MessageType<message::PyMessageWrap>()) {
       serialized_receiver_count_.fetch_add(1);
     } else {
       arena_receiver_count_.fetch_add(1);
@@ -133,16 +127,13 @@ template <typename M>
 void ShmTransmitter<M>::Disable(const RoleAttributes& opposite_attr) {
   if (this->enabled_) {
     if (arena_transmit_) {
-      if (opposite_attr.message_type() ==
-              message::MessageType<message::RawMessage>() ||
-          opposite_attr.message_type() ==
-              message::MessageType<message::PyMessageWrap>()) {
+      if (opposite_attr.message_type() == message::MessageType<message::RawMessage>() ||
+          opposite_attr.message_type() == message::MessageType<message::PyMessageWrap>()) {
         serialized_receiver_count_.fetch_sub(1);
       } else {
         arena_receiver_count_.fetch_sub(1);
       }
-      if (serialized_receiver_count_.load() <= 0 &&
-          arena_receiver_count_.load() <= 0) {
+      if (serialized_receiver_count_.load() <= 0 && arena_receiver_count_.load() <= 0) {
         this->Disable();
       }
     } else {
@@ -160,16 +151,14 @@ void ShmTransmitter<M>::Enable() {
     return;
   }
 
-  if (serialized_receiver_count_.load() == 0 &&
-      arena_receiver_count_.load() == 0) {
+  if (serialized_receiver_count_.load() == 0 && arena_receiver_count_.load() == 0) {
     AERROR << "please enable shm transmitter by passing role attr.";
     return;
   }
 
   if (arena_transmit_) {
     auto arena_manager = ProtobufArenaManager::Instance();
-    if (!arena_manager->Enable() ||
-        !arena_manager->EnableSegment(this->attr_.channel_id())) {
+    if (!arena_manager->Enable() || !arena_manager->EnableSegment(this->attr_.channel_id())) {
       AERROR << "arena manager enable failed.";
       return;
     }
@@ -190,8 +179,7 @@ void ShmTransmitter<M>::Disable() {
 }
 
 template <typename M>
-bool ShmTransmitter<M>::Transmit(const MessagePtr& msg,
-                                 const MessageInfo& msg_info) {
+bool ShmTransmitter<M>::Transmit(const MessagePtr& msg, const MessageInfo& msg_info) {
   return Transmit(*msg, msg_info);
 }
 
@@ -225,8 +213,7 @@ bool ShmTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
     arena_manager->SetMessageChannelId(msg_wrapper.get(), channel_id_);
     M* msg_p;
     // arena_manager->CreateMessage(msg_wrapper.get(), msg);
-    if (!message::SerializeToArenaMessageWrapper(msg, msg_wrapper.get(),
-                                                 &msg_p)) {
+    if (!message::SerializeToArenaMessageWrapper(msg, msg_wrapper.get(), &msg_p)) {
       AERROR << "serialize to arena message wrapper failed.";
       segment_->ReleaseArenaWrittenBlock(arena_wb);
       return false;
@@ -311,8 +298,7 @@ bool ShmTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
     readable_info.set_block_index(wb.index);
   }
 
-  ADEBUG << "Writing sharedmem message: "
-         << common::GlobalData::GetChannelById(channel_id_)
+  ADEBUG << "Writing sharedmem message: " << common::GlobalData::GetChannelById(channel_id_)
          << " to normal block: " << readable_info.block_index()
          << " to arena block: " << readable_info.arena_block_index();
   return notifier_->Notify(readable_info);
@@ -320,4 +306,3 @@ bool ShmTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
 
 }  // namespace transport
 }  // namespace autolink
-

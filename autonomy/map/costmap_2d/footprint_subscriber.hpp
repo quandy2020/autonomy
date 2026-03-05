@@ -32,57 +32,56 @@ namespace costmap_2d {
  * @brief Subscriber to the footprint topic to get current robot footprint
  * (if changing) for use in collision avoidance
  */
-class FootprintSubscriber
-{
-public:
-    /**
-     * @brief A constructor
-     */
-    FootprintSubscriber(const std::string& topic_name, std::string robot_base_frame = "base_link",
-                        double transform_tolerance = 0.1);
+class FootprintSubscriber {
+ public:
+  /**
+   * @brief A constructor
+   */
+  FootprintSubscriber(const std::string& topic_name, std::string robot_base_frame = "base_link",
+                      double transform_tolerance = 0.1);
 
-    /**
-     * @brief A destructor
-     */
-    ~FootprintSubscriber() {}
+  /**
+   * @brief A destructor
+   */
+  ~FootprintSubscriber() {}
 
-    /**
-     * @brief Returns the latest robot footprint, in the form as received from
-     * topic (oriented).
-     *
-     * @param footprint Output param. Latest received footprint
-     * @param footprint_header Output param. Header associated with the
-     * footprint
-     * @return False if no footprint has been received
-     */
-    bool getFootprintRaw(std::vector<commsgs::geometry_msgs::Point>& footprint,
-                         commsgs::std_msgs::Header& footprint_header);
+  /**
+   * @brief Returns the latest robot footprint, in the form as received from
+   * topic (oriented).
+   *
+   * @param footprint Output param. Latest received footprint
+   * @param footprint_header Output param. Header associated with the
+   * footprint
+   * @return False if no footprint has been received
+   */
+  bool getFootprintRaw(std::vector<commsgs::geometry_msgs::Point>& footprint,
+                       commsgs::std_msgs::Header& footprint_header);
 
-    /**
-     * @brief Returns the latest robot footprint, transformed into robot base
-     * frame (unoriented).
-     *
-     * @param footprint Output param. Latest received footprint, unoriented
-     * @param footprint_header Output param. Header associated with the
-     * footprint
-     * @return False if no footprint has been received or if transformation
-     * failed
-     */
-    bool getFootprintInRobotFrame(std::vector<commsgs::geometry_msgs::Point>& footprint,
-                                  commsgs::std_msgs::Header& footprint_header);
+  /**
+   * @brief Returns the latest robot footprint, transformed into robot base
+   * frame (unoriented).
+   *
+   * @param footprint Output param. Latest received footprint, unoriented
+   * @param footprint_header Output param. Header associated with the
+   * footprint
+   * @return False if no footprint has been received or if transformation
+   * failed
+   */
+  bool getFootprintInRobotFrame(std::vector<commsgs::geometry_msgs::Point>& footprint,
+                                commsgs::std_msgs::Header& footprint_header);
 
-protected:
-    /**
-     * @brief Callback to process new footprint updates.
-     */
-    void footprint_callback(const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg);
+ protected:
+  /**
+   * @brief Callback to process new footprint updates.
+   */
+  void footprint_callback(const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg);
 
-    std::string robot_base_frame_;
-    double transform_tolerance_;
-    bool footprint_received_{false};
-    commsgs::geometry_msgs::PolygonStamped::SharedPtr footprint_;
-    //    rclcpp::Subscription<commsgs::geometry_msgs::PolygonStamped>::SharedPtr
-    //    footprint_sub_;
+  std::string robot_base_frame_;
+  double transform_tolerance_;
+  bool footprint_received_{false};
+  commsgs::geometry_msgs::PolygonStamped::SharedPtr footprint_;
+  //    rclcpp::Subscription<commsgs::geometry_msgs::PolygonStamped>::SharedPtr
+  //    footprint_sub_;
 };
 
 }  // namespace costmap_2d

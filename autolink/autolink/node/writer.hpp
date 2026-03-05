@@ -16,15 +16,13 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "autolink/proto/topology_change.pb.h"
-
 #include "autolink/common/log.hpp"
 #include "autolink/node/writer_base.hpp"
+#include "autolink/proto/topology_change.pb.h"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autolink/transport/transport.hpp"
 
@@ -42,8 +40,7 @@ class Writer : public WriterBase {
  public:
   using SharedPtr = std::shared_ptr<Writer<MessageT>>;
   using TransmitterPtr = std::shared_ptr<transport::Transmitter<MessageT>>;
-  using ChangeConnection =
-      typename service_discovery::Manager::ChangeConnection;
+  using ChangeConnection = typename service_discovery::Manager::ChangeConnection;
 
   /**
    * @brief Construct a new Writer object
@@ -103,7 +100,7 @@ class Writer : public WriterBase {
   /**
    * @brief Acquire message instance to send
    *
-   */ 
+   */
   std::shared_ptr<MessageT> AcquireMessage();
 
  private:
@@ -133,17 +130,14 @@ bool Writer<MessageT>::Init() {
     if (init_) {
       return true;
     }
-    transmitter_ =
-        transport::Transport::Instance()->CreateTransmitter<MessageT>(
-            role_attr_);
+    transmitter_ = transport::Transport::Instance()->CreateTransmitter<MessageT>(role_attr_);
     if (transmitter_ == nullptr) {
       return false;
     }
     init_ = true;
   }
   this->role_attr_.set_id(transmitter_->id().HashValue());
-  channel_manager_ =
-      service_discovery::TopologyManager::Instance()->channel_manager();
+  channel_manager_ = service_discovery::TopologyManager::Instance()->channel_manager();
   JoinTheTopology();
   return true;
 }
@@ -178,8 +172,8 @@ bool Writer<MessageT>::Write(const std::shared_ptr<MessageT>& msg_ptr) {
 template <typename MessageT>
 void Writer<MessageT>::JoinTheTopology() {
   // add listener
-  change_conn_ = channel_manager_->AddChangeListener(std::bind(
-      &Writer<MessageT>::OnChannelChange, this, std::placeholders::_1));
+  change_conn_ =
+      channel_manager_->AddChangeListener(std::bind(&Writer<MessageT>::OnChannelChange, this, std::placeholders::_1));
 
   // get peer readers
   const std::string& channel_name = this->role_attr_.channel_name();
@@ -189,8 +183,7 @@ void Writer<MessageT>::JoinTheTopology() {
     transmitter_->Enable(reader);
   }
 
-  channel_manager_->Join(this->role_attr_, proto::RoleType::ROLE_WRITER,
-                         message::HasSerializer<MessageT>::value);
+  channel_manager_->Join(this->role_attr_, proto::RoleType::ROLE_WRITER, message::HasSerializer<MessageT>::value);
 }
 
 template <typename MessageT>
@@ -255,4 +248,3 @@ std::shared_ptr<MessageT> Writer<MessageT>::AcquireMessage() {
 }
 
 }  // namespace autolink
-

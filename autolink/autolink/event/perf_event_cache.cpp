@@ -62,15 +62,13 @@ void PerfEventCache::Shutdown() {
   of_.close();
 }
 
-void PerfEventCache::AddSchedEvent(const SchedPerf event_id,
-                                   const uint64_t cr_id, const int proc_id,
+void PerfEventCache::AddSchedEvent(const SchedPerf event_id, const uint64_t cr_id, const int proc_id,
                                    const int cr_state) {
   if (!enable_) {
     return;
   }
 
-  if (perf_conf_.type() != PerfType::SCHED &&
-      perf_conf_.type() != PerfType::ALL) {
+  if (perf_conf_.type() != PerfType::SCHED && perf_conf_.type() != PerfType::ALL) {
     return;
   }
 
@@ -84,17 +82,13 @@ void PerfEventCache::AddSchedEvent(const SchedPerf event_id,
   event_queue_.Enqueue(e);
 }
 
-void PerfEventCache::AddTransportEvent(const TransPerf event_id,
-                                       const uint64_t channel_id,
-                                       const uint64_t msg_seq,
-                                       const uint64_t stamp,
-                                       const std::string& adder) {
+void PerfEventCache::AddTransportEvent(const TransPerf event_id, const uint64_t channel_id, const uint64_t msg_seq,
+                                       const uint64_t stamp, const std::string& adder) {
   if (!enable_) {
     return;
   }
 
-  if (perf_conf_.type() != PerfType::TRANSPORT &&
-      perf_conf_.type() != PerfType::ALL) {
+  if (perf_conf_.type() != PerfType::TRANSPORT && perf_conf_.type() != PerfType::ALL) {
     return;
   }
 

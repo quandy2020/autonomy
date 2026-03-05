@@ -37,32 +37,31 @@ namespace displays {
  *
  * Displays a set of X/Y/Z axes at a reference frame
  */
-class AxesDisplay : public aviz::common::Display
-{
-    Q_OBJECT
+class AxesDisplay : public aviz::common::Display {
+  Q_OBJECT
 
-public:
-    AxesDisplay();
-    ~AxesDisplay() override;
+ public:
+  AxesDisplay();
+  ~AxesDisplay() override;
 
-    void onInitialize() override;
+  void onInitialize() override;
 
-    // Overrides from Display
-    void update(float wall_dt, float ros_dt) override;
+  // Overrides from Display
+  void update(float wall_dt, float ros_dt) override;
 
-protected:
-    void onEnable() override;
+ protected:
+  void onEnable() override;
 
-    void onDisable() override;
+  void onDisable() override;
 
-private Q_SLOTS:
-    void updateShape();
+ private Q_SLOTS:
+  void updateShape();
 
-private:
-    std::shared_ptr<aviz::rendering::Axes> axes_;
+ private:
+  std::shared_ptr<aviz::rendering::Axes> axes_;
 
-    aviz::common::properties::FloatProperty* length_property_;
-    aviz::common::properties::FloatProperty* radius_property_;
+  aviz::common::properties::FloatProperty* length_property_;
+  aviz::common::properties::FloatProperty* radius_property_;
 };
 
 }  // namespace displays

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -31,8 +30,7 @@ using ReadableInfoPtr = std::shared_ptr<ReadableInfo>;
 class ReadableInfo {
  public:
   ReadableInfo();
-  ReadableInfo(uint64_t host_id, int32_t block_index,
-      uint64_t channel_id, int32_t arena_block_index = -1);
+  ReadableInfo(uint64_t host_id, int32_t block_index, uint64_t channel_id, int32_t arena_block_index = -1);
   virtual ~ReadableInfo();
 
   ReadableInfo& operator=(const ReadableInfo& other);
@@ -48,8 +46,7 @@ class ReadableInfo {
   void set_block_index(int32_t block_index) { block_index_ = block_index; }
 
   int32_t arena_block_index() const { return arena_block_index_; }
-  void set_arena_block_index(
-    int32_t arena_block_index) { arena_block_index_ = arena_block_index; }
+  void set_arena_block_index(int32_t arena_block_index) { arena_block_index_ = arena_block_index; }
 
   uint64_t channel_id() const { return channel_id_; }
   void set_channel_id(uint64_t channel_id) { channel_id_ = channel_id; }
@@ -65,4 +62,3 @@ class ReadableInfo {
 
 }  // namespace transport
 }  // namespace autolink
-

@@ -23,16 +23,13 @@ namespace cartographer {
 namespace io {
 
 // A points processor that just drops all points. The end of a pipeline usually.
-class NullPointsProcessor : public PointsProcessor
-{
-public:
-    NullPointsProcessor() {}
-    ~NullPointsProcessor() override {}
+class NullPointsProcessor : public PointsProcessor {
+ public:
+  NullPointsProcessor() {}
+  ~NullPointsProcessor() override {}
 
-    void Process(std::unique_ptr<PointsBatch> points_batch) override {}
-    FlushResult Flush() override {
-        return FlushResult::kFinished;
-    }
+  void Process(std::unique_ptr<PointsBatch> points_batch) override {}
+  FlushResult Flush() override { return FlushResult::kFinished; }
 };
 
 }  // namespace io

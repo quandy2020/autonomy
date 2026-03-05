@@ -24,72 +24,72 @@ namespace scan_matching {
 namespace {
 
 TEST(SearchParameters, Construction) {
-    const SearchParameters search_parameters(4, 5, 0.03, 0.05);
-    EXPECT_EQ(5, search_parameters.num_angular_perturbations);
-    EXPECT_NEAR(0.03, search_parameters.angular_perturbation_step_size, 1e-9);
-    EXPECT_NEAR(0.05, search_parameters.resolution, 1e-9);
-    EXPECT_EQ(11, search_parameters.num_scans);
-    EXPECT_EQ(11, search_parameters.linear_bounds.size());
-    for (const SearchParameters::LinearBounds linear_bounds : search_parameters.linear_bounds) {
-        EXPECT_EQ(-4, linear_bounds.min_x);
-        EXPECT_EQ(4, linear_bounds.max_x);
-        EXPECT_EQ(-4, linear_bounds.min_y);
-        EXPECT_EQ(4, linear_bounds.max_y);
-    }
+  const SearchParameters search_parameters(4, 5, 0.03, 0.05);
+  EXPECT_EQ(5, search_parameters.num_angular_perturbations);
+  EXPECT_NEAR(0.03, search_parameters.angular_perturbation_step_size, 1e-9);
+  EXPECT_NEAR(0.05, search_parameters.resolution, 1e-9);
+  EXPECT_EQ(11, search_parameters.num_scans);
+  EXPECT_EQ(11, search_parameters.linear_bounds.size());
+  for (const SearchParameters::LinearBounds linear_bounds : search_parameters.linear_bounds) {
+    EXPECT_EQ(-4, linear_bounds.min_x);
+    EXPECT_EQ(4, linear_bounds.max_x);
+    EXPECT_EQ(-4, linear_bounds.min_y);
+    EXPECT_EQ(4, linear_bounds.max_y);
+  }
 }
 
 TEST(Candidate, Construction) {
-    const SearchParameters search_parameters(4, 5, 0.03, 0.05);
-    const Candidate2D candidate(3, 4, -5, search_parameters);
-    EXPECT_EQ(3, candidate.scan_index);
-    EXPECT_EQ(4, candidate.x_index_offset);
-    EXPECT_EQ(-5, candidate.y_index_offset);
-    EXPECT_NEAR(0.25, candidate.x, 1e-9);
-    EXPECT_NEAR(-0.2, candidate.y, 1e-9);
-    EXPECT_NEAR(-0.06, candidate.orientation, 1e-9);
-    EXPECT_NEAR(0., candidate.score, 1e-9);
+  const SearchParameters search_parameters(4, 5, 0.03, 0.05);
+  const Candidate2D candidate(3, 4, -5, search_parameters);
+  EXPECT_EQ(3, candidate.scan_index);
+  EXPECT_EQ(4, candidate.x_index_offset);
+  EXPECT_EQ(-5, candidate.y_index_offset);
+  EXPECT_NEAR(0.25, candidate.x, 1e-9);
+  EXPECT_NEAR(-0.2, candidate.y, 1e-9);
+  EXPECT_NEAR(-0.06, candidate.orientation, 1e-9);
+  EXPECT_NEAR(0., candidate.score, 1e-9);
 
-    Candidate2D bigger_candidate(3, 4, 5, search_parameters);
-    bigger_candidate.score = 1.;
-    EXPECT_LT(candidate, bigger_candidate);
+  Candidate2D bigger_candidate(3, 4, 5, search_parameters);
+  bigger_candidate.score = 1.;
+  EXPECT_LT(candidate, bigger_candidate);
 }
 
 TEST(GenerateRotatedScans, GenerateRotatedScans) {
-    sensor::PointCloud point_cloud;
-    point_cloud.push_back({Eigen::Vector3f{-1.f, 1.f, 0.f}});
-    const std::vector<sensor::PointCloud> scans =
-        GenerateRotatedScans(point_cloud, SearchParameters(0, 1, M_PI / 2., 0.));
-    EXPECT_EQ(3, scans.size());
-    EXPECT_NEAR(1., scans[0][0].position.x(), 1e-6);
-    EXPECT_NEAR(1., scans[0][0].position.y(), 1e-6);
-    EXPECT_NEAR(-1., scans[1][0].position.x(), 1e-6);
-    EXPECT_NEAR(1., scans[1][0].position.y(), 1e-6);
-    EXPECT_NEAR(-1., scans[2][0].position.x(), 1e-6);
-    EXPECT_NEAR(-1., scans[2][0].position.y(), 1e-6);
+  sensor::PointCloud point_cloud;
+  point_cloud.push_back({Eigen::Vector3f{-1.f, 1.f, 0.f}});
+  const std::vector<sensor::PointCloud> scans =
+      GenerateRotatedScans(point_cloud, SearchParameters(0, 1, M_PI / 2., 0.));
+  EXPECT_EQ(3, scans.size());
+  EXPECT_NEAR(1., scans[0][0].position.x(), 1e-6);
+  EXPECT_NEAR(1., scans[0][0].position.y(), 1e-6);
+  EXPECT_NEAR(-1., scans[1][0].position.x(), 1e-6);
+  EXPECT_NEAR(1., scans[1][0].position.y(), 1e-6);
+  EXPECT_NEAR(-1., scans[2][0].position.x(), 1e-6);
+  EXPECT_NEAR(-1., scans[2][0].position.y(), 1e-6);
 }
 
 TEST(DiscretizeScans, DiscretizeScans) {
-    sensor::PointCloud point_cloud;
-    point_cloud.push_back({Eigen::Vector3f{0.025f, 0.175f, 0.f}});
-    point_cloud.push_back({Eigen::Vector3f{-0.025f, 0.175f, 0.f}});
-    point_cloud.push_back({Eigen::Vector3f{-0.075f, 0.175f, 0.f}});
-    point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.175f, 0.f}});
-    point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.125f, 0.f}});
-    point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.075f, 0.f}});
-    point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.025f, 0.f}});
-    const MapLimits map_limits(0.05, Eigen::Vector2d(0.05, 0.25), CellLimits(6, 6));
-    const std::vector<sensor::PointCloud> scans = GenerateRotatedScans(point_cloud, SearchParameters(0, 0, 0., 0.));
-    const std::vector<DiscreteScan2D> discrete_scans =
-        DiscretizeScans(map_limits, scans, Eigen::Translation2f::Identity());
-    EXPECT_EQ(1, discrete_scans.size());
-    EXPECT_EQ(7, discrete_scans[0].size());
-    EXPECT_TRUE((Eigen::Array2i(1, 0) == discrete_scans[0][0]).all());
-    EXPECT_TRUE((Eigen::Array2i(1, 1) == discrete_scans[0][1]).all());
-    EXPECT_TRUE((Eigen::Array2i(1, 2) == discrete_scans[0][2]).all());
-    EXPECT_TRUE((Eigen::Array2i(1, 3) == discrete_scans[0][3]).all());
-    EXPECT_TRUE((Eigen::Array2i(2, 3) == discrete_scans[0][4]).all());
-    EXPECT_TRUE((Eigen::Array2i(3, 3) == discrete_scans[0][5]).all());
-    EXPECT_TRUE((Eigen::Array2i(4, 3) == discrete_scans[0][6]).all());
+  sensor::PointCloud point_cloud;
+  point_cloud.push_back({Eigen::Vector3f{0.025f, 0.175f, 0.f}});
+  point_cloud.push_back({Eigen::Vector3f{-0.025f, 0.175f, 0.f}});
+  point_cloud.push_back({Eigen::Vector3f{-0.075f, 0.175f, 0.f}});
+  point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.175f, 0.f}});
+  point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.125f, 0.f}});
+  point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.075f, 0.f}});
+  point_cloud.push_back({Eigen::Vector3f{-0.125f, 0.025f, 0.f}});
+  const MapLimits map_limits(0.05, Eigen::Vector2d(0.05, 0.25), CellLimits(6, 6));
+  const std::vector<sensor::PointCloud> scans = GenerateRotatedScans(point_cloud, SearchParameters(0, 0, 0., 0.));
+  const std::vector<DiscreteScan2D> discrete_scans =
+      DiscretizeScans(map_limits, scans, Eigen::Translation2f::Identity());
+  EXPECT_EQ(1, discrete_scans.size());
+  EXPECT_EQ(7, discrete_scans[0].size());
+  EXPECT_TRUE((Eigen::Array2i(1, 0) == discrete_scans[0][0]).all());
+  EXPECT_TRUE((Eigen::Array2i(1, 1) == discrete_scans[0][1]).all());
+  EXPECT_TRUE((Eigen::Array2i(1, 2) == discrete_scans[0][2]).all());
+  EXPECT_TRUE((Eigen::Array2i(1, 3) == discrete_scans[0][3]).all());
+  EXPECT_TRUE((Eigen::Array2i(2, 3) == discrete_scans[0][4]).all());
+  EXPECT_TRUE((Eigen::Array2i(3, 3) == discrete_scans[0][5]).all());
+  EXPECT_TRUE((Eigen::Array2i(4, 3) == discrete_scans[0][6]).all());
 }
 
 }  // namespace

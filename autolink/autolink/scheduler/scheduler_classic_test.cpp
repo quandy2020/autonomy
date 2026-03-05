@@ -16,15 +16,14 @@
 
 #include "autolink/scheduler/policy/scheduler_classic.hpp"
 
-#include "gtest/gtest.h"
-
+#include "autolink/autolink.hpp"
 #include "autolink/base/for_each.hpp"
 #include "autolink/common/global_data.hpp"
-#include "autolink/autolink.hpp"
 #include "autolink/scheduler/policy/classic_context.hpp"
 #include "autolink/scheduler/processor.hpp"
 #include "autolink/scheduler/scheduler_factory.hpp"
 #include "autolink/task/task.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace scheduler {

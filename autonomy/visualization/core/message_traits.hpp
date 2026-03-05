@@ -31,13 +31,13 @@ namespace core {
 // MessageChannelTraits 已在 channel_traits.hpp 中声明，这里只需要特化
 
 /// 辅助宏：定义 SceneUpdateChannel 类型的 traits 特化
-#define SCENE_UPDATE_TRAIT(MSG)                                       \
-    template <>                                                       \
-    struct MessageChannelTraits<MSG> {                                \
-        using ChannelType = ::foxglove::schemas::SceneUpdateChannel;  \
-        using FoxgloveMessageType = ::foxglove::schemas::SceneUpdate; \
-        static constexpr bool needs_conversion = true;                \
-    }
+#define SCENE_UPDATE_TRAIT(MSG)                                   \
+  template <>                                                     \
+  struct MessageChannelTraits<MSG> {                              \
+    using ChannelType = ::foxglove::schemas::SceneUpdateChannel;  \
+    using FoxgloveMessageType = ::foxglove::schemas::SceneUpdate; \
+    static constexpr bool needs_conversion = true;                \
+  }
 
 // Planning messages
 SCENE_UPDATE_TRAIT(commsgs::proto::planning_msgs::Path);
@@ -65,19 +65,19 @@ SCENE_UPDATE_TRAIT(commsgs::proto::visualization_msgs::MarkerArray);
 /// GridChannel traits 特化
 template <>
 struct MessageChannelTraits<commsgs::proto::map_msgs::OccupancyGrid> {
-    using ChannelType = ::foxglove::schemas::GridChannel;
-    using FoxgloveMessageType = ::foxglove::schemas::Grid;
-    static constexpr bool needs_conversion = true;
+  using ChannelType = ::foxglove::schemas::GridChannel;
+  using FoxgloveMessageType = ::foxglove::schemas::Grid;
+  static constexpr bool needs_conversion = true;
 };
 
 /// 辅助宏：定义 RawImageChannel 类型的 traits 特化
-#define RAW_IMAGE_TRAIT(MSG)                                       \
-    template <>                                                    \
-    struct MessageChannelTraits<MSG> {                             \
-        using ChannelType = ::foxglove::schemas::RawImageChannel;  \
-        using FoxgloveMessageType = ::foxglove::schemas::RawImage; \
-        static constexpr bool needs_conversion = true;             \
-    }
+#define RAW_IMAGE_TRAIT(MSG)                                   \
+  template <>                                                  \
+  struct MessageChannelTraits<MSG> {                           \
+    using ChannelType = ::foxglove::schemas::RawImageChannel;  \
+    using FoxgloveMessageType = ::foxglove::schemas::RawImage; \
+    static constexpr bool needs_conversion = true;             \
+  }
 
 // Sensor image messages
 RAW_IMAGE_TRAIT(commsgs::proto::sensor_msgs::Image);
@@ -86,13 +86,13 @@ RAW_IMAGE_TRAIT(commsgs::proto::sensor_msgs::CompressedImage);
 #undef RAW_IMAGE_TRAIT
 
 /// 辅助宏：定义 PointCloudChannel 类型的 traits 特化
-#define POINT_CLOUD_TRAIT(MSG)                                       \
-    template <>                                                      \
-    struct MessageChannelTraits<MSG> {                               \
-        using ChannelType = ::foxglove::schemas::PointCloudChannel;  \
-        using FoxgloveMessageType = ::foxglove::schemas::PointCloud; \
-        static constexpr bool needs_conversion = true;               \
-    }
+#define POINT_CLOUD_TRAIT(MSG)                                   \
+  template <>                                                    \
+  struct MessageChannelTraits<MSG> {                             \
+    using ChannelType = ::foxglove::schemas::PointCloudChannel;  \
+    using FoxgloveMessageType = ::foxglove::schemas::PointCloud; \
+    static constexpr bool needs_conversion = true;               \
+  }
 
 // Sensor point cloud messages
 POINT_CLOUD_TRAIT(commsgs::proto::sensor_msgs::PointCloud2);

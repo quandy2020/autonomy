@@ -28,55 +28,49 @@ EnumProperty::EnumProperty(const QString& name, const QString& default_value, co
     : StringProperty(name, default_value, description, parent, changed_slot, receiver) {}
 
 void EnumProperty::clearOptions() {
-    strings_.clear();
-    ints_.clear();
+  strings_.clear();
+  ints_.clear();
 }
 
 void EnumProperty::addOption(const QString& option, int value) {
-    strings_.push_back(option);
-    ints_[option] = value;
+  strings_.push_back(option);
+  ints_[option] = value;
 }
 
 void EnumProperty::addOptionStd(const std::string& option, int value) {
-    addOption(QString::fromStdString(option), value);
+  addOption(QString::fromStdString(option), value);
 }
 
 int EnumProperty::getOptionInt() {
-    QString current_string = getValue().toString();
-    QHash<QString, int>::const_iterator int_iter = ints_.find(current_string);
-    if (int_iter != ints_.end()) {
-        return int_iter.value();
-    }
-    return 0;
+  QString current_string = getValue().toString();
+  QHash<QString, int>::const_iterator int_iter = ints_.find(current_string);
+  if (int_iter != ints_.end()) {
+    return int_iter.value();
+  }
+  return 0;
 }
 
 QWidget* EnumProperty::createEditor(QWidget* parent, const QStyleOptionViewItem& option) {
-    Q_UNUSED(option);
-    // Emit requestOptions() to give listeners a chance to change the option list.
-    Q_EMIT requestOptions(this);
+  Q_UNUSED(option);
+  // Emit requestOptions() to give listeners a chance to change the option list.
+  Q_EMIT requestOptions(this);
 
-    QComboBox* cb = new QComboBox(parent);
-    cb->addItems(strings_);
-    int index = strings_.indexOf(getValue().toString());
-    if (index >= 0) {
-        cb->setCurrentIndex(index);
-    }
-    QObject::connect(cb, QOverload<const QString&>::of(&QComboBox::currentTextChanged), this, &EnumProperty::setString);
+  QComboBox* cb = new QComboBox(parent);
+  cb->addItems(strings_);
+  int index = strings_.indexOf(getValue().toString());
+  if (index >= 0) {
+    cb->setCurrentIndex(index);
+  }
+  QObject::connect(cb, QOverload<const QString&>::of(&QComboBox::currentTextChanged), this, &EnumProperty::setString);
 
-    return cb;
+  return cb;
 }
 
-void EnumProperty::setString(const QString& str) {
-    setValue(str);
-}
+void EnumProperty::setString(const QString& str) { setValue(str); }
 
-void EnumProperty::setStringStd(const std::string& str) {
-    setString(QString::fromStdString(str));
-}
+void EnumProperty::setStringStd(const std::string& str) { setString(QString::fromStdString(str)); }
 
-void EnumProperty::sortOptions() {
-    strings_.sort();
-}
+void EnumProperty::sortOptions() { strings_.sort(); }
 
 }  // namespace properties
 }  // namespace common

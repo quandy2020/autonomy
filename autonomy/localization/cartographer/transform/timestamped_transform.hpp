@@ -25,8 +25,8 @@ namespace cartographer {
 namespace transform {
 
 struct TimestampedTransform {
-    common::Time time;
-    transform::Rigid3d transform;
+  common::Time time;
+  transform::Rigid3d transform;
 };
 
 TimestampedTransform FromProto(const proto::TimestampedTransform& proto);

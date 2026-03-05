@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <list>
 #include <string>
 
@@ -49,9 +48,7 @@ class ModuleArgument {
   const bool GetEnableCpuprofile() const { return enable_cpuprofile_; }
   const std::string GetProfileFilename() const { return profile_filename_; }
   const bool GetEnableHeapprofile() const { return enable_heapprofile_; }
-  const std::string GetHeapProfileFilename() const {
-    return heapprofile_filename_;
-  }
+  const std::string GetHeapProfileFilename() const { return heapprofile_filename_; }
   const bool& GetDisablePluginsAutoLoad() const;
 
  private:
@@ -67,31 +64,19 @@ class ModuleArgument {
   bool disable_plugin_autoload_ = false;
 };
 
-inline const std::string& ModuleArgument::GetBinaryName() const {
-  return binary_name_;
-}
+inline const std::string& ModuleArgument::GetBinaryName() const { return binary_name_; }
 
-inline const std::string& ModuleArgument::GetProcessGroup() const {
-  return process_group_;
-}
+inline const std::string& ModuleArgument::GetProcessGroup() const { return process_group_; }
 
-inline const std::string& ModuleArgument::GetSchedName() const {
-  return sched_name_;
-}
+inline const std::string& ModuleArgument::GetSchedName() const { return sched_name_; }
 
-inline const std::list<std::string>& ModuleArgument::GetDAGConfList() const {
-  return dag_conf_list_;
-}
+inline const std::list<std::string>& ModuleArgument::GetDAGConfList() const { return dag_conf_list_; }
 
-inline const std::list<std::string>& ModuleArgument::GetPluginDescriptionList()
-    const {
+inline const std::list<std::string>& ModuleArgument::GetPluginDescriptionList() const {
   return plugin_description_list_;
 }
 
-inline const bool& ModuleArgument::GetDisablePluginsAutoLoad() const {
-  return disable_plugin_autoload_;
-}
+inline const bool& ModuleArgument::GetDisablePluginsAutoLoad() const { return disable_plugin_autoload_; }
 
 }  // namespace mainboard
 }  // namespace autolink
-

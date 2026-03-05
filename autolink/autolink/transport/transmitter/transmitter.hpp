@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -60,8 +59,7 @@ class Transmitter : public Endpoint {
 };
 
 template <typename M>
-Transmitter<M>::Transmitter(const RoleAttributes& attr)
-    : Endpoint(attr), seq_num_(0) {
+Transmitter<M>::Transmitter(const RoleAttributes& attr) : Endpoint(attr), seq_num_(0) {
   msg_info_.set_sender_id(this->id_);
   msg_info_.set_seq_num(this->seq_num_);
 }
@@ -74,8 +72,7 @@ bool Transmitter<M>::Transmit(const MessagePtr& msg) {
   msg_info_.set_seq_num(NextSeqNum());
   msg_info_.set_msg_seq_num(seq_num_);
   msg_info_.set_send_time(Time::Now().ToNanosecond());
-  PerfEventCache::Instance()->AddTransportEvent(
-      TransPerf::TRANSMIT_BEGIN, attr_.channel_id(), msg_info_.seq_num());
+  PerfEventCache::Instance()->AddTransportEvent(TransPerf::TRANSMIT_BEGIN, attr_.channel_id(), msg_info_.seq_num());
   return Transmit(msg, msg_info_);
 }
 
@@ -93,4 +90,3 @@ void Transmitter<M>::Disable(const RoleAttributes& opposite_attr) {
 
 }  // namespace transport
 }  // namespace autolink
-

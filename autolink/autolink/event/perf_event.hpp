@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <limits>
 #include <sstream>
@@ -124,9 +123,7 @@ class TransportEvent : public EventBase {
   }
 
   void set_msg_seq(uint64_t msg_seq) override { msg_seq_ = msg_seq; }
-  void set_channel_id(uint64_t channel_id) override {
-    channel_id_ = channel_id;
-  }
+  void set_channel_id(uint64_t channel_id) override { channel_id_ = channel_id; }
   void set_adder(const std::string& adder) override { adder_ = adder; }
 
   static std::string ShowTransPerf(TransPerf type) {
@@ -162,4 +159,3 @@ class TransportEvent : public EventBase {
 
 }  // namespace event
 }  // namespace autolink
-

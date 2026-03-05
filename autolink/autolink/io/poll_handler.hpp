@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 
@@ -52,4 +51,3 @@ class PollHandler {
 
 }  // namespace io
 }  // namespace autolink
-

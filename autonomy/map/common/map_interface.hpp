@@ -25,48 +25,47 @@ namespace autonomy {
 namespace map {
 namespace common {
 
-class MapInterface
-{
-public:
-    /**
-     * Define MapInterface::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(MapInterface)
+class MapInterface {
+ public:
+  /**
+   * Define MapInterface::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(MapInterface)
 
-    MapInterface() {}
-    virtual ~MapInterface() {}
+  MapInterface() {}
+  virtual ~MapInterface() {}
 
-    MapInterface(const MapInterface&) = delete;
-    MapInterface& operator=(const MapInterface&) = delete;
+  MapInterface(const MapInterface&) = delete;
+  MapInterface& operator=(const MapInterface&) = delete;
 
-    /**
-     * @brief  Subscribes to sensor topics if necessary and starts costmap
-     * updates, can be called to restart the costmap after calls to either
-     * stop() or pause()
-     */
-    virtual void Start() = 0;
+  /**
+   * @brief  Subscribes to sensor topics if necessary and starts costmap
+   * updates, can be called to restart the costmap after calls to either
+   * stop() or pause()
+   */
+  virtual void Start() = 0;
 
-    /**
-     * @brief  Stops costmap updates and unsubscribes from sensor topics
-     */
-    virtual void Stop() = 0;
+  /**
+   * @brief  Stops costmap updates and unsubscribes from sensor topics
+   */
+  virtual void Stop() = 0;
 
-    /**
-     * @brief  Stops the costmap from updating, but sensor data still comes in
-     * over the wire
-     */
-    virtual void Pause() = 0;
+  /**
+   * @brief  Stops the costmap from updating, but sensor data still comes in
+   * over the wire
+   */
+  virtual void Pause() = 0;
 
-    /**
-     * @brief  Resumes costmap updates
-     */
-    virtual void Resume() = 0;
+  /**
+   * @brief  Resumes costmap updates
+   */
+  virtual void Resume() = 0;
 
-    /**
-     * @brief  Adds sensor data to the map
-     * @param  data The sensor data to add
-     */
-    void AddSensorData(std::unique_ptr<sensor::Data> data);
+  /**
+   * @brief  Adds sensor data to the map
+   * @param  data The sensor data to add
+   */
+  void AddSensorData(std::unique_ptr<sensor::Data> data);
 };
 
 }  // namespace common

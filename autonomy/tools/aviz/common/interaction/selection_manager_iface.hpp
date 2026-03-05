@@ -17,6 +17,7 @@
 #ifndef AVIZ_COMMON__INTERACTION__SELECTION_MANAGER_IFACE_HPP_
 #define AVIZ_COMMON__INTERACTION__SELECTION_MANAGER_IFACE_HPP_
 
+#include <QObject>  // NOLINT: cpplint is unable to handle the include order here
 #include <map>
 #include <memory>
 #include <mutex>
@@ -25,8 +26,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <QObject>  // NOLINT: cpplint is unable to handle the include order here
 
 #include "autonomy/tools/aviz/common/interaction/forwards.hpp"
 #include "autonomy/tools/aviz/common/interaction/selection_handler.hpp"
@@ -43,40 +42,39 @@ class DisplayContext;
 
 namespace interaction {
 
-class SelectionManagerIface : public QObject
-{
-    Q_OBJECT
+class SelectionManagerIface : public QObject {
+  Q_OBJECT
 
-public:
-    enum SelectType { Add, Remove, Replace };
+ public:
+  enum SelectType { Add, Remove, Replace };
 
-    virtual void initialize() = 0;
+  virtual void initialize() = 0;
 
-    /// Control the highlight box being displayed while selecting.
-    virtual void highlight(SceneViewer* viewer, int x1, int y1, int x2, int y2) = 0;
+  /// Control the highlight box being displayed while selecting.
+  virtual void highlight(SceneViewer* viewer, int x1, int y1, int x2, int y2) = 0;
 
-    virtual void removeHighlight() = 0;
+  virtual void removeHighlight() = 0;
 
-    /// Select all objects in bounding box.
-    virtual void select(SceneViewer* viewer, int x1, int y1, int x2, int y2, SelectType type) = 0;
+  /// Select all objects in bounding box.
+  virtual void select(SceneViewer* viewer, int x1, int y1, int x2, int y2, SelectType type) = 0;
 
-    /// Get all objects in a bounding box.
-    /**
-     * \return handles of all objects in the given bounding box
-     */
-    virtual void pick(SceneViewer* viewer, int x1, int y1, int x2, int y2, M_Picked& results) = 0;
+  /// Get all objects in a bounding box.
+  /**
+   * \return handles of all objects in the given bounding box
+   */
+  virtual void pick(SceneViewer* viewer, int x1, int y1, int x2, int y2, M_Picked& results) = 0;
 
-    virtual void update() = 0;
+  virtual void update() = 0;
 
-    virtual const M_Picked& getSelection() const = 0;
+  virtual const M_Picked& getSelection() const = 0;
 
-    /// Tell the view controller to look at the selection.
-    virtual void focusOnSelection() = 0;
+  /// Tell the view controller to look at the selection.
+  virtual void focusOnSelection() = 0;
 
-    /// Change the size of the off-screen selection buffer texture.
-    virtual void setTextureSize(unsigned size) = 0;
+  /// Change the size of the off-screen selection buffer texture.
+  virtual void setTextureSize(unsigned size) = 0;
 
-    virtual aviz::common::properties::PropertyTreeModel* getPropertyModel() = 0;
+  virtual aviz::common::properties::PropertyTreeModel* getPropertyModel() = 0;
 };
 
 }  // namespace interaction

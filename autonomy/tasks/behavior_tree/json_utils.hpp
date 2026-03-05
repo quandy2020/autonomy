@@ -31,8 +31,8 @@
 namespace autonomy::commsgs::builtin_interfaces {
 
 BT_JSON_CONVERTER(autonomy::commsgs::builtin_interfaces::Time, msg) {
-    add_field("sec", &msg.sec);
-    add_field("nanosec", &msg.nanosec);
+  add_field("sec", &msg.sec);
+  add_field("nanosec", &msg.nanosec);
 }
 
 }  // namespace autonomy::commsgs::builtin_interfaces
@@ -40,8 +40,8 @@ BT_JSON_CONVERTER(autonomy::commsgs::builtin_interfaces::Time, msg) {
 namespace autonomy::commsgs::std_msgs {
 
 BT_JSON_CONVERTER(autonomy::commsgs::std_msgs::Header, msg) {
-    add_field("stamp", &msg.stamp);
-    add_field("frame_id", &msg.frame_id);
+  add_field("stamp", &msg.stamp);
+  add_field("frame_id", &msg.frame_id);
 }
 
 }  // namespace autonomy::commsgs::std_msgs
@@ -49,26 +49,26 @@ BT_JSON_CONVERTER(autonomy::commsgs::std_msgs::Header, msg) {
 namespace autonomy::commsgs::geometry_msgs {
 
 BT_JSON_CONVERTER(autonomy::commsgs::geometry_msgs::Point, msg) {
-    add_field("x", &msg.x);
-    add_field("y", &msg.y);
-    add_field("z", &msg.z);
+  add_field("x", &msg.x);
+  add_field("y", &msg.y);
+  add_field("z", &msg.z);
 }
 
 BT_JSON_CONVERTER(autonomy::commsgs::geometry_msgs::Quaternion, msg) {
-    add_field("x", &msg.x);
-    add_field("y", &msg.y);
-    add_field("z", &msg.z);
-    add_field("w", &msg.w);
+  add_field("x", &msg.x);
+  add_field("y", &msg.y);
+  add_field("z", &msg.z);
+  add_field("w", &msg.w);
 }
 
 BT_JSON_CONVERTER(autonomy::commsgs::geometry_msgs::Pose, msg) {
-    add_field("position", &msg.position);
-    add_field("orientation", &msg.orientation);
+  add_field("position", &msg.position);
+  add_field("orientation", &msg.orientation);
 }
 
 BT_JSON_CONVERTER(autonomy::commsgs::geometry_msgs::PoseStamped, msg) {
-    add_field("header", &msg.header);
-    add_field("pose", &msg.pose);
+  add_field("header", &msg.header);
+  add_field("pose", &msg.pose);
 }
 
 }  // namespace autonomy::commsgs::geometry_msgs
@@ -76,13 +76,13 @@ BT_JSON_CONVERTER(autonomy::commsgs::geometry_msgs::PoseStamped, msg) {
 namespace autonomy::commsgs::planning_msgs {
 
 BT_JSON_CONVERTER(autonomy::commsgs::planning_msgs::Path, msg) {
-    add_field("header", &msg.header);
-    add_field("poses", &msg.poses);
+  add_field("header", &msg.header);
+  add_field("poses", &msg.poses);
 }
 
 BT_JSON_CONVERTER(autonomy::commsgs::planning_msgs::Goals, msg) {
-    add_field("header", &msg.header);
-    add_field("goals", &msg.goals);
+  add_field("header", &msg.header);
+  add_field("goals", &msg.goals);
 }
 
 }  // namespace autonomy::commsgs::planning_msgs
@@ -90,16 +90,16 @@ BT_JSON_CONVERTER(autonomy::commsgs::planning_msgs::Goals, msg) {
 namespace std {
 
 inline void from_json(const nlohmann::json& js, std::chrono::milliseconds& dest) {
-    if (js.contains("ms")) {
-        dest = std::chrono::milliseconds(js.at("ms").get<int>());
-    } else {
-        throw std::runtime_error("Invalid JSON for std::chrono::milliseconds");
-    }
+  if (js.contains("ms")) {
+    dest = std::chrono::milliseconds(js.at("ms").get<int>());
+  } else {
+    throw std::runtime_error("Invalid JSON for std::chrono::milliseconds");
+  }
 }
 
 inline void to_json(nlohmann::json& js, const std::chrono::milliseconds& src) {
-    js["__type"] = "std::chrono::milliseconds";
-    js["ms"] = src.count();
+  js["__type"] = "std::chrono::milliseconds";
+  js["ms"] = src.count();
 }
 
 }  // namespace std

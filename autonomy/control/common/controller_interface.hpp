@@ -30,99 +30,98 @@ namespace autonomy {
 namespace control {
 namespace common {
 
-class ControllerInterface
-{
-public:
-    using TfBuffer = autonomy::transform::Buffer;
+class ControllerInterface {
+ public:
+  using TfBuffer = autonomy::transform::Buffer;
 
-    /**
-     * Define ControllerInterface::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(ControllerInterface)
+  /**
+   * Define ControllerInterface::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(ControllerInterface)
 
-    /**
-     * @brief A Destructor for autonomy::control::common::ControllerInterface
-     */
-    virtual ~ControllerInterface() = default;
+  /**
+   * @brief A Destructor for autonomy::control::common::ControllerInterface
+   */
+  virtual ~ControllerInterface() = default;
 
-    /**
-     * @param  parent pointer to user's node
-     * @param  options The options to configure the controller
-     * @param  name The name of the controller
-     * @param  tf_buffer The transform buffer
-     * @param  costmap_wrapper A pointer to the costmap wrapper
-     */
-    virtual void Configure(const proto::ControllerOptions& options, std::string name, std::shared_ptr<TfBuffer>,
-                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper>) = 0;
+  /**
+   * @param  parent pointer to user's node
+   * @param  options The options to configure the controller
+   * @param  name The name of the controller
+   * @param  tf_buffer The transform buffer
+   * @param  costmap_wrapper A pointer to the costmap wrapper
+   */
+  virtual void Configure(const proto::ControllerOptions& options, std::string name, std::shared_ptr<TfBuffer>,
+                         std::shared_ptr<map::costmap_2d::Costmap2DWrapper>) = 0;
 
-    /**
-     * @brief Method to cleanup resources.
-     */
-    virtual void Cleanup() = 0;
+  /**
+   * @brief Method to cleanup resources.
+   */
+  virtual void Cleanup() = 0;
 
-    /**
-     * @brief Method to active planner and any threads involved in execution.
-     */
-    virtual void Activate() = 0;
+  /**
+   * @brief Method to active planner and any threads involved in execution.
+   */
+  virtual void Activate() = 0;
 
-    /**
-     * @brief Method to deactive planner and any threads involved in execution.
-     */
-    virtual void Deactivate() = 0;
+  /**
+   * @brief Method to deactive planner and any threads involved in execution.
+   */
+  virtual void Deactivate() = 0;
 
-    /**
-     * @brief Given the current position, orientation, and velocity of the
-     * robot, compute velocity commands to send to the base.
-     * @param pose The current pose of the robot.
-     * @param velocity The current velocity of the robot.
-     * @param cmd_vel Will be filled with the velocity command to be passed to
-     * the robot base. The frame id will set to the robot frame id by default,
-     * but can be added inside the implementation.
-     * @param message Optional more detailed outcome as a string
-     * @return Result code from ControllerResultCode enum (see
-     * autonomy.control.proto.ControllerResultCode) Return values correspond to
-     * ControllerResultCode enum values:
-     *         - CONTROLLER_RESULT_SUCCESS (0): Success
-     *         - 1..9: Reserved for plugin specific non-error results
-     *         - CONTROLLER_RESULT_FAILURE (100) and higher: Standard error
-     * codes
-     *         - 121..149: Reserved for plugin specific errors
-     */
-    virtual uint32 ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
-                                           const commsgs::geometry_msgs::TwistStamped& velocity,
-                                           commsgs::geometry_msgs::TwistStamped& cmd_vel,
-                                           common::GoalChecker* goal_checker, std::string& message) = 0;
+  /**
+   * @brief Given the current position, orientation, and velocity of the
+   * robot, compute velocity commands to send to the base.
+   * @param pose The current pose of the robot.
+   * @param velocity The current velocity of the robot.
+   * @param cmd_vel Will be filled with the velocity command to be passed to
+   * the robot base. The frame id will set to the robot frame id by default,
+   * but can be added inside the implementation.
+   * @param message Optional more detailed outcome as a string
+   * @return Result code from ControllerResultCode enum (see
+   * autonomy.control.proto.ControllerResultCode) Return values correspond to
+   * ControllerResultCode enum values:
+   *         - CONTROLLER_RESULT_SUCCESS (0): Success
+   *         - 1..9: Reserved for plugin specific non-error results
+   *         - CONTROLLER_RESULT_FAILURE (100) and higher: Standard error
+   * codes
+   *         - 121..149: Reserved for plugin specific errors
+   */
+  virtual uint32 ComputeVelocityCommands(const commsgs::geometry_msgs::PoseStamped& pose,
+                                         const commsgs::geometry_msgs::TwistStamped& velocity,
+                                         commsgs::geometry_msgs::TwistStamped& cmd_vel,
+                                         common::GoalChecker* goal_checker, std::string& message) = 0;
 
-    /**
-     * @brief Check if the goal pose has been achieved by the local planner
-     * @param angle_tolerance The angle tolerance in which the current pose will
-     * be partly accepted as reached goal
-     * @param dist_tolerance The distance tolerance in which the current pose
-     * will be partly accepted as reached goal
-     * @return True if achieved, false otherwise
-     */
-    virtual bool IsGoalReached(double dist_tolerance, double angle_tolerance) = 0;
+  /**
+   * @brief Check if the goal pose has been achieved by the local planner
+   * @param angle_tolerance The angle tolerance in which the current pose will
+   * be partly accepted as reached goal
+   * @param dist_tolerance The distance tolerance in which the current pose
+   * will be partly accepted as reached goal
+   * @return True if achieved, false otherwise
+   */
+  virtual bool IsGoalReached(double dist_tolerance, double angle_tolerance) = 0;
 
-    /**
-     * @brief Set the plan that the local planner is following
-     * @param plan The plan to pass to the local planner
-     */
-    virtual void SetPlan(const commsgs::planning_msgs::Path& plan) = 0;
+  /**
+   * @brief Set the plan that the local planner is following
+   * @param plan The plan to pass to the local planner
+   */
+  virtual void SetPlan(const commsgs::planning_msgs::Path& plan) = 0;
 
-    /**
-     * @brief Limits the maximum linear speed of the robot.
-     * @param speed_limit expressed in absolute value (in m/s)
-     * or in percentage from maximum robot speed.
-     * @param percentage Setting speed limit in percentage if true
-     * or in absolute values in false case.
-     */
-    virtual void SetSpeedLimit(const double& speed_limit, const bool& percentage) = 0;
+  /**
+   * @brief Limits the maximum linear speed of the robot.
+   * @param speed_limit expressed in absolute value (in m/s)
+   * or in percentage from maximum robot speed.
+   * @param percentage Setting speed limit in percentage if true
+   * or in absolute values in false case.
+   */
+  virtual void SetSpeedLimit(const double& speed_limit, const bool& percentage) = 0;
 
-    /**
-     * @brief Reset the state of the controller if necessary after task is
-     * exited
-     */
-    virtual void Reset() {}
+  /**
+   * @brief Reset the state of the controller if necessary after task is
+   * exited
+   */
+  virtual void Reset() {}
 };
 
 }  // namespace common

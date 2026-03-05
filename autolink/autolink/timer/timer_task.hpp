@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <functional>
 #include <mutex>
 
@@ -37,4 +36,3 @@ struct TimerTask {
 };
 
 }  // namespace autolink
-

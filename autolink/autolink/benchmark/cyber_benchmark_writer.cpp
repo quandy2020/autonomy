@@ -16,20 +16,21 @@
 
 #include <getopt.h>
 #include <libgen.h>
+
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include "autolink/autolink.hpp"
 #include "autolink/benchmark/benchmark_msg.pb.h"
 
 #if __has_include("gperftools/profiler.h")
-#include "gperftools/profiler.h"
 #include "gperftools/heap-profiler.h"
 #include "gperftools/malloc_extension.h"
+#include "gperftools/profiler.h"
 #endif
 
-std::string BINARY_NAME = "autolink_benchmark_writer"; // NOLINT
+std::string BINARY_NAME = "autolink_benchmark_writer";  // NOLINT
 
 int message_size = -1;
 int transport_freq = -1;
@@ -38,28 +39,28 @@ int data_type = 0;
 int running_time = 10;
 bool enable_cpuprofile = false;
 bool enable_heapprofile = false;
-std::string profile_filename = "autolink_benchmark_writer_cpu.prof"; // NOLINT
-std::string heapprofile_filename = "autolink_benchmark_writer_mem.prof"; // NOLINT
+std::string profile_filename = "autolink_benchmark_writer_cpu.prof";      // NOLINT
+std::string heapprofile_filename = "autolink_benchmark_writer_mem.prof";  // NOLINT
 
 void DisplayUsage() {
   AINFO << "Usage: \n    " << BINARY_NAME << " [OPTION]...\n"
         << "Description: \n"
         << "    -h, --help: help information \n"
         << "    -s, --message_size=message_size: transport message size\n"
-        << "    -t, --transport_freq=transmission_frequency: transmission frequency\n" // NOLINT
+        << "    -t, --transport_freq=transmission_frequency: transmission frequency\n"  // NOLINT
         << "    -q, --qos_policy=qos_reliable_policy: set qos reliable policy, "
-            "0 is Reliable, 1 is Best effort, default value is 0\n"
+           "0 is Reliable, 1 is Best effort, default value is 0\n"
         << "    -d, --data_type=data_type: transport data type, "
-            "0 is bytes, 1 is repeated field, default value is 0\n"
+           "0 is bytes, 1 is repeated field, default value is 0\n"
         << "    -T, --time=time: running time, default value is 10 seconds\n"
         << "    -c, --cpuprofile: enable gperftools cpu profile\n"
         << "    -o, --profile_filename=filename: the filename to dump the "
-            "profile to, default value is autolink_benchmark_writer_cpu.prof. Only work " // NOLINT
-            "with -c option\n"
+           "profile to, default value is autolink_benchmark_writer_cpu.prof. Only work "  // NOLINT
+           "with -c option\n"
         << "    -H, --heapprofile: enable gperftools heap profile\n"
         << "    -O, --heapprofile_filename=filename: the filename to dump the "
-            "profile to, default value is autolink_benchmark_writer_mem.prof. Only work " // NOLINT
-            "with -H option\n"
+           "profile to, default value is autolink_benchmark_writer_mem.prof. Only work "  // NOLINT
+           "with -H option\n"
         << "Example:\n"
         << "    " << BINARY_NAME << " -h\n"
         << "    " << BINARY_NAME << " -s 64K -t 10\n"
@@ -70,18 +71,17 @@ void GetOptions(const int argc, char* const argv[]) {
   opterr = 0;  // extern int opterr
   int long_index = 0;
   const std::string short_opts = "hs:t:q:d:T:co:HO:";
-  static const struct option long_opts[] = {
-      {"help", no_argument, nullptr, 'h'},
-      {"message_size", required_argument, nullptr, 's'},
-      {"transport_freq", required_argument, nullptr, 't'},
-      {"qos_policy", required_argument, nullptr, 'q'},
-      {"data_type", required_argument, nullptr, 'd'},
-      {"time", required_argument, nullptr, 'T'},
-      {"cpuprofile", no_argument, nullptr, 'c'},
-      {"profile_filename", required_argument, nullptr, 'o'},
-      {"heapprofile", no_argument, nullptr, 'H'},
-      {"heapprofile_filename", required_argument, nullptr, 'O'},
-      {NULL, no_argument, nullptr, 0}};
+  static const struct option long_opts[] = {{"help", no_argument, nullptr, 'h'},
+                                            {"message_size", required_argument, nullptr, 's'},
+                                            {"transport_freq", required_argument, nullptr, 't'},
+                                            {"qos_policy", required_argument, nullptr, 'q'},
+                                            {"data_type", required_argument, nullptr, 'd'},
+                                            {"time", required_argument, nullptr, 'T'},
+                                            {"cpuprofile", no_argument, nullptr, 'c'},
+                                            {"profile_filename", required_argument, nullptr, 'o'},
+                                            {"heapprofile", no_argument, nullptr, 'H'},
+                                            {"heapprofile_filename", required_argument, nullptr, 'O'},
+                                            {NULL, no_argument, nullptr, 0}};
 
   // log command for info
   std::string cmd("");
@@ -97,8 +97,7 @@ void GetOptions(const int argc, char* const argv[]) {
   }
 
   do {
-    int opt =
-        getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
+    int opt = getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
     if (opt == -1) {
       break;
     }
@@ -107,7 +106,7 @@ void GetOptions(const int argc, char* const argv[]) {
     switch (opt) {
       case 's':
         arg = std::string(optarg);
-        switch (arg[arg.length()-1]) {
+        switch (arg[arg.length() - 1]) {
           case 'K':
             base_size = 1024;
             break;
@@ -118,7 +117,7 @@ void GetOptions(const int argc, char* const argv[]) {
             AERROR << "Invalid identifier. It should be 'K' or 'M' or 'B'";
             exit(-1);
         }
-        message_size = std::stoi(arg.substr(0, arg.length()-1)) * base_size;
+        message_size = std::stoi(arg.substr(0, arg.length() - 1)) * base_size;
         if (message_size < 0 || message_size % 4 != 0) {
           AERROR << "Invalid message size.";
           exit(-1);
@@ -203,14 +202,11 @@ int main(int argc, char** argv) {
   auto qos = attrs.mutable_qos_profile();
 
   if (qos_policy == 1) {
-    qos->set_reliability(
-      autolink::proto::QosReliabilityPolicy::RELIABILITY_BEST_EFFORT);
+    qos->set_reliability(autolink::proto::QosReliabilityPolicy::RELIABILITY_BEST_EFFORT);
   } else {
-    qos->set_reliability(
-      autolink::proto::QosReliabilityPolicy::RELIABILITY_RELIABLE);
+    qos->set_reliability(autolink::proto::QosReliabilityPolicy::RELIABILITY_RELIABLE);
   }
-  auto writer = node->CreateWriter<
-    autolink::benchmark::BenchmarkMsg>(attrs);
+  auto writer = node->CreateWriter<autolink::benchmark::BenchmarkMsg>(attrs);
 
   // sleep a while for initialization, aboout 2 seconds
   autolink::Rate rate_init(0.5);
@@ -252,18 +248,17 @@ int main(int argc, char** argv) {
 #endif
 #endif
 
-std::vector<uint32_t> trans_vec;
-int num_of_instance = message_size / 4;
-for (int i = 0; i < num_of_instance; i++) {
-  trans_vec.push_back(rand());  // NOLINT
-}
+  std::vector<uint32_t> trans_vec;
+  int num_of_instance = message_size / 4;
+  for (int i = 0; i < num_of_instance; i++) {
+    trans_vec.push_back(rand());  // NOLINT
+  }
 
-char* data = (char*)malloc(message_size); // NOLINT
+  char* data = (char*)malloc(message_size);  // NOLINT
 
   while (send_msg < send_msg_total) {
-    auto trans_unit = std::make_shared<
-      autolink::benchmark::BenchmarkMsg>();
-    int base = rand();          // NOLINT
+    auto trans_unit = std::make_shared<autolink::benchmark::BenchmarkMsg>();
+    int base = rand();  // NOLINT
 
     for (int i = 0; i < num_of_instance; i++) {
       trans_vec[i] = base * i;
@@ -286,7 +281,7 @@ char* data = (char*)malloc(message_size); // NOLINT
     rate_ctl.Sleep();
   }
 
-free(data);
+  free(data);
 
 #ifndef NO_TCMALLOC
 #ifdef BASE_PROFILER_H_

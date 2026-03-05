@@ -25,33 +25,33 @@ namespace grpc {
 namespace handlers {
 
 void SendNavigationHandler::OnRequest(const proto::NavigationCommandRequest& request) {
-    // if
-    // (!GetContext<MapBuilderContextInterface>()->CheckClientIdForTrajectory(
-    //         request.client_id(), request.trajectory_id())) {
-    //     LOG(ERROR) << "Unknown trajectory with ID " <<
-    //     request.trajectory_id()
-    //             << " and client_id " << request.client_id();
-    //     Finish(::grpc::Status(::grpc::NOT_FOUND, "Unknown trajectory"));
-    //     return;
-    // }
+  // if
+  // (!GetContext<MapBuilderContextInterface>()->CheckClientIdForTrajectory(
+  //         request.client_id(), request.trajectory_id())) {
+  //     LOG(ERROR) << "Unknown trajectory with ID " <<
+  //     request.trajectory_id()
+  //             << " and client_id " << request.client_id();
+  //     Finish(::grpc::Status(::grpc::NOT_FOUND, "Unknown trajectory"));
+  //     return;
+  // }
 
-    // GetContext<MapBuilderContextInterface>()->map_builder().FinishTrajectory(
-    //     request.trajectory_id());
-    // GetUnsynchronizedContext<MapBuilderContextInterface>()
-    //     ->NotifyFinishTrajectory(request.trajectory_id());
-    // if (GetUnsynchronizedContext<MapBuilderContextInterface>()
-    //         ->local_trajectory_uploader()) {
-    //     auto status =
-    //         GetContext<MapBuilderContextInterface>()
-    //             ->local_trajectory_uploader()
-    //             ->FinishTrajectory(request.client_id(),
-    //             request.trajectory_id());
-    //     if (!status.ok()) {
-    //     LOG(ERROR) << "Failed to finish trajectory in uplink: "
-    //                 << status.error_message();
-    //     }
-    // }
-    // Send(absl::make_unique<google::protobuf::Empty>());
+  // GetContext<MapBuilderContextInterface>()->map_builder().FinishTrajectory(
+  //     request.trajectory_id());
+  // GetUnsynchronizedContext<MapBuilderContextInterface>()
+  //     ->NotifyFinishTrajectory(request.trajectory_id());
+  // if (GetUnsynchronizedContext<MapBuilderContextInterface>()
+  //         ->local_trajectory_uploader()) {
+  //     auto status =
+  //         GetContext<MapBuilderContextInterface>()
+  //             ->local_trajectory_uploader()
+  //             ->FinishTrajectory(request.client_id(),
+  //             request.trajectory_id());
+  //     if (!status.ok()) {
+  //     LOG(ERROR) << "Failed to finish trajectory in uplink: "
+  //                 << status.error_message();
+  //     }
+  // }
+  // Send(absl::make_unique<google::protobuf::Empty>());
 }
 
 }  // namespace handlers

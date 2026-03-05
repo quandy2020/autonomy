@@ -19,14 +19,13 @@
 #include <string>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/global_data.hpp"
 #include "autolink/message/raw_message.hpp"
 #include "autolink/transport/message/history.hpp"
 #include "autolink/transport/message/history_attributes.hpp"
 #include "autolink/transport/message/listener_handler.hpp"
 #include "autolink/transport/message/message_info.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -143,14 +142,12 @@ TEST(ListenerHandlerTest, listener_handler_test) {
   MessageInfo message_info(sender_id, 0, spare_id);
   auto message = std::shared_ptr<RawMessage>(new RawMessage);
   int call_count = 0;
-  ListenerHandler<RawMessage>::Listener listener =
-      [&call_count](const std::shared_ptr<RawMessage>& message,
-                    const MessageInfo& message_info) {
-        ++call_count;
-        AINFO << "Got Message from " << message_info.sender_id().data()
-              << ", sequence_num: " << message_info.seq_num()
-              << ", to spare: " << message_info.spare_id().data();
-      };
+  ListenerHandler<RawMessage>::Listener listener = [&call_count](const std::shared_ptr<RawMessage>& message,
+                                                                 const MessageInfo& message_info) {
+    ++call_count;
+    AINFO << "Got Message from " << message_info.sender_id().data() << ", sequence_num: " << message_info.seq_num()
+          << ", to spare: " << message_info.spare_id().data();
+  };
 
   uint64_t self_id = 123;
   uint64_t opposite_id = 456;
@@ -161,8 +158,7 @@ TEST(ListenerHandlerTest, listener_handler_test) {
   listener_handler.Connect(self_id, listener);
   listener_handler.Connect(self_id, opposite_id, listener);
   listener_handler.Connect(self_id, opposite_id, listener);
-  listener_handler.Connect(self_id, message_info.spare_id().HashValue(),
-                           listener);
+  listener_handler.Connect(self_id, message_info.spare_id().HashValue(), listener);
   listener_handler.Run(message, message_info);
   EXPECT_EQ(1, call_count);
   Identity sender_id2;

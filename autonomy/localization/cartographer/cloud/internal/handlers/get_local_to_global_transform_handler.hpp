@@ -30,10 +30,9 @@ DEFINE_HANDLER_SIGNATURE(GetLocalToGlobalTransformSignature, proto::GetLocalToGl
                          "/cartographer.cloud.proto.MapBuilderService/GetLocalToGlobalTransform")
 
 class GetLocalToGlobalTransformHandler
-    : public autonomy::common::async_grpc::RpcHandler<GetLocalToGlobalTransformSignature>
-{
-public:
-    void OnRequest(const proto::GetLocalToGlobalTransformRequest& request) override;
+    : public autonomy::common::async_grpc::RpcHandler<GetLocalToGlobalTransformSignature> {
+ public:
+  void OnRequest(const proto::GetLocalToGlobalTransformRequest& request) override;
 };
 
 }  // namespace handlers

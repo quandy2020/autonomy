@@ -22,19 +22,16 @@ namespace cartographer {
 namespace io {
 
 void ForwardingProtoStreamWriter::WriteProto(const google::protobuf::Message& proto) {
-    CHECK(writer_callback_(&proto));
+  CHECK(writer_callback_(&proto));
 }
 
-bool ForwardingProtoStreamWriter::Close() {
-    return writer_callback_(nullptr);
-}
+bool ForwardingProtoStreamWriter::Close() { return writer_callback_(nullptr); }
 
 bool InMemoryProtoStreamReader::ReadProto(google::protobuf::Message* proto) {
-    if (eof())
-        return false;
-    proto->CopyFrom(*state_chunks_.front());
-    state_chunks_.pop();
-    return true;
+  if (eof()) return false;
+  proto->CopyFrom(*state_chunks_.front());
+  state_chunks_.pop();
+  return true;
 }
 
 }  // namespace io

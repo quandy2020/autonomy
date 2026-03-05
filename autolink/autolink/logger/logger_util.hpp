@@ -20,7 +20,6 @@
 
 #pragma once
 
-
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/utsname.h>
@@ -58,9 +57,7 @@ int32_t GetMainThreadPid();
 
 bool PidHasChanged();
 
-inline int32_t MaxLogSize() {
-  return (FLAGS_max_log_size > 0 ? FLAGS_max_log_size : 1);
-}
+inline int32_t MaxLogSize() { return (FLAGS_max_log_size > 0 ? FLAGS_max_log_size : 1); }
 
 inline void FindModuleName(std::string* log_message, std::string* module_name) {
   auto lpos = log_message->find(LEFT_BRACKET);
@@ -80,4 +77,3 @@ inline void FindModuleName(std::string* log_message, std::string* module_name) {
 
 }  // namespace logger
 }  // namespace autolink
-

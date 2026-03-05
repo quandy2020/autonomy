@@ -28,28 +28,20 @@ BoolProperty::BoolProperty(const QString& name, bool default_value, const QStrin
 
 BoolProperty::~BoolProperty() = default;
 
-bool BoolProperty::getBool() const {
-    return getValue().toBool();
-}
+bool BoolProperty::getBool() const { return getValue().toBool(); }
 
-void BoolProperty::setDisableChildrenIfFalse(bool disable) {
-    disable_children_if_false_ = disable;
-}
+void BoolProperty::setDisableChildrenIfFalse(bool disable) { disable_children_if_false_ = disable; }
 
-bool BoolProperty::getDisableChildrenIfFalse() {
-    return disable_children_if_false_;
-}
+bool BoolProperty::getDisableChildrenIfFalse() { return disable_children_if_false_; }
 
 bool BoolProperty::getDisableChildren() {
-    if (disable_children_if_false_) {
-        return !getBool() || Property::getDisableChildren();
-    }
-    return Property::getDisableChildren();
+  if (disable_children_if_false_) {
+    return !getBool() || Property::getDisableChildren();
+  }
+  return Property::getDisableChildren();
 }
 
-bool BoolProperty::setBool(bool value) {
-    return setValue(value);
-}
+bool BoolProperty::setBool(bool value) { return setValue(value); }
 
 }  // namespace properties
 }  // namespace common

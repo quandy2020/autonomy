@@ -18,12 +18,11 @@
 #include <chrono>
 #include <thread>
 
-#include "gtest/gtest.h"
-
 #include "autolink/record/file/record_file_base.hpp"
 #include "autolink/record/file/record_file_reader.hpp"
 #include "autolink/record/file/record_file_writer.hpp"
 #include "autolink/record/header_builder.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace record {
@@ -37,9 +36,7 @@ class CpuSchedulerLatency {
     periodic_thread_.join();
   }
 
-  std::chrono::nanoseconds GetMaxJitter() {
-    return std::chrono::nanoseconds(max_jitter_);
-  }
+  std::chrono::nanoseconds GetMaxJitter() { return std::chrono::nanoseconds(max_jitter_); }
 
   int64_t GetNumSamples() { return samples_; }
 
@@ -51,8 +48,7 @@ class CpuSchedulerLatency {
     while (running_) {
       const auto current_time = std::chrono::steady_clock::now();
       const auto time_since_sleep = current_time - prev_time;
-      const auto current_jitter =
-          std::abs((time_since_sleep - kSleepDuration).count());
+      const auto current_jitter = std::abs((time_since_sleep - kSleepDuration).count());
       prev_time = current_time;
       max_jitter_ = std::max(current_jitter, max_jitter_);
       ++samples_;
@@ -87,8 +83,7 @@ TEST(RecordFileTest, SmallMessageHighThroughputOKThreadJitter) {
 
   static constexpr int kMaxIterations = 1000000000;
   static constexpr int64_t kMaxSamples = 1000;
-  for (int i = 0;
-       i < kMaxIterations && cpu_jitter.GetNumSamples() < kMaxSamples; ++i) {
+  for (int i = 0; i < kMaxIterations && cpu_jitter.GetNumSamples() < kMaxSamples; ++i) {
     proto::SingleMessage msg1;
     msg1.set_channel_name(kChannelName);
     msg1.set_content("0123456789");
@@ -101,9 +96,7 @@ TEST(RecordFileTest, SmallMessageHighThroughputOKThreadJitter) {
       << "This system may be to fast. Consider increasing kMaxIterations";
   static constexpr int64_t kMaxJitterMS = 20;
   const int64_t max_cpu_jitter_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          cpu_jitter.GetMaxJitter())
-          .count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(cpu_jitter.GetMaxJitter()).count();
   EXPECT_LT(max_cpu_jitter_ms, kMaxJitterMS);
   ASSERT_FALSE(remove(kTestFile));
 }

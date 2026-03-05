@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -52,17 +53,14 @@ int main(int argc, char* argv[]) {
 
         Session session;
         session.Socket(AF_INET, SOCK_STREAM, 0);
-        if (session.Connect((struct sockaddr*)&server_addr,
-                            sizeof(server_addr)) < 0) {
-          std::cout << "connect to server failed, " << strerror(errno)
-                    << std::endl;
+        if (session.Connect((struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+          std::cout << "connect to server failed, " << strerror(errno) << std::endl;
           return;
         }
 
         while (true) {
           count = 0;
-          std::cout << "please enter a message (enter Ctrl+C to exit):"
-                    << std::endl;
+          std::cout << "please enter a message (enter Ctrl+C to exit):" << std::endl;
           std::getline(std::cin, user_input);
           if (!autolink::OK()) {
             break;
@@ -76,10 +74,8 @@ int main(int argc, char* argv[]) {
             return;
           }
 
-          while ((nbytes = session.Recv(server_reply.data(),
-                                        server_reply.size(), 0)) > 0) {
-            for (auto itr = server_reply.begin();
-                 itr < server_reply.begin() + nbytes; ++itr) {
+          while ((nbytes = session.Recv(server_reply.data(), server_reply.size(), 0)) > 0) {
+            for (auto itr = server_reply.begin(); itr < server_reply.begin() + nbytes; ++itr) {
               std::cout << *itr;
             }
             count += (uint32_t)nbytes;
