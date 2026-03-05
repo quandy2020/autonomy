@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "autolink/autolink.hpp"
-#include "autolink/pluginlib/class_loader.hpp"
+#include "autolink/class_loader/class_loader_manager.hpp"
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
@@ -61,9 +61,9 @@ protected:
     // 节点（由外部设置或构造函数传入）
     std::shared_ptr<autolink::Node> node_;
 
-    // 通过 pluginlib 加载并管理 Navigator 插件
-    autolink::pluginlib::ClassLoader<common::NavigatorBase> class_loader_;
-    std::vector<autolink::pluginlib::UniquePtr<common::NavigatorBase>> navigators_;
+    // 通过 autolink class_loader 加载并管理 Navigator 插件
+    autolink::class_loader::ClassLoaderManager class_loader_manager_;
+    std::vector<std::shared_ptr<common::NavigatorBase>> navigators_;
     common::NavigatorMuxer plugin_muxer_;
 
     // 里程计平滑，供 Navigator 反馈使用

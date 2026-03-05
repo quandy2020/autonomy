@@ -13,4 +13,4 @@
 # limitations under the License.
 
 add_subdirectory(apps)
-add_subdirectory(basic)
+

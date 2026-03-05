@@ -29,10 +29,14 @@ macro(_common_compile_stuff)
     COMPILE_FLAGS ${TARGET_COMPILE_FLAGS})
 
   target_include_directories(${NAME} PUBLIC ${PROJECT_NAME})
+  # Prefer /usr/local libs when present (glog/gflags match autolink/ceres from /usr/local)
+  if(EXISTS "/usr/local/lib/libglog.so")
+    target_link_directories(${NAME} PRIVATE /usr/local/lib)
+  endif()
   target_link_libraries(${NAME} PUBLIC ${PROJECT_NAME})
   
-  # Link FastDDS explicitly for autolink dependency
-  target_link_libraries(${NAME} PRIVATE fastdds fastcdr)
+  # Link FastDDS explicitly for autolink dependency (use FastDDS_LIBRARIES so ROS libfastrtps is used)
+  target_link_libraries(${NAME} PRIVATE ${FastDDS_LIBRARIES})
 endmacro(_common_compile_stuff)
 
 function(google_test NAME ARG_SRC)

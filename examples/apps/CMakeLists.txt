@@ -13,15 +13,21 @@
 # limitations under the License.
 
 # 公共函数：为 autonomy 示例应用添加可执行文件
+# 当使用 /usr/local 的 autolink 时，需优先链接 /usr/local 的 glog，避免 DSO 冲突
 function(add_autonomy_demo target_name source_file)
   add_executable(${target_name} ${source_file})
   target_include_directories(${target_name} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../..
   )
+  if(EXISTS "/usr/local/lib/libglog.so")
+    target_link_directories(${target_name} PRIVATE /usr/local/lib)
+  endif()
   target_link_libraries(${target_name} PRIVATE
     ${PROJECT_NAME}
     autolink
     Eigen3::Eigen
+    glog
+    gflags
   )
 endfunction()
 

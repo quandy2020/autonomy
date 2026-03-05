@@ -36,7 +36,7 @@
 #include <atomic>
 #include <vector>
 
-#include "autolink/autolink/common/log.hpp"
+#include "autolink/common/log.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"

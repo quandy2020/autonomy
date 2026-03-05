@@ -21,8 +21,8 @@
 
 #include <unistd.h>
 
-#include "autolink/common/init.hpp"
-#include "autolink/common/state.hpp"
+#include "autolink/init.hpp"
+#include "autolink/state.hpp"
 
 #include "autonomy/tools/aviz/common/autolink_integration/autolink_node_abstraction.hpp"
 

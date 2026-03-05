@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Include autolink_export_plugin function
-include("${PROJECT_SOURCE_DIR}/autolink/cmake/autolink_export_plugin.cmake")
+include("${PROJECT_SOURCE_DIR}/../autolink/cmake/autolink_export_plugin.cmake")
 
 # ============================================================================
 # Helper Function: Create and Export Driver Plugin
