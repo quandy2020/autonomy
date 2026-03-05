@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief MarkerArrayDisplay
- * Similar to rviz_default_plugins::displays::MarkerArrayDisplay
+ * Marker array display
  *
  * Displays visualization_msgs::MarkerArray messages
  * This is essentially a wrapper around MarkerDisplay that processes arrays

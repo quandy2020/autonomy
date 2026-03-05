@@ -27,7 +27,7 @@ namespace common {
 
 /**
  * @brief Display group - container for multiple displays
- * Similar to rviz_common::DisplayGroup
+ * Group of displays for the visualizer
  *
  * A DisplayGroup is a Display that contains other Displays.
  * It can be used to organize displays hierarchically.

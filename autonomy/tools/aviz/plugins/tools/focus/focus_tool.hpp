@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief FocusTool
- * Similar to rviz_default_plugins::tools::FocusTool
+ * Focus tool for the visualizer
  */
 class FocusTool
 {

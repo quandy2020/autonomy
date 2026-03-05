@@ -45,7 +45,7 @@ namespace displays {
 
 /**
  * @brief PathDisplay
- * Similar to rviz_default_plugins::displays::PathDisplay
+ * Path display
  *
  * Displays a planning_msgs::Path message as a line connecting poses
  */

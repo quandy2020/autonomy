@@ -25,7 +25,7 @@ namespace view_controllers {
 
 /**
  * @brief XyOrbitViewController
- * Similar to rviz_default_plugins::view_controllers::XyOrbitViewController
+ * XY orbit view controller
  */
 class XyOrbitViewController
 {

@@ -43,7 +43,7 @@ namespace rendering {
 
 /**
  * @brief Axes rendering object
- * Similar to rviz_rendering::Axes
+ * Axes visualization object
  *
  * Displays a set of X/Y/Z axes, with X=Red, Y=Green, Z=Blue
  */

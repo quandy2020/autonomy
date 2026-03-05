@@ -25,7 +25,7 @@ namespace transformation {
 
 /**
  * @brief TfFrameTransformer
- * Similar to rviz_default_plugins::transformation::TfFrameTransformer
+ * Frame transformer for TF
  *
  * Frame transformer using TF
  */

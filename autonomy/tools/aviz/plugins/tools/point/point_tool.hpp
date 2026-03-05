@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief PointTool
- * Similar to rviz_default_plugins::tools::PointTool
+ * Point tool for the visualizer
  */
 class PointTool
 {

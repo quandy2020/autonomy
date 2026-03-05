@@ -154,10 +154,9 @@ struct ImageMarker {
 
 struct Marker {
     // See:
-    //  - http://www.ros.org/wiki/rviz/DisplayTypes/Marker
-    //  - http://www.ros.org/wiki/rviz/Tutorials/Markers%3A%20Basic%20Shapes
+    // See ROS visualization marker documentation
     //
-    // for more information on using this message with rviz.
+    // for more information on using this message.
 
     // int32 ARROW=0
     // int32 CUBE=1
@@ -379,7 +378,7 @@ struct InteractiveMarker {
     // its frame on each timestep. You will receive the pose feedback
     // in the same frame.
     // Otherwise, you might receive feedback in a different frame.
-    // For rviz, this will be the current 'fixed frame' set by the user.
+    // This will be the current 'fixed frame' set by the user.
     std_msgs::Header header;
 
     // Initial pose. Also, defines the pivot point for rotations.

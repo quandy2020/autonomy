@@ -1,6 +1,6 @@
 //all shaders, sorted by name
 
-geometry_program rviz/glsl150/billboard.geom glsl
+geometry_program aviz/glsl150/billboard.geom glsl
 {
   source billboard.geom
   input_operation_type points
@@ -14,7 +14,7 @@ geometry_program rviz/glsl150/billboard.geom glsl
     param_named_auto auto_size custom     6
   }
 }
-geometry_program rviz/glsl150/billboard.geom(with_depth) glsl
+geometry_program aviz/glsl150/billboard.geom(with_depth) glsl
 {
   source billboard.geom
   input_operation_type points
@@ -31,7 +31,7 @@ geometry_program rviz/glsl150/billboard.geom(with_depth) glsl
   }
 }
 
-geometry_program rviz/glsl150/box.geom glsl
+geometry_program aviz/glsl150/box.geom glsl
 {
   source box.geom
   input_operation_type points
@@ -44,7 +44,7 @@ geometry_program rviz/glsl150/box.geom glsl
     param_named_auto auto_size custom     6
   }
 }
-geometry_program rviz/glsl150/box.geom(with_depth) glsl
+geometry_program aviz/glsl150/box.geom(with_depth) glsl
 {
   source box.geom
   input_operation_type points
@@ -59,7 +59,7 @@ geometry_program rviz/glsl150/box.geom(with_depth) glsl
     param_named_auto auto_size custom     6
   }
 }
-geometry_program rviz/glsl150/box.geom(with_lighting) glsl
+geometry_program aviz/glsl150/box.geom(with_lighting) glsl
 {
   source box.geom
   input_operation_type points
@@ -74,7 +74,7 @@ geometry_program rviz/glsl150/box.geom(with_lighting) glsl
   }
 }
 
-vertex_program rviz/glsl150/pass_pos_color.vert glsl
+vertex_program aviz/glsl150/pass_pos_color.vert glsl
 {
   source pass_pos_color.vert
 }

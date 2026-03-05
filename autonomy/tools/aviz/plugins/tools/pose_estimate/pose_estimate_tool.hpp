@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief PoseEstimateTool
- * Similar to rviz_default_plugins::tools::PoseEstimateTool
+ * Pose estimate tool for the visualizer
  */
 class PoseEstimateTool
 {

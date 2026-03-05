@@ -38,7 +38,7 @@ namespace displays {
 
 /**
  * @brief PointDisplay
- * Similar to rviz_default_plugins::displays::PointStampedDisplay
+ * Point (stamped) display
  *
  * Displays geometry_msgs::PointStamped messages as spheres
  */

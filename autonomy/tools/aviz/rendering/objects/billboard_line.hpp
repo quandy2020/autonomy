@@ -46,7 +46,7 @@ namespace rendering {
 
 /**
  * @brief Billboard line rendering object
- * Similar to rviz_rendering::BillboardLine
+ * Billboard line visualization object
  *
  * Displays a multi-segment line strip rendered as billboards (always facing camera)
  */

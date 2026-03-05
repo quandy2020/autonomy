@@ -25,7 +25,7 @@ namespace view_controllers {
 
 /**
  * @brief FollowerViewController
- * Similar to rviz_default_plugins::view_controllers::FollowerViewController
+ * Follower view controller
  */
 class FollowerViewController
 {

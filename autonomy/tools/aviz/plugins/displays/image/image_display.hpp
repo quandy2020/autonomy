@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief ImageDisplay
- * Similar to rviz_default_plugins::displays::ImageDisplay
+ * Image display
  *
  * Displays sensor_msgs::Image messages
  */

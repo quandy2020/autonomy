@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief CameraDisplay
- * Similar to rviz_default_plugins::displays::CameraDisplay
+ * Camera display
  *
  * Displays sensor_msgs::Image messages with camera info
  */

@@ -1,6 +1,6 @@
 # AViz Plugins
 
-This directory contains the plugin system for AViz visualizer, similar to ROS2 rviz's `rviz_default_plugins`.
+This directory contains the plugin system for AViz visualizer.
 
 ## Overview
 
@@ -25,7 +25,7 @@ Plugins are registered using the `PluginFactory::registerPlugin()` method, which
 
 ### Plugin Description File
 
-The `plugins_description.xml` file provides a human-readable description of all available plugins, similar to rviz's plugin description format. This file is for documentation purposes and can be used by UI tools to show available plugins.
+The `plugins_description.xml` file provides a human-readable description of all available plugins. This file is for documentation purposes and can be used by UI tools to show available plugins.
 
 ## Usage
 
@@ -123,13 +123,11 @@ To add a new display plugin:
 - **aviz/Odometry**: Odometry visualization
 - **aviz/Marker**: Visualization markers
 
-## Comparison with rviz
+## Architecture notes
 
-This plugin system is inspired by ROS2 rviz's plugin architecture but simplified:
-
-- **No pluginlib**: Uses static registration instead of dynamic library loading
-- **Simpler API**: Direct factory pattern instead of pluginlib's class loader
-- **Same concepts**: Plugin descriptions, factory pattern, and display lifecycle
+- **Static registration**: Plugins are registered at startup instead of dynamic library loading
+- **Factory pattern**: Direct factory for creating displays by class id
+- **Concepts**: Plugin descriptions, factory pattern, and display lifecycle
 
 ## Future Enhancements
 

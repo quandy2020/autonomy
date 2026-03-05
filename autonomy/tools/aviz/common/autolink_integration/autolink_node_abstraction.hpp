@@ -32,7 +32,7 @@ namespace autolink_integration {
  *
  * This class owns or references a single autolink::Node instance and uses
  * Autolink's service discovery (TopologyManager) to provide information about
- * available channels and their message types, similar to how rviz queries
+ * available channels and their message types
  * topic names and types from rclcpp.
  */
 class AutolinkNodeAbstraction : public AutolinkNodeAbstractionIface

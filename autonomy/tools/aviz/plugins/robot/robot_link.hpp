@@ -25,7 +25,7 @@ namespace robot {
 
 /**
  * @brief RobotLink
- * Similar to rviz_default_plugins::robot::RobotLink
+ * Robot link for the visualizer
  *
  * Represents a single link in the robot
  */

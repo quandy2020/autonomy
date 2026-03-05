@@ -45,7 +45,7 @@ class PanelDockWidget;
  * Each Display represents a visualization element (robot model, point cloud, etc.)
  * that can be enabled/disabled and updated over time.
  *
- * Similar to rviz_common::aviz::common::Display, but adapted for aviz system.
+ * Display base class for the AViz visualization system.
  */
 class Display : public QObject
 {

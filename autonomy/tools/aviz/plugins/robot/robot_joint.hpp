@@ -25,7 +25,7 @@ namespace robot {
 
 /**
  * @brief RobotJoint
- * Similar to rviz_default_plugins::robot::RobotJoint
+ * Robot joint for the visualizer
  *
  * Represents a single joint in the robot
  */

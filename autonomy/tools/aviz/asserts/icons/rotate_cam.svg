@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.2 r9819"
    sodipodi:docname="rotate_cam.svg"
-   inkscape:export-filename="/work/gossow/rviz/rviz/icons/rotate_cam.png"
+   inkscape:export-filename="aviz/icons/rotate_cam.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -302,7 +302,7 @@
        d="M 8,1.15625 5.15625,4 7.25,4 l 0,8.25 -2.09375,0 L 8,15.09375 10.84375,12.25 8.75,12.25 8.75,4 10.84375,4 z"
        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        sodipodi:nodetypes="ccccccccccc"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path4190.png"
+       inkscape:export-filename="aviz/icons/path4190.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
   </g>
@@ -331,7 +331,7 @@
        d="M 0.4999999,8.2470238 1.8758604,6.8711635 C 3.5648638,8.560166 5.7776049,9.417969 7.9940475,9.417969 c 2.2164445,0 4.4291855,-0.857802 6.1181875,-2.5468053 l 1.375861,1.3758601 0,-3.7470239 -3.747023,-2e-7 1.37586,1.3758603 C 11.696416,7.2963786 9.85313,8.0128346 7.9940475,8.0128349 6.1349653,8.012835 4.2916819,7.2963782 2.8711634,5.8758602 L 4.2470237,4.5 0.5,4.5 l -1e-7,3.7470238 z"
        id="path4192"
        inkscape:connector-curvature="0"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path4196.png"
+       inkscape:export-filename="aviz/icons/path4196.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
     <path
@@ -339,7 +339,7 @@
        id="path4196"
        d="M 0.4999999,8.2470238 1.8758604,6.8711635 C 3.5648638,8.560166 5.7776049,9.417969 7.9940475,9.417969 c 2.2164445,0 4.4291855,-0.857802 6.1181875,-2.5468053 l 1.375861,1.3758601 0,-3.7470239 -3.747023,-2e-7 1.37586,1.3758603 C 11.696416,7.2963786 9.85313,8.0128346 7.9940475,8.0128349 6.1349653,8.012835 4.2916819,7.2963782 2.8711634,5.8758602 L 4.2470237,4.5 0.5,4.5 l -1e-7,3.7470238 z"
        style="font-size:medium;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-indent:0;text-align:start;text-decoration:none;line-height:normal;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;block-progression:tb;writing-mode:lr-tb;text-anchor:start;baseline-shift:baseline;color:#000000;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate;font-family:Sans;-inkscape-font-specification:Sans"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path4196.png"
+       inkscape:export-filename="aviz/icons/path4196.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
     <path

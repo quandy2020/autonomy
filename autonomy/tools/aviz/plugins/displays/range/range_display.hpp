@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief RangeDisplay
- * Similar to rviz_default_plugins::displays::RangeDisplay
+ * Range display
  */
 class RangeDisplay : public aviz::common::Display
 {

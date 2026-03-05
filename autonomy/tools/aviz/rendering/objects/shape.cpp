@@ -40,16 +40,16 @@ Ogre::Entity* Shape::createEntity(const std::string& name, Type type, Ogre::Scen
     std::string mesh_name;
     switch (type) {
         case Cone:
-            mesh_name = "rviz_cone.mesh";
+            mesh_name = "aviz_cone.mesh";
             break;
         case Cube:
-            mesh_name = "rviz_cube.mesh";
+            mesh_name = "aviz_cube.mesh";
             break;
         case Cylinder:
-            mesh_name = "rviz_cylinder.mesh";
+            mesh_name = "aviz_cylinder.mesh";
             break;
         case Sphere:
-            mesh_name = "rviz_sphere.mesh";
+            mesh_name = "aviz_sphere.mesh";
             break;
         default:
             throw std::runtime_error("unexpected mesh entity type");

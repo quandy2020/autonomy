@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief WrenchDisplay
- * Similar to rviz_default_plugins::displays::WrenchDisplay
+ * Wrench display
  */
 class WrenchDisplay : public aviz::common::Display
 {

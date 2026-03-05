@@ -25,7 +25,7 @@ namespace robot {
 
 /**
  * @brief RobotElementBaseClass
- * Similar to rviz_default_plugins::robot::RobotElementBaseClass
+ * Base class for robot elements
  *
  * Base class for robot elements
  */

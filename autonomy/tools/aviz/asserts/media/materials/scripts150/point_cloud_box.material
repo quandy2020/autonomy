@@ -1,4 +1,4 @@
-material rviz/PointCloudBox
+material aviz/PointCloudBox
 { 
   // the 'gp' techniques need one input vertex per box
   // and use geometry shaders to create the geometry
@@ -7,9 +7,9 @@ material rviz/PointCloudBox
   {
     pass
     {
-      vertex_program_ref   rviz/glsl150/pass_pos_color.vert {}
-      geometry_program_ref rviz/glsl150/box.geom(with_lighting) {}
-      fragment_program_ref rviz/glsl120/smooth_square.frag {}
+      vertex_program_ref   aviz/glsl150/pass_pos_color.vert {}
+      geometry_program_ref aviz/glsl150/box.geom(with_lighting) {}
+      fragment_program_ref aviz/glsl120/smooth_square.frag {}
     }
   }
   
@@ -18,9 +18,9 @@ material rviz/PointCloudBox
     scheme Depth
     pass
     {
-      vertex_program_ref   rviz/glsl150/pass_pos_color.vert {}
-      geometry_program_ref rviz/glsl150/box.geom(with_depth) {}
-      fragment_program_ref rviz/glsl120/depth.frag {}
+      vertex_program_ref   aviz/glsl150/pass_pos_color.vert {}
+      geometry_program_ref aviz/glsl150/box.geom(with_depth) {}
+      fragment_program_ref aviz/glsl120/depth.frag {}
     }
   }
   
@@ -29,9 +29,9 @@ material rviz/PointCloudBox
     scheme Pick
     pass
     {
-      vertex_program_ref   rviz/glsl150/pass_pos_color.vert {}
-      geometry_program_ref rviz/glsl150/box.geom {}
-      fragment_program_ref rviz/glsl120/pickcolor.frag {}
+      vertex_program_ref   aviz/glsl150/pass_pos_color.vert {}
+      geometry_program_ref aviz/glsl150/box.geom {}
+      fragment_program_ref aviz/glsl120/pickcolor.frag {}
     }
   }
   
@@ -40,9 +40,9 @@ material rviz/PointCloudBox
     scheme Pick1
     pass
     {
-      vertex_program_ref   rviz/glsl150/pass_pos_color.vert {}
-      geometry_program_ref rviz/glsl150/box.geom {}
-      fragment_program_ref rviz/glsl120/pass_color.frag {}
+      vertex_program_ref   aviz/glsl150/pass_pos_color.vert {}
+      geometry_program_ref aviz/glsl150/box.geom {}
+      fragment_program_ref aviz/glsl120/pass_color.frag {}
     }
   }
 

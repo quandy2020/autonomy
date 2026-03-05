@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief DepthCloudDisplay
- * Similar to rviz_default_plugins::displays::DepthCloudDisplay
+ * Depth cloud display
  */
 class DepthCloudDisplay : public aviz::common::Display
 {

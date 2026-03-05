@@ -153,7 +153,6 @@ function install_ros2_packages() {
     apt-get install -y ros-${ROS_DISTRO}-octomap-ros
     apt-get install -y ros-${ROS_DISTRO}-octomap-msgs
     apt-get install -y ros-${ROS_DISTRO}-octomap-mapping
-    apt-get install -y ros-${ROS_DISTRO}-octomap-rviz-plugins
     apt-get install -y ros-${ROS_DISTRO}-xacro
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler-ros

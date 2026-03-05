@@ -28,7 +28,7 @@ namespace displays {
 
 /**
  * @brief MapDisplay
- * Similar to rviz_default_plugins::displays::MapDisplay
+ * Map display
  *
  * Displays map_msgs::OccupancyGrid messages
  */

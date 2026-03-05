@@ -1,12 +1,12 @@
-material rviz/PointCloudTile 
+material aviz/PointCloudTile 
 {
   technique nogp {
     pass {
       alpha_rejection greater_equal 1
       cull_hardware none
       cull_software none
-      vertex_program_ref rviz/glsl120/nogp/billboard_tile.vert {}
-      fragment_program_ref rviz/glsl120/smooth_square.frag {}
+      vertex_program_ref aviz/glsl120/nogp/billboard_tile.vert {}
+      fragment_program_ref aviz/glsl120/smooth_square.frag {}
     }
   }
   
@@ -16,8 +16,8 @@ material rviz/PointCloudTile
       alpha_rejection greater_equal 1
       cull_hardware none
       cull_software none
-      vertex_program_ref rviz/glsl120/nogp/billboard_tile.vert(with_depth) {}
-      fragment_program_ref rviz/glsl120/depth.frag {}
+      vertex_program_ref aviz/glsl120/nogp/billboard_tile.vert(with_depth) {}
+      fragment_program_ref aviz/glsl120/depth.frag {}
     }
   }
   
@@ -27,8 +27,8 @@ material rviz/PointCloudTile
       alpha_rejection greater_equal 1
       cull_hardware none
       cull_software none
-      vertex_program_ref rviz/glsl120/nogp/billboard_tile.vert {}
-      fragment_program_ref rviz/glsl120/pickcolor.frag {}
+      vertex_program_ref aviz/glsl120/nogp/billboard_tile.vert {}
+      fragment_program_ref aviz/glsl120/pickcolor.frag {}
     }
   }
   
@@ -38,8 +38,8 @@ material rviz/PointCloudTile
       alpha_rejection greater_equal 1
       cull_hardware none
       cull_software none
-      vertex_program_ref rviz/glsl120/nogp/billboard_tile.vert {}
-      fragment_program_ref rviz/glsl120/pass_color.frag {}
+      vertex_program_ref aviz/glsl120/nogp/billboard_tile.vert {}
+      fragment_program_ref aviz/glsl120/pass_color.frag {}
     }
   }
 }

@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief TwistDisplay
- * Similar to rviz_default_plugins::displays::TwistDisplay
+ * Twist display
  */
 class TwistDisplay : public aviz::common::Display
 {

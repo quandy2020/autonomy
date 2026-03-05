@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief PoseArrayDisplay
- * Similar to rviz_default_plugins::displays::PoseArrayDisplay
+ * Pose array display
  */
 class PoseArrayDisplay : public aviz::common::Display
 {

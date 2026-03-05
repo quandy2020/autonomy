@@ -21,7 +21,7 @@
 
 /**
  * @brief Float validation utilities
- * Similar to rviz_common::validate_floats
+ * Float validation helpers
  *
  * Provides functions to validate that floating point values are valid (not NaN, not Inf)
  */

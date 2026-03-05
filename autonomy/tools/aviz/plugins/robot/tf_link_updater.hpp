@@ -25,7 +25,7 @@ namespace robot {
 
 /**
  * @brief TfLinkUpdater
- * Similar to rviz_default_plugins::robot::TfLinkUpdater
+ * TF-based link updater for robot model
  *
  * Updates robot link poses from TF
  */
