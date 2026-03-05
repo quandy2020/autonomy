@@ -23,45 +23,43 @@ namespace control {
 namespace checker {
 
 void SimpleProgressChecker::Initialize(const std::string& plugin_name) {
-    plugin_name_ = plugin_name;
-    radius_ = 0.5;  // Default value, can be configured via parameters
+  plugin_name_ = plugin_name;
+  radius_ = 0.5;  // Default value, can be configured via parameters
 }
 
 bool SimpleProgressChecker::Check(commsgs::geometry_msgs::PoseStamped& current_pose) {
-    // Convert Pose to Pose2D
-    commsgs::geometry_msgs::Pose2D current_pose2d;
-    current_pose2d.x = current_pose.pose.position.x;
-    current_pose2d.y = current_pose.pose.position.y;
-    current_pose2d.theta = transform::tf2::getYaw(current_pose.pose.orientation);
+  // Convert Pose to Pose2D
+  commsgs::geometry_msgs::Pose2D current_pose2d;
+  current_pose2d.x = current_pose.pose.position.x;
+  current_pose2d.y = current_pose.pose.position.y;
+  current_pose2d.theta = transform::tf2::getYaw(current_pose.pose.orientation);
 
-    if ((!baseline_pose_set_) || (IsRobotMovedEnough(current_pose2d))) {
-        ResetBaselinePose(current_pose2d);
-        return true;
-    }
-    // If robot hasn't moved enough, progress check fails
-    return false;
+  if ((!baseline_pose_set_) || (IsRobotMovedEnough(current_pose2d))) {
+    ResetBaselinePose(current_pose2d);
+    return true;
+  }
+  // If robot hasn't moved enough, progress check fails
+  return false;
 }
 
-void SimpleProgressChecker::Reset() {
-    baseline_pose_set_ = false;
-}
+void SimpleProgressChecker::Reset() { baseline_pose_set_ = false; }
 
 void SimpleProgressChecker::ResetBaselinePose(const commsgs::geometry_msgs::Pose2D& pose) {
-    baseline_pose_ = pose;
-    // baseline_time_ = clock_->now();
-    baseline_pose_set_ = true;
+  baseline_pose_ = pose;
+  // baseline_time_ = clock_->now();
+  baseline_pose_set_ = true;
 }
 
 bool SimpleProgressChecker::IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose) {
-    return PoseDistance(pose, baseline_pose_) > radius_;
+  return PoseDistance(pose, baseline_pose_) > radius_;
 }
 
 double SimpleProgressChecker::PoseDistance(const commsgs::geometry_msgs::Pose2D& pose1,
                                            const commsgs::geometry_msgs::Pose2D& pose2) {
-    double dx = pose1.x - pose2.x;
-    double dy = pose1.y - pose2.y;
+  double dx = pose1.x - pose2.x;
+  double dy = pose1.y - pose2.y;
 
-    return std::hypot(dx, dy);
+  return std::hypot(dx, dy);
 }
 
 }  // namespace checker

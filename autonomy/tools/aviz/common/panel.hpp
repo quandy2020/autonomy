@@ -31,47 +31,46 @@ class DisplayContext;
  * Panels are dockable widgets that provide additional UI elements.
  * Examples include property panels, tool panels, etc.
  */
-class Panel : public QWidget
-{
-    Q_OBJECT
+class Panel : public QWidget {
+  Q_OBJECT
 
-public:
-    explicit Panel(QWidget* parent = nullptr);
-    ~Panel() override;
+ public:
+  explicit Panel(QWidget* parent = nullptr);
+  ~Panel() override;
 
-    /// Initialize the panel with display context.
-    void initialize(DisplayContext* context);
+  /// Initialize the panel with display context.
+  void initialize(DisplayContext* context);
 
-    /// Load panel configuration from Config.
-    virtual void load(const Config& config);
+  /// Load panel configuration from Config.
+  virtual void load(const Config& config);
 
-    /// Save panel configuration to Config.
-    virtual void save(Config config) const;
+  /// Save panel configuration to Config.
+  virtual void save(Config config) const;
 
-    /// Get the panel name.
-    QString getName() const;
+  /// Get the panel name.
+  QString getName() const;
 
-    /// Set the panel name.
-    void setName(const QString& name);
+  /// Set the panel name.
+  void setName(const QString& name);
 
-    /// Get the class identifier.
-    QString getClassId() const;
+  /// Get the class identifier.
+  QString getClassId() const;
 
-    /// Set the class identifier.
-    void setClassId(const QString& class_id);
+  /// Set the class identifier.
+  void setClassId(const QString& class_id);
 
-protected:
-    /// Override to do subclass-specific initialization.
-    /**
-     * Called by Panel::initialize() after context_ is set.
-     */
-    virtual void onInitialize() {}
+ protected:
+  /// Override to do subclass-specific initialization.
+  /**
+   * Called by Panel::initialize() after context_ is set.
+   */
+  virtual void onInitialize() {}
 
-    DisplayContext* context_;
+  DisplayContext* context_;
 
-private:
-    QString name_;
-    QString class_id_;
+ private:
+  QString name_;
+  QString class_id_;
 };
 
 }  // namespace common

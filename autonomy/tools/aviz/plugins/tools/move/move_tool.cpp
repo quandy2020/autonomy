@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 MoveTool::MoveTool() {
-    // TODO: Initialize tool
+  // TODO: Initialize tool
 }
 
 MoveTool::~MoveTool() {
-    // TODO: Cleanup
+  // TODO: Cleanup
 }
 
 }  // namespace tools

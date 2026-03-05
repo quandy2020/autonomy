@@ -14,15 +14,14 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include "autolink/transport/transmitter/intra_transmitter.hpp"
-
 #include <memory>
 #include <string>
 #include <vector>
-#include "gtest/gtest.h"
 
 #include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/receiver/intra_receiver.hpp"
+#include "autolink/transport/transmitter/intra_transmitter.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -58,10 +57,8 @@ class IntraTranceiverTest : public ::testing::Test {
 
 TEST_F(IntraTranceiverTest, constructor) {
   RoleAttributes attr;
-  TransmitterPtr transmitter =
-      std::make_shared<IntraTransmitter<proto::UnitTest>>(attr);
-  ReceiverPtr receiver =
-      std::make_shared<IntraReceiver<proto::UnitTest>>(attr, nullptr);
+  TransmitterPtr transmitter = std::make_shared<IntraTransmitter<proto::UnitTest>>(attr);
+  ReceiverPtr receiver = std::make_shared<IntraReceiver<proto::UnitTest>>(attr, nullptr);
 
   EXPECT_EQ(transmitter->seq_num(), 0);
 
@@ -79,8 +76,8 @@ TEST_F(IntraTranceiverTest, enable_and_disable) {
   RoleAttributes attr;
   attr.set_channel_name(channel_name_);
   ReceiverPtr receiver = std::make_shared<IntraReceiver<proto::UnitTest>>(
-      attr, [&msgs](const std::shared_ptr<proto::UnitTest>& msg,
-                    const MessageInfo& msg_info, const RoleAttributes& attr) {
+      attr,
+      [&msgs](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
         (void)msg_info;
         (void)attr;
         msgs.emplace_back(*msg);
@@ -90,8 +87,7 @@ TEST_F(IntraTranceiverTest, enable_and_disable) {
   // repeated call
   receiver->Enable();
 
-  ReceiverPtr receiver_null_cb =
-      std::make_shared<IntraReceiver<proto::UnitTest>>(attr, nullptr);
+  ReceiverPtr receiver_null_cb = std::make_shared<IntraReceiver<proto::UnitTest>>(attr, nullptr);
   receiver_null_cb->Enable();
 
   auto msg = std::make_shared<proto::UnitTest>();

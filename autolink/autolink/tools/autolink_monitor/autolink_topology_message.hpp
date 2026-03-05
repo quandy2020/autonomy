@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <map>
 #include <string>
 
@@ -41,8 +40,7 @@ class CyberTopologyMessage : public RenderableMessage {
   RenderableMessage* Child(int index) const override;
 
   void TopologyChanged(const autolink::proto::ChangeMsg& change_msg);
-  void AddReaderWriter(const autolink::proto::RoleAttributes& role,
-                       bool isWriter);
+  void AddReaderWriter(const autolink::proto::RoleAttributes& role, bool isWriter);
 
  private:
   CyberTopologyMessage(const CyberTopologyMessage&) = delete;
@@ -51,8 +49,7 @@ class CyberTopologyMessage : public RenderableMessage {
   void ChangeState(const Screen* s, int key);
   bool IsFromHere(const std::string& node_name);
 
-  std::map<std::string, GeneralChannelMessage*>::const_iterator FindChild(
-      int index) const;
+  std::map<std::string, GeneralChannelMessage*>::const_iterator FindChild(int index) const;
 
   enum class SecondColumnType { MessageType, MessageFrameRatio };
   SecondColumnType second_column_;
@@ -62,4 +59,3 @@ class CyberTopologyMessage : public RenderableMessage {
   const std::string& specified_channel_;
   std::map<std::string, GeneralChannelMessage*> all_channels_map_;
 };
-

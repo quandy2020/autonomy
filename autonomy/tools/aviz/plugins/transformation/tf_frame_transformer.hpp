@@ -29,16 +29,15 @@ namespace transformation {
  *
  * Frame transformer using TF
  */
-class TfFrameTransformer
-{
-public:
-    TfFrameTransformer();
-    virtual ~TfFrameTransformer();
+class TfFrameTransformer {
+ public:
+  TfFrameTransformer();
+  virtual ~TfFrameTransformer();
 
-    // TODO: Implement functionality
+  // TODO: Implement functionality
 
-private:
-    // TODO: Add members
+ private:
+  // TODO: Add members
 };
 
 }  // namespace transformation

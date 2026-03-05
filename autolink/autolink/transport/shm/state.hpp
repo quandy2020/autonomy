@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <cstdint>
 #include <mutex>
@@ -36,8 +35,7 @@ class State {
       if (current_reference_count == 0) {
         return;
       }
-    } while (!reference_count_.compare_exchange_strong(
-        current_reference_count, current_reference_count - 1));
+    } while (!reference_count_.compare_exchange_strong(current_reference_count, current_reference_count - 1));
   }
 
   void IncreaseReferenceCounts() { reference_count_.fetch_add(1); }
@@ -45,9 +43,7 @@ class State {
   uint32_t FetchAddSeq(uint32_t diff) { return seq_.fetch_add(diff); }
   uint32_t seq() { return seq_.load(); }
 
-  uint32_t FetchAddArenaSeq(uint32_t diff) {
-    return arena_seq_.fetch_add(diff);
-  }
+  uint32_t FetchAddArenaSeq(uint32_t diff) { return arena_seq_.fetch_add(diff); }
   uint32_t arena_seq() { return arena_seq_.load(); }
 
   void set_need_remap(bool need) { need_remap_.store(need); }
@@ -66,4 +62,3 @@ class State {
 
 }  // namespace transport
 }  // namespace autolink
-

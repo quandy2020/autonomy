@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -39,10 +38,10 @@ class ObjectPool : public std::enable_shared_from_this<ObjectPool<T>> {
   using ObjectPoolPtr = std::shared_ptr<ObjectPool<T>>;
 
   template <typename... Args>
-  explicit ObjectPool(uint32_t num_objects, Args &&... args);
+  explicit ObjectPool(uint32_t num_objects, Args &&...args);
 
   template <typename... Args>
-  ObjectPool(uint32_t num_objects, InitFunc f, Args &&... args);
+  ObjectPool(uint32_t num_objects, InitFunc f, Args &&...args);
 
   virtual ~ObjectPool();
 
@@ -65,8 +64,7 @@ class ObjectPool : public std::enable_shared_from_this<ObjectPool<T>> {
 
 template <typename T>
 template <typename... Args>
-ObjectPool<T>::ObjectPool(uint32_t num_objects, Args &&... args)
-    : num_objects_(num_objects) {
+ObjectPool<T>::ObjectPool(uint32_t num_objects, Args &&...args) : num_objects_(num_objects) {
   const size_t size = sizeof(Node);
   object_arena_ = static_cast<char *>(std::calloc(num_objects_, size));
   if (object_arena_ == nullptr) {
@@ -82,8 +80,7 @@ ObjectPool<T>::ObjectPool(uint32_t num_objects, Args &&... args)
 
 template <typename T>
 template <typename... Args>
-ObjectPool<T>::ObjectPool(uint32_t num_objects, InitFunc f, Args &&... args)
-    : num_objects_(num_objects) {
+ObjectPool<T>::ObjectPool(uint32_t num_objects, InitFunc f, Args &&...args) : num_objects_(num_objects) {
   const size_t size = sizeof(Node);
   object_arena_ = static_cast<char *>(std::calloc(num_objects_, size));
   if (object_arena_ == nullptr) {
@@ -102,9 +99,7 @@ template <typename T>
 ObjectPool<T>::~ObjectPool() {
   if (object_arena_ != nullptr) {
     const size_t size = sizeof(Node);
-    FOR_EACH(i, 0, num_objects_) {
-      reinterpret_cast<Node *>(object_arena_ + i * size)->object.~T();
-    }
+    FOR_EACH(i, 0, num_objects_) { reinterpret_cast<Node *>(object_arena_ + i * size)->object.~T(); }
     std::free(object_arena_);
   }
 }
@@ -126,13 +121,10 @@ std::shared_ptr<T> ObjectPool<T>::GetObject() {
   }
 
   auto self = this->shared_from_this();
-  auto obj =
-      std::shared_ptr<T>(reinterpret_cast<T *>(free_head_),
-                         [self](T *object) { self->ReleaseObject(object); });
+  auto obj = std::shared_ptr<T>(reinterpret_cast<T *>(free_head_), [self](T *object) { self->ReleaseObject(object); });
   free_head_ = free_head_->next;
   return obj;
 }
 
 }  // namespace base
 }  // namespace autolink
-

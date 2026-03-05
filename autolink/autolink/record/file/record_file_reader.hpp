@@ -16,23 +16,21 @@
 
 #pragma once
 
-
 #include <fstream>
+#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
-#include <limits>
-#include "google/protobuf/io/coded_stream.h"
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-
 #include "autolink/common/log.hpp"
 #include "autolink/record/file/record_file_base.hpp"
 #include "autolink/record/file/section.hpp"
 #include "autolink/time/time.hpp"
+#include "google/protobuf/io/coded_stream.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace autolink {
 namespace record {
@@ -62,8 +60,7 @@ class RecordFileReader : public RecordFileBase {
 
 template <typename T>
 bool RecordFileReader::ReadSection(int64_t size, T* message) {
-  if (size < std::numeric_limits<int>::min() ||
-      size > std::numeric_limits<int>::max()) {
+  if (size < std::numeric_limits<int>::min() || size > std::numeric_limits<int>::max()) {
     AERROR << "Size value greater than the range of int value.";
     return false;
   }
@@ -90,4 +87,3 @@ bool RecordFileReader::ReadSection(int64_t size, T* message) {
 
 }  // namespace record
 }  // namespace autolink
-

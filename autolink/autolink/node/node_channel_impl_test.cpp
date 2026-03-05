@@ -18,13 +18,11 @@
 
 #include <iostream>
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
 #include "autolink/node/node.hpp"
+#include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace node_channel_impl {

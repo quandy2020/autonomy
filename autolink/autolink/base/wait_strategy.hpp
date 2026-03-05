@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <chrono>
 #include <condition_variable>
 #include <cstdlib>
@@ -55,17 +54,14 @@ class BlockWaitStrategy : public WaitStrategy {
 class SleepWaitStrategy : public WaitStrategy {
  public:
   SleepWaitStrategy() {}
-  explicit SleepWaitStrategy(uint64_t sleep_time_us)
-      : sleep_time_us_(sleep_time_us) {}
+  explicit SleepWaitStrategy(uint64_t sleep_time_us) : sleep_time_us_(sleep_time_us) {}
 
   bool EmptyWait() override {
     std::this_thread::sleep_for(std::chrono::microseconds(sleep_time_us_));
     return true;
   }
 
-  void SetSleepTimeMicroSeconds(uint64_t sleep_time_us) {
-    sleep_time_us_ = sleep_time_us;
-  }
+  void SetSleepTimeMicroSeconds(uint64_t sleep_time_us) { sleep_time_us_ = sleep_time_us; }
 
  private:
   uint64_t sleep_time_us_ = 10000;
@@ -89,8 +85,7 @@ class BusySpinWaitStrategy : public WaitStrategy {
 class TimeoutBlockWaitStrategy : public WaitStrategy {
  public:
   TimeoutBlockWaitStrategy() {}
-  explicit TimeoutBlockWaitStrategy(uint64_t timeout)
-      : time_out_(std::chrono::milliseconds(timeout)) {}
+  explicit TimeoutBlockWaitStrategy(uint64_t timeout) : time_out_(std::chrono::milliseconds(timeout)) {}
 
   void NotifyOne() override { cv_.notify_one(); }
 
@@ -104,9 +99,7 @@ class TimeoutBlockWaitStrategy : public WaitStrategy {
 
   void BreakAllWait() override { cv_.notify_all(); }
 
-  void SetTimeout(uint64_t timeout) {
-    time_out_ = std::chrono::milliseconds(timeout);
-  }
+  void SetTimeout(uint64_t timeout) { time_out_ = std::chrono::milliseconds(timeout); }
 
  private:
   std::mutex mutex_;
@@ -116,4 +109,3 @@ class TimeoutBlockWaitStrategy : public WaitStrategy {
 
 }  // namespace base
 }  // namespace autolink
-

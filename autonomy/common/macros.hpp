@@ -25,9 +25,9 @@
  *
  * Use in the private section of the class.
  */
-#define AUTONOMY_DISABLE_COPY(...)            \
-    __VA_ARGS__(const __VA_ARGS__&) = delete; \
-    __VA_ARGS__& operator=(const __VA_ARGS__&) = delete;
+#define AUTONOMY_DISABLE_COPY(...)          \
+  __VA_ARGS__(const __VA_ARGS__&) = delete; \
+  __VA_ARGS__& operator=(const __VA_ARGS__&) = delete;
 
 /**
  * Defines aliases and static functions for using the Class with smart pointers.
@@ -35,10 +35,10 @@
  * Use in the public section of the class.
  * Make sure to include `<memory>` in the header when using this.
  */
-#define AUTONOMY_SMART_PTR_DEFINITIONS(...)      \
-    AUTONOMY_SHARED_PTR_DEFINITIONS(__VA_ARGS__) \
-    AUTONOMY_WEAK_PTR_DEFINITIONS(__VA_ARGS__)   \
-    AUTONOMY_UNIQUE_PTR_DEFINITIONS(__VA_ARGS__)
+#define AUTONOMY_SMART_PTR_DEFINITIONS(...)    \
+  AUTONOMY_SHARED_PTR_DEFINITIONS(__VA_ARGS__) \
+  AUTONOMY_WEAK_PTR_DEFINITIONS(__VA_ARGS__)   \
+  AUTONOMY_UNIQUE_PTR_DEFINITIONS(__VA_ARGS__)
 
 /**
  * Defines aliases and static functions for using the Class with smart pointers.
@@ -51,9 +51,9 @@
  * Make sure to include `<memory>` in the header when using this.
  */
 #define AUTONOMY_SMART_PTR_DEFINITIONS_NOT_COPYABLE(...) \
-    AUTONOMY_SHARED_PTR_DEFINITIONS(__VA_ARGS__)         \
-    AUTONOMY_WEAK_PTR_DEFINITIONS(__VA_ARGS__)           \
-    __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__)
+  AUTONOMY_SHARED_PTR_DEFINITIONS(__VA_ARGS__)           \
+  AUTONOMY_WEAK_PTR_DEFINITIONS(__VA_ARGS__)             \
+  __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__)
 
 /**
  * Defines aliases only for using the Class with smart pointers.
@@ -66,76 +66,76 @@
  * Make sure to include `<memory>` in the header when using this.
  */
 #define AUTONOMY_SMART_PTR_ALIASES_ONLY(...) \
-    __AUTONOMY_SHARED_PTR_ALIAS(__VA_ARGS__) \
-    __AUTONOMY_WEAK_PTR_ALIAS(__VA_ARGS__)   \
-    __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__) \
-    __AUTONOMY_MAKE_SHARED_DEFINITION(__VA_ARGS__)
+  __AUTONOMY_SHARED_PTR_ALIAS(__VA_ARGS__)   \
+  __AUTONOMY_WEAK_PTR_ALIAS(__VA_ARGS__)     \
+  __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__)   \
+  __AUTONOMY_MAKE_SHARED_DEFINITION(__VA_ARGS__)
 
-#define __AUTONOMY_SHARED_PTR_ALIAS(...)            \
-    using SharedPtr = std::shared_ptr<__VA_ARGS__>; \
-    using ConstSharedPtr = std::shared_ptr<const __VA_ARGS__>;
+#define __AUTONOMY_SHARED_PTR_ALIAS(...)          \
+  using SharedPtr = std::shared_ptr<__VA_ARGS__>; \
+  using ConstSharedPtr = std::shared_ptr<const __VA_ARGS__>;
 
-#define __AUTONOMY_MAKE_SHARED_DEFINITION(...)                             \
-    template <typename... Args>                                            \
-    static std::shared_ptr<__VA_ARGS__> make_shared(Args&&... args) {      \
-        return std::make_shared<__VA_ARGS__>(std::forward<Args>(args)...); \
-    }
+#define __AUTONOMY_MAKE_SHARED_DEFINITION(...)                         \
+  template <typename... Args>                                          \
+  static std::shared_ptr<__VA_ARGS__> make_shared(Args&&... args) {    \
+    return std::make_shared<__VA_ARGS__>(std::forward<Args>(args)...); \
+  }
 
 /// Defines aliases and static functions for using the Class with shared_ptrs.
 #define AUTONOMY_SHARED_PTR_DEFINITIONS(...) \
-    __AUTONOMY_SHARED_PTR_ALIAS(__VA_ARGS__) \
-    __AUTONOMY_MAKE_SHARED_DEFINITION(__VA_ARGS__)
+  __AUTONOMY_SHARED_PTR_ALIAS(__VA_ARGS__)   \
+  __AUTONOMY_MAKE_SHARED_DEFINITION(__VA_ARGS__)
 
-#define __AUTONOMY_WEAK_PTR_ALIAS(...)          \
-    using WeakPtr = std::weak_ptr<__VA_ARGS__>; \
-    using ConstWeakPtr = std::weak_ptr<const __VA_ARGS__>;
+#define __AUTONOMY_WEAK_PTR_ALIAS(...)        \
+  using WeakPtr = std::weak_ptr<__VA_ARGS__>; \
+  using ConstWeakPtr = std::weak_ptr<const __VA_ARGS__>;
 
 /// Defines aliases and static functions for using the Class with weak_ptrs.
 #define AUTONOMY_WEAK_PTR_DEFINITIONS(...) __AUTONOMY_WEAK_PTR_ALIAS(__VA_ARGS__)
 
 #define __AUTONOMY_UNIQUE_PTR_ALIAS(...) using UniquePtr = std::unique_ptr<__VA_ARGS__>;
 
-#define __AUTONOMY_MAKE_UNIQUE_DEFINITION(...)                                             \
-    template <typename... Args>                                                            \
-    static std::unique_ptr<__VA_ARGS__> make_unique(Args&&... args) {                      \
-        return std::unique_ptr<__VA_ARGS__>(new __VA_ARGS__(std::forward<Args>(args)...)); \
-    }
+#define __AUTONOMY_MAKE_UNIQUE_DEFINITION(...)                                         \
+  template <typename... Args>                                                          \
+  static std::unique_ptr<__VA_ARGS__> make_unique(Args&&... args) {                    \
+    return std::unique_ptr<__VA_ARGS__>(new __VA_ARGS__(std::forward<Args>(args)...)); \
+  }
 
 /// Defines aliases and static functions for using the Class with unique_ptrs.
 #define AUTONOMY_UNIQUE_PTR_DEFINITIONS(...) \
-    __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__) \
-    __AUTONOMY_MAKE_UNIQUE_DEFINITION(__VA_ARGS__)
+  __AUTONOMY_UNIQUE_PTR_ALIAS(__VA_ARGS__)   \
+  __AUTONOMY_MAKE_UNIQUE_DEFINITION(__VA_ARGS__)
 
 #define AUTONOMY_STRING_JOIN(arg1, arg2) AUTONOMY_DO_STRING_JOIN(arg1, arg2)
 #define AUTONOMY_DO_STRING_JOIN(arg1, arg2) arg1##arg2
 
 #define CACHELINE_SIZE 64
 
-#define DEFINE_TYPE_TRAIT(name, func)                         \
-    template <typename T>                                     \
-    struct name {                                             \
-        template <typename Class>                             \
-        static constexpr bool Test(decltype(&Class::func)*) { \
-            return true;                                      \
-        }                                                     \
-        template <typename>                                   \
-        static constexpr bool Test(...) {                     \
-            return false;                                     \
-        }                                                     \
-                                                              \
-        static constexpr bool value = Test<T>(nullptr);       \
-    };                                                        \
-                                                              \
-    template <typename T>                                     \
-    constexpr bool name<T>::value;
+#define DEFINE_TYPE_TRAIT(name, func)                     \
+  template <typename T>                                   \
+  struct name {                                           \
+    template <typename Class>                             \
+    static constexpr bool Test(decltype(&Class::func)*) { \
+      return true;                                        \
+    }                                                     \
+    template <typename>                                   \
+    static constexpr bool Test(...) {                     \
+      return false;                                       \
+    }                                                     \
+                                                          \
+    static constexpr bool value = Test<T>(nullptr);       \
+  };                                                      \
+                                                          \
+  template <typename T>                                   \
+  constexpr bool name<T>::value;
 
 namespace autonomy {
 
 inline void cpu_relax() {
 #if defined(__aarch64__)
-    asm volatile("yield" ::: "memory");
+  asm volatile("yield" ::: "memory");
 #else
-    asm volatile("rep; nop" ::: "memory");
+  asm volatile("rep; nop" ::: "memory");
 #endif
 }
 
@@ -161,12 +161,12 @@ DEFINE_TYPE_TRAIT(HasShutdown, Shutdown)
 
 template <typename T>
 typename std::enable_if<HasShutdown<T>::value>::type CallShutdown(T* instance) {
-    instance->Shutdown();
+  instance->Shutdown();
 }
 
 template <typename T>
 typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(T* instance) {
-    (void)instance;
+  (void)instance;
 }
 
 }  // namespace autonomy
@@ -183,29 +183,29 @@ typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(T* instance) 
 #define AUTONOMY_UNUSED(param) UNUSED(param)
 
 #define DISALLOW_COPY_AND_ASSIGN(classname) \
-    classname(const classname&) = delete;   \
-    classname& operator=(const classname&) = delete;
+  classname(const classname&) = delete;     \
+  classname& operator=(const classname&) = delete;
 
-#define DECLARE_SINGLETON(classname)                                                  \
-public:                                                                               \
-    static classname* Instance(bool create_if_needed = true) {                        \
-        static classname* instance = nullptr;                                         \
-        if (!instance && create_if_needed) {                                          \
-            static std::once_flag flag;                                               \
-            std::call_once(flag, [&] { instance = new (std::nothrow) classname(); }); \
-        }                                                                             \
-        return instance;                                                              \
-    }                                                                                 \
-                                                                                      \
-    static void CleanUp() {                                                           \
-        auto instance = Instance(false);                                              \
-        if (instance != nullptr) {                                                    \
-            CallShutdown(instance);                                                   \
-        }                                                                             \
-    }                                                                                 \
-                                                                                      \
-private:                                                                              \
-    classname();                                                                      \
-    DISALLOW_COPY_AND_ASSIGN(classname)
+#define DECLARE_SINGLETON(classname)                                            \
+ public:                                                                        \
+  static classname* Instance(bool create_if_needed = true) {                    \
+    static classname* instance = nullptr;                                       \
+    if (!instance && create_if_needed) {                                        \
+      static std::once_flag flag;                                               \
+      std::call_once(flag, [&] { instance = new (std::nothrow) classname(); }); \
+    }                                                                           \
+    return instance;                                                            \
+  }                                                                             \
+                                                                                \
+  static void CleanUp() {                                                       \
+    auto instance = Instance(false);                                            \
+    if (instance != nullptr) {                                                  \
+      CallShutdown(instance);                                                   \
+    }                                                                           \
+  }                                                                             \
+                                                                                \
+ private:                                                                       \
+  classname();                                                                  \
+  DISALLOW_COPY_AND_ASSIGN(classname)
 
 #endif  // AUTONOMY_COMMON

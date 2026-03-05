@@ -20,11 +20,10 @@
 #include <string>
 #include <vector>
 
-#include "gtest/gtest.h"
-
-#include "autolink/common/log.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/message/raw_message.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace data {
@@ -72,8 +71,7 @@ TEST(DataVisitorTest, one_channel) {
 }
 
 TEST(DataVisitorTest, two_channel) {
-  auto dv =
-      std::make_shared<DataVisitor<RawMessage, RawMessage>>(InitConfigs(2));
+  auto dv = std::make_shared<DataVisitor<RawMessage, RawMessage>>(InitConfigs(2));
 
   std::shared_ptr<RawMessage> msg0;
   std::shared_ptr<RawMessage> msg1;
@@ -91,8 +89,7 @@ TEST(DataVisitorTest, two_channel) {
 }
 
 TEST(DataVisitorTest, three_channel) {
-  auto dv = std::make_shared<DataVisitor<RawMessage, RawMessage, RawMessage>>(
-      InitConfigs(3));
+  auto dv = std::make_shared<DataVisitor<RawMessage, RawMessage, RawMessage>>(InitConfigs(3));
 
   std::shared_ptr<RawMessage> msg0;
   std::shared_ptr<RawMessage> msg1;
@@ -113,9 +110,7 @@ TEST(DataVisitorTest, three_channel) {
 }
 
 TEST(DataVisitorTest, four_channel) {
-  auto dv = std::make_shared<
-      DataVisitor<RawMessage, RawMessage, RawMessage, RawMessage>>(
-      InitConfigs(4));
+  auto dv = std::make_shared<DataVisitor<RawMessage, RawMessage, RawMessage, RawMessage>>(InitConfigs(4));
 
   std::shared_ptr<RawMessage> msg0;
   std::shared_ptr<RawMessage> msg1;

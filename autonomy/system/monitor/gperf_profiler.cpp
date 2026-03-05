@@ -38,46 +38,46 @@ namespace monitor {
 
 void GperfProfiler::StartCpuProfile(const std::string& filename) {
 #if HAVE_GPERFTOOLS_PROFILER
-    ProfilerStart(filename.c_str());
+  ProfilerStart(filename.c_str());
 #else
-    (void)filename;
+  (void)filename;
 #endif
 }
 
 void GperfProfiler::StopCpuProfile() {
 #if HAVE_GPERFTOOLS_PROFILER
-    ProfilerStop();
+  ProfilerStop();
 #endif
 }
 
 void GperfProfiler::StartHeapProfile(const std::string& filename) {
 #if HAVE_GPERFTOOLS_HEAP
-    HeapProfilerStart(filename.c_str());
+  HeapProfilerStart(filename.c_str());
 #else
-    (void)filename;
+  (void)filename;
 #endif
 }
 
 void GperfProfiler::StopHeapProfile() {
 #if HAVE_GPERFTOOLS_HEAP
-    HeapProfilerStop();
+  HeapProfilerStop();
 #else
 #endif
 }
 
 bool GperfProfiler::IsCpuProfilingAvailable() {
 #if HAVE_GPERFTOOLS_PROFILER
-    return true;
+  return true;
 #else
-    return false;
+  return false;
 #endif
 }
 
 bool GperfProfiler::IsHeapProfilingAvailable() {
 #if HAVE_GPERFTOOLS_HEAP
-    return true;
+  return true;
 #else
-    return false;
+  return false;
 #endif
 }
 

@@ -26,33 +26,26 @@ namespace monitor {
 /**
  * 监控器基类接口：采集一次数据并可选择性向 Prometheus 注册指标。
  */
-class MonitorBase
-{
-public:
-    virtual ~MonitorBase() = default;
+class MonitorBase {
+ public:
+  virtual ~MonitorBase() = default;
 
-    /// 监控器名称，用于日志与 Prometheus 标签
-    virtual std::string Name() const = 0;
+  /// 监控器名称，用于日志与 Prometheus 标签
+  virtual std::string Name() const = 0;
 
-    /// 执行一次采集（更新内部状态或 Prometheus 指标）
-    virtual void Collect() = 0;
+  /// 执行一次采集（更新内部状态或 Prometheus 指标）
+  virtual void Collect() = 0;
 
-    /// 是否已启用
-    bool enabled() const {
-        return enabled_;
-    }
-    void set_enabled(bool v) {
-        enabled_ = v;
-    }
+  /// 是否已启用
+  bool enabled() const { return enabled_; }
+  void set_enabled(bool v) { enabled_ = v; }
 
-    /// 向 Prometheus 注册指标（仅当 USE_PROMETHEUS 时由 MonitorRegistry 调用）。
-    /// registry 实际类型为 prometheus::Registry*，在实现中转换后注册 Gauge/Counter 等。
-    virtual void RegisterWithPrometheus(void* registry) {
-        (void)registry;
-    }
+  /// 向 Prometheus 注册指标（仅当 USE_PROMETHEUS 时由 MonitorRegistry 调用）。
+  /// registry 实际类型为 prometheus::Registry*，在实现中转换后注册 Gauge/Counter 等。
+  virtual void RegisterWithPrometheus(void* registry) { (void)registry; }
 
-protected:
-    bool enabled_{true};
+ protected:
+  bool enabled_{true};
 };
 
 }  // namespace monitor

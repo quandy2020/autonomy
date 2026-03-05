@@ -18,9 +18,8 @@
 
 #include <memory>
 
-#include "gtest/gtest.h"
-
 #include "autolink/init.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 

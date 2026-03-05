@@ -53,8 +53,7 @@ void TopologyManager::Shutdown() {
   change_signal_.DisconnectAllSlots();
 }
 
-TopologyManager::ChangeConnection TopologyManager::AddChangeListener(
-    const ChangeFunc& func) {
+TopologyManager::ChangeConnection TopologyManager::AddChangeListener(const ChangeFunc& func) {
   return change_signal_.Connect(func);
 }
 
@@ -74,8 +73,7 @@ bool TopologyManager::Init() {
 
   CreateParticipant();
 
-  bool result =
-      InitNodeManager() && InitChannelManager() && InitServiceManager();
+  bool result = InitNodeManager() && InitChannelManager() && InitServiceManager();
   if (!result) {
     AERROR << "init manager failed.";
     participant_ = nullptr;
@@ -91,9 +89,7 @@ bool TopologyManager::Init() {
   return true;
 }
 
-bool TopologyManager::InitNodeManager() {
-  return node_manager_->StartDiscovery(participant_->fastrtps_participant());
-}
+bool TopologyManager::InitNodeManager() { return node_manager_->StartDiscovery(participant_->fastrtps_participant()); }
 
 bool TopologyManager::InitChannelManager() {
   return channel_manager_->StartDiscovery(participant_->fastrtps_participant());
@@ -105,12 +101,10 @@ bool TopologyManager::InitServiceManager() {
 
 bool TopologyManager::CreateParticipant() {
   std::string participant_name =
-      common::GlobalData::Instance()->HostName() + '+' +
-      std::to_string(common::GlobalData::Instance()->ProcessId());
-  participant_listener_ = new ParticipantListener(std::bind(
-      &TopologyManager::OnParticipantChange, this, std::placeholders::_1));
-  participant_ = std::make_shared<transport::Participant>(
-      participant_name, 11511, participant_listener_);
+      common::GlobalData::Instance()->HostName() + '+' + std::to_string(common::GlobalData::Instance()->ProcessId());
+  participant_listener_ =
+      new ParticipantListener(std::bind(&TopologyManager::OnParticipantChange, this, std::placeholders::_1));
+  participant_ = std::make_shared<transport::Participant>(participant_name, 11511, participant_listener_);
   return true;
 }
 
@@ -177,8 +171,7 @@ bool TopologyManager::Convert(const PartInfo& info, ChangeMsg* msg) {
   return true;
 }
 
-bool TopologyManager::ParseParticipantName(const std::string& participant_name,
-                                           std::string* host_name,
+bool TopologyManager::ParseParticipantName(const std::string& participant_name, std::string* host_name,
                                            int* process_id) {
   // participant_name format: host_name+process_id
   auto pos = participant_name.find('+');

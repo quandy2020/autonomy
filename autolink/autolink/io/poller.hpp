@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <list>
 #include <memory>
@@ -73,4 +72,3 @@ class Poller {
 
 }  // namespace io
 }  // namespace autolink
-

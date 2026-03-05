@@ -28,22 +28,21 @@ namespace displays {
  * @brief WrenchDisplay
  * Wrench display
  */
-class WrenchDisplay : public aviz::common::Display
-{
-public:
-    explicit WrenchDisplay(const QString& name = "WrenchDisplay");
-    ~WrenchDisplay() override;
+class WrenchDisplay : public aviz::common::Display {
+ public:
+  explicit WrenchDisplay(const QString& name = "WrenchDisplay");
+  ~WrenchDisplay() override;
 
-    // Overrides from Display
-    void onInitialize() override;
+  // Overrides from Display
+  void onInitialize() override;
 
-    void onEnable() override;
-    void onDisable() override;
-    void update(float wall_dt, float ros_dt) override;
-    void reset() override;
+  void onEnable() override;
+  void onDisable() override;
+  void update(float wall_dt, float ros_dt) override;
+  void reset() override;
 
-private:
-    // Implementation details
+ private:
+  // Implementation details
 };
 
 }  // namespace displays

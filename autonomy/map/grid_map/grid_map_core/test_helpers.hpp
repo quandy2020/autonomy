@@ -33,12 +33,12 @@ static const std::string testLayer = "test";
  * accuracy of the normal estimation.
  */
 struct AnalyticalFunctions {
-    std::function<double(double, double)> f_;
+  std::function<double(double, double)> f_;
 };
 
 struct Point2D {
-    double x_ = 0.0;
-    double y_ = 0.0;
+  double x_ = 0.0;
+  double y_ = 0.0;
 };
 
 // Random generator engine.

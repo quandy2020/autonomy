@@ -23,15 +23,14 @@ namespace cartographer {
 namespace mapping {
 namespace scan_matching {
 
-class PrecomputationGrid3D : public HybridGridBase<uint8>
-{
-public:
-    explicit PrecomputationGrid3D(const float resolution) : HybridGridBase<uint8>(resolution) {}
+class PrecomputationGrid3D : public HybridGridBase<uint8> {
+ public:
+  explicit PrecomputationGrid3D(const float resolution) : HybridGridBase<uint8>(resolution) {}
 
-    // Maps values from [0, 255] to [kMinProbability, kMaxProbability].
-    static float ToProbability(float value) {
-        return kMinProbability + value * ((kMaxProbability - kMinProbability) / 255.f);
-    }
+  // Maps values from [0, 255] to [kMinProbability, kMaxProbability].
+  static float ToProbability(float value) {
+    return kMinProbability + value * ((kMaxProbability - kMinProbability) / 255.f);
+  }
 };
 
 // Converts a HybridGrid to a PrecomputationGrid3D representing the same data,

@@ -56,38 +56,38 @@ const std::string kMessage = R"(
 using AddLandmarkDataHandlerTest = testing::HandlerTest<AddLandmarkDataSignature, AddLandmarkDataHandler>;
 
 TEST_F(AddLandmarkDataHandlerTest, NoLocalSlamUploader) {
-    proto::AddLandmarkDataRequest request;
-    EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &request));
-    SetNoLocalTrajectoryUploader();
-    EXPECT_CALL(*mock_map_builder_context_, CheckClientIdForTrajectory(Eq(request.sensor_metadata().client_id()),
-                                                                       Eq(request.sensor_metadata().trajectory_id())))
-        .WillOnce(::testing::Return(true));
-    EXPECT_CALL(*mock_map_builder_context_,
-                DoEnqueueSensorData(Eq(request.sensor_metadata().trajectory_id()),
-                                    Pointee(Truly(testing::BuildDataPredicateEquals(request)))));
-    test_server_->SendWrite(request);
-    test_server_->SendWritesDone();
-    test_server_->SendFinish();
+  proto::AddLandmarkDataRequest request;
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &request));
+  SetNoLocalTrajectoryUploader();
+  EXPECT_CALL(*mock_map_builder_context_, CheckClientIdForTrajectory(Eq(request.sensor_metadata().client_id()),
+                                                                     Eq(request.sensor_metadata().trajectory_id())))
+      .WillOnce(::testing::Return(true));
+  EXPECT_CALL(*mock_map_builder_context_,
+              DoEnqueueSensorData(Eq(request.sensor_metadata().trajectory_id()),
+                                  Pointee(Truly(testing::BuildDataPredicateEquals(request)))));
+  test_server_->SendWrite(request);
+  test_server_->SendWritesDone();
+  test_server_->SendFinish();
 }
 
 TEST_F(AddLandmarkDataHandlerTest, WithMockLocalSlamUploader) {
-    proto::AddLandmarkDataRequest request;
-    EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &request));
-    SetMockLocalTrajectoryUploader();
-    EXPECT_CALL(*mock_map_builder_context_, CheckClientIdForTrajectory(Eq(request.sensor_metadata().client_id()),
-                                                                       Eq(request.sensor_metadata().trajectory_id())))
-        .WillOnce(::testing::Return(true));
-    EXPECT_CALL(*mock_map_builder_context_,
-                DoEnqueueSensorData(Eq(request.sensor_metadata().trajectory_id()),
-                                    Pointee(Truly(testing::BuildDataPredicateEquals(request)))));
-    proto::SensorData sensor_data;
-    *sensor_data.mutable_sensor_metadata() = request.sensor_metadata();
-    *sensor_data.mutable_landmark_data() = request.landmark_data();
-    EXPECT_CALL(*mock_local_trajectory_uploader_,
-                DoEnqueueSensorData(Pointee(Truly(testing::BuildProtoPredicateEquals(&sensor_data)))));
-    test_server_->SendWrite(request);
-    test_server_->SendWritesDone();
-    test_server_->SendFinish();
+  proto::AddLandmarkDataRequest request;
+  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &request));
+  SetMockLocalTrajectoryUploader();
+  EXPECT_CALL(*mock_map_builder_context_, CheckClientIdForTrajectory(Eq(request.sensor_metadata().client_id()),
+                                                                     Eq(request.sensor_metadata().trajectory_id())))
+      .WillOnce(::testing::Return(true));
+  EXPECT_CALL(*mock_map_builder_context_,
+              DoEnqueueSensorData(Eq(request.sensor_metadata().trajectory_id()),
+                                  Pointee(Truly(testing::BuildDataPredicateEquals(request)))));
+  proto::SensorData sensor_data;
+  *sensor_data.mutable_sensor_metadata() = request.sensor_metadata();
+  *sensor_data.mutable_landmark_data() = request.landmark_data();
+  EXPECT_CALL(*mock_local_trajectory_uploader_,
+              DoEnqueueSensorData(Pointee(Truly(testing::BuildProtoPredicateEquals(&sensor_data)))));
+  test_server_->SendWrite(request);
+  test_server_->SendWritesDone();
+  test_server_->SendFinish();
 }
 
 }  // namespace

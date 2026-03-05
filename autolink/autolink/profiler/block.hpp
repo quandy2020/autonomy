@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <chrono>
 #include <string>
 
@@ -57,4 +56,3 @@ class Block {
 
 }  // namespace profiler
 }  // namespace autolink
-

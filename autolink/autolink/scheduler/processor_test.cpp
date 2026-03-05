@@ -18,11 +18,10 @@
 #include <string>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/scheduler/common/pin_thread.hpp"
 #include "autolink/scheduler/policy/choreography_context.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace scheduler {

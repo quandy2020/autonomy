@@ -25,13 +25,9 @@ namespace autolink {
 
 Duration::Duration(int64_t nanoseconds) { nanoseconds_ = nanoseconds; }
 
-Duration::Duration(int nanoseconds) {
-  nanoseconds_ = static_cast<int64_t>(nanoseconds);
-}
+Duration::Duration(int nanoseconds) { nanoseconds_ = static_cast<int64_t>(nanoseconds); }
 
-Duration::Duration(double seconds) {
-  nanoseconds_ = static_cast<int64_t>(seconds * 1000000000UL);
-}
+Duration::Duration(double seconds) { nanoseconds_ = static_cast<int64_t>(seconds * 1000000000UL); }
 
 Duration::Duration(uint32_t seconds, uint32_t nanoseconds) {
   nanoseconds_ = static_cast<uint64_t>(seconds) * 1000000000UL + nanoseconds;
@@ -44,9 +40,7 @@ Duration &Duration::operator=(const Duration &other) {
   return *this;
 }
 
-double Duration::ToSecond() const {
-  return static_cast<double>(nanoseconds_) / 1000000000UL;
-}
+double Duration::ToSecond() const { return static_cast<double>(nanoseconds_) / 1000000000UL; }
 
 int64_t Duration::ToNanosecond() const { return nanoseconds_; }
 
@@ -57,13 +51,9 @@ void Duration::Sleep() const {
   std::this_thread::sleep_for(sleep_time);
 }
 
-Duration Duration::operator+(const Duration &rhs) const {
-  return Duration(nanoseconds_ + rhs.nanoseconds_);
-}
+Duration Duration::operator+(const Duration &rhs) const { return Duration(nanoseconds_ + rhs.nanoseconds_); }
 
-Duration Duration::operator-(const Duration &rhs) const {
-  return Duration(nanoseconds_ - rhs.nanoseconds_);
-}
+Duration Duration::operator-(const Duration &rhs) const { return Duration(nanoseconds_ - rhs.nanoseconds_); }
 
 Duration Duration::operator-() const { return Duration(-nanoseconds_); }
 
@@ -86,29 +76,17 @@ Duration &Duration::operator*=(double scale) {
   return *this;
 }
 
-bool Duration::operator==(const Duration &rhs) const {
-  return nanoseconds_ == rhs.nanoseconds_;
-}
+bool Duration::operator==(const Duration &rhs) const { return nanoseconds_ == rhs.nanoseconds_; }
 
-bool Duration::operator!=(const Duration &rhs) const {
-  return nanoseconds_ != rhs.nanoseconds_;
-}
+bool Duration::operator!=(const Duration &rhs) const { return nanoseconds_ != rhs.nanoseconds_; }
 
-bool Duration::operator>(const Duration &rhs) const {
-  return nanoseconds_ > rhs.nanoseconds_;
-}
+bool Duration::operator>(const Duration &rhs) const { return nanoseconds_ > rhs.nanoseconds_; }
 
-bool Duration::operator<(const Duration &rhs) const {
-  return nanoseconds_ < rhs.nanoseconds_;
-}
+bool Duration::operator<(const Duration &rhs) const { return nanoseconds_ < rhs.nanoseconds_; }
 
-bool Duration::operator>=(const Duration &rhs) const {
-  return nanoseconds_ >= rhs.nanoseconds_;
-}
+bool Duration::operator>=(const Duration &rhs) const { return nanoseconds_ >= rhs.nanoseconds_; }
 
-bool Duration::operator<=(const Duration &rhs) const {
-  return nanoseconds_ <= rhs.nanoseconds_;
-}
+bool Duration::operator<=(const Duration &rhs) const { return nanoseconds_ <= rhs.nanoseconds_; }
 
 std::ostream &operator<<(std::ostream &os, const Duration &rhs) {
   std::ios::fmtflags before(os.flags());

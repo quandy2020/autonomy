@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <future>
 #include <map>
 #include <memory>
@@ -87,9 +86,7 @@ class Client : public ClientBase {
    * @param timeout_s request timeout, if timeout, response will be empty
    * @return SharedResponse result of this request
    */
-  SharedResponse SendRequest(
-      SharedRequest request,
-      const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
+  SharedResponse SendRequest(SharedRequest request, const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
 
   /**
    * @brief Request the Service with a Request object
@@ -98,9 +95,7 @@ class Client : public ClientBase {
    * @param timeout_s request timeout, if timeout, response will be empty
    * @return SharedResponse result of this request
    */
-  SharedResponse SendRequest(
-      const Request& request,
-      const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
+  SharedResponse SendRequest(const Request& request, const std::chrono::seconds& timeout_s = std::chrono::seconds(5));
 
   /**
    * @brief Send Request shared ptr asynchronously
@@ -141,27 +136,20 @@ class Client : public ClientBase {
    * @return false if timeout
    */
   template <typename RatioT = std::milli>
-  bool WaitForService(std::chrono::duration<int64_t, RatioT> timeout =
-                          std::chrono::duration<int64_t, RatioT>(-1)) {
-    return WaitForServiceNanoseconds(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(timeout));
+  bool WaitForService(std::chrono::duration<int64_t, RatioT> timeout = std::chrono::duration<int64_t, RatioT>(-1)) {
+    return WaitForServiceNanoseconds(std::chrono::duration_cast<std::chrono::nanoseconds>(timeout));
   }
 
  private:
-  void HandleResponse(const std::shared_ptr<Response>& response,
-                      const transport::MessageInfo& request_info);
+  void HandleResponse(const std::shared_ptr<Response>& response, const transport::MessageInfo& request_info);
 
   bool IsInit(void) const { return response_receiver_ != nullptr; }
 
   std::string node_name_;
 
-  std::function<void(const std::shared_ptr<Response>&,
-                     const transport::MessageInfo&)>
-      response_callback_;
+  std::function<void(const std::shared_ptr<Response>&, const transport::MessageInfo&)> response_callback_;
 
-  std::unordered_map<uint64_t,
-                     std::tuple<SharedPromise, CallbackType, SharedFuture>>
-      pending_requests_;
+  std::unordered_map<uint64_t, std::tuple<SharedPromise, CallbackType, SharedFuture>> pending_requests_;
   std::mutex pending_requests_mutex_;
 
   std::shared_ptr<transport::Transmitter<Request>> request_transmitter_;
@@ -183,11 +171,9 @@ bool Client<Request, Response>::Init() {
   role.set_channel_name(request_channel_);
   auto channel_id = common::GlobalData::RegisterChannel(request_channel_);
   role.set_channel_id(channel_id);
-  role.mutable_qos_profile()->CopyFrom(
-      transport::QosProfileConf::QOS_PROFILE_SERVICES_DEFAULT);
+  role.mutable_qos_profile()->CopyFrom(transport::QosProfileConf::QOS_PROFILE_SERVICES_DEFAULT);
   auto transport = transport::Transport::Instance();
-  request_transmitter_ =
-      transport->CreateTransmitter<Request>(role, proto::OptionalMode::RTPS);
+  request_transmitter_ = transport->CreateTransmitter<Request>(role, proto::OptionalMode::RTPS);
   if (request_transmitter_ == nullptr) {
     AERROR << "Create request pub failed.";
     return false;
@@ -195,16 +181,14 @@ bool Client<Request, Response>::Init() {
   writer_id_ = request_transmitter_->id();
 
   response_callback_ =
-      std::bind(&Client<Request, Response>::HandleResponse, this,
-                std::placeholders::_1, std::placeholders::_2);
+      std::bind(&Client<Request, Response>::HandleResponse, this, std::placeholders::_1, std::placeholders::_2);
 
   role.set_channel_name(response_channel_);
   channel_id = common::GlobalData::RegisterChannel(response_channel_);
   role.set_channel_id(channel_id);
   response_receiver_ = transport->CreateReceiver<Response>(
       role,
-      [=](const std::shared_ptr<Response>& response,
-          const transport::MessageInfo& message_info,
+      [=](const std::shared_ptr<Response>& response, const transport::MessageInfo& message_info,
           const proto::RoleAttributes& reader_attr) {
         (void)message_info;
         (void)reader_attr;
@@ -220,9 +204,8 @@ bool Client<Request, Response>::Init() {
 }
 
 template <typename Request, typename Response>
-typename Client<Request, Response>::SharedResponse
-Client<Request, Response>::SendRequest(SharedRequest request,
-                                       const std::chrono::seconds& timeout_s) {
+typename Client<Request, Response>::SharedResponse Client<Request, Response>::SendRequest(
+    SharedRequest request, const std::chrono::seconds& timeout_s) {
   if (!IsInit()) {
     return nullptr;
   }
@@ -239,9 +222,8 @@ Client<Request, Response>::SendRequest(SharedRequest request,
 }
 
 template <typename Request, typename Response>
-typename Client<Request, Response>::SharedResponse
-Client<Request, Response>::SendRequest(const Request& request,
-                                       const std::chrono::seconds& timeout_s) {
+typename Client<Request, Response>::SharedResponse Client<Request, Response>::SendRequest(
+    const Request& request, const std::chrono::seconds& timeout_s) {
   if (!IsInit()) {
     return nullptr;
   }
@@ -250,22 +232,19 @@ Client<Request, Response>::SendRequest(const Request& request,
 }
 
 template <typename Request, typename Response>
-typename Client<Request, Response>::SharedFuture
-Client<Request, Response>::AsyncSendRequest(const Request& request) {
+typename Client<Request, Response>::SharedFuture Client<Request, Response>::AsyncSendRequest(const Request& request) {
   auto request_ptr = std::make_shared<const Request>(request);
   return AsyncSendRequest(request_ptr);
 }
 
 template <typename Request, typename Response>
-typename Client<Request, Response>::SharedFuture
-Client<Request, Response>::AsyncSendRequest(SharedRequest request) {
+typename Client<Request, Response>::SharedFuture Client<Request, Response>::AsyncSendRequest(SharedRequest request) {
   return AsyncSendRequest(request, [](SharedFuture) {});
 }
 
 template <typename Request, typename Response>
-typename Client<Request, Response>::SharedFuture
-Client<Request, Response>::AsyncSendRequest(SharedRequest request,
-                                            CallbackType&& cb) {
+typename Client<Request, Response>::SharedFuture Client<Request, Response>::AsyncSendRequest(SharedRequest request,
+                                                                                             CallbackType&& cb) {
   if (IsInit()) {
     std::lock_guard<std::mutex> lock(pending_requests_mutex_);
     sequence_number_++;
@@ -273,8 +252,7 @@ Client<Request, Response>::AsyncSendRequest(SharedRequest request,
     request_transmitter_->Transmit(request, info);
     SharedPromise call_promise = std::make_shared<Promise>();
     SharedFuture f(call_promise->get_future());
-    pending_requests_[info.seq_num()] =
-        std::make_tuple(call_promise, std::forward<CallbackType>(cb), f);
+    pending_requests_[info.seq_num()] = std::make_tuple(call_promise, std::forward<CallbackType>(cb), f);
     return f;
   } else {
     return std::shared_future<std::shared_ptr<Response>>();
@@ -287,9 +265,8 @@ bool Client<Request, Response>::ServiceIsReady() const {
 }
 
 template <typename Request, typename Response>
-void Client<Request, Response>::HandleResponse(
-    const std::shared_ptr<Response>& response,
-    const transport::MessageInfo& request_header) {
+void Client<Request, Response>::HandleResponse(const std::shared_ptr<Response>& response,
+                                               const transport::MessageInfo& request_header) {
   ADEBUG << "client recv response.";
   std::lock_guard<std::mutex> lock(pending_requests_mutex_);
   if (request_header.spare_id() != writer_id_) {
@@ -309,4 +286,3 @@ void Client<Request, Response>::HandleResponse(
 }
 
 }  // namespace autolink
-

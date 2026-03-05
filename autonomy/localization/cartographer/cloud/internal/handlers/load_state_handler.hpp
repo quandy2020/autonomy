@@ -28,16 +28,15 @@ namespace handlers {
 DEFINE_HANDLER_SIGNATURE(LoadStateSignature, autonomy::common::async_grpc::Stream<proto::LoadStateRequest>,
                          proto::LoadStateResponse, "/cartographer.cloud.proto.MapBuilderService/LoadState")
 
-class LoadStateHandler : public autonomy::common::async_grpc::RpcHandler<LoadStateSignature>
-{
-public:
-    void OnRequest(const proto::LoadStateRequest& request) override;
-    void OnReadsDone() override;
+class LoadStateHandler : public autonomy::common::async_grpc::RpcHandler<LoadStateSignature> {
+ public:
+  void OnRequest(const proto::LoadStateRequest& request) override;
+  void OnReadsDone() override;
 
-private:
-    io::InMemoryProtoStreamReader reader_;
-    std::string client_id_;
-    bool load_frozen_state_;
+ private:
+  io::InMemoryProtoStreamReader reader_;
+  std::string client_id_;
+  bool load_frozen_state_;
 };
 
 }  // namespace handlers

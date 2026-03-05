@@ -49,8 +49,7 @@ RecordReader::RecordReader(const std::string& file) {
         continue;
       }
       auto channel_cache = single_idx->mutable_channel_cache();
-      channel_info_.insert(
-          std::make_pair(channel_cache->name(), *channel_cache));
+      channel_info_.insert(std::make_pair(channel_cache->name(), *channel_cache));
     }
   }
   file_reader_->Reset();
@@ -71,8 +70,7 @@ std::set<std::string> RecordReader::GetChannelList() const {
   return channel_list;
 }
 
-bool RecordReader::ReadMessage(RecordMessage* message, uint64_t begin_time,
-                               uint64_t end_time) {
+bool RecordReader::ReadMessage(RecordMessage* message, uint64_t begin_time, uint64_t end_time) {
   if (!is_valid_) {
     return false;
   }
@@ -161,8 +159,7 @@ bool RecordReader::ReadNextChunk(uint64_t begin_time, uint64_t end_time) {
         return true;
       }
       default: {
-        AERROR << "Invalid section, type: " << section.type
-               << ", size: " << section.size;
+        AERROR << "Invalid section, type: " << section.type << ", size: " << section.size;
         return false;
       }
     }
@@ -178,8 +175,7 @@ uint64_t RecordReader::GetMessageNumber(const std::string& channel_name) const {
   return search->second.message_number();
 }
 
-const std::string& RecordReader::GetMessageType(
-    const std::string& channel_name) const {
+const std::string& RecordReader::GetMessageType(const std::string& channel_name) const {
   auto search = channel_info_.find(channel_name);
   if (search == channel_info_.end()) {
     return kEmptyString;
@@ -187,8 +183,7 @@ const std::string& RecordReader::GetMessageType(
   return search->second.message_type();
 }
 
-const std::string& RecordReader::GetProtoDesc(
-    const std::string& channel_name) const {
+const std::string& RecordReader::GetProtoDesc(const std::string& channel_name) const {
   auto search = channel_info_.find(channel_name);
   if (search == channel_info_.end()) {
     return kEmptyString;

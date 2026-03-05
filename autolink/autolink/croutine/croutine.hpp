@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -87,9 +86,7 @@ class CRoutine {
 
   std::chrono::steady_clock::time_point wake_time() const;
 
-  void set_group_name(const std::string &group_name) {
-    group_name_ = group_name;
-  }
+  void set_group_name(const std::string &group_name) { group_name_ = group_name; }
 
   const std::string &group_name() { return group_name_; }
 
@@ -98,8 +95,7 @@ class CRoutine {
   CRoutine &operator=(CRoutine &) = delete;
 
   std::string name_;
-  std::chrono::steady_clock::time_point wake_time_ =
-      std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point wake_time_ = std::chrono::steady_clock::now();
 
   RoutineFunc func_;
   RoutineState state_;
@@ -127,9 +123,7 @@ inline void CRoutine::Yield(const RoutineState &state) {
   SwapContext(GetCurrentRoutine()->GetStack(), GetMainStack());
 }
 
-inline void CRoutine::Yield() {
-  SwapContext(GetCurrentRoutine()->GetStack(), GetMainStack());
-}
+inline void CRoutine::Yield() { SwapContext(GetCurrentRoutine()->GetStack(), GetMainStack()); }
 
 inline CRoutine *CRoutine::GetCurrentRoutine() { return current_routine_; }
 
@@ -145,9 +139,7 @@ inline void CRoutine::set_state(const RoutineState &state) { state_ = state; }
 
 inline RoutineState CRoutine::state() const { return state_; }
 
-inline std::chrono::steady_clock::time_point CRoutine::wake_time() const {
-  return wake_time_;
-}
+inline std::chrono::steady_clock::time_point CRoutine::wake_time() const { return wake_time_; }
 
 inline void CRoutine::Wake() { state_ = RoutineState::READY; }
 
@@ -168,14 +160,11 @@ inline void CRoutine::set_name(const std::string &name) { name_ = name; }
 
 inline int CRoutine::processor_id() const { return processor_id_; }
 
-inline void CRoutine::set_processor_id(int processor_id) {
-  processor_id_ = processor_id;
-}
+inline void CRoutine::set_processor_id(int processor_id) { processor_id_ = processor_id; }
 
 inline RoutineState CRoutine::UpdateState() {
   // Synchronous Event Mechanism
-  if (state_ == RoutineState::SLEEP &&
-      std::chrono::steady_clock::now() > wake_time_) {
+  if (state_ == RoutineState::SLEEP && std::chrono::steady_clock::now() > wake_time_) {
     state_ = RoutineState::READY;
     return state_;
   }
@@ -193,18 +182,11 @@ inline uint32_t CRoutine::priority() const { return priority_; }
 
 inline void CRoutine::set_priority(uint32_t priority) { priority_ = priority; }
 
-inline bool CRoutine::Acquire() {
-  return !lock_.test_and_set(std::memory_order_acquire);
-}
+inline bool CRoutine::Acquire() { return !lock_.test_and_set(std::memory_order_acquire); }
 
-inline void CRoutine::Release() {
-  return lock_.clear(std::memory_order_release);
-}
+inline void CRoutine::Release() { return lock_.clear(std::memory_order_release); }
 
-inline void CRoutine::SetUpdateFlag() {
-  updated_.clear(std::memory_order_release);
-}
+inline void CRoutine::SetUpdateFlag() { updated_.clear(std::memory_order_release); }
 
 }  // namespace croutine
 }  // namespace autolink
-

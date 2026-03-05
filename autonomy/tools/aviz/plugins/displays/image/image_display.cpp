@@ -24,27 +24,23 @@ namespace displays {
 
 ImageDisplay::ImageDisplay(const QString& name)
     : AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::Image>(QString("aviz/Image")) {
-    setName(name);
+  setName(name);
 }
 
 ImageDisplay::~ImageDisplay() = default;
 
-void ImageDisplay::onInitialize() {
-    AutolinkTopicDisplay::onInitialize();
-}
+void ImageDisplay::onInitialize() { AutolinkTopicDisplay::onInitialize(); }
 
-void ImageDisplay::reset() {
-    AutolinkTopicDisplay::reset();
-}
+void ImageDisplay::reset() { AutolinkTopicDisplay::reset(); }
 
 void ImageDisplay::processMessage(const std::shared_ptr<autonomy::commsgs::sensor_msgs::Image>& msg) {
-    if (!msg) {
-        return;
-    }
+  if (!msg) {
+    return;
+  }
 
-    // TODO: Implement image rendering
-    setTransformOk();
-    queueRender();
+  // TODO: Implement image rendering
+  setTransformOk();
+  queueRender();
 }
 
 }  // namespace displays

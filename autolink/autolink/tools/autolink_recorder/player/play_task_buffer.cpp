@@ -23,49 +23,47 @@ namespace record {
 
 PlayTaskBuffer::PlayTaskBuffer() {}
 
-PlayTaskBuffer::~PlayTaskBuffer() {
-    tasks_.clear();
-}
+PlayTaskBuffer::~PlayTaskBuffer() { tasks_.clear(); }
 
 size_t PlayTaskBuffer::Size() const {
-    std::lock_guard<std::mutex> lck(mutex_);
-    return tasks_.size();
+  std::lock_guard<std::mutex> lck(mutex_);
+  return tasks_.size();
 }
 
 bool PlayTaskBuffer::Empty() const {
-    std::lock_guard<std::mutex> lck(mutex_);
-    return tasks_.empty();
+  std::lock_guard<std::mutex> lck(mutex_);
+  return tasks_.empty();
 }
 
 void PlayTaskBuffer::Push(const TaskPtr& task) {
-    if (task == nullptr) {
-        return;
-    }
-    std::lock_guard<std::mutex> lck(mutex_);
-    tasks_.insert(std::make_pair(task->msg_play_time_ns(), task));
+  if (task == nullptr) {
+    return;
+  }
+  std::lock_guard<std::mutex> lck(mutex_);
+  tasks_.insert(std::make_pair(task->msg_play_time_ns(), task));
 }
 
 PlayTaskBuffer::TaskPtr PlayTaskBuffer::Front() {
-    std::lock_guard<std::mutex> lck(mutex_);
-    if (tasks_.empty()) {
-        return nullptr;
-    }
-    auto res = tasks_.begin()->second;
-    return res;
+  std::lock_guard<std::mutex> lck(mutex_);
+  if (tasks_.empty()) {
+    return nullptr;
+  }
+  auto res = tasks_.begin()->second;
+  return res;
 }
 
 void PlayTaskBuffer::PopFront() {
-    std::lock_guard<std::mutex> lck(mutex_);
-    if (!tasks_.empty()) {
-        tasks_.erase(tasks_.begin());
-    }
+  std::lock_guard<std::mutex> lck(mutex_);
+  if (!tasks_.empty()) {
+    tasks_.erase(tasks_.begin());
+  }
 }
 
 void PlayTaskBuffer::Clear() {
-    std::lock_guard<std::mutex> lck(mutex_);
-    while (!tasks_.empty()) {
-        tasks_.erase(tasks_.begin());
-    }
+  std::lock_guard<std::mutex> lck(mutex_);
+  while (!tasks_.empty()) {
+    tasks_.erase(tasks_.begin());
+  }
 }
 
 }  // namespace record

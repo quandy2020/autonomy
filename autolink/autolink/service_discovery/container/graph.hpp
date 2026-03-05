@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -127,4 +126,3 @@ class Graph {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

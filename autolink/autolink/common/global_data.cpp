@@ -69,48 +69,33 @@ GlobalData::~GlobalData() {}
 
 int GlobalData::ProcessId() const { return process_id_; }
 
-void GlobalData::SetProcessGroup(const std::string& process_group) {
-  process_group_ = process_group;
-}
+void GlobalData::SetProcessGroup(const std::string& process_group) { process_group_ = process_group; }
 const std::string& GlobalData::ProcessGroup() const { return process_group_; }
 
-void GlobalData::SetComponentNums(const int component_nums) {
-  component_nums_ = component_nums;
-}
+void GlobalData::SetComponentNums(const int component_nums) { component_nums_ = component_nums; }
 int GlobalData::ComponentNums() const { return component_nums_; }
 
-void GlobalData::SetSchedName(const std::string& sched_name) {
-  sched_name_ = sched_name;
-}
+void GlobalData::SetSchedName(const std::string& sched_name) { sched_name_ = sched_name; }
 const std::string& GlobalData::SchedName() const { return sched_name_; }
 
 const std::string& GlobalData::HostIp() const { return host_ip_; }
 
 const std::string& GlobalData::HostName() const { return host_name_; }
 
-void GlobalData::EnableSimulationMode() {
-  run_mode_ = RunMode::MODE_SIMULATION;
-}
+void GlobalData::EnableSimulationMode() { run_mode_ = RunMode::MODE_SIMULATION; }
 
 void GlobalData::DisableSimulationMode() { run_mode_ = RunMode::MODE_REALITY; }
 
-bool GlobalData::IsRealityMode() const {
-  return run_mode_ == RunMode::MODE_REALITY;
-}
+bool GlobalData::IsRealityMode() const { return run_mode_ == RunMode::MODE_REALITY; }
 
-bool GlobalData::IsMockTimeMode() const {
-  return clock_mode_ == ClockMode::MODE_MOCK;
-}
+bool GlobalData::IsMockTimeMode() const { return clock_mode_ == ClockMode::MODE_MOCK; }
 
 bool GlobalData::IsChannelEnableArenaShm(std::string channel_name) const {
   if (config_.transport_conf().shm_conf().arena_shm_conf().arena_channel_conf().empty()) {
     return false;
   }
   bool found = false;
-  for (auto arena_channel_conf : config_.transport_conf()
-                                     .shm_conf()
-                                     .arena_shm_conf()
-                                     .arena_channel_conf()) {
+  for (auto arena_channel_conf : config_.transport_conf().shm_conf().arena_shm_conf().arena_channel_conf()) {
     if (channel_name == arena_channel_conf.channel_name()) {
       found = true;
       break;
@@ -120,17 +105,12 @@ bool GlobalData::IsChannelEnableArenaShm(std::string channel_name) const {
 }
 
 bool GlobalData::IsChannelEnableArenaShm(uint64_t channel_id) const {
-  auto channel_name =
-      autolink::common::GlobalData::Instance()->GetChannelById(channel_id);
+  auto channel_name = autolink::common::GlobalData::Instance()->GetChannelById(channel_id);
   return IsChannelEnableArenaShm(channel_name);
 }
 
-autolink::proto::ArenaChannelConf GlobalData::GetChannelArenaConf(
-    std::string channel_name) const& {
-  for (auto arena_channel_conf : config_.transport_conf()
-                                     .shm_conf()
-                                     .arena_shm_conf()
-                                     .arena_channel_conf()) {
+autolink::proto::ArenaChannelConf GlobalData::GetChannelArenaConf(std::string channel_name) const& {
+  for (auto arena_channel_conf : config_.transport_conf().shm_conf().arena_shm_conf().arena_channel_conf()) {
     if (channel_name == arena_channel_conf.channel_name()) {
       return arena_channel_conf;
     }
@@ -138,10 +118,8 @@ autolink::proto::ArenaChannelConf GlobalData::GetChannelArenaConf(
   return autolink::proto::ArenaChannelConf();
 }
 
-autolink::proto::ArenaChannelConf GlobalData::GetChannelArenaConf(
-    uint64_t channel_id) const& {
-  auto channel_name =
-      autolink::common::GlobalData::Instance()->GetChannelById(channel_id);
+autolink::proto::ArenaChannelConf GlobalData::GetChannelArenaConf(uint64_t channel_id) const& {
+  auto channel_name = autolink::common::GlobalData::Instance()->GetChannelById(channel_id);
   return GetChannelArenaConf(channel_name);
 }
 
@@ -180,8 +158,7 @@ void GlobalData::InitHostInfo() {
       continue;
     }
     char addr[NI_MAXHOST] = {0};
-    if (getnameinfo(ifa->ifa_addr, sizeof(sockaddr_in), addr, NI_MAXHOST, NULL,
-                    0, NI_NUMERICHOST) != 0) {
+    if (getnameinfo(ifa->ifa_addr, sizeof(sockaddr_in), addr, NI_MAXHOST, NULL, 0, NI_NUMERICHOST) != 0) {
       continue;
     }
     std::string tmp_ip(addr);
@@ -196,15 +173,12 @@ void GlobalData::InitHostInfo() {
 }
 
 bool GlobalData::InitConfig() {
-  std::string config_path =
-      GetAbsolutePath(WorkRoot(), "conf/autolink.pb.conf");
+  std::string config_path = GetAbsolutePath(WorkRoot(), "conf/autolink.pb.conf");
   if (!PathExists(config_path)) {
-    const std::string fallback =
-        "/usr/local/share/autolink/conf/autolink.pb.conf";
+    const std::string fallback = "/usr/local/share/autolink/conf/autolink.pb.conf";
     if (PathExists(fallback)) {
       config_path = fallback;
-      AINFO << "config_path: " << config_path
-            << " (fallback, set AUTOLINK_PATH to override)";
+      AINFO << "config_path: " << config_path << " (fallback, set AUTOLINK_PATH to override)";
     }
   } else {
     AINFO << "config_path: " << config_path;

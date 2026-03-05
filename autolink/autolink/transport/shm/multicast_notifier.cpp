@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <cstring>
 #include <string>
 
@@ -67,8 +68,7 @@ bool MulticastNotifier::Notify(const ReadableInfo& info) {
   std::string info_str;
   info.SerializeTo(&info_str);
   ssize_t nbytes =
-      sendto(notify_fd_, info_str.c_str(), info_str.size(), 0,
-             (struct sockaddr*)&notify_addr_, sizeof(notify_addr_));
+      sendto(notify_fd_, info_str.c_str(), info_str.size(), 0, (struct sockaddr*)&notify_addr_, sizeof(notify_addr_));
   return nbytes > 0;
 }
 
@@ -153,15 +153,13 @@ bool MulticastNotifier::Init() {
     return false;
   }
 
-  if (bind(listen_fd_, (struct sockaddr*)&listen_addr_, sizeof(listen_addr_)) <
-      0) {
+  if (bind(listen_fd_, (struct sockaddr*)&listen_addr_, sizeof(listen_addr_)) < 0) {
     AERROR << "fail to bind addr, " << strerror(errno);
     return false;
   }
 
   int loop = 1;
-  if (setsockopt(listen_fd_, IPPROTO_IP, IP_MULTICAST_LOOP, &loop,
-                 sizeof(loop)) < 0) {
+  if (setsockopt(listen_fd_, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop)) < 0) {
     AERROR << "fail to setsockopt IP_MULTICAST_LOOP, " << strerror(errno);
     return false;
   }
@@ -169,8 +167,7 @@ bool MulticastNotifier::Init() {
   struct ip_mreq mreq;
   mreq.imr_multiaddr.s_addr = inet_addr(mcast_ip.c_str());
   mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-  if (setsockopt(listen_fd_, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
-                 sizeof(mreq)) < 0) {
+  if (setsockopt(listen_fd_, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
     AERROR << "fail to setsockopt IP_ADD_MEMBERSHIP, " << strerror(errno);
     return false;
   }

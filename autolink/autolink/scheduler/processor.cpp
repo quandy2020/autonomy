@@ -77,8 +77,7 @@ void Processor::Stop() {
 
 void Processor::BindContext(const std::shared_ptr<ProcessorContext>& context) {
   context_ = context;
-  std::call_once(thread_flag_,
-                 [this]() { thread_ = std::thread(&Processor::Run, this); });
+  std::call_once(thread_flag_, [this]() { thread_ = std::thread(&Processor::Run, this); });
 }
 
 std::atomic<pid_t>& Processor::Tid() {

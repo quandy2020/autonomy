@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 
 #include "autolink/transport/shm/readable_info.hpp"
@@ -38,4 +37,3 @@ class NotifierBase {
 
 }  // namespace transport
 }  // namespace autolink
-

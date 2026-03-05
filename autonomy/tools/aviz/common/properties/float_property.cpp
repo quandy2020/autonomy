@@ -16,9 +16,8 @@
 
 #include "autonomy/tools/aviz/common/properties/float_property.hpp"
 
-#include <cfloat>  // for FLT_MAX
-
 #include <QtGlobal>  // NOLINT: cpplint is unable to handle the include order here
+#include <cfloat>    // for FLT_MAX
 
 namespace aviz {
 namespace common {
@@ -29,42 +28,30 @@ FloatProperty::FloatProperty(const QString& name, float default_value, const QSt
     : Property(name, default_value, description, parent, changed_slot, receiver), min_(-FLT_MAX), max_(FLT_MAX) {}
 
 bool FloatProperty::setValue(const QVariant& new_value) {
-    return Property::setValue(qBound(min_, new_value.toFloat(), max_));
+  return Property::setValue(qBound(min_, new_value.toFloat(), max_));
 }
 
-float FloatProperty::getFloat() const {
-    return getValue().toFloat();
-}
+float FloatProperty::getFloat() const { return getValue().toFloat(); }
 
 void FloatProperty::setMin(float min) {
-    min_ = min;
-    setValue(getValue());
+  min_ = min;
+  setValue(getValue());
 }
 
-float FloatProperty::getMin() {
-    return min_;
-}
+float FloatProperty::getMin() { return min_; }
 
 void FloatProperty::setMax(float max) {
-    max_ = max;
-    setValue(getValue());
+  max_ = max;
+  setValue(getValue());
 }
 
-float FloatProperty::getMax() {
-    return max_;
-}
+float FloatProperty::getMax() { return max_; }
 
-bool FloatProperty::setFloat(float new_value) {
-    return setValue(new_value);
-}
+bool FloatProperty::setFloat(float new_value) { return setValue(new_value); }
 
-bool FloatProperty::add(float delta) {
-    return setValue(delta + getValue().toFloat());
-}
+bool FloatProperty::add(float delta) { return setValue(delta + getValue().toFloat()); }
 
-bool FloatProperty::multiply(float factor) {
-    return setValue(factor * getValue().toFloat());
-}
+bool FloatProperty::multiply(float factor) { return setValue(factor * getValue().toFloat()); }
 
 }  // namespace properties
 }  // namespace common

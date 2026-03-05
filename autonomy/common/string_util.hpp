@@ -38,10 +38,10 @@ namespace common {
 using absl::StrFormat;
 
 struct DebugStringFormatter {
-    template <class T>
-    void operator()(std::string* out, const T& t) const {
-        out->append(t.DebugString());
-    }
+  template <class T>
+  void operator()(std::string* out, const T& t) const {
+    out->append(t.DebugString());
+  }
 };
 
 std::string EncodeBase64(std::string_view in);

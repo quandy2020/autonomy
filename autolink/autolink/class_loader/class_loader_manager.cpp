@@ -22,8 +22,7 @@ ClassLoaderManager::ClassLoaderManager() {}
 
 ClassLoaderManager::~ClassLoaderManager() {}
 
-ClassLoader* ClassLoaderManager::GetClassLoaderByLibPath(
-    const std::string& library_path) {
+ClassLoader* ClassLoaderManager::GetClassLoaderByLibPath(const std::string& library_path) {
   return libpath_loader_map_[library_path];
 }
 
@@ -47,16 +46,13 @@ std::vector<std::string> ClassLoaderManager::GetAllValidLibPath() {
 
 bool ClassLoaderManager::IsLibraryValid(const std::string& library_name) {
   std::vector<std::string> valid_libraries = GetAllValidLibPath();
-  return (valid_libraries.end() != std::find(valid_libraries.begin(),
-                                             valid_libraries.end(),
-                                             library_name));
+  return (valid_libraries.end() != std::find(valid_libraries.begin(), valid_libraries.end(), library_name));
 }
 
 bool ClassLoaderManager::LoadLibrary(const std::string& library_path) {
   std::lock_guard<std::mutex> lck(libpath_loader_map_mutex_);
   if (!IsLibraryValid(library_path)) {
-    libpath_loader_map_[library_path] =
-        new class_loader::ClassLoader(library_path);
+    libpath_loader_map_[library_path] = new class_loader::ClassLoader(library_path);
   }
   return IsLibraryValid(library_path);
 }

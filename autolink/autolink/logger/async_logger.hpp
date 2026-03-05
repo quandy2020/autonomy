@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -31,10 +30,9 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
-
 #include "autolink/common/macros.hpp"
 #include "autolink/logger/log_file_object.hpp"
+#include "glog/logging.h"
 
 namespace autolink {
 namespace logger {
@@ -100,8 +98,7 @@ class AsyncLogger : public google::base::Logger {
    * @param message is the info to be written
    * @param message_len is the length of message
    */
-  void Write(bool force_flush, time_t timestamp, const char* message,
-             size_t message_len) override;
+  void Write(bool force_flush, time_t timestamp, const char* message, size_t message_len) override;
 
   /**
    * @brief Flush any buffered messages.
@@ -136,8 +133,7 @@ class AsyncLogger : public google::base::Logger {
     std::string message;
     int32_t level;
     Msg() : ts(0), message(), level(google::INFO) {}
-    Msg(time_t ts, std::string&& message, int32_t level)
-        : ts(ts), message(std::move(message)), level(level) {}
+    Msg(time_t ts, std::string&& message, int32_t level) : ts(ts), message(std::move(message)), level(level) {}
     Msg(const Msg& rsh) {
       ts = rsh.ts;
       message = rsh.message;
@@ -187,12 +183,10 @@ class AsyncLogger : public google::base::Logger {
   enum State { INITTED, RUNNING, STOPPED };
   std::atomic<State> state_ = {INITTED};
   std::atomic_flag flag_ = ATOMIC_FLAG_INIT;
-  std::unordered_map<std::string, std::unique_ptr<LogFileObject>>
-      module_logger_map_;
+  std::unordered_map<std::string, std::unique_ptr<LogFileObject>> module_logger_map_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncLogger);
 };
 
 }  // namespace logger
 }  // namespace autolink
-

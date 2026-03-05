@@ -18,6 +18,7 @@
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
+
 #include <thread>
 
 #include "autolink/common/log.hpp"

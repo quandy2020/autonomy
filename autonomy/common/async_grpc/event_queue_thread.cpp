@@ -23,23 +23,19 @@ namespace autonomy {
 namespace common {
 namespace async_grpc {
 
-EventQueueThread::EventQueueThread() {
-    event_queue_ = common::make_unique<EventQueue>();
-}
+EventQueueThread::EventQueueThread() { event_queue_ = common::make_unique<EventQueue>(); }
 
-EventQueue* EventQueueThread::event_queue() {
-    return event_queue_.get();
-}
+EventQueue* EventQueueThread::event_queue() { return event_queue_.get(); }
 
 void EventQueueThread::Start(EventQueueRunner runner) {
-    CHECK(!thread_);
-    EventQueue* event_queue = event_queue_.get();
-    thread_ = common::make_unique<std::thread>([event_queue, runner]() { runner(event_queue); });
+  CHECK(!thread_);
+  EventQueue* event_queue = event_queue_.get();
+  thread_ = common::make_unique<std::thread>([event_queue, runner]() { runner(event_queue); });
 }
 
 void EventQueueThread::Shutdown() {
-    LOG(INFO) << "Shutting down event queue " << event_queue_.get();
-    thread_->join();
+  LOG(INFO) << "Shutting down event queue " << event_queue_.get();
+  thread_->join();
 }
 
 }  // namespace async_grpc

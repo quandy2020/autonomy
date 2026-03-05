@@ -34,18 +34,18 @@ namespace sensor {
 // }
 
 void Collator::FinishCostmap() {
-    //   for (const auto& queue_key : queue_keys_) {
-    //     queue_.MarkQueueAsFinished(queue_key);
-    //   }
+  //   for (const auto& queue_key : queue_keys_) {
+  //     queue_.MarkQueueAsFinished(queue_key);
+  //   }
 }
 
 void Collator::AddSensorData(std::unique_ptr<Data> data) {
-    //   QueueKey queue_key{data->GetSensorId()};
-    //   queue_.Add(std::move(queue_key), std::move(data));
+  //   QueueKey queue_key{data->GetSensorId()};
+  //   queue_.Add(std::move(queue_key), std::move(data));
 }
 
 void Collator::Flush() {
-    // queue_.Flush();
+  // queue_.Flush();
 }
 
 }  // namespace sensor

@@ -23,32 +23,24 @@ namespace plugins {
 namespace displays {
 
 AccelDisplay::AccelDisplay(const QString& name) : aviz::common::Display() {
-    setClassId("aviz/Accel");
-    setName(name);
+  setClassId("aviz/Accel");
+  setName(name);
 }
 
 AccelDisplay::~AccelDisplay() = default;
 
-void AccelDisplay::onInitialize() {
-    aviz::common::Display::onInitialize();
-}
+void AccelDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
 
-void AccelDisplay::onEnable() {
-    aviz::common::Display::onEnable();
-}
+void AccelDisplay::onEnable() { aviz::common::Display::onEnable(); }
 
-void AccelDisplay::onDisable() {
-    aviz::common::Display::onDisable();
-}
+void AccelDisplay::onDisable() { aviz::common::Display::onDisable(); }
 
 void AccelDisplay::update(float wall_dt, float ros_dt) {
-    (void)wall_dt;
-    (void)ros_dt;
+  (void)wall_dt;
+  (void)ros_dt;
 }
 
-void AccelDisplay::reset() {
-    aviz::common::Display::reset();
-}
+void AccelDisplay::reset() { aviz::common::Display::reset(); }
 
 }  // namespace displays
 }  // namespace plugins

@@ -18,9 +18,8 @@
 
 #include <iostream>
 
-#include "gtest/gtest.h"
-
 #include "autolink/time/duration.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 

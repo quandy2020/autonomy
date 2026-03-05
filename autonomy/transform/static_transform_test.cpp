@@ -23,9 +23,9 @@ namespace transform {
 
 // StaticTransform requires proto options, basic placeholder test
 TEST(StaticTransformTest, PlaceholderTest) {
-    // StaticTransform requires TransformOptions and Node to construct
-    // Just a placeholder test for now
-    SUCCEED();
+  // StaticTransform requires TransformOptions and Node to construct
+  // Just a placeholder test for now
+  SUCCEED();
 }
 
 }  // namespace transform

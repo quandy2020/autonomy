@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <functional>
 
 #include "autolink/common/log.hpp"
@@ -30,8 +29,7 @@ namespace transport {
 template <typename M>
 class ShmReceiver : public Receiver<M> {
  public:
-  ShmReceiver(const RoleAttributes& attr,
-              const typename Receiver<M>::MessageListener& msg_listener);
+  ShmReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener);
   virtual ~ShmReceiver();
 
   void Enable() override;
@@ -45,9 +43,7 @@ class ShmReceiver : public Receiver<M> {
 };
 
 template <typename M>
-ShmReceiver<M>::ShmReceiver(
-    const RoleAttributes& attr,
-    const typename Receiver<M>::MessageListener& msg_listener)
+ShmReceiver<M>::ShmReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener)
     : Receiver<M>(attr, msg_listener) {
   dispatcher_ = ShmDispatcher::Instance();
 }
@@ -63,20 +59,17 @@ void ShmReceiver<M>::Enable() {
     return;
   }
 
-  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
-          this->attr_.channel_id()) && message::MessageType<M>() != \
-            message::MessageType<message::RawMessage>()) {
+  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(this->attr_.channel_id()) &&
+      message::MessageType<M>() != message::MessageType<message::RawMessage>()) {
     auto arena_manager = ProtobufArenaManager::Instance();
-    if (!arena_manager->Enable() ||
-        !arena_manager->EnableSegment(this->attr_.channel_id())) {
+    if (!arena_manager->Enable() || !arena_manager->EnableSegment(this->attr_.channel_id())) {
       AERROR << "arena manager enable failed.";
       return;
     }
   }
 
   dispatcher_->AddListener<M>(
-      this->attr_, std::bind(&ShmReceiver<M>::OnNewMessage, this,
-                             std::placeholders::_1, std::placeholders::_2));
+      this->attr_, std::bind(&ShmReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2));
   this->enabled_ = true;
 }
 
@@ -92,22 +85,18 @@ void ShmReceiver<M>::Disable() {
 
 template <typename M>
 void ShmReceiver<M>::Enable(const RoleAttributes& opposite_attr) {
-  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(
-          this->attr_.channel_id()) && message::MessageType<M>() != \
-            message::MessageType<message::RawMessage>()) {
+  if (autolink::common::GlobalData::Instance()->IsChannelEnableArenaShm(this->attr_.channel_id()) &&
+      message::MessageType<M>() != message::MessageType<message::RawMessage>()) {
     auto arena_manager = ProtobufArenaManager::Instance();
-    if (!arena_manager->Enable() ||
-        !arena_manager->EnableSegment(this->attr_.channel_id())) {
+    if (!arena_manager->Enable() || !arena_manager->EnableSegment(this->attr_.channel_id())) {
       AERROR << "arena manager enable failed.";
       return;
     }
   }
-  AINFO << "SHM receiver enabled for channel [" << this->attr_.channel_name()
-        << "] from writer (discovery ok)";
+  AINFO << "SHM receiver enabled for channel [" << this->attr_.channel_name() << "] from writer (discovery ok)";
   dispatcher_->AddListener<M>(
       this->attr_, opposite_attr,
-      std::bind(&ShmReceiver<M>::OnNewMessage, this, std::placeholders::_1,
-                std::placeholders::_2));
+      std::bind(&ShmReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 template <typename M>
@@ -117,4 +106,3 @@ void ShmReceiver<M>::Disable(const RoleAttributes& opposite_attr) {
 
 }  // namespace transport
 }  // namespace autolink
-

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 
 namespace autolink {
@@ -43,4 +42,3 @@ static const char SRV_CHANNEL_REQ_SUFFIX[] = "__SRV__REQUEST";
 static const char SRV_CHANNEL_RES_SUFFIX[] = "__SRV__RESPONSE";
 
 }  // namespace autolink
-

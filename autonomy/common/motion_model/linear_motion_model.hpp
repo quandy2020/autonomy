@@ -36,39 +36,38 @@ namespace motion_model {
 /// @tparam     StateT  State type.
 ///
 template <typename StateT>
-class LinearMotionModel : public MotionModelInterface<LinearMotionModel<StateT>>
-{
-public:
-    using State = StateT;
+class LinearMotionModel : public MotionModelInterface<LinearMotionModel<StateT>> {
+ public:
+  using State = StateT;
 
-protected:
-    // Allow the CRTP interface to call private functions.
-    friend MotionModelInterface<LinearMotionModel<StateT>>;
+ protected:
+  // Allow the CRTP interface to call private functions.
+  friend MotionModelInterface<LinearMotionModel<StateT>>;
 
-    ///
-    /// @brief      A crtp-called function that predicts the state forward.
-    ///
-    /// @param[in]  state  The current state vector
-    /// @param[in]  dt     Time difference
-    ///
-    /// @return     New state after prediction.
-    ///
-    inline State crtp_predict(const State& state, const std::chrono::nanoseconds& dt) const {
-        return State{crtp_jacobian(state, dt) * state.vector()};
-    }
+  ///
+  /// @brief      A crtp-called function that predicts the state forward.
+  ///
+  /// @param[in]  state  The current state vector
+  /// @param[in]  dt     Time difference
+  ///
+  /// @return     New state after prediction.
+  ///
+  inline State crtp_predict(const State& state, const std::chrono::nanoseconds& dt) const {
+    return State{crtp_jacobian(state, dt) * state.vector()};
+  }
 
-    ///
-    /// @brief      A crtp-called function that computes a Jacobian.
-    ///
-    /// @note       The default implementation assumes that all variables have
-    /// position, velocity and
-    ///             acceleration entries. If a custom state that does not follow
-    ///             this convention is to be used a specialization of this
-    ///             function must be added.
-    ///
-    /// @return     A matrix that represents the Jacobian.
-    ///
-    typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds& dt) const;
+  ///
+  /// @brief      A crtp-called function that computes a Jacobian.
+  ///
+  /// @note       The default implementation assumes that all variables have
+  /// position, velocity and
+  ///             acceleration entries. If a custom state that does not follow
+  ///             this convention is to be used a specialization of this
+  ///             function must be added.
+  ///
+  /// @return     A matrix that represents the Jacobian.
+  ///
+  typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds& dt) const;
 };
 
 }  // namespace motion_model

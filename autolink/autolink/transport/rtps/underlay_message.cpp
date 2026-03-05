@@ -69,38 +69,27 @@ UnderlayMessage& UnderlayMessage::operator=(UnderlayMessage&& x) {
 size_t UnderlayMessage::getMaxCdrSerializedSize(size_t current_alignment) {
   size_t initial_alignment = current_alignment;
 
-  current_alignment +=
-      4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
 
-  current_alignment +=
-      4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
 
-  current_alignment +=
-      4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4) + 255 + 1;
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4) + 255 + 1;
 
-  current_alignment +=
-      4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4) + 255 + 1;
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4) + 255 + 1;
 
   return current_alignment - initial_alignment;
 }
 
-size_t UnderlayMessage::getCdrSerializedSize(const UnderlayMessage& data,
-                                             size_t current_alignment) {
+size_t UnderlayMessage::getCdrSerializedSize(const UnderlayMessage& data, size_t current_alignment) {
   size_t initial_alignment = current_alignment;
 
-  current_alignment +=
-      4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
 
-  current_alignment +=
-      4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4);
 
-  current_alignment += 4 +
-                       eprosima::fastcdr::Cdr::alignment(current_alignment, 4) +
-                       data.data().size() + 1;
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4) + data.data().size() + 1;
 
-  current_alignment += 4 +
-                       eprosima::fastcdr::Cdr::alignment(current_alignment, 4) +
-                       data.datatype().size() + 1;
+  current_alignment += 4 + eprosima::fastcdr::Cdr::alignment(current_alignment, 4) + data.datatype().size() + 1;
 
   return current_alignment - initial_alignment;
 }
@@ -128,9 +117,7 @@ size_t UnderlayMessage::getKeyMaxCdrSerializedSize(size_t current_alignment) {
 
 bool UnderlayMessage::isKeyDefined() { return false; }
 
-void UnderlayMessage::serializeKey(eprosima::fastcdr::Cdr& scdr) const {
-  (void)scdr;
-}
+void UnderlayMessage::serializeKey(eprosima::fastcdr::Cdr& scdr) const { (void)scdr; }
 
 }  // namespace transport
 }  // namespace autolink

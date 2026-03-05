@@ -20,7 +20,6 @@
 #include <memory>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
-
 #include "autonomy/tools/aviz/common/autolink_topic_display.hpp"
 #include "autonomy/tools/aviz/common/properties/color_property.hpp"
 #include "autonomy/tools/aviz/common/properties/float_property.hpp"
@@ -42,34 +41,33 @@ namespace displays {
  *
  * Displays geometry_msgs::PointStamped messages as spheres
  */
-class PointDisplay : public AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PointStamped>
-{
-    Q_OBJECT
+class PointDisplay : public AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PointStamped> {
+  Q_OBJECT
 
-public:
-    explicit PointDisplay(const QString& name = "PointDisplay");
-    ~PointDisplay() override;
+ public:
+  explicit PointDisplay(const QString& name = "PointDisplay");
+  ~PointDisplay() override;
 
-    void onInitialize() override;
-    void reset() override;
+  void onInitialize() override;
+  void reset() override;
 
-protected:
-    void processMessage(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>& msg) override;
+ protected:
+  void processMessage(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>& msg) override;
 
-private Q_SLOTS:
-    void updateColorAndAlpha();
-    void onlyKeepHistoryLengthNumberOfVisuals();
+ private Q_SLOTS:
+  void updateColorAndAlpha();
+  void onlyKeepHistoryLengthNumberOfVisuals();
 
-private:
-    void setUpProperties();
-    void createNewSphereVisual(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>& msg);
+ private:
+  void setUpProperties();
+  void createNewSphereVisual(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>& msg);
 
-    std::deque<std::shared_ptr<aviz::rendering::Shape>> visuals_;
+  std::deque<std::shared_ptr<aviz::rendering::Shape>> visuals_;
 
-    aviz::common::properties::ColorProperty* color_property_;
-    aviz::common::properties::FloatProperty* alpha_property_;
-    aviz::common::properties::FloatProperty* radius_property_;
-    aviz::common::properties::IntProperty* history_length_property_;
+  aviz::common::properties::ColorProperty* color_property_;
+  aviz::common::properties::FloatProperty* alpha_property_;
+  aviz::common::properties::FloatProperty* radius_property_;
+  aviz::common::properties::IntProperty* history_length_property_;
 };
 
 }  // namespace displays

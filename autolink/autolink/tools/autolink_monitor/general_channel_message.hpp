@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 #include <string>
@@ -48,8 +47,7 @@ class GeneralChannelMessage : public GeneralMessageBase {
     return static_cast<ErrorCode>(reinterpret_cast<intptr_t>(ptr));
   }
   static GeneralChannelMessage* CastErrorCode2Ptr(ErrorCode errCode) {
-    return reinterpret_cast<GeneralChannelMessage*>(
-        static_cast<intptr_t>(errCode));
+    return reinterpret_cast<GeneralChannelMessage*>(static_cast<intptr_t>(errCode));
   }
 
   ~GeneralChannelMessage() {
@@ -62,13 +60,9 @@ class GeneralChannelMessage : public GeneralMessageBase {
     }
   }
 
-  std::string GetChannelName(void) const {
-    return channel_reader_->GetChannelName();
-  }
+  std::string GetChannelName(void) const { return channel_reader_->GetChannelName(); }
 
-  void set_message_type(const std::string& msgTypeName) {
-    message_type_ = msgTypeName;
-  }
+  void set_message_type(const std::string& msgTypeName) { message_type_ = msgTypeName; }
   const std::string& message_type(void) const { return message_type_; }
 
   bool is_enabled(void) const { return channel_reader_ != nullptr; }
@@ -102,8 +96,7 @@ class GeneralChannelMessage : public GeneralMessageBase {
   }
 
  private:
-  explicit GeneralChannelMessage(const std::string& node_name,
-                                 RenderableMessage* parent = nullptr)
+  explicit GeneralChannelMessage(const std::string& node_name, RenderableMessage* parent = nullptr)
       : GeneralMessageBase(parent),
         current_state_(State::ShowDebugString),
         has_message_come_(false),
@@ -142,8 +135,7 @@ class GeneralChannelMessage : public GeneralMessageBase {
     vec->emplace_back(str);
   }
 
-  void UpdateRawMessage(
-      const std::shared_ptr<autolink::message::RawMessage>& raw_msg) {
+  void UpdateRawMessage(const std::shared_ptr<autolink::message::RawMessage>& raw_msg) {
     set_has_message_come(true);
     msg_time_ = autolink::Time::MonoTime();
     ++frame_counter_;
@@ -190,8 +182,7 @@ class GeneralChannelMessage : public GeneralMessageBase {
 
   std::shared_ptr<autolink::message::RawMessage> channel_message_;
   std::string channel_name_;
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      channel_reader_;
+  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> channel_reader_;
   mutable std::mutex inner_lock_;
 
   google::protobuf::Message* raw_msg_class_;
@@ -199,4 +190,3 @@ class GeneralChannelMessage : public GeneralMessageBase {
   friend class CyberTopologyMessage;
   friend class GeneralMessage;
 };  // GeneralChannelMessage
-

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 #include <unordered_map>
 
@@ -49,4 +48,3 @@ class BlockManager {
 
 }  // namespace profiler
 }  // namespace autolink
-

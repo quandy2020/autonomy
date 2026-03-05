@@ -28,12 +28,11 @@ namespace common {
  * @brief DisplayFactory interface
  * Wrapper around PluginFactory for DisplayContext
  */
-class DisplayFactory
-{
-public:
-    virtual ~DisplayFactory() = default;
+class DisplayFactory {
+ public:
+  virtual ~DisplayFactory() = default;
 
-    virtual std::unique_ptr<Display> make(const QString& class_id, const QString& name) = 0;
+  virtual std::unique_ptr<Display> make(const QString& class_id, const QString& name) = 0;
 };
 
 // Factory function

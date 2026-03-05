@@ -28,47 +28,46 @@ class Node;
 namespace aviz {
 namespace common {
 
-class YamlConfigReader
-{
-public:
-    /// Constructor.
-    /**
-     * Object begins in a no-error state.
-     */
-    YamlConfigReader();
+class YamlConfigReader {
+ public:
+  /// Constructor.
+  /**
+   * Object begins in a no-error state.
+   */
+  YamlConfigReader();
 
-    /// Read config data from a file.
-    /**
-     * This potentially changes the return value of error(), statusMessage(),
-     * and config().
-     */
-    void readFile(Config& config, const QString& filename);
+  /// Read config data from a file.
+  /**
+   * This potentially changes the return value of error(), statusMessage(),
+   * and config().
+   */
+  void readFile(Config& config, const QString& filename);
 
-    /// Read config data from a string.
-    /**
-     * This potentially changes the return value of error(), statusMessage(),
-     * and config().
-     */
-    void readString(Config& config, const QString& data, const QString& filename = "data string");
+  /// Read config data from a string.
+  /**
+   * This potentially changes the return value of error(), statusMessage(),
+   * and config().
+   */
+  void readString(Config& config, const QString& data, const QString& filename = "data string");
 
-    /// Read config data from a std::istream.
-    /**
-     * This potentially changes the return value of error(), statusMessage(),
-     * and config().
-     */
-    void readStream(Config& config, std::istream& in, const QString& filename = "data stream");
+  /// Read config data from a std::istream.
+  /**
+   * This potentially changes the return value of error(), statusMessage(),
+   * and config().
+   */
+  void readStream(Config& config, std::istream& in, const QString& filename = "data stream");
 
-    /// Return true if the latest readFile() or readString() call had an error.
-    bool error();
+  /// Return true if the latest readFile() or readString() call had an error.
+  bool error();
 
-    /// Return an error message if the latest read call had an error, or the empty string if not.
-    QString errorMessage();
+  /// Return an error message if the latest read call had an error, or the empty string if not.
+  QString errorMessage();
 
-private:
-    void readYamlNode(Config& config, const YAML::Node& yaml_node);
+ private:
+  void readYamlNode(Config& config, const YAML::Node& yaml_node);
 
-    QString message_;
-    bool error_;
+  QString message_;
+  bool error_;
 };
 
 }  // namespace common

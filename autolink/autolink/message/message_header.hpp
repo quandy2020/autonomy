@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <arpa/inet.h>
 
 #include <algorithm>
@@ -53,21 +52,15 @@ class MessageHeader {
   void reset_seq() { memset(seq_, 0, sizeof(seq_)); }
 
   uint64_t timestamp_ns() const { return ConvertArrayTo64(timestamp_ns_); }
-  void set_timestamp_ns(uint64_t timestamp_ns) {
-    Convert64ToArray(timestamp_ns, const_cast<char*>(timestamp_ns_));
-  }
+  void set_timestamp_ns(uint64_t timestamp_ns) { Convert64ToArray(timestamp_ns, const_cast<char*>(timestamp_ns_)); }
   void reset_timestamp_ns() { memset(timestamp_ns_, 0, sizeof(timestamp_ns_)); }
 
   uint64_t src_id() const { return ConvertArrayTo64(src_id_); }
-  void set_src_id(uint64_t src_id) {
-    Convert64ToArray(src_id, const_cast<char*>(src_id_));
-  }
+  void set_src_id(uint64_t src_id) { Convert64ToArray(src_id, const_cast<char*>(src_id_)); }
   void reset_src_id() { memset(src_id_, 0, sizeof(src_id_)); }
 
   uint64_t dst_id() const { return ConvertArrayTo64(dst_id_); }
-  void set_dst_id(uint64_t dst_id) {
-    Convert64ToArray(dst_id, const_cast<char*>(dst_id_));
-  }
+  void set_dst_id(uint64_t dst_id) { Convert64ToArray(dst_id, const_cast<char*>(dst_id_)); }
   void reset_dst_id() { memset(dst_id_, 0, sizeof(dst_id_)); }
 
   const char* msg_type() const { return msg_type_; }
@@ -87,9 +80,7 @@ class MessageHeader {
   void reset_res() { memset(res_, 0, sizeof(res_)); }
 
   uint32_t content_size() const { return ConvertArrayTo32(content_size_); }
-  void set_content_size(uint32_t content_size) {
-    Convert32ToArray(content_size, const_cast<char*>(content_size_));
-  }
+  void set_content_size(uint32_t content_size) { Convert32ToArray(content_size, const_cast<char*>(content_size_)); }
   void reset_content_size() { memset(content_size_, 0, sizeof(content_size_)); }
 
  private:
@@ -99,8 +90,7 @@ class MessageHeader {
   }
 
   void Convert64ToArray(uint64_t input, char* output) {
-    uint32_t h_high =
-        static_cast<uint32_t>((input & 0xffffffff00000000UL) >> 32);
+    uint32_t h_high = static_cast<uint32_t>((input & 0xffffffff00000000UL) >> 32);
     uint32_t h_low = static_cast<uint32_t>(input & 0x00000000ffffffffUL);
     Convert32ToArray(h_high, output);
     Convert32ToArray(h_low, output + 4);
@@ -130,4 +120,3 @@ class MessageHeader {
 
 }  // namespace message
 }  // namespace autolink
-

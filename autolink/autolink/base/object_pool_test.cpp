@@ -18,9 +18,8 @@
 
 #include <thread>
 
-#include "gtest/gtest.h"
-
 #include "autolink/base/concurrent_object_pool.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace base {

@@ -16,12 +16,10 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 
 #include "autolink/proto/role_attributes.pb.h"
-
 #include "autolink/transport/common/identity.hpp"
 
 namespace autolink {
@@ -48,4 +46,3 @@ class Endpoint {
 
 }  // namespace transport
 }  // namespace autolink
-

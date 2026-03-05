@@ -22,26 +22,22 @@
 namespace aviz {
 namespace common {
 
-UniformStringStream::UniformStringStream() {
-    imbue(std::locale("C"));
-}
+UniformStringStream::UniformStringStream() { imbue(std::locale("C")); }
 
-UniformStringStream::UniformStringStream(const std::string& str) : std::stringstream(str) {
-    imbue(std::locale("C"));
-}
+UniformStringStream::UniformStringStream(const std::string& str) : std::stringstream(str) { imbue(std::locale("C")); }
 
 void UniformStringStream::parseFloat(float& f) {
-    std::string float_string;
-    *this >> float_string;
-    size_t comma_index = float_string.find(',');
-    if (comma_index != std::string::npos) {
-        float_string[comma_index] = '.';
-    }
-    UniformStringStream float_reader(float_string);
-    float_reader >> f;
-    if (float_reader.fail()) {
-        this->setstate(std::ios::failbit);
-    }
+  std::string float_string;
+  *this >> float_string;
+  size_t comma_index = float_string.find(',');
+  if (comma_index != std::string::npos) {
+    float_string[comma_index] = '.';
+  }
+  UniformStringStream float_reader(float_string);
+  float_reader >> f;
+  if (float_reader.fail()) {
+    this->setstate(std::ios::failbit);
+  }
 }
 
 }  // namespace common

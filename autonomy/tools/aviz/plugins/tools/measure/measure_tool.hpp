@@ -27,13 +27,12 @@ namespace tools {
  * @brief MeasureTool
  * Measure tool for the visualizer
  */
-class MeasureTool
-{
-public:
-    explicit MeasureTool();
-    virtual ~MeasureTool();
+class MeasureTool {
+ public:
+  explicit MeasureTool();
+  virtual ~MeasureTool();
 
-    // TODO: Implement tool interface
+  // TODO: Implement tool interface
 };
 
 }  // namespace tools

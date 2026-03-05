@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -30,8 +29,7 @@ class MessageInfo {
  public:
   MessageInfo();
   MessageInfo(const Identity& sender_id, uint64_t seq_num);
-  MessageInfo(const Identity& sender_id, uint64_t seq_num,
-              const Identity& spare_id);
+  MessageInfo(const Identity& sender_id, uint64_t seq_num, const Identity& spare_id);
   MessageInfo(const MessageInfo& another);
   virtual ~MessageInfo();
 
@@ -76,4 +74,3 @@ class MessageInfo {
 
 }  // namespace transport
 }  // namespace autolink
-

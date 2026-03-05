@@ -20,7 +20,6 @@
 
 #pragma once
 
-
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -32,10 +31,9 @@
 #include <string>
 #include <vector>
 
+#include "autolink/common/log.hpp"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
-
-#include "autolink/common/log.hpp"
 
 /**
  * @brief common::util
@@ -46,8 +44,7 @@ namespace common {
 // file type: file or directory
 enum FileType { TYPE_FILE, TYPE_DIR };
 
-bool SetProtoToASCIIFile(const google::protobuf::Message &message,
-                         int file_descriptor);
+bool SetProtoToASCIIFile(const google::protobuf::Message &message, int file_descriptor);
 /**
  * @brief Sets the content of the file specified by the file_name to be the
  *        ascii representation of the input protobuf.
@@ -55,8 +52,7 @@ bool SetProtoToASCIIFile(const google::protobuf::Message &message,
  * @param file_name The name of the target file to set the content.
  * @return If the action is successful.
  */
-bool SetProtoToASCIIFile(const google::protobuf::Message &message,
-                         const std::string &file_name);
+bool SetProtoToASCIIFile(const google::protobuf::Message &message, const std::string &file_name);
 
 /**
  * @brief Sets the content of the file specified by the file_name to be the
@@ -65,8 +61,7 @@ bool SetProtoToASCIIFile(const google::protobuf::Message &message,
  * @param file_name The name of the target file to set the content.
  * @return If the action is successful.
  */
-bool SetStringToASCIIFile(const std::string &content,
-                          const std::string &file_name);
+bool SetStringToASCIIFile(const std::string &content, const std::string &file_name);
 
 /**
  * @brief Parses the content of the file specified by the file_name as ascii
@@ -76,8 +71,7 @@ bool SetStringToASCIIFile(const std::string &content,
  * @param message The proto to carry the parsed content in the specified file.
  * @return If the action is successful.
  */
-bool GetProtoFromASCIIFile(const std::string &file_name,
-                           google::protobuf::Message *message);
+bool GetProtoFromASCIIFile(const std::string &file_name, google::protobuf::Message *message);
 
 /**
  * @brief Sets the content of the file specified by the file_name to be the
@@ -86,8 +80,7 @@ bool GetProtoFromASCIIFile(const std::string &file_name,
  * @param file_name The name of the target file to set the content.
  * @return If the action is successful.
  */
-bool SetProtoToBinaryFile(const google::protobuf::Message &message,
-                          const std::string &file_name);
+bool SetProtoToBinaryFile(const google::protobuf::Message &message, const std::string &file_name);
 
 /**
  * @brief Parses the content of the file specified by the file_name as binary
@@ -97,8 +90,7 @@ bool SetProtoToBinaryFile(const google::protobuf::Message &message,
  * @param message The proto to carry the parsed content in the specified file.
  * @return If the action is successful.
  */
-bool GetProtoFromBinaryFile(const std::string &file_name,
-                            google::protobuf::Message *message);
+bool GetProtoFromBinaryFile(const std::string &file_name, google::protobuf::Message *message);
 
 /**
  * @brief Parses the content of the file specified by the file_name as a
@@ -108,8 +100,7 @@ bool GetProtoFromBinaryFile(const std::string &file_name,
  * @param message The proto to carry the parsed content in the specified file.
  * @return If the action is successful.
  */
-bool GetProtoFromFile(const std::string &file_name,
-                      google::protobuf::Message *message);
+bool GetProtoFromFile(const std::string &file_name, google::protobuf::Message *message);
 
 /**
  * @brief Parses the content of the json file specified by the file_name as
@@ -119,8 +110,7 @@ bool GetProtoFromFile(const std::string &file_name,
  * @param message The proto to carry the parsed content in the specified file.
  * @return If the action is successful.
  */
-bool GetProtoFromJsonFile(const std::string &file_name,
-                          google::protobuf::Message *message);
+bool GetProtoFromJsonFile(const std::string &file_name, google::protobuf::Message *message);
 
 /**
  * @brief Get file content as string.
@@ -134,8 +124,7 @@ bool GetContent(const std::string &file_name, std::string *content);
  * @brief Get absolute path by concatenating prefix and relative_path.
  * @return The absolute path.
  */
-std::string GetAbsolutePath(const std::string &prefix,
-                            const std::string &relative_path);
+std::string GetAbsolutePath(const std::string &prefix, const std::string &relative_path);
 
 /**
  * @brief Check if the path exists.
@@ -208,8 +197,7 @@ bool RemoveAllFiles(const std::string &directory_path);
  * @param d_type Sub-path type, DT_DIR for directory, or DT_REG for file.
  * @return A vector of sub-paths, without the directory_path prefix.
  */
-std::vector<std::string> ListSubPaths(const std::string &directory_path,
-                                      const unsigned char d_type = DT_DIR);
+std::vector<std::string> ListSubPaths(const std::string &directory_path, const unsigned char d_type = DT_DIR);
 
 /**
  * @brief Find path with pattern
@@ -220,9 +208,8 @@ std::vector<std::string> ListSubPaths(const std::string &directory_path,
  * @param result_list a vector reference for storing the search result
  * @return the result count
  */
-size_t FindPathByPattern(const std::string &base_path, const std::string &patt,
-                         const unsigned char d_type, const bool recursive,
-                         std::vector<std::string> *result_list);
+size_t FindPathByPattern(const std::string &base_path, const std::string &patt, const unsigned char d_type,
+                         const bool recursive, std::vector<std::string> *result_list);
 
 /**
  * @brief get directory name of path
@@ -231,8 +218,7 @@ size_t FindPathByPattern(const std::string &base_path, const std::string &patt,
  */
 std::string GetDirName(const std::string &path);
 
-std::string GetFileName(const std::string &path,
-                        const bool remove_extension = false);
+std::string GetFileName(const std::string &path, const bool remove_extension = false);
 
 /**
  * @brief get file path, judgement priority:
@@ -247,8 +233,7 @@ std::string GetFileName(const std::string &path,
  *
  * @return if no valid path found, return false.
  */
-bool GetFilePathWithEnv(const std::string &path, const std::string &env_var,
-                        std::string *file_path);
+bool GetFilePathWithEnv(const std::string &path, const std::string &env_var, std::string *file_path);
 
 std::string GetCurrentPath();
 
@@ -264,10 +249,8 @@ bool LoadConfig(const std::string &relative_path, T *config) {
   CHECK_NOTNULL(config);
   // todo: get config base relative path
   std::string actual_config_path;
-  if (!GetFilePathWithEnv(relative_path, "AUTOLINK_CONF_PATH",
-                          &actual_config_path)) {
-    AERROR << "conf file [" << relative_path
-           << "] is not found in AUTOLINK_CONF_PATH";
+  if (!GetFilePathWithEnv(relative_path, "AUTOLINK_CONF_PATH", &actual_config_path)) {
+    AERROR << "conf file [" << relative_path << "] is not found in AUTOLINK_CONF_PATH";
     return false;
   }
   AINFO << "load conf file: " << actual_config_path;
@@ -276,4 +259,3 @@ bool LoadConfig(const std::string &relative_path, T *config) {
 
 }  // namespace common
 }  // namespace autolink
-

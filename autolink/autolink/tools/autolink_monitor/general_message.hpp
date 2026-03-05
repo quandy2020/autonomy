@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/autolink.hpp"
 #include "autolink/message/raw_message.hpp"
 #include "autolink/tools/autolink_monitor/general_message_base.hpp"
@@ -25,10 +24,8 @@ class Screen;
 
 class GeneralMessage : public GeneralMessageBase {
  public:
-  GeneralMessage(GeneralMessageBase* parent,
-                 const google::protobuf::Message* msg,
-                 const google::protobuf::Reflection* reflection,
-                 const google::protobuf::FieldDescriptor* field);
+  GeneralMessage(GeneralMessageBase* parent, const google::protobuf::Message* msg,
+                 const google::protobuf::Reflection* reflection, const google::protobuf::FieldDescriptor* field);
 
   ~GeneralMessage() {
     field_ = nullptr;
@@ -48,4 +45,3 @@ class GeneralMessage : public GeneralMessageBase {
   const google::protobuf::Message* message_ptr_;
   const google::protobuf::Reflection* reflection_ptr_;
 };
-

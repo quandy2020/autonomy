@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "autolink/service_discovery/specific_manager/node_manager.hpp"
+
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/state.hpp"
@@ -56,8 +57,7 @@ void NodeManager::Dispose(const ChangeMsg& msg) {
   Notify(msg);
 }
 
-void NodeManager::OnTopoModuleLeave(const std::string& host_name,
-                                    int process_id) {
+void NodeManager::OnTopoModuleLeave(const std::string& host_name, int process_id) {
   RETURN_IF(!is_discovery_started_.load());
 
   RoleAttributes attr;
@@ -71,8 +71,7 @@ void NodeManager::OnTopoModuleLeave(const std::string& host_name,
 
   ChangeMsg msg;
   for (auto& node : nodes_to_remove) {
-    Convert(node->attributes(), RoleType::ROLE_NODE, OperateType::OPT_LEAVE,
-            &msg);
+    Convert(node->attributes(), RoleType::ROLE_NODE, OperateType::OPT_LEAVE, &msg);
     Notify(msg);
   }
 }
@@ -95,10 +94,8 @@ void NodeManager::DisposeJoin(const ChangeMsg& msg) {
       newer_node = node;
     }
 
-    if (newer_node->attributes().process_id() == process_id_ &&
-        newer_node->attributes().host_name() == host_name_) {
-      AERROR << "this process will be terminated due to duplicated node["
-             << node->attributes().node_name()
+    if (newer_node->attributes().process_id() == process_id_ && newer_node->attributes().host_name() == host_name_) {
+      AERROR << "this process will be terminated due to duplicated node[" << node->attributes().node_name()
              << "], please ensure that each node has a unique name.";
       AsyncShutdown();
     }

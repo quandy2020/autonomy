@@ -94,8 +94,7 @@ void Manager::Shutdown() {
   signal_.DisconnectAllSlots();
 }
 
-bool Manager::Join(const RoleAttributes& attr, RoleType role,
-                   bool need_publish) {
+bool Manager::Join(const RoleAttributes& attr, RoleType role, bool need_publish) {
   if (is_shutdown_.load()) {
     ADEBUG << "the manager has been shut down.";
     return false;
@@ -127,9 +126,7 @@ bool Manager::Leave(const RoleAttributes& attr, RoleType role) {
   return true;
 }
 
-Manager::ChangeConnection Manager::AddChangeListener(const ChangeFunc& func) {
-  return signal_.Connect(func);
-}
+Manager::ChangeConnection Manager::AddChangeListener(const ChangeFunc& func) { return signal_.Connect(func); }
 
 void Manager::RemoveChangeListener(const ChangeConnection& conn) {
   auto local_conn = conn;
@@ -138,26 +135,19 @@ void Manager::RemoveChangeListener(const ChangeConnection& conn) {
 
 bool Manager::CreatePublisher(RtpsParticipant* participant) {
   RtpsPublisherAttr pub_attr;
-  RETURN_VAL_IF(
-      !AttributesFiller::FillInPubAttr(
-          channel_name_, QosProfileConf::QOS_PROFILE_TOPO_CHANGE, &pub_attr),
-      false);
-  publisher_ =
-      eprosima::fastrtps::Domain::createPublisher(participant, pub_attr);
+  RETURN_VAL_IF(!AttributesFiller::FillInPubAttr(channel_name_, QosProfileConf::QOS_PROFILE_TOPO_CHANGE, &pub_attr),
+                false);
+  publisher_ = eprosima::fastrtps::Domain::createPublisher(participant, pub_attr);
   return publisher_ != nullptr;
 }
 
 bool Manager::CreateSubscriber(RtpsParticipant* participant) {
   RtpsSubscriberAttr sub_attr;
-  RETURN_VAL_IF(
-      !AttributesFiller::FillInSubAttr(
-          channel_name_, QosProfileConf::QOS_PROFILE_TOPO_CHANGE, &sub_attr),
-      false);
-  listener_ = new SubscriberListener(
-      std::bind(&Manager::OnRemoteChange, this, std::placeholders::_1));
+  RETURN_VAL_IF(!AttributesFiller::FillInSubAttr(channel_name_, QosProfileConf::QOS_PROFILE_TOPO_CHANGE, &sub_attr),
+                false);
+  listener_ = new SubscriberListener(std::bind(&Manager::OnRemoteChange, this, std::placeholders::_1));
 
-  subscriber_ = eprosima::fastrtps::Domain::createSubscriber(
-      participant, sub_attr, listener_);
+  subscriber_ = eprosima::fastrtps::Domain::createSubscriber(participant, sub_attr, listener_);
   return subscriber_ != nullptr;
 }
 
@@ -166,8 +156,7 @@ bool Manager::NeedPublish(const ChangeMsg& msg) const {
   return true;
 }
 
-void Manager::Convert(const RoleAttributes& attr, RoleType role,
-                      OperateType opt, ChangeMsg* msg) {
+void Manager::Convert(const RoleAttributes& attr, RoleType role, OperateType opt, ChangeMsg* msg) {
   msg->set_timestamp(autolink::Time::Now().ToNanosecond());
   msg->set_change_type(change_type_);
   msg->set_operate_type(opt);

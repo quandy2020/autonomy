@@ -28,10 +28,9 @@ namespace handlers {
 DEFINE_HANDLER_SIGNATURE(FinishTrajectorySignature, proto::FinishTrajectoryRequest, google::protobuf::Empty,
                          "/cartographer.cloud.proto.MapBuilderService/FinishTrajectory")
 
-class FinishTrajectoryHandler : public autonomy::common::async_grpc::RpcHandler<FinishTrajectorySignature>
-{
-public:
-    void OnRequest(const proto::FinishTrajectoryRequest& request) override;
+class FinishTrajectoryHandler : public autonomy::common::async_grpc::RpcHandler<FinishTrajectorySignature> {
+ public:
+  void OnRequest(const proto::FinishTrajectoryRequest& request) override;
 };
 
 }  // namespace handlers

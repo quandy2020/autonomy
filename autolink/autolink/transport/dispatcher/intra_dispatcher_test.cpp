@@ -17,12 +17,12 @@
 #include "autolink/transport/dispatcher/intra_dispatcher.hpp"
 
 #include <memory>
-#include "gtest/gtest.h"
 
 #include "autolink/common/util.hpp"
 #include "autolink/message/raw_message.hpp"
 #include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -38,15 +38,11 @@ TEST(DispatcherTest, on_message) {
   std::string str;
   chatter2->SerializeToString(&str);
   auto raw = std::make_shared<message::RawMessage>(str);
-  auto chatter_callback = [&chatter_msgs](
-                              const std::shared_ptr<proto::Chatter>& msg,
-                              const MessageInfo&) {
+  auto chatter_callback = [&chatter_msgs](const std::shared_ptr<proto::Chatter>& msg, const MessageInfo&) {
     AINFO << "chatter callback";
     chatter_msgs.push_back(msg);
   };
-  auto raw_callback = [&raw_msgs](
-                          const std::shared_ptr<message::RawMessage>& msg,
-                          const MessageInfo&) {
+  auto raw_callback = [&raw_msgs](const std::shared_ptr<message::RawMessage>& msg, const MessageInfo&) {
     AINFO << "raw callback";
     raw_msgs.push_back(msg);
   };
@@ -76,11 +72,9 @@ TEST(DispatcherTest, on_message) {
   // add raw
   dispatcher->AddListener<message::RawMessage>(self_attr2, raw_callback);
   // add chatter opposite
-  dispatcher->AddListener<proto::Chatter>(self_attr1, oppo_attr1,
-                                          chatter_callback);
+  dispatcher->AddListener<proto::Chatter>(self_attr1, oppo_attr1, chatter_callback);
   // add raw opposite
-  dispatcher->AddListener<message::RawMessage>(self_attr2, oppo_attr1,
-                                               raw_callback);
+  dispatcher->AddListener<message::RawMessage>(self_attr2, oppo_attr1, raw_callback);
 
   // run 1 + 2
   dispatcher->OnMessage<proto::Chatter>(channel_id, chatter, msg_info);

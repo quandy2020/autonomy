@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 
@@ -118,4 +117,3 @@ class Timer {
 };
 
 }  // namespace autolink
-

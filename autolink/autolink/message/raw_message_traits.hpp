@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cassert>
 #include <memory>
 #include <string>
@@ -38,16 +37,9 @@ inline bool ParseFromArray(const void* data, int size, RawMessage* message) {
 
 inline int ByteSize(const RawMessage& message) { return message.ByteSize(); }
 
-inline bool SerializeToArenaMessageWrapper(const RawMessage& message,
-                                           ArenaMessageWrapper* wrapper) {
-  return false;
-}
+inline bool SerializeToArenaMessageWrapper(const RawMessage& message, ArenaMessageWrapper* wrapper) { return false; }
 
-inline bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper,
-                                         RawMessage* message) {
-  return false;
-}
+inline bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper, RawMessage* message) { return false; }
 
 }  // namespace message
 }  // namespace autolink
-

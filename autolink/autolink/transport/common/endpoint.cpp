@@ -21,8 +21,7 @@
 namespace autolink {
 namespace transport {
 
-Endpoint::Endpoint(const RoleAttributes& attr)
-    : enabled_(false), id_(), attr_(attr) {
+Endpoint::Endpoint(const RoleAttributes& attr) : enabled_(false), id_(), attr_(attr) {
   if (attr_.host_name().empty()) {
     attr_.set_host_name(common::GlobalData::Instance()->HostName());
   }

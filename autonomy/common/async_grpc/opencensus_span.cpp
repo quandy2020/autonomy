@@ -23,20 +23,18 @@ namespace common {
 namespace async_grpc {
 
 std::unique_ptr<Span> OpencensusSpan::StartSpan(const std::string& name, const OpencensusSpan* parent) {
-    return std::unique_ptr<OpencensusSpan>(new OpencensusSpan(name, parent));
+  return std::unique_ptr<OpencensusSpan>(new OpencensusSpan(name, parent));
 }
 
 std::unique_ptr<Span> OpencensusSpan::CreateChildSpan(const std::string& name) {
-    return std::unique_ptr<OpencensusSpan>(new OpencensusSpan(name, this));
+  return std::unique_ptr<OpencensusSpan>(new OpencensusSpan(name, this));
 }
 
 void OpencensusSpan::SetStatus(const ::grpc::Status& status) {
-    span_.SetStatus((opencensus::trace::StatusCode)status.error_code());
+  span_.SetStatus((opencensus::trace::StatusCode)status.error_code());
 }
 
-void OpencensusSpan::End() {
-    span_.End();
-}
+void OpencensusSpan::End() { span_.End(); }
 
 OpencensusSpan::OpencensusSpan(const std::string& name, const OpencensusSpan* parent)
     : span_(opencensus::trace::Span::StartSpan(name, parent ? &parent->span_ : nullptr)) {}

@@ -27,13 +27,12 @@ namespace tools {
  * @brief MoveTool
  * Move tool for the visualizer
  */
-class MoveTool
-{
-public:
-    explicit MoveTool();
-    virtual ~MoveTool();
+class MoveTool {
+ public:
+  explicit MoveTool();
+  virtual ~MoveTool();
 
-    // TODO: Implement tool interface
+  // TODO: Implement tool interface
 };
 
 }  // namespace tools

@@ -21,15 +21,13 @@
 namespace autolink {
 namespace profiler {
 
-thread_local std::unordered_map<std::string, Frame>
-    BlockManager::routine_frame_map_{};
+thread_local std::unordered_map<std::string, Frame> BlockManager::routine_frame_map_{};
 
 BlockManager::BlockManager() {}
 
 void BlockManager::StartBlock(Block* block) {
   Frame* frame_ptr = GetRoutineFrame();
-  if (frame_ptr == nullptr || block == nullptr)
-    return;
+  if (frame_ptr == nullptr || block == nullptr) return;
   frame_ptr->Push(block);
   block->set_depth(frame_ptr->size());
   block->Start();
@@ -37,8 +35,7 @@ void BlockManager::StartBlock(Block* block) {
 
 void BlockManager::EndBlock() {
   Frame* frame_ptr = GetRoutineFrame();
-  if (frame_ptr == nullptr || frame_ptr->finished())
-    return;
+  if (frame_ptr == nullptr || frame_ptr->finished()) return;
 
   Block* block = frame_ptr->Top();
   block->End();

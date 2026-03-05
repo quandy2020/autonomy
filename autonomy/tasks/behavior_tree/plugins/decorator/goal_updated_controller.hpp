@@ -20,14 +20,13 @@
 #include <string>
 #include <vector>
 
-#include "behaviortree_cpp/decorator_node.h"
-#include "behaviortree_cpp/json_export.h"
-
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
+#include "behaviortree_cpp/decorator_node.h"
+#include "behaviortree_cpp/json_export.h"
 
 namespace autonomy {
 namespace tasks {
@@ -40,41 +39,40 @@ namespace decorator {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class GoalUpdatedController : public BT::DecoratorNode
-{
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::GoalUpdatedController
-     * @param name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    GoalUpdatedController(const std::string& name, const BT::NodeConfiguration& conf);
+class GoalUpdatedController : public BT::DecoratorNode {
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::GoalUpdatedController
+   * @param name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
+  GoalUpdatedController(const std::string& name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        // Register JSON definitions for the types used in the ports
-        BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
-        BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing node-specific ports
+   */
+  static BT::PortsList providedPorts() {
+    // Register JSON definitions for the types used in the ports
+    BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
+    BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
 
-        return {
-            BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of navigation goals"),
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
-        };
-    }
+    return {
+        BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of navigation goals"),
+        BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
+    };
+  }
 
-private:
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+ private:
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 
-    bool goal_was_updated_;
-    commsgs::geometry_msgs::PoseStamped goal_;
-    commsgs::planning_msgs::Goals goals_;
+  bool goal_was_updated_;
+  commsgs::geometry_msgs::PoseStamped goal_;
+  commsgs::planning_msgs::Goals goals_;
 };
 
 }  // namespace decorator

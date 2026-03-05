@@ -34,9 +34,9 @@ BackUpCancel::BackUpCancel(const std::string& xml_tag_name, const std::string& a
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::BackUpCancel>(name, "backup", config);
-    };
+  BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+    return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::BackUpCancel>(name, "backup", config);
+  };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::BackUpCancel>("CancelBackUp", builder);
+  factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::BackUpCancel>("CancelBackUp", builder);
 }

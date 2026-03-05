@@ -33,14 +33,13 @@
 namespace {
 
 void PrintUsage() {
-  std::cout
-      << "autolink_service is a command-line tool for printing information "
-         "about CyberRT Services.\n\n"
-      << "Commands:\n"
-      << "\tautolink_service list\tlist active services\n"
-      << "\tautolink_service info\tprint information about active service\n\n"
-      << "Type autolink_service <command> -h for more detailed usage, e.g. "
-         "'autolink_service info -h'\n";
+  std::cout << "autolink_service is a command-line tool for printing information "
+               "about CyberRT Services.\n\n"
+            << "Commands:\n"
+            << "\tautolink_service list\tlist active services\n"
+            << "\tautolink_service info\tprint information about active service\n\n"
+            << "Type autolink_service <command> -h for more detailed usage, e.g. "
+               "'autolink_service info -h'\n";
 }
 
 std::vector<std::string> GetServices(uint8_t sleep_s = 2) {
@@ -56,8 +55,7 @@ std::vector<std::string> GetServices(uint8_t sleep_s = 2) {
   return names;
 }
 
-bool GetServiceAttr(const std::string& service_name, uint8_t sleep_s,
-                    autolink::proto::RoleAttributes* out) {
+bool GetServiceAttr(const std::string& service_name, uint8_t sleep_s, autolink::proto::RoleAttributes* out) {
   if (!out) return false;
   auto* topology = autolink::service_discovery::TopologyManager::Instance();
   sleep(sleep_s);
@@ -143,14 +141,10 @@ int main(int argc, char* argv[]) {
     int info_argc = argc - 2;
     char** info_argv = argv + 2;
     static const struct option info_opts[] = {
-        {"all", no_argument, nullptr, 'a'},
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}};
+        {"all", no_argument, nullptr, 'a'}, {"help", no_argument, nullptr, 'h'}, {nullptr, 0, nullptr, 0}};
     optind = 0;
     int c;
-    while (info_argc > 0 &&
-           (c = getopt_long(info_argc, info_argv, "ah", info_opts, nullptr)) !=
-           -1) {
+    while (info_argc > 0 && (c = getopt_long(info_argc, info_argv, "ah", info_opts, nullptr)) != -1) {
       if (c == 'a') all_services = true;
       if (c == 'h') {
         std::cout << "usage: autolink_service info servicename\n"
@@ -163,8 +157,7 @@ int main(int argc, char* argv[]) {
       optind++;
     }
     if (all_services && !service_names.empty()) {
-      std::cerr << "\"-a/--all\" option is expected to run w/o service name(s)"
-                << std::endl;
+      std::cerr << "\"-a/--all\" option is expected to run w/o service name(s)" << std::endl;
       ret = 64;
     } else if (!all_services && service_names.empty()) {
       std::cerr << "servicename must be specified" << std::endl;

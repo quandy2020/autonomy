@@ -34,6 +34,6 @@ ReinitializeGlobalLocalizationService::ReinitializeGlobalLocalizationService(con
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ReinitializeGlobalLocalizationService>(
-        "ReinitializeGlobalLocalization");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ReinitializeGlobalLocalizationService>(
+      "ReinitializeGlobalLocalization");
 }

@@ -31,20 +31,18 @@ Layer::Layer() : layered_costmap_(nullptr), name_(), current_(false), enabled_(f
 
 void Layer::initialize(LayeredCostmap* parent, std::string name, autolink::Node* node,
                        const proto::Costmap2DOptions* options) {
-    layered_costmap_ = parent;
-    name_ = name;
-    node_ = node;
-    options_ = options;
-    onInitialize();
+  layered_costmap_ = parent;
+  name_ = name;
+  node_ = node;
+  options_ = options;
+  onInitialize();
 }
 
 const std::vector<commsgs::geometry_msgs::Point>& Layer::getFootprint() const {
-    return layered_costmap_->getFootprint();
+  return layered_costmap_->getFootprint();
 }
 
-std::string Layer::getFullName(const std::string& param_name) {
-    return std::string(name_ + "." + param_name);
-}
+std::string Layer::getFullName(const std::string& param_name) { return std::string(name_ + "." + param_name); }
 
 }  // namespace costmap_2d
 }  // namespace map

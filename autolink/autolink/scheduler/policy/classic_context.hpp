@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <array>
 #include <functional>
 #include <memory>
@@ -82,4 +81,3 @@ class ClassicContext : public ProcessorContext {
 
 }  // namespace scheduler
 }  // namespace autolink
-

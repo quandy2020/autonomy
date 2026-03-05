@@ -23,26 +23,25 @@
 namespace urdf {
 
 /** \brief Base class for URDF parsers */
-class URDFParser
-{
-public:
-    URDFParser() = default;
-    virtual ~URDFParser() = default;
+class URDFParser {
+ public:
+  URDFParser() = default;
+  virtual ~URDFParser() = default;
 
-    /// \brief Load Model from string
-    /// \return nullptr and write to stderr if the given string is invalid
-    virtual ModelInterfaceSharedPtr parse(const std::string& data) = 0;
+  /// \brief Load Model from string
+  /// \return nullptr and write to stderr if the given string is invalid
+  virtual ModelInterfaceSharedPtr parse(const std::string& data) = 0;
 
-    /// \brief Indicate if data is meant to be parsed by this parser
-    /// \return The position in the string that the plugin became confident the
-    ///         data is intended to be parsed by it.
-    ///         For example, the plugin parsing COLLADA files might return the
-    ///         position in the string that the '<COLLADA>' xml tag was found.
-    ///         Smaller values are interpretted as more confidence, and the
-    ///         plugin with the smallest value is used to parse the data.
-    ///         If a plugin believes data is not meant for it, then it should
-    ///         return a value greater than or equal to data.size().
-    virtual std::size_t might_handle(const std::string& data) = 0;
+  /// \brief Indicate if data is meant to be parsed by this parser
+  /// \return The position in the string that the plugin became confident the
+  ///         data is intended to be parsed by it.
+  ///         For example, the plugin parsing COLLADA files might return the
+  ///         position in the string that the '<COLLADA>' xml tag was found.
+  ///         Smaller values are interpretted as more confidence, and the
+  ///         plugin with the smallest value is used to parse the data.
+  ///         If a plugin believes data is not meant for it, then it should
+  ///         return a value greater than or equal to data.size().
+  virtual std::size_t might_handle(const std::string& data) = 0;
 };
 
 }  // namespace urdf

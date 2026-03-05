@@ -28,23 +28,23 @@ GetNextFewGoals::GetNextFewGoals(const std::string& name, const BT::NodeConfigur
     : BT::ActionNodeBase(name, conf) {}
 
 inline BT::NodeStatus GetNextFewGoals::tick() {
-    setStatus(BT::NodeStatus::RUNNING);
+  setStatus(BT::NodeStatus::RUNNING);
 
-    commsgs::planning_msgs::Goals input_goals, output_goals;
-    unsigned int num_goals;
-    getInput("input_goals", input_goals);
-    getInput("num_goals", num_goals);
+  commsgs::planning_msgs::Goals input_goals, output_goals;
+  unsigned int num_goals;
+  getInput("input_goals", input_goals);
+  getInput("num_goals", num_goals);
 
-    if (input_goals.goals.empty()) {
-        return BT::NodeStatus::FAILURE;
-    }
+  if (input_goals.goals.empty()) {
+    return BT::NodeStatus::FAILURE;
+  }
 
-    output_goals.header = input_goals.header;
-    for (unsigned int i = 0; i < num_goals && i < input_goals.goals.size(); ++i) {
-        output_goals.goals.push_back(input_goals.goals[i]);
-    }
-    setOutput("output_goals", output_goals);
-    return BT::NodeStatus::SUCCESS;
+  output_goals.header = input_goals.header;
+  for (unsigned int i = 0; i < num_goals && i < input_goals.goals.size(); ++i) {
+    output_goals.goals.push_back(input_goals.goals[i]);
+  }
+  setOutput("output_goals", output_goals);
+  return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -55,5 +55,5 @@ inline BT::NodeStatus GetNextFewGoals::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetNextFewGoals>("GetNextFewGoals");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetNextFewGoals>("GetNextFewGoals");
 }

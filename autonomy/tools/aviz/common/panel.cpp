@@ -26,37 +26,29 @@ Panel::Panel(QWidget* parent) : QWidget(parent), context_(nullptr), name_(""), c
 Panel::~Panel() = default;
 
 void Panel::initialize(DisplayContext* context) {
-    context_ = context;
-    onInitialize();
+  context_ = context;
+  onInitialize();
 }
 
 void Panel::load(const Config& config) {
-    QString name;
-    if (config.mapGetString("Name", &name)) {
-        setName(name);
-    }
+  QString name;
+  if (config.mapGetString("Name", &name)) {
+    setName(name);
+  }
 }
 
 void Panel::save(Config config) const {
-    config.mapSetValue("Name", name_);
-    config.mapSetValue("Class", class_id_);
+  config.mapSetValue("Name", name_);
+  config.mapSetValue("Class", class_id_);
 }
 
-QString Panel::getName() const {
-    return name_;
-}
+QString Panel::getName() const { return name_; }
 
-void Panel::setName(const QString& name) {
-    name_ = name;
-}
+void Panel::setName(const QString& name) { name_ = name; }
 
-QString Panel::getClassId() const {
-    return class_id_;
-}
+QString Panel::getClassId() const { return class_id_; }
 
-void Panel::setClassId(const QString& class_id) {
-    class_id_ = class_id;
-}
+void Panel::setClassId(const QString& class_id) { class_id_ = class_id; }
 
 }  // namespace common
 }  // namespace aviz

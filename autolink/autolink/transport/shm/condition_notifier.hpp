@@ -16,8 +16,8 @@
 
 #pragma once
 
-
 #include <sys/types.h>
+
 #include <atomic>
 #include <cstdint>
 
@@ -64,4 +64,3 @@ class ConditionNotifier : public NotifierBase {
 
 }  // namespace transport
 }  // namespace autolink
-

@@ -16,10 +16,8 @@
 
 #pragma once
 
-
 class Base {
  public:
   virtual void DoSomething() = 0;
   virtual ~Base() {}
 };
-

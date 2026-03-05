@@ -21,7 +21,6 @@
 #include <string>
 
 #include "autonomy/commsgs/visualization_msgs.hpp"
-
 #include "autonomy/tools/aviz/common/autolink_topic_display.hpp"
 
 namespace aviz {
@@ -43,33 +42,32 @@ namespace displays {
  *
  * Displays visualization_msgs::Marker messages
  */
-class MarkerDisplay : public AutolinkTopicDisplay<autonomy::commsgs::visualization_msgs::Marker>
-{
-    Q_OBJECT
+class MarkerDisplay : public AutolinkTopicDisplay<autonomy::commsgs::visualization_msgs::Marker> {
+  Q_OBJECT
 
-public:
-    explicit MarkerDisplay(const QString& name = "MarkerDisplay");
-    ~MarkerDisplay() override;
+ public:
+  explicit MarkerDisplay(const QString& name = "MarkerDisplay");
+  ~MarkerDisplay() override;
 
-    void onInitialize() override;
-    void reset() override;
+  void onInitialize() override;
+  void reset() override;
 
-    // Public method to process a marker message (used by MarkerArrayDisplay)
-    void processMarkerMessage(const std::shared_ptr<autonomy::commsgs::visualization_msgs::Marker>& msg);
+  // Public method to process a marker message (used by MarkerArrayDisplay)
+  void processMarkerMessage(const std::shared_ptr<autonomy::commsgs::visualization_msgs::Marker>& msg);
 
-protected:
-    void processMessage(const std::shared_ptr<autonomy::commsgs::visualization_msgs::Marker>& msg) override;
+ protected:
+  void processMessage(const std::shared_ptr<autonomy::commsgs::visualization_msgs::Marker>& msg) override;
 
-private:
-    void deleteMarker(const std::string& ns, int32_t id);
-    void deleteAllMarkers(const std::string& ns = "");
-    void createMarker(const autonomy::commsgs::visualization_msgs::Marker& marker);
+ private:
+  void deleteMarker(const std::string& ns, int32_t id);
+  void deleteAllMarkers(const std::string& ns = "");
+  void createMarker(const autonomy::commsgs::visualization_msgs::Marker& marker);
 
-    // Marker storage: key is "ns/id"
-    std::map<std::string, std::unique_ptr<aviz::rendering::Shape>> shape_markers_;
-    std::map<std::string, std::unique_ptr<aviz::rendering::Arrow>> arrow_markers_;
-    std::map<std::string, std::unique_ptr<aviz::rendering::Axes>> axes_markers_;
-    std::map<std::string, std::unique_ptr<aviz::rendering::BillboardLine>> line_markers_;
+  // Marker storage: key is "ns/id"
+  std::map<std::string, std::unique_ptr<aviz::rendering::Shape>> shape_markers_;
+  std::map<std::string, std::unique_ptr<aviz::rendering::Arrow>> arrow_markers_;
+  std::map<std::string, std::unique_ptr<aviz::rendering::Axes>> axes_markers_;
+  std::map<std::string, std::unique_ptr<aviz::rendering::BillboardLine>> line_markers_;
 };
 
 }  // namespace displays

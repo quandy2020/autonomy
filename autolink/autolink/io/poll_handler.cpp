@@ -26,8 +26,7 @@ namespace io {
 using croutine::CRoutine;
 using croutine::RoutineState;
 
-PollHandler::PollHandler(int fd)
-    : fd_(fd), is_read_(false), is_blocking_(false), routine_(nullptr) {}
+PollHandler::PollHandler(int fd) : fd_(fd), is_read_(false), is_blocking_(false), routine_(nullptr) {}
 
 bool PollHandler::Block(int timeout_ms, bool is_read) {
   if (!Check(timeout_ms)) {
@@ -64,8 +63,7 @@ bool PollHandler::Unblock() {
 
 bool PollHandler::Check(int timeout_ms) {
   if (timeout_ms == 0) {
-    AINFO << "timeout[" << timeout_ms
-          << "] must be larger than zero or less than zero.";
+    AINFO << "timeout[" << timeout_ms << "] must be larger than zero or less than zero.";
     return false;
   }
 
@@ -94,8 +92,7 @@ void PollHandler::Fill(int timeout_ms, bool is_read) {
     request_.events |= EPOLLOUT;
   }
   request_.timeout_ms = timeout_ms;
-  request_.callback =
-      std::bind(&PollHandler::ResponseCallback, this, std::placeholders::_1);
+  request_.callback = std::bind(&PollHandler::ResponseCallback, this, std::placeholders::_1);
 }
 
 void PollHandler::ResponseCallback(const PollResponse& rsp) {

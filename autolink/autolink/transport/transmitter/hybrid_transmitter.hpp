@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <chrono>
 #include <map>
 #include <memory>
@@ -51,16 +50,12 @@ class HybridTransmitter : public Transmitter<M> {
   using MessagePtr = std::shared_ptr<M>;
   using HistoryPtr = std::shared_ptr<History<M>>;
   using TransmitterPtr = std::shared_ptr<Transmitter<M>>;
-  using TransmitterMap =
-      std::unordered_map<OptionalMode, TransmitterPtr, std::hash<int>>;
-  using ReceiverMap =
-      std::unordered_map<OptionalMode, std::set<uint64_t>, std::hash<int>>;
+  using TransmitterMap = std::unordered_map<OptionalMode, TransmitterPtr, std::hash<int>>;
+  using ReceiverMap = std::unordered_map<OptionalMode, std::set<uint64_t>, std::hash<int>>;
   using CommunicationModePtr = std::shared_ptr<proto::CommunicationMode>;
-  using MappingTable =
-      std::unordered_map<Relation, OptionalMode, std::hash<int>>;
+  using MappingTable = std::unordered_map<Relation, OptionalMode, std::hash<int>>;
 
-  HybridTransmitter(const RoleAttributes& attr,
-                    const ParticipantPtr& participant);
+  HybridTransmitter(const RoleAttributes& attr, const ParticipantPtr& participant);
   virtual ~HybridTransmitter();
 
   void Enable() override;
@@ -81,8 +76,7 @@ class HybridTransmitter : public Transmitter<M> {
   void InitReceivers();
   void ClearReceivers();
   void TransmitHistoryMsg(const RoleAttributes& opposite_attr);
-  void ThreadFunc(const RoleAttributes& opposite_attr,
-                  const std::vector<typename History<M>::CachedMessage>& msgs);
+  void ThreadFunc(const RoleAttributes& opposite_attr, const std::vector<typename History<M>::CachedMessage>& msgs);
   Relation GetRelation(const RoleAttributes& opposite_attr);
 
   HistoryPtr history_;
@@ -97,12 +91,8 @@ class HybridTransmitter : public Transmitter<M> {
 };
 
 template <typename M>
-HybridTransmitter<M>::HybridTransmitter(const RoleAttributes& attr,
-                                        const ParticipantPtr& participant)
-    : Transmitter<M>(attr),
-      history_(nullptr),
-      mode_(nullptr),
-      participant_(participant) {
+HybridTransmitter<M>::HybridTransmitter(const RoleAttributes& attr, const ParticipantPtr& participant)
+    : Transmitter<M>(attr), history_(nullptr), mode_(nullptr), participant_(participant) {
   InitMode();
   ObtainConfig();
   InitHistory();
@@ -160,8 +150,7 @@ void HybridTransmitter<M>::Disable(const RoleAttributes& opposite_attr) {
 }
 
 template <typename M>
-bool HybridTransmitter<M>::Transmit(const MessagePtr& msg,
-                                    const MessageInfo& msg_info) {
+bool HybridTransmitter<M>::Transmit(const MessagePtr& msg, const MessageInfo& msg_info) {
   std::lock_guard<std::mutex> lock(mutex_);
   history_->Add(msg, msg_info);
   for (auto& item : transmitters_) {
@@ -208,11 +197,9 @@ void HybridTransmitter<M>::ObtainConfig() {
 
 template <typename M>
 void HybridTransmitter<M>::InitHistory() {
-  HistoryAttributes history_attr(this->attr_.qos_profile().history(),
-                                 this->attr_.qos_profile().depth());
+  HistoryAttributes history_attr(this->attr_.qos_profile().history(), this->attr_.qos_profile().depth());
   history_ = std::make_shared<History<M>>(history_attr);
-  if (this->attr_.qos_profile().durability() ==
-      QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
+  if (this->attr_.qos_profile().durability() == QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
     history_->Enable();
   }
 }
@@ -226,15 +213,13 @@ void HybridTransmitter<M>::InitTransmitters() {
   for (auto& mode : modes) {
     switch (mode) {
       case OptionalMode::INTRA:
-        transmitters_[mode] =
-            std::make_shared<IntraTransmitter<M>>(this->attr_);
+        transmitters_[mode] = std::make_shared<IntraTransmitter<M>>(this->attr_);
         break;
       case OptionalMode::SHM:
         transmitters_[mode] = std::make_shared<ShmTransmitter<M>>(this->attr_);
         break;
       default:
-        transmitters_[mode] =
-            std::make_shared<RtpsTransmitter<M>>(this->attr_, participant_);
+        transmitters_[mode] = std::make_shared<RtpsTransmitter<M>>(this->attr_, participant_);
         break;
     }
   }
@@ -262,11 +247,9 @@ void HybridTransmitter<M>::ClearReceivers() {
 }
 
 template <typename M>
-void HybridTransmitter<M>::TransmitHistoryMsg(
-    const RoleAttributes& opposite_attr) {
+void HybridTransmitter<M>::TransmitHistoryMsg(const RoleAttributes& opposite_attr) {
   // check qos
-  if (this->attr_.qos_profile().durability() !=
-      QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
+  if (this->attr_.qos_profile().durability() != QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
     return;
   }
 
@@ -282,19 +265,16 @@ void HybridTransmitter<M>::TransmitHistoryMsg(
 }
 
 template <typename M>
-void HybridTransmitter<M>::ThreadFunc(
-    const RoleAttributes& opposite_attr,
-    const std::vector<typename History<M>::CachedMessage>& msgs) {
+void HybridTransmitter<M>::ThreadFunc(const RoleAttributes& opposite_attr,
+                                      const std::vector<typename History<M>::CachedMessage>& msgs) {
   // create transmitter to transmit msgs
   RoleAttributes new_attr;
   new_attr.CopyFrom(this->attr_);
-  std::string new_channel_name =
-      std::to_string(this->attr_.id()) + std::to_string(opposite_attr.id());
+  std::string new_channel_name = std::to_string(this->attr_.id()) + std::to_string(opposite_attr.id());
   uint64_t channel_id = common::GlobalData::RegisterChannel(new_channel_name);
   new_attr.set_channel_name(new_channel_name);
   new_attr.set_channel_id(channel_id);
-  auto new_transmitter =
-      std::make_shared<RtpsTransmitter<M>>(new_attr, participant_);
+  auto new_transmitter = std::make_shared<RtpsTransmitter<M>>(new_attr, participant_);
   new_transmitter->Enable();
 
   for (auto& item : msgs) {
@@ -306,8 +286,7 @@ void HybridTransmitter<M>::ThreadFunc(
 }
 
 template <typename M>
-Relation HybridTransmitter<M>::GetRelation(
-    const RoleAttributes& opposite_attr) {
+Relation HybridTransmitter<M>::GetRelation(const RoleAttributes& opposite_attr) {
   if (opposite_attr.channel_name() != this->attr_.channel_name()) {
     return NO_RELATION;
   }
@@ -323,4 +302,3 @@ Relation HybridTransmitter<M>::GetRelation(
 
 }  // namespace transport
 }  // namespace autolink
-

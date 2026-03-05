@@ -35,108 +35,107 @@ ComputePathToPoseAction::ComputePathToPoseAction(const std::string& xml_tag_name
     : BtActionNode<Action>(xml_tag_name, action_name, conf) {}
 
 void ComputePathToPoseAction::on_tick() {
-    commsgs::geometry_msgs::PoseStamped goal_pose;
-    if (getInput("goal", goal_pose)) {
-        auto* proto_goal = goal_.mutable_goal();
-        *proto_goal = commsgs::geometry_msgs::ToProto(goal_pose);
-    }
+  commsgs::geometry_msgs::PoseStamped goal_pose;
+  if (getInput("goal", goal_pose)) {
+    auto* proto_goal = goal_.mutable_goal();
+    *proto_goal = commsgs::geometry_msgs::ToProto(goal_pose);
+  }
 
-    std::string planner_id;
-    if (getInput("planner_id", planner_id)) {
-        goal_.set_planner_id(planner_id);
-    }
+  std::string planner_id;
+  if (getInput("planner_id", planner_id)) {
+    goal_.set_planner_id(planner_id);
+  }
 
-    // if "use_start" is provided try to enforce it (true or false), but we
-    // cannot enforce true if start is not provided
-    bool use_start = false;
-    if (getInput("use_start", use_start)) {
-        commsgs::geometry_msgs::PoseStamped start_pose;
-        if (use_start && !getInput("start", start_pose)) {
-            // in case we don't have a "start" pose
-            use_start = false;
-            AERROR << "use_start is set to true but no start pose was provided, "
-                      "falling back to default behavior, i.e. using the current "
-                      "robot pose";
-        } else if (use_start) {
-            auto* proto_start = goal_.mutable_start();
-            *proto_start = commsgs::geometry_msgs::ToProto(start_pose);
-        }
-        goal_.set_use_start(use_start);
-    } else {
-        // else if "use_start" is not provided, but "start" is, then use it in
-        // order to not change the legacy behavior
-        commsgs::geometry_msgs::PoseStamped start_pose;
-        if (getInput("start", start_pose)) {
-            goal_.set_use_start(true);
-            auto* proto_start = goal_.mutable_start();
-            *proto_start = commsgs::geometry_msgs::ToProto(start_pose);
-        }
+  // if "use_start" is provided try to enforce it (true or false), but we
+  // cannot enforce true if start is not provided
+  bool use_start = false;
+  if (getInput("use_start", use_start)) {
+    commsgs::geometry_msgs::PoseStamped start_pose;
+    if (use_start && !getInput("start", start_pose)) {
+      // in case we don't have a "start" pose
+      use_start = false;
+      AERROR << "use_start is set to true but no start pose was provided, "
+                "falling back to default behavior, i.e. using the current "
+                "robot pose";
+    } else if (use_start) {
+      auto* proto_start = goal_.mutable_start();
+      *proto_start = commsgs::geometry_msgs::ToProto(start_pose);
     }
+    goal_.set_use_start(use_start);
+  } else {
+    // else if "use_start" is not provided, but "start" is, then use it in
+    // order to not change the legacy behavior
+    commsgs::geometry_msgs::PoseStamped start_pose;
+    if (getInput("start", start_pose)) {
+      goal_.set_use_start(true);
+      auto* proto_start = goal_.mutable_start();
+      *proto_start = commsgs::geometry_msgs::ToProto(start_pose);
+    }
+  }
 }
 
 BT::NodeStatus ComputePathToPoseAction::on_success() {
-    if (result_.result && result_.result->has_path()) {
-        // Convert proto Path to commsgs Path
-        commsgs::planning_msgs::Path path;
-        const auto& proto_path = result_.result->path();
-        path.header = commsgs::std_msgs::FromProto(proto_path.header());
-        for (const auto& proto_pose : proto_path.poses()) {
-            path.poses.push_back(commsgs::geometry_msgs::FromProto(proto_pose));
-        }
-        setOutput("path", path);
-    } else {
-        commsgs::planning_msgs::Path empty_path;
-        setOutput("path", empty_path);
+  if (result_.result && result_.result->has_path()) {
+    // Convert proto Path to commsgs Path
+    commsgs::planning_msgs::Path path;
+    const auto& proto_path = result_.result->path();
+    path.header = commsgs::std_msgs::FromProto(proto_path.header());
+    for (const auto& proto_pose : proto_path.poses()) {
+      path.poses.push_back(commsgs::geometry_msgs::FromProto(proto_pose));
     }
-    // Set empty error code, action was successful
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
+    setOutput("path", path);
+  } else {
+    commsgs::planning_msgs::Path empty_path;
+    setOutput("path", empty_path);
+  }
+  // Set empty error code, action was successful
+  setOutput("error_code_id",
+            static_cast<int32_t>(
+                autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
+  setOutput("error_msg", std::string(""));
+  return BT::NodeStatus::SUCCESS;
 }
 
 BT::NodeStatus ComputePathToPoseAction::on_aborted() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    if (result_.result) {
-        setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
-    } else {
-        setOutput(
-            "error_code_id",
-            static_cast<int32_t>(
-                autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Unknown error"));
-    }
-    return BT::NodeStatus::FAILURE;
-}
-
-BT::NodeStatus ComputePathToPoseAction::on_cancelled() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    // Set empty error code, action was cancelled
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-void ComputePathToPoseAction::on_timeout() {
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  if (result_.result) {
+    setOutput("error_code_id", static_cast<int32_t>(result_.result->error_code()));
+    setOutput("error_msg", result_.result->error_msg());
+  } else {
     setOutput(
         "error_code_id",
         static_cast<int32_t>(
-            autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT));
-    setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
+            autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN));
+    setOutput("error_msg", std::string("Unknown error"));
+  }
+  return BT::NodeStatus::FAILURE;
+}
+
+BT::NodeStatus ComputePathToPoseAction::on_cancelled() {
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  // Set empty error code, action was cancelled
+  setOutput("error_code_id",
+            static_cast<int32_t>(
+                autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
+  setOutput("error_msg", std::string(""));
+  return BT::NodeStatus::SUCCESS;
+}
+
+void ComputePathToPoseAction::on_timeout() {
+  setOutput("error_code_id",
+            static_cast<int32_t>(
+                autonomy::tasks::behavior_tree::proto::ComputePathToPoseErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT));
+  setOutput("error_msg", std::string("Behavior Tree action client timed out waiting."));
 }
 
 void ComputePathToPoseAction::halt() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    // DO NOT reset "error_code_id" output port, we want to read it later
-    // DO NOT reset "error_msg" output port, we want to read it later
-    BtActionNode::halt();
+  commsgs::planning_msgs::Path empty_path;
+  setOutput("path", empty_path);
+  // DO NOT reset "error_code_id" output port, we want to read it later
+  // DO NOT reset "error_msg" output port, we want to read it later
+  BtActionNode::halt();
 }
 
 }  // namespace action
@@ -147,11 +146,11 @@ void ComputePathToPoseAction::halt() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
-        return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction>(
-            name, "compute_path_to_pose", config);
-    };
+  BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
+    return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction>(
+        name, "compute_path_to_pose", config);
+  };
 
-    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction>(
-        "ComputePathToPose", builder);
+  factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction>("ComputePathToPose",
+                                                                                                    builder);
 }

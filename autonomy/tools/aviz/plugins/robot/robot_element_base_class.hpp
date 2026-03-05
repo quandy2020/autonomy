@@ -29,16 +29,15 @@ namespace robot {
  *
  * Base class for robot elements
  */
-class RobotElementBaseClass
-{
-public:
-    RobotElementBaseClass();
-    virtual ~RobotElementBaseClass();
+class RobotElementBaseClass {
+ public:
+  RobotElementBaseClass();
+  virtual ~RobotElementBaseClass();
 
-    // TODO: Implement functionality
+  // TODO: Implement functionality
 
-private:
-    // TODO: Add members
+ private:
+  // TODO: Add members
 };
 
 }  // namespace robot

@@ -33,39 +33,38 @@ using ::testing::ElementsAre;
 using LandmarkObservation = PoseGraphInterface::LandmarkNode::LandmarkObservation;
 
 TEST(LandmarkCostFunctionTest, SmokeTest) {
-    NodeSpec2D prev_node;
-    prev_node.time = common::FromUniversal(0);
-    prev_node.gravity_alignment = Eigen::Quaterniond::Identity();
-    NodeSpec2D next_node;
-    next_node.time = common::FromUniversal(10);
-    next_node.gravity_alignment = Eigen::Quaterniond::Identity();
+  NodeSpec2D prev_node;
+  prev_node.time = common::FromUniversal(0);
+  prev_node.gravity_alignment = Eigen::Quaterniond::Identity();
+  NodeSpec2D next_node;
+  next_node.time = common::FromUniversal(10);
+  next_node.gravity_alignment = Eigen::Quaterniond::Identity();
 
-    std::unique_ptr<ceres::CostFunction> cost_function(LandmarkCostFunction2D::CreateAutoDiffCostFunction(
-        LandmarkObservation{
-            0 /* trajectory ID */,
-            common::FromUniversal(5) /* time */,
-            transform::Rigid3d::Translation(Eigen::Vector3d(1., 1., 1.)),
-            1. /* translation_weight */,
-            2. /* rotation_weight */,
-        },
-        prev_node, next_node));
+  std::unique_ptr<ceres::CostFunction> cost_function(LandmarkCostFunction2D::CreateAutoDiffCostFunction(
+      LandmarkObservation{
+          0 /* trajectory ID */,
+          common::FromUniversal(5) /* time */,
+          transform::Rigid3d::Translation(Eigen::Vector3d(1., 1., 1.)),
+          1. /* translation_weight */,
+          2. /* rotation_weight */,
+      },
+      prev_node, next_node));
 
-    const std::array<double, 3> prev_node_pose{{2., 0., 0.}};
-    const std::array<double, 3> next_node_pose{{0., 2., 0.}};
-    const std::array<double, 4> landmark_rotation{{1., 0., 0., 0.}};
-    const std::array<double, 3> landmark_translation{{1., 2., 1.}};
-    const std::array<const double*, 4> parameter_blocks{
-        {prev_node_pose.data(), next_node_pose.data(), landmark_rotation.data(), landmark_translation.data()}};
+  const std::array<double, 3> prev_node_pose{{2., 0., 0.}};
+  const std::array<double, 3> next_node_pose{{0., 2., 0.}};
+  const std::array<double, 4> landmark_rotation{{1., 0., 0., 0.}};
+  const std::array<double, 3> landmark_translation{{1., 2., 1.}};
+  const std::array<const double*, 4> parameter_blocks{
+      {prev_node_pose.data(), next_node_pose.data(), landmark_rotation.data(), landmark_translation.data()}};
 
-    std::array<double, 6> residuals;
-    std::array<std::array<double, 13>, 6> jacobians;
-    std::array<double*, 6> jacobians_ptrs;
-    for (int i = 0; i < 6; ++i)
-        jacobians_ptrs[i] = jacobians[i].data();
+  std::array<double, 6> residuals;
+  std::array<std::array<double, 13>, 6> jacobians;
+  std::array<double*, 6> jacobians_ptrs;
+  for (int i = 0; i < 6; ++i) jacobians_ptrs[i] = jacobians[i].data();
 
-    cost_function->Evaluate(parameter_blocks.data(), residuals.data(), jacobians_ptrs.data());
-    EXPECT_THAT(residuals,
-                ElementsAre(DoubleEq(1.), DoubleEq(0.), DoubleEq(0.), DoubleEq(0.), DoubleEq(0.), DoubleEq(0.)));
+  cost_function->Evaluate(parameter_blocks.data(), residuals.data(), jacobians_ptrs.data());
+  EXPECT_THAT(residuals,
+              ElementsAre(DoubleEq(1.), DoubleEq(0.), DoubleEq(0.), DoubleEq(0.), DoubleEq(0.), DoubleEq(0.)));
 }
 
 }  // namespace

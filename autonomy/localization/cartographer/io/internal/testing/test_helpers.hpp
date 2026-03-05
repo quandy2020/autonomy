@@ -29,9 +29,9 @@ namespace testing {
 
 template <typename T>
 T ProtoFromStringOrDie(const std::string& proto_string) {
-    T msg;
-    CHECK(google::protobuf::TextFormat::ParseFromString(proto_string, &msg));
-    return msg;
+  T msg;
+  CHECK(google::protobuf::TextFormat::ParseFromString(proto_string, &msg));
+  return msg;
 }
 
 std::unique_ptr<InMemoryProtoStreamReader> ProtoReaderFromStrings(

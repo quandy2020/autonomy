@@ -16,8 +16,8 @@
 
 #pragma once
 
-
 #include <netinet/in.h>
+
 #include <atomic>
 
 #include "autolink/common/macros.hpp"
@@ -51,4 +51,3 @@ class MulticastNotifier : public NotifierBase {
 
 }  // namespace transport
 }  // namespace autolink
-

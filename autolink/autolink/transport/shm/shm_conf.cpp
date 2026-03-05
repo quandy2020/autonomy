@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include "autolink/transport/shm/shm_conf.hpp"
+
 #include "autolink/common/log.hpp"
 
 namespace autolink {
@@ -30,8 +31,7 @@ void ShmConf::Update(const uint64_t& real_msg_size) {
   ceiling_msg_size_ = GetCeilingMessageSize(real_msg_size);
   block_buf_size_ = GetBlockBufSize(ceiling_msg_size_);
   block_num_ = GetBlockNum(ceiling_msg_size_);
-  managed_shm_size_ = EXTRA_SIZE + STATE_SIZE + \
-                      (BLOCK_SIZE + block_buf_size_) * block_num_ + \
+  managed_shm_size_ = EXTRA_SIZE + STATE_SIZE + (BLOCK_SIZE + block_buf_size_) * block_num_ +
                       (BLOCK_SIZE + ARENA_MESSAGE_SIZE) * ARENA_BLOCK_NUM;
 }
 
@@ -79,9 +79,7 @@ uint64_t ShmConf::GetCeilingMessageSize(const uint64_t& real_msg_size) {
   return ceiling_msg_size;
 }
 
-uint64_t ShmConf::GetBlockBufSize(const uint64_t& ceiling_msg_size) {
-  return ceiling_msg_size + MESSAGE_INFO_SIZE;
-}
+uint64_t ShmConf::GetBlockBufSize(const uint64_t& ceiling_msg_size) { return ceiling_msg_size + MESSAGE_INFO_SIZE; }
 
 uint32_t ShmConf::GetBlockNum(const uint64_t& ceiling_msg_size) {
   uint32_t num = 0;

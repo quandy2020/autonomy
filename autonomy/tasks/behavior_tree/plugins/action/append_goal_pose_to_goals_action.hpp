@@ -19,13 +19,11 @@
 #include <string>
 #include <vector>
 
-#include "behaviortree_cpp/action_node.h"
-
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-
 #include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -37,39 +35,38 @@ namespace action {
  * @brief A BT::ActionNode that appends a goal pose to a goals array
  * @note This node appends a single goal pose to an existing goals array
  */
-class AppendGoalPoseToGoalsAction : public BT::ActionNodeBase
-{
-public:
-    /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::AppendGoalPoseToGoalsAction
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    AppendGoalPoseToGoalsAction(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class AppendGoalPoseToGoalsAction : public BT::ActionNodeBase {
+ public:
+  /**
+   * @brief A constructor for
+   * autonomy::tasks::behavior_tree::plugins::action::AppendGoalPoseToGoalsAction
+   * @param xml_tag_name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
+  AppendGoalPoseToGoalsAction(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        return {
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Goal pose to append"),
-            BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Input goals array"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>("goals", "Output goals array with appended goal"),
-        };
-    }
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing node-specific ports
+   */
+  static BT::PortsList providedPorts() {
+    return {
+        BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Goal pose to append"),
+        BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Input goals array"),
+        BT::OutputPort<commsgs::planning_msgs::Goals>("goals", "Output goals array with appended goal"),
+    };
+  }
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 
-    /**
-     * @brief Function to halt the node
-     */
-    void halt() override {}
+  /**
+   * @brief Function to halt the node
+   */
+  void halt() override {}
 };
 
 }  // namespace action

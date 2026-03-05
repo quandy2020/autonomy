@@ -28,10 +28,9 @@ DEFINE_HANDLER_SIGNATURE(IsTrajectoryFinishedSignature, proto::IsTrajectoryFinis
                          proto::IsTrajectoryFinishedResponse,
                          "/cartographer.cloud.proto.MapBuilderService/IsTrajectoryFinished")
 
-class IsTrajectoryFinishedHandler : public autonomy::common::async_grpc::RpcHandler<IsTrajectoryFinishedSignature>
-{
-public:
-    void OnRequest(const proto::IsTrajectoryFinishedRequest& request) override;
+class IsTrajectoryFinishedHandler : public autonomy::common::async_grpc::RpcHandler<IsTrajectoryFinishedSignature> {
+ public:
+  void OnRequest(const proto::IsTrajectoryFinishedRequest& request) override;
 };
 
 }  // namespace handlers

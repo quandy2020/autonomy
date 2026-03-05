@@ -34,62 +34,62 @@ const autonomy::common::Duration kPopTimeout = autonomy::common::FromMillisecond
 }  // namespace
 
 GrpcBridgeServer::GrpcBridgeServer() {
-    autonomy::common::async_grpc::Server::Builder server_builder;
-    server_builder.SetServerAddress("127.0.0.1");
-    server_builder.SetNumGrpcThreads(4);
-    server_builder.SetNumEventThreads(4);
-    // server_builder.SetServerAddress(options_.host());
-    // server_builder.SetNumGrpcThreads(options_.num_grpc_threads());
-    // server_builder.SetNumEventThreads(options_.num_event_threads());
-    server_builder.SetMaxSendMessageSize(kMaxMessageSize);
+  autonomy::common::async_grpc::Server::Builder server_builder;
+  server_builder.SetServerAddress("127.0.0.1");
+  server_builder.SetNumGrpcThreads(4);
+  server_builder.SetNumEventThreads(4);
+  // server_builder.SetServerAddress(options_.host());
+  // server_builder.SetNumGrpcThreads(options_.num_grpc_threads());
+  // server_builder.SetNumEventThreads(options_.num_event_threads());
+  server_builder.SetMaxSendMessageSize(kMaxMessageSize);
 
-    if (!options_.uplink_server_address().empty()) {
-    }
+  if (!options_.uplink_server_address().empty()) {
+  }
 
-    server_builder.RegisterHandler<handlers::SendNavigationHandler>();
-    server_builder.RegisterHandler<handlers::SendExplorationHandler>();
-    grpc_server_ = server_builder.Build();
+  server_builder.RegisterHandler<handlers::SendNavigationHandler>();
+  server_builder.RegisterHandler<handlers::SendExplorationHandler>();
+  grpc_server_ = server_builder.Build();
 }
 
 void GrpcBridgeServer::Start() {
-    shutting_down_ = false;
-    StartThread();
-    grpc_server_->Start();
+  shutting_down_ = false;
+  StartThread();
+  grpc_server_->Start();
 }
 
 void GrpcBridgeServer::WaitUntilIdle() {}
 
 void GrpcBridgeServer::WaitForShutdown() {
-    grpc_server_->WaitForShutdown();
+  grpc_server_->WaitForShutdown();
 
-    if (task_thread_) {
-        task_thread_->join();
-    }
+  if (task_thread_) {
+    task_thread_->join();
+  }
 }
 
 void GrpcBridgeServer::Shutdown() {
-    shutting_down_ = true;
-    grpc_server_->Shutdown();
+  shutting_down_ = true;
+  grpc_server_->Shutdown();
 
-    if (task_thread_) {
-        task_thread_->join();
-        task_thread_.reset();
-    }
+  if (task_thread_) {
+    task_thread_->join();
+    task_thread_.reset();
+  }
 }
 
 void GrpcBridgeServer::ProcessSensorDataQueue() {
-    LOG(INFO) << "Starting task handler thread.";
-    while (!shutting_down_) {
-        LOG(INFO) << "handler sensor datas.";
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-    }
+  LOG(INFO) << "Starting task handler thread.";
+  while (!shutting_down_) {
+    LOG(INFO) << "handler sensor datas.";
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+  }
 }
 
 void GrpcBridgeServer::StartThread() {
-    CHECK(!task_thread_);
+  CHECK(!task_thread_);
 
-    // Start the ask handler processing thread.
-    task_thread_ = std::make_unique<std::thread>([this]() { this->ProcessSensorDataQueue(); });
+  // Start the ask handler processing thread.
+  task_thread_ = std::make_unique<std::thread>([this]() { this->ProcessSensorDataQueue(); });
 }
 
 }  // namespace grpc

@@ -16,7 +16,7 @@
 
 #pragma once
 
-
+#include <google/protobuf/arena.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -28,8 +28,6 @@
 #include <memory>
 #include <utility>
 #include <vector>
-
-#include <google/protobuf/arena.h>
 
 #include "autolink/base/macros.hpp"
 #include "autolink/base/wait_strategy.hpp"
@@ -188,18 +186,14 @@ T* ArenaQueue<T>::AddBack() {
     uint64_t old_tail = tail_.load(std::memory_order_acquire);
     do {
       new_tail = old_tail + 1;
-      if (GetIndex(new_tail) ==
-          GetIndex(head_.load(std::memory_order_acquire))) {
+      if (GetIndex(new_tail) == GetIndex(head_.load(std::memory_order_acquire))) {
         return nullptr;
       }
-    } while (!tail_.compare_exchange_weak(old_tail, new_tail,
-                                          std::memory_order_acq_rel,
-                                          std::memory_order_relaxed));
+    } while (!tail_.compare_exchange_weak(old_tail, new_tail, std::memory_order_acq_rel, std::memory_order_relaxed));
     do {
       old_commit = old_tail;
-    } while (autolink_unlikely(!commit_.compare_exchange_weak(
-        old_commit, new_tail, std::memory_order_acq_rel,
-        std::memory_order_relaxed)));
+    } while (autolink_unlikely(
+        !commit_.compare_exchange_weak(old_commit, new_tail, std::memory_order_acq_rel, std::memory_order_relaxed)));
     return pool_[GetIndex(old_tail)];
   } else {
     T instance;
@@ -221,9 +215,7 @@ T* ArenaQueue<T>::PopFront() {
       if (new_head == commit_.load(std::memory_order_acquire)) {
         return nullptr;
       }
-    } while (!head_.compare_exchange_weak(old_head, new_head,
-                                          std::memory_order_acq_rel,
-                                          std::memory_order_relaxed));
+    } while (!head_.compare_exchange_weak(old_head, new_head, std::memory_order_acq_rel, std::memory_order_relaxed));
     return pool_[GetIndex(new_head)];
   } else {
     normal_queue.pop_front();
@@ -256,4 +248,3 @@ inline uint64_t ArenaQueue<T>::GetIndex(uint64_t num) {
 
 }  // namespace base
 }  // namespace autolink
-

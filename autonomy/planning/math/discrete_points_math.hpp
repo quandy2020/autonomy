@@ -27,14 +27,13 @@ namespace autonomy {
 namespace planning {
 namespace math {
 
-class DiscretePointsMath
-{
-public:
-    DiscretePointsMath() = delete;
+class DiscretePointsMath {
+ public:
+  DiscretePointsMath() = delete;
 
-    static bool ComputePathProfile(const std::vector<std::pair<double, double>>& xy_points,
-                                   std::vector<double>* headings, std::vector<double>* accumulated_s,
-                                   std::vector<double>* kappas, std::vector<double>* dkappas);
+  static bool ComputePathProfile(const std::vector<std::pair<double, double>>& xy_points, std::vector<double>* headings,
+                                 std::vector<double>* accumulated_s, std::vector<double>* kappas,
+                                 std::vector<double>* dkappas);
 };
 
 }  // namespace math

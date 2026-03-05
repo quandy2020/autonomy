@@ -38,53 +38,52 @@ namespace common {
  * also check the velocity, as some applications require that robot be stopped
  * to be considered as having reached the goal.
  */
-class GoalChecker
-{
-public:
-    /**
-     * Define GoalChecker::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(GoalChecker)
+class GoalChecker {
+ public:
+  /**
+   * Define GoalChecker::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(GoalChecker)
 
-    /**
-     * @brief A Destructor for GoalChecker
-     */
-    virtual ~GoalChecker() = default;
+  /**
+   * @brief A Destructor for GoalChecker
+   */
+  virtual ~GoalChecker() = default;
 
-    /**
-     * @brief A constructor for control::common::GoalChecker
-     * @param parent Node pointer for grabbing parameters
-     */
-    virtual void Initialize(const std::string& plugin_name,
-                            const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wraper) = 0;
+  /**
+   * @brief A constructor for control::common::GoalChecker
+   * @param parent Node pointer for grabbing parameters
+   */
+  virtual void Initialize(const std::string& plugin_name,
+                          const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wraper) = 0;
 
-    virtual void Reset() = 0;
+  virtual void Reset() = 0;
 
-    /**
-     * @brief Check whether the goal should be considered reached
-     * @param query_pose The pose to check
-     * @param goal_pose The pose to check against
-     * @param velocity The robot's current velocity
-     * @return True if goal is reached
-     */
-    virtual bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
-                               const commsgs::geometry_msgs::Pose& goal_pose,
-                               const commsgs::geometry_msgs::Twist& velocity) = 0;
+  /**
+   * @brief Check whether the goal should be considered reached
+   * @param query_pose The pose to check
+   * @param goal_pose The pose to check against
+   * @param velocity The robot's current velocity
+   * @return True if goal is reached
+   */
+  virtual bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
+                             const commsgs::geometry_msgs::Pose& goal_pose,
+                             const commsgs::geometry_msgs::Twist& velocity) = 0;
 
-    /**
-     * @brief Get the maximum possible tolerances used for goal checking in the
-     * major types. Any field without a valid entry is replaced with
-     * std::numeric_limits<double>::lowest() to indicate that it is not
-     * measured. For tolerance across multiple entries (e.x. XY tolerances),
-     * both fields will contain this value since it is the maximum tolerance
-     * that each independent field could be assuming the other has no error
-     * (e.x. X and Y).
-     * @param pose_tolerance The tolerance used for checking in Pose fields
-     * @param vel_tolerance The tolerance used for checking velocity fields
-     * @return True if the tolerances are valid to use
-     */
-    virtual bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                               commsgs::geometry_msgs::Twist& vel_tolerance) = 0;
+  /**
+   * @brief Get the maximum possible tolerances used for goal checking in the
+   * major types. Any field without a valid entry is replaced with
+   * std::numeric_limits<double>::lowest() to indicate that it is not
+   * measured. For tolerance across multiple entries (e.x. XY tolerances),
+   * both fields will contain this value since it is the maximum tolerance
+   * that each independent field could be assuming the other has no error
+   * (e.x. X and Y).
+   * @param pose_tolerance The tolerance used for checking in Pose fields
+   * @param vel_tolerance The tolerance used for checking velocity fields
+   * @return True if the tolerances are valid to use
+   */
+  virtual bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                             commsgs::geometry_msgs::Twist& vel_tolerance) = 0;
 };
 
 }  // namespace common

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <stdexcept>
 #include <string>
 
@@ -30,11 +29,9 @@ namespace class_loader {
     ~CLS() throw() {}                                           \
   };
 
-DECLARE_SHARED_LIBRARY_EXCEPTION(LibraryAlreadyLoadedException,
-                                 std::runtime_error);
+DECLARE_SHARED_LIBRARY_EXCEPTION(LibraryAlreadyLoadedException, std::runtime_error);
 DECLARE_SHARED_LIBRARY_EXCEPTION(LibraryLoadException, std::runtime_error);
 DECLARE_SHARED_LIBRARY_EXCEPTION(SymbolNotFoundException, std::runtime_error);
 
 }  // namespace class_loader
 }  // namespace autolink
-

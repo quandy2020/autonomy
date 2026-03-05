@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 
 namespace autolink {
@@ -33,8 +32,7 @@ class ServiceBase {
    *
    * @param service_name name of this Service
    */
-  explicit ServiceBase(const std::string& service_name)
-      : service_name_(service_name) {}
+  explicit ServiceBase(const std::string& service_name) : service_name_(service_name) {}
 
   virtual ~ServiceBase() {}
 
@@ -50,4 +48,3 @@ class ServiceBase {
 };
 
 }  // namespace autolink
-

@@ -16,11 +16,8 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
-
-#include "autolink/proto/run_mode_conf.pb.h"
 
 #include "autolink/blocker/intra_reader.hpp"
 #include "autolink/blocker/intra_writer.hpp"
@@ -28,6 +25,7 @@
 #include "autolink/message/message_traits.hpp"
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
+#include "autolink/proto/run_mode_conf.pb.h"
 
 namespace autolink {
 
@@ -38,8 +36,7 @@ struct ReaderConfig {  ///< configurations for a Reader
     qos_profile.set_history(proto::QosHistoryPolicy::HISTORY_KEEP_LAST);
     qos_profile.set_depth(1);
     qos_profile.set_mps(0);
-    qos_profile.set_reliability(
-        proto::QosReliabilityPolicy::RELIABILITY_RELIABLE);
+    qos_profile.set_reliability(proto::QosReliabilityPolicy::RELIABILITY_RELIABLE);
     qos_profile.set_durability(proto::QosDurabilityPolicy::DURABILITY_VOLATILE);
 
     pending_queue_size = DEFAULT_PENDING_QUEUE_SIZE;
@@ -74,8 +71,7 @@ class NodeChannelImpl {
    *
    * @param node_name node name
    */
-  explicit NodeChannelImpl(const std::string& node_name)
-      : is_reality_mode_(true), node_name_(node_name) {
+  explicit NodeChannelImpl(const std::string& node_name) : is_reality_mode_(true), node_name_(node_name) {
     node_attr_.set_host_name(common::GlobalData::Instance()->HostName());
     node_attr_.set_host_ip(common::GlobalData::Instance()->HostIp());
     node_attr_.set_process_id(common::GlobalData::Instance()->ProcessId());
@@ -86,8 +82,7 @@ class NodeChannelImpl {
     is_reality_mode_ = common::GlobalData::Instance()->IsRealityMode();
 
     if (is_reality_mode_) {
-      node_manager_ =
-          service_discovery::TopologyManager::Instance()->node_manager();
+      node_manager_ = service_discovery::TopologyManager::Instance()->node_manager();
       node_manager_->Join(node_attr_, RoleType::ROLE_NODE);
     }
   }
@@ -111,32 +106,25 @@ class NodeChannelImpl {
 
  private:
   template <typename MessageT>
-  auto CreateWriter(const proto::RoleAttributes& role_attr)
-      -> std::shared_ptr<Writer<MessageT>>;
+  auto CreateWriter(const proto::RoleAttributes& role_attr) -> std::shared_ptr<Writer<MessageT>>;
 
   template <typename MessageT>
-  auto CreateWriter(const std::string& channel_name)
-      -> std::shared_ptr<Writer<MessageT>>;
+  auto CreateWriter(const std::string& channel_name) -> std::shared_ptr<Writer<MessageT>>;
 
   template <typename MessageT>
-  auto CreateReader(const std::string& channel_name,
-                    const CallbackFunc<MessageT>& reader_func)
+  auto CreateReader(const std::string& channel_name, const CallbackFunc<MessageT>& reader_func)
       -> std::shared_ptr<Reader<MessageT>>;
 
   template <typename MessageT>
-  auto CreateReader(const ReaderConfig& config,
-                    const CallbackFunc<MessageT>& reader_func)
+  auto CreateReader(const ReaderConfig& config, const CallbackFunc<MessageT>& reader_func)
       -> std::shared_ptr<Reader<MessageT>>;
 
   template <typename MessageT>
-  auto CreateReader(const proto::RoleAttributes& role_attr,
-                    const CallbackFunc<MessageT>& reader_func,
-                    uint32_t pending_queue_size = DEFAULT_PENDING_QUEUE_SIZE)
-      -> std::shared_ptr<Reader<MessageT>>;
+  auto CreateReader(const proto::RoleAttributes& role_attr, const CallbackFunc<MessageT>& reader_func,
+                    uint32_t pending_queue_size = DEFAULT_PENDING_QUEUE_SIZE) -> std::shared_ptr<Reader<MessageT>>;
 
   template <typename MessageT>
-  auto CreateReader(const proto::RoleAttributes& role_attr)
-      -> std::shared_ptr<Reader<MessageT>>;
+  auto CreateReader(const proto::RoleAttributes& role_attr) -> std::shared_ptr<Reader<MessageT>>;
 
   template <typename MessageT>
   void FillInAttr(proto::RoleAttributes* attr);
@@ -148,8 +136,7 @@ class NodeChannelImpl {
 };
 
 template <typename MessageT>
-auto NodeChannelImpl::CreateWriter(const proto::RoleAttributes& role_attr)
-    -> std::shared_ptr<Writer<MessageT>> {
+auto NodeChannelImpl::CreateWriter(const proto::RoleAttributes& role_attr) -> std::shared_ptr<Writer<MessageT>> {
   if (role_attr.channel_name().empty()) {
     AERROR << "Can't create a writer with empty channel name!";
     return nullptr;
@@ -170,16 +157,14 @@ auto NodeChannelImpl::CreateWriter(const proto::RoleAttributes& role_attr)
 }
 
 template <typename MessageT>
-auto NodeChannelImpl::CreateWriter(const std::string& channel_name)
-    -> std::shared_ptr<Writer<MessageT>> {
+auto NodeChannelImpl::CreateWriter(const std::string& channel_name) -> std::shared_ptr<Writer<MessageT>> {
   proto::RoleAttributes role_attr;
   role_attr.set_channel_name(channel_name);
   return this->CreateWriter<MessageT>(role_attr);
 }
 
 template <typename MessageT>
-auto NodeChannelImpl::CreateReader(const std::string& channel_name,
-                                   const CallbackFunc<MessageT>& reader_func)
+auto NodeChannelImpl::CreateReader(const std::string& channel_name, const CallbackFunc<MessageT>& reader_func)
     -> std::shared_ptr<Reader<MessageT>> {
   proto::RoleAttributes role_attr;
   role_attr.set_channel_name(channel_name);
@@ -187,21 +172,17 @@ auto NodeChannelImpl::CreateReader(const std::string& channel_name,
 }
 
 template <typename MessageT>
-auto NodeChannelImpl::CreateReader(const ReaderConfig& config,
-                                   const CallbackFunc<MessageT>& reader_func)
+auto NodeChannelImpl::CreateReader(const ReaderConfig& config, const CallbackFunc<MessageT>& reader_func)
     -> std::shared_ptr<Reader<MessageT>> {
   proto::RoleAttributes role_attr;
   role_attr.set_channel_name(config.channel_name);
   role_attr.mutable_qos_profile()->CopyFrom(config.qos_profile);
-  return this->template CreateReader<MessageT>(role_attr, reader_func,
-                                               config.pending_queue_size);
+  return this->template CreateReader<MessageT>(role_attr, reader_func, config.pending_queue_size);
 }
 
 template <typename MessageT>
-auto NodeChannelImpl::CreateReader(const proto::RoleAttributes& role_attr,
-                                   const CallbackFunc<MessageT>& reader_func,
-                                   uint32_t pending_queue_size)
-    -> std::shared_ptr<Reader<MessageT>> {
+auto NodeChannelImpl::CreateReader(const proto::RoleAttributes& role_attr, const CallbackFunc<MessageT>& reader_func,
+                                   uint32_t pending_queue_size) -> std::shared_ptr<Reader<MessageT>> {
   if (role_attr.channel_name().empty()) {
     AERROR << "Can't create a reader with empty channel name!";
     return nullptr;
@@ -212,11 +193,9 @@ auto NodeChannelImpl::CreateReader(const proto::RoleAttributes& role_attr,
 
   std::shared_ptr<Reader<MessageT>> reader_ptr = nullptr;
   if (!is_reality_mode_) {
-    reader_ptr =
-        std::make_shared<blocker::IntraReader<MessageT>>(new_attr, reader_func);
+    reader_ptr = std::make_shared<blocker::IntraReader<MessageT>>(new_attr, reader_func);
   } else {
-    reader_ptr = std::make_shared<Reader<MessageT>>(new_attr, reader_func,
-                                                    pending_queue_size);
+    reader_ptr = std::make_shared<Reader<MessageT>>(new_attr, reader_func, pending_queue_size);
   }
 
   RETURN_VAL_IF_NULL(reader_ptr, nullptr);
@@ -225,8 +204,7 @@ auto NodeChannelImpl::CreateReader(const proto::RoleAttributes& role_attr,
 }
 
 template <typename MessageT>
-auto NodeChannelImpl::CreateReader(const proto::RoleAttributes& role_attr)
-    -> std::shared_ptr<Reader<MessageT>> {
+auto NodeChannelImpl::CreateReader(const proto::RoleAttributes& role_attr) -> std::shared_ptr<Reader<MessageT>> {
   return this->template CreateReader<MessageT>(role_attr, nullptr);
 }
 
@@ -248,10 +226,8 @@ void NodeChannelImpl::FillInAttr(proto::RoleAttributes* attr) {
     attr->set_proto_desc(proto_desc);
   }
   if (attr->qos_profile().depth() == 0) {
-    attr->mutable_qos_profile()->CopyFrom(
-        transport::QosProfileConf::QOS_PROFILE_DEFAULT);
+    attr->mutable_qos_profile()->CopyFrom(transport::QosProfileConf::QOS_PROFILE_DEFAULT);
   }
 }
 
 }  // namespace autolink
-

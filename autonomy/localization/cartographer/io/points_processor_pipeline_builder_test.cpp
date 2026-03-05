@@ -27,11 +27,9 @@ namespace io {
 namespace {
 
 TEST(PointsProcessorPipelineBuilderTest, RegisterBuiltInPointsProcessors) {
-    PointsProcessorPipelineBuilder builder;
-    FileWriterFactory dummy_factory = [](const std::string& filename) -> std::unique_ptr<FileWriter> {
-        return nullptr;
-    };
-    RegisterBuiltInPointsProcessors({}, dummy_factory, &builder);
+  PointsProcessorPipelineBuilder builder;
+  FileWriterFactory dummy_factory = [](const std::string& filename) -> std::unique_ptr<FileWriter> { return nullptr; };
+  RegisterBuiltInPointsProcessors({}, dummy_factory, &builder);
 }
 
 }  // namespace

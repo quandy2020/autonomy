@@ -16,10 +16,6 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include <algorithm>
 #include <memory>
 #include <mutex>
@@ -47,12 +43,12 @@ namespace heuristics {
  * @return Velocity after applying the curvature constraint
  */
 inline double curvatureConstraint(const double raw_linear_vel, const double curvature, const double min_radius) {
-    const double radius = fabs(1.0 / curvature);
-    if (radius < min_radius) {
-        return raw_linear_vel * (1.0 - (fabs(radius - min_radius) / min_radius));
-    } else {
-        return raw_linear_vel;
-    }
+  const double radius = fabs(1.0 / curvature);
+  if (radius < min_radius) {
+    return raw_linear_vel * (1.0 - (fabs(radius - min_radius) / min_radius));
+  } else {
+    return raw_linear_vel;
+  }
 }
 
 /**
@@ -66,21 +62,20 @@ inline double curvatureConstraint(const double raw_linear_vel, const double curv
 inline double costConstraint(const double raw_linear_vel, const double pose_cost,
                              std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper,
                              const proto::PurePursuitControllerOptions& options) {
-    if (pose_cost != static_cast<double>(map::costmap_2d::NO_INFORMATION) &&
-        pose_cost != static_cast<double>(map::costmap_2d::FREE_SPACE)) {
-        const double& inscribed_radius = costmap_wrapper->getLayeredCostmap()->getInscribedRadius();
+  if (pose_cost != static_cast<double>(map::costmap_2d::NO_INFORMATION) &&
+      pose_cost != static_cast<double>(map::costmap_2d::FREE_SPACE)) {
+    const double& inscribed_radius = costmap_wrapper->getLayeredCostmap()->getInscribedRadius();
 
-        const double min_distance_to_obstacle =
-            (options.inflation_cost_scaling_factor() * inscribed_radius - log(pose_cost) + log(253.0f)) /
-            options.inflation_cost_scaling_factor();
+    const double min_distance_to_obstacle =
+        (options.inflation_cost_scaling_factor() * inscribed_radius - log(pose_cost) + log(253.0f)) /
+        options.inflation_cost_scaling_factor();
 
-        if (min_distance_to_obstacle < options.cost_scaling_dist()) {
-            return raw_linear_vel *
-                   (options.cost_scaling_gain() * min_distance_to_obstacle / options.cost_scaling_dist());
-        }
+    if (min_distance_to_obstacle < options.cost_scaling_dist()) {
+      return raw_linear_vel * (options.cost_scaling_gain() * min_distance_to_obstacle / options.cost_scaling_dist());
     }
+  }
 
-    return raw_linear_vel;
+  return raw_linear_vel;
 }
 
 /**
@@ -91,21 +86,21 @@ inline double costConstraint(const double raw_linear_vel, const double pose_cost
  */
 inline double approachVelocityScalingFactor(const commsgs::planning_msgs::Path& transformed_path,
                                             const double approach_velocity_scaling_dist) {
-    // Waiting to apply the threshold based on integrated distance ensures we don't
-    // erroneously apply approach scaling on curvy paths that are contained in a large local costmap.
-    double remaining_distance = 0.0;
-    for (size_t i = 1; i < transformed_path.poses.size(); ++i) {
-        remaining_distance +=
-            map::costmap_2d::utils::euclidean_distance(transformed_path.poses[i - 1], transformed_path.poses[i]);
-    }
-    if (remaining_distance < approach_velocity_scaling_dist) {
-        auto& last = transformed_path.poses.back();
-        // Here we will use a regular euclidean distance from the robot frame (origin)
-        // to get smooth scaling, regardless of path density.
-        return std::hypot(last.pose.position.x, last.pose.position.y) / approach_velocity_scaling_dist;
-    } else {
-        return 1.0;
-    }
+  // Waiting to apply the threshold based on integrated distance ensures we don't
+  // erroneously apply approach scaling on curvy paths that are contained in a large local costmap.
+  double remaining_distance = 0.0;
+  for (size_t i = 1; i < transformed_path.poses.size(); ++i) {
+    remaining_distance +=
+        map::costmap_2d::utils::euclidean_distance(transformed_path.poses[i - 1], transformed_path.poses[i]);
+  }
+  if (remaining_distance < approach_velocity_scaling_dist) {
+    auto& last = transformed_path.poses.back();
+    // Here we will use a regular euclidean distance from the robot frame (origin)
+    // to get smooth scaling, regardless of path density.
+    return std::hypot(last.pose.position.x, last.pose.position.y) / approach_velocity_scaling_dist;
+  } else {
+    return 1.0;
+  }
 }
 
 /**
@@ -119,14 +114,14 @@ inline double approachVelocityScalingFactor(const commsgs::planning_msgs::Path& 
 inline double approachVelocityConstraint(const double constrained_linear_vel, const commsgs::planning_msgs::Path& path,
                                          const double min_approach_velocity,
                                          const double approach_velocity_scaling_dist) {
-    double velocity_scaling = approachVelocityScalingFactor(path, approach_velocity_scaling_dist);
-    double approach_vel = constrained_linear_vel * velocity_scaling;
+  double velocity_scaling = approachVelocityScalingFactor(path, approach_velocity_scaling_dist);
+  double approach_vel = constrained_linear_vel * velocity_scaling;
 
-    if (approach_vel < min_approach_velocity) {
-        approach_vel = min_approach_velocity;
-    }
+  if (approach_vel < min_approach_velocity) {
+    approach_vel = min_approach_velocity;
+  }
 
-    return std::min(constrained_linear_vel, approach_vel);
+  return std::min(constrained_linear_vel, approach_vel);
 }
 
 }  // namespace heuristics

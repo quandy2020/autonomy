@@ -17,6 +17,7 @@
 #include "autolink/service_discovery/container/graph.hpp"
 
 #include <string>
+
 #include "gtest/gtest.h"
 
 namespace autolink {

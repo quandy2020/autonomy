@@ -29,8 +29,8 @@ namespace cloud {
 namespace handlers {
 
 void RunFinalOptimizationHandler::OnRequest(const google::protobuf::Empty& request) {
-    GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->RunFinalOptimization();
-    Send(absl::make_unique<google::protobuf::Empty>());
+  GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->RunFinalOptimization();
+  Send(absl::make_unique<google::protobuf::Empty>());
 }
 
 }  // namespace handlers

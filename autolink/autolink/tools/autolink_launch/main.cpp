@@ -14,7 +14,10 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <tinyxml2.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cerrno>
@@ -25,10 +28,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-
-#include <fcntl.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 namespace {
 
@@ -50,9 +49,7 @@ std::string GetLogDir() {
 // ---------------------------------------------------------------------------
 // XML helpers (match Python get_param_value / get_param_list)
 // ---------------------------------------------------------------------------
-std::string GetParamValue(const tinyxml2::XMLElement* module,
-                          const char* key,
-                          const std::string& default_value = "") {
+std::string GetParamValue(const tinyxml2::XMLElement* module, const char* key, const std::string& default_value = "") {
   const tinyxml2::XMLElement* el = module->FirstChildElement(key);
   if (!el || !el->GetText()) return default_value;
   const char* t = el->GetText();
@@ -64,11 +61,9 @@ std::string GetParamValue(const tinyxml2::XMLElement* module,
   return s.substr(start, end == std::string::npos ? std::string::npos : end - start + 1);
 }
 
-std::vector<std::string> GetParamList(const tinyxml2::XMLElement* module,
-                                       const char* key) {
+std::vector<std::string> GetParamList(const tinyxml2::XMLElement* module, const char* key) {
   std::vector<std::string> list;
-  for (const tinyxml2::XMLElement* el = module->FirstChildElement(key); el;
-       el = el->NextSiblingElement(key)) {
+  for (const tinyxml2::XMLElement* el = module->FirstChildElement(key); el; el = el->NextSiblingElement(key)) {
     if (!el->GetText()) continue;
     std::string s(el->GetText());
     size_t start = s.find_first_not_of(" \t\n\r");
@@ -108,9 +103,7 @@ struct ProcessEntry {
 static std::vector<ProcessEntry> g_procs;
 static volatile sig_atomic_t g_shutdown = 0;
 
-void LogInfo(const std::string& msg) {
-  std::cout << "[autolink_launch_" << getpid() << "] INFO " << msg << std::endl;
-}
+void LogInfo(const std::string& msg) { std::cout << "[autolink_launch_" << getpid() << "] INFO " << msg << std::endl; }
 void LogWarn(const std::string& msg) {
   std::cerr << "[autolink_launch_" << getpid() << "] WARNING " << msg << std::endl;
 }
@@ -209,11 +202,10 @@ void GetExitState(ProcessEntry& pe) {
     cmd += pe.args[i];
   }
   if (code != 0 && code != -1)
-    LogError("Process [" + pe.name + "] has died [pid " + std::to_string(pe.pid) +
-             ", exit code " + std::to_string(code) + ", cmd " + cmd + "].");
+    LogError("Process [" + pe.name + "] has died [pid " + std::to_string(pe.pid) + ", exit code " +
+             std::to_string(code) + ", cmd " + cmd + "].");
   else
-    LogError("Process [" + pe.name + "] has finished. [pid " + std::to_string(pe.pid) +
-             ", cmd " + cmd + "].");
+    LogError("Process [" + pe.name + "] has finished. [pid " + std::to_string(pe.pid) + ", cmd " + cmd + "].");
 }
 
 void StopAll(int sig) {
@@ -283,8 +275,7 @@ bool RunMonitor() {
 void ApplyEnvironment(const tinyxml2::XMLElement* root) {
   const tinyxml2::XMLElement* env = root->FirstChildElement("environment");
   if (!env) return;
-  for (const tinyxml2::XMLElement* var = env->FirstChildElement(); var;
-       var = var->NextSiblingElement()) {
+  for (const tinyxml2::XMLElement* var = env->FirstChildElement(); var; var = var->NextSiblingElement()) {
     const char* tag = var->Value();
     const char* text = var->GetText();
     if (tag && text) setenv(tag, text, 1);
@@ -324,8 +315,7 @@ int Start(const std::string& launch_file) {
   for (const tinyxml2::XMLElement* module = root->FirstChildElement("module"); module;
        module = module->NextSiblingElement("module")) {
     std::string module_name = GetParamValue(module, "name");
-    std::string process_name =
-        GetParamValue(module, "process_name", "mainboard_default_" + std::to_string(getpid()));
+    std::string process_name = GetParamValue(module, "process_name", "mainboard_default_" + std::to_string(getpid()));
     std::string sched_name = GetParamValue(module, "sched_name", "autolink_DEFAULT");
     std::string process_type = GetParamValue(module, "type", "library");
     std::string cpu_profile_file = GetParamValue(module, "cpuprofile");
@@ -336,17 +326,19 @@ int Start(const std::string& launch_file) {
     if (!respawn_limit_str.empty()) {
       try {
         respawn_limit = std::stoi(respawn_limit_str);
-      } catch (...) {}
+      } catch (...) {
+      }
     }
     std::string nice_str = GetParamValue(module, "nice", "0");
     int nice_val = 0;
     try {
       nice_val = std::stoi(nice_str);
-    } catch (...) {}
+    } catch (...) {
+    }
 
-    LogInfo("Load module [" + module_name + "] " + process_type + ": [" + process_name +
-            "] [" + sched_name + "] conf, exception_handler: [" + exception_handler +
-            "], respawn_limit: [" + std::to_string(respawn_limit) + "]");
+    LogInfo("Load module [" + module_name + "] " + process_type + ": [" + process_name + "] [" + sched_name +
+            "] conf, exception_handler: [" + exception_handler + "], respawn_limit: [" + std::to_string(respawn_limit) +
+            "]");
 
     ProcessEntry pe;
     pe.name = process_name;

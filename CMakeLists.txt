@@ -141,8 +141,13 @@ install(DIRECTORY cmake DESTINATION share/autonomy/)
 # This must also be done before examples so plugin libraries are available for linking
 include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
 
-# autolink
-add_subdirectory(autolink)
+# Optional: build vendored Autolink sources under src/autonomy/autolink.
+# By default we rely on a system-installed Autolink (e.g. /usr/local/lib/libautolink.so),
+# so we skip building the bundled copy to avoid duplicate builds and header mismatches.
+option(BUILD_INTERNAL_AUTOLINK "Build vendored Autolink in src/autonomy/autolink" OFF)
+if(BUILD_INTERNAL_AUTOLINK)
+  add_subdirectory(autolink)
+endif()
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")

@@ -20,16 +20,13 @@
 #include <thread>
 #include <vector>
 
-#include "gtest/gtest.h"
-
+#include "autolink/autolink.hpp"
 #include "autolink/class_loader/class_loader_manager.hpp"
 #include "autolink/class_loader/test/base.hpp"
-#include "autolink/autolink.hpp"
+#include "gtest/gtest.h"
 
-const char LIBRARY_1[] =
-    "/autolink/bazel-bin/autolink/class_loader/test/libplugin1.so";
-const char LIBRARY_2[] =
-    "/autolink/bazel-bin/autolink/class_loader/test/libplugin2.so";
+const char LIBRARY_1[] = "/autolink/bazel-bin/autolink/class_loader/test/libplugin1.so";
+const char LIBRARY_2[] = "/autolink/bazel-bin/autolink/class_loader/test/libplugin2.so";
 using autolink::class_loader::ClassLoader;
 using autolink::class_loader::ClassLoaderManager;
 using autolink::class_loader::utility::IsLibraryLoadedByAnybody;
@@ -133,8 +130,7 @@ TEST(ClassLoaderTest, createObjThreadSafety) {
   std::vector<std::thread*> client_threads;
 
   for (unsigned int i = 0; i < 100; i++) {
-    client_threads.emplace_back(
-        new std::thread(std::bind(&CreateObj, &loader_mgr)));
+    client_threads.emplace_back(new std::thread(std::bind(&CreateObj, &loader_mgr)));
   }
 
   for (unsigned int i = 0; i < client_threads.size(); i++) {
@@ -156,8 +152,7 @@ TEST(ClassLoaderTest, loadLibThreadSafety) {
   std::vector<std::thread*> client_threads;
 
   for (unsigned int i = 0; i < 100; i++) {
-    client_threads.emplace_back(
-        new std::thread(std::bind(&LoadLib, &loaderMgr)));
+    client_threads.emplace_back(new std::thread(std::bind(&LoadLib, &loaderMgr)));
   }
 
   for (unsigned int i = 0; i < client_threads.size(); i++) {

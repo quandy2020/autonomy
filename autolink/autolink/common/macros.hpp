@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -33,8 +32,7 @@ typename std::enable_if<HasShutdown<T>::value>::type CallShutdown(T *instance) {
 }
 
 template <typename T>
-typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(
-    T *instance) {
+typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(T *instance) {
   (void)instance;
 }
 
@@ -50,40 +48,38 @@ typename std::enable_if<!HasShutdown<T>::value>::type CallShutdown(
   classname &operator=(const classname &) = delete;
 
 // SharedPtr / make_shared aliases for action Server, Client, etc.
-#define __AUTOLINK_SHARED_PTR_ALIAS(...)            \
-  using SharedPtr = std::shared_ptr<__VA_ARGS__>;   \
+#define __AUTOLINK_SHARED_PTR_ALIAS(...)          \
+  using SharedPtr = std::shared_ptr<__VA_ARGS__>; \
   using ConstSharedPtr = std::shared_ptr<const __VA_ARGS__>;
 
-#define __AUTOLINK_MAKE_SHARED_DEFINITION(...)                        \
-  template <typename... Args>                                         \
-  static std::shared_ptr<__VA_ARGS__> make_shared(Args&&... args) {   \
+#define __AUTOLINK_MAKE_SHARED_DEFINITION(...)                         \
+  template <typename... Args>                                          \
+  static std::shared_ptr<__VA_ARGS__> make_shared(Args &&...args) {    \
     return std::make_shared<__VA_ARGS__>(std::forward<Args>(args)...); \
   }
 
-#define AUTOLINK_SHARED_PTR_DEFINITIONS(...)   \
-  __AUTOLINK_SHARED_PTR_ALIAS(__VA_ARGS__)    \
+#define AUTOLINK_SHARED_PTR_DEFINITIONS(...) \
+  __AUTOLINK_SHARED_PTR_ALIAS(__VA_ARGS__)   \
   __AUTOLINK_MAKE_SHARED_DEFINITION(__VA_ARGS__)
 
-#define DECLARE_SINGLETON(classname)                                      \
- public:                                                                  \
-  static classname *Instance(bool create_if_needed = true) {              \
-    static classname *instance = nullptr;                                 \
-    if (!instance && create_if_needed) {                                  \
-      static std::once_flag flag;                                         \
-      std::call_once(flag,                                                \
-                     [&] { instance = new (std::nothrow) classname(); }); \
-    }                                                                     \
-    return instance;                                                      \
-  }                                                                       \
-                                                                          \
-  static void CleanUp() {                                                 \
-    auto instance = Instance(false);                                      \
-    if (instance != nullptr) {                                            \
-      CallShutdown(instance);                                             \
-    }                                                                     \
-  }                                                                       \
-                                                                          \
- private:                                                                 \
-  classname();                                                            \
+#define DECLARE_SINGLETON(classname)                                            \
+ public:                                                                        \
+  static classname *Instance(bool create_if_needed = true) {                    \
+    static classname *instance = nullptr;                                       \
+    if (!instance && create_if_needed) {                                        \
+      static std::once_flag flag;                                               \
+      std::call_once(flag, [&] { instance = new (std::nothrow) classname(); }); \
+    }                                                                           \
+    return instance;                                                            \
+  }                                                                             \
+                                                                                \
+  static void CleanUp() {                                                       \
+    auto instance = Instance(false);                                            \
+    if (instance != nullptr) {                                                  \
+      CallShutdown(instance);                                                   \
+    }                                                                           \
+  }                                                                             \
+                                                                                \
+ private:                                                                       \
+  classname();                                                                  \
   DISALLOW_COPY_AND_ASSIGN(classname)
-

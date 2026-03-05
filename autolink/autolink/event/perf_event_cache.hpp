@@ -16,18 +16,16 @@
 
 #pragma once
 
-
 #include <chrono>
 #include <fstream>
 #include <memory>
 #include <string>
 #include <thread>
 
-#include "autolink/proto/perf_conf.pb.h"
-
 #include "autolink/base/bounded_queue.hpp"
 #include "autolink/common/macros.hpp"
 #include "autolink/event/perf_event.hpp"
+#include "autolink/proto/perf_conf.pb.h"
 
 namespace autolink {
 namespace event {
@@ -37,11 +35,9 @@ class PerfEventCache {
   using EventBasePtr = std::shared_ptr<EventBase>;
 
   ~PerfEventCache();
-  void AddSchedEvent(const SchedPerf event_id, const uint64_t cr_id,
-                     const int proc_id, const int cr_state = -1);
-  void AddTransportEvent(const TransPerf event_id, const uint64_t channel_id,
-                         const uint64_t msg_seq, const uint64_t stamp = 0,
-                         const std::string& adder = "-");
+  void AddSchedEvent(const SchedPerf event_id, const uint64_t cr_id, const int proc_id, const int cr_state = -1);
+  void AddTransportEvent(const TransPerf event_id, const uint64_t channel_id, const uint64_t msg_seq,
+                         const uint64_t stamp = 0, const std::string& adder = "-");
 
   std::string PerfFile() { return perf_file_; }
 
@@ -69,4 +65,3 @@ class PerfEventCache {
 
 }  // namespace event
 }  // namespace autolink
-

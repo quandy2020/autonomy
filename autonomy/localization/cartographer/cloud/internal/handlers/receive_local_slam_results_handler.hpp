@@ -31,14 +31,14 @@ DEFINE_HANDLER_SIGNATURE(ReceiveLocalSlamResultsSignature, proto::ReceiveLocalSl
                          autonomy::common::async_grpc::Stream<proto::ReceiveLocalSlamResultsResponse>,
                          "/cartographer.cloud.proto.MapBuilderService/ReceiveLocalSlamResults")
 
-class ReceiveLocalSlamResultsHandler : public autonomy::common::async_grpc::RpcHandler<ReceiveLocalSlamResultsSignature>
-{
-public:
-    void OnRequest(const proto::ReceiveLocalSlamResultsRequest& request) override;
-    void OnFinish() override;
+class ReceiveLocalSlamResultsHandler
+    : public autonomy::common::async_grpc::RpcHandler<ReceiveLocalSlamResultsSignature> {
+ public:
+  void OnRequest(const proto::ReceiveLocalSlamResultsRequest& request) override;
+  void OnFinish() override;
 
-private:
-    std::unique_ptr<MapBuilderContextInterface::LocalSlamSubscriptionId> subscription_id_;
+ private:
+  std::unique_ptr<MapBuilderContextInterface::LocalSlamSubscriptionId> subscription_id_;
 };
 
 }  // namespace handlers

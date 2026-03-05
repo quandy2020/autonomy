@@ -28,21 +28,20 @@ namespace displays {
  * @brief PolygonDisplay
  * Polygon display
  */
-class PolygonDisplay : public aviz::common::Display
-{
-public:
-    explicit PolygonDisplay(const QString& name = "PolygonDisplay");
-    ~PolygonDisplay() override;
+class PolygonDisplay : public aviz::common::Display {
+ public:
+  explicit PolygonDisplay(const QString& name = "PolygonDisplay");
+  ~PolygonDisplay() override;
 
-    // Overrides from Display
-    void onInitialize() override;
-    void onEnable() override;
-    void onDisable() override;
-    void update(float wall_dt, float ros_dt) override;
-    void reset() override;
+  // Overrides from Display
+  void onInitialize() override;
+  void onEnable() override;
+  void onDisable() override;
+  void update(float wall_dt, float ros_dt) override;
+  void reset() override;
 
-private:
-    // Implementation details
+ private:
+  // Implementation details
 };
 
 }  // namespace displays

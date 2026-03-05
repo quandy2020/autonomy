@@ -37,6 +37,8 @@ macro(_common_compile_stuff)
   
   # Link FastDDS explicitly for autolink dependency (use FastDDS_LIBRARIES so ROS libfastrtps is used)
   target_link_libraries(${NAME} PRIVATE ${FastDDS_LIBRARIES})
+  # Explicitly link glog/gflags so symbols from libautolink.so and libceres.so (e.g. InitVLOG3__) are resolved
+  target_link_libraries(${NAME} PRIVATE glog gflags)
 endmacro(_common_compile_stuff)
 
 function(google_test NAME ARG_SRC)

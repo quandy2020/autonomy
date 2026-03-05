@@ -47,17 +47,16 @@ constexpr int kDefaultHzWindowSize = 50000;
 constexpr int kMaxWindowSize = 50000;
 
 void PrintUsage() {
-  std::cout
-      << "autolink_channel is a command-line tool for printing information "
-         "about CyberRT Channels.\n\n"
-      << "Commands:\n"
-      << "\tautolink_channel list\tlist active channels\n"
-      << "\tautolink_channel info\tprint information about active channel\n"
-      << "\tautolink_channel echo\tprint messages to screen\n"
-      << "\tautolink_channel hz\tdisplay publishing rate of channel\n"
-      << "\tautolink_channel bw\tdisplay bandwidth used by channel\n"
-      << "\tautolink_channel type\tprint channel type\n\n"
-      << "Type autolink_channel <command> -h for more detailed usage.\n";
+  std::cout << "autolink_channel is a command-line tool for printing information "
+               "about CyberRT Channels.\n\n"
+            << "Commands:\n"
+            << "\tautolink_channel list\tlist active channels\n"
+            << "\tautolink_channel info\tprint information about active channel\n"
+            << "\tautolink_channel echo\tprint messages to screen\n"
+            << "\tautolink_channel hz\tdisplay publishing rate of channel\n"
+            << "\tautolink_channel bw\tdisplay bandwidth used by channel\n"
+            << "\tautolink_channel type\tprint channel type\n\n"
+            << "Type autolink_channel <command> -h for more detailed usage.\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -145,8 +144,7 @@ void CmdInfo(const std::string& channel_name, bool all_channels) {
 // -----------------------------------------------------------------------------
 // echo: subscribe and print messages as debug string by msg type
 // -----------------------------------------------------------------------------
-std::string GetDebugStringRawMsg(const std::string& msg_type,
-                                 const std::string& rawmsgdata) {
+std::string GetDebugStringRawMsg(const std::string& msg_type, const std::string& rawmsgdata) {
   if (msg_type.empty() || rawmsgdata.empty()) {
     return "";
   }
@@ -174,9 +172,7 @@ void CmdEcho(const std::string& channel_name) {
   sleep(2);
   topology->channel_manager()->GetMsgType(channel_name, &msg_type);
 
-  auto callback = [channel_name, msg_type](
-                      const std::shared_ptr<const autolink::message::RawMessage>&
-                          raw_msg) {
+  auto callback = [channel_name, msg_type](const std::shared_ptr<const autolink::message::RawMessage>& raw_msg) {
     std::string data = raw_msg ? raw_msg->message : "";
     std::string debug = GetDebugStringRawMsg(msg_type, data);
     if (!debug.empty()) {
@@ -184,11 +180,9 @@ void CmdEcho(const std::string& channel_name) {
     }
   };
 
-  auto reader = node->CreateReader<autolink::message::RawMessage>(channel_name,
-                                                                  callback);
+  auto reader = node->CreateReader<autolink::message::RawMessage>(channel_name, callback);
   if (!reader) {
-    std::cerr << "Failed to create reader for channel: " << channel_name
-              << std::endl;
+    std::cerr << "Failed to create reader for channel: " << channel_name << std::endl;
     return;
   }
   std::cout << "reader to [" << channel_name << "]" << std::endl;
@@ -203,9 +197,7 @@ void CmdEcho(const std::string& channel_name) {
 class ChannelBw {
  public:
   explicit ChannelBw(int window_size)
-      : window_size_(window_size <= 0 || window_size > kMaxWindowSize
-                         ? kDefaultBwWindowSize
-                         : window_size) {
+      : window_size_(window_size <= 0 || window_size > kMaxWindowSize ? kDefaultBwWindowSize : window_size) {
     std::cout << "bw window_size: " << window_size_ << std::endl;
   }
 
@@ -261,9 +253,8 @@ class ChannelBw {
       min_str = fmt(static_cast<double>(min_s), 1000000, "MB");
       max_str = fmt(static_cast<double>(max_s), 1000000, "MB");
     }
-    std::cout << "average: " << bw_str << "/s\n\tmean: " << mean_str
-              << " min: " << min_str << " max: " << max_str << " window: " << n
-              << std::endl;
+    std::cout << "average: " << bw_str << "/s\n\tmean: " << mean_str << " min: " << min_str << " max: " << max_str
+              << " window: " << n << std::endl;
   }
 
  private:
@@ -283,11 +274,9 @@ void CmdBw(const std::string& channel_name, int window_size) {
   auto cb = [bw](const std::shared_ptr<const autolink::message::RawMessage>& m) {
     if (m) bw->OnData(m->message);
   };
-  auto reader =
-      node->CreateReader<autolink::message::RawMessage>(channel_name, cb);
+  auto reader = node->CreateReader<autolink::message::RawMessage>(channel_name, cb);
   if (!reader) {
-    std::cerr << "Failed to create reader for channel: " << channel_name
-              << std::endl;
+    std::cerr << "Failed to create reader for channel: " << channel_name << std::endl;
     return;
   }
   std::cout << "reader to [" << channel_name << "]" << std::endl;
@@ -303,9 +292,7 @@ void CmdBw(const std::string& channel_name, int window_size) {
 class ChannelHz {
  public:
   explicit ChannelHz(int window_size)
-      : window_size_(window_size <= 0 || window_size > kMaxWindowSize
-                         ? kDefaultHzWindowSize
-                         : window_size),
+      : window_size_(window_size <= 0 || window_size > kMaxWindowSize ? kDefaultHzWindowSize : window_size),
         last_printed_tn_(0),
         msg_t0_(-1),
         msg_tn_(0) {
@@ -360,10 +347,9 @@ class ChannelHz {
     double max_delta = *std::max_element(times.begin(), times.end());
     double min_delta = *std::min_element(times.begin(), times.end());
     (void)msg_tn_snapshot;
-    std::cout << "average rate: " << std::fixed << std::setprecision(3) << rate
-              << "\n\tmin: " << std::setprecision(3) << min_delta
-              << "s max: " << max_delta << "s std dev: " << std::setprecision(5)
-              << std_dev << "s window: " << (n + 1) << std::endl;
+    std::cout << "average rate: " << std::fixed << std::setprecision(3) << rate << "\n\tmin: " << std::setprecision(3)
+              << min_delta << "s max: " << max_delta << "s std dev: " << std::setprecision(5) << std_dev
+              << "s window: " << (n + 1) << std::endl;
   }
 
  private:
@@ -382,14 +368,10 @@ void CmdHz(const std::string& channel_name, int window_size) {
     std::cerr << "Failed to create node" << std::endl;
     return;
   }
-  auto cb = [hz](const std::shared_ptr<const autolink::message::RawMessage>&) {
-    hz->OnMessage();
-  };
-  auto reader =
-      node->CreateReader<autolink::message::RawMessage>(channel_name, cb);
+  auto cb = [hz](const std::shared_ptr<const autolink::message::RawMessage>&) { hz->OnMessage(); };
+  auto reader = node->CreateReader<autolink::message::RawMessage>(channel_name, cb);
   if (!reader) {
-    std::cerr << "Failed to create reader for channel: " << channel_name
-              << std::endl;
+    std::cerr << "Failed to create reader for channel: " << channel_name << std::endl;
     return;
   }
   std::cout << "reader to [" << channel_name << "]" << std::endl;
@@ -439,14 +421,10 @@ int main(int argc, char* argv[]) {
     int info_argc = argc - 2;
     char** info_argv = argv + 2;
     static const struct option info_opts[] = {
-        {"all", no_argument, nullptr, 'a'},
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}};
+        {"all", no_argument, nullptr, 'a'}, {"help", no_argument, nullptr, 'h'}, {nullptr, 0, nullptr, 0}};
     optind = 0;
     int c;
-    while (info_argc > 0 &&
-           (c = getopt_long(info_argc, info_argv, "ah", info_opts, nullptr)) !=
-           -1) {
+    while (info_argc > 0 && (c = getopt_long(info_argc, info_argv, "ah", info_opts, nullptr)) != -1) {
       if (c == 'a') all_channels = true;
       if (c == 'h') {
         std::cout << "usage: autolink_channel info channelname\n"
@@ -463,8 +441,7 @@ int main(int argc, char* argv[]) {
       }
     }
     if (ret == 0 && channel_name.empty() && !all_channels) {
-      std::cerr << "channelname must be specified (or use -a/--all)"
-                << std::endl;
+      std::cerr << "channelname must be specified (or use -a/--all)" << std::endl;
       ret = 64;
     } else if (ret == 0) {
       CmdInfo(channel_name, all_channels);
@@ -485,13 +462,10 @@ int main(int argc, char* argv[]) {
     int bw_argc = argc - 2;
     char** bw_argv = argv + 2;
     static const struct option bw_opts[] = {
-        {"window", required_argument, nullptr, 'w'},
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}};
+        {"window", required_argument, nullptr, 'w'}, {"help", no_argument, nullptr, 'h'}, {nullptr, 0, nullptr, 0}};
     optind = 0;
     int c;
-    while (bw_argc > 0 &&
-           (c = getopt_long(bw_argc, bw_argv, "w:h", bw_opts, nullptr)) != -1) {
+    while (bw_argc > 0 && (c = getopt_long(bw_argc, bw_argv, "w:h", bw_opts, nullptr)) != -1) {
       if (c == 'w') {
         try {
           window_size = std::stoi(optarg);
@@ -523,13 +497,10 @@ int main(int argc, char* argv[]) {
     int hz_argc = argc - 2;
     char** hz_argv = argv + 2;
     static const struct option hz_opts[] = {
-        {"window", required_argument, nullptr, 'w'},
-        {"help", no_argument, nullptr, 'h'},
-        {nullptr, 0, nullptr, 0}};
+        {"window", required_argument, nullptr, 'w'}, {"help", no_argument, nullptr, 'h'}, {nullptr, 0, nullptr, 0}};
     optind = 0;
     int c;
-    while (hz_argc > 0 &&
-           (c = getopt_long(hz_argc, hz_argv, "w:h", hz_opts, nullptr)) != -1) {
+    while (hz_argc > 0 && (c = getopt_long(hz_argc, hz_argv, "w:h", hz_opts, nullptr)) != -1) {
       if (c == 'w') {
         try {
           window_size = std::stoi(optarg);

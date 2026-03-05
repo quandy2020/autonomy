@@ -27,11 +27,11 @@ namespace cloud {
 namespace handlers {
 
 void GetSubmapHandler::OnRequest(const proto::GetSubmapRequest& request) {
-    auto response = absl::make_unique<proto::GetSubmapResponse>();
-    response->set_error_msg(GetContext<MapBuilderContextInterface>()->map_builder().SubmapToProto(
-        mapping::SubmapId{request.submap_id().trajectory_id(), request.submap_id().submap_index()},
-        response->mutable_submap_query_response()));
-    Send(std::move(response));
+  auto response = absl::make_unique<proto::GetSubmapResponse>();
+  response->set_error_msg(GetContext<MapBuilderContextInterface>()->map_builder().SubmapToProto(
+      mapping::SubmapId{request.submap_id().trajectory_id(), request.submap_id().submap_index()},
+      response->mutable_submap_query_response()));
+  Send(std::move(response));
 }
 
 }  // namespace handlers

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <functional>
 #include <iostream>
@@ -25,12 +24,11 @@
 #include <string>
 #include <unordered_map>
 
-#include "autolink/proto/role_attributes.pb.h"
-
 #include "autolink/base/atomic_hash_map.hpp"
 #include "autolink/base/atomic_rw_lock.hpp"
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
+#include "autolink/proto/role_attributes.pb.h"
 #include "autolink/transport/message/listener_handler.hpp"
 #include "autolink/transport/message/message_info.hpp"
 
@@ -48,8 +46,7 @@ class Dispatcher;
 using DispatcherPtr = std::shared_ptr<Dispatcher>;
 
 template <typename MessageT>
-using MessageListener =
-    std::function<void(const std::shared_ptr<MessageT>&, const MessageInfo&)>;
+using MessageListener = std::function<void(const std::shared_ptr<MessageT>&, const MessageInfo&)>;
 
 class Dispatcher {
  public:
@@ -59,20 +56,17 @@ class Dispatcher {
   virtual void Shutdown();
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const MessageListener<MessageT>& listener);
+  void AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const RoleAttributes& opposite_attr,
+  void AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                    const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
   void RemoveListener(const RoleAttributes& self_attr);
 
   template <typename MessageT>
-  void RemoveListener(const RoleAttributes& self_attr,
-                      const RoleAttributes& opposite_attr);
+  void RemoveListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr);
 
   bool HasChannel(uint64_t channel_id);
 
@@ -84,8 +78,7 @@ class Dispatcher {
 };
 
 template <typename MessageT>
-void Dispatcher::AddListener(const RoleAttributes& self_attr,
-                             const MessageListener<MessageT>& listener) {
+void Dispatcher::AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener) {
   if (is_shutdown_.load()) {
     return;
   }
@@ -94,17 +87,14 @@ void Dispatcher::AddListener(const RoleAttributes& self_attr,
   std::shared_ptr<ListenerHandler<MessageT>> handler;
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (msg_listeners_.Get(channel_id, &handler_base)) {
-    handler =
-        std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
+    handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
     if (handler == nullptr) {
-      AERROR << "please ensure that readers with the same channel["
-             << self_attr.channel_name()
+      AERROR << "please ensure that readers with the same channel[" << self_attr.channel_name()
              << "] in the same process have the same message type";
       return;
     }
   } else {
-    ADEBUG << "new reader for channel:"
-           << GlobalData::GetChannelById(channel_id);
+    ADEBUG << "new reader for channel:" << GlobalData::GetChannelById(channel_id);
     handler.reset(new ListenerHandler<MessageT>());
     msg_listeners_.Set(channel_id, handler);
   }
@@ -112,8 +102,7 @@ void Dispatcher::AddListener(const RoleAttributes& self_attr,
 }
 
 template <typename MessageT>
-void Dispatcher::AddListener(const RoleAttributes& self_attr,
-                             const RoleAttributes& opposite_attr,
+void Dispatcher::AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                              const MessageListener<MessageT>& listener) {
   if (is_shutdown_.load()) {
     return;
@@ -123,17 +112,14 @@ void Dispatcher::AddListener(const RoleAttributes& self_attr,
   std::shared_ptr<ListenerHandler<MessageT>> handler;
   ListenerHandlerBasePtr* handler_base = nullptr;
   if (msg_listeners_.Get(channel_id, &handler_base)) {
-    handler =
-        std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
+    handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
     if (handler == nullptr) {
-      AERROR << "please ensure that readers with the same channel["
-             << self_attr.channel_name()
+      AERROR << "please ensure that readers with the same channel[" << self_attr.channel_name()
              << "] in the same process have the same message type";
       return;
     }
   } else {
-    ADEBUG << "new reader for channel:"
-           << GlobalData::GetChannelById(channel_id);
+    ADEBUG << "new reader for channel:" << GlobalData::GetChannelById(channel_id);
     handler.reset(new ListenerHandler<MessageT>());
     msg_listeners_.Set(channel_id, handler);
   }
@@ -154,8 +140,7 @@ void Dispatcher::RemoveListener(const RoleAttributes& self_attr) {
 }
 
 template <typename MessageT>
-void Dispatcher::RemoveListener(const RoleAttributes& self_attr,
-                                const RoleAttributes& opposite_attr) {
+void Dispatcher::RemoveListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr) {
   if (is_shutdown_.load()) {
     return;
   }
@@ -169,4 +154,3 @@ void Dispatcher::RemoveListener(const RoleAttributes& self_attr,
 
 }  // namespace transport
 }  // namespace autolink
-

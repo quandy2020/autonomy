@@ -45,177 +45,177 @@ namespace utils {
 //             like the size of `map` should be equal to `height*width`
 //     3> Any other needed condition could be joint here in future
 bool validateMsg(const double& num) {
-    /*  @brief double/float value check
-     *  if here'a need to check message validation
-     *  it should be avoid to use double value like `nan`, `inf`
-     *  otherwise, we regard it as an invalid message
-     */
-    if (std::isinf(num)) {
-        return false;
-    }
-    if (std::isnan(num)) {
-        return false;
-    }
-    return true;
+  /*  @brief double/float value check
+   *  if here'a need to check message validation
+   *  it should be avoid to use double value like `nan`, `inf`
+   *  otherwise, we regard it as an invalid message
+   */
+  if (std::isinf(num)) {
+    return false;
+  }
+  if (std::isnan(num)) {
+    return false;
+  }
+  return true;
 }
 
 template <size_t N>
 bool validateMsg(const std::array<double, N>& msg) {
-    /*  @brief value check for double-array
-     *     like the field `covariance` used in the msg-type:
-     *       geometry_msgs::msg::PoseWithCovarianceStamped
-     */
-    for (const auto& element : msg) {
-        if (!validateMsg(element)) {
-            return false;
-        }
+  /*  @brief value check for double-array
+   *     like the field `covariance` used in the msg-type:
+   *       geometry_msgs::msg::PoseWithCovarianceStamped
+   */
+  for (const auto& element : msg) {
+    if (!validateMsg(element)) {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
 bool validateMsg(const std::vector<double>& msg) {
-    /*  @brief value check for double-array
-     *     like the field `covariance` used in the msg-type:
-     *       geometry_msgs::msg::PoseWithCovarianceStamped
-     */
-    for (const auto& element : msg) {
-        if (!validateMsg(element)) {
-            return false;
-        }
+  /*  @brief value check for double-array
+   *     like the field `covariance` used in the msg-type:
+   *       geometry_msgs::msg::PoseWithCovarianceStamped
+   */
+  for (const auto& element : msg) {
+    if (!validateMsg(element)) {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
 const int NSEC_PER_SEC = 1e9;  // 1 second = 1e9 nanosecond
 bool validateMsg(const commsgs::builtin_interfaces::Time& msg) {
-    if (msg.nanosec >= NSEC_PER_SEC) {
-        return false;  // invalid nanosec-stamp
-    }
-    return true;
+  if (msg.nanosec >= NSEC_PER_SEC) {
+    return false;  // invalid nanosec-stamp
+  }
+  return true;
 }
 
 bool validateMsg(const commsgs::std_msgs::Header& msg) {
-    //  check sub-type
-    if (!validateMsg(msg.stamp)) {
-        return false;
-    }
+  //  check sub-type
+  if (!validateMsg(msg.stamp)) {
+    return false;
+  }
 
-    /*  @brief frame_id check
-     *  if here'a need to check message validation
-     *  it should at least have a non-empty frame_id
-     *  otherwise, we regard it as an invalid message
-     */
-    if (msg.frame_id.empty()) {
-        return false;
-    }
-    return true;
+  /*  @brief frame_id check
+   *  if here'a need to check message validation
+   *  it should at least have a non-empty frame_id
+   *  otherwise, we regard it as an invalid message
+   */
+  if (msg.frame_id.empty()) {
+    return false;
+  }
+  return true;
 }
 
 bool validateMsg(const commsgs::geometry_msgs::Point& msg) {
-    //  check sub-type
-    if (!validateMsg(msg.x)) {
-        return false;
-    }
-    if (!validateMsg(msg.y)) {
-        return false;
-    }
-    if (!validateMsg(msg.z)) {
-        return false;
-    }
-    return true;
+  //  check sub-type
+  if (!validateMsg(msg.x)) {
+    return false;
+  }
+  if (!validateMsg(msg.y)) {
+    return false;
+  }
+  if (!validateMsg(msg.z)) {
+    return false;
+  }
+  return true;
 }
 
 const double epsilon = 1e-4;
 bool validateMsg(const commsgs::geometry_msgs::Quaternion& msg) {
-    //  check sub-type
-    if (!validateMsg(msg.x)) {
-        return false;
-    }
-    if (!validateMsg(msg.y)) {
-        return false;
-    }
-    if (!validateMsg(msg.z)) {
-        return false;
-    }
-    if (!validateMsg(msg.w)) {
-        return false;
-    }
+  //  check sub-type
+  if (!validateMsg(msg.x)) {
+    return false;
+  }
+  if (!validateMsg(msg.y)) {
+    return false;
+  }
+  if (!validateMsg(msg.z)) {
+    return false;
+  }
+  if (!validateMsg(msg.w)) {
+    return false;
+  }
 
-    if (abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w - 1.0) >= epsilon) {
-        return false;
-    }
+  if (abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w - 1.0) >= epsilon) {
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
 bool validateMsg(const commsgs::geometry_msgs::Pose& msg) {
-    // check sub-type
-    if (!validateMsg(msg.position)) {
-        return false;
-    }
-    if (!validateMsg(msg.orientation)) {
-        return false;
-    }
-    return true;
+  // check sub-type
+  if (!validateMsg(msg.position)) {
+    return false;
+  }
+  if (!validateMsg(msg.orientation)) {
+    return false;
+  }
+  return true;
 }
 
 bool validateMsg(const commsgs::geometry_msgs::PoseWithCovariance& msg) {
-    // check sub-type
-    if (!validateMsg(msg.pose)) {
-        return false;
-    }
-    if (!validateMsg(msg.covariance)) {
-        return false;
-    }
+  // check sub-type
+  if (!validateMsg(msg.pose)) {
+    return false;
+  }
+  if (!validateMsg(msg.covariance)) {
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
 bool validateMsg(const commsgs::geometry_msgs::PoseWithCovarianceStamped& msg) {
-    // check sub-type
-    if (!validateMsg(msg.header)) {
-        return false;
-    }
-    if (!validateMsg(msg.pose)) {
-        return false;
-    }
-    return true;
+  // check sub-type
+  if (!validateMsg(msg.header)) {
+    return false;
+  }
+  if (!validateMsg(msg.pose)) {
+    return false;
+  }
+  return true;
 }
 
 // Function to verify map meta information
 bool validateMsg(const commsgs::map_msgs::MapMetaData& msg) {
-    // check sub-type
-    if (!validateMsg(msg.origin)) {
-        return false;
-    }
-    if (!validateMsg(msg.resolution)) {
-        return false;
-    }
+  // check sub-type
+  if (!validateMsg(msg.origin)) {
+    return false;
+  }
+  if (!validateMsg(msg.resolution)) {
+    return false;
+  }
 
-    // logic check
-    // 1> we don't need an empty map
-    if (msg.height == 0 || msg.width == 0) {
-        return false;
-    }
-    return true;
+  // logic check
+  // 1> we don't need an empty map
+  if (msg.height == 0 || msg.width == 0) {
+    return false;
+  }
+  return true;
 }
 
 // for msg-type like map, costmap and others as `OccupancyGrid`
 bool validateMsg(const commsgs::map_msgs::OccupancyGrid& msg) {
-    // check sub-type
-    if (!validateMsg(msg.header)) {
-        return false;
-    }
-    // msg.data :  @todo any check for it ?
-    if (!validateMsg(msg.info)) {
-        return false;
-    }
+  // check sub-type
+  if (!validateMsg(msg.header)) {
+    return false;
+  }
+  // msg.data :  @todo any check for it ?
+  if (!validateMsg(msg.info)) {
+    return false;
+  }
 
-    // check logic
-    if (msg.data.size() != msg.info.width * msg.info.height) {
-        return false;  // check map-size
-    }
-    return true;
+  // check logic
+  if (msg.data.size() != msg.info.width * msg.info.height) {
+    return false;  // check map-size
+  }
+  return true;
 }
 
 }  // namespace utils

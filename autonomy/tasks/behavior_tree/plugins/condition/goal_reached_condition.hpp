@@ -19,9 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "behaviortree_cpp/condition_node.h"
-#include "behaviortree_cpp/json_export.h"
-
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
@@ -29,6 +26,8 @@
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "autonomy/tasks/navigator/proto/msg.pb.h"
 #include "autonomy/transform/buffer.hpp"
+#include "behaviortree_cpp/condition_node.h"
+#include "behaviortree_cpp/json_export.h"
 
 namespace autonomy {
 namespace tasks {
@@ -42,68 +41,67 @@ namespace condition {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class GoalReachedCondition : public BT::ConditionNode
-{
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::GoalReachedCondition
-     * @param condition_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    GoalReachedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class GoalReachedCondition : public BT::ConditionNode {
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::GoalReachedCondition
+   * @param condition_name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
+  GoalReachedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
-    GoalReachedCondition() = delete;
+  GoalReachedCondition() = delete;
 
-    /**
-     * @brief A destructor for nav2_behavior_tree::GoalReachedCondition
-     */
-    ~GoalReachedCondition() override;
+  /**
+   * @brief A destructor for nav2_behavior_tree::GoalReachedCondition
+   */
+  ~GoalReachedCondition() override;
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 
-    /**
-     * @brief Function to read parameters and initialize class variables
-     */
-    void initialize();
+  /**
+   * @brief Function to read parameters and initialize class variables
+   */
+  void initialize();
 
-    /**
-     * @brief Checks if the current robot pose lies within a given distance from
-     * the goal
-     * @return bool true when goal is reached, false otherwise
-     */
-    bool isGoalReached();
+  /**
+   * @brief Checks if the current robot pose lies within a given distance from
+   * the goal
+   * @return bool true when goal is reached, false otherwise
+   */
+  bool isGoalReached();
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        // Register JSON definitions for the types used in the ports
-        BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing node-specific ports
+   */
+  static BT::PortsList providedPorts() {
+    // Register JSON definitions for the types used in the ports
+    BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
 
-        return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Destination"),
-                BT::InputPort<std::string>("robot_base_frame", "Robot base frame"),
-                BT::InputPort<double>("goal_reached_tol", 0.25, "Tolerance for considering goal reached"),
-                BT::InputPort<double>("transform_tolerance", 0.1, "Transform tolerance")};
-    }
+    return {BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Destination"),
+            BT::InputPort<std::string>("robot_base_frame", "Robot base frame"),
+            BT::InputPort<double>("goal_reached_tol", 0.25, "Tolerance for considering goal reached"),
+            BT::InputPort<double>("transform_tolerance", 0.1, "Transform tolerance")};
+  }
 
-protected:
-    /**
-     * @brief Cleanup function
-     */
-    void cleanup() {}
+ protected:
+  /**
+   * @brief Cleanup function
+   */
+  void cleanup() {}
 
-private:
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<autonomy::transform::Buffer> tf_;
+ private:
+  std::shared_ptr<::autolink::Node> node_;
+  std::shared_ptr<autonomy::transform::Buffer> tf_;
 
-    double goal_reached_tol_;
-    double transform_tolerance_;
-    std::string robot_base_frame_;
+  double goal_reached_tol_;
+  double transform_tolerance_;
+  std::string robot_base_frame_;
 };
 
 }  // namespace condition

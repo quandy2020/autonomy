@@ -27,17 +27,16 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-class WouldAPlannerRecoveryHelp : public AreErrorCodesPresent
-{
-    using Action = proto::ComputePathToPoseAction;
-    using ActionResult = Action::Result;
-    using ThroughAction = proto::ComputePathThroughPosesAction;
-    using ThroughActionResult = ThroughAction::Result;
+class WouldAPlannerRecoveryHelp : public AreErrorCodesPresent {
+  using Action = proto::ComputePathToPoseAction;
+  using ActionResult = Action::Result;
+  using ThroughAction = proto::ComputePathThroughPosesAction;
+  using ThroughActionResult = ThroughAction::Result;
 
-public:
-    WouldAPlannerRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
+ public:
+  WouldAPlannerRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
-    WouldAPlannerRecoveryHelp() = delete;
+  WouldAPlannerRecoveryHelp() = delete;
 };
 
 }  // namespace condition

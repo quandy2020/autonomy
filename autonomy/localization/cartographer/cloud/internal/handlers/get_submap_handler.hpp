@@ -28,10 +28,9 @@ namespace handlers {
 DEFINE_HANDLER_SIGNATURE(GetSubmapSignature, proto::GetSubmapRequest, proto::GetSubmapResponse,
                          "/cartographer.cloud.proto.MapBuilderService/GetSubmap")
 
-class GetSubmapHandler : public autonomy::common::async_grpc::RpcHandler<GetSubmapSignature>
-{
-public:
-    void OnRequest(const proto::GetSubmapRequest& request) override;
+class GetSubmapHandler : public autonomy::common::async_grpc::RpcHandler<GetSubmapSignature> {
+ public:
+  void OnRequest(const proto::GetSubmapRequest& request) override;
 };
 
 }  // namespace handlers

@@ -36,28 +36,25 @@ namespace optimization {
  *
  * @ingroup Solvers
  */
-class Solver
-{
-public:
-    using Ptr = std::shared_ptr<Solver>;
+class Solver {
+ public:
+  using Ptr = std::shared_ptr<Solver>;
 
-    virtual ~Solver() = default;
+  virtual ~Solver() = default;
 
-    /** @brief  Uses a specific solver (IPOPT, SNOPT) to solve the NLP.
-     * @param [in/out]  nlp  The nonlinear programming problem.
-     */
-    virtual void Solve(Problem& nlp) = 0;
+  /** @brief  Uses a specific solver (IPOPT, SNOPT) to solve the NLP.
+   * @param [in/out]  nlp  The nonlinear programming problem.
+   */
+  virtual void Solve(Problem& nlp) = 0;
 
-    /** @brief  Get the return status for the optimization.
-     *
-     * e.g. https://coin-or.github.io/Ipopt/OUTPUT.html
-     */
-    int GetReturnStatus() const {
-        return status_;
-    };
+  /** @brief  Get the return status for the optimization.
+   *
+   * e.g. https://coin-or.github.io/Ipopt/OUTPUT.html
+   */
+  int GetReturnStatus() const { return status_; };
 
-protected:
-    int status_;
+ protected:
+  int status_;
 };
 
 }  // namespace optimization

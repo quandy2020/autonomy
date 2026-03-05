@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -36,8 +35,7 @@ using autolink::base::AtomicHashMap;
 template <typename T>
 class DataDispatcher {
  public:
-  using BufferVector =
-      std::vector<std::weak_ptr<CacheBuffer<std::shared_ptr<T>>>>;
+  using BufferVector = std::vector<std::weak_ptr<CacheBuffer<std::shared_ptr<T>>>>;
   ~DataDispatcher() {}
 
   void AddBuffer(const ChannelBuffer<T>& channel_buffer);
@@ -69,8 +67,7 @@ void DataDispatcher<T>::AddBuffer(const ChannelBuffer<T>& channel_buffer) {
 }
 
 template <typename T>
-bool DataDispatcher<T>::Dispatch(const uint64_t channel_id,
-                                 const std::shared_ptr<T>& msg) {
+bool DataDispatcher<T>::Dispatch(const uint64_t channel_id, const std::shared_ptr<T>& msg) {
   BufferVector* buffers = nullptr;
   if (autolink::IsShutdown()) {
     return false;
@@ -90,4 +87,3 @@ bool DataDispatcher<T>::Dispatch(const uint64_t channel_id,
 
 }  // namespace data
 }  // namespace autolink
-

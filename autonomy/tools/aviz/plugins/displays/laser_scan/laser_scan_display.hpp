@@ -19,7 +19,6 @@
 #include <memory>
 
 #include "autonomy/commsgs/sensor_msgs.hpp"
-
 #include "autonomy/tools/aviz/common/autolink_topic_display.hpp"
 #include "autonomy/tools/aviz/common/properties/color_property.hpp"
 #include "autonomy/tools/aviz/common/properties/float_property.hpp"
@@ -35,33 +34,32 @@ namespace displays {
  *
  * Displays sensor_msgs::LaserScan messages as point clouds
  */
-class LaserScanDisplay : public AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::LaserScan>
-{
-    Q_OBJECT
+class LaserScanDisplay : public AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::LaserScan> {
+  Q_OBJECT
 
-public:
-    explicit LaserScanDisplay(const QString& name = "LaserScanDisplay");
-    ~LaserScanDisplay() override;
+ public:
+  explicit LaserScanDisplay(const QString& name = "LaserScanDisplay");
+  ~LaserScanDisplay() override;
 
-    void onInitialize() override;
-    void reset() override;
+  void onInitialize() override;
+  void reset() override;
 
-protected:
-    void processMessage(const std::shared_ptr<autonomy::commsgs::sensor_msgs::LaserScan>& msg) override;
+ protected:
+  void processMessage(const std::shared_ptr<autonomy::commsgs::sensor_msgs::LaserScan>& msg) override;
 
-private Q_SLOTS:
-    void updateColorAndAlpha();
+ private Q_SLOTS:
+  void updateColorAndAlpha();
 
-private:
-    void convertLaserScanToPointCloud(const autonomy::commsgs::sensor_msgs::LaserScan& scan);
+ private:
+  void convertLaserScanToPointCloud(const autonomy::commsgs::sensor_msgs::LaserScan& scan);
 
-    aviz::common::properties::ColorProperty* color_property_;
-    aviz::common::properties::FloatProperty* alpha_property_;
-    aviz::common::properties::IntProperty* buffer_size_property_;
+  aviz::common::properties::ColorProperty* color_property_;
+  aviz::common::properties::FloatProperty* alpha_property_;
+  aviz::common::properties::IntProperty* buffer_size_property_;
 
-    // Point cloud visualization (simplified - would use PointCloudCommon in full implementation)
-    std::vector<Ogre::Vector3> point_cloud_points_;
-    std::vector<Ogre::ColourValue> point_cloud_colors_;
+  // Point cloud visualization (simplified - would use PointCloudCommon in full implementation)
+  std::vector<Ogre::Vector3> point_cloud_points_;
+  std::vector<Ogre::ColourValue> point_cloud_colors_;
 };
 
 }  // namespace displays

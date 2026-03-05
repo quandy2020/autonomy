@@ -21,8 +21,8 @@ namespace tasks {
 namespace common {
 
 proto::TaskOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::TaskOptions options;
-    return options;
+  proto::TaskOptions options;
+  return options;
 }
 
 }  // namespace common

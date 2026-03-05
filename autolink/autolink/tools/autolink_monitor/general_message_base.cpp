@@ -52,8 +52,7 @@ int CalculateStringLines(const std::string& str, int screen_width) {
 
 }  // namespace
 
-int GeneralMessageBase::LineCount(const google::protobuf::Message& msg,
-                                  int screen_width) {
+int GeneralMessageBase::LineCount(const google::protobuf::Message& msg, int screen_width) {
   const google::protobuf::Reflection* reflection = msg.GetReflection();
   const google::protobuf::Descriptor* descriptor = msg.GetDescriptor();
   std::vector<const google::protobuf::FieldDescriptor*> fields;
@@ -73,10 +72,9 @@ int GeneralMessageBase::LineCount(const google::protobuf::Message& msg,
   return ret;
 }
 
-int GeneralMessageBase::LineCountOfField(
-    const google::protobuf::Message& msg, int screen_width,
-    const google::protobuf::FieldDescriptor* field,
-    const google::protobuf::Reflection* reflection, bool is_folded) {
+int GeneralMessageBase::LineCountOfField(const google::protobuf::Message& msg, int screen_width,
+                                         const google::protobuf::FieldDescriptor* field,
+                                         const google::protobuf::Reflection* reflection, bool is_folded) {
   int ret = 0;
   if (!is_folded && field->is_repeated()) {
     int size = reflection->FieldSize(msg, field);
@@ -84,15 +82,13 @@ int GeneralMessageBase::LineCountOfField(
       switch (field->cpp_type()) {
         case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
           std::string scratch;
-          const std::string& value =
-              reflection->GetRepeatedStringReference(msg, field, i, &scratch);
+          const std::string& value = reflection->GetRepeatedStringReference(msg, field, i, &scratch);
           ret += CalculateStringLines(value, screen_width);
           break;
         }
 
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
-          const google::protobuf::Message& child_msg =
-              reflection->GetRepeatedMessage(msg, field, i);
+          const google::protobuf::Message& child_msg = reflection->GetRepeatedMessage(msg, field, i);
           ret += LineCount(child_msg, screen_width);
           break;
         }
@@ -107,15 +103,13 @@ int GeneralMessageBase::LineCountOfField(
       switch (field->cpp_type()) {
         case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
           std::string scratch;
-          const std::string& value =
-              reflection->GetStringReference(msg, field, &scratch);
+          const std::string& value = reflection->GetStringReference(msg, field, &scratch);
           ret += CalculateStringLines(value, screen_width);
           break;
         }
 
         case google::protobuf::FieldDescriptor::CPPTYPE_MESSAGE: {
-          const google::protobuf::Message& child_msg =
-              reflection->GetMessage(msg, field);
+          const google::protobuf::Message& child_msg = reflection->GetMessage(msg, field);
           ret += LineCount(child_msg, screen_width);
           break;
         }
@@ -128,10 +122,8 @@ int GeneralMessageBase::LineCountOfField(
   return ret;
 }
 
-void GeneralMessageBase::PrintMessage(GeneralMessageBase* baseMsg,
-                                      const google::protobuf::Message& msg,
-                                      int* jump_lines, const Screen* s,
-                                      int* line_no, int indent) {
+void GeneralMessageBase::PrintMessage(GeneralMessageBase* baseMsg, const google::protobuf::Message& msg,
+                                      int* jump_lines, const Screen* s, int* line_no, int indent) {
   const google::protobuf::Reflection* reflection = msg.GetReflection();
   const google::protobuf::Descriptor* descriptor = msg.GetDescriptor();
   std::vector<const google::protobuf::FieldDescriptor*> fields;
@@ -154,21 +146,18 @@ void GeneralMessageBase::PrintMessage(GeneralMessageBase* baseMsg,
         const std::string& fieldName = field->name();
         out_str << fieldName << ": ";
         out_str << "+[" << reflection->FieldSize(msg, field) << " items]";
-        GeneralMessage* item =
-            new GeneralMessage(baseMsg, &msg, reflection, field);
+        GeneralMessage* item = new GeneralMessage(baseMsg, &msg, reflection, field);
         if (item) {
           baseMsg->InsertRepeatedMessage(*line_no, item);
         }
         s->AddStr(indent, (*line_no)++, out_str.str().c_str());
       }
     } else {
-      PrintField(baseMsg, msg, jump_lines, s, line_no, indent, reflection,
-                 field, -1);
+      PrintField(baseMsg, msg, jump_lines, s, line_no, indent, reflection, field, -1);
     }
   }
 
-  const google::protobuf::UnknownFieldSet& unknown_fields =
-      reflection->GetUnknownFields(msg);
+  const google::protobuf::UnknownFieldSet& unknown_fields = reflection->GetUnknownFields(msg);
   if (!unknown_fields.empty()) {
     Screen::ColorPair c = s->Color();
     s->ClearCurrentColor();
@@ -179,33 +168,29 @@ void GeneralMessageBase::PrintMessage(GeneralMessageBase* baseMsg,
   }
 }
 
-void GeneralMessageBase::PrintField(
-    GeneralMessageBase* baseMsg, const google::protobuf::Message& msg,
-    int* jump_lines, const Screen* s, int* line_no, int indent,
-    const google::protobuf::Reflection* ref,
-    const google::protobuf::FieldDescriptor* field, int index) {
+void GeneralMessageBase::PrintField(GeneralMessageBase* baseMsg, const google::protobuf::Message& msg, int* jump_lines,
+                                    const Screen* s, int* line_no, int indent, const google::protobuf::Reflection* ref,
+                                    const google::protobuf::FieldDescriptor* field, int index) {
   std::ostringstream out_str;
   std::ios_base::fmtflags old_flags;
 
   switch (field->cpp_type()) {
-#define OUTPUT_FIELD(CPPTYPE, METHOD, PRECISION)                    \
-  case google::protobuf::FieldDescriptor::CPPTYPE_##CPPTYPE:        \
-    if (*jump_lines) {                                              \
-      --(*jump_lines);                                              \
-    } else {                                                        \
-      const std::string& fieldName = field->name();                 \
-      out_str << fieldName << ": ";                                 \
-      if (field->is_repeated()) {                                   \
-        out_str << "[" << index << "] ";                            \
-      }                                                             \
-      old_flags = out_str.flags();                                  \
-      out_str << std::fixed << std::setprecision(PRECISION)         \
-              << (field->is_repeated()                              \
-                      ? ref->GetRepeated##METHOD(msg, field, index) \
-                      : ref->Get##METHOD(msg, field));              \
-      out_str.flags(old_flags);                                     \
-      s->AddStr(indent, (*line_no)++, out_str.str().c_str());       \
-    }                                                               \
+#define OUTPUT_FIELD(CPPTYPE, METHOD, PRECISION)                                                                      \
+  case google::protobuf::FieldDescriptor::CPPTYPE_##CPPTYPE:                                                          \
+    if (*jump_lines) {                                                                                                \
+      --(*jump_lines);                                                                                                \
+    } else {                                                                                                          \
+      const std::string& fieldName = field->name();                                                                   \
+      out_str << fieldName << ": ";                                                                                   \
+      if (field->is_repeated()) {                                                                                     \
+        out_str << "[" << index << "] ";                                                                              \
+      }                                                                                                               \
+      old_flags = out_str.flags();                                                                                    \
+      out_str << std::fixed << std::setprecision(PRECISION)                                                           \
+              << (field->is_repeated() ? ref->GetRepeated##METHOD(msg, field, index) : ref->Get##METHOD(msg, field)); \
+      out_str.flags(old_flags);                                                                                       \
+      s->AddStr(indent, (*line_no)++, out_str.str().c_str());                                                         \
+    }                                                                                                                 \
     break
 
     OUTPUT_FIELD(INT32, Int32, INT_FLOAT_PRECISION);
@@ -219,10 +204,8 @@ void GeneralMessageBase::PrintField(
 
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
       std::string scratch;
-      const std::string& str =
-          field->is_repeated()
-              ? ref->GetRepeatedStringReference(msg, field, index, &scratch)
-              : ref->GetStringReference(msg, field, &scratch);
+      const std::string& str = field->is_repeated() ? ref->GetRepeatedStringReference(msg, field, index, &scratch)
+                                                    : ref->GetStringReference(msg, field, &scratch);
       {
         int line_width = 0;
         std::size_t i = 0;
@@ -283,11 +266,9 @@ void GeneralMessageBase::PrintField(
         if (field->is_repeated()) {
           out_str << "[" << index << "] ";
         }
-        int enum_value = field->is_repeated()
-                             ? ref->GetRepeatedEnumValue(msg, field, index)
-                             : ref->GetEnumValue(msg, field);
-        const google::protobuf::EnumValueDescriptor* enum_desc =
-            field->enum_type()->FindValueByNumber(enum_value);
+        int enum_value =
+            field->is_repeated() ? ref->GetRepeatedEnumValue(msg, field, index) : ref->GetEnumValue(msg, field);
+        const google::protobuf::EnumValueDescriptor* enum_desc = field->enum_type()->FindValueByNumber(enum_value);
         if (enum_desc != nullptr) {
           out_str << enum_desc->name();
         } else {
@@ -313,9 +294,7 @@ void GeneralMessageBase::PrintField(
         --(*jump_lines);
       }
       GeneralMessageBase::PrintMessage(
-          baseMsg,
-          field->is_repeated() ? ref->GetRepeatedMessage(msg, field, index)
-                               : ref->GetMessage(msg, field),
+          baseMsg, field->is_repeated() ? ref->GetRepeatedMessage(msg, field, index) : ref->GetMessage(msg, field),
           jump_lines, s, line_no, indent + 2);
       break;
   }

@@ -18,9 +18,8 @@
 
 #include <memory>
 
-#include "gtest/gtest.h"
-
 #include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace blocker {
@@ -101,10 +100,8 @@ TEST(BlockerTest, subscribe) {
   Blocker<UnitTest> blocker(attr);
 
   auto received_msg = std::make_shared<UnitTest>();
-  bool res = blocker.Subscribe(
-      "BlockerTest1", [&received_msg](const std::shared_ptr<UnitTest>& msg) {
-        received_msg->CopyFrom(*msg);
-      });
+  bool res = blocker.Subscribe("BlockerTest1",
+                               [&received_msg](const std::shared_ptr<UnitTest>& msg) { received_msg->CopyFrom(*msg); });
 
   EXPECT_TRUE(res);
 
@@ -117,10 +114,8 @@ TEST(BlockerTest, subscribe) {
   EXPECT_EQ(received_msg->class_name(), msg1->class_name());
   EXPECT_EQ(received_msg->case_name(), msg1->case_name());
 
-  res = blocker.Subscribe(
-      "BlockerTest1", [&received_msg](const std::shared_ptr<UnitTest>& msg) {
-        received_msg->CopyFrom(*msg);
-      });
+  res = blocker.Subscribe("BlockerTest1",
+                          [&received_msg](const std::shared_ptr<UnitTest>& msg) { received_msg->CopyFrom(*msg); });
 
   EXPECT_FALSE(res);
 }

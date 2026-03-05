@@ -166,10 +166,10 @@ static const Eigen::Matrix4d bicubicInterpolationMatrix{
  * positions or their derivatives.
  */
 struct DataMatrix {
-    double topLeft_ = 0.0;
-    double topRight_ = 0.0;
-    double bottomLeft_ = 0.0;
-    double bottomRight_ = 0.0;
+  double topLeft_ = 0.0;
+  double topRight_ = 0.0;
+  double bottomLeft_ = 0.0;
+  double bottomRight_ = 0.0;
 };
 
 /*
@@ -181,10 +181,10 @@ struct DataMatrix {
  * grid map.
  */
 struct IndicesMatrix {
-    Index topLeft_{0, 0};
-    Index topRight_{0, 0};
-    Index bottomLeft_{0, 0};
-    Index bottomRight_{0, 0};
+  Index topLeft_{0, 0};
+  Index topRight_{0, 0};
+  Index bottomLeft_{0, 0};
+  Index bottomRight_{0, 0};
 };
 
 /*

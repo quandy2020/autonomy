@@ -24,19 +24,19 @@ namespace {
 
 static aviz::common::LoggingHandler __debug_logging_handler = [](const std::string& message,
                                                                  const std::string& file_name, size_t line_number) {
-    printf("[aviz_common:debug] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
+  printf("[aviz_common:debug] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
 };
 static aviz::common::LoggingHandler __info_logging_handler = [](const std::string& message,
                                                                 const std::string& file_name, size_t line_number) {
-    printf("[aviz_common:info] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
+  printf("[aviz_common:info] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
 };
 static aviz::common::LoggingHandler __warning_logging_handler = [](const std::string& message,
                                                                    const std::string& file_name, size_t line_number) {
-    fprintf(stderr, "[aviz_common:warning] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
+  fprintf(stderr, "[aviz_common:warning] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
 };
 static aviz::common::LoggingHandler __error_logging_handler = [](const std::string& message,
                                                                  const std::string& file_name, size_t line_number) {
-    fprintf(stderr, "[aviz_common:error] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
+  fprintf(stderr, "[aviz_common:error] %s, at %s:%zu\n", message.c_str(), file_name.c_str(), line_number);
 };
 
 static std::mutex __logging_mutex;
@@ -48,31 +48,31 @@ namespace common {
 
 void set_logging_handlers(aviz::common::LoggingHandler debug_handler, aviz::common::LoggingHandler info_handler,
                           aviz::common::LoggingHandler warning_handler, aviz::common::LoggingHandler error_handler) {
-    std::lock_guard<std::mutex> logging_lock(__logging_mutex);
-    __debug_logging_handler = debug_handler;
-    __info_logging_handler = info_handler;
-    __warning_logging_handler = warning_handler;
-    __error_logging_handler = error_handler;
+  std::lock_guard<std::mutex> logging_lock(__logging_mutex);
+  __debug_logging_handler = debug_handler;
+  __info_logging_handler = info_handler;
+  __warning_logging_handler = warning_handler;
+  __error_logging_handler = error_handler;
 }
 
 void log_debug(const std::string& message, const std::string& file_name, size_t line_number) {
-    std::lock_guard<std::mutex> logging_lock(__logging_mutex);
-    __debug_logging_handler(message, file_name, line_number);
+  std::lock_guard<std::mutex> logging_lock(__logging_mutex);
+  __debug_logging_handler(message, file_name, line_number);
 }
 
 void log_info(const std::string& message, const std::string& file_name, size_t line_number) {
-    std::lock_guard<std::mutex> logging_lock(__logging_mutex);
-    __info_logging_handler(message, file_name, line_number);
+  std::lock_guard<std::mutex> logging_lock(__logging_mutex);
+  __info_logging_handler(message, file_name, line_number);
 }
 
 void log_warning(const std::string& message, const std::string& file_name, size_t line_number) {
-    std::lock_guard<std::mutex> logging_lock(__logging_mutex);
-    __warning_logging_handler(message, file_name, line_number);
+  std::lock_guard<std::mutex> logging_lock(__logging_mutex);
+  __warning_logging_handler(message, file_name, line_number);
 }
 
 void log_error(const std::string& message, const std::string& file_name, size_t line_number) {
-    std::lock_guard<std::mutex> logging_lock(__logging_mutex);
-    __error_logging_handler(message, file_name, line_number);
+  std::lock_guard<std::mutex> logging_lock(__logging_mutex);
+  __error_logging_handler(message, file_name, line_number);
 }
 
 }  // namespace common

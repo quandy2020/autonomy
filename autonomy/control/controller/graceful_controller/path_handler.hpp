@@ -31,54 +31,51 @@ namespace controller {
  * @class nav2_graceful_controller::PathHandler
  * @brief Handles input paths to transform them to local frames required
  */
-class PathHandler
-{
-public:
-    /**
-     * @brief Constructor for nav2_graceful_controller::PathHandler
-     */
-    PathHandler(double transform_tolerance, std::shared_ptr<transform::Buffer> tf,
-                std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
+class PathHandler {
+ public:
+  /**
+   * @brief Constructor for nav2_graceful_controller::PathHandler
+   */
+  PathHandler(double transform_tolerance, std::shared_ptr<transform::Buffer> tf,
+              std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
 
-    /**
-     * @brief Destructor for nav2_graceful_controller::PathHandler
-     */
-    ~PathHandler() = default;
+  /**
+   * @brief Destructor for nav2_graceful_controller::PathHandler
+   */
+  ~PathHandler() = default;
 
-    /**
-     * @brief Transforms global plan into same frame as pose and clips poses
-     * ineligible for motionTarget Points ineligible to be selected as a motion
-     * target point if they are any of the following:
-     * - Outside the local_costmap (collision avoidance cannot be assured)
-     * @param pose pose to transform
-     * @param max_robot_pose_search_dist Distance to search for matching nearest
-     * path point
-     * @return Path in new frame
-     */
-    commsgs::planning_msgs::Path TransformGlobalPlan(const commsgs::geometry_msgs::PoseStamped& pose,
-                                                     double max_robot_pose_search_dist);
+  /**
+   * @brief Transforms global plan into same frame as pose and clips poses
+   * ineligible for motionTarget Points ineligible to be selected as a motion
+   * target point if they are any of the following:
+   * - Outside the local_costmap (collision avoidance cannot be assured)
+   * @param pose pose to transform
+   * @param max_robot_pose_search_dist Distance to search for matching nearest
+   * path point
+   * @return Path in new frame
+   */
+  commsgs::planning_msgs::Path TransformGlobalPlan(const commsgs::geometry_msgs::PoseStamped& pose,
+                                                   double max_robot_pose_search_dist);
 
-    /**
-     * @brief Sets the global plan
-     *
-     * @param path The global plan
-     */
-    void SetPlan(const commsgs::planning_msgs::Path& path);
+  /**
+   * @brief Sets the global plan
+   *
+   * @param path The global plan
+   */
+  void SetPlan(const commsgs::planning_msgs::Path& path);
 
-    /**
-     * @brief Gets the global plan
-     *
-     * @return The global plan
-     */
-    commsgs::planning_msgs::Path GetPlan() {
-        return global_plan_;
-    }
+  /**
+   * @brief Gets the global plan
+   *
+   * @return The global plan
+   */
+  commsgs::planning_msgs::Path GetPlan() { return global_plan_; }
 
-protected:
-    double transform_tolerance_{0};
-    std::shared_ptr<transform::Buffer> tf_buffer_;
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-    commsgs::planning_msgs::Path global_plan_;
+ protected:
+  double transform_tolerance_{0};
+  std::shared_ptr<transform::Buffer> tf_buffer_;
+  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+  commsgs::planning_msgs::Path global_plan_;
 };
 
 }  // namespace controller

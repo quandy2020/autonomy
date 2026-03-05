@@ -29,39 +29,36 @@ namespace cartographer {
 namespace io {
 namespace {
 
-class ProtoStreamTest : public ::testing::Test
-{
-protected:
-    void SetUp() override {
-        test_directory_ = ".";
-    }
+class ProtoStreamTest : public ::testing::Test {
+ protected:
+  void SetUp() override { test_directory_ = "."; }
 
-    std::string test_directory_;
+  std::string test_directory_;
 };
 
 TEST_F(ProtoStreamTest, WriteAndReadBack) {
-    const std::string test_file = test_directory_ + "/test_trajectory.pbstream";
-    {
-        ProtoStreamWriter writer(test_file);
-        for (int i = 0; i != 10; ++i) {
-            mapping::proto::Trajectory trajectory;
-            trajectory.add_node()->set_timestamp(i);
-            writer.WriteProto(trajectory);
-        }
-        ASSERT_TRUE(writer.Close());
+  const std::string test_file = test_directory_ + "/test_trajectory.pbstream";
+  {
+    ProtoStreamWriter writer(test_file);
+    for (int i = 0; i != 10; ++i) {
+      mapping::proto::Trajectory trajectory;
+      trajectory.add_node()->set_timestamp(i);
+      writer.WriteProto(trajectory);
     }
-    {
-        ProtoStreamReader reader(test_file);
-        for (int i = 0; i != 10; ++i) {
-            mapping::proto::Trajectory trajectory;
-            ASSERT_TRUE(reader.ReadProto(&trajectory));
-            ASSERT_EQ(1, trajectory.node_size());
-            EXPECT_EQ(i, trajectory.node(0).timestamp());
-        }
-        mapping::proto::Trajectory trajectory;
-        EXPECT_FALSE(reader.ReadProto(&trajectory));
+    ASSERT_TRUE(writer.Close());
+  }
+  {
+    ProtoStreamReader reader(test_file);
+    for (int i = 0; i != 10; ++i) {
+      mapping::proto::Trajectory trajectory;
+      ASSERT_TRUE(reader.ReadProto(&trajectory));
+      ASSERT_EQ(1, trajectory.node_size());
+      EXPECT_EQ(i, trajectory.node(0).timestamp());
     }
-    remove(test_file.c_str());
+    mapping::proto::Trajectory trajectory;
+    EXPECT_FALSE(reader.ReadProto(&trajectory));
+  }
+  remove(test_file.c_str());
 }
 
 }  // namespace

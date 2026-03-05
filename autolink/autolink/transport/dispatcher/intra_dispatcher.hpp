@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <iostream>
 #include <map>
 #include <memory>
@@ -40,27 +39,23 @@ using IntraDispatcherPtr = IntraDispatcher*;
 class ChannelChain;
 using ChannelChainPtr = std::shared_ptr<ChannelChain>;
 template <typename MessageT>
-using MessageListener =
-    std::function<void(const std::shared_ptr<MessageT>&, const MessageInfo&)>;
+using MessageListener = std::function<void(const std::shared_ptr<MessageT>&, const MessageInfo&)>;
 
 // use a channel chain to wrap specific ListenerHandler.
 // If the message is MessageT, then we use pointer directly, or we first parse
 // to a string, and use it to serialise to another message type.
 class ChannelChain {
-  using BaseHandlersType =
-      std::map<uint64_t, std::map<std::string, ListenerHandlerBasePtr>>;
+  using BaseHandlersType = std::map<uint64_t, std::map<std::string, ListenerHandlerBasePtr>>;
 
  public:
   template <typename MessageT>
-  bool AddListener(uint64_t self_id, uint64_t channel_id,
-                   const std::string& message_type,
+  bool AddListener(uint64_t self_id, uint64_t channel_id, const std::string& message_type,
                    const MessageListener<MessageT>& listener) {
     WriteLockGuard<base::AtomicRWLock> lg(rw_lock_);
     auto ret = GetHandler<MessageT>(channel_id, message_type, &handlers_);
     auto handler = ret.first;
     if (handler == nullptr) {
-      AERROR << "get handler failed. channel: "
-             << GlobalData::GetChannelById(channel_id)
+      AERROR << "get handler failed. channel: " << GlobalData::GetChannelById(channel_id)
              << ", message type: " << message::GetMessageName<MessageT>();
       return ret.second;
     }
@@ -69,8 +64,7 @@ class ChannelChain {
   }
 
   template <typename MessageT>
-  bool AddListener(uint64_t self_id, uint64_t oppo_id, uint64_t channel_id,
-                   const std::string& message_type,
+  bool AddListener(uint64_t self_id, uint64_t oppo_id, uint64_t channel_id, const std::string& message_type,
                    const MessageListener<MessageT>& listener) {
     WriteLockGuard<base::AtomicRWLock> lg(oppo_rw_lock_);
     if (oppo_handlers_.find(oppo_id) == oppo_handlers_.end()) {
@@ -80,8 +74,7 @@ class ChannelChain {
     auto ret = GetHandler<MessageT>(channel_id, message_type, &handlers);
     auto handler = ret.first;
     if (handler == nullptr) {
-      AERROR << "get handler failed. channel: "
-             << GlobalData::GetChannelById(channel_id)
+      AERROR << "get handler failed. channel: " << GlobalData::GetChannelById(channel_id)
              << ", message type: " << message_type;
       return ret.second;
     }
@@ -90,8 +83,7 @@ class ChannelChain {
   }
 
   template <typename MessageT>
-  void RemoveListener(uint64_t self_id, uint64_t channel_id,
-                      const std::string& message_type) {
+  void RemoveListener(uint64_t self_id, uint64_t channel_id, const std::string& message_type) {
     WriteLockGuard<base::AtomicRWLock> lg(rw_lock_);
     auto handler = RemoveHandler(channel_id, message_type, &handlers_);
     if (handler) {
@@ -100,8 +92,7 @@ class ChannelChain {
   }
 
   template <typename MessageT>
-  void RemoveListener(uint64_t self_id, uint64_t oppo_id, uint64_t channel_id,
-                      const std::string& message_type) {
+  void RemoveListener(uint64_t self_id, uint64_t oppo_id, uint64_t channel_id, const std::string& message_type) {
     WriteLockGuard<base::AtomicRWLock> lg(oppo_rw_lock_);
     if (oppo_handlers_.find(oppo_id) == oppo_handlers_.end()) {
       return;
@@ -117,19 +108,15 @@ class ChannelChain {
   }
 
   template <typename MessageT>
-  void Run(uint64_t self_id, uint64_t channel_id,
-           const std::string& message_type,
-           const std::shared_ptr<MessageT>& message,
-           const MessageInfo& message_info) {
+  void Run(uint64_t self_id, uint64_t channel_id, const std::string& message_type,
+           const std::shared_ptr<MessageT>& message, const MessageInfo& message_info) {
     ReadLockGuard<base::AtomicRWLock> lg(rw_lock_);
     Run(channel_id, message_type, handlers_, message, message_info);
   }
 
   template <typename MessageT>
-  void Run(uint64_t self_id, uint64_t oppo_id, uint64_t channel_id,
-           const std::string& message_type,
-           const std::shared_ptr<MessageT>& message,
-           const MessageInfo& message_info) {
+  void Run(uint64_t self_id, uint64_t oppo_id, uint64_t channel_id, const std::string& message_type,
+           const std::shared_ptr<MessageT>& message, const MessageInfo& message_info) {
     ReadLockGuard<base::AtomicRWLock> lg(oppo_rw_lock_);
     if (oppo_handlers_.find(oppo_id) == oppo_handlers_.end()) {
       return;
@@ -141,9 +128,9 @@ class ChannelChain {
  private:
   // NOTE: lock hold
   template <typename MessageT>
-  std::pair<std::shared_ptr<ListenerHandler<MessageT>>, bool> GetHandler(
-      uint64_t channel_id, const std::string& message_type,
-      BaseHandlersType* handlers) {
+  std::pair<std::shared_ptr<ListenerHandler<MessageT>>, bool> GetHandler(uint64_t channel_id,
+                                                                         const std::string& message_type,
+                                                                         BaseHandlersType* handlers) {
     std::shared_ptr<ListenerHandler<MessageT>> handler;
     bool created = false;  // if the handler is created
 
@@ -151,10 +138,8 @@ class ChannelChain {
       (*handlers)[channel_id] = std::map<std::string, ListenerHandlerBasePtr>();
     }
 
-    if ((*handlers)[channel_id].find(message_type) ==
-        (*handlers)[channel_id].end()) {
-      ADEBUG << "Create new ListenerHandler for channel "
-             << GlobalData::GetChannelById(channel_id)
+    if ((*handlers)[channel_id].find(message_type) == (*handlers)[channel_id].end()) {
+      ADEBUG << "Create new ListenerHandler for channel " << GlobalData::GetChannelById(channel_id)
              << ", message type: " << message_type;
       handler.reset(new ListenerHandler<MessageT>());
       (*handlers)[channel_id][message_type] = handler;
@@ -162,29 +147,23 @@ class ChannelChain {
     } else {
       ADEBUG << "Find channel " << GlobalData::GetChannelById(channel_id)
              << "'s ListenerHandler, message type: " << message_type;
-      handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(
-          (*handlers)[channel_id][message_type]);
+      handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>((*handlers)[channel_id][message_type]);
     }
 
     return std::make_pair(handler, created);
   }
 
   // NOTE: Lock hold
-  ListenerHandlerBasePtr RemoveHandler(int64_t channel_id,
-                                       const std::string message_type,
-                                       BaseHandlersType* handlers) {
+  ListenerHandlerBasePtr RemoveHandler(int64_t channel_id, const std::string message_type, BaseHandlersType* handlers) {
     ListenerHandlerBasePtr handler_base;
     if (handlers->find(channel_id) != handlers->end()) {
-      if ((*handlers)[channel_id].find(message_type) !=
-          (*handlers)[channel_id].end()) {
+      if ((*handlers)[channel_id].find(message_type) != (*handlers)[channel_id].end()) {
         handler_base = (*handlers)[channel_id][message_type];
-        ADEBUG << "remove " << GlobalData::GetChannelById(channel_id) << "'s "
-               << message_type << " ListenerHandler";
+        ADEBUG << "remove " << GlobalData::GetChannelById(channel_id) << "'s " << message_type << " ListenerHandler";
         (*handlers)[channel_id].erase(message_type);
       }
       if ((*handlers)[channel_id].empty()) {
-        ADEBUG << "remove " << GlobalData::GetChannelById(channel_id)
-               << "'s all ListenerHandler";
+        ADEBUG << "remove " << GlobalData::GetChannelById(channel_id) << "'s all ListenerHandler";
         (*handlers).erase(channel_id);
       }
     }
@@ -192,45 +171,37 @@ class ChannelChain {
   }
 
   template <typename MessageT>
-  void Run(const uint64_t channel_id, const std::string& message_type,
-           const BaseHandlersType& handlers,
-           const std::shared_ptr<MessageT>& message,
-           const MessageInfo& message_info) {
+  void Run(const uint64_t channel_id, const std::string& message_type, const BaseHandlersType& handlers,
+           const std::shared_ptr<MessageT>& message, const MessageInfo& message_info) {
     const auto channel_handlers_itr = handlers.find(channel_id);
     if (channel_handlers_itr == handlers.end()) {
-      AERROR << "Cant find channel " << GlobalData::GetChannelById(channel_id)
-             << " in Chain";
+      AERROR << "Cant find channel " << GlobalData::GetChannelById(channel_id) << " in Chain";
       return;
     }
     const auto& channel_handlers = channel_handlers_itr->second;
 
-    ADEBUG << GlobalData::GetChannelById(channel_id)
-           << "'s chain run, size: " << channel_handlers.size()
+    ADEBUG << GlobalData::GetChannelById(channel_id) << "'s chain run, size: " << channel_handlers.size()
            << ", message type: " << message_type;
     std::string msg;
     for (const auto& ele : channel_handlers) {
       auto handler_base = ele.second;
       if (message_type == ele.first) {
         ADEBUG << "Run handler for message type: " << ele.first << " directly";
-        auto handler =
-            std::static_pointer_cast<ListenerHandler<MessageT>>(handler_base);
+        auto handler = std::static_pointer_cast<ListenerHandler<MessageT>>(handler_base);
         if (handler == nullptr) {
           continue;
         }
         handler->Run(message, message_info);
       } else {
-        ADEBUG << "Run handler for message type: " << ele.first
-               << " from string";
+        ADEBUG << "Run handler for message type: " << ele.first << " from string";
         if (msg.empty()) {
           auto msg_size = message::FullByteSize(*message);
           if (msg_size < 0) {
-            AERROR << "Failed to get message size. channel["
-                   << common::GlobalData::GetChannelById(channel_id) << "]";
+            AERROR << "Failed to get message size. channel[" << common::GlobalData::GetChannelById(channel_id) << "]";
             continue;
           }
           msg.resize(msg_size);
-          if (!message::SerializeToHC(*message, const_cast<char*>(msg.data()),
-                                      msg_size)) {
+          if (!message::SerializeToHC(*message, const_cast<char*>(msg.data()), msg_size)) {
             AERROR << "Chain Serialize error for channel id: " << channel_id;
             msg.clear();
           }
@@ -253,24 +224,20 @@ class IntraDispatcher : public Dispatcher {
   virtual ~IntraDispatcher();
 
   template <typename MessageT>
-  void OnMessage(uint64_t channel_id, const std::shared_ptr<MessageT>& message,
-                 const MessageInfo& message_info);
+  void OnMessage(uint64_t channel_id, const std::shared_ptr<MessageT>& message, const MessageInfo& message_info);
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const MessageListener<MessageT>& listener);
+  void AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const RoleAttributes& opposite_attr,
+  void AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                    const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
   void RemoveListener(const RoleAttributes& self_attr);
 
   template <typename MessageT>
-  void RemoveListener(const RoleAttributes& self_attr,
-                      const RoleAttributes& opposite_attr);
+  void RemoveListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr);
 
   DECLARE_SINGLETON(IntraDispatcher)
 
@@ -282,57 +249,47 @@ class IntraDispatcher : public Dispatcher {
 };
 
 template <typename MessageT>
-void IntraDispatcher::OnMessage(uint64_t channel_id,
-                                const std::shared_ptr<MessageT>& message,
+void IntraDispatcher::OnMessage(uint64_t channel_id, const std::shared_ptr<MessageT>& message,
                                 const MessageInfo& message_info) {
   if (is_shutdown_.load()) {
     return;
   }
   ListenerHandlerBasePtr* handler_base = nullptr;
-  ADEBUG << "intra on message, channel:"
-         << common::GlobalData::GetChannelById(channel_id);
+  ADEBUG << "intra on message, channel:" << common::GlobalData::GetChannelById(channel_id);
   if (msg_listeners_.Get(channel_id, &handler_base)) {
-    auto handler =
-        std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
+    auto handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
     if (handler) {
       handler->Run(message, message_info);
     } else {
       auto msg_size = message::FullByteSize(*message);
       if (msg_size < 0) {
-        AERROR << "Failed to get message size. channel["
-               << common::GlobalData::GetChannelById(channel_id) << "]";
+        AERROR << "Failed to get message size. channel[" << common::GlobalData::GetChannelById(channel_id) << "]";
         return;
       }
       std::string msg;
       msg.resize(msg_size);
-      if (message::SerializeToHC(*message, const_cast<char*>(msg.data()),
-                                 msg_size)) {
+      if (message::SerializeToHC(*message, const_cast<char*>(msg.data()), msg_size)) {
         (*handler_base)->RunFromString(msg, message_info);
       } else {
-        AERROR << "Failed to serialize message. channel["
-               << common::GlobalData::GetChannelById(channel_id) << "]";
+        AERROR << "Failed to serialize message. channel[" << common::GlobalData::GetChannelById(channel_id) << "]";
       }
     }
   }
 }
 
 template <typename MessageT>
-std::shared_ptr<ListenerHandler<MessageT>> IntraDispatcher::GetHandler(
-    uint64_t channel_id) {
+std::shared_ptr<ListenerHandler<MessageT>> IntraDispatcher::GetHandler(uint64_t channel_id) {
   std::shared_ptr<ListenerHandler<MessageT>> handler;
   ListenerHandlerBasePtr* handler_base = nullptr;
 
   if (msg_listeners_.Get(channel_id, &handler_base)) {
-    handler =
-        std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
+    handler = std::dynamic_pointer_cast<ListenerHandler<MessageT>>(*handler_base);
     if (handler == nullptr) {
-      ADEBUG << "Find a new type for channel "
-             << GlobalData::GetChannelById(channel_id) << " with type "
+      ADEBUG << "Find a new type for channel " << GlobalData::GetChannelById(channel_id) << " with type "
              << message::GetMessageName<MessageT>();
     }
   } else {
-    ADEBUG << "Create new ListenerHandler for channel "
-           << GlobalData::GetChannelById(channel_id) << " with type "
+    ADEBUG << "Create new ListenerHandler for channel " << GlobalData::GetChannelById(channel_id) << " with type "
            << message::GetMessageName<MessageT>();
     handler.reset(new ListenerHandler<MessageT>());
     msg_listeners_.Set(channel_id, handler);
@@ -342,8 +299,7 @@ std::shared_ptr<ListenerHandler<MessageT>> IntraDispatcher::GetHandler(
 }
 
 template <typename MessageT>
-void IntraDispatcher::AddListener(const RoleAttributes& self_attr,
-                                  const MessageListener<MessageT>& listener) {
+void IntraDispatcher::AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener) {
   if (is_shutdown_.load()) {
     return;
   }
@@ -352,25 +308,20 @@ void IntraDispatcher::AddListener(const RoleAttributes& self_attr,
   std::string message_type = message::GetMessageName<MessageT>();
   uint64_t self_id = self_attr.id();
 
-  bool created =
-      chain_->AddListener(self_id, channel_id, message_type, listener);
+  bool created = chain_->AddListener(self_id, channel_id, message_type, listener);
 
   auto handler = GetHandler<MessageT>(self_attr.channel_id());
   if (handler && created) {
-    auto listener_wrapper =
-                      [this, self_id, channel_id, message_type, self_attr](
-                                const std::shared_ptr<MessageT>& message,
-                                const MessageInfo& message_info) {
-      this->chain_->Run<MessageT>(self_id, channel_id, message_type, message,
-                                  message_info);
+    auto listener_wrapper = [this, self_id, channel_id, message_type, self_attr](
+                                const std::shared_ptr<MessageT>& message, const MessageInfo& message_info) {
+      this->chain_->Run<MessageT>(self_id, channel_id, message_type, message, message_info);
     };
     handler->Connect(self_id, listener_wrapper);
   }
 }
 
 template <typename MessageT>
-void IntraDispatcher::AddListener(const RoleAttributes& self_attr,
-                                  const RoleAttributes& opposite_attr,
+void IntraDispatcher::AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                                   const MessageListener<MessageT>& listener) {
   if (is_shutdown_.load()) {
     return;
@@ -381,17 +332,13 @@ void IntraDispatcher::AddListener(const RoleAttributes& self_attr,
   uint64_t self_id = self_attr.id();
   uint64_t oppo_id = opposite_attr.id();
 
-  bool created =
-      chain_->AddListener(self_id, oppo_id, channel_id, message_type, listener);
+  bool created = chain_->AddListener(self_id, oppo_id, channel_id, message_type, listener);
 
   auto handler = GetHandler<MessageT>(self_attr.channel_id());
   if (handler && created) {
-    auto listener_wrapper =
-              [this, self_id, oppo_id, channel_id, message_type](
-                                const std::shared_ptr<MessageT>& message,
-                                const MessageInfo& message_info) {
-      this->chain_->Run<MessageT>(self_id, oppo_id, channel_id, message_type,
-                                  message, message_info);
+    auto listener_wrapper = [this, self_id, oppo_id, channel_id, message_type](const std::shared_ptr<MessageT>& message,
+                                                                               const MessageInfo& message_info) {
+      this->chain_->Run<MessageT>(self_id, oppo_id, channel_id, message_type, message, message_info);
     };
     handler->Connect(self_id, oppo_id, listener_wrapper);
   }
@@ -403,22 +350,18 @@ void IntraDispatcher::RemoveListener(const RoleAttributes& self_attr) {
     return;
   }
   Dispatcher::RemoveListener<MessageT>(self_attr);
-  chain_->RemoveListener<MessageT>(self_attr.id(), self_attr.channel_id(),
-                                   message::GetMessageName<MessageT>());
+  chain_->RemoveListener<MessageT>(self_attr.id(), self_attr.channel_id(), message::GetMessageName<MessageT>());
 }
 
 template <typename MessageT>
-void IntraDispatcher::RemoveListener(const RoleAttributes& self_attr,
-                                     const RoleAttributes& opposite_attr) {
+void IntraDispatcher::RemoveListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr) {
   if (is_shutdown_.load()) {
     return;
   }
   Dispatcher::RemoveListener<MessageT>(self_attr, opposite_attr);
-  chain_->RemoveListener<MessageT>(self_attr.id(), opposite_attr.id(),
-                                   self_attr.channel_id(),
+  chain_->RemoveListener<MessageT>(self_attr.id(), opposite_attr.id(), self_attr.channel_id(),
                                    message::GetMessageName<MessageT>());
 }
 
 }  // namespace transport
 }  // namespace autolink
-

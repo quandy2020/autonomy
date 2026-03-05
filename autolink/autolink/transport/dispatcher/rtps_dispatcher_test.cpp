@@ -17,7 +17,6 @@
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
 
 #include <memory>
-#include "gtest/gtest.h"
 
 #include "autolink/common/util.hpp"
 #include "autolink/init.hpp"
@@ -25,6 +24,7 @@
 #include "autolink/transport/common/identity.hpp"
 #include "autolink/transport/qos/qos_profile_conf.hpp"
 #include "autolink/transport/transport.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {
@@ -36,21 +36,17 @@ TEST(RtpsDispatcherTest, add_listener) {
   self_attr.set_channel_id(common::Hash("add_listener"));
   Identity self_id;
   self_attr.set_id(self_id.HashValue());
-  self_attr.mutable_qos_profile()->CopyFrom(
-      QosProfileConf::QOS_PROFILE_DEFAULT);
+  self_attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
 
-  dispatcher->AddListener<proto::Chatter>(
-      self_attr,
-      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+  dispatcher->AddListener<proto::Chatter>(self_attr, [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 
   RoleAttributes oppo_attr;
   oppo_attr.CopyFrom(self_attr);
   Identity oppo_id;
   oppo_attr.set_id(oppo_id.HashValue());
 
-  dispatcher->AddListener<proto::Chatter>(
-      self_attr, oppo_attr,
-      [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+  dispatcher->AddListener<proto::Chatter>(self_attr, oppo_attr,
+                                          [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 }
 
 TEST(RtpsDispatcherTest, on_message) {
@@ -60,19 +56,16 @@ TEST(RtpsDispatcherTest, on_message) {
   self_attr.set_channel_id(common::Hash("channel_0"));
   Identity self_id;
   self_attr.set_id(self_id.HashValue());
-  self_attr.mutable_qos_profile()->CopyFrom(
-      QosProfileConf::QOS_PROFILE_DEFAULT);
+  self_attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
 
   auto recv_msg = std::make_shared<proto::Chatter>();
   dispatcher->AddListener<proto::Chatter>(
-      self_attr, [&recv_msg](const std::shared_ptr<proto::Chatter>& msg,
-                             const MessageInfo& msg_info) {
+      self_attr, [&recv_msg](const std::shared_ptr<proto::Chatter>& msg, const MessageInfo& msg_info) {
         (void)msg_info;
         recv_msg->CopyFrom(*msg);
       });
 
-  auto transmitter = Transport::Instance()->CreateTransmitter<proto::Chatter>(
-      self_attr, proto::OptionalMode::RTPS);
+  auto transmitter = Transport::Instance()->CreateTransmitter<proto::Chatter>(self_attr, proto::OptionalMode::RTPS);
   EXPECT_NE(transmitter, nullptr);
 
   auto send_msg = std::make_shared<proto::Chatter>();

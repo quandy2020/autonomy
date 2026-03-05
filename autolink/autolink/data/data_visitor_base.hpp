@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -33,9 +32,7 @@ class DataVisitorBase {
  public:
   DataVisitorBase() : notifier_(new Notifier()) {}
 
-  void RegisterNotifyCallback(std::function<void()>&& callback) {
-    notifier_->callback = callback;
-  }
+  void RegisterNotifyCallback(std::function<void()>&& callback) { notifier_->callback = callback; }
 
  protected:
   DataVisitorBase(const DataVisitorBase&) = delete;
@@ -48,4 +45,3 @@ class DataVisitorBase {
 
 }  // namespace data
 }  // namespace autolink
-

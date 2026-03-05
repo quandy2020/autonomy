@@ -35,24 +35,23 @@ namespace checker {
  * @brief This plugin is used to check the position and the angle of the robot
  * to make sure that it is actually progressing or rotating towards a goal.
  */
-class PoseProgressChecker : public SimpleProgressChecker
-{
-public:
-    void Initialize(const std::string& plugin_name) override;
-    bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
+class PoseProgressChecker : public SimpleProgressChecker {
+ public:
+  void Initialize(const std::string& plugin_name) override;
+  bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
 
-protected:
-    /**
-     * @brief Calculates robots movement from baseline pose
-     * @param pose Current pose of the robot
-     * @return true, if movement is greater than radius_, or false
-     */
-    bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
+ protected:
+  /**
+   * @brief Calculates robots movement from baseline pose
+   * @param pose Current pose of the robot
+   * @return true, if movement is greater than radius_, or false
+   */
+  bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
 
-    static double PoseAngleDistance(const commsgs::geometry_msgs::Pose2D&, const commsgs::geometry_msgs::Pose2D&);
+  static double PoseAngleDistance(const commsgs::geometry_msgs::Pose2D&, const commsgs::geometry_msgs::Pose2D&);
 
-    double required_movement_angle_;
-    std::string plugin_name_;
+  double required_movement_angle_;
+  std::string plugin_name_;
 };
 
 }  // namespace checker

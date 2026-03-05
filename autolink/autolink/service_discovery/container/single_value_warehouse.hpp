@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
@@ -34,8 +33,7 @@ class SingleValueWarehouse : public WarehouseBase {
   SingleValueWarehouse() {}
   virtual ~SingleValueWarehouse() {}
 
-  bool Add(uint64_t key, const RolePtr& role,
-           bool ignore_if_exist = true) override;
+  bool Add(uint64_t key, const RolePtr& role, bool ignore_if_exist = true) override;
 
   void Clear() override;
   std::size_t Size() override;
@@ -46,19 +44,14 @@ class SingleValueWarehouse : public WarehouseBase {
 
   bool Search(uint64_t key) override;
   bool Search(uint64_t key, RolePtr* first_matched_role) override;
-  bool Search(uint64_t key,
-              proto::RoleAttributes* first_matched_role_attr) override;
+  bool Search(uint64_t key, proto::RoleAttributes* first_matched_role_attr) override;
   bool Search(uint64_t key, std::vector<RolePtr>* matched_roles) override;
-  bool Search(uint64_t key,
-              std::vector<proto::RoleAttributes>* matched_roles_attr) override;
+  bool Search(uint64_t key, std::vector<proto::RoleAttributes>* matched_roles_attr) override;
 
   bool Search(const proto::RoleAttributes& target_attr) override;
-  bool Search(const proto::RoleAttributes& target_attr,
-              RolePtr* first_matched) override;
-  bool Search(const proto::RoleAttributes& target_attr,
-              proto::RoleAttributes* first_matched_role_attr) override;
-  bool Search(const proto::RoleAttributes& target_attr,
-              std::vector<RolePtr>* matched_roles) override;
+  bool Search(const proto::RoleAttributes& target_attr, RolePtr* first_matched) override;
+  bool Search(const proto::RoleAttributes& target_attr, proto::RoleAttributes* first_matched_role_attr) override;
+  bool Search(const proto::RoleAttributes& target_attr, std::vector<RolePtr>* matched_roles) override;
   bool Search(const proto::RoleAttributes& target_attr,
               std::vector<proto::RoleAttributes>* matched_roles_attr) override;
 
@@ -72,4 +65,3 @@ class SingleValueWarehouse : public WarehouseBase {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

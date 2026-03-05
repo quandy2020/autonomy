@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <condition_variable>
 #include <fstream>
 #include <memory>
@@ -26,14 +25,13 @@
 #include <unordered_map>
 #include <utility>
 
-#include "google/protobuf/io/zero_copy_stream_impl.h"
-#include "google/protobuf/message.h"
-#include "google/protobuf/text_format.h"
-
 #include "autolink/common/log.hpp"
 #include "autolink/record/file/record_file_base.hpp"
 #include "autolink/record/file/section.hpp"
 #include "autolink/time/time.hpp"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/message.h"
+#include "google/protobuf/text_format.h"
 
 namespace autolink {
 namespace record {
@@ -85,8 +83,7 @@ class RecordFileWriter : public RecordFileBase {
   uint64_t GetMessageNumber(const std::string& channel_name) const;
 
  private:
-  bool WriteChunk(const proto::ChunkHeader& chunk_header,
-                  const proto::ChunkBody& chunk_body);
+  bool WriteChunk(const proto::ChunkHeader& chunk_header, const proto::ChunkBody& chunk_body);
   template <typename T>
   bool WriteSection(const T& message);
   bool WriteIndex();
@@ -132,9 +129,7 @@ bool RecordFileWriter::WriteSection(const T& message) {
     return false;
   }
   if (count != sizeof(section)) {
-    AERROR << "Write fd failed, fd: " << fd_
-           << ", expect count: " << sizeof(section)
-           << ", actual count: " << count;
+    AERROR << "Write fd failed, fd: " << fd_ << ", expect count: " << sizeof(section) << ", actual count: " << count;
     return false;
   }
   {
@@ -149,9 +144,7 @@ bool RecordFileWriter::WriteSection(const T& message) {
       return false;
     }
     if (static_cast<size_t>(count) != HEADER_LENGTH - message.ByteSizeLong()) {
-      AERROR << "Write fd failed, fd: " << fd_
-             << ", expect count: " << sizeof(section)
-             << ", actual count: " << count;
+      AERROR << "Write fd failed, fd: " << fd_ << ", expect count: " << sizeof(section) << ", actual count: " << count;
       return false;
     }
   }
@@ -161,4 +154,3 @@ bool RecordFileWriter::WriteSection(const T& message) {
 
 }  // namespace record
 }  // namespace autolink
-

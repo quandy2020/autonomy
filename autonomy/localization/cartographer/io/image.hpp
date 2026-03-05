@@ -45,36 +45,31 @@ using UniqueCairoPtr = std::unique_ptr<cairo_t, void (*)(cairo_t*)>;
 // Takes ownership.
 UniqueCairoPtr MakeUniqueCairoPtr(cairo_t* surface);
 
-class Image
-{
-public:
-    explicit Image(UniqueCairoSurfacePtr surface);
-    Image(int width, int height);
+class Image {
+ public:
+  explicit Image(UniqueCairoSurfacePtr surface);
+  Image(int width, int height);
 
-    const Uint8Color GetPixel(int x, int y) const;
-    void SetPixel(int x, int y, const Uint8Color& color);
-    void WritePng(FileWriter* const file_writer);
+  const Uint8Color GetPixel(int x, int y) const;
+  void SetPixel(int x, int y, const Uint8Color& color);
+  void WritePng(FileWriter* const file_writer);
 
-    // Rotates the image in place.
-    void Rotate90DegreesClockwise();
+  // Rotates the image in place.
+  void Rotate90DegreesClockwise();
 
-    // Returns a pointer to a cairo surface that contains the current pixel
-    // data. The 'Image' object must therefore outlive the returned surface
-    // object. It is undefined behavior to call any of the mutating functions
-    // while a pointer to this surface is alive.
-    UniqueCairoSurfacePtr GetCairoSurface();
+  // Returns a pointer to a cairo surface that contains the current pixel
+  // data. The 'Image' object must therefore outlive the returned surface
+  // object. It is undefined behavior to call any of the mutating functions
+  // while a pointer to this surface is alive.
+  UniqueCairoSurfacePtr GetCairoSurface();
 
-    int width() const {
-        return width_;
-    }
-    int height() const {
-        return height_;
-    }
+  int width() const { return width_; }
+  int height() const { return height_; }
 
-private:
-    int width_;
-    int height_;
-    std::vector<uint32> pixels_;
+ private:
+  int width_;
+  int height_;
+  std::vector<uint32> pixels_;
 };
 
 }  // namespace io

@@ -15,6 +15,7 @@
  *****************************************************************************/
 
 #include <iostream>
+
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/class_loader/test/base.hpp"
 

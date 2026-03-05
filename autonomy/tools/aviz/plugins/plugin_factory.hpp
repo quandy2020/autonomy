@@ -35,61 +35,58 @@ class DisplayContext;
  * Plugin description for the factory
  */
 struct PluginDescription {
-    std::string class_id;                    // e.g., "aviz/RobotModel"
-    std::string class_name;                  // e.g., "RobotModelDisplay"
-    std::string description;                 // Human-readable description
-    std::string base_class;                  // Base class name (always "Display")
-    std::vector<std::string> message_types;  // Supported message types (if any)
+  std::string class_id;                    // e.g., "aviz/RobotModel"
+  std::string class_name;                  // e.g., "RobotModelDisplay"
+  std::string description;                 // Human-readable description
+  std::string base_class;                  // Base class name (always "Display")
+  std::vector<std::string> message_types;  // Supported message types (if any)
 };
 
 /**
  * @brief Plugin factory for creating Display instances
  * Factory for creating display/tool/controller plugins by class id
  */
-class PluginFactory
-{
-public:
-    using DisplayCreator = std::function<std::unique_ptr<aviz::common::Display>(const std::string& name)>;
+class PluginFactory {
+ public:
+  using DisplayCreator = std::function<std::unique_ptr<aviz::common::Display>(const std::string& name)>;
 
-    /**
-     * @brief Get singleton instance
-     */
-    static PluginFactory& Instance();
+  /**
+   * @brief Get singleton instance
+   */
+  static PluginFactory& Instance();
 
-    /**
-     * @brief Register a display plugin
-     * @param description Plugin metadata
-     * @param creator Factory function to create display instances
-     */
-    void registerPlugin(const PluginDescription& description, DisplayCreator creator);
+  /**
+   * @brief Register a display plugin
+   * @param description Plugin metadata
+   * @param creator Factory function to create display instances
+   */
+  void registerPlugin(const PluginDescription& description, DisplayCreator creator);
 
-    /**
-     * @brief Create a display instance by class_id
-     * @param class_id Plugin class identifier (e.g., "aviz/RobotModel")
-     * @param name Display name
-     * @return Display instance or nullptr if not found
-     */
-    std::unique_ptr<aviz::common::Display> createDisplay(const std::string& class_id, const std::string& name);
+  /**
+   * @brief Create a display instance by class_id
+   * @param class_id Plugin class identifier (e.g., "aviz/RobotModel")
+   * @param name Display name
+   * @return Display instance or nullptr if not found
+   */
+  std::unique_ptr<aviz::common::Display> createDisplay(const std::string& class_id, const std::string& name);
 
-    /**
-     * @brief Get all registered plugin descriptions
-     */
-    const std::vector<PluginDescription>& getPlugins() const {
-        return plugins_;
-    }
+  /**
+   * @brief Get all registered plugin descriptions
+   */
+  const std::vector<PluginDescription>& getPlugins() const { return plugins_; }
 
-    /**
-     * @brief Get plugin description by class_id
-     */
-    const PluginDescription* getPluginDescription(const std::string& class_id) const;
+  /**
+   * @brief Get plugin description by class_id
+   */
+  const PluginDescription* getPluginDescription(const std::string& class_id) const;
 
-private:
-    PluginFactory() = default;
-    ~PluginFactory() = default;
-    PluginFactory(const PluginFactory&) = delete;
-    PluginFactory& operator=(const PluginFactory&) = delete;
+ private:
+  PluginFactory() = default;
+  ~PluginFactory() = default;
+  PluginFactory(const PluginFactory&) = delete;
+  PluginFactory& operator=(const PluginFactory&) = delete;
 
-    std::vector<PluginDescription> plugins_;
-    std::map<std::string, DisplayCreator> creators_;
-    std::map<std::string, size_t> class_id_to_index_;
+  std::vector<PluginDescription> plugins_;
+  std::map<std::string, DisplayCreator> creators_;
+  std::map<std::string, size_t> class_id_to_index_;
 };

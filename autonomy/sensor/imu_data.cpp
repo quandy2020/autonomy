@@ -19,13 +19,9 @@
 namespace autonomy {
 namespace sensor {
 
-ImuProto ToProto(const ImuData& data) {
-    return commsgs::sensor_msgs::ToProto(data);
-}
+ImuProto ToProto(const ImuData& data) { return commsgs::sensor_msgs::ToProto(data); }
 
-ImuData FromProto(const ImuProto& proto) {
-    return commsgs::sensor_msgs::FromProto(proto);
-}
+ImuData FromProto(const ImuProto& proto) { return commsgs::sensor_msgs::FromProto(proto); }
 
 }  // namespace sensor
 }  // namespace autonomy

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -37,8 +36,7 @@ using ParticipantPtr = std::shared_ptr<Participant>;
 
 class Participant {
  public:
-  Participant(const std::string& name, int send_port,
-              eprosima::fastrtps::ParticipantListener* listener = nullptr);
+  Participant(const std::string& name, int send_port, eprosima::fastrtps::ParticipantListener* listener = nullptr);
   virtual ~Participant();
 
   void Shutdown();
@@ -47,9 +45,8 @@ class Participant {
   bool is_shutdown() const { return shutdown_.load(); }
 
  private:
-  void CreateFastRtpsParticipant(
-      const std::string& name, int send_port,
-      eprosima::fastrtps::ParticipantListener* listener);
+  void CreateFastRtpsParticipant(const std::string& name, int send_port,
+                                 eprosima::fastrtps::ParticipantListener* listener);
 
   std::atomic<bool> shutdown_;
   std::string name_;
@@ -62,4 +59,3 @@ class Participant {
 
 }  // namespace transport
 }  // namespace autolink
-

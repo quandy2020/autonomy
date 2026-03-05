@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 
 #include "autolink/proto/qos_profile.pb.h"
@@ -34,10 +33,8 @@ class QosProfileConf {
   QosProfileConf();
   virtual ~QosProfileConf();
 
-  static QosProfile CreateQosProfile(const QosHistoryPolicy& history,
-                                     uint32_t depth, uint32_t mps,
-                                     const QosReliabilityPolicy& reliability,
-                                     const QosDurabilityPolicy& durability);
+  static QosProfile CreateQosProfile(const QosHistoryPolicy& history, uint32_t depth, uint32_t mps,
+                                     const QosReliabilityPolicy& reliability, const QosDurabilityPolicy& durability);
 
   static const uint32_t QOS_HISTORY_DEPTH_SYSTEM_DEFAULT;
   static const uint32_t QOS_MPS_SYSTEM_DEFAULT;
@@ -54,4 +51,3 @@ class QosProfileConf {
 
 }  // namespace transport
 }  // namespace autolink
-

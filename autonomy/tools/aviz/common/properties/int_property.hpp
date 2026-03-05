@@ -26,51 +26,50 @@ namespace common {
 namespace properties {
 
 /// Property specialized to provide max/min enforcement for integers.
-class IntProperty : public Property
-{
-    Q_OBJECT
+class IntProperty : public Property {
+  Q_OBJECT
 
-public:
-    explicit IntProperty(const QString& name = QString(), int default_value = 0, const QString& description = QString(),
-                         Property* parent = nullptr, const char* changed_slot = nullptr, QObject* receiver = nullptr,
-                         int min_value = INT_MIN, int max_value = INT_MAX);
+ public:
+  explicit IntProperty(const QString& name = QString(), int default_value = 0, const QString& description = QString(),
+                       Property* parent = nullptr, const char* changed_slot = nullptr, QObject* receiver = nullptr,
+                       int min_value = INT_MIN, int max_value = INT_MAX);
 
-    /// Set the new value for this property.
-    /**
-     * Overridden from Property::setValue() to enforce minimum and maximum.
-     */
-    bool setValue(const QVariant& new_value) override;
+  /// Set the new value for this property.
+  /**
+   * Overridden from Property::setValue() to enforce minimum and maximum.
+   */
+  bool setValue(const QVariant& new_value) override;
 
-    /// Return the internal property value as an integer.
-    virtual int getInt() const;
+  /// Return the internal property value as an integer.
+  virtual int getInt() const;
 
-    /// Set the minimum value to be enforced.
-    void setMin(int min);
+  /// Set the minimum value to be enforced.
+  void setMin(int min);
 
-    /// Set the minimum value enforced.
-    int getMin();
+  /// Set the minimum value enforced.
+  int getMin();
 
-    /// Set the maximum value to be enforced.
-    void setMax(int max);
+  /// Set the maximum value to be enforced.
+  void setMax(int max);
 
-    /// Get the maximum value to be enforced.
-    int getMax();
+  /// Get the maximum value to be enforced.
+  int getMax();
 
-    /// Called when the editor is created.
-    /**
-     * Overridden to create a QSpinBox with the min and max set and with a
-     * signal/slot connection to setInt(), so the Property value updates every
-     * time the value changes, not just when "return" is pressed.
-     */
-    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option) override;
+  /// Called when the editor is created.
+  /**
+   * Overridden to create a QSpinBox with the min and max set and with a
+   * signal/slot connection to setInt(), so the Property value updates every
+   * time the value changes, not just when "return" is pressed.
+   */
+  QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option) override;
 
-public Q_SLOTS:
-    /// Set the value of this property to the given integer.
-    void setInt(int new_value);
+ public Q_SLOTS:
+  /// Set the value of this property to the given integer.
+  void setInt(int new_value);
 
-private:
-    int min_;
-    int max_;
+ private:
+  int min_;
+  int max_;
 };
 
 }  // namespace properties

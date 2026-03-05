@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <deque>
 #include <memory>
 #include <string>
@@ -30,8 +29,7 @@ namespace autolink {
 namespace data {
 namespace fusion {
 
-template <typename M0, typename M1 = NullType, typename M2 = NullType,
-          typename M3 = NullType>
+template <typename M0, typename M1 = NullType, typename M2 = NullType, typename M3 = NullType>
 class DataFusion {
  public:
   virtual ~DataFusion() {}
@@ -63,4 +61,3 @@ class DataFusion<M0, M1, NullType, NullType> {
 }  // namespace fusion
 }  // namespace data
 }  // namespace autolink
-

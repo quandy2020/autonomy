@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -33,8 +32,7 @@ namespace autolink {
 namespace data {
 
 struct VisitorConfig {
-  VisitorConfig(uint64_t id, uint32_t size)
-      : channel_id(id), queue_size(size) {}
+  VisitorConfig(uint64_t id, uint32_t size) : channel_id(id), queue_size(size) {}
   uint64_t channel_id;
   uint32_t queue_size;
 };
@@ -42,26 +40,20 @@ struct VisitorConfig {
 template <typename T>
 using BufferType = CacheBuffer<std::shared_ptr<T>>;
 
-template <typename M0, typename M1 = NullType, typename M2 = NullType,
-          typename M3 = NullType>
+template <typename M0, typename M1 = NullType, typename M2 = NullType, typename M3 = NullType>
 class DataVisitor : public DataVisitorBase {
  public:
   explicit DataVisitor(const std::vector<VisitorConfig>& configs)
-      : buffer_m0_(configs[0].channel_id,
-                   new BufferType<M0>(configs[0].queue_size)),
-        buffer_m1_(configs[1].channel_id,
-                   new BufferType<M1>(configs[1].queue_size)),
-        buffer_m2_(configs[2].channel_id,
-                   new BufferType<M2>(configs[2].queue_size)),
-        buffer_m3_(configs[3].channel_id,
-                   new BufferType<M3>(configs[3].queue_size)) {
+      : buffer_m0_(configs[0].channel_id, new BufferType<M0>(configs[0].queue_size)),
+        buffer_m1_(configs[1].channel_id, new BufferType<M1>(configs[1].queue_size)),
+        buffer_m2_(configs[2].channel_id, new BufferType<M2>(configs[2].queue_size)),
+        buffer_m3_(configs[3].channel_id, new BufferType<M3>(configs[3].queue_size)) {
     DataDispatcher<M0>::Instance()->AddBuffer(buffer_m0_);
     DataDispatcher<M1>::Instance()->AddBuffer(buffer_m1_);
     DataDispatcher<M2>::Instance()->AddBuffer(buffer_m2_);
     DataDispatcher<M3>::Instance()->AddBuffer(buffer_m3_);
     data_notifier_->AddNotifier(buffer_m0_.channel_id(), notifier_);
-    data_fusion_ = new fusion::AllLatest<M0, M1, M2, M3>(
-        buffer_m0_, buffer_m1_, buffer_m2_, buffer_m3_);
+    data_fusion_ = new fusion::AllLatest<M0, M1, M2, M3>(buffer_m0_, buffer_m1_, buffer_m2_, buffer_m3_);
   }
 
   ~DataVisitor() {
@@ -92,18 +84,14 @@ template <typename M0, typename M1, typename M2>
 class DataVisitor<M0, M1, M2, NullType> : public DataVisitorBase {
  public:
   explicit DataVisitor(const std::vector<VisitorConfig>& configs)
-      : buffer_m0_(configs[0].channel_id,
-                   new BufferType<M0>(configs[0].queue_size)),
-        buffer_m1_(configs[1].channel_id,
-                   new BufferType<M1>(configs[1].queue_size)),
-        buffer_m2_(configs[2].channel_id,
-                   new BufferType<M2>(configs[2].queue_size)) {
+      : buffer_m0_(configs[0].channel_id, new BufferType<M0>(configs[0].queue_size)),
+        buffer_m1_(configs[1].channel_id, new BufferType<M1>(configs[1].queue_size)),
+        buffer_m2_(configs[2].channel_id, new BufferType<M2>(configs[2].queue_size)) {
     DataDispatcher<M0>::Instance()->AddBuffer(buffer_m0_);
     DataDispatcher<M1>::Instance()->AddBuffer(buffer_m1_);
     DataDispatcher<M2>::Instance()->AddBuffer(buffer_m2_);
     data_notifier_->AddNotifier(buffer_m0_.channel_id(), notifier_);
-    data_fusion_ =
-        new fusion::AllLatest<M0, M1, M2>(buffer_m0_, buffer_m1_, buffer_m2_);
+    data_fusion_ = new fusion::AllLatest<M0, M1, M2>(buffer_m0_, buffer_m1_, buffer_m2_);
   }
 
   ~DataVisitor() {
@@ -133,10 +121,8 @@ template <typename M0, typename M1>
 class DataVisitor<M0, M1, NullType, NullType> : public DataVisitorBase {
  public:
   explicit DataVisitor(const std::vector<VisitorConfig>& configs)
-      : buffer_m0_(configs[0].channel_id,
-                   new BufferType<M0>(configs[0].queue_size)),
-        buffer_m1_(configs[1].channel_id,
-                   new BufferType<M1>(configs[1].queue_size)) {
+      : buffer_m0_(configs[0].channel_id, new BufferType<M0>(configs[0].queue_size)),
+        buffer_m1_(configs[1].channel_id, new BufferType<M1>(configs[1].queue_size)) {
     DataDispatcher<M0>::Instance()->AddBuffer(buffer_m0_);
     DataDispatcher<M1>::Instance()->AddBuffer(buffer_m1_);
     data_notifier_->AddNotifier(buffer_m0_.channel_id(), notifier_);
@@ -173,8 +159,7 @@ class DataVisitor<M0, NullType, NullType, NullType> : public DataVisitorBase {
     data_notifier_->AddNotifier(buffer_.channel_id(), notifier_);
   }
 
-  DataVisitor(uint64_t channel_id, uint32_t queue_size)
-      : buffer_(channel_id, new BufferType<M0>(queue_size)) {
+  DataVisitor(uint64_t channel_id, uint32_t queue_size) : buffer_(channel_id, new BufferType<M0>(queue_size)) {
     DataDispatcher<M0>::Instance()->AddBuffer(buffer_);
     data_notifier_->AddNotifier(buffer_.channel_id(), notifier_);
   }
@@ -193,4 +178,3 @@ class DataVisitor<M0, NullType, NullType, NullType> : public DataVisitorBase {
 
 }  // namespace data
 }  // namespace autolink
-

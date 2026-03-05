@@ -27,29 +27,29 @@ namespace system {
 namespace {
 
 void SigintHandler(int sig) {
-    LOG(INFO) << "Shutdown autonomy system all tasks.";
-    exit(0);
+  LOG(INFO) << "Shutdown autonomy system all tasks.";
+  exit(0);
 }
 
 void Run() {
-    // 'Crtl + C' sign handler
-    signal(SIGINT, SigintHandler);
-    signal(SIGTERM, SigintHandler);
+  // 'Crtl + C' sign handler
+  signal(SIGINT, SigintHandler);
+  signal(SIGTERM, SigintHandler);
 
-    // Show autonomu app version
-    autonomy::common::ShowVersion();
-    LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
+  // Show autonomu app version
+  autonomy::common::ShowVersion();
+  LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
-    // Create options from lua
-    auto options = autonomy::system::CreateOptions(autonomy::common::FLAGS_configuration_directory,
-                                                   autonomy::common::FLAGS_configuration_basename);
+  // Create options from lua
+  auto options = autonomy::system::CreateOptions(autonomy::common::FLAGS_configuration_directory,
+                                                 autonomy::common::FLAGS_configuration_basename);
 
-    // Create autonomy node
-    auto autonomy = autonomy::system::CreateAutonomy(options);
-    autonomy->Start();
+  // Create autonomy node
+  auto autonomy = autonomy::system::CreateAutonomy(options);
+  autonomy->Start();
 
-    // Shutdown autonomy node
-    autonomy->Shutdown();
+  // Shutdown autonomy node
+  autonomy->Shutdown();
 }
 
 }  // namespace
@@ -57,27 +57,27 @@ void Run() {
 }  // namespace autonomy
 
 int main(int argc, char** argv) {
-    google::SetUsageMessage(
-        "\n\n"
-        "\033[31m This program offers autonomy framework development for "
-        "robot.\033[0m \n");
+  google::SetUsageMessage(
+      "\n\n"
+      "\033[31m This program offers autonomy framework development for "
+      "robot.\033[0m \n");
 
-    google::InitGoogleLogging(argv[0]);
-    google::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
+  google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (autonomy::common::FLAGS_verbose) {
-        autonomy::common::ShowVersion();
-        exit(0);
-    }
+  if (autonomy::common::FLAGS_verbose) {
+    autonomy::common::ShowVersion();
+    exit(0);
+  }
 
-    // Check if configuration directory and basename are set.
-    if (autonomy::common::FLAGS_configuration_directory.empty() ||
-        autonomy::common::FLAGS_configuration_basename.empty()) {
-        AERROR << "Configuration directory or configuration basename is empty.";
-        return EXIT_FAILURE;
-    }
+  // Check if configuration directory and basename are set.
+  if (autonomy::common::FLAGS_configuration_directory.empty() ||
+      autonomy::common::FLAGS_configuration_basename.empty()) {
+    AERROR << "Configuration directory or configuration basename is empty.";
+    return EXIT_FAILURE;
+  }
 
-    autonomy::system::Run();
-    google::ShutdownGoogleLogging();
-    return EXIT_SUCCESS;
+  autonomy::system::Run();
+  google::ShutdownGoogleLogging();
+  return EXIT_SUCCESS;
 }

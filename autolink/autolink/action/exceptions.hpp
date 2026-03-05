@@ -26,35 +26,28 @@ namespace action {
  * @class ActionException
  * @brief Base exception class for action-related errors.
  */
-class ActionException : public std::runtime_error
-{
-public:
-    explicit ActionException(const std::string& message)
-        : std::runtime_error(message) {}
+class ActionException : public std::runtime_error {
+ public:
+  explicit ActionException(const std::string& message) : std::runtime_error(message) {}
 };
 
 /**
  * @class UnknownGoalHandleError
  * @brief Exception thrown when a goal handle is unknown or invalid.
  */
-class UnknownGoalHandleError : public ActionException
-{
-public:
-    explicit UnknownGoalHandleError(
-        const std::string& message = "Unknown goal handle")
-        : ActionException(message) {}
+class UnknownGoalHandleError : public ActionException {
+ public:
+  explicit UnknownGoalHandleError(const std::string& message = "Unknown goal handle") : ActionException(message) {}
 };
 
 /**
  * @class UnawareGoalHandleError
  * @brief Exception thrown when a goal handle is not aware of the result.
  */
-class UnawareGoalHandleError : public ActionException
-{
-public:
-    explicit UnawareGoalHandleError(
-        const std::string& message = "Goal handle is not aware of the result")
-        : ActionException(message) {}
+class UnawareGoalHandleError : public ActionException {
+ public:
+  explicit UnawareGoalHandleError(const std::string& message = "Goal handle is not aware of the result")
+      : ActionException(message) {}
 };
 
 }  // namespace action

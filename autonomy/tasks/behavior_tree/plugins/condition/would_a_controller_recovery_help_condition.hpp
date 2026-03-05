@@ -25,15 +25,14 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-class WouldAControllerRecoveryHelp : public AreErrorCodesPresent
-{
-    using Action = proto::FollowPathAction;
-    using ActionResult = Action::Result;
+class WouldAControllerRecoveryHelp : public AreErrorCodesPresent {
+  using Action = proto::FollowPathAction;
+  using ActionResult = Action::Result;
 
-public:
-    WouldAControllerRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
+ public:
+  WouldAControllerRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
-    WouldAControllerRecoveryHelp() = delete;
+  WouldAControllerRecoveryHelp() = delete;
 };
 
 }  // namespace condition

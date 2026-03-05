@@ -27,65 +27,62 @@ namespace transform {
 /**
  * @brief Static TF transform component
  */
-class StaticTransform
-{
-public:
-    /**
-     * @brief Define StaticTransform::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(StaticTransform)
+class StaticTransform {
+ public:
+  /**
+   * @brief Define StaticTransform::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(StaticTransform)
 
-    /**
-     * @brief Constructor
-     * @param options The options for the static transform
-     * @param node The node to use for the static transform
-     */
-    StaticTransform(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node = nullptr);
+  /**
+   * @brief Constructor
+   * @param options The options for the static transform
+   * @param node The node to use for the static transform
+   */
+  StaticTransform(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node = nullptr);
 
-    /**
-     * @brief Destructor
-     */
-    ~StaticTransform() = default;
+  /**
+   * @brief Destructor
+   */
+  ~StaticTransform() = default;
 
-    /**
-     * @brief Get the transform stampeds
-     * @return The transform stampeds
-     */
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds() const {
-        return transform_stampeds_;
-    }
+  /**
+   * @brief Get the transform stampeds
+   * @return The transform stampeds
+   */
+  const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds() const { return transform_stampeds_; }
 
-private:
-    /**
-     * @brief Send the transforms to the writer
-     */
-    void SendTransforms();
+ private:
+  /**
+   * @brief Send the transforms to the writer
+   */
+  void SendTransforms();
 
-    /**
-     * @brief Send the transform to the writer
-     * @param msgtf The transform to send
-     */
-    void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
+  /**
+   * @brief Send the transform to the writer
+   * @param msgtf The transform to send
+   */
+  void SendTransform(const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
 
-    /**
-     * @brief Parse static transforms from the yaml file
-     * @param file_path The path to the yaml file
-     * @param transforms Output vector of transforms
-     * @return True if parsed successfully, false otherwise
-     */
-    bool ParseFromYaml(const std::string& file_path, std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
+  /**
+   * @brief Parse static transforms from the yaml file
+   * @param file_path The path to the yaml file
+   * @param transforms Output vector of transforms
+   * @return True if parsed successfully, false otherwise
+   */
+  bool ParseFromYaml(const std::string& file_path, std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
 
-    // node
-    ::autolink::Node* node_;
+  // node
+  ::autolink::Node* node_;
 
-    // transform_stampeds
-    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
+  // transform_stampeds
+  commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
 
-    // writer
-    std::shared_ptr<::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>> writer_;
+  // writer
+  std::shared_ptr<::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>> writer_;
 
-    // static_transform_options
-    autonomy::transform::proto::TransformOptions static_transform_options_;
+  // static_transform_options
+  autonomy::transform::proto::TransformOptions static_transform_options_;
 };
 
 }  // namespace transform

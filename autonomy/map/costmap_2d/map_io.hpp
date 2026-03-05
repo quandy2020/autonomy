@@ -28,13 +28,13 @@ namespace map {
 namespace costmap_2d {
 
 struct LoadParameters {
-    std::string image_file_name;
-    double resolution{0};
-    std::vector<double> origin{0, 0, 0};
-    double free_thresh;
-    double occupied_thresh;
-    MapMode mode;
-    bool negate;
+  std::string image_file_name;
+  double resolution{0};
+  std::vector<double> origin{0, 0, 0};
+  double free_thresh;
+  double occupied_thresh;
+  MapMode mode;
+  bool negate;
 };
 
 typedef enum { LOAD_MAP_SUCCESS, MAP_DOES_NOT_EXIST, INVALID_MAP_METADATA, INVALID_MAP_DATA } LOAD_MAP_STATUS;
@@ -67,11 +67,11 @@ LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file, commsgs::map_msgs:
 /* Map output part */
 
 struct SaveParameters {
-    std::string map_file_name{""};
-    std::string image_format{""};
-    double free_thresh{0.0};
-    double occupied_thresh{0.0};
-    MapMode mode{MapMode::Trinary};
+  std::string map_file_name{""};
+  std::string image_format{""};
+  double free_thresh{0.0};
+  double occupied_thresh{0.0};
+  MapMode mode{MapMode::Trinary};
 };
 
 /**

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <utility>
 
@@ -35,20 +34,15 @@ class RoutineFactory {
   using CreateRoutineFunc = std::function<VoidFunc()>;
   // We can use routine_func directly.
   CreateRoutineFunc create_routine;
-  inline std::shared_ptr<data::DataVisitorBase> GetDataVisitor() const {
-    return data_visitor_;
-  }
-  inline void SetDataVisitor(const std::shared_ptr<data::DataVisitorBase>& dv) {
-    data_visitor_ = dv;
-  }
+  inline std::shared_ptr<data::DataVisitorBase> GetDataVisitor() const { return data_visitor_; }
+  inline void SetDataVisitor(const std::shared_ptr<data::DataVisitorBase>& dv) { data_visitor_ = dv; }
 
  private:
   std::shared_ptr<data::DataVisitorBase> data_visitor_ = nullptr;
 };
 
 template <typename M0, typename F>
-RoutineFactory CreateRoutineFactory(
-    F&& f, const std::shared_ptr<data::DataVisitor<M0>>& dv) {
+RoutineFactory CreateRoutineFactory(F&& f, const std::shared_ptr<data::DataVisitor<M0>>& dv) {
   RoutineFactory factory;
   factory.SetDataVisitor(dv);
   factory.create_routine = [=]() {
@@ -69,8 +63,7 @@ RoutineFactory CreateRoutineFactory(
 }
 
 template <typename M0, typename M1, typename F>
-RoutineFactory CreateRoutineFactory(
-    F&& f, const std::shared_ptr<data::DataVisitor<M0, M1>>& dv) {
+RoutineFactory CreateRoutineFactory(F&& f, const std::shared_ptr<data::DataVisitor<M0, M1>>& dv) {
   RoutineFactory factory;
   factory.SetDataVisitor(dv);
   factory.create_routine = [=]() {
@@ -92,8 +85,7 @@ RoutineFactory CreateRoutineFactory(
 }
 
 template <typename M0, typename M1, typename M2, typename F>
-RoutineFactory CreateRoutineFactory(
-    F&& f, const std::shared_ptr<data::DataVisitor<M0, M1, M2>>& dv) {
+RoutineFactory CreateRoutineFactory(F&& f, const std::shared_ptr<data::DataVisitor<M0, M1, M2>>& dv) {
   RoutineFactory factory;
   factory.SetDataVisitor(dv);
   factory.create_routine = [=]() {
@@ -116,8 +108,7 @@ RoutineFactory CreateRoutineFactory(
 }
 
 template <typename M0, typename M1, typename M2, typename M3, typename F>
-RoutineFactory CreateRoutineFactory(
-    F&& f, const std::shared_ptr<data::DataVisitor<M0, M1, M2, M3>>& dv) {
+RoutineFactory CreateRoutineFactory(F&& f, const std::shared_ptr<data::DataVisitor<M0, M1, M2, M3>>& dv) {
   RoutineFactory factory;
   factory.SetDataVisitor(dv);
   factory.create_routine = [=]() {
@@ -149,4 +140,3 @@ RoutineFactory CreateRoutineFactory(Function&& f) {
 
 }  // namespace croutine
 }  // namespace autolink
-

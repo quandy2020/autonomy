@@ -16,16 +16,14 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "autolink/proto/dag_conf.pb.h"
-
 #include "autolink/class_loader/class_loader_manager.hpp"
 #include "autolink/component/component.hpp"
 #include "autolink/mainboard/module_argument.hpp"
+#include "autolink/proto/dag_conf.pb.h"
 
 namespace autolink {
 namespace mainboard {
@@ -53,11 +51,9 @@ class ModuleController {
   std::vector<std::shared_ptr<ComponentBase>> component_list_;
 };
 
-inline ModuleController::ModuleController(const ModuleArgument& args)
-    : args_(args) {}
+inline ModuleController::ModuleController(const ModuleArgument& args) : args_(args) {}
 
 inline bool ModuleController::Init() { return LoadAll(); }
 
 }  // namespace mainboard
 }  // namespace autolink
-

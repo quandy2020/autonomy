@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cassert>
 #include <cstring>
 #include <memory>
@@ -33,11 +32,9 @@ struct RawMessage {
 
   explicit RawMessage(const std::string &data) : message(data), timestamp(0) {}
 
-  RawMessage(const std::string &data, uint64_t ts)
-      : message(data), timestamp(ts) {}
+  RawMessage(const std::string &data, uint64_t ts) : message(data), timestamp(ts) {}
 
-  RawMessage(const RawMessage &raw_msg)
-      : message(raw_msg.message), timestamp(raw_msg.timestamp) {}
+  RawMessage(const RawMessage &raw_msg) : message(raw_msg.message), timestamp(raw_msg.timestamp) {}
 
   RawMessage &operator=(const RawMessage &raw_msg) {
     if (this != &raw_msg) {
@@ -60,8 +57,7 @@ struct RawMessage {
     return &desc;
   }
 
-  static void GetDescriptorString(const std::string &type,
-                                  std::string *desc_str) {
+  static void GetDescriptorString(const std::string &type, std::string *desc_str) {
     ProtobufFactory::Instance()->GetDescriptorString(type, desc_str);
   }
 
@@ -114,4 +110,3 @@ struct RawMessage {
 
 }  // namespace message
 }  // namespace autolink
-

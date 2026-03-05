@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <mutex>
 #include <string>
@@ -40,8 +39,7 @@ class WriterBase {
    *
    * @param role_attr role attributes for this Writer
    */
-  explicit WriterBase(const proto::RoleAttributes& role_attr)
-      : role_attr_(role_attr), init_(false) {}
+  explicit WriterBase(const proto::RoleAttributes& role_attr) : role_attr_(role_attr), init_(false) {}
   virtual ~WriterBase() {}
 
   /**
@@ -78,9 +76,7 @@ class WriterBase {
    *
    * @return const std::string& const reference to the channel name
    */
-  const std::string& GetChannelName() const {
-    return role_attr_.channel_name();
-  }
+  const std::string& GetChannelName() const { return role_attr_.channel_name(); }
 
   /**
    * @brief Get Writer's Channel id
@@ -107,4 +103,3 @@ class WriterBase {
 };
 
 }  // namespace autolink
-

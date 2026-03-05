@@ -18,12 +18,10 @@
 
 #include <string>
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/parameter.pb.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/message/message_traits.hpp"
+#include "autolink/proto/parameter.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 
@@ -141,9 +139,7 @@ TEST_F(ParameterTest, as_int) { EXPECT_EQ(100, int_param_->AsInt64()); }
 
 TEST_F(ParameterTest, as_double) { EXPECT_EQ(0.0, double_param_->AsDouble()); }
 
-TEST_F(ParameterTest, AsString) {
-  EXPECT_EQ(string_param_->AsString(), "test");
-}
+TEST_F(ParameterTest, AsString) { EXPECT_EQ(string_param_->AsString(), "test"); }
 
 TEST_F(ParameterTest, value) {
   EXPECT_TRUE(bool_param_->value<bool>());
@@ -172,14 +168,10 @@ TEST_F(ParameterTest, value) {
 }
 
 TEST_F(ParameterTest, debug_string) {
-  EXPECT_EQ("{name: \"bool\", type: \"BOOL\", value: true}",
-            bool_param_->DebugString());
-  EXPECT_EQ("{name: \"int\", type: \"INT\", value: 100}",
-            int_param_->DebugString());
-  EXPECT_EQ("{name: \"double\", type: \"DOUBLE\", value: 0.000000}",
-            double_param_->DebugString());
-  EXPECT_EQ("{name: \"string\", type: \"STRING\", value: \"test\"}",
-            string_param_->DebugString());
+  EXPECT_EQ("{name: \"bool\", type: \"BOOL\", value: true}", bool_param_->DebugString());
+  EXPECT_EQ("{name: \"int\", type: \"INT\", value: 100}", int_param_->DebugString());
+  EXPECT_EQ("{name: \"double\", type: \"DOUBLE\", value: 0.000000}", double_param_->DebugString());
+  EXPECT_EQ("{name: \"string\", type: \"STRING\", value: \"test\"}", string_param_->DebugString());
   EXPECT_EQ(
       "{name: \"protobuf\", type: \"autolink.proto.Param\", value: "
       "\"name: \"param\"\"}",

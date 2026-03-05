@@ -28,44 +28,43 @@ class Emitter;
 namespace aviz {
 namespace common {
 
-class YamlConfigWriter
-{
-public:
-    /// Constructor.
-    /**
-     * Writer starts in a non-error state.
-     */
-    YamlConfigWriter();
+class YamlConfigWriter {
+ public:
+  /// Constructor.
+  /**
+   * Writer starts in a non-error state.
+   */
+  YamlConfigWriter();
 
-    /// Write config data to a file.
-    /**
-     * This potentially changes the return values of error() and statusMessage().
-     */
-    void writeFile(const Config& config, const QString& filename);
+  /// Write config data to a file.
+  /**
+   * This potentially changes the return values of error() and statusMessage().
+   */
+  void writeFile(const Config& config, const QString& filename);
 
-    /// Write config data to a string, and return it.
-    /**
-     * This potentially changes the return values of error() and statusMessage().
-     */
-    QString writeString(const Config& config, const QString& filename = "data string");
+  /// Write config data to a string, and return it.
+  /**
+   * This potentially changes the return values of error() and statusMessage().
+   */
+  QString writeString(const Config& config, const QString& filename = "data string");
 
-    /// Write config data to a std::ostream.
-    /**
-     * This potentially changes the return values of error() and statusMessage().
-     */
-    void writeStream(const Config& config, std::ostream& out, const QString& filename = "data stream");
+  /// Write config data to a std::ostream.
+  /**
+   * This potentially changes the return values of error() and statusMessage().
+   */
+  void writeStream(const Config& config, std::ostream& out, const QString& filename = "data stream");
 
-    /// Return true if the latest write operation had an error.
-    bool error();
+  /// Return true if the latest write operation had an error.
+  bool error();
 
-    /// Return an error message if the latest write call had an error, else the empty string.
-    QString errorMessage();
+  /// Return an error message if the latest write call had an error, else the empty string.
+  QString errorMessage();
 
-private:
-    void writeConfigNode(const Config& config, YAML::Emitter& emitter);
+ private:
+  void writeConfigNode(const Config& config, YAML::Emitter& emitter);
 
-    QString message_;
-    bool error_;
+  QString message_;
+  bool error_;
 };
 
 }  // namespace common

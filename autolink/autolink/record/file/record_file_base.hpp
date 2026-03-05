@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <mutex>
 #include <string>
 
@@ -49,4 +48,3 @@ class RecordFileBase {
 
 }  // namespace record
 }  // namespace autolink
-

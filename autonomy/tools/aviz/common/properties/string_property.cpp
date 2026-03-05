@@ -14,9 +14,9 @@
  * limitations under the License.
  *****************************************************************************/
 
-#include <string>
-
 #include "autonomy/tools/aviz/common/properties/string_property.hpp"
+
+#include <string>
 
 namespace aviz {
 namespace common {
@@ -26,21 +26,13 @@ StringProperty::StringProperty(const QString& name, const QString& default_value
                                Property* parent, const char* changed_slot, QObject* receiver)
     : Property(name, default_value, description, parent, changed_slot, receiver) {}
 
-std::string StringProperty::getStdString() const {
-    return getValue().toString().toStdString();
-}
+std::string StringProperty::getStdString() const { return getValue().toString().toStdString(); }
 
-QString StringProperty::getString() const {
-    return getValue().toString();
-}
+QString StringProperty::getString() const { return getValue().toString(); }
 
-bool StringProperty::setStdString(const std::string& std_str) {
-    return setValue(QString::fromStdString(std_str));
-}
+bool StringProperty::setStdString(const std::string& std_str) { return setValue(QString::fromStdString(std_str)); }
 
-bool StringProperty::setString(const QString& str) {
-    return setValue(str);
-}
+bool StringProperty::setString(const QString& str) { return setValue(str); }
 
 }  // namespace properties
 }  // namespace common

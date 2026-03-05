@@ -93,14 +93,11 @@ int main(int argc, char *argv[]) {
 
   CyberTopologyMessage topology_msg(val);
 
-  auto topology_callback =
-      [&topology_msg](const autolink::proto::ChangeMsg &change_msg) {
-        topology_msg.TopologyChanged(change_msg);
-      };
+  auto topology_callback = [&topology_msg](const autolink::proto::ChangeMsg &change_msg) {
+    topology_msg.TopologyChanged(change_msg);
+  };
 
-  auto channel_manager =
-      autolink::service_discovery::TopologyManager::Instance()
-          ->channel_manager();
+  auto channel_manager = autolink::service_discovery::TopologyManager::Instance()->channel_manager();
   channel_manager->AddChangeListener(topology_callback);
 
   std::vector<autolink::proto::RoleAttributes> role_vec;

@@ -18,9 +18,8 @@
 
 #include <string>
 
-#include "gtest/gtest.h"
-
 #include "autolink/record/record_writer.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace record {

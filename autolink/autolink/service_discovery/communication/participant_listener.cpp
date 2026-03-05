@@ -21,17 +21,15 @@
 namespace autolink {
 namespace service_discovery {
 
-ParticipantListener::ParticipantListener(const ChangeFunc& callback)
-    : callback_(callback) {}
+ParticipantListener::ParticipantListener(const ChangeFunc& callback) : callback_(callback) {}
 
 ParticipantListener::~ParticipantListener() {
   std::lock_guard<std::mutex> lck(mutex_);
   callback_ = nullptr;
 }
 
-void ParticipantListener::onParticipantDiscovery(
-    eprosima::fastrtps::Participant* p,
-    eprosima::fastrtps::rtps::ParticipantDiscoveryInfo info) {
+void ParticipantListener::onParticipantDiscovery(eprosima::fastrtps::Participant* p,
+                                                 eprosima::fastrtps::rtps::ParticipantDiscoveryInfo info) {
   RETURN_IF_NULL(callback_);
   (void)p;
   std::lock_guard<std::mutex> lock(mutex_);

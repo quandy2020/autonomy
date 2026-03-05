@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <future>
 #include <memory>
@@ -37,8 +36,7 @@ class TaskManager {
   void Shutdown();
 
   template <typename F, typename... Args>
-  auto Enqueue(F&& func, Args&&... args)
-      -> std::future<typename std::result_of<F(Args...)>::type> {
+  auto Enqueue(F&& func, Args&&... args) -> std::future<typename std::result_of<F(Args...)>::type> {
     using return_type = typename std::result_of<F(Args...)>::type;
     auto task = std::make_shared<std::packaged_task<return_type()>>(
         std::bind(std::forward<F>(func), std::forward<Args>(args)...));
@@ -62,4 +60,3 @@ class TaskManager {
 };
 
 }  // namespace autolink
-

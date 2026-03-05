@@ -24,26 +24,26 @@ namespace optimization {
  * @brief Upper and lower bound for optimization variables and constraints.
  */
 struct Bounds {
-    /**
-     * @brief Creates a bound between @a lower and @a upper.
-     */
-    Bounds(double lower = 0.0, double upper = 0.0) {
-        lower_ = lower;
-        upper_ = upper;
-    }
+  /**
+   * @brief Creates a bound between @a lower and @a upper.
+   */
+  Bounds(double lower = 0.0, double upper = 0.0) {
+    lower_ = lower;
+    upper_ = upper;
+  }
 
-    double lower_;
-    double upper_;
+  double lower_;
+  double upper_;
 
-    void operator+=(double scalar) {
-        lower_ += scalar;
-        upper_ += scalar;
-    }
+  void operator+=(double scalar) {
+    lower_ += scalar;
+    upper_ += scalar;
+  }
 
-    void operator-=(double scalar) {
-        lower_ -= scalar;
-        upper_ -= scalar;
-    }
+  void operator-=(double scalar) {
+    lower_ -= scalar;
+    upper_ -= scalar;
+  }
 };
 
 // settings this as signals infinity for IPOPT/SNOPT solvers

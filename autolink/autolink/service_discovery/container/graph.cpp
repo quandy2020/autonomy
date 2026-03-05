@@ -38,13 +38,9 @@ Vertice& Vertice::operator=(const Vertice& rhs) {
   return *this;
 }
 
-bool Vertice::operator==(const Vertice& rhs) const {
-  return this->value_ == rhs.value_;
-}
+bool Vertice::operator==(const Vertice& rhs) const { return this->value_ == rhs.value_; }
 
-bool Vertice::operator!=(const Vertice& rhs) const {
-  return this->value_ != rhs.value_;
-}
+bool Vertice::operator!=(const Vertice& rhs) const { return this->value_ != rhs.value_; }
 
 bool Vertice::IsDummy() const { return value_.empty(); }
 
@@ -58,8 +54,7 @@ Edge::Edge(const Edge& other) {
   this->value_ = other.value_;
 }
 
-Edge::Edge(const Vertice& src, const Vertice& dst, const std::string& val)
-    : src_(src), dst_(dst), value_(val) {}
+Edge::Edge(const Vertice& src, const Vertice& dst, const std::string& val) : src_(src), dst_(dst), value_(val) {}
 
 Edge::~Edge() {}
 
@@ -73,8 +68,7 @@ Edge& Edge::operator=(const Edge& rhs) {
 }
 
 bool Edge::operator==(const Edge& rhs) const {
-  return this->src_ == rhs.src_ && this->dst_ == rhs.dst_ &&
-         this->value_ == rhs.value_;
+  return this->src_ == rhs.src_ && this->dst_ == rhs.dst_ && this->value_ == rhs.value_;
 }
 
 bool Edge::IsValid() const {

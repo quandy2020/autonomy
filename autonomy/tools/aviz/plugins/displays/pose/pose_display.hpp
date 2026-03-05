@@ -19,7 +19,6 @@
 #include <memory>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
-
 #include "autonomy/tools/aviz/common/autolink_topic_display.hpp"
 #include "autonomy/tools/aviz/common/properties/color_property.hpp"
 #include "autonomy/tools/aviz/common/properties/enum_property.hpp"
@@ -42,54 +41,53 @@ namespace displays {
  *
  * Accumulates and displays the pose from a geometry_msgs::PoseStamped message
  */
-class PoseDisplay : public AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PoseStamped>
-{
-    Q_OBJECT
+class PoseDisplay : public AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PoseStamped> {
+  Q_OBJECT
 
-public:
-    enum Shape {
-        Arrow,
-        Axes,
-    };
+ public:
+  enum Shape {
+    Arrow,
+    Axes,
+  };
 
-    PoseDisplay();
-    ~PoseDisplay() override;
+  PoseDisplay();
+  ~PoseDisplay() override;
 
-    void onInitialize() override;
+  void onInitialize() override;
 
-    void reset() override;
+  void reset() override;
 
-protected:
-    /** @brief Overridden from AutolinkTopicDisplay to get arrow/axes visibility correct. */
-    void onEnable() override;
-    void onDisable() override;
+ protected:
+  /** @brief Overridden from AutolinkTopicDisplay to get arrow/axes visibility correct. */
+  void onEnable() override;
+  void onDisable() override;
 
-    void processMessage(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PoseStamped>& msg) override;
+  void processMessage(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PoseStamped>& msg) override;
 
-private Q_SLOTS:
-    void updateShapeVisibility();
-    void updateColorAndAlpha();
-    void updateShapeChoice();
-    void updateAxisGeometry();
-    void updateArrowGeometry();
+ private Q_SLOTS:
+  void updateShapeVisibility();
+  void updateColorAndAlpha();
+  void updateShapeChoice();
+  void updateAxisGeometry();
+  void updateArrowGeometry();
 
-private:
-    std::unique_ptr<aviz::rendering::Arrow> arrow_;
-    std::unique_ptr<aviz::rendering::Axes> axes_;
-    bool pose_valid_;
+ private:
+  std::unique_ptr<aviz::rendering::Arrow> arrow_;
+  std::unique_ptr<aviz::rendering::Axes> axes_;
+  bool pose_valid_;
 
-    aviz::common::properties::EnumProperty* shape_property_;
+  aviz::common::properties::EnumProperty* shape_property_;
 
-    aviz::common::properties::ColorProperty* color_property_;
-    aviz::common::properties::FloatProperty* alpha_property_;
+  aviz::common::properties::ColorProperty* color_property_;
+  aviz::common::properties::FloatProperty* alpha_property_;
 
-    aviz::common::properties::FloatProperty* head_radius_property_;
-    aviz::common::properties::FloatProperty* head_length_property_;
-    aviz::common::properties::FloatProperty* shaft_radius_property_;
-    aviz::common::properties::FloatProperty* shaft_length_property_;
+  aviz::common::properties::FloatProperty* head_radius_property_;
+  aviz::common::properties::FloatProperty* head_length_property_;
+  aviz::common::properties::FloatProperty* shaft_radius_property_;
+  aviz::common::properties::FloatProperty* shaft_length_property_;
 
-    aviz::common::properties::FloatProperty* axes_length_property_;
-    aviz::common::properties::FloatProperty* axes_radius_property_;
+  aviz::common::properties::FloatProperty* axes_length_property_;
+  aviz::common::properties::FloatProperty* axes_radius_property_;
 };
 
 }  // namespace displays

@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <utility>
+
 #include "gtest/gtest.h"
 
 namespace autolink {

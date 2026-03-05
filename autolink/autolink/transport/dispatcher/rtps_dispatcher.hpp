@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -52,22 +51,16 @@ class RtpsDispatcher : public Dispatcher {
   void Shutdown() override;
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const MessageListener<MessageT>& listener);
+  void AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener);
 
   template <typename MessageT>
-  void AddListener(const RoleAttributes& self_attr,
-                   const RoleAttributes& opposite_attr,
+  void AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                    const MessageListener<MessageT>& listener);
 
-  void set_participant(const ParticipantPtr& participant) {
-    participant_ = participant;
-  }
+  void set_participant(const ParticipantPtr& participant) { participant_ = participant; }
 
  private:
-  void OnMessage(uint64_t channel_id,
-                 const std::shared_ptr<std::string>& msg_str,
-                 const MessageInfo& msg_info);
+  void OnMessage(uint64_t channel_id, const std::shared_ptr<std::string>& msg_str, const MessageInfo& msg_info);
   void AddSubscriber(const RoleAttributes& self_attr);
   // key: channel_id
   std::unordered_map<uint64_t, Subscriber> subs_;
@@ -79,11 +72,9 @@ class RtpsDispatcher : public Dispatcher {
 };
 
 template <typename MessageT>
-void RtpsDispatcher::AddListener(const RoleAttributes& self_attr,
-                                 const MessageListener<MessageT>& listener) {
-  auto listener_adapter = [listener, self_attr](
-                              const std::shared_ptr<std::string>& msg_str,
-                              const MessageInfo& msg_info) {
+void RtpsDispatcher::AddListener(const RoleAttributes& self_attr, const MessageListener<MessageT>& listener) {
+  auto listener_adapter = [listener, self_attr](const std::shared_ptr<std::string>& msg_str,
+                                                const MessageInfo& msg_info) {
     auto msg = std::make_shared<MessageT>();
     RETURN_IF(!message::ParseFromString(*msg_str, msg.get()));
     listener(msg, msg_info);
@@ -94,22 +85,18 @@ void RtpsDispatcher::AddListener(const RoleAttributes& self_attr,
 }
 
 template <typename MessageT>
-void RtpsDispatcher::AddListener(const RoleAttributes& self_attr,
-                                 const RoleAttributes& opposite_attr,
+void RtpsDispatcher::AddListener(const RoleAttributes& self_attr, const RoleAttributes& opposite_attr,
                                  const MessageListener<MessageT>& listener) {
-  auto listener_adapter = [listener, self_attr](
-                              const std::shared_ptr<std::string>& msg_str,
-                              const MessageInfo& msg_info) {
+  auto listener_adapter = [listener, self_attr](const std::shared_ptr<std::string>& msg_str,
+                                                const MessageInfo& msg_info) {
     auto msg = std::make_shared<MessageT>();
     RETURN_IF(!message::ParseFromString(*msg_str, msg.get()));
     listener(msg, msg_info);
   };
 
-  Dispatcher::AddListener<std::string>(self_attr, opposite_attr,
-                                       listener_adapter);
+  Dispatcher::AddListener<std::string>(self_attr, opposite_attr, listener_adapter);
   AddSubscriber(self_attr);
 }
 
 }  // namespace transport
 }  // namespace autolink
-

@@ -35,9 +35,7 @@ alignas(CACHELINE_SIZE) NOTIFY_GRP ClassicContext::notify_grp_;
 
 ClassicContext::ClassicContext() { InitGroup(DEFAULT_GROUP_NAME); }
 
-ClassicContext::ClassicContext(const std::string& group_name) {
-  InitGroup(group_name);
-}
+ClassicContext::ClassicContext(const std::string& group_name) { InitGroup(group_name); }
 
 void ClassicContext::InitGroup(const std::string& group_name) {
   multi_pri_rq_ = &cr_group_[group_name];
@@ -73,8 +71,7 @@ std::shared_ptr<CRoutine> ClassicContext::NextRoutine() {
 
 void ClassicContext::Wait() {
   std::unique_lock<std::mutex> lk(mtx_wrapper_->Mutex());
-  cw_->Cv().wait_for(lk, std::chrono::milliseconds(1000),
-                     [&]() { return notify_grp_[current_grp] > 0; });
+  cw_->Cv().wait_for(lk, std::chrono::milliseconds(1000), [&]() { return notify_grp_[current_grp] > 0; });
   if (notify_grp_[current_grp] > 0) {
     notify_grp_[current_grp]--;
   }

@@ -15,11 +15,10 @@
  *****************************************************************************/
 #include "autolink/croutine/croutine.hpp"
 
-#include "gtest/gtest.h"
-
-#include "autolink/common/global_data.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/global_data.hpp"
 #include "autolink/init.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace croutine {

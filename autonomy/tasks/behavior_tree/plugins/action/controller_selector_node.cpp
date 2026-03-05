@@ -29,53 +29,50 @@ namespace action {
 
 ControllerSelector::ControllerSelector(const std::string& name, const BT::NodeConfiguration& conf)
     : BT::SyncActionNode(name, conf) {
-    initialize();
+  initialize();
 }
 
-void ControllerSelector::initialize() {
-    createROSInterfaces();
-}
+void ControllerSelector::initialize() { createROSInterfaces(); }
 
 void ControllerSelector::createROSInterfaces() {
-    std::string topic_new;
-    getInput("topic_name", topic_new);
-    if (topic_new != topic_name_ || !controller_selector_sub_) {
-        topic_name_ = topic_new;
-        node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+  std::string topic_new;
+  getInput("topic_name", topic_new);
+  if (topic_new != topic_name_ || !controller_selector_sub_) {
+    topic_name_ = topic_new;
+    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 
-        controller_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
-            topic_name_,
-            [this](std::shared_ptr<const commsgs::std_msgs::String> msg) { callbackControllerSelect(msg); });
-    }
+    controller_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
+        topic_name_, [this](std::shared_ptr<const commsgs::std_msgs::String> msg) { callbackControllerSelect(msg); });
+  }
 }
 
 BT::NodeStatus ControllerSelector::tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
+  if (!BT::isStatusActive(status())) {
+    initialize();
+  }
+
+  // This behavior always use the last selected controller received from the
+  // topic input. When no input is specified it uses the default controller.
+  // If the default controller is not specified then we work in "required
+  // controller mode": In this mode, the behavior returns failure if the
+  // controller selection is not received from the topic input.
+  if (last_selected_controller_.empty()) {
+    std::string default_controller;
+    getInput("default_controller", default_controller);
+    if (default_controller.empty()) {
+      return BT::NodeStatus::FAILURE;
+    } else {
+      last_selected_controller_ = default_controller;
     }
+  }
 
-    // This behavior always use the last selected controller received from the
-    // topic input. When no input is specified it uses the default controller.
-    // If the default controller is not specified then we work in "required
-    // controller mode": In this mode, the behavior returns failure if the
-    // controller selection is not received from the topic input.
-    if (last_selected_controller_.empty()) {
-        std::string default_controller;
-        getInput("default_controller", default_controller);
-        if (default_controller.empty()) {
-            return BT::NodeStatus::FAILURE;
-        } else {
-            last_selected_controller_ = default_controller;
-        }
-    }
+  setOutput("selected_controller", last_selected_controller_);
 
-    setOutput("selected_controller", last_selected_controller_);
-
-    return BT::NodeStatus::SUCCESS;
+  return BT::NodeStatus::SUCCESS;
 }
 
 void ControllerSelector::callbackControllerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg) {
-    last_selected_controller_ = msg->data;
+  last_selected_controller_ = msg->data;
 }
 
 }  // namespace action
@@ -86,5 +83,5 @@ void ControllerSelector::callbackControllerSelect(std::shared_ptr<const commsgs:
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ControllerSelector>("ControllerSelector");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ControllerSelector>("ControllerSelector");
 }

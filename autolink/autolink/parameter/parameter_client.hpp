@@ -16,14 +16,12 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "autolink/proto/parameter.pb.h"
-
 #include "autolink/parameter/parameter.hpp"
+#include "autolink/proto/parameter.pb.h"
 #include "autolink/service/client.hpp"
 
 namespace autolink {
@@ -51,8 +49,7 @@ class ParameterClient {
    * @param node shared_ptr of the node handler
    * @param service_node_name node name which provide a param services
    */
-  ParameterClient(const std::shared_ptr<Node>& node,
-                  const std::string& service_node_name);
+  ParameterClient(const std::shared_ptr<Node>& node, const std::string& service_node_name);
 
   /**
    * @brief Get the Parameter object
@@ -92,4 +89,3 @@ class ParameterClient {
 };
 
 }  // namespace autolink
-

@@ -34,24 +34,23 @@ namespace checker {
  * @class StoppedGoalChecker
  * @brief Goal Checker plugin that checks the position difference and velocity
  */
-class StoppedGoalChecker : public SimpleGoalChecker
-{
-public:
-    StoppedGoalChecker();
+class StoppedGoalChecker : public SimpleGoalChecker {
+ public:
+  StoppedGoalChecker();
 
-    // Standard GoalChecker Interface
-    void Initialize(const std::string& plugin_name,
-                    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
+  // Standard GoalChecker Interface
+  void Initialize(const std::string& plugin_name,
+                  const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) override;
 
-    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose, const commsgs::geometry_msgs::Pose& goal_pose,
-                       const commsgs::geometry_msgs::Twist& velocity) override;
+  bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose, const commsgs::geometry_msgs::Pose& goal_pose,
+                     const commsgs::geometry_msgs::Twist& velocity) override;
 
-    bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                       commsgs::geometry_msgs::Twist& vel_tolerance) override;
+  bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                     commsgs::geometry_msgs::Twist& vel_tolerance) override;
 
-protected:
-    double rot_stopped_velocity_, trans_stopped_velocity_;
-    std::string plugin_name_;
+ protected:
+  double rot_stopped_velocity_, trans_stopped_velocity_;
+  std::string plugin_name_;
 };
 
 }  // namespace checker

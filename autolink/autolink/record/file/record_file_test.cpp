@@ -15,16 +15,16 @@
  *****************************************************************************/
 
 #include <unistd.h>
+
 #include <atomic>
 #include <string>
-
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
 
 #include "autolink/record/file/record_file_base.hpp"
 #include "autolink/record/file/record_file_reader.hpp"
 #include "autolink/record/file/record_file_writer.hpp"
 #include "autolink/record/header_builder.hpp"
+#include "gflags/gflags.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace record {
@@ -285,8 +285,7 @@ TEST(RecordFileTest, TestIndex) {
     // sections
     reader.Reset();
     Section section;
-    for (uint64_t pos = reader.CurrentPosition();
-         reader.ReadSection(&section) && reader.SkipSection(section.size);
+    for (uint64_t pos = reader.CurrentPosition(); reader.ReadSection(&section) && reader.SkipSection(section.size);
          pos = reader.CurrentPosition()) {
       // Find index at position
       if (section.type != SectionType::SECTION_INDEX) {

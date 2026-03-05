@@ -31,48 +31,47 @@ namespace autonomy {
 namespace map {
 namespace costmap_3d {
 
-class Costmap3DWrapper : public common::MapInterface
-{
-public:
-    /**
-     * Define Costmap3DWrapper::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Costmap3DWrapper)
+class Costmap3DWrapper : public common::MapInterface {
+ public:
+  /**
+   * Define Costmap3DWrapper::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(Costmap3DWrapper)
 
-    /**
-     * @brief A constructor for nautonomy::map::costmap_2d::Costmap3DWrapper
-     * @param options Additional options to control creation of the node.
-     */
-    Costmap3DWrapper(const proto::Costmap3DOptions& options);
+  /**
+   * @brief A constructor for nautonomy::map::costmap_2d::Costmap3DWrapper
+   * @param options Additional options to control creation of the node.
+   */
+  Costmap3DWrapper(const proto::Costmap3DOptions& options);
 
-    /**
-     * @brief A Destructor for autonomy::map::costmap_2d::Costmap3DWrapper
-     */
-    ~Costmap3DWrapper();
+  /**
+   * @brief A Destructor for autonomy::map::costmap_2d::Costmap3DWrapper
+   */
+  ~Costmap3DWrapper();
 
-    /**
-     * @brief Start costmap updates
-     */
-    void Start() override;
+  /**
+   * @brief Start costmap updates
+   */
+  void Start() override;
 
-    /**
-     * @brief Stop costmap updates
-     */
-    void Stop() override;
+  /**
+   * @brief Stop costmap updates
+   */
+  void Stop() override;
 
-    /**
-     * @brief Pause costmap updates
-     */
-    void Pause() override;
+  /**
+   * @brief Pause costmap updates
+   */
+  void Pause() override;
 
-    /**
-     * @brief Resume costmap updates
-     */
-    void Resume() override;
+  /**
+   * @brief Resume costmap updates
+   */
+  void Resume() override;
 
-protected:
-    // options for costmap 3D
-    proto::Costmap3DOptions options_;
+ protected:
+  // options for costmap 3D
+  proto::Costmap3DOptions options_;
 };
 
 }  // namespace costmap_3d

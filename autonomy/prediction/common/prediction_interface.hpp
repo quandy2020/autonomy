@@ -25,10 +25,9 @@ namespace autonomy {
 namespace prediction {
 namespace common {
 
-class PredictionInterface
-{
-public:
-    virtual ~PredictionInterface();
+class PredictionInterface {
+ public:
+  virtual ~PredictionInterface();
 };
 
 proto::PredictionOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);

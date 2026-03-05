@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <map>
 #include <string>
 #include <vector>
@@ -87,4 +86,3 @@ class Screen final {
   int highlight_direction_;
   RenderableMessage* current_render_obj_;
 };
-

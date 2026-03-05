@@ -66,8 +66,7 @@ void ChoreographyContext::Notify() {
 
 void ChoreographyContext::Wait() {
   std::unique_lock<std::mutex> lk(mtx_wq_);
-  cv_wq_.wait_for(lk, std::chrono::milliseconds(1000),
-                  [&]() { return notify > 0; });
+  cv_wq_.wait_for(lk, std::chrono::milliseconds(1000), [&]() { return notify > 0; });
   if (notify > 0) {
     notify--;
   }

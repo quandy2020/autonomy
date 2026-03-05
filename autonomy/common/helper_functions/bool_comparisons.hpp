@@ -31,7 +31,7 @@ namespace comparisons {
  */
 template <typename T>
 types::bool8_t exclusive_or(const T& a, const T& b) {
-    return static_cast<types::bool8_t>(a) != static_cast<types::bool8_t>(b);
+  return static_cast<types::bool8_t>(a) != static_cast<types::bool8_t>(b);
 }
 
 }  // namespace comparisons

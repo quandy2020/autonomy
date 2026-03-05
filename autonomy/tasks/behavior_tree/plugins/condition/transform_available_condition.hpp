@@ -20,11 +20,10 @@
 #include <memory>
 #include <string>
 
-#include "behaviortree_cpp/condition_node.h"
-
 #include "autolink/autolink.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/transform/buffer.hpp"
+#include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -38,51 +37,50 @@ namespace condition {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class TransformAvailableCondition : public BT::ConditionNode
-{
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::TransformAvailableCondition
-     * @param condition_name Name for the XML tag for this node
-     * @param conf BT node configuration
-     */
-    TransformAvailableCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class TransformAvailableCondition : public BT::ConditionNode {
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::TransformAvailableCondition
+   * @param condition_name Name for the XML tag for this node
+   * @param conf BT node configuration
+   */
+  TransformAvailableCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
 
-    TransformAvailableCondition() = delete;
+  TransformAvailableCondition() = delete;
 
-    /**
-     * @brief A destructor for nav2_behavior_tree::TransformAvailableCondition
-     */
-    ~TransformAvailableCondition();
+  /**
+   * @brief A destructor for nav2_behavior_tree::TransformAvailableCondition
+   */
+  ~TransformAvailableCondition();
 
-    /**
-     * @brief The main override required by a BT action
-     * @return BT::NodeStatus Status of tick execution
-     */
-    BT::NodeStatus tick() override;
+  /**
+   * @brief The main override required by a BT action
+   * @return BT::NodeStatus Status of tick execution
+   */
+  BT::NodeStatus tick() override;
 
-    /**
-     * @brief Function to read parameters and initialize class variables
-     */
-    void initialize();
+  /**
+   * @brief Function to read parameters and initialize class variables
+   */
+  void initialize();
 
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing node-specific ports
-     */
-    static BT::PortsList providedPorts() {
-        return {BT::InputPort<std::string>("child", std::string(), "Child frame for transform"),
-                BT::InputPort<std::string>("parent", std::string(), "parent frame for transform")};
-    }
+  /**
+   * @brief Creates list of BT ports
+   * @return BT::PortsList Containing node-specific ports
+   */
+  static BT::PortsList providedPorts() {
+    return {BT::InputPort<std::string>("child", std::string(), "Child frame for transform"),
+            BT::InputPort<std::string>("parent", std::string(), "parent frame for transform")};
+  }
 
-private:
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<autonomy::transform::Buffer> tf_;
+ private:
+  std::shared_ptr<::autolink::Node> node_;
+  std::shared_ptr<autonomy::transform::Buffer> tf_;
 
-    std::atomic<bool> was_found_;
+  std::atomic<bool> was_found_;
 
-    std::string child_frame_;
-    std::string parent_frame_;
+  std::string child_frame_;
+  std::string parent_frame_;
 };
 
 }  // namespace condition

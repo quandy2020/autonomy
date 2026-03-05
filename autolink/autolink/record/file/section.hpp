@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 namespace autolink {
 namespace record {
 
@@ -27,4 +26,3 @@ struct Section {
 
 }  // namespace record
 }  // namespace autolink
-

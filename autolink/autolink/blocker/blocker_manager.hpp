@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <mutex>
 #include <string>
@@ -29,33 +28,27 @@ namespace blocker {
 
 class BlockerManager {
  public:
-  using BlockerMap =
-      std::unordered_map<std::string, std::shared_ptr<BlockerBase>>;
+  using BlockerMap = std::unordered_map<std::string, std::shared_ptr<BlockerBase>>;
 
   virtual ~BlockerManager();
 
   static const std::shared_ptr<BlockerManager>& Instance() {
-    static auto instance =
-        std::shared_ptr<BlockerManager>(new BlockerManager());
+    static auto instance = std::shared_ptr<BlockerManager>(new BlockerManager());
     return instance;
   }
 
   template <typename T>
-  bool Publish(const std::string& channel_name,
-               const typename Blocker<T>::MessagePtr& msg);
+  bool Publish(const std::string& channel_name, const typename Blocker<T>::MessagePtr& msg);
 
   template <typename T>
-  bool Publish(const std::string& channel_name,
-               const typename Blocker<T>::MessageType& msg);
+  bool Publish(const std::string& channel_name, const typename Blocker<T>::MessageType& msg);
 
   template <typename T>
-  bool Subscribe(const std::string& channel_name, size_t capacity,
-                 const std::string& callback_id,
+  bool Subscribe(const std::string& channel_name, size_t capacity, const std::string& callback_id,
                  const typename Blocker<T>::Callback& callback);
 
   template <typename T>
-  bool Unsubscribe(const std::string& channel_name,
-                   const std::string& callback_id);
+  bool Unsubscribe(const std::string& channel_name, const std::string& callback_id);
 
   template <typename T>
   std::shared_ptr<Blocker<T>> GetBlocker(const std::string& channel_name);
@@ -76,8 +69,7 @@ class BlockerManager {
 };
 
 template <typename T>
-bool BlockerManager::Publish(const std::string& channel_name,
-                             const typename Blocker<T>::MessagePtr& msg) {
+bool BlockerManager::Publish(const std::string& channel_name, const typename Blocker<T>::MessagePtr& msg) {
   auto blocker = GetOrCreateBlocker<T>(BlockerAttr(channel_name));
   if (blocker == nullptr) {
     return false;
@@ -87,8 +79,7 @@ bool BlockerManager::Publish(const std::string& channel_name,
 }
 
 template <typename T>
-bool BlockerManager::Publish(const std::string& channel_name,
-                             const typename Blocker<T>::MessageType& msg) {
+bool BlockerManager::Publish(const std::string& channel_name, const typename Blocker<T>::MessageType& msg) {
   auto blocker = GetOrCreateBlocker<T>(BlockerAttr(channel_name));
   if (blocker == nullptr) {
     return false;
@@ -98,8 +89,7 @@ bool BlockerManager::Publish(const std::string& channel_name,
 }
 
 template <typename T>
-bool BlockerManager::Subscribe(const std::string& channel_name, size_t capacity,
-                               const std::string& callback_id,
+bool BlockerManager::Subscribe(const std::string& channel_name, size_t capacity, const std::string& callback_id,
                                const typename Blocker<T>::Callback& callback) {
   auto blocker = GetOrCreateBlocker<T>(BlockerAttr(capacity, channel_name));
   if (blocker == nullptr) {
@@ -109,8 +99,7 @@ bool BlockerManager::Subscribe(const std::string& channel_name, size_t capacity,
 }
 
 template <typename T>
-bool BlockerManager::Unsubscribe(const std::string& channel_name,
-                                 const std::string& callback_id) {
+bool BlockerManager::Unsubscribe(const std::string& channel_name, const std::string& callback_id) {
   auto blocker = GetBlocker<T>(channel_name);
   if (blocker == nullptr) {
     return false;
@@ -119,8 +108,7 @@ bool BlockerManager::Unsubscribe(const std::string& channel_name,
 }
 
 template <typename T>
-std::shared_ptr<Blocker<T>> BlockerManager::GetBlocker(
-    const std::string& channel_name) {
+std::shared_ptr<Blocker<T>> BlockerManager::GetBlocker(const std::string& channel_name) {
   std::shared_ptr<Blocker<T>> blocker = nullptr;
   {
     std::lock_guard<std::mutex> lock(blocker_mutex_);
@@ -133,8 +121,7 @@ std::shared_ptr<Blocker<T>> BlockerManager::GetBlocker(
 }
 
 template <typename T>
-std::shared_ptr<Blocker<T>> BlockerManager::GetOrCreateBlocker(
-    const BlockerAttr& attr) {
+std::shared_ptr<Blocker<T>> BlockerManager::GetOrCreateBlocker(const BlockerAttr& attr) {
   std::shared_ptr<Blocker<T>> blocker = nullptr;
   {
     std::lock_guard<std::mutex> lock(blocker_mutex_);
@@ -151,4 +138,3 @@ std::shared_ptr<Blocker<T>> BlockerManager::GetOrCreateBlocker(
 
 }  // namespace blocker
 }  // namespace autolink
-

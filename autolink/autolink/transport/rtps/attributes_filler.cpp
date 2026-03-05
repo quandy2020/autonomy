@@ -27,9 +27,8 @@ namespace transport {
 AttributesFiller::AttributesFiller() {}
 AttributesFiller::~AttributesFiller() {}
 
-bool AttributesFiller::FillInPubAttr(
-    const std::string& channel_name, const QosProfile& qos,
-    eprosima::fastrtps::PublisherAttributes* pub_attr) {
+bool AttributesFiller::FillInPubAttr(const std::string& channel_name, const QosProfile& qos,
+                                     eprosima::fastrtps::PublisherAttributes* pub_attr) {
   RETURN_VAL_IF_NULL(pub_attr, false);
 
   pub_attr->topic.topicName = channel_name;
@@ -38,12 +37,10 @@ bool AttributesFiller::FillInPubAttr(
 
   switch (qos.history()) {
     case QosHistoryPolicy::HISTORY_KEEP_LAST:
-      pub_attr->topic.historyQos.kind =
-          eprosima::fastrtps::KEEP_LAST_HISTORY_QOS;
+      pub_attr->topic.historyQos.kind = eprosima::fastrtps::KEEP_LAST_HISTORY_QOS;
       break;
     case QosHistoryPolicy::HISTORY_KEEP_ALL:
-      pub_attr->topic.historyQos.kind =
-          eprosima::fastrtps::KEEP_ALL_HISTORY_QOS;
+      pub_attr->topic.historyQos.kind = eprosima::fastrtps::KEEP_ALL_HISTORY_QOS;
       break;
     default:
       break;
@@ -51,12 +48,10 @@ bool AttributesFiller::FillInPubAttr(
 
   switch (qos.durability()) {
     case QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL:
-      pub_attr->qos.m_durability.kind =
-          eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS;
+      pub_attr->qos.m_durability.kind = eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS;
       break;
     case QosDurabilityPolicy::DURABILITY_VOLATILE:
-      pub_attr->qos.m_durability.kind =
-          eprosima::fastrtps::VOLATILE_DURABILITY_QOS;
+      pub_attr->qos.m_durability.kind = eprosima::fastrtps::VOLATILE_DURABILITY_QOS;
       break;
     default:
       break;
@@ -64,12 +59,10 @@ bool AttributesFiller::FillInPubAttr(
 
   switch (qos.reliability()) {
     case QosReliabilityPolicy::RELIABILITY_BEST_EFFORT:
-      pub_attr->qos.m_reliability.kind =
-          eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS;
+      pub_attr->qos.m_reliability.kind = eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS;
       break;
     case QosReliabilityPolicy::RELIABILITY_RELIABLE:
-      pub_attr->qos.m_reliability.kind =
-          eprosima::fastrtps::RELIABLE_RELIABILITY_QOS;
+      pub_attr->qos.m_reliability.kind = eprosima::fastrtps::RELIABLE_RELIABILITY_QOS;
       break;
     default:
       break;
@@ -104,18 +97,15 @@ bool AttributesFiller::FillInPubAttr(
     pub_attr->times.heartbeatPeriod = eprosima::fastrtps::Time_t(sec, frac);
   }
 
-  pub_attr->qos.m_publishMode.kind =
-      eprosima::fastrtps::ASYNCHRONOUS_PUBLISH_MODE;
-  pub_attr->historyMemoryPolicy =
-      eprosima::fastrtps::rtps::DYNAMIC_RESERVE_MEMORY_MODE;
+  pub_attr->qos.m_publishMode.kind = eprosima::fastrtps::ASYNCHRONOUS_PUBLISH_MODE;
+  pub_attr->historyMemoryPolicy = eprosima::fastrtps::rtps::DYNAMIC_RESERVE_MEMORY_MODE;
   pub_attr->topic.resourceLimitsQos.max_samples = 10000;
 
   return true;
 }
 
-bool AttributesFiller::FillInSubAttr(
-    const std::string& channel_name, const QosProfile& qos,
-    eprosima::fastrtps::SubscriberAttributes* sub_attr) {
+bool AttributesFiller::FillInSubAttr(const std::string& channel_name, const QosProfile& qos,
+                                     eprosima::fastrtps::SubscriberAttributes* sub_attr) {
   RETURN_VAL_IF_NULL(sub_attr, false);
   sub_attr->topic.topicName = channel_name;
   sub_attr->topic.topicDataType = "UnderlayMessage";
@@ -123,12 +113,10 @@ bool AttributesFiller::FillInSubAttr(
 
   switch (qos.history()) {
     case QosHistoryPolicy::HISTORY_KEEP_LAST:
-      sub_attr->topic.historyQos.kind =
-          eprosima::fastrtps::KEEP_LAST_HISTORY_QOS;
+      sub_attr->topic.historyQos.kind = eprosima::fastrtps::KEEP_LAST_HISTORY_QOS;
       break;
     case QosHistoryPolicy::HISTORY_KEEP_ALL:
-      sub_attr->topic.historyQos.kind =
-          eprosima::fastrtps::KEEP_ALL_HISTORY_QOS;
+      sub_attr->topic.historyQos.kind = eprosima::fastrtps::KEEP_ALL_HISTORY_QOS;
       break;
     default:
       break;
@@ -136,12 +124,10 @@ bool AttributesFiller::FillInSubAttr(
 
   switch (qos.durability()) {
     case QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL:
-      sub_attr->qos.m_durability.kind =
-          eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS;
+      sub_attr->qos.m_durability.kind = eprosima::fastrtps::TRANSIENT_LOCAL_DURABILITY_QOS;
       break;
     case QosDurabilityPolicy::DURABILITY_VOLATILE:
-      sub_attr->qos.m_durability.kind =
-          eprosima::fastrtps::VOLATILE_DURABILITY_QOS;
+      sub_attr->qos.m_durability.kind = eprosima::fastrtps::VOLATILE_DURABILITY_QOS;
       break;
     default:
       break;
@@ -149,12 +135,10 @@ bool AttributesFiller::FillInSubAttr(
 
   switch (qos.reliability()) {
     case QosReliabilityPolicy::RELIABILITY_BEST_EFFORT:
-      sub_attr->qos.m_reliability.kind =
-          eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS;
+      sub_attr->qos.m_reliability.kind = eprosima::fastrtps::BEST_EFFORT_RELIABILITY_QOS;
       break;
     case QosReliabilityPolicy::RELIABILITY_RELIABLE:
-      sub_attr->qos.m_reliability.kind =
-          eprosima::fastrtps::RELIABLE_RELIABILITY_QOS;
+      sub_attr->qos.m_reliability.kind = eprosima::fastrtps::RELIABLE_RELIABILITY_QOS;
       break;
     default:
       break;
@@ -169,8 +153,7 @@ bool AttributesFiller::FillInSubAttr(
     return false;
   }
 
-  sub_attr->historyMemoryPolicy =
-      eprosima::fastrtps::rtps::DYNAMIC_RESERVE_MEMORY_MODE;
+  sub_attr->historyMemoryPolicy = eprosima::fastrtps::rtps::DYNAMIC_RESERVE_MEMORY_MODE;
   sub_attr->topic.resourceLimitsQos.max_samples = 10000;
 
   return true;

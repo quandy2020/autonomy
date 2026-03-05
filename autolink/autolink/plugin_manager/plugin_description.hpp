@@ -34,12 +34,9 @@ class PluginDescription {
 
   PluginDescription();
   explicit PluginDescription(const std::string& name);
-  PluginDescription(const std::string& name,
-                    const std::string& description_index_path,
-                    const std::string& description_path,
-                    const std::string& actual_description_path,
-                    const std::string& library_path,
-                    const std::string& actual_library_path);
+  PluginDescription(const std::string& name, const std::string& description_index_path,
+                    const std::string& description_path, const std::string& actual_description_path,
+                    const std::string& library_path, const std::string& actual_library_path);
 
   /**
    * @brief parse plugin description metadata from plugin index file

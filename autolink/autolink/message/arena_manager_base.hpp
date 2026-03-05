@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <cstdint>
 #include <memory>
 
@@ -30,12 +29,9 @@ class ArenaManagerBase {
   ArenaManagerBase() {}
   virtual ~ArenaManagerBase() {}
 
-  virtual uint64_t GetBaseAddress(const ArenaMessageWrapper* wrapper) {
-    return 0;
-  }
+  virtual uint64_t GetBaseAddress(const ArenaMessageWrapper* wrapper) { return 0; }
 
-  virtual void* SetMessage(ArenaMessageWrapper* wrapper,
-                           const void* message) = 0;
+  virtual void* SetMessage(ArenaMessageWrapper* wrapper, const void* message) = 0;
   virtual void* GetMessage(ArenaMessageWrapper* wrapper) = 0;
 
   std::shared_ptr<message::ArenaMessageWrapper> CreateMessageWrapper() {
@@ -57,4 +53,3 @@ class ArenaManagerBase {
 
 }  // namespace message
 }  // namespace autolink
-

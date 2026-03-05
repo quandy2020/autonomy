@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <mutex>
 
 namespace autolink {
@@ -33,4 +32,3 @@ class MutexWrapper {
 
 }  // namespace scheduler
 }  // namespace autolink
-

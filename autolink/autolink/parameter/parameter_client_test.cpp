@@ -20,12 +20,11 @@
 #include <thread>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 #include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
 #include "autolink/message/protobuf_factory.hpp"
 #include "autolink/parameter/parameter_server.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 

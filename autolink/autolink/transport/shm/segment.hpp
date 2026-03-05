@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <mutex>
 #include <string>
@@ -47,8 +46,7 @@ class Segment {
   bool AcquireBlockToWrite(std::size_t msg_size, WritableBlock* writable_block);
   void ReleaseWrittenBlock(const WritableBlock& writable_block);
 
-  bool AcquireArenaBlockToWrite(
-    std::size_t msg_size, WritableBlock* writable_block);
+  bool AcquireArenaBlockToWrite(std::size_t msg_size, WritableBlock* writable_block);
   void ReleaseArenaWrittenBlock(const WritableBlock& writable_block);
 
   bool AcquireBlockToRead(ReadableBlock* readable_block);
@@ -98,4 +96,3 @@ class Segment {
 
 }  // namespace transport
 }  // namespace autolink
-

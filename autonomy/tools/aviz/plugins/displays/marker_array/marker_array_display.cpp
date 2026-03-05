@@ -26,42 +26,40 @@ namespace displays {
 MarkerArrayDisplay::MarkerArrayDisplay(const QString& name)
     : AutolinkTopicDisplay<autonomy::commsgs::visualization_msgs::MarkerArray>(QString("aviz/MarkerArray")),
       marker_display_(nullptr) {
-    setName(name);
+  setName(name);
 }
 
-MarkerArrayDisplay::~MarkerArrayDisplay() {
-    delete marker_display_;
-}
+MarkerArrayDisplay::~MarkerArrayDisplay() { delete marker_display_; }
 
 void MarkerArrayDisplay::onInitialize() {
-    AutolinkTopicDisplay::onInitialize();
-    if (!marker_display_) {
-        marker_display_ = new MarkerDisplay("InternalMarkerDisplay");
-        marker_display_->initialize(context_);
-    }
+  AutolinkTopicDisplay::onInitialize();
+  if (!marker_display_) {
+    marker_display_ = new MarkerDisplay("InternalMarkerDisplay");
+    marker_display_->initialize(context_);
+  }
 }
 
 void MarkerArrayDisplay::reset() {
-    AutolinkTopicDisplay::reset();
-    if (marker_display_) {
-        marker_display_->reset();
-    }
+  AutolinkTopicDisplay::reset();
+  if (marker_display_) {
+    marker_display_->reset();
+  }
 }
 
 void MarkerArrayDisplay::processMessage(
     const std::shared_ptr<autonomy::commsgs::visualization_msgs::MarkerArray>& msg) {
-    if (!msg || !marker_display_) {
-        return;
-    }
+  if (!msg || !marker_display_) {
+    return;
+  }
 
-    // Process each marker in the array
-    for (const auto& marker : msg->markers) {
-        auto marker_ptr = std::make_shared<autonomy::commsgs::visualization_msgs::Marker>(marker);
-        marker_display_->processMarkerMessage(marker_ptr);
-    }
+  // Process each marker in the array
+  for (const auto& marker : msg->markers) {
+    auto marker_ptr = std::make_shared<autonomy::commsgs::visualization_msgs::Marker>(marker);
+    marker_display_->processMarkerMessage(marker_ptr);
+  }
 
-    setTransformOk();
-    queueRender();
+  setTransformOk();
+  queueRender();
 }
 
 }  // namespace displays

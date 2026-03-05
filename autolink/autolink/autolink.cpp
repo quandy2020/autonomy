@@ -14,13 +14,14 @@
  * limitations under the License.
  *****************************************************************************/
 
+#include "autolink/autolink.hpp"
+
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/common/log.hpp"
-#include "autolink/autolink.hpp"
 #include "autolink/init.hpp"
 #include "autolink/node/node.hpp"
 #include "autolink/proto/run_mode_conf.pb.h"
@@ -30,8 +31,7 @@ namespace autolink {
 using autolink::common::GlobalData;
 using autolink::proto::RunMode;
 
-std::shared_ptr<Node> CreateNode(const std::string& node_name,
-                                 const std::string& name_space) {
+std::shared_ptr<Node> CreateNode(const std::string& node_name, const std::string& name_space) {
   bool is_reality_mode = GlobalData::Instance()->IsRealityMode();
   if (is_reality_mode && !OK()) {
     // add some hint log

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 
 class Screen;
@@ -25,14 +24,8 @@ class RenderableMessage {
  public:
   static constexpr int FrameRatio_Precision = 2;
 
-  explicit RenderableMessage(RenderableMessage* parent = nullptr,
-                             int line_no = 0)
-      : line_no_(line_no),
-        pages_(1),
-        page_index_(0),
-        page_item_count_(24),
-        parent_(parent),
-        frame_ratio_(0.0) {}
+  explicit RenderableMessage(RenderableMessage* parent = nullptr, int line_no = 0)
+      : line_no_(line_no), pages_(1), page_index_(0), page_item_count_(24), parent_(parent), frame_ratio_(0.0) {}
 
   virtual ~RenderableMessage() { parent_ = nullptr; }
 
@@ -69,4 +62,3 @@ class RenderableMessage {
 
   friend class Screen;
 };  // RenderableMessage
-

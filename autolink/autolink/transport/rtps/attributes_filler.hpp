@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <string>
 
 #include "autolink/proto/qos_profile.pb.h"
@@ -36,15 +35,12 @@ class AttributesFiller {
   AttributesFiller();
   virtual ~AttributesFiller();
 
-  static bool FillInPubAttr(const std::string& channel_name,
-                            const QosProfile& qos,
+  static bool FillInPubAttr(const std::string& channel_name, const QosProfile& qos,
                             eprosima::fastrtps::PublisherAttributes* pub_attr);
 
-  static bool FillInSubAttr(const std::string& channel_name,
-                            const QosProfile& qos,
+  static bool FillInSubAttr(const std::string& channel_name, const QosProfile& qos,
                             eprosima::fastrtps::SubscriberAttributes* sub_attr);
 };
 
 }  // namespace transport
 }  // namespace autolink
-

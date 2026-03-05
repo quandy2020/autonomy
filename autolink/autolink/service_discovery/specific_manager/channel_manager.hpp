@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -111,8 +110,7 @@ class ChannelManager : public Manager {
    * @param channel_name channel's name we want to inquire
    * @param writers result RoleAttribute vector
    */
-  void GetWritersOfChannel(const std::string& channel_name,
-                           RoleAttrVec* writers);
+  void GetWritersOfChannel(const std::string& channel_name, RoleAttrVec* writers);
 
   /**
    * @brief Inquire if there is at least one Reader that publishes
@@ -145,8 +143,7 @@ class ChannelManager : public Manager {
    * @param channel_name channel's name we want to inquire
    * @param readers result RoleAttribute vector
    */
-  void GetReadersOfChannel(const std::string& channel_name,
-                           RoleAttrVec* readers);
+  void GetReadersOfChannel(const std::string& channel_name, RoleAttrVec* readers);
 
   /**
    * @brief Get the Upstream Of Node object.
@@ -157,8 +154,7 @@ class ChannelManager : public Manager {
    * @param node_name node's name we want to inquire
    * @param upstream_nodes result RoleAttribute vector
    */
-  void GetUpstreamOfNode(const std::string& node_name,
-                         RoleAttrVec* upstream_nodes);
+  void GetUpstreamOfNode(const std::string& node_name, RoleAttrVec* upstream_nodes);
 
   /**
    * @brief Get the Downstream Of Node object.
@@ -169,16 +165,14 @@ class ChannelManager : public Manager {
    * @param node_name node's name we want to inquire
    * @param downstream_nodes result RoleAttribute vector
    */
-  void GetDownstreamOfNode(const std::string& node_name,
-                           RoleAttrVec* downstream_nodes);
+  void GetDownstreamOfNode(const std::string& node_name, RoleAttrVec* downstream_nodes);
 
   /**
    * @brief Get the Flow Direction from `lhs_node_node` to `rhs_node_name`
    * You can see FlowDirection's description for more information
    * @return FlowDirection result direction
    */
-  FlowDirection GetFlowDirection(const std::string& lhs_node_name,
-                                 const std::string& rhs_node_name);
+  FlowDirection GetFlowDirection(const std::string& lhs_node_name, const std::string& rhs_node_name);
 
   /**
    * @brief Is `lhs` and `rhs` have same MessageType
@@ -214,4 +208,3 @@ class ChannelManager : public Manager {
 
 }  // namespace service_discovery
 }  // namespace autolink
-

@@ -21,31 +21,29 @@
 #pragma once
 
 #include "Eigen/Core"
-
 #include "autonomy/planning/math/polynomial_xd.hpp"
 
 namespace autonomy {
 namespace planning {
 namespace math {
 
-class AffineConstraint
-{
-public:
-    AffineConstraint() = default;
-    explicit AffineConstraint(const bool is_equality);
-    AffineConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary,
-                     const bool is_equality);
+class AffineConstraint {
+ public:
+  AffineConstraint() = default;
+  explicit AffineConstraint(const bool is_equality);
+  AffineConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary,
+                   const bool is_equality);
 
-    void SetIsEquality(const double is_equality);
+  void SetIsEquality(const double is_equality);
 
-    const Eigen::MatrixXd& constraint_matrix() const;
-    const Eigen::MatrixXd& constraint_boundary() const;
-    bool AddConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary);
+  const Eigen::MatrixXd& constraint_matrix() const;
+  const Eigen::MatrixXd& constraint_boundary() const;
+  bool AddConstraint(const Eigen::MatrixXd& constraint_matrix, const Eigen::MatrixXd& constraint_boundary);
 
-private:
-    Eigen::MatrixXd constraint_matrix_;
-    Eigen::MatrixXd constraint_boundary_;
-    bool is_equality_ = true;
+ private:
+  Eigen::MatrixXd constraint_matrix_;
+  Eigen::MatrixXd constraint_boundary_;
+  bool is_equality_ = true;
 };
 
 }  // namespace math

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <unistd.h>
 
 #include <algorithm>
@@ -115,15 +114,12 @@ bool BoundedQueue<T>::Enqueue(const T& element) {
     if (GetIndex(new_tail) == GetIndex(head_.load(std::memory_order_acquire))) {
       return false;
     }
-  } while (!tail_.compare_exchange_weak(old_tail, new_tail,
-                                        std::memory_order_acq_rel,
-                                        std::memory_order_relaxed));
+  } while (!tail_.compare_exchange_weak(old_tail, new_tail, std::memory_order_acq_rel, std::memory_order_relaxed));
   pool_[GetIndex(old_tail)] = element;
   do {
     old_commit = old_tail;
-  } while (autolink_unlikely(!commit_.compare_exchange_weak(
-      old_commit, new_tail, std::memory_order_acq_rel,
-      std::memory_order_relaxed)));
+  } while (autolink_unlikely(
+      !commit_.compare_exchange_weak(old_commit, new_tail, std::memory_order_acq_rel, std::memory_order_relaxed)));
   wait_strategy_->NotifyOne();
   return true;
 }
@@ -138,15 +134,12 @@ bool BoundedQueue<T>::Enqueue(T&& element) {
     if (GetIndex(new_tail) == GetIndex(head_.load(std::memory_order_acquire))) {
       return false;
     }
-  } while (!tail_.compare_exchange_weak(old_tail, new_tail,
-                                        std::memory_order_acq_rel,
-                                        std::memory_order_relaxed));
+  } while (!tail_.compare_exchange_weak(old_tail, new_tail, std::memory_order_acq_rel, std::memory_order_relaxed));
   pool_[GetIndex(old_tail)] = std::move(element);
   do {
     old_commit = old_tail;
-  } while (autolink_unlikely(!commit_.compare_exchange_weak(
-      old_commit, new_tail, std::memory_order_acq_rel,
-      std::memory_order_relaxed)));
+  } while (autolink_unlikely(
+      !commit_.compare_exchange_weak(old_commit, new_tail, std::memory_order_acq_rel, std::memory_order_relaxed)));
   wait_strategy_->NotifyOne();
   return true;
 }
@@ -161,9 +154,7 @@ bool BoundedQueue<T>::Dequeue(T* element) {
       return false;
     }
     *element = pool_[GetIndex(new_head)];
-  } while (!head_.compare_exchange_weak(old_head, new_head,
-                                        std::memory_order_acq_rel,
-                                        std::memory_order_relaxed));
+  } while (!head_.compare_exchange_weak(old_head, new_head, std::memory_order_acq_rel, std::memory_order_relaxed));
   return true;
 }
 
@@ -243,4 +234,3 @@ inline void BoundedQueue<T>::BreakAllWait() {
 
 }  // namespace base
 }  // namespace autolink
-

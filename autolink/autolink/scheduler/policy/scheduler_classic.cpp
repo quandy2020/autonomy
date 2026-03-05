@@ -100,8 +100,7 @@ void SchedulerClassic::CreateProcessor() {
       auto proc = std::make_shared<Processor>();
       proc->BindContext(ctx);
       SetSchedAffinity(proc->Thread(), cpuset, affinity, i);
-      SetSchedPolicy(proc->Thread(), processor_policy, processor_prio,
-                     proc->Tid());
+      SetSchedPolicy(proc->Thread(), processor_policy, processor_prio, proc->Tid());
       processors_.emplace_back(proc);
     }
   }
@@ -140,18 +139,14 @@ bool SchedulerClassic::DispatchTask(const std::shared_ptr<CRoutine>& cr) {
   }
 
   if (cr->priority() >= MAX_PRIO) {
-    AWARN << cr->name() << " prio is greater than MAX_PRIO[ << " << MAX_PRIO
-          << "].";
+    AWARN << cr->name() << " prio is greater than MAX_PRIO[ << " << MAX_PRIO << "].";
     cr->set_priority(MAX_PRIO - 1);
   }
 
   // Enqueue task.
   {
-    WriteLockGuard<AtomicRWLock> lk(
-        ClassicContext::rq_locks_[cr->group_name()].at(cr->priority()));
-    ClassicContext::cr_group_[cr->group_name()]
-        .at(cr->priority())
-        .emplace_back(cr);
+    WriteLockGuard<AtomicRWLock> lk(ClassicContext::rq_locks_[cr->group_name()].at(cr->priority()));
+    ClassicContext::cr_group_[cr->group_name()].at(cr->priority()).emplace_back(cr);
   }
 
   ClassicContext::Notify(cr->group_name());
@@ -167,8 +162,7 @@ bool SchedulerClassic::NotifyProcessor(uint64_t crid) {
     ReadLockGuard<AtomicRWLock> lk(id_cr_lock_);
     if (id_cr_.find(crid) != id_cr_.end()) {
       auto cr = id_cr_[crid];
-      if (cr->state() == RoutineState::DATA_WAIT ||
-          cr->state() == RoutineState::IO_WAIT) {
+      if (cr->state() == RoutineState::DATA_WAIT || cr->state() == RoutineState::IO_WAIT) {
         cr->SetUpdateFlag();
       }
 

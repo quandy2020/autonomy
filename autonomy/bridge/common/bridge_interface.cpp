@@ -23,16 +23,16 @@ namespace bridge {
 namespace common {
 
 proto::BridgeOptions LoadOptions(autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::BridgeOptions options;
-    options.set_use_grpc(parameter_dictionary->GetBool("use_grpc"));
-    options.set_use_mqtt(parameter_dictionary->GetBool("use_mqtt"));
-    if (parameter_dictionary->HasKey("grpc")) {
-        *options.mutable_grpc() = CreateGrpcOptions(parameter_dictionary->GetDictionary("grpc").get());
-    }
-    if (parameter_dictionary->HasKey("mqtt")) {
-        *options.mutable_mqtt() = CreateMqttOptions(parameter_dictionary->GetDictionary("mqtt").get());
-    }
-    return options;
+  proto::BridgeOptions options;
+  options.set_use_grpc(parameter_dictionary->GetBool("use_grpc"));
+  options.set_use_mqtt(parameter_dictionary->GetBool("use_mqtt"));
+  if (parameter_dictionary->HasKey("grpc")) {
+    *options.mutable_grpc() = CreateGrpcOptions(parameter_dictionary->GetDictionary("grpc").get());
+  }
+  if (parameter_dictionary->HasKey("mqtt")) {
+    *options.mutable_mqtt() = CreateMqttOptions(parameter_dictionary->GetDictionary("mqtt").get());
+  }
+  return options;
 }
 
 }  // namespace common

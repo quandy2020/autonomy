@@ -19,16 +19,14 @@
 #include <memory>
 #include <vector>
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/util.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace data {
 
 template <typename T>
-using BufferVector =
-    std::vector<std::weak_ptr<CacheBuffer<std::shared_ptr<T>>>>;
+using BufferVector = std::vector<std::weak_ptr<CacheBuffer<std::shared_ptr<T>>>>;
 
 auto channel0 = common::Hash("/channel0");
 auto channel1 = common::Hash("/channel1");

@@ -27,77 +27,72 @@
 namespace autonomy {
 namespace system {
 
-class AutonomyNode
-{
-public:
-    using TfBuffer = autonomy::transform::Buffer;
+class AutonomyNode {
+ public:
+  using TfBuffer = autonomy::transform::Buffer;
 
-    /**
-     * Define AutonomyNode::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(AutonomyNode)
+  /**
+   * Define AutonomyNode::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(AutonomyNode)
 
-    /**
-     * @brief A constructor for autonomy::system::AutonomyNode
-     * @param options Additional options to control creation of the node.
-     */
-    AutonomyNode() = default;
+  /**
+   * @brief A constructor for autonomy::system::AutonomyNode
+   * @param options Additional options to control creation of the node.
+   */
+  AutonomyNode() = default;
 
-    /**
-     * @brief Destroy the Autonomy Node object
-     *
-     * @param options
-     */
-    explicit AutonomyNode(const proto::AutonomyOptions& options);
+  /**
+   * @brief Destroy the Autonomy Node object
+   *
+   * @param options
+   */
+  explicit AutonomyNode(const proto::AutonomyOptions& options);
 
-    /**
-     * @brief A Destructor for autonomy::system::AutonomyNode
-     */
-    ~AutonomyNode() = default;
+  /**
+   * @brief A Destructor for autonomy::system::AutonomyNode
+   */
+  ~AutonomyNode() = default;
 
-    /**
-     * @brief Starts autonomy tasks
-     */
-    void Start();
+  /**
+   * @brief Starts autonomy tasks
+   */
+  void Start();
 
-    /**
-     * @brief Shutdown the autonomy system
-     */
-    void Shutdown();
+  /**
+   * @brief Shutdown the autonomy system
+   */
+  void Shutdown();
 
-    /**
-     * @brief Get map_server
-     *
-     * @return pointer
-     */
-    map::MapServer* map_server() {
-        return map_server_.get();
-    }
+  /**
+   * @brief Get map_server
+   *
+   * @return pointer
+   */
+  map::MapServer* map_server() { return map_server_.get(); }
 
-    /**
-     * @brief Get planner_server
-     *
-     * @return planning::PlannerServer pointer
-     */
-    planning::PlannerServer* planner_server() {
-        return planner_server_.get();
-    }
+  /**
+   * @brief Get planner_server
+   *
+   * @return planning::PlannerServer pointer
+   */
+  planning::PlannerServer* planner_server() { return planner_server_.get(); }
 
-private:
-    // Configuration for auronomy options
-    proto::AutonomyOptions options_;
+ private:
+  // Configuration for auronomy options
+  proto::AutonomyOptions options_;
 
-    // Tf2 buffer
-    TfBuffer* tf_buffer_{nullptr};
+  // Tf2 buffer
+  TfBuffer* tf_buffer_{nullptr};
 
-    // map
-    map::MapServer::SharedPtr map_server_{nullptr};
+  // map
+  map::MapServer::SharedPtr map_server_{nullptr};
 
-    // controller
-    control::ControllerServer::SharedPtr controller_server_{nullptr};
+  // controller
+  control::ControllerServer::SharedPtr controller_server_{nullptr};
 
-    // planner
-    planning::PlannerServer::SharedPtr planner_server_{nullptr};
+  // planner
+  planning::PlannerServer::SharedPtr planner_server_{nullptr};
 };
 
 AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options);

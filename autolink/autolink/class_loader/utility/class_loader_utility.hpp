@@ -16,10 +16,8 @@
 
 #pragma once
 
-
 #include <cassert>
 #include <cstdio>
-
 #include <map>
 #include <memory>
 #include <mutex>
@@ -43,19 +41,16 @@ class ClassLoader;
 namespace utility {
 
 using SharedLibraryPtr = std::shared_ptr<SharedLibrary>;
-using ClassClassFactoryMap =
-    std::map<std::string, utility::AbstractClassFactoryBase*>;
+using ClassClassFactoryMap = std::map<std::string, utility::AbstractClassFactoryBase*>;
 using BaseToClassFactoryMapMap = std::map<std::string, ClassClassFactoryMap>;
-using LibPathSharedLibVector =
-    std::vector<std::pair<std::string, SharedLibraryPtr>>;
+using LibPathSharedLibVector = std::vector<std::pair<std::string, SharedLibraryPtr>>;
 using ClassFactoryVector = std::vector<AbstractClassFactoryBase*>;
 
 BaseToClassFactoryMapMap& GetClassFactoryMapMap();
 std::recursive_mutex& GetClassFactoryMapMapMutex();
 LibPathSharedLibVector& GetLibPathSharedLibVector();
 std::recursive_mutex& GetLibPathSharedLibMutex();
-ClassClassFactoryMap& GetClassFactoryMapByBaseClass(
-    const std::string& typeid_base_class_name);
+ClassClassFactoryMap& GetClassFactoryMapByBaseClass(const std::string& typeid_base_class_name);
 std::string GetCurLoadingLibraryName();
 void SetCurLoadingLibraryName(const std::string& library_name);
 ClassLoader* GetCurActiveClassLoader();
@@ -65,18 +60,15 @@ bool IsLibraryLoadedByAnybody(const std::string& library_path);
 bool LoadLibrary(const std::string& library_path, ClassLoader* loader);
 void UnloadLibrary(const std::string& library_path, ClassLoader* loader);
 template <typename Derived, typename Base>
-void RegisterClass(const std::string& class_name,
-                   const std::string& base_class_name);
+void RegisterClass(const std::string& class_name, const std::string& base_class_name);
 template <typename Base>
 Base* CreateClassObj(const std::string& class_name, ClassLoader* loader);
 template <typename Base>
 std::vector<std::string> GetValidClassNames(ClassLoader* loader);
 
 template <typename Derived, typename Base>
-void RegisterClass(const std::string& class_name,
-                   const std::string& base_class_name) {
-  AINFO << "registerclass:" << class_name << "," << base_class_name << ","
-        << GetCurLoadingLibraryName();
+void RegisterClass(const std::string& class_name, const std::string& base_class_name) {
+  AINFO << "registerclass:" << class_name << "," << base_class_name << "," << GetCurLoadingLibraryName();
 
   utility::AbstractClassFactory<Base>* new_class_factory_obj =
       new utility::ClassFactory<Derived, Base>(class_name, base_class_name);
@@ -84,8 +76,7 @@ void RegisterClass(const std::string& class_name,
   new_class_factory_obj->SetRelativeLibraryPath(GetCurLoadingLibraryName());
 
   GetClassFactoryMapMapMutex().lock();
-  ClassClassFactoryMap& factory_map =
-      GetClassFactoryMapByBaseClass(typeid(Base).name());
+  ClassClassFactoryMap& factory_map = GetClassFactoryMapByBaseClass(typeid(Base).name());
   factory_map[class_name] = new_class_factory_obj;
   GetClassFactoryMapMapMutex().unlock();
 }
@@ -93,12 +84,10 @@ void RegisterClass(const std::string& class_name,
 template <typename Base>
 Base* CreateClassObj(const std::string& class_name, ClassLoader* loader) {
   GetClassFactoryMapMapMutex().lock();
-  ClassClassFactoryMap& factoryMap =
-      GetClassFactoryMapByBaseClass(typeid(Base).name());
+  ClassClassFactoryMap& factoryMap = GetClassFactoryMapByBaseClass(typeid(Base).name());
   AbstractClassFactory<Base>* factory = nullptr;
   if (factoryMap.find(class_name) != factoryMap.end()) {
-    factory = dynamic_cast<utility::AbstractClassFactory<Base>*>(
-        factoryMap[class_name]);
+    factory = dynamic_cast<utility::AbstractClassFactory<Base>*>(factoryMap[class_name]);
   }
   GetClassFactoryMapMapMutex().unlock();
 
@@ -114,8 +103,7 @@ template <typename Base>
 std::vector<std::string> GetValidClassNames(ClassLoader* loader) {
   std::lock_guard<std::recursive_mutex> lck(GetClassFactoryMapMapMutex());
 
-  ClassClassFactoryMap& factoryMap =
-      GetClassFactoryMapByBaseClass(typeid(Base).name());
+  ClassClassFactoryMap& factoryMap = GetClassFactoryMapByBaseClass(typeid(Base).name());
   std::vector<std::string> classes;
   for (auto& class_factory : factoryMap) {
     AbstractClassFactoryBase* factory = class_factory.second;
@@ -130,4 +118,3 @@ std::vector<std::string> GetValidClassNames(ClassLoader* loader) {
 }  // namespace utility
 }  // namespace class_loader
 }  // namespace autolink
-

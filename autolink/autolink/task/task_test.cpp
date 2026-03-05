@@ -20,11 +20,10 @@
 #include <thread>
 #include <vector>
 
-#include "gtest/gtest.h"
-
-#include "autolink/common/log.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/init.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace scheduler {

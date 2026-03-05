@@ -17,10 +17,10 @@
 #ifndef AVIZ_COMMON__PROPERTIES__PARSE_COLOR_HPP_
 #define AVIZ_COMMON__PROPERTIES__PARSE_COLOR_HPP_
 
+#include <OgreColourValue.h>
+
 #include <QColor>
 #include <QString>
-
-#include <OgreColourValue.h>
 
 namespace aviz {
 namespace common {

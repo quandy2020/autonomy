@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/common/log.hpp"
 #include "autolink/transport/dispatcher/rtps_dispatcher.hpp"
 #include "autolink/transport/receiver/receiver.hpp"
@@ -27,8 +26,7 @@ namespace transport {
 template <typename M>
 class RtpsReceiver : public Receiver<M> {
  public:
-  RtpsReceiver(const RoleAttributes& attr,
-               const typename Receiver<M>::MessageListener& msg_listener);
+  RtpsReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener);
   virtual ~RtpsReceiver();
 
   void Enable() override;
@@ -42,9 +40,7 @@ class RtpsReceiver : public Receiver<M> {
 };
 
 template <typename M>
-RtpsReceiver<M>::RtpsReceiver(
-    const RoleAttributes& attr,
-    const typename Receiver<M>::MessageListener& msg_listener)
+RtpsReceiver<M>::RtpsReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener)
     : Receiver<M>(attr, msg_listener) {
   dispatcher_ = RtpsDispatcher::Instance();
 }
@@ -60,8 +56,7 @@ void RtpsReceiver<M>::Enable() {
     return;
   }
   dispatcher_->AddListener<M>(
-      this->attr_, std::bind(&RtpsReceiver<M>::OnNewMessage, this,
-                             std::placeholders::_1, std::placeholders::_2));
+      this->attr_, std::bind(&RtpsReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2));
   this->enabled_ = true;
 }
 
@@ -78,8 +73,7 @@ template <typename M>
 void RtpsReceiver<M>::Enable(const RoleAttributes& opposite_attr) {
   dispatcher_->AddListener<M>(
       this->attr_, opposite_attr,
-      std::bind(&RtpsReceiver<M>::OnNewMessage, this, std::placeholders::_1,
-                std::placeholders::_2));
+      std::bind(&RtpsReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 template <typename M>
@@ -89,4 +83,3 @@ void RtpsReceiver<M>::Disable(const RoleAttributes& opposite_attr) {
 
 }  // namespace transport
 }  // namespace autolink
-

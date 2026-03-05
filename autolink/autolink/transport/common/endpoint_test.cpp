@@ -16,9 +16,8 @@
 
 #include "autolink/transport/common/endpoint.hpp"
 
-#include "gtest/gtest.h"
-
 #include "autolink/common/global_data.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace transport {

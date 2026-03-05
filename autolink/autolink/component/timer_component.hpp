@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 
 #include "autolink/component/component_base.hpp"
@@ -61,4 +60,3 @@ class TimerComponent : public ComponentBase {
 };
 
 }  // namespace autolink
-

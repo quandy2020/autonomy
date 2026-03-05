@@ -16,7 +16,5 @@
 
 #pragma once
 
-
 extern "C" int sample_add(int a, int b);
 extern "C" double sample_sin(double x);
-

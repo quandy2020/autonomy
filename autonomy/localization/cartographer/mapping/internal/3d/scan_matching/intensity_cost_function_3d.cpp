@@ -11,10 +11,10 @@ ceres::CostFunction* IntensityCostFunction3D::CreateAutoDiffCostFunction(const d
                                                                          const float intensity_threshold,
                                                                          const sensor::PointCloud& point_cloud,
                                                                          const IntensityHybridGrid& hybrid_grid) {
-    CHECK(!point_cloud.intensities().empty());
-    return new ceres::AutoDiffCostFunction<IntensityCostFunction3D, ceres::DYNAMIC /* residuals */,
-                                           3 /* translation variables */, 4 /* rotation variables */>(
-        new IntensityCostFunction3D(scaling_factor, intensity_threshold, point_cloud, hybrid_grid), point_cloud.size());
+  CHECK(!point_cloud.intensities().empty());
+  return new ceres::AutoDiffCostFunction<IntensityCostFunction3D, ceres::DYNAMIC /* residuals */,
+                                         3 /* translation variables */, 4 /* rotation variables */>(
+      new IntensityCostFunction3D(scaling_factor, intensity_threshold, point_cloud, hybrid_grid), point_cloud.size());
 }
 
 }  // namespace scan_matching

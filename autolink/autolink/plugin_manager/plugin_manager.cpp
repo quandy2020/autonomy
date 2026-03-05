@@ -17,6 +17,7 @@
 #include "autolink/plugin_manager/plugin_manager.hpp"
 
 #include <dirent.h>
+#include <tinyxml2.h>
 #include <unistd.h>
 
 #include <memory>
@@ -24,8 +25,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <tinyxml2.h>
 
 #include "autolink/common/environment.hpp"
 #include "autolink/common/file.hpp"
@@ -37,8 +36,7 @@ namespace plugin_manager {
 
 PluginManager::~PluginManager() {}
 
-bool PluginManager::ProcessPluginDescriptionFile(const std::string& file_path,
-                                                 std::string* library_path) {
+bool PluginManager::ProcessPluginDescriptionFile(const std::string& file_path, std::string* library_path) {
   tinyxml2::XMLDocument doc;
   if (doc.LoadFile(file_path.c_str()) != tinyxml2::XML_SUCCESS) {
     AWARN << "fail to process file " << file_path;
@@ -54,27 +52,22 @@ bool PluginManager::ProcessPluginDescriptionFile(const std::string& file_path,
   return true;
 }
 
-bool PluginManager::LoadPlugin(
-    const std::string& plugin_description_file_path) {
-  AINFO << "loading plugin from description[" << plugin_description_file_path
-        << "]";
+bool PluginManager::LoadPlugin(const std::string& plugin_description_file_path) {
+  AINFO << "loading plugin from description[" << plugin_description_file_path << "]";
 
-  auto description =
-      std::make_shared<autolink::plugin_manager::PluginDescription>();
+  auto description = std::make_shared<autolink::plugin_manager::PluginDescription>();
   if (!description->ParseFromDescriptionFile(plugin_description_file_path)) {
     return false;
   }
 
-  if (plugin_description_map_.find(description->name_) !=
-      plugin_description_map_.end()) {
+  if (plugin_description_map_.find(description->name_) != plugin_description_map_.end()) {
     AWARN << "plugin [" << description->name_ << "] already loaded";
     return true;
   }
 
   if (!LoadLibrary(description->actual_library_path_)) {
-    AWARN << "plugin description[" << plugin_description_file_path << "] name["
-          << description->name_ << "] load failed, library["
-          << description->actual_library_path_ << "] invalid";
+    AWARN << "plugin description[" << plugin_description_file_path << "] name[" << description->name_
+          << "] load failed, library[" << description->actual_library_path_ << "] invalid";
     return false;
   }
 
@@ -83,8 +76,7 @@ bool PluginManager::LoadPlugin(
   for (auto& class_name_pair : description->class_name_base_class_name_map_) {
     plugin_class_plugin_name_map_[class_name_pair] = description->name_;
   }
-  AINFO << "plugin description[" << plugin_description_file_path << "] name["
-        << description->name_ << "] load success";
+  AINFO << "plugin description[" << plugin_description_file_path << "] name[" << description->name_ << "] load success";
   return true;
 }
 
@@ -94,26 +86,20 @@ bool PluginManager::LoadPlugin(
  * @param path_list vector for storing result
  * @return true if at least one is found
  */
-bool FindPlunginIndexPath(const std::string& base_path,
-                          std::vector<std::string>* path_list) {
+bool FindPlunginIndexPath(const std::string& base_path, std::vector<std::string>* path_list) {
   // TODO(liangjinping): change to configurable
-  size_t count = autolink::common::FindPathByPattern(
-      base_path, "autolink_plugin_index", DT_DIR, true, path_list);
+  size_t count = autolink::common::FindPathByPattern(base_path, "autolink_plugin_index", DT_DIR, true, path_list);
   return count > 0;
 }
 
-bool PluginManager::FindPluginIndexAndLoad(
-    const std::string& plugin_index_path) {
+bool PluginManager::FindPluginIndexAndLoad(const std::string& plugin_index_path) {
   std::vector<std::string> plugin_index_list;
-  autolink::common::FindPathByPattern(plugin_index_path, "", DT_REG, false,
-                                           &plugin_index_list);
+  autolink::common::FindPathByPattern(plugin_index_path, "", DT_REG, false, &plugin_index_list);
   bool success = true;
   for (auto plugin_index : plugin_index_list) {
     std::string plugin_name = autolink::common::GetFileName(plugin_index);
-    AINFO << "plugin index[" << plugin_index << "] name[" << plugin_name
-          << "] found";
-    if (plugin_description_map_.find(plugin_name) !=
-        plugin_description_map_.end()) {
+    AINFO << "plugin index[" << plugin_index << "] name[" << plugin_name << "] found";
+    if (plugin_description_map_.find(plugin_name) != plugin_description_map_.end()) {
       AWARN << "plugin [" << plugin_name << "] already loaded";
       continue;
     }
@@ -138,24 +124,19 @@ bool PluginManager::FindPluginIndexAndLoad(
     for (auto& class_name_pair : description->class_name_base_class_name_map_) {
       plugin_class_plugin_name_map_[class_name_pair] = description->name_;
     }
-    AINFO << "plugin index[" << plugin_index << "] name[" << description->name_
-          << "] lazy load success";
+    AINFO << "plugin index[" << plugin_index << "] name[" << description->name_ << "] lazy load success";
   }
   return success;
 }
 
 bool PluginManager::LoadInstalledPlugins() {
-  std::string plugin_index_path =
-      autolink::common::GetEnv("AUTOLINK_PLUGIN_INDEX_PATH");
+  std::string plugin_index_path = autolink::common::GetEnv("AUTOLINK_PLUGIN_INDEX_PATH");
   if (plugin_index_path.empty()) {
     // env not set, use default
-    const std::string autolink_distribution_home =
-        autolink::common::GetEnv("AUTOLINK_DISTRIBUTION_HOME");
-    plugin_index_path =
-        autolink_distribution_home + "/share/autolink_plugin_index";
+    const std::string autolink_distribution_home = autolink::common::GetEnv("AUTOLINK_DISTRIBUTION_HOME");
+    plugin_index_path = autolink_distribution_home + "/share/autolink_plugin_index";
   }
-  AINFO << "loading plugins from AUTOLINK_PLUGIN_INDEX_PATH[" << plugin_index_path
-        << "]";
+  AINFO << "loading plugins from AUTOLINK_PLUGIN_INDEX_PATH[" << plugin_index_path << "]";
   size_t begin = 0;
   size_t index;
   do {

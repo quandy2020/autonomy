@@ -31,22 +31,22 @@ namespace detail {
 template <typename MsgType>
 auto ExtractTimestamp(const MsgType& msg)
     -> decltype(msg.header().stamp(), std::optional<foxglove::schemas::Timestamp>{}) {
-    if (msg.has_header() && msg.header().has_stamp()) {
-        foxglove::schemas::Timestamp timestamp;
-        timestamp.sec = msg.header().stamp().sec();
-        timestamp.nsec = msg.header().stamp().nanosec();
-        return timestamp;
-    }
-    return std::nullopt;
+  if (msg.has_header() && msg.header().has_stamp()) {
+    foxglove::schemas::Timestamp timestamp;
+    timestamp.sec = msg.header().stamp().sec();
+    timestamp.nsec = msg.header().stamp().nanosec();
+    return timestamp;
+  }
+  return std::nullopt;
 }
 
 // 从消息头提取 frame_id（使用 SFINAE）
 template <typename MsgType>
 auto ExtractFrameId(const MsgType& msg) -> decltype(msg.header().frame_id(), std::optional<std::string>{}) {
-    if (msg.has_header()) {
-        return msg.header().frame_id();
-    }
-    return std::nullopt;
+  if (msg.has_header()) {
+    return msg.header().frame_id();
+  }
+  return std::nullopt;
 }
 
 // 设置 Entity/RawImage/Grid 的头部信息

@@ -41,8 +41,8 @@ proto::Header HeaderBuilder::GetHeader() {
   return header;
 }
 
-proto::Header HeaderBuilder::GetHeaderWithSegmentParams(
-    const uint64_t segment_interval, const uint64_t segment_raw_size) {
+proto::Header HeaderBuilder::GetHeaderWithSegmentParams(const uint64_t segment_interval,
+                                                        const uint64_t segment_raw_size) {
   proto::Header header;
   header.set_major_version(MAJOR_VERSION_);
   header.set_minor_version(MINOR_VERSION_);
@@ -62,8 +62,7 @@ proto::Header HeaderBuilder::GetHeaderWithSegmentParams(
   return header;
 }
 
-proto::Header HeaderBuilder::GetHeaderWithChunkParams(
-    const uint64_t chunk_interval, const uint64_t chunk_raw_size) {
+proto::Header HeaderBuilder::GetHeaderWithChunkParams(const uint64_t chunk_interval, const uint64_t chunk_raw_size) {
   proto::Header header;
   header.set_major_version(MAJOR_VERSION_);
   header.set_minor_version(MINOR_VERSION_);

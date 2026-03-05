@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <atomic>
 #include <memory>
 #include <string>
@@ -44,8 +43,7 @@ using autolink::event::TransPerf;
  */
 class ReaderBase {
  public:
-  explicit ReaderBase(const proto::RoleAttributes& role_attr)
-      : role_attr_(role_attr), init_(false) {}
+  explicit ReaderBase(const proto::RoleAttributes& role_attr) : role_attr_(role_attr), init_(false) {}
   virtual ~ReaderBase() {}
 
   /**
@@ -121,9 +119,7 @@ class ReaderBase {
    *
    * @return const std::string& channel name
    */
-  const std::string& GetChannelName() const {
-    return role_attr_.channel_name();
-  }
+  const std::string& GetChannelName() const { return role_attr_.channel_name(); }
 
   /**
    * @brief Get Reader's Channel id
@@ -137,9 +133,7 @@ class ReaderBase {
    *
    * @return const proto::QosProfile& result qos
    */
-  const proto::QosProfile& QosProfile() const {
-    return role_attr_.qos_profile();
-  }
+  const proto::QosProfile& QosProfile() const { return role_attr_.qos_profile(); }
 
   /**
    * @brief Query whether the Reader is initialized
@@ -174,13 +168,10 @@ class ReceiverManager {
    * @param role_attr the attribute that the Receiver has
    * @return std::shared_ptr<transport::Receiver<MessageT>> result Receiver
    */
-  auto GetReceiver(const proto::RoleAttributes& role_attr) ->
-      typename std::shared_ptr<transport::Receiver<MessageT>>;
+  auto GetReceiver(const proto::RoleAttributes& role_attr) -> typename std::shared_ptr<transport::Receiver<MessageT>>;
 
  private:
-  std::unordered_map<std::string,
-                     typename std::shared_ptr<transport::Receiver<MessageT>>>
-      receiver_map_;
+  std::unordered_map<std::string, typename std::shared_ptr<transport::Receiver<MessageT>>> receiver_map_;
   std::mutex receiver_map_mutex_;
 
   DECLARE_SINGLETON(ReceiverManager<MessageT>)
@@ -195,33 +186,26 @@ template <typename MessageT>
 ReceiverManager<MessageT>::ReceiverManager() {}
 
 template <typename MessageT>
-auto ReceiverManager<MessageT>::GetReceiver(
-    const proto::RoleAttributes& role_attr) ->
+auto ReceiverManager<MessageT>::GetReceiver(const proto::RoleAttributes& role_attr) ->
     typename std::shared_ptr<transport::Receiver<MessageT>> {
   std::lock_guard<std::mutex> lock(receiver_map_mutex_);
   // because multi reader for one channel will write datacache multi times,
   // so reader for datacache we use map to keep one instance for per channel
   const std::string& channel_name = role_attr.channel_name();
   if (receiver_map_.count(channel_name) == 0) {
-    receiver_map_[channel_name] =
-        transport::Transport::Instance()->CreateReceiver<MessageT>(
-            role_attr, [](const std::shared_ptr<MessageT>& msg,
-                          const transport::MessageInfo& msg_info,
-                          const proto::RoleAttributes& reader_attr) {
-              (void)msg_info;
-              (void)reader_attr;
-              PerfEventCache::Instance()->AddTransportEvent(
-                  TransPerf::DISPATCH, reader_attr.channel_id(),
-                  msg_info.seq_num());
-              data::DataDispatcher<MessageT>::Instance()->Dispatch(
-                  reader_attr.channel_id(), msg);
-              PerfEventCache::Instance()->AddTransportEvent(
-                  TransPerf::NOTIFY, reader_attr.channel_id(),
-                  msg_info.seq_num());
-            });
+    receiver_map_[channel_name] = transport::Transport::Instance()->CreateReceiver<MessageT>(
+        role_attr, [](const std::shared_ptr<MessageT>& msg, const transport::MessageInfo& msg_info,
+                      const proto::RoleAttributes& reader_attr) {
+          (void)msg_info;
+          (void)reader_attr;
+          PerfEventCache::Instance()->AddTransportEvent(TransPerf::DISPATCH, reader_attr.channel_id(),
+                                                        msg_info.seq_num());
+          data::DataDispatcher<MessageT>::Instance()->Dispatch(reader_attr.channel_id(), msg);
+          PerfEventCache::Instance()->AddTransportEvent(TransPerf::NOTIFY, reader_attr.channel_id(),
+                                                        msg_info.seq_num());
+        });
   }
   return receiver_map_[channel_name];
 }
 
 }  // namespace autolink
-

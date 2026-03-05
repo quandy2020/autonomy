@@ -23,7 +23,6 @@
 #include <unordered_map>
 
 #include "autolink/proto/record.pb.h"
-
 #include "autolink/record/file/record_file_reader.hpp"
 #include "autolink/record/record_base.hpp"
 #include "autolink/record/record_message.hpp"
@@ -91,8 +90,7 @@ class RecordReader : public RecordBase {
    *
    * @return Message type.
    */
-  const std::string& GetMessageType(
-      const std::string& channel_name) const override;
+  const std::string& GetMessageType(const std::string& channel_name) const override;
 
   /**
    * @brief Get proto descriptor string by channel name.
@@ -101,8 +99,7 @@ class RecordReader : public RecordBase {
    *
    * @return Proto descriptor string by channel name.
    */
-  const std::string& GetProtoDesc(
-      const std::string& channel_name) const override;
+  const std::string& GetProtoDesc(const std::string& channel_name) const override;
 
   /**
    * @brief Get channel list.
@@ -125,4 +122,3 @@ class RecordReader : public RecordBase {
 
 }  // namespace record
 }  // namespace autolink
-

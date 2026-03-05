@@ -26,44 +26,43 @@ namespace common {
 namespace properties {
 
 /// Property specialized for Ogre::Vector3 values
-class VectorProperty : public Property
-{
-    Q_OBJECT
+class VectorProperty : public Property {
+  Q_OBJECT
 
-public:
-    explicit VectorProperty(const QString& name = QString(), const Ogre::Vector3& default_value = Ogre::Vector3::ZERO,
-                            const QString& description = QString(), Property* parent = nullptr,
-                            const char* changed_slot = nullptr, QObject* receiver = nullptr);
+ public:
+  explicit VectorProperty(const QString& name = QString(), const Ogre::Vector3& default_value = Ogre::Vector3::ZERO,
+                          const QString& description = QString(), Property* parent = nullptr,
+                          const char* changed_slot = nullptr, QObject* receiver = nullptr);
 
-    virtual bool setVector(const Ogre::Vector3& vector);
+  virtual bool setVector(const Ogre::Vector3& vector);
 
-    virtual Ogre::Vector3 getVector() const;
+  virtual Ogre::Vector3 getVector() const;
 
-    bool add(const Ogre::Vector3& offset);
+  bool add(const Ogre::Vector3& offset);
 
-    virtual bool setValue(const QVariant& new_value) override;
+  virtual bool setValue(const QVariant& new_value) override;
 
-    virtual void load(const Config& config) override;
+  virtual void load(const Config& config) override;
 
-    virtual void save(Config config) const override;
+  virtual void save(Config config) const override;
 
-    /// Overridden from Property to propagate read-only-ness to children.
-    virtual void setReadOnly(bool read_only) override;
+  /// Overridden from Property to propagate read-only-ness to children.
+  virtual void setReadOnly(bool read_only) override;
 
-private Q_SLOTS:
-    void updateFromChildren();
+ private Q_SLOTS:
+  void updateFromChildren();
 
-    void emitAboutToChange();
+  void emitAboutToChange();
 
-private:
-    void updateString();
+ private:
+  void updateString();
 
-    Ogre::Vector3 vector_;
-    Property* x_;
-    Property* y_;
-    Property* z_;
+  Ogre::Vector3 vector_;
+  Property* x_;
+  Property* y_;
+  Property* z_;
 
-    bool ignore_child_updates_;
+  bool ignore_child_updates_;
 };
 
 }  // namespace properties

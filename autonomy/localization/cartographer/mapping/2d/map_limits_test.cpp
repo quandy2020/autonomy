@@ -23,41 +23,41 @@ namespace mapping {
 namespace {
 
 TEST(MapLimitsTest, ToProto) {
-    const MapLimits limits(42., Eigen::Vector2d(3., 0.), CellLimits(2, 3));
-    const auto proto = ToProto(limits);
-    EXPECT_EQ(limits.resolution(), proto.resolution());
-    EXPECT_EQ(limits.max().x(), proto.max().x());
-    EXPECT_EQ(limits.max().y(), proto.max().y());
-    EXPECT_EQ(ToProto(limits.cell_limits()).DebugString(), proto.cell_limits().DebugString());
+  const MapLimits limits(42., Eigen::Vector2d(3., 0.), CellLimits(2, 3));
+  const auto proto = ToProto(limits);
+  EXPECT_EQ(limits.resolution(), proto.resolution());
+  EXPECT_EQ(limits.max().x(), proto.max().x());
+  EXPECT_EQ(limits.max().y(), proto.max().y());
+  EXPECT_EQ(ToProto(limits.cell_limits()).DebugString(), proto.cell_limits().DebugString());
 }
 
 TEST(MapLimitsTest, ProtoConstructor) {
-    proto::MapLimits limits;
-    limits.set_resolution(1.);
-    limits.mutable_max()->set_x(2.);
-    limits.mutable_max()->set_y(3.);
-    limits.mutable_cell_limits()->set_num_x_cells(4);
-    limits.mutable_cell_limits()->set_num_y_cells(5);
+  proto::MapLimits limits;
+  limits.set_resolution(1.);
+  limits.mutable_max()->set_x(2.);
+  limits.mutable_max()->set_y(3.);
+  limits.mutable_cell_limits()->set_num_x_cells(4);
+  limits.mutable_cell_limits()->set_num_y_cells(5);
 
-    const MapLimits native(limits);
-    EXPECT_EQ(limits.resolution(), native.resolution());
-    EXPECT_EQ(limits.max().x(), native.max().x());
-    EXPECT_EQ(limits.max().y(), native.max().y());
-    EXPECT_EQ(limits.cell_limits().DebugString(), ToProto(native.cell_limits()).DebugString());
+  const MapLimits native(limits);
+  EXPECT_EQ(limits.resolution(), native.resolution());
+  EXPECT_EQ(limits.max().x(), native.max().x());
+  EXPECT_EQ(limits.max().y(), native.max().y());
+  EXPECT_EQ(limits.cell_limits().DebugString(), ToProto(native.cell_limits()).DebugString());
 }
 
 TEST(MapLimitsTest, ConstructAndGet) {
-    const MapLimits limits(42., Eigen::Vector2d(3., 0.), CellLimits(2, 3));
+  const MapLimits limits(42., Eigen::Vector2d(3., 0.), CellLimits(2, 3));
 
-    const CellLimits& cell_limits = limits.cell_limits();
-    EXPECT_EQ(2, cell_limits.num_x_cells);
-    EXPECT_EQ(3, cell_limits.num_y_cells);
+  const CellLimits& cell_limits = limits.cell_limits();
+  EXPECT_EQ(2, cell_limits.num_x_cells);
+  EXPECT_EQ(3, cell_limits.num_y_cells);
 
-    const Eigen::Vector2d& max = limits.max();
-    EXPECT_EQ(3., max.x());
-    EXPECT_EQ(0., max.y());
+  const Eigen::Vector2d& max = limits.max();
+  EXPECT_EQ(3., max.x());
+  EXPECT_EQ(0., max.y());
 
-    EXPECT_EQ(42., limits.resolution());
+  EXPECT_EQ(42., limits.resolution());
 }
 
 }  // namespace

@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -35,8 +36,7 @@ using autolink::io::Session;
 void Echo(const std::shared_ptr<Session>& session) {
   std::vector<char> recv_buffer(2049);
   int nbytes = 0;
-  while ((nbytes = static_cast<int>(
-              session->Recv(recv_buffer.data(), recv_buffer.size(), 0))) > 0) {
+  while ((nbytes = static_cast<int>(session->Recv(recv_buffer.data(), recv_buffer.size(), 0))) > 0) {
     session->Write(recv_buffer.data(), nbytes);
   }
 
@@ -69,19 +69,15 @@ int main(int argc, char* argv[]) {
 
         Session session;
         session.Socket(AF_INET, SOCK_STREAM, 0);
-        if (session.Bind((struct sockaddr*)&server_addr, sizeof(server_addr)) <
-            0) {
-          std::cout << "bind to port[" << server_port << "] failed."
-                    << std::endl;
+        if (session.Bind((struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+          std::cout << "bind to port[" << server_port << "] failed." << std::endl;
           return;
         }
         session.Listen(10);
         auto conn_session = session.Accept((struct sockaddr*)nullptr, nullptr);
         std::cout << "accepted" << std::endl;
-        auto routine_name =
-            "connected session" + std::to_string(Time::Now().ToNanosecond());
-        autolink::scheduler::Instance()->CreateTask(
-            std::bind(Echo, conn_session), routine_name);
+        auto routine_name = "connected session" + std::to_string(Time::Now().ToNanosecond());
+        autolink::scheduler::Instance()->CreateTask(std::bind(Echo, conn_session), routine_name);
       },
       "echo_server");
 

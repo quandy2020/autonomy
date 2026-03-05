@@ -26,10 +26,10 @@ namespace monitor {
 namespace cpu_monitor {
 
 struct CpuInformation {
-    std::string model_name;
-    uint32_t num_cores{0};
-    uint64_t freq_hz{0};
-    std::string vendor;  // "intel", "raspi", "tegra", "arm", "unknown"
+  std::string model_name;
+  uint32_t num_cores{0};
+  uint64_t freq_hz{0};
+  std::string vendor;  // "intel", "raspi", "tegra", "arm", "unknown"
 };
 
 }  // namespace cpu_monitor

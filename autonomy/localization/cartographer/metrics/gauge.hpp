@@ -23,18 +23,17 @@
 namespace cartographer {
 namespace metrics {
 
-class Gauge
-{
-public:
-    // Gauge instance that does nothing. Safe for use in static initializers.
-    static Gauge* Null();
+class Gauge {
+ public:
+  // Gauge instance that does nothing. Safe for use in static initializers.
+  static Gauge* Null();
 
-    virtual ~Gauge() = default;
-    virtual void Increment() = 0;
-    virtual void Increment(double by_value) = 0;
-    virtual void Decrement() = 0;
-    virtual void Decrement(double by_value) = 0;
-    virtual void Set(double value) = 0;
+  virtual ~Gauge() = default;
+  virtual void Increment() = 0;
+  virtual void Increment(double by_value) = 0;
+  virtual void Decrement() = 0;
+  virtual void Decrement(double by_value) = 0;
+  virtual void Set(double value) = 0;
 };
 
 }  // namespace metrics

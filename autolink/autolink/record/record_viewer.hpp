@@ -46,8 +46,7 @@ class RecordViewer {
    * @param channels
    */
   RecordViewer(const RecordReaderPtr& reader, uint64_t begin_time = 0,
-               uint64_t end_time = std::numeric_limits<uint64_t>::max(),
-               const std::set<std::string>& channels = {});
+               uint64_t end_time = std::numeric_limits<uint64_t>::max(), const std::set<std::string>& channels = {});
 
   /**
    * @brief The constructor with multiple readers.
@@ -57,8 +56,7 @@ class RecordViewer {
    * @param end_time
    * @param channels
    */
-  RecordViewer(const std::vector<RecordReaderPtr>& readers,
-               uint64_t begin_time = 0,
+  RecordViewer(const std::vector<RecordReaderPtr>& readers, uint64_t begin_time = 0,
                uint64_t end_time = std::numeric_limits<uint64_t>::max(),
                const std::set<std::string>& channels = std::set<std::string>());
 
@@ -93,8 +91,7 @@ class RecordViewer {
   /**
    * @brief The iterator.
    */
-  class Iterator : public std::iterator<std::input_iterator_tag, RecordMessage,
-                                        int, RecordMessage*, RecordMessage&> {
+  class Iterator : public std::iterator<std::input_iterator_tag, RecordMessage, int, RecordMessage*, RecordMessage&> {
    public:
     /**
      * @brief The constructor of iterator with viewer.
@@ -212,4 +209,3 @@ class RecordViewer {
 
 }  // namespace record
 }  // namespace autolink
-

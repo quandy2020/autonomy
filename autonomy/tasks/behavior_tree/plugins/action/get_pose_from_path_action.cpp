@@ -26,40 +26,40 @@ GetPoseFromPath::GetPoseFromPath(const std::string& name, const BT::NodeConfigur
     : BT::ActionNodeBase(name, conf) {}
 
 inline BT::NodeStatus GetPoseFromPath::tick() {
-    setStatus(BT::NodeStatus::RUNNING);
+  setStatus(BT::NodeStatus::RUNNING);
 
-    commsgs::planning_msgs::Path input_path;
-    getInput("path", input_path);
+  commsgs::planning_msgs::Path input_path;
+  getInput("path", input_path);
 
-    int pose_index;
-    getInput("index", pose_index);
+  int pose_index;
+  getInput("index", pose_index);
 
-    if (input_path.poses.empty()) {
-        return BT::NodeStatus::FAILURE;
-    }
+  if (input_path.poses.empty()) {
+    return BT::NodeStatus::FAILURE;
+  }
 
-    // Account for negative indices
-    if (pose_index < 0) {
-        pose_index = input_path.poses.size() + pose_index;
-    }
+  // Account for negative indices
+  if (pose_index < 0) {
+    pose_index = input_path.poses.size() + pose_index;
+  }
 
-    // out of bounds index
-    if (pose_index < 0 || static_cast<unsigned>(pose_index) >= input_path.poses.size()) {
-        return BT::NodeStatus::FAILURE;
-    }
+  // out of bounds index
+  if (pose_index < 0 || static_cast<unsigned>(pose_index) >= input_path.poses.size()) {
+    return BT::NodeStatus::FAILURE;
+  }
 
-    // extract pose
-    commsgs::geometry_msgs::PoseStamped output_pose;
-    output_pose = input_path.poses[pose_index];
+  // extract pose
+  commsgs::geometry_msgs::PoseStamped output_pose;
+  output_pose = input_path.poses[pose_index];
 
-    // populate pose frame from path if necessary
-    if (output_pose.header.frame_id.empty()) {
-        output_pose.header.frame_id = input_path.header.frame_id;
-    }
+  // populate pose frame from path if necessary
+  if (output_pose.header.frame_id.empty()) {
+    output_pose.header.frame_id = input_path.header.frame_id;
+  }
 
-    setOutput("pose", output_pose);
+  setOutput("pose", output_pose);
 
-    return BT::NodeStatus::SUCCESS;
+  return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -70,5 +70,5 @@ inline BT::NodeStatus GetPoseFromPath::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetPoseFromPath>("GetPoseFromPath");
+  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::GetPoseFromPath>("GetPoseFromPath");
 }

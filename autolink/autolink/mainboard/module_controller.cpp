@@ -40,17 +40,14 @@ bool ModuleController::LoadAll() {
   const std::string dag_root_path = common::GetAbsolutePath(work_root, "dag");
   std::vector<std::string> paths;
   for (auto& plugin_description : args_.GetPluginDescriptionList()) {
-    autolink::plugin_manager::PluginManager::Instance()->LoadPlugin(
-        plugin_description);
+    autolink::plugin_manager::PluginManager::Instance()->LoadPlugin(plugin_description);
   }
   if (!args_.GetDisablePluginsAutoLoad()) {
-    autolink::plugin_manager::PluginManager::Instance()
-        ->LoadInstalledPlugins();
+    autolink::plugin_manager::PluginManager::Instance()->LoadInstalledPlugins();
   }
   for (auto& dag_conf : args_.GetDAGConfList()) {
     std::string module_path = dag_conf;
-    if (!common::GetFilePathWithEnv(dag_conf, "AUTOLINK_DAG_PATH",
-                                    &module_path)) {
+    if (!common::GetFilePathWithEnv(dag_conf, "AUTOLINK_DAG_PATH", &module_path)) {
       AERROR << "no dag conf [" << dag_conf << "] found!";
       return false;
     }
@@ -75,10 +72,8 @@ bool ModuleController::LoadAll() {
 bool ModuleController::LoadModule(const DagConfig& dag_config) {
   for (auto module_config : dag_config.module_config()) {
     std::string load_path;
-    if (!common::GetFilePathWithEnv(module_config.module_library(),
-                                    "AUTOLINK_LIB_PATH", &load_path)) {
-      AERROR << "no module library [" << module_config.module_library()
-             << "] found!";
+    if (!common::GetFilePathWithEnv(module_config.module_library(), "AUTOLINK_LIB_PATH", &load_path)) {
+      AERROR << "no module library [" << module_config.module_library() << "] found!";
       return false;
     }
     AINFO << "mainboard: use module library " << load_path;
@@ -87,8 +82,7 @@ bool ModuleController::LoadModule(const DagConfig& dag_config) {
 
     for (auto& component : module_config.components()) {
       const std::string& class_name = component.class_name();
-      std::shared_ptr<ComponentBase> base =
-          class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
+      std::shared_ptr<ComponentBase> base = class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
       if (base == nullptr || !base->Initialize(component.config())) {
         return false;
       }
@@ -97,8 +91,7 @@ bool ModuleController::LoadModule(const DagConfig& dag_config) {
 
     for (auto& component : module_config.timer_components()) {
       const std::string& class_name = component.class_name();
-      std::shared_ptr<ComponentBase> base =
-          class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
+      std::shared_ptr<ComponentBase> base = class_loader_manager_.CreateClassObj<ComponentBase>(class_name);
       if (base == nullptr || !base->Initialize(component.config())) {
         return false;
       }

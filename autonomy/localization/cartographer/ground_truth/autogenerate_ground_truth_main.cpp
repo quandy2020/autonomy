@@ -48,19 +48,19 @@ namespace {
 
 void Run(const std::string& pose_graph_filename, const std::string& output_filename, const double min_covered_distance,
          const double outlier_threshold_meters, const double outlier_threshold_radians) {
-    LOG(INFO) << "Reading pose graph from '" << pose_graph_filename << "'...";
-    mapping::proto::PoseGraph pose_graph = io::DeserializePoseGraphFromFile(pose_graph_filename);
+  LOG(INFO) << "Reading pose graph from '" << pose_graph_filename << "'...";
+  mapping::proto::PoseGraph pose_graph = io::DeserializePoseGraphFromFile(pose_graph_filename);
 
-    LOG(INFO) << "Autogenerating ground truth relations...";
-    const proto::GroundTruth ground_truth =
-        GenerateGroundTruth(pose_graph, min_covered_distance, outlier_threshold_meters, outlier_threshold_radians);
-    LOG(INFO) << "Writing " << ground_truth.relation_size() << " relations to '" << output_filename << "'.";
-    {
-        std::ofstream output_stream(output_filename, std::ios_base::out | std::ios_base::binary);
-        CHECK(ground_truth.SerializeToOstream(&output_stream)) << "Could not serialize ground truth data.";
-        output_stream.close();
-        CHECK(output_stream) << "Could not write ground truth data.";
-    }
+  LOG(INFO) << "Autogenerating ground truth relations...";
+  const proto::GroundTruth ground_truth =
+      GenerateGroundTruth(pose_graph, min_covered_distance, outlier_threshold_meters, outlier_threshold_radians);
+  LOG(INFO) << "Writing " << ground_truth.relation_size() << " relations to '" << output_filename << "'.";
+  {
+    std::ofstream output_stream(output_filename, std::ios_base::out | std::ios_base::binary);
+    CHECK(ground_truth.SerializeToOstream(&output_stream)) << "Could not serialize ground truth data.";
+    output_stream.close();
+    CHECK(output_stream) << "Could not write ground truth data.";
+  }
 }
 
 }  // namespace
@@ -68,27 +68,27 @@ void Run(const std::string& pose_graph_filename, const std::string& output_filen
 }  // namespace cartographer
 
 int main(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
-    FLAGS_logtostderr = true;
-    google::SetUsageMessage(
-        "\n\n"
-        "This program semi-automatically generates ground truth data from a\n"
-        "pose graph proto.\n"
-        "\n"
-        "The input should contain a single trajectory and should have been\n"
-        "manually assessed to be correctly loop closed. Small local "
-        "distortions\n"
-        "are acceptable if they are tiny compared to the errors we want to\n"
-        "assess using the generated ground truth data.\n"
-        "\n"
-        "All loop closure constraints separated by long covered distance are\n"
-        "included in the output. Outliers are removed.\n");
-    google::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
+  FLAGS_logtostderr = true;
+  google::SetUsageMessage(
+      "\n\n"
+      "This program semi-automatically generates ground truth data from a\n"
+      "pose graph proto.\n"
+      "\n"
+      "The input should contain a single trajectory and should have been\n"
+      "manually assessed to be correctly loop closed. Small local "
+      "distortions\n"
+      "are acceptable if they are tiny compared to the errors we want to\n"
+      "assess using the generated ground truth data.\n"
+      "\n"
+      "All loop closure constraints separated by long covered distance are\n"
+      "included in the output. Outliers are removed.\n");
+  google::ParseCommandLineFlags(&argc, &argv, true);
 
-    if (FLAGS_pose_graph_filename.empty() || FLAGS_output_filename.empty()) {
-        google::ShowUsageWithFlagsRestrict(argv[0], "autogenerate_ground_truth");
-        return EXIT_FAILURE;
-    }
-    ::cartographer::ground_truth::Run(FLAGS_pose_graph_filename, FLAGS_output_filename, FLAGS_min_covered_distance,
-                                      FLAGS_outlier_threshold_meters, FLAGS_outlier_threshold_radians);
+  if (FLAGS_pose_graph_filename.empty() || FLAGS_output_filename.empty()) {
+    google::ShowUsageWithFlagsRestrict(argv[0], "autogenerate_ground_truth");
+    return EXIT_FAILURE;
+  }
+  ::cartographer::ground_truth::Run(FLAGS_pose_graph_filename, FLAGS_output_filename, FLAGS_min_covered_distance,
+                                    FLAGS_outlier_threshold_meters, FLAGS_outlier_threshold_radians);
 }

@@ -53,8 +53,7 @@ class RecordBase {
    *
    * @return Message type.
    */
-  virtual const std::string& GetMessageType(
-      const std::string& channel_name) const = 0;
+  virtual const std::string& GetMessageType(const std::string& channel_name) const = 0;
 
   /**
    * @brief Get proto descriptor string by channel name.
@@ -63,8 +62,7 @@ class RecordBase {
    *
    * @return Proto descriptor string by channel name.
    */
-  virtual const std::string& GetProtoDesc(
-      const std::string& channel_name) const = 0;
+  virtual const std::string& GetProtoDesc(const std::string& channel_name) const = 0;
 
   /**
    * @brief Get channel list.
@@ -95,4 +93,3 @@ class RecordBase {
 
 }  // namespace record
 }  // namespace autolink
-

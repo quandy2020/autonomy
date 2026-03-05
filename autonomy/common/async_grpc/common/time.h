@@ -31,11 +31,11 @@ namespace common {
 constexpr int64 kUtsEpochOffsetFromUnixEpochInSeconds = (719162ll * 24ll * 60ll * 60ll);
 
 struct UniversalTimeScaleClock {
-    using rep = int64;
-    using period = std::ratio<1, 10000000>;
-    using duration = std::chrono::duration<rep, period>;
-    using time_point = std::chrono::time_point<UniversalTimeScaleClock>;
-    static constexpr bool is_steady = true;
+  using rep = int64;
+  using period = std::ratio<1, 10000000>;
+  using duration = std::chrono::duration<rep, period>;
+  using time_point = std::chrono::time_point<UniversalTimeScaleClock>;
+  static constexpr bool is_steady = true;
 };
 
 // Represents Universal Time Scale durations and timestamps which are 64-bit

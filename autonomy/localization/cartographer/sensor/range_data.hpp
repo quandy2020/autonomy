@@ -30,9 +30,9 @@ namespace sensor {
 // was detected, and were inserted at a configured distance. It is assumed that
 // between the 'origin' and 'misses' is free space.
 struct RangeData {
-    Eigen::Vector3f origin;
-    PointCloud returns;
-    PointCloud misses;
+  Eigen::Vector3f origin;
+  PointCloud returns;
+  PointCloud misses;
 };
 
 RangeData TransformRangeData(const RangeData& range_data, const transform::Rigid3f& transform);

@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include "autolink/transport/shm/segment.hpp"
 
 namespace autolink {
@@ -40,4 +39,3 @@ class XsiSegment : public Segment {
 
 }  // namespace transport
 }  // namespace autolink
-

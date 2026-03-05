@@ -24,28 +24,24 @@
 namespace autonomy {
 namespace bridge {
 
-BridgeServer::BridgeServer() {
-    grpc_bridge_ = std::make_unique<plugins::grpc::GrpcBridgeServer>();
-}
+BridgeServer::BridgeServer() { grpc_bridge_ = std::make_unique<plugins::grpc::GrpcBridgeServer>(); }
 
 BridgeServer::BridgeServer(const proto::BridgeOptions& options) : options_{options} {}
 
 void BridgeServer::Start() {
-    if (options_.use_grpc()) {
-        LOG(INFO) << "Use mqtt gRPC as communication.";
-        // grpc_bridge_->Start();
-    }
+  if (options_.use_grpc()) {
+    LOG(INFO) << "Use mqtt gRPC as communication.";
+    // grpc_bridge_->Start();
+  }
 
-    if (options_.use_mqtt()) {
-        LOG(INFO) << "Use mqtt bridge as communication.";
-    }
+  if (options_.use_mqtt()) {
+    LOG(INFO) << "Use mqtt bridge as communication.";
+  }
 
-    grpc_bridge_->Start();
+  grpc_bridge_->Start();
 }
 
-void BridgeServer::WaitForShutdown() {
-    grpc_bridge_->WaitForShutdown();
-}
+void BridgeServer::WaitForShutdown() { grpc_bridge_->WaitForShutdown(); }
 
 }  // namespace bridge
 }  // namespace autonomy

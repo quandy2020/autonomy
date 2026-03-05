@@ -26,14 +26,13 @@ namespace autonomy {
 namespace planning {
 namespace math {
 
-class ConstraintChecker1d
-{
-public:
-    ConstraintChecker1d() = delete;
+class ConstraintChecker1d {
+ public:
+  ConstraintChecker1d() = delete;
 
-    static bool IsValidLongitudinalTrajectory(const Curve1d& lon_trajectory);
+  static bool IsValidLongitudinalTrajectory(const Curve1d& lon_trajectory);
 
-    static bool IsValidLateralTrajectory(const Curve1d& lat_trajectory, const Curve1d& lon_trajectory);
+  static bool IsValidLateralTrajectory(const Curve1d& lat_trajectory, const Curve1d& lon_trajectory);
 };
 
 }  // namespace math

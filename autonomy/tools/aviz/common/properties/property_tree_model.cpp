@@ -24,182 +24,178 @@ namespace properties {
 
 PropertyTreeModel::PropertyTreeModel(Property* root_property, QObject* parent)
     : QAbstractItemModel(parent), root_property_(root_property) {
-    if (root_property_) {
-        root_property_->setModel(this);
-    }
+  if (root_property_) {
+    root_property_->setModel(this);
+  }
 }
 
 PropertyTreeModel::~PropertyTreeModel() {
-    if (root_property_) {
-        root_property_->setModel(nullptr);
-        delete root_property_;
-    }
+  if (root_property_) {
+    root_property_->setModel(nullptr);
+    delete root_property_;
+  }
 }
 
 void PropertyTreeModel::beginInsert(Property* parent, int index) {
-    QModelIndex parent_index =
-        parent == root_property_ ? QModelIndex() : createIndex(parent->rowNumberInParent(), 0, parent);
-    beginInsertRows(parent_index, index, index);
+  QModelIndex parent_index =
+      parent == root_property_ ? QModelIndex() : createIndex(parent->rowNumberInParent(), 0, parent);
+  beginInsertRows(parent_index, index, index);
 }
 
-void PropertyTreeModel::endInsert() {
-    endInsertRows();
-}
+void PropertyTreeModel::endInsert() { endInsertRows(); }
 
 void PropertyTreeModel::beginRemove(Property* parent, int start_index, int count) {
-    QModelIndex parent_index =
-        parent == root_property_ ? QModelIndex() : createIndex(parent->rowNumberInParent(), 0, parent);
-    beginRemoveRows(parent_index, start_index, start_index + count - 1);
+  QModelIndex parent_index =
+      parent == root_property_ ? QModelIndex() : createIndex(parent->rowNumberInParent(), 0, parent);
+  beginRemoveRows(parent_index, start_index, start_index + count - 1);
 }
 
-void PropertyTreeModel::endRemove() {
-    endRemoveRows();
-}
+void PropertyTreeModel::endRemove() { endRemoveRows(); }
 
 void PropertyTreeModel::emitDataChanged(Property* property) {
-    QModelIndex left = createIndex(property->rowNumberInParent(), 0, property);
-    QModelIndex right = createIndex(property->rowNumberInParent(), 1, property);
-    Q_EMIT dataChanged(left, right);
+  QModelIndex left = createIndex(property->rowNumberInParent(), 0, property);
+  QModelIndex right = createIndex(property->rowNumberInParent(), 1, property);
+  Q_EMIT dataChanged(left, right);
 }
 
 void PropertyTreeModel::emitPropertyHiddenChanged(Property* property) {
-    Q_UNUSED(property);
-    // Can be implemented later if needed
+  Q_UNUSED(property);
+  // Can be implemented later if needed
 }
 
 void PropertyTreeModel::expandProperty(Property* property) {
-    Q_UNUSED(property);
-    // Can be implemented later if needed
+  Q_UNUSED(property);
+  // Can be implemented later if needed
 }
 
 void PropertyTreeModel::collapseProperty(Property* property) {
-    Q_UNUSED(property);
-    // Can be implemented later if needed
+  Q_UNUSED(property);
+  // Can be implemented later if needed
 }
 
 QVariant PropertyTreeModel::data(const QModelIndex& index, int role) const {
-    if (!index.isValid()) {
-        return QVariant();
-    }
+  if (!index.isValid()) {
+    return QVariant();
+  }
 
-    Property* property = static_cast<Property*>(index.internalPointer());
-    if (!property) {
-        return QVariant();
-    }
+  Property* property = static_cast<Property*>(index.internalPointer());
+  if (!property) {
+    return QVariant();
+  }
 
-    return property->getViewData(index.column(), role);
+  return property->getViewData(index.column(), role);
 }
 
 QVariant PropertyTreeModel::headerData(int section, Qt::Orientation orientation, int role) const {
-    Q_UNUSED(orientation);
-    if (role == Qt::DisplayRole) {
-        if (section == 0) {
-            return "Property";
-        } else if (section == 1) {
-            return "Value";
-        }
+  Q_UNUSED(orientation);
+  if (role == Qt::DisplayRole) {
+    if (section == 0) {
+      return "Property";
+    } else if (section == 1) {
+      return "Value";
     }
-    return QVariant();
+  }
+  return QVariant();
 }
 
 QModelIndex PropertyTreeModel::index(int row, int column, const QModelIndex& parent) const {
-    if (!hasIndex(row, column, parent)) {
-        return QModelIndex();
-    }
-
-    Property* parent_property;
-    if (!parent.isValid()) {
-        parent_property = root_property_;
-    } else {
-        parent_property = static_cast<Property*>(parent.internalPointer());
-    }
-
-    if (!parent_property) {
-        return QModelIndex();
-    }
-
-    Property* child_property = parent_property->childAt(row);
-    if (child_property) {
-        return createIndex(row, column, child_property);
-    }
-
+  if (!hasIndex(row, column, parent)) {
     return QModelIndex();
+  }
+
+  Property* parent_property;
+  if (!parent.isValid()) {
+    parent_property = root_property_;
+  } else {
+    parent_property = static_cast<Property*>(parent.internalPointer());
+  }
+
+  if (!parent_property) {
+    return QModelIndex();
+  }
+
+  Property* child_property = parent_property->childAt(row);
+  if (child_property) {
+    return createIndex(row, column, child_property);
+  }
+
+  return QModelIndex();
 }
 
 QModelIndex PropertyTreeModel::parent(const QModelIndex& index) const {
-    if (!index.isValid()) {
-        return QModelIndex();
-    }
+  if (!index.isValid()) {
+    return QModelIndex();
+  }
 
-    Property* child_property = static_cast<Property*>(index.internalPointer());
-    if (!child_property) {
-        return QModelIndex();
-    }
+  Property* child_property = static_cast<Property*>(index.internalPointer());
+  if (!child_property) {
+    return QModelIndex();
+  }
 
-    Property* parent_property = child_property->getParent();
-    if (parent_property == root_property_ || !parent_property) {
-        return QModelIndex();
-    }
+  Property* parent_property = child_property->getParent();
+  if (parent_property == root_property_ || !parent_property) {
+    return QModelIndex();
+  }
 
-    return createIndex(parent_property->rowNumberInParent(), 0, parent_property);
+  return createIndex(parent_property->rowNumberInParent(), 0, parent_property);
 }
 
 int PropertyTreeModel::rowCount(const QModelIndex& parent) const {
-    if (parent.column() > 0) {
-        return 0;
-    }
+  if (parent.column() > 0) {
+    return 0;
+  }
 
-    Property* parent_property;
-    if (!parent.isValid()) {
-        parent_property = root_property_;
-    } else {
-        parent_property = static_cast<Property*>(parent.internalPointer());
-    }
+  Property* parent_property;
+  if (!parent.isValid()) {
+    parent_property = root_property_;
+  } else {
+    parent_property = static_cast<Property*>(parent.internalPointer());
+  }
 
-    if (!parent_property) {
-        return 0;
-    }
+  if (!parent_property) {
+    return 0;
+  }
 
-    return parent_property->numChildren();
+  return parent_property->numChildren();
 }
 
 int PropertyTreeModel::columnCount(const QModelIndex& parent) const {
-    Q_UNUSED(parent);
-    return 2;  // Name and Value columns
+  Q_UNUSED(parent);
+  return 2;  // Name and Value columns
 }
 
 bool PropertyTreeModel::setData(const QModelIndex& index, const QVariant& value, int role) {
-    if (!index.isValid() || role != Qt::EditRole) {
-        return false;
-    }
-
-    Property* property = static_cast<Property*>(index.internalPointer());
-    if (!property) {
-        return false;
-    }
-
-    if (index.column() == 1) {  // Value column
-        bool changed = property->setValue(value);
-        if (changed) {
-            Q_EMIT dataChanged(index, index);
-        }
-        return changed;
-    }
-
+  if (!index.isValid() || role != Qt::EditRole) {
     return false;
+  }
+
+  Property* property = static_cast<Property*>(index.internalPointer());
+  if (!property) {
+    return false;
+  }
+
+  if (index.column() == 1) {  // Value column
+    bool changed = property->setValue(value);
+    if (changed) {
+      Q_EMIT dataChanged(index, index);
+    }
+    return changed;
+  }
+
+  return false;
 }
 
 Qt::ItemFlags PropertyTreeModel::flags(const QModelIndex& index) const {
-    if (!index.isValid()) {
-        return Qt::NoItemFlags;
-    }
+  if (!index.isValid()) {
+    return Qt::NoItemFlags;
+  }
 
-    Property* property = static_cast<Property*>(index.internalPointer());
-    if (!property) {
-        return Qt::NoItemFlags;
-    }
+  Property* property = static_cast<Property*>(index.internalPointer());
+  if (!property) {
+    return Qt::NoItemFlags;
+  }
 
-    return property->getViewFlags(index.column());
+  return property->getViewFlags(index.column());
 }
 
 }  // namespace properties

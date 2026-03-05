@@ -50,10 +50,8 @@ void TimingWheel::Tick() {
     while (ite != bucket.task_list().end()) {
       auto task = ite->lock();
       if (task) {
-        ADEBUG << "index: " << current_work_wheel_index_
-               << " timer id: " << task->timer_id_;
-        auto* callback =
-            reinterpret_cast<std::function<void()>*>(&(task->callback));
+        ADEBUG << "index: " << current_work_wheel_index_ << " timer id: " << task->timer_id_;
+        auto* callback = reinterpret_cast<std::function<void()>*>(&(task->callback));
         autolink::Async([this, callback] {
           if (this->running_) {
             (*callback)();
@@ -65,42 +63,34 @@ void TimingWheel::Tick() {
   }
 }
 
-void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task) {
-  AddTask(task, current_work_wheel_index_);
-}
+void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task) { AddTask(task, current_work_wheel_index_); }
 
-void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task,
-                          const uint64_t current_work_wheel_index) {
+void TimingWheel::AddTask(const std::shared_ptr<TimerTask>& task, const uint64_t current_work_wheel_index) {
   if (!running_) {
     Start();
   }
-  auto work_wheel_index = current_work_wheel_index +
-                          static_cast<uint64_t>(std::ceil(
-                              static_cast<double>(task->next_fire_duration_ms) /
-                              TIMER_RESOLUTION_MS));
+  auto work_wheel_index =
+      current_work_wheel_index +
+      static_cast<uint64_t>(std::ceil(static_cast<double>(task->next_fire_duration_ms) / TIMER_RESOLUTION_MS));
   if (work_wheel_index >= WORK_WHEEL_SIZE) {
     auto real_work_wheel_index = GetWorkWheelIndex(work_wheel_index);
     task->remainder_interval_ms = real_work_wheel_index;
     auto assistant_ticks = work_wheel_index / WORK_WHEEL_SIZE;
-    if (assistant_ticks == 1 &&
-        real_work_wheel_index < current_work_wheel_index_) {
+    if (assistant_ticks == 1 && real_work_wheel_index < current_work_wheel_index_) {
       work_wheel_[real_work_wheel_index].AddTask(task);
       ADEBUG << "add task to work wheel. index :" << real_work_wheel_index;
     } else {
       auto assistant_wheel_index = 0;
       {
         std::lock_guard<std::mutex> lock(current_assistant_wheel_index_mutex_);
-        assistant_wheel_index = GetAssistantWheelIndex(
-            current_assistant_wheel_index_ + assistant_ticks);
+        assistant_wheel_index = GetAssistantWheelIndex(current_assistant_wheel_index_ + assistant_ticks);
         assistant_wheel_[assistant_wheel_index].AddTask(task);
       }
-      ADEBUG << "add task to assistant wheel. index : "
-             << assistant_wheel_index;
+      ADEBUG << "add task to assistant wheel. index : " << assistant_wheel_index;
     }
   } else {
     work_wheel_[work_wheel_index].AddTask(task);
-    ADEBUG << "add task [" << task->timer_id_
-           << "] to work wheel. index :" << work_wheel_index;
+    ADEBUG << "add task [" << task->timer_id_ << "] to work wheel. index :" << work_wheel_index;
   }
 }
 
@@ -126,14 +116,12 @@ void TimingWheel::TickFunc() {
     rate.Sleep();
     {
       std::lock_guard<std::mutex> lock(current_work_wheel_index_mutex_);
-      current_work_wheel_index_ =
-          GetWorkWheelIndex(current_work_wheel_index_ + 1);
+      current_work_wheel_index_ = GetWorkWheelIndex(current_work_wheel_index_ + 1);
     }
     if (current_work_wheel_index_ == 0) {
       {
         std::lock_guard<std::mutex> lock(current_assistant_wheel_index_mutex_);
-        current_assistant_wheel_index_ =
-            GetAssistantWheelIndex(current_assistant_wheel_index_ + 1);
+        current_assistant_wheel_index_ = GetAssistantWheelIndex(current_assistant_wheel_index_ + 1);
       }
       Cascade(current_assistant_wheel_index_);
     }

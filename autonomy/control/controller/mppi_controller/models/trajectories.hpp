@@ -29,18 +29,18 @@ namespace models {
  * @brief Candidate Trajectories
  */
 struct Trajectories {
-    Eigen::ArrayXXf x;
-    Eigen::ArrayXXf y;
-    Eigen::ArrayXXf yaws;
+  Eigen::ArrayXXf x;
+  Eigen::ArrayXXf y;
+  Eigen::ArrayXXf yaws;
 
-    /**
-     * @brief Reset state data
-     */
-    void reset(unsigned int batch_size, unsigned int time_steps) {
-        x.setZero(batch_size, time_steps);
-        y.setZero(batch_size, time_steps);
-        yaws.setZero(batch_size, time_steps);
-    }
+  /**
+   * @brief Reset state data
+   */
+  void reset(unsigned int batch_size, unsigned int time_steps) {
+    x.setZero(batch_size, time_steps);
+    y.setZero(batch_size, time_steps);
+    yaws.setZero(batch_size, time_steps);
+  }
 };
 
 }  // namespace models

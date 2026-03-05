@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <memory>
 
 #include "autolink/blocker/blocker_manager.hpp"
@@ -45,8 +44,7 @@ class IntraWriter : public autolink::Writer<MessageT> {
 };
 
 template <typename MessageT>
-IntraWriter<MessageT>::IntraWriter(const proto::RoleAttributes& attr)
-    : Writer<MessageT>(attr) {}
+IntraWriter<MessageT>::IntraWriter(const proto::RoleAttributes& attr) : Writer<MessageT>(attr) {}
 
 template <typename MessageT>
 IntraWriter<MessageT>::~IntraWriter() {
@@ -61,8 +59,7 @@ bool IntraWriter<MessageT>::Init() {
       return true;
     }
     blocker_manager_ = BlockerManager::Instance();
-    blocker_manager_->GetOrCreateBlocker<MessageT>(
-        BlockerAttr(this->role_attr_.channel_name()));
+    blocker_manager_->GetOrCreateBlocker<MessageT>(BlockerAttr(this->role_attr_.channel_name()));
     this->init_ = true;
   }
   return true;
@@ -85,8 +82,7 @@ bool IntraWriter<MessageT>::Write(const MessageT& msg) {
   if (!WriterBase::IsInit()) {
     return false;
   }
-  return blocker_manager_->Publish<MessageT>(this->role_attr_.channel_name(),
-                                             msg);
+  return blocker_manager_->Publish<MessageT>(this->role_attr_.channel_name(), msg);
 }
 
 template <typename MessageT>
@@ -94,10 +90,8 @@ bool IntraWriter<MessageT>::Write(const MessagePtr& msg_ptr) {
   if (!WriterBase::IsInit()) {
     return false;
   }
-  return blocker_manager_->Publish<MessageT>(this->role_attr_.channel_name(),
-                                             msg_ptr);
+  return blocker_manager_->Publish<MessageT>(this->role_attr_.channel_name(), msg_ptr);
 }
 
 }  // namespace blocker
 }  // namespace autolink
-

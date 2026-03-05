@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -60,9 +59,7 @@ class CacheBuffer {
   bool Full() const { return capacity_ - 1 == tail_ - head_; }
   uint64_t Capacity() const { return capacity_; }
 
-  void SetFusionCallback(const FusionCallback& callback) {
-    fusion_callback_ = callback;
-  }
+  void SetFusionCallback(const FusionCallback& callback) { fusion_callback_ = callback; }
 
   void Fill(const T& value) {
     if (fusion_callback_) {
@@ -95,4 +92,3 @@ class CacheBuffer {
 
 }  // namespace data
 }  // namespace autolink
-

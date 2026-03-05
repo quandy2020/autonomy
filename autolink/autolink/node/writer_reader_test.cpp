@@ -19,15 +19,13 @@
 #include <thread>
 #include <vector>
 
-#include "gtest/gtest.h"
-
-#include "autolink/proto/unit_test.pb.h"
-
-#include "autolink/common/global_data.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/common/global_data.hpp"
 #include "autolink/init.hpp"
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
+#include "autolink/proto/unit_test.pb.h"
+#include "gtest/gtest.h"
 
 namespace autolink {
 
@@ -131,19 +129,17 @@ TEST(WriterReaderTest, messaging) {
   std::mutex mtx;
   std::vector<proto::UnitTest> recv_msgs;
   attr.set_node_name("reader_a");
-  Reader<proto::UnitTest> reader_a(
-      attr, [&](const std::shared_ptr<proto::UnitTest>& msg) {
-        std::lock_guard<std::mutex> lck(mtx);
-        recv_msgs.emplace_back(*msg);
-      });
+  Reader<proto::UnitTest> reader_a(attr, [&](const std::shared_ptr<proto::UnitTest>& msg) {
+    std::lock_guard<std::mutex> lck(mtx);
+    recv_msgs.emplace_back(*msg);
+  });
   EXPECT_TRUE(reader_a.Init());
 
   attr.set_node_name("reader_b");
-  Reader<proto::UnitTest> reader_b(
-      attr, [&](const std::shared_ptr<proto::UnitTest>& msg) {
-        std::lock_guard<std::mutex> lck(mtx);
-        recv_msgs.emplace_back(*msg);
-      });
+  Reader<proto::UnitTest> reader_b(attr, [&](const std::shared_ptr<proto::UnitTest>& msg) {
+    std::lock_guard<std::mutex> lck(mtx);
+    recv_msgs.emplace_back(*msg);
+  });
   EXPECT_TRUE(reader_b.Init());
 
   auto msg = std::make_shared<proto::UnitTest>();

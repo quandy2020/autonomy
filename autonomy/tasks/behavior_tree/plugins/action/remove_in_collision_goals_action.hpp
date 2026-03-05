@@ -18,12 +18,11 @@
 
 #include <string>
 
-#include "autonomy/tasks/navigator/proto/action.pb.h"
-#include "autonomy/tasks/navigator/proto/srv.pb.h"
-
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_service_node.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
+#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/navigator/proto/srv.pb.h"
 #include "behaviortree_cpp/json_export.h"
 
 namespace autonomy {
@@ -38,43 +37,42 @@ namespace action {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class RemoveInCollisionGoals : public BtServiceNode<proto::GetCosts>
-{
-public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::RemoveInCollisionGoals
-     * @param service_node_name Service name this node creates a client for
-     * @param conf BT node configuration
-     */
-    RemoveInCollisionGoals(const std::string& service_node_name, const BT::NodeConfiguration& conf);
+class RemoveInCollisionGoals : public BtServiceNode<proto::GetCosts> {
+ public:
+  /**
+   * @brief A constructor for nav2_behavior_tree::RemoveInCollisionGoals
+   * @param service_node_name Service name this node creates a client for
+   * @param conf BT node configuration
+   */
+  RemoveInCollisionGoals(const std::string& service_node_name, const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief The main override required by a BT service
-     * @return BT::NodeStatus Status of tick execution
-     */
-    void on_tick() override;
+  /**
+   * @brief The main override required by a BT service
+   * @return BT::NodeStatus Status of tick execution
+   */
+  void on_tick() override;
 
-    BT::NodeStatus on_completion(std::shared_ptr<proto::GetCosts::Response> response) override;
+  BT::NodeStatus on_completion(std::shared_ptr<proto::GetCosts::Response> response) override;
 
-    static BT::PortsList providedPorts() {
-        // Register JSON definitions for the types used in the ports
-        return providedBasicPorts(
-            {BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Original goals to remove from"),
-             BT::InputPort<double>("cost_threshold", 254.0, "Cost threshold for considering a goal in collision"),
-             BT::InputPort<bool>("use_footprint", true, "Whether to use footprint cost"),
-             BT::InputPort<bool>("consider_unknown_as_obstacle", false, "Whether to consider unknown cost as obstacle"),
-             BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Goals with in-collision goals removed"),
-             BT::InputPort<std::vector<proto::WaypointStatus>>(
-                 "input_waypoint_statuses", "Original waypoint_statuses to mark waypoint status from"),
-             BT::OutputPort<std::vector<proto::WaypointStatus>>(
-                 "output_waypoint_statuses", "Waypoint_statuses with in-collision waypoints marked")});
-    }
+  static BT::PortsList providedPorts() {
+    // Register JSON definitions for the types used in the ports
+    return providedBasicPorts(
+        {BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Original goals to remove from"),
+         BT::InputPort<double>("cost_threshold", 254.0, "Cost threshold for considering a goal in collision"),
+         BT::InputPort<bool>("use_footprint", true, "Whether to use footprint cost"),
+         BT::InputPort<bool>("consider_unknown_as_obstacle", false, "Whether to consider unknown cost as obstacle"),
+         BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Goals with in-collision goals removed"),
+         BT::InputPort<std::vector<proto::WaypointStatus>>("input_waypoint_statuses",
+                                                           "Original waypoint_statuses to mark waypoint status from"),
+         BT::OutputPort<std::vector<proto::WaypointStatus>>("output_waypoint_statuses",
+                                                            "Waypoint_statuses with in-collision waypoints marked")});
+  }
 
-private:
-    bool use_footprint_;
-    bool consider_unknown_as_obstacle_;
-    double cost_threshold_;
-    commsgs::planning_msgs::Goals input_goals_;
+ private:
+  bool use_footprint_;
+  bool consider_unknown_as_obstacle_;
+  double cost_threshold_;
+  commsgs::planning_msgs::Goals input_goals_;
 };
 
 }  // namespace action

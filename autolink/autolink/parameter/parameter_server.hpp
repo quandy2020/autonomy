@@ -16,15 +16,13 @@
 
 #pragma once
 
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "autolink/proto/parameter.pb.h"
-
 #include "autolink/parameter/parameter.hpp"
+#include "autolink/proto/parameter.pb.h"
 #include "autolink/service/service.hpp"
 
 namespace autolink {
@@ -89,4 +87,3 @@ class ParameterServer {
 };
 
 }  // namespace autolink
-

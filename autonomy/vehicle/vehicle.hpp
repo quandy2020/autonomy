@@ -40,50 +40,49 @@ namespace vehicle {
  * - ApplyCommand()：暂时只缓存最近一次控制指令，并在 info 中更新速度 /
  * 加速度等字段 以便上层可以看到最新期望值；实际硬件下发逻辑留作 TODO。
  */
-class Vehicle : public VehicleInterface
-{
-public:
-    /**
-     * Define Vehicle::SharedPtr type
-     */
-    AUTONOMY_SMART_PTR_DEFINITIONS(Vehicle);
+class Vehicle : public VehicleInterface {
+ public:
+  /**
+   * Define Vehicle::SharedPtr type
+   */
+  AUTONOMY_SMART_PTR_DEFINITIONS(Vehicle);
 
-    /**
-     * @brief 构造函数
-     * @param name 逻辑车辆名称（便于调试 / 日志）
-     */
-    explicit Vehicle(const std::string& name = "vehicle");
+  /**
+   * @brief 构造函数
+   * @param name 逻辑车辆名称（便于调试 / 日志）
+   */
+  explicit Vehicle(const std::string& name = "vehicle");
 
-    /**
-     * @brief 使用车辆 / 机器人模型参数初始化底层接口
-     */
-    bool Initialize(const ::autonomy::vehicle::proto::VehicleModel& model) override;
+  /**
+   * @brief 使用车辆 / 机器人模型参数初始化底层接口
+   */
+  bool Initialize(const ::autonomy::vehicle::proto::VehicleModel& model) override;
 
-    /**
-     * @brief 从内部缓存或底层读取当前车辆 / 机器人状态
-     */
-    bool GetVehicleInfo(::autonomy::vehicle::proto::VehicleInfo* info) override;
+  /**
+   * @brief 从内部缓存或底层读取当前车辆 / 机器人状态
+   */
+  bool GetVehicleInfo(::autonomy::vehicle::proto::VehicleInfo* info) override;
 
-    /**
-     * @brief 向底层发送运动学控制指令（当前仅缓存并更新 info）
-     */
-    bool ApplyCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command) override;
+  /**
+   * @brief 向底层发送运动学控制指令（当前仅缓存并更新 info）
+   */
+  bool ApplyCommand(const ::autonomy::vehicle::proto::KinematicsControlCommand& command) override;
 
-private:
-    // 顶层 Vehicle 聚合消息（header + model + info + command）
+ private:
+  // 顶层 Vehicle 聚合消息（header + model + info + command）
 
-    std::string name_;
+  std::string name_;
 
-    // 模型配置（尺寸、动力学约束等）
-    ::autonomy::vehicle::proto::VehicleModel model_;
+  // 模型配置（尺寸、动力学约束等）
+  ::autonomy::vehicle::proto::VehicleModel model_;
 
-    // 运行时状态缓存（用于上层查询）
-    ::autonomy::vehicle::proto::VehicleInfo info_;
+  // 运行时状态缓存（用于上层查询）
+  ::autonomy::vehicle::proto::VehicleInfo info_;
 
-    // 最近一次接收到的控制指令
-    ::autonomy::vehicle::proto::KinematicsControlCommand last_command_;
+  // 最近一次接收到的控制指令
+  ::autonomy::vehicle::proto::KinematicsControlCommand last_command_;
 
-    bool initialized_{false};
+  bool initialized_{false};
 };
 
 }  // namespace vehicle

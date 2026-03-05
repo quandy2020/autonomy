@@ -28,22 +28,21 @@ namespace displays {
  * @brief TemperatureDisplay
  * Temperature display
  */
-class TemperatureDisplay : public aviz::common::Display
-{
-public:
-    explicit TemperatureDisplay(const QString& name = "TemperatureDisplay");
-    ~TemperatureDisplay() override;
+class TemperatureDisplay : public aviz::common::Display {
+ public:
+  explicit TemperatureDisplay(const QString& name = "TemperatureDisplay");
+  ~TemperatureDisplay() override;
 
-    // Overrides from Display
-    void onInitialize() override;
+  // Overrides from Display
+  void onInitialize() override;
 
-    void onEnable() override;
-    void onDisable() override;
-    void update(float wall_dt, float ros_dt) override;
-    void reset() override;
+  void onEnable() override;
+  void onDisable() override;
+  void update(float wall_dt, float ros_dt) override;
+  void reset() override;
 
-private:
-    // Implementation details
+ private:
+  // Implementation details
 };
 
 }  // namespace displays

@@ -24,14 +24,12 @@ VisualizerApp::VisualizerApp(QApplication* qapp) : qapp_(qapp) {}
 VisualizerApp::~VisualizerApp() {}
 
 bool VisualizerApp::init(int argc, char** argv) {
-    (void)argc;
-    (void)argv;
-    return true;
+  (void)argc;
+  (void)argv;
+  return true;
 }
 
-void VisualizerApp::run() {
-    qapp_->exec();
-}
+void VisualizerApp::run() { qapp_->exec(); }
 
 }  // namespace common
 }  // namespace aviz

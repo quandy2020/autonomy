@@ -33,35 +33,32 @@ namespace motion_model {
 /// @tparam     StateT  State with which the motion model works.
 ///
 template <typename StateT>
-class StationaryMotionModel : public MotionModelInterface<StationaryMotionModel<StateT>>
-{
-public:
-    using State = StateT;
+class StationaryMotionModel : public MotionModelInterface<StationaryMotionModel<StateT>> {
+ public:
+  using State = StateT;
 
-protected:
-    // Allow the CRTP interface to call private functions.
-    friend MotionModelInterface<StationaryMotionModel<StateT>>;
+ protected:
+  // Allow the CRTP interface to call private functions.
+  friend MotionModelInterface<StationaryMotionModel<StateT>>;
 
-    ///
-    /// @brief      A crtp-called function that predicts the state forward.
-    ///
-    /// @param[in]  state  The current state vector
-    ///
-    /// @return     A const reference to the unchanged input state.
-    ///
-    inline const State& crtp_predict(const State& state, const std::chrono::nanoseconds&) const {
-        return state;
-    }
+  ///
+  /// @brief      A crtp-called function that predicts the state forward.
+  ///
+  /// @param[in]  state  The current state vector
+  ///
+  /// @return     A const reference to the unchanged input state.
+  ///
+  inline const State& crtp_predict(const State& state, const std::chrono::nanoseconds&) const { return state; }
 
-    ///
-    /// @brief      A crtp-called function that computes a Jacobian for the
-    /// stationary motion model.
-    ///
-    /// @return     An identity matrix.
-    ///
-    typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds&) const {
-        return Eigen::Matrix<typename State::Scalar, State::size(), State::size()>::Identity();
-    }
+  ///
+  /// @brief      A crtp-called function that computes a Jacobian for the
+  /// stationary motion model.
+  ///
+  /// @return     An identity matrix.
+  ///
+  typename State::Matrix crtp_jacobian(const State&, const std::chrono::nanoseconds&) const {
+    return Eigen::Matrix<typename State::Scalar, State::size(), State::size()>::Identity();
+  }
 };
 
 }  // namespace motion_model

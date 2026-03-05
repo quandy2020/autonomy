@@ -21,10 +21,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "glog/logging.h"
-
 #include "autolink/logger/log_file_object.hpp"
 #include "autolink/logger/logger_util.hpp"
+#include "glog/logging.h"
 
 namespace autolink {
 namespace logger {
@@ -34,15 +33,13 @@ static std::unordered_map<std::string, LogFileObject*> moduleLoggerMap;
 Logger::Logger(google::base::Logger* wrapped) : wrapped_(wrapped) {}
 
 Logger::~Logger() {
-  for (auto itr = moduleLoggerMap.begin(); itr != moduleLoggerMap.end();
-       ++itr) {
+  for (auto itr = moduleLoggerMap.begin(); itr != moduleLoggerMap.end(); ++itr) {
     delete itr->second;
   }
   moduleLoggerMap.clear();
 }
 
-void Logger::Write(bool force_flush, time_t timestamp, const char* message,
-                   size_t message_len) {
+void Logger::Write(bool force_flush, time_t timestamp, const char* message, size_t message_len) {
   std::string log_message = std::string(message, message_len);
   std::string module_name;
   // set the same bracket as the bracket in log.h
@@ -64,8 +61,7 @@ void Logger::Write(bool force_flush, time_t timestamp, const char* message,
     }
   }
   if (fileobject) {
-    fileobject->Write(force_flush, timestamp, log_message.c_str(),
-                      log_message.size());
+    fileobject->Write(force_flush, timestamp, log_message.c_str(), log_message.size());
   }
 }
 

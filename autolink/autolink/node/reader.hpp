@@ -16,7 +16,6 @@
 
 #pragma once
 
-
 #include <algorithm>
 #include <list>
 #include <memory>
@@ -26,13 +25,12 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/proto/topology_change.pb.h"
-
 #include "autolink/blocker/blocker.hpp"
 #include "autolink/common/global_data.hpp"
 #include "autolink/croutine/routine_factory.hpp"
 #include "autolink/data/data_visitor.hpp"
 #include "autolink/node/reader_base.hpp"
+#include "autolink/proto/topology_change.pb.h"
 #include "autolink/scheduler/scheduler_factory.hpp"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autolink/time/time.hpp"
@@ -69,10 +67,8 @@ class Reader : public ReaderBase {
   using SharedPtr = std::shared_ptr<Reader<MessageT>>;
   using BlockerPtr = std::unique_ptr<blocker::Blocker<MessageT>>;
   using ReceiverPtr = std::shared_ptr<transport::Receiver<MessageT>>;
-  using ChangeConnection =
-      typename service_discovery::Manager::ChangeConnection;
-  using Iterator =
-      typename std::list<std::shared_ptr<MessageT>>::const_iterator;
+  using ChangeConnection = typename service_discovery::Manager::ChangeConnection;
+  using Iterator = typename std::list<std::shared_ptr<MessageT>>::const_iterator;
 
   /**
    * Constructor a Reader object.
@@ -83,8 +79,7 @@ class Reader : public ReaderBase {
    * @warning the received messages is enqueue a queue,the queue's depth is
    * pending_queue_size
    */
-  explicit Reader(const proto::RoleAttributes& role_attr,
-                  const CallbackFunc<MessageT>& reader_func = nullptr,
+  explicit Reader(const proto::RoleAttributes& role_attr, const CallbackFunc<MessageT>& reader_func = nullptr,
                   uint32_t pending_queue_size = DEFAULT_PENDING_QUEUE_SIZE);
   virtual ~Reader();
 
@@ -227,14 +222,11 @@ class Reader : public ReaderBase {
 };
 
 template <typename MessageT>
-Reader<MessageT>::Reader(const proto::RoleAttributes& role_attr,
-                         const CallbackFunc<MessageT>& reader_func,
+Reader<MessageT>::Reader(const proto::RoleAttributes& role_attr, const CallbackFunc<MessageT>& reader_func,
                          uint32_t pending_queue_size)
-    : ReaderBase(role_attr),
-      pending_queue_size_(pending_queue_size),
-      reader_func_(reader_func) {
-  blocker_.reset(new blocker::Blocker<MessageT>(blocker::BlockerAttr(
-      role_attr.qos_profile().depth(), role_attr.channel_name())));
+    : ReaderBase(role_attr), pending_queue_size_(pending_queue_size), reader_func_(reader_func) {
+  blocker_.reset(
+      new blocker::Blocker<MessageT>(blocker::BlockerAttr(role_attr.qos_profile().depth(), role_attr.channel_name())));
 }
 
 template <typename MessageT>
@@ -270,11 +262,9 @@ bool Reader<MessageT>::Init() {
   }
   auto sched = scheduler::Instance();
   croutine_name_ = role_attr_.node_name() + "_" + role_attr_.channel_name();
-  auto dv = std::make_shared<data::DataVisitor<MessageT>>(
-      role_attr_.channel_id(), pending_queue_size_);
+  auto dv = std::make_shared<data::DataVisitor<MessageT>>(role_attr_.channel_id(), pending_queue_size_);
   // Using factory to wrap templates.
-  croutine::RoutineFactory factory =
-      croutine::CreateRoutineFactory<MessageT>(std::move(func), dv);
+  croutine::RoutineFactory factory = croutine::CreateRoutineFactory<MessageT>(std::move(func), dv);
   if (!sched->CreateTask(factory, croutine_name_)) {
     AERROR << "Create Task Failed!";
     init_.store(false);
@@ -283,8 +273,7 @@ bool Reader<MessageT>::Init() {
 
   receiver_ = ReceiverManager<MessageT>::Instance()->GetReceiver(role_attr_);
   this->role_attr_.set_id(receiver_->id().HashValue());
-  channel_manager_ =
-      service_discovery::TopologyManager::Instance()->channel_manager();
+  channel_manager_ = service_discovery::TopologyManager::Instance()->channel_manager();
   JoinTheTopology();
 
   return true;
@@ -307,8 +296,8 @@ void Reader<MessageT>::Shutdown() {
 template <typename MessageT>
 void Reader<MessageT>::JoinTheTopology() {
   // add listener
-  change_conn_ = channel_manager_->AddChangeListener(std::bind(
-      &Reader<MessageT>::OnChannelChange, this, std::placeholders::_1));
+  change_conn_ =
+      channel_manager_->AddChangeListener(std::bind(&Reader<MessageT>::OnChannelChange, this, std::placeholders::_1));
 
   // get peer writers
   const std::string& channel_name = this->role_attr_.channel_name();
@@ -317,8 +306,7 @@ void Reader<MessageT>::JoinTheTopology() {
   for (auto& writer : writers) {
     receiver_->Enable(writer);
   }
-  channel_manager_->Join(this->role_attr_, proto::RoleType::ROLE_READER,
-                         message::HasSerializer<MessageT>::value);
+  channel_manager_->Join(this->role_attr_, proto::RoleType::ROLE_READER, message::HasSerializer<MessageT>::value);
 }
 
 template <typename MessageT>
@@ -422,4 +410,3 @@ void Reader<MessageT>::GetWriters(std::vector<proto::RoleAttributes>* writers) {
 }
 
 }  // namespace autolink
-

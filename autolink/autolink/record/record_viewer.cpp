@@ -25,24 +25,16 @@
 namespace autolink {
 namespace record {
 
-RecordViewer::RecordViewer(const RecordReaderPtr& reader, uint64_t begin_time,
-                           uint64_t end_time,
+RecordViewer::RecordViewer(const RecordReaderPtr& reader, uint64_t begin_time, uint64_t end_time,
                            const std::set<std::string>& channels)
-    : begin_time_(begin_time),
-      end_time_(end_time),
-      channels_(channels),
-      readers_({reader}) {
+    : begin_time_(begin_time), end_time_(end_time), channels_(channels), readers_({reader}) {
   Init();
   UpdateTime();
 }
 
-RecordViewer::RecordViewer(const std::vector<RecordReaderPtr>& readers,
-                           uint64_t begin_time, uint64_t end_time,
+RecordViewer::RecordViewer(const std::vector<RecordReaderPtr>& readers, uint64_t begin_time, uint64_t end_time,
                            const std::set<std::string>& channels)
-    : begin_time_(begin_time),
-      end_time_(end_time),
-      channels_(channels),
-      readers_(readers) {
+    : begin_time_(begin_time), end_time_(end_time), channels_(channels), readers_(readers) {
   Init();
   UpdateTime();
 }
@@ -85,22 +77,20 @@ void RecordViewer::Init() {
   // Init the channel list
   for (auto& reader : readers_) {
     auto all_channel = reader->GetChannelList();
-    std::set_intersection(all_channel.begin(), all_channel.end(),
-                          channels_.begin(), channels_.end(),
+    std::set_intersection(all_channel.begin(), all_channel.end(), channels_.begin(), channels_.end(),
                           std::inserter(channel_list_, channel_list_.end()));
   }
   readers_finished_.resize(readers_.size(), false);
 
   // Sort the readers
-  std::sort(readers_.begin(), readers_.end(),
-            [](const RecordReaderPtr& lhs, const RecordReaderPtr& rhs) {
-              const auto& lhs_header = lhs->GetHeader();
-              const auto& rhs_header = rhs->GetHeader();
-              if (lhs_header.begin_time() == rhs_header.begin_time()) {
-                return lhs_header.end_time() < rhs_header.end_time();
-              }
-              return lhs_header.begin_time() < rhs_header.begin_time();
-            });
+  std::sort(readers_.begin(), readers_.end(), [](const RecordReaderPtr& lhs, const RecordReaderPtr& rhs) {
+    const auto& lhs_header = lhs->GetHeader();
+    const auto& rhs_header = rhs->GetHeader();
+    if (lhs_header.begin_time() == rhs_header.begin_time()) {
+      return lhs_header.end_time() < rhs_header.end_time();
+    }
+    return lhs_header.begin_time() < rhs_header.begin_time();
+  });
 }
 
 void RecordViewer::Reset() {
@@ -149,8 +139,7 @@ bool RecordViewer::FillBuffer() {
     }
 
     for (size_t i = 0; i < readers_.size(); ++i) {
-      if (!readers_finished_[i] &&
-          readers_[i]->GetHeader().end_time() < this_begin_time) {
+      if (!readers_finished_[i] && readers_[i]->GetHeader().end_time() < this_begin_time) {
         readers_finished_[i] = true;
         readers_[i]->Reset();
       }
@@ -163,8 +152,7 @@ bool RecordViewer::FillBuffer() {
       auto& reader = readers_[i];
       while (true) {
         auto record_msg = std::make_shared<RecordMessage>();
-        if (!reader->ReadMessage(record_msg.get(), this_begin_time,
-                                 this_end_time)) {
+        if (!reader->ReadMessage(record_msg.get(), this_begin_time, this_end_time)) {
           break;
         }
         msg_buffer_.emplace(std::make_pair(record_msg->time, record_msg));
@@ -178,8 +166,7 @@ bool RecordViewer::FillBuffer() {
   return !msg_buffer_.empty();
 }
 
-RecordViewer::Iterator::Iterator(RecordViewer* viewer, bool end)
-    : end_(end), viewer_(viewer) {
+RecordViewer::Iterator::Iterator(RecordViewer* viewer, bool end) : end_(end), viewer_(viewer) {
   if (end_) {
     return;
   }
@@ -196,9 +183,7 @@ bool RecordViewer::Iterator::operator==(Iterator const& other) const {
   return index_ == other.index_ && viewer_ == other.viewer_;
 }
 
-bool RecordViewer::Iterator::operator!=(const Iterator& rhs) const {
-  return !(*this == rhs);
-}
+bool RecordViewer::Iterator::operator!=(const Iterator& rhs) const { return !(*this == rhs); }
 
 RecordViewer::Iterator& RecordViewer::Iterator::operator++() {
   index_++;
@@ -208,13 +193,9 @@ RecordViewer::Iterator& RecordViewer::Iterator::operator++() {
   return *this;
 }
 
-RecordViewer::Iterator::pointer RecordViewer::Iterator::operator->() {
-  return &message_instance_;
-}
+RecordViewer::Iterator::pointer RecordViewer::Iterator::operator->() { return &message_instance_; }
 
-RecordViewer::Iterator::reference RecordViewer::Iterator::operator*() {
-  return message_instance_;
-}
+RecordViewer::Iterator::reference RecordViewer::Iterator::operator*() { return message_instance_; }
 
 }  // namespace record
 }  // namespace autolink

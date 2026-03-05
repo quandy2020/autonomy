@@ -19,13 +19,13 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "gtest/gtest.h"
 
 #include "autolink/common/global_data.hpp"
 #include "autolink/message/message_traits.hpp"
 #include "autolink/message/protobuf_factory.hpp"
 #include "autolink/proto/unit_test.pb.h"
 #include "autolink/transport/common/identity.hpp"
+#include "gtest/gtest.h"
 
 namespace autolink {
 namespace service_discovery {
@@ -40,12 +40,10 @@ class ChannelManagerTest : public ::testing::Test {
     // add writers
     for (int i = 0; i < channel_num_; ++i) {
       role_attr.set_node_name("node_" + std::to_string(i));
-      uint64_t node_id =
-          common::GlobalData::RegisterNode(role_attr.node_name());
+      uint64_t node_id = common::GlobalData::RegisterNode(role_attr.node_name());
       role_attr.set_node_id(node_id);
       role_attr.set_channel_name("channel_" + std::to_string(i));
-      uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(
-          role_attr.channel_name());
+      uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
       role_attr.set_channel_id(channel_id);
       transport::Identity id;
       role_attr.set_id(id.HashValue());
@@ -55,12 +53,10 @@ class ChannelManagerTest : public ::testing::Test {
     // add readers
     for (int i = 0; i < channel_num_; ++i) {
       role_attr.set_node_name("node_" + std::to_string(i));
-      uint64_t node_id =
-          common::GlobalData::RegisterNode(role_attr.node_name());
+      uint64_t node_id = common::GlobalData::RegisterNode(role_attr.node_name());
       role_attr.set_node_id(node_id);
       role_attr.set_channel_name("channel_" + std::to_string(i));
-      uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(
-          role_attr.channel_name());
+      uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
       role_attr.set_channel_id(channel_id);
       transport::Identity id;
       role_attr.set_id(id.HashValue());
@@ -127,8 +123,7 @@ TEST_F(ChannelManagerTest, get_proto_desc) {
   transport::Identity id_1;
   role_attr.set_id(id_1.HashValue());
   std::string tmp("");
-  message::GetDescriptorString<proto::Chatter>(
-      message::MessageType<proto::Chatter>(), &tmp);
+  message::GetDescriptorString<proto::Chatter>(message::MessageType<proto::Chatter>(), &tmp);
   role_attr.set_proto_desc(tmp);
   EXPECT_FALSE(channel_manager_.Join(role_attr, RoleType::ROLE_WRITER));
 
@@ -155,8 +150,7 @@ TEST_F(ChannelManagerTest, get_writers_attr) {
 
   writers.clear();
   for (int i = 0; i < channel_num_; ++i) {
-    channel_manager_.GetWritersOfChannel("channel_" + std::to_string(i),
-                                         &writers);
+    channel_manager_.GetWritersOfChannel("channel_" + std::to_string(i), &writers);
     EXPECT_EQ(writers.size(), 1);
     writers.clear();
     channel_manager_.GetWritersOfNode("node_" + std::to_string(i), &writers);
@@ -174,8 +168,7 @@ TEST_F(ChannelManagerTest, get_writers_attr) {
   // add writers
   for (int i = 0; i < 100; ++i) {
     role_attr.set_channel_name("channel_" + std::to_string(i));
-    uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(
-        role_attr.channel_name());
+    uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
     role_attr.set_channel_id(channel_id);
     transport::Identity id;
     role_attr.set_id(id.HashValue());
@@ -202,8 +195,7 @@ TEST_F(ChannelManagerTest, get_readers_attr) {
 
   readers.clear();
   for (int i = 0; i < channel_num_; ++i) {
-    channel_manager_.GetReadersOfChannel("channel_" + std::to_string(i),
-                                         &readers);
+    channel_manager_.GetReadersOfChannel("channel_" + std::to_string(i), &readers);
     EXPECT_EQ(readers.size(), 1);
     readers.clear();
     channel_manager_.GetReadersOfNode("node_" + std::to_string(i), &readers);
@@ -235,8 +227,7 @@ TEST_F(ChannelManagerTest, get_readers_attr) {
   // add readers
   for (int i = 0; i < 100; ++i) {
     role_attr.set_channel_name("channel_" + std::to_string(i));
-    uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(
-        role_attr.channel_name());
+    uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
     role_attr.set_channel_id(channel_id);
     transport::Identity id;
     role_attr.set_id(id.HashValue());
@@ -292,15 +283,13 @@ TEST_F(ChannelManagerTest, get_upstream_downstream) {
   uint64_t node_id = common::GlobalData::RegisterNode(role_attr.node_name());
   role_attr.set_node_id(node_id);
   role_attr.set_channel_name("a");
-  uint64_t channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  uint64_t channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_WRITER);
 
   role_attr.set_channel_name("b");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_WRITER);
@@ -309,15 +298,13 @@ TEST_F(ChannelManagerTest, get_upstream_downstream) {
   node_id = common::GlobalData::RegisterNode(role_attr.node_name());
   role_attr.set_node_id(node_id);
   role_attr.set_channel_name("c");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_WRITER);
 
   role_attr.set_channel_name("a");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_READER);
@@ -326,15 +313,13 @@ TEST_F(ChannelManagerTest, get_upstream_downstream) {
   node_id = common::GlobalData::RegisterNode(role_attr.node_name());
   role_attr.set_node_id(node_id);
   role_attr.set_channel_name("b");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_READER);
 
   role_attr.set_channel_name("d");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_WRITER);
@@ -343,15 +328,13 @@ TEST_F(ChannelManagerTest, get_upstream_downstream) {
   node_id = common::GlobalData::RegisterNode(role_attr.node_name());
   role_attr.set_node_id(node_id);
   role_attr.set_channel_name("c");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_READER);
 
   role_attr.set_channel_name("d");
-  channel_id =
-      common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
+  channel_id = common::GlobalData::Instance()->RegisterChannel(role_attr.channel_name());
   role_attr.set_channel_id(channel_id);
   role_attr.set_id(transport::Identity().HashValue());
   channel_manager_.Join(role_attr, RoleType::ROLE_READER);
@@ -411,22 +394,15 @@ TEST_F(ChannelManagerTest, get_upstream_downstream) {
 }
 
 TEST_F(ChannelManagerTest, is_message_type_matching) {
-  const std::string raw_msg_type_1 =
-      message::MessageType<message::RawMessage>();
-  const std::string py_msg_type =
-      message::MessageType<message::PyMessageWrap>();
+  const std::string raw_msg_type_1 = message::MessageType<message::RawMessage>();
+  const std::string py_msg_type = message::MessageType<message::PyMessageWrap>();
   const std::string chatter_msg_type = message::MessageType<proto::Chatter>();
   const std::string change_msg_type = message::MessageType<proto::ChangeMsg>();
-  EXPECT_TRUE(channel_manager_.IsMessageTypeMatching(chatter_msg_type,
-                                                     chatter_msg_type));
-  EXPECT_FALSE(channel_manager_.IsMessageTypeMatching(chatter_msg_type,
-                                                      change_msg_type));
-  EXPECT_TRUE(
-      channel_manager_.IsMessageTypeMatching(chatter_msg_type, raw_msg_type_1));
-  EXPECT_TRUE(
-      channel_manager_.IsMessageTypeMatching(chatter_msg_type, py_msg_type));
-  EXPECT_TRUE(
-      channel_manager_.IsMessageTypeMatching(raw_msg_type_1, py_msg_type));
+  EXPECT_TRUE(channel_manager_.IsMessageTypeMatching(chatter_msg_type, chatter_msg_type));
+  EXPECT_FALSE(channel_manager_.IsMessageTypeMatching(chatter_msg_type, change_msg_type));
+  EXPECT_TRUE(channel_manager_.IsMessageTypeMatching(chatter_msg_type, raw_msg_type_1));
+  EXPECT_TRUE(channel_manager_.IsMessageTypeMatching(chatter_msg_type, py_msg_type));
+  EXPECT_TRUE(channel_manager_.IsMessageTypeMatching(raw_msg_type_1, py_msg_type));
 }
 
 }  // namespace service_discovery

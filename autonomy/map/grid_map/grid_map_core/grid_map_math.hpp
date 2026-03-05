@@ -18,8 +18,8 @@
 namespace grid_map {
 
 union Color {
-    unsigned long longColor_;
-    float floatColor_;
+  unsigned long longColor_;
+  float floatColor_;
 };
 
 /*!
