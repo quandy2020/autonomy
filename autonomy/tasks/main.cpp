@@ -19,7 +19,7 @@
 #include <cstdlib>
 
 #include "autolink/autolink.hpp"
-#include "autolink/common/init.hpp"
+#include "autolink/init.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/version.hpp"
 #include "autonomy/tasks/navigator/bt_navigator.hpp"

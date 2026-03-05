@@ -22,12 +22,20 @@
 
 include(FindPackageHandleStandardArgs)
 
-# Try CMake config packages first (preferred when provided by system). Use CONFIG
-# to avoid recursively invoking this Find module.
-find_package(fastdds CONFIG QUIET)
-find_package(fastcdr CONFIG QUIET)
+# In ROS, the library is typically libfastrtps.so (not libfastdds.so); prefer
+# module search so we get the actual library path and avoid "cannot find -lfastdds".
+if(DEFINED ENV{ROS_DISTRO})
+  set(_FastDDS_skip_config TRUE)
+endif()
 
-if (TARGET fastdds AND TARGET fastcdr)
+# Try CMake config packages first (when not in ROS). Use CONFIG to avoid
+# recursively invoking this Find module.
+if(NOT _FastDDS_skip_config)
+  find_package(fastdds CONFIG QUIET)
+  find_package(fastcdr CONFIG QUIET)
+endif()
+
+if (NOT _FastDDS_skip_config AND TARGET fastdds AND TARGET fastcdr)
   # Both imported targets are available
   set(FastDDS_FOUND TRUE)
   # Try to extract include dirs if the packages export variables

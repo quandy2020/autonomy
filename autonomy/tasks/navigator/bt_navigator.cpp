@@ -73,7 +73,7 @@ constexpr char kNavigatorBaseClass[] = "autonomy::tasks::common::NavigatorBase";
 }  // namespace
 
 BtNavigator::BtNavigator(std::shared_ptr<::autolink::Node> node, const autonomy::tasks::proto::TaskOptions& options)
-    : node_(node), class_loader_(kNavigatorBaseClass, std::vector<std::string>{}), options_(options) {
+    : node_(node), options_(options) {
     AINFO << "BtNavigator creating (with node and options)";
 }
 

@@ -111,9 +111,6 @@ if(${BUILD_FOXGLOVE})
   include("${PROJECT_SOURCE_DIR}/3rdparty/foxglove/autonomy_foxglove_vendor.cmake")
 endif()
 
-# add autolink
-add_subdirectory(autolink)
-
 if (${BUILD_GRPC})
   find_package(gRPC REQUIRED)
 endif()
@@ -510,6 +507,7 @@ if(${BUILD_GRPC})
   # endif()
 endif()
 
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${FastDDS_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   OpenSSL::Crypto
   OpenSSL::SSL
@@ -525,8 +523,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
 # urdfdom_headers and urdfdom (for transform/urdf)
 target_link_libraries(${PROJECT_NAME} PUBLIC urdfdom_headers urdf_parser)
 
-# autolink
+# autolink (system install typically at /usr/local)
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC /usr/local/include)
 
 # ADOL-C (Automatic Differentiation Library)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
@@ -654,7 +653,7 @@ if (${BUILD_EXAMPLES})
 endif()
 
 install(
-  TARGETS ${PROJECT_NAME} autolink
+  TARGETS ${PROJECT_NAME}
   EXPORT AutonomyExport
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
