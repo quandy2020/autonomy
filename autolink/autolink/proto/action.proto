@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+// Goal UUID (16 bytes for RFC-4122)
+message GoalUUID {
+  bytes uuid = 1;
+}
+
+// SendGoal service
+message SendGoalRequest {
+  GoalUUID goal_id = 1;
+  bytes goal = 2;  // serialized action goal message
+}
+
+message SendGoalResponse {
+  bool accepted = 1;
+  int64 stamp_sec = 2;
+  uint32 stamp_nanosec = 3;
+}
+
+// CancelGoal service
+message CancelGoalRequest {
+  GoalUUID goal_id = 1;
+}
+
+message CancelGoalResponse {
+  int32 return_code = 1;
+  repeated GoalUUID goals_canceling = 2;
+}
+
+// GetResult service
+message GetResultRequest {
+  GoalUUID goal_id = 1;
+}
+
+message GetResultResponse {
+  int32 status = 1;
+  bytes result = 2;
+}
+
+// Feedback message (for action feedback channel)
+message FeedbackMessage {
+  GoalUUID goal_id = 1;
+  bytes feedback = 2;
+}

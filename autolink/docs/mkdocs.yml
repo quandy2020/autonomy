@@ -1,0 +1,29 @@
+# MkDocs 配置：文档源目录为 source/
+site_name: Autolink
+docs_dir: source
+site_dir: site
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 深色
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 浅色
+plugins:
+  - search
+nav:
+  - 首页: index.md
+  - 快速开始: autolink_quick_start_cn.md
+  - 术语: autolink_terms.md
+  - 调度器: autolink_scheduler_cn.md
+  - 开发者 API: autolink_api_for_developers.md
+  - Python API: autolink_python_api_cn.md
+  - 开发者工具: autolink_developer_tools.md
+  - 常见问题: autolink_faqs.md

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+import "classic_conf.proto";
+import "choreography_conf.proto";
+
+message InnerThread {
+  string name = 1;
+  string cpuset = 2;
+  string policy = 3;
+  uint32 prio = 4;
+}
+
+message SchedulerConf {
+  string policy = 1;
+  uint32 routine_num = 2;
+  uint32 default_proc_num = 3;
+  string process_level_cpuset = 4;
+  repeated InnerThread threads = 5;
+  ClassicConf classic_conf = 6;
+  ChoreographyConf choreography_conf = 7;
+}
