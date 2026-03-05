@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief MoveTool
- * Similar to rviz_default_plugins::tools::MoveTool
+ * Move tool for the visualizer
  */
 class MoveTool
 {

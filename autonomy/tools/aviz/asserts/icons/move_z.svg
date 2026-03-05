@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.2 r9819"
    sodipodi:docname="move_z.svg"
-   inkscape:export-filename="/work/gossow/rviz/rviz/icons/move_z.png"
+   inkscape:export-filename="aviz/icons/move_z.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -279,7 +279,7 @@
        sodipodi:nodetypes="ccccccccccc"
        inkscape:path-effect="#path-effect3829"
        inkscape:original-d="m 7.9924906,-0.72049865 -3.0866795,4.07390575 2.062939,10e-8 L 6.4530153,9.0264898 4.3900762,9.5422244 7.9924906,14.751544 11.610363,9.5422244 9.5474241,9.0264898 9.0316894,3.3534072 l 2.0629356,-10e-8 z"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/rect5573-9.png"
+       inkscape:export-filename="aviz/icons/rect5573-9.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
   </g>

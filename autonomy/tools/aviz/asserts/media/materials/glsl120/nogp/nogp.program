@@ -4,9 +4,9 @@
 // and each one is offset according to its texture coords.
 
 //includes:
-vertex_program rviz/glsl120/nogp/pass_depth.vert glsl { source pass_depth.vert }
+vertex_program aviz/glsl120/nogp/pass_depth.vert glsl { source pass_depth.vert }
 
-vertex_program rviz/glsl120/nogp/billboard_tile.vert glsl
+vertex_program aviz/glsl120/nogp/billboard_tile.vert glsl
 {
   source billboard_tile.vert
   default_params
@@ -17,11 +17,11 @@ vertex_program rviz/glsl120/nogp/billboard_tile.vert glsl
     param_named_auto up custom 4
   }
 }
-vertex_program rviz/glsl120/nogp/billboard_tile.vert(with_depth) glsl
+vertex_program aviz/glsl120/nogp/billboard_tile.vert(with_depth) glsl
 {
   source billboard_tile.vert
   preprocessor_defines WITH_DEPTH=1
-  attach rviz/glsl120/nogp/pass_depth.vert
+  attach aviz/glsl120/nogp/pass_depth.vert
   default_params
   {
     param_named_auto worldviewproj_matrix worldviewproj_matrix
@@ -33,7 +33,7 @@ vertex_program rviz/glsl120/nogp/billboard_tile.vert(with_depth) glsl
 }
 
 
-vertex_program rviz/glsl120/nogp/billboard.vert glsl
+vertex_program aviz/glsl120/nogp/billboard.vert glsl
 {
   source billboard.vert
   default_params {
@@ -43,11 +43,11 @@ vertex_program rviz/glsl120/nogp/billboard.vert glsl
     param_named_auto auto_size custom     6
   }
 }
-vertex_program rviz/glsl120/nogp/billboard.vert(with_depth) glsl
+vertex_program aviz/glsl120/nogp/billboard.vert(with_depth) glsl
 {
   source billboard.vert
   preprocessor_defines WITH_DEPTH=1
-  attach rviz/glsl120/nogp/pass_depth.vert
+  attach aviz/glsl120/nogp/pass_depth.vert
   default_params {
     param_named_auto worldviewproj_matrix worldviewproj_matrix
     param_named_auto worldview_matrix     worldview_matrix
@@ -58,7 +58,7 @@ vertex_program rviz/glsl120/nogp/billboard.vert(with_depth) glsl
 }
 
 
-vertex_program rviz/glsl120/nogp/box.vert glsl
+vertex_program aviz/glsl120/nogp/box.vert glsl
 {
   source box.vert
   default_params {
@@ -67,11 +67,11 @@ vertex_program rviz/glsl120/nogp/box.vert glsl
     param_named_auto auto_size custom     6
   }
 }
-vertex_program rviz/glsl120/nogp/box.vert(with_depth) glsl
+vertex_program aviz/glsl120/nogp/box.vert(with_depth) glsl
 {
   source box.vert
   preprocessor_defines WITH_DEPTH=1
-  attach rviz/glsl120/nogp/pass_depth.vert
+  attach aviz/glsl120/nogp/pass_depth.vert
   default_params {
     param_named_auto worldviewproj_matrix worldviewproj_matrix
     param_named_auto worldview_matrix     worldview_matrix
@@ -81,7 +81,7 @@ vertex_program rviz/glsl120/nogp/box.vert(with_depth) glsl
 }
 
 
-fragment_program rviz/glsl120/nogp/box.frag glsl
+fragment_program aviz/glsl120/nogp/box.frag glsl
 {
   source box.frag
   default_params

@@ -25,7 +25,7 @@ namespace robot {
 
 /**
  * @brief Robot
- * Similar to rviz_default_plugins::robot::Robot
+ * Robot model for the visualizer
  *
  * Main robot class managing links and joints
  */

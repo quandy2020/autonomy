@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief EffortDisplay
- * Similar to rviz_default_plugins::displays::EffortDisplay
+ * Effort display
  */
 class EffortDisplay : public aviz::common::Display
 {

@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.2 r9819"
    sodipodi:docname="move2d.svg"
-   inkscape:export-filename="/work/gossow/rviz/rviz/icons/move2d.png"
+   inkscape:export-filename="aviz/icons/move2d.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -287,7 +287,7 @@
        d="M 8.0000005,0.53575311 4.9539726,3.581701 l 2.0073696,0 0,8.836596 -2.0073696,0 3.0460279,3.045948 3.0460275,-3.045948 -2.0181023,0 0,-8.836596 2.0181023,0 z"
        style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.0715096;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        sodipodi:nodetypes="ccccccccccc"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path4190.png"
+       inkscape:export-filename="aviz/icons/path4190.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
   </g>

@@ -40,7 +40,7 @@ AutolinkNodeAbstractionIface::WeakPtr AutolinkClientAbstraction::init(int argc, 
     }
 
     // If we already have a node abstraction, make sure we're not silently
-    // changing the node name – mirror rviz behavior and report an error.
+    // changing the node name – report an error.
     if (node_abstraction_) {
         if (node_abstraction_->get_node_name() != node_name) {
             throw std::runtime_error("AutolinkClientAbstraction already initialized with node name '" +

@@ -32,7 +32,7 @@ namespace autolink_integration {
 /**
  * @brief Abstract interface for an Autolink node used by aviz.
  *
- * This is similar to rviz_common::ros_integration::RosNodeAbstractionIface
+ * Node abstraction interface for the visualization backend
  * but wraps an autolink::Node and exposes Autolink specific information.
  */
 class AutolinkNodeAbstractionIface

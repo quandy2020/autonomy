@@ -30,7 +30,7 @@
 
 /**
  * @brief Base class for displays that subscribe to Autolink topics
- * Similar to rviz_common::RosTopicDisplay
+ * Topic-based display for Autolink channels
  *
  * This class handles subscribing and unsubscribing to Autolink channels
  * when the display is enabled or disabled.

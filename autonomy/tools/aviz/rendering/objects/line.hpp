@@ -42,7 +42,7 @@ namespace rendering {
 
 /**
  * @brief Line rendering object
- * Similar to rviz_rendering::Line
+ * Line visualization object
  *
  * Represents a straight wireframe line between two points
  */

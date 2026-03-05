@@ -20,7 +20,7 @@
 
 /**
  * @brief Resource loading utilities
- * Similar to rviz_common::load_resource
+ * Load resource from package or path
  *
  * Provides functions to load resources (files, shaders, etc.) from various locations
  */

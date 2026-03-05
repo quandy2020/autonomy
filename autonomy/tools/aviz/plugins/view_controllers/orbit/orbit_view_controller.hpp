@@ -25,7 +25,7 @@ namespace view_controllers {
 
 /**
  * @brief OrbitViewController
- * Similar to rviz_default_plugins::view_controllers::OrbitViewController
+ * Orbit view controller
  */
 class OrbitViewController
 {

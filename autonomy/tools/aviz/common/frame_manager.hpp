@@ -30,7 +30,7 @@ namespace common {
 
 /**
  * @brief Simple FrameManager implementation
- * Similar to rviz_common::FrameManager
+ * Frame manager for fixed frame and transform lookup
  *
  * Manages coordinate frame transformations
  */

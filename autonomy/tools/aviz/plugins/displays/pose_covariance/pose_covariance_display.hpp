@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief PoseCovarianceDisplay
- * Similar to rviz_default_plugins::displays::PoseCovarianceDisplay
+ * Pose covariance display
  */
 class PoseCovarianceDisplay : public aviz::common::Display
 {

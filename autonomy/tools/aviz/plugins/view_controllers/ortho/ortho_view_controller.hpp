@@ -25,7 +25,7 @@ namespace view_controllers {
 
 /**
  * @brief OrthoViewController
- * Similar to rviz_default_plugins::view_controllers::OrthoViewController
+ * Orthographic view controller
  */
 class OrthoViewController
 {

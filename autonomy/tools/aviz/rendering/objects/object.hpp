@@ -35,7 +35,7 @@ namespace rendering {
 
 /**
  * @brief Base class for visible objects
- * Similar to rviz_rendering::Object
+ * Base object for scene entities
  *
  * Provides a minimal generic interface for rendering objects in the scene using Ogre
  */

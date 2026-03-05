@@ -29,7 +29,7 @@ namespace rendering {
 
 /**
  * @brief Geometry utility functions
- * Similar to rviz_rendering::geometry
+ * Geometry utilities for rendering
  */
 
 /// Return the input angle mapped back to the range 0 to 2*PI

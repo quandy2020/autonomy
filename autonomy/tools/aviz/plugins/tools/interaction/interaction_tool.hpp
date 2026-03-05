@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief InteractionTool
- * Similar to rviz_default_plugins::tools::InteractionTool
+ * Interaction tool for the visualizer
  */
 class InteractionTool
 {

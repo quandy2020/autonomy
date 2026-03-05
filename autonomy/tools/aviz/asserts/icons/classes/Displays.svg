@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.3.1 r9886"
    sodipodi:docname="Displays.svg"
-   inkscape:export-filename="/work/gossow/rviz/rviz/icons/visibility.png"
+   inkscape:export-filename="aviz/icons/visibility.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -397,7 +397,7 @@
        d="m 6.9106193,10.4725 0,2.7775 -0.5297939,0 -3.1787625,1.4076 0.264897,1.0924 3.9734523,0 1.0595878,0 3.973452,0 0.264897,-1.0924 -3.178762,-1.4076 -0.529793,0 0,-2.7775 -0.529794,0 -1.0595878,0 z"
        id="path4517"
        inkscape:connector-curvature="0"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/classes/path4517.png"
+       inkscape:export-filename="aviz/icons/classes/path4517.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90"
        sodipodi:nodetypes="ccccccccccccccc" />

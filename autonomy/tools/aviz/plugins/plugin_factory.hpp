@@ -32,7 +32,7 @@ class DisplayContext;
 
 /**
  * @brief Plugin description - metadata about a display plugin
- * Similar to rviz pluginlib plugin description
+ * Plugin description for the factory
  */
 struct PluginDescription {
     std::string class_id;                    // e.g., "aviz/RobotModel"
@@ -44,7 +44,7 @@ struct PluginDescription {
 
 /**
  * @brief Plugin factory for creating Display instances
- * Similar to rviz_common::PluginlibFactory
+ * Factory for creating display/tool/controller plugins by class id
  */
 class PluginFactory
 {

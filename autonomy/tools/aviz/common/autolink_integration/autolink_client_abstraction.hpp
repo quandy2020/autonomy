@@ -33,7 +33,7 @@ namespace autolink_integration {
 /**
  * @brief Thin client-side helper around the global Autolink Init/Clear API.
  *
- * This is conceptually similar to rviz_common::ros_integration::RosClientAbstraction:
+ * Client-side helper for Autolink init and node abstraction:
  *  - initializes Autolink once per process
  *  - creates a single AutolinkNodeAbstraction used by the visualization
  *  - provides ok() and shutdown() helpers

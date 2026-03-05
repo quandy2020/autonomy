@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.2 r9819"
    sodipodi:docname="moverotate.svg"
-   inkscape:export-filename="/work/gossow/rviz/rviz/icons/moverotate.png"
+   inkscape:export-filename="aviz/icons/moverotate.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -315,7 +315,7 @@
        d="M 2,8 0.49999996,8.8660254 -1,9.7320508 -1,8 -1,6.2679492 0.50000004,7.1339746 z"
        inkscape:transform-center-x="0.54166661"
        transform="matrix(-1.0833333,0,0,1.7320509,2.4166667,-5.8564069)"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path3809.png"
+       inkscape:export-filename="aviz/icons/path3809.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
     <path
@@ -335,13 +335,13 @@
        d="M 2,8 0.49999996,8.8660254 -1,9.7320508 -1,8 -1,6.2679492 0.50000004,7.1339746 z"
        inkscape:transform-center-x="-0.54166659"
        transform="matrix(1.0833333,0,0,-1.7320509,13.583333,21.856407)"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path3809.png"
+       inkscape:export-filename="aviz/icons/path3809.png"
        inkscape:export-xdpi="90"
        inkscape:export-ydpi="90" />
     <path
        inkscape:export-ydpi="90"
        inkscape:export-xdpi="90"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path3809.png"
+       inkscape:export-filename="aviz/icons/path3809.png"
        transform="matrix(0,1.0833333,1.7320509,0,-5.8564063,13.583333)"
        d="M 2,8 0.49999996,8.8660254 -1,9.7320508 -1,8 -1,6.2679492 0.50000004,7.1339746 z"
        inkscape:randomized="0"
@@ -361,7 +361,7 @@
     <path
        inkscape:export-ydpi="90"
        inkscape:export-xdpi="90"
-       inkscape:export-filename="/work/gossow/rviz/rviz/icons/path3809.png"
+       inkscape:export-filename="aviz/icons/path3809.png"
        transform="matrix(0,-1.0833333,-1.7320509,0,21.856407,2.4166667)"
        d="M 2,8 0.49999996,8.8660254 -1,9.7320508 -1,8 -1,6.2679492 0.50000004,7.1339746 z"
        inkscape:randomized="0"

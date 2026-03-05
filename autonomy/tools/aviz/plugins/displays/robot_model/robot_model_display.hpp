@@ -31,7 +31,7 @@ namespace displays {
 
 /**
  * @brief RobotModelDisplay
- * Similar to rviz_default_plugins::displays::RobotModelDisplay
+ * Robot model display
  *
  * Displays robot model from URDF
  */

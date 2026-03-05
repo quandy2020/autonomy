@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief GridCellsDisplay
- * Similar to rviz_default_plugins::displays::GridCellsDisplay
+ * Grid cells display
  */
 class GridCellsDisplay : public aviz::common::Display
 {

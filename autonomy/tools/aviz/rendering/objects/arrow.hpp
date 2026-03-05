@@ -40,7 +40,7 @@ class Shape;
 
 /**
  * @brief Arrow rendering object
- * Similar to rviz_rendering::Arrow
+ * Arrow visualization object
  *
  * An arrow consisting of a cylinder (shaft) and a cone (head)
  * The base of the arrow is at the position sent to setPosition().

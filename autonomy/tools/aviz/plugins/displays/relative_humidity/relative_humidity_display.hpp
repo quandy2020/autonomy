@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief RelativeHumidityDisplay
- * Similar to rviz_default_plugins::displays::RelativeHumidityDisplay
+ * Relative humidity display
  */
 class RelativeHumidityDisplay : public aviz::common::Display
 {

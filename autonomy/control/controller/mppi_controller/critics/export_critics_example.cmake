@@ -19,7 +19,7 @@
 # 可以将其内容集成到 controller_plugins.cmake 中
 
 # 包含 autolink_export_plugin 函数
-include("${PROJECT_SOURCE_DIR}/../autolink/cmake/autolink_export_plugin.cmake")
+include("${PROJECT_SOURCE_DIR}/autolink/cmake/autolink_export_plugin.cmake")
 
 # 定义所有 critics
 set(MPPI_CRITICS

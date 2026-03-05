@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief PoseTool
- * Similar to rviz_default_plugins::tools::PoseTool
+ * Pose tool for the visualizer
  */
 class PoseTool
 {

@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief FluidPressureDisplay
- * Similar to rviz_default_plugins::displays::FluidPressureDisplay
+ * Fluid pressure display
  */
 class FluidPressureDisplay : public aviz::common::Display
 {

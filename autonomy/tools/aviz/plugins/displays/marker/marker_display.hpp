@@ -39,7 +39,7 @@ namespace displays {
 
 /**
  * @brief MarkerDisplay
- * Similar to rviz_default_plugins::displays::MarkerDisplay
+ * Marker display
  *
  * Displays visualization_msgs::Marker messages
  */

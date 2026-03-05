@@ -33,7 +33,7 @@ namespace displays {
 
 /**
  * @brief AxesDisplay
- * Similar to rviz_default_plugins::displays::AxesDisplay
+ * Axes display
  *
  * Displays a set of X/Y/Z axes at a reference frame
  */

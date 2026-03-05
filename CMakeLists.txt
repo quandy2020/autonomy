@@ -141,6 +141,8 @@ install(DIRECTORY cmake DESTINATION share/autonomy/)
 # This must also be done before examples so plugin libraries are available for linking
 include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
 
+# autolink
+add_subdirectory(autolink)
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
@@ -578,11 +580,6 @@ if(${BUILD_FOXGLOVE})
   google_binary(autonomy.visualization.launcher
     SRCS
       autonomy/visualization/main.cpp
-  )
-  # Set additional rpath for foxglove library
-  set_target_properties(autonomy.visualization.launcher PROPERTIES
-    INSTALL_RPATH "\$ORIGIN/../lib:${CMAKE_INSTALL_PREFIX}/lib:${foxglove_SOURCE_DIR}/lib"
-    BUILD_RPATH "\$ORIGIN:\$ORIGIN/../lib:${CMAKE_BINARY_DIR}/lib:${foxglove_SOURCE_DIR}/lib"
   )
 endif()
 

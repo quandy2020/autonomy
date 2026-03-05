@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief InteractiveMarkersDisplay
- * Similar to rviz_default_plugins::displays::InteractiveMarkersDisplay
+ * Interactive markers display
  */
 class InteractiveMarkersDisplay : public aviz::common::Display
 {

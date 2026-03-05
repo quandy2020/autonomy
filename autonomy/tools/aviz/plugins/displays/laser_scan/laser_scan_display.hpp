@@ -31,7 +31,7 @@ namespace displays {
 
 /**
  * @brief LaserScanDisplay
- * Similar to rviz_default_plugins::displays::LaserScanDisplay
+ * Laser scan display
  *
  * Displays sensor_msgs::LaserScan messages as point clouds
  */

@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief ScrewDisplay
- * Similar to rviz_default_plugins::displays::ScrewDisplay
+ * Screw display
  */
 class ScrewDisplay : public aviz::common::Display
 {

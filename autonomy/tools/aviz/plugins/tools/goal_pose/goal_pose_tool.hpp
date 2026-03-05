@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief GoalPoseTool
- * Similar to rviz_default_plugins::tools::GoalPoseTool
+ * Goal pose tool for the visualizer
  */
 class GoalPoseTool
 {

@@ -40,7 +40,7 @@ namespace displays {
 
 /**
  * @brief TfDisplay
- * Similar to rviz_default_plugins::displays::TfDisplay
+ * TF display
  *
  * Displays coordinate frame transforms (TF tree)
  */

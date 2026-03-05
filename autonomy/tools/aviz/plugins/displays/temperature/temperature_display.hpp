@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief TemperatureDisplay
- * Similar to rviz_default_plugins::displays::TemperatureDisplay
+ * Temperature display
  */
 class TemperatureDisplay : public aviz::common::Display
 {

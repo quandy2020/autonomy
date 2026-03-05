@@ -1,4 +1,4 @@
-material rviz/PointCloudBox
+material aviz/PointCloudBox
 { 
   /* This material should only be used with glsl < 1.50 */
 
@@ -8,8 +8,8 @@ material rviz/PointCloudBox
   {
     pass
     {
-      vertex_program_ref rviz/glsl120/nogp/box.vert {}
-      fragment_program_ref rviz/glsl120/nogp/box.frag {}
+      vertex_program_ref aviz/glsl120/nogp/box.vert {}
+      fragment_program_ref aviz/glsl120/nogp/box.frag {}
     }
   } 
   
@@ -18,8 +18,8 @@ material rviz/PointCloudBox
     scheme Depth
     pass
     {
-      vertex_program_ref rviz/glsl120/nogp/box.vert(with_depth) {}
-      fragment_program_ref rviz/glsl120/depth.frag {}
+      vertex_program_ref aviz/glsl120/nogp/box.vert(with_depth) {}
+      fragment_program_ref aviz/glsl120/depth.frag {}
     }
   } 
   
@@ -28,8 +28,8 @@ material rviz/PointCloudBox
     scheme Pick
     pass
     {
-      vertex_program_ref rviz/glsl120/nogp/box.vert {}
-      fragment_program_ref rviz/glsl120/pickcolor.frag {}
+      vertex_program_ref aviz/glsl120/nogp/box.vert {}
+      fragment_program_ref aviz/glsl120/pickcolor.frag {}
     }
   }
   
@@ -38,8 +38,8 @@ material rviz/PointCloudBox
     scheme Pick1
     pass
     {
-      vertex_program_ref rviz/glsl120/nogp/box.vert {}
-      fragment_program_ref rviz/glsl120/pass_color.frag {}
+      vertex_program_ref aviz/glsl120/nogp/box.vert {}
+      fragment_program_ref aviz/glsl120/pass_color.frag {}
     }
   }
 }

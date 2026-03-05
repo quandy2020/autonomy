@@ -41,7 +41,7 @@ class BillboardLine;
 
 /**
  * @brief Grid rendering object
- * Similar to rviz_rendering::Grid
+ * Grid visualization object
  *
  * Displays a grid of cells, drawn with lines.  A grid with an identity orientation is drawn along the XZ plane.
  */

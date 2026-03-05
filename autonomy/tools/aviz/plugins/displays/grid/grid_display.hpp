@@ -37,7 +37,7 @@ namespace displays {
 
 /**
  * @brief GridDisplay
- * Similar to rviz_default_plugins::displays::GridDisplay
+ * Grid display
  *
  * Displays a grid in either the XY, YZ, or XZ plane.
  */

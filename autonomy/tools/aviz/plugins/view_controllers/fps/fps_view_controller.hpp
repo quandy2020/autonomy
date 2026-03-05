@@ -25,7 +25,7 @@ namespace view_controllers {
 
 /**
  * @brief FpsViewController
- * Similar to rviz_default_plugins::view_controllers::FpsViewController
+ * FPS view controller
  */
 class FpsViewController
 {

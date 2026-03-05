@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief IlluminanceDisplay
- * Similar to rviz_default_plugins::displays::IlluminanceDisplay
+ * Illuminance display
  */
 class IlluminanceDisplay : public aviz::common::Display
 {

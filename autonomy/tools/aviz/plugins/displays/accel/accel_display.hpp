@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief AccelDisplay
- * Similar to rviz_default_plugins::displays::AccelDisplay
+ * Accel display
  */
 class AccelDisplay : public aviz::common::Display
 {

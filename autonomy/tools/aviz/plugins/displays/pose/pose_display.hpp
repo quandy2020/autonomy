@@ -38,7 +38,7 @@ namespace displays {
 
 /**
  * @brief PoseDisplay
- * Similar to rviz_default_plugins::displays::PoseDisplay
+ * Pose display
  *
  * Accumulates and displays the pose from a geometry_msgs::PoseStamped message
  */

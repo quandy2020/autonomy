@@ -25,7 +25,7 @@ namespace transformation {
 
 /**
  * @brief TfWrapper
- * Similar to rviz_default_plugins::transformation::TfWrapper
+ * TF wrapper for transform lookup
  *
  * Wrapper for TF functionality
  */

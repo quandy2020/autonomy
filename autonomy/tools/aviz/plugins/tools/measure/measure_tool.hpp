@@ -25,7 +25,7 @@ namespace tools {
 
 /**
  * @brief MeasureTool
- * Similar to rviz_default_plugins::tools::MeasureTool
+ * Measure tool for the visualizer
  */
 class MeasureTool
 {

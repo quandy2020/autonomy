@@ -26,7 +26,7 @@ namespace displays {
 
 /**
  * @brief PolygonDisplay
- * Similar to rviz_default_plugins::displays::PolygonDisplay
+ * Polygon display
  */
 class PolygonDisplay : public aviz::common::Display
 {
