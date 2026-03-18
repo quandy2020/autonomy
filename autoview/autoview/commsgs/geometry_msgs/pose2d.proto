@@ -1,0 +1,11 @@
+// Generated from ROS2 geometry_msgs/msg/Pose2D.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+message Pose2D {
+  double x = 1;
+  double y = 2;
+  double theta = 3;
+}

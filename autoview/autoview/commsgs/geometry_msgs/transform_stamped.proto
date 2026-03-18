@@ -1,0 +1,15 @@
+// Generated from ROS2 geometry_msgs/msg/TransformStamped.msg
+// Transform from header.frame_id to child_frame_id at header.stamp.
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/transform.proto";
+
+message TransformStamped {
+  std_msgs.Header header = 1;
+  string child_frame_id = 2;
+  Transform transform = 3;
+}

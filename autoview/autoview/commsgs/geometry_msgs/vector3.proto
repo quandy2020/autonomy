@@ -1,0 +1,11 @@
+// Generated from ROS2 geometry_msgs/msg/Vector3.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+message Vector3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}

@@ -1,0 +1,11 @@
+// Generated from ROS2 visualization_msgs/msg/UVCoordinate.msg
+// Pixel location as ratio of texture width; values in [0.0, 1.0].
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+message UVCoordinate {
+  float u = 1;
+  float v = 2;
+}

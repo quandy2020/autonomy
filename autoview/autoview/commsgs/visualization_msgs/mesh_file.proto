@@ -1,0 +1,10 @@
+// Generated from ROS2 visualization_msgs/msg/MeshFile.msg
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+message MeshFile {
+  string filename = 1;
+  bytes data = 2;
+}

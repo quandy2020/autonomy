@@ -1,0 +1,13 @@
+// Generated from ROS2 geometry_msgs/msg/TwistStamped.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/twist.proto";
+
+message TwistStamped {
+  std_msgs.Header header = 1;
+  Twist twist = 2;
+}

@@ -1,0 +1,21 @@
+// Generated from ROS2 sensor_msgs/msg/LaserScan.msg
+// Single scan from a planar laser range-finder; angles around +Z, counterclockwise.
+
+syntax = "proto3";
+
+package sensor_msgs;
+
+import "std_msgs/header.proto";
+
+message LaserScan {
+  std_msgs.Header header = 1;
+  float angle_min = 2;
+  float angle_max = 3;
+  float angle_increment = 4;
+  float time_increment = 5;
+  float scan_time = 6;
+  float range_min = 7;
+  float range_max = 8;
+  repeated float ranges = 9;
+  repeated float intensities = 10;
+}

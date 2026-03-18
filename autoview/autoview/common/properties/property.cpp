@@ -1,0 +1,574 @@
+/******************************************************************************
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *****************************************************************************/
+
+#include "autoview/common/properties/property.hpp"
+
+#include <cstdio>  
+#include <climits>  
+#include <string>
+
+#include <QApplication>  
+#include <QPalette>  
+#include <QLineEdit>  
+#include <QSpinBox>  
+
+#include "autoview/common/properties/float_edit.hpp"
+#include "autoview/common/properties/property_tree_model.hpp"
+
+namespace autoview {
+namespace common {
+namespace properties {
+
+class FailureProperty : public Property
+{
+public:
+  Property* subProp(const QString& sub_name) override
+  {
+    Q_UNUSED(sub_name);
+    return this;
+  }
+};
+
+/** @brief The property returned by subProp() when the requested
+ * name is not found. */
+Property * Property::failprop_ = new FailureProperty;
+
+Property::Property(
+  const QString & name,
+  const QVariant& default_value,
+  const QString & description,
+  Property * parent,
+  const char * changed_slot,
+  QObject * receiver)
+: value_(default_value),
+  model_(0),
+  child_indexes_valid_(false),
+  parent_(0),
+  description_(description),
+  hidden_(false),
+  is_read_only_(false),
+  is_expanded_(false),
+  save_(true)
+{
+  setName(name);
+  if (parent) {
+    parent->addChild(this);
+  }
+  if (receiver == 0) {
+    receiver = parent;
+  }
+  if (receiver && changed_slot) {
+    connect(this, SIGNAL(changed()), receiver, changed_slot);
+  }
+}
+
+Property::~Property()
+{
+  // Disconnect myself from my parent.
+  if (getParent() ) {
+    getParent()->takeChild(this);
+  }
+  // Destroy my children.
+  for (int i = children_.size() - 1; i >= 0; i--) {
+    Property * child = children_.takeAt(i);
+    child->setParent(nullptr);
+    delete child;
+  }
+}
+
+void Property::removeChildren(int start_index, int count)
+{
+  if (count < 0) {
+    count = children_.size() - start_index;
+  }
+
+  if (count == 0) {
+    return;
+  }
+
+  if (model_) {
+    model_->beginRemove(this, start_index, count);
+  }
+  // Destroy my children.
+  for (int i = start_index; i < start_index + count; i++) {
+    Property * child = children_.at(i);
+    child->setParent(nullptr);   // prevent child destructor from calling getParent()->takeChild().
+    delete child;
+  }
+  children_.erase(children_.begin() + start_index, children_.begin() + start_index + count);
+  child_indexes_valid_ = false;
+  if (model_) {
+    model_->endRemove();
+  }
+  Q_EMIT childListChanged(this);
+}
+
+bool Property::setValue(const QVariant& new_value)
+{
+  if (new_value != value_) {
+    Q_EMIT aboutToChange();
+    value_ = new_value;
+    Q_EMIT changed();
+    if (model_) {
+      model_->emitDataChanged(this);
+    }
+    return true;
+  }
+  return false;
+}
+
+QVariant Property::getValue() const
+{
+  return value_;
+}
+
+void Property::setName(const QString& name)
+{
+  setObjectName(name);
+  if (model_) {
+    model_->emitDataChanged(this);
+  }
+}
+
+QString Property::getName() const
+{
+  return objectName();
+}
+
+std::string Property::getNameStd() const
+{
+  return getName().toStdString();
+}
+
+void Property::setIcon(const QIcon& icon)
+{
+  icon_ = icon;
+}
+
+QIcon Property::getIcon() const
+{
+  return icon_;
+}
+
+void Property::setDescription(const QString& description)
+{
+  description_ = description;
+}
+
+QString Property::getDescription() const
+{
+  return description_;
+}
+
+Property* Property::subProp(const QString& sub_name)
+{
+  int size = numChildren();
+  for (int i = 0; i < size; i++) {
+    Property * prop = childAtUnchecked(i);
+    if (prop->getName() == sub_name) {
+      return prop;
+    }
+  }
+
+  // Print a useful error message showing the whole ancestry of this
+  // property, but don't crash.
+  QString ancestry = "";
+  for (Property * prop = this; prop != nullptr; prop = prop->getParent() ) {
+    ancestry = "\"" + prop->getName() + "\"->" + ancestry;
+  }
+  printf(
+    "ERROR: Undefined property %s \"%s\" accessed.\n", qPrintable(ancestry),
+    qPrintable(sub_name));
+  return failprop_;
+}
+
+int Property::numChildren() const
+{
+  return children_.size();
+}
+
+Property* Property::childAt(int index) const
+{
+  // numChildren() and childAtUnchecked() can both be overridden, so
+  // call them instead of accessing our children_ list directly.
+  if (0 <= index && index < numChildren() ) {
+    return childAtUnchecked(index);
+  }
+  return nullptr;
+}
+
+Property* Property::childAtUnchecked(int index) const
+{
+  return children_.at(index);
+}
+
+bool Property::contains(Property* possible_child) const
+{
+  int num_children = numChildren();
+  for (int i = 0; i < num_children; i++) {
+    if (childAtUnchecked(i) == possible_child) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Property* Property::getParent() const
+{
+  return parent_;
+}
+
+void Property::setParent(Property* new_parent)
+{
+  parent_ = new_parent;
+}
+
+QVariant Property::getViewData(int column, int role) const
+{
+  if (role == Qt::ForegroundRole && parent_ && parent_->getDisableChildren()) {
+    return QApplication::palette().brush(QPalette::Disabled, QPalette::Text);
+  }
+
+  switch (column) {
+    case 0:  // left column: names
+      switch (role) {
+        case Qt::DisplayRole: return getName();
+        case Qt::DecorationRole: return icon_;
+        default: return QVariant();
+      }
+      break;
+    case 1:  // right column: values
+      switch (role) {
+        case Qt::DisplayRole:
+        case Qt::EditRole: return value_.type() == QVariant::Bool ? QVariant() : getValue();
+        case Qt::CheckStateRole:
+          if (value_.type() == QVariant::Bool) {
+            return value_.toBool() ? Qt::Checked : Qt::Unchecked;
+          } else {
+            return QVariant();
+          }
+        default: return QVariant();
+      }
+      break;
+    default: return QVariant();
+  }
+}
+
+bool Property::getDisableChildren()
+{
+  // Pass down the disableChildren flag
+  if (parent_) {
+    return parent_->getDisableChildren();
+  }
+  return false;
+}
+
+Qt::ItemFlags Property::getViewFlags(int column) const
+{
+  // if the parent propery is a disabled bool property or
+  // has its own enabled view flag not set, disable this property as well
+  Qt::ItemFlags enabled_flag =
+    ( parent_ && parent_->getDisableChildren() ) ? Qt::NoItemFlags : Qt::ItemIsEnabled;
+
+  if (column == 0) {
+    return enabled_flag | Qt::ItemIsSelectable;
+  }
+  if (value_.isValid() ) {
+    if (value_.type() == QVariant::Bool) {
+      return Qt::ItemIsUserCheckable | enabled_flag | Qt::ItemIsSelectable;
+    }
+    return Qt::ItemIsEditable | enabled_flag | Qt::ItemIsSelectable;
+  }
+  return enabled_flag | Qt::ItemIsSelectable;
+}
+
+bool Property::paint(QPainter * painter, const QStyleOptionViewItem & option) const
+{
+  (void) painter;
+  (void) option;
+  return false;
+}
+
+bool Property::isAncestorOf(Property * possible_child) const
+{
+  Property * prop = possible_child->getParent();
+  while (prop != nullptr && prop != this) {
+    prop = prop->getParent();
+  }
+  return prop == this;
+}
+
+Property* Property::takeChild(Property * child)
+{
+  for (int i = 0; i < numChildren(); i++) {
+    if (childAtUnchecked(i) == child) {
+      return takeChildAt(i);
+    }
+  }
+  return nullptr;
+}
+
+Property* Property::takeChildAt(int index)
+{
+  if (index < 0 || index >= children_.size() ) {
+    return nullptr;
+  }
+  if (model_) {
+    model_->beginRemove(this, index, 1);
+  }
+  Property * child = children_.takeAt(index);
+  child->setModel(nullptr);
+  child->parent_ = nullptr;
+  child_indexes_valid_ = false;
+  if (model_) {
+    model_->endRemove();
+  }
+  Q_EMIT childListChanged(this);
+  return child;
+}
+
+void Property::addChild(Property* child, int index)
+{
+  if (!child) {
+    return;
+  }
+  int num_children = children_.size();
+  if (index < 0 || index > num_children) {
+    index = num_children;
+  }
+  if (model_) {
+    model_->beginInsert(this, index);
+  }
+
+  children_.insert(index, child);
+  child_indexes_valid_ = false;
+  child->setModel(model_);
+  child->parent_ = this;
+
+  if (model_) {
+    model_->endInsert();
+  }
+
+  Q_EMIT childListChanged(this);
+}
+
+void Property::setModel(PropertyTreeModel* model)
+{
+  model_ = model;
+  if (model_ && hidden_) {
+    model_->emitPropertyHiddenChanged(this);
+  }
+  int num_children = numChildren();
+  for (int i = 0; i < num_children; i++) {
+    Property * child = childAtUnchecked(i);
+    child->setModel(model);
+  }
+}
+
+PropertyTreeModel* Property::getModel() const
+{
+  return model_;
+}
+
+void Property::reindexChildren()
+{
+  int num_children = numChildren();
+  for (int i = 0; i < num_children; i++) {
+    Property * child = childAtUnchecked(i);
+    child->row_number_within_parent_ = i;
+  }
+  child_indexes_valid_ = true;
+}
+
+int Property::rowNumberInParent() const
+{
+  Property * parent = getParent();
+  if (!parent) {
+    return -1;
+  }
+  if (!parent->child_indexes_valid_) {
+    parent->reindexChildren();
+  }
+  return row_number_within_parent_;
+}
+
+void Property::moveChild(int from_index, int to_index)
+{
+  children_.move(from_index, to_index);
+  child_indexes_valid_ = false;
+  Q_EMIT childListChanged(this);
+}
+
+void Property::load(const Config& config)
+{
+  if (config.getType() == Config::Value) {
+    loadValue(config);
+  } else if (config.getType() == Config::Map) {
+    // A special map entry named "Value" means the value of this property, not a child.
+    // (If child "Value"does not exist, loadValue() will do nothing.)
+    loadValue(config.mapGetChild("Value"));
+
+    // Loop over all child Properties.
+    int num_property_children = children_.size();
+    for (int i = 0; i < num_property_children; i++) {
+      Property * child = children_.at(i);
+      // Load the child Property with the config under the child property's name.
+      child->load(config.mapGetChild(child->getName() ));
+    }
+  }
+}
+
+void Property::loadValue(const Config& config)
+{
+  if (config.getType() == Config::Value) {
+    switch (static_cast<int>(value_.type() )) {
+      case QVariant::Int: setValue(config.getValue().toInt() ); break;
+      case QMetaType::Float:
+      case QVariant::Double: setValue(config.getValue().toDouble() ); break;
+      case QVariant::String: setValue(config.getValue().toString() ); break;
+      case QVariant::Bool: setValue(config.getValue().toBool() ); break;
+      default:
+        printf(
+          "Property::loadValue() TODO: error handling - unexpected QVariant type %d.\n",
+          static_cast<int>(value_.type() ));
+        break;
+    }
+  }
+}
+
+void Property::save(Config config) const
+{
+  // If there are child properties, save them in a map from names to children.
+  if (children_.size() > 0) {
+    // If this property has child properties *and* a value itself,
+    // save the value in a special map entry named "Value".
+    if (value_.isValid() ) {
+      config.mapSetValue("Value", value_);
+    }
+    int num_properties = children_.size();
+    for (int i = 0; i < num_properties; i++) {
+      Property * prop = children_.at(i);
+      if (prop && prop->shouldBeSaved() ) {
+        prop->save(config.mapMakeChild(prop->getName() ));
+      }
+    }
+  } else {  // Else there are no child properties, so just save the value itself.
+    if (value_.isValid() ) {
+      config.setValue(value_);
+    } else {
+      // Empty Properties get saved as empty Maps instead of null values.
+      config.setType(Config::Map);
+    }
+  }
+}
+
+bool Property::shouldBeSaved() const
+{
+  return !is_read_only_ && save_;
+}
+
+void Property::setShouldBeSaved(bool save)
+{
+  save_ = save;
+}
+
+void Property::hide()
+{
+  setHidden(true);
+}
+
+void Property::show()
+{
+  setHidden(false);
+}
+
+QWidget* Property::createEditor(QWidget * parent, const QStyleOptionViewItem& option)
+{
+  Q_UNUSED(option);
+
+  switch (static_cast<int>(value_.type() )) {
+    case QVariant::Int:
+      {
+        QSpinBox * editor = new QSpinBox(parent);
+        editor->setFrame(false);
+        editor->setRange(INT_MIN, INT_MAX);
+        return editor;
+      }
+    case QMetaType::Float:
+    case QVariant::Double:
+      {
+        FloatEdit * editor = new FloatEdit(parent);
+        return editor;
+      }
+    case QVariant::String:
+    default:
+      {
+        QLineEdit * editor = new QLineEdit(parent);
+        editor->setFrame(false);
+        return editor;
+      }
+  }
+}
+
+void Property::setHidden(bool hidden)
+{
+  if (hidden != hidden_) {
+    hidden_ = hidden;
+    if (model_) {
+      model_->emitPropertyHiddenChanged(this);
+    }
+  }
+}
+
+bool Property::getHidden() const
+{
+  return hidden_;
+}
+
+void Property::setReadOnly(bool read_only)
+{
+  is_read_only_ = read_only;
+}
+
+bool Property::getReadOnly()
+{
+  return is_read_only_;
+}
+
+bool Property::isExpanded()
+{
+  return is_expanded_;
+}
+
+void Property::expand()
+{
+  is_expanded_ = true;
+  if (model_) {
+    model_->expandProperty(this);
+  }
+}
+
+void Property::collapse()
+{
+  is_expanded_ = false;
+  if (model_) {
+    model_->collapseProperty(this);
+  }
+}
+
+}  // namespace properties
+}  // namespace common
+}  // namespace autoview

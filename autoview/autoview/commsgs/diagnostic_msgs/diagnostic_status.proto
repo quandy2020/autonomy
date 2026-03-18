@@ -1,0 +1,16 @@
+// Generated from ROS2 diagnostic_msgs/msg/DiagnosticStatus.msg
+// level: OK=0, WARN=1, ERROR=2, STALE=3
+
+syntax = "proto3";
+
+package diagnostic_msgs;
+
+import "diagnostic_msgs/key_value.proto";
+
+message DiagnosticStatus {
+  int32 level = 1;  // 0=OK, 1=WARN, 2=ERROR, 3=STALE
+  string name = 2;
+  string message = 3;
+  string hardware_id = 4;
+  repeated KeyValue values = 5;
+}

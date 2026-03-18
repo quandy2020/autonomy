@@ -1,0 +1,13 @@
+// Generated from ROS2 sensor_msgs/msg/CompressedImage.msg
+
+syntax = "proto3";
+
+package sensor_msgs;
+
+import "std_msgs/header.proto";
+
+message CompressedImage {
+  std_msgs.Header header = 1;
+  string format = 2;  // e.g. jpeg, png, tiff
+  bytes data = 3;
+}

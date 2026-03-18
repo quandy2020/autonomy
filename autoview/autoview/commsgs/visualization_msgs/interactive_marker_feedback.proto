@@ -1,0 +1,22 @@
+// Generated from ROS2 visualization_msgs/msg/InteractiveMarkerFeedback.msg
+// event_type: KEEP_ALIVE=0, POSE_UPDATE=1, MENU_SELECT=2, BUTTON_CLICK=3, MOUSE_DOWN=4, MOUSE_UP=5
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/pose.proto";
+import "geometry_msgs/point.proto";
+
+message InteractiveMarkerFeedback {
+  std_msgs.Header header = 1;
+  string client_id = 2;
+  string marker_name = 3;
+  string control_name = 4;
+  uint32 event_type = 5;
+  geometry_msgs.Pose pose = 6;
+  uint32 menu_entry_id = 7;
+  geometry_msgs.Point mouse_point = 8;
+  bool mouse_point_valid = 9;
+}

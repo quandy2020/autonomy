@@ -1,0 +1,17 @@
+// Generated from ROS2 trajectory_msgs/msg/MultiDOFJointTrajectoryPoint.msg
+// Each multi-dof joint can specify transform (up to 6 DOF), velocities, accelerations.
+
+syntax = "proto3";
+
+package trajectory_msgs;
+
+import "builtin_interfaces/duration.proto";
+import "geometry_msgs/transform.proto";
+import "geometry_msgs/twist.proto";
+
+message MultiDOFJointTrajectoryPoint {
+  repeated geometry_msgs.Transform transforms = 1;
+  repeated geometry_msgs.Twist velocities = 2;
+  repeated geometry_msgs.Twist accelerations = 3;
+  builtin_interfaces.Duration time_from_start = 4;
+}

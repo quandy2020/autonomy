@@ -1,0 +1,21 @@
+// Generated from ROS2 stereo_msgs/msg/DisparityImage.msg
+// Floating-point disparity image; depth Z = f*T/d.
+
+syntax = "proto3";
+
+package stereo_msgs;
+
+import "std_msgs/header.proto";
+import "sensor_msgs/image.proto";
+import "sensor_msgs/region_of_interest.proto";
+
+message DisparityImage {
+  std_msgs.Header header = 1;  // Compatibility; use image.header.
+  sensor_msgs.Image image = 2;
+  float f = 3;  // Focal length, pixels
+  float t = 4;  // Baseline, world units
+  sensor_msgs.RegionOfInterest valid_window = 5;
+  float min_disparity = 6;
+  float max_disparity = 7;
+  float delta_d = 8;  // Smallest disparity increment
+}

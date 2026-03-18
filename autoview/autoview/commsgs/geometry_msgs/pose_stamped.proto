@@ -1,0 +1,13 @@
+// Generated from ROS2 geometry_msgs/msg/PoseStamped.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/pose.proto";
+
+message PoseStamped {
+  std_msgs.Header header = 1;
+  Pose pose = 2;
+}

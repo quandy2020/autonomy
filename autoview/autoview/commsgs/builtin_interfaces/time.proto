@@ -1,0 +1,12 @@
+// Generated from ROS2 builtin_interfaces/msg/Time.msg
+// https://design.ros2.org/articles/clock_and_time.html
+
+syntax = "proto3";
+
+package builtin_interfaces;
+
+// Time: seconds and nanoseconds component.
+message Time {
+  int32 sec = 1;      // Seconds component, valid over all int32 values.
+  uint32 nanosec = 2; // Nanoseconds component, range [0, 1e9).
+}

@@ -1,0 +1,12 @@
+// Generated from ROS2 geometry_msgs/msg/Quaternion.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+message Quaternion {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double w = 4; // default 1
+}

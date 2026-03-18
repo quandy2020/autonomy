@@ -1,0 +1,18 @@
+// Generated from ROS2 visualization_msgs/msg/InteractiveMarkerUpdate.msg
+// type: KEEP_ALIVE=0, UPDATE=1
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "visualization_msgs/interactive_marker.proto";
+import "visualization_msgs/interactive_marker_pose.proto";
+
+message InteractiveMarkerUpdate {
+  string server_id = 1;
+  uint64 seq_num = 2;
+  uint32 type = 3;
+  repeated InteractiveMarker markers = 4;
+  repeated InteractiveMarkerPose poses = 5;
+  repeated string erases = 6;
+}

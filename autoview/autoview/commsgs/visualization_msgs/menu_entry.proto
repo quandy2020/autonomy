@@ -1,0 +1,14 @@
+// Generated from ROS2 visualization_msgs/msg/MenuEntry.msg
+// Flat array describing menu tree; parent_id=0 for top-level.
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+message MenuEntry {
+  uint32 id = 1;
+  uint32 parent_id = 2;
+  string title = 3;
+  string command = 4;
+  uint32 command_type = 5;  // 0=FEEDBACK, 1=ROSRUN, 2=ROSLAUNCH
+}

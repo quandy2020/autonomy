@@ -1,0 +1,16 @@
+// Generated from ROS2 trajectory_msgs/msg/JointTrajectoryPoint.msg
+// Positions[, velocities[, accelerations]] or positions[, effort]; order matches JointTrajectory joint_names.
+
+syntax = "proto3";
+
+package trajectory_msgs;
+
+import "builtin_interfaces/duration.proto";
+
+message JointTrajectoryPoint {
+  repeated double positions = 1;      // rad or m per joint type
+  repeated double velocities = 2;      // rad/s or m/s
+  repeated double accelerations = 3;   // rad/s^2 or m/s^2
+  repeated double effort = 4;         // Nm or N
+  builtin_interfaces.Duration time_from_start = 5;
+}

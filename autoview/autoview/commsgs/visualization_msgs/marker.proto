@@ -1,0 +1,40 @@
+// Generated from ROS2 visualization_msgs/msg/Marker.msg
+// type: ARROW=0, CUBE=1, SPHERE=2, CYLINDER=3, LINE_STRIP=4, LINE_LIST=5,
+//       CUBE_LIST=6, SPHERE_LIST=7, POINTS=8, TEXT_VIEW_FACING=9, MESH_RESOURCE=10, TRIANGLE_LIST=11
+// action: ADD/MODIFY=0, DELETE=2, DELETEALL=3
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "std_msgs/header.proto";
+import "std_msgs/color_rgba.proto";
+import "builtin_interfaces/duration.proto";
+import "geometry_msgs/pose.proto";
+import "geometry_msgs/vector3.proto";
+import "geometry_msgs/point.proto";
+import "sensor_msgs/compressed_image.proto";
+import "visualization_msgs/uv_coordinate.proto";
+import "visualization_msgs/mesh_file.proto";
+
+message Marker {
+  std_msgs.Header header = 1;
+  string ns = 2;
+  int32 id = 3;
+  int32 type = 4;
+  int32 action = 5;
+  geometry_msgs.Pose pose = 6;
+  geometry_msgs.Vector3 scale = 7;
+  std_msgs.ColorRGBA color = 8;
+  builtin_interfaces.Duration lifetime = 9;
+  bool frame_locked = 10;
+  repeated geometry_msgs.Point points = 11;
+  repeated std_msgs.ColorRGBA colors = 12;
+  string texture_resource = 13;
+  sensor_msgs.CompressedImage texture = 14;
+  repeated UVCoordinate uv_coordinates = 15;
+  string text = 16;
+  string mesh_resource = 17;
+  MeshFile mesh_file = 18;
+  bool mesh_use_embedded_materials = 19;
+}

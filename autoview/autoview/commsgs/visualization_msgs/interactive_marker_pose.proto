@@ -1,0 +1,14 @@
+// Generated from ROS2 visualization_msgs/msg/InteractiveMarkerPose.msg
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/pose.proto";
+
+message InteractiveMarkerPose {
+  std_msgs.Header header = 1;
+  geometry_msgs.Pose pose = 2;
+  string name = 3;
+}

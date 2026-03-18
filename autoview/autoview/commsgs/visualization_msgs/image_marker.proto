@@ -1,0 +1,28 @@
+// Generated from ROS2 visualization_msgs/msg/ImageMarker.msg
+// type: CIRCLE=0, LINE_STRIP=1, LINE_LIST=2, POLYGON=3, POINTS=4
+// action: ADD=0, REMOVE=1
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "std_msgs/header.proto";
+import "std_msgs/color_rgba.proto";
+import "builtin_interfaces/duration.proto";
+import "geometry_msgs/point.proto";
+
+message ImageMarker {
+  std_msgs.Header header = 1;
+  string ns = 2;
+  int32 id = 3;
+  int32 type = 4;
+  int32 action = 5;
+  geometry_msgs.Point position = 6;
+  float scale = 7;
+  std_msgs.ColorRGBA outline_color = 8;
+  uint32 filled = 9;
+  std_msgs.ColorRGBA fill_color = 10;
+  builtin_interfaces.Duration lifetime = 11;
+  repeated geometry_msgs.Point points = 12;
+  repeated std_msgs.ColorRGBA outline_colors = 13;
+}

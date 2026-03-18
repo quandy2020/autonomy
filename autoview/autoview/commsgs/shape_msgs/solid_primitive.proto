@@ -1,0 +1,26 @@
+// Generated from ROS2 shape_msgs/msg/SolidPrimitive.msg
+// Defines box, sphere, cylinder, cone, prism; bounding boxes centered at 0,0,0.
+
+syntax = "proto3";
+
+package shape_msgs;
+
+import "geometry_msgs/polygon.proto";
+
+// Shape type constants (index into dimensions / type field).
+enum SolidPrimitiveType {
+  SOLID_PRIMITIVE_UNKNOWN = 0;
+  BOX = 1;
+  SPHERE = 2;
+  CYLINDER = 3;
+  CONE = 4;
+  PRISM = 5;
+}
+
+// Dimension indices for BOX: 0=X, 1=Y, 2=Z.
+// SPHERE: 0=radius. CYLINDER/CONE: 0=height, 1=radius. PRISM: 0=height, polygon=base.
+message SolidPrimitive {
+  uint32 type = 1;  // One of SolidPrimitiveType (BOX=1, SPHERE=2, CYLINDER=3, CONE=4, PRISM=5).
+  repeated double dimensions = 2;  // Length <= 3.
+  geometry_msgs.Polygon polygon = 3;  // For PRISM: Z-axis centered base (counter-clockwise).
+}

@@ -1,0 +1,14 @@
+// Generated from ROS2 trajectory_msgs/msg/JointTrajectory.msg
+
+syntax = "proto3";
+
+package trajectory_msgs;
+
+import "std_msgs/header.proto";
+import "trajectory_msgs/joint_trajectory_point.proto";
+
+message JointTrajectory {
+  std_msgs.Header header = 1;
+  repeated string joint_names = 2;
+  repeated JointTrajectoryPoint points = 3;
+}
