@@ -39,6 +39,10 @@ enum State : std::uint8_t {
 State GetState();
 void SetState(const State& state);
 
+#ifdef OK
+#undef OK
+#endif
+
 inline bool OK() { return GetState() == STATE_INITIALIZED; }
 
 inline bool IsShutdown() { return GetState() == STATE_SHUTTING_DOWN || GetState() == STATE_SHUTDOWN; }

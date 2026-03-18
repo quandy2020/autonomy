@@ -16,8 +16,8 @@
 # 需显式链接 TinyXML2（main.cpp 直接使用 tinyxml2）
 add_executable(autolink_launch main.cpp)
 target_include_directories(autolink_launch PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(autolink_launch PRIVATE autolink_core)
-# 显式链接 TinyXML2（与 autolink_core 一致，避免 ld 未解析符号）
+target_link_libraries(autolink_launch PRIVATE autolink)
+  # 显式链接 TinyXML2（与 autolink 一致，避免 ld 未解析符号）
 if(TARGET TinyXML2::TinyXML2)
   target_link_libraries(autolink_launch PRIVATE TinyXML2::TinyXML2)
 else()

@@ -17,7 +17,7 @@ add_executable(autolink_node main.cpp)
 target_include_directories(autolink_node PRIVATE BEFORE
   ${CMAKE_SOURCE_DIR}
 )
-target_link_libraries(autolink_node PRIVATE autolink_core)
+target_link_libraries(autolink_node PRIVATE autolink)
 
 install(TARGETS autolink_node
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

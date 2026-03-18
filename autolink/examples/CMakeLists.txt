@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT TARGET autolink_core)
+if(NOT TARGET autolink)
   return()
 endif()
 
@@ -45,7 +45,7 @@ target_link_libraries(examples_proto PUBLIC ${Protobuf_LIBRARIES})
 function(autolink_example NAME SRCS)
   add_executable(${NAME} ${SRCS})
   target_include_directories(${NAME} PRIVATE ${CMAKE_SOURCE_DIR} ${EXAMPLES_PROTO_GEN_DIR})
-  target_link_libraries(${NAME} PRIVATE autolink_core)
+  target_link_libraries(${NAME} PRIVATE autolink)
   set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${EXAMPLES_OUTPUT_DIR}")
 endfunction()
 

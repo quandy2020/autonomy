@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT TARGET autolink_core)
+if(NOT TARGET autolink)
   return()
 endif()
 if(NOT TARGET examples_proto)
@@ -32,7 +32,7 @@ target_include_directories(common_component_example
 
 target_link_libraries(common_component_example
   PRIVATE
-    autolink_core
+    autolink
     examples_proto
 )
 

@@ -59,6 +59,10 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+# Ensure all targets (including plugins) can find libraries produced into
+# the common lib/ directory at link time (e.g. vendored autolink).
+link_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+
 include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 google_initialize_autonomy_project()
 google_enable_testing()
@@ -141,17 +145,13 @@ install(DIRECTORY cmake DESTINATION share/autonomy/)
 # This must also be done before examples so plugin libraries are available for linking
 include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
 
-# Optional: build vendored Autolink sources under src/autonomy/autolink.
-# By default we rely on a system-installed Autolink (e.g. /usr/local/lib/libautolink.so),
-# so we skip building the bundled copy to avoid duplicate builds and header mismatches.
-option(BUILD_INTERNAL_AUTOLINK "Build vendored Autolink in src/autonomy/autolink" OFF)
-if(BUILD_INTERNAL_AUTOLINK)
-  add_subdirectory(autolink)
-endif()
+# Add automsgs and autolink subdirectories
+add_subdirectory(automsgs)
+add_subdirectory(autolink)
+
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
-# Exclude aviz files - they are built as a separate visualizer_lib target
 file(GLOB_RECURSE AVIZ_FILES "autonomy/tools/aviz/*.cpp" "autonomy/tools/aviz/*.hpp" "autonomy/tools/aviz/*.h" "autonomy/tools/aviz/*.ui" "autonomy/tools/aviz/*.qrc")
 file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/common/async_grpc/*.h" "autonomy/bridge/plugins/grpc/*.hpp")
 file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/common/async_grpc/*.c" "autonomy/bridge/plugins/grpc/*.cpp")
@@ -367,8 +367,6 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
 # 3rdparty
-# Add urdfdom_headers and urdfdom for URDF parsing support (used in transform/urdf)
-# Note: urdfdom requires urdfdom_headers, so add headers first
 add_subdirectory(3rdparty/urdfdom_headers)
 add_subdirectory(3rdparty/urdfdom)
 
@@ -530,9 +528,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
 # urdfdom_headers and urdfdom (for transform/urdf)
 target_link_libraries(${PROJECT_NAME} PUBLIC urdfdom_headers urdf_parser)
 
-# autolink (system install typically at /usr/local)
+# autolink
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC /usr/local/include)
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/autolink>)
 
 # ADOL-C (Automatic Differentiation Library)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
@@ -661,6 +659,19 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+# If we build vendored autolink from source, autonomy's exported library can
+# link against `autolink` target. Add it to the export set so that
+# `install(EXPORT ...)` generation doesn't fail.
+if(TARGET autolink)
+  install(
+    TARGETS autolink
+    EXPORT AutonomyExport
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+  )
+endif()
 
 foreach(HDR ${INSTALL_SOURCE_HDRS})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})

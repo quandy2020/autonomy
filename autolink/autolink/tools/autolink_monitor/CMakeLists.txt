@@ -16,7 +16,7 @@
 file(GLOB AUTOLINK_MONITOR_SOURCES "*.cpp")
 add_executable(autolink_monitor ${AUTOLINK_MONITOR_SOURCES})
 target_include_directories(autolink_monitor PRIVATE BEFORE ${CMAKE_SOURCE_DIR})
-target_link_libraries(autolink_monitor PRIVATE autolink_core)
+target_link_libraries(autolink_monitor PRIVATE autolink)
 find_package(Curses REQUIRED)
 if(TARGET Curses::Curses)
   target_link_libraries(autolink_monitor PRIVATE Curses::Curses)

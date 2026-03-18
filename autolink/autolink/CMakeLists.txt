@@ -90,31 +90,30 @@ list(FILTER AUTOLINK_CORE_SOURCES EXCLUDE REGEX ".*/mainboard/.*")
 list(FILTER AUTOLINK_CORE_SOURCES EXCLUDE REGEX ".*/example/.*")
 list(FILTER AUTOLINK_CORE_SOURCES EXCLUDE REGEX ".*/integration_test/.*")
 
-add_library(autolink_core SHARED ${AUTOLINK_CORE_SOURCES} ${AUTOLINK_PROTO_SRCS})
-add_dependencies(autolink_core autolink_protos)
-set_target_properties(autolink_core PROPERTIES OUTPUT_NAME autolink)
+add_library(autolink SHARED ${AUTOLINK_CORE_SOURCES} ${AUTOLINK_PROTO_SRCS})
+add_dependencies(autolink autolink_protos)
 
 # croutine 协程上下文切换汇编（按架构二选一，需启用 ASM 语言）
 enable_language(ASM)
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-    target_sources(autolink_core PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/croutine/detail/swap_aarch64.S")
+    target_sources(autolink PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/croutine/detail/swap_aarch64.S")
 else()
-    target_sources(autolink_core PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/croutine/detail/swap_x86_64.S")
+    target_sources(autolink PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/croutine/detail/swap_x86_64.S")
 endif()
 
-target_include_directories(autolink_core PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_BINARY_DIR}
+target_include_directories(autolink PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
     ${Protobuf_INCLUDE_DIRS}
     ${FastDDS_INCLUDE_DIRS}
 )
 if(abseil_FOUND)
-  target_link_libraries(autolink_core PUBLIC abseil::absl_base)
+  target_link_libraries(autolink PUBLIC abseil::absl_base)
 elseif(EXISTS "/opt/homebrew/include/absl")
-  target_include_directories(autolink_core PUBLIC "/opt/homebrew/include")
+  target_include_directories(autolink PUBLIC "/opt/homebrew/include")
 endif()
 
-target_link_libraries(autolink_core PUBLIC
+target_link_libraries(autolink PUBLIC
     ${Protobuf_LIBRARIES}
     ${GLOG_LIBRARIES}
     ${GPERFTOOLS_LIBRARIES}
@@ -123,15 +122,15 @@ target_link_libraries(autolink_core PUBLIC
     ${TinyXML2_LIB}
 )
 if(GFLAGS_LIB)
-  target_link_libraries(autolink_core PUBLIC ${GFLAGS_LIB})
+  target_link_libraries(autolink PUBLIC ${GFLAGS_LIB})
 endif()
 if(UUID_LIB)
-  target_link_libraries(autolink_core PUBLIC ${UUID_LIB})
+  target_link_libraries(autolink PUBLIC ${UUID_LIB})
 endif()
 
 # 128-bit 原子操作 (__atomic_load_16 等) 在 Linux 上由 libatomic 提供
 if(UNIX AND NOT APPLE)
-  target_link_libraries(autolink_core PUBLIC atomic)
+  target_link_libraries(autolink PUBLIC atomic)
 endif()
 
 # 可执行程序：mainboard（始终构建）
@@ -140,7 +139,7 @@ add_executable(autolink_mainboard
     mainboard/module_argument.cpp
     mainboard/module_controller.cpp
 )
-target_link_libraries(autolink_mainboard PRIVATE autolink_core)
+target_link_libraries(autolink_mainboard PRIVATE autolink)
 
 # 可选工具：与 Autolink tools 一致，每工具一目录、每目录一 CMakeLists（构建或仅安装）
 if(AUTOLINK_BUILD_TOOLS)
@@ -162,21 +161,26 @@ if(AUTOLINK_BUILD_TEST AND GMock_FOUND)
       set(TEST_TARGET_NAME "${FIL_WE}")
     endif()
     string(REPLACE "/" "." TEST_TARGET_NAME "${TEST_TARGET_NAME}")
+    set(TEST_TARGET_NAME "autolink.${TEST_TARGET_NAME}")
 
-    add_executable(${TEST_TARGET_NAME} ${ABS_FIL})
-    # 测试可执行文件输出到 bin/<对应目录>/<名字>
+    google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
     set_target_properties(${TEST_TARGET_NAME} PROPERTIES
-      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${DIR}"
+      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
     target_include_directories(${TEST_TARGET_NAME} PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}
       ${CMAKE_BINARY_DIR}
       ${GMOCK_INCLUDE_DIRS}
     )
-    target_link_libraries(${TEST_TARGET_NAME} PRIVATE autolink_core ${GMOCK_LIBRARIES})
+    target_link_libraries(${TEST_TARGET_NAME} PRIVATE autolink ${GMOCK_LIBRARIES})
     if(UNIX AND NOT APPLE)
       target_link_libraries(${TEST_TARGET_NAME} PRIVATE atomic)
     endif()
-    add_test(NAME ${TEST_TARGET_NAME} COMMAND ${TEST_TARGET_NAME})
+
+    # Some vendored/system headers trigger -Wmaybe-uninitialized in tests (treated as error in this build).
+    # Keep production library strict; relax only for test targets.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+      target_compile_options(${TEST_TARGET_NAME} PRIVATE -Wno-error=maybe-uninitialized)
+    endif()
   endforeach()
 endif()

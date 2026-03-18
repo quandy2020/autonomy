@@ -79,8 +79,8 @@ endif()
 # -----------------------------------------------------------------------------
 include(GNUInstallDirs)
 
-# 库与可执行文件（autolink_proto 已静态链接进 autolink_core，仅安装 libautolink.so）
-install(TARGETS autolink_core
+# 库与可执行文件（autolink_proto 已静态链接进 autolink，仅安装 libautolink.so）
+install(TARGETS autolink
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

@@ -17,7 +17,7 @@ add_executable(autolink_channel main.cpp)
 target_include_directories(autolink_channel PRIVATE BEFORE
   ${CMAKE_SOURCE_DIR}
 )
-target_link_libraries(autolink_channel PRIVATE autolink_core)
+target_link_libraries(autolink_channel PRIVATE autolink)
 
 install(TARGETS autolink_channel
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
