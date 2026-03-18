@@ -1,0 +1,17 @@
+// Generated from ROS2 sensor_msgs/msg/JointState.msg
+// Position (rad or m), velocity (rad/s or m/s), effort (Nm or N).
+// All arrays same size or empty.
+
+syntax = "proto3";
+
+package sensor_msgs;
+
+import "std_msgs/header.proto";
+
+message JointState {
+  std_msgs.Header header = 1;
+  repeated string name = 2;
+  repeated double position = 3;
+  repeated double velocity = 4;
+  repeated double effort = 5;
+}

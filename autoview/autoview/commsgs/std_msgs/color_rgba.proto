@@ -1,0 +1,12 @@
+// Generated from ROS2 std_msgs/msg/ColorRGBA.msg
+
+syntax = "proto3";
+
+package std_msgs;
+
+message ColorRGBA {
+  float r = 1;
+  float g = 2;
+  float b = 3;
+  float a = 4;
+}

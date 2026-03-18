@@ -1,0 +1,13 @@
+// Generated from ROS2 geometry_msgs/msg/PoseWithCovariance.msg
+// Row-major 6x6 covariance matrix (x, y, z, rot x, rot y, rot z).
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "geometry_msgs/pose.proto";
+
+message PoseWithCovariance {
+  Pose pose = 1;
+  repeated double covariance = 2; // 36 elements, row-major
+}

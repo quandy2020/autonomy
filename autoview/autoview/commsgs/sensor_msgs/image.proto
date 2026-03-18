@@ -1,0 +1,18 @@
+// Generated from ROS2 sensor_msgs/msg/Image.msg
+// Uncompressed image; (0,0) at top-left.
+
+syntax = "proto3";
+
+package sensor_msgs;
+
+import "std_msgs/header.proto";
+
+message Image {
+  std_msgs.Header header = 1;
+  uint32 height = 2;
+  uint32 width = 3;
+  string encoding = 4;
+  uint32 is_bigendian = 5; // 0 or 1
+  uint32 step = 6;          // full row length in bytes
+  bytes data = 7;
+}

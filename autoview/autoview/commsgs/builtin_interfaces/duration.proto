@@ -1,0 +1,11 @@
+// Generated from ROS2 builtin_interfaces/msg/Duration.msg
+
+syntax = "proto3";
+
+package builtin_interfaces;
+
+// Duration: period between two time points.
+message Duration {
+  int32 sec = 1;      // Seconds component.
+  uint32 nanosec = 2; // Nanoseconds component, range [0, 1e9).
+}

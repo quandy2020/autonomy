@@ -1,0 +1,12 @@
+// Generated from ROS2 geometry_msgs/msg/Twist.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "geometry_msgs/vector3.proto";
+
+message Twist {
+  Vector3 linear = 1;
+  Vector3 angular = 2;
+}

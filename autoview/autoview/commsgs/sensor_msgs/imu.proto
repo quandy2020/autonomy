@@ -1,0 +1,21 @@
+// Generated from ROS2 sensor_msgs/msg/Imu.msg
+// Accelerations in m/s^2, rotational velocity in rad/s.
+// Covariance: row-major 3x3; use -1 in first element for "unknown".
+
+syntax = "proto3";
+
+package sensor_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/quaternion.proto";
+import "geometry_msgs/vector3.proto";
+
+message Imu {
+  std_msgs.Header header = 1;
+  geometry_msgs.Quaternion orientation = 2;
+  repeated double orientation_covariance = 3;   // 9, row-major
+  geometry_msgs.Vector3 angular_velocity = 4;
+  repeated double angular_velocity_covariance = 5; // 9
+  geometry_msgs.Vector3 linear_acceleration = 6;
+  repeated double linear_acceleration_covariance = 7; // 9
+}

@@ -1,0 +1,12 @@
+// Generated from ROS2 geometry_msgs/msg/Polygon.msg
+// First and last points are assumed to be connected.
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "geometry_msgs/point32.proto";
+
+message Polygon {
+  repeated Point32 points = 1;
+}

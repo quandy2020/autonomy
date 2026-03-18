@@ -1,0 +1,13 @@
+// Generated from ROS2 geometry_msgs/msg/Transform.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "geometry_msgs/vector3.proto";
+import "geometry_msgs/quaternion.proto";
+
+message Transform {
+  Vector3 translation = 1;
+  Quaternion rotation = 2;
+}

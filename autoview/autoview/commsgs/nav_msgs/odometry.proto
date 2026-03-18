@@ -1,0 +1,17 @@
+// Generated from ROS2 nav_msgs/msg/Odometry.msg
+// Pose in header.frame_id; twist in child_frame_id.
+
+syntax = "proto3";
+
+package nav_msgs;
+
+import "std_msgs/header.proto";
+import "geometry_msgs/pose_with_covariance.proto";
+import "geometry_msgs/twist_with_covariance.proto";
+
+message Odometry {
+  std_msgs.Header header = 1;
+  string child_frame_id = 2;
+  geometry_msgs.PoseWithCovariance pose = 3;
+  geometry_msgs.TwistWithCovariance twist = 4;
+}

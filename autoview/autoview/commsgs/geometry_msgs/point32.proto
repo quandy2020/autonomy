@@ -1,0 +1,12 @@
+// Generated from ROS2 geometry_msgs/msg/Point32.msg
+// Position with 32-bit precision (e.g. for PointCloud).
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+message Point32 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}

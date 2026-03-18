@@ -1,0 +1,22 @@
+// Generated from ROS2 visualization_msgs/msg/InteractiveMarkerControl.msg
+// orientation_mode: INHERIT=0, FIXED=1, VIEW_FACING=2
+// interaction_mode: NONE=0, MENU=1, BUTTON=2, MOVE_AXIS=3, MOVE_PLANE=4, ROTATE_AXIS=5,
+//                   MOVE_ROTATE=6, MOVE_3D=7, ROTATE_3D=8, MOVE_ROTATE_3D=9
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "geometry_msgs/quaternion.proto";
+import "visualization_msgs/marker.proto";
+
+message InteractiveMarkerControl {
+  string name = 1;
+  geometry_msgs.Quaternion orientation = 2;
+  uint32 orientation_mode = 3;
+  uint32 interaction_mode = 4;
+  bool always_visible = 5;
+  repeated Marker markers = 6;
+  bool independent_marker_orientation = 7;
+  string description = 8;
+}

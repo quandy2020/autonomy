@@ -1,0 +1,12 @@
+// Generated from ROS2 geometry_msgs/msg/TwistWithCovariance.msg
+
+syntax = "proto3";
+
+package geometry_msgs;
+
+import "geometry_msgs/twist.proto";
+
+message TwistWithCovariance {
+  Twist twist = 1;
+  repeated double covariance = 2; // 36 elements, row-major
+}

@@ -1,0 +1,15 @@
+// Generated from ROS2 trajectory_msgs/msg/MultiDOFJointTrajectory.msg
+// Multi-dof joint trajectory; each point is an array of transforms/velocities/accelerations.
+
+syntax = "proto3";
+
+package trajectory_msgs;
+
+import "std_msgs/header.proto";
+import "trajectory_msgs/multi_dof_joint_trajectory_point.proto";
+
+message MultiDOFJointTrajectory {
+  std_msgs.Header header = 1;
+  repeated string joint_names = 2;
+  repeated MultiDOFJointTrajectoryPoint points = 3;
+}

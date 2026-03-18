@@ -1,0 +1,10 @@
+// Generated from ROS2 shape_msgs/msg/Plane.msg
+// Plane equation: ax + by + cz + d = 0  =>  coef[0]*x + coef[1]*y + coef[2]*z + coef[3] = 0
+
+syntax = "proto3";
+
+package shape_msgs;
+
+message Plane {
+  repeated double coef = 1;  // 4 elements: a, b, c, d
+}

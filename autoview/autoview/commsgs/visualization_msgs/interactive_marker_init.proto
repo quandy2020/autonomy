@@ -1,0 +1,13 @@
+// Generated from ROS2 visualization_msgs/msg/InteractiveMarkerInit.msg
+
+syntax = "proto3";
+
+package visualization_msgs;
+
+import "visualization_msgs/interactive_marker.proto";
+
+message InteractiveMarkerInit {
+  string server_id = 1;
+  uint64 seq_num = 2;
+  repeated InteractiveMarker markers = 3;
+}

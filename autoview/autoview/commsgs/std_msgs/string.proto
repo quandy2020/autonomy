@@ -1,0 +1,9 @@
+// Generated from ROS2 std_msgs/msg/String.msg
+
+syntax = "proto3";
+
+package std_msgs;
+
+message String {
+  string data = 1;
+}

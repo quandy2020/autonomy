@@ -1,0 +1,14 @@
+// Generated from ROS2 std_msgs/msg/Header.msg
+// Standard metadata for timestamped data in a coordinate frame.
+
+syntax = "proto3";
+
+package std_msgs;
+
+import "builtin_interfaces/time.proto";
+
+// Header: stamp (time) + frame_id.
+message Header {
+  builtin_interfaces.Time stamp = 1;
+  string frame_id = 2;
+}

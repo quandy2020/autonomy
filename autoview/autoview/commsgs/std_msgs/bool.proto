@@ -1,0 +1,9 @@
+// Generated from ROS2 std_msgs/msg/Bool.msg
+
+syntax = "proto3";
+
+package std_msgs;
+
+message Bool {
+  bool data = 1;
+}
