@@ -116,28 +116,21 @@ endforeach()
 #-----------------------------------------------------------------------------
 # Library from generated .pb.cc
 #-----------------------------------------------------------------------------
-add_library(automsgs_proto SHARED ${AM_ALL_SOURCES})
-target_include_directories(automsgs_proto PUBLIC
+add_library(automsgs_proto_obj OBJECT ${AM_ALL_SOURCES})
+target_include_directories(automsgs_proto_obj PUBLIC
   "$<BUILD_INTERFACE:${AM_GEN_OUTPUT_DIR}>"
   "$<INSTALL_INTERFACE:include>")
-target_link_libraries(automsgs_proto PUBLIC protobuf::libprotobuf)
-set_target_properties(automsgs_proto PROPERTIES
-  SOVERSION 1
-  VERSION 1.0.0
+set_target_properties(automsgs_proto_obj PROPERTIES
   POSITION_INDEPENDENT_CODE ON)
 
 # Ensure stamp is built before any generated source
 add_custom_target(automsgs_proto_copy ALL DEPENDS ${AM_PROTO_STAMP})
-add_dependencies(automsgs_proto automsgs_proto_copy)
+add_dependencies(automsgs_proto_obj automsgs_proto_copy)
 
 #-----------------------------------------------------------------------------
-# Install
+# Install generated headers & proto tree (no standalone libautomsgs_proto.so)
 #-----------------------------------------------------------------------------
 include(GNUInstallDirs)
-install(TARGETS automsgs_proto
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY ${AM_GEN_OUTPUT_DIR}/automsgs
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING PATTERN "*.h" PATTERN "*.hh")

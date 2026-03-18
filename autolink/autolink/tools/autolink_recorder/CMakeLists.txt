@@ -16,7 +16,7 @@
 file(GLOB_RECURSE AUTOLINK_RECORDER_SOURCES "*.cpp")
 add_executable(autolink_recorder ${AUTOLINK_RECORDER_SOURCES})
 target_include_directories(autolink_recorder PRIVATE BEFORE ${CMAKE_SOURCE_DIR})
-target_link_libraries(autolink_recorder PRIVATE autolink_core)
+target_link_libraries(autolink_recorder PRIVATE autolink)
 
 install(TARGETS autolink_recorder
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
