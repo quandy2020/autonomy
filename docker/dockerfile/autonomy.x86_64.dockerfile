@@ -117,7 +117,6 @@ RUN bash /tmp/install/install_ogre.sh
 RUN bash /tmp/install/install_mcap.sh
 RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
-RUN bash /tmp/install/install_bazel.sh
 RUN bash /tmp/install/install_gperftools.sh
 
 # autonomy workspace
