@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package automsgs.msgs.sensor_msgs;
+
+import "automsgs/msgs/std_msgs/header.proto";
+
+message BatteryState {
+  // Power supply status constants
+  enum PowerSupplyStatus {
+    POWER_SUPPLY_STATUS_UNKNOWN = 0;
+    POWER_SUPPLY_STATUS_CHARGING = 1;
+    POWER_SUPPLY_STATUS_DISCHARGING = 2;
+    POWER_SUPPLY_STATUS_NOT_CHARGING = 3;
+    POWER_SUPPLY_STATUS_FULL = 4;
+  }
+
+  // Power supply health constants
+  enum PowerSupplyHealth {
+    POWER_SUPPLY_HEALTH_UNKNOWN = 0;
+    POWER_SUPPLY_HEALTH_GOOD = 1;
+    POWER_SUPPLY_HEALTH_OVERHEAT = 2;
+    POWER_SUPPLY_HEALTH_DEAD = 3;
+    POWER_SUPPLY_HEALTH_OVERVOLTAGE = 4;
+    POWER_SUPPLY_HEALTH_UNSPEC_FAILURE = 5;
+    POWER_SUPPLY_HEALTH_COLD = 6;
+    POWER_SUPPLY_HEALTH_WATCHDOG_TIMER_EXPIRE = 7;
+    POWER_SUPPLY_HEALTH_SAFETY_TIMER_EXPIRE = 8;
+  }
+
+  // Power supply technology (chemistry) constants
+  enum PowerSupplyTechnology {
+    POWER_SUPPLY_TECHNOLOGY_UNKNOWN = 0;
+    POWER_SUPPLY_TECHNOLOGY_NIMH = 1;
+    POWER_SUPPLY_TECHNOLOGY_LION = 2;
+    POWER_SUPPLY_TECHNOLOGY_LIPO = 3;
+    POWER_SUPPLY_TECHNOLOGY_LIFE = 4;
+    POWER_SUPPLY_TECHNOLOGY_NICD = 5;
+    POWER_SUPPLY_TECHNOLOGY_LIMN = 6;
+  }
+
+  automsgs.msgs.std_msgs.Header header = 1;
+
+  float voltage = 2;          // Volts
+  float temperature = 3;      // Degrees Celsius (NaN if unknown)
+  float current = 4;          // Amps, negative when discharging (NaN if unknown)
+  float charge = 5;           // Ah (NaN if unknown)
+  float capacity = 6;         // Ah, last full capacity (NaN if unknown)
+  float design_capacity = 7;  // Ah, design capacity (NaN if unknown)
+  float percentage = 8;       // 0.0 to 1.0 (NaN if unknown)
+
+  PowerSupplyStatus power_supply_status = 9;
+  PowerSupplyHealth power_supply_health = 10;
+  PowerSupplyTechnology power_supply_technology = 11;
+
+  bool present = 12;
+
+  repeated float cell_voltage = 13;
+  repeated float cell_temperature = 14;
+
+  string location = 15;
+  string serial_number = 16;
+}
+

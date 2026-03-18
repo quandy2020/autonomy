@@ -1,0 +1,26 @@
+
+
+syntax = "proto3";
+
+package automsgs.msgs.sensor_msgs;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/sensor_msgs/laser_echo.proto";
+
+// Single scan from a multi-echo planar laser range-finder.
+message MultiEchoLaserScan {
+  automsgs.msgs.std_msgs.Header header = 1;
+
+  float angle_min = 2;
+  float angle_max = 3;
+  float angle_increment = 4;
+
+  float time_increment = 5;
+  float scan_time = 6;
+
+  float range_min = 7;
+  float range_max = 8;
+
+  repeated LaserEcho ranges = 9;
+  repeated LaserEcho intensities = 10;
+}
