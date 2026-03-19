@@ -110,11 +110,6 @@ if(TARGET BT::behaviortree_cpp AND NOT TARGET behaviortree_cpp::behaviortree_cpp
     add_library(behaviortree_cpp::behaviortree_cpp ALIAS BT::behaviortree_cpp)
 endif()
 
-# Include Foxglove SDK vendor file (optional, controlled by BUILD_FOXGLOVE option)
-if(${BUILD_FOXGLOVE})
-  include("${PROJECT_SOURCE_DIR}/3rdparty/foxglove/autonomy_foxglove_vendor.cmake")
-endif()
-
 if (${BUILD_GRPC})
   find_package(gRPC REQUIRED)
 endif()
@@ -149,6 +144,11 @@ include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
 add_subdirectory(automsgs)
 add_subdirectory(autolink)
 
+# Include Foxglove SDK vendor file (optional, controlled by BUILD_FOXGLOVE option)
+if(${BUILD_FOXGLOVE})
+  include("${PROJECT_SOURCE_DIR}/3rdparty/foxglove/autonomy_foxglove_vendor.cmake")
+  add_subdirectory(autoviz)
+endif()
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
@@ -584,7 +584,6 @@ if(${BUILD_FOXGLOVE})
   #   SRCS
   #     autonomy/visualization/main.cpp
   # )
-  add_subdirectory(autoviz)
 endif()
 
 # # autonomy.visualization.data_publisher (publishes sensor data via autolink)
