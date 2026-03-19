@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 The Openbot Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
 #pragma once
 
 #include <set>
@@ -8,8 +24,7 @@
 
 namespace foxglove {
 
-// Taken from
-// https://github.com/ros2/rosidl/blob/a57baea5/rosidl_parser/rosidl_parser/definition.py
+// RPC-style message naming (request/response suffixes)
 constexpr char SERVICE_REQUEST_MESSAGE_SUFFIX[] = "_Request";
 constexpr char SERVICE_RESPONSE_MESSAGE_SUFFIX[] = "_Response";
 constexpr char ACTION_GOAL_SERVICE_SUFFIX[] = "_SendGoal";
@@ -54,9 +69,7 @@ class MessageDefinitionCache final {
 public:
   /**
    * Concatenate the message definition with its dependencies into a self-contained schema.
-   * The format is different for MSG and IDL definitions, and is described fully here:
-   * [MSG](https://mcap.dev/specification/appendix.html#ros2msg-data-format)
-   * [IDL](https://mcap.dev/specification/appendix.html#ros2idl-data-format)
+   * The format differs for MSG vs IDL definitions; see MCAP specification appendix for details.
    * Throws DefinitionNotFoundError if one or more definition files are missing for the given
    * package resource name.
    */

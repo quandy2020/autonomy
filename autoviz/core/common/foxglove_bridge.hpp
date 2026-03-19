@@ -14,30 +14,14 @@
  * limitations under the License.
  */
 
-#include <signal.h>
-#include <unistd.h>
+#pragma once
 
-namespace autoviz {
-namespace {
- 
-void Run() {
-    // register signal handler with lambda
-    signal(SIGINT, [](int) { exit(0); });
-    signal(SIGTERM, [](int) { exit(0); });
-}
+namespace foxglove {
 
-}  // namespace
-}  // namespace autoviz
- 
- int main(int argc, char** argv) {
-   autolink::Init(argv[0]);
-   google::ParseCommandLineFlags(&argc, &argv, true);
-   if (autonomy::common::FLAGS_verbose) {
-     autonomy::common::ShowVersion();
-     return 0;
-   }
-   autoviz::Run();
-   google::ShutDownCommandLineFlags();
-   return 0;
- }
- 
+const char* WebSocketUserAgent();
+
+extern const char FOXGLOVE_BRIDGE_VERSION[];
+
+extern const char FOXGLOVE_BRIDGE_GIT_HASH[];
+
+}  // namespace foxglove

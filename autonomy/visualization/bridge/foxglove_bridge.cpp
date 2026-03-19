@@ -17,6 +17,9 @@
 #include "autonomy/visualization/bridge/foxglove_bridge.hpp"
 
 #include <optional>
+#include <string>
+#include <string_view>
+#include <unistd.h>
 
 #include "autonomy/visualization/transport/auto_discovery.hpp"
 #include "foxglove/server.hpp"
