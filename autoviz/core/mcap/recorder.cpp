@@ -10,7 +10,7 @@ namespace mcap {
 #if defined(AUTOVIZ_HAS_MCAP)
 class Recorder::Impl {
  public:
-  mcap::McapWriter writer;
+  ::mcap::McapWriter writer;
 };
 #endif
 
@@ -33,7 +33,7 @@ bool Recorder::Start() {
     return false;
   }
 #if defined(AUTOVIZ_HAS_MCAP)
-  mcap::McapWriterOptions options("");
+  ::mcap::McapWriterOptions options("");
   const auto status = impl_->writer.open(cfg_.output_path, options);
   if (!status.ok()) {
     return false;
@@ -75,24 +75,18 @@ bool Recorder::RegisterTopic(const std::string& topic,
   state.channel_id = next_channel_id_++;
 
 #if defined(AUTOVIZ_HAS_MCAP)
-  mcap::Schema schema(
-      state.schema_id,
-      msg_type,
-      "protobuf",
-      reinterpret_cast<const std::byte*>(proto_desc.data()),
-      static_cast<uint32_t>(proto_desc.size()));
-  if (!impl_->writer.addSchema(schema).ok()) {
-    return false;
-  }
+  // MCAP Schema for protobuf: name=full type, encoding="protobuf",
+  // data=serialized descriptor string (provided by autolink).
+  ::mcap::Schema schema(msg_type, "protobuf", proto_desc);
+  schema.id = state.schema_id;  // MCAP uses schemaId references from channels.
+  impl_->writer.addSchema(schema);
 
-  mcap::Channel channel;
+  ::mcap::Channel channel;
   channel.id = state.channel_id;
   channel.topic = topic;
   channel.messageEncoding = "protobuf";
   channel.schemaId = state.schema_id;
-  if (!impl_->writer.addChannel(channel).ok()) {
-    return false;
-  }
+  impl_->writer.addChannel(channel);
 #endif
 
   state.registered = true;
@@ -115,7 +109,7 @@ bool Recorder::WriteMessage(const std::string& topic,
   }
 
 #if defined(AUTOVIZ_HAS_MCAP)
-  mcap::Message message;
+  ::mcap::Message message;
   message.channelId = it->second.channel_id;
   message.sequence = 0;
   message.logTime = log_time_ns;

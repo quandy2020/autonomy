@@ -20,7 +20,13 @@ target_include_directories(autoviz.example.datas_publisher PRIVATE
 )
 target_link_libraries(autoviz.example.datas_publisher PRIVATE autolink)
 
-if(automsgs_FOUND AND TARGET automsgs)
+if(TARGET automsgs)
     target_link_libraries(autoviz.example.datas_publisher PRIVATE automsgs)
-    target_include_directories(autoviz.example.datas_publisher PRIVATE ${AUTOMSGS_INCLUDE_DIRS})
+    if(DEFINED AUTOMSGS_INCLUDE_DIRS)
+      target_include_directories(autoviz.example.datas_publisher PRIVATE ${AUTOMSGS_INCLUDE_DIRS})
+    endif()
+endif()
+
+if(TARGET automsgs::automsgs)
+  target_link_libraries(autoviz.example.datas_publisher PRIVATE automsgs::automsgs)
 endif()
