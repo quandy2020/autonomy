@@ -20,10 +20,14 @@
 #include <chrono>
 #include <regex>
 #include <string_view>
+#include <unordered_set>
+
+#include <google/protobuf/descriptor.pb.h>
 
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/message/raw_message.hpp"
+#include "autolink/proto/proto_desc.pb.h"
 #include "autolink/proto/role_attributes.pb.h"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autolink/time/time.hpp"
@@ -40,11 +44,63 @@ namespace autoviz {
 namespace {
 
 constexpr char AUTOLINK_CHANNEL_ENCODING[] = "protobuf";
-constexpr double MIN_UPDATE_PERIOD_MS = 100.0;
 
 using NodePtr = std::shared_ptr<autolink::Node>;
 using ReaderPtr = std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>;
 using WriterPtr = std::shared_ptr<autolink::Writer<autolink::message::RawMessage>>;
+
+bool HasServiceCompatibleEncoding(const std::vector<std::string>& encodings) {
+  for (const auto& enc : encodings) {
+    if (enc == "json" || enc == "ros1" || enc == "cdr") {
+      return true;
+    }
+  }
+  return false;
+}
+
+void AppendProtoDescToFileDescriptorSet(const autolink::proto::ProtoDesc& proto_desc,
+                                        google::protobuf::FileDescriptorSet* fd_set,
+                                        std::unordered_set<std::string>* added_files) {
+  if (fd_set == nullptr || added_files == nullptr) {
+    return;
+  }
+
+  google::protobuf::FileDescriptorProto fd_proto;
+  if (proto_desc.desc().empty() || !fd_proto.ParseFromString(proto_desc.desc())) {
+    return;
+  }
+
+  for (const auto& dep : proto_desc.dependencies()) {
+    AppendProtoDescToFileDescriptorSet(dep, fd_set, added_files);
+  }
+
+  // Deduplicate by file name to keep a stable, valid FileDescriptorSet.
+  if (!fd_proto.name().empty() && added_files->count(fd_proto.name()) > 0) {
+    return;
+  }
+  *fd_set->add_file() = fd_proto;
+  if (!fd_proto.name().empty()) {
+    added_files->insert(fd_proto.name());
+  }
+}
+
+std::string BuildFoxgloveSchemaFromProtoDesc(const std::string& proto_desc_bin) {
+  if (proto_desc_bin.empty()) {
+    return "";
+  }
+  autolink::proto::ProtoDesc proto_desc;
+  if (!proto_desc.ParseFromString(proto_desc_bin)) {
+    return "";
+  }
+  google::protobuf::FileDescriptorSet fd_set;
+  std::unordered_set<std::string> added_files;
+  AppendProtoDescToFileDescriptorSet(proto_desc, &fd_set, &added_files);
+  std::string serialized;
+  if (!fd_set.SerializeToString(&serialized)) {
+    return "";
+  }
+  return serialized;
+}
 
 }  // namespace
 
@@ -86,13 +142,35 @@ bool AutolinkBridge::Start() {
   }
 
   foxglove_ws::ServerOptions opts;
-  opts.capabilities.assign(foxglove_ws::DEFAULT_CAPABILITIES.begin(),
-                          foxglove_ws::DEFAULT_CAPABILITIES.end());
-  opts.supportedEncodings = {AUTOLINK_CHANNEL_ENCODING};
+  if (options_.capabilities.empty()) {
+    opts.capabilities.assign(foxglove_ws::DEFAULT_CAPABILITIES.begin(),
+                             foxglove_ws::DEFAULT_CAPABILITIES.end());
+  } else {
+    opts.capabilities = options_.capabilities;
+  }
+  if (options_.supported_encodings.empty()) {
+    opts.supportedEncodings = {AUTOLINK_CHANNEL_ENCODING};
+  } else {
+    opts.supportedEncodings = options_.supported_encodings;
+  }
+  // Foxglove service calls require json/ros1/cdr. If unavailable, disable services capability
+  // to avoid "calling services is disabled as no compatible encoding could be found".
+  if (!HasServiceCompatibleEncoding(opts.supportedEncodings)) {
+    auto it = std::remove(opts.capabilities.begin(), opts.capabilities.end(),
+                          std::string(foxglove_ws::CAPABILITY_SERVICES));
+    if (it != opts.capabilities.end()) {
+      opts.capabilities.erase(it, opts.capabilities.end());
+      AWARN << "autoviz: CAPABILITY_SERVICES disabled because supported_encodings=[protobuf] "
+               "has no service-compatible encoding (json/ros1/cdr).";
+    }
+  }
   opts.metadata = {{"encoding", AUTOLINK_CHANNEL_ENCODING}};
-  opts.sendBufferLimitBytes = foxglove_ws::DEFAULT_SEND_BUFFER_LIMIT_BYTES;
-  opts.sessionId = std::to_string(std::time(nullptr));
-  opts.useTls = false;
+  opts.sendBufferLimitBytes = options_.send_buffer_limit_bytes;
+  opts.sessionId = options_.session_id.empty() ? std::to_string(std::time(nullptr)) : options_.session_id;
+  opts.useTls = options_.use_tls;
+  opts.certfile = options_.cert_file;
+  opts.keyfile = options_.key_file;
+  opts.useCompression = options_.use_compression;
   opts.clientTopicWhitelistPatterns = options_.topic_whitelist;
 
   auto log_handler = [](foxglove_ws::WebSocketLogLevel level, const char* msg) {
@@ -188,11 +266,41 @@ void AutolinkBridge::updateChannelsAndGraph() {
       continue;
     }
 
-    std::vector<std::string> channel_names;
-    channel_mgr->GetChannelNames(&channel_names);
+    std::vector<autolink::proto::RoleAttributes> writers;
+    channel_mgr->GetWriters(&writers);
+
+    // Prefer writer attributes directly: they carry channel_name/message_type/proto_desc,
+    // avoiding races where GetMsgType/GetProtoDesc lookup may temporarily fail.
+    struct WriterChannelInfo {
+      std::string msg_type;
+      std::string proto_desc;
+    };
+    std::unordered_map<std::string, WriterChannelInfo> channel_infos;
+    channel_infos.reserve(writers.size());
+    for (const auto& w : writers) {
+      const std::string channel = w.channel_name();
+      if (channel.empty() || !isWhitelisted(channel, options_.topic_whitelist)) {
+        continue;
+      }
+      auto it = channel_infos.find(channel);
+      if (it == channel_infos.end()) {
+        channel_infos.emplace(channel, WriterChannelInfo{w.message_type(), w.proto_desc()});
+      } else {
+        if (it->second.msg_type.empty() && !w.message_type().empty()) {
+          it->second.msg_type = w.message_type();
+        }
+        if (it->second.proto_desc.empty() && !w.proto_desc().empty()) {
+          it->second.proto_desc = w.proto_desc();
+        }
+      }
+    }
 
     std::vector<foxglove_ws::ChannelWithoutId> to_add;
-    std::unordered_set<std::string> current_set(channel_names.begin(), channel_names.end());
+    std::unordered_set<std::string> current_set;
+    current_set.reserve(channel_infos.size());
+    for (const auto& kv : channel_infos) {
+      current_set.insert(kv.first);
+    }
 
     std::lock_guard<std::mutex> lock(subscriptions_mutex_);
     std::vector<foxglove_ws::ChannelId> to_remove;
@@ -209,10 +317,8 @@ void AutolinkBridge::updateChannelsAndGraph() {
       server_->removeChannels(to_remove);
     }
 
-    for (const std::string& topic : channel_names) {
-      if (!isWhitelisted(topic, options_.topic_whitelist)) {
-        continue;
-      }
+    for (const auto& kv : channel_infos) {
+      const std::string& topic = kv.first;
       bool already = false;
       for (const auto& p : advertised_channels_) {
         if (p.second.topic == topic) {
@@ -222,16 +328,15 @@ void AutolinkBridge::updateChannelsAndGraph() {
       }
       if (already) continue;
 
-      std::string msg_type;
-      channel_mgr->GetMsgType(topic, &msg_type);
-      std::string proto_desc;
-      channel_mgr->GetProtoDesc(topic, &proto_desc);
+      const std::string& msg_type = kv.second.msg_type;
+      const std::string& proto_desc = kv.second.proto_desc;
 
       foxglove_ws::ChannelWithoutId ch;
       ch.topic = topic;
       ch.schemaName = msg_type.empty() ? "unknown" : msg_type;
       ch.encoding = AUTOLINK_CHANNEL_ENCODING;
-      ch.schema = proto_desc.empty() ? "" : foxglove_ws::base64Encode(proto_desc);
+      const std::string schema_bin = BuildFoxgloveSchemaFromProtoDesc(proto_desc);
+      ch.schema = schema_bin.empty() ? "" : foxglove_ws::base64Encode(schema_bin);
       ch.schemaEncoding = std::optional<std::string>("protobuf");
       to_add.push_back(std::move(ch));
     }
@@ -245,8 +350,6 @@ void AutolinkBridge::updateChannelsAndGraph() {
     }
 
     foxglove_ws::MapOfSets published, subscribed, services;
-    std::vector<autolink::proto::RoleAttributes> writers;
-    channel_mgr->GetWriters(&writers);
     for (const auto& w : writers) {
       std::string chan = w.channel_name();
       if (isWhitelisted(chan, options_.topic_whitelist)) {

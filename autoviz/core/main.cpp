@@ -23,6 +23,8 @@
 #include <memory>
 #include <thread>
 
+#include <yaml-cpp/yaml.h>
+
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink_bridge.hpp"
@@ -47,6 +49,79 @@ static std::string GuessAutolinkWorkRoot() {
   return "";
 }
 
+static std::string GuessAutovizConfigPath() {
+  namespace fs = std::filesystem;
+  const fs::path cwd = fs::current_path();
+  fs::path base = cwd;
+  for (int depth = 0; depth < 10; ++depth) {
+    const fs::path cfg = base / "src" / "autonomy" / "autoviz" / "config" / "autoviz.yaml";
+    std::error_code ec;
+    if (fs::exists(cfg, ec) && !ec) {
+      return cfg.string();
+    }
+    if (!base.has_parent_path()) break;
+    base = base.parent_path();
+  }
+  return "";
+}
+
+static void LoadOptionsFromYaml(const std::string& path, AutolinkBridge::Options* options) {
+  if (path.empty() || options == nullptr) {
+    return;
+  }
+  try {
+    const YAML::Node root = YAML::LoadFile(path);
+    const YAML::Node fox = root["foxglove"];
+    if (fox) {
+      if (fox["host"]) options->host = fox["host"].as<std::string>();
+      if (fox["port"]) options->port = fox["port"].as<uint16_t>();
+      if (fox["session_id"]) options->session_id = fox["session_id"].as<std::string>();
+      if (fox["send_buffer_limit_bytes"]) {
+        options->send_buffer_limit_bytes = fox["send_buffer_limit_bytes"].as<std::size_t>();
+      }
+      if (fox["use_compression"]) options->use_compression = fox["use_compression"].as<bool>();
+
+      if (fox["capabilities"] && fox["capabilities"].IsSequence()) {
+        options->capabilities.clear();
+        for (const auto& item : fox["capabilities"]) {
+          options->capabilities.emplace_back(item.as<std::string>());
+        }
+      }
+      if (fox["supported_encodings"] && fox["supported_encodings"].IsSequence()) {
+        options->supported_encodings.clear();
+        for (const auto& item : fox["supported_encodings"]) {
+          options->supported_encodings.emplace_back(item.as<std::string>());
+        }
+      }
+      const YAML::Node tls = fox["tls"];
+      if (tls) {
+        if (tls["enabled"]) options->use_tls = tls["enabled"].as<bool>();
+        if (tls["cert_file"]) options->cert_file = tls["cert_file"].as<std::string>();
+        if (tls["key_file"]) options->key_file = tls["key_file"].as<std::string>();
+      }
+    }
+
+    const YAML::Node al = root["autolink"];
+    if (al) {
+      if (al["min_update_period_ms"]) {
+        options->min_update_period_ms = al["min_update_period_ms"].as<double>();
+      }
+      if (al["max_update_period_ms"]) {
+        options->max_update_period_ms = al["max_update_period_ms"].as<double>();
+      }
+      if (al["topic_whitelist"] && al["topic_whitelist"].IsSequence()) {
+        options->topic_whitelist.clear();
+        for (const auto& item : al["topic_whitelist"]) {
+          options->topic_whitelist.emplace_back(item.as<std::string>());
+        }
+      }
+    }
+    AINFO << "autoviz: loaded config " << path;
+  } catch (const std::exception& e) {
+    AWARN << "autoviz: failed to load config " << path << ", reason: " << e.what();
+  }
+}
+
 namespace {
 
 void Run() {
@@ -54,8 +129,9 @@ void Run() {
   signal(SIGTERM, [](int) { exit(0); });
 
   AutolinkBridge::Options options;
-  options.host = "0.0.0.0";
-  options.port = 8765;
+  const char* env_cfg = std::getenv("AUTOVIZ_CONFIG");
+  const std::string cfg_path = (env_cfg && env_cfg[0] != '\0') ? env_cfg : GuessAutovizConfigPath();
+  LoadOptionsFromYaml(cfg_path, &options);
 
   auto bridge = std::make_unique<AutolinkBridge>(options);
   if (!bridge->Start()) {

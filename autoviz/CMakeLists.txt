@@ -20,6 +20,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(AUTOVIZ_BUILD_TEST "Build unit tests" OFF)
+option(AUTOVIZ_BUILD_EXAMPLE "Build example" ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -35,6 +36,7 @@ find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Websocketpp REQUIRED)
+find_package(yaml-cpp REQUIRED)
 find_package(nlohmann_json QUIET)
 find_package(Protobuf REQUIRED)
 
@@ -107,6 +109,7 @@ target_include_directories(autoviz PRIVATE
 target_link_libraries(autoviz PRIVATE
   foxglove_bridge_base
   autolink
+  yaml-cpp
 )
 if(automsgs_FOUND AND TARGET automsgs)
   target_link_libraries(autoviz PRIVATE automsgs)
@@ -114,10 +117,20 @@ if(automsgs_FOUND AND TARGET automsgs)
 endif()
 
 # -----------------------------------------------------------------------------
+# Example (optional)
+# -----------------------------------------------------------------------------
+if(AUTOVIZ_BUILD_EXAMPLE)
+  add_subdirectory(example)
+endif()
+
+# -----------------------------------------------------------------------------
 # Install
 # -----------------------------------------------------------------------------
 include(GNUInstallDirs)
 install(TARGETS autoviz RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(AUTOVIZ_BUILD_EXAMPLE)
+  install(TARGETS autoviz.example.datas_publisher RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 
 # -----------------------------------------------------------------------------
 # Tests (optional)
