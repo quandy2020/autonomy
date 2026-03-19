@@ -115,10 +115,10 @@ void Run() {
   uint64_t seq = 0;
   Rate loop_rate(10.0);  // 10 Hz
   while (g_running && autolink::OK()) {
-    // std_msgs/String
-    autonomy::commsgs::proto::std_msgs::String text_msg;
-    text_msg.set_data("autoviz hello, seq=" + std::to_string(seq));
-    (void)text_writer->Write(text_msg);
+    // // std_msgs/String
+    // autonomy::commsgs::proto::std_msgs::String text_msg;
+    // text_msg.set_data("autoviz hello, seq=" + std::to_string(seq));
+    // text_writer->Write(text_msg);
 
     // sensor_msgs/Imu
     autonomy::commsgs::proto::sensor_msgs::Imu imu_msg;
@@ -130,7 +130,9 @@ void Run() {
     imu_msg.mutable_linear_acceleration()->set_x(0.0);
     imu_msg.mutable_linear_acceleration()->set_y(0.0);
     imu_msg.mutable_linear_acceleration()->set_z(9.81);
-    (void)imu_writer->Write(imu_msg);
+    imu_writer->Write(imu_msg);
+
+    AINFO << "Published text message, seq=" << seq;
 
     ++seq;
     loop_rate.Sleep();
