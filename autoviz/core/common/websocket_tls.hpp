@@ -1,15 +1,14 @@
 #pragma once
 
-#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/config/asio.hpp>
 #include <websocketpp/extensions/permessage_deflate/enabled.hpp>
-#include <websocketpp/server.hpp>
 
-#include "./websocket_logging.hpp"
+#include "websocket_logging.hpp"
 
 namespace foxglove_ws {
 
-struct WebSocketNoTls : public websocketpp::config::core {
-  typedef WebSocketNoTls type;
+struct WebSocketTls : public websocketpp::config::core {
+  typedef WebSocketTls type;
   typedef core base;
 
   typedef base::concurrency_type concurrency_type;
@@ -32,7 +31,7 @@ struct WebSocketNoTls : public websocketpp::config::core {
     typedef CallbackLogger elog_type;
     typedef type::request_type request_type;
     typedef type::response_type response_type;
-    typedef websocketpp::transport::asio::basic_socket::endpoint socket_type;
+    typedef websocketpp::transport::asio::tls_socket::endpoint socket_type;
   };
 
   typedef websocketpp::transport::asio::endpoint<transport_config> transport_type;

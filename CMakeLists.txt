@@ -580,17 +580,18 @@ endif()
 
 # autonomy.visualization.launcher (requires foxglove)
 if(${BUILD_FOXGLOVE})
-  google_binary(autonomy.visualization.launcher
-    SRCS
-      autonomy/visualization/main.cpp
-  )
+  # google_binary(autonomy.visualization.launcher
+  #   SRCS
+  #     autonomy/visualization/main.cpp
+  # )
+  add_subdirectory(autoviz)
 endif()
 
-# autonomy.visualization.data_publisher (publishes sensor data via autolink)
-google_binary(autonomy.visualization.data_publisher
-    SRCS
-      autonomy/visualization/data_main.cpp
-)
+# # autonomy.visualization.data_publisher (publishes sensor data via autolink)
+# google_binary(autonomy.visualization.data_publisher
+#     SRCS
+#       autonomy/visualization/data_main.cpp
+# )
 
 ## Test unit
 if (${BUILD_TEST})
