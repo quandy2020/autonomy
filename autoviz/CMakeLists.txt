@@ -77,45 +77,6 @@ else()
 endif()
 
 # -----------------------------------------------------------------------------
-# foxglove websocket base from ros-foxglove-bridge (non-ROS part)
-# -----------------------------------------------------------------------------
-set(FOXGLOVE_BASE_DIR "")
-set(_FOXGLOVE_BASE_CANDIDATES
-  "${CMAKE_CURRENT_SOURCE_DIR}/../../ros-foxglove-bridge/foxglove_bridge_base"
-  "${CMAKE_CURRENT_SOURCE_DIR}/../ros-foxglove-bridge/foxglove_bridge_base"
-  "${CMAKE_SOURCE_DIR}/../ros-foxglove-bridge/foxglove_bridge_base"
-)
-foreach(_cand IN LISTS _FOXGLOVE_BASE_CANDIDATES)
-  if(EXISTS "${_cand}/src/base64.cpp")
-    set(FOXGLOVE_BASE_DIR "${_cand}")
-    break()
-  endif()
-endforeach()
-if(FOXGLOVE_BASE_DIR STREQUAL "")
-  message(WARNING
-    "autoviz is disabled because foxglove_bridge_base is missing. Checked: ${_FOXGLOVE_BASE_CANDIDATES}")
-  return()
-endif()
-add_library(autoviz_foxglove_base STATIC
-  ${FOXGLOVE_BASE_DIR}/src/base64.cpp
-  ${FOXGLOVE_BASE_DIR}/src/parameter.cpp
-  ${FOXGLOVE_BASE_DIR}/src/serialization.cpp
-  ${FOXGLOVE_BASE_DIR}/src/server_factory.cpp
-)
-target_include_directories(autoviz_foxglove_base PUBLIC
-  ${FOXGLOVE_BASE_DIR}/include
-)
-target_link_libraries(autoviz_foxglove_base PUBLIC
-  OpenSSL::SSL
-  OpenSSL::Crypto
-  ZLIB::ZLIB
-  Threads::Threads
-)
-if(nlohmann_json_FOUND)
-  target_link_libraries(autoviz_foxglove_base PUBLIC nlohmann_json::nlohmann_json)
-endif()
-
-# -----------------------------------------------------------------------------
 # autoviz core library and executable (autolink + automsgs only)
 # -----------------------------------------------------------------------------
 add_library(autoviz_core STATIC
@@ -130,12 +91,11 @@ add_library(autoviz_core STATIC
 )
 target_include_directories(autoviz_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../..
   ${CMAKE_CURRENT_SOURCE_DIR}/../autolink
   ${CMAKE_CURRENT_SOURCE_DIR}/core
-  ${FOXGLOVE_BASE_DIR}/include
 )
 target_link_libraries(autoviz_core PUBLIC
-  autoviz_foxglove_base
   ${AUTOVIZ_AUTOLINK_TARGET}
   ${AUTOVIZ_AUTOMSGS_TARGET}
   yaml-cpp
@@ -144,7 +104,9 @@ if(DEFINED AUTOMSGS_INCLUDE_DIRS)
   target_include_directories(autoviz_core PUBLIC ${AUTOMSGS_INCLUDE_DIRS})
 endif()
 if(MCAP_FOUND)
-  target_compile_definitions(autoviz_core PUBLIC AUTOVIZ_HAS_MCAP=1)
+  # mcap writer.hpp only includes writer.inl when MCAP_IMPLEMENTATION is
+  # defined (implementation is not fully header-only in this configuration).
+  target_compile_definitions(autoviz_core PUBLIC AUTOVIZ_HAS_MCAP=1 MCAP_IMPLEMENTATION)
   target_include_directories(autoviz_core PUBLIC ${MCAP_INCLUDE_DIRS})
   if(MCAP_LIBRARIES)
     target_link_libraries(autoviz_core PUBLIC ${MCAP_LIBRARIES})
