@@ -26,9 +26,10 @@
 #include "autolink/common/log.hpp"
 #include "autolink/message/message_traits.hpp"
 #include "autolink/proto/role_attributes.pb.h"
-#include "autonomy/commsgs/proto/builtin_interfaces.pb.h"
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
-#include "autonomy/commsgs/proto/std_msgs.pb.h"
+#include "automsgs/msgs/builtin_interfaces/time.pb.h"
+#include "automsgs/msgs/sensor_msgs/imu.pb.h"
+#include "automsgs/msgs/std_msgs/header.pb.h"
+#include "automsgs/msgs/std_msgs/string.pb.h"
 
 namespace autoviz {
 namespace example {
@@ -43,16 +44,16 @@ void SignalHandler(int) {
   g_running = false;
 }
 
-autonomy::commsgs::proto::builtin_interfaces::Time NowProto() {
+automsgs::msgs::builtin_interfaces::Time NowProto() {
   const int64_t nanos = Time::Now().ToNanosecond();
-  autonomy::commsgs::proto::builtin_interfaces::Time t;
+  automsgs::msgs::builtin_interfaces::Time t;
   t.set_sec(static_cast<int32_t>(nanos / 1000000000LL));
   t.set_nanosec(static_cast<uint32_t>(nanos % 1000000000ULL));
   return t;
 }
 
-autonomy::commsgs::proto::std_msgs::Header MakeHeader(const std::string& frame_id) {
-  autonomy::commsgs::proto::std_msgs::Header h;
+automsgs::msgs::std_msgs::Header MakeHeader(const std::string& frame_id) {
+  automsgs::msgs::std_msgs::Header h;
   *h.mutable_stamp() = NowProto();
   h.set_frame_id(frame_id);
   return h;
@@ -93,15 +94,15 @@ void Run() {
   autolink::proto::RoleAttributes text_attr;
   text_attr.set_channel_name("/autoviz/example/text");
   text_attr.set_message_type(
-      autolink::message::MessageType<autonomy::commsgs::proto::std_msgs::String>());
-  auto text_writer = node->CreateWriter<autonomy::commsgs::proto::std_msgs::String>(text_attr);
+      autolink::message::MessageType<automsgs::msgs::std_msgs::String>());
+  auto text_writer = node->CreateWriter<automsgs::msgs::std_msgs::String>(text_attr);
 
   // /autoviz/example/imu
   autolink::proto::RoleAttributes imu_attr;
   imu_attr.set_channel_name("/autoviz/example/imu");
   imu_attr.set_message_type(
-      autolink::message::MessageType<autonomy::commsgs::proto::sensor_msgs::Imu>());
-  auto imu_writer = node->CreateWriter<autonomy::commsgs::proto::sensor_msgs::Imu>(imu_attr);
+      autolink::message::MessageType<automsgs::msgs::sensor_msgs::Imu>());
+  auto imu_writer = node->CreateWriter<automsgs::msgs::sensor_msgs::Imu>(imu_attr);
 
   if (!text_writer || !imu_writer) {
     AERROR << "Failed to create one or more writers";
@@ -115,13 +116,13 @@ void Run() {
   uint64_t seq = 0;
   Rate loop_rate(10.0);  // 10 Hz
   while (g_running && autolink::OK()) {
-    // // std_msgs/String
-    // autonomy::commsgs::proto::std_msgs::String text_msg;
-    // text_msg.set_data("autoviz hello, seq=" + std::to_string(seq));
-    // text_writer->Write(text_msg);
+    // std_msgs/String
+    automsgs::msgs::std_msgs::String text_msg;
+    text_msg.set_data("autoviz hello, seq=" + std::to_string(seq));
+    text_writer->Write(text_msg);
 
     // sensor_msgs/Imu
-    autonomy::commsgs::proto::sensor_msgs::Imu imu_msg;
+    automsgs::msgs::sensor_msgs::Imu imu_msg;
     *imu_msg.mutable_header() = MakeHeader("base_link");
     imu_msg.mutable_orientation()->set_w(1.0);
     imu_msg.mutable_angular_velocity()->set_x(0.01 * static_cast<double>(seq));
@@ -132,7 +133,7 @@ void Run() {
     imu_msg.mutable_linear_acceleration()->set_z(9.81);
     imu_writer->Write(imu_msg);
 
-    AINFO << "Published text message, seq=" << seq;
+    AINFO << "Published text+imu message, seq=" << seq;
 
     ++seq;
     loop_rate.Sleep();
