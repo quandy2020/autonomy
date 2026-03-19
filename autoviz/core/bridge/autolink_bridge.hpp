@@ -50,6 +50,14 @@ class AutolinkBridge {
     std::string host = "0.0.0.0";
     uint16_t port = 8765;
     std::vector<std::regex> topic_whitelist = {std::regex(".*")};
+    std::vector<std::string> capabilities;
+    std::vector<std::string> supported_encodings = {"protobuf"};
+    std::size_t send_buffer_limit_bytes = 10000000UL;
+    std::string session_id;
+    bool use_compression = false;
+    bool use_tls = false;
+    std::string cert_file;
+    std::string key_file;
     double max_update_period_ms = 5000.0;
     double min_update_period_ms = 100.0;
   };
