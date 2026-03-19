@@ -19,9 +19,6 @@ target_include_directories(autoviz.example.datas_publisher PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(autoviz.example.datas_publisher PRIVATE autolink)
-if(TARGET autonomy)
-    target_link_libraries(autoviz.example.datas_publisher PRIVATE autonomy)
-endif()
 
 if(automsgs_FOUND AND TARGET automsgs)
     target_link_libraries(autoviz.example.datas_publisher PRIVATE automsgs)

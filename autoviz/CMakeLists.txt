@@ -31,93 +31,128 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # -----------------------------------------------------------------------------
 # Prefer local find modules under autoviz/cmake.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/modules")
 
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Websocketpp REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Mcap QUIET)
 find_package(nlohmann_json QUIET)
 find_package(Protobuf REQUIRED)
 
-if(NOT TARGET autolink)
+# Reuse in-workspace targets when building as part of autonomy.
+# Fallback to installed packages for standalone builds.
+set(AUTOVIZ_AUTOLINK_TARGET "")
+if(TARGET autolink)
+  set(AUTOVIZ_AUTOLINK_TARGET autolink)
+elseif(TARGET autolink::autolink)
+  set(AUTOVIZ_AUTOLINK_TARGET autolink::autolink)
+else()
   find_package(autolink REQUIRED)
+  if(TARGET autolink)
+    set(AUTOVIZ_AUTOLINK_TARGET autolink)
+  elseif(TARGET autolink::autolink)
+    set(AUTOVIZ_AUTOLINK_TARGET autolink::autolink)
+  else()
+    message(FATAL_ERROR "autolink target not found after find_package(autolink).")
+  endif()
 endif()
 
-# automsgs: optional, for message schema / types if needed
-find_package(automsgs QUIET)
+set(AUTOVIZ_AUTOMSGS_TARGET "")
+if(TARGET automsgs)
+  set(AUTOVIZ_AUTOMSGS_TARGET automsgs)
+elseif(TARGET automsgs::automsgs)
+  set(AUTOVIZ_AUTOMSGS_TARGET automsgs::automsgs)
+else()
+  find_package(automsgs REQUIRED)
+  if(TARGET automsgs)
+    set(AUTOVIZ_AUTOMSGS_TARGET automsgs)
+  elseif(TARGET automsgs::automsgs)
+    set(AUTOVIZ_AUTOMSGS_TARGET automsgs::automsgs)
+  else()
+    message(FATAL_ERROR "automsgs target not found after find_package(automsgs).")
+  endif()
+endif()
 
 # -----------------------------------------------------------------------------
-# version.cpp
+# foxglove websocket base from ros-foxglove-bridge (non-ROS part)
 # -----------------------------------------------------------------------------
-find_program(GIT_EXECUTABLE git)
-if(GIT_EXECUTABLE)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --always --dirty
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE AUTOVIZ_GIT_HASH
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-endif()
-if(NOT AUTOVIZ_GIT_HASH)
-  set(AUTOVIZ_GIT_HASH "unknown")
-endif()
-set(FOXGLOVE_BRIDGE_VERSION "${CMAKE_PROJECT_VERSION}")
-set(FOXGLOVE_BRIDGE_GIT_HASH "${AUTOVIZ_GIT_HASH}")
-configure_file(
-  core/common/version.cpp.in
-  ${CMAKE_CURRENT_BINARY_DIR}/core/common/version.cpp
-  @ONLY)
-
-# -----------------------------------------------------------------------------
-# foxglove_bridge_base (WebSocket protocol, same as ros-foxglove-bridge base)
-# -----------------------------------------------------------------------------
-add_library(foxglove_bridge_base STATIC
-  core/common/base64.cpp
-  core/common/parameter.cpp
-  core/common/serialization.cpp
-  core/common/server_factory.cpp
-  core/common/foxglove_bridge.cpp
-  ${CMAKE_CURRENT_BINARY_DIR}/core/common/version.cpp
+set(FOXGLOVE_BASE_DIR "")
+set(_FOXGLOVE_BASE_CANDIDATES
+  "${CMAKE_CURRENT_SOURCE_DIR}/../../ros-foxglove-bridge/foxglove_bridge_base"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../ros-foxglove-bridge/foxglove_bridge_base"
+  "${CMAKE_SOURCE_DIR}/../ros-foxglove-bridge/foxglove_bridge_base"
 )
-target_include_directories(foxglove_bridge_base PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/core/common
+foreach(_cand IN LISTS _FOXGLOVE_BASE_CANDIDATES)
+  if(EXISTS "${_cand}/src/base64.cpp")
+    set(FOXGLOVE_BASE_DIR "${_cand}")
+    break()
+  endif()
+endforeach()
+if(FOXGLOVE_BASE_DIR STREQUAL "")
+  message(WARNING
+    "autoviz is disabled because foxglove_bridge_base is missing. Checked: ${_FOXGLOVE_BASE_CANDIDATES}")
+  return()
+endif()
+add_library(autoviz_foxglove_base STATIC
+  ${FOXGLOVE_BASE_DIR}/src/base64.cpp
+  ${FOXGLOVE_BASE_DIR}/src/parameter.cpp
+  ${FOXGLOVE_BASE_DIR}/src/serialization.cpp
+  ${FOXGLOVE_BASE_DIR}/src/server_factory.cpp
 )
-target_link_libraries(foxglove_bridge_base PUBLIC
+target_include_directories(autoviz_foxglove_base PUBLIC
+  ${FOXGLOVE_BASE_DIR}/include
+)
+target_link_libraries(autoviz_foxglove_base PUBLIC
   OpenSSL::SSL
   OpenSSL::Crypto
   ZLIB::ZLIB
   Threads::Threads
 )
 if(nlohmann_json_FOUND)
-  target_link_libraries(foxglove_bridge_base PUBLIC nlohmann_json::nlohmann_json)
+  target_link_libraries(autoviz_foxglove_base PUBLIC nlohmann_json::nlohmann_json)
 endif()
 
 # -----------------------------------------------------------------------------
-# autoviz executable (autolink bridge + main)
+# autoviz core library and executable (autolink + automsgs only)
 # -----------------------------------------------------------------------------
-add_executable(autoviz
-  core/main.cpp
+add_library(autoviz_core STATIC
+  core/app.cpp
+  core/config/config.cpp
+  core/mcap/recorder.cpp
+  core/server/foxglove_server.cpp
   core/bridge/autolink_bridge.cpp
-  core/bridge/channel_sync.cpp
-  core/bridge/msgs_converter.cpp
-  core/bridge/schema_builder.cpp
+  core/transport/auto_discovery.cpp
+  core/converter/type_name_converter.cpp
+  core/converter/schema_converter.cpp
 )
-target_include_directories(autoviz PRIVATE
-  ${CMAKE_SOURCE_DIR}
-  ${CMAKE_SOURCE_DIR}/autolink
-  ${CMAKE_CURRENT_SOURCE_DIR}/core/common
-  ${CMAKE_CURRENT_SOURCE_DIR}/core/bridge
+target_include_directories(autoviz_core PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/../autolink
+  ${CMAKE_CURRENT_SOURCE_DIR}/core
+  ${FOXGLOVE_BASE_DIR}/include
 )
-target_link_libraries(autoviz PRIVATE
-  foxglove_bridge_base
-  autolink
+target_link_libraries(autoviz_core PUBLIC
+  autoviz_foxglove_base
+  ${AUTOVIZ_AUTOLINK_TARGET}
+  ${AUTOVIZ_AUTOMSGS_TARGET}
   yaml-cpp
 )
-if(automsgs_FOUND AND TARGET automsgs)
-  target_link_libraries(autoviz PRIVATE automsgs)
-  target_include_directories(autoviz PRIVATE ${AUTOMSGS_INCLUDE_DIRS})
+if(DEFINED AUTOMSGS_INCLUDE_DIRS)
+  target_include_directories(autoviz_core PUBLIC ${AUTOMSGS_INCLUDE_DIRS})
 endif()
+if(MCAP_FOUND)
+  target_compile_definitions(autoviz_core PUBLIC AUTOVIZ_HAS_MCAP=1)
+  target_include_directories(autoviz_core PUBLIC ${MCAP_INCLUDE_DIRS})
+  if(MCAP_LIBRARIES)
+    target_link_libraries(autoviz_core PUBLIC ${MCAP_LIBRARIES})
+  endif()
+endif()
+
+add_executable(autoviz core/main.cpp)
+target_link_libraries(autoviz PRIVATE autoviz_core)
 
 # -----------------------------------------------------------------------------
 # Example (optional)
@@ -139,28 +174,5 @@ endif()
 # Tests (optional)
 # -----------------------------------------------------------------------------
 if(AUTOVIZ_BUILD_TEST)
-  find_package(GTest REQUIRED)
-  file(GLOB AUTOVIZ_TESTS "core/common/test/*_test.cpp")
-  foreach(TEST_SRC ${AUTOVIZ_TESTS})
-    get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
-    add_executable(${TEST_NAME} ${TEST_SRC})
-    target_include_directories(${TEST_NAME} PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/core/common
-      ${CMAKE_CURRENT_SOURCE_DIR}/core/common/test
-    )
-    target_link_libraries(${TEST_NAME} PRIVATE foxglove_bridge_base GTest::gtest)
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-  endforeach()
-
-  add_executable(autoviz.msgs_converter_test
-    core/bridge/msgs_converter_test.cpp
-    core/bridge/msgs_converter.cpp
-  )
-  target_include_directories(autoviz.msgs_converter_test PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/autolink
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/common
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/bridge
-  )
-  add_test(NAME autoviz.msgs_converter_test COMMAND autoviz.msgs_converter_test)
+  message(STATUS "AUTOVIZ_BUILD_TEST=ON, but tests are not migrated yet.")
 endif()

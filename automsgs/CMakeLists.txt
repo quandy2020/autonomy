@@ -26,6 +26,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 if(NOT DEFINED AUTOMSGS_PYTHON_INSTALL_PATH)
@@ -46,3 +47,36 @@ add_subdirectory(python)
 add_subdirectory(core)
 add_subdirectory(examples)
 add_subdirectory(test)
+
+#============================================================================
+# CMake package export (find_package support for third-party projects)
+#============================================================================
+set(AUTOMSGS_INSTALL_CMAKEDIR
+    "${CMAKE_INSTALL_LIBDIR}/cmake/automsgs"
+    CACHE PATH "Install path for automsgs CMake package files")
+
+if(TARGET automsgs)
+  install(EXPORT automsgsTargets
+    FILE automsgsTargets.cmake
+    NAMESPACE automsgs::
+    DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
+
+  export(EXPORT automsgsTargets
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/automsgsTargets.cmake"
+    NAMESPACE automsgs::)
+endif()
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/automsgs_config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config.cmake"
+  INSTALL_DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config_version.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY SameMajorVersion)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/automsgs_config_version.cmake"
+  DESTINATION "${AUTOMSGS_INSTALL_CMAKEDIR}")
