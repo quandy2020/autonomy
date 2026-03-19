@@ -99,6 +99,9 @@ endif()
 add_executable(autoviz
   core/main.cpp
   core/bridge/autolink_bridge.cpp
+  core/bridge/channel_sync.cpp
+  core/bridge/msgs_converter.cpp
+  core/bridge/schema_builder.cpp
 )
 target_include_directories(autoviz PRIVATE
   ${CMAKE_SOURCE_DIR}
@@ -136,6 +139,7 @@ endif()
 # Tests (optional)
 # -----------------------------------------------------------------------------
 if(AUTOVIZ_BUILD_TEST)
+  find_package(GTest REQUIRED)
   file(GLOB AUTOVIZ_TESTS "core/common/test/*_test.cpp")
   foreach(TEST_SRC ${AUTOVIZ_TESTS})
     get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
@@ -144,7 +148,19 @@ if(AUTOVIZ_BUILD_TEST)
       ${CMAKE_CURRENT_SOURCE_DIR}/core/common
       ${CMAKE_CURRENT_SOURCE_DIR}/core/common/test
     )
-    target_link_libraries(${TEST_NAME} PRIVATE foxglove_bridge_base)
+    target_link_libraries(${TEST_NAME} PRIVATE foxglove_bridge_base GTest::gtest)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
   endforeach()
+
+  add_executable(autoviz.msgs_converter_test
+    core/bridge/msgs_converter_test.cpp
+    core/bridge/msgs_converter.cpp
+  )
+  target_include_directories(autoviz.msgs_converter_test PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/autolink
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/bridge
+  )
+  add_test(NAME autoviz.msgs_converter_test COMMAND autoviz.msgs_converter_test)
 endif()

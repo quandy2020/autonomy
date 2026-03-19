@@ -20,19 +20,15 @@
 #include <chrono>
 #include <regex>
 #include <string_view>
-#include <unordered_set>
-
-#include <google/protobuf/descriptor.pb.h>
 
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
 #include "autolink/message/raw_message.hpp"
-#include "autolink/proto/proto_desc.pb.h"
 #include "autolink/proto/role_attributes.pb.h"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autolink/time/time.hpp"
 
-#include "autoviz/core/common/base64.hpp"
+#include "autoviz/core/bridge/channel_sync.hpp"
 #include "autoviz/core/common/regex_utils.hpp"
 #include "autoviz/core/common/server_factory.hpp"
 #include "autoviz/core/common/websocket_notls.hpp"
@@ -56,50 +52,6 @@ bool HasServiceCompatibleEncoding(const std::vector<std::string>& encodings) {
     }
   }
   return false;
-}
-
-void AppendProtoDescToFileDescriptorSet(const autolink::proto::ProtoDesc& proto_desc,
-                                        google::protobuf::FileDescriptorSet* fd_set,
-                                        std::unordered_set<std::string>* added_files) {
-  if (fd_set == nullptr || added_files == nullptr) {
-    return;
-  }
-
-  google::protobuf::FileDescriptorProto fd_proto;
-  if (proto_desc.desc().empty() || !fd_proto.ParseFromString(proto_desc.desc())) {
-    return;
-  }
-
-  for (const auto& dep : proto_desc.dependencies()) {
-    AppendProtoDescToFileDescriptorSet(dep, fd_set, added_files);
-  }
-
-  // Deduplicate by file name to keep a stable, valid FileDescriptorSet.
-  if (!fd_proto.name().empty() && added_files->count(fd_proto.name()) > 0) {
-    return;
-  }
-  *fd_set->add_file() = fd_proto;
-  if (!fd_proto.name().empty()) {
-    added_files->insert(fd_proto.name());
-  }
-}
-
-std::string BuildFoxgloveSchemaFromProtoDesc(const std::string& proto_desc_bin) {
-  if (proto_desc_bin.empty()) {
-    return "";
-  }
-  autolink::proto::ProtoDesc proto_desc;
-  if (!proto_desc.ParseFromString(proto_desc_bin)) {
-    return "";
-  }
-  google::protobuf::FileDescriptorSet fd_set;
-  std::unordered_set<std::string> added_files;
-  AppendProtoDescToFileDescriptorSet(proto_desc, &fd_set, &added_files);
-  std::string serialized;
-  if (!fd_set.SerializeToString(&serialized)) {
-    return "";
-  }
-  return serialized;
 }
 
 }  // namespace
@@ -266,49 +218,16 @@ void AutolinkBridge::updateChannelsAndGraph() {
       continue;
     }
 
-    std::vector<autolink::proto::RoleAttributes> writers;
+    bridge::Writers writers;
     channel_mgr->GetWriters(&writers);
 
-    // Prefer writer attributes directly: they carry channel_name/message_type/proto_desc,
-    // avoiding races where GetMsgType/GetProtoDesc lookup may temporarily fail.
-    struct WriterChannelInfo {
-      std::string msg_type;
-      std::string proto_desc;
-    };
-    std::unordered_map<std::string, WriterChannelInfo> channel_infos;
-    channel_infos.reserve(writers.size());
-    for (const auto& w : writers) {
-      const std::string channel = w.channel_name();
-      if (channel.empty() || !isWhitelisted(channel, options_.topic_whitelist)) {
-        continue;
-      }
-      auto it = channel_infos.find(channel);
-      if (it == channel_infos.end()) {
-        channel_infos.emplace(channel, WriterChannelInfo{w.message_type(), w.proto_desc()});
-      } else {
-        if (it->second.msg_type.empty() && !w.message_type().empty()) {
-          it->second.msg_type = w.message_type();
-        }
-        if (it->second.proto_desc.empty() && !w.proto_desc().empty()) {
-          it->second.proto_desc = w.proto_desc();
-        }
-      }
-    }
-
-    std::vector<foxglove_ws::ChannelWithoutId> to_add;
-    std::unordered_set<std::string> current_set;
-    current_set.reserve(channel_infos.size());
-    for (const auto& kv : channel_infos) {
-      current_set.insert(kv.first);
-    }
+    const bridge::ChannelInfos channel_infos =
+        bridge::CollectChannelInfosFromWriters(writers, options_.topic_whitelist);
+    const std::unordered_set<std::string> current_set = bridge::BuildTopicSet(channel_infos);
 
     std::lock_guard<std::mutex> lock(subscriptions_mutex_);
-    std::vector<foxglove_ws::ChannelId> to_remove;
-    for (auto it = advertised_channels_.begin(); it != advertised_channels_.end(); ++it) {
-      if (current_set.count(it->second.topic) == 0) {
-        to_remove.push_back(it->first);
-      }
-    }
+    const std::vector<foxglove_ws::ChannelId> to_remove =
+        bridge::CollectChannelsToRemove(advertised_channels_, current_set);
     for (foxglove_ws::ChannelId id : to_remove) {
       if (impl_) impl_->readers_by_channel.erase(id);
       advertised_channels_.erase(id);
@@ -317,30 +236,11 @@ void AutolinkBridge::updateChannelsAndGraph() {
       server_->removeChannels(to_remove);
     }
 
-    for (const auto& kv : channel_infos) {
-      const std::string& topic = kv.first;
-      bool already = false;
-      for (const auto& p : advertised_channels_) {
-        if (p.second.topic == topic) {
-          already = true;
-          break;
-        }
-      }
-      if (already) continue;
+    const std::vector<foxglove_ws::ChannelWithoutId> to_add =
+        bridge::BuildChannelsToAdd(channel_infos, advertised_channels_);
 
-      const std::string& msg_type = kv.second.msg_type;
-      const std::string& proto_desc = kv.second.proto_desc;
-
-      foxglove_ws::ChannelWithoutId ch;
-      ch.topic = topic;
-      ch.schemaName = msg_type.empty() ? "unknown" : msg_type;
-      ch.encoding = AUTOLINK_CHANNEL_ENCODING;
-      const std::string schema_bin = BuildFoxgloveSchemaFromProtoDesc(proto_desc);
-      ch.schema = schema_bin.empty() ? "" : foxglove_ws::base64Encode(schema_bin);
-      ch.schemaEncoding = std::optional<std::string>("protobuf");
-      to_add.push_back(std::move(ch));
-    }
-
+    AINFO << "to_add size: " << to_add.size();
+    
     if (!to_add.empty()) {
       std::vector<foxglove_ws::ChannelId> ids = server_->addChannels(to_add);
       for (size_t i = 0; i < to_add.size(); ++i) {
@@ -349,20 +249,13 @@ void AutolinkBridge::updateChannelsAndGraph() {
       }
     }
 
-    foxglove_ws::MapOfSets published, subscribed, services;
-    for (const auto& w : writers) {
-      std::string chan = w.channel_name();
-      if (isWhitelisted(chan, options_.topic_whitelist)) {
-        published[chan].insert(w.node_name());
-      }
-    }
+    foxglove_ws::MapOfSets published = bridge::BuildPublishedGraph(writers, options_.topic_whitelist);
+    foxglove_ws::MapOfSets subscribed, services;
     server_->updateConnectionGraph(published, subscribed, services);
 
     update_count++;
-    double period_ms = std::max(
-        options_.min_update_period_ms,
-        static_cast<double>(std::min(size_t(1) << update_count,
-                                    static_cast<size_t>(options_.max_update_period_ms))));
+    const double period_ms =
+        bridge::ComputeUpdatePeriodMs(update_count, options_.min_update_period_ms, options_.max_update_period_ms);
     std::this_thread::sleep_for(
         std::chrono::duration<double, std::milli>(period_ms));
   }
