@@ -1,13 +1,45 @@
-# Autolink Cyber RT Python API
+# Autolink RT Python API
 
 ## 1. 背景
 
-Cyber 核心代码是由 C++ 开发，同时为了方便开发者，提供了 Python 接口。
+Autolink 核心代码是由 C++ 开发，同时为了方便开发者，提供了 Python 接口。
 
-## 2. CyberRT Python 接口实现思路
+## 2. Autolink Python 接口实现思路
 
-Cyber Python 接口的实现思路是在 Cyber C++ 实现的基础上，做了一层 Python 的封装，由 Python 来调用 C++ 的实现函数。Cyber
+Autolink Python 接口的实现思路是在 Autolink C++ 实现的基础上，做了一层 Python 的封装，由 Python 来调用 C++ Autolink
 Python Wrapper 的实现没有使用 swig 等第三方工具，完全自主实现，以此保证代码的高可维护性和可读性。
+
+## 2.1 Python 封装快速验证
+
+推荐在源码根目录执行以下步骤，快速确认 Python 封装编译与导入可用。
+
+### 步骤 1：配置与编译（开启 Python + 测试）
+
+```bash
+cmake -S src/autonomy/autolink -B build/autolink \
+  -DAUTOLINK_BUILD_PYTHON=ON \
+  -DAUTOLINK_BUILD_TEST=ON
+cmake --build build/autolink -j8
+```
+
+### 步骤 2：运行 smoke test
+
+```bash
+ctest --test-dir build/autolink -R autolink_python_smoke_import --output-on-failure
+```
+
+### 步骤 3：手动导入验证（可选）
+
+```bash
+PYTHONPATH=build/autolink/lib/autolink/python/internal:src/autonomy/autolink/autolink/python/src \
+python3 -c "import __init__ as autolink_py3; print(autolink_py3.Node, autolink_py3.Time)"
+```
+
+若运行在 install 前缀中，也可以先设置：
+
+```bash
+export AUTOLINK_DISTRIBUTION_HOME=<install-prefix>
+```
 
 ## 3. 主要接口
 
@@ -57,10 +89,10 @@ class Node:
                    i.e. fn(data, args)
         @args any: additional arguments to pass to the callback
         """
-	def create_client(self, name, request_data_type, response_data_type):
-	"""
-	"""
-	def create_service(self, name, req_data_type, res_data_type, callback, args=None):
+    def create_client(self, name, request_data_type, response_data_type):
+    """
+    """
+    def create_service(self, name, req_data_type, res_data_type, callback, args=None):
 
     def spin(self):
         """
@@ -105,23 +137,23 @@ class RecordReader(object):
         @param end_time:
         @return: generator of (message, data_type, timestamp)
         """
-	def get_messagenumber(self, channel_name):
+    def get_messagenumber(self, channel_name):
         """
         return message count.
         """
-	def get_messagetype(self, channel_name):
+    def get_messagetype(self, channel_name):
         """
         return message type.
         """
-	def get_protodesc(self, channel_name):
+    def get_protodesc(self, channel_name):
         """
         return message protodesc.
         """
-	def get_headerstring(self):
+    def get_headerstring(self):
         """
         return message header string.
         """
-	def reset(self):
+    def reset(self):
         """
         return reset.
         """
@@ -138,20 +170,20 @@ class RecordWriter(object):
     """
     Class for autolink RecordWriter wrapper.
     """
-	def open(self, path):
+    def open(self, path):
         """
         open record file for write.
         """
-	def write_channel(self, channel_name, type_name, proto_desc):
+    def write_channel(self, channel_name, type_name, proto_desc):
         """
         writer channel by channelname,typename,protodesc
         """
-	def write_message(self, channel_name, data, time, raw = True):
+    def write_message(self, channel_name, data, time, raw = True):
         """
         writer msg:channelname,data,time,is data raw
         """
 
-	def set_size_fileseg(self, size_kilobytes):
+    def set_size_fileseg(self, size_kilobytes):
         """
         return filesegment size.
         """
@@ -181,7 +213,7 @@ class RecordWriter(object):
 
 ```python
 class Time(object):
-	@staticmethod
+    @staticmethod
     def now():
         time_now = Time(_AUTOLINK_TIME.PyTime_now())
         return time_now
@@ -199,23 +231,21 @@ class Time(object):
 
     def sleep_until(self, nanoseconds):
         return _AUTOLINK_TIME.PyTime_sleep_until(self.time, nanoseconds)
-```
+```python
 
 ### 3.4 Timer 接口
 
-```
+```python
 
 class Timer(object):
 
-	def set_option(self, period, callback, oneshot=0):
+    def set_option(self, period, callback, oneshot=0):
         '''
         period The period of the timer, unit is ms
         callback The tasks that the timer needs to perform
         oneshot 1: perform the callback only after the first timing cycle
                 0:perform the callback every timed period
         '''
-
-
     def start(self):
 
 
@@ -226,7 +256,21 @@ class Timer(object):
 
 ## 4. 例子
 
-### 4.1 读 channel （参见 autolink/python/autolink_py3/examples/listener.py)
+推荐导入方式（统一）：
+
+```python
+from autolink_py3 import autolink, record
+from autolink_py3 import Node, Time, Timer, Parameter
+```
+
+兼容旧写法（仍可用）：
+
+```python
+import autolink
+import record
+```
+
+### 4.1 读 channel （参见 `autolink/python/tests` 下示例）
 
 ```python
 """Module for example of listener."""
@@ -261,7 +305,7 @@ if __name__ == '__main__':
 
 ```
 
-### 4.2 写 channel（参见 autolink/python/autolink_py3/examples/talker.py)
+### 4.2 写 channel（参见 `autolink/python/tests` 下示例）
 
 ```python
 """Module for example of talker."""
@@ -301,16 +345,13 @@ if __name__ == '__main__':
 
 ```
 
-### 4.3 读写消息到 Record 文件（参见 autolink/python/autolink_py3/examples/record.py)
-
-````python
-autolink/python/autolink_py3/examples/record.py)
+### 4.3 读写消息到 Record 文件（参见 `autolink/python/tests` 下示例）
 
 ```python
 """
 Module for example of record.
 Run with:
-    bazel run //autolink/python/autolink_py3/examples:record
+    python3 tests/smoke_import_test.py
 """
 
 import time
@@ -318,7 +359,7 @@ import time
 from google.protobuf.descriptor_pb2 import FileDescriptorProto
 
 from autolink.proto.unit_test_pb2 import Chatter
-from autolink.python.autolink_py3 import record
+from autolink_py3 import record
 from modules.common.util.testdata.simple_pb2 import SimpleMessage
 
 
@@ -412,4 +453,4 @@ if __name__ == '__main__':
     print('Begin to read record file: {}'.format(test_record_file))
     test_record_reader(test_record_file)
 
-````
+```

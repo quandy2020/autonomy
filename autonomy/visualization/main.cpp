@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
       ::setenv("AUTOLINK_PATH", guessed.c_str(), /*overwrite=*/0);
     }
   }
-  autolink::Init(argv[0]);
+  ::autolink::Init(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
   if (autonomy::common::FLAGS_verbose) {
     autonomy::common::ShowVersion();

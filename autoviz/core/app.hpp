@@ -1,56 +1,47 @@
-// High-level application wiring for autoviz.
+// autoviz：Foxglove WebSocket + autolink 订阅/转发 + 可选 MCAP。
 #pragma once
 
+#include <atomic>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 
-namespace autoviz {
+#include "autonomy/autoviz/core/settings.hpp"
 
-namespace config {
-struct Config;
-}  // namespace config
+namespace autoviz {
 
 namespace server {
 class FoxgloveServer;
 }  // namespace server
 
-namespace bridge {
+namespace autolink {
 class AutolinkBridge;
-}  // namespace bridge
+}  // namespace autolink
 
-namespace transport {
-class AutoDiscovery;
-}  // namespace transport
-
-namespace mcap {
+namespace recorder {
 class Recorder;
-}  // namespace mcap
+}  // namespace recorder
 
-// Orchestrates configuration, foxglove server, autolink bridge and discovery.
 class App {
  public:
   App();
   ~App();
 
-  // Initialize from config file path. Returns false on failure.
-  bool Init(const std::string& config_path);
-
-  // Blocking run loop. Returns when shutdown is requested or on error.
+  bool Initialize(const std::string& config_path);
   int Run();
-
-  // Trigger a graceful shutdown.
-  void RequestShutdown();
+  void Shutdown();
 
  private:
   bool initialized_{false};
-  bool shutdown_requested_{false};
+  std::atomic_bool shutdown_requested_{false};
+  std::mutex shutdown_mutex_;
+  std::condition_variable shutdown_cv_;
 
   std::shared_ptr<config::Config> config_;
   std::unique_ptr<server::FoxgloveServer> foxglove_server_;
-  std::unique_ptr<bridge::AutolinkBridge> autolink_bridge_;
-  std::unique_ptr<mcap::Recorder> mcap_recorder_;
-  std::unique_ptr<transport::AutoDiscovery> auto_discovery_;
+  std::unique_ptr<recorder::Recorder> mcap_recorder_;
+  std::unique_ptr<autolink::AutolinkBridge> autolink_bridge_;
 };
 
 }  // namespace autoviz
-

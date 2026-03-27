@@ -146,6 +146,11 @@ if(AUTOLINK_BUILD_TOOLS)
   add_subdirectory(tools)
 endif()
 
+# Python bindings
+if(AUTOLINK_BUILD_PYTHON)
+  add_subdirectory(python)
+endif()
+
 # 单元测试
 if(AUTOLINK_BUILD_TEST AND GMock_FOUND)
   file(GLOB_RECURSE ALL_TESTS "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp")
