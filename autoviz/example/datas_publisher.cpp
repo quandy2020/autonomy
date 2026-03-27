@@ -30,6 +30,7 @@
 #include "automsgs/msgs/sensor_msgs/imu.pb.h"
 #include "automsgs/msgs/std_msgs/header.pb.h"
 #include "automsgs/msgs/std_msgs/string.pb.h"
+#include "automsgs/msgs/nav_msgs/path.pb.h"
 
 namespace autoviz {
 namespace example {
@@ -104,7 +105,14 @@ void Run() {
       autolink::message::MessageType<automsgs::msgs::sensor_msgs::Imu>());
   auto imu_writer = node->CreateWriter<automsgs::msgs::sensor_msgs::Imu>(imu_attr);
 
-  if (!text_writer || !imu_writer) {
+  // /autoviz/example/path
+  autolink::proto::RoleAttributes path_attr;
+  path_attr.set_channel_name("/autoviz/example/path");
+  path_attr.set_message_type(
+      autolink::message::MessageType<automsgs::msgs::nav_msgs::Path>());
+  auto path_writer = node->CreateWriter<automsgs::msgs::nav_msgs::Path>(path_attr);
+
+  if (!text_writer || !imu_writer || !path_writer) {
     AERROR << "Failed to create one or more writers";
     return;
   }
@@ -112,6 +120,7 @@ void Run() {
   AINFO << "autoviz datas_publisher started";
   AINFO << "  publish: /autoviz/example/text (std_msgs/String)";
   AINFO << "  publish: /autoviz/example/imu  (sensor_msgs/Imu)";
+  AINFO << "  publish: /autoviz/example/path (nav_msgs/Path)";
 
   uint64_t seq = 0;
   Rate loop_rate(10.0);  // 10 Hz
@@ -134,6 +143,29 @@ void Run() {
     imu_writer->Write(imu_msg);
 
     AINFO << "Published text+imu message, seq=" << seq;
+
+    // nav_msgs/Path
+    automsgs::msgs::nav_msgs::Path path_msg;
+    *path_msg.mutable_header() = MakeHeader("base_link");
+    constexpr int kNumPoints = 8;
+    for (int i = 0; i < kNumPoints; ++i) {
+      auto* ps = path_msg.add_poses();
+      *ps->mutable_header() = MakeHeader("base_link");
+      auto* pose = ps->mutable_pose();
+
+      const double x = static_cast<double>(seq) * 0.1 + i * 0.5;
+      const double y = static_cast<double>(i) * 0.1;
+      pose->mutable_position()->set_x(x);
+      pose->mutable_position()->set_y(y);
+      pose->mutable_position()->set_z(0.0);
+
+      // Unit quaternion (w=1) for identity rotation
+      pose->mutable_orientation()->set_x(0.0);
+      pose->mutable_orientation()->set_y(0.0);
+      pose->mutable_orientation()->set_z(0.0);
+      pose->mutable_orientation()->set_w(1.0);
+    }
+    path_writer->Write(path_msg);
 
     ++seq;
     loop_rate.Sleep();

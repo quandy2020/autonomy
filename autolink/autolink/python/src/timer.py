@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+
+#***************************************************************************
+# Copyright 2025 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#***************************************************************************
+
+# -*- coding: utf-8 -*-
+"""Module for init environment."""
+
+import ctypes
+
+try:
+    from ._loader import load_wrapper_module
+except ImportError:
+    from _loader import load_wrapper_module
+
+
+PY_TIMER_CB_TYPE = ctypes.CFUNCTYPE(ctypes.c_void_p)
+
+_AUTOLINK_TIMER = load_wrapper_module("_autolink_timer_wrapper")
+
+
+class Timer(object):
+
+    """
+    Class for autolink timer wrapper.
+    """
+
+    ##
+    # @brief Used to perform oneshot or periodic timing tasks
+    #
+    # @param period The period of the timer, unit is ms.
+    # @param callback The tasks that the timer needs to perform.
+    # @param oneshot 1:perform the callback only after the first timing cycle
+    # 0:perform the callback every timed period
+    def __init__(self, period=None, callback=None, oneshot=None):
+        if period is None and callback is None and oneshot is None:
+            self.timer = _AUTOLINK_TIMER.new_PyTimer_noparam()
+        else:
+            self.timer_cb = PY_TIMER_CB_TYPE(callback)
+            self.f_ptr_cb = ctypes.cast(self.timer_cb, ctypes.c_void_p).value
+            self.timer = _AUTOLINK_TIMER.new_PyTimer(
+                period, self.f_ptr_cb, oneshot)
+
+    def __del__(self):
+        _AUTOLINK_TIMER.delete_PyTimer(self.timer)
+
+    ##
+    # @brief set the option of timer.
+    #
+    # @param period The period of the timer, unit is ms.
+    # @param callback The tasks that the timer needs to perform.
+    # @param oneshot 1:perform the callback only after the first timing cycle
+    # 0:perform the callback every timed period
+    def set_option(self, period, callback, oneshot=0):
+        self.timer_cb = PY_TIMER_CB_TYPE(callback)
+        self.f_ptr_cb = ctypes.cast(self.timer_cb, ctypes.c_void_p).value
+        _AUTOLINK_TIMER.PyTimer_set_option(
+            self.timer, period, self.f_ptr_cb, oneshot)
+
+    ##
+    # @brief start the timer
+    def start(self):
+        _AUTOLINK_TIMER.PyTimer_start(self.timer)
+
+    ##
+    # @brief stop the timer
+    def stop(self):
+        _AUTOLINK_TIMER.PyTimer_stop(self.timer)
