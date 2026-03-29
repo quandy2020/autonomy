@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     }
 
     SimpleMessageActionTraits::Goal goal;
-    goal.set_text("hello from action_talker");
+    goal.set_text("hello from action_talker2");
 
     ActionClient::SendGoalOptions opts;
     opts.goal_response_callback = [](std::shared_ptr<GoalHandle> gh) {
