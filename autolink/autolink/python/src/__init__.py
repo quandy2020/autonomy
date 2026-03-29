@@ -36,7 +36,7 @@ from . import timer  # noqa: F401
 from .autolink import (  # noqa: F401
     Node,
     NodeUtils,
-    Service,
+    ChannelUtils,
     ServiceUtils,
     Client,
     Reader,
@@ -60,7 +60,7 @@ __all__ = [
     "timer",
     "Node",
     "NodeUtils",
-    "Service",
+    "ChannelUtils",
     "ServiceUtils",
     "Client",
     "Reader",
