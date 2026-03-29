@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <climits>
+#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -385,12 +387,24 @@ public:
         return ParseFromString(input);
     }
 
-    int ByteSize() const {
+    /// SHM / transmitter uses \ref autolink::message::ByteSize, which selects
+    /// types exposing \c ByteSizeLong() (protobuf convention). Without this,
+    /// \c ByteSize returns -1, which becomes \c SIZE_MAX and breaks shared
+    /// memory serialization.
+    std::size_t ByteSizeLong() const {
         std::string serialized;
-        if (SerializeToString(&serialized)) {
-            return static_cast<int>(serialized.size());
+        if (!SerializeToString(&serialized)) {
+            return 0;
         }
-        return 0;
+        return serialized.size();
+    }
+
+    int ByteSize() const {
+        const std::size_t n = ByteSizeLong();
+        if (n > static_cast<std::size_t>(INT_MAX)) {
+            return INT_MAX;
+        }
+        return static_cast<int>(n);
     }
 
     // Add TypeName and GetDescriptorString for Autolink message registration

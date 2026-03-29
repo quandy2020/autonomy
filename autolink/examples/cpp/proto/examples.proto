@@ -19,3 +19,29 @@ message Driver {
   uint64 msg_id = 2;
   uint64 timestamp = 3;
 }
+
+message SimpleMessageAction {
+    message Goal
+    {
+        string text = 1;
+    }
+
+    message Feedback
+    {
+        int32 index = 1;
+    }
+
+    message Result
+    {
+        bool success = 1;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}

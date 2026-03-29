@@ -61,6 +61,8 @@ autolink_example_with_proto(autolink_example_talker_listener talker_listener.cpp
 autolink_example_with_proto(autolink_example_service service.cpp)
 autolink_example_with_proto(autolink_example_paramserver paramserver.cpp)
 autolink_example_with_proto(autolink_example_record record.cpp)
+autolink_example_with_proto(autolink_example_action_listener action_listener.cpp)
+autolink_example_with_proto(autolink_example_action_talker action_talker.cpp)
 
 # component
 add_subdirectory(timer_component_example)

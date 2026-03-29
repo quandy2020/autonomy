@@ -63,6 +63,26 @@ find_package(TinyXML2 QUIET)
 find_library(GFLAGS_LIB NAMES gflags)
 find_library(UUID_LIB NAMES uuid)
 
+# libfastrtps depends on libfastcdr.so.N; some loaders resolve that using only a
+# narrow RPATH. Embed the real directories of the FastDDS/FastCDR libs used at
+# link time (skips non-path imported target names like "fastcdr").
+set(_AUTOLINK_FASTDDS_RPATH_DIRS "")
+foreach(_libvar IN ITEMS FastDDS_fastcdr_LIBRARY FastDDS_fastdds_LIBRARY)
+  if(DEFINED ${_libvar})
+    set(_libpath "${${_libvar}}")
+    if(EXISTS "${_libpath}")
+      get_filename_component(_real "${_libpath}" REALPATH)
+      get_filename_component(_libdir "${_real}" DIRECTORY)
+      list(APPEND _AUTOLINK_FASTDDS_RPATH_DIRS "${_libdir}")
+    endif()
+  endif()
+endforeach()
+if(_AUTOLINK_FASTDDS_RPATH_DIRS)
+  list(REMOVE_DUPLICATES _AUTOLINK_FASTDDS_RPATH_DIRS)
+  list(APPEND CMAKE_BUILD_RPATH ${_AUTOLINK_FASTDDS_RPATH_DIRS})
+  list(APPEND CMAKE_INSTALL_RPATH ${_AUTOLINK_FASTDDS_RPATH_DIRS})
+endif()
+
 # add subdirectories（proto 已合并进 autolink/CMakeLists.txt）
 add_subdirectory(autolink)
 
