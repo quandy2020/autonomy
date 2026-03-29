@@ -29,7 +29,9 @@ constexpr size_t UUID_SIZE = 16;
 // Goal UUID type
 using GoalUUID = std::array<uint8_t, UUID_SIZE>;
 
-// Goal status enumeration
+// Goal status enumeration — numeric values match ROS 2 action goal states
+// (action_msgs/msg/GoalStatus and https://design.ros2.org/articles/actions.html
+// "Goal States": UNKNOWN..ABORTED = 0..6).
 enum class GoalStatus : int8_t {
     UNKNOWN = 0,
     ACCEPTED = 1,
@@ -50,7 +52,7 @@ enum class GoalResponse : int8_t {
 // Cancel response enumeration
 enum class CancelResponse : int8_t { REJECT = 1, ACCEPT = 2 };
 
-// Result code enumeration
+// Terminal result codes only; values match ROS 2 terminal GoalStatus values.
 enum class ResultCode : int8_t {
     UNKNOWN = 0,
     SUCCEEDED = 4,
@@ -71,6 +73,15 @@ struct GoalInfo {
  * @return std::string A string representation of the UUID.
  */
 std::string ToString(const GoalUUID& goal_id);
+
+/** ROS 2–aligned status name for logging (matches GoalStatus enum). */
+std::string ToString(GoalStatus status);
+
+/** ROS 2–aligned terminal status name for logging (matches ResultCode). */
+std::string ToString(ResultCode code);
+
+/** True if \p status is a terminal goal state in ROS 2 terms. */
+bool IsTerminalGoalStatus(GoalStatus status);
 
 /**
  * @brief Generate a new unique goal UUID.

@@ -80,6 +80,10 @@ public:
      * @param server_timeout Timeout to react to stop or preemption requests
      * @param realtime Whether the action server's worker thread should have
      * elevated prioritization (soft realtime)
+     *
+     * The server is activated in this constructor and deactivated in the
+     * destructor. @ref Activate and @ref Deactivate remain available for manual
+     * lifecycle control if needed.
      */
     explicit SimpleActionServer(
         std::shared_ptr<autolink::Node> node, const std::string& action_name,
@@ -102,6 +106,11 @@ public:
                       std::placeholders::_1),
             std::bind(&SimpleActionServer::HandleAccepted, this,
                       std::placeholders::_1));
+        Activate();
+    }
+
+    ~SimpleActionServer() {
+        Deactivate();
     }
 
     /**

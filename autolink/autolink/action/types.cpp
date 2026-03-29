@@ -19,8 +19,7 @@
 #include <iomanip>
 #include <random>
 #include <sstream>
-
-#include "autolink/time/time.hpp"
+#include <string>
 
 namespace autolink {
 namespace action {
@@ -62,6 +61,45 @@ bool IsValidGoalUUID(const GoalUUID& goal_id) {
         }
     }
     return false;
+}
+
+std::string ToString(GoalStatus status) {
+    switch (status) {
+        case GoalStatus::UNKNOWN:
+            return "UNKNOWN";
+        case GoalStatus::ACCEPTED:
+            return "ACCEPTED";
+        case GoalStatus::EXECUTING:
+            return "EXECUTING";
+        case GoalStatus::CANCELING:
+            return "CANCELING";
+        case GoalStatus::SUCCEEDED:
+            return "SUCCEEDED";
+        case GoalStatus::CANCELED:
+            return "CANCELED";
+        case GoalStatus::ABORTED:
+            return "ABORTED";
+    }
+    return "INVALID(" + std::to_string(static_cast<int>(status)) + ")";
+}
+
+std::string ToString(ResultCode code) {
+    switch (code) {
+        case ResultCode::UNKNOWN:
+            return "UNKNOWN";
+        case ResultCode::SUCCEEDED:
+            return "SUCCEEDED";
+        case ResultCode::CANCELED:
+            return "CANCELED";
+        case ResultCode::ABORTED:
+            return "ABORTED";
+    }
+    return "INVALID(" + std::to_string(static_cast<int>(code)) + ")";
+}
+
+bool IsTerminalGoalStatus(GoalStatus status) {
+    return status == GoalStatus::SUCCEEDED || status == GoalStatus::CANCELED ||
+           status == GoalStatus::ABORTED;
 }
 
 }  // namespace action

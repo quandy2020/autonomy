@@ -1,8 +1,8 @@
 /******************************************************************************
  * Copyright 2025 The Openbot Authors (duyongquan). All Rights Reserved.
  *
- * Action client example: sends a SimpleMessageAction goal and prints feedback
- * and result. Start action_listener first.
+ * Action client example: send a goal, optional feedback stream, wait for
+ * terminal result. Start action_listener first.
  *****************************************************************************/
 
 #include <chrono>
@@ -14,6 +14,8 @@
 #include "autolink/autolink.hpp"
 #include "examples.pb.h"
 
+namespace {
+
 namespace ae = autolink::examples;
 
 struct SimpleMessageActionTraits {
@@ -22,7 +24,29 @@ struct SimpleMessageActionTraits {
     using Result = ae::SimpleMessageAction_Result;
 };
 
-static constexpr char kActionName[] = "examples/simple_message_action";
+using ActionClient = autolink::action::Client<SimpleMessageActionTraits>;
+using GoalHandle =
+    autolink::action::ClientGoalHandle<SimpleMessageActionTraits>;
+
+constexpr char kActionName[] = "examples/simple_message_action";
+constexpr auto kWaitServerReady = std::chrono::milliseconds(100);
+constexpr auto kAcceptTimeout = std::chrono::seconds(30);
+constexpr auto kResultTimeout = std::chrono::seconds(60);
+
+void LogActionOutcome(const std::shared_ptr<GoalHandle>& handle,
+                      const GoalHandle::WrappedResult& wr) {
+    AINFO << "Action terminal: " << autolink::action::ToString(wr.code)
+          << " (GoalStatus=" << static_cast<int>(wr.code) << ")  handle_ok="
+          << " succ=" << handle->IsSucceeded()
+          << " canceled=" << handle->IsCanceled()
+          << " aborted=" << handle->IsAborted();
+    if (wr.result) {
+        AINFO << "Result payload: success="
+              << (wr.result->success() ? "true" : "false");
+    }
+}
+
+}  // namespace
 
 int main(int argc, char* argv[]) {
     if (!autolink::Init(argv[0])) {
@@ -33,76 +57,60 @@ int main(int argc, char* argv[]) {
     auto client = autolink::action::CreateClient<SimpleMessageActionTraits>(
         node, kActionName);
 
-    AINFO << "Waiting for action server...";
+    AINFO << "Waiting for action server \"" << kActionName << "\"...";
     while (autolink::OK() && !client->ActionServerIsReady()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(kWaitServerReady);
     }
     if (!autolink::OK()) {
         return 1;
     }
 
-    ae::SimpleMessageAction_Goal goal;
+    SimpleMessageActionTraits::Goal goal;
     goal.set_text("hello from action_talker");
 
-    autolink::action::Client<SimpleMessageActionTraits>::SendGoalOptions opts;
-
-    opts.goal_response_callback =
-        [](std::shared_ptr<
-            autolink::action::ClientGoalHandle<SimpleMessageActionTraits>>
-               gh) {
-            if (gh) {
-                AINFO << "Goal accepted by server, id="
-                      << autolink::action::ToString(gh->GetGoalId());
-            } else {
-                AWARN << "Goal rejected by server";
-            }
-        };
-
-    // 反馈回调
-    opts.feedback_callback =
-        [](std::shared_ptr<
-               autolink::action::ClientGoalHandle<SimpleMessageActionTraits>>,
-           std::shared_ptr<const SimpleMessageActionTraits::Feedback> fb) {
-            if (fb) {
-                AINFO << "Client feedback: index=" << fb->index();
-            }
-        };
-    // 结果回调
-    opts.result_callback = [](const autolink::action::ClientGoalHandle<
-                               SimpleMessageActionTraits>::WrappedResult& wr) {
-        AINFO << "Result code=" << static_cast<int>(wr.code);
-        if (wr.result) {
-            AINFO << "Result success="
-                  << (wr.result->success() ? "true" : "false");
+    ActionClient::SendGoalOptions opts;
+    opts.goal_response_callback = [](std::shared_ptr<GoalHandle> gh) {
+        if (!gh) {
+            AWARN << "Goal rejected by server";
         }
     };
+    opts.feedback_callback =
+        [](std::shared_ptr<GoalHandle> gh,
+           std::shared_ptr<const SimpleMessageActionTraits::Feedback> fb) {
+            (void)gh;
+            if (fb) {
+                AINFO << "Feedback index=" << fb->index();
+            }
+        };
+    // Result is delivered once via AsyncGetResult().wait(); avoid duplicate
+    // logging with a second result_callback.
 
-    auto accepted_future = client->AsyncSendGoal(goal, opts);
-    auto status = accepted_future.wait_for(std::chrono::seconds(30));
-    if (status != std::future_status::ready) {
+    const auto accepted_future = client->AsyncSendGoal(goal, opts);
+    if (accepted_future.wait_for(kAcceptTimeout) != std::future_status::ready) {
         AERROR << "Timeout waiting for goal acceptance";
         return 1;
     }
-    auto handle = accepted_future.get();
+
+    std::shared_ptr<GoalHandle> handle = accepted_future.get();
     if (!handle) {
-        AERROR << "Goal rejected or failed to get handle";
+        AERROR << "Goal handle null after send";
         return 1;
     }
-    AINFO << "Goal accepted, waiting for terminal result...";
+
+    AINFO << "Goal accepted, id="
+          << autolink::action::ToString(handle->GetGoalId())
+          << " — waiting for result...";
 
     auto result_future = handle->AsyncGetResult();
-    auto rs = result_future.wait_for(std::chrono::seconds(60));
-    if (rs == std::future_status::timeout) {
+    if (result_future.wait_for(kResultTimeout) != std::future_status::ready) {
         AERROR << "Timeout waiting for action result";
         return 1;
     }
 
     try {
-        const auto& wr = result_future.get();
-        AINFO << "Final: code=" << static_cast<int>(wr.code)
-              << " (see result_callback logs above)";
+        LogActionOutcome(handle, result_future.get());
     } catch (const std::exception& e) {
-        AERROR << "Result future error: " << e.what();
+        AERROR << "Result error: " << e.what();
         return 1;
     }
 
