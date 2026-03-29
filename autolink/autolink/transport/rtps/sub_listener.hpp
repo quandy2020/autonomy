@@ -36,22 +36,25 @@ namespace transport {
 class SubListener;
 using SubListenerPtr = std::shared_ptr<SubListener>;
 
-class SubListener : public eprosima::fastrtps::SubscriberListener {
- public:
-  using NewMsgCallback = std::function<void(uint64_t channel_id, const std::shared_ptr<std::string>& msg_str,
-                                            const MessageInfo& msg_info)>;
+class SubListener : public eprosima::fastrtps::SubscriberListener
+{
+public:
+    using NewMsgCallback = std::function<void(
+        uint64_t channel_id, const std::shared_ptr<std::string>& msg_str,
+        const MessageInfo& msg_info)>;
 
-  explicit SubListener(const NewMsgCallback& callback);
-  virtual ~SubListener();
+    explicit SubListener(const NewMsgCallback& callback);
+    virtual ~SubListener();
 
-  void onNewDataMessage(eprosima::fastrtps::Subscriber* sub);
-  void onSubscriptionMatched(eprosima::fastrtps::Subscriber* sub,
-                             eprosima::fastrtps::rtps::MatchingInfo& info);  // NOLINT
+    void onNewDataMessage(eprosima::fastrtps::Subscriber* sub);
+    void onSubscriptionMatched(
+        eprosima::fastrtps::Subscriber* sub,
+        eprosima::fastrtps::rtps::MatchingInfo& info);  // NOLINT
 
- private:
-  NewMsgCallback callback_;
-  MessageInfo msg_info_;
-  std::mutex mutex_;
+private:
+    NewMsgCallback callback_;
+    MessageInfo msg_info_;
+    std::mutex mutex_;
 };
 
 }  // namespace transport

@@ -35,22 +35,29 @@ using ::testing::DoubleNear;
 using ::testing::ElementsAre;
 
 TEST(IntensityCostFunction3DTest, SmokeTest) {
-  const sensor::PointCloud point_cloud({{{0.f, 0.f, 0.f}}, {{1.f, 1.f, 1.f}}, {{2.f, 2.f, 2.f}}}, {50.f, 100.f, 150.f});
-  IntensityHybridGrid hybrid_grid(0.3f);
-  hybrid_grid.AddIntensity(hybrid_grid.GetCellIndex({0.f, 0.f, 0.f}), 50.f);
+    const sensor::PointCloud point_cloud(
+        {{{0.f, 0.f, 0.f}}, {{1.f, 1.f, 1.f}}, {{2.f, 2.f, 2.f}}},
+        {50.f, 100.f, 150.f});
+    IntensityHybridGrid hybrid_grid(0.3f);
+    hybrid_grid.AddIntensity(hybrid_grid.GetCellIndex({0.f, 0.f, 0.f}), 50.f);
 
-  std::unique_ptr<ceres::CostFunction> cost_function(IntensityCostFunction3D::CreateAutoDiffCostFunction(
-      /*scaling_factor=*/1.0f, /*intensity_threshold=*/100.f, point_cloud, hybrid_grid));
+    std::unique_ptr<ceres::CostFunction> cost_function(
+        IntensityCostFunction3D::CreateAutoDiffCostFunction(
+            /*scaling_factor=*/1.0f, /*intensity_threshold=*/100.f, point_cloud,
+            hybrid_grid));
 
-  const std::array<double, 3> translation{{0., 0., 0.}};
-  const std::array<double, 4> rotation{{1., 0., 0., 0.}};
+    const std::array<double, 3> translation{{0., 0., 0.}};
+    const std::array<double, 4> rotation{{1., 0., 0., 0.}};
 
-  const std::array<const double*, 2> parameter_blocks{{translation.data(), rotation.data()}};
-  std::array<double, 3> residuals;
+    const std::array<const double*, 2> parameter_blocks{
+        {translation.data(), rotation.data()}};
+    std::array<double, 3> residuals;
 
-  cost_function->Evaluate(parameter_blocks.data(), residuals.data(),
-                          /*jacobians=*/nullptr);
-  EXPECT_THAT(residuals, ElementsAre(DoubleNear(0., 1e-9), DoubleNear(-100., 1e-9), DoubleNear(0., 1e-9)));
+    cost_function->Evaluate(parameter_blocks.data(), residuals.data(),
+                            /*jacobians=*/nullptr);
+    EXPECT_THAT(residuals,
+                ElementsAre(DoubleNear(0., 1e-9), DoubleNear(-100., 1e-9),
+                            DoubleNear(0., 1e-9)));
 }
 
 }  // namespace

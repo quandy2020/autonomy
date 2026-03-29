@@ -27,47 +27,58 @@
 namespace cartographer {
 namespace cloud {
 
-class MapBuilderStub : public mapping::MapBuilderInterface {
- public:
-  MapBuilderStub(const std::string& server_address, const std::string& client_id);
+class MapBuilderStub : public mapping::MapBuilderInterface
+{
+public:
+    MapBuilderStub(const std::string& server_address,
+                   const std::string& client_id);
 
-  MapBuilderStub(const MapBuilderStub&) = delete;
-  MapBuilderStub& operator=(const MapBuilderStub&) = delete;
+    MapBuilderStub(const MapBuilderStub&) = delete;
+    MapBuilderStub& operator=(const MapBuilderStub&) = delete;
 
-  int AddTrajectoryBuilder(const std::set<SensorId>& expected_sensor_ids,
-                           const mapping::proto::TrajectoryBuilderOptions& trajectory_options,
-                           LocalSlamResultCallback local_slam_result_callback) override;
+    int AddTrajectoryBuilder(
+        const std::set<SensorId>& expected_sensor_ids,
+        const mapping::proto::TrajectoryBuilderOptions& trajectory_options,
+        LocalSlamResultCallback local_slam_result_callback) override;
 
-  int AddTrajectoryForDeserialization(
-      const mapping::proto::TrajectoryBuilderOptionsWithSensorIds& options_with_sensor_ids_proto) override;
+    int AddTrajectoryForDeserialization(
+        const mapping::proto::TrajectoryBuilderOptionsWithSensorIds&
+            options_with_sensor_ids_proto) override;
 
-  mapping::TrajectoryBuilderInterface* GetTrajectoryBuilder(int trajectory_id) const override;
+    mapping::TrajectoryBuilderInterface* GetTrajectoryBuilder(
+        int trajectory_id) const override;
 
-  void FinishTrajectory(int trajectory_id) override;
+    void FinishTrajectory(int trajectory_id) override;
 
-  std::string SubmapToProto(const mapping::SubmapId& submap_id,
-                            mapping::proto::SubmapQuery::Response* response) override;
+    std::string SubmapToProto(
+        const mapping::SubmapId& submap_id,
+        mapping::proto::SubmapQuery::Response* response) override;
 
-  void SerializeState(bool include_unfinished_submaps, io::ProtoStreamWriterInterface* writer) override;
+    void SerializeState(bool include_unfinished_submaps,
+                        io::ProtoStreamWriterInterface* writer) override;
 
-  bool SerializeStateToFile(bool include_unfinished_submaps, const std::string& filename) override;
+    bool SerializeStateToFile(bool include_unfinished_submaps,
+                              const std::string& filename) override;
 
-  std::map<int, int> LoadState(io::ProtoStreamReaderInterface* reader, bool load_frozen_state) override;
+    std::map<int, int> LoadState(io::ProtoStreamReaderInterface* reader,
+                                 bool load_frozen_state) override;
 
-  std::map<int, int> LoadStateFromFile(const std::string& filename, bool load_frozen_state) override;
+    std::map<int, int> LoadStateFromFile(const std::string& filename,
+                                         bool load_frozen_state) override;
 
-  int num_trajectory_builders() const override;
+    int num_trajectory_builders() const override;
 
-  mapping::PoseGraphInterface* pose_graph() override;
+    mapping::PoseGraphInterface* pose_graph() override;
 
-  const std::vector<mapping::proto::TrajectoryBuilderOptionsWithSensorIds>& GetAllTrajectoryBuilderOptions()
-      const override;
+    const std::vector<mapping::proto::TrajectoryBuilderOptionsWithSensorIds>&
+    GetAllTrajectoryBuilderOptions() const override;
 
- private:
-  std::shared_ptr<::grpc::Channel> client_channel_;
-  std::unique_ptr<mapping::PoseGraphInterface> pose_graph_stub_;
-  std::map<int, std::unique_ptr<mapping::TrajectoryBuilderInterface>> trajectory_builder_stubs_;
-  const std::string client_id_;
+private:
+    std::shared_ptr<::grpc::Channel> client_channel_;
+    std::unique_ptr<mapping::PoseGraphInterface> pose_graph_stub_;
+    std::map<int, std::unique_ptr<mapping::TrajectoryBuilderInterface>>
+        trajectory_builder_stubs_;
+    const std::string client_id_;
 };
 
 }  // namespace cloud

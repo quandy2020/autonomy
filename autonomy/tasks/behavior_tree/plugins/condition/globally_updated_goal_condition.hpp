@@ -38,43 +38,47 @@ namespace condition {
  * @brief A BT::ConditionNode that returns SUCCESS when goal is
  * updated on the blackboard and FAILURE otherwise
  */
-class GloballyUpdatedGoalCondition : public BT::ConditionNode {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::GloballyUpdatedGoalCondition
-   * @param condition_name Name for the XML tag for this node
-   * @param conf BT node configuration
-   */
-  GloballyUpdatedGoalCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class GloballyUpdatedGoalCondition : public BT::ConditionNode
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::GloballyUpdatedGoalCondition
+     * @param condition_name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    GloballyUpdatedGoalCondition(const std::string& condition_name,
+                                 const BT::NodeConfiguration& conf);
 
-  GloballyUpdatedGoalCondition() = delete;
+    GloballyUpdatedGoalCondition() = delete;
 
-  /**
-   * @brief The main override required by a BT action
-   * @return BT::NodeStatus Status of tick execution
-   */
-  BT::NodeStatus tick() override;
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing node-specific ports
-   */
-  static BT::PortsList providedPorts() {
-    // Register JSON definitions for the types used in the ports
-    BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
-    BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        // Register JSON definitions for the types used in the ports
+        BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
+        BT::RegisterJsonDefinition<commsgs::planning_msgs::Goals>();
 
-    return {
-        BT::InputPort<commsgs::planning_msgs::Goals>("goals", "Vector of navigation goals"),
-        BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal", "Navigation goal"),
-    };
-  }
+        return {
+            BT::InputPort<commsgs::planning_msgs::Goals>(
+                "goals", "Vector of navigation goals"),
+            BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
+                "goal", "Navigation goal"),
+        };
+    }
 
- private:
-  bool first_time;
-  std::shared_ptr<::autolink::Node> node_;
-  commsgs::geometry_msgs::PoseStamped goal_;
-  commsgs::planning_msgs::Goals goals_;
+private:
+    bool first_time;
+    std::shared_ptr<::autolink::Node> node_;
+    commsgs::geometry_msgs::PoseStamped goal_;
+    commsgs::planning_msgs::Goals goals_;
 };
 
 }  // namespace condition

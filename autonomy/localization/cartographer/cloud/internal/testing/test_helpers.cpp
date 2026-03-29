@@ -21,66 +21,87 @@ namespace cloud {
 namespace testing {
 
 template <>
-DataPredicateType BuildDataPredicateEquals<proto::AddImuDataRequest>(const proto::AddImuDataRequest& proto) {
-  return [proto](const sensor::Data& data) {
-    const auto* dispatchable = dynamic_cast<const sensor::Dispatchable<sensor::ImuData>*>(&data);
-    CHECK_NOTNULL(dispatchable);
-    return google::protobuf::util::MessageDifferencer::Equals(sensor::ToProto(dispatchable->data()),
-                                                              proto.imu_data()) &&
-           dispatchable->GetSensorId() == proto.sensor_metadata().sensor_id();
-  };
+DataPredicateType BuildDataPredicateEquals<proto::AddImuDataRequest>(
+    const proto::AddImuDataRequest& proto) {
+    return [proto](const sensor::Data& data) {
+        const auto* dispatchable =
+            dynamic_cast<const sensor::Dispatchable<sensor::ImuData>*>(&data);
+        CHECK_NOTNULL(dispatchable);
+        return google::protobuf::util::MessageDifferencer::Equals(
+                   sensor::ToProto(dispatchable->data()), proto.imu_data()) &&
+               dispatchable->GetSensorId() ==
+                   proto.sensor_metadata().sensor_id();
+    };
 }
 
 template <>
 DataPredicateType BuildDataPredicateEquals<proto::AddFixedFramePoseDataRequest>(
     const proto::AddFixedFramePoseDataRequest& proto) {
-  return [proto](const sensor::Data& data) {
-    const auto* dispatchable = dynamic_cast<const sensor::Dispatchable<sensor::FixedFramePoseData>*>(&data);
-    CHECK_NOTNULL(dispatchable);
-    return google::protobuf::util::MessageDifferencer::Equals(sensor::ToProto(dispatchable->data()),
-                                                              proto.fixed_frame_pose_data()) &&
-           dispatchable->GetSensorId() == proto.sensor_metadata().sensor_id();
-  };
+    return [proto](const sensor::Data& data) {
+        const auto* dispatchable = dynamic_cast<
+            const sensor::Dispatchable<sensor::FixedFramePoseData>*>(&data);
+        CHECK_NOTNULL(dispatchable);
+        return google::protobuf::util::MessageDifferencer::Equals(
+                   sensor::ToProto(dispatchable->data()),
+                   proto.fixed_frame_pose_data()) &&
+               dispatchable->GetSensorId() ==
+                   proto.sensor_metadata().sensor_id();
+    };
 }
 
 template <>
-DataPredicateType BuildDataPredicateEquals<proto::AddOdometryDataRequest>(const proto::AddOdometryDataRequest& proto) {
-  return [proto](const sensor::Data& data) {
-    const auto* dispatchable = dynamic_cast<const sensor::Dispatchable<sensor::OdometryData>*>(&data);
-    CHECK_NOTNULL(dispatchable);
-    return google::protobuf::util::MessageDifferencer::Equals(sensor::ToProto(dispatchable->data()),
-                                                              proto.odometry_data()) &&
-           dispatchable->GetSensorId() == proto.sensor_metadata().sensor_id();
-  };
+DataPredicateType BuildDataPredicateEquals<proto::AddOdometryDataRequest>(
+    const proto::AddOdometryDataRequest& proto) {
+    return [proto](const sensor::Data& data) {
+        const auto* dispatchable =
+            dynamic_cast<const sensor::Dispatchable<sensor::OdometryData>*>(
+                &data);
+        CHECK_NOTNULL(dispatchable);
+        return google::protobuf::util::MessageDifferencer::Equals(
+                   sensor::ToProto(dispatchable->data()),
+                   proto.odometry_data()) &&
+               dispatchable->GetSensorId() ==
+                   proto.sensor_metadata().sensor_id();
+    };
 }
 
 template <>
-DataPredicateType BuildDataPredicateEquals<proto::AddLandmarkDataRequest>(const proto::AddLandmarkDataRequest& proto) {
-  return [proto](const sensor::Data& data) {
-    const auto* dispatchable = dynamic_cast<const sensor::Dispatchable<sensor::LandmarkData>*>(&data);
-    CHECK_NOTNULL(dispatchable);
-    return google::protobuf::util::MessageDifferencer::Equals(sensor::ToProto(dispatchable->data()),
-                                                              proto.landmark_data()) &&
-           dispatchable->GetSensorId() == proto.sensor_metadata().sensor_id();
-  };
+DataPredicateType BuildDataPredicateEquals<proto::AddLandmarkDataRequest>(
+    const proto::AddLandmarkDataRequest& proto) {
+    return [proto](const sensor::Data& data) {
+        const auto* dispatchable =
+            dynamic_cast<const sensor::Dispatchable<sensor::LandmarkData>*>(
+                &data);
+        CHECK_NOTNULL(dispatchable);
+        return google::protobuf::util::MessageDifferencer::Equals(
+                   sensor::ToProto(dispatchable->data()),
+                   proto.landmark_data()) &&
+               dispatchable->GetSensorId() ==
+                   proto.sensor_metadata().sensor_id();
+    };
 }
 
 template <>
 DataPredicateType BuildDataPredicateEquals<proto::AddRangefinderDataRequest>(
     const proto::AddRangefinderDataRequest& proto) {
-  return [proto](const sensor::Data& data) {
-    const auto* dispatchable = dynamic_cast<const sensor::Dispatchable<sensor::TimedPointCloudData>*>(&data);
-    CHECK_NOTNULL(dispatchable);
-    return google::protobuf::util::MessageDifferencer::Equals(sensor::ToProto(dispatchable->data()),
-                                                              proto.timed_point_cloud_data()) &&
-           dispatchable->GetSensorId() == proto.sensor_metadata().sensor_id();
-  };
+    return [proto](const sensor::Data& data) {
+        const auto* dispatchable = dynamic_cast<
+            const sensor::Dispatchable<sensor::TimedPointCloudData>*>(&data);
+        CHECK_NOTNULL(dispatchable);
+        return google::protobuf::util::MessageDifferencer::Equals(
+                   sensor::ToProto(dispatchable->data()),
+                   proto.timed_point_cloud_data()) &&
+               dispatchable->GetSensorId() ==
+                   proto.sensor_metadata().sensor_id();
+    };
 }
 
-ProtoPredicateType BuildProtoPredicateEquals(const google::protobuf::Message* proto) {
-  return [proto](const google::protobuf::Message& message) {
-    return google::protobuf::util::MessageDifferencer::Equals(*proto, message);
-  };
+ProtoPredicateType BuildProtoPredicateEquals(
+    const google::protobuf::Message* proto) {
+    return [proto](const google::protobuf::Message& message) {
+        return google::protobuf::util::MessageDifferencer::Equals(*proto,
+                                                                  message);
+    };
 }
 
 }  // namespace testing

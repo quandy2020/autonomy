@@ -23,24 +23,30 @@ namespace plugins {
 namespace displays {
 
 CameraDisplay::CameraDisplay(const QString& name)
-    : AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::Image>(QString("aviz/Camera")) {
-  setName(name);
+    : AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::Image>(
+          QString("aviz/Camera")) {
+    setName(name);
 }
 
 CameraDisplay::~CameraDisplay() = default;
 
-void CameraDisplay::onInitialize() { AutolinkTopicDisplay::onInitialize(); }
+void CameraDisplay::onInitialize() {
+    AutolinkTopicDisplay::onInitialize();
+}
 
-void CameraDisplay::reset() { AutolinkTopicDisplay::reset(); }
+void CameraDisplay::reset() {
+    AutolinkTopicDisplay::reset();
+}
 
-void CameraDisplay::processMessage(const std::shared_ptr<autonomy::commsgs::sensor_msgs::Image>& msg) {
-  if (!msg) {
-    return;
-  }
+void CameraDisplay::processMessage(
+    const std::shared_ptr<autonomy::commsgs::sensor_msgs::Image>& msg) {
+    if (!msg) {
+        return;
+    }
 
-  // TODO: Implement camera image rendering with camera info
-  setTransformOk();
-  queueRender();
+    // TODO: Implement camera image rendering with camera info
+    setTransformOk();
+    queueRender();
 }
 
 }  // namespace displays

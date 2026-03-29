@@ -19,7 +19,9 @@
 namespace autolink {
 namespace scheduler {
 
-void ProcessorContext::Shutdown() { stop_.store(true); }
+void ProcessorContext::Shutdown() {
+    stop_.store(true);
+}
 
 }  // namespace scheduler
 }  // namespace autolink

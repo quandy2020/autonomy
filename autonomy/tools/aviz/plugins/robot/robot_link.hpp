@@ -29,15 +29,16 @@ namespace robot {
  *
  * Represents a single link in the robot
  */
-class RobotLink {
- public:
-  RobotLink();
-  virtual ~RobotLink();
+class RobotLink
+{
+public:
+    RobotLink();
+    virtual ~RobotLink();
 
-  // TODO: Implement functionality
+    // TODO: Implement functionality
 
- private:
-  // TODO: Add members
+private:
+    // TODO: Add members
 };
 
 }  // namespace robot

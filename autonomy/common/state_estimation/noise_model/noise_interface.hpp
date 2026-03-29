@@ -31,19 +31,20 @@ namespace state_estimation {
 /// @tparam     Derived  A derived class that holds the actual implementation.
 ///
 template <typename Derived>
-class NoiseInterface {
- public:
-  ///
-  /// @brief      Get a covariance matrix for this noise model.
-  ///
-  /// @param[in]  dt    Time difference.
-  ///
-  /// @return     A covariance matrix for the noise gain during the dt time
-  /// difference.
-  ///
-  inline auto covariance(const std::chrono::nanoseconds& dt) const {
-    return static_cast<const Derived&>(*this).crtp_covariance(dt);
-  }
+class NoiseInterface
+{
+public:
+    ///
+    /// @brief      Get a covariance matrix for this noise model.
+    ///
+    /// @param[in]  dt    Time difference.
+    ///
+    /// @return     A covariance matrix for the noise gain during the dt time
+    /// difference.
+    ///
+    inline auto covariance(const std::chrono::nanoseconds& dt) const {
+        return static_cast<const Derived&>(*this).crtp_covariance(dt);
+    }
 };
 
 }  // namespace state_estimation

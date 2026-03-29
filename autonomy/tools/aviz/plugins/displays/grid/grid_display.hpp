@@ -41,45 +41,47 @@ namespace displays {
  *
  * Displays a grid in either the XY, YZ, or XZ plane.
  */
-class GridDisplay : public aviz::common::Display {
-  Q_OBJECT
+class GridDisplay : public aviz::common::Display
+{
+    Q_OBJECT
 
- public:
-  enum Plane {
-    XY,
-    XZ,
-    YZ,
-  };
+public:
+    enum Plane {
+        XY,
+        XZ,
+        YZ,
+    };
 
-  GridDisplay();
-  ~GridDisplay() override;
+    GridDisplay();
+    ~GridDisplay() override;
 
-  // Overrides from Display
-  void onInitialize() override;
-  void update(float wall_dt, float ros_dt) override;
+    // Overrides from Display
+    void onInitialize() override;
+    void update(float wall_dt, float ros_dt) override;
 
- private Q_SLOTS:
-  void updateCellCount();
-  void updateCellSize();
-  void updateColor();
-  void updateHeight();
-  void updateLineWidth();
-  void updateOffset();
-  void updatePlane();
-  void updateStyle();
+private Q_SLOTS:
+    void updateCellCount();
+    void updateCellSize();
+    void updateColor();
+    void updateHeight();
+    void updateLineWidth();
+    void updateOffset();
+    void updatePlane();
+    void updateStyle();
 
- private:
-  std::unique_ptr<aviz::rendering::Grid> grid_;  ///< Handles actually drawing the grid
+private:
+    std::unique_ptr<aviz::rendering::Grid>
+        grid_;  ///< Handles actually drawing the grid
 
-  aviz::common::properties::IntProperty* cell_count_property_;
-  aviz::common::properties::IntProperty* height_property_;
-  aviz::common::properties::FloatProperty* cell_size_property_;
-  aviz::common::properties::FloatProperty* line_width_property_;
-  aviz::common::properties::EnumProperty* style_property_;
-  aviz::common::properties::ColorProperty* color_property_;
-  aviz::common::properties::FloatProperty* alpha_property_;
-  aviz::common::properties::EnumProperty* plane_property_;
-  aviz::common::properties::VectorProperty* offset_property_;
+    aviz::common::properties::IntProperty* cell_count_property_;
+    aviz::common::properties::IntProperty* height_property_;
+    aviz::common::properties::FloatProperty* cell_size_property_;
+    aviz::common::properties::FloatProperty* line_width_property_;
+    aviz::common::properties::EnumProperty* style_property_;
+    aviz::common::properties::ColorProperty* color_property_;
+    aviz::common::properties::FloatProperty* alpha_property_;
+    aviz::common::properties::EnumProperty* plane_property_;
+    aviz::common::properties::VectorProperty* offset_property_;
 };
 
 }  // namespace displays

@@ -21,11 +21,11 @@ namespace plugins {
 namespace view_controllers {
 
 FollowerViewController::FollowerViewController() {
-  // TODO: Initialize view controller
+    // TODO: Initialize view controller
 }
 
 FollowerViewController::~FollowerViewController() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace view_controllers

@@ -28,20 +28,22 @@ namespace displays {
  * @brief InteractiveMarkersDisplay
  * Interactive markers display
  */
-class InteractiveMarkersDisplay : public aviz::common::Display {
- public:
-  explicit InteractiveMarkersDisplay(const QString& name = "InteractiveMarkersDisplay");
-  ~InteractiveMarkersDisplay() override;
+class InteractiveMarkersDisplay : public aviz::common::Display
+{
+public:
+    explicit InteractiveMarkersDisplay(
+        const QString& name = "InteractiveMarkersDisplay");
+    ~InteractiveMarkersDisplay() override;
 
-  // Overrides from Display
-  void onInitialize() override;
-  void onEnable() override;
-  void onDisable() override;
-  void update(float wall_dt, float ros_dt) override;
-  void reset() override;
+    // Overrides from Display
+    void onInitialize() override;
+    void onEnable() override;
+    void onDisable() override;
+    void update(float wall_dt, float ros_dt) override;
+    void reset() override;
 
- private:
-  // Implementation details
+private:
+    // Implementation details
 };
 
 }  // namespace displays

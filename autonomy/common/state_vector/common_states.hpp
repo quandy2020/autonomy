@@ -32,8 +32,10 @@ namespace state_vector {
 /// of the variables are
 ///             assumed to be independent here.
 template <typename ScalarT>
-using ConstAccelerationXY = GenericState<ScalarT, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION,
-                                         variable::Y, variable::Y_VELOCITY, variable::Y_ACCELERATION>;
+using ConstAccelerationXY =
+    GenericState<ScalarT, variable::X, variable::X_VELOCITY,
+                 variable::X_ACCELERATION, variable::Y, variable::Y_VELOCITY,
+                 variable::Y_ACCELERATION>;
 using ConstAccelerationXY32 = ConstAccelerationXY<common::types::float32_t>;
 using ConstAccelerationXY64 = ConstAccelerationXY<common::types::float64_t>;
 
@@ -44,9 +46,11 @@ using ConstAccelerationXY64 = ConstAccelerationXY<common::types::float64_t>;
 /// of the variables are
 ///             assumed to be independent here.
 template <typename ScalarT>
-using ConstAccelerationXYZ = GenericState<ScalarT, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION,
-                                          variable::Y, variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::Z,
-                                          variable::Z_VELOCITY, variable::Z_ACCELERATION>;
+using ConstAccelerationXYZ =
+    GenericState<ScalarT, variable::X, variable::X_VELOCITY,
+                 variable::X_ACCELERATION, variable::Y, variable::Y_VELOCITY,
+                 variable::Y_ACCELERATION, variable::Z, variable::Z_VELOCITY,
+                 variable::Z_ACCELERATION>;
 using ConstAccelerationXYZ32 = ConstAccelerationXYZ<common::types::float32_t>;
 using ConstAccelerationXYZ64 = ConstAccelerationXYZ<common::types::float64_t>;
 
@@ -57,11 +61,15 @@ using ConstAccelerationXYZ64 = ConstAccelerationXYZ<common::types::float64_t>;
 /// acceleration. All of
 ///             these variables are assumed to be independent here.
 template <typename ScalarT>
-using ConstAccelerationXYYaw = GenericState<ScalarT, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION,
-                                            variable::Y, variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::YAW,
-                                            variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
-using ConstAccelerationXYYaw32 = ConstAccelerationXYYaw<common::types::float32_t>;
-using ConstAccelerationXYYaw64 = ConstAccelerationXYYaw<common::types::float64_t>;
+using ConstAccelerationXYYaw =
+    GenericState<ScalarT, variable::X, variable::X_VELOCITY,
+                 variable::X_ACCELERATION, variable::Y, variable::Y_VELOCITY,
+                 variable::Y_ACCELERATION, variable::YAW,
+                 variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
+using ConstAccelerationXYYaw32 =
+    ConstAccelerationXYYaw<common::types::float32_t>;
+using ConstAccelerationXYYaw64 =
+    ConstAccelerationXYYaw<common::types::float64_t>;
 
 ///
 /// @brief      A 3D state with a CCW yaw rotation.
@@ -71,11 +79,15 @@ using ConstAccelerationXYYaw64 = ConstAccelerationXYYaw<common::types::float64_t
 ///             these variables are assumed to be independent here.
 template <typename ScalarT>
 using ConstAccelerationXYZYaw =
-    GenericState<ScalarT, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION, variable::Y,
-                 variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::Z, variable::Z_VELOCITY,
-                 variable::Z_ACCELERATION, variable::YAW, variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
-using ConstAccelerationXYZYaw32 = ConstAccelerationXYZYaw<common::types::float32_t>;
-using ConstAccelerationXYZYaw64 = ConstAccelerationXYZYaw<common::types::float64_t>;
+    GenericState<ScalarT, variable::X, variable::X_VELOCITY,
+                 variable::X_ACCELERATION, variable::Y, variable::Y_VELOCITY,
+                 variable::Y_ACCELERATION, variable::Z, variable::Z_VELOCITY,
+                 variable::Z_ACCELERATION, variable::YAW,
+                 variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
+using ConstAccelerationXYZYaw32 =
+    ConstAccelerationXYZYaw<common::types::float32_t>;
+using ConstAccelerationXYZYaw64 =
+    ConstAccelerationXYZYaw<common::types::float64_t>;
 
 ///
 /// @brief      A 3D state with a roll, pitch and yaw rotation. All rotations
@@ -97,13 +109,19 @@ using ConstAccelerationXYZYaw64 = ConstAccelerationXYZYaw<common::types::float64
 ///             axis.
 ///
 template <typename ScalarT>
-using ConstAccelerationXYZRPY = GenericState<
-    ScalarT, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION, variable::Y, variable::Y_VELOCITY,
-    variable::Y_ACCELERATION, variable::Z, variable::Z_VELOCITY, variable::Z_ACCELERATION, variable::ROLL,
-    variable::ROLL_CHANGE_RATE, variable::ROLL_CHANGE_ACCELERATION, variable::PITCH, variable::PITCH_CHANGE_RATE,
-    variable::PITCH_CHANGE_ACCELERATION, variable::YAW, variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
-using ConstAccelerationXYZRPY32 = ConstAccelerationXYZRPY<common::types::float32_t>;
-using ConstAccelerationXYZRPY64 = ConstAccelerationXYZRPY<common::types::float64_t>;
+using ConstAccelerationXYZRPY =
+    GenericState<ScalarT, variable::X, variable::X_VELOCITY,
+                 variable::X_ACCELERATION, variable::Y, variable::Y_VELOCITY,
+                 variable::Y_ACCELERATION, variable::Z, variable::Z_VELOCITY,
+                 variable::Z_ACCELERATION, variable::ROLL,
+                 variable::ROLL_CHANGE_RATE, variable::ROLL_CHANGE_ACCELERATION,
+                 variable::PITCH, variable::PITCH_CHANGE_RATE,
+                 variable::PITCH_CHANGE_ACCELERATION, variable::YAW,
+                 variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
+using ConstAccelerationXYZRPY32 =
+    ConstAccelerationXYZRPY<common::types::float32_t>;
+using ConstAccelerationXYZRPY64 =
+    ConstAccelerationXYZRPY<common::types::float64_t>;
 
 ///
 /// @brief      A state consisting of a 2D position, CCW orientation, speed
@@ -117,10 +135,13 @@ using ConstAccelerationXYZRPY64 = ConstAccelerationXYZRPY<common::types::float64
 ///             differential drive base.
 template <typename ScalarT>
 using ConstantAccelerationAndTurnRate =
-    GenericState<ScalarT, variable::X, variable::Y, variable::YAW, variable::XY_VELOCITY, variable::YAW_CHANGE_RATE,
+    GenericState<ScalarT, variable::X, variable::Y, variable::YAW,
+                 variable::XY_VELOCITY, variable::YAW_CHANGE_RATE,
                  variable::XY_ACCELERATION>;
-using ConstantAccelerationAndTurnRate32 = ConstantAccelerationAndTurnRate<common::types::float32_t>;
-using ConstantAccelerationAndTurnRate64 = ConstantAccelerationAndTurnRate<common::types::float64_t>;
+using ConstantAccelerationAndTurnRate32 =
+    ConstantAccelerationAndTurnRate<common::types::float32_t>;
+using ConstantAccelerationAndTurnRate64 =
+    ConstantAccelerationAndTurnRate<common::types::float64_t>;
 
 ///
 /// @brief      A state consisting of a 2D position, CCW orientation, speed
@@ -133,9 +154,12 @@ using ConstantAccelerationAndTurnRate64 = ConstantAccelerationAndTurnRate<common
 ///             drive base.
 template <typename ScalarT>
 using ConstantVelocityAndTurnRate =
-    GenericState<ScalarT, variable::X, variable::Y, variable::YAW, variable::XY_VELOCITY, variable::YAW_CHANGE_RATE>;
-using ConstantVelocityAndTurnRate32 = ConstantVelocityAndTurnRate<common::types::float32_t>;
-using ConstantVelocityAndTurnRate64 = ConstantVelocityAndTurnRate<common::types::float64_t>;
+    GenericState<ScalarT, variable::X, variable::Y, variable::YAW,
+                 variable::XY_VELOCITY, variable::YAW_CHANGE_RATE>;
+using ConstantVelocityAndTurnRate32 =
+    ConstantVelocityAndTurnRate<common::types::float32_t>;
+using ConstantVelocityAndTurnRate64 =
+    ConstantVelocityAndTurnRate<common::types::float64_t>;
 
 }  // namespace state_vector
 }  // namespace common

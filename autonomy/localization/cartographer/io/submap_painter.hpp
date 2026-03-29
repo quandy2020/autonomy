@@ -30,67 +30,76 @@ namespace cartographer {
 namespace io {
 
 struct PaintSubmapSlicesResult {
-  PaintSubmapSlicesResult(::cartographer::io::UniqueCairoSurfacePtr surface, Eigen::Array2f origin)
-      : surface(std::move(surface)), origin(origin) {}
-  ::cartographer::io::UniqueCairoSurfacePtr surface;
+    PaintSubmapSlicesResult(::cartographer::io::UniqueCairoSurfacePtr surface,
+                            Eigen::Array2f origin)
+        : surface(std::move(surface)), origin(origin) {}
+    ::cartographer::io::UniqueCairoSurfacePtr surface;
 
-  // Top left pixel of 'surface' in map frame.
-  Eigen::Array2f origin;
+    // Top left pixel of 'surface' in map frame.
+    Eigen::Array2f origin;
 };
 
 struct SubmapSlice {
-  SubmapSlice() : surface(::cartographer::io::MakeUniqueCairoSurfacePtr(nullptr)) {}
+    SubmapSlice()
+        : surface(::cartographer::io::MakeUniqueCairoSurfacePtr(nullptr)) {}
 
-  // Texture data.
-  int width;
-  int height;
-  int version;
-  double resolution;
-  ::cartographer::transform::Rigid3d slice_pose;
-  ::cartographer::io::UniqueCairoSurfacePtr surface;
-  // Pixel data used by 'surface'. Must outlive 'surface'.
-  std::vector<uint32_t> cairo_data;
+    // Texture data.
+    int width;
+    int height;
+    int version;
+    double resolution;
+    ::cartographer::transform::Rigid3d slice_pose;
+    ::cartographer::io::UniqueCairoSurfacePtr surface;
+    // Pixel data used by 'surface'. Must outlive 'surface'.
+    std::vector<uint32_t> cairo_data;
 
-  // Metadata.
-  ::cartographer::transform::Rigid3d pose;
-  int metadata_version = -1;
+    // Metadata.
+    ::cartographer::transform::Rigid3d pose;
+    int metadata_version = -1;
 };
 
 struct SubmapTexture {
-  struct Pixels {
-    std::vector<char> intensity;
-    std::vector<char> alpha;
-  };
-  Pixels pixels;
-  int width;
-  int height;
-  double resolution;
-  ::cartographer::transform::Rigid3d slice_pose;
+    struct Pixels {
+        std::vector<char> intensity;
+        std::vector<char> alpha;
+    };
+    Pixels pixels;
+    int width;
+    int height;
+    double resolution;
+    ::cartographer::transform::Rigid3d slice_pose;
 };
 
 struct SubmapTextures {
-  int version;
-  std::vector<SubmapTexture> textures;
+    int version;
+    std::vector<SubmapTexture> textures;
 };
 
-PaintSubmapSlicesResult PaintSubmapSlices(const std::map<::cartographer::mapping::SubmapId, SubmapSlice>& submaps,
-                                          double resolution);
+PaintSubmapSlicesResult PaintSubmapSlices(
+    const std::map<::cartographer::mapping::SubmapId, SubmapSlice>& submaps,
+    double resolution);
 
-void FillSubmapSlice(const ::cartographer::transform::Rigid3d& global_submap_pose,
-                     const ::cartographer::mapping::proto::Submap& proto, SubmapSlice* const submap_slice,
-                     mapping::ValueConversionTables* conversion_tables);
+void FillSubmapSlice(
+    const ::cartographer::transform::Rigid3d& global_submap_pose,
+    const ::cartographer::mapping::proto::Submap& proto,
+    SubmapSlice* const submap_slice,
+    mapping::ValueConversionTables* conversion_tables);
 
-void DeserializeAndFillSubmapSlices(ProtoStreamDeserializer* deserializer,
-                                    std::map<::cartographer::mapping::SubmapId, SubmapSlice>* submap_slices,
-                                    mapping::ValueConversionTables* conversion_tables);
+void DeserializeAndFillSubmapSlices(
+    ProtoStreamDeserializer* deserializer,
+    std::map<::cartographer::mapping::SubmapId, SubmapSlice>* submap_slices,
+    mapping::ValueConversionTables* conversion_tables);
 
 // Unpacks cell data as provided by the backend into 'intensity' and 'alpha'.
-SubmapTexture::Pixels UnpackTextureData(const std::string& compressed_cells, int width, int height);
+SubmapTexture::Pixels UnpackTextureData(const std::string& compressed_cells,
+                                        int width, int height);
 
 // Draw a texture into a cairo surface. 'cairo_data' will store the pixel data
 // for the surface and must therefore outlive the use of the surface.
-UniqueCairoSurfacePtr DrawTexture(const std::vector<char>& intensity, const std::vector<char>& alpha, int width,
-                                  int height, std::vector<uint32_t>* cairo_data);
+UniqueCairoSurfacePtr DrawTexture(const std::vector<char>& intensity,
+                                  const std::vector<char>& alpha, int width,
+                                  int height,
+                                  std::vector<uint32_t>* cairo_data);
 
 }  // namespace io
 }  // namespace cartographer

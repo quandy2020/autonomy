@@ -46,14 +46,14 @@ constexpr auto kDoublePi = 2.0 * M_PI;
 ///
 template <typename T>
 constexpr T wrap_angle(T angle) noexcept {
-  auto help_angle = angle + T(M_PI);
-  while (help_angle < T{}) {
-    help_angle += T(detail::kDoublePi);
-  }
-  while (help_angle >= T(detail::kDoublePi)) {
-    help_angle -= T(detail::kDoublePi);
-  }
-  return help_angle - T(M_PI);
+    auto help_angle = angle + T(M_PI);
+    while (help_angle < T{}) {
+        help_angle += T(detail::kDoublePi);
+    }
+    while (help_angle >= T(detail::kDoublePi)) {
+        help_angle -= T(detail::kDoublePi);
+    }
+    return help_angle - T(M_PI);
 }
 
 }  // namespace helper_functions

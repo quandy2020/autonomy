@@ -34,113 +34,122 @@ namespace autolink {
 namespace transport {
 
 template <typename M>
-class RtpsTransmitter : public Transmitter<M> {
- public:
-  using MessagePtr = std::shared_ptr<M>;
+class RtpsTransmitter : public Transmitter<M>
+{
+public:
+    using MessagePtr = std::shared_ptr<M>;
 
-  RtpsTransmitter(const RoleAttributes& attr, const ParticipantPtr& participant);
-  virtual ~RtpsTransmitter();
+    RtpsTransmitter(const RoleAttributes& attr,
+                    const ParticipantPtr& participant);
+    virtual ~RtpsTransmitter();
 
-  void Enable() override;
-  void Disable() override;
+    void Enable() override;
+    void Disable() override;
 
-  void Enable(const RoleAttributes& opposite_attr) override;
-  void Disable(const RoleAttributes& opposite_attr) override;
+    void Enable(const RoleAttributes& opposite_attr) override;
+    void Disable(const RoleAttributes& opposite_attr) override;
 
-  bool Transmit(const MessagePtr& msg, const MessageInfo& msg_info) override;
+    bool Transmit(const MessagePtr& msg, const MessageInfo& msg_info) override;
 
-  bool AcquireMessage(std::shared_ptr<M>& msg);
+    bool AcquireMessage(std::shared_ptr<M>& msg);
 
- private:
-  bool Transmit(const M& msg, const MessageInfo& msg_info);
+private:
+    bool Transmit(const M& msg, const MessageInfo& msg_info);
 
-  ParticipantPtr participant_;
-  eprosima::fastrtps::Publisher* publisher_;
+    ParticipantPtr participant_;
+    eprosima::fastrtps::Publisher* publisher_;
 };
 
 template <typename M>
 bool RtpsTransmitter<M>::AcquireMessage(std::shared_ptr<M>& msg) {
-  return false;
+    return false;
 }
 
 template <typename M>
-RtpsTransmitter<M>::RtpsTransmitter(const RoleAttributes& attr, const ParticipantPtr& participant)
+RtpsTransmitter<M>::RtpsTransmitter(const RoleAttributes& attr,
+                                    const ParticipantPtr& participant)
     : Transmitter<M>(attr), participant_(participant), publisher_(nullptr) {}
 
 template <typename M>
 RtpsTransmitter<M>::~RtpsTransmitter() {
-  Disable();
+    Disable();
 }
 
 template <typename M>
 void RtpsTransmitter<M>::Enable(const RoleAttributes& opposite_attr) {
-  (void)opposite_attr;
-  this->Enable();
+    (void)opposite_attr;
+    this->Enable();
 }
 
 template <typename M>
 void RtpsTransmitter<M>::Disable(const RoleAttributes& opposite_attr) {
-  (void)opposite_attr;
-  this->Disable();
+    (void)opposite_attr;
+    this->Disable();
 }
 
 template <typename M>
 void RtpsTransmitter<M>::Enable() {
-  if (this->enabled_) {
-    return;
-  }
+    if (this->enabled_) {
+        return;
+    }
 
-  RETURN_IF_NULL(participant_);
+    RETURN_IF_NULL(participant_);
 
-  eprosima::fastrtps::PublisherAttributes pub_attr;
-  RETURN_IF(!AttributesFiller::FillInPubAttr(this->attr_.channel_name(), this->attr_.qos_profile(), &pub_attr));
-  publisher_ = eprosima::fastrtps::Domain::createPublisher(participant_->fastrtps_participant(), pub_attr);
-  RETURN_IF_NULL(publisher_);
-  this->enabled_ = true;
+    eprosima::fastrtps::PublisherAttributes pub_attr;
+    RETURN_IF(!AttributesFiller::FillInPubAttr(
+        this->attr_.channel_name(), this->attr_.qos_profile(), &pub_attr));
+    publisher_ = eprosima::fastrtps::Domain::createPublisher(
+        participant_->fastrtps_participant(), pub_attr);
+    RETURN_IF_NULL(publisher_);
+    this->enabled_ = true;
 }
 
 template <typename M>
 void RtpsTransmitter<M>::Disable() {
-  if (this->enabled_) {
-    publisher_ = nullptr;
-    this->enabled_ = false;
-  }
+    if (this->enabled_) {
+        publisher_ = nullptr;
+        this->enabled_ = false;
+    }
 }
 
 template <typename M>
-bool RtpsTransmitter<M>::Transmit(const MessagePtr& msg, const MessageInfo& msg_info) {
-  return Transmit(*msg, msg_info);
+bool RtpsTransmitter<M>::Transmit(const MessagePtr& msg,
+                                  const MessageInfo& msg_info) {
+    return Transmit(*msg, msg_info);
 }
 
 template <typename M>
 bool RtpsTransmitter<M>::Transmit(const M& msg, const MessageInfo& msg_info) {
-  if (!this->enabled_) {
-    ADEBUG << "not enable.";
-    return false;
-  }
+    if (!this->enabled_) {
+        ADEBUG << "not enable.";
+        return false;
+    }
 
-  UnderlayMessage m;
-  RETURN_VAL_IF(!message::SerializeToString(msg, &m.data()), false);
+    UnderlayMessage m;
+    RETURN_VAL_IF(!message::SerializeToString(msg, &m.data()), false);
 
-  uint64_t send_time = msg_info.send_time();
+    uint64_t send_time = msg_info.send_time();
 
-  m.timestamp(0x0fffffff & send_time);
-  m.seq(msg_info.msg_seq_num());
+    m.timestamp(0x0fffffff & send_time);
+    m.seq(msg_info.msg_seq_num());
 
-  eprosima::fastrtps::rtps::WriteParams wparams;
+    eprosima::fastrtps::rtps::WriteParams wparams;
 
-  char* ptr = reinterpret_cast<char*>(&wparams.related_sample_identity().writer_guid());
+    char* ptr = reinterpret_cast<char*>(
+        &wparams.related_sample_identity().writer_guid());
 
-  memcpy(ptr, msg_info.sender_id().data(), ID_SIZE);
-  memcpy(ptr + ID_SIZE, msg_info.spare_id().data(), ID_SIZE);
+    memcpy(ptr, msg_info.sender_id().data(), ID_SIZE);
+    memcpy(ptr + ID_SIZE, msg_info.spare_id().data(), ID_SIZE);
 
-  wparams.related_sample_identity().sequence_number().high = (int32_t)((msg_info.seq_num() & 0xFFFFFFFF00000000) >> 32);
-  wparams.related_sample_identity().sequence_number().low = (int32_t)(msg_info.seq_num() & 0xFFFFFFFF);
+    wparams.related_sample_identity().sequence_number().high =
+        (int32_t)((msg_info.seq_num() & 0xFFFFFFFF00000000) >> 32);
+    wparams.related_sample_identity().sequence_number().low =
+        (int32_t)(msg_info.seq_num() & 0xFFFFFFFF);
 
-  if (participant_->is_shutdown()) {
-    return false;
-  }
-  return publisher_->write(reinterpret_cast<void*>(&m), wparams);
+    if (participant_->is_shutdown()) {
+        return false;
+    }
+    return publisher_->write(reinterpret_cast<void*>(&m), wparams);
 }
 
 }  // namespace transport

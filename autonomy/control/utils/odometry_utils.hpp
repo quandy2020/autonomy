@@ -39,99 +39,103 @@ namespace utils {
  * Wrapper for getting smooth odometry readings using a simple moving average.
  * Subscribes to the topic with a mutex.
  */
-class OdomSmoother {
- public:
-  /**
-   * @brief Constructor that subscribes to an Odometry topic
-   * @param parent NodeHandle for creating subscriber
-   * @param filter_duration Duration for odom history (seconds)
-   * @param odom_topic Topic on which odometry should be received
-   */
-  explicit OdomSmoother(const std::shared_ptr<::autolink::Node>& parent, double filter_duration = 0.3,
-                        const std::string& odom_topic = "odom");
+class OdomSmoother
+{
+public:
+    /**
+     * @brief Constructor that subscribes to an Odometry topic
+     * @param parent NodeHandle for creating subscriber
+     * @param filter_duration Duration for odom history (seconds)
+     * @param odom_topic Topic on which odometry should be received
+     */
+    explicit OdomSmoother(const std::shared_ptr<::autolink::Node>& parent,
+                          double filter_duration = 0.3,
+                          const std::string& odom_topic = "odom");
 
-  /**
-   * @brief Get twist msg from smoother
-   * @return twist Twist msg
-   */
-  inline commsgs::geometry_msgs::Twist getTwist() {
-    std::lock_guard<std::mutex> lock(odom_mutex_);
-    if (!received_odom_) {
-      AERROR << "OdomSmoother has not received any data yet, returning "
-                "empty Twist";
-      commsgs::geometry_msgs::Twist twist;
-      return twist;
+    /**
+     * @brief Get twist msg from smoother
+     * @return twist Twist msg
+     */
+    inline commsgs::geometry_msgs::Twist getTwist() {
+        std::lock_guard<std::mutex> lock(odom_mutex_);
+        if (!received_odom_) {
+            AERROR << "OdomSmoother has not received any data yet, returning "
+                      "empty Twist";
+            commsgs::geometry_msgs::Twist twist;
+            return twist;
+        }
+        return vel_smooth_.twist;
     }
-    return vel_smooth_.twist;
-  }
 
-  /**
-   * @brief Get twist stamped msg from smoother
-   * @return twist TwistStamped msg
-   */
-  inline commsgs::geometry_msgs::TwistStamped getTwistStamped() {
-    std::lock_guard<std::mutex> lock(odom_mutex_);
-    if (!received_odom_) {
-      AERROR << "OdomSmoother has not received any data yet, returning "
-                "empty Twist";
-      commsgs::geometry_msgs::TwistStamped twist_stamped;
-      return twist_stamped;
+    /**
+     * @brief Get twist stamped msg from smoother
+     * @return twist TwistStamped msg
+     */
+    inline commsgs::geometry_msgs::TwistStamped getTwistStamped() {
+        std::lock_guard<std::mutex> lock(odom_mutex_);
+        if (!received_odom_) {
+            AERROR << "OdomSmoother has not received any data yet, returning "
+                      "empty Twist";
+            commsgs::geometry_msgs::TwistStamped twist_stamped;
+            return twist_stamped;
+        }
+        return vel_smooth_;
     }
-    return vel_smooth_;
-  }
 
-  /**
-   * @brief Get raw twist msg from smoother (without smoothing)
-   * @return twist Twist msg
-   */
-  inline commsgs::geometry_msgs::Twist getRawTwist() {
-    std::lock_guard<std::mutex> lock(odom_mutex_);
-    if (!received_odom_) {
-      AERROR << "OdomSmoother has not received any data yet, returning "
-                "empty Twist";
-      commsgs::geometry_msgs::Twist twist;
-      return twist;
+    /**
+     * @brief Get raw twist msg from smoother (without smoothing)
+     * @return twist Twist msg
+     */
+    inline commsgs::geometry_msgs::Twist getRawTwist() {
+        std::lock_guard<std::mutex> lock(odom_mutex_);
+        if (!received_odom_) {
+            AERROR << "OdomSmoother has not received any data yet, returning "
+                      "empty Twist";
+            commsgs::geometry_msgs::Twist twist;
+            return twist;
+        }
+        return odom_history_.back().twist.twist;
     }
-    return odom_history_.back().twist.twist;
-  }
 
-  /**
-   * @brief Get raw twist stamped msg from smoother (without smoothing)
-   * @return twist TwistStamped msg
-   */
-  inline commsgs::geometry_msgs::TwistStamped getRawTwistStamped() {
-    std::lock_guard<std::mutex> lock(odom_mutex_);
-    commsgs::geometry_msgs::TwistStamped twist_stamped;
-    if (!received_odom_) {
-      AERROR << "OdomSmoother has not received any data yet, returning "
-                "empty Twist";
-      return twist_stamped;
+    /**
+     * @brief Get raw twist stamped msg from smoother (without smoothing)
+     * @return twist TwistStamped msg
+     */
+    inline commsgs::geometry_msgs::TwistStamped getRawTwistStamped() {
+        std::lock_guard<std::mutex> lock(odom_mutex_);
+        commsgs::geometry_msgs::TwistStamped twist_stamped;
+        if (!received_odom_) {
+            AERROR << "OdomSmoother has not received any data yet, returning "
+                      "empty Twist";
+            return twist_stamped;
+        }
+        twist_stamped.header = odom_history_.back().header;
+        twist_stamped.twist = odom_history_.back().twist.twist;
+        return twist_stamped;
     }
-    twist_stamped.header = odom_history_.back().header;
-    twist_stamped.twist = odom_history_.back().twist.twist;
-    return twist_stamped;
-  }
 
- protected:
-  /**
-   * @brief Callback of odometry subscriber to process
-   * @param msg Odometry msg to smooth
-   */
-  void odomCallback(const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
+protected:
+    /**
+     * @brief Callback of odometry subscriber to process
+     * @param msg Odometry msg to smooth
+     */
+    void odomCallback(
+        const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
 
-  /**
-   * @brief Update internal state of the smoother after getting new data
-   */
-  void updateState();
+    /**
+     * @brief Update internal state of the smoother after getting new data
+     */
+    void updateState();
 
-  bool received_odom_;
-  std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>> odom_sub_;
-  commsgs::planning_msgs::Odometry odom_cumulate_;
-  commsgs::geometry_msgs::TwistStamped vel_smooth_;
-  std::mutex odom_mutex_;
+    bool received_odom_;
+    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>>
+        odom_sub_;
+    commsgs::planning_msgs::Odometry odom_cumulate_;
+    commsgs::geometry_msgs::TwistStamped vel_smooth_;
+    std::mutex odom_mutex_;
 
-  commsgs::builtin_interfaces::Duration odom_history_duration_;
-  std::deque<commsgs::planning_msgs::Odometry> odom_history_;
+    commsgs::builtin_interfaces::Duration odom_history_duration_;
+    std::deque<commsgs::planning_msgs::Odometry> odom_history_;
 };
 
 }  // namespace utils

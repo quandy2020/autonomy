@@ -31,6 +31,8 @@ option(AUTOLINK_BUILD_TEST "Build unit tests" ON)
 option(AUTOLINK_BUILD_EXAMPLES "Build examples" ON)
 option(AUTOLINK_BUILD_PYTHON "Build Python bindings" ON)
 option(AUTOLINK_BUILD_DOCS "Build documentation" ON)
+option(AUTOLINK_FORCE_TCMALLOC_WITH_PYTHON
+  "Force linking tcmalloc into autolink even when Python bindings are enabled" OFF)
 
 # output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

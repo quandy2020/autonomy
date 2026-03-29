@@ -42,10 +42,10 @@ bool RenderSystem::use_anti_aliasing_ = false;
 #endif
 
 RenderSystem* RenderSystem::get() {
-  if (instance_ == nullptr) {
-    instance_ = new RenderSystem();
-  }
-  return instance_;
+    if (instance_ == nullptr) {
+        instance_ = new RenderSystem();
+    }
+    return instance_;
 }
 
 RenderSystem::RenderSystem()
@@ -61,162 +61,180 @@ RenderSystem::RenderSystem()
       dummyContext(nullptr)
 #endif
 {
-  // Initialize Ogre::Root
-  ogre_root_ = new Ogre::Root("", "", "aviz.log");
+    // Initialize Ogre::Root
+    ogre_root_ = new Ogre::Root("", "", "aviz.log");
 
-  // Setup render system
-  setupRenderSystem();
+    // Setup render system
+    setupRenderSystem();
 
-  // Load plugins
-  loadOgrePlugins();
+    // Load plugins
+    loadOgrePlugins();
 
-  // Initialize root
-  // Newer Ogre versions require a ConfigDialog* argument; pass nullptr to
-  // use the default dialog implementation when available.
-  if (!ogre_root_->restoreConfig() && !ogre_root_->showConfigDialog(nullptr)) {
-    // Use default configuration if no config file exists
-    ogre_root_->setRenderSystem(ogre_root_->getAvailableRenderers().at(0));
-  }
+    // Initialize root
+    // Newer Ogre versions require a ConfigDialog* argument; pass nullptr to
+    // use the default dialog implementation when available.
+    if (!ogre_root_->restoreConfig() &&
+        !ogre_root_->showConfigDialog(nullptr)) {
+        // Use default configuration if no config file exists
+        ogre_root_->setRenderSystem(ogre_root_->getAvailableRenderers().at(0));
+    }
 
-  ogre_root_->initialise(false);
+    ogre_root_->initialise(false);
 
 #if OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0
-  ogre_overlay_system_ = new Ogre::OverlaySystem();
+    ogre_overlay_system_ = new Ogre::OverlaySystem();
 #endif
 }
 
-RenderSystem::~RenderSystem() { Destroy(); }
+RenderSystem::~RenderSystem() {
+    Destroy();
+}
 
 void RenderSystem::Destroy() {
 #if OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0
-  if (ogre_overlay_system_) {
-    delete ogre_overlay_system_;
-    ogre_overlay_system_ = nullptr;
-  }
+    if (ogre_overlay_system_) {
+        delete ogre_overlay_system_;
+        ogre_overlay_system_ = nullptr;
+    }
 #endif
 
-  if (ogre_root_) {
-    try {
-      delete ogre_root_;
-    } catch (...) {
+    if (ogre_root_) {
+        try {
+            delete ogre_root_;
+        } catch (...) {
+        }
+        ogre_root_ = nullptr;
     }
-    ogre_root_ = nullptr;
-  }
 
 #ifdef __linux__
-  if (dummyDisplay) {
-    // Cleanup dummy display
-  }
+    if (dummyDisplay) {
+        // Cleanup dummy display
+    }
 #endif
 }
 
-Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowIDType window_id, unsigned int width, unsigned int height,
+Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowIDType window_id,
+                                                   unsigned int width,
+                                                   unsigned int height,
                                                    double pixel_ratio) {
-  std::string name = "AVizRenderWindow";
-  Ogre::NameValuePairList params;
+    std::string name = "AVizRenderWindow";
+    Ogre::NameValuePairList params;
 
-  params["externalWindowHandle"] = std::to_string(window_id);
-  params["parentWindowHandle"] = std::to_string(window_id);
+    params["externalWindowHandle"] = std::to_string(window_id);
+    params["parentWindowHandle"] = std::to_string(window_id);
 
-  return tryMakeRenderWindow(name, width, height, &params, 5);
+    return tryMakeRenderWindow(name, width, height, &params, 5);
 }
 
-Ogre::RenderWindow* RenderSystem::tryMakeRenderWindow(const std::string& name, unsigned int width, unsigned int height,
-                                                      const Ogre::NameValuePairList* params, int max_attempts) {
-  for (int i = 0; i < max_attempts; ++i) {
-    try {
-      std::string window_name = name;
-      if (i > 0) {
-        window_name += std::to_string(i);
-      }
+Ogre::RenderWindow* RenderSystem::tryMakeRenderWindow(
+    const std::string& name, unsigned int width, unsigned int height,
+    const Ogre::NameValuePairList* params, int max_attempts) {
+    for (int i = 0; i < max_attempts; ++i) {
+        try {
+            std::string window_name = name;
+            if (i > 0) {
+                window_name += std::to_string(i);
+            }
 
-      Ogre::NameValuePairList local_params;
-      if (params) {
-        local_params = *params;
-      }
+            Ogre::NameValuePairList local_params;
+            if (params) {
+                local_params = *params;
+            }
 
-      return ogre_root_->createRenderWindow(window_name, width, height, false, &local_params);
-    } catch (Ogre::Exception& e) {
-      if (i == max_attempts - 1) {
-        std::cerr << "Failed to create render window after " << max_attempts << " attempts: " << e.what() << std::endl;
-      }
+            return ogre_root_->createRenderWindow(window_name, width, height,
+                                                  false, &local_params);
+        } catch (Ogre::Exception& e) {
+            if (i == max_attempts - 1) {
+                std::cerr << "Failed to create render window after "
+                          << max_attempts << " attempts: " << e.what()
+                          << std::endl;
+            }
+        }
     }
-  }
-  return nullptr;
+    return nullptr;
 }
 
 void RenderSystem::setupRenderSystem() {
-  // Configure render system options
-  Ogre::RenderSystemList renderers = ogre_root_->getAvailableRenderers();
-  if (renderers.empty()) {
-    std::cerr << "No render systems available!" << std::endl;
-    return;
-  }
+    // Configure render system options
+    Ogre::RenderSystemList renderers = ogre_root_->getAvailableRenderers();
+    if (renderers.empty()) {
+        std::cerr << "No render systems available!" << std::endl;
+        return;
+    }
 
-  // Use first available render system (typically GL3+)
-  Ogre::RenderSystem* render_system = renderers[0];
+    // Use first available render system (typically GL3+)
+    Ogre::RenderSystem* render_system = renderers[0];
 
-  if (force_gl_version_ > 0) {
-    render_system->setConfigOption("OpenGL Version", std::to_string(force_gl_version_ / 100) + "." +
-                                                         std::to_string((force_gl_version_ % 100) / 10));
-  }
+    if (force_gl_version_ > 0) {
+        render_system->setConfigOption(
+            "OpenGL Version",
+            std::to_string(force_gl_version_ / 100) + "." +
+                std::to_string((force_gl_version_ % 100) / 10));
+    }
 
-  if (force_no_stereo_) {
-    render_system->setConfigOption("stereoMode", "None");
-  }
+    if (force_no_stereo_) {
+        render_system->setConfigOption("stereoMode", "None");
+    }
 
-  ogre_root_->setRenderSystem(render_system);
+    ogre_root_->setRenderSystem(render_system);
 }
 
 void RenderSystem::loadOgrePlugins() {
-  // Load essential plugins
-  // This is a simplified version - in practice, you'd want to configure plugin paths
+    // Load essential plugins
+    // This is a simplified version - in practice, you'd want to configure
+    // plugin paths
 }
 
 void RenderSystem::setResourceDirectory() {
-  // Set resource directories
+    // Set resource directories
 }
 
 void RenderSystem::setPluginDirectory() {
-  // Set plugin directories
+    // Set plugin directories
 }
 
 void RenderSystem::setupResources() {
-  // Setup resource groups
+    // Setup resource groups
 }
 
 #if OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0
 void RenderSystem::prepareOverlays(Ogre::SceneManager* scene_manager) {
-  if (ogre_overlay_system_) {
-    scene_manager->addRenderQueueListener(ogre_overlay_system_);
-  }
+    if (ogre_overlay_system_) {
+        scene_manager->addRenderQueueListener(ogre_overlay_system_);
+    }
 }
 #endif
 
 int RenderSystem::getGlVersion() {
-  // Extract GL version from render system
-  return 330;  // Default to 3.30
+    // Extract GL version from render system
+    return 330;  // Default to 3.30
 }
 
 int RenderSystem::getGlslVersion() {
-  // Extract GLSL version from render system
-  return 330;  // Default to 3.30
+    // Extract GLSL version from render system
+    return 330;  // Default to 3.30
 }
 
-void RenderSystem::disableAntiAliasing() { use_anti_aliasing_ = false; }
+void RenderSystem::disableAntiAliasing() {
+    use_anti_aliasing_ = false;
+}
 
-void RenderSystem::forceGlVersion(int version) { force_gl_version_ = version; }
+void RenderSystem::forceGlVersion(int version) {
+    force_gl_version_ = version;
+}
 
-void RenderSystem::forceNoStereo() { force_no_stereo_ = true; }
+void RenderSystem::forceNoStereo() {
+    force_no_stereo_ = true;
+}
 
 bool RenderSystem::isStereoSupported() {
-  return false;  // Simplified implementation
+    return false;  // Simplified implementation
 }
 
 void RenderSystem::setupDummyWindowId() {
-  // Setup dummy window for headless rendering if needed
+    // Setup dummy window for headless rendering if needed
 #ifdef __linux__
-  // X11 setup code would go here
+    // X11 setup code would go here
 #endif
 }
 

@@ -1,6 +1,7 @@
 #include "autonomy/autoviz/core/app.hpp"
 
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -10,7 +11,6 @@
 #include "autonomy/autoviz/core/recorder/recorder.hpp"
 
 #include "autolink/common/file.hpp"
-#include "autolink/common/log.hpp"
 #include "autoviz_conf.pb.h"
 
 namespace autoviz {
@@ -63,7 +63,7 @@ config::Config FromAutovizConfProto(const autoviz::conf::AutovizConf& pb) {
 
 config::Config LoadAutovizPbConf(const std::string& path) {
   autoviz::conf::AutovizConf pb;
-  if (!autolink::common::LoadConfig(path, &pb)) {
+  if (!::autolink::common::LoadConfig(path, &pb)) {
     return config::Config{};
   }
   return FromAutovizConfProto(pb);
@@ -89,8 +89,8 @@ bool App::Initialize(const std::string& config_path) {
   autolink_bridge_->Start();
   mcap_recorder_->Start();
 
-  AINFO << "autoviz: foxglove ws + autolink→foxglove"
-        << (mcap_recorder_->IsEnabled() ? " + mcap" : "");
+  std::cout << "autoviz: foxglove ws + autolink->foxglove"
+            << (mcap_recorder_->IsEnabled() ? " + mcap" : "") << std::endl;
   initialized_ = true;
   return true;
 }

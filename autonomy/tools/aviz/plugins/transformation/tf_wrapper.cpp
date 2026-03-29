@@ -21,11 +21,11 @@ namespace plugins {
 namespace transformation {
 
 TfWrapper::TfWrapper() {
-  // TODO: Initialize
+    // TODO: Initialize
 }
 
 TfWrapper::~TfWrapper() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace transformation

@@ -27,29 +27,39 @@ namespace cartographer {
 namespace {
 
 TEST(ConfigurationFilesTest, ValidateMapBuilderOptions) {
-  const std::string kCode = R"text(
+    const std::string kCode = R"text(
       include "map_builder.lua"
       MAP_BUILDER.use_trajectory_builder_2d = true
       return MAP_BUILDER)text";
-  EXPECT_NO_FATAL_FAILURE({
-    auto file_resolver = ::absl::make_unique< ::cartographer::common::ConfigurationFileResolver>(
-        std::vector<std::string>{std::string(::cartographer::common::kSourceDirectory) + "/configuration_files"});
-    ::cartographer::common::LuaParameterDictionary lua_parameter_dictionary(kCode, std::move(file_resolver));
-    ::cartographer::mapping::CreateMapBuilderOptions(&lua_parameter_dictionary);
-  });
+    EXPECT_NO_FATAL_FAILURE({
+        auto file_resolver = ::absl::make_unique<
+            ::cartographer::common::ConfigurationFileResolver>(
+            std::vector<std::string>{
+                std::string(::cartographer::common::kSourceDirectory) +
+                "/configuration_files"});
+        ::cartographer::common::LuaParameterDictionary lua_parameter_dictionary(
+            kCode, std::move(file_resolver));
+        ::cartographer::mapping::CreateMapBuilderOptions(
+            &lua_parameter_dictionary);
+    });
 }
 
 TEST(ConfigurationFilesTest, ValidateTrajectoryBuilderOptions) {
-  const std::string kCode = R"text(
+    const std::string kCode = R"text(
       include "trajectory_builder.lua"
       TRAJECTORY_BUILDER.trajectory_builder_2d.use_imu_data = false
       return TRAJECTORY_BUILDER)text";
-  EXPECT_NO_FATAL_FAILURE({
-    auto file_resolver = ::absl::make_unique< ::cartographer::common::ConfigurationFileResolver>(
-        std::vector<std::string>{std::string(::cartographer::common::kSourceDirectory) + "/configuration_files"});
-    ::cartographer::common::LuaParameterDictionary lua_parameter_dictionary(kCode, std::move(file_resolver));
-    ::cartographer::mapping::CreateTrajectoryBuilderOptions(&lua_parameter_dictionary);
-  });
+    EXPECT_NO_FATAL_FAILURE({
+        auto file_resolver = ::absl::make_unique<
+            ::cartographer::common::ConfigurationFileResolver>(
+            std::vector<std::string>{
+                std::string(::cartographer::common::kSourceDirectory) +
+                "/configuration_files"});
+        ::cartographer::common::LuaParameterDictionary lua_parameter_dictionary(
+            kCode, std::move(file_resolver));
+        ::cartographer::mapping::CreateTrajectoryBuilderOptions(
+            &lua_parameter_dictionary);
+    });
 }
 
 }  // namespace

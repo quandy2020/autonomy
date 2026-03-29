@@ -29,25 +29,29 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void AddOdometryDataHandler::OnSensorData(const proto::AddOdometryDataRequest& request) {
-  // The 'BlockingQueue' returned by 'sensor_data_queue()' is already
-  // thread-safe. Therefore it suffices to get an unsynchronized reference to
-  // the 'MapBuilderContext'.
-  this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->EnqueueSensorData(
-      request.sensor_metadata().trajectory_id(),
-      sensor::MakeDispatchable(request.sensor_metadata().sensor_id(), sensor::FromProto(request.odometry_data())));
-
-  // The 'BlockingQueue' in 'LocalTrajectoryUploader' is thread-safe.
-  // Therefore it suffices to get an unsynchronized reference to the
-  // 'MapBuilderContext'.
-  if (this->template GetUnsynchronizedContext<MapBuilderContextInterface>()->local_trajectory_uploader()) {
-    auto sensor_data = absl::make_unique<proto::SensorData>();
-    *sensor_data->mutable_sensor_metadata() = request.sensor_metadata();
-    *sensor_data->mutable_odometry_data() = request.odometry_data();
+void AddOdometryDataHandler::OnSensorData(
+    const proto::AddOdometryDataRequest& request) {
+    // The 'BlockingQueue' returned by 'sensor_data_queue()' is already
+    // thread-safe. Therefore it suffices to get an unsynchronized reference to
+    // the 'MapBuilderContext'.
     this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
-        ->local_trajectory_uploader()
-        ->EnqueueSensorData(std::move(sensor_data));
-  }
+        ->EnqueueSensorData(request.sensor_metadata().trajectory_id(),
+                            sensor::MakeDispatchable(
+                                request.sensor_metadata().sensor_id(),
+                                sensor::FromProto(request.odometry_data())));
+
+    // The 'BlockingQueue' in 'LocalTrajectoryUploader' is thread-safe.
+    // Therefore it suffices to get an unsynchronized reference to the
+    // 'MapBuilderContext'.
+    if (this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
+            ->local_trajectory_uploader()) {
+        auto sensor_data = absl::make_unique<proto::SensorData>();
+        *sensor_data->mutable_sensor_metadata() = request.sensor_metadata();
+        *sensor_data->mutable_odometry_data() = request.odometry_data();
+        this->template GetUnsynchronizedContext<MapBuilderContextInterface>()
+            ->local_trajectory_uploader()
+            ->EnqueueSensorData(std::move(sensor_data));
+    }
 }
 
 }  // namespace handlers

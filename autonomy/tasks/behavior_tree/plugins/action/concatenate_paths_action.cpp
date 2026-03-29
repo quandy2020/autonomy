@@ -26,35 +26,40 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ConcatenatePaths::ConcatenatePaths(const std::string& name, const BT::NodeConfiguration& conf)
+ConcatenatePaths::ConcatenatePaths(const std::string& name,
+                                   const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(name, conf) {}
 
 BT::NodeStatus ConcatenatePaths::tick() {
-  setStatus(BT::NodeStatus::RUNNING);
+    setStatus(BT::NodeStatus::RUNNING);
 
-  commsgs::planning_msgs::Path input_path1, input_path2;
-  getInput("input_path1", input_path1);
-  getInput("input_path2", input_path2);
+    commsgs::planning_msgs::Path input_path1, input_path2;
+    getInput("input_path1", input_path1);
+    getInput("input_path2", input_path2);
 
-  if (input_path1.poses.empty() && input_path2.poses.empty()) {
-    AERROR << "No input paths provided to concatenate. Both paths are empty.";
-    return BT::NodeStatus::FAILURE;
-  }
+    if (input_path1.poses.empty() && input_path2.poses.empty()) {
+        AERROR
+            << "No input paths provided to concatenate. Both paths are empty.";
+        return BT::NodeStatus::FAILURE;
+    }
 
-  commsgs::planning_msgs::Path output_path;
-  output_path = input_path1;
-  if (input_path1.header.stamp.sec != 0 || input_path1.header.stamp.nanosec != 0 ||
-      !input_path1.header.frame_id.empty()) {
-    output_path.header = input_path1.header;
-  } else if (input_path2.header.stamp.sec != 0 || input_path2.header.stamp.nanosec != 0 ||
-             !input_path2.header.frame_id.empty()) {
-    output_path.header = input_path2.header;
-  }
+    commsgs::planning_msgs::Path output_path;
+    output_path = input_path1;
+    if (input_path1.header.stamp.sec != 0 ||
+        input_path1.header.stamp.nanosec != 0 ||
+        !input_path1.header.frame_id.empty()) {
+        output_path.header = input_path1.header;
+    } else if (input_path2.header.stamp.sec != 0 ||
+               input_path2.header.stamp.nanosec != 0 ||
+               !input_path2.header.frame_id.empty()) {
+        output_path.header = input_path2.header;
+    }
 
-  output_path.poses.insert(output_path.poses.end(), input_path2.poses.begin(), input_path2.poses.end());
+    output_path.poses.insert(output_path.poses.end(), input_path2.poses.begin(),
+                             input_path2.poses.end());
 
-  setOutput("output_path", output_path);
-  return BT::NodeStatus::SUCCESS;
+    setOutput("output_path", output_path);
+    return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -65,5 +70,7 @@ BT::NodeStatus ConcatenatePaths::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ConcatenatePaths>("ConcatenatePaths");
+    factory.registerNodeType<
+        autonomy::tasks::behavior_tree::plugins::action::ConcatenatePaths>(
+        "ConcatenatePaths");
 }

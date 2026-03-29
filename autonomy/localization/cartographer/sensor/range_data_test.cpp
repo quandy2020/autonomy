@@ -28,17 +28,18 @@ namespace {
 
 using ::testing::Contains;
 
-class RangeDataTest : public ::testing::Test {
- protected:
-  RangeDataTest() : origin_(Eigen::Vector3f(1, 1, 1)) {
-    returns_.emplace_back(0, 1, 2);
-    returns_.emplace_back(4, 5, 6);
-    returns_.emplace_back(0, 1, 2);
-    misses_.emplace_back(7, 8, 9);
-  }
-  Eigen::Vector3f origin_;
-  std::vector<Eigen::Vector3f> returns_;
-  std::vector<Eigen::Vector3f> misses_;
+class RangeDataTest : public ::testing::Test
+{
+protected:
+    RangeDataTest() : origin_(Eigen::Vector3f(1, 1, 1)) {
+        returns_.emplace_back(0, 1, 2);
+        returns_.emplace_back(4, 5, 6);
+        returns_.emplace_back(0, 1, 2);
+        misses_.emplace_back(7, 8, 9);
+    }
+    Eigen::Vector3f origin_;
+    std::vector<Eigen::Vector3f> returns_;
+    std::vector<Eigen::Vector3f> misses_;
 };
 
 }  // namespace

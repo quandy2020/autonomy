@@ -116,11 +116,24 @@ endif()
 target_link_libraries(autolink PUBLIC
     ${Protobuf_LIBRARIES}
     ${GLOG_LIBRARIES}
-    ${GPERFTOOLS_LIBRARIES}
     ${FastDDS_LIBRARIES}
     ${RT_LIB}
     ${TinyXML2_LIB}
 )
+
+# Python embedding and tcmalloc can conflict at runtime (invalid free/abort).
+# When building Python bindings, strip tcmalloc from autolink link line by default,
+# but keep profiler library if available.
+set(_autolink_gperftools_link_libs ${GPERFTOOLS_LIBRARIES})
+if(AUTOLINK_BUILD_PYTHON AND NOT AUTOLINK_FORCE_TCMALLOC_WITH_PYTHON)
+  if(_autolink_gperftools_link_libs)
+    list(FILTER _autolink_gperftools_link_libs EXCLUDE REGEX ".*tcmalloc.*")
+  endif()
+  message(STATUS "autolink: AUTOLINK_BUILD_PYTHON=ON, linking gperftools without tcmalloc")
+endif()
+if(_autolink_gperftools_link_libs)
+  target_link_libraries(autolink PUBLIC ${_autolink_gperftools_link_libs})
+endif()
 if(GFLAGS_LIB)
   target_link_libraries(autolink PUBLIC ${GFLAGS_LIB})
 endif()
@@ -140,6 +153,12 @@ add_executable(autolink_mainboard
     mainboard/module_controller.cpp
 )
 target_link_libraries(autolink_mainboard PRIVATE autolink)
+# mainboard uses ProfilerStart/Stop & HeapProfiler* symbols directly.
+# Keep full gperftools linkage here even when autolink core strips tcmalloc
+# for Python embedding safety.
+if(GPERFTOOLS_LIBRARIES)
+  target_link_libraries(autolink_mainboard PRIVATE ${GPERFTOOLS_LIBRARIES})
+endif()
 
 # 可选工具：与 Autolink tools 一致，每工具一目录、每目录一 CMakeLists（构建或仅安装）
 if(AUTOLINK_BUILD_TOOLS)
@@ -153,6 +172,13 @@ endif()
 
 # 单元测试
 if(AUTOLINK_BUILD_TEST AND GMock_FOUND)
+  # Keep test include paths aligned with source include style
+  # like "autolink/common/init.hpp" used by python test headers.
+  set(AUTOLINK_TEST_INCLUDE_ROOT "${AUTOLINK_ROOT_DIR}")
+  if(NOT AUTOLINK_TEST_INCLUDE_ROOT)
+    get_filename_component(AUTOLINK_TEST_INCLUDE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+  endif()
+
   file(GLOB_RECURSE ALL_TESTS "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp")
   list(FILTER ALL_TESTS EXCLUDE REGEX ".*/integration_test/.*")
 
@@ -173,6 +199,7 @@ if(AUTOLINK_BUILD_TEST AND GMock_FOUND)
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
     target_include_directories(${TEST_TARGET_NAME} PRIVATE
+      ${AUTOLINK_TEST_INCLUDE_ROOT}
       ${CMAKE_CURRENT_SOURCE_DIR}
       ${CMAKE_BINARY_DIR}
       ${GMOCK_INCLUDE_DIRS}

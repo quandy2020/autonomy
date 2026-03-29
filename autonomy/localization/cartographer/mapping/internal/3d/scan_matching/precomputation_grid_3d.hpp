@@ -23,14 +23,17 @@ namespace cartographer {
 namespace mapping {
 namespace scan_matching {
 
-class PrecomputationGrid3D : public HybridGridBase<uint8> {
- public:
-  explicit PrecomputationGrid3D(const float resolution) : HybridGridBase<uint8>(resolution) {}
+class PrecomputationGrid3D : public HybridGridBase<uint8>
+{
+public:
+    explicit PrecomputationGrid3D(const float resolution)
+        : HybridGridBase<uint8>(resolution) {}
 
-  // Maps values from [0, 255] to [kMinProbability, kMaxProbability].
-  static float ToProbability(float value) {
-    return kMinProbability + value * ((kMaxProbability - kMinProbability) / 255.f);
-  }
+    // Maps values from [0, 255] to [kMinProbability, kMaxProbability].
+    static float ToProbability(float value) {
+        return kMinProbability +
+               value * ((kMaxProbability - kMinProbability) / 255.f);
+    }
 };
 
 // Converts a HybridGrid to a PrecomputationGrid3D representing the same data,
@@ -43,7 +46,8 @@ PrecomputationGrid3D ConvertToPrecomputationGrid(const HybridGrid& hybrid_grid);
 // If 'shift' is 2 ** (depth - 1), where depth 0 is the original grid, and this
 // is using the precomputed grid of one depth before, this results in
 // precomputation grids analogous to the 2D case.
-PrecomputationGrid3D PrecomputeGrid(const PrecomputationGrid3D& grid, bool half_resolution,
+PrecomputationGrid3D PrecomputeGrid(const PrecomputationGrid3D& grid,
+                                    bool half_resolution,
                                     const Eigen::Array3i& shift);
 
 }  // namespace scan_matching

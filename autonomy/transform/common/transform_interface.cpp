@@ -24,47 +24,51 @@ namespace autonomy {
 namespace transform {
 namespace common {
 
-proto::TransformOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-  proto::TransformOptions options;
+proto::TransformOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+    proto::TransformOptions options;
 
-  if (!parameter_dictionary) {
-    AWARN << "LoadOptions: parameter_dictionary is null";
+    if (!parameter_dictionary) {
+        AWARN << "LoadOptions: parameter_dictionary is null";
+        return options;
+    }
+
+    // Load extrinsic_file path from Lua config
+    if (parameter_dictionary->HasKey("extrinsic_file")) {
+        options.set_extrinsic_file(
+            parameter_dictionary->GetString("extrinsic_file"));
+    }
+
     return options;
-  }
-
-  // Load extrinsic_file path from Lua config
-  if (parameter_dictionary->HasKey("extrinsic_file")) {
-    options.set_extrinsic_file(parameter_dictionary->GetString("extrinsic_file"));
-  }
-
-  return options;
 }
 
-proto::TransformOptions CreateOptions(const std::string& configuration_directory,
-                                      const std::string& configuration_basename) {
-  proto::TransformOptions options;
+proto::TransformOptions CreateOptions(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename) {
+    proto::TransformOptions options;
 
-  // Construct full path to the configuration file
-  std::string config_file = configuration_directory;
-  if (!config_file.empty() && config_file.back() != '/') {
-    config_file += '/';
-  }
-  config_file += configuration_basename;
+    // Construct full path to the configuration file
+    std::string config_file = configuration_directory;
+    if (!config_file.empty() && config_file.back() != '/') {
+        config_file += '/';
+    }
+    config_file += configuration_basename;
 
-  // Check if file exists
-  std::ifstream file(config_file);
-  if (!file.good()) {
-    AERROR << "CreateOptions: Configuration file not found: " << config_file;
+    // Check if file exists
+    std::ifstream file(config_file);
+    if (!file.good()) {
+        AERROR << "CreateOptions: Configuration file not found: "
+               << config_file;
+        return options;
+    }
+    file.close();
+
+    // Set extrinsic_file to the full path of the yaml file
+    options.set_extrinsic_file(config_file);
+
+    AINFO << "CreateOptions: Set extrinsic_file to: " << config_file;
+
     return options;
-  }
-  file.close();
-
-  // Set extrinsic_file to the full path of the yaml file
-  options.set_extrinsic_file(config_file);
-
-  AINFO << "CreateOptions: Set extrinsic_file to: " << config_file;
-
-  return options;
 }
 
 }  // namespace common

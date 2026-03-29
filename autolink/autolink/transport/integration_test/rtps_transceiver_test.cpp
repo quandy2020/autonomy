@@ -30,127 +30,133 @@
 namespace autolink {
 namespace transport {
 
-class RtpsTransceiverTest : public ::testing::Test {
- protected:
-  using TransmitterPtr = std::shared_ptr<Transmitter<proto::UnitTest>>;
-  using ReceiverPtr = std::shared_ptr<Receiver<proto::UnitTest>>;
+class RtpsTransceiverTest : public ::testing::Test
+{
+protected:
+    using TransmitterPtr = std::shared_ptr<Transmitter<proto::UnitTest>>;
+    using ReceiverPtr = std::shared_ptr<Receiver<proto::UnitTest>>;
 
-  RtpsTransceiverTest() : channel_name_("rtps_channel") {}
+    RtpsTransceiverTest() : channel_name_("rtps_channel") {}
 
-  virtual ~RtpsTransceiverTest() {}
+    virtual ~RtpsTransceiverTest() {}
 
-  virtual void SetUp() {
-    RoleAttributes attr;
-    attr.set_channel_name(channel_name_);
-    attr.set_channel_id(common::Hash(channel_name_));
-    transmitter_a_ = std::make_shared<RtpsTransmitter<proto::UnitTest>>(attr, Transport::Instance()->participant());
-    transmitter_b_ = std::make_shared<RtpsTransmitter<proto::UnitTest>>(attr, Transport::Instance()->participant());
+    virtual void SetUp() {
+        RoleAttributes attr;
+        attr.set_channel_name(channel_name_);
+        attr.set_channel_id(common::Hash(channel_name_));
+        transmitter_a_ = std::make_shared<RtpsTransmitter<proto::UnitTest>>(
+            attr, Transport::Instance()->participant());
+        transmitter_b_ = std::make_shared<RtpsTransmitter<proto::UnitTest>>(
+            attr, Transport::Instance()->participant());
 
-    transmitter_a_->Enable();
-    transmitter_b_->Enable();
-  }
+        transmitter_a_->Enable();
+        transmitter_b_->Enable();
+    }
 
-  virtual void TearDown() {
-    transmitter_a_ = nullptr;
-    transmitter_b_ = nullptr;
-  }
+    virtual void TearDown() {
+        transmitter_a_ = nullptr;
+        transmitter_b_ = nullptr;
+    }
 
-  std::string channel_name_;
-  TransmitterPtr transmitter_a_ = nullptr;
-  TransmitterPtr transmitter_b_ = nullptr;
+    std::string channel_name_;
+    TransmitterPtr transmitter_a_ = nullptr;
+    TransmitterPtr transmitter_b_ = nullptr;
 };
 
 TEST_F(RtpsTransceiverTest, constructor) {
-  RoleAttributes attr;
-  TransmitterPtr transmitter =
-      std::make_shared<RtpsTransmitter<proto::UnitTest>>(attr, Transport::Instance()->participant());
-  ReceiverPtr receiver = std::make_shared<RtpsReceiver<proto::UnitTest>>(attr, nullptr);
+    RoleAttributes attr;
+    TransmitterPtr transmitter =
+        std::make_shared<RtpsTransmitter<proto::UnitTest>>(
+            attr, Transport::Instance()->participant());
+    ReceiverPtr receiver =
+        std::make_shared<RtpsReceiver<proto::UnitTest>>(attr, nullptr);
 
-  EXPECT_EQ(transmitter->seq_num(), 0);
+    EXPECT_EQ(transmitter->seq_num(), 0);
 
-  auto& transmitter_id = transmitter->id();
-  auto& receiver_id = receiver->id();
+    auto& transmitter_id = transmitter->id();
+    auto& receiver_id = receiver->id();
 
-  EXPECT_NE(transmitter_id.ToString(), receiver_id.ToString());
+    EXPECT_NE(transmitter_id.ToString(), receiver_id.ToString());
 }
 
 TEST_F(RtpsTransceiverTest, enable_and_disable) {
-  // repeated call
-  transmitter_a_->Enable();
+    // repeated call
+    transmitter_a_->Enable();
 
-  std::vector<proto::UnitTest> msgs;
-  RoleAttributes attr;
-  attr.set_channel_name(channel_name_);
-  attr.set_channel_id(common::Hash(channel_name_));
-  ReceiverPtr receiver = std::make_shared<RtpsReceiver<proto::UnitTest>>(
-      attr,
-      [&msgs](const std::shared_ptr<proto::UnitTest>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
-        (void)msg_info;
-        (void)attr;
-        msgs.emplace_back(*msg);
-      });
+    std::vector<proto::UnitTest> msgs;
+    RoleAttributes attr;
+    attr.set_channel_name(channel_name_);
+    attr.set_channel_id(common::Hash(channel_name_));
+    ReceiverPtr receiver = std::make_shared<RtpsReceiver<proto::UnitTest>>(
+        attr, [&msgs](const std::shared_ptr<proto::UnitTest>& msg,
+                      const MessageInfo& msg_info, const RoleAttributes& attr) {
+            (void)msg_info;
+            (void)attr;
+            msgs.emplace_back(*msg);
+        });
 
-  receiver->Enable();
-  // repeated call
-  receiver->Enable();
+    receiver->Enable();
+    // repeated call
+    receiver->Enable();
 
-  ReceiverPtr receiver_null_cb = std::make_shared<RtpsReceiver<proto::UnitTest>>(attr, nullptr);
-  receiver_null_cb->Enable();
+    ReceiverPtr receiver_null_cb =
+        std::make_shared<RtpsReceiver<proto::UnitTest>>(attr, nullptr);
+    receiver_null_cb->Enable();
 
-  auto msg = std::make_shared<proto::UnitTest>();
-  msg->set_class_name("RtpsTransceiverTest");
-  msg->set_case_name("enable_and_disable");
+    auto msg = std::make_shared<proto::UnitTest>();
+    msg->set_class_name("RtpsTransceiverTest");
+    msg->set_case_name("enable_and_disable");
 
-  EXPECT_TRUE(transmitter_a_->Transmit(msg));
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_EQ(msgs.size(), 1);
+    EXPECT_TRUE(transmitter_a_->Transmit(msg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(msgs.size(), 1);
 
-  EXPECT_TRUE(transmitter_b_->Transmit(msg));
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_EQ(msgs.size(), 2);
+    EXPECT_TRUE(transmitter_b_->Transmit(msg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(msgs.size(), 2);
 
-  for (auto& item : msgs) {
-    EXPECT_EQ(item.class_name(), "RtpsTransceiverTest");
-    EXPECT_EQ(item.case_name(), "enable_and_disable");
-  }
+    for (auto& item : msgs) {
+        EXPECT_EQ(item.class_name(), "RtpsTransceiverTest");
+        EXPECT_EQ(item.case_name(), "enable_and_disable");
+    }
 
-  transmitter_b_->Disable(receiver->attributes());
-  EXPECT_FALSE(transmitter_b_->Transmit(msg));
+    transmitter_b_->Disable(receiver->attributes());
+    EXPECT_FALSE(transmitter_b_->Transmit(msg));
 
-  transmitter_b_->Enable(receiver->attributes());
-  auto& transmitter_b_attr = transmitter_b_->attributes();
+    transmitter_b_->Enable(receiver->attributes());
+    auto& transmitter_b_attr = transmitter_b_->attributes();
 
-  receiver->Disable();
-  receiver->Enable(transmitter_b_attr);
+    receiver->Disable();
+    receiver->Enable(transmitter_b_attr);
 
-  msgs.clear();
-  EXPECT_TRUE(transmitter_a_->Transmit(msg));
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_EQ(msgs.size(), 0);
+    msgs.clear();
+    EXPECT_TRUE(transmitter_a_->Transmit(msg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(msgs.size(), 0);
 
-  EXPECT_TRUE(transmitter_b_->Transmit(msg));
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_EQ(msgs.size(), 1);
-  for (auto& item : msgs) {
-    EXPECT_EQ(item.class_name(), "RtpsTransceiverTest");
-    EXPECT_EQ(item.case_name(), "enable_and_disable");
-  }
+    EXPECT_TRUE(transmitter_b_->Transmit(msg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(msgs.size(), 1);
+    for (auto& item : msgs) {
+        EXPECT_EQ(item.class_name(), "RtpsTransceiverTest");
+        EXPECT_EQ(item.case_name(), "enable_and_disable");
+    }
 
-  receiver->Disable(transmitter_b_attr);
-  msgs.clear();
-  EXPECT_TRUE(transmitter_b_->Transmit(msg));
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  EXPECT_EQ(msgs.size(), 0);
+    receiver->Disable(transmitter_b_attr);
+    msgs.clear();
+    EXPECT_TRUE(transmitter_b_->Transmit(msg));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    EXPECT_EQ(msgs.size(), 0);
 }
 
 }  // namespace transport
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  autolink::transport::Transport::Instance();
-  auto res = RUN_ALL_TESTS();
-  autolink::transport::Transport::Instance()->Shutdown();
-  return res;
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    autolink::transport::Transport::Instance();
+    auto res = RUN_ALL_TESTS();
+    autolink::transport::Transport::Instance()->Shutdown();
+    return res;
 }

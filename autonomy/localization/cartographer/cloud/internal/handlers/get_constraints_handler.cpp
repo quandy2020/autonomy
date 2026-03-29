@@ -28,13 +28,16 @@ namespace cloud {
 namespace handlers {
 
 void GetConstraintsHandler::OnRequest(const google::protobuf::Empty& request) {
-  auto constraints = GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->constraints();
-  auto response = absl::make_unique<proto::GetConstraintsResponse>();
-  response->mutable_constraints()->Reserve(constraints.size());
-  for (const auto& constraint : constraints) {
-    *response->add_constraints() = mapping::ToProto(constraint);
-  }
-  Send(std::move(response));
+    auto constraints = GetContext<MapBuilderContextInterface>()
+                           ->map_builder()
+                           .pose_graph()
+                           ->constraints();
+    auto response = absl::make_unique<proto::GetConstraintsResponse>();
+    response->mutable_constraints()->Reserve(constraints.size());
+    for (const auto& constraint : constraints) {
+        *response->add_constraints() = mapping::ToProto(constraint);
+    }
+    Send(std::move(response));
 }
 
 }  // namespace handlers

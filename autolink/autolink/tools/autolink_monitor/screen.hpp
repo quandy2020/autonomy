@@ -26,63 +26,68 @@
 
 class RenderableMessage;
 
-class Screen final {
- public:
-  static const char InteractiveCmdStr[];
+class Screen final
+{
+public:
+    static const char InteractiveCmdStr[];
 
-  enum ColorPair {  // foreground color - background color
-    INVALID = 0,
-    GREEN_BLACK = 1,
-    YELLOW_BLACK,
-    RED_BLACK,
-    WHITE_BLACK,
-    BLACK_WHITE
-  };
-  static Screen* Instance(void);
+    enum ColorPair {  // foreground color - background color
+        INVALID = 0,
+        GREEN_BLACK = 1,
+        YELLOW_BLACK,
+        RED_BLACK,
+        WHITE_BLACK,
+        BLACK_WHITE
+    };
+    static Screen* Instance(void);
 
-  ~Screen(void);
+    ~Screen(void);
 
-  void Init(void);
-  void Run(void);
-  void Resize();
-  void Stop(void) { canRun_ = false; }
-
-  int Width(void) const;
-  int Height(void) const;
-
-  void AddStr(int x, int y, ColorPair color, const char* str) const;
-
-  ColorPair Color(void) const { return current_color_pair_; }
-  void SetCurrentColor(ColorPair color) const;
-  void AddStr(int x, int y, const char* str) const;
-  void AddStr(const char* str) const;
-  void MoveOffsetXY(int offsetX, int offsetY) const;
-  void ClearCurrentColor(void) const;
-
-  void SetCurrentRenderMessage(RenderableMessage* const render_obj) {
-    if (render_obj) {
-      current_render_obj_ = render_obj;
+    void Init(void);
+    void Run(void);
+    void Resize();
+    void Stop(void) {
+        canRun_ = false;
     }
-  }
 
- private:
-  explicit Screen();
-  Screen(const Screen&) = delete;
-  Screen& operator=(const Screen&) = delete;
+    int Width(void) const;
+    int Height(void) const;
 
-  int SwitchState(int ch);
-  void HighlightLine(int line_no);
+    void AddStr(int x, int y, ColorPair color, const char* str) const;
 
-  void ShowInteractiveCmd(int ch);
-  void ShowRenderMessage(int ch);
+    ColorPair Color(void) const {
+        return current_color_pair_;
+    }
+    void SetCurrentColor(ColorPair color) const;
+    void AddStr(int x, int y, const char* str) const;
+    void AddStr(const char* str) const;
+    void MoveOffsetXY(int offsetX, int offsetY) const;
+    void ClearCurrentColor(void) const;
 
-  bool IsInit(void) const;
+    void SetCurrentRenderMessage(RenderableMessage* const render_obj) {
+        if (render_obj) {
+            current_render_obj_ = render_obj;
+        }
+    }
 
-  enum class State { RenderMessage, RenderInterCmdInfo };
+private:
+    explicit Screen();
+    Screen(const Screen&) = delete;
+    Screen& operator=(const Screen&) = delete;
 
-  mutable ColorPair current_color_pair_;
-  bool canRun_;
-  State current_state_;
-  int highlight_direction_;
-  RenderableMessage* current_render_obj_;
+    int SwitchState(int ch);
+    void HighlightLine(int line_no);
+
+    void ShowInteractiveCmd(int ch);
+    void ShowRenderMessage(int ch);
+
+    bool IsInit(void) const;
+
+    enum class State { RenderMessage, RenderInterCmdInfo };
+
+    mutable ColorPair current_color_pair_;
+    bool canRun_;
+    State current_state_;
+    int highlight_direction_;
+    RenderableMessage* current_render_obj_;
 };

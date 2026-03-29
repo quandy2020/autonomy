@@ -27,27 +27,29 @@ namespace cartographer {
 namespace io {
 
 // Colors points with a fixed color by frame_id.
-class ColoringPointsProcessor : public PointsProcessor {
- public:
-  constexpr static const char* kConfigurationFileActionName = "color_points";
+class ColoringPointsProcessor : public PointsProcessor
+{
+public:
+    constexpr static const char* kConfigurationFileActionName = "color_points";
 
-  ColoringPointsProcessor(const FloatColor& color, const std::string& frame_id, PointsProcessor* next);
+    ColoringPointsProcessor(const FloatColor& color,
+                            const std::string& frame_id, PointsProcessor* next);
 
-  static std::unique_ptr<ColoringPointsProcessor> FromDictionary(common::LuaParameterDictionary* dictionary,
-                                                                 PointsProcessor* next);
+    static std::unique_ptr<ColoringPointsProcessor> FromDictionary(
+        common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
-  ~ColoringPointsProcessor() override{};
+    ~ColoringPointsProcessor() override{};
 
-  ColoringPointsProcessor(const ColoringPointsProcessor&) = delete;
-  ColoringPointsProcessor& operator=(const ColoringPointsProcessor&) = delete;
+    ColoringPointsProcessor(const ColoringPointsProcessor&) = delete;
+    ColoringPointsProcessor& operator=(const ColoringPointsProcessor&) = delete;
 
-  void Process(std::unique_ptr<PointsBatch> batch) override;
-  FlushResult Flush() override;
+    void Process(std::unique_ptr<PointsBatch> batch) override;
+    FlushResult Flush() override;
 
- private:
-  const FloatColor color_;
-  const std::string frame_id_;
-  PointsProcessor* const next_;
+private:
+    const FloatColor color_;
+    const std::string frame_id_;
+    PointsProcessor* const next_;
 };
 
 }  // namespace io

@@ -54,15 +54,15 @@ namespace tools {
  * @return Pose object
  */
 inline commsgs::geometry_msgs::Pose createPose(double x, double y, double z) {
-  commsgs::geometry_msgs::Pose pose;
-  pose.position.x = x;
-  pose.position.y = y;
-  pose.position.z = z;
-  pose.orientation.w = 1;
-  pose.orientation.x = 0;
-  pose.orientation.y = 0;
-  pose.orientation.z = 0;
-  return pose;
+    commsgs::geometry_msgs::Pose pose;
+    pose.position.x = x;
+    pose.position.y = y;
+    pose.position.z = z;
+    pose.orientation.w = 1;
+    pose.orientation.x = 0;
+    pose.orientation.y = 0;
+    pose.orientation.z = 0;
+    return pose;
 }
 
 /**
@@ -72,12 +72,13 @@ inline commsgs::geometry_msgs::Pose createPose(double x, double y, double z) {
  * @param z Z scale
  * @return Scale object
  */
-inline commsgs::geometry_msgs::Vector3 createScale(double x, double y, double z) {
-  commsgs::geometry_msgs::Vector3 scale;
-  scale.x = x;
-  scale.y = y;
-  scale.z = z;
-  return scale;
+inline commsgs::geometry_msgs::Vector3 createScale(double x, double y,
+                                                   double z) {
+    commsgs::geometry_msgs::Vector3 scale;
+    scale.x = x;
+    scale.y = y;
+    scale.z = z;
+    return scale;
 }
 
 /**
@@ -88,13 +89,14 @@ inline commsgs::geometry_msgs::Vector3 createScale(double x, double y, double z)
  * @param a Alpha component (transparency)
  * @return Color object
  */
-inline commsgs::std_msgs::ColorRGBA createColor(float r, float g, float b, float a) {
-  commsgs::std_msgs::ColorRGBA color;
-  color.r = r;
-  color.g = g;
-  color.b = b;
-  color.a = a;
-  return color;
+inline commsgs::std_msgs::ColorRGBA createColor(float r, float g, float b,
+                                                float a) {
+    commsgs::std_msgs::ColorRGBA color;
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    color.a = a;
+    return color;
 }
 
 /**
@@ -106,23 +108,24 @@ inline commsgs::std_msgs::ColorRGBA createColor(float r, float g, float b, float
  * @param frame Reference frame to use
  * @return Visualization Marker
  */
-inline commsgs::visualization_msgs::Marker createMarker(int id, const commsgs::geometry_msgs::Pose& pose,
-                                                        const commsgs::geometry_msgs::Vector3& scale,
-                                                        const commsgs::std_msgs::ColorRGBA& color,
-                                                        const std::string& frame_id, const std::string& ns) {
-  using commsgs::visualization_msgs::Marker;
-  commsgs::visualization_msgs::Marker marker;
-  marker.header.frame_id = frame_id;
-  marker.header.stamp = commsgs::builtin_interfaces::Time{0, 0};
-  marker.ns = ns;
-  marker.id = id;
-  marker.type = 2;    // SPHERE
-  marker.action = 0;  // ADD
+inline commsgs::visualization_msgs::Marker createMarker(
+    int id, const commsgs::geometry_msgs::Pose& pose,
+    const commsgs::geometry_msgs::Vector3& scale,
+    const commsgs::std_msgs::ColorRGBA& color, const std::string& frame_id,
+    const std::string& ns) {
+    using commsgs::visualization_msgs::Marker;
+    commsgs::visualization_msgs::Marker marker;
+    marker.header.frame_id = frame_id;
+    marker.header.stamp = commsgs::builtin_interfaces::Time{0, 0};
+    marker.ns = ns;
+    marker.id = id;
+    marker.type = 2;    // SPHERE
+    marker.action = 0;  // ADD
 
-  marker.pose = pose;
-  marker.scale = scale;
-  marker.color = color;
-  return marker;
+    marker.pose = pose;
+    marker.scale = scale;
+    marker.color = color;
+    return marker;
 }
 
 /**
@@ -132,16 +135,16 @@ inline commsgs::visualization_msgs::Marker createMarker(int id, const commsgs::g
  * @param stamp Timestamp
  * @param frame Reference frame to use
  */
-inline commsgs::geometry_msgs::TwistStamped toTwistStamped(float vx, float wz,
-                                                           const commsgs::builtin_interfaces::Time& stamp,
-                                                           const std::string& frame) {
-  commsgs::geometry_msgs::TwistStamped twist;
-  twist.header.frame_id = frame;
-  twist.header.stamp = stamp;
-  twist.twist.linear.x = vx;
-  twist.twist.angular.z = wz;
+inline commsgs::geometry_msgs::TwistStamped toTwistStamped(
+    float vx, float wz, const commsgs::builtin_interfaces::Time& stamp,
+    const std::string& frame) {
+    commsgs::geometry_msgs::TwistStamped twist;
+    twist.header.frame_id = frame;
+    twist.header.stamp = stamp;
+    twist.twist.linear.x = vx;
+    twist.twist.angular.z = wz;
 
-  return twist;
+    return twist;
 }
 
 /**
@@ -152,13 +155,13 @@ inline commsgs::geometry_msgs::TwistStamped toTwistStamped(float vx, float wz,
  * @param stamp Timestamp
  * @param frame Reference frame to use
  */
-inline commsgs::geometry_msgs::TwistStamped toTwistStamped(float vx, float vy, float wz,
-                                                           const commsgs::builtin_interfaces::Time& stamp,
-                                                           const std::string& frame) {
-  auto twist = toTwistStamped(vx, wz, stamp, frame);
-  twist.twist.linear.y = vy;
+inline commsgs::geometry_msgs::TwistStamped toTwistStamped(
+    float vx, float vy, float wz,
+    const commsgs::builtin_interfaces::Time& stamp, const std::string& frame) {
+    auto twist = toTwistStamped(vx, wz, stamp, frame);
+    twist.twist.linear.y = vy;
 
-  return twist;
+    return twist;
 }
 
 // TODO: Trajectory type not available in planning_msgs, need to define or use
@@ -197,16 +200,17 @@ inline commsgs::geometry_msgs::TwistStamped toTwistStamped(float vx, float vy, f
  * @return Path tensor
  */
 inline models::Path toTensor(const commsgs::planning_msgs::Path& path) {
-  auto result = models::Path{};
-  result.reset(path.poses.size());
+    auto result = models::Path{};
+    result.reset(path.poses.size());
 
-  for (size_t i = 0; i < path.poses.size(); ++i) {
-    result.x(i) = path.poses[i].pose.position.x;
-    result.y(i) = path.poses[i].pose.position.y;
-    result.yaws(i) = autonomy::transform::tf2::getYaw(path.poses[i].pose.orientation);
-  }
+    for (size_t i = 0; i < path.poses.size(); ++i) {
+        result.x(i) = path.poses[i].pose.position.x;
+        result.y(i) = path.poses[i].pose.position.y;
+        result.yaws(i) =
+            autonomy::transform::tf2::getYaw(path.poses[i].pose.orientation);
+    }
 
-  return result;
+    return result;
 }
 
 /**
@@ -215,22 +219,22 @@ inline models::Path toTensor(const commsgs::planning_msgs::Path& path) {
  * @return commsgs::geometry_msgs::Pose Last pose in the path
  */
 inline commsgs::geometry_msgs::Pose getLastPathPose(const models::Path& path) {
-  const unsigned int path_last_idx = path.x.size() - 1;
+    const unsigned int path_last_idx = path.x.size() - 1;
 
-  auto last_orientation = path.yaws(path_last_idx);
+    auto last_orientation = path.yaws(path_last_idx);
 
-  autonomy::transform::tf2::Quaternion pose_orientation;
-  pose_orientation.setRPY(0.0, 0.0, last_orientation);
+    autonomy::transform::tf2::Quaternion pose_orientation;
+    pose_orientation.setRPY(0.0, 0.0, last_orientation);
 
-  commsgs::geometry_msgs::Pose pathPose;
-  pathPose.position.x = path.x(path_last_idx);
-  pathPose.position.y = path.y(path_last_idx);
-  pathPose.orientation.x = pose_orientation.x();
-  pathPose.orientation.y = pose_orientation.y();
-  pathPose.orientation.z = pose_orientation.z();
-  pathPose.orientation.w = pose_orientation.w();
+    commsgs::geometry_msgs::Pose pathPose;
+    pathPose.position.x = path.x(path_last_idx);
+    pathPose.position.y = path.y(path_last_idx);
+    pathPose.orientation.x = pose_orientation.x();
+    pathPose.orientation.y = pose_orientation.y();
+    pathPose.orientation.z = pose_orientation.z();
+    pathPose.orientation.w = pose_orientation.w();
 
-  return pathPose;
+    return pathPose;
 }
 
 /**
@@ -240,12 +244,13 @@ inline commsgs::geometry_msgs::Pose getLastPathPose(const models::Path& path) {
  * path) instead of the original goal
  * @return commsgs::geometry_msgs::Pose Target pose for the critic
  */
-inline commsgs::geometry_msgs::Pose getCriticGoal(const CriticData& data, bool enforce_path_inversion) {
-  if (enforce_path_inversion) {
-    return getLastPathPose(data.path);
-  } else {
-    return data.goal;
-  }
+inline commsgs::geometry_msgs::Pose getCriticGoal(const CriticData& data,
+                                                  bool enforce_path_inversion) {
+    if (enforce_path_inversion) {
+        return getLastPathPose(data.path);
+    } else {
+        return data.goal;
+    }
 }
 
 /**
@@ -256,27 +261,29 @@ inline commsgs::geometry_msgs::Pose getCriticGoal(const CriticData& data, bool e
  * @param goal Goal pose
  * @return bool If robot is within goal checker tolerances to the goal
  */
-inline bool withinPositionGoalToleranceWithChecker(common::GoalChecker* goal_checker,
-                                                   const commsgs::geometry_msgs::Pose& robot,
-                                                   const commsgs::geometry_msgs::Pose& goal) {
-  if (goal_checker) {
-    commsgs::geometry_msgs::Pose pose_tolerance;
-    commsgs::geometry_msgs::Twist velocity_tolerance;
-    goal_checker->GetTolerances(pose_tolerance, velocity_tolerance);
+inline bool withinPositionGoalToleranceWithChecker(
+    common::GoalChecker* goal_checker,
+    const commsgs::geometry_msgs::Pose& robot,
+    const commsgs::geometry_msgs::Pose& goal) {
+    if (goal_checker) {
+        commsgs::geometry_msgs::Pose pose_tolerance;
+        commsgs::geometry_msgs::Twist velocity_tolerance;
+        goal_checker->GetTolerances(pose_tolerance, velocity_tolerance);
 
-    const auto pose_tolerance_sq = pose_tolerance.position.x * pose_tolerance.position.x;
+        const auto pose_tolerance_sq =
+            pose_tolerance.position.x * pose_tolerance.position.x;
 
-    auto dx = robot.position.x - goal.position.x;
-    auto dy = robot.position.y - goal.position.y;
+        auto dx = robot.position.x - goal.position.x;
+        auto dy = robot.position.y - goal.position.y;
 
-    auto dist_sq = dx * dx + dy * dy;
+        auto dist_sq = dx * dx + dy * dy;
 
-    if (dist_sq < pose_tolerance_sq) {
-      return true;
+        if (dist_sq < pose_tolerance_sq) {
+            return true;
+        }
     }
-  }
 
-  return false;
+    return false;
 }
 
 /**
@@ -286,18 +293,19 @@ inline bool withinPositionGoalToleranceWithChecker(common::GoalChecker* goal_che
  * @param goal Goal pose
  * @return bool If robot is within tolerance to the goal
  */
-inline bool withinPositionGoalTolerance(float pose_tolerance, const commsgs::geometry_msgs::Pose& robot,
-                                        const commsgs::geometry_msgs::Pose& goal) {
-  const double& dist_sq =
-      std::pow(goal.position.x - robot.position.x, 2) + std::pow(goal.position.y - robot.position.y, 2);
+inline bool withinPositionGoalTolerance(
+    float pose_tolerance, const commsgs::geometry_msgs::Pose& robot,
+    const commsgs::geometry_msgs::Pose& goal) {
+    const double& dist_sq = std::pow(goal.position.x - robot.position.x, 2) +
+                            std::pow(goal.position.y - robot.position.y, 2);
 
-  const float pose_tolerance_sq = pose_tolerance * pose_tolerance;
+    const float pose_tolerance_sq = pose_tolerance * pose_tolerance;
 
-  if (dist_sq < pose_tolerance_sq) {
-    return true;
-  }
+    if (dist_sq < pose_tolerance_sq) {
+        return true;
+    }
 
-  return false;
+    return false;
 }
 
 /**
@@ -308,8 +316,8 @@ inline bool withinPositionGoalTolerance(float pose_tolerance, const commsgs::geo
  * @return normalized angle
  */
 inline float normalize_angle(float angle) {
-  float remainder = std::fmod(angle + M_PIF, 2.0f * M_PIF);
-  return remainder < 0.0f ? remainder + M_PIF : remainder - M_PIF;
+    float remainder = std::fmod(angle + M_PIF, 2.0f * M_PIF);
+    return remainder < 0.0f ? remainder + M_PIF : remainder - M_PIF;
 }
 
 /**
@@ -321,17 +329,18 @@ inline float normalize_angle(float angle) {
  */
 template <typename T>
 auto normalize_angles(const T& angles) {
-  if constexpr (std::is_arithmetic_v<T>) {
-    // Scalar version
-    float remainder = std::fmod(static_cast<float>(angles) + M_PIF, 2.0f * M_PIF);
-    return remainder < 0.0f ? remainder + M_PIF : remainder - M_PIF;
-  } else {
-    // Eigen array/matrix version
-    return (angles + M_PIF).unaryExpr([&](const float x) {
-      float remainder = std::fmod(x, 2.0f * M_PIF);
-      return remainder < 0.0f ? remainder + M_PIF : remainder - M_PIF;
-    });
-  }
+    if constexpr (std::is_arithmetic_v<T>) {
+        // Scalar version
+        float remainder =
+            std::fmod(static_cast<float>(angles) + M_PIF, 2.0f * M_PIF);
+        return remainder < 0.0f ? remainder + M_PIF : remainder - M_PIF;
+    } else {
+        // Eigen array/matrix version
+        return (angles + M_PIF).unaryExpr([&](const float x) {
+            float remainder = std::fmod(x, 2.0f * M_PIF);
+            return remainder < 0.0f ? remainder + M_PIF : remainder - M_PIF;
+        });
+    }
 }
 
 /**
@@ -349,7 +358,7 @@ auto normalize_angles(const T& angles) {
  */
 template <typename F, typename T>
 auto shortest_angular_distance(const F& from, const T& to) {
-  return normalize_angles(to - from);
+    return normalize_angles(to - from);
 }
 
 /**
@@ -359,32 +368,37 @@ auto shortest_angular_distance(const F& from, const T& to) {
  * @return Idx of furthest path point reached by a set of trajectories
  */
 inline size_t findPathFurthestReachedPoint(const CriticData& data) {
-  int traj_cols = data.trajectories.x.cols();
-  const auto traj_x = data.trajectories.x.col(traj_cols - 1);
-  const auto traj_y = data.trajectories.y.col(traj_cols - 1);
+    int traj_cols = data.trajectories.x.cols();
+    const auto traj_x = data.trajectories.x.col(traj_cols - 1);
+    const auto traj_y = data.trajectories.y.col(traj_cols - 1);
 
-  const auto dx = (data.path.x.transpose()).replicate(traj_x.rows(), 1).colwise() - traj_x;
-  const auto dy = (data.path.y.transpose()).replicate(traj_y.rows(), 1).colwise() - traj_y;
+    const auto dx =
+        (data.path.x.transpose()).replicate(traj_x.rows(), 1).colwise() -
+        traj_x;
+    const auto dy =
+        (data.path.y.transpose()).replicate(traj_y.rows(), 1).colwise() -
+        traj_y;
 
-  const auto dists = dx * dx + dy * dy;
+    const auto dists = dx * dx + dy * dy;
 
-  int max_id_by_trajectories = 0, min_id_by_path = 0;
-  float min_distance_by_path = std::numeric_limits<float>::max();
-  size_t n_rows = dists.rows();
-  size_t n_cols = dists.cols();
-  for (size_t i = 0; i != n_rows; i++) {
-    min_id_by_path = 0;
-    min_distance_by_path = std::numeric_limits<float>::max();
-    for (size_t j = max_id_by_trajectories; j != n_cols; j++) {
-      const float cur_dist = dists(i, j);
-      if (cur_dist < min_distance_by_path) {
-        min_distance_by_path = cur_dist;
-        min_id_by_path = j;
-      }
+    int max_id_by_trajectories = 0, min_id_by_path = 0;
+    float min_distance_by_path = std::numeric_limits<float>::max();
+    size_t n_rows = dists.rows();
+    size_t n_cols = dists.cols();
+    for (size_t i = 0; i != n_rows; i++) {
+        min_id_by_path = 0;
+        min_distance_by_path = std::numeric_limits<float>::max();
+        for (size_t j = max_id_by_trajectories; j != n_cols; j++) {
+            const float cur_dist = dists(i, j);
+            if (cur_dist < min_distance_by_path) {
+                min_distance_by_path = cur_dist;
+                min_id_by_path = j;
+            }
+        }
+        max_id_by_trajectories =
+            std::max(max_id_by_trajectories, min_id_by_path);
     }
-    max_id_by_trajectories = std::max(max_id_by_trajectories, min_id_by_path);
-  }
-  return max_id_by_trajectories;
+    return max_id_by_trajectories;
 }
 
 /**
@@ -392,51 +406,57 @@ inline size_t findPathFurthestReachedPoint(const CriticData& data) {
  * @param data Data to use
  */
 inline void setPathFurthestPointIfNotSet(CriticData& data) {
-  if (!data.furthest_reached_path_point) {
-    data.furthest_reached_path_point = findPathFurthestReachedPoint(data);
-  }
+    if (!data.furthest_reached_path_point) {
+        data.furthest_reached_path_point = findPathFurthestReachedPoint(data);
+    }
 }
 
 /**
  * @brief evaluate path costs
  * @param data Data to use
  */
-inline void findPathCosts(CriticData& data, std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
-  auto* costmap = costmap_wrapper->getCostmap();
-  unsigned int map_x, map_y;
-  const size_t path_segments_count = data.path.x.size() - 1;
-  data.path_pts_valid = std::vector<bool>(path_segments_count, false);
-  const bool tracking_unknown = costmap_wrapper->getLayeredCostmap()->isTrackingUnknown();
-  for (unsigned int idx = 0; idx < path_segments_count; idx++) {
-    if (!costmap->worldToMap(data.path.x(idx), data.path.y(idx), map_x, map_y)) {
-      (*data.path_pts_valid)[idx] = false;
-      continue;
-    }
+inline void findPathCosts(
+    CriticData& data,
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+    auto* costmap = costmap_wrapper->getCostmap();
+    unsigned int map_x, map_y;
+    const size_t path_segments_count = data.path.x.size() - 1;
+    data.path_pts_valid = std::vector<bool>(path_segments_count, false);
+    const bool tracking_unknown =
+        costmap_wrapper->getLayeredCostmap()->isTrackingUnknown();
+    for (unsigned int idx = 0; idx < path_segments_count; idx++) {
+        if (!costmap->worldToMap(data.path.x(idx), data.path.y(idx), map_x,
+                                 map_y)) {
+            (*data.path_pts_valid)[idx] = false;
+            continue;
+        }
 
-    switch (costmap->getCost(map_x, map_y)) {
-      case (map::costmap_2d::LETHAL_OBSTACLE):
-        (*data.path_pts_valid)[idx] = false;
-        continue;
-      case (map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE):
-        (*data.path_pts_valid)[idx] = false;
-        continue;
-      case (map::costmap_2d::NO_INFORMATION):
-        (*data.path_pts_valid)[idx] = tracking_unknown ? true : false;
-        continue;
-    }
+        switch (costmap->getCost(map_x, map_y)) {
+            case (map::costmap_2d::LETHAL_OBSTACLE):
+                (*data.path_pts_valid)[idx] = false;
+                continue;
+            case (map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE):
+                (*data.path_pts_valid)[idx] = false;
+                continue;
+            case (map::costmap_2d::NO_INFORMATION):
+                (*data.path_pts_valid)[idx] = tracking_unknown ? true : false;
+                continue;
+        }
 
-    (*data.path_pts_valid)[idx] = true;
-  }
+        (*data.path_pts_valid)[idx] = true;
+    }
 }
 
 /**
  * @brief evaluate path costs if it is not set
  * @param data Data to use
  */
-inline void setPathCostsIfNotSet(CriticData& data, std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
-  if (!data.path_pts_valid) {
-    findPathCosts(data, costmap_wrapper);
-  }
+inline void setPathCostsIfNotSet(
+    CriticData& data,
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+    if (!data.path_pts_valid) {
+        findPathCosts(data, costmap_wrapper);
+    }
 }
 
 /**
@@ -447,22 +467,24 @@ inline void setPathCostsIfNotSet(CriticData& data, std::shared_ptr<map::costmap_
  * @param forward_preference If reversing direction is valid
  * @return Angle between two points
  */
-inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose, double point_x, double point_y,
+inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose,
+                            double point_x, double point_y,
                             bool forward_preference) {
-  float pose_x = pose.position.x;
-  float pose_y = pose.position.y;
-  float pose_yaw = autonomy::transform::tf2::getYaw(pose.orientation);
+    float pose_x = pose.position.x;
+    float pose_y = pose.position.y;
+    float pose_yaw = autonomy::transform::tf2::getYaw(pose.orientation);
 
-  float yaw = atan2f(point_y - pose_y, point_x - pose_x);
+    float yaw = atan2f(point_y - pose_y, point_x - pose_x);
 
-  // If no preference for forward, return smallest angle either in heading or
-  // 180 of heading
-  if (!forward_preference) {
-    return std::min(fabs(shortest_angular_distance(yaw, pose_yaw)),
-                    fabs(shortest_angular_distance(yaw, normalize_angle(pose_yaw + M_PIF))));
-  }
+    // If no preference for forward, return smallest angle either in heading or
+    // 180 of heading
+    if (!forward_preference) {
+        return std::min(fabs(shortest_angular_distance(yaw, pose_yaw)),
+                        fabs(shortest_angular_distance(
+                            yaw, normalize_angle(pose_yaw + M_PIF))));
+    }
 
-  return fabs(shortest_angular_distance(yaw, pose_yaw));
+    return fabs(shortest_angular_distance(yaw, pose_yaw));
 }
 
 /**
@@ -473,19 +495,22 @@ inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose, double poi
  * @param point_yaw Yaw of the point to consider along Z axis
  * @return Angle between two points
  */
-inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose, double point_x, double point_y,
-                            double point_yaw) {
-  float pose_x = static_cast<float>(pose.position.x);
-  float pose_y = static_cast<float>(pose.position.y);
-  float pose_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(pose.orientation));
+inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose,
+                            double point_x, double point_y, double point_yaw) {
+    float pose_x = static_cast<float>(pose.position.x);
+    float pose_y = static_cast<float>(pose.position.y);
+    float pose_yaw =
+        static_cast<float>(autonomy::transform::tf2::getYaw(pose.orientation));
 
-  float yaw = atan2f(static_cast<float>(point_y) - pose_y, static_cast<float>(point_x) - pose_x);
+    float yaw = atan2f(static_cast<float>(point_y) - pose_y,
+                       static_cast<float>(point_x) - pose_x);
 
-  if (fabs(shortest_angular_distance(yaw, static_cast<float>(point_yaw))) > M_PIF_2) {
-    yaw = normalize_angle(yaw + M_PIF);
-  }
+    if (fabs(shortest_angular_distance(yaw, static_cast<float>(point_yaw))) >
+        M_PIF_2) {
+        yaw = normalize_angle(yaw + M_PIF);
+    }
 
-  return fabs(shortest_angular_distance(yaw, pose_yaw));
+    return fabs(shortest_angular_distance(yaw, pose_yaw));
 }
 
 /**
@@ -497,65 +522,76 @@ inline float posePointAngle(const commsgs::geometry_msgs::Pose& pose, double poi
 inline void savitskyGolayFilter(models::ControlSequence& control_sequence,
                                 std::array<models::Control, 4>& control_history,
                                 const models::OptimizerSettings& settings) {
-  // Savitzky-Golay Quadratic, 9-point Coefficients
-  Eigen::Array<float, 9, 1> filter = {-21.0f, 14.0f, 39.0f, 54.0f, 59.0f, 54.0f, 39.0f, 14.0f, -21.0f};
-  filter /= 231.0f;
+    // Savitzky-Golay Quadratic, 9-point Coefficients
+    Eigen::Array<float, 9, 1> filter = {-21.0f, 14.0f, 39.0f, 54.0f, 59.0f,
+                                        54.0f,  39.0f, 14.0f, -21.0f};
+    filter /= 231.0f;
 
-  // Too short to smooth meaningfully
-  const unsigned int num_sequences = control_sequence.vx.size() - 1;
-  if (num_sequences < 20) {
-    return;
-  }
-
-  auto applyFilter = [&](const Eigen::Array<float, 9, 1>& data) -> float { return (data * filter).eval().sum(); };
-
-  auto applyFilterOverAxis = [&](Eigen::ArrayXf& sequence, const Eigen::ArrayXf& initial_sequence, const float hist_0,
-                                 const float hist_1, const float hist_2, const float hist_3) -> void {
-    float pt_m4 = hist_0;
-    float pt_m3 = hist_1;
-    float pt_m2 = hist_2;
-    float pt_m1 = hist_3;
-    float pt = initial_sequence(0);
-    float pt_p1 = initial_sequence(1);
-    float pt_p2 = initial_sequence(2);
-    float pt_p3 = initial_sequence(3);
-    float pt_p4 = initial_sequence(4);
-
-    for (unsigned int idx = 0; idx != num_sequences; idx++) {
-      sequence(idx) = applyFilter({pt_m4, pt_m3, pt_m2, pt_m1, pt, pt_p1, pt_p2, pt_p3, pt_p4});
-      pt_m4 = pt_m3;
-      pt_m3 = pt_m2;
-      pt_m2 = pt_m1;
-      pt_m1 = pt;
-      pt = pt_p1;
-      pt_p1 = pt_p2;
-      pt_p2 = pt_p3;
-      pt_p3 = pt_p4;
-
-      if (idx + 5 < num_sequences) {
-        pt_p4 = initial_sequence(idx + 5);
-      } else {
-        // Return the last point
-        pt_p4 = initial_sequence(num_sequences);
-      }
+    // Too short to smooth meaningfully
+    const unsigned int num_sequences = control_sequence.vx.size() - 1;
+    if (num_sequences < 20) {
+        return;
     }
-  };
 
-  // Filter trajectories
-  const models::ControlSequence initial_control_sequence = control_sequence;
-  applyFilterOverAxis(control_sequence.vx, initial_control_sequence.vx, control_history[0].vx, control_history[1].vx,
-                      control_history[2].vx, control_history[3].vx);
-  applyFilterOverAxis(control_sequence.vy, initial_control_sequence.vy, control_history[0].vy, control_history[1].vy,
-                      control_history[2].vy, control_history[3].vy);
-  applyFilterOverAxis(control_sequence.wz, initial_control_sequence.wz, control_history[0].wz, control_history[1].wz,
-                      control_history[2].wz, control_history[3].wz);
+    auto applyFilter = [&](const Eigen::Array<float, 9, 1>& data) -> float {
+        return (data * filter).eval().sum();
+    };
 
-  // Update control history
-  unsigned int offset = settings.shift_control_sequence ? 1 : 0;
-  control_history[0] = control_history[1];
-  control_history[1] = control_history[2];
-  control_history[2] = control_history[3];
-  control_history[3] = {control_sequence.vx(offset), control_sequence.vy(offset), control_sequence.wz(offset)};
+    auto applyFilterOverAxis =
+        [&](Eigen::ArrayXf& sequence, const Eigen::ArrayXf& initial_sequence,
+            const float hist_0, const float hist_1, const float hist_2,
+            const float hist_3) -> void {
+        float pt_m4 = hist_0;
+        float pt_m3 = hist_1;
+        float pt_m2 = hist_2;
+        float pt_m1 = hist_3;
+        float pt = initial_sequence(0);
+        float pt_p1 = initial_sequence(1);
+        float pt_p2 = initial_sequence(2);
+        float pt_p3 = initial_sequence(3);
+        float pt_p4 = initial_sequence(4);
+
+        for (unsigned int idx = 0; idx != num_sequences; idx++) {
+            sequence(idx) = applyFilter(
+                {pt_m4, pt_m3, pt_m2, pt_m1, pt, pt_p1, pt_p2, pt_p3, pt_p4});
+            pt_m4 = pt_m3;
+            pt_m3 = pt_m2;
+            pt_m2 = pt_m1;
+            pt_m1 = pt;
+            pt = pt_p1;
+            pt_p1 = pt_p2;
+            pt_p2 = pt_p3;
+            pt_p3 = pt_p4;
+
+            if (idx + 5 < num_sequences) {
+                pt_p4 = initial_sequence(idx + 5);
+            } else {
+                // Return the last point
+                pt_p4 = initial_sequence(num_sequences);
+            }
+        }
+    };
+
+    // Filter trajectories
+    const models::ControlSequence initial_control_sequence = control_sequence;
+    applyFilterOverAxis(control_sequence.vx, initial_control_sequence.vx,
+                        control_history[0].vx, control_history[1].vx,
+                        control_history[2].vx, control_history[3].vx);
+    applyFilterOverAxis(control_sequence.vy, initial_control_sequence.vy,
+                        control_history[0].vy, control_history[1].vy,
+                        control_history[2].vy, control_history[3].vy);
+    applyFilterOverAxis(control_sequence.wz, initial_control_sequence.wz,
+                        control_history[0].wz, control_history[1].wz,
+                        control_history[2].wz, control_history[3].wz);
+
+    // Update control history
+    unsigned int offset = settings.shift_control_sequence ? 1 : 0;
+    control_history[0] = control_history[1];
+    control_history[1] = control_history[2];
+    control_history[2] = control_history[3];
+    control_history[3] = {control_sequence.vx(offset),
+                          control_sequence.vy(offset),
+                          control_sequence.wz(offset)};
 }
 
 /**
@@ -565,30 +601,34 @@ inline void savitskyGolayFilter(models::ControlSequence& control_sequence,
  * @return the first point after the inversion found in the path
  */
 inline unsigned int findFirstPathInversion(commsgs::planning_msgs::Path& path) {
-  // At least 3 poses for a possible inversion
-  if (path.poses.size() < 3) {
-    return path.poses.size();
-  }
-
-  // Iterating through the path to determine the position of the path
-  // inversion
-  for (unsigned int idx = 1; idx < path.poses.size() - 1; ++idx) {
-    // We have two vectors for the dot product OA and AB. Determining the
-    // vectors.
-    float oa_x = path.poses[idx].pose.position.x - path.poses[idx - 1].pose.position.x;
-    float oa_y = path.poses[idx].pose.position.y - path.poses[idx - 1].pose.position.y;
-    float ab_x = path.poses[idx + 1].pose.position.x - path.poses[idx].pose.position.x;
-    float ab_y = path.poses[idx + 1].pose.position.y - path.poses[idx].pose.position.y;
-
-    // Checking for the existence of cusp, in the path, using the dot
-    // product.
-    float dot_product = (oa_x * ab_x) + (oa_y * ab_y);
-    if (dot_product < 0.0f) {
-      return idx + 1;
+    // At least 3 poses for a possible inversion
+    if (path.poses.size() < 3) {
+        return path.poses.size();
     }
-  }
 
-  return path.poses.size();
+    // Iterating through the path to determine the position of the path
+    // inversion
+    for (unsigned int idx = 1; idx < path.poses.size() - 1; ++idx) {
+        // We have two vectors for the dot product OA and AB. Determining the
+        // vectors.
+        float oa_x = path.poses[idx].pose.position.x -
+                     path.poses[idx - 1].pose.position.x;
+        float oa_y = path.poses[idx].pose.position.y -
+                     path.poses[idx - 1].pose.position.y;
+        float ab_x = path.poses[idx + 1].pose.position.x -
+                     path.poses[idx].pose.position.x;
+        float ab_y = path.poses[idx + 1].pose.position.y -
+                     path.poses[idx].pose.position.y;
+
+        // Checking for the existence of cusp, in the path, using the dot
+        // product.
+        float dot_product = (oa_x * ab_x) + (oa_y * ab_y);
+        if (dot_product < 0.0f) {
+            return idx + 1;
+        }
+    }
+
+    return path.poses.size();
 }
 
 /**
@@ -596,16 +636,19 @@ inline unsigned int findFirstPathInversion(commsgs::planning_msgs::Path& path) {
  * @param path to check for inversion
  * @return The location of the inversion, return 0 if none exist
  */
-inline unsigned int removePosesAfterFirstInversion(commsgs::planning_msgs::Path& path) {
-  commsgs::planning_msgs::Path cropped_path = path;
-  const unsigned int first_after_inversion = findFirstPathInversion(cropped_path);
-  if (first_after_inversion == path.poses.size()) {
-    return 0u;
-  }
+inline unsigned int removePosesAfterFirstInversion(
+    commsgs::planning_msgs::Path& path) {
+    commsgs::planning_msgs::Path cropped_path = path;
+    const unsigned int first_after_inversion =
+        findFirstPathInversion(cropped_path);
+    if (first_after_inversion == path.poses.size()) {
+        return 0u;
+    }
 
-  cropped_path.poses.erase(cropped_path.poses.begin() + first_after_inversion, cropped_path.poses.end());
-  path = cropped_path;
-  return first_after_inversion;
+    cropped_path.poses.erase(cropped_path.poses.begin() + first_after_inversion,
+                             cropped_path.poses.end());
+    path = cropped_path;
+    return first_after_inversion;
 }
 
 /**
@@ -615,26 +658,30 @@ inline unsigned int removePosesAfterFirstInversion(commsgs::planning_msgs::Path&
  * @return dist Distance to look for
  * @return init Starting index to indec from
  */
-inline unsigned int findClosestPathPt(const std::vector<float>& vec, const float dist, const unsigned int init = 0u) {
-  float distim1 = init != 0u ? vec[init] : 0.0f;  // First is 0, no accumulated distance yet
-  float disti = 0.0f;
-  const unsigned int size = vec.size();
-  for (unsigned int i = init + 1; i != size; i++) {
-    disti = vec[i];
-    if (disti > dist) {
-      if (i > 0 && dist - distim1 < disti - dist) {
-        return i - 1;
-      }
-      return i;
+inline unsigned int findClosestPathPt(const std::vector<float>& vec,
+                                      const float dist,
+                                      const unsigned int init = 0u) {
+    float distim1 = init != 0u
+                        ? vec[init]
+                        : 0.0f;  // First is 0, no accumulated distance yet
+    float disti = 0.0f;
+    const unsigned int size = vec.size();
+    for (unsigned int i = init + 1; i != size; i++) {
+        disti = vec[i];
+        if (disti > dist) {
+            if (i > 0 && dist - distim1 < disti - dist) {
+                return i - 1;
+            }
+            return i;
+        }
+        distim1 = disti;
     }
-    distim1 = disti;
-  }
-  return size - 1;
+    return size - 1;
 }
 
 // A struct to hold pose data in floating point resolution
 struct Pose2D {
-  float x, y, theta;
+    float x, y, theta;
 };
 
 /**
@@ -644,33 +691,37 @@ struct Pose2D {
  * @param direction direction in which Array will be shifted.
  *     1 for shift in right direction and -1 for left direction.
  */
-inline void shiftColumnsByOnePlace(Eigen::Ref<Eigen::ArrayXXf> e, int direction) {
-  int size = e.size();
-  if (size == 1) {
-    return;
-  }
-  if (abs(direction) != 1) {
-    throw std::logic_error("Invalid direction, only 1 and -1 are valid values.");
-  }
+inline void shiftColumnsByOnePlace(Eigen::Ref<Eigen::ArrayXXf> e,
+                                   int direction) {
+    int size = e.size();
+    if (size == 1) {
+        return;
+    }
+    if (abs(direction) != 1) {
+        throw std::logic_error(
+            "Invalid direction, only 1 and -1 are valid values.");
+    }
 
-  if ((e.cols() == 1 || e.rows() == 1) && size > 1) {
-    auto start_ptr = direction == 1 ? e.data() + size - 2 : e.data() + 1;
-    auto end_ptr = direction == 1 ? e.data() : e.data() + size - 1;
-    while (start_ptr != end_ptr) {
-      *(start_ptr + direction) = *start_ptr;
-      start_ptr -= direction;
+    if ((e.cols() == 1 || e.rows() == 1) && size > 1) {
+        auto start_ptr = direction == 1 ? e.data() + size - 2 : e.data() + 1;
+        auto end_ptr = direction == 1 ? e.data() : e.data() + size - 1;
+        while (start_ptr != end_ptr) {
+            *(start_ptr + direction) = *start_ptr;
+            start_ptr -= direction;
+        }
+        *(start_ptr + direction) = *start_ptr;
+    } else {
+        auto start_ptr = direction == 1 ? e.data() + size - 2 * e.rows()
+                                        : e.data() + e.rows();
+        auto end_ptr = direction == 1 ? e.data() : e.data() + size - e.rows();
+        auto span = e.rows();
+        while (start_ptr != end_ptr) {
+            std::copy(start_ptr, start_ptr + span,
+                      start_ptr + direction * span);
+            start_ptr -= (direction * span);
+        }
+        std::copy(start_ptr, start_ptr + span, start_ptr + direction * span);
     }
-    *(start_ptr + direction) = *start_ptr;
-  } else {
-    auto start_ptr = direction == 1 ? e.data() + size - 2 * e.rows() : e.data() + e.rows();
-    auto end_ptr = direction == 1 ? e.data() : e.data() + size - e.rows();
-    auto span = e.rows();
-    while (start_ptr != end_ptr) {
-      std::copy(start_ptr, start_ptr + span, start_ptr + direction * span);
-      start_ptr -= (direction * span);
-    }
-    std::copy(start_ptr, start_ptr + span, start_ptr + direction * span);
-  }
 }
 
 /**
@@ -681,17 +732,20 @@ inline void shiftColumnsByOnePlace(Eigen::Ref<Eigen::ArrayXXf> e, int direction)
  * of the trajectories.
  * @return Normalized yaw between points.
  */
-inline auto normalize_yaws_between_points(const Eigen::Ref<const Eigen::ArrayXf>& last_yaws,
-                                          const Eigen::Ref<const Eigen::ArrayXf>& yaw_between_points) {
-  Eigen::ArrayXf yaws = shortest_angular_distance(last_yaws, yaw_between_points).abs();
-  int size = yaws.size();
-  Eigen::ArrayXf yaws_between_points_corrected(size);
-  for (int i = 0; i != size; i++) {
-    const float& yaw_between_point = yaw_between_points[i];
-    yaws_between_points_corrected[i] =
-        yaws[i] < M_PIF_2 ? yaw_between_point : normalize_angle(yaw_between_point + M_PIF);
-  }
-  return yaws_between_points_corrected;
+inline auto normalize_yaws_between_points(
+    const Eigen::Ref<const Eigen::ArrayXf>& last_yaws,
+    const Eigen::Ref<const Eigen::ArrayXf>& yaw_between_points) {
+    Eigen::ArrayXf yaws =
+        shortest_angular_distance(last_yaws, yaw_between_points).abs();
+    int size = yaws.size();
+    Eigen::ArrayXf yaws_between_points_corrected(size);
+    for (int i = 0; i != size; i++) {
+        const float& yaw_between_point = yaw_between_points[i];
+        yaws_between_points_corrected[i] =
+            yaws[i] < M_PIF_2 ? yaw_between_point
+                              : normalize_angle(yaw_between_point + M_PIF);
+    }
+    return yaws_between_points_corrected;
 }
 
 /**
@@ -701,17 +755,19 @@ inline auto normalize_yaws_between_points(const Eigen::Ref<const Eigen::ArrayXf>
  * of the trajectories.
  * @return Normalized yaw between points
  */
-inline auto normalize_yaws_between_points(const float goal_yaw,
-                                          const Eigen::Ref<const Eigen::ArrayXf>& yaw_between_points) {
-  int size = yaw_between_points.size();
-  Eigen::ArrayXf yaws_between_points_corrected(size);
-  for (int i = 0; i != size; i++) {
-    const float& yaw_between_point = yaw_between_points[i];
-    yaws_between_points_corrected[i] = fabs(normalize_angle(yaw_between_point - goal_yaw)) < M_PIF_2
-                                           ? yaw_between_point
-                                           : normalize_angle(yaw_between_point + M_PIF);
-  }
-  return yaws_between_points_corrected;
+inline auto normalize_yaws_between_points(
+    const float goal_yaw,
+    const Eigen::Ref<const Eigen::ArrayXf>& yaw_between_points) {
+    int size = yaw_between_points.size();
+    Eigen::ArrayXf yaws_between_points_corrected(size);
+    for (int i = 0; i != size; i++) {
+        const float& yaw_between_point = yaw_between_points[i];
+        yaws_between_points_corrected[i] =
+            fabs(normalize_angle(yaw_between_point - goal_yaw)) < M_PIF_2
+                ? yaw_between_point
+                : normalize_angle(yaw_between_point + M_PIF);
+    }
+    return yaws_between_points_corrected;
 }
 
 /**
@@ -720,8 +776,9 @@ inline auto normalize_yaws_between_points(const float goal_yaw,
  * @param upper_bound Upper bound.
  * @return Clamped output.
  */
-inline float clamp(const float lower_bound, const float upper_bound, const float input) {
-  return std::min(upper_bound, std::max(input, lower_bound));
+inline float clamp(const float lower_bound, const float upper_bound,
+                   const float input) {
+    return std::min(upper_bound, std::max(input, lower_bound));
 }
 
 }  // namespace tools

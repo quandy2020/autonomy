@@ -34,9 +34,9 @@ namespace utils {
  * @return geometry_msgs Quaternion
  */
 inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle) {
-  transform::tf2::Quaternion q;
-  q.setRPY(0, 0, angle);  // void returning function
-  return {q.x(), q.y(), q.z(), q.w()};
+    transform::tf2::Quaternion q;
+    q.setRPY(0, 0, angle);  // void returning function
+    return {q.x(), q.y(), q.z(), q.w()};
 }
 
 /**
@@ -46,17 +46,18 @@ inline commsgs::geometry_msgs::Quaternion OrientationAroundZAxis(double angle) {
  * @param is_3d True if a true L2 distance is desired (default false)
  * @return double L2 distance
  */
-inline double euclidean_distance(const commsgs::geometry_msgs::Point& pos1, const commsgs::geometry_msgs::Point& pos2,
+inline double euclidean_distance(const commsgs::geometry_msgs::Point& pos1,
+                                 const commsgs::geometry_msgs::Point& pos2,
                                  const bool is_3d = false) {
-  double dx = pos1.x - pos2.x;
-  double dy = pos1.y - pos2.y;
+    double dx = pos1.x - pos2.x;
+    double dy = pos1.y - pos2.y;
 
-  if (is_3d) {
-    double dz = pos1.z - pos2.z;
-    return std::hypot(dx, dy, dz);
-  }
+    if (is_3d) {
+        double dz = pos1.z - pos2.z;
+        return std::hypot(dx, dy, dz);
+    }
 
-  return std::hypot(dx, dy);
+    return std::hypot(dx, dy);
 }
 
 /**
@@ -66,17 +67,18 @@ inline double euclidean_distance(const commsgs::geometry_msgs::Point& pos1, cons
  * @param is_3d True if a true L2 distance is desired (default false)
  * @return double euclidean distance
  */
-inline double euclidean_distance(const commsgs::geometry_msgs::Pose& pos1, const commsgs::geometry_msgs::Pose& pos2,
+inline double euclidean_distance(const commsgs::geometry_msgs::Pose& pos1,
+                                 const commsgs::geometry_msgs::Pose& pos2,
                                  const bool is_3d = false) {
-  double dx = pos1.position.x - pos2.position.x;
-  double dy = pos1.position.y - pos2.position.y;
+    double dx = pos1.position.x - pos2.position.x;
+    double dy = pos1.position.y - pos2.position.y;
 
-  if (is_3d) {
-    double dz = pos1.position.z - pos2.position.z;
-    return std::hypot(dx, dy, dz);
-  }
+    if (is_3d) {
+        double dz = pos1.position.z - pos2.position.z;
+        return std::hypot(dx, dy, dz);
+    }
 
-  return std::hypot(dx, dy);
+    return std::hypot(dx, dy);
 }
 
 /**
@@ -86,9 +88,10 @@ inline double euclidean_distance(const commsgs::geometry_msgs::Pose& pos1, const
  * @param is_3d True if a true L2 distance is desired (default false)
  * @return double L2 distance
  */
-inline double euclidean_distance(const commsgs::geometry_msgs::PoseStamped& pos1,
-                                 const commsgs::geometry_msgs::PoseStamped& pos2, const bool is_3d = false) {
-  return euclidean_distance(pos1.pose, pos2.pose, is_3d);
+inline double euclidean_distance(
+    const commsgs::geometry_msgs::PoseStamped& pos1,
+    const commsgs::geometry_msgs::PoseStamped& pos2, const bool is_3d = false) {
+    return euclidean_distance(pos1.pose, pos2.pose, is_3d);
 }
 
 /**
@@ -99,9 +102,9 @@ inline double euclidean_distance(const commsgs::geometry_msgs::PoseStamped& pos1
  */
 inline double euclidean_distance(const commsgs::geometry_msgs::Pose2D& pos1,
                                  const commsgs::geometry_msgs::Pose2D& pos2) {
-  double dx = pos1.x - pos2.x;
-  double dy = pos1.y - pos2.y;
-  return std::hypot(dx, dy);
+    double dx = pos1.x - pos2.x;
+    double dy = pos1.y - pos2.y;
+    return std::hypot(dx, dy);
 }
 
 /**
@@ -109,19 +112,19 @@ inline double euclidean_distance(const commsgs::geometry_msgs::Pose2D& pos1,
  */
 template <typename Iter, typename Getter>
 inline Iter min_by(Iter begin, Iter end, Getter getCompareVal) {
-  if (begin == end) {
-    return end;
-  }
-  auto lowest = getCompareVal(*begin);
-  Iter lowest_it = begin;
-  for (Iter it = ++begin; it != end; ++it) {
-    auto comp = getCompareVal(*it);
-    if (comp <= lowest) {
-      lowest = comp;
-      lowest_it = it;
+    if (begin == end) {
+        return end;
     }
-  }
-  return lowest_it;
+    auto lowest = getCompareVal(*begin);
+    Iter lowest_it = begin;
+    for (Iter it = ++begin; it != end; ++it) {
+        auto comp = getCompareVal(*it);
+        if (comp <= lowest) {
+            lowest = comp;
+            lowest_it = it;
+        }
+    }
+    return lowest_it;
 }
 
 /**
@@ -129,18 +132,19 @@ inline Iter min_by(Iter begin, Iter end, Getter getCompareVal) {
  * comparevalue
  */
 template <typename Iter, typename Getter>
-inline Iter first_after_integrated_distance(Iter begin, Iter end, Getter getCompareVal) {
-  if (begin == end) {
-    return end;
-  }
-  Getter dist = 0.0;
-  for (Iter it = begin; it != end - 1; it++) {
-    dist += euclidean_distance(*it, *(it + 1));
-    if (dist > getCompareVal) {
-      return it + 1;
+inline Iter first_after_integrated_distance(Iter begin, Iter end,
+                                            Getter getCompareVal) {
+    if (begin == end) {
+        return end;
     }
-  }
-  return end;
+    Getter dist = 0.0;
+    for (Iter it = begin; it != end - 1; it++) {
+        dist += euclidean_distance(*it, *(it + 1));
+        if (dist > getCompareVal) {
+            return it + 1;
+        }
+    }
+    return end;
 }
 
 /**
@@ -152,15 +156,17 @@ inline Iter first_after_integrated_distance(Iter begin, Iter end, Getter getComp
  * of a subset of the path.
  * @return double Path length
  */
-inline double calculate_path_length(const commsgs::planning_msgs::Path& path, size_t start_index = 0) {
-  if (start_index + 1 >= path.poses.size()) {
-    return 0.0;
-  }
-  double path_length = 0.0;
-  for (size_t idx = start_index; idx < path.poses.size() - 1; ++idx) {
-    path_length += euclidean_distance(path.poses[idx].pose, path.poses[idx + 1].pose);
-  }
-  return path_length;
+inline double calculate_path_length(const commsgs::planning_msgs::Path& path,
+                                    size_t start_index = 0) {
+    if (start_index + 1 >= path.poses.size()) {
+        return 0.0;
+    }
+    double path_length = 0.0;
+    for (size_t idx = start_index; idx < path.poses.size() - 1; ++idx) {
+        path_length +=
+            euclidean_distance(path.poses[idx].pose, path.poses[idx + 1].pose);
+    }
+    return path_length;
 }
 
 /**
@@ -168,37 +174,42 @@ inline double calculate_path_length(const commsgs::planning_msgs::Path& path, si
  * @param path Path to update orientations for
  * @param reversing_segment Whether the path segment is reversing
  */
-inline void updateApproximatePathOrientations(commsgs::planning_msgs::Path& path, bool reversing_segment = false) {
-  if (path.poses.size() < 2) {
-    return;
-  }
-
-  for (size_t i = 0; i < path.poses.size() - 1; ++i) {
-    double dx = path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x;
-    double dy = path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y;
-    double yaw = std::atan2(dy, dx);
-
-    // If reversing, add 180 degrees
-    if (reversing_segment) {
-      yaw += 3.14159265358979323846;  // M_PI
+inline void updateApproximatePathOrientations(
+    commsgs::planning_msgs::Path& path, bool reversing_segment = false) {
+    if (path.poses.size() < 2) {
+        return;
     }
 
-    path.poses[i].pose.orientation = OrientationAroundZAxis(yaw);
-  }
+    for (size_t i = 0; i < path.poses.size() - 1; ++i) {
+        double dx =
+            path.poses[i + 1].pose.position.x - path.poses[i].pose.position.x;
+        double dy =
+            path.poses[i + 1].pose.position.y - path.poses[i].pose.position.y;
+        double yaw = std::atan2(dy, dx);
 
-  // Set last pose orientation to match the direction to the previous point
-  if (path.poses.size() >= 2) {
-    size_t last_idx = path.poses.size() - 1;
-    double dx = path.poses[last_idx].pose.position.x - path.poses[last_idx - 1].pose.position.x;
-    double dy = path.poses[last_idx].pose.position.y - path.poses[last_idx - 1].pose.position.y;
-    double yaw = std::atan2(dy, dx);
+        // If reversing, add 180 degrees
+        if (reversing_segment) {
+            yaw += 3.14159265358979323846;  // M_PI
+        }
 
-    if (reversing_segment) {
-      yaw += M_PI;
+        path.poses[i].pose.orientation = OrientationAroundZAxis(yaw);
     }
 
-    path.poses[last_idx].pose.orientation = OrientationAroundZAxis(yaw);
-  }
+    // Set last pose orientation to match the direction to the previous point
+    if (path.poses.size() >= 2) {
+        size_t last_idx = path.poses.size() - 1;
+        double dx = path.poses[last_idx].pose.position.x -
+                    path.poses[last_idx - 1].pose.position.x;
+        double dy = path.poses[last_idx].pose.position.y -
+                    path.poses[last_idx - 1].pose.position.y;
+        double yaw = std::atan2(dy, dx);
+
+        if (reversing_segment) {
+            yaw += M_PI;
+        }
+
+        path.poses[last_idx].pose.orientation = OrientationAroundZAxis(yaw);
+    }
 }
 
 }  // namespace utils

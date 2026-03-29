@@ -23,10 +23,11 @@ namespace autonomy {
 namespace localization {
 namespace common {
 
-proto::LocalizationOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-  proto::LocalizationOptions options;
+proto::LocalizationOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+    proto::LocalizationOptions options;
 
-  return options;
+    return options;
 }
 
 }  // namespace common

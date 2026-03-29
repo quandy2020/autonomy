@@ -38,31 +38,42 @@ namespace sensor {
 using Time = common::Time;
 
 struct SensorId {
-  enum class SensorType { RANGE = 0, IMU, ODOMETRY, LANDMARK, FIXED_FRAME_POSE };
+    enum class SensorType {
+        RANGE = 0,
+        IMU,
+        ODOMETRY,
+        LANDMARK,
+        FIXED_FRAME_POSE
+    };
 
-  SensorType type;
-  std::string id;
+    SensorType type;
+    std::string id;
 
-  bool operator==(const SensorId& other) const {
-    return std::forward_as_tuple(type, id) == std::forward_as_tuple(other.type, other.id);
-  }
+    bool operator==(const SensorId& other) const {
+        return std::forward_as_tuple(type, id) ==
+               std::forward_as_tuple(other.type, other.id);
+    }
 
-  bool operator<(const SensorId& other) const {
-    return std::forward_as_tuple(type, id) < std::forward_as_tuple(other.type, other.id);
-  }
+    bool operator<(const SensorId& other) const {
+        return std::forward_as_tuple(type, id) <
+               std::forward_as_tuple(other.type, other.id);
+    }
 };
 
-class Data {
- public:
-  explicit Data(const std::string& sensor_id) : sensor_id_(sensor_id) {}
-  virtual ~Data() {}
+class Data
+{
+public:
+    explicit Data(const std::string& sensor_id) : sensor_id_(sensor_id) {}
+    virtual ~Data() {}
 
-  virtual Time GetTime() const = 0;
-  const std::string& GetSensorId() const { return sensor_id_; }
-  virtual void AddToCostmap(map::common::MapInterface* costmap_builder) = 0;
+    virtual Time GetTime() const = 0;
+    const std::string& GetSensorId() const {
+        return sensor_id_;
+    }
+    virtual void AddToCostmap(map::common::MapInterface* costmap_builder) = 0;
 
- protected:
-  const std::string sensor_id_;
+protected:
+    const std::string sensor_id_;
 };
 
 }  // namespace sensor

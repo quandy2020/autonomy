@@ -22,34 +22,34 @@ using grid_map::Length;
 using grid_map::Position;
 
 TEST(EllipseIterator, OneCellWideEllipse) {
-  GridMap map({"types"});
-  map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
+    GridMap map({"types"});
+    map.setGeometry(Length(8.0, 5.0), 1.0, Position(0.0, 0.0));
 
-  EllipseIterator iterator(map, Position(0.0, 0.0), Length(8.0, 1.0));
+    EllipseIterator iterator(map, Position(0.0, 0.0), Length(8.0, 1.0));
 
-  EXPECT_FALSE(iterator.isPastEnd());
-  EXPECT_EQ(0, (*iterator)(0));
-  EXPECT_EQ(2, (*iterator)(1));
+    EXPECT_FALSE(iterator.isPastEnd());
+    EXPECT_EQ(0, (*iterator)(0));
+    EXPECT_EQ(2, (*iterator)(1));
 
-  ++iterator;
-  EXPECT_FALSE(iterator.isPastEnd());
-  EXPECT_EQ(1, (*iterator)(0));
-  EXPECT_EQ(2, (*iterator)(1));
+    ++iterator;
+    EXPECT_FALSE(iterator.isPastEnd());
+    EXPECT_EQ(1, (*iterator)(0));
+    EXPECT_EQ(2, (*iterator)(1));
 
-  ++iterator;
-  EXPECT_FALSE(iterator.isPastEnd());
-  EXPECT_EQ(2, (*iterator)(0));
-  EXPECT_EQ(2, (*iterator)(1));
+    ++iterator;
+    EXPECT_FALSE(iterator.isPastEnd());
+    EXPECT_EQ(2, (*iterator)(0));
+    EXPECT_EQ(2, (*iterator)(1));
 
-  ++iterator;
-  ++iterator;
-  ++iterator;
-  ++iterator;
-  ++iterator;
-  EXPECT_FALSE(iterator.isPastEnd());
-  EXPECT_EQ(7, (*iterator)(0));
-  EXPECT_EQ(2, (*iterator)(1));
+    ++iterator;
+    ++iterator;
+    ++iterator;
+    ++iterator;
+    ++iterator;
+    EXPECT_FALSE(iterator.isPastEnd());
+    EXPECT_EQ(7, (*iterator)(0));
+    EXPECT_EQ(2, (*iterator)(1));
 
-  ++iterator;
-  EXPECT_TRUE(iterator.isPastEnd());
+    ++iterator;
+    EXPECT_TRUE(iterator.isPastEnd());
 }

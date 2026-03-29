@@ -27,12 +27,13 @@ namespace tools {
  * @brief PoseTool
  * Pose tool for the visualizer
  */
-class PoseTool {
- public:
-  explicit PoseTool();
-  virtual ~PoseTool();
+class PoseTool
+{
+public:
+    explicit PoseTool();
+    virtual ~PoseTool();
 
-  // TODO: Implement tool interface
+    // TODO: Implement tool interface
 };
 
 }  // namespace tools

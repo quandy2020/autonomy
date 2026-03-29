@@ -28,22 +28,30 @@
 namespace cartographer {
 namespace common {
 
-class DummyFileResolver : public FileResolver {
- public:
-  DummyFileResolver() {}
+class DummyFileResolver : public FileResolver
+{
+public:
+    DummyFileResolver() {}
 
-  DummyFileResolver(const DummyFileResolver&) = delete;
-  DummyFileResolver& operator=(const DummyFileResolver&) = delete;
+    DummyFileResolver(const DummyFileResolver&) = delete;
+    DummyFileResolver& operator=(const DummyFileResolver&) = delete;
 
-  ~DummyFileResolver() override {}
+    ~DummyFileResolver() override {}
 
-  std::string GetFileContentOrDie(const std::string& unused_basename) override { LOG(FATAL) << "Not implemented"; }
+    std::string GetFileContentOrDie(
+        const std::string& unused_basename) override {
+        LOG(FATAL) << "Not implemented";
+    }
 
-  std::string GetFullPathOrDie(const std::string& unused_basename) override { LOG(FATAL) << "Not implemented"; }
+    std::string GetFullPathOrDie(const std::string& unused_basename) override {
+        LOG(FATAL) << "Not implemented";
+    }
 };
 
-std::unique_ptr<LuaParameterDictionary> MakeDictionary(const std::string& code) {
-  return absl::make_unique<LuaParameterDictionary>(code, absl::make_unique<DummyFileResolver>());
+std::unique_ptr<LuaParameterDictionary> MakeDictionary(
+    const std::string& code) {
+    return absl::make_unique<LuaParameterDictionary>(
+        code, absl::make_unique<DummyFileResolver>());
 }
 
 }  // namespace common

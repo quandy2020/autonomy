@@ -34,58 +34,62 @@ namespace costmap_2d {
  * @brief Using a costmap via a ros topic, this object is used to
  * find if robot poses are in collision with the costmap environment
  */
-class CostmapTopicCollisionChecker {
- public:
-  // /**
-  //  * @brief A constructor
-  //  */
-  // CostmapTopicCollisionChecker(
-  //     CostmapSubscriber& costmap_sub,
-  //     FootprintSubscriber& footprint_sub,
-  //     std::string name = "collision_checker");
+class CostmapTopicCollisionChecker
+{
+public:
+    // /**
+    //  * @brief A constructor
+    //  */
+    // CostmapTopicCollisionChecker(
+    //     CostmapSubscriber& costmap_sub,
+    //     FootprintSubscriber& footprint_sub,
+    //     std::string name = "collision_checker");
 
-  /**
-   * @brief A destructor
-   */
-  ~CostmapTopicCollisionChecker() = default;
+    /**
+     * @brief A destructor
+     */
+    ~CostmapTopicCollisionChecker() = default;
 
-  /**
-   * @brief Returns the obstacle footprint score for a particular pose
-   *
-   * @param pose Pose to get score at
-   * @param fetch_costmap_and_footprint Defaults to true. When checking with
-   * multiple poses at once, data should be fetched in the first check but
-   * fetching can be skipped in consequent checks for speedup
-   */
-  double scorePose(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_costmap_and_footprint = true);
+    /**
+     * @brief Returns the obstacle footprint score for a particular pose
+     *
+     * @param pose Pose to get score at
+     * @param fetch_costmap_and_footprint Defaults to true. When checking with
+     * multiple poses at once, data should be fetched in the first check but
+     * fetching can be skipped in consequent checks for speedup
+     */
+    double scorePose(const commsgs::geometry_msgs::Pose2D& pose,
+                     bool fetch_costmap_and_footprint = true);
 
-  /**
-   * @brief Returns if a pose is collision free
-   *
-   * @param pose Pose to check collision at
-   * @param fetch_costmap_and_footprint Defaults to true. When checking with
-   * multiple poses at once, data should be fetched in the first check but
-   * fetching can be skipped in consequent checks for speedup
-   */
-  bool isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_costmap_and_footprint = true);
+    /**
+     * @brief Returns if a pose is collision free
+     *
+     * @param pose Pose to check collision at
+     * @param fetch_costmap_and_footprint Defaults to true. When checking with
+     * multiple poses at once, data should be fetched in the first check but
+     * fetching can be skipped in consequent checks for speedup
+     */
+    bool isCollisionFree(const commsgs::geometry_msgs::Pose2D& pose,
+                         bool fetch_costmap_and_footprint = true);
 
- protected:
-  /**
-   * @brief Get a footprint at a set pose
-   *
-   * @param pose Pose to get footprint at
-   * @param fetch_latest_footprint Defaults to true. When checking with
-   * multiple poses at once, footprint should be fetched in the first check
-   * but fetching can be skipped in consequent checks for speedup
-   */
-  Footprint getFootprint(const commsgs::geometry_msgs::Pose2D& pose, bool fetch_latest_footprint = true);
+protected:
+    /**
+     * @brief Get a footprint at a set pose
+     *
+     * @param pose Pose to get footprint at
+     * @param fetch_latest_footprint Defaults to true. When checking with
+     * multiple poses at once, footprint should be fetched in the first check
+     * but fetching can be skipped in consequent checks for speedup
+     */
+    Footprint getFootprint(const commsgs::geometry_msgs::Pose2D& pose,
+                           bool fetch_latest_footprint = true);
 
-  // Name used for logging
-  std::string name_;
-  // CostmapSubscriber & costmap_sub_;
-  // FootprintSubscriber & footprint_sub_;
-  FootprintCollisionChecker<std::shared_ptr<Costmap2D>> collision_checker_;
-  Footprint footprint_;
+    // Name used for logging
+    std::string name_;
+    // CostmapSubscriber & costmap_sub_;
+    // FootprintSubscriber & footprint_sub_;
+    FootprintCollisionChecker<std::shared_ptr<Costmap2D>> collision_checker_;
+    Footprint footprint_;
 };
 
 }  // namespace costmap_2d

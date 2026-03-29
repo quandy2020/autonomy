@@ -31,52 +31,55 @@
 namespace autonomy {
 namespace visualization {
 std::string GuessAutolinkWorkRoot() {
-  namespace fs = std::filesystem;
-  const fs::path cwd = fs::current_path();
-  const fs::path conf_rel = fs::path("conf") / "autolink.pb.conf";
+    namespace fs = std::filesystem;
+    const fs::path cwd = fs::current_path();
+    const fs::path conf_rel = fs::path("conf") / "autolink.pb.conf";
 
-  // 从当前目录开始向上回溯若干层，查找常见源码布局：
-  // <repo_root>/src/autonomy/autolink/autolink/conf/autolink.pb.conf
-  fs::path base = cwd;
-  for (int depth = 0; depth < 10; ++depth) {
-    const fs::path conf = base / "src" / "autonomy" / "autolink" / "autolink" / conf_rel;
-    std::error_code ec;
-    if (fs::exists(conf, ec) && !ec) {
-      return conf.parent_path().parent_path().string();  // .../autolink/autolink
+    // 从当前目录开始向上回溯若干层，查找常见源码布局：
+    // <repo_root>/src/autonomy/autolink/autolink/conf/autolink.pb.conf
+    fs::path base = cwd;
+    for (int depth = 0; depth < 10; ++depth) {
+        const fs::path conf =
+            base / "src" / "autonomy" / "autolink" / "autolink" / conf_rel;
+        std::error_code ec;
+        if (fs::exists(conf, ec) && !ec) {
+            return conf.parent_path()
+                .parent_path()
+                .string();  // .../autolink/autolink
+        }
+        if (!base.has_parent_path()) {
+            break;
+        }
+        base = base.parent_path();
     }
-    if (!base.has_parent_path()) {
-      break;
-    }
-    base = base.parent_path();
-  }
-  return "";
+    return "";
 }
 
 namespace {
 
 void Run() {
-  // register signal handler with lambda
-  signal(SIGINT, [](int) { exit(0); });
-  signal(SIGTERM, [](int) { exit(0); });
+    // register signal handler with lambda
+    signal(SIGINT, [](int) { exit(0); });
+    signal(SIGTERM, [](int) { exit(0); });
 
-  // configure FoxgloveBridge
-  FoxgloveBridge::Options options;
-  options.host = "0.0.0.0";
-  options.port = 8765;
+    // configure FoxgloveBridge
+    FoxgloveBridge::Options options;
+    options.host = "0.0.0.0";
+    options.port = 8765;
 
-  // start FoxgloveBridge
-  auto bridge = std::make_shared<FoxgloveBridge>(options);
-  if (!bridge->Start()) {
-    AERROR << "Failed to start visualization server";
-    return;
-  } else {
-    AINFO << "Visualization server started successfully";
-  }
+    // start FoxgloveBridge
+    auto bridge = std::make_shared<FoxgloveBridge>(options);
+    if (!bridge->Start()) {
+        AERROR << "Failed to start visualization server";
+        return;
+    } else {
+        AINFO << "Visualization server started successfully";
+    }
 
-  // wait for signal
-  while (true) {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
+    // wait for signal
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 }
 
 }  // namespace
@@ -84,19 +87,19 @@ void Run() {
 }  // namespace autonomy
 
 int main(int argc, char** argv) {
-  if (std::getenv("AUTOLINK_PATH") == nullptr) {
-    const auto guessed = autonomy::visualization::GuessAutolinkWorkRoot();
-    if (!guessed.empty()) {
-      ::setenv("AUTOLINK_PATH", guessed.c_str(), /*overwrite=*/0);
+    if (std::getenv("AUTOLINK_PATH") == nullptr) {
+        const auto guessed = autonomy::visualization::GuessAutolinkWorkRoot();
+        if (!guessed.empty()) {
+            ::setenv("AUTOLINK_PATH", guessed.c_str(), /*overwrite=*/0);
+        }
     }
-  }
-  ::autolink::Init(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  if (autonomy::common::FLAGS_verbose) {
-    autonomy::common::ShowVersion();
+    ::autolink::Init(argv[0]);
+    google::ParseCommandLineFlags(&argc, &argv, true);
+    if (autonomy::common::FLAGS_verbose) {
+        autonomy::common::ShowVersion();
+        return 0;
+    }
+    autonomy::visualization::Run();
+    google::ShutDownCommandLineFlags();
     return 0;
-  }
-  autonomy::visualization::Run();
-  google::ShutDownCommandLineFlags();
-  return 0;
 }

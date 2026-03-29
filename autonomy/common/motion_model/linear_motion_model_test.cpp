@@ -39,32 +39,32 @@ using autonomy::common::state_vector::variable::YAW_CHANGE_RATE;
 /// @test Test that prediction on independent x, y, yaw with constant
 /// acceleration works.
 TEST(LinearMotionModel, PredictConstAccelerationXYYaw32) {
-  ConstAccelerationXYYaw32 state{ConstAccelerationXYYaw32::Vector::Ones()};
-  LinearMotionModel<ConstAccelerationXYYaw32> motion_model{};
-  state = motion_model.predict(state, std::chrono::milliseconds{100});
-  EXPECT_FLOAT_EQ(1.105F, state.at<X>());
-  EXPECT_FLOAT_EQ(1.1F, state.at<X_VELOCITY>());
-  EXPECT_FLOAT_EQ(1.0F, state.at<X_ACCELERATION>());
-  EXPECT_FLOAT_EQ(1.105F, state.at<Y>());
-  EXPECT_FLOAT_EQ(1.1F, state.at<Y_VELOCITY>());
-  EXPECT_FLOAT_EQ(1.0F, state.at<Y_ACCELERATION>());
-  EXPECT_FLOAT_EQ(1.105F, state.at<YAW>());
-  EXPECT_FLOAT_EQ(1.1F, state.at<YAW_CHANGE_RATE>());
-  EXPECT_FLOAT_EQ(1.0F, state.at<YAW_CHANGE_ACCELERATION>());
+    ConstAccelerationXYYaw32 state{ConstAccelerationXYYaw32::Vector::Ones()};
+    LinearMotionModel<ConstAccelerationXYYaw32> motion_model{};
+    state = motion_model.predict(state, std::chrono::milliseconds{100});
+    EXPECT_FLOAT_EQ(1.105F, state.at<X>());
+    EXPECT_FLOAT_EQ(1.1F, state.at<X_VELOCITY>());
+    EXPECT_FLOAT_EQ(1.0F, state.at<X_ACCELERATION>());
+    EXPECT_FLOAT_EQ(1.105F, state.at<Y>());
+    EXPECT_FLOAT_EQ(1.1F, state.at<Y_VELOCITY>());
+    EXPECT_FLOAT_EQ(1.0F, state.at<Y_ACCELERATION>());
+    EXPECT_FLOAT_EQ(1.105F, state.at<YAW>());
+    EXPECT_FLOAT_EQ(1.1F, state.at<YAW_CHANGE_RATE>());
+    EXPECT_FLOAT_EQ(1.0F, state.at<YAW_CHANGE_ACCELERATION>());
 }
 
 /// @test Test that prediction on independent x, y with constant acceleration
 /// works.
 TEST(LinearMotionModel, PredictConstAccelerationXY) {
-  ConstAccelerationXY32 state{ConstAccelerationXY32::Vector::Ones()};
-  LinearMotionModel<ConstAccelerationXY32> motion_model{};
-  state = motion_model.predict(state, std::chrono::milliseconds{100});
-  EXPECT_FLOAT_EQ(1.105F, state.at<X>());
-  EXPECT_FLOAT_EQ(1.1F, state.at<X_VELOCITY>());
-  EXPECT_FLOAT_EQ(1.0F, state.at<X_ACCELERATION>());
-  EXPECT_FLOAT_EQ(1.105F, state.at<Y>());
-  EXPECT_FLOAT_EQ(1.1F, state.at<Y_VELOCITY>());
-  EXPECT_FLOAT_EQ(1.0F, state.at<Y_ACCELERATION>());
+    ConstAccelerationXY32 state{ConstAccelerationXY32::Vector::Ones()};
+    LinearMotionModel<ConstAccelerationXY32> motion_model{};
+    state = motion_model.predict(state, std::chrono::milliseconds{100});
+    EXPECT_FLOAT_EQ(1.105F, state.at<X>());
+    EXPECT_FLOAT_EQ(1.1F, state.at<X_VELOCITY>());
+    EXPECT_FLOAT_EQ(1.0F, state.at<X_ACCELERATION>());
+    EXPECT_FLOAT_EQ(1.105F, state.at<Y>());
+    EXPECT_FLOAT_EQ(1.1F, state.at<Y_VELOCITY>());
+    EXPECT_FLOAT_EQ(1.0F, state.at<Y_ACCELERATION>());
 }
 
 }  // namespace motion_model

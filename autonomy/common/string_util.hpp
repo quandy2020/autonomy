@@ -26,7 +26,8 @@
 #include "absl/strings/str_format.h"
 #include "autonomy/common/future.hpp"
 
-#define FORMAT_TIMESTAMP(timestamp) std::fixed << std::setprecision(9) << timestamp
+#define FORMAT_TIMESTAMP(timestamp) \
+    std::fixed << std::setprecision(9) << timestamp
 
 /**
  * @namespace autonomy::common
@@ -38,10 +39,10 @@ namespace common {
 using absl::StrFormat;
 
 struct DebugStringFormatter {
-  template <class T>
-  void operator()(std::string* out, const T& t) const {
-    out->append(t.DebugString());
-  }
+    template <class T>
+    void operator()(std::string* out, const T& t) const {
+        out->append(t.DebugString());
+    }
 };
 
 std::string EncodeBase64(std::string_view in);
@@ -52,13 +53,15 @@ std::string EncodeBase64(std::string_view in);
 std::string StringPrintf(const char* format, ...);
 
 // Replace all occurrences of `old_str` with `new_str` in the given string.
-std::string StringReplace(const std::string& str, const std::string& old_str, const std::string& new_str);
+std::string StringReplace(const std::string& str, const std::string& old_str,
+                          const std::string& new_str);
 
 // Get substring of string after search key
 std::string StringGetAfter(const std::string& str, const std::string& key);
 
 // Split string into list of words using the given delimiters.
-std::vector<std::string> StringSplit(const std::string& str, const std::string& delim);
+std::vector<std::string> StringSplit(const std::string& str,
+                                     const std::string& delim);
 
 // Check whether a string starts with a certain prefix.
 bool StringStartsWith(const std::string& str, const std::string& prefix);

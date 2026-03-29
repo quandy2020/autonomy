@@ -38,52 +38,53 @@ class Node;
  * paramter(s) by start a ParameterClient to send responding request
  * @warning You should only have one ParameterServer works
  */
-class ParameterServer {
- public:
-  using Param = autolink::proto::Param;
-  using NodeName = autolink::proto::NodeName;
-  using ParamName = autolink::proto::ParamName;
-  using BoolResult = autolink::proto::BoolResult;
-  using Params = autolink::proto::Params;
-  /**
-   * @brief Construct a new ParameterServer object
-   *
-   * @param node shared_ptr of the node handler
-   */
-  explicit ParameterServer(const std::shared_ptr<Node>& node);
+class ParameterServer
+{
+public:
+    using Param = autolink::proto::Param;
+    using NodeName = autolink::proto::NodeName;
+    using ParamName = autolink::proto::ParamName;
+    using BoolResult = autolink::proto::BoolResult;
+    using Params = autolink::proto::Params;
+    /**
+     * @brief Construct a new ParameterServer object
+     *
+     * @param node shared_ptr of the node handler
+     */
+    explicit ParameterServer(const std::shared_ptr<Node>& node);
 
-  /**
-   * @brief Set the Parameter object
-   *
-   * @param parmeter parameter to be set
-   */
-  void SetParameter(const Parameter& parmeter);
+    /**
+     * @brief Set the Parameter object
+     *
+     * @param parmeter parameter to be set
+     */
+    void SetParameter(const Parameter& parmeter);
 
-  /**
-   * @brief Get the Parameter object
-   *
-   * @param parameter_name name of the parameer want to get
-   * @param parameter pointer to store parameter want to get
-   * @return true get parameter success
-   * @return false parameter not exists
-   */
-  bool GetParameter(const std::string& parameter_name, Parameter* parameter);
+    /**
+     * @brief Get the Parameter object
+     *
+     * @param parameter_name name of the parameer want to get
+     * @param parameter pointer to store parameter want to get
+     * @return true get parameter success
+     * @return false parameter not exists
+     */
+    bool GetParameter(const std::string& parameter_name, Parameter* parameter);
 
-  /**
-   * @brief get all the parameters
-   *
-   * @param parameters result Paramter vector
-   */
-  void ListParameters(std::vector<Parameter>* parameters);
+    /**
+     * @brief get all the parameters
+     *
+     * @param parameters result Paramter vector
+     */
+    void ListParameters(std::vector<Parameter>* parameters);
 
- private:
-  std::shared_ptr<Node> node_;
-  std::shared_ptr<Service<ParamName, Param>> get_parameter_service_;
-  std::shared_ptr<Service<Param, BoolResult>> set_parameter_service_;
-  std::shared_ptr<Service<NodeName, Params>> list_parameters_service_;
+private:
+    std::shared_ptr<Node> node_;
+    std::shared_ptr<Service<ParamName, Param>> get_parameter_service_;
+    std::shared_ptr<Service<Param, BoolResult>> set_parameter_service_;
+    std::shared_ptr<Service<NodeName, Params>> list_parameters_service_;
 
-  std::mutex param_map_mutex_;
-  std::unordered_map<std::string, Param> param_map_;
+    std::mutex param_map_mutex_;
+    std::unordered_map<std::string, Param> param_map_;
 };
 
 }  // namespace autolink

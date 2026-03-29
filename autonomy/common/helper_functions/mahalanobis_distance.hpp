@@ -33,22 +33,23 @@ namespace helper_functions {
 /// \return Square of mahalanobis distance
 template <typename T, std::int32_t kNumOfStates>
 types::float32_t calculate_squared_mahalanobis_distance(
-    const Eigen::Matrix<T, kNumOfStates, 1>& sample, const Eigen::Matrix<T, kNumOfStates, 1>& mean,
+    const Eigen::Matrix<T, kNumOfStates, 1>& sample,
+    const Eigen::Matrix<T, kNumOfStates, 1>& mean,
     const Eigen::Matrix<T, kNumOfStates, kNumOfStates>& covariance_factor) {
-  using Vector = Eigen::Matrix<T, kNumOfStates, 1>;
-  // This is equivalent to the squared Mahalanobis distance of the form:
-  // diff.T
-  // * C.inv() * diff Instead of the covariance matrix C we have its
-  // lower-triangular factor L, such that C = L * L.T
-  // squared_mahalanobis_distance = diff.T * C.inv() * diff
-  // = diff.T * (L * L.T).inv() * diff
-  // = diff.T * L.T.inv() * L.inv() * diff
-  // = (L.inv() * diff).T * (L.inv() * diff)
-  // this allows us to efficiently find the squared Mahalanobis distance using
-  // (L.inv() * diff), which can be found as a solution to: L * x = diff.
-  const Vector diff = sample - mean;
-  const Vector x = covariance_factor.ldlt().solve(diff);
-  return x.transpose() * x;
+    using Vector = Eigen::Matrix<T, kNumOfStates, 1>;
+    // This is equivalent to the squared Mahalanobis distance of the form:
+    // diff.T
+    // * C.inv() * diff Instead of the covariance matrix C we have its
+    // lower-triangular factor L, such that C = L * L.T
+    // squared_mahalanobis_distance = diff.T * C.inv() * diff
+    // = diff.T * (L * L.T).inv() * diff
+    // = diff.T * L.T.inv() * L.inv() * diff
+    // = (L.inv() * diff).T * (L.inv() * diff)
+    // this allows us to efficiently find the squared Mahalanobis distance using
+    // (L.inv() * diff), which can be found as a solution to: L * x = diff.
+    const Vector diff = sample - mean;
+    const Vector x = covariance_factor.ldlt().solve(diff);
+    return x.transpose() * x;
 }
 
 /// \brief Calculate mahalanobis distance
@@ -60,10 +61,12 @@ types::float32_t calculate_squared_mahalanobis_distance(
 /// \param covariance_factor Covariance matrix
 /// \return Mahalanobis distance
 template <typename T, std::int32_t kNumOfStates>
-types::float32_t calculate_mahalanobis_distance(const Eigen::Matrix<T, kNumOfStates, 1>& sample,
-                                                const Eigen::Matrix<T, kNumOfStates, 1>& mean,
-                                                const Eigen::Matrix<T, kNumOfStates, kNumOfStates>& covariance_factor) {
-  return sqrtf(calculate_squared_mahalanobis_distance(sample, mean, covariance_factor));
+types::float32_t calculate_mahalanobis_distance(
+    const Eigen::Matrix<T, kNumOfStates, 1>& sample,
+    const Eigen::Matrix<T, kNumOfStates, 1>& mean,
+    const Eigen::Matrix<T, kNumOfStates, kNumOfStates>& covariance_factor) {
+    return sqrtf(calculate_squared_mahalanobis_distance(sample, mean,
+                                                        covariance_factor));
 }
 
 }  // namespace helper_functions

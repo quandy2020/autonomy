@@ -14,49 +14,49 @@
  * limitations under the License.
  */
 
- #pragma once
+#pragma once
 
- #include <unistd.h>
- #include <functional>
- #include <memory>
- 
- #include "autolink/autolink.hpp"
- #include "autolink/common/init.hpp"
- #include "autolink/timer/timer.hpp"
- 
- namespace autolink {
- 
- class PyTimer
- {
- public:
-     PyTimer() {
-         timer_ = std::make_shared<Timer>();
-     }
- 
-     PyTimer(uint32_t period, void (*func)(), bool oneshot) {
-         std::function<void()> bound_f = std::bind(func);
-         timer_ = std::make_shared<Timer>(period, bound_f, oneshot);
-     }
- 
-     void start() {
-         timer_->Start();
-     }
- 
-     void stop() {
-         timer_->Stop();
-     }
- 
-     void set_option(uint32_t period, void (*func)(), bool oneshot) {
-         std::function<void()> bound_f = std::bind(func);
-         TimerOption time_opt;
-         time_opt.period = period;
-         time_opt.callback = bound_f;
-         time_opt.oneshot = oneshot;
-         timer_->SetTimerOption(time_opt);
-     }
- 
- private:
-     std::shared_ptr<Timer> timer_ = nullptr;
- };
- 
- }  // namespace autolink
+#include <unistd.h>
+#include <functional>
+#include <memory>
+
+#include "autolink/autolink.hpp"
+#include "autolink/init.hpp"
+#include "autolink/timer/timer.hpp"
+
+namespace autolink {
+
+class PyTimer
+{
+public:
+    PyTimer() {
+        timer_ = std::make_shared<Timer>();
+    }
+
+    PyTimer(uint32_t period, void (*func)(), bool oneshot) {
+        std::function<void()> bound_f = std::bind(func);
+        timer_ = std::make_shared<Timer>(period, bound_f, oneshot);
+    }
+
+    void start() {
+        timer_->Start();
+    }
+
+    void stop() {
+        timer_->Stop();
+    }
+
+    void set_option(uint32_t period, void (*func)(), bool oneshot) {
+        std::function<void()> bound_f = std::bind(func);
+        TimerOption time_opt;
+        time_opt.period = period;
+        time_opt.callback = bound_f;
+        time_opt.oneshot = oneshot;
+        timer_->SetTimerOption(time_opt);
+    }
+
+private:
+    std::shared_ptr<Timer> timer_ = nullptr;
+};
+
+}  // namespace autolink

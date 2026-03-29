@@ -29,15 +29,16 @@ namespace robot {
  *
  * Main robot class managing links and joints
  */
-class Robot {
- public:
-  Robot();
-  virtual ~Robot();
+class Robot
+{
+public:
+    Robot();
+    virtual ~Robot();
 
-  // TODO: Implement functionality
+    // TODO: Implement functionality
 
- private:
-  // TODO: Add members
+private:
+    // TODO: Add members
 };
 
 }  // namespace robot

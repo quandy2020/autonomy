@@ -30,19 +30,19 @@ namespace transport {
 using autolink::common::GlobalData;
 
 auto SegmentFactory::CreateSegment(uint64_t channel_id) -> SegmentPtr {
-  std::string segment_type(XsiSegment::Type());
-  auto& shm_conf = GlobalData::Instance()->Config();
-  if (!shm_conf.transport_conf().shm_conf().shm_type().empty()) {
-    segment_type = shm_conf.transport_conf().shm_conf().shm_type();
-  }
+    std::string segment_type(XsiSegment::Type());
+    auto& shm_conf = GlobalData::Instance()->Config();
+    if (!shm_conf.transport_conf().shm_conf().shm_type().empty()) {
+        segment_type = shm_conf.transport_conf().shm_conf().shm_type();
+    }
 
-  ADEBUG << "segment type: " << segment_type;
+    ADEBUG << "segment type: " << segment_type;
 
-  if (segment_type == PosixSegment::Type()) {
-    return std::make_shared<PosixSegment>(channel_id);
-  }
+    if (segment_type == PosixSegment::Type()) {
+        return std::make_shared<PosixSegment>(channel_id);
+    }
 
-  return std::make_shared<XsiSegment>(channel_id);
+    return std::make_shared<XsiSegment>(channel_id);
 }
 
 }  // namespace transport

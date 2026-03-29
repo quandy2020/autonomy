@@ -27,15 +27,15 @@ namespace autolink {
 namespace logger {
 
 TEST(LogFileObjectTest, init_and_write) {
-  std::string basename = "logfile";
-  LogFileObject logfileobject(google::INFO, basename.c_str());
-  logfileobject.SetBasename("base");
-  time_t timep;
-  time(&timep);
-  std::string message = "autolink logger test";
-  logfileobject.Write(false, timep, message.c_str(), 20);
-  logfileobject.SetExtension("unittest");
-  logfileobject.Flush();
+    std::string basename = "logfile";
+    LogFileObject logfileobject(google::INFO, basename.c_str());
+    logfileobject.SetBasename("base");
+    time_t timep;
+    time(&timep);
+    std::string message = "autolink logger test";
+    logfileobject.Write(false, timep, message.c_str(), 20);
+    logfileobject.SetExtension("unittest");
+    logfileobject.Flush();
 }
 
 }  // namespace logger

@@ -17,6 +17,10 @@
 
 #include <cmath>
 
-int sample_add(int x, int y) { return x + y; }
+int sample_add(int x, int y) {
+    return x + y;
+}
 
-double sample_sin(double x) { return std::sin(x); }
+double sample_sin(double x) {
+    return std::sin(x);
+}

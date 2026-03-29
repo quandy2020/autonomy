@@ -26,7 +26,8 @@ namespace control {
 namespace controller {
 namespace graceful_controller {
 
-proto::GracefulControllerOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::GracefulControllerOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace graceful_controller
 }  // namespace controller

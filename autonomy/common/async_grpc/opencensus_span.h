@@ -30,18 +30,21 @@ namespace common {
 namespace async_grpc {
 
 // An implementation of the Span interface backed by Opencensus.
-class OpencensusSpan : public Span {
- public:
-  static std::unique_ptr<Span> StartSpan(const std::string& name, const OpencensusSpan* parent = nullptr);
+class OpencensusSpan : public Span
+{
+public:
+    static std::unique_ptr<Span> StartSpan(
+        const std::string& name, const OpencensusSpan* parent = nullptr);
 
-  std::unique_ptr<Span> CreateChildSpan(const std::string& name) override;
-  void SetStatus(const ::grpc::Status& status) override;
-  void End() override;
+    std::unique_ptr<Span> CreateChildSpan(const std::string& name) override;
+    void SetStatus(const ::grpc::Status& status) override;
+    void End() override;
 
- private:
-  OpencensusSpan(const std::string& name, const OpencensusSpan* parent = nullptr);
+private:
+    OpencensusSpan(const std::string& name,
+                   const OpencensusSpan* parent = nullptr);
 
-  opencensus::trace::Span span_;
+    opencensus::trace::Span span_;
 };
 
 }  // namespace async_grpc

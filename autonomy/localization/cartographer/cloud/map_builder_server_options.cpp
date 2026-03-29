@@ -23,27 +23,39 @@
 namespace cartographer {
 namespace cloud {
 
-proto::MapBuilderServerOptions CreateMapBuilderServerOptions(common::LuaParameterDictionary* lua_parameter_dictionary) {
-  proto::MapBuilderServerOptions map_builder_server_options;
-  map_builder_server_options.set_server_address(lua_parameter_dictionary->GetString("server_address"));
-  map_builder_server_options.set_num_grpc_threads(lua_parameter_dictionary->GetInt("num_grpc_threads"));
-  map_builder_server_options.set_num_event_threads(lua_parameter_dictionary->GetInt("num_event_threads"));
-  *map_builder_server_options.mutable_map_builder_options() =
-      mapping::CreateMapBuilderOptions(lua_parameter_dictionary->GetDictionary("map_builder").get());
-  map_builder_server_options.set_uplink_server_address(lua_parameter_dictionary->GetString("uplink_server_address"));
-  map_builder_server_options.set_upload_batch_size(lua_parameter_dictionary->GetInt("upload_batch_size"));
-  map_builder_server_options.set_enable_ssl_encryption(lua_parameter_dictionary->GetBool("enable_ssl_encryption"));
-  map_builder_server_options.set_enable_google_auth(lua_parameter_dictionary->GetBool("enable_google_auth"));
-  return map_builder_server_options;
+proto::MapBuilderServerOptions CreateMapBuilderServerOptions(
+    common::LuaParameterDictionary* lua_parameter_dictionary) {
+    proto::MapBuilderServerOptions map_builder_server_options;
+    map_builder_server_options.set_server_address(
+        lua_parameter_dictionary->GetString("server_address"));
+    map_builder_server_options.set_num_grpc_threads(
+        lua_parameter_dictionary->GetInt("num_grpc_threads"));
+    map_builder_server_options.set_num_event_threads(
+        lua_parameter_dictionary->GetInt("num_event_threads"));
+    *map_builder_server_options.mutable_map_builder_options() =
+        mapping::CreateMapBuilderOptions(
+            lua_parameter_dictionary->GetDictionary("map_builder").get());
+    map_builder_server_options.set_uplink_server_address(
+        lua_parameter_dictionary->GetString("uplink_server_address"));
+    map_builder_server_options.set_upload_batch_size(
+        lua_parameter_dictionary->GetInt("upload_batch_size"));
+    map_builder_server_options.set_enable_ssl_encryption(
+        lua_parameter_dictionary->GetBool("enable_ssl_encryption"));
+    map_builder_server_options.set_enable_google_auth(
+        lua_parameter_dictionary->GetBool("enable_google_auth"));
+    return map_builder_server_options;
 }
 
-proto::MapBuilderServerOptions LoadMapBuilderServerOptions(const std::string& configuration_directory,
-                                                           const std::string& configuration_basename) {
-  auto file_resolver =
-      absl::make_unique<common::ConfigurationFileResolver>(std::vector<std::string>{configuration_directory});
-  const std::string code = file_resolver->GetFileContentOrDie(configuration_basename);
-  common::LuaParameterDictionary lua_parameter_dictionary(code, std::move(file_resolver));
-  return CreateMapBuilderServerOptions(&lua_parameter_dictionary);
+proto::MapBuilderServerOptions LoadMapBuilderServerOptions(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename) {
+    auto file_resolver = absl::make_unique<common::ConfigurationFileResolver>(
+        std::vector<std::string>{configuration_directory});
+    const std::string code =
+        file_resolver->GetFileContentOrDie(configuration_basename);
+    common::LuaParameterDictionary lua_parameter_dictionary(
+        code, std::move(file_resolver));
+    return CreateMapBuilderServerOptions(&lua_parameter_dictionary);
 }
 
 }  // namespace cloud

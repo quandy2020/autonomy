@@ -27,12 +27,13 @@ namespace view_controllers {
  * @brief FpsViewController
  * FPS view controller
  */
-class FpsViewController {
- public:
-  explicit FpsViewController();
-  virtual ~FpsViewController();
+class FpsViewController
+{
+public:
+    explicit FpsViewController();
+    virtual ~FpsViewController();
 
-  // TODO: Implement view controller interface
+    // TODO: Implement view controller interface
 };
 
 }  // namespace view_controllers

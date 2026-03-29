@@ -59,74 +59,83 @@ using ServiceManagerPtr = std::shared_ptr<ServiceManager>;
  * messages of those elements. Also, you can register you own `ChangeFunc` to
  * monitor topology change
  */
-class TopologyManager {
- public:
-  using ChangeSignal = base::Signal<const ChangeMsg&>;
-  using ChangeFunc = std::function<void(const ChangeMsg&)>;
-  using ChangeConnection = base::Connection<const ChangeMsg&>;
-  using PartNameContainer = std::map<eprosima::fastrtps::rtps::GUID_t, std::string>;
-  using PartInfo = eprosima::fastrtps::rtps::ParticipantDiscoveryInfo;
+class TopologyManager
+{
+public:
+    using ChangeSignal = base::Signal<const ChangeMsg&>;
+    using ChangeFunc = std::function<void(const ChangeMsg&)>;
+    using ChangeConnection = base::Connection<const ChangeMsg&>;
+    using PartNameContainer =
+        std::map<eprosima::fastrtps::rtps::GUID_t, std::string>;
+    using PartInfo = eprosima::fastrtps::rtps::ParticipantDiscoveryInfo;
 
-  virtual ~TopologyManager();
+    virtual ~TopologyManager();
 
-  /**
-   * @brief Shutdown the TopologyManager
-   */
-  void Shutdown();
+    /**
+     * @brief Shutdown the TopologyManager
+     */
+    void Shutdown();
 
-  /**
-   * @brief To observe the topology change, you can register a `ChangeFunc`
-   *
-   * @param func is the observe function
-   * @return ChangeConnection is the connection that connected to
-   * `change_signal_`. Used to Remove your observe function
-   */
-  ChangeConnection AddChangeListener(const ChangeFunc& func);
+    /**
+     * @brief To observe the topology change, you can register a `ChangeFunc`
+     *
+     * @param func is the observe function
+     * @return ChangeConnection is the connection that connected to
+     * `change_signal_`. Used to Remove your observe function
+     */
+    ChangeConnection AddChangeListener(const ChangeFunc& func);
 
-  /**
-   * @brief Remove the observe function connect to `change_signal_` by `conn`
-   */
-  void RemoveChangeListener(const ChangeConnection& conn);
+    /**
+     * @brief Remove the observe function connect to `change_signal_` by `conn`
+     */
+    void RemoveChangeListener(const ChangeConnection& conn);
 
-  /**
-   * @brief Get shared_ptr for NodeManager
-   */
-  NodeManagerPtr& node_manager() { return node_manager_; }
+    /**
+     * @brief Get shared_ptr for NodeManager
+     */
+    NodeManagerPtr& node_manager() {
+        return node_manager_;
+    }
 
-  /**
-   * @brief Get shared_ptr for ChannelManager
-   */
-  ChannelManagerPtr& channel_manager() { return channel_manager_; }
+    /**
+     * @brief Get shared_ptr for ChannelManager
+     */
+    ChannelManagerPtr& channel_manager() {
+        return channel_manager_;
+    }
 
-  /**
-   * @brief Get shared_ptr for ServiceManager
-   */
-  ServiceManagerPtr& service_manager() { return service_manager_; }
+    /**
+     * @brief Get shared_ptr for ServiceManager
+     */
+    ServiceManagerPtr& service_manager() {
+        return service_manager_;
+    }
 
- private:
-  bool Init();
+private:
+    bool Init();
 
-  bool InitNodeManager();
-  bool InitChannelManager();
-  bool InitServiceManager();
+    bool InitNodeManager();
+    bool InitChannelManager();
+    bool InitServiceManager();
 
-  bool CreateParticipant();
-  void OnParticipantChange(const PartInfo& info);
-  bool Convert(const PartInfo& info, ChangeMsg* change_msg);
-  bool ParseParticipantName(const std::string& participant_name, std::string* host_name, int* process_id);
+    bool CreateParticipant();
+    void OnParticipantChange(const PartInfo& info);
+    bool Convert(const PartInfo& info, ChangeMsg* change_msg);
+    bool ParseParticipantName(const std::string& participant_name,
+                              std::string* host_name, int* process_id);
 
-  std::atomic<bool> init_;             /// Is TopologyManager inited
-  NodeManagerPtr node_manager_;        /// shared ptr of NodeManager
-  ChannelManagerPtr channel_manager_;  /// shared ptr of ChannelManager
-  ServiceManagerPtr service_manager_;  /// shared ptr of ServiceManager
-  /// rtps participant to publish and subscribe
-  transport::ParticipantPtr participant_;
-  ParticipantListener* participant_listener_;
-  ChangeSignal change_signal_;           /// topology changing signal,
-                                         ///< connect to `ChangeFunc`s
-  PartNameContainer participant_names_;  /// other participant in the topology
+    std::atomic<bool> init_;             /// Is TopologyManager inited
+    NodeManagerPtr node_manager_;        /// shared ptr of NodeManager
+    ChannelManagerPtr channel_manager_;  /// shared ptr of ChannelManager
+    ServiceManagerPtr service_manager_;  /// shared ptr of ServiceManager
+    /// rtps participant to publish and subscribe
+    transport::ParticipantPtr participant_;
+    ParticipantListener* participant_listener_;
+    ChangeSignal change_signal_;           /// topology changing signal,
+                                           ///< connect to `ChangeFunc`s
+    PartNameContainer participant_names_;  /// other participant in the topology
 
-  DECLARE_SINGLETON(TopologyManager)
+    DECLARE_SINGLETON(TopologyManager)
 };
 
 }  // namespace service_discovery

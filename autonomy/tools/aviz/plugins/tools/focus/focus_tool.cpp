@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 FocusTool::FocusTool() {
-  // TODO: Initialize tool
+    // TODO: Initialize tool
 }
 
 FocusTool::~FocusTool() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace tools

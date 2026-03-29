@@ -24,15 +24,22 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-class NtpMonitor : public MonitorBase {
- public:
-  std::string Name() const override { return "ntp"; }
-  void Collect() override;
-  void RegisterWithPrometheus(void* registry) override;
-  static std::unique_ptr<NtpMonitor> Create() { return std::make_unique<NtpMonitor>(); }
+class NtpMonitor : public MonitorBase
+{
+public:
+    std::string Name() const override {
+        return "ntp";
+    }
+    void Collect() override;
+    void RegisterWithPrometheus(void* registry) override;
+    static std::unique_ptr<NtpMonitor> Create() {
+        return std::make_unique<NtpMonitor>();
+    }
 };
 
-inline std::unique_ptr<NtpMonitor> CreateNtpMonitor() { return NtpMonitor::Create(); }
+inline std::unique_ptr<NtpMonitor> CreateNtpMonitor() {
+    return NtpMonitor::Create();
+}
 
 }  // namespace monitor
 }  // namespace system

@@ -27,79 +27,83 @@ namespace autolink {
 namespace transport {
 
 template <typename M>
-class IntraTransmitter : public Transmitter<M> {
- public:
-  using MessagePtr = std::shared_ptr<M>;
+class IntraTransmitter : public Transmitter<M>
+{
+public:
+    using MessagePtr = std::shared_ptr<M>;
 
-  explicit IntraTransmitter(const RoleAttributes& attr);
-  virtual ~IntraTransmitter();
+    explicit IntraTransmitter(const RoleAttributes& attr);
+    virtual ~IntraTransmitter();
 
-  void Enable() override;
-  void Disable() override;
+    void Enable() override;
+    void Disable() override;
 
-  void Enable(const RoleAttributes& opposite_attr) override;
-  void Disable(const RoleAttributes& opposite_attr) override;
+    void Enable(const RoleAttributes& opposite_attr) override;
+    void Disable(const RoleAttributes& opposite_attr) override;
 
-  bool Transmit(const MessagePtr& msg, const MessageInfo& msg_info) override;
+    bool Transmit(const MessagePtr& msg, const MessageInfo& msg_info) override;
 
-  bool AcquireMessage(std::shared_ptr<M>& msg);
+    bool AcquireMessage(std::shared_ptr<M>& msg);
 
- private:
-  uint64_t channel_id_;
-  IntraDispatcherPtr dispatcher_;
+private:
+    uint64_t channel_id_;
+    IntraDispatcherPtr dispatcher_;
 };
 
 template <typename M>
 bool IntraTransmitter<M>::AcquireMessage(std::shared_ptr<M>& msg) {
-  return false;
+    return false;
 }
 
 template <typename M>
 IntraTransmitter<M>::IntraTransmitter(const RoleAttributes& attr)
-    : Transmitter<M>(attr), channel_id_(attr.channel_id()), dispatcher_(nullptr) {}
+    : Transmitter<M>(attr),
+      channel_id_(attr.channel_id()),
+      dispatcher_(nullptr) {}
 
 template <typename M>
 IntraTransmitter<M>::~IntraTransmitter() {
-  Disable();
+    Disable();
 }
 
 template <typename M>
 void IntraTransmitter<M>::Enable(const RoleAttributes& opposite_attr) {
-  (void)opposite_attr;
-  this->Enable();
+    (void)opposite_attr;
+    this->Enable();
 }
 
 template <typename M>
 void IntraTransmitter<M>::Disable(const RoleAttributes& opposite_attr) {
-  (void)opposite_attr;
-  this->Disable();
+    (void)opposite_attr;
+    this->Disable();
 }
 
 template <typename M>
 void IntraTransmitter<M>::Enable() {
-  if (!this->enabled_) {
-    dispatcher_ = IntraDispatcher::Instance();
-    this->enabled_ = true;
-  }
+    if (!this->enabled_) {
+        dispatcher_ = IntraDispatcher::Instance();
+        this->enabled_ = true;
+    }
 }
 
 template <typename M>
 void IntraTransmitter<M>::Disable() {
-  if (this->enabled_) {
-    dispatcher_ = nullptr;
-    this->enabled_ = false;
-  }
+    if (this->enabled_) {
+        dispatcher_ = nullptr;
+        this->enabled_ = false;
+    }
 }
 
 template <typename M>
-bool IntraTransmitter<M>::Transmit(const MessagePtr& msg, const MessageInfo& msg_info) {
-  if (!this->enabled_) {
-    ADEBUG << "not enable.";
-    return false;
-  }
+bool IntraTransmitter<M>::Transmit(const MessagePtr& msg,
+                                   const MessageInfo& msg_info) {
+    if (!this->enabled_) {
+        ADEBUG << "not enable.";
+        return false;
+    }
 
-  dispatcher_->OnMessage(channel_id_, msg, msg_info);
-  return true;
+    dispatcher_->OnMessage(channel_id_, msg, msg_info);
+    return true;
 }
 
 }  // namespace transport

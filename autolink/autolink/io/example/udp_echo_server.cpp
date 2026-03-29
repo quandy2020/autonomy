@@ -34,49 +34,53 @@ using autolink::Time;
 using autolink::io::Session;
 
 void Echo(const std::shared_ptr<Session>& session) {
-  struct sockaddr_in client_addr;
-  std::vector<char> recv_buffer(2049);
-  int nbytes = 0;
-  socklen_t sock_len = static_cast<socklen_t>(sizeof(client_addr));
+    struct sockaddr_in client_addr;
+    std::vector<char> recv_buffer(2049);
+    int nbytes = 0;
+    socklen_t sock_len = static_cast<socklen_t>(sizeof(client_addr));
 
-  while (true) {
-    nbytes = static_cast<int>(
-        session->RecvFrom(recv_buffer.data(), recv_buffer.size(), 0, (struct sockaddr*)&client_addr, &sock_len));
-    if (nbytes < 0) {
-      std::cout << "recv from client failed." << std::endl;
-      continue;
+    while (true) {
+        nbytes = static_cast<int>(
+            session->RecvFrom(recv_buffer.data(), recv_buffer.size(), 0,
+                              (struct sockaddr*)&client_addr, &sock_len));
+        if (nbytes < 0) {
+            std::cout << "recv from client failed." << std::endl;
+            continue;
+        }
+        session->SendTo(recv_buffer.data(), nbytes, 0,
+                        (const struct sockaddr*)&client_addr, sock_len);
     }
-    session->SendTo(recv_buffer.data(), nbytes, 0, (const struct sockaddr*)&client_addr, sock_len);
-  }
 }
 
 int main(int argc, char* argv[]) {
-  if (argc != 2) {
-    std::cout << "Usage: " << argv[0] << " <server port>" << std::endl;
-    return -1;
-  }
+    if (argc != 2) {
+        std::cout << "Usage: " << argv[0] << " <server port>" << std::endl;
+        return -1;
+    }
 
-  autolink::Init(argv[0]);
+    autolink::Init(argv[0]);
 
-  uint16_t server_port = static_cast<uint16_t>(atoi(argv[1]));
-  autolink::scheduler::Instance()->CreateTask(
-      [&server_port]() {
-        struct sockaddr_in server_addr;
-        server_addr.sin_family = AF_INET;
-        server_addr.sin_addr.s_addr = htons(INADDR_ANY);
-        server_addr.sin_port = htons(server_port);
+    uint16_t server_port = static_cast<uint16_t>(atoi(argv[1]));
+    autolink::scheduler::Instance()->CreateTask(
+        [&server_port]() {
+            struct sockaddr_in server_addr;
+            server_addr.sin_family = AF_INET;
+            server_addr.sin_addr.s_addr = htons(INADDR_ANY);
+            server_addr.sin_port = htons(server_port);
 
-        auto session = std::make_shared<Session>();
-        session->Socket(AF_INET, SOCK_DGRAM, 0);
-        if (session->Bind((struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-          std::cout << "bind to port[" << server_port << "] failed." << std::endl;
-          return;
-        }
-        Echo(session);
-        session->Close();
-      },
-      "echo_server");
+            auto session = std::make_shared<Session>();
+            session->Socket(AF_INET, SOCK_DGRAM, 0);
+            if (session->Bind((struct sockaddr*)&server_addr,
+                              sizeof(server_addr)) < 0) {
+                std::cout << "bind to port[" << server_port << "] failed."
+                          << std::endl;
+                return;
+            }
+            Echo(session);
+            session->Close();
+        },
+        "echo_server");
 
-  autolink::WaitForShutdown();
-  return 0;
+    autolink::WaitForShutdown();
+    return 0;
 }

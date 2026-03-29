@@ -19,8 +19,9 @@
 namespace cartographer {
 namespace mapping {
 
-Eigen::Quaterniond FromTwoVectors(const Eigen::Vector3d& a, const Eigen::Vector3d& b) {
-  return Eigen::Quaterniond::FromTwoVectors(a, b);
+Eigen::Quaterniond FromTwoVectors(const Eigen::Vector3d& a,
+                                  const Eigen::Vector3d& b) {
+    return Eigen::Quaterniond::FromTwoVectors(a, b);
 }
 
 }  // namespace mapping

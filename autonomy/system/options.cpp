@@ -26,30 +26,37 @@ namespace autonomy {
 namespace system {
 namespace {
 
-proto::AutonomyOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-  proto::AutonomyOptions options;
+proto::AutonomyOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+    proto::AutonomyOptions options;
 
-  if (parameter_dictionary->HasKey("map")) {
-    *options.mutable_map_options() = map::LoadOptions(parameter_dictionary->GetDictionary("map").get());
-  }
-  if (parameter_dictionary->HasKey("controller")) {
-    *options.mutable_controller_options() =
-        control::LoadOptions(parameter_dictionary->GetDictionary("controller").get());
-  }
-  if (parameter_dictionary->HasKey("planning")) {
-    *options.mutable_planner_options() = planning::LoadOptions(parameter_dictionary->GetDictionary("planning").get());
-  }
-  return options;
+    if (parameter_dictionary->HasKey("map")) {
+        *options.mutable_map_options() =
+            map::LoadOptions(parameter_dictionary->GetDictionary("map").get());
+    }
+    if (parameter_dictionary->HasKey("controller")) {
+        *options.mutable_controller_options() = control::LoadOptions(
+            parameter_dictionary->GetDictionary("controller").get());
+    }
+    if (parameter_dictionary->HasKey("planning")) {
+        *options.mutable_planner_options() = planning::LoadOptions(
+            parameter_dictionary->GetDictionary("planning").get());
+    }
+    return options;
 }
 }  // namespace
 
-proto::AutonomyOptions CreateOptions(const std::string& configuration_directory,
-                                     const std::string& configuration_basename) {
-  auto file_resolver = std::make_unique<::autonomy::common::ConfigurationFileResolver>(
-      std::vector<std::string>{configuration_directory});
-  const std::string code = file_resolver->GetFileContentOrDie(configuration_basename);
-  ::autonomy::common::LuaParameterDictionary lua_parameter_dictionary(code, std::move(file_resolver));
-  return LoadOptions(&lua_parameter_dictionary);
+proto::AutonomyOptions CreateOptions(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename) {
+    auto file_resolver =
+        std::make_unique<::autonomy::common::ConfigurationFileResolver>(
+            std::vector<std::string>{configuration_directory});
+    const std::string code =
+        file_resolver->GetFileContentOrDie(configuration_basename);
+    ::autonomy::common::LuaParameterDictionary lua_parameter_dictionary(
+        code, std::move(file_resolver));
+    return LoadOptions(&lua_parameter_dictionary);
 }
 
 }  // namespace system

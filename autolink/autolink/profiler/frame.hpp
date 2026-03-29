@@ -25,21 +25,26 @@
 namespace autolink {
 namespace profiler {
 
-class Frame {
- public:
-  void Push(Block* block);
-  Block* Top();
-  void Pop();
+class Frame
+{
+public:
+    void Push(Block* block);
+    Block* Top();
+    void Pop();
 
-  bool DumpToFile(const std::string& coroutine_name);
-  void Clear();
+    bool DumpToFile(const std::string& coroutine_name);
+    void Clear();
 
-  std::uint32_t size() const { return stack_.size(); }
-  bool finished() const { return stack_.empty(); }
+    std::uint32_t size() const {
+        return stack_.size();
+    }
+    bool finished() const {
+        return stack_.empty();
+    }
 
- private:
-  std::stack<Block*> stack_;
-  std::list<Block> storage_;
+private:
+    std::stack<Block*> stack_;
+    std::list<Block> storage_;
 };
 
 }  // namespace profiler

@@ -27,12 +27,13 @@ namespace view_controllers {
  * @brief FollowerViewController
  * Follower view controller
  */
-class FollowerViewController {
- public:
-  explicit FollowerViewController();
-  virtual ~FollowerViewController();
+class FollowerViewController
+{
+public:
+    explicit FollowerViewController();
+    virtual ~FollowerViewController();
 
-  // TODO: Implement view controller interface
+    // TODO: Implement view controller interface
 };
 
 }  // namespace view_controllers

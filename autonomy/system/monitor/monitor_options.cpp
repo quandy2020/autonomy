@@ -21,14 +21,14 @@ namespace system {
 namespace monitor {
 
 MonitorOptions MonitorOptions::Default() {
-  MonitorOptions opts;
-  opts.enable_cpu_monitor = true;
-  opts.enable_mem_monitor = true;
-  opts.enable_prometheus = true;
-  opts.prometheus_bind_address = "0.0.0.0:9090";
-  opts.prometheus_metrics_prefix = "autonomy_system";
-  opts.collect_interval_sec = 1.0;
-  return opts;
+    MonitorOptions opts;
+    opts.enable_cpu_monitor = true;
+    opts.enable_mem_monitor = true;
+    opts.enable_prometheus = true;
+    opts.prometheus_bind_address = "0.0.0.0:9090";
+    opts.prometheus_metrics_prefix = "autonomy_system";
+    opts.collect_interval_sec = 1.0;
+    return opts;
 }
 
 }  // namespace monitor

@@ -32,50 +32,55 @@ using autonomy::common::math::Vec2d;
 using Eigen::MatrixXd;
 
 TEST(OSQPSolverTest, solver_test_01) {
-  std::vector<double> t_knots{0, 1, 2, 3, 4, 5};
-  uint32_t order = 5;
-  OsqpSpline2dSolver spline_solver(t_knots, order);
+    std::vector<double> t_knots{0, 1, 2, 3, 4, 5};
+    uint32_t order = 5;
+    OsqpSpline2dSolver spline_solver(t_knots, order);
 
-  Spline2dConstraint* constraint = spline_solver.mutable_constraint();
-  Spline2dKernel* kernel = spline_solver.mutable_kernel();
+    Spline2dConstraint* constraint = spline_solver.mutable_constraint();
+    Spline2dKernel* kernel = spline_solver.mutable_kernel();
 
-  std::vector<double> et{0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
-  std::vector<double> bound(11, 0.2);
-  std::vector<std::vector<double>> constraint_data{
-      {-1.211566924, 434592.7844, 4437011.568}, {-1.211572116, 434594.6884, 4437006.498},
-      {-1.21157766, 434596.5923, 4437001.428},  {-1.211571616, 434598.4962, 4436996.358},
-      {-1.21155227, 434600.4002, 4436991.288},  {-1.211532017, 434602.3043, 4436986.218},
-      {-1.21155775, 434604.2083, 4436981.148},  {-1.211634014, 434606.1122, 4436976.077},
-      {-1.211698593, 434608.0156, 4436971.007}, {-1.211576177, 434609.9191, 4436965.937},
-      {-1.211256197, 434611.8237, 4436960.867}};
-  std::vector<double> angle;
-  std::vector<Vec2d> ref_point;
+    std::vector<double> et{0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5};
+    std::vector<double> bound(11, 0.2);
+    std::vector<std::vector<double>> constraint_data{
+        {-1.211566924, 434592.7844, 4437011.568},
+        {-1.211572116, 434594.6884, 4437006.498},
+        {-1.21157766, 434596.5923, 4437001.428},
+        {-1.211571616, 434598.4962, 4436996.358},
+        {-1.21155227, 434600.4002, 4436991.288},
+        {-1.211532017, 434602.3043, 4436986.218},
+        {-1.21155775, 434604.2083, 4436981.148},
+        {-1.211634014, 434606.1122, 4436976.077},
+        {-1.211698593, 434608.0156, 4436971.007},
+        {-1.211576177, 434609.9191, 4436965.937},
+        {-1.211256197, 434611.8237, 4436960.867}};
+    std::vector<double> angle;
+    std::vector<Vec2d> ref_point;
 
-  for (size_t i = 0; i < 11; ++i) {
-    angle.push_back(constraint_data[i][0]);
-    Vec2d prev_point(constraint_data[i][1], constraint_data[i][2]);
+    for (size_t i = 0; i < 11; ++i) {
+        angle.push_back(constraint_data[i][0]);
+        Vec2d prev_point(constraint_data[i][1], constraint_data[i][2]);
 
-    Vec2d new_point = prev_point;
-    ref_point.emplace_back(new_point.x(), new_point.y());
-  }
+        Vec2d new_point = prev_point;
+        ref_point.emplace_back(new_point.x(), new_point.y());
+    }
 
-  EXPECT_TRUE(constraint->Add2dBoundary(et, angle, ref_point, bound, bound));
-  EXPECT_TRUE(constraint->AddThirdDerivativeSmoothConstraint());
-  kernel->AddThirdOrderDerivativeMatrix(100);
-  // kernel->add_second_order_derivative_matrix(100);
-  // kernel->add_derivative_kernel_matrix(100);
+    EXPECT_TRUE(constraint->Add2dBoundary(et, angle, ref_point, bound, bound));
+    EXPECT_TRUE(constraint->AddThirdDerivativeSmoothConstraint());
+    kernel->AddThirdOrderDerivativeMatrix(100);
+    // kernel->add_second_order_derivative_matrix(100);
+    // kernel->add_derivative_kernel_matrix(100);
 
-  kernel->AddRegularization(0.1);
-  // constraint->add_point_angle_constraint(0, -1.21);
-  // TODO(all): fix the test.
-  auto start = std::chrono::system_clock::now();
-  EXPECT_TRUE(spline_solver.Solve());
-  auto end = std::chrono::system_clock::now();
-  std::chrono::duration<double> diff = end - start;
-  std::cout << "Time to solver is " << diff.count() << " s\n";
+    kernel->AddRegularization(0.1);
+    // constraint->add_point_angle_constraint(0, -1.21);
+    // TODO(all): fix the test.
+    auto start = std::chrono::system_clock::now();
+    EXPECT_TRUE(spline_solver.Solve());
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    std::cout << "Time to solver is " << diff.count() << " s\n";
 
-  MatrixXd gold_res(51, 6);
-  // clang-format off
+    MatrixXd gold_res(51, 6);
+    // clang-format off
   gold_res <<
 -1.211536842077514109 ,  434592.66747698455583,   4437011.3104558130726,   3.8080526249093837876,   -10.139728378837974176,  -4.9702012767283664302e-06, // NOLINT
 -1.2115424151423492827,  434593.04828098160215,   4437010.2964778374881,   3.8080266324837173109,   -10.139830860402472723,  -5.250894216084755994e-06, // NOLINT
@@ -128,15 +133,17 @@ TEST(OSQPSolverTest, solver_test_01) {
 -1.2114633029633761208,  434610.94480716442922,   4436962.6379264798015,   3.8083440648606621259,   -10.138239135608092312,  2.3132756898251399347e-05, // NOLINT
 -1.211438204493459958 ,  434611.3256503836019 ,   4436961.624117734842 ,   3.8085204548089248711,   -10.137935751807310325,  2.3203461921265504272e-05, // NOLINT
 -1.211413066070579303 ,  434611.70651126321172,   4436960.6103393463418,   3.8086970946064799826,   -10.13763183447815841 ,  2.3217522018132972405e-05; // NOLINT
-  // clang-format on
+    // clang-format on
 
-  double t = 0;
-  for (int i = 0; i < 51; ++i) {
-    auto xy = spline_solver.spline()(t);
-    EXPECT_NEAR(xy.first, gold_res(i, 1), std::fmax(3e-3, gold_res(i, 1) * 1e-4));
-    EXPECT_NEAR(xy.second, gold_res(i, 2), std::fmax(3e-3, gold_res(i, 2) * 1e-4));
-    t += 0.1;
-  }
+    double t = 0;
+    for (int i = 0; i < 51; ++i) {
+        auto xy = spline_solver.spline()(t);
+        EXPECT_NEAR(xy.first, gold_res(i, 1),
+                    std::fmax(3e-3, gold_res(i, 1) * 1e-4));
+        EXPECT_NEAR(xy.second, gold_res(i, 2),
+                    std::fmax(3e-3, gold_res(i, 2) * 1e-4));
+        t += 0.1;
+    }
 }
 
 }  // namespace math

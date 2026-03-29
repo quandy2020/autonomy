@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-IlluminanceDisplay::IlluminanceDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/Illuminance");
-  setName(name);
+IlluminanceDisplay::IlluminanceDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/Illuminance");
+    setName(name);
 }
 
 IlluminanceDisplay::~IlluminanceDisplay() = default;
 
-void IlluminanceDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void IlluminanceDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void IlluminanceDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void IlluminanceDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void IlluminanceDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void IlluminanceDisplay::reset() { aviz::common::Display::reset(); }
+void IlluminanceDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void IlluminanceDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void IlluminanceDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void IlluminanceDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

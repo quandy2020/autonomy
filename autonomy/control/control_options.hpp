@@ -24,7 +24,8 @@ class LuaParameterDictionary;
 }
 namespace control {
 
-proto::ControllerOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::ControllerOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace control
 }  // namespace autonomy

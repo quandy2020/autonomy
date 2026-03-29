@@ -33,29 +33,32 @@ namespace decorator {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class SingleTrigger : public BT::DecoratorNode {
- public:
-  /**
-   * @brief A constructor for SingleTrigger
-   * @param name Name for the XML tag for this node
-   * @param conf BT node configuration
-   */
-  SingleTrigger(const std::string& name, const BT::NodeConfiguration& conf);
+class SingleTrigger : public BT::DecoratorNode
+{
+public:
+    /**
+     * @brief A constructor for SingleTrigger
+     * @param name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    SingleTrigger(const std::string& name, const BT::NodeConfiguration& conf);
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing node-specific ports
-   */
-  static BT::PortsList providedPorts() { return {}; }
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        return {};
+    }
 
- private:
-  /**
-   * @brief The main override required by a BT action
-   * @return BT::NodeStatus Status of tick execution
-   */
-  BT::NodeStatus tick() override;
+private:
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
 
-  bool first_time_;
+    bool first_time_;
 };
 
 }  // namespace decorator

@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 PoseTool::PoseTool() {
-  // TODO: Initialize tool
+    // TODO: Initialize tool
 }
 
 PoseTool::~PoseTool() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace tools

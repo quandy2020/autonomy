@@ -28,21 +28,23 @@ namespace displays {
  * @brief PoseCovarianceDisplay
  * Pose covariance display
  */
-class PoseCovarianceDisplay : public aviz::common::Display {
- public:
-  explicit PoseCovarianceDisplay(const QString& name = "PoseCovarianceDisplay");
-  ~PoseCovarianceDisplay() override;
+class PoseCovarianceDisplay : public aviz::common::Display
+{
+public:
+    explicit PoseCovarianceDisplay(
+        const QString& name = "PoseCovarianceDisplay");
+    ~PoseCovarianceDisplay() override;
 
-  // Overrides from Display
-  void onInitialize() override;
+    // Overrides from Display
+    void onInitialize() override;
 
-  void onEnable() override;
-  void onDisable() override;
-  void update(float wall_dt, float ros_dt) override;
-  void reset() override;
+    void onEnable() override;
+    void onDisable() override;
+    void update(float wall_dt, float ros_dt) override;
+    void reset() override;
 
- private:
-  // Implementation details
+private:
+    // Implementation details
 };
 
 }  // namespace displays

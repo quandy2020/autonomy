@@ -28,34 +28,42 @@ namespace cpu_monitor {
  * 单核或整体的 CPU 时间计数（与 /proc/stat 对应）。
  */
 struct CpuTickCounts {
-  uint64_t user{0};
-  uint64_t nice{0};
-  uint64_t system{0};
-  uint64_t idle{0};
-  uint64_t iowait{0};
-  uint64_t irq{0};
-  uint64_t softirq{0};
-  uint64_t steal{0};
-  uint64_t guest{0};
-  uint64_t guest_nice{0};
+    uint64_t user{0};
+    uint64_t nice{0};
+    uint64_t system{0};
+    uint64_t idle{0};
+    uint64_t iowait{0};
+    uint64_t irq{0};
+    uint64_t softirq{0};
+    uint64_t steal{0};
+    uint64_t guest{0};
+    uint64_t guest_nice{0};
 
-  uint64_t Total() const { return user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice; }
-  uint64_t Idle() const { return idle + iowait; }
-  uint64_t NonIdle() const { return Total() - Idle(); }
+    uint64_t Total() const {
+        return user + nice + system + idle + iowait + irq + softirq + steal +
+               guest + guest_nice;
+    }
+    uint64_t Idle() const {
+        return idle + iowait;
+    }
+    uint64_t NonIdle() const {
+        return Total() - Idle();
+    }
 };
 
 /**
  * 各核及整体的 CPU 使用率 [0, 100]。
  */
 struct CpuUsageStatistics {
-  /// 整体使用率（所有核平均）
-  double total_usage_percent{0.0};
-  /// 每核使用率，下标 0 为 cpu0，与 /proc/stat 一致
-  std::vector<double> per_core_usage_percent;
+    /// 整体使用率（所有核平均）
+    double total_usage_percent{0.0};
+    /// 每核使用率，下标 0 为 cpu0，与 /proc/stat 一致
+    std::vector<double> per_core_usage_percent;
 };
 
 /// 根据前后两次 tick 计数计算使用率
-void ComputeUsage(const std::vector<CpuTickCounts>& prev, const std::vector<CpuTickCounts>& curr,
+void ComputeUsage(const std::vector<CpuTickCounts>& prev,
+                  const std::vector<CpuTickCounts>& curr,
                   CpuUsageStatistics* out);
 
 }  // namespace cpu_monitor

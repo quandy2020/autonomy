@@ -33,79 +33,82 @@ using autolink::mainboard::ModuleArgument;
 using autolink::mainboard::ModuleController;
 
 int main(int argc, char** argv) {
-  // parse the argument
-  ModuleArgument module_args;
-  module_args.ParseArgument(argc, argv);
+    // parse the argument
+    ModuleArgument module_args;
+    module_args.ParseArgument(argc, argv);
 
-  auto dag_list = module_args.GetDAGConfList();
+    auto dag_list = module_args.GetDAGConfList();
 
-  std::string dag_info;
-  for (auto&& i = dag_list.begin(); i != dag_list.end(); i++) {
-    size_t pos = 0;
-    for (size_t j = 0; j < (*i).length(); j++) {
-      pos = ((*i)[j] == '/') ? j : pos;
-    }
-    if (i != dag_list.begin()) dag_info += "_";
+    std::string dag_info;
+    for (auto&& i = dag_list.begin(); i != dag_list.end(); i++) {
+        size_t pos = 0;
+        for (size_t j = 0; j < (*i).length(); j++) {
+            pos = ((*i)[j] == '/') ? j : pos;
+        }
+        if (i != dag_list.begin())
+            dag_info += "_";
 
-    if (pos == 0) {
-      dag_info += *i;
-    } else {
-      dag_info += (pos == (*i).length() - 1) ? (*i).substr(pos) : (*i).substr(pos + 1);
-    }
-  }
-
-  if (module_args.GetProcessGroup() != autolink::mainboard::DEFAULT_process_group_) {
-    dag_info = module_args.GetProcessGroup();
-  }
-
-  // initialize autolink
-  autolink::Init(argv[0], dag_info);
-
-  static bool enable_cpu_profile = module_args.GetEnableCpuprofile();
-  static bool enable_mem_profile = module_args.GetEnableHeapprofile();
-  std::signal(SIGTERM, [](int sig) {
-    autolink::OnShutdown(sig);
-    if (enable_cpu_profile) {
-      ProfilerStop();
+        if (pos == 0) {
+            dag_info += *i;
+        } else {
+            dag_info += (pos == (*i).length() - 1) ? (*i).substr(pos)
+                                                   : (*i).substr(pos + 1);
+        }
     }
 
-    if (enable_mem_profile) {
-      HeapProfilerDump("Befor shutdown");
-      HeapProfilerStop();
+    if (module_args.GetProcessGroup() !=
+        autolink::mainboard::DEFAULT_process_group_) {
+        dag_info = module_args.GetProcessGroup();
     }
-  });
 
-  if (module_args.GetEnableHeapprofile()) {
-    auto profile_filename = module_args.GetHeapProfileFilename();
-    HeapProfilerStart(profile_filename.c_str());
-  }
+    // initialize autolink
+    autolink::Init(argv[0], dag_info);
 
-  // start module
-  ModuleController controller(module_args);
-  if (!controller.Init()) {
+    static bool enable_cpu_profile = module_args.GetEnableCpuprofile();
+    static bool enable_mem_profile = module_args.GetEnableHeapprofile();
+    std::signal(SIGTERM, [](int sig) {
+        autolink::OnShutdown(sig);
+        if (enable_cpu_profile) {
+            ProfilerStop();
+        }
+
+        if (enable_mem_profile) {
+            HeapProfilerDump("Befor shutdown");
+            HeapProfilerStop();
+        }
+    });
+
+    if (module_args.GetEnableHeapprofile()) {
+        auto profile_filename = module_args.GetHeapProfileFilename();
+        HeapProfilerStart(profile_filename.c_str());
+    }
+
+    // start module
+    ModuleController controller(module_args);
+    if (!controller.Init()) {
+        controller.Clear();
+        AERROR << "module start error.";
+        return -1;
+    }
+
+    if (module_args.GetEnableCpuprofile()) {
+        auto profile_filename = module_args.GetProfileFilename();
+        ProfilerStart(profile_filename.c_str());
+    }
+
+    autolink::WaitForShutdown();
+
+    if (module_args.GetEnableCpuprofile()) {
+        ProfilerStop();
+    }
+
+    if (module_args.GetEnableHeapprofile()) {
+        HeapProfilerDump("Befor shutdown");
+        HeapProfilerStop();
+    }
+
     controller.Clear();
-    AERROR << "module start error.";
-    return -1;
-  }
+    AINFO << "exit mainboard.";
 
-  if (module_args.GetEnableCpuprofile()) {
-    auto profile_filename = module_args.GetProfileFilename();
-    ProfilerStart(profile_filename.c_str());
-  }
-
-  autolink::WaitForShutdown();
-
-  if (module_args.GetEnableCpuprofile()) {
-    ProfilerStop();
-  }
-
-  if (module_args.GetEnableHeapprofile()) {
-    HeapProfilerDump("Befor shutdown");
-    HeapProfilerStop();
-  }
-
-  controller.Clear();
-  AINFO << "exit mainboard.";
-
-  return 0;
+    return 0;
 }

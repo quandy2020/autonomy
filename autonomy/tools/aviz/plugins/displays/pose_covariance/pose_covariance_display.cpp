@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-PoseCovarianceDisplay::PoseCovarianceDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/PoseCovariance");
-  setName(name);
+PoseCovarianceDisplay::PoseCovarianceDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/PoseCovariance");
+    setName(name);
 }
 
 PoseCovarianceDisplay::~PoseCovarianceDisplay() = default;
 
-void PoseCovarianceDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void PoseCovarianceDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void PoseCovarianceDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void PoseCovarianceDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void PoseCovarianceDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void PoseCovarianceDisplay::reset() { aviz::common::Display::reset(); }
+void PoseCovarianceDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void PoseCovarianceDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void PoseCovarianceDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void PoseCovarianceDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

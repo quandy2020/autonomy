@@ -23,58 +23,63 @@
 namespace autolink {
 namespace transport {
 
-SubListener::SubListener(const NewMsgCallback& callback) : callback_(callback) {}
+SubListener::SubListener(const NewMsgCallback& callback)
+    : callback_(callback) {}
 
 SubListener::~SubListener() {}
 
 void SubListener::onNewDataMessage(eprosima::fastrtps::Subscriber* sub) {
-  RETURN_IF_NULL(sub);
-  RETURN_IF_NULL(callback_);
-  std::lock_guard<std::mutex> lock(mutex_);
+    RETURN_IF_NULL(sub);
+    RETURN_IF_NULL(callback_);
+    std::lock_guard<std::mutex> lock(mutex_);
 
-  // fetch channel name (getTopicName() may return string_255 in Fast-DDS 2.x)
-  std::string topic_name = sub->getAttributes().topic.getTopicName().c_str();
-  auto channel_id = common::Hash(topic_name);
-  eprosima::fastrtps::SampleInfo_t m_info;
-  UnderlayMessage m;
+    // fetch channel name (getTopicName() may return string_255 in Fast-DDS 2.x)
+    std::string topic_name = sub->getAttributes().topic.getTopicName().c_str();
+    auto channel_id = common::Hash(topic_name);
+    eprosima::fastrtps::SampleInfo_t m_info;
+    UnderlayMessage m;
 
-  RETURN_IF(!sub->takeNextData(reinterpret_cast<void*>(&m), &m_info));
-  RETURN_IF(m_info.sampleKind != eprosima::fastrtps::rtps::ALIVE);
+    RETURN_IF(!sub->takeNextData(reinterpret_cast<void*>(&m), &m_info));
+    RETURN_IF(m_info.sampleKind != eprosima::fastrtps::rtps::ALIVE);
 
-  // fetch MessageInfo
-  char* ptr = reinterpret_cast<char*>(&m_info.related_sample_identity.writer_guid());
-  Identity sender_id(false);
-  sender_id.set_data(ptr);
-  msg_info_.set_sender_id(sender_id);
+    // fetch MessageInfo
+    char* ptr =
+        reinterpret_cast<char*>(&m_info.related_sample_identity.writer_guid());
+    Identity sender_id(false);
+    sender_id.set_data(ptr);
+    msg_info_.set_sender_id(sender_id);
 
-  Identity spare_id(false);
-  spare_id.set_data(ptr + ID_SIZE);
-  msg_info_.set_spare_id(spare_id);
+    Identity spare_id(false);
+    spare_id.set_data(ptr + ID_SIZE);
+    msg_info_.set_spare_id(spare_id);
 
-  uint64_t seq_num = ((int64_t)m_info.related_sample_identity.sequence_number().high) << 32 |
-                     m_info.related_sample_identity.sequence_number().low;
-  msg_info_.set_seq_num(seq_num);
+    uint64_t seq_num =
+        ((int64_t)m_info.related_sample_identity.sequence_number().high) << 32 |
+        m_info.related_sample_identity.sequence_number().low;
+    msg_info_.set_seq_num(seq_num);
 
-  // fetch message string
-  std::shared_ptr<std::string> msg_str = std::make_shared<std::string>(m.data());
+    // fetch message string
+    std::shared_ptr<std::string> msg_str =
+        std::make_shared<std::string>(m.data());
 
-  uint64_t recv_time = Time::Now().ToNanosecond();
-  uint64_t base_time = recv_time & 0xfffffff0000000;
-  int32_t send_time_low = m.timestamp();
-  uint64_t send_time = base_time | send_time_low;
-  int32_t msg_seq_num = m.seq();
+    uint64_t recv_time = Time::Now().ToNanosecond();
+    uint64_t base_time = recv_time & 0xfffffff0000000;
+    int32_t send_time_low = m.timestamp();
+    uint64_t send_time = base_time | send_time_low;
+    int32_t msg_seq_num = m.seq();
 
-  msg_info_.set_msg_seq_num(msg_seq_num);
-  msg_info_.set_send_time(send_time);
+    msg_info_.set_msg_seq_num(msg_seq_num);
+    msg_info_.set_send_time(send_time);
 
-  // callback
-  callback_(channel_id, msg_str, msg_info_);
+    // callback
+    callback_(channel_id, msg_str, msg_info_);
 }
 
-void SubListener::onSubscriptionMatched(eprosima::fastrtps::Subscriber* sub,
-                                        eprosima::fastrtps::rtps::MatchingInfo& info) {
-  (void)sub;
-  (void)info;
+void SubListener::onSubscriptionMatched(
+    eprosima::fastrtps::Subscriber* sub,
+    eprosima::fastrtps::rtps::MatchingInfo& info) {
+    (void)sub;
+    (void)info;
 }
 
 }  // namespace transport

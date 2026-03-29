@@ -21,9 +21,10 @@
 namespace autolink {
 namespace transport {
 
-class SegmentFactory {
- public:
-  static SegmentPtr CreateSegment(uint64_t channel_id);
+class SegmentFactory
+{
+public:
+    static SegmentPtr CreateSegment(uint64_t channel_id);
 };
 
 }  // namespace transport

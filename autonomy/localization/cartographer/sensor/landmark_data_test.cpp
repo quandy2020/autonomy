@@ -30,39 +30,49 @@ namespace {
 using ::testing::DoubleNear;
 using ::testing::Field;
 
-::testing::Matcher<const LandmarkObservation&> EqualsLandmark(const LandmarkObservation& expected) {
-  return ::testing::AllOf(
-      Field(&LandmarkObservation::id, expected.id),
-      Field(&LandmarkObservation::landmark_to_tracking_transform,
+::testing::Matcher<const LandmarkObservation&> EqualsLandmark(
+    const LandmarkObservation& expected) {
+    return ::testing::AllOf(
+        Field(&LandmarkObservation::id, expected.id),
+        Field(
+            &LandmarkObservation::landmark_to_tracking_transform,
             transform::IsNearly(expected.landmark_to_tracking_transform, 1e-2)),
-      Field(&LandmarkObservation::translation_weight, DoubleNear(expected.translation_weight, 0.01)),
-      Field(&LandmarkObservation::rotation_weight, DoubleNear(expected.rotation_weight, 0.01)));
+        Field(&LandmarkObservation::translation_weight,
+              DoubleNear(expected.translation_weight, 0.01)),
+        Field(&LandmarkObservation::rotation_weight,
+              DoubleNear(expected.rotation_weight, 0.01)));
 }
 
-class LandmarkDataTest : public ::testing::Test {
- protected:
-  LandmarkDataTest()
-      : observations_({{
-                           "ID1",
-                           transform::Rigid3d(Eigen::Vector3d(1., 1., 1.), Eigen::Quaterniond(1., 1., -1., -1.)),
-                           1.f,
-                           3.f,
-                       },
-                       {
-                           "ID2",
-                           transform::Rigid3d(Eigen::Vector3d(2., 2., 2.), Eigen::Quaterniond(2., 2., -2., -2.)),
-                           2.f,
-                           4.f,
-                       }}) {}
-  std::vector<LandmarkObservation> observations_;
+class LandmarkDataTest : public ::testing::Test
+{
+protected:
+    LandmarkDataTest()
+        : observations_(
+              {{
+                   "ID1",
+                   transform::Rigid3d(Eigen::Vector3d(1., 1., 1.),
+                                      Eigen::Quaterniond(1., 1., -1., -1.)),
+                   1.f,
+                   3.f,
+               },
+               {
+                   "ID2",
+                   transform::Rigid3d(Eigen::Vector3d(2., 2., 2.),
+                                      Eigen::Quaterniond(2., 2., -2., -2.)),
+                   2.f,
+                   4.f,
+               }}) {}
+    std::vector<LandmarkObservation> observations_;
 };
 
 TEST_F(LandmarkDataTest, LandmarkDataToAndFromProto) {
-  const auto expected = LandmarkData{common::FromUniversal(50), observations_};
-  const auto actual = FromProto(ToProto(expected));
-  EXPECT_EQ(expected.time, actual.time);
-  EXPECT_THAT(actual.landmark_observations, ElementsAre(EqualsLandmark(expected.landmark_observations[0]),
-                                                        EqualsLandmark(expected.landmark_observations[1])));
+    const auto expected =
+        LandmarkData{common::FromUniversal(50), observations_};
+    const auto actual = FromProto(ToProto(expected));
+    EXPECT_EQ(expected.time, actual.time);
+    EXPECT_THAT(actual.landmark_observations,
+                ElementsAre(EqualsLandmark(expected.landmark_observations[0]),
+                            EqualsLandmark(expected.landmark_observations[1])));
 }
 
 }  // namespace

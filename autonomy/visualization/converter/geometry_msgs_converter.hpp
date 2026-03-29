@@ -25,13 +25,18 @@ namespace converter {
 namespace impl {
 
 // geometry_msgs
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::geometry_msgs::PoseStamped& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::geometry_msgs::PoseArray& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::geometry_msgs::TransformStamped& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::geometry_msgs::PoseStamped& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::geometry_msgs::PoseArray& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::geometry_msgs::TransformStamped& message);
 foxglove::schemas::SceneUpdate ToFoxgloveImpl(
     const autonomy::commsgs::proto::geometry_msgs::TransformStampeds& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::geometry_msgs::Twist& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::geometry_msgs::TwistStamped& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::geometry_msgs::Twist& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::geometry_msgs::TwistStamped& message);
 
 }  // namespace impl
 }  // namespace converter

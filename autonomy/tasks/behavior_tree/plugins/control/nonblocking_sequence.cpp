@@ -22,40 +22,43 @@ namespace behavior_tree {
 namespace plugins {
 namespace control {
 
-NonblockingSequence::NonblockingSequence(const std::string& name) : BT::ControlNode(name, {}) {}
+NonblockingSequence::NonblockingSequence(const std::string& name)
+    : BT::ControlNode(name, {}) {}
 
-NonblockingSequence::NonblockingSequence(const std::string& name, const BT::NodeConfiguration& conf)
+NonblockingSequence::NonblockingSequence(const std::string& name,
+                                         const BT::NodeConfiguration& conf)
     : BT::ControlNode(name, conf) {}
 
 BT::NodeStatus NonblockingSequence::tick() {
-  bool all_success = true;
+    bool all_success = true;
 
-  for (std::size_t i = 0; i < children_nodes_.size(); ++i) {
-    auto status = children_nodes_[i]->executeTick();
-    switch (status) {
-      case BT::NodeStatus::FAILURE:
-        ControlNode::haltChildren();
-        all_success = false;  // probably not needed
-        return status;
-      case BT::NodeStatus::SUCCESS:
-        break;
-      case BT::NodeStatus::RUNNING:
-        all_success = false;
-        break;
-      default:
-        std::stringstream error_msg;
-        error_msg << "Invalid node status. Received status " << status << "from child " << children_nodes_[i]->name();
-        throw std::runtime_error(error_msg.str());
+    for (std::size_t i = 0; i < children_nodes_.size(); ++i) {
+        auto status = children_nodes_[i]->executeTick();
+        switch (status) {
+            case BT::NodeStatus::FAILURE:
+                ControlNode::haltChildren();
+                all_success = false;  // probably not needed
+                return status;
+            case BT::NodeStatus::SUCCESS:
+                break;
+            case BT::NodeStatus::RUNNING:
+                all_success = false;
+                break;
+            default:
+                std::stringstream error_msg;
+                error_msg << "Invalid node status. Received status " << status
+                          << "from child " << children_nodes_[i]->name();
+                throw std::runtime_error(error_msg.str());
+        }
     }
-  }
 
-  // Wrap up.
-  if (all_success) {
-    ControlNode::haltChildren();
-    return BT::NodeStatus::SUCCESS;
-  }
+    // Wrap up.
+    if (all_success) {
+        ControlNode::haltChildren();
+        return BT::NodeStatus::SUCCESS;
+    }
 
-  return BT::NodeStatus::RUNNING;
+    return BT::NodeStatus::RUNNING;
 }
 
 }  // namespace control
@@ -65,6 +68,7 @@ BT::NodeStatus NonblockingSequence::tick() {
 }  // namespace autonomy
 
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence>(
-      "NonblockingSequence");
+    factory.registerNodeType<
+        autonomy::tasks::behavior_tree::plugins::control::NonblockingSequence>(
+        "NonblockingSequence");
 }

@@ -23,48 +23,51 @@ namespace control {
 namespace controller {
 namespace mppi_controller {
 
-void CriticManager::configure(std::shared_ptr<autolink::Node> parent, const std::string& name,
-                              std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-                              const proto::MPPIControllerOptions* options) {
-  parent_ = parent;
-  costmap_ros_ = costmap_ros;
-  name_ = name;
-  options_ = options;
+void CriticManager::configure(
+    std::shared_ptr<autolink::Node> parent, const std::string& name,
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
+    const proto::MPPIControllerOptions* options) {
+    parent_ = parent;
+    costmap_ros_ = costmap_ros;
+    name_ = name;
+    options_ = options;
 
-  getParams();
-  loadCritics();
+    getParams();
+    loadCritics();
 }
 
 void CriticManager::getParams() {
-  critic_names_.clear();
-  if (options_) {
-    for (int i = 0; i < options_->critics_size(); ++i) {
-      critic_names_.push_back(options_->critics(i));
+    critic_names_.clear();
+    if (options_) {
+        for (int i = 0; i < options_->critics_size(); ++i) {
+            critic_names_.push_back(options_->critics(i));
+        }
     }
-  }
 }
 
 void CriticManager::loadCritics() {
-  critics_.clear();
-  for (auto name : critic_names_) {
-    std::string fullname = getFullName(name);
-    // TODO: Implement plugin loading using
-    // autolink::class_loader::ClassLoaderManager For now, this is a
-    // placeholder - actual plugin loading needs to be implemented based on
-    // the autolink plugin system
-    AINFO << "Critic to be loaded: " << fullname;
-  }
+    critics_.clear();
+    for (auto name : critic_names_) {
+        std::string fullname = getFullName(name);
+        // TODO: Implement plugin loading using
+        // autolink::class_loader::ClassLoaderManager For now, this is a
+        // placeholder - actual plugin loading needs to be implemented based on
+        // the autolink plugin system
+        AINFO << "Critic to be loaded: " << fullname;
+    }
 }
 
-std::string CriticManager::getFullName(const std::string& name) { return "mppi::critics::" + name; }
+std::string CriticManager::getFullName(const std::string& name) {
+    return "mppi::critics::" + name;
+}
 
 void CriticManager::evalTrajectoriesScores(CriticData& data) const {
-  for (const auto& critic : critics_) {
-    if (data.fail_flag) {
-      break;
+    for (const auto& critic : critics_) {
+        if (data.fail_flag) {
+            break;
+        }
+        critic->score(data);
     }
-    critic->score(data);
-  }
 }
 
 }  // namespace mppi_controller

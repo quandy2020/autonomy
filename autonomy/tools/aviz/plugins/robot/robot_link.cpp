@@ -21,11 +21,11 @@ namespace plugins {
 namespace robot {
 
 RobotLink::RobotLink() {
-  // TODO: Initialize
+    // TODO: Initialize
 }
 
 RobotLink::~RobotLink() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace robot

@@ -33,8 +33,9 @@ namespace utils {
  * @param r radius of circle
  * @return point of intersection
  */
-commsgs::geometry_msgs::Point CircleSegmentIntersection(const commsgs::geometry_msgs::Point& p1,
-                                                        const commsgs::geometry_msgs::Point& p2, double r);
+commsgs::geometry_msgs::Point CircleSegmentIntersection(
+    const commsgs::geometry_msgs::Point& p1,
+    const commsgs::geometry_msgs::Point& p2, double r);
 
 /**
  * @brief Find the linear interpolation between two points
@@ -44,8 +45,9 @@ commsgs::geometry_msgs::Point CircleSegmentIntersection(const commsgs::geometry_
  * @param target_dist interpolation distance from first endpoint of line segment
  * @return point of intersection
  */
-commsgs::geometry_msgs::Point LinearInterpolation(const commsgs::geometry_msgs::Point& p1,
-                                                  const commsgs::geometry_msgs::Point& p2, const double target_dist);
+commsgs::geometry_msgs::Point LinearInterpolation(
+    const commsgs::geometry_msgs::Point& p1,
+    const commsgs::geometry_msgs::Point& p2, const double target_dist);
 
 /**
  * @brief Get lookahead point
@@ -56,8 +58,9 @@ commsgs::geometry_msgs::Point LinearInterpolation(const commsgs::geometry_msgs::
  * of the path
  * @return Lookahead point
  */
-commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(double&, const commsgs::planning_msgs::Path&,
-                                                      const bool interpolate_after_goal = false);
+commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
+    double&, const commsgs::planning_msgs::Path&,
+    const bool interpolate_after_goal = false);
 
 }  // namespace utils
 }  // namespace control

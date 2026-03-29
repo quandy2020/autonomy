@@ -22,36 +22,49 @@
 namespace autolink {
 namespace profiler {
 
-class Block {
- public:
-  using time_point = std::chrono::time_point<std::chrono::steady_clock>;
+class Block
+{
+public:
+    using time_point = std::chrono::time_point<std::chrono::steady_clock>;
 
- public:
-  Block();
-  explicit Block(const std::string& name);
-  virtual ~Block();
+public:
+    Block();
+    explicit Block(const std::string& name);
+    virtual ~Block();
 
-  void Start();
-  void End();
+    void Start();
+    void End();
 
-  const std::string& name() const { return name_; }
-  std::uint32_t depth() const { return depth_; }
-  void set_depth(std::uint32_t depth) { depth_ = depth; }
+    const std::string& name() const {
+        return name_;
+    }
+    std::uint32_t depth() const {
+        return depth_;
+    }
+    void set_depth(std::uint32_t depth) {
+        depth_ = depth;
+    }
 
-  const time_point& begin_time() const { return begin_time_; }
-  const time_point& end_time() const { return end_time_; }
+    const time_point& begin_time() const {
+        return begin_time_;
+    }
+    const time_point& end_time() const {
+        return end_time_;
+    }
 
-  std::uint64_t begin_time_since_epoch() const;
-  std::uint64_t end_time_since_epoch() const;
-  std::uint64_t duration() const;
+    std::uint64_t begin_time_since_epoch() const;
+    std::uint64_t end_time_since_epoch() const;
+    std::uint64_t duration() const;
 
-  bool finished() const { return end_time_ > begin_time_; }
+    bool finished() const {
+        return end_time_ > begin_time_;
+    }
 
- private:
-  std::string name_;
-  std::uint32_t depth_;
-  time_point begin_time_;
-  time_point end_time_;
+private:
+    std::string name_;
+    std::uint32_t depth_;
+    time_point begin_time_;
+    time_point end_time_;
 };
 
 }  // namespace profiler

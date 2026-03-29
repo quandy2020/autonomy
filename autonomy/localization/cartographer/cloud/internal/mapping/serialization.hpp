@@ -23,11 +23,14 @@
 namespace cartographer {
 namespace cloud {
 
-proto::TrajectoryState ToProto(const mapping::PoseGraphInterface::TrajectoryState& trajectory_state);
+proto::TrajectoryState ToProto(
+    const mapping::PoseGraphInterface::TrajectoryState& trajectory_state);
 
-mapping::PoseGraphInterface::TrajectoryState FromProto(const proto::TrajectoryState& proto);
+mapping::PoseGraphInterface::TrajectoryState FromProto(
+    const proto::TrajectoryState& proto);
 
-proto::TrajectoryRemapping ToProto(const std::map<int, int>& trajectory_remapping);
+proto::TrajectoryRemapping ToProto(
+    const std::map<int, int>& trajectory_remapping);
 
 std::map<int, int> FromProto(const proto::TrajectoryRemapping& proto);
 

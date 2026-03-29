@@ -24,25 +24,27 @@ namespace visualization {
 
 autonomy::commsgs::proto::visualization::VisualizationOptions LoadOptions(
     autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-  autonomy::commsgs::proto::visualization::VisualizationOptions options;
+    autonomy::commsgs::proto::visualization::VisualizationOptions options;
 
-  // 服务器配置
-  if (parameter_dictionary->HasKey("host")) {
-    options.set_host(parameter_dictionary->GetString("host"));
-  }
-  if (parameter_dictionary->HasKey("port")) {
-    options.set_port(parameter_dictionary->GetInt("port"));
-  }
+    // 服务器配置
+    if (parameter_dictionary->HasKey("host")) {
+        options.set_host(parameter_dictionary->GetString("host"));
+    }
+    if (parameter_dictionary->HasKey("port")) {
+        options.set_port(parameter_dictionary->GetInt("port"));
+    }
 
-  // 功能开关
-  if (parameter_dictionary->HasKey("enable_client_publish")) {
-    options.set_enable_client_publish(parameter_dictionary->GetBool("enable_client_publish"));
-  }
-  if (parameter_dictionary->HasKey("enable_connection_graph")) {
-    options.set_enable_connection_graph(parameter_dictionary->GetBool("enable_connection_graph"));
-  }
+    // 功能开关
+    if (parameter_dictionary->HasKey("enable_client_publish")) {
+        options.set_enable_client_publish(
+            parameter_dictionary->GetBool("enable_client_publish"));
+    }
+    if (parameter_dictionary->HasKey("enable_connection_graph")) {
+        options.set_enable_connection_graph(
+            parameter_dictionary->GetBool("enable_connection_graph"));
+    }
 
-  return options;
+    return options;
 }
 
 }  // namespace visualization

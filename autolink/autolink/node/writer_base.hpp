@@ -32,74 +32,82 @@ namespace autolink {
  * @warning One Writer can only write one channel.
  * But different writers can write through the same channel
  */
-class WriterBase {
- public:
-  /**
-   * @brief Construct a new Writer Base object
-   *
-   * @param role_attr role attributes for this Writer
-   */
-  explicit WriterBase(const proto::RoleAttributes& role_attr) : role_attr_(role_attr), init_(false) {}
-  virtual ~WriterBase() {}
+class WriterBase
+{
+public:
+    /**
+     * @brief Construct a new Writer Base object
+     *
+     * @param role_attr role attributes for this Writer
+     */
+    explicit WriterBase(const proto::RoleAttributes& role_attr)
+        : role_attr_(role_attr), init_(false) {}
+    virtual ~WriterBase() {}
 
-  /**
-   * @brief Init the Writer
-   *
-   * @return true if init success
-   * @return false if init failed
-   */
-  virtual bool Init() = 0;
+    /**
+     * @brief Init the Writer
+     *
+     * @return true if init success
+     * @return false if init failed
+     */
+    virtual bool Init() = 0;
 
-  /**
-   * @brief Shutdown the Writer
-   */
-  virtual void Shutdown() = 0;
+    /**
+     * @brief Shutdown the Writer
+     */
+    virtual void Shutdown() = 0;
 
-  /**
-   * @brief Is there any Reader that subscribes our Channel?
-   * You can publish message when this return true
-   *
-   * @return true if the channel has reader
-   * @return false if the channel has no reader
-   */
-  virtual bool HasReader() { return false; }
+    /**
+     * @brief Is there any Reader that subscribes our Channel?
+     * You can publish message when this return true
+     *
+     * @return true if the channel has reader
+     * @return false if the channel has no reader
+     */
+    virtual bool HasReader() {
+        return false;
+    }
 
-  /**
-   * @brief Get all Readers that subscriber our writing channel
-   *
-   * @param readers result vector of RoleAttributes
-   */
-  virtual void GetReaders(std::vector<proto::RoleAttributes>* readers) {}
+    /**
+     * @brief Get all Readers that subscriber our writing channel
+     *
+     * @param readers result vector of RoleAttributes
+     */
+    virtual void GetReaders(std::vector<proto::RoleAttributes>* readers) {}
 
-  /**
-   * @brief Get Writer's Channel name
-   *
-   * @return const std::string& const reference to the channel name
-   */
-  const std::string& GetChannelName() const { return role_attr_.channel_name(); }
+    /**
+     * @brief Get Writer's Channel name
+     *
+     * @return const std::string& const reference to the channel name
+     */
+    const std::string& GetChannelName() const {
+        return role_attr_.channel_name();
+    }
 
-  /**
-   * @brief Get Writer's Channel id
-   *
-   * @return const uint64_t& const reference to the channel id
-   */
-  const uint64_t GetChannelId() const { return role_attr_.channel_id(); }
+    /**
+     * @brief Get Writer's Channel id
+     *
+     * @return const uint64_t& const reference to the channel id
+     */
+    const uint64_t GetChannelId() const {
+        return role_attr_.channel_id();
+    }
 
-  /**
-   * @brief Is Writer initialized?
-   *
-   * @return true if the Writer is inited
-   * @return false if the Write is not inited
-   */
-  bool IsInit() const {
-    std::lock_guard<std::mutex> g(lock_);
-    return init_;
-  }
+    /**
+     * @brief Is Writer initialized?
+     *
+     * @return true if the Writer is inited
+     * @return false if the Write is not inited
+     */
+    bool IsInit() const {
+        std::lock_guard<std::mutex> g(lock_);
+        return init_;
+    }
 
- protected:
-  proto::RoleAttributes role_attr_;
-  mutable std::mutex lock_;
-  bool init_;
+protected:
+    proto::RoleAttributes role_attr_;
+    mutable std::mutex lock_;
+    bool init_;
 };
 
 }  // namespace autolink

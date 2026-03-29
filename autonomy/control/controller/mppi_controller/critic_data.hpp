@@ -39,19 +39,19 @@ namespace mppi_controller {
  * pruned path, global goal, costs, and important parameters to share
  */
 struct CriticData {
-  const models::State& state;
-  const models::Trajectories& trajectories;
-  const models::Path& path;
-  const commsgs::geometry_msgs::Pose& goal;
+    const models::State& state;
+    const models::Trajectories& trajectories;
+    const models::Path& path;
+    const commsgs::geometry_msgs::Pose& goal;
 
-  Eigen::ArrayXf& costs;
-  float& model_dt;
+    Eigen::ArrayXf& costs;
+    float& model_dt;
 
-  bool fail_flag;
-  common::GoalChecker* goal_checker;
-  std::shared_ptr<mppi_controller::MotionModel> motion_model;
-  std::optional<std::vector<bool>> path_pts_valid;
-  std::optional<size_t> furthest_reached_path_point;
+    bool fail_flag;
+    common::GoalChecker* goal_checker;
+    std::shared_ptr<mppi_controller::MotionModel> motion_model;
+    std::optional<std::vector<bool>> path_pts_valid;
+    std::optional<size_t> furthest_reached_path_point;
 };
 
 }  // namespace mppi_controller

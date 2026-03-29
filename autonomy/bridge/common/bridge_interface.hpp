@@ -24,20 +24,22 @@ namespace autonomy {
 namespace bridge {
 namespace common {
 
-class BridgeInterface {
- public:
-  /**
-   * Define BridgeInterface::SharedPtr type
-   */
-  AUTONOMY_SMART_PTR_DEFINITIONS(BridgeInterface)
+class BridgeInterface
+{
+public:
+    /**
+     * Define BridgeInterface::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(BridgeInterface)
 
-  /**
-   * @brief A Destructor for BridgeInterface
-   */
-  virtual ~BridgeInterface() = default;
+    /**
+     * @brief A Destructor for BridgeInterface
+     */
+    virtual ~BridgeInterface() = default;
 };
 
-proto::BridgeOptions LoadOptions(autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::BridgeOptions LoadOptions(
+    autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace bridge

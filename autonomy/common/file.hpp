@@ -24,20 +24,26 @@
 #include "autonomy/common/endian.hpp"
 #include "autonomy/common/logging.hpp"
 
-#define THROW_CHECK_FILE_EXISTS(path) THROW_CHECK(ExistsFile(path)) << "File " << (path) << " does not exist."
+#define THROW_CHECK_FILE_EXISTS(path) \
+    THROW_CHECK(ExistsFile(path)) << "File " << (path) << " does not exist."
 
-#define THROW_CHECK_DIR_EXISTS(path) THROW_CHECK(ExistsDir(path)) << "Directory " << (path) << " does not exist."
+#define THROW_CHECK_DIR_EXISTS(path) \
+    THROW_CHECK(ExistsDir(path)) << "Directory " << (path) << " does not exist."
 
-#define THROW_CHECK_PATH_OPEN(path)                           \
-  THROW_CHECK(std::ofstream(path, std::ios::trunc).is_open()) \
-      << "Could not open " << (path) << ". Is the path a directory or does the parent dir not exist?"
+#define THROW_CHECK_PATH_OPEN(path)                             \
+    THROW_CHECK(std::ofstream(path, std::ios::trunc).is_open()) \
+        << "Could not open " << (path)                          \
+        << ". Is the path a directory or does the parent dir not exist?"
 
-#define THROW_CHECK_FILE_OPEN(file, path)                      \
-  THROW_CHECK((file).is_open()) << "Could not open " << (path) \
-                                << ". Is the path a directory or does the parent dir not exist?"
+#define THROW_CHECK_FILE_OPEN(file, path) \
+    THROW_CHECK((file).is_open())         \
+        << "Could not open " << (path)    \
+        << ". Is the path a directory or does the parent dir not exist?"
 
-#define THROW_CHECK_HAS_FILE_EXTENSION(path, ext) \
-  THROW_CHECK(HasFileExtension(path, ext)) << "Path " << (path) << " does not match file extension " << (ext) << "."
+#define THROW_CHECK_HAS_FILE_EXTENSION(path, ext)                          \
+    THROW_CHECK(HasFileExtension(path, ext))                               \
+        << "Path " << (path) << " does not match file extension " << (ext) \
+        << "."
 
 namespace autonomy {
 namespace common {
@@ -52,10 +58,12 @@ bool HasFileExtension(const std::string& file_name, const std::string& ext);
 
 // Split the path into its root and extension, for example,
 // "dir/file.jpg" into "dir/file" and ".jpg".
-void SplitFileExtension(const std::string& path, std::string* root, std::string* ext);
+void SplitFileExtension(const std::string& path, std::string* root,
+                        std::string* ext);
 
 // Copy or link file from source to destination path
-void FileCopy(const std::string& src_path, const std::string& dst_path, CopyType type = CopyType::COPY);
+void FileCopy(const std::string& src_path, const std::string& dst_path,
+              CopyType type = CopyType::COPY);
 
 // Check if the path points to an existing directory.
 bool ExistsFile(const std::string& path);
@@ -112,29 +120,29 @@ std::vector<std::string> ReadTextFileLines(const std::string& path);
 
 template <typename... T>
 std::string JoinPaths(T const&... paths) {
-  std::filesystem::path result;
-  int unpack[]{0, (result = result / std::filesystem::path(paths), 0)...};
-  static_cast<void>(unpack);
-  return result.string();
+    std::filesystem::path result;
+    int unpack[]{0, (result = result / std::filesystem::path(paths), 0)...};
+    static_cast<void>(unpack);
+    return result.string();
 }
 
 template <typename T>
 void ReadBinaryBlob(const std::string& path, std::vector<T>* data) {
-  std::ifstream file(path, std::ios::binary | std::ios::ate);
-  THROW_CHECK_FILE_OPEN(file, path);
-  file.seekg(0, std::ios::end);
-  const size_t num_bytes = file.tellg();
-  THROW_CHECK_EQ(num_bytes % sizeof(T), 0);
-  data->resize(num_bytes / sizeof(T));
-  file.seekg(0, std::ios::beg);
-  ReadBinaryLittleEndian<T>(&file, data);
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    THROW_CHECK_FILE_OPEN(file, path);
+    file.seekg(0, std::ios::end);
+    const size_t num_bytes = file.tellg();
+    THROW_CHECK_EQ(num_bytes % sizeof(T), 0);
+    data->resize(num_bytes / sizeof(T));
+    file.seekg(0, std::ios::beg);
+    ReadBinaryLittleEndian<T>(&file, data);
 }
 
 template <typename T>
 void WriteBinaryBlob(const std::string& path, const std::vector<T>& data) {
-  std::ofstream file(path, std::ios::binary);
-  THROW_CHECK_FILE_OPEN(file, path);
-  WriteBinaryLittleEndian<T>(&file, data);
+    std::ofstream file(path, std::ios::binary);
+    THROW_CHECK_FILE_OPEN(file, path);
+    WriteBinaryLittleEndian<T>(&file, data);
 }
 
 }  // namespace common

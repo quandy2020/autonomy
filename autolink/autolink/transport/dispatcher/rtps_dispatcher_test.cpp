@@ -30,75 +30,82 @@ namespace autolink {
 namespace transport {
 
 TEST(RtpsDispatcherTest, add_listener) {
-  auto dispatcher = RtpsDispatcher::Instance();
-  RoleAttributes self_attr;
-  self_attr.set_channel_name("add_listener");
-  self_attr.set_channel_id(common::Hash("add_listener"));
-  Identity self_id;
-  self_attr.set_id(self_id.HashValue());
-  self_attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
+    auto dispatcher = RtpsDispatcher::Instance();
+    RoleAttributes self_attr;
+    self_attr.set_channel_name("add_listener");
+    self_attr.set_channel_id(common::Hash("add_listener"));
+    Identity self_id;
+    self_attr.set_id(self_id.HashValue());
+    self_attr.mutable_qos_profile()->CopyFrom(
+        QosProfileConf::QOS_PROFILE_DEFAULT);
 
-  dispatcher->AddListener<proto::Chatter>(self_attr, [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+    dispatcher->AddListener<proto::Chatter>(
+        self_attr,
+        [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 
-  RoleAttributes oppo_attr;
-  oppo_attr.CopyFrom(self_attr);
-  Identity oppo_id;
-  oppo_attr.set_id(oppo_id.HashValue());
+    RoleAttributes oppo_attr;
+    oppo_attr.CopyFrom(self_attr);
+    Identity oppo_id;
+    oppo_attr.set_id(oppo_id.HashValue());
 
-  dispatcher->AddListener<proto::Chatter>(self_attr, oppo_attr,
-                                          [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+    dispatcher->AddListener<proto::Chatter>(
+        self_attr, oppo_attr,
+        [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 }
 
 TEST(RtpsDispatcherTest, on_message) {
-  auto dispatcher = RtpsDispatcher::Instance();
-  RoleAttributes self_attr;
-  self_attr.set_channel_name("channel_0");
-  self_attr.set_channel_id(common::Hash("channel_0"));
-  Identity self_id;
-  self_attr.set_id(self_id.HashValue());
-  self_attr.mutable_qos_profile()->CopyFrom(QosProfileConf::QOS_PROFILE_DEFAULT);
+    auto dispatcher = RtpsDispatcher::Instance();
+    RoleAttributes self_attr;
+    self_attr.set_channel_name("channel_0");
+    self_attr.set_channel_id(common::Hash("channel_0"));
+    Identity self_id;
+    self_attr.set_id(self_id.HashValue());
+    self_attr.mutable_qos_profile()->CopyFrom(
+        QosProfileConf::QOS_PROFILE_DEFAULT);
 
-  auto recv_msg = std::make_shared<proto::Chatter>();
-  dispatcher->AddListener<proto::Chatter>(
-      self_attr, [&recv_msg](const std::shared_ptr<proto::Chatter>& msg, const MessageInfo& msg_info) {
-        (void)msg_info;
-        recv_msg->CopyFrom(*msg);
-      });
+    auto recv_msg = std::make_shared<proto::Chatter>();
+    dispatcher->AddListener<proto::Chatter>(
+        self_attr, [&recv_msg](const std::shared_ptr<proto::Chatter>& msg,
+                               const MessageInfo& msg_info) {
+            (void)msg_info;
+            recv_msg->CopyFrom(*msg);
+        });
 
-  auto transmitter = Transport::Instance()->CreateTransmitter<proto::Chatter>(self_attr, proto::OptionalMode::RTPS);
-  EXPECT_NE(transmitter, nullptr);
+    auto transmitter = Transport::Instance()->CreateTransmitter<proto::Chatter>(
+        self_attr, proto::OptionalMode::RTPS);
+    EXPECT_NE(transmitter, nullptr);
 
-  auto send_msg = std::make_shared<proto::Chatter>();
-  send_msg->set_timestamp(123);
-  send_msg->set_lidar_timestamp(456);
-  send_msg->set_seq(789);
-  send_msg->set_content("on_message");
+    auto send_msg = std::make_shared<proto::Chatter>();
+    send_msg->set_timestamp(123);
+    send_msg->set_lidar_timestamp(456);
+    send_msg->set_seq(789);
+    send_msg->set_content("on_message");
 
-  transmitter->Transmit(send_msg);
-  sleep(1);
+    transmitter->Transmit(send_msg);
+    sleep(1);
 
-  EXPECT_EQ(recv_msg->timestamp(), send_msg->timestamp());
-  EXPECT_EQ(recv_msg->lidar_timestamp(), send_msg->lidar_timestamp());
-  EXPECT_EQ(recv_msg->seq(), send_msg->seq());
-  EXPECT_EQ(recv_msg->content(), send_msg->content());
+    EXPECT_EQ(recv_msg->timestamp(), send_msg->timestamp());
+    EXPECT_EQ(recv_msg->lidar_timestamp(), send_msg->lidar_timestamp());
+    EXPECT_EQ(recv_msg->seq(), send_msg->seq());
+    EXPECT_EQ(recv_msg->content(), send_msg->content());
 }
 
 TEST(RtpsDispatcherTest, shutdown) {
-  auto dispatcher = RtpsDispatcher::Instance();
-  dispatcher->Shutdown();
+    auto dispatcher = RtpsDispatcher::Instance();
+    dispatcher->Shutdown();
 
-  // repeated call
-  dispatcher->Shutdown();
+    // repeated call
+    dispatcher->Shutdown();
 }
 
 }  // namespace transport
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  autolink::transport::Transport::Instance();
-  auto res = RUN_ALL_TESTS();
-  autolink::transport::Transport::Instance()->Shutdown();
-  return res;
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    autolink::transport::Transport::Instance();
+    auto res = RUN_ALL_TESTS();
+    autolink::transport::Transport::Instance()->Shutdown();
+    return res;
 }

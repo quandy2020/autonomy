@@ -37,27 +37,30 @@ namespace autolink_integration {
  *  - creates a single AutolinkNodeAbstraction used by the visualization
  *  - provides ok() and shutdown() helpers
  */
-class AutolinkClientAbstraction {
- public:
-  AutolinkClientAbstraction() = default;
+class AutolinkClientAbstraction
+{
+public:
+    AutolinkClientAbstraction() = default;
 
-  /// @brief Initialize Autolink (if needed) and create a node abstraction.
-  ///
-  /// \param argc (unused, kept for API symmetry)
-  /// \param argv command line arguments (argv[0] is used as binary name)
-  /// \param name base node name
-  /// \param anonymous_name whether to append a random suffix to the node name
-  /// \return weak pointer to the created AutolinkNodeAbstraction
-  AutolinkNodeAbstractionIface::WeakPtr init(int argc, char** argv, const std::string& name, bool anonymous_name);
+    /// @brief Initialize Autolink (if needed) and create a node abstraction.
+    ///
+    /// \param argc (unused, kept for API symmetry)
+    /// \param argv command line arguments (argv[0] is used as binary name)
+    /// \param name base node name
+    /// \param anonymous_name whether to append a random suffix to the node name
+    /// \return weak pointer to the created AutolinkNodeAbstraction
+    AutolinkNodeAbstractionIface::WeakPtr init(int argc, char** argv,
+                                               const std::string& name,
+                                               bool anonymous_name);
 
-  /// @brief Check if Autolink is currently initialized and not shutting down.
-  bool ok() const;
+    /// @brief Check if Autolink is currently initialized and not shutting down.
+    bool ok() const;
 
-  /// @brief Request shutdown of Autolink and clear global state.
-  void shutdown();
+    /// @brief Request shutdown of Autolink and clear global state.
+    void shutdown();
 
- private:
-  std::shared_ptr<AutolinkNodeAbstractionIface> node_abstraction_;
+private:
+    std::shared_ptr<AutolinkNodeAbstractionIface> node_abstraction_;
 };
 
 }  // namespace autolink_integration

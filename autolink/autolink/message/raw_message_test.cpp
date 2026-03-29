@@ -25,54 +25,54 @@ namespace autolink {
 namespace message {
 
 TEST(RawMessageTest, constructor) {
-  RawMessage msg_a;
-  EXPECT_EQ(msg_a.message, "");
+    RawMessage msg_a;
+    EXPECT_EQ(msg_a.message, "");
 
-  RawMessage msg_b("raw");
-  EXPECT_EQ(msg_b.message, "raw");
+    RawMessage msg_b("raw");
+    EXPECT_EQ(msg_b.message, "raw");
 }
 
 TEST(RawMessageTest, serialize_to_array) {
-  RawMessage msg("serialize_to_array");
-  EXPECT_FALSE(msg.SerializeToArray(nullptr, 128));
-  char buf[64] = {0};
-  EXPECT_FALSE(msg.SerializeToArray(buf, -1));
-  EXPECT_TRUE(msg.SerializeToArray(buf, 64));
+    RawMessage msg("serialize_to_array");
+    EXPECT_FALSE(msg.SerializeToArray(nullptr, 128));
+    char buf[64] = {0};
+    EXPECT_FALSE(msg.SerializeToArray(buf, -1));
+    EXPECT_TRUE(msg.SerializeToArray(buf, 64));
 
-  EXPECT_EQ(memcmp(buf, msg.message.data(), msg.ByteSize()), 0);
+    EXPECT_EQ(memcmp(buf, msg.message.data(), msg.ByteSize()), 0);
 }
 
 TEST(RawMessageTest, serialize_to_string) {
-  RawMessage msg("serialize_to_string");
-  std::string str("");
-  EXPECT_FALSE(msg.SerializeToString(nullptr));
-  EXPECT_TRUE(msg.SerializeToString(&str));
-  EXPECT_EQ(str, "serialize_to_string");
+    RawMessage msg("serialize_to_string");
+    std::string str("");
+    EXPECT_FALSE(msg.SerializeToString(nullptr));
+    EXPECT_TRUE(msg.SerializeToString(&str));
+    EXPECT_EQ(str, "serialize_to_string");
 }
 
 TEST(RawMessageTest, parse_from_string) {
-  RawMessage msg;
-  EXPECT_TRUE(msg.ParseFromString("parse_from_string"));
-  EXPECT_EQ(msg.message, "parse_from_string");
+    RawMessage msg;
+    EXPECT_TRUE(msg.ParseFromString("parse_from_string"));
+    EXPECT_EQ(msg.message, "parse_from_string");
 }
 
 TEST(RawMessageTest, parse_from_array) {
-  RawMessage msg;
-  std::string str("parse_from_array");
-  EXPECT_FALSE(msg.ParseFromArray(nullptr, static_cast<int>(str.size())));
-  EXPECT_FALSE(msg.ParseFromArray(str.data(), 0));
+    RawMessage msg;
+    std::string str("parse_from_array");
+    EXPECT_FALSE(msg.ParseFromArray(nullptr, static_cast<int>(str.size())));
+    EXPECT_FALSE(msg.ParseFromArray(str.data(), 0));
 
-  EXPECT_TRUE(msg.ParseFromArray(str.data(), static_cast<int>(str.size())));
-  EXPECT_EQ(msg.message, str);
+    EXPECT_TRUE(msg.ParseFromArray(str.data(), static_cast<int>(str.size())));
+    EXPECT_EQ(msg.message, str);
 }
 
 TEST(RawMessageTest, message_type) {
-  RawMessage msg;
-  std::string msg_type = RawMessage::TypeName();
-  EXPECT_EQ(msg_type, "autolink.message.RawMessage");
+    RawMessage msg;
+    std::string msg_type = RawMessage::TypeName();
+    EXPECT_EQ(msg_type, "autolink.message.RawMessage");
 
-  // msg_type = MessageType<RawMessage>();
-  // EXPECT_EQ(msg_type, "autolink.message.RawMessage");
+    // msg_type = MessageType<RawMessage>();
+    // EXPECT_EQ(msg_type, "autolink.message.RawMessage");
 }
 
 }  // namespace message

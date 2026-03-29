@@ -24,27 +24,27 @@ namespace autolink {
 namespace context {
 
 TEST(Context, Set) {
-  Context ctx;
-  ctx.Set("key", 1);
-  ctx.Set("key", std::make_shared<int>(2));
-  EXPECT_EQ(*ctx.Get<int>("key"), 2);
+    Context ctx;
+    ctx.Set("key", 1);
+    ctx.Set("key", std::make_shared<int>(2));
+    EXPECT_EQ(*ctx.Get<int>("key"), 2);
 
-  struct Foo {
-    int a;
-    int b;
-  };
-  Foo foo{1, 2};
-  ctx.Set("key", foo);
-  EXPECT_EQ(ctx.Get<Foo>("key")->a, 1);
-  EXPECT_EQ(ctx.Get<Foo>("key")->b, 2);
+    struct Foo {
+        int a;
+        int b;
+    };
+    Foo foo{1, 2};
+    ctx.Set("key", foo);
+    EXPECT_EQ(ctx.Get<Foo>("key")->a, 1);
+    EXPECT_EQ(ctx.Get<Foo>("key")->b, 2);
 }
 
 TEST(Context, Get) {
-  Context ctx;
-  ctx.Set("key1", 1);
-  ctx.Set("key2", std::make_shared<int>(2));
-  EXPECT_EQ(*ctx.Get<int>("key1"), 1);
-  EXPECT_EQ(*ctx.Get<int>("key2"), 2);
+    Context ctx;
+    ctx.Set("key1", 1);
+    ctx.Set("key2", std::make_shared<int>(2));
+    EXPECT_EQ(*ctx.Get<int>("key1"), 1);
+    EXPECT_EQ(*ctx.Get<int>("key2"), 2);
 }
 
 }  // namespace context

@@ -27,12 +27,13 @@ namespace view_controllers {
  * @brief OrbitViewController
  * Orbit view controller
  */
-class OrbitViewController {
- public:
-  explicit OrbitViewController();
-  virtual ~OrbitViewController();
+class OrbitViewController
+{
+public:
+    explicit OrbitViewController();
+    virtual ~OrbitViewController();
 
-  // TODO: Implement view controller interface
+    // TODO: Implement view controller interface
 };
 
 }  // namespace view_controllers

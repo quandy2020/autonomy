@@ -28,71 +28,84 @@ template <typename T>
 using AutolinkChannelCallback = std::function<void(const std::shared_ptr<T>&)>;
 
 template <typename T>
-class AutolinkChannelReader {
- public:
-  AutolinkChannelReader(void) : channel_callback_(nullptr), channel_node_(nullptr) {}
+class AutolinkChannelReader
+{
+public:
+    AutolinkChannelReader(void)
+        : channel_callback_(nullptr), channel_node_(nullptr) {}
 
-  ~AutolinkChannelReader() { CloseChannel(); }
-
-  void CloseChannel(void) {
-    if (channel_reader_ != nullptr) {
-      channel_reader_.reset();
+    ~AutolinkChannelReader() {
+        CloseChannel();
     }
 
-    if (channel_node_ != nullptr) {
-      channel_node_.reset();
-    }
-  }
+    void CloseChannel(void) {
+        if (channel_reader_ != nullptr) {
+            channel_reader_.reset();
+        }
 
-  bool InstallCallbackAndOpen(AutolinkChannelCallback<T> channelCallback, const std::string& channelName,
-                              const std::string& nodeName) {
-    return InstallCallback(channelCallback) && OpenChannel(channelName, nodeName);
-  }
-
-  bool InstallCallback(AutolinkChannelCallback<T> channelCallback) {
-    if (channelCallback != nullptr) {
-      channel_callback_ = channelCallback;
-      return true;
-    } else {
-      std::cerr << "Parameter readerCallback is null" << std::endl;
-      return false;
-    }
-  }
-
-  bool OpenChannel(const std::string& channelName, const std::string& nodeName) {
-    if (channelName.empty() || nodeName.empty()) {
-      std::cerr << "Channel Name or Node Name must be not empty" << std::endl;
-      return false;
+        if (channel_node_ != nullptr) {
+            channel_node_.reset();
+        }
     }
 
-    if (channel_node_ != nullptr || channel_reader_ != nullptr || !channel_callback_) {
-      return false;
+    bool InstallCallbackAndOpen(AutolinkChannelCallback<T> channelCallback,
+                                const std::string& channelName,
+                                const std::string& nodeName) {
+        return InstallCallback(channelCallback) &&
+               OpenChannel(channelName, nodeName);
     }
 
-    return CreateChannel(channelName, nodeName);
-  }
-
-  const std::string& NodeName(void) const { return channel_node_->Name(); }
-
- private:
-  bool CreateChannel(const std::string& channelName, const std::string& nodeName) {
-    if (channel_node_ == nullptr) {
-      channel_node_ = autolink::CreateNode(nodeName);
-      if (channel_node_ == nullptr) {
-        return false;
-      }
+    bool InstallCallback(AutolinkChannelCallback<T> channelCallback) {
+        if (channelCallback != nullptr) {
+            channel_callback_ = channelCallback;
+            return true;
+        } else {
+            std::cerr << "Parameter readerCallback is null" << std::endl;
+            return false;
+        }
     }
 
-    channel_reader_ = channel_node_->CreateReader<T>(channelName, channel_callback_);
+    bool OpenChannel(const std::string& channelName,
+                     const std::string& nodeName) {
+        if (channelName.empty() || nodeName.empty()) {
+            std::cerr << "Channel Name or Node Name must be not empty"
+                      << std::endl;
+            return false;
+        }
 
-    if (channel_reader_ == nullptr) {
-      std::cout << "----------Create reader failed---------" << std::endl;
-      return false;
+        if (channel_node_ != nullptr || channel_reader_ != nullptr ||
+            !channel_callback_) {
+            return false;
+        }
+
+        return CreateChannel(channelName, nodeName);
     }
-    return true;
-  }
 
-  AutolinkChannelCallback<T> channel_callback_;
-  std::shared_ptr<autolink::Reader<T>> channel_reader_;
-  std::shared_ptr<autolink::Node> channel_node_;
+    const std::string& NodeName(void) const {
+        return channel_node_->Name();
+    }
+
+private:
+    bool CreateChannel(const std::string& channelName,
+                       const std::string& nodeName) {
+        if (channel_node_ == nullptr) {
+            channel_node_ = autolink::CreateNode(nodeName);
+            if (channel_node_ == nullptr) {
+                return false;
+            }
+        }
+
+        channel_reader_ =
+            channel_node_->CreateReader<T>(channelName, channel_callback_);
+
+        if (channel_reader_ == nullptr) {
+            std::cout << "----------Create reader failed---------" << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+    AutolinkChannelCallback<T> channel_callback_;
+    std::shared_ptr<autolink::Reader<T>> channel_reader_;
+    std::shared_ptr<autolink::Node> channel_node_;
 };

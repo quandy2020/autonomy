@@ -26,42 +26,43 @@
 namespace autonomy {
 namespace bridge {
 
-class BridgeServer {
- public:
-  /**
-   * Define BridgeServer::SharedPtr type
-   */
-  AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
+class BridgeServer
+{
+public:
+    /**
+     * Define BridgeServer::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(BridgeServer)
 
-  /**
-   * @brief A Contructor for autonomy::bridge::BridgeServer
-   */
-  explicit BridgeServer();
+    /**
+     * @brief A Contructor for autonomy::bridge::BridgeServer
+     */
+    explicit BridgeServer();
 
-  /**
-   * @brief A constructor for autonomy::bridge::BridgeServer
-   * @param options Additional options to control creation of the node.
-   */
-  explicit BridgeServer(const proto::BridgeOptions& options);
+    /**
+     * @brief A constructor for autonomy::bridge::BridgeServer
+     * @param options Additional options to control creation of the node.
+     */
+    explicit BridgeServer(const proto::BridgeOptions& options);
 
-  /**
-   * @brief A Destructor for autonomy::bridge::BridgeServer
-   */
-  ~BridgeServer() = default;
+    /**
+     * @brief A Destructor for autonomy::bridge::BridgeServer
+     */
+    ~BridgeServer() = default;
 
-  /**
-   * @brief Starts server
-   */
-  void Start();
+    /**
+     * @brief Starts server
+     */
+    void Start();
 
-  /**
-   * @brief Shutdown
-   */
-  void WaitForShutdown();
+    /**
+     * @brief Shutdown
+     */
+    void WaitForShutdown();
 
- private:
-  const proto::BridgeOptions options_;
-  plugins::grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
+private:
+    const proto::BridgeOptions options_;
+    plugins::grpc::GrpcBridgeServer::UniquePtr grpc_bridge_{nullptr};
 };
 
 }  // namespace bridge

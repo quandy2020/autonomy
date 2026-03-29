@@ -28,18 +28,26 @@ namespace message {
 
 // Template specialization for RawMessage
 inline bool SerializeToArray(const RawMessage& message, void* data, int size) {
-  return message.SerializeToArray(data, size);
+    return message.SerializeToArray(data, size);
 }
 
 inline bool ParseFromArray(const void* data, int size, RawMessage* message) {
-  return message->ParseFromArray(data, size);
+    return message->ParseFromArray(data, size);
 }
 
-inline int ByteSize(const RawMessage& message) { return message.ByteSize(); }
+inline int ByteSize(const RawMessage& message) {
+    return message.ByteSize();
+}
 
-inline bool SerializeToArenaMessageWrapper(const RawMessage& message, ArenaMessageWrapper* wrapper) { return false; }
+inline bool SerializeToArenaMessageWrapper(const RawMessage& message,
+                                           ArenaMessageWrapper* wrapper) {
+    return false;
+}
 
-inline bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper, RawMessage* message) { return false; }
+inline bool ParseFromArenaMessageWrapper(ArenaMessageWrapper* wrapper,
+                                         RawMessage* message) {
+    return false;
+}
 
 }  // namespace message
 }  // namespace autolink

@@ -32,22 +32,23 @@ using autolink::croutine::CRoutine;
 using autolink::proto::ClassicConf;
 using autolink::proto::ClassicTask;
 
-class SchedulerClassic : public Scheduler {
- public:
-  bool RemoveCRoutine(uint64_t crid) override;
-  bool RemoveTask(const std::string& name) override;
-  bool DispatchTask(const std::shared_ptr<CRoutine>&) override;
+class SchedulerClassic : public Scheduler
+{
+public:
+    bool RemoveCRoutine(uint64_t crid) override;
+    bool RemoveTask(const std::string& name) override;
+    bool DispatchTask(const std::shared_ptr<CRoutine>&) override;
 
- private:
-  friend Scheduler* Instance();
-  SchedulerClassic();
+private:
+    friend Scheduler* Instance();
+    SchedulerClassic();
 
-  void CreateProcessor();
-  bool NotifyProcessor(uint64_t crid) override;
+    void CreateProcessor();
+    bool NotifyProcessor(uint64_t crid) override;
 
-  std::unordered_map<std::string, ClassicTask> cr_confs_;
+    std::unordered_map<std::string, ClassicTask> cr_confs_;
 
-  ClassicConf classic_conf_;
+    ClassicConf classic_conf_;
 };
 
 }  // namespace scheduler

@@ -37,35 +37,46 @@ namespace autonomy {
 namespace transform {
 namespace tf2 {
 
-bool StaticCache::getData(Time time, TransformStorage& data_out,
-                          std::string* error_str)  // returns false if data not available
+bool StaticCache::getData(
+    Time time, TransformStorage& data_out,
+    std::string* error_str)  // returns false if data not available
 {
-  data_out = storage_;
-  data_out.stamp_ = time;
-  (void)error_str;
-  return true;
+    data_out = storage_;
+    data_out.stamp_ = time;
+    (void)error_str;
+    return true;
 };
 
 bool StaticCache::insertData(const TransformStorage& new_data) {
-  storage_ = new_data;
-  return true;
+    storage_ = new_data;
+    return true;
 };
 
-void StaticCache::clearList() { return; };
+void StaticCache::clearList() {
+    return;
+};
 
-unsigned int StaticCache::getListLength() { return 1; };
+unsigned int StaticCache::getListLength() {
+    return 1;
+};
 
 CompactFrameID StaticCache::getParent(Time time, std::string* error_str) {
-  (void)time;
-  (void)error_str;
-  return storage_.frame_id_;
+    (void)time;
+    (void)error_str;
+    return storage_.frame_id_;
 }
 
-P_TimeAndFrameID StaticCache::getLatestTimeAndParent() { return std::make_pair(Time(), storage_.frame_id_); }
+P_TimeAndFrameID StaticCache::getLatestTimeAndParent() {
+    return std::make_pair(Time(), storage_.frame_id_);
+}
 
-Time StaticCache::getLatestTimestamp() { return Time(); };
+Time StaticCache::getLatestTimestamp() {
+    return Time();
+};
 
-Time StaticCache::getOldestTimestamp() { return Time(); };
+Time StaticCache::getOldestTimestamp() {
+    return Time();
+};
 
 }  // namespace tf2
 }  // namespace transform

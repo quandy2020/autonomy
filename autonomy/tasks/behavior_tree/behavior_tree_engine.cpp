@@ -33,60 +33,66 @@ namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-BehaviorTreeEngine::BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries,
-                                       std::shared_ptr<::autolink::Node> node) {
-  BT::SharedLibrary loader;
-  for (const auto& p : plugin_libraries) {
-    factory_.registerFromPlugin(loader.getOSName(p));
-  }
-
-  // FIXME: the next two line are needed for back-compatibility with
-  // BT.CPP 3.8.x Note that the can be removed, once we migrate from
-  // BT.CPP 4.5.x to 4.6+
-  BT::ReactiveSequence::EnableException(false);
-  BT::ReactiveFallback::EnableException(false);
-}
-
-BtStatus BehaviorTreeEngine::Run(BT::Tree* tree, std::function<void()> onLoop, std::function<bool()> cancelRequested,
-                                 std::chrono::milliseconds loopTimeout) {
-  BT::NodeStatus result = BT::NodeStatus::RUNNING;
-
-  // Loop until cancel is requested or the node completes
-  try {
-    while (result == BT::NodeStatus::RUNNING) {
-      if (cancelRequested()) {
-        tree->haltTree();
-        return BtStatus::CANCELED;
-      }
-
-      result = tree->tickOnce();
-
-      onLoop();
-
-      // Simple sleep to maintain loop rate
-      std::this_thread::sleep_for(loopTimeout);
+BehaviorTreeEngine::BehaviorTreeEngine(
+    const std::vector<std::string>& plugin_libraries,
+    std::shared_ptr<::autolink::Node> node) {
+    BT::SharedLibrary loader;
+    for (const auto& p : plugin_libraries) {
+        factory_.registerFromPlugin(loader.getOSName(p));
     }
-  } catch (const std::exception& ex) {
-    AERROR << "Behavior tree threw exception: " << ex.what() << ". Exiting with failure.";
-    return BtStatus::FAILED;
-  }
 
-  return (result == BT::NodeStatus::SUCCESS) ? BtStatus::SUCCEEDED : BtStatus::FAILED;
+    // FIXME: the next two line are needed for back-compatibility with
+    // BT.CPP 3.8.x Note that the can be removed, once we migrate from
+    // BT.CPP 4.5.x to 4.6+
+    BT::ReactiveSequence::EnableException(false);
+    BT::ReactiveFallback::EnableException(false);
 }
 
-BT::Tree BehaviorTreeEngine::CreateTreeFromText(const std::string& xml_string, BT::Blackboard::Ptr blackboard) {
-  return factory_.createTreeFromText(xml_string, blackboard);
+BtStatus BehaviorTreeEngine::Run(BT::Tree* tree, std::function<void()> onLoop,
+                                 std::function<bool()> cancelRequested,
+                                 std::chrono::milliseconds loopTimeout) {
+    BT::NodeStatus result = BT::NodeStatus::RUNNING;
+
+    // Loop until cancel is requested or the node completes
+    try {
+        while (result == BT::NodeStatus::RUNNING) {
+            if (cancelRequested()) {
+                tree->haltTree();
+                return BtStatus::CANCELED;
+            }
+
+            result = tree->tickOnce();
+
+            onLoop();
+
+            // Simple sleep to maintain loop rate
+            std::this_thread::sleep_for(loopTimeout);
+        }
+    } catch (const std::exception& ex) {
+        AERROR << "Behavior tree threw exception: " << ex.what()
+               << ". Exiting with failure.";
+        return BtStatus::FAILED;
+    }
+
+    return (result == BT::NodeStatus::SUCCESS) ? BtStatus::SUCCEEDED
+                                               : BtStatus::FAILED;
 }
 
-BT::Tree BehaviorTreeEngine::CreateTreeFromFile(const std::string& file_path, BT::Blackboard::Ptr blackboard) {
-  return factory_.createTreeFromFile(file_path, blackboard);
+BT::Tree BehaviorTreeEngine::CreateTreeFromText(
+    const std::string& xml_string, BT::Blackboard::Ptr blackboard) {
+    return factory_.createTreeFromText(xml_string, blackboard);
+}
+
+BT::Tree BehaviorTreeEngine::CreateTreeFromFile(
+    const std::string& file_path, BT::Blackboard::Ptr blackboard) {
+    return factory_.createTreeFromFile(file_path, blackboard);
 }
 
 // In order to re-run a Behavior Tree, we must be able to reset all nodes to the
 // initial state
 void BehaviorTreeEngine::HaltAllActions(BT::Tree& tree) {
-  // this halt signal should propagate through the entire tree.
-  tree.haltTree();
+    // this halt signal should propagate through the entire tree.
+    tree.haltTree();
 }
 
 }  // namespace behavior_tree

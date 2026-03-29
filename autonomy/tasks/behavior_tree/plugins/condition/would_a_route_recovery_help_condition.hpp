@@ -27,16 +27,18 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-class WouldARouteRecoveryHelp : public AreErrorCodesPresent {
-  using Action = proto::ComputeAndTrackRouteAction;
-  using ActionResult = Action::Result;
-  using TrackAction = proto::ComputeAndTrackRouteAction;
-  using TrackActionResult = TrackAction::Result;
+class WouldARouteRecoveryHelp : public AreErrorCodesPresent
+{
+    using Action = proto::ComputeAndTrackRouteAction;
+    using ActionResult = Action::Result;
+    using TrackAction = proto::ComputeAndTrackRouteAction;
+    using TrackActionResult = TrackAction::Result;
 
- public:
-  WouldARouteRecoveryHelp(const std::string& condition_name, const BT::NodeConfiguration& conf);
+public:
+    WouldARouteRecoveryHelp(const std::string& condition_name,
+                            const BT::NodeConfiguration& conf);
 
-  WouldARouteRecoveryHelp() = delete;
+    WouldARouteRecoveryHelp() = delete;
 };
 
 }  // namespace condition

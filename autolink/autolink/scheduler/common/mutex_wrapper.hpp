@@ -21,13 +21,16 @@
 namespace autolink {
 namespace scheduler {
 
-class MutexWrapper {
- public:
-  MutexWrapper& operator=(const MutexWrapper& other) = delete;
-  std::mutex& Mutex() { return mutex_; }
+class MutexWrapper
+{
+public:
+    MutexWrapper& operator=(const MutexWrapper& other) = delete;
+    std::mutex& Mutex() {
+        return mutex_;
+    }
 
- private:
-  mutable std::mutex mutex_;
+private:
+    mutable std::mutex mutex_;
 };
 
 }  // namespace scheduler

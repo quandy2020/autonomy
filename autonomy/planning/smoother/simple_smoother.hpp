@@ -39,80 +39,88 @@ namespace smoother {
  * @class nav2_smoother::SimpleSmoother
  * @brief A path smoother implementation
  */
-class SimpleSmoother : public common::Smoother {
- public:
-  /**
-   * @brief A constructor for nav2_smoother::SimpleSmoother
-   */
-  SimpleSmoother() = default;
+class SimpleSmoother : public common::Smoother
+{
+public:
+    /**
+     * @brief A constructor for nav2_smoother::SimpleSmoother
+     */
+    SimpleSmoother() = default;
 
-  /**
-   * @brief A destructor for nav2_smoother::SimpleSmoother
-   */
-  ~SimpleSmoother() override = default;
+    /**
+     * @brief A destructor for nav2_smoother::SimpleSmoother
+     */
+    ~SimpleSmoother() override = default;
 
-  void Configure(std::string name, std::shared_ptr<void> /*costmap_sub*/,
-                 std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) override;
+    void Configure(
+        std::string name, std::shared_ptr<void> /*costmap_sub*/,
+        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/)
+        override;
 
-  /**
-   * @brief Method to cleanup resources.
-   */
-  void Cleanup() override {
-    if (costmap_wrapper_) costmap_wrapper_.reset();
-  }
+    /**
+     * @brief Method to cleanup resources.
+     */
+    void Cleanup() override {
+        if (costmap_wrapper_)
+            costmap_wrapper_.reset();
+    }
 
-  /**
-   * @brief Method to activate smoother and any threads involved in execution.
-   */
-  void Activate() override {}
+    /**
+     * @brief Method to activate smoother and any threads involved in execution.
+     */
+    void Activate() override {}
 
-  /**
-   * @brief Method to deactivate smoother and any threads involved in
-   * execution.
-   */
-  void Deactivate() override {}
+    /**
+     * @brief Method to deactivate smoother and any threads involved in
+     * execution.
+     */
+    void Deactivate() override {}
 
-  /**
-   * @brief Method to smooth given path
-   *
-   * @param path In-out path to be smoothed
-   * @param max_time Maximum duration smoothing should take
-   * @return If smoothing was completed (true) or interrupted by time limit
-   * (false)
-   */
-  bool Smooth(commsgs::planning_msgs::Path& path, const std::chrono::milliseconds& max_time) override;
+    /**
+     * @brief Method to smooth given path
+     *
+     * @param path In-out path to be smoothed
+     * @param max_time Maximum duration smoothing should take
+     * @return If smoothing was completed (true) or interrupted by time limit
+     * (false)
+     */
+    bool Smooth(commsgs::planning_msgs::Path& path,
+                const std::chrono::milliseconds& max_time) override;
 
- protected:
-  /**
-   * @brief Smoother method - does the smoothing on a segment
-   * @param path Reference to path
-   * @param reversing_segment Return if this is a reversing segment
-   * @param costmap Pointer to minimal costmap
-   * @param max_time Maximum time to compute, stop early if over limit
-   */
-  void SmoothImpl(commsgs::planning_msgs::Path& path, bool& reversing_segment,
-                  const map::costmap_2d::Costmap2D* costmap, const double& max_time);
+protected:
+    /**
+     * @brief Smoother method - does the smoothing on a segment
+     * @param path Reference to path
+     * @param reversing_segment Return if this is a reversing segment
+     * @param costmap Pointer to minimal costmap
+     * @param max_time Maximum time to compute, stop early if over limit
+     */
+    void SmoothImpl(commsgs::planning_msgs::Path& path, bool& reversing_segment,
+                    const map::costmap_2d::Costmap2D* costmap,
+                    const double& max_time);
 
-  /**
-   * @brief Get the field value for a given dimension
-   * @param msg Current pose to sample
-   * @param dim Dimension ID of interest
-   * @return dim value
-   */
-  inline double GetFieldByDim(const commsgs::geometry_msgs::PoseStamped& msg, const unsigned int& dim);
+    /**
+     * @brief Get the field value for a given dimension
+     * @param msg Current pose to sample
+     * @param dim Dimension ID of interest
+     * @return dim value
+     */
+    inline double GetFieldByDim(const commsgs::geometry_msgs::PoseStamped& msg,
+                                const unsigned int& dim);
 
-  /**
-   * @brief Set the field value for a given dimension
-   * @param msg Current pose to sample
-   * @param dim Dimension ID of interest
-   * @param value to set the dimension to for the pose
-   */
-  inline void SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg, const unsigned int dim, const double& value);
+    /**
+     * @brief Set the field value for a given dimension
+     * @param msg Current pose to sample
+     * @param dim Dimension ID of interest
+     * @param value to set the dimension to for the pose
+     */
+    inline void SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg,
+                              const unsigned int dim, const double& value);
 
-  double tolerance_, data_w_, smooth_w_;
-  int max_its_, refinement_ctr_, refinement_num_;
-  bool do_refinement_, enforce_path_inversion_;
-  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+    double tolerance_, data_w_, smooth_w_;
+    int max_its_, refinement_ctr_, refinement_num_;
+    bool do_refinement_, enforce_path_inversion_;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
 };
 
 }  // namespace smoother

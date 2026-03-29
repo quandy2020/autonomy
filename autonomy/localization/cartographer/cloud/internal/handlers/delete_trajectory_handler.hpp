@@ -25,12 +25,16 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(DeleteTrajectorySignature, proto::DeleteTrajectoryRequest, google::protobuf::Empty,
-                         "/cartographer.cloud.proto.MapBuilderService/DeleteTrajectory")
+DEFINE_HANDLER_SIGNATURE(
+    DeleteTrajectorySignature, proto::DeleteTrajectoryRequest,
+    google::protobuf::Empty,
+    "/cartographer.cloud.proto.MapBuilderService/DeleteTrajectory")
 
-class DeleteTrajectoryHandler : public autonomy::common::async_grpc::RpcHandler<DeleteTrajectorySignature> {
- public:
-  void OnRequest(const proto::DeleteTrajectoryRequest& request) override;
+class DeleteTrajectoryHandler
+    : public autonomy::common::async_grpc::RpcHandler<DeleteTrajectorySignature>
+{
+public:
+    void OnRequest(const proto::DeleteTrajectoryRequest& request) override;
 };
 
 }  // namespace handlers

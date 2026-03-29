@@ -25,18 +25,19 @@ namespace common {
  * @brief ToolManager
  * Manages interactive tools
  */
-class ToolManager {
- public:
-  ToolManager() = default;
-  ~ToolManager() = default;
+class ToolManager
+{
+public:
+    ToolManager() = default;
+    ~ToolManager() = default;
 
-  void addTool(Tool* tool);
-  void removeTool(Tool* tool);
-  Tool* getCurrentTool() const;
-  void setCurrentTool(Tool* tool);
+    void addTool(Tool* tool);
+    void removeTool(Tool* tool);
+    Tool* getCurrentTool() const;
+    void setCurrentTool(Tool* tool);
 
- private:
-  Tool* current_tool_;
+private:
+    Tool* current_tool_;
 };
 
 }  // namespace common

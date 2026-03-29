@@ -19,24 +19,36 @@
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/class_loader/test/base.hpp"
 
-class Apple : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Apple" << std::endl; }
+class Apple : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Apple" << std::endl;
+    }
 };
 
-class Pear : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Pear!!!" << std::endl; }
+class Pear : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Pear!!!" << std::endl;
+    }
 };
 
-class Banana : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Banana" << std::endl; }
+class Banana : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Banana" << std::endl;
+    }
 };
 
-class Peach : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Peach!!!" << std::endl; }
+class Peach : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Peach!!!" << std::endl;
+    }
 };
 
 CLASS_LOADER_REGISTER_CLASS(Apple, Base);

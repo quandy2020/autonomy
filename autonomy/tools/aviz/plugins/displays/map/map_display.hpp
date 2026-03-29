@@ -31,29 +31,33 @@ namespace displays {
  *
  * Displays map_msgs::OccupancyGrid messages
  */
-class MapDisplay : public AutolinkTopicDisplay<autonomy::commsgs::map_msgs::OccupancyGrid> {
-  Q_OBJECT
+class MapDisplay
+    : public AutolinkTopicDisplay<autonomy::commsgs::map_msgs::OccupancyGrid>
+{
+    Q_OBJECT
 
- public:
-  explicit MapDisplay(const QString& name = "MapDisplay");
-  ~MapDisplay() override;
+public:
+    explicit MapDisplay(const QString& name = "MapDisplay");
+    ~MapDisplay() override;
 
-  void onInitialize() override;
-  void reset() override;
+    void onInitialize() override;
+    void reset() override;
 
- protected:
-  void processMessage(const std::shared_ptr<autonomy::commsgs::map_msgs::OccupancyGrid>& msg) override;
+protected:
+    void processMessage(
+        const std::shared_ptr<autonomy::commsgs::map_msgs::OccupancyGrid>& msg)
+        override;
 
- private Q_SLOTS:
-  void updateAlpha();
+private Q_SLOTS:
+    void updateAlpha();
 
- private:
-  aviz::common::properties::FloatProperty* alpha_property_;
-  aviz::common::properties::ColorProperty* color_scheme_property_;
+private:
+    aviz::common::properties::FloatProperty* alpha_property_;
+    aviz::common::properties::ColorProperty* color_scheme_property_;
 
-  // Map visualization data
-  std::vector<Ogre::Vector3> map_vertices_;
-  std::vector<Ogre::ColourValue> map_colors_;
+    // Map visualization data
+    std::vector<Ogre::Vector3> map_vertices_;
+    std::vector<Ogre::ColourValue> map_colors_;
 };
 
 }  // namespace displays

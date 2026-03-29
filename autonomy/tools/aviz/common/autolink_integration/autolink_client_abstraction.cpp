@@ -22,50 +22,56 @@ namespace aviz {
 namespace common {
 namespace autolink_integration {
 
-AutolinkNodeAbstractionIface::WeakPtr AutolinkClientAbstraction::init(int argc, char** argv, const std::string& name,
-                                                                      bool anonymous_name) {
-  (void)argc;
+AutolinkNodeAbstractionIface::WeakPtr AutolinkClientAbstraction::init(
+    int argc, char** argv, const std::string& name, bool anonymous_name) {
+    (void)argc;
 
-  if (!autolink::OK()) {
-    const char* binary_name = (argv && argv[0]) ? argv[0] : name.c_str();
-    // Ignore dag_info for now – aviz just needs basic messaging.
-    ::autolink::Init(binary_name, "");
-  }
-
-  std::string node_name = name;
-  if (anonymous_name) {
-    // Simple anonymous scheme: append process id. This keeps node names
-    // unique across multiple aviz instances in the same system.
-    node_name += "_" + std::to_string(static_cast<unsigned long>(::getpid()));
-  }
-
-  // If we already have a node abstraction, make sure we're not silently
-  // changing the node name – report an error.
-  if (node_abstraction_) {
-    if (node_abstraction_->get_node_name() != node_name) {
-      throw std::runtime_error("AutolinkClientAbstraction already initialized with node name '" +
-                               node_abstraction_->get_node_name() + "', requested '" + node_name + "'");
+    if (!autolink::OK()) {
+        const char* binary_name = (argv && argv[0]) ? argv[0] : name.c_str();
+        // Ignore dag_info for now – aviz just needs basic messaging.
+        ::autolink::Init(binary_name, "");
     }
+
+    std::string node_name = name;
+    if (anonymous_name) {
+        // Simple anonymous scheme: append process id. This keeps node names
+        // unique across multiple aviz instances in the same system.
+        node_name +=
+            "_" + std::to_string(static_cast<unsigned long>(::getpid()));
+    }
+
+    // If we already have a node abstraction, make sure we're not silently
+    // changing the node name – report an error.
+    if (node_abstraction_) {
+        if (node_abstraction_->get_node_name() != node_name) {
+            throw std::runtime_error(
+                "AutolinkClientAbstraction already initialized with node name "
+                "'" +
+                node_abstraction_->get_node_name() + "', requested '" +
+                node_name + "'");
+        }
+        return node_abstraction_;
+    }
+
+    node_abstraction_ = std::make_shared<AutolinkNodeAbstraction>(node_name);
+
     return node_abstraction_;
-  }
-
-  node_abstraction_ = std::make_shared<AutolinkNodeAbstraction>(node_name);
-
-  return node_abstraction_;
 }
 
-bool AutolinkClientAbstraction::ok() const { return ::autolink::OK() && static_cast<bool>(node_abstraction_); }
+bool AutolinkClientAbstraction::ok() const {
+    return ::autolink::OK() && static_cast<bool>(node_abstraction_);
+}
 
 void AutolinkClientAbstraction::shutdown() {
-  // Request a graceful shutdown if still running.
-  if (!::autolink::IsShutdown()) {
-    ::autolink::AsyncShutdown();
-    ::autolink::WaitForShutdown();
-  }
+    // Request a graceful shutdown if still running.
+    if (!::autolink::IsShutdown()) {
+        ::autolink::AsyncShutdown();
+        ::autolink::WaitForShutdown();
+    }
 
-  // Clear global Autolink state and drop our node abstraction.
-  ::autolink::Clear();
-  node_abstraction_.reset();
+    // Clear global Autolink state and drop our node abstraction.
+    ::autolink::Clear();
+    node_abstraction_.reset();
 }
 
 }  // namespace autolink_integration

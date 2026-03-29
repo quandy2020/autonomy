@@ -23,19 +23,19 @@ using autolink::proto::ClockMode;
 namespace autolink {
 
 TEST(Clock, MockTime) {
-  Clock::SetMode(ClockMode::MODE_AUTOLINK);
-  EXPECT_EQ(ClockMode::MODE_AUTOLINK, Clock::mode());
+    Clock::SetMode(ClockMode::MODE_AUTOLINK);
+    EXPECT_EQ(ClockMode::MODE_AUTOLINK, Clock::mode());
 
-  Clock::SetMode(ClockMode::MODE_MOCK);
-  EXPECT_EQ(ClockMode::MODE_MOCK, Clock::mode());
+    Clock::SetMode(ClockMode::MODE_MOCK);
+    EXPECT_EQ(ClockMode::MODE_MOCK, Clock::mode());
 
-  EXPECT_EQ(0, Clock::Now().ToNanosecond());
+    EXPECT_EQ(0, Clock::Now().ToNanosecond());
 
-  Clock::SetNow(Time(1));
-  EXPECT_EQ(1, Clock::Now().ToNanosecond());
+    Clock::SetNow(Time(1));
+    EXPECT_EQ(1, Clock::Now().ToNanosecond());
 
-  Clock::SetNowInSeconds(123.456);
-  EXPECT_DOUBLE_EQ(123.456, Clock::NowInSeconds());
+    Clock::SetNowInSeconds(123.456);
+    EXPECT_DOUBLE_EQ(123.456, Clock::NowInSeconds());
 }
 
 }  // namespace autolink

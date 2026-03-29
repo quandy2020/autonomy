@@ -13,19 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *****************************************************************************/
-#include <memory>
+
+#include "timer_component_example/timer_component_example.hpp"
 
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/component/component.hpp"
 #include "examples.pb.h"
 
-using autolink::Component;
-using autolink::ComponentBase;
-using autolink::examples::Driver;
+bool TimerComponentSample::Init() {
+    driver_writer_ = node_->CreateWriter<Driver>("/carstatus/channel");
+    return true;
+}
 
-class CommonComponentSample : public Component<Driver, Driver> {
- public:
-  bool Init() override;
-  bool Proc(const std::shared_ptr<Driver>& msg0, const std::shared_ptr<Driver>& msg1) override;
-};
-AUTOLINK_REGISTER_COMPONENT(CommonComponentSample)
+bool TimerComponentSample::Proc() {
+    static int i = 0;
+    auto out_msg = std::make_shared<Driver>();
+    out_msg->set_msg_id(i++);
+    driver_writer_->Write(out_msg);
+    AINFO << "timer_component_example: Write drivermsg->"
+          << out_msg->ShortDebugString();
+    return true;
+}

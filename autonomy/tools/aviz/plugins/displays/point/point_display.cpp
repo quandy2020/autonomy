@@ -38,95 +38,112 @@ namespace plugins {
 namespace displays {
 
 PointDisplay::PointDisplay(const QString& name)
-    : AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PointStamped>("aviz/Point") {
-  setName(name);
-  setUpProperties();
+    : AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PointStamped>(
+          "aviz/Point") {
+    setName(name);
+    setUpProperties();
 }
 
 PointDisplay::~PointDisplay() = default;
 
-void PointDisplay::onInitialize() { AutolinkTopicDisplay::onInitialize(); }
+void PointDisplay::onInitialize() {
+    AutolinkTopicDisplay::onInitialize();
+}
 
 void PointDisplay::setUpProperties() {
-  color_property_ = new aviz::common::properties::ColorProperty(
-      QString("Color"), QColor(204, 41, 204), QString("Color of a point"), nullptr, SLOT(updateColorAndAlpha()), this);
+    color_property_ = new aviz::common::properties::ColorProperty(
+        QString("Color"), QColor(204, 41, 204), QString("Color of a point"),
+        nullptr, SLOT(updateColorAndAlpha()), this);
 
-  alpha_property_ = new aviz::common::properties::FloatProperty(QString("Alpha"), 1.0f,
-                                                                QString("0 is fully transparent, 1.0 is fully opaque."),
-                                                                nullptr, SLOT(updateColorAndAlpha()), this);
+    alpha_property_ = new aviz::common::properties::FloatProperty(
+        QString("Alpha"), 1.0f,
+        QString("0 is fully transparent, 1.0 is fully opaque."), nullptr,
+        SLOT(updateColorAndAlpha()), this);
 
-  radius_property_ = new aviz::common::properties::FloatProperty(QString("Radius"), 0.2f, QString("Radius of a point"),
-                                                                 nullptr, SLOT(updateColorAndAlpha()), this);
+    radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Radius"), 0.2f, QString("Radius of a point"), nullptr,
+        SLOT(updateColorAndAlpha()), this);
 
-  history_length_property_ = new aviz::common::properties::IntProperty(
-      QString("History Length"), 1, QString("Number of prior measurements to display."), nullptr,
-      SLOT(onlyKeepHistoryLengthNumberOfVisuals()), this);
-  history_length_property_->setMin(1);
-  history_length_property_->setMax(100000);
+    history_length_property_ = new aviz::common::properties::IntProperty(
+        QString("History Length"), 1,
+        QString("Number of prior measurements to display."), nullptr,
+        SLOT(onlyKeepHistoryLengthNumberOfVisuals()), this);
+    history_length_property_->setMin(1);
+    history_length_property_->setMax(100000);
 }
 
 void PointDisplay::reset() {
-  AutolinkTopicDisplay::reset();
-  visuals_.clear();
+    AutolinkTopicDisplay::reset();
+    visuals_.clear();
 }
 
 void PointDisplay::updateColorAndAlpha() {
-  float alpha = alpha_property_->getFloat();
-  float radius = radius_property_->getFloat();
-  Ogre::ColourValue color = color_property_->getOgreColor();
+    float alpha = alpha_property_->getFloat();
+    float radius = radius_property_->getFloat();
+    Ogre::ColourValue color = color_property_->getOgreColor();
 
-  for (auto visual : visuals_) {
-    visual->setColor(color.r, color.g, color.b, alpha);
-    visual->setScale(Ogre::Vector3(radius, radius, radius));
-  }
-  queueRender();
+    for (auto visual : visuals_) {
+        visual->setColor(color.r, color.g, color.b, alpha);
+        visual->setScale(Ogre::Vector3(radius, radius, radius));
+    }
+    queueRender();
 }
 
 void PointDisplay::onlyKeepHistoryLengthNumberOfVisuals() {
-  while (visuals_.size() > static_cast<size_t>(history_length_property_->getInt())) {
-    visuals_.pop_front();
-  }
-  queueRender();
+    while (visuals_.size() >
+           static_cast<size_t>(history_length_property_->getInt())) {
+        visuals_.pop_front();
+    }
+    queueRender();
 }
 
-void PointDisplay::processMessage(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>& msg) {
-  if (!msg || !scene_manager_ || !scene_node_) {
-    return;
-  }
+void PointDisplay::processMessage(
+    const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>&
+        msg) {
+    if (!msg || !scene_manager_ || !scene_node_) {
+        return;
+    }
 
-  if (!aviz::common::validateFloat(msg->point.x) || !aviz::common::validateFloat(msg->point.y) ||
-      !aviz::common::validateFloat(msg->point.z)) {
-    setStatus(aviz::common::properties::StatusProperty::Error, "Topic",
-              "Message contained invalid floating point values (nans or infs)");
-    return;
-  }
+    if (!aviz::common::validateFloat(msg->point.x) ||
+        !aviz::common::validateFloat(msg->point.y) ||
+        !aviz::common::validateFloat(msg->point.z)) {
+        setStatus(
+            aviz::common::properties::StatusProperty::Error, "Topic",
+            "Message contained invalid floating point values (nans or infs)");
+        return;
+    }
 
-  // For now, assume identity transform (TODO: implement frame transformation)
-  setTransformOk();
+    // For now, assume identity transform (TODO: implement frame transformation)
+    setTransformOk();
 
-  if (visuals_.size() >= static_cast<size_t>(history_length_property_->getInt())) {
-    visuals_.pop_front();
-  }
+    if (visuals_.size() >=
+        static_cast<size_t>(history_length_property_->getInt())) {
+        visuals_.pop_front();
+    }
 
-  createNewSphereVisual(msg);
+    createNewSphereVisual(msg);
 }
 
-void PointDisplay::createNewSphereVisual(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>& msg) {
-  std::shared_ptr<aviz::rendering::Shape> visual =
-      std::make_shared<aviz::rendering::Shape>(aviz::rendering::Shape::Sphere, scene_manager_, scene_node_);
+void PointDisplay::createNewSphereVisual(
+    const std::shared_ptr<autonomy::commsgs::geometry_msgs::PointStamped>&
+        msg) {
+    std::shared_ptr<aviz::rendering::Shape> visual =
+        std::make_shared<aviz::rendering::Shape>(aviz::rendering::Shape::Sphere,
+                                                 scene_manager_, scene_node_);
 
-  float alpha = alpha_property_->getFloat();
-  float radius = radius_property_->getFloat();
-  Ogre::ColourValue color = color_property_->getOgreColor();
+    float alpha = alpha_property_->getFloat();
+    float radius = radius_property_->getFloat();
+    Ogre::ColourValue color = color_property_->getOgreColor();
 
-  visual->setColor(color.r, color.g, color.b, alpha);
-  visual->setScale(Ogre::Vector3(radius, radius, radius));
-  Ogre::Vector3 pos(static_cast<float>(msg->point.x), static_cast<float>(msg->point.y),
-                    static_cast<float>(msg->point.z));
-  visual->setPosition(pos);
+    visual->setColor(color.r, color.g, color.b, alpha);
+    visual->setScale(Ogre::Vector3(radius, radius, radius));
+    Ogre::Vector3 pos(static_cast<float>(msg->point.x),
+                      static_cast<float>(msg->point.y),
+                      static_cast<float>(msg->point.z));
+    visual->setPosition(pos);
 
-  visuals_.push_back(visual);
-  queueRender();
+    visuals_.push_back(visual);
+    queueRender();
 }
 
 }  // namespace displays

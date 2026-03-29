@@ -26,19 +26,22 @@
 namespace autolink {
 namespace service_discovery {
 
-class ParticipantListener : public eprosima::fastrtps::ParticipantListener {
- public:
-  using ChangeFunc = std::function<void(const eprosima::fastrtps::rtps::ParticipantDiscoveryInfo& info)>;
+class ParticipantListener : public eprosima::fastrtps::ParticipantListener
+{
+public:
+    using ChangeFunc = std::function<void(
+        const eprosima::fastrtps::rtps::ParticipantDiscoveryInfo& info)>;
 
-  explicit ParticipantListener(const ChangeFunc& callback);
-  virtual ~ParticipantListener();
+    explicit ParticipantListener(const ChangeFunc& callback);
+    virtual ~ParticipantListener();
 
-  virtual void onParticipantDiscovery(eprosima::fastrtps::Participant* p,
-                                      eprosima::fastrtps::rtps::ParticipantDiscoveryInfo info);
+    virtual void onParticipantDiscovery(
+        eprosima::fastrtps::Participant* p,
+        eprosima::fastrtps::rtps::ParticipantDiscoveryInfo info);
 
- private:
-  ChangeFunc callback_;
-  std::mutex mutex_;
+private:
+    ChangeFunc callback_;
+    std::mutex mutex_;
 };
 
 }  // namespace service_discovery

@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-TemperatureDisplay::TemperatureDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/Temperature");
-  setName(name);
+TemperatureDisplay::TemperatureDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/Temperature");
+    setName(name);
 }
 
 TemperatureDisplay::~TemperatureDisplay() = default;
 
-void TemperatureDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void TemperatureDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void TemperatureDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void TemperatureDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void TemperatureDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void TemperatureDisplay::reset() { aviz::common::Display::reset(); }
+void TemperatureDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void TemperatureDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void TemperatureDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void TemperatureDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

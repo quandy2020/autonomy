@@ -29,7 +29,7 @@ namespace models {
  * @brief A set of controls
  */
 struct Control {
-  float vx, vy, wz;
+    float vx, vy, wz;
 };
 
 /**
@@ -37,15 +37,15 @@ struct Control {
  * @brief A control sequence over time (e.g. trajectory)
  */
 struct ControlSequence {
-  Eigen::ArrayXf vx;
-  Eigen::ArrayXf vy;
-  Eigen::ArrayXf wz;
+    Eigen::ArrayXf vx;
+    Eigen::ArrayXf vy;
+    Eigen::ArrayXf wz;
 
-  void reset(unsigned int time_steps) {
-    vx.setZero(time_steps);
-    vy.setZero(time_steps);
-    wz.setZero(time_steps);
-  }
+    void reset(unsigned int time_steps) {
+        vx.setZero(time_steps);
+        vy.setZero(time_steps);
+        wz.setZero(time_steps);
+    }
 };
 
 }  // namespace models

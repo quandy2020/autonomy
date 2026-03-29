@@ -30,34 +30,40 @@ namespace autonomy {
 namespace planning {
 namespace math {
 
-class PiecewiseQuinticSpiralPath : public Curve1d {
- public:
-  PiecewiseQuinticSpiralPath(const double theta, const double kappa, const double dkappa);
+class PiecewiseQuinticSpiralPath : public Curve1d
+{
+public:
+    PiecewiseQuinticSpiralPath(const double theta, const double kappa,
+                               const double dkappa);
 
-  virtual ~PiecewiseQuinticSpiralPath() = default;
+    virtual ~PiecewiseQuinticSpiralPath() = default;
 
-  void Append(const double theta, const double kappa, const double dkappa, const double delta_s);
+    void Append(const double theta, const double kappa, const double dkappa,
+                const double delta_s);
 
-  double Evaluate(const std::uint32_t order, const double param) const override;
+    double Evaluate(const std::uint32_t order,
+                    const double param) const override;
 
-  double DeriveKappaS(const double s) const;
+    double DeriveKappaS(const double s) const;
 
-  double ParamLength() const override;
+    double ParamLength() const override;
 
-  std::string ToString() const override { return "PiecewiseQuinticSpiralPath"; }
+    std::string ToString() const override {
+        return "PiecewiseQuinticSpiralPath";
+    }
 
- private:
-  size_t LocatePiece(const double param) const;
+private:
+    size_t LocatePiece(const double param) const;
 
-  std::vector<QuinticSpiralPath> pieces_;
+    std::vector<QuinticSpiralPath> pieces_;
 
-  std::vector<double> accumulated_s_;
+    std::vector<double> accumulated_s_;
 
-  double last_theta_ = 0.0;
+    double last_theta_ = 0.0;
 
-  double last_kappa_ = 0.0;
+    double last_kappa_ = 0.0;
 
-  double last_dkappa_ = 0.0;
+    double last_dkappa_ = 0.0;
 };
 
 }  // namespace math

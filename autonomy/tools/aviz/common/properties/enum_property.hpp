@@ -35,42 +35,47 @@ namespace properties {
  * The integer returned will be that passed to addOption() for with the
  * string that is currently selected.
  */
-class EnumProperty : public StringProperty {
-  Q_OBJECT
+class EnumProperty : public StringProperty
+{
+    Q_OBJECT
 
- public:
-  explicit EnumProperty(const QString& name = QString(), const QString& default_value = QString(),
-                        const QString& description = QString(), Property* parent = nullptr,
-                        const char* changed_slot = nullptr, QObject* receiver = nullptr);
+public:
+    explicit EnumProperty(const QString& name = QString(),
+                          const QString& default_value = QString(),
+                          const QString& description = QString(),
+                          Property* parent = nullptr,
+                          const char* changed_slot = nullptr,
+                          QObject* receiver = nullptr);
 
-  /// Clear the list of options.
-  /**
-   * Does not change the current value of the property.
-   */
-  virtual void clearOptions();
+    /// Clear the list of options.
+    /**
+     * Does not change the current value of the property.
+     */
+    virtual void clearOptions();
 
-  virtual void addOption(const QString& option, int value = 0);
+    virtual void addOption(const QString& option, int value = 0);
 
-  void addOptionStd(const std::string& option, int value = 0);
+    void addOptionStd(const std::string& option, int value = 0);
 
-  /// Get the integer value of the currently selected option.
-  int getOptionInt();
+    /// Get the integer value of the currently selected option.
+    int getOptionInt();
 
-  QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option) override;
+    QWidget* createEditor(QWidget* parent,
+                          const QStyleOptionViewItem& option) override;
 
-  void sortOptions();
+    void sortOptions();
 
- Q_SIGNALS:
-  void requestOptions(EnumProperty* property);
+Q_SIGNALS:
+    void requestOptions(EnumProperty* property);
 
- private Q_SLOTS:
-  void setString(const QString& str);
+private Q_SLOTS:
+    void setString(const QString& str);
 
-  void setStringStd(const std::string& str);
+    void setStringStd(const std::string& str);
 
- private:
-  QStringList strings_;
-  QHash<QString, int> ints_;
+private:
+    QStringList strings_;
+    QHash<QString, int> ints_;
 };
 
 }  // namespace properties

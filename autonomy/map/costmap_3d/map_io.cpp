@@ -20,17 +20,18 @@ namespace autonomy {
 namespace map {
 namespace costmap_3d {
 
-bool LoadPlyFile(const std::string& ply_filename, commsgs::sensor_msgs::PointCloud& cloud) {
-  if (ply_filename.empty()) {
-    return false;
-  }
+bool LoadPlyFile(const std::string& ply_filename,
+                 commsgs::sensor_msgs::PointCloud& cloud) {
+    if (ply_filename.empty()) {
+        return false;
+    }
 
-  auto points = common::ReadPly(ply_filename);
-  cloud.points.resize(points.size());
-  for (auto const& point : points) {
-    cloud.points.push_back({point.x, point.y, point.z});
-  }
-  return true;
+    auto points = common::ReadPly(ply_filename);
+    cloud.points.resize(points.size());
+    for (auto const& point : points) {
+        cloud.points.push_back({point.x, point.y, point.z});
+    }
+    return true;
 }
 
 }  // namespace costmap_3d

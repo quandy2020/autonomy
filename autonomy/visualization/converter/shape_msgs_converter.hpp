@@ -27,10 +27,14 @@ namespace converter {
 namespace impl {
 
 // shape_msgs conversion functions
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::Plane& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::SolidPrimitive& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::Mesh& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::shape_msgs::MeshTriangle& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::shape_msgs::Plane& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::shape_msgs::SolidPrimitive& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::shape_msgs::Mesh& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::shape_msgs::MeshTriangle& message);
 
 }  // namespace impl
 }  // namespace converter

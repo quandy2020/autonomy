@@ -28,44 +28,44 @@ namespace commsgs {
 namespace diagnostic_msgs {
 
 struct KeyValue {
-  // What to label this value when viewing.
-  std::string key;
+    // What to label this value when viewing.
+    std::string key;
 
-  // A value to track over time.
-  std::string value;
+    // A value to track over time.
+    std::string value;
 };
 
 // This message holds the status of an individual component of the robot.
 struct DiagnosticStatus {
-  // // Possible levels of operations.
-  // byte OK=0
-  // byte WARN=1
-  // byte ERROR=2
-  // byte STALE=3
-  // Level of operation enumerated above.
-  uint8 level;
+    // // Possible levels of operations.
+    // byte OK=0
+    // byte WARN=1
+    // byte ERROR=2
+    // byte STALE=3
+    // Level of operation enumerated above.
+    uint8 level;
 
-  // A description of the test/component reporting.
-  std::string name;
+    // A description of the test/component reporting.
+    std::string name;
 
-  // A description of the status.
-  std::string message;
+    // A description of the status.
+    std::string message;
 
-  // A hardware unique std::string.
-  std::string hardware_id;
+    // A hardware unique std::string.
+    std::string hardware_id;
 
-  // An array of values associated with the status.
-  std::vector<KeyValue> values;
+    // An array of values associated with the status.
+    std::vector<KeyValue> values;
 };
 
 // This message is used to send diagnostic information about the state of the
 // robot.
 struct DiagnosticArray {
-  // for timestamp
-  std_msgs::Header header;
+    // for timestamp
+    std_msgs::Header header;
 
-  // an array of components being reported on
-  std::vector<DiagnosticStatus> status;
+    // an array of components being reported on
+    std::vector<DiagnosticStatus> status;
 };
 
 }  // namespace diagnostic_msgs

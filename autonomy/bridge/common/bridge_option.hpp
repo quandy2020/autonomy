@@ -27,9 +27,11 @@ namespace autonomy {
 namespace bridge {
 namespace common {
 
-proto::GrpcOptions CreateGrpcOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::GrpcOptions CreateGrpcOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
-proto::MqttOptions CreateMqttOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::MqttOptions CreateMqttOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace bridge

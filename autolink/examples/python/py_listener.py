@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+
+###############################################################################
+# Copyright 2024 The OpenRobotic Beginner Authors (duyongquan). All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+###############################################################################
+# -*- coding: utf-8 -*-
+"""Module for example of listener."""
+
+from _bootstrap_autolink import setup_autolink_pythonpath
+
+setup_autolink_pythonpath()
+
+from autolink_py3 import autolink
+from autolink.proto.unit_test_pb2 import Chatter
+
+
+def callback(data):
+    """
+    Reader message callback.
+    """
+    print("=" * 80)
+    print("py:reader callback msg->:")
+    print("seq:", data.seq)
+    print("timestamp:", data.timestamp)
+    print("content:", data.content)
+    print("=" * 80)
+
+
+def test_listener_class():
+    """
+    Reader message.
+    """
+    print("=" * 120)
+    test_node = autolink.Node("listener")
+    test_node.create_reader("channel/chatter", Chatter, callback)
+    test_node.spin()
+
+
+if __name__ == '__main__':
+    autolink.init()
+    test_listener_class()
+    autolink.shutdown()

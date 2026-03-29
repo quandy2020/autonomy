@@ -25,42 +25,44 @@
 namespace autonomy {
 namespace simulation {
 
-class Simulator {
- public:
-  /**
-   * @brief Define Simulator::SharedPtr type
-   */
-  AUTONOMY_SMART_PTR_DEFINITIONS(Simulator)
+class Simulator
+{
+public:
+    /**
+     * @brief Define Simulator::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(Simulator)
 
-  /**
-   * @brief Constructor
-   */
-  Simulator(const proto::SimulationOption& option);
+    /**
+     * @brief Constructor
+     */
+    Simulator(const proto::SimulationOption& option);
 
-  /**
-   * @brief Destructor
-   */
-  ~Simulator();
+    /**
+     * @brief Destructor
+     */
+    ~Simulator();
 
-  /**
-   * @brief Start simulator
-   *
-   * @return true
-   * @return false
-   */
-  bool Start();
+    /**
+     * @brief Start simulator
+     *
+     * @return true
+     * @return false
+     */
+    bool Start();
 
-  /**
-   * @brief Shutdown simulator
-   */
-  void Shutdown();
+    /**
+     * @brief Shutdown simulator
+     */
+    void Shutdown();
 
- private:
-  // options
-  proto::SimulationOption options_;
+private:
+    // options
+    proto::SimulationOption options_;
 };
 
-proto::SimulationOption LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::SimulationOption LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace simulation
 }  // namespace autonomy

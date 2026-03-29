@@ -25,13 +25,16 @@
 namespace cartographer {
 namespace io {
 
-using PoseToPixelFunction = std::function<Eigen::Array2i(const transform::Rigid3d& pose)>;
+using PoseToPixelFunction =
+    std::function<Eigen::Array2i(const transform::Rigid3d& pose)>;
 
 // Draws the 'trajectory' with the given 'color' onto 'surface'. The
 // 'pose_to_pixel' function must translate a trajectory node's position into the
 // pixel on 'surface'.
-void DrawTrajectory(const mapping::proto::Trajectory& trajectory, const FloatColor& color,
-                    const PoseToPixelFunction& pose_to_pixel, cairo_surface_t* surface);
+void DrawTrajectory(const mapping::proto::Trajectory& trajectory,
+                    const FloatColor& color,
+                    const PoseToPixelFunction& pose_to_pixel,
+                    cairo_surface_t* surface);
 
 }  // namespace io
 }  // namespace cartographer

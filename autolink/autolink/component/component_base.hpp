@@ -34,83 +34,104 @@ namespace autolink {
 using autolink::proto::ComponentConfig;
 using autolink::proto::TimerComponentConfig;
 
-class ComponentBase : public std::enable_shared_from_this<ComponentBase> {
- public:
-  template <typename M>
-  using Reader = autolink::Reader<M>;
+class ComponentBase : public std::enable_shared_from_this<ComponentBase>
+{
+public:
+    template <typename M>
+    using Reader = autolink::Reader<M>;
 
-  virtual ~ComponentBase() {}
+    virtual ~ComponentBase() {}
 
-  virtual bool Initialize(const ComponentConfig& config) { return false; }
-  virtual bool Initialize(const TimerComponentConfig& config) { return false; }
-  virtual void Shutdown() {
-    if (is_shutdown_.exchange(true)) {
-      return;
+    virtual bool Initialize(const ComponentConfig& config) {
+        return false;
+    }
+    virtual bool Initialize(const TimerComponentConfig& config) {
+        return false;
+    }
+    virtual void Shutdown() {
+        if (is_shutdown_.exchange(true)) {
+            return;
+        }
+
+        Clear();
+        for (auto& reader : readers_) {
+            reader->Shutdown();
+        }
+        scheduler::Instance()->RemoveTask(node_->Name());
     }
 
-    Clear();
-    for (auto& reader : readers_) {
-      reader->Shutdown();
-    }
-    scheduler::Instance()->RemoveTask(node_->Name());
-  }
-
-  template <typename T>
-  bool GetProtoConfig(T* config) const {
-    return common::GetProtoFromFile(config_file_path_, config);
-  }
-
- protected:
-  virtual bool Init() = 0;
-  virtual void Clear() { return; }
-  const std::string& ConfigFilePath() const { return config_file_path_; }
-
-  void LoadConfigFiles(const ComponentConfig& config) {
-    if (!config.config_file_path().empty()) {
-      if (!common::GetFilePathWithEnv(config.config_file_path(), "AUTOLINK_CONF_PATH", &config_file_path_)) {
-        AERROR << "conf file [" << config.config_file_path() << "] not found!";
-        config_file_path_ = config.config_file_path();
-      } else {
-        AINFO << "use config file: " << config_file_path_;
-      }
+    template <typename T>
+    bool GetProtoConfig(T* config) const {
+        return common::GetProtoFromFile(config_file_path_, config);
     }
 
-    if (!config.flag_file_path().empty()) {
-      std::string flag_file_path = config.flag_file_path();
-      if (!common::GetFilePathWithEnv(config.flag_file_path(), "AUTOLINK_FLAG_PATH", &flag_file_path)) {
-        AERROR << "flag file [" << config.flag_file_path() << "] not found!";
-      } else {
-        AINFO << "use flag file: " << flag_file_path;
-      }
-      google::SetCommandLineOption("flagfile", flag_file_path.c_str());
+protected:
+    virtual bool Init() = 0;
+    virtual void Clear() {
+        return;
     }
-  }
-
-  void LoadConfigFiles(const TimerComponentConfig& config) {
-    if (!config.config_file_path().empty()) {
-      if (!common::GetFilePathWithEnv(config.config_file_path(), "AUTOLINK_CONF_PATH", &config_file_path_)) {
-        AERROR << "conf file [" << config.config_file_path() << "] not found!";
-        config_file_path_ = config.config_file_path();
-      } else {
-        AINFO << "use config file: " << config_file_path_;
-      }
+    const std::string& ConfigFilePath() const {
+        return config_file_path_;
     }
 
-    if (!config.flag_file_path().empty()) {
-      std::string flag_file_path = config.flag_file_path();
-      if (!common::GetFilePathWithEnv(config.flag_file_path(), "AUTOLINK_FLAG_PATH", &flag_file_path)) {
-        AERROR << "flag file [" << config.flag_file_path() << "] not found!";
-      } else {
-        AINFO << "use flag file: " << flag_file_path;
-      }
-      google::SetCommandLineOption("flagfile", flag_file_path.c_str());
-    }
-  }
+    void LoadConfigFiles(const ComponentConfig& config) {
+        if (!config.config_file_path().empty()) {
+            if (!common::GetFilePathWithEnv(config.config_file_path(),
+                                            "AUTOLINK_CONF_PATH",
+                                            &config_file_path_)) {
+                AERROR << "conf file [" << config.config_file_path()
+                       << "] not found!";
+                config_file_path_ = config.config_file_path();
+            } else {
+                AINFO << "use config file: " << config_file_path_;
+            }
+        }
 
-  std::atomic<bool> is_shutdown_ = {false};
-  std::shared_ptr<Node> node_ = nullptr;
-  std::string config_file_path_ = "";
-  std::vector<std::shared_ptr<ReaderBase>> readers_;
+        if (!config.flag_file_path().empty()) {
+            std::string flag_file_path = config.flag_file_path();
+            if (!common::GetFilePathWithEnv(config.flag_file_path(),
+                                            "AUTOLINK_FLAG_PATH",
+                                            &flag_file_path)) {
+                AERROR << "flag file [" << config.flag_file_path()
+                       << "] not found!";
+            } else {
+                AINFO << "use flag file: " << flag_file_path;
+            }
+            google::SetCommandLineOption("flagfile", flag_file_path.c_str());
+        }
+    }
+
+    void LoadConfigFiles(const TimerComponentConfig& config) {
+        if (!config.config_file_path().empty()) {
+            if (!common::GetFilePathWithEnv(config.config_file_path(),
+                                            "AUTOLINK_CONF_PATH",
+                                            &config_file_path_)) {
+                AERROR << "conf file [" << config.config_file_path()
+                       << "] not found!";
+                config_file_path_ = config.config_file_path();
+            } else {
+                AINFO << "use config file: " << config_file_path_;
+            }
+        }
+
+        if (!config.flag_file_path().empty()) {
+            std::string flag_file_path = config.flag_file_path();
+            if (!common::GetFilePathWithEnv(config.flag_file_path(),
+                                            "AUTOLINK_FLAG_PATH",
+                                            &flag_file_path)) {
+                AERROR << "flag file [" << config.flag_file_path()
+                       << "] not found!";
+            } else {
+                AINFO << "use flag file: " << flag_file_path;
+            }
+            google::SetCommandLineOption("flagfile", flag_file_path.c_str());
+        }
+    }
+
+    std::atomic<bool> is_shutdown_ = {false};
+    std::shared_ptr<Node> node_ = nullptr;
+    std::string config_file_path_ = "";
+    std::vector<std::shared_ptr<ReaderBase>> readers_;
 };
 
 }  // namespace autolink

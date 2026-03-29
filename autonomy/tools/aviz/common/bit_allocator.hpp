@@ -22,19 +22,21 @@ namespace aviz {
 namespace common {
 
 /// Allocation manager for bit positions within a 32-bit word.
-class BitAllocator {
- public:
-  /// Constructor; all bits are free initially.
-  BitAllocator();
+class BitAllocator
+{
+public:
+    /// Constructor; all bits are free initially.
+    BitAllocator();
 
-  /// Return a uint32 with a single unused bit "on", or a 0 if all bits are already allocated.
-  uint32_t allocBit();
+    /// Return a uint32 with a single unused bit "on", or a 0 if all bits are
+    /// already allocated.
+    uint32_t allocBit();
 
-  /// Free the given bits.
-  void freeBits(uint32_t bits);
+    /// Free the given bits.
+    void freeBits(uint32_t bits);
 
- private:
-  uint32_t allocated_bits_;
+private:
+    uint32_t allocated_bits_;
 };
 
 }  // namespace common

@@ -26,20 +26,21 @@ namespace system {
 namespace monitor {
 
 void GpuMonitor::Collect() {
-  // Stub: 可后续接入 nvidia-smi / DRM 等
+    // Stub: 可后续接入 nvidia-smi / DRM 等
 }
 
 void GpuMonitor::RegisterWithPrometheus(void* registry) {
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
-  auto* reg = static_cast<prometheus::Registry*>(registry);
-  if (reg == nullptr) return;
-  auto& family = prometheus::BuildGauge()
-                     .Name("autonomy_system_gpu_usage_percent")
-                     .Help("GPU usage percent (stub)")
-                     .Register(*reg);
-  family.Add({{"gpu", "0"}});
+    auto* reg = static_cast<prometheus::Registry*>(registry);
+    if (reg == nullptr)
+        return;
+    auto& family = prometheus::BuildGauge()
+                       .Name("autonomy_system_gpu_usage_percent")
+                       .Help("GPU usage percent (stub)")
+                       .Register(*reg);
+    family.Add({{"gpu", "0"}});
 #else
-  (void)registry;
+    (void)registry;
 #endif
 }
 

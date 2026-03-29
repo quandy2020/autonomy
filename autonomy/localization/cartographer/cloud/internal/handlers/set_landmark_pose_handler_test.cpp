@@ -40,18 +40,23 @@ const std::string kMessage = R"(
     }
   })";
 
-using SetLandmarkPoseHandlerTest = testing::HandlerTest<SetLandmarkPoseSignature, SetLandmarkPoseHandler>;
+using SetLandmarkPoseHandlerTest =
+    testing::HandlerTest<SetLandmarkPoseSignature, SetLandmarkPoseHandler>;
 
 TEST_F(SetLandmarkPoseHandlerTest, SetLandmarkPose) {
-  constexpr double kEps = 1e-10;
-  proto::SetLandmarkPoseRequest request;
-  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &request));
-  EXPECT_CALL(*mock_pose_graph_,
-              SetLandmarkPose("landmark_1",
-                              transform::IsNearly(
-                                  transform::Rigid3d(Eigen::Vector3d(1, 2, 3), Eigen::Quaterniond(4, 5, 6, 7)), kEps),
-                              false));
-  test_server_->SendWrite(request);
+    constexpr double kEps = 1e-10;
+    proto::SetLandmarkPoseRequest request;
+    EXPECT_TRUE(
+        google::protobuf::TextFormat::ParseFromString(kMessage, &request));
+    EXPECT_CALL(
+        *mock_pose_graph_,
+        SetLandmarkPose("landmark_1",
+                        transform::IsNearly(
+                            transform::Rigid3d(Eigen::Vector3d(1, 2, 3),
+                                               Eigen::Quaterniond(4, 5, 6, 7)),
+                            kEps),
+                        false));
+    test_server_->SendWrite(request);
 }
 
 }  // namespace

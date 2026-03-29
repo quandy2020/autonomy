@@ -22,69 +22,69 @@ namespace cartographer {
 namespace mapping {
 
 TEST(TrajectoryConnectivityStateTest, UnknownTrajectory) {
-  TrajectoryConnectivityState state;
-  state.Add(0);
+    TrajectoryConnectivityState state;
+    state.Add(0);
 
-  // Nothing is transitively connected to an unknown trajectory.
-  EXPECT_FALSE(state.TransitivelyConnected(0, 1));
-  EXPECT_EQ(state.LastConnectionTime(0, 1), common::Time());
+    // Nothing is transitively connected to an unknown trajectory.
+    EXPECT_FALSE(state.TransitivelyConnected(0, 1));
+    EXPECT_EQ(state.LastConnectionTime(0, 1), common::Time());
 }
 
 TEST(TrajectoryConnectivityStateTest, NotConnected) {
-  TrajectoryConnectivityState state;
-  state.Add(0);
-  state.Add(1);
-  EXPECT_FALSE(state.TransitivelyConnected(0, 1));
-  EXPECT_EQ(state.LastConnectionTime(0, 1), common::Time());
+    TrajectoryConnectivityState state;
+    state.Add(0);
+    state.Add(1);
+    EXPECT_FALSE(state.TransitivelyConnected(0, 1));
+    EXPECT_EQ(state.LastConnectionTime(0, 1), common::Time());
 }
 
 TEST(TrajectoryConnectivityStateTest, Connected) {
-  TrajectoryConnectivityState state;
-  state.Add(0);
-  state.Add(1);
-  state.Connect(0, 1, common::FromUniversal(123456));
-  EXPECT_TRUE(state.TransitivelyConnected(0, 1));
-  EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(123456));
+    TrajectoryConnectivityState state;
+    state.Add(0);
+    state.Add(1);
+    state.Connect(0, 1, common::FromUniversal(123456));
+    EXPECT_TRUE(state.TransitivelyConnected(0, 1));
+    EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(123456));
 }
 
 TEST(TrajectoryConnectivityStateTest, UpdateConnectionTime) {
-  TrajectoryConnectivityState state;
-  state.Add(0);
-  state.Add(1);
-  state.Connect(0, 1, common::FromUniversal(123456));
-  state.Connect(0, 1, common::FromUniversal(234567));
-  EXPECT_TRUE(state.TransitivelyConnected(0, 1));
-  EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(234567));
+    TrajectoryConnectivityState state;
+    state.Add(0);
+    state.Add(1);
+    state.Connect(0, 1, common::FromUniversal(123456));
+    state.Connect(0, 1, common::FromUniversal(234567));
+    EXPECT_TRUE(state.TransitivelyConnected(0, 1));
+    EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(234567));
 
-  // Connections with an earlier connection time do not update the last
-  // connection time.
-  state.Connect(0, 1, common::FromUniversal(123456));
-  EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(234567));
+    // Connections with an earlier connection time do not update the last
+    // connection time.
+    state.Connect(0, 1, common::FromUniversal(123456));
+    EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(234567));
 }
 
 TEST(TrajectoryConnectivityStateTest, JoinTwoComponents) {
-  TrajectoryConnectivityState state;
-  state.Add(0);
-  state.Add(1);
-  state.Add(2);
-  state.Add(3);
-  state.Connect(0, 1, common::FromUniversal(123456));
-  state.Connect(2, 3, common::FromUniversal(123456));
+    TrajectoryConnectivityState state;
+    state.Add(0);
+    state.Add(1);
+    state.Add(2);
+    state.Add(3);
+    state.Connect(0, 1, common::FromUniversal(123456));
+    state.Connect(2, 3, common::FromUniversal(123456));
 
-  // Connect the two disjoint connected components.
-  state.Connect(0, 2, common::FromUniversal(234567));
-  EXPECT_TRUE(state.TransitivelyConnected(0, 2));
-  EXPECT_TRUE(state.TransitivelyConnected(1, 3));
+    // Connect the two disjoint connected components.
+    state.Connect(0, 2, common::FromUniversal(234567));
+    EXPECT_TRUE(state.TransitivelyConnected(0, 2));
+    EXPECT_TRUE(state.TransitivelyConnected(1, 3));
 
-  // All bipartite trajectory pairs between the two connected components
-  // should have the updated connection time.
-  EXPECT_EQ(state.LastConnectionTime(0, 2), common::FromUniversal(234567));
-  EXPECT_EQ(state.LastConnectionTime(0, 3), common::FromUniversal(234567));
-  EXPECT_EQ(state.LastConnectionTime(1, 3), common::FromUniversal(234567));
+    // All bipartite trajectory pairs between the two connected components
+    // should have the updated connection time.
+    EXPECT_EQ(state.LastConnectionTime(0, 2), common::FromUniversal(234567));
+    EXPECT_EQ(state.LastConnectionTime(0, 3), common::FromUniversal(234567));
+    EXPECT_EQ(state.LastConnectionTime(1, 3), common::FromUniversal(234567));
 
-  // A pair of trajectory IDs belonging to the same connected component should
-  // be unaffected.
-  EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(123456));
+    // A pair of trajectory IDs belonging to the same connected component should
+    // be unaffected.
+    EXPECT_EQ(state.LastConnectionTime(0, 1), common::FromUniversal(123456));
 }
 
 }  // namespace mapping

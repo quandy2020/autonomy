@@ -23,46 +23,56 @@
 namespace autolink {
 namespace base {
 
-class PthreadRWLock {
-  friend class ReadLockGuard<PthreadRWLock>;
-  friend class WriteLockGuard<PthreadRWLock>;
+class PthreadRWLock
+{
+    friend class ReadLockGuard<PthreadRWLock>;
+    friend class WriteLockGuard<PthreadRWLock>;
 
- public:
-  explicit PthreadRWLock(bool writer) {
-    pthread_rwlockattr_init(&rwlock_attr_);
-    if (writer) {
-      pthread_rwlockattr_setkind_np(&rwlock_attr_, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+public:
+    explicit PthreadRWLock(bool writer) {
+        pthread_rwlockattr_init(&rwlock_attr_);
+        if (writer) {
+            pthread_rwlockattr_setkind_np(
+                &rwlock_attr_, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+        }
+        pthread_rwlockattr_setpshared(&rwlock_attr_, PTHREAD_PROCESS_SHARED);
+        pthread_rwlock_init(&rwlock_, &rwlock_attr_);
     }
-    pthread_rwlockattr_setpshared(&rwlock_attr_, PTHREAD_PROCESS_SHARED);
-    pthread_rwlock_init(&rwlock_, &rwlock_attr_);
-  }
-  PthreadRWLock() : PthreadRWLock(true) {}
+    PthreadRWLock() : PthreadRWLock(true) {}
 
-  ~PthreadRWLock() {
-    pthread_rwlock_destroy(&rwlock_);
-    pthread_rwlockattr_destroy(&rwlock_attr_);
-  }
+    ~PthreadRWLock() {
+        pthread_rwlock_destroy(&rwlock_);
+        pthread_rwlockattr_destroy(&rwlock_attr_);
+    }
 
-  void ReadLock();
-  void ReadUnlock();
+    void ReadLock();
+    void ReadUnlock();
 
-  void WriteLock();
-  void WriteUnlock();
+    void WriteLock();
+    void WriteUnlock();
 
- private:
-  PthreadRWLock(const PthreadRWLock& other) = delete;
-  PthreadRWLock& operator=(const PthreadRWLock& other) = delete;
-  pthread_rwlock_t rwlock_;
-  pthread_rwlockattr_t rwlock_attr_;
+private:
+    PthreadRWLock(const PthreadRWLock& other) = delete;
+    PthreadRWLock& operator=(const PthreadRWLock& other) = delete;
+    pthread_rwlock_t rwlock_;
+    pthread_rwlockattr_t rwlock_attr_;
 };
 
-inline void PthreadRWLock::ReadLock() { pthread_rwlock_rdlock(&rwlock_); }
+inline void PthreadRWLock::ReadLock() {
+    pthread_rwlock_rdlock(&rwlock_);
+}
 
-inline void PthreadRWLock::ReadUnlock() { pthread_rwlock_unlock(&rwlock_); }
+inline void PthreadRWLock::ReadUnlock() {
+    pthread_rwlock_unlock(&rwlock_);
+}
 
-inline void PthreadRWLock::WriteLock() { pthread_rwlock_wrlock(&rwlock_); }
+inline void PthreadRWLock::WriteLock() {
+    pthread_rwlock_wrlock(&rwlock_);
+}
 
-inline void PthreadRWLock::WriteUnlock() { pthread_rwlock_unlock(&rwlock_); }
+inline void PthreadRWLock::WriteUnlock() {
+    pthread_rwlock_unlock(&rwlock_);
+}
 
 }  // namespace base
 }  // namespace autolink

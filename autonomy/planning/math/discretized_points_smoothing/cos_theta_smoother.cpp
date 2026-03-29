@@ -26,58 +26,67 @@ namespace autonomy {
 namespace planning {
 namespace math {
 
-CosThetaSmoother::CosThetaSmoother(const CosThetaSmootherConfig& config) : config_(config) {}
+CosThetaSmoother::CosThetaSmoother(const CosThetaSmootherConfig& config)
+    : config_(config) {}
 
-bool CosThetaSmoother::Solve(const std::vector<std::pair<double, double>>& raw_point2d,
-                             const std::vector<double>& bounds, std::vector<double>* opt_x,
-                             std::vector<double>* opt_y) {
-  const double weight_cos_included_angle = config_.weight_cos_included_angle();
-  const double weight_anchor_points = config_.weight_anchor_points();
-  const double weight_length = config_.weight_length();
-  // Use default values for fields not in proto
-  const size_t print_level = 0;                      // Default print level
-  const size_t max_num_of_iterations = 100;          // Default max iterations
-  const size_t acceptable_num_of_iterations = 15;    // Default acceptable iterations
-  const double tol = 1e-6;                           // Default tolerance
-  const double acceptable_tol = 1e-5;                // Default acceptable tolerance
-  const bool use_automatic_differentiation = false;  // Default to false
+bool CosThetaSmoother::Solve(
+    const std::vector<std::pair<double, double>>& raw_point2d,
+    const std::vector<double>& bounds, std::vector<double>* opt_x,
+    std::vector<double>* opt_y) {
+    const double weight_cos_included_angle =
+        config_.weight_cos_included_angle();
+    const double weight_anchor_points = config_.weight_anchor_points();
+    const double weight_length = config_.weight_length();
+    // Use default values for fields not in proto
+    const size_t print_level = 0;              // Default print level
+    const size_t max_num_of_iterations = 100;  // Default max iterations
+    const size_t acceptable_num_of_iterations =
+        15;                              // Default acceptable iterations
+    const double tol = 1e-6;             // Default tolerance
+    const double acceptable_tol = 1e-5;  // Default acceptable tolerance
+    const bool use_automatic_differentiation = false;  // Default to false
 
-  CosThetaIpoptInterface* smoother = new CosThetaIpoptInterface(raw_point2d, bounds);
+    CosThetaIpoptInterface* smoother =
+        new CosThetaIpoptInterface(raw_point2d, bounds);
 
-  smoother->set_weight_cos_included_angle(weight_cos_included_angle);
-  smoother->set_weight_anchor_points(weight_anchor_points);
-  smoother->set_weight_length(weight_length);
-  smoother->set_automatic_differentiation_flag(use_automatic_differentiation);
+    smoother->set_weight_cos_included_angle(weight_cos_included_angle);
+    smoother->set_weight_anchor_points(weight_anchor_points);
+    smoother->set_weight_length(weight_length);
+    smoother->set_automatic_differentiation_flag(use_automatic_differentiation);
 
-  Ipopt::SmartPtr<Ipopt::TNLP> problem = smoother;
+    Ipopt::SmartPtr<Ipopt::TNLP> problem = smoother;
 
-  // Create an instance of the IpoptApplication
-  Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
+    // Create an instance of the IpoptApplication
+    Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
 
-  app->Options()->SetIntegerValue("print_level", static_cast<int>(print_level));
-  app->Options()->SetIntegerValue("max_iter", static_cast<int>(max_num_of_iterations));
-  app->Options()->SetIntegerValue("acceptable_iter", static_cast<int>(acceptable_num_of_iterations));
-  app->Options()->SetNumericValue("tol", tol);
-  app->Options()->SetNumericValue("acceptable_tol", acceptable_tol);
+    app->Options()->SetIntegerValue("print_level",
+                                    static_cast<int>(print_level));
+    app->Options()->SetIntegerValue("max_iter",
+                                    static_cast<int>(max_num_of_iterations));
+    app->Options()->SetIntegerValue(
+        "acceptable_iter", static_cast<int>(acceptable_num_of_iterations));
+    app->Options()->SetNumericValue("tol", tol);
+    app->Options()->SetNumericValue("acceptable_tol", acceptable_tol);
 
-  Ipopt::ApplicationReturnStatus status = app->Initialize();
-  if (status != Ipopt::Solve_Succeeded) {
-    AERROR << "*** Error during initialization!";
-    return false;
-  }
+    Ipopt::ApplicationReturnStatus status = app->Initialize();
+    if (status != Ipopt::Solve_Succeeded) {
+        AERROR << "*** Error during initialization!";
+        return false;
+    }
 
-  status = app->OptimizeTNLP(problem);
+    status = app->OptimizeTNLP(problem);
 
-  if (status == Ipopt::Solve_Succeeded || status == Ipopt::Solved_To_Acceptable_Level) {
-    // Retrieve some statistics about the solve
-    Ipopt::Index iter_count = app->Statistics()->IterationCount();
-    ADEBUG << "*** The problem solved in " << iter_count << " iterations!";
-  } else {
-    AERROR << "Solver fails with return code: " << static_cast<int>(status);
-    return false;
-  }
-  smoother->get_optimization_results(opt_x, opt_y);
-  return true;
+    if (status == Ipopt::Solve_Succeeded ||
+        status == Ipopt::Solved_To_Acceptable_Level) {
+        // Retrieve some statistics about the solve
+        Ipopt::Index iter_count = app->Statistics()->IterationCount();
+        ADEBUG << "*** The problem solved in " << iter_count << " iterations!";
+    } else {
+        AERROR << "Solver fails with return code: " << static_cast<int>(status);
+        return false;
+    }
+    smoother->get_optimization_results(opt_x, opt_y);
+    return true;
 }
 }  // namespace math
 }  // namespace planning

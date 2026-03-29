@@ -25,14 +25,15 @@ namespace cartographer {
 namespace transform {
 
 struct TimestampedTransform {
-  common::Time time;
-  transform::Rigid3d transform;
+    common::Time time;
+    transform::Rigid3d transform;
 };
 
 TimestampedTransform FromProto(const proto::TimestampedTransform& proto);
 proto::TimestampedTransform ToProto(const TimestampedTransform& transform);
 
-TimestampedTransform Interpolate(const TimestampedTransform& start, const TimestampedTransform& end,
+TimestampedTransform Interpolate(const TimestampedTransform& start,
+                                 const TimestampedTransform& end,
                                  const common::Time time);
 
 }  // namespace transform

@@ -35,9 +35,10 @@ namespace profiler {
 #define TOKEN_JOIN(x, y) x##y
 #define UNIQUE_NAME(x) TOKEN_JOIN(prefix_perf, x)
 
-#define PERF_BLOCK(name, ...)                            \
-  autolink::profiler::Block UNIQUE_NAME(__LINE__)(name); \
-  autolink::profiler::BlockManager::Instance()->StartBlock(&UNIQUE_NAME(__LINE__));
+#define PERF_BLOCK(name, ...)                                 \
+    autolink::profiler::Block UNIQUE_NAME(__LINE__)(name);    \
+    autolink::profiler::BlockManager::Instance()->StartBlock( \
+        &UNIQUE_NAME(__LINE__));
 
 #define PERF_BLOCK_END autolink::profiler::BlockManager::Instance()->EndBlock();
 

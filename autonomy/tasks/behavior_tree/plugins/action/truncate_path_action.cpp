@@ -28,47 +28,54 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-TruncatePath::TruncatePath(const std::string& name, const BT::NodeConfiguration& conf)
+TruncatePath::TruncatePath(const std::string& name,
+                           const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(name, conf), distance_(1.0) {}
 
 BT::NodeStatus TruncatePath::tick() {
-  setStatus(BT::NodeStatus::RUNNING);
-  getInput("distance", distance_);
+    setStatus(BT::NodeStatus::RUNNING);
+    getInput("distance", distance_);
 
-  commsgs::planning_msgs::Path input_path;
+    commsgs::planning_msgs::Path input_path;
 
-  getInput("input_path", input_path);
+    getInput("input_path", input_path);
 
-  if (input_path.poses.empty()) {
+    if (input_path.poses.empty()) {
+        setOutput("output_path", input_path);
+        return BT::NodeStatus::SUCCESS;
+    }
+
+    commsgs::geometry_msgs::PoseStamped final_pose = input_path.poses.back();
+
+    double distance_to_goal =
+        autonomy::map::costmap_2d::utils::euclidean_distance(
+            input_path.poses.back(), final_pose);
+
+    while (distance_to_goal < distance_ && input_path.poses.size() > 2) {
+        input_path.poses.pop_back();
+        distance_to_goal = autonomy::map::costmap_2d::utils::euclidean_distance(
+            input_path.poses.back(), final_pose);
+    }
+
+    double dx =
+        final_pose.pose.position.x - input_path.poses.back().pose.position.x;
+    double dy =
+        final_pose.pose.position.y - input_path.poses.back().pose.position.y;
+
+    double final_angle = atan2(dy, dx);
+
+    if (std::isnan(final_angle) || std::isinf(final_angle)) {
+        AWARN << "Final angle is not valid while truncating path. Setting to "
+                 "0.0";
+        final_angle = 0.0;
+    }
+
+    input_path.poses.back().pose.orientation =
+        autonomy::map::costmap_2d::utils::OrientationAroundZAxis(final_angle);
+
     setOutput("output_path", input_path);
+
     return BT::NodeStatus::SUCCESS;
-  }
-
-  commsgs::geometry_msgs::PoseStamped final_pose = input_path.poses.back();
-
-  double distance_to_goal = autonomy::map::costmap_2d::utils::euclidean_distance(input_path.poses.back(), final_pose);
-
-  while (distance_to_goal < distance_ && input_path.poses.size() > 2) {
-    input_path.poses.pop_back();
-    distance_to_goal = autonomy::map::costmap_2d::utils::euclidean_distance(input_path.poses.back(), final_pose);
-  }
-
-  double dx = final_pose.pose.position.x - input_path.poses.back().pose.position.x;
-  double dy = final_pose.pose.position.y - input_path.poses.back().pose.position.y;
-
-  double final_angle = atan2(dy, dx);
-
-  if (std::isnan(final_angle) || std::isinf(final_angle)) {
-    AWARN << "Final angle is not valid while truncating path. Setting to "
-             "0.0";
-    final_angle = 0.0;
-  }
-
-  input_path.poses.back().pose.orientation = autonomy::map::costmap_2d::utils::OrientationAroundZAxis(final_angle);
-
-  setOutput("output_path", input_path);
-
-  return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -79,5 +86,7 @@ BT::NodeStatus TruncatePath::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::TruncatePath>("TruncatePath");
+    factory.registerNodeType<
+        autonomy::tasks::behavior_tree::plugins::action::TruncatePath>(
+        "TruncatePath");
 }

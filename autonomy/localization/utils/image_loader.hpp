@@ -44,7 +44,8 @@ bool ReadImage(const std::string& directory_path, std::vector<cv::Mat>& images);
  * @return true
  * @return false
  */
-bool ReadImage(const std::string& directory_path, std::vector<commsgs::sensor_msgs::Image>& images);
+bool ReadImage(const std::string& directory_path,
+               std::vector<commsgs::sensor_msgs::Image>& images);
 
 }  // namespace utils
 }  // namespace localization

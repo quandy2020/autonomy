@@ -35,31 +35,33 @@ namespace optimization {
  *
  * @ingroup Solvers
  */
-class IpoptSolver : public Solver {
- public:
-  using Ptr = std::shared_ptr<IpoptSolver>;
+class IpoptSolver : public Solver
+{
+public:
+    using Ptr = std::shared_ptr<IpoptSolver>;
 
-  IpoptSolver(bool rethrow_non_ipopt_exceptions = false);
-  virtual ~IpoptSolver() = default;
+    IpoptSolver(bool rethrow_non_ipopt_exceptions = false);
+    virtual ~IpoptSolver() = default;
 
-  /** @brief  Creates an IpoptAdapter and solves the NLP.
-   * @param [in/out]  nlp  The specific problem.
-   */
-  void Solve(Problem& nlp) override;
+    /** @brief  Creates an IpoptAdapter and solves the NLP.
+     * @param [in/out]  nlp  The specific problem.
+     */
+    void Solve(Problem& nlp) override;
 
-  /** Set options for the IPOPT solver. A complete list can be found here:
-   * https://www.coin-or.org/Ipopt/documentation/node40.html
-   */
-  void SetOption(const std::string& name, const std::string& value);
-  void SetOption(const std::string& name, int value);
-  void SetOption(const std::string& name, double value);
+    /** Set options for the IPOPT solver. A complete list can be found here:
+     * https://www.coin-or.org/Ipopt/documentation/node40.html
+     */
+    void SetOption(const std::string& name, const std::string& value);
+    void SetOption(const std::string& name, int value);
+    void SetOption(const std::string& name, double value);
 
-  /** @brief  Get the total wall clock time for the optimization, including function evaluations.
-   */
-  double GetTotalWallclockTime();
+    /** @brief  Get the total wall clock time for the optimization, including
+     * function evaluations.
+     */
+    double GetTotalWallclockTime();
 
- private:
-  std::shared_ptr<Ipopt::IpoptApplication> ipopt_app_;
+private:
+    std::shared_ptr<Ipopt::IpoptApplication> ipopt_app_;
 };
 
 }  // namespace optimization

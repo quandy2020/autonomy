@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 PointTool::PointTool() {
-  // TODO: Initialize tool
+    // TODO: Initialize tool
 }
 
 PointTool::~PointTool() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace tools

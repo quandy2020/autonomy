@@ -36,24 +36,27 @@ using ::autolink::proto::Header;
 namespace autolink {
 namespace record {
 
-class Spliter {
- public:
-  Spliter(const std::string& input_file, const std::string& output_file, const std::vector<std::string>& white_channels,
-          const std::vector<std::string>& black_channels, uint64_t begin_time = 0,
-          uint64_t end_time = std::numeric_limits<uint64_t>::max());
-  virtual ~Spliter();
-  bool Proc();
+class Spliter
+{
+public:
+    Spliter(const std::string& input_file, const std::string& output_file,
+            const std::vector<std::string>& white_channels,
+            const std::vector<std::string>& black_channels,
+            uint64_t begin_time = 0,
+            uint64_t end_time = std::numeric_limits<uint64_t>::max());
+    virtual ~Spliter();
+    bool Proc();
 
- private:
-  RecordFileReader reader_;
-  RecordFileWriter writer_;
-  std::string input_file_;
-  std::string output_file_;
-  std::vector<std::string> white_channels_;
-  std::vector<std::string> black_channels_;
-  bool all_channels_;
-  uint64_t begin_time_;
-  uint64_t end_time_;
+private:
+    RecordFileReader reader_;
+    RecordFileWriter writer_;
+    std::string input_file_;
+    std::string output_file_;
+    std::vector<std::string> white_channels_;
+    std::vector<std::string> black_channels_;
+    bool all_channels_;
+    uint64_t begin_time_;
+    uint64_t end_time_;
 };
 
 }  // namespace record

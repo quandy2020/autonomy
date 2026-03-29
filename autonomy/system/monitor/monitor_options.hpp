@@ -27,31 +27,31 @@ namespace monitor {
  * 用于控制启用哪些 monitor 以及可视化/分析相关配置。
  */
 struct MonitorOptions {
-  // ---------- 监控模块开关（参数选定） ----------
-  bool enable_cpu_monitor{true};
-  bool enable_gpu_monitor{false};
-  bool enable_mem_monitor{true};
-  bool enable_hdd_monitor{false};
-  bool enable_net_monitor{false};
-  bool enable_ntp_monitor{false};
-  bool enable_process_monitor{false};
-  bool enable_voltage_monitor{false};
+    // ---------- 监控模块开关（参数选定） ----------
+    bool enable_cpu_monitor{true};
+    bool enable_gpu_monitor{false};
+    bool enable_mem_monitor{true};
+    bool enable_hdd_monitor{false};
+    bool enable_net_monitor{false};
+    bool enable_ntp_monitor{false};
+    bool enable_process_monitor{false};
+    bool enable_voltage_monitor{false};
 
-  // ---------- Prometheus 可视化 ----------
-  bool enable_prometheus{true};
-  std::string prometheus_bind_address{"0.0.0.0:9090"};
-  std::string prometheus_metrics_prefix{"autonomy_system"};
+    // ---------- Prometheus 可视化 ----------
+    bool enable_prometheus{true};
+    std::string prometheus_bind_address{"0.0.0.0:9090"};
+    std::string prometheus_metrics_prefix{"autonomy_system"};
 
-  // ---------- gperftools 分析（参数选定） ----------
-  bool enable_cpu_profile{false};
-  std::string cpu_profile_filename{};
-  bool enable_heap_profile{false};
-  std::string heap_profile_filename{};
+    // ---------- gperftools 分析（参数选定） ----------
+    bool enable_cpu_profile{false};
+    std::string cpu_profile_filename{};
+    bool enable_heap_profile{false};
+    std::string heap_profile_filename{};
 
-  // ---------- 采集间隔（秒） ----------
-  double collect_interval_sec{1.0};
+    // ---------- 采集间隔（秒） ----------
+    double collect_interval_sec{1.0};
 
-  static MonitorOptions Default();
+    static MonitorOptions Default();
 };
 
 }  // namespace monitor

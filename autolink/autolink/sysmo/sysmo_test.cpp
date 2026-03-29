@@ -28,14 +28,14 @@ namespace autolink {
 using autolink::common::GetEnv;
 
 TEST(SysMoTest, cases) {
-  auto sched = scheduler::Instance();
-  setenv("sysmo_start", "1", 1);
-  auto sysmo_start = GetEnv("sysmo_start");
-  EXPECT_EQ(sysmo_start, "1");
-  auto sysmo = SysMo::Instance();
-  std::this_thread::sleep_for(std::chrono::milliseconds(300));
-  sysmo->Shutdown();
-  sched->Shutdown();
+    auto sched = scheduler::Instance();
+    setenv("sysmo_start", "1", 1);
+    auto sysmo_start = GetEnv("sysmo_start");
+    EXPECT_EQ(sysmo_start, "1");
+    auto sysmo = SysMo::Instance();
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    sysmo->Shutdown();
+    sched->Shutdown();
 }
 
 }  // namespace autolink

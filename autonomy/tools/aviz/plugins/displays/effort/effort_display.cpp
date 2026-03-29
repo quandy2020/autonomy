@@ -23,24 +23,32 @@ namespace plugins {
 namespace displays {
 
 EffortDisplay::EffortDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/Effort");
-  setName(name);
+    setClassId("aviz/Effort");
+    setName(name);
 }
 
 EffortDisplay::~EffortDisplay() = default;
 
-void EffortDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void EffortDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void EffortDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void EffortDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void EffortDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void EffortDisplay::reset() { aviz::common::Display::reset(); }
+void EffortDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void EffortDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void EffortDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void EffortDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

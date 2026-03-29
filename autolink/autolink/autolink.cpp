@@ -31,14 +31,15 @@ namespace autolink {
 using autolink::common::GlobalData;
 using autolink::proto::RunMode;
 
-std::shared_ptr<Node> CreateNode(const std::string& node_name, const std::string& name_space) {
-  bool is_reality_mode = GlobalData::Instance()->IsRealityMode();
-  if (is_reality_mode && !OK()) {
-    // add some hint log
-    AERROR << "please initialize autolink firstly.";
-    return nullptr;
-  }
-  return std::shared_ptr<Node>(new Node(node_name, name_space));
+std::shared_ptr<Node> CreateNode(const std::string& node_name,
+                                 const std::string& name_space) {
+    bool is_reality_mode = GlobalData::Instance()->IsRealityMode();
+    if (is_reality_mode && !OK()) {
+        // add some hint log
+        AERROR << "please initialize autolink firstly.";
+        return nullptr;
+    }
+    return std::shared_ptr<Node>(new Node(node_name, name_space));
 }
 
 }  // namespace autolink

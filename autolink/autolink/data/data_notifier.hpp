@@ -34,49 +34,52 @@ using autolink::base::AtomicHashMap;
 using autolink::event::PerfEventCache;
 
 struct Notifier {
-  std::function<void()> callback;
+    std::function<void()> callback;
 };
 
-class DataNotifier {
- public:
-  using NotifyVector = std::vector<std::shared_ptr<Notifier>>;
-  ~DataNotifier() {}
+class DataNotifier
+{
+public:
+    using NotifyVector = std::vector<std::shared_ptr<Notifier>>;
+    ~DataNotifier() {}
 
-  void AddNotifier(uint64_t channel_id, const std::shared_ptr<Notifier>& notifier);
+    void AddNotifier(uint64_t channel_id,
+                     const std::shared_ptr<Notifier>& notifier);
 
-  bool Notify(const uint64_t channel_id);
+    bool Notify(const uint64_t channel_id);
 
- private:
-  std::mutex notifies_map_mutex_;
-  AtomicHashMap<uint64_t, NotifyVector> notifies_map_;
+private:
+    std::mutex notifies_map_mutex_;
+    AtomicHashMap<uint64_t, NotifyVector> notifies_map_;
 
-  DECLARE_SINGLETON(DataNotifier)
+    DECLARE_SINGLETON(DataNotifier)
 };
 
 inline DataNotifier::DataNotifier() {}
 
-inline void DataNotifier::AddNotifier(uint64_t channel_id, const std::shared_ptr<Notifier>& notifier) {
-  std::lock_guard<std::mutex> lock(notifies_map_mutex_);
-  NotifyVector* notifies = nullptr;
-  if (notifies_map_.Get(channel_id, &notifies)) {
-    notifies->emplace_back(notifier);
-  } else {
-    NotifyVector new_notify = {notifier};
-    notifies_map_.Set(channel_id, new_notify);
-  }
+inline void DataNotifier::AddNotifier(
+    uint64_t channel_id, const std::shared_ptr<Notifier>& notifier) {
+    std::lock_guard<std::mutex> lock(notifies_map_mutex_);
+    NotifyVector* notifies = nullptr;
+    if (notifies_map_.Get(channel_id, &notifies)) {
+        notifies->emplace_back(notifier);
+    } else {
+        NotifyVector new_notify = {notifier};
+        notifies_map_.Set(channel_id, new_notify);
+    }
 }
 
 inline bool DataNotifier::Notify(const uint64_t channel_id) {
-  NotifyVector* notifies = nullptr;
-  if (notifies_map_.Get(channel_id, &notifies)) {
-    for (auto& notifier : *notifies) {
-      if (notifier && notifier->callback) {
-        notifier->callback();
-      }
+    NotifyVector* notifies = nullptr;
+    if (notifies_map_.Get(channel_id, &notifies)) {
+        for (auto& notifier : *notifies) {
+            if (notifier && notifier->callback) {
+                notifier->callback();
+            }
+        }
+        return true;
     }
-    return true;
-  }
-  return false;
+    return false;
 }
 
 }  // namespace data

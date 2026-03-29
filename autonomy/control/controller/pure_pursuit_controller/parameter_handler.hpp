@@ -31,42 +31,60 @@ namespace pure_pursuit_controller {
  * @class nav2_regulated_pure_pursuit_controller::ParameterHandler
  * @brief Handles parameters and dynamic parameters for RPP
  */
-class ParameterHandler {
- public:
-  /**
-   * @brief Constructor for nav2_regulated_pure_pursuit_controller::ParameterHandler
-   */
-  explicit ParameterHandler(const proto::PurePursuitControllerOptions& options, const double costmap_size_x);
+class ParameterHandler
+{
+public:
+    /**
+     * @brief Constructor for
+     * nav2_regulated_pure_pursuit_controller::ParameterHandler
+     */
+    explicit ParameterHandler(
+        const proto::PurePursuitControllerOptions& options,
+        const double costmap_size_x);
 
-  /**
-   * @brief Destrructor for nav2_regulated_pure_pursuit_controller::ParameterHandler
-   */
-  ~ParameterHandler() = default;
+    /**
+     * @brief Destrructor for
+     * nav2_regulated_pure_pursuit_controller::ParameterHandler
+     */
+    ~ParameterHandler() = default;
 
-  std::mutex& getMutex() { return mutex_; }
+    std::mutex& getMutex() {
+        return mutex_;
+    }
 
-  // NOTE: Access to options is not internally synchronized. Caller should hold getMutex().
-  const proto::PurePursuitControllerOptions& GetOptions() const { return options_; }
+    // NOTE: Access to options is not internally synchronized. Caller should
+    // hold getMutex().
+    const proto::PurePursuitControllerOptions& GetOptions() const {
+        return options_;
+    }
 
-  // Base value used to restore desired_linear_vel after a speed limit is removed.
-  // NOTE: Caller should hold getMutex().
-  double GetBaseDesiredLinearVel() const { return base_desired_linear_vel_; }
+    // Base value used to restore desired_linear_vel after a speed limit is
+    // removed. NOTE: Caller should hold getMutex().
+    double GetBaseDesiredLinearVel() const {
+        return base_desired_linear_vel_;
+    }
 
-  // NOTE: Caller should hold getMutex().
-  void RestoreBaseDesiredLinearVel() { options_.set_desired_linear_vel(base_desired_linear_vel_); }
+    // NOTE: Caller should hold getMutex().
+    void RestoreBaseDesiredLinearVel() {
+        options_.set_desired_linear_vel(base_desired_linear_vel_);
+    }
 
-  // NOTE: Caller should hold getMutex().
-  void SetDesiredLinearVel(const double v) { options_.set_desired_linear_vel(v); }
+    // NOTE: Caller should hold getMutex().
+    void SetDesiredLinearVel(const double v) {
+        options_.set_desired_linear_vel(v);
+    }
 
-  // Update parameters from proto options at runtime.
-  // Returns true if applied successfully, false if rejected/adjusted due to invalid inputs.
-  bool Update(const proto::PurePursuitControllerOptions& options, const double costmap_size_x, std::string* error);
+    // Update parameters from proto options at runtime.
+    // Returns true if applied successfully, false if rejected/adjusted due to
+    // invalid inputs.
+    bool Update(const proto::PurePursuitControllerOptions& options,
+                const double costmap_size_x, std::string* error);
 
- protected:
-  // Dynamic parameters handler
-  std::mutex mutex_;
-  proto::PurePursuitControllerOptions options_;
-  double base_desired_linear_vel_ = 0.0;
+protected:
+    // Dynamic parameters handler
+    std::mutex mutex_;
+    proto::PurePursuitControllerOptions options_;
+    double base_desired_linear_vel_ = 0.0;
 };
 
 }  // namespace pure_pursuit_controller

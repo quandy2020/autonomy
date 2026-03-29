@@ -21,11 +21,11 @@ namespace plugins {
 namespace transformation {
 
 TfFrameTransformer::TfFrameTransformer() {
-  // TODO: Initialize
+    // TODO: Initialize
 }
 
 TfFrameTransformer::~TfFrameTransformer() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace transformation

@@ -23,36 +23,40 @@ namespace common {
 namespace {
 
 TEST(RateTimerTest, ComputeRate) {
-  RateTimer<> rate_timer(common::FromSeconds(1.));
-  common::Time time = common::FromUniversal(42);
-  for (int i = 0; i < 100; ++i) {
-    rate_timer.Pulse(time);
-    time += common::FromSeconds(0.1);
-  }
-  EXPECT_NEAR(10., rate_timer.ComputeRate(), 1e-3);
+    RateTimer<> rate_timer(common::FromSeconds(1.));
+    common::Time time = common::FromUniversal(42);
+    for (int i = 0; i < 100; ++i) {
+        rate_timer.Pulse(time);
+        time += common::FromSeconds(0.1);
+    }
+    EXPECT_NEAR(10., rate_timer.ComputeRate(), 1e-3);
 }
 
 struct SimulatedClock {
-  using rep = std::chrono::steady_clock::rep;
-  using period = std::chrono::steady_clock::period;
-  using duration = std::chrono::steady_clock::duration;
-  using time_point = std::chrono::steady_clock::time_point;
+    using rep = std::chrono::steady_clock::rep;
+    using period = std::chrono::steady_clock::period;
+    using duration = std::chrono::steady_clock::duration;
+    using time_point = std::chrono::steady_clock::time_point;
 
-  static time_point time;
-  static time_point now() noexcept { return time; }
+    static time_point time;
+    static time_point now() noexcept {
+        return time;
+    }
 };
 
 SimulatedClock::time_point SimulatedClock::time;
 
 TEST(RateTimerTest, ComputeWallTimeRateRatio) {
-  common::Time time = common::FromUniversal(42);
-  RateTimer<SimulatedClock> rate_timer(common::FromSeconds(1.));
-  for (int i = 0; i < 100; ++i) {
-    rate_timer.Pulse(time);
-    time += common::FromSeconds(0.1);
-    SimulatedClock::time += std::chrono::duration_cast<SimulatedClock::duration>(std::chrono::duration<double>(0.05));
-  }
-  EXPECT_NEAR(2., rate_timer.ComputeWallTimeRateRatio(), 1e-3);
+    common::Time time = common::FromUniversal(42);
+    RateTimer<SimulatedClock> rate_timer(common::FromSeconds(1.));
+    for (int i = 0; i < 100; ++i) {
+        rate_timer.Pulse(time);
+        time += common::FromSeconds(0.1);
+        SimulatedClock::time +=
+            std::chrono::duration_cast<SimulatedClock::duration>(
+                std::chrono::duration<double>(0.05));
+    }
+    EXPECT_NEAR(2., rate_timer.ComputeWallTimeRateRatio(), 1e-3);
 }
 
 }  // namespace

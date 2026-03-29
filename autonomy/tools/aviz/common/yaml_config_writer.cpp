@@ -29,85 +29,93 @@ namespace common {
 
 YamlConfigWriter::YamlConfigWriter() : error_(false) {}
 
-void YamlConfigWriter::writeFile(const Config& config, const QString& filename) {
-  try {
-    std::ofstream out(qPrintable(filename));
-    if (out) {
-      writeStream(config, out, filename);
+void YamlConfigWriter::writeFile(const Config& config,
+                                 const QString& filename) {
+    try {
+        std::ofstream out(qPrintable(filename));
+        if (out) {
+            writeStream(config, out, filename);
+        } else {
+            error_ = true;
+            message_ = "Failed to open " + filename + " for writing.";
+        }
+    } catch (const std::exception& ex) {
+        error_ = true;
+        message_ = ex.what();
+    }
+}
+
+QString YamlConfigWriter::writeString(const Config& config,
+                                      const QString& filename) {
+    std::stringstream out;
+    writeStream(config, out, filename);
+    if (!error_) {
+        return QString::fromStdString(out.str());
     } else {
-      error_ = true;
-      message_ = "Failed to open " + filename + " for writing.";
+        return "";
     }
-  } catch (const std::exception& ex) {
-    error_ = true;
-    message_ = ex.what();
-  }
 }
 
-QString YamlConfigWriter::writeString(const Config& config, const QString& filename) {
-  std::stringstream out;
-  writeStream(config, out, filename);
-  if (!error_) {
-    return QString::fromStdString(out.str());
-  } else {
-    return "";
-  }
+void YamlConfigWriter::writeStream(const Config& config, std::ostream& out,
+                                   const QString& filename) {
+    (void)filename;
+    error_ = false;
+    message_ = "";
+    YAML::Emitter emitter;
+    writeConfigNode(config, emitter);
+    if (!error_) {
+        out << emitter.c_str() << std::endl;
+    }
 }
 
-void YamlConfigWriter::writeStream(const Config& config, std::ostream& out, const QString& filename) {
-  (void)filename;
-  error_ = false;
-  message_ = "";
-  YAML::Emitter emitter;
-  writeConfigNode(config, emitter);
-  if (!error_) {
-    out << emitter.c_str() << std::endl;
-  }
+bool YamlConfigWriter::error() {
+    return error_;
 }
 
-bool YamlConfigWriter::error() { return error_; }
+QString YamlConfigWriter::errorMessage() {
+    return message_;
+}
 
-QString YamlConfigWriter::errorMessage() { return message_; }
+void YamlConfigWriter::writeConfigNode(const Config& config,
+                                       YAML::Emitter& emitter) {
+    switch (config.getType()) {
+        case Config::List: {
+            emitter << YAML::BeginSeq;
+            for (int i = 0; i < config.listLength(); i++) {
+                writeConfigNode(config.listChildAt(i), emitter);
+            }
+            emitter << YAML::EndSeq;
+            break;
+        }
+        case Config::Map: {
+            emitter << YAML::BeginMap;
+            Config::MapIterator map_iter = config.mapIterator();
+            while (map_iter.isValid()) {
+                Config child = map_iter.currentChild();
 
-void YamlConfigWriter::writeConfigNode(const Config& config, YAML::Emitter& emitter) {
-  switch (config.getType()) {
-    case Config::List: {
-      emitter << YAML::BeginSeq;
-      for (int i = 0; i < config.listLength(); i++) {
-        writeConfigNode(config.listChildAt(i), emitter);
-      }
-      emitter << YAML::EndSeq;
-      break;
+                emitter << YAML::Key;
+                emitter << map_iter.currentKey().toStdString();
+                emitter << YAML::Value;
+                writeConfigNode(child, emitter);
+
+                map_iter.advance();
+            }
+            emitter << YAML::EndMap;
+            break;
+        }
+        case Config::Value: {
+            QString value = config.getValue().toString();
+            if (value.size() == 0) {
+                emitter << YAML::DoubleQuoted << "";
+            } else {
+                emitter << value.toStdString();
+            }
+            break;
+        }
+        default:
+            emitter << YAML::Null;
+            break;
     }
-    case Config::Map: {
-      emitter << YAML::BeginMap;
-      Config::MapIterator map_iter = config.mapIterator();
-      while (map_iter.isValid()) {
-        Config child = map_iter.currentChild();
-
-        emitter << YAML::Key;
-        emitter << map_iter.currentKey().toStdString();
-        emitter << YAML::Value;
-        writeConfigNode(child, emitter);
-
-        map_iter.advance();
-      }
-      emitter << YAML::EndMap;
-      break;
-    }
-    case Config::Value: {
-      QString value = config.getValue().toString();
-      if (value.size() == 0) {
-        emitter << YAML::DoubleQuoted << "";
-      } else {
-        emitter << value.toStdString();
-      }
-      break;
-    }
-    default:
-      emitter << YAML::Null;
-      break;
-  }
 }
 
 }  // namespace common

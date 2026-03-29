@@ -18,18 +18,20 @@
 #include "examples.pb.h"
 
 void MessageCallback(const std::shared_ptr<autolink::examples::Chatter>& msg) {
-  AINFO << "Received message seq-> " << msg->seq();
-  AINFO << "msgcontent->" << msg->content();
+    AINFO << "Received message seq-> " << msg->seq();
+    AINFO << "msgcontent->" << msg->content();
 }
 
 int main(int argc, char* argv[]) {
-  if (!autolink::Init(argv[0])) return 1;
-  auto listener_node = autolink::CreateNode("listener");
-  auto listener = listener_node->CreateReader<autolink::examples::Chatter>("channel/chatter", MessageCallback);
-  AINFO << "listener subscribed to channel/chatter, waiting for messages";
-  AINFO << "  (run autolink_example_talker in another terminal; "
-           "if no 'SHM receiver enabled for channel' in log, see "
-           "examples/TROUBLESHOOT_LISTENER.md)";
-  autolink::WaitForShutdown();
-  return 0;
+    if (!autolink::Init(argv[0]))
+        return 1;
+    auto listener_node = autolink::CreateNode("listener");
+    auto listener = listener_node->CreateReader<autolink::examples::Chatter>(
+        "channel/chatter", MessageCallback);
+    AINFO << "listener subscribed to channel/chatter, waiting for messages";
+    AINFO << "  (run autolink_example_talker in another terminal; "
+             "if no 'SHM receiver enabled for channel' in log, see "
+             "examples/TROUBLESHOOT_LISTENER.md)";
+    autolink::WaitForShutdown();
+    return 0;
 }

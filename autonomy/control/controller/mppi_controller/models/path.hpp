@@ -29,18 +29,18 @@ namespace models {
  * @brief Path represented as a tensor
  */
 struct Path {
-  Eigen::ArrayXf x;
-  Eigen::ArrayXf y;
-  Eigen::ArrayXf yaws;
+    Eigen::ArrayXf x;
+    Eigen::ArrayXf y;
+    Eigen::ArrayXf yaws;
 
-  /**
-   * @brief Reset path data
-   */
-  void reset(unsigned int size) {
-    x.setZero(size);
-    y.setZero(size);
-    yaws.setZero(size);
-  }
+    /**
+     * @brief Reset path data
+     */
+    void reset(unsigned int size) {
+        x.setZero(size);
+        y.setZero(size);
+        yaws.setZero(size);
+    }
 };
 
 }  // namespace models

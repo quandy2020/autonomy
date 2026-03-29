@@ -27,62 +27,67 @@
 namespace autolink {
 namespace croutine {
 
-thread_local CRoutine *CRoutine::current_routine_ = nullptr;
-thread_local char *CRoutine::main_stack_ = nullptr;
+thread_local CRoutine* CRoutine::current_routine_ = nullptr;
+thread_local char* CRoutine::main_stack_ = nullptr;
 
 namespace {
 std::shared_ptr<base::CCObjectPool<RoutineContext>> context_pool = nullptr;
 std::once_flag pool_init_flag;
 
-void CRoutineEntry(void *arg) {
-  CRoutine *r = static_cast<CRoutine *>(arg);
-  r->Run();
-  CRoutine::Yield(RoutineState::FINISHED);
+void CRoutineEntry(void* arg) {
+    CRoutine* r = static_cast<CRoutine*>(arg);
+    r->Run();
+    CRoutine::Yield(RoutineState::FINISHED);
 }
 }  // namespace
 
-CRoutine::CRoutine(const std::function<void()> &func) : func_(func) {
-  std::call_once(pool_init_flag, [&]() {
-    uint32_t routine_num = common::GlobalData::Instance()->ComponentNums();
-    auto &global_conf = common::GlobalData::Instance()->Config();
-    if (global_conf.scheduler_conf().routine_num() != 0) {
-      routine_num = std::max(routine_num, global_conf.scheduler_conf().routine_num());
+CRoutine::CRoutine(const std::function<void()>& func) : func_(func) {
+    std::call_once(pool_init_flag, [&]() {
+        uint32_t routine_num = common::GlobalData::Instance()->ComponentNums();
+        auto& global_conf = common::GlobalData::Instance()->Config();
+        if (global_conf.scheduler_conf().routine_num() != 0) {
+            routine_num = std::max(routine_num,
+                                   global_conf.scheduler_conf().routine_num());
+        }
+        context_pool.reset(new base::CCObjectPool<RoutineContext>(routine_num));
+    });
+
+    context_ = context_pool->GetObject();
+    if (context_ == nullptr) {
+        AWARN << "Maximum routine context number exceeded! Please check "
+                 "[routine_num] in config file.";
+        context_.reset(new RoutineContext());
     }
-    context_pool.reset(new base::CCObjectPool<RoutineContext>(routine_num));
-  });
 
-  context_ = context_pool->GetObject();
-  if (context_ == nullptr) {
-    AWARN << "Maximum routine context number exceeded! Please check "
-             "[routine_num] in config file.";
-    context_.reset(new RoutineContext());
-  }
-
-  MakeContext(CRoutineEntry, this, context_.get());
-  state_ = RoutineState::READY;
-  updated_.test_and_set(std::memory_order_release);
+    MakeContext(CRoutineEntry, this, context_.get());
+    state_ = RoutineState::READY;
+    updated_.test_and_set(std::memory_order_release);
 }
 
-CRoutine::~CRoutine() { context_ = nullptr; }
+CRoutine::~CRoutine() {
+    context_ = nullptr;
+}
 
 RoutineState CRoutine::Resume() {
-  if (autolink_unlikely(force_stop_)) {
-    state_ = RoutineState::FINISHED;
-    return state_;
-  }
+    if (autolink_unlikely(force_stop_)) {
+        state_ = RoutineState::FINISHED;
+        return state_;
+    }
 
-  if (autolink_unlikely(state_ != RoutineState::READY)) {
-    AERROR << "Invalid Routine State!";
-    return state_;
-  }
+    if (autolink_unlikely(state_ != RoutineState::READY)) {
+        AERROR << "Invalid Routine State!";
+        return state_;
+    }
 
-  current_routine_ = this;
-  SwapContext(GetMainStack(), GetStack());
-  current_routine_ = nullptr;
-  return state_;
+    current_routine_ = this;
+    SwapContext(GetMainStack(), GetStack());
+    current_routine_ = nullptr;
+    return state_;
 }
 
-void CRoutine::Stop() { force_stop_ = true; }
+void CRoutine::Stop() {
+    force_stop_ = true;
+}
 
 }  // namespace croutine
 }  // namespace autolink

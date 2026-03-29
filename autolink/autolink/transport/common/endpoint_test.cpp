@@ -23,29 +23,31 @@ namespace autolink {
 namespace transport {
 
 TEST(EndpointTest, construction) {
-  proto::RoleAttributes role;
+    proto::RoleAttributes role;
 
-  {
-    Endpoint e0(role);
-    const proto::RoleAttributes& erole = e0.attributes();
-    EXPECT_EQ(erole.host_name(), common::GlobalData::Instance()->HostName());
-    EXPECT_EQ(erole.process_id(), common::GlobalData::Instance()->ProcessId());
-    EXPECT_EQ(erole.id(), e0.id().HashValue());
-  }
-  {
-    role.set_host_name("123");
-    role.set_process_id(54321);
-    role.set_id(123);
+    {
+        Endpoint e0(role);
+        const proto::RoleAttributes& erole = e0.attributes();
+        EXPECT_EQ(erole.host_name(),
+                  common::GlobalData::Instance()->HostName());
+        EXPECT_EQ(erole.process_id(),
+                  common::GlobalData::Instance()->ProcessId());
+        EXPECT_EQ(erole.id(), e0.id().HashValue());
+    }
+    {
+        role.set_host_name("123");
+        role.set_process_id(54321);
+        role.set_id(123);
 
-    Endpoint e0(role);
-    const proto::RoleAttributes& erole = e0.attributes();
-    EXPECT_EQ(erole.host_name(), "123");
-    EXPECT_EQ(erole.process_id(), 54321);
-    EXPECT_NE(erole.id(), e0.id().HashValue());
+        Endpoint e0(role);
+        const proto::RoleAttributes& erole = e0.attributes();
+        EXPECT_EQ(erole.host_name(), "123");
+        EXPECT_EQ(erole.process_id(), 54321);
+        EXPECT_NE(erole.id(), e0.id().HashValue());
 
-    auto id = std::string(e0.id().data(), ID_SIZE);
-    EXPECT_NE(std::string("endpoint"), id);
-  }
+        auto id = std::string(e0.id().data(), ID_SIZE);
+        EXPECT_NE(std::string("endpoint"), id);
+    }
 }
 
 }  // namespace transport

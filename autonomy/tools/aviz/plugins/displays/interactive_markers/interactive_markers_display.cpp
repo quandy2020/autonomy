@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-InteractiveMarkersDisplay::InteractiveMarkersDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/InteractiveMarkers");
-  setName(name);
+InteractiveMarkersDisplay::InteractiveMarkersDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/InteractiveMarkers");
+    setName(name);
 }
 
 InteractiveMarkersDisplay::~InteractiveMarkersDisplay() = default;
 
-void InteractiveMarkersDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void InteractiveMarkersDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void InteractiveMarkersDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void InteractiveMarkersDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void InteractiveMarkersDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void InteractiveMarkersDisplay::reset() { aviz::common::Display::reset(); }
+void InteractiveMarkersDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void InteractiveMarkersDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void InteractiveMarkersDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void InteractiveMarkersDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

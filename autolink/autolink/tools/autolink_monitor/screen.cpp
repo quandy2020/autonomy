@@ -36,8 +36,8 @@ constexpr double MinHalfFrameRatio = 12.5;
 }
 
 Screen* Screen::Instance(void) {
-  static Screen s;
-  return &s;
+    static Screen s;
+    return &s;
 }
 
 const char Screen::InteractiveCmdStr[] =
@@ -84,245 +84,252 @@ Screen::Screen()
       current_render_obj_(nullptr) {}
 
 Screen::~Screen() {
-  current_render_obj_ = nullptr;
-  endwin();
+    current_render_obj_ = nullptr;
+    endwin();
 }
 
-inline bool Screen::IsInit(void) const { return (stdscr != nullptr); }
+inline bool Screen::IsInit(void) const {
+    return (stdscr != nullptr);
+}
 
 void Screen::Init(void) {
-  initscr();
-  if (stdscr == nullptr) {
-    return;
-  }
-  nodelay(stdscr, true);
-  keypad(stdscr, true);
-  meta(stdscr, true);
-  curs_set(0);
-  noecho();
+    initscr();
+    if (stdscr == nullptr) {
+        return;
+    }
+    nodelay(stdscr, true);
+    keypad(stdscr, true);
+    meta(stdscr, true);
+    curs_set(0);
+    noecho();
 
-  bkgd(COLOR_BLACK);
+    bkgd(COLOR_BLACK);
 
-  start_color();
-  init_pair(GREEN_BLACK, COLOR_GREEN, COLOR_BLACK);
-  init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
-  init_pair(RED_BLACK, COLOR_RED, COLOR_BLACK);
-  init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
-  init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
+    start_color();
+    init_pair(GREEN_BLACK, COLOR_GREEN, COLOR_BLACK);
+    init_pair(YELLOW_BLACK, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(RED_BLACK, COLOR_RED, COLOR_BLACK);
+    init_pair(WHITE_BLACK, COLOR_WHITE, COLOR_BLACK);
+    init_pair(BLACK_WHITE, COLOR_BLACK, COLOR_WHITE);
 
-  refresh();
-  clear();
+    refresh();
+    clear();
 
-  canRun_ = true;
+    canRun_ = true;
 }
 
-int Screen::Width(void) const { return COLS; }
+int Screen::Width(void) const {
+    return COLS;
+}
 
-int Screen::Height(void) const { return LINES; }
+int Screen::Height(void) const {
+    return LINES;
+}
 
 void Screen::SetCurrentColor(ColorPair color) const {
-  if (color == INVALID) {
-    return;
-  }
-  if (IsInit()) {
-    current_color_pair_ = color;
-    attron(COLOR_PAIR(color));
-  }
+    if (color == INVALID) {
+        return;
+    }
+    if (IsInit()) {
+        current_color_pair_ = color;
+        attron(COLOR_PAIR(color));
+    }
 }
 void Screen::AddStr(int x, int y, const char* str) const {
-  if (IsInit()) {
-    mvaddstr(y, x, str);
-  }
+    if (IsInit()) {
+        mvaddstr(y, x, str);
+    }
 }
 
 void Screen::AddStr(const char* str) const {
-  if (IsInit()) {
-    addstr(str);
-  }
+    if (IsInit()) {
+        addstr(str);
+    }
 }
 
 void Screen::ClearCurrentColor(void) const {
-  if (IsInit()) {
-    attroff(COLOR_PAIR(current_color_pair_));
-    current_color_pair_ = INVALID;
-  }
+    if (IsInit()) {
+        attroff(COLOR_PAIR(current_color_pair_));
+        current_color_pair_ = INVALID;
+    }
 }
 
 void Screen::AddStr(int x, int y, ColorPair color, const char* str) const {
-  if (IsInit()) {
-    attron(COLOR_PAIR(color));
-    mvaddstr(y, x, str);
-    attroff(COLOR_PAIR(color));
-  }
+    if (IsInit()) {
+        attron(COLOR_PAIR(color));
+        mvaddstr(y, x, str);
+        attroff(COLOR_PAIR(color));
+    }
 }
 
 void Screen::MoveOffsetXY(int offsetX, int offsetY) const {
-  if (IsInit()) {
-    int x, y;
-    getyx(stdscr, y, x);
-    move(y + offsetY, x + offsetX);
-  }
+    if (IsInit()) {
+        int x, y;
+        getyx(stdscr, y, x);
+        move(y + offsetY, x + offsetX);
+    }
 }
 
 void Screen::HighlightLine(int line_no) {
-  if (IsInit() && line_no < Height()) {
-    SetCurrentColor(WHITE_BLACK);
-    for (int x = 0; x < Width(); ++x) {
-      chtype ch = mvinch(line_no + highlight_direction_, x);
-      ch &= A_CHARTEXT;
-      if (ch == ' ') {
-        mvaddch(line_no + highlight_direction_, x, ch);
-      }
-    }
-    ClearCurrentColor();
+    if (IsInit() && line_no < Height()) {
+        SetCurrentColor(WHITE_BLACK);
+        for (int x = 0; x < Width(); ++x) {
+            chtype ch = mvinch(line_no + highlight_direction_, x);
+            ch &= A_CHARTEXT;
+            if (ch == ' ') {
+                mvaddch(line_no + highlight_direction_, x, ch);
+            }
+        }
+        ClearCurrentColor();
 
-    SetCurrentColor(BLACK_WHITE);
-    for (int x = 0; x < Width(); ++x) {
-      chtype ch = mvinch(line_no, x);
-      mvaddch(line_no, x, ch & A_CHARTEXT);
+        SetCurrentColor(BLACK_WHITE);
+        for (int x = 0; x < Width(); ++x) {
+            chtype ch = mvinch(line_no, x);
+            mvaddch(line_no, x, ch & A_CHARTEXT);
+        }
+        ClearCurrentColor();
     }
-    ClearCurrentColor();
-  }
 }
 
 int Screen::SwitchState(int ch) {
-  switch (current_state_) {
-    case State::RenderInterCmdInfo:
-      if (KEY_BACKSPACE == ch) {
-        current_state_ = State::RenderMessage;
-        clear();
-        ch = 27;
-      }
-      break;
-    case State::RenderMessage:
-      if ('h' == ch || 'H' == ch) {
-        current_state_ = State::RenderInterCmdInfo;
-        clear();
-      }
-      break;
-    default: {
+    switch (current_state_) {
+        case State::RenderInterCmdInfo:
+            if (KEY_BACKSPACE == ch) {
+                current_state_ = State::RenderMessage;
+                clear();
+                ch = 27;
+            }
+            break;
+        case State::RenderMessage:
+            if ('h' == ch || 'H' == ch) {
+                current_state_ = State::RenderInterCmdInfo;
+                clear();
+            }
+            break;
+        default: {
+        }
     }
-  }
-  return ch;
+    return ch;
 }
 
 void Screen::Run() {
-  if (stdscr == nullptr || current_render_obj_ == nullptr) {
-    return;
-  }
-
-  highlight_direction_ = 0;
-
-  void (Screen::*showFuncs[])(int) = {&Screen::ShowRenderMessage, &Screen::ShowInteractiveCmd};
-
-  do {
-    int ch = getch();
-
-    if (ch == 'q' || ch == 'Q' || ch == 27) {
-      canRun_ = false;
-      break;
+    if (stdscr == nullptr || current_render_obj_ == nullptr) {
+        return;
     }
 
-    ch = SwitchState(ch);
+    highlight_direction_ = 0;
 
-    (this->*showFuncs[static_cast<int>(current_state_)])(ch);
+    void (Screen::*showFuncs[])(int) = {&Screen::ShowRenderMessage,
+                                        &Screen::ShowInteractiveCmd};
 
-    double fr = current_render_obj_->frame_ratio();
-    if (fr < MinHalfFrameRatio) {
-      fr = MinHalfFrameRatio;
-    }
-    int period = static_cast<int>(1000.0 / fr);
-    period >>= 1;
-    std::this_thread::sleep_for(std::chrono::milliseconds(period));
-  } while (canRun_);
+    do {
+        int ch = getch();
+
+        if (ch == 'q' || ch == 'Q' || ch == 27) {
+            canRun_ = false;
+            break;
+        }
+
+        ch = SwitchState(ch);
+
+        (this->*showFuncs[static_cast<int>(current_state_)])(ch);
+
+        double fr = current_render_obj_->frame_ratio();
+        if (fr < MinHalfFrameRatio) {
+            fr = MinHalfFrameRatio;
+        }
+        int period = static_cast<int>(1000.0 / fr);
+        period >>= 1;
+        std::this_thread::sleep_for(std::chrono::milliseconds(period));
+    } while (canRun_);
 }
 
 void Screen::Resize(void) {
-  if (IsInit()) {
-    clear();
-    refresh();
-  }
+    if (IsInit()) {
+        clear();
+        refresh();
+    }
 }
 
 void Screen::ShowRenderMessage(int ch) {
-  erase();
-  int line_num = current_render_obj_->Render(this, ch);
-  const int max_height = std::min(Height(), line_num);
+    erase();
+    int line_num = current_render_obj_->Render(this, ch);
+    const int max_height = std::min(Height(), line_num);
 
-  int* y = current_render_obj_->line_no();
+    int* y = current_render_obj_->line_no();
 
-  HighlightLine(*y);
-  move(*y, 0);
-  refresh();
+    HighlightLine(*y);
+    move(*y, 0);
+    refresh();
 
-  switch (ch) {
-    case 's':
-    case 'S':
-    case KEY_DOWN:
-      ++(*y);
-      highlight_direction_ = -1;
-      if (*y >= max_height) {
-        *y = max_height - 1;
-      }
-      break;
+    switch (ch) {
+        case 's':
+        case 'S':
+        case KEY_DOWN:
+            ++(*y);
+            highlight_direction_ = -1;
+            if (*y >= max_height) {
+                *y = max_height - 1;
+            }
+            break;
 
-    case 'w':
-    case 'W':
-    case KEY_UP:
-      --(*y);
-      if (*y < 1) {
-        *y = 1;
-      }
-      highlight_direction_ = 1;
-      if (*y < 0) {
-        *y = 0;
-      }
-      break;
+        case 'w':
+        case 'W':
+        case KEY_UP:
+            --(*y);
+            if (*y < 1) {
+                *y = 1;
+            }
+            highlight_direction_ = 1;
+            if (*y < 0) {
+                *y = 0;
+            }
+            break;
 
-    case 'a':
-    case 'A':
-    case KEY_BACKSPACE:
-    case KEY_LEFT: {
-      RenderableMessage* p = current_render_obj_->parent();
-      if (p) {
-        current_render_obj_ = p;
-        y = p->line_no();
-        clear();
-      }
-      break;
+        case 'a':
+        case 'A':
+        case KEY_BACKSPACE:
+        case KEY_LEFT: {
+            RenderableMessage* p = current_render_obj_->parent();
+            if (p) {
+                current_render_obj_ = p;
+                y = p->line_no();
+                clear();
+            }
+            break;
+        }
+
+        case '\n':
+        case '\r':
+        case 'd':
+        case 'D':
+        case KEY_RIGHT: {
+            RenderableMessage* child = current_render_obj_->Child(*y);
+
+            if (child) {
+                child->reset_line_page();
+                current_render_obj_ = child;
+                y = child->line_no();
+                clear();
+            }
+            break;
+        }
     }
-
-    case '\n':
-    case '\r':
-    case 'd':
-    case 'D':
-    case KEY_RIGHT: {
-      RenderableMessage* child = current_render_obj_->Child(*y);
-
-      if (child) {
-        child->reset_line_page();
-        current_render_obj_ = child;
-        y = child->line_no();
-        clear();
-      }
-      break;
-    }
-  }
 }
 
 void Screen::ShowInteractiveCmd(int) {
-  unsigned y = 0;
+    unsigned y = 0;
 
-  SetCurrentColor(Screen::WHITE_BLACK);
-  AddStr((Width() - 19) / 2, y++, "Interactive Command");
+    SetCurrentColor(Screen::WHITE_BLACK);
+    AddStr((Width() - 19) / 2, y++, "Interactive Command");
 
-  const char* ptr = InteractiveCmdStr;
-  while (*ptr != '\0') {
-    const char* sub = std::strchr(ptr, '\n');
-    std::string subStr(ptr, sub);
-    AddStr(0, y++, subStr.c_str());
-    ptr = sub + 1;
-  }
+    const char* ptr = InteractiveCmdStr;
+    while (*ptr != '\0') {
+        const char* sub = std::strchr(ptr, '\n');
+        std::string subStr(ptr, sub);
+        AddStr(0, y++, subStr.c_str());
+        ptr = sub + 1;
+    }
 
-  ClearCurrentColor();
+    ClearCurrentColor();
 }

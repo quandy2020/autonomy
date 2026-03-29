@@ -27,27 +27,31 @@ namespace cloud {
 namespace handlers {
 
 void WriteStateHandler::OnRequest(const google::protobuf::Empty& request) {
-  auto writer = GetWriter();
-  io::ForwardingProtoStreamWriter proto_stream_writer([writer](const google::protobuf::Message* proto) {
-    if (!proto) {
-      writer.WritesDone();
-      return true;
-    }
+    auto writer = GetWriter();
+    io::ForwardingProtoStreamWriter proto_stream_writer(
+        [writer](const google::protobuf::Message* proto) {
+            if (!proto) {
+                writer.WritesDone();
+                return true;
+            }
 
-    auto response = absl::make_unique<proto::WriteStateResponse>();
-    if (proto->GetTypeName() == "cartographer.mapping.proto.SerializationHeader") {
-      response->mutable_header()->CopyFrom(*proto);
-    } else if (proto->GetTypeName() == "cartographer.mapping.proto.SerializedData") {
-      response->mutable_serialized_data()->CopyFrom(*proto);
-    } else {
-      LOG(FATAL) << "Unsupported message type: " << proto->GetTypeName();
-    }
-    writer.Write(std::move(response));
-    return true;
-  });
-  GetContext<MapBuilderContextInterface>()->map_builder().SerializeState(
-      /*include_unfinished_submaps=*/false, &proto_stream_writer);
-  proto_stream_writer.Close();
+            auto response = absl::make_unique<proto::WriteStateResponse>();
+            if (proto->GetTypeName() ==
+                "cartographer.mapping.proto.SerializationHeader") {
+                response->mutable_header()->CopyFrom(*proto);
+            } else if (proto->GetTypeName() ==
+                       "cartographer.mapping.proto.SerializedData") {
+                response->mutable_serialized_data()->CopyFrom(*proto);
+            } else {
+                LOG(FATAL) << "Unsupported message type: "
+                           << proto->GetTypeName();
+            }
+            writer.Write(std::move(response));
+            return true;
+        });
+    GetContext<MapBuilderContextInterface>()->map_builder().SerializeState(
+        /*include_unfinished_submaps=*/false, &proto_stream_writer);
+    proto_stream_writer.Close();
 }
 
 }  // namespace handlers

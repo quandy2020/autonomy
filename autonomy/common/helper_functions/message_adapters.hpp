@@ -76,24 +76,28 @@ template <typename T, nullptr_t>
 TimeStamp& get_stamp(T& msg) noexcept;
 
 /////////////// Default specializations for message types that contain a header.
-template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value,
+                                           nullptr_t>::type = nullptr>
 const std::string& get_frame_id(const T& msg) noexcept {
-  return msg.header.frame_id;
+    return msg.header.frame_id;
 }
 
-template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value,
+                                           nullptr_t>::type = nullptr>
 std::string& get_frame_id(T& msg) noexcept {
-  return msg.header.frame_id;
+    return msg.header.frame_id;
 }
 
-template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value,
+                                           nullptr_t>::type = nullptr>
 TimeStamp& get_stamp(T& msg) noexcept {
-  return msg.header.stamp;
+    return msg.header.stamp;
 }
 
-template <class T, typename std::enable_if<HasHeader<T>::value, nullptr_t>::type = nullptr>
+template <class T, typename std::enable_if<HasHeader<T>::value,
+                                           nullptr_t>::type = nullptr>
 TimeStamp get_stamp(const T& msg) noexcept {
-  return msg.header.stamp;
+    return msg.header.stamp;
 }
 
 }  // namespace message_field_adapters

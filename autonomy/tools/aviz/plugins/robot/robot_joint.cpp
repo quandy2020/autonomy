@@ -21,11 +21,11 @@ namespace plugins {
 namespace robot {
 
 RobotJoint::RobotJoint() {
-  // TODO: Initialize
+    // TODO: Initialize
 }
 
 RobotJoint::~RobotJoint() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace robot

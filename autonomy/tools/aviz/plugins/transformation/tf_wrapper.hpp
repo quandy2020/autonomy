@@ -29,15 +29,16 @@ namespace transformation {
  *
  * Wrapper for TF functionality
  */
-class TfWrapper {
- public:
-  TfWrapper();
-  virtual ~TfWrapper();
+class TfWrapper
+{
+public:
+    TfWrapper();
+    virtual ~TfWrapper();
 
-  // TODO: Implement functionality
+    // TODO: Implement functionality
 
- private:
-  // TODO: Add members
+private:
+    // TODO: Add members
 };
 
 }  // namespace transformation

@@ -25,54 +25,54 @@ namespace autolink {
 namespace message {
 
 TEST(ProtobufFactory, register_and_generate) {
-  // register
-  auto factory = ProtobufFactory::Instance();
-  autolink::proto::ProtoDesc proto_desc;
-  proto::UnitTest ut;
-  EXPECT_FALSE(factory->RegisterMessage("test"));
-  EXPECT_FALSE(factory->RegisterPythonMessage("test"));
+    // register
+    auto factory = ProtobufFactory::Instance();
+    autolink::proto::ProtoDesc proto_desc;
+    proto::UnitTest ut;
+    EXPECT_FALSE(factory->RegisterMessage("test"));
+    EXPECT_FALSE(factory->RegisterPythonMessage("test"));
 
-  google::protobuf::FileDescriptorProto file_desc_proto;
-  ut.GetDescriptor()->file()->CopyTo(&file_desc_proto);
-  std::string file_desc_str;
-  file_desc_proto.SerializeToString(&file_desc_str);
-  EXPECT_TRUE(factory->RegisterPythonMessage(file_desc_str));
+    google::protobuf::FileDescriptorProto file_desc_proto;
+    ut.GetDescriptor()->file()->CopyTo(&file_desc_proto);
+    std::string file_desc_str;
+    file_desc_proto.SerializeToString(&file_desc_str);
+    EXPECT_TRUE(factory->RegisterPythonMessage(file_desc_str));
 
-  proto_desc.set_desc(file_desc_str);
-  std::string proto_desc_str;
-  proto_desc.SerializeToString(&proto_desc_str);
-  EXPECT_TRUE(factory->RegisterMessage(proto_desc_str));
+    proto_desc.set_desc(file_desc_str);
+    std::string proto_desc_str;
+    proto_desc.SerializeToString(&proto_desc_str);
+    EXPECT_TRUE(factory->RegisterMessage(proto_desc_str));
 
-  EXPECT_TRUE(factory->RegisterMessage(file_desc_proto));
-  EXPECT_TRUE(factory->RegisterMessage(*(ut.GetDescriptor())));
-  EXPECT_TRUE(factory->RegisterMessage(ut));
+    EXPECT_TRUE(factory->RegisterMessage(file_desc_proto));
+    EXPECT_TRUE(factory->RegisterMessage(*(ut.GetDescriptor())));
+    EXPECT_TRUE(factory->RegisterMessage(ut));
 
-  // Get Descriptor
-  std::string get_desc_str;
-  ProtobufFactory::GetDescriptorString(ut, &get_desc_str);
-  EXPECT_EQ(get_desc_str, proto_desc_str);
+    // Get Descriptor
+    std::string get_desc_str;
+    ProtobufFactory::GetDescriptorString(ut, &get_desc_str);
+    EXPECT_EQ(get_desc_str, proto_desc_str);
 
-  get_desc_str.clear();
-  ProtobufFactory::GetDescriptorString(ut.GetDescriptor(), &get_desc_str);
-  EXPECT_EQ(get_desc_str, proto_desc_str);
+    get_desc_str.clear();
+    ProtobufFactory::GetDescriptorString(ut.GetDescriptor(), &get_desc_str);
+    EXPECT_EQ(get_desc_str, proto_desc_str);
 
-  get_desc_str.clear();
-  factory->GetDescriptorString("autolink.proto.UnitTest", &get_desc_str);
-  EXPECT_EQ(get_desc_str, proto_desc_str);
+    get_desc_str.clear();
+    factory->GetDescriptorString("autolink.proto.UnitTest", &get_desc_str);
+    EXPECT_EQ(get_desc_str, proto_desc_str);
 
-  // Generate
-  auto message = factory->GenerateMessageByType("test.not.found");
-  EXPECT_EQ(nullptr, message);
+    // Generate
+    auto message = factory->GenerateMessageByType("test.not.found");
+    EXPECT_EQ(nullptr, message);
 
-  message = factory->GenerateMessageByType("autolink.proto.UnitTest");
-  EXPECT_NE(nullptr, message);
-  delete message;
+    message = factory->GenerateMessageByType("autolink.proto.UnitTest");
+    EXPECT_NE(nullptr, message);
+    delete message;
 
-  auto desc_ptr = factory->FindMessageTypeByName("test.not.found");
-  EXPECT_EQ(nullptr, desc_ptr);
+    auto desc_ptr = factory->FindMessageTypeByName("test.not.found");
+    EXPECT_EQ(nullptr, desc_ptr);
 
-  desc_ptr = factory->FindMessageTypeByName("autolink.proto.UnitTest");
-  EXPECT_NE(nullptr, desc_ptr);
+    desc_ptr = factory->FindMessageTypeByName("autolink.proto.UnitTest");
+    EXPECT_NE(nullptr, desc_ptr);
 }
 
 }  // namespace message

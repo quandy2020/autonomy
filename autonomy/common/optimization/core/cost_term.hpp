@@ -31,32 +31,33 @@ namespace optimization {
  * @ingroup ProblemFormulation
  * @sa Component
  */
-class CostTerm : public ConstraintSet {
- public:
-  CostTerm(const std::string& name);
-  virtual ~CostTerm() = default;
+class CostTerm : public ConstraintSet
+{
+public:
+    CostTerm(const std::string& name);
+    virtual ~CostTerm() = default;
 
- private:
-  /**
-   * @brief  Returns the scalar cost term calculated from the @c variables.
-   */
-  virtual double GetCost() const = 0;
+private:
+    /**
+     * @brief  Returns the scalar cost term calculated from the @c variables.
+     */
+    virtual double GetCost() const = 0;
 
- public:
-  /**
-   * @brief  Wrapper function that converts double to Eigen::VectorXd.
-   */
-  VectorXd GetValues() const final;
+public:
+    /**
+     * @brief  Wrapper function that converts double to Eigen::VectorXd.
+     */
+    VectorXd GetValues() const final;
 
-  /**
-   * @brief  Returns infinite bounds (e.g. no bounds).
-   */
-  VecBound GetBounds() const final;
+    /**
+     * @brief  Returns infinite bounds (e.g. no bounds).
+     */
+    VecBound GetBounds() const final;
 
-  /**
-   * Cost term printout slightly different from variables/constraints.
-   */
-  void Print(double tol, int& index) const final;
+    /**
+     * Cost term printout slightly different from variables/constraints.
+     */
+    void Print(double tol, int& index) const final;
 };
 
 }  // namespace optimization

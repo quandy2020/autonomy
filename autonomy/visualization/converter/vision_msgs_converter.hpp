@@ -29,24 +29,35 @@ namespace impl {
 
 // vision_msgs conversion functions
 // Detection messages
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection2D& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection2DArray& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection3D& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Detection3DArray& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::Detection2D& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::Detection2DArray& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::Detection3D& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::Detection3DArray& message);
 
 // Bounding box messages
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::BoundingBox2D& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::BoundingBox2DArray& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::BoundingBox3D& message);
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::BoundingBox3DArray& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::BoundingBox2D& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::BoundingBox2DArray& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::BoundingBox3D& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::BoundingBox3DArray& message);
 
 // Classification messages
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::Classification& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::Classification& message);
 
 // Object hypothesis messages
-foxglove::schemas::SceneUpdate ToFoxgloveImpl(const autonomy::commsgs::proto::vision_msgs::ObjectHypothesis& message);
 foxglove::schemas::SceneUpdate ToFoxgloveImpl(
-    const autonomy::commsgs::proto::vision_msgs::ObjectHypothesisWithPose& message);
+    const autonomy::commsgs::proto::vision_msgs::ObjectHypothesis& message);
+foxglove::schemas::SceneUpdate ToFoxgloveImpl(
+    const autonomy::commsgs::proto::vision_msgs::ObjectHypothesisWithPose&
+        message);
 
 }  // namespace impl
 }  // namespace converter

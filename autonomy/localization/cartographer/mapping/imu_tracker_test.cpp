@@ -29,55 +29,68 @@ constexpr double kGravityTimeConstant = 0.1 * kDuration;
 constexpr double kPrecision = 1e-8;
 constexpr int kSteps = 10;
 
-class ImuTrackerTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    imu_tracker_ = absl::make_unique<ImuTracker>(kGravityTimeConstant, time_);
-    angular_velocity_ = Eigen::Vector3d(0, 0, 0);
-    linear_acceleration_ = Eigen::Vector3d(0, 0, 9.9);
-    EXPECT_NEAR(0., imu_tracker_->orientation().angularDistance(Eigen::Quaterniond::Identity()), kPrecision);
-  }
-
-  void AdvanceImu() {
-    for (int i = 0; i < kSteps; ++i) {
-      imu_tracker_->AddImuLinearAccelerationObservation(linear_acceleration_);
-      imu_tracker_->AddImuAngularVelocityObservation(angular_velocity_);
-      time_ += common::FromSeconds(kDuration / kSteps);
-      imu_tracker_->Advance(time_);
+class ImuTrackerTest : public ::testing::Test
+{
+protected:
+    void SetUp() override {
+        imu_tracker_ =
+            absl::make_unique<ImuTracker>(kGravityTimeConstant, time_);
+        angular_velocity_ = Eigen::Vector3d(0, 0, 0);
+        linear_acceleration_ = Eigen::Vector3d(0, 0, 9.9);
+        EXPECT_NEAR(0.,
+                    imu_tracker_->orientation().angularDistance(
+                        Eigen::Quaterniond::Identity()),
+                    kPrecision);
     }
-    EXPECT_EQ(time_, imu_tracker_->time());
-  }
 
-  Eigen::Vector3d angular_velocity_;
-  std::unique_ptr<ImuTracker> imu_tracker_;
-  Eigen::Vector3d linear_acceleration_;
-  common::Time time_ = common::FromUniversal(12345678);
+    void AdvanceImu() {
+        for (int i = 0; i < kSteps; ++i) {
+            imu_tracker_->AddImuLinearAccelerationObservation(
+                linear_acceleration_);
+            imu_tracker_->AddImuAngularVelocityObservation(angular_velocity_);
+            time_ += common::FromSeconds(kDuration / kSteps);
+            imu_tracker_->Advance(time_);
+        }
+        EXPECT_EQ(time_, imu_tracker_->time());
+    }
+
+    Eigen::Vector3d angular_velocity_;
+    std::unique_ptr<ImuTracker> imu_tracker_;
+    Eigen::Vector3d linear_acceleration_;
+    common::Time time_ = common::FromUniversal(12345678);
 };
 
 TEST_F(ImuTrackerTest, IntegrateYawRotation) {
-  angular_velocity_ = Eigen::Vector3d(0, 0, 0.3);
-  AdvanceImu();
-  Eigen::Quaterniond expected_orientation(
-      Eigen::AngleAxisd(kDuration * angular_velocity_.norm(), angular_velocity_.normalized()));
-  EXPECT_NEAR(0., imu_tracker_->orientation().angularDistance(expected_orientation), kPrecision);
+    angular_velocity_ = Eigen::Vector3d(0, 0, 0.3);
+    AdvanceImu();
+    Eigen::Quaterniond expected_orientation(Eigen::AngleAxisd(
+        kDuration * angular_velocity_.norm(), angular_velocity_.normalized()));
+    EXPECT_NEAR(
+        0., imu_tracker_->orientation().angularDistance(expected_orientation),
+        kPrecision);
 }
 
 TEST_F(ImuTrackerTest, IntegrateFullRotation) {
-  angular_velocity_ = Eigen::Vector3d(0.1, 0.4, 0.1);
-  // Using a huge gravity time constant effectively disables gravity vector
-  // tracking.
-  imu_tracker_.reset(new ImuTracker(1e10 * kDuration, time_));
-  AdvanceImu();
-  Eigen::Quaterniond expected_orientation(
-      Eigen::AngleAxisd(kDuration * angular_velocity_.norm(), angular_velocity_.normalized()));
-  EXPECT_NEAR(0., imu_tracker_->orientation().angularDistance(expected_orientation), kPrecision);
+    angular_velocity_ = Eigen::Vector3d(0.1, 0.4, 0.1);
+    // Using a huge gravity time constant effectively disables gravity vector
+    // tracking.
+    imu_tracker_.reset(new ImuTracker(1e10 * kDuration, time_));
+    AdvanceImu();
+    Eigen::Quaterniond expected_orientation(Eigen::AngleAxisd(
+        kDuration * angular_velocity_.norm(), angular_velocity_.normalized()));
+    EXPECT_NEAR(
+        0., imu_tracker_->orientation().angularDistance(expected_orientation),
+        kPrecision);
 }
 
 TEST_F(ImuTrackerTest, LearnGravityVector) {
-  linear_acceleration_ = Eigen::Vector3d(0.5, 0.3, 9.5);
-  AdvanceImu();
-  const Eigen::Quaterniond expected_orientation = FromTwoVectors(linear_acceleration_, Eigen::Vector3d::UnitZ());
-  EXPECT_NEAR(0., imu_tracker_->orientation().angularDistance(expected_orientation), kPrecision);
+    linear_acceleration_ = Eigen::Vector3d(0.5, 0.3, 9.5);
+    AdvanceImu();
+    const Eigen::Quaterniond expected_orientation =
+        FromTwoVectors(linear_acceleration_, Eigen::Vector3d::UnitZ());
+    EXPECT_NEAR(
+        0., imu_tracker_->orientation().angularDistance(expected_orientation),
+        kPrecision);
 }
 
 }  // namespace

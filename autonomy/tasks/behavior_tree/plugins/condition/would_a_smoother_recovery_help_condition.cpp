@@ -24,13 +24,15 @@ namespace behavior_tree {
 namespace plugins {
 namespace condition {
 
-WouldASmootherRecoveryHelp::WouldASmootherRecoveryHelp(const std::string& condition_name,
-                                                       const BT::NodeConfiguration& conf)
+WouldASmootherRecoveryHelp::WouldASmootherRecoveryHelp(
+    const std::string& condition_name, const BT::NodeConfiguration& conf)
     : AreErrorCodesPresent(condition_name, conf) {
-  error_codes_to_check_ = {static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_UNKNOWN),
-                           static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_TIMEOUT),
-                           static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_FAILED_TO_SMOOTH_PATH),
-                           static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_SMOOTHED_PATH_IN_COLLISION)};
+    error_codes_to_check_ = {
+        static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_UNKNOWN),
+        static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_TIMEOUT),
+        static_cast<uint16_t>(proto::SMOOTH_PATH_ERROR_FAILED_TO_SMOOTH_PATH),
+        static_cast<uint16_t>(
+            proto::SMOOTH_PATH_ERROR_SMOOTHED_PATH_IN_COLLISION)};
 }
 
 }  // namespace condition
@@ -41,6 +43,7 @@ WouldASmootherRecoveryHelp::WouldASmootherRecoveryHelp(const std::string& condit
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::condition::WouldASmootherRecoveryHelp>(
-      "WouldASmootherRecoveryHelp");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::
+                                 condition::WouldASmootherRecoveryHelp>(
+        "WouldASmootherRecoveryHelp");
 }

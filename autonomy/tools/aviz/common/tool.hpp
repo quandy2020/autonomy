@@ -18,7 +18,7 @@
 #define AVIZ_COMMON__TOOL_HPP_
 
 #include <QCursor>  // NOLINT: cpplint is unable to handle the include order here
-#include <QIcon>    // NOLINT: cpplint is unable to handle the include order here
+#include <QIcon>  // NOLINT: cpplint is unable to handle the include order here
 #include <QObject>  // NOLINT: cpplint is unable to handle the include order here
 #include <QString>  // NOLINT: cpplint is unable to handle the include order here
 
@@ -42,130 +42,132 @@ class ViewportMouseEvent;
  * Tools are interactive elements that respond to mouse and keyboard events.
  * Examples include selection tools, measurement tools, etc.
  */
-class Tool : public QObject {
-  Q_OBJECT
+class Tool : public QObject
+{
+    Q_OBJECT
 
- public:
-  /**
-   * Pluginlib only instantiates classes via default constructors.
-   * Subclasses of Tool should set the shortcut_key_ field in their
-   * constructors.
-   *
-   * Properties to appear in the Tool Properties panel are typically
-   * created in the constructor, as children of the property from
-   * getPropertyContainer(), which is set up in this Tool
-   * constructor.
-   */
-  Tool();
+public:
+    /**
+     * Pluginlib only instantiates classes via default constructors.
+     * Subclasses of Tool should set the shortcut_key_ field in their
+     * constructors.
+     *
+     * Properties to appear in the Tool Properties panel are typically
+     * created in the constructor, as children of the property from
+     * getPropertyContainer(), which is set up in this Tool
+     * constructor.
+     */
+    Tool();
 
-  ~Tool() override;
+    ~Tool() override;
 
-  /// Initialize the tool.
-  /**
-   * Sets the DisplayContext and calls onInitialize().
-   */
-  void initialize(DisplayContext* context);
+    /// Initialize the tool.
+    /**
+     * Sets the DisplayContext and calls onInitialize().
+     */
+    void initialize(DisplayContext* context);
 
-  /// Return the container for properties of this Tool.
-  virtual aviz::common::properties::Property* getPropertyContainer() const;
+    /// Return the container for properties of this Tool.
+    virtual aviz::common::properties::Property* getPropertyContainer() const;
 
-  /// Get the shortcut key for the tool.
-  char getShortcutKey() const;
+    /// Get the shortcut key for the tool.
+    char getShortcutKey() const;
 
-  /// Return true if the tool needs to access all keys or false if not.
-  bool accessAllKeys() const;
+    /// Return true if the tool needs to access all keys or false if not.
+    bool accessAllKeys() const;
 
-  /// Override to get called when the tool is activated.
-  virtual void activate() = 0;
+    /// Override to get called when the tool is activated.
+    virtual void activate() = 0;
 
-  /// Override to get called when the tool is deactivated.
-  virtual void deactivate() = 0;
+    /// Override to get called when the tool is deactivated.
+    virtual void deactivate() = 0;
 
-  /// Called periodically, typically at 30Hz.
-  virtual void update(float wall_dt, float ros_dt);
+    /// Called periodically, typically at 30Hz.
+    virtual void update(float wall_dt, float ros_dt);
 
-  enum { Render = 1, Finished = 2 };
+    enum { Render = 1, Finished = 2 };
 
-  /// Process a mouse event.
-  /**
-   * This is the central function of all the tools, as it defines how the
-   * mouse is used.
-   */
-  virtual int processMouseEvent(ViewportMouseEvent& event);
+    /// Process a mouse event.
+    /**
+     * This is the central function of all the tools, as it defines how the
+     * mouse is used.
+     */
+    virtual int processMouseEvent(ViewportMouseEvent& event);
 
-  /// Process a key event.
-  /**
-   * Override if your tool should handle any other keypresses than the tool
-   * shortcuts, which are handled separately.
-   */
-  virtual int processKeyEvent(QKeyEvent* event, SceneViewer* viewer);
+    /// Process a key event.
+    /**
+     * Override if your tool should handle any other keypresses than the tool
+     * shortcuts, which are handled separately.
+     */
+    virtual int processKeyEvent(QKeyEvent* event, SceneViewer* viewer);
 
-  /// Get the name of the tool.
-  QString getName() const;
+    /// Get the name of the tool.
+    QString getName() const;
 
-  /// Set the name of the tool.
-  void setName(const QString& name);
+    /// Set the name of the tool.
+    void setName(const QString& name);
 
-  /// Get the description.
-  QString getDescription() const;
+    /// Get the description.
+    QString getDescription() const;
 
-  /// Set the description of the tool.
-  void setDescription(const QString& description);
+    /// Set the description of the tool.
+    void setDescription(const QString& description);
 
-  /// Return the class identifier which was used to create this instance.
-  virtual QString getClassId() const;
+    /// Return the class identifier which was used to create this instance.
+    virtual QString getClassId() const;
 
-  /// Set the class identifier used to create this instance.
-  virtual void setClassId(const QString& class_id);
+    /// Set the class identifier used to create this instance.
+    virtual void setClassId(const QString& class_id);
 
-  /// Load properties from the given Config.
-  virtual void load(const Config& config);
+    /// Load properties from the given Config.
+    virtual void load(const Config& config);
 
-  /// Save this entire tool into the given Config node.
-  virtual void save(Config config) const;
+    /// Save this entire tool into the given Config node.
+    virtual void save(Config config) const;
 
-  /// Set the toolbar icon for this tool (will also set its cursor).
-  void setIcon(const QIcon& icon);
+    /// Set the toolbar icon for this tool (will also set its cursor).
+    void setIcon(const QIcon& icon);
 
-  /// Get the icon of this tool.
-  const QIcon& getIcon();
+    /// Get the icon of this tool.
+    const QIcon& getIcon();
 
-  /// Set the cursor for this tool.
-  void setCursor(const QCursor& cursor);
+    /// Set the cursor for this tool.
+    void setCursor(const QCursor& cursor);
 
-  /// Get current cursor of this tool.
-  const QCursor& getCursor();
+    /// Get current cursor of this tool.
+    const QCursor& getCursor();
 
-  /// Set the status message.
-  void setStatus(const QString& message);
+    /// Set the status message.
+    void setStatus(const QString& message);
 
- Q_SIGNALS:
-  /// Emitted when closed.
-  void close();
-  /// Emitted when name property has been changed.
-  void nameChanged(const QString& name);
+Q_SIGNALS:
+    /// Emitted when closed.
+    void close();
+    /// Emitted when name property has been changed.
+    void nameChanged(const QString& name);
 
- protected:
-  /// Override onInitialize to do any setup needed after the DisplayContext has been set.
-  /**
-   * This is called by Tool::initialize().
-   */
-  virtual void onInitialize() {}
+protected:
+    /// Override onInitialize to do any setup needed after the DisplayContext
+    /// has been set.
+    /**
+     * This is called by Tool::initialize().
+     */
+    virtual void onInitialize() {}
 
-  DisplayContext* context_;
+    DisplayContext* context_;
 
-  char shortcut_key_;
-  bool access_all_keys_;
+    char shortcut_key_;
+    bool access_all_keys_;
 
-  QIcon icon_;
+    QIcon icon_;
 
-  QCursor cursor_;
+    QCursor cursor_;
 
- private:
-  QString class_id_;
-  aviz::common::properties::Property* property_container_;
-  QString name_;
-  QString description_;
+private:
+    QString class_id_;
+    aviz::common::properties::Property* property_container_;
+    QString name_;
+    QString description_;
 };
 
 }  // namespace common

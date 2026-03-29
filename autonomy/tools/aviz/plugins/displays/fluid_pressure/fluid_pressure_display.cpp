@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-FluidPressureDisplay::FluidPressureDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/FluidPressure");
-  setName(name);
+FluidPressureDisplay::FluidPressureDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/FluidPressure");
+    setName(name);
 }
 
 FluidPressureDisplay::~FluidPressureDisplay() = default;
 
-void FluidPressureDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void FluidPressureDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void FluidPressureDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void FluidPressureDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void FluidPressureDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void FluidPressureDisplay::reset() { aviz::common::Display::reset(); }
+void FluidPressureDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void FluidPressureDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void FluidPressureDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void FluidPressureDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

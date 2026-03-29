@@ -21,11 +21,11 @@ namespace plugins {
 namespace view_controllers {
 
 OrthoViewController::OrthoViewController() {
-  // TODO: Initialize view controller
+    // TODO: Initialize view controller
 }
 
 OrthoViewController::~OrthoViewController() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace view_controllers

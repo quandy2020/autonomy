@@ -32,17 +32,19 @@ namespace common {
  * parseFloat() handles "C" and also European-style floats which use the ",",
  * like "1,2" parses to 1.2f
  */
-class UniformStringStream : public std::stringstream {
- public:
-  UniformStringStream();
-  explicit UniformStringStream(const std::string& str);
+class UniformStringStream : public std::stringstream
+{
+public:
+    UniformStringStream();
+    explicit UniformStringStream(const std::string& str);
 
-  /// Parse a float, supporting both period- and comma- style floats (1,2 and 1.2).
-  /**
-   * Uses operator>>(std::string&) internally, so consumes up to next
-   * whitespace from the stream.
-   */
-  void parseFloat(float& f);
+    /// Parse a float, supporting both period- and comma- style floats (1,2
+    /// and 1.2).
+    /**
+     * Uses operator>>(std::string&) internally, so consumes up to next
+     * whitespace from the stream.
+     */
+    void parseFloat(float& f);
 };
 
 }  // namespace common

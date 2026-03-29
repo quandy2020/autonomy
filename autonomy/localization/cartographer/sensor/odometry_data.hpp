@@ -25,8 +25,8 @@ namespace cartographer {
 namespace sensor {
 
 struct OdometryData {
-  common::Time time;
-  transform::Rigid3d pose;
+    common::Time time;
+    transform::Rigid3d pose;
 };
 
 // Converts 'odometry_data' to a proto::OdometryData.

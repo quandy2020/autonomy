@@ -25,104 +25,110 @@
 namespace autolink {
 namespace service_discovery {
 
-class NodeManagerTest : public ::testing::Test {
- protected:
-  NodeManagerTest() { node_manager_ = std::make_shared<NodeManager>(); }
-  virtual ~NodeManagerTest() { node_manager_->Shutdown(); }
+class NodeManagerTest : public ::testing::Test
+{
+protected:
+    NodeManagerTest() {
+        node_manager_ = std::make_shared<NodeManager>();
+    }
+    virtual ~NodeManagerTest() {
+        node_manager_->Shutdown();
+    }
 
-  virtual void SetUp() {}
+    virtual void SetUp() {}
 
-  virtual void TearDown() {}
+    virtual void TearDown() {}
 
-  std::shared_ptr<NodeManager> node_manager_;
+    std::shared_ptr<NodeManager> node_manager_;
 };
 
 TEST_F(NodeManagerTest, node_change) {
-  EXPECT_FALSE(node_manager_->HasNode("node"));
+    EXPECT_FALSE(node_manager_->HasNode("node"));
 
-  // node join
-  RoleAttributes role_attr;
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_WRITER));
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
+    // node join
+    RoleAttributes role_attr;
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_WRITER));
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
 
-  role_attr.set_host_name(common::GlobalData::Instance()->HostName());
-  role_attr.set_process_id(common::GlobalData::Instance()->ProcessId());
-  role_attr.set_node_name("node");
-  uint64_t node_id = common::GlobalData::RegisterNode("node");
-  role_attr.set_node_id(node_id);
+    role_attr.set_host_name(common::GlobalData::Instance()->HostName());
+    role_attr.set_process_id(common::GlobalData::Instance()->ProcessId());
+    role_attr.set_node_name("node");
+    uint64_t node_id = common::GlobalData::RegisterNode("node");
+    role_attr.set_node_id(node_id);
 
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_WRITER));
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_WRITER));
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
 
-  EXPECT_TRUE(node_manager_->HasNode("node"));
+    EXPECT_TRUE(node_manager_->HasNode("node"));
 
-  // node leave
-  EXPECT_FALSE(node_manager_->Leave(role_attr, RoleType::ROLE_WRITER));
-  EXPECT_FALSE(node_manager_->Leave(role_attr, RoleType::ROLE_NODE));
+    // node leave
+    EXPECT_FALSE(node_manager_->Leave(role_attr, RoleType::ROLE_WRITER));
+    EXPECT_FALSE(node_manager_->Leave(role_attr, RoleType::ROLE_NODE));
 
-  EXPECT_FALSE(node_manager_->HasNode("node"));
+    EXPECT_FALSE(node_manager_->HasNode("node"));
 }
 
 TEST_F(NodeManagerTest, topo_module_leave) {
-  RoleAttributes role_attr;
-  role_attr.set_host_name(common::GlobalData::Instance()->HostName());
-  role_attr.set_process_id(common::GlobalData::Instance()->ProcessId());
-  role_attr.set_node_name("node");
-  uint64_t node_id = common::GlobalData::RegisterNode("node");
-  role_attr.set_node_id(node_id);
+    RoleAttributes role_attr;
+    role_attr.set_host_name(common::GlobalData::Instance()->HostName());
+    role_attr.set_process_id(common::GlobalData::Instance()->ProcessId());
+    role_attr.set_node_name("node");
+    uint64_t node_id = common::GlobalData::RegisterNode("node");
+    role_attr.set_node_id(node_id);
 
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
-  EXPECT_TRUE(node_manager_->HasNode("node"));
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
+    EXPECT_TRUE(node_manager_->HasNode("node"));
 }
 
 TEST_F(NodeManagerTest, add_and_remove_change_listener) {
-  bool recv_flag = false;
-  auto conn = node_manager_->AddChangeListener([&recv_flag](const ChangeMsg& msg) { recv_flag = true; });
+    bool recv_flag = false;
+    auto conn = node_manager_->AddChangeListener(
+        [&recv_flag](const ChangeMsg& msg) { recv_flag = true; });
 
-  RoleAttributes role_attr;
-  role_attr.set_host_name("caros");
-  role_attr.set_process_id(1024);
-  role_attr.set_node_name("node");
-  uint64_t node_id = common::GlobalData::RegisterNode("node");
-  role_attr.set_node_id(node_id);
+    RoleAttributes role_attr;
+    role_attr.set_host_name("caros");
+    role_attr.set_process_id(1024);
+    role_attr.set_node_name("node");
+    uint64_t node_id = common::GlobalData::RegisterNode("node");
+    role_attr.set_node_id(node_id);
 
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
-  EXPECT_TRUE(recv_flag);
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
+    EXPECT_TRUE(recv_flag);
 
-  node_manager_->RemoveChangeListener(conn);
+    node_manager_->RemoveChangeListener(conn);
 
-  recv_flag = false;
-  EXPECT_FALSE(node_manager_->Leave(role_attr, RoleType::ROLE_NODE));
-  EXPECT_FALSE(recv_flag);
+    recv_flag = false;
+    EXPECT_FALSE(node_manager_->Leave(role_attr, RoleType::ROLE_NODE));
+    EXPECT_FALSE(recv_flag);
 }
 
 TEST_F(NodeManagerTest, has_node) {
-  RoleAttributes role_attr;
-  role_attr.set_host_name("caros");
-  role_attr.set_process_id(1024);
-  role_attr.set_node_name("node");
-  uint64_t node_id = common::GlobalData::RegisterNode("node");
-  role_attr.set_node_id(node_id);
+    RoleAttributes role_attr;
+    role_attr.set_host_name("caros");
+    role_attr.set_process_id(1024);
+    role_attr.set_node_name("node");
+    uint64_t node_id = common::GlobalData::RegisterNode("node");
+    role_attr.set_node_id(node_id);
 
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
 
-  EXPECT_TRUE(node_manager_->HasNode("node"));
-  EXPECT_FALSE(node_manager_->HasNode("node11"));
+    EXPECT_TRUE(node_manager_->HasNode("node"));
+    EXPECT_FALSE(node_manager_->HasNode("node11"));
 }
 
 TEST_F(NodeManagerTest, get_nodes) {
-  RoleAttributes role_attr;
-  role_attr.set_host_name("caros");
-  role_attr.set_process_id(1024);
-  role_attr.set_node_name("node_1");
-  uint64_t node_id = common::GlobalData::RegisterNode("node_1");
-  role_attr.set_node_id(node_id);
+    RoleAttributes role_attr;
+    role_attr.set_host_name("caros");
+    role_attr.set_process_id(1024);
+    role_attr.set_node_name("node_1");
+    uint64_t node_id = common::GlobalData::RegisterNode("node_1");
+    role_attr.set_node_id(node_id);
 
-  EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
+    EXPECT_FALSE(node_manager_->Join(role_attr, RoleType::ROLE_NODE));
 
-  std::vector<RoleAttributes> attr_nodes;
-  node_manager_->GetNodes(&attr_nodes);
-  EXPECT_EQ(attr_nodes.size(), 1);
+    std::vector<RoleAttributes> attr_nodes;
+    node_manager_->GetNodes(&attr_nodes);
+    EXPECT_EQ(attr_nodes.size(), 1);
 }
 
 }  // namespace service_discovery

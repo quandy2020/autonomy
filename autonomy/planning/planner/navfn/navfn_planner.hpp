@@ -36,177 +36,187 @@ namespace planning {
 namespace planner {
 namespace navfn {
 
-class NavfnPlanner : public common::GlobalPlanner {
- public:
-  /**
-   * @brief Define Buffer type
-   */
-  using Buffer = autonomy::transform::Buffer;
+class NavfnPlanner : public common::GlobalPlanner
+{
+public:
+    /**
+     * @brief Define Buffer type
+     */
+    using Buffer = autonomy::transform::Buffer;
 
-  /**
-   * @brief constructor
-   */
-  NavfnPlanner();
+    /**
+     * @brief constructor
+     */
+    NavfnPlanner();
 
-  /**
-   * @brief destructor
-   */
-  ~NavfnPlanner();
+    /**
+     * @brief destructor
+     */
+    ~NavfnPlanner();
 
-  /**
-   * @brief Configure the planner
-   * @param options The options to configure the planner with
-   * @param name The name of the planner
-   * @param costmap Pointer to the costmap (optional, can be nullptr if set
-   * later)
-   * @return True if the planner was successfully configured, false otherwise
-   */
-  bool Configure(const proto::PlannerOptions& options, const std::string& name,
-                 std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap = nullptr) override;
+    /**
+     * @brief Configure the planner
+     * @param options The options to configure the planner with
+     * @param name The name of the planner
+     * @param costmap Pointer to the costmap (optional, can be nullptr if set
+     * later)
+     * @return True if the planner was successfully configured, false otherwise
+     */
+    bool Configure(const proto::PlannerOptions& options,
+                   const std::string& name,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap =
+                       nullptr) override;
 
-  /**
-   * @brief Cleanup the planner
-   */
-  void Cleanup() override;
+    /**
+     * @brief Cleanup the planner
+     */
+    void Cleanup() override;
 
-  /**
-   * @brief Activate the planner
-   */
-  void Activate() override;
+    /**
+     * @brief Activate the planner
+     */
+    void Activate() override;
 
-  /**
-   * @brief Deactivate the planner
-   */
-  void Deactivate() override;
+    /**
+     * @brief Deactivate the planner
+     */
+    void Deactivate() override;
 
-  /**
-   * @brief Creating a plan from start and goal poses
-   * @param start Start pose
-   * @param goal Goal pose
-   * @param plan Path to be computed
-   * @param cancel_checker Function to check if the task has been canceled
-   * @return Result code from PlannerResultCode enum
-   */
-  uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start, const commsgs::geometry_msgs::PoseStamped& goal,
-                    commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) override;
+    /**
+     * @brief Creating a plan from start and goal poses
+     * @param start Start pose
+     * @param goal Goal pose
+     * @param plan Path to be computed
+     * @param cancel_checker Function to check if the task has been canceled
+     * @return Result code from PlannerResultCode enum
+     */
+    uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
+                      const commsgs::geometry_msgs::PoseStamped& goal,
+                      commsgs::planning_msgs::Path& plan,
+                      std::function<bool()> cancel_checker) override;
 
- protected:
-  /**
-   * @brief Compute a plan given start and goal poses, provided in global
-   * world frame.
-   * @param start Start pose
-   * @param goal Goal pose
-   * @param tolerance Relaxation constraint in x and y
-   * @param cancel_checker Function to check if the task has been canceled
-   * @param plan Path to be computed
-   * @return true if can find the path
-   */
-  bool makePlan(const commsgs::geometry_msgs::Pose& start, const commsgs::geometry_msgs::Pose& goal, double tolerance,
-                std::function<bool()> cancel_checker, commsgs::planning_msgs::Path& plan);
+protected:
+    /**
+     * @brief Compute a plan given start and goal poses, provided in global
+     * world frame.
+     * @param start Start pose
+     * @param goal Goal pose
+     * @param tolerance Relaxation constraint in x and y
+     * @param cancel_checker Function to check if the task has been canceled
+     * @param plan Path to be computed
+     * @return true if can find the path
+     */
+    bool makePlan(const commsgs::geometry_msgs::Pose& start,
+                  const commsgs::geometry_msgs::Pose& goal, double tolerance,
+                  std::function<bool()> cancel_checker,
+                  commsgs::planning_msgs::Path& plan);
 
-  /**
-   * @brief Compute the navigation function given a seed point in the world to
-   * start from
-   * @param world_point Point in world coordinate frame
-   * @return true if can compute
-   */
-  bool computePotential(const commsgs::geometry_msgs::Point& world_point);
+    /**
+     * @brief Compute the navigation function given a seed point in the world to
+     * start from
+     * @param world_point Point in world coordinate frame
+     * @return true if can compute
+     */
+    bool computePotential(const commsgs::geometry_msgs::Point& world_point);
 
-  /**
-   * @brief Compute a plan to a goal from a potential - must call
-   * computePotential first
-   * @param goal Goal pose
-   * @param plan Path to be computed
-   * @return true if can compute a plan path
-   */
-  bool getPlanFromPotential(const commsgs::geometry_msgs::Pose& goal, commsgs::planning_msgs::Path& plan);
+    /**
+     * @brief Compute a plan to a goal from a potential - must call
+     * computePotential first
+     * @param goal Goal pose
+     * @param plan Path to be computed
+     * @return true if can compute a plan path
+     */
+    bool getPlanFromPotential(const commsgs::geometry_msgs::Pose& goal,
+                              commsgs::planning_msgs::Path& plan);
 
-  /**
-   * @brief Remove artifacts at the end of the path - originated from planning
-   * on a discretized world
-   * @param goal Goal pose
-   * @param plan Computed path
-   */
-  void smoothApproachToGoal(const commsgs::geometry_msgs::Pose& goal, commsgs::planning_msgs::Path& plan);
+    /**
+     * @brief Remove artifacts at the end of the path - originated from planning
+     * on a discretized world
+     * @param goal Goal pose
+     * @param plan Computed path
+     */
+    void smoothApproachToGoal(const commsgs::geometry_msgs::Pose& goal,
+                              commsgs::planning_msgs::Path& plan);
 
-  /**
-   * @brief Compute the potential, or navigation cost, at a given point in the
-   * world must call computePotential first
-   * @param world_point Point in world coordinate frame
-   * @return double point potential (navigation cost)
-   */
-  double getPointPotential(const commsgs::geometry_msgs::Point& world_point);
+    /**
+     * @brief Compute the potential, or navigation cost, at a given point in the
+     * world must call computePotential first
+     * @param world_point Point in world coordinate frame
+     * @return double point potential (navigation cost)
+     */
+    double getPointPotential(const commsgs::geometry_msgs::Point& world_point);
 
-  // Check for a valid potential value at a given point in the world
-  // - must call computePotential first
-  // - currently unused
-  // bool validPointPotential(const geometry_msgs::msg::Point & world_point);
-  // bool validPointPotential(const geometry_msgs::msg::Point & world_point,
-  // double tolerance);
+    // Check for a valid potential value at a given point in the world
+    // - must call computePotential first
+    // - currently unused
+    // bool validPointPotential(const geometry_msgs::msg::Point & world_point);
+    // bool validPointPotential(const geometry_msgs::msg::Point & world_point,
+    // double tolerance);
 
-  /**
-   * @brief Compute the squared distance between two points
-   * @param p1 Point 1
-   * @param p2 Point 2
-   * @return double squared distance between two points
-   */
-  inline double squared_distance(const commsgs::geometry_msgs::Pose& p1, const commsgs::geometry_msgs::Pose& p2) {
-    double dx = p1.position.x - p2.position.x;
-    double dy = p1.position.y - p2.position.y;
-    return dx * dx + dy * dy;
-  }
+    /**
+     * @brief Compute the squared distance between two points
+     * @param p1 Point 1
+     * @param p2 Point 2
+     * @return double squared distance between two points
+     */
+    inline double squared_distance(const commsgs::geometry_msgs::Pose& p1,
+                                   const commsgs::geometry_msgs::Pose& p2) {
+        double dx = p1.position.x - p2.position.x;
+        double dy = p1.position.y - p2.position.y;
+        return dx * dx + dy * dy;
+    }
 
-  /**
-   * @brief Transform a point from world to map frame
-   * @param wx double of world X coordinate
-   * @param wy double of world Y coordinate
-   * @param mx int of map X coordinate
-   * @param my int of map Y coordinate
-   * @return true if can transform
-   */
-  bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my);
+    /**
+     * @brief Transform a point from world to map frame
+     * @param wx double of world X coordinate
+     * @param wy double of world Y coordinate
+     * @param mx int of map X coordinate
+     * @param my int of map Y coordinate
+     * @return true if can transform
+     */
+    bool worldToMap(double wx, double wy, unsigned int& mx, unsigned int& my);
 
-  /**
-   * @brief Transform a point from map to world frame
-   * @param mx double of map X coordinate
-   * @param my double of map Y coordinate
-   * @param wx double of world X coordinate
-   * @param wy double of world Y coordinate
-   */
-  void mapToWorld(double mx, double my, double& wx, double& wy);
+    /**
+     * @brief Transform a point from map to world frame
+     * @param mx double of map X coordinate
+     * @param my double of map Y coordinate
+     * @param wx double of world X coordinate
+     * @param wy double of world Y coordinate
+     */
+    void mapToWorld(double mx, double my, double& wx, double& wy);
 
-  /**
-   * @brief Set the corresponding cell cost to be free space
-   * @param mx int of map X coordinate
-   * @param my int of map Y coordinate
-   */
-  void clearRobotCell(unsigned int mx, unsigned int my);
+    /**
+     * @brief Set the corresponding cell cost to be free space
+     * @param mx int of map X coordinate
+     * @param my int of map Y coordinate
+     */
+    void clearRobotCell(unsigned int mx, unsigned int my);
 
-  /**
-   * @brief Determine if a new planner object should be made
-   * @return true if planner object is out of date
-   */
-  bool isPlannerOutOfDate();
+    /**
+     * @brief Determine if a new planner object should be made
+     * @return true if planner object is out of date
+     */
+    bool isPlannerOutOfDate();
 
-  // Planner based on ROS1 NavFn algorithm
-  std::unique_ptr<NavFn> planner_{nullptr};
+    // Planner based on ROS1 NavFn algorithm
+    std::unique_ptr<NavFn> planner_{nullptr};
 
-  // Global Costmap
-  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_{nullptr};
+    // Global Costmap
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_{nullptr};
 
-  // The global frame of the costmap
-  std::string global_frame_, name_;
+    // The global frame of the costmap
+    std::string global_frame_, name_;
 
-  // Whether or not the planner should be allowed to plan through unknown
-  // space
-  bool allow_unknown_, use_final_approach_orientation_;
+    // Whether or not the planner should be allowed to plan through unknown
+    // space
+    bool allow_unknown_, use_final_approach_orientation_;
 
-  // If the goal is obstructed, the tolerance specifies how many meters the
-  // planner can relax the constraint in x and y before failing
-  double tolerance_;
+    // If the goal is obstructed, the tolerance specifies how many meters the
+    // planner can relax the constraint in x and y before failing
+    double tolerance_;
 
-  // Whether to use the astar planner or default dijkstras
-  bool use_astar_;
+    // Whether to use the astar planner or default dijkstras
+    bool use_astar_;
 };
 
 }  // namespace navfn

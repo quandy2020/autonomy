@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 MeasureTool::MeasureTool() {
-  // TODO: Initialize tool
+    // TODO: Initialize tool
 }
 
 MeasureTool::~MeasureTool() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace tools

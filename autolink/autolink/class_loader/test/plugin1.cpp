@@ -19,25 +19,37 @@
 #include "autolink/class_loader/class_loader.hpp"
 #include "autolink/class_loader/test/base.hpp"
 
-class Circle : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Circle" << std::endl; }
+class Circle : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Circle" << std::endl;
+    }
 };
 
-class Rect : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Rect" << std::endl; }
-  ~Rect() {}
+class Rect : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Rect" << std::endl;
+    }
+    ~Rect() {}
 };
 
-class Triangle : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Triangle" << std::endl; }
+class Triangle : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Triangle" << std::endl;
+    }
 };
 
-class Star : public Base {
- public:
-  virtual void DoSomething() { std::cout << "I am Star" << std::endl; }
+class Star : public Base
+{
+public:
+    virtual void DoSomething() {
+        std::cout << "I am Star" << std::endl;
+    }
 };
 
 CLASS_LOADER_REGISTER_CLASS(Circle, Base);

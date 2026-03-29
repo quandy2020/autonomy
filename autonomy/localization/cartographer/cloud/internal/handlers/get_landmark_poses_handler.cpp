@@ -27,15 +27,20 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-void GetLandmarkPosesHandler::OnRequest(const google::protobuf::Empty& request) {
-  auto landmark_poses = GetContext<MapBuilderContextInterface>()->map_builder().pose_graph()->GetLandmarkPoses();
-  auto response = absl::make_unique<proto::GetLandmarkPosesResponse>();
-  for (const auto& landmark_pose : landmark_poses) {
-    auto* landmark = response->add_landmark_poses();
-    landmark->set_landmark_id(landmark_pose.first);
-    *landmark->mutable_global_pose() = transform::ToProto(landmark_pose.second);
-  }
-  Send(std::move(response));
+void GetLandmarkPosesHandler::OnRequest(
+    const google::protobuf::Empty& request) {
+    auto landmark_poses = GetContext<MapBuilderContextInterface>()
+                              ->map_builder()
+                              .pose_graph()
+                              ->GetLandmarkPoses();
+    auto response = absl::make_unique<proto::GetLandmarkPosesResponse>();
+    for (const auto& landmark_pose : landmark_poses) {
+        auto* landmark = response->add_landmark_poses();
+        landmark->set_landmark_id(landmark_pose.first);
+        *landmark->mutable_global_pose() =
+            transform::ToProto(landmark_pose.second);
+    }
+    Send(std::move(response));
 }
 
 }  // namespace handlers

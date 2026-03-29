@@ -26,52 +26,63 @@ namespace mppi_controller {
 namespace critics {
 
 void PreferForwardCritic::initialize() {
-  if (!options_) {
-    AWARN << "Options not set, using defaults";
-    power_ = 1;
-    weight_ = 5.0f;
-    threshold_to_consider_ = 0.5f;
-    return;
-  }
+    if (!options_) {
+        AWARN << "Options not set, using defaults";
+        power_ = 1;
+        weight_ = 5.0f;
+        threshold_to_consider_ = 0.5f;
+        return;
+    }
 
-  // Load from proto options
-  if (options_->has_prefer_forward_critic()) {
-    const auto& critic = options_->prefer_forward_critic();
-    enabled_ = critic.enabled();
-    power_ = critic.cost_power();
-    weight_ = static_cast<float>(critic.cost_weight());
-    threshold_to_consider_ = static_cast<float>(critic.threshold_to_consider());
-  } else {
-    enabled_ = true;
-    power_ = 1;
-    weight_ = 5.0f;                 // Default
-    threshold_to_consider_ = 0.5f;  // Default
-  }
+    // Load from proto options
+    if (options_->has_prefer_forward_critic()) {
+        const auto& critic = options_->prefer_forward_critic();
+        enabled_ = critic.enabled();
+        power_ = critic.cost_power();
+        weight_ = static_cast<float>(critic.cost_weight());
+        threshold_to_consider_ =
+            static_cast<float>(critic.threshold_to_consider());
+    } else {
+        enabled_ = true;
+        power_ = 1;
+        weight_ = 5.0f;                 // Default
+        threshold_to_consider_ = 0.5f;  // Default
+    }
 
-  AINFO << "PreferForwardCritic instantiated with " << power_ << " power and " << weight_ << " weight.";
+    AINFO << "PreferForwardCritic instantiated with " << power_ << " power and "
+          << weight_ << " weight.";
 }
 
 void PreferForwardCritic::score(CriticData& data) {
-  if (!enabled_) {
-    return;
-  }
+    if (!enabled_) {
+        return;
+    }
 
-  commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
+    commsgs::geometry_msgs::Pose goal =
+        tools::getCriticGoal(data, enforce_path_inversion_);
 
-  if (tools::withinPositionGoalTolerance(threshold_to_consider_, data.state.pose.pose, goal)) {
-    return;
-  }
+    if (tools::withinPositionGoalTolerance(threshold_to_consider_,
+                                           data.state.pose.pose, goal)) {
+        return;
+    }
 
-  if (power_ > 1u) {
-    data.costs +=
-        ((data.state.vx.unaryExpr([&](const float& x) { return std::max(-x, 0.0f); }) * data.model_dt).rowwise().sum() *
-         weight_)
-            .pow(power_);
-  } else {
-    data.costs +=
-        (data.state.vx.unaryExpr([&](const float& x) { return std::max(-x, 0.0f); }) * data.model_dt).rowwise().sum() *
-        weight_;
-  }
+    if (power_ > 1u) {
+        data.costs += ((data.state.vx.unaryExpr([&](const float& x) {
+                           return std::max(-x, 0.0f);
+                       }) *
+                        data.model_dt)
+                           .rowwise()
+                           .sum() *
+                       weight_)
+                          .pow(power_);
+    } else {
+        data.costs += (data.state.vx.unaryExpr(
+                           [&](const float& x) { return std::max(-x, 0.0f); }) *
+                       data.model_dt)
+                          .rowwise()
+                          .sum() *
+                      weight_;
+    }
 }
 
 }  // namespace critics
@@ -81,5 +92,7 @@ void PreferForwardCritic::score(CriticData& data) {
 }  // namespace autonomy
 
 // Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::controller::mppi_controller::critics::PreferForwardCritic,
-                            autonomy::control::controller::mppi_controller::CriticFunction)
+CLASS_LOADER_REGISTER_CLASS(
+    autonomy::control::controller::mppi_controller::critics::
+        PreferForwardCritic,
+    autonomy::control::controller::mppi_controller::CriticFunction)

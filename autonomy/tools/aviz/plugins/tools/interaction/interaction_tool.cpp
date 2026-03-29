@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 InteractionTool::InteractionTool() {
-  // TODO: Initialize tool
+    // TODO: Initialize tool
 }
 
 InteractionTool::~InteractionTool() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace tools

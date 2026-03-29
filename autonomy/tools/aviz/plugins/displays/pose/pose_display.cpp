@@ -30,169 +30,191 @@ namespace plugins {
 namespace displays {
 
 PoseDisplay::PoseDisplay()
-    : AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PoseStamped>("aviz/Pose"),
+    : AutolinkTopicDisplay<autonomy::commsgs::geometry_msgs::PoseStamped>(
+          "aviz/Pose"),
       arrow_(nullptr),
       axes_(nullptr),
       pose_valid_(false) {
-  shape_property_ = new aviz::common::properties::EnumProperty(QString("Shape"), QString("Arrow"),
-                                                               QString("Shape to display the pose as."), nullptr,
-                                                               SLOT(updateShapeChoice()), this);
-  shape_property_->addOption("Arrow", Arrow);
-  shape_property_->addOption("Axes", Axes);
+    shape_property_ = new aviz::common::properties::EnumProperty(
+        QString("Shape"), QString("Arrow"),
+        QString("Shape to display the pose as."), nullptr,
+        SLOT(updateShapeChoice()), this);
+    shape_property_->addOption("Arrow", Arrow);
+    shape_property_->addOption("Axes", Axes);
 
-  color_property_ = new aviz::common::properties::ColorProperty(QString("Color"), QColor(255, 25, 0),
-                                                                QString("Color to draw the arrow."), nullptr,
-                                                                SLOT(updateColorAndAlpha()), this);
+    color_property_ = new aviz::common::properties::ColorProperty(
+        QString("Color"), QColor(255, 25, 0),
+        QString("Color to draw the arrow."), nullptr,
+        SLOT(updateColorAndAlpha()), this);
 
-  alpha_property_ = new aviz::common::properties::FloatProperty(
-      QString("Alpha"), 1.0f, QString("Amount of transparency to apply to the arrow."), nullptr,
-      SLOT(updateColorAndAlpha()), this);
-  alpha_property_->setMin(0.0f);
-  alpha_property_->setMax(1.0f);
+    alpha_property_ = new aviz::common::properties::FloatProperty(
+        QString("Alpha"), 1.0f,
+        QString("Amount of transparency to apply to the arrow."), nullptr,
+        SLOT(updateColorAndAlpha()), this);
+    alpha_property_->setMin(0.0f);
+    alpha_property_->setMax(1.0f);
 
-  shaft_length_property_ = new aviz::common::properties::FloatProperty(
-      QString("Shaft Length"), 1.0f, QString("Length of the arrow's shaft, in meters."), nullptr,
-      SLOT(updateArrowGeometry()), this);
+    shaft_length_property_ = new aviz::common::properties::FloatProperty(
+        QString("Shaft Length"), 1.0f,
+        QString("Length of the arrow's shaft, in meters."), nullptr,
+        SLOT(updateArrowGeometry()), this);
 
-  shaft_radius_property_ = new aviz::common::properties::FloatProperty(
-      QString("Shaft Radius"), 0.05f, QString("Radius of the arrow's shaft, in meters."), nullptr,
-      SLOT(updateArrowGeometry()), this);
+    shaft_radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Shaft Radius"), 0.05f,
+        QString("Radius of the arrow's shaft, in meters."), nullptr,
+        SLOT(updateArrowGeometry()), this);
 
-  head_length_property_ = new aviz::common::properties::FloatProperty(QString("Head Length"), 0.3f,
-                                                                      QString("Length of the arrow's head, in meters."),
-                                                                      nullptr, SLOT(updateArrowGeometry()), this);
+    head_length_property_ = new aviz::common::properties::FloatProperty(
+        QString("Head Length"), 0.3f,
+        QString("Length of the arrow's head, in meters."), nullptr,
+        SLOT(updateArrowGeometry()), this);
 
-  head_radius_property_ = new aviz::common::properties::FloatProperty(QString("Head Radius"), 0.1f,
-                                                                      QString("Radius of the arrow's head, in meters."),
-                                                                      nullptr, SLOT(updateArrowGeometry()), this);
+    head_radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Head Radius"), 0.1f,
+        QString("Radius of the arrow's head, in meters."), nullptr,
+        SLOT(updateArrowGeometry()), this);
 
-  axes_length_property_ = new aviz::common::properties::FloatProperty(QString("Axes Length"), 1.0f,
-                                                                      QString("Length of each axis, in meters."),
-                                                                      nullptr, SLOT(updateAxisGeometry()), this);
+    axes_length_property_ = new aviz::common::properties::FloatProperty(
+        QString("Axes Length"), 1.0f,
+        QString("Length of each axis, in meters."), nullptr,
+        SLOT(updateAxisGeometry()), this);
 
-  axes_radius_property_ = new aviz::common::properties::FloatProperty(QString("Axes Radius"), 0.1f,
-                                                                      QString("Radius of each axis, in meters."),
-                                                                      nullptr, SLOT(updateAxisGeometry()), this);
+    axes_radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Axes Radius"), 0.1f,
+        QString("Radius of each axis, in meters."), nullptr,
+        SLOT(updateAxisGeometry()), this);
 }
 
 PoseDisplay::~PoseDisplay() = default;
 
 void PoseDisplay::onInitialize() {
-  AutolinkTopicDisplay::onInitialize();
+    AutolinkTopicDisplay::onInitialize();
 
-  if (scene_manager_ && scene_node_) {
-    arrow_ = std::make_unique<aviz::rendering::Arrow>(
-        scene_manager_, scene_node_, shaft_length_property_->getFloat(), shaft_radius_property_->getFloat(),
-        head_length_property_->getFloat(), head_radius_property_->getFloat());
-    arrow_->setDirection(Ogre::Vector3::UNIT_X);
+    if (scene_manager_ && scene_node_) {
+        arrow_ = std::make_unique<aviz::rendering::Arrow>(
+            scene_manager_, scene_node_, shaft_length_property_->getFloat(),
+            shaft_radius_property_->getFloat(),
+            head_length_property_->getFloat(),
+            head_radius_property_->getFloat());
+        arrow_->setDirection(Ogre::Vector3::UNIT_X);
 
-    axes_ = std::make_unique<aviz::rendering::Axes>(scene_manager_, scene_node_, axes_length_property_->getFloat(),
-                                                    axes_radius_property_->getFloat());
+        axes_ = std::make_unique<aviz::rendering::Axes>(
+            scene_manager_, scene_node_, axes_length_property_->getFloat(),
+            axes_radius_property_->getFloat());
 
-    updateShapeChoice();
-    updateColorAndAlpha();
-  }
+        updateShapeChoice();
+        updateColorAndAlpha();
+    }
 }
 
 void PoseDisplay::onEnable() {
-  AutolinkTopicDisplay::onEnable();
-  updateShapeVisibility();
+    AutolinkTopicDisplay::onEnable();
+    updateShapeVisibility();
 }
 
-void PoseDisplay::onDisable() { AutolinkTopicDisplay::onDisable(); }
+void PoseDisplay::onDisable() {
+    AutolinkTopicDisplay::onDisable();
+}
 
 void PoseDisplay::reset() {
-  AutolinkTopicDisplay::reset();
-  pose_valid_ = false;
-  if (arrow_) {
-    arrow_->getSceneNode()->setVisible(false);
-  }
-  if (axes_) {
-    axes_->getSceneNode()->setVisible(false);
-  }
+    AutolinkTopicDisplay::reset();
+    pose_valid_ = false;
+    if (arrow_) {
+        arrow_->getSceneNode()->setVisible(false);
+    }
+    if (axes_) {
+        axes_->getSceneNode()->setVisible(false);
+    }
 }
 
-void PoseDisplay::processMessage(const std::shared_ptr<autonomy::commsgs::geometry_msgs::PoseStamped>& msg) {
-  if (!msg || !scene_manager_ || !scene_node_) {
-    return;
-  }
+void PoseDisplay::processMessage(
+    const std::shared_ptr<autonomy::commsgs::geometry_msgs::PoseStamped>& msg) {
+    if (!msg || !scene_manager_ || !scene_node_) {
+        return;
+    }
 
-  // For now, assume identity transform (TODO: implement frame transformation)
-  Ogre::Vector3 position = aviz::common::pointMsgToOgre(msg->pose.position);
-  Ogre::Quaternion orientation = aviz::common::quaternionMsgToOgre(msg->pose.orientation);
+    // For now, assume identity transform (TODO: implement frame transformation)
+    Ogre::Vector3 position = aviz::common::pointMsgToOgre(msg->pose.position);
+    Ogre::Quaternion orientation =
+        aviz::common::quaternionMsgToOgre(msg->pose.orientation);
 
-  auto shape = static_cast<Shape>(shape_property_->getOptionInt());
+    auto shape = static_cast<Shape>(shape_property_->getOptionInt());
 
-  if (shape == Arrow && arrow_) {
-    arrow_->setPosition(position);
-    arrow_->setOrientation(orientation);
-    arrow_->getSceneNode()->setVisible(true);
-    pose_valid_ = true;
-  }
+    if (shape == Arrow && arrow_) {
+        arrow_->setPosition(position);
+        arrow_->setOrientation(orientation);
+        arrow_->getSceneNode()->setVisible(true);
+        pose_valid_ = true;
+    }
 
-  if (shape == Axes && axes_) {
-    axes_->setPosition(position);
-    axes_->setOrientation(orientation);
-    axes_->getSceneNode()->setVisible(true);
-    pose_valid_ = true;
-  }
+    if (shape == Axes && axes_) {
+        axes_->setPosition(position);
+        axes_->setOrientation(orientation);
+        axes_->getSceneNode()->setVisible(true);
+        pose_valid_ = true;
+    }
 
-  queueRender();
+    queueRender();
 }
 
 void PoseDisplay::updateShapeVisibility() {
-  auto shape = static_cast<Shape>(shape_property_->getOptionInt());
-  bool use_arrow = (shape == Arrow);
-  bool use_axes = (shape == Axes);
+    auto shape = static_cast<Shape>(shape_property_->getOptionInt());
+    bool use_arrow = (shape == Arrow);
+    bool use_axes = (shape == Axes);
 
-  if (arrow_) {
-    arrow_->getSceneNode()->setVisible(use_arrow && pose_valid_);
-  }
-  if (axes_) {
-    axes_->getSceneNode()->setVisible(use_axes && pose_valid_);
-  }
+    if (arrow_) {
+        arrow_->getSceneNode()->setVisible(use_arrow && pose_valid_);
+    }
+    if (axes_) {
+        axes_->getSceneNode()->setVisible(use_axes && pose_valid_);
+    }
 
-  // Show/hide properties based on shape
-  head_radius_property_->setHidden(!use_arrow);
-  head_length_property_->setHidden(!use_arrow);
-  shaft_radius_property_->setHidden(!use_arrow);
-  shaft_length_property_->setHidden(!use_arrow);
-  axes_length_property_->setHidden(!use_axes);
-  axes_radius_property_->setHidden(!use_axes);
+    // Show/hide properties based on shape
+    head_radius_property_->setHidden(!use_arrow);
+    head_length_property_->setHidden(!use_arrow);
+    shaft_radius_property_->setHidden(!use_arrow);
+    shaft_length_property_->setHidden(!use_arrow);
+    axes_length_property_->setHidden(!use_axes);
+    axes_radius_property_->setHidden(!use_axes);
 
-  queueRender();
+    queueRender();
 }
 
 void PoseDisplay::updateColorAndAlpha() {
-  QColor color = color_property_->getColor();
-  float alpha = alpha_property_->getFloat();
+    QColor color = color_property_->getColor();
+    float alpha = alpha_property_->getFloat();
 
-  if (arrow_) {
-    arrow_->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
-  }
+    if (arrow_) {
+        arrow_->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
+    }
 
-  if (axes_) {
-    axes_->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
-  }
+    if (axes_) {
+        axes_->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
+    }
 
-  queueRender();
+    queueRender();
 }
 
-void PoseDisplay::updateShapeChoice() { updateShapeVisibility(); }
+void PoseDisplay::updateShapeChoice() {
+    updateShapeVisibility();
+}
 
 void PoseDisplay::updateAxisGeometry() {
-  if (axes_) {
-    axes_->set(axes_length_property_->getFloat(), axes_radius_property_->getFloat());
-    queueRender();
-  }
+    if (axes_) {
+        axes_->set(axes_length_property_->getFloat(),
+                   axes_radius_property_->getFloat());
+        queueRender();
+    }
 }
 
 void PoseDisplay::updateArrowGeometry() {
-  if (arrow_) {
-    arrow_->set(shaft_length_property_->getFloat(), shaft_radius_property_->getFloat(),
-                head_length_property_->getFloat(), head_radius_property_->getFloat());
-    queueRender();
-  }
+    if (arrow_) {
+        arrow_->set(shaft_length_property_->getFloat(),
+                    shaft_radius_property_->getFloat(),
+                    head_length_property_->getFloat(),
+                    head_radius_property_->getFloat());
+        queueRender();
+    }
 }
 
 }  // namespace displays

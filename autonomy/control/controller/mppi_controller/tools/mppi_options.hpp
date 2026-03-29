@@ -27,7 +27,8 @@ namespace controller {
 namespace mppi_controller {
 namespace tools {
 
-proto::MPPIControllerOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::MPPIControllerOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace tools
 }  // namespace mppi_controller

@@ -39,56 +39,57 @@ class AutoDiscovery;
  *  - 启动/停止 WebSocket 服务器
  *  - 管理 AutoDiscovery（负责 autolink topic 发现和转发）
  */
-class FoxgloveBridge : public std::enable_shared_from_this<FoxgloveBridge> {
- public:
-  AUTONOMY_SMART_PTR_DEFINITIONS(FoxgloveBridge)
+class FoxgloveBridge : public std::enable_shared_from_this<FoxgloveBridge>
+{
+public:
+    AUTONOMY_SMART_PTR_DEFINITIONS(FoxgloveBridge)
 
-  /// 服务器配置选项
-  struct Options {
-    std::string host = "0.0.0.0";
-    uint16_t port = 8765;
-    bool enable_client_publish = true;  // 允许 Foxglove Studio 发布消息
-    bool enable_connection_graph = true;
-    bool enable_parameters = false;  // 启用参数功能
-    bool enable_time = false;        // 启用时间功能
-    bool enable_services = false;    // 启用服务功能
-  };
+    /// 服务器配置选项
+    struct Options {
+        std::string host = "0.0.0.0";
+        uint16_t port = 8765;
+        bool enable_client_publish = true;  // 允许 Foxglove Studio 发布消息
+        bool enable_connection_graph = true;
+        bool enable_parameters = false;  // 启用参数功能
+        bool enable_time = false;        // 启用时间功能
+        bool enable_services = false;    // 启用服务功能
+    };
 
-  FoxgloveBridge();
+    FoxgloveBridge();
 
-  explicit FoxgloveBridge(const Options& options);
-  ~FoxgloveBridge();
+    explicit FoxgloveBridge(const Options& options);
+    ~FoxgloveBridge();
 
-  /// start server
-  bool Start();
+    /// start server
+    bool Start();
 
-  /// stop server
-  void Stop();
+    /// stop server
+    void Stop();
 
-  /// check if server is running
-  bool IsRunning() const;
+    /// check if server is running
+    bool IsRunning() const;
 
-  /// get listening port
-  uint16_t GetPort() const;
+    /// get listening port
+    uint16_t GetPort() const;
 
- private:
-  void SetupCallbacks(::foxglove::WebSocketServerCallbacks& callbacks);
+private:
+    void SetupCallbacks(::foxglove::WebSocketServerCallbacks& callbacks);
 
-  // server options
-  Options options_;
+    // server options
+    Options options_;
 
-  // Foxglove WebSocket 服务器
-  std::unique_ptr<::foxglove::WebSocketServer> server_{nullptr};
+    // Foxglove WebSocket 服务器
+    std::unique_ptr<::foxglove::WebSocketServer> server_{nullptr};
 
-  // WebSocket server options
-  foxglove::WebSocketServerOptions ws_options_;
+    // WebSocket server options
+    foxglove::WebSocketServerOptions ws_options_;
 
-  // autolink topic discovery and forwarding
-  std::unique_ptr<transport::AutoDiscovery> discovery_{nullptr};
+    // autolink topic discovery and forwarding
+    std::unique_ptr<transport::AutoDiscovery> discovery_{nullptr};
 
-  // server state
-  mutable std::mutex state_mutex_;
-  bool is_running_ = false;
+    // server state
+    mutable std::mutex state_mutex_;
+    bool is_running_ = false;
 };
 }  // namespace visualization
 }  // namespace autonomy

@@ -34,38 +34,42 @@ namespace condition {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class TimeExpiredCondition : public BT::ConditionNode {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::TimeExpiredCondition
-   * @param condition_name Name for the XML tag for this node
-   * @param conf BT node configuration
-   */
-  TimeExpiredCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class TimeExpiredCondition : public BT::ConditionNode
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::TimeExpiredCondition
+     * @param condition_name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    TimeExpiredCondition(const std::string& condition_name,
+                         const BT::NodeConfiguration& conf);
 
-  TimeExpiredCondition() = delete;
+    TimeExpiredCondition() = delete;
 
-  /**
-   * @brief The main override required by a BT action
-   * @return BT::NodeStatus Status of tick execution
-   */
-  BT::NodeStatus tick() override;
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
 
-  /**
-   * @brief Function to read parameters and initialize class variables
-   */
-  void initialize();
+    /**
+     * @brief Function to read parameters and initialize class variables
+     */
+    void initialize();
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing node-specific ports
-   */
-  static BT::PortsList providedPorts() { return {BT::InputPort<double>("seconds", 1.0, "Seconds")}; }
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        return {BT::InputPort<double>("seconds", 1.0, "Seconds")};
+    }
 
- private:
-  std::shared_ptr<::autolink::Node> node_;
-  commsgs::builtin_interfaces::Time start_;
-  double period_;
+private:
+    std::shared_ptr<::autolink::Node> node_;
+    commsgs::builtin_interfaces::Time start_;
+    double period_;
 };
 
 }  // namespace condition

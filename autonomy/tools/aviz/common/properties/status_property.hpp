@@ -25,45 +25,55 @@ namespace aviz {
 namespace common {
 namespace properties {
 
-class StatusProperty : public Property {
-  Q_OBJECT
+class StatusProperty : public Property
+{
+    Q_OBJECT
 
- public:
-  enum Level { Ok = 0, Warn = 1, Error = 2 };  // values index into status_colors_ array.
+public:
+    enum Level {
+        Ok = 0,
+        Warn = 1,
+        Error = 2
+    };  // values index into status_colors_ array.
 
-  StatusProperty(const QString& name, const QString& text, Level level, Property* parent);
+    StatusProperty(const QString& name, const QString& text, Level level,
+                   Property* parent);
 
-  /// Set the status text.
-  bool setValue(const QVariant& new_value) override;  // Overridden from Property.
+    /// Set the status text.
+    bool setValue(
+        const QVariant& new_value) override;  // Overridden from Property.
 
-  /// Return data appropriate for the given column (0 or 1) and role for this StatusProperty.
-  QVariant getViewData(int column, int role) const override;
+    /// Return data appropriate for the given column (0 or 1) and role for this
+    /// StatusProperty.
+    QVariant getViewData(int column, int role) const override;
 
-  /// Return item flags appropriate for the given column (0 or 1) for this StatusProperty.
-  Qt::ItemFlags getViewFlags(int column) const override;
+    /// Return item flags appropriate for the given column (0 or 1) for this
+    /// StatusProperty.
+    Qt::ItemFlags getViewFlags(int column) const override;
 
-  /// Return the color appropriate for the given status level.
-  static QColor statusColor(Level level);
+    /// Return the color appropriate for the given status level.
+    static QColor statusColor(Level level);
 
-  /// Return the word appropriate for the given status level: "Ok", "Warn", or "Error".
-  static QString statusWord(Level level);
+    /// Return the word appropriate for the given status level: "Ok", "Warn", or
+    /// "Error".
+    static QString statusWord(Level level);
 
-  /// Get the status icon.
-  QIcon statusIcon(Level level) const;
+    /// Get the status icon.
+    QIcon statusIcon(Level level) const;
 
-  /// Set the status level.
-  virtual void setLevel(Level level);
+    /// Set the status level.
+    virtual void setLevel(Level level);
 
-  /// Get the status level.
-  virtual Level getLevel() const;
+    /// Get the status level.
+    virtual Level getLevel() const;
 
- protected:
-  Level level_;
+protected:
+    Level level_;
 
- private:
-  static QColor status_colors_[3];
-  static QString status_words_[3];
-  QIcon status_icons_[3];
+private:
+    static QColor status_colors_[3];
+    static QString status_words_[3];
+    QIcon status_icons_[3];
 };
 
 typedef StatusProperty::Level StatusLevel;

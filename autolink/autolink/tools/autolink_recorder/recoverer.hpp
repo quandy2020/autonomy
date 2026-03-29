@@ -34,18 +34,19 @@ using ::autolink::proto::Header;
 namespace autolink {
 namespace record {
 
-class Recoverer {
- public:
-  Recoverer(const std::string& input_file, const std::string& output_file);
-  virtual ~Recoverer();
-  bool Proc();
+class Recoverer
+{
+public:
+    Recoverer(const std::string& input_file, const std::string& output_file);
+    virtual ~Recoverer();
+    bool Proc();
 
- private:
-  RecordFileReader reader_;
-  RecordFileWriter writer_;
-  std::string input_file_;
-  std::string output_file_;
-  std::vector<std::string> channel_vec_;
+private:
+    RecordFileReader reader_;
+    RecordFileWriter writer_;
+    std::string input_file_;
+    std::string output_file_;
+    std::vector<std::string> channel_vec_;
 };
 
 }  // namespace record

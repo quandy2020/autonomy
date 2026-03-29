@@ -29,46 +29,53 @@ namespace monitor {
 
 /**
  * 统一管理各监控器、Prometheus 暴露与 gperf 分析启停。
- * 支持参数选定：通过 MonitorOptions 选择启用的 monitor 与是否开启 Prometheus/gperf。
+ * 支持参数选定：通过 MonitorOptions 选择启用的 monitor 与是否开启
+ * Prometheus/gperf。
  */
-class MonitorRegistry {
- public:
-  explicit MonitorRegistry(MonitorOptions options);
-  ~MonitorRegistry();
+class MonitorRegistry
+{
+public:
+    explicit MonitorRegistry(MonitorOptions options);
+    ~MonitorRegistry();
 
-  MonitorRegistry(const MonitorRegistry&) = delete;
-  MonitorRegistry& operator=(const MonitorRegistry&) = delete;
+    MonitorRegistry(const MonitorRegistry&) = delete;
+    MonitorRegistry& operator=(const MonitorRegistry&) = delete;
 
-  /// 根据当前 options 创建并注册各 monitor，若 enable_prometheus 则启动 Exposer
-  void Start();
+    /// 根据当前 options 创建并注册各 monitor，若 enable_prometheus 则启动
+    /// Exposer
+    void Start();
 
-  /// 停止 Exposer、停止 gperf 分析
-  void Stop();
+    /// 停止 Exposer、停止 gperf 分析
+    void Stop();
 
-  /// 对所有已启用的 monitor 执行一次采集（可由定时器周期性调用）
-  void CollectAll();
+    /// 对所有已启用的 monitor 执行一次采集（可由定时器周期性调用）
+    void CollectAll();
 
-  /// 手动添加外部 monitor（可选）
-  void AddMonitor(std::unique_ptr<MonitorBase> monitor);
+    /// 手动添加外部 monitor（可选）
+    void AddMonitor(std::unique_ptr<MonitorBase> monitor);
 
-  const MonitorOptions& options() const { return options_; }
-  MonitorOptions* mutable_options() { return &options_; }
+    const MonitorOptions& options() const {
+        return options_;
+    }
+    MonitorOptions* mutable_options() {
+        return &options_;
+    }
 
- private:
-  void BuildMonitorsFromOptions();
-  void StartGperfIfRequested();
-  void StopGperfIfActive();
+private:
+    void BuildMonitorsFromOptions();
+    void StartGperfIfRequested();
+    void StopGperfIfActive();
 
-  MonitorOptions options_;
-  GperfProfiler gperf_profiler_;
-  std::vector<std::unique_ptr<MonitorBase>> monitors_;
-  bool started_{false};
-  bool gperf_cpu_active_{false};
-  bool gperf_heap_active_{false};
+    MonitorOptions options_;
+    GperfProfiler gperf_profiler_;
+    std::vector<std::unique_ptr<MonitorBase>> monitors_;
+    bool started_{false};
+    bool gperf_cpu_active_{false};
+    bool gperf_heap_active_{false};
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
-  struct PrometheusState;
-  std::unique_ptr<PrometheusState> prometheus_;
+    struct PrometheusState;
+    std::unique_ptr<PrometheusState> prometheus_;
 #endif
 };
 

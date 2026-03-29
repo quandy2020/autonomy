@@ -28,21 +28,24 @@ class LuaParameterDictionary;
 }
 namespace map {
 
-proto::MapOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::MapOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 /**
  * @brief 从 Lua 参数字典创建 Costmap2DOptions
  * @param parameter_dictionary Lua 参数字典
  * @return Costmap2DOptions 配置对象
  */
-proto::Costmap2DOptions CreateCostmap2DOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::Costmap2DOptions CreateCostmap2DOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 /**
  * @brief 从 Lua 参数字典创建 Costmap3DOptions
  * @param parameter_dictionary Lua 参数字典
  * @return Costmap3DOptions 配置对象
  */
-proto::Costmap3DOptions CreateCostmap3DOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::Costmap3DOptions CreateCostmap3DOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace map
 }  // namespace autonomy

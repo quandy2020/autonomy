@@ -28,21 +28,22 @@ namespace displays {
  * @brief ScrewDisplay
  * Screw display
  */
-class ScrewDisplay : public aviz::common::Display {
- public:
-  explicit ScrewDisplay(const QString& name = "ScrewDisplay");
-  ~ScrewDisplay() override;
+class ScrewDisplay : public aviz::common::Display
+{
+public:
+    explicit ScrewDisplay(const QString& name = "ScrewDisplay");
+    ~ScrewDisplay() override;
 
-  // Overrides from Display
-  void onInitialize() override;
+    // Overrides from Display
+    void onInitialize() override;
 
-  void onEnable() override;
-  void onDisable() override;
-  void update(float wall_dt, float ros_dt) override;
-  void reset() override;
+    void onEnable() override;
+    void onDisable() override;
+    void update(float wall_dt, float ros_dt) override;
+    void reset() override;
 
- private:
-  // Implementation details
+private:
+    // Implementation details
 };
 
 }  // namespace displays

@@ -24,28 +24,31 @@ using autolink::Time;
 using autolink::examples::Chatter;
 
 void MessageCallback(const std::shared_ptr<Chatter>& msg) {
-  AINFO << "Received message seq-> " << msg->seq() << " content-> " << msg->content();
+    AINFO << "Received message seq-> " << msg->seq() << " content-> "
+          << msg->content();
 }
 
 int main(int argc, char* argv[]) {
-  if (!autolink::Init(argv[0])) return 1;
+    if (!autolink::Init(argv[0]))
+        return 1;
 
-  auto node = autolink::CreateNode("talker_listener");
-  auto writer = node->CreateWriter<Chatter>("channel/chatter");
-  auto reader = node->CreateReader<Chatter>("channel/chatter", MessageCallback);
+    auto node = autolink::CreateNode("talker_listener");
+    auto writer = node->CreateWriter<Chatter>("channel/chatter");
+    auto reader =
+        node->CreateReader<Chatter>("channel/chatter", MessageCallback);
 
-  Rate rate(1.0);
-  uint64_t seq = 0;
-  while (autolink::OK()) {
-    auto msg = std::make_shared<Chatter>();
-    msg->set_timestamp(Time::Now().ToNanosecond());
-    msg->set_lidar_timestamp(Time::Now().ToNanosecond());
-    msg->set_seq(seq);
-    msg->set_content("Hello, autolink!");
-    writer->Write(msg);
-    AINFO << "sent seq " << seq;
-    seq++;
-    rate.Sleep();
-  }
-  return 0;
+    Rate rate(1.0);
+    uint64_t seq = 0;
+    while (autolink::OK()) {
+        auto msg = std::make_shared<Chatter>();
+        msg->set_timestamp(Time::Now().ToNanosecond());
+        msg->set_lidar_timestamp(Time::Now().ToNanosecond());
+        msg->set_seq(seq);
+        msg->set_content("Hello, autolink!");
+        writer->Write(msg);
+        AINFO << "sent seq " << seq;
+        seq++;
+        rate.Sleep();
+    }
+    return 0;
 }

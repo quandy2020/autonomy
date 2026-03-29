@@ -22,56 +22,56 @@ namespace autonomy {
 namespace common {
 
 TEST(TimeUtilTest, TestUnix2Gps) {
-  double unix_time = 1476761767;
-  double gps_time = TimeUtil::Unix2Gps(unix_time);
-  EXPECT_NEAR(gps_time, 1160796984, 0.000001);
+    double unix_time = 1476761767;
+    double gps_time = TimeUtil::Unix2Gps(unix_time);
+    EXPECT_NEAR(gps_time, 1160796984, 0.000001);
 
-  double unix_time1 = 1483228799;
-  double gps_time1 = TimeUtil::Unix2Gps(unix_time1);
-  EXPECT_NEAR(gps_time1, 1167264017, 0.000001);
+    double unix_time1 = 1483228799;
+    double gps_time1 = TimeUtil::Unix2Gps(unix_time1);
+    EXPECT_NEAR(gps_time1, 1167264017, 0.000001);
 }
 
 TEST(TimeUtilTest, TestGps2Unix) {
-  double gps_time = 1160796984;
-  double unix_time = TimeUtil::Gps2Unix(gps_time);
-  EXPECT_NEAR(unix_time, 1476761767, 0.000001);
-  double gps_time1 = 1260796984;
-  double unix_time1 = TimeUtil::Gps2Unix(gps_time1);
-  EXPECT_NEAR(unix_time1, 1576761766, 0.000001);
+    double gps_time = 1160796984;
+    double unix_time = TimeUtil::Gps2Unix(gps_time);
+    EXPECT_NEAR(unix_time, 1476761767, 0.000001);
+    double gps_time1 = 1260796984;
+    double unix_time1 = TimeUtil::Gps2Unix(gps_time1);
+    EXPECT_NEAR(unix_time1, 1576761766, 0.000001);
 }
 
 TEST(Timer, Default) {
-  Timer timer;
-  EXPECT_EQ(timer.ElapsedMicroSeconds(), 0);
-  EXPECT_EQ(timer.ElapsedSeconds(), 0);
-  EXPECT_EQ(timer.ElapsedMinutes(), 0);
-  EXPECT_EQ(timer.ElapsedHours(), 0);
+    Timer timer;
+    EXPECT_EQ(timer.ElapsedMicroSeconds(), 0);
+    EXPECT_EQ(timer.ElapsedSeconds(), 0);
+    EXPECT_EQ(timer.ElapsedMinutes(), 0);
+    EXPECT_EQ(timer.ElapsedHours(), 0);
 }
 
 TEST(Timer, Start) {
-  Timer timer;
-  timer.Start();
-  EXPECT_GE(timer.ElapsedMicroSeconds(), 0);
-  EXPECT_GE(timer.ElapsedSeconds(), 0);
-  EXPECT_GE(timer.ElapsedMinutes(), 0);
-  EXPECT_GE(timer.ElapsedHours(), 0);
+    Timer timer;
+    timer.Start();
+    EXPECT_GE(timer.ElapsedMicroSeconds(), 0);
+    EXPECT_GE(timer.ElapsedSeconds(), 0);
+    EXPECT_GE(timer.ElapsedMinutes(), 0);
+    EXPECT_GE(timer.ElapsedHours(), 0);
 }
 
 TEST(Timer, Pause) {
-  Timer timer;
-  timer.Start();
-  timer.Pause();
-  double prev_time = timer.ElapsedMicroSeconds();
-  for (size_t i = 0; i < 1000; ++i) {
-    EXPECT_EQ(timer.ElapsedMicroSeconds(), prev_time);
-    prev_time = timer.ElapsedMicroSeconds();
-  }
-  timer.Resume();
-  for (size_t i = 0; i < 1000; ++i) {
-    EXPECT_GE(timer.ElapsedMicroSeconds(), prev_time);
-  }
-  timer.Reset();
-  EXPECT_EQ(timer.ElapsedMicroSeconds(), 0);
+    Timer timer;
+    timer.Start();
+    timer.Pause();
+    double prev_time = timer.ElapsedMicroSeconds();
+    for (size_t i = 0; i < 1000; ++i) {
+        EXPECT_EQ(timer.ElapsedMicroSeconds(), prev_time);
+        prev_time = timer.ElapsedMicroSeconds();
+    }
+    timer.Resume();
+    for (size_t i = 0; i < 1000; ++i) {
+        EXPECT_GE(timer.ElapsedMicroSeconds(), prev_time);
+    }
+    timer.Reset();
+    EXPECT_EQ(timer.ElapsedMicroSeconds(), 0);
 }
 
 }  // namespace common
