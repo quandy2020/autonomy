@@ -311,11 +311,10 @@ void Server<ActionT>::HandleCancelGoal(
     if (goal_handle) {
         CancelResponse cancel_response = handle_cancel_(goal_handle);
         if (cancel_response == CancelResponse::ACCEPT) {
-            goals_canceling = 1;
-            // Mark goal as canceling
-            {
-                std::lock_guard<std::mutex> lock(goal_handles_mutex_);
-                // The goal handle will handle the cancellation internally
+            if (goal_handle->NotifyCancelRequestAccepted()) {
+                goals_canceling = 1;
+            } else if (goal_handle->IsCanceling()) {
+                goals_canceling = 1;
             }
         }
     }

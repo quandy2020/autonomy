@@ -78,6 +78,14 @@ public:
     bool IsCanceling() const;
 
     /**
+     * @brief Transition ACCEPTED or EXECUTING to CANCELING after cancel is
+     * accepted. Called by Server::HandleCancelGoal; not for application use.
+     *
+     * @return true if the goal was in a cancelable state.
+     */
+    bool NotifyCancelRequestAccepted();
+
+    /**
      * @brief Check if goal is pending or executing.
      *
      * @return false if goal has reached a terminal state.
@@ -221,6 +229,16 @@ template <typename ActionT>
 bool ServerGoalHandle<ActionT>::IsCanceling() const {
     std::lock_guard<std::mutex> lock(status_mutex_);
     return status_ == GoalStatus::CANCELING;
+}
+
+template <typename ActionT>
+bool ServerGoalHandle<ActionT>::NotifyCancelRequestAccepted() {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    if (status_ == GoalStatus::ACCEPTED || status_ == GoalStatus::EXECUTING) {
+        status_ = GoalStatus::CANCELING;
+        return true;
+    }
+    return false;
 }
 
 template <typename ActionT>
