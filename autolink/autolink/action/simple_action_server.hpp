@@ -389,11 +389,17 @@ public:
         preempt_requested_ = false;
 
         DebugMsg("Preempted goal");
-        if (current_handle_) {
-            current_handle_->Execute();
-            return current_handle_->GetGoal();
+        if (!current_handle_) {
+            return std::shared_ptr<const typename ActionT::Goal>();
         }
-        return std::shared_ptr<const typename ActionT::Goal>();
+        if (current_handle_->IsCanceling()) {
+            DebugMsg(
+                "Pending goal was canceled before run; completing as CANCELED");
+            Terminate(current_handle_, EmptyResult());
+            return std::shared_ptr<const typename ActionT::Goal>();
+        }
+        current_handle_->Execute();
+        return current_handle_->GetGoal();
     }
 
     /**
@@ -458,9 +464,8 @@ public:
             ErrorMsg("Checking for cancel but current goal is not available");
             return false;
         }
-        if (pending_handle_ != nullptr) {
-            return pending_handle_->IsCanceling();
-        }
+        // Always reflect the executing goal; pending may belong to another
+        // client.
         return current_handle_->IsCanceling();
     }
 
