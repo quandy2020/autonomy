@@ -57,18 +57,25 @@ const std::string kMessage = R"(
   }
 )";
 
-using GetLandmarkPosesHandlerTest = testing::HandlerTest<GetLandmarkPosesSignature, GetLandmarkPosesHandler>;
+using GetLandmarkPosesHandlerTest =
+    testing::HandlerTest<GetLandmarkPosesSignature, GetLandmarkPosesHandler>;
 
 TEST_F(GetLandmarkPosesHandlerTest, NoLocalSlamUploader) {
-  std::map<std::string, Rigid3d> landmark_poses{
-      {"landmark_1", Rigid3d(Eigen::Vector3d(1., 2., 3.), Eigen::Quaterniond(1., 0., 0., 0.))},
-      {"landmark_2", Rigid3d(Eigen::Vector3d(3., 2., 1.), Eigen::Quaterniond(0., 1., 0., 0.))}};
-  EXPECT_CALL(*mock_pose_graph_, GetLandmarkPoses()).WillOnce(::testing::Return(landmark_poses));
-  test_server_->SendWrite(google::protobuf::Empty());
+    std::map<std::string, Rigid3d> landmark_poses{
+        {"landmark_1", Rigid3d(Eigen::Vector3d(1., 2., 3.),
+                               Eigen::Quaterniond(1., 0., 0., 0.))},
+        {"landmark_2", Rigid3d(Eigen::Vector3d(3., 2., 1.),
+                               Eigen::Quaterniond(0., 1., 0., 0.))}};
+    EXPECT_CALL(*mock_pose_graph_, GetLandmarkPoses())
+        .WillOnce(::testing::Return(landmark_poses));
+    test_server_->SendWrite(google::protobuf::Empty());
 
-  proto::GetLandmarkPosesResponse expected_response;
-  EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(kMessage, &expected_response));
-  EXPECT_THAT(test_server_->response(), ::testing::Truly(testing::BuildProtoPredicateEquals(&expected_response)));
+    proto::GetLandmarkPosesResponse expected_response;
+    EXPECT_TRUE(google::protobuf::TextFormat::ParseFromString(
+        kMessage, &expected_response));
+    EXPECT_THAT(test_server_->response(),
+                ::testing::Truly(
+                    testing::BuildProtoPredicateEquals(&expected_response)));
 }
 
 }  // namespace

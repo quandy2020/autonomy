@@ -33,178 +33,190 @@ namespace record {
 /**
  * @brief The record viewer.
  */
-class RecordViewer {
- public:
-  using RecordReaderPtr = std::shared_ptr<RecordReader>;
-
-  /**
-   * @brief The constructor with single reader.
-   *
-   * @param reader
-   * @param begin_time
-   * @param end_time
-   * @param channels
-   */
-  RecordViewer(const RecordReaderPtr& reader, uint64_t begin_time = 0,
-               uint64_t end_time = std::numeric_limits<uint64_t>::max(), const std::set<std::string>& channels = {});
-
-  /**
-   * @brief The constructor with multiple readers.
-   *
-   * @param readers
-   * @param begin_time
-   * @param end_time
-   * @param channels
-   */
-  RecordViewer(const std::vector<RecordReaderPtr>& readers, uint64_t begin_time = 0,
-               uint64_t end_time = std::numeric_limits<uint64_t>::max(),
-               const std::set<std::string>& channels = std::set<std::string>());
-
-  /**
-   * @brief Is this record reader is valid.
-   *
-   * @return True for valid, false for not.
-   */
-  bool IsValid() const;
-
-  /**
-   * @brief Get begin time.
-   *
-   * @return Begin time (nanoseconds).
-   */
-  uint64_t begin_time() const { return begin_time_; }
-
-  /**
-   * @brief Get end time.
-   *
-   * @return end time (nanoseconds).
-   */
-  uint64_t end_time() const { return end_time_; }
-
-  /**
-   * @brief Get channel list.
-   *
-   * @return List container with all channel name string.
-   */
-  std::set<std::string> GetChannelList() const { return channel_list_; }
-
-  /**
-   * @brief The iterator.
-   */
-  class Iterator : public std::iterator<std::input_iterator_tag, RecordMessage, int, RecordMessage*, RecordMessage&> {
-   public:
-    /**
-     * @brief The constructor of iterator with viewer.
-     *
-     * @param viewer
-     * @param end
-     */
-    explicit Iterator(RecordViewer* viewer, bool end = false);
+class RecordViewer
+{
+public:
+    using RecordReaderPtr = std::shared_ptr<RecordReader>;
 
     /**
-     * @brief The default constructor of iterator.
+     * @brief The constructor with single reader.
+     *
+     * @param reader
+     * @param begin_time
+     * @param end_time
+     * @param channels
      */
-    Iterator() {}
+    RecordViewer(const RecordReaderPtr& reader, uint64_t begin_time = 0,
+                 uint64_t end_time = std::numeric_limits<uint64_t>::max(),
+                 const std::set<std::string>& channels = {});
 
     /**
-     * @brief The default destructor of iterator.
+     * @brief The constructor with multiple readers.
+     *
+     * @param readers
+     * @param begin_time
+     * @param end_time
+     * @param channels
      */
-    virtual ~Iterator() {}
+    RecordViewer(
+        const std::vector<RecordReaderPtr>& readers, uint64_t begin_time = 0,
+        uint64_t end_time = std::numeric_limits<uint64_t>::max(),
+        const std::set<std::string>& channels = std::set<std::string>());
 
     /**
-     * @brief Overloading operator ==.
+     * @brief Is this record reader is valid.
      *
-     * @param other
-     *
-     * @return The result.
+     * @return True for valid, false for not.
      */
-    bool operator==(Iterator const& other) const;
+    bool IsValid() const;
 
     /**
-     * @brief Overloading operator !=.
+     * @brief Get begin time.
      *
-     * @param other
-     *
-     * @return The result.
+     * @return Begin time (nanoseconds).
      */
-    bool operator!=(const Iterator& rhs) const;
+    uint64_t begin_time() const {
+        return begin_time_;
+    }
 
     /**
-     * @brief Overloading operator ++.
+     * @brief Get end time.
      *
-     * @return The result.
+     * @return end time (nanoseconds).
      */
-    Iterator& operator++();
+    uint64_t end_time() const {
+        return end_time_;
+    }
 
     /**
-     * @brief Overloading operator ->.
+     * @brief Get channel list.
      *
-     * @return The pointer.
+     * @return List container with all channel name string.
      */
-    pointer operator->();
+    std::set<std::string> GetChannelList() const {
+        return channel_list_;
+    }
 
     /**
-     * @brief Overloading operator *.
-     *
-     * @return The reference.
+     * @brief The iterator.
      */
-    reference operator*();
+    class Iterator
+        : public std::iterator<std::input_iterator_tag, RecordMessage, int,
+                               RecordMessage*, RecordMessage&>
+    {
+    public:
+        /**
+         * @brief The constructor of iterator with viewer.
+         *
+         * @param viewer
+         * @param end
+         */
+        explicit Iterator(RecordViewer* viewer, bool end = false);
 
-   private:
-    bool end_ = false;
-    uint64_t index_ = 0;
-    RecordViewer* viewer_ = nullptr;
-    value_type message_instance_;
-  };
+        /**
+         * @brief The default constructor of iterator.
+         */
+        Iterator() {}
 
-  /**
-   * @brief Get the begin iterator.
-   *
-   * @return The begin iterator.
-   */
-  Iterator begin();
+        /**
+         * @brief The default destructor of iterator.
+         */
+        virtual ~Iterator() {}
 
-  /**
-   * @brief Get the end iterator.
-   *
-   * @return The end iterator.
-   */
-  Iterator end();
+        /**
+         * @brief Overloading operator ==.
+         *
+         * @param other
+         *
+         * @return The result.
+         */
+        bool operator==(Iterator const& other) const;
 
-  /**
-   * @brief Get current iterator.
-   *
-   * @return The current iterator.
-   */
-  Iterator curr_itr();
+        /**
+         * @brief Overloading operator !=.
+         *
+         * @param other
+         *
+         * @return The result.
+         */
+        bool operator!=(const Iterator& rhs) const;
 
-  void set_curr_itr(const Iterator& curr_itr);
+        /**
+         * @brief Overloading operator ++.
+         *
+         * @return The result.
+         */
+        Iterator& operator++();
 
- private:
-  friend class Iterator;
+        /**
+         * @brief Overloading operator ->.
+         *
+         * @return The pointer.
+         */
+        pointer operator->();
 
-  void Init();
-  void Reset();
-  void UpdateTime();
-  bool FillBuffer();
-  bool Update(RecordMessage* message);
+        /**
+         * @brief Overloading operator *.
+         *
+         * @return The reference.
+         */
+        reference operator*();
 
-  uint64_t begin_time_ = 0;
-  uint64_t end_time_ = std::numeric_limits<uint64_t>::max();
-  // User defined channels
-  std::set<std::string> channels_;
-  // All channel in user defined readers
-  std::set<std::string> channel_list_;
-  std::vector<RecordReaderPtr> readers_;
-  std::vector<bool> readers_finished_;
+    private:
+        bool end_ = false;
+        uint64_t index_ = 0;
+        RecordViewer* viewer_ = nullptr;
+        value_type message_instance_;
+    };
 
-  uint64_t curr_begin_time_ = 0;
-  std::multimap<uint64_t, std::shared_ptr<RecordMessage>> msg_buffer_;
+    /**
+     * @brief Get the begin iterator.
+     *
+     * @return The begin iterator.
+     */
+    Iterator begin();
 
-  const uint64_t kStepTimeNanoSec = 1000000000UL;  // 1 second
-  const std::size_t kBufferMinSize = 128;
+    /**
+     * @brief Get the end iterator.
+     *
+     * @return The end iterator.
+     */
+    Iterator end();
 
-  Iterator itr_;
+    /**
+     * @brief Get current iterator.
+     *
+     * @return The current iterator.
+     */
+    Iterator curr_itr();
+
+    void set_curr_itr(const Iterator& curr_itr);
+
+private:
+    friend class Iterator;
+
+    void Init();
+    void Reset();
+    void UpdateTime();
+    bool FillBuffer();
+    bool Update(RecordMessage* message);
+
+    uint64_t begin_time_ = 0;
+    uint64_t end_time_ = std::numeric_limits<uint64_t>::max();
+    // User defined channels
+    std::set<std::string> channels_;
+    // All channel in user defined readers
+    std::set<std::string> channel_list_;
+    std::vector<RecordReaderPtr> readers_;
+    std::vector<bool> readers_finished_;
+
+    uint64_t curr_begin_time_ = 0;
+    std::multimap<uint64_t, std::shared_ptr<RecordMessage>> msg_buffer_;
+
+    const uint64_t kStepTimeNanoSec = 1000000000UL;  // 1 second
+    const std::size_t kBufferMinSize = 128;
+
+    Iterator itr_;
 };
 
 }  // namespace record

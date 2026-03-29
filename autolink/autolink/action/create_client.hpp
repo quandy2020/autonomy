@@ -36,8 +36,9 @@ namespace action {
  * client.
  */
 template <typename ActionT>
-std::shared_ptr<Client<ActionT>> CreateClient(std::shared_ptr<Node> node, const std::string& action_name) {
-  return std::make_shared<Client<ActionT>>(node, action_name);
+std::shared_ptr<Client<ActionT>> CreateClient(std::shared_ptr<Node> node,
+                                              const std::string& action_name) {
+    return std::make_shared<Client<ActionT>>(node, action_name);
 }
 
 }  // namespace action

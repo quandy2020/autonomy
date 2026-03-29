@@ -41,292 +41,327 @@ using aviz::rendering::Arrow;
 using aviz::rendering::Axes;
 
 OdometryDisplay::OdometryDisplay()
-    : AutolinkTopicDisplay<autonomy::commsgs::planning_msgs::Odometry>("aviz/Odometry"), last_used_message_(nullptr) {
-  setupProperties();
+    : AutolinkTopicDisplay<autonomy::commsgs::planning_msgs::Odometry>(
+          "aviz/Odometry"),
+      last_used_message_(nullptr) {
+    setupProperties();
 }
 
 void OdometryDisplay::setupProperties() {
-  position_tolerance_property_ = new aviz::common::properties::FloatProperty(
-      QString("Position Tolerance"), 0.1f,
-      QString("Distance, in meters from the last arrow dropped, that will cause a new arrow to drop."), nullptr,
-      nullptr, this);
-  position_tolerance_property_->setMin(0.0f);
+    position_tolerance_property_ = new aviz::common::properties::FloatProperty(
+        QString("Position Tolerance"), 0.1f,
+        QString("Distance, in meters from the last arrow dropped, that will "
+                "cause a new arrow to drop."),
+        nullptr, nullptr, this);
+    position_tolerance_property_->setMin(0.0f);
 
-  angle_tolerance_property_ = new aviz::common::properties::FloatProperty(
-      QString("Angle Tolerance"), 0.1f,
-      QString("Angular distance from the last arrow dropped, that will cause a new arrow to drop."), nullptr, nullptr,
-      this);
-  angle_tolerance_property_->setMin(0.0f);
+    angle_tolerance_property_ = new aviz::common::properties::FloatProperty(
+        QString("Angle Tolerance"), 0.1f,
+        QString("Angular distance from the last arrow dropped, that will cause "
+                "a new arrow to drop."),
+        nullptr, nullptr, this);
+    angle_tolerance_property_->setMin(0.0f);
 
-  keep_property_ = new aviz::common::properties::IntProperty(
-      QString("Keep"), 100, QString("Number of arrows to keep before removing the oldest.  0 means keep all of them."),
-      nullptr, nullptr, this);
-  keep_property_->setMin(0);
+    keep_property_ = new aviz::common::properties::IntProperty(
+        QString("Keep"), 100,
+        QString("Number of arrows to keep before removing the oldest.  0 means "
+                "keep all of them."),
+        nullptr, nullptr, this);
+    keep_property_->setMin(0);
 
-  shape_property_ = new aviz::common::properties::EnumProperty(QString("Shape"), QString("Arrow"),
-                                                               QString("Shape to display the pose as."), nullptr,
-                                                               SLOT(updateShapeChoice()), this);
-  shape_property_->addOption("Arrow", ArrowShape);
-  shape_property_->addOption("Axes", AxesShape);
+    shape_property_ = new aviz::common::properties::EnumProperty(
+        QString("Shape"), QString("Arrow"),
+        QString("Shape to display the pose as."), nullptr,
+        SLOT(updateShapeChoice()), this);
+    shape_property_->addOption("Arrow", ArrowShape);
+    shape_property_->addOption("Axes", AxesShape);
 
-  color_property_ =
-      new aviz::common::properties::ColorProperty(QString("Color"), QColor(255, 25, 0), QString("Color of the arrows."),
-                                                  shape_property_, SLOT(updateColorAndAlpha()), this);
+    color_property_ = new aviz::common::properties::ColorProperty(
+        QString("Color"), QColor(255, 25, 0), QString("Color of the arrows."),
+        shape_property_, SLOT(updateColorAndAlpha()), this);
 
-  alpha_property_ = new aviz::common::properties::FloatProperty(
-      QString("Alpha"), 1.0f, QString("Amount of transparency to apply to the arrow."), shape_property_,
-      SLOT(updateColorAndAlpha()), this);
-  alpha_property_->setMin(0.0f);
-  alpha_property_->setMax(1.0f);
+    alpha_property_ = new aviz::common::properties::FloatProperty(
+        QString("Alpha"), 1.0f,
+        QString("Amount of transparency to apply to the arrow."),
+        shape_property_, SLOT(updateColorAndAlpha()), this);
+    alpha_property_->setMin(0.0f);
+    alpha_property_->setMax(1.0f);
 
-  shaft_length_property_ = new aviz::common::properties::FloatProperty(
-      QString("Shaft Length"), 1.0f, QString("Length of the each arrow's shaft, in meters."), shape_property_,
-      SLOT(updateArrowsGeometry()), this);
+    shaft_length_property_ = new aviz::common::properties::FloatProperty(
+        QString("Shaft Length"), 1.0f,
+        QString("Length of the each arrow's shaft, in meters."),
+        shape_property_, SLOT(updateArrowsGeometry()), this);
 
-  shaft_radius_property_ = new aviz::common::properties::FloatProperty(
-      QString("Shaft Radius"), 0.05f, QString("Radius of the each arrow's shaft, in meters."), shape_property_,
-      SLOT(updateArrowsGeometry()), this);
+    shaft_radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Shaft Radius"), 0.05f,
+        QString("Radius of the each arrow's shaft, in meters."),
+        shape_property_, SLOT(updateArrowsGeometry()), this);
 
-  head_length_property_ = new aviz::common::properties::FloatProperty(
-      QString("Head Length"), 0.3f, QString("Length of the each arrow's head, in meters."), shape_property_,
-      SLOT(updateArrowsGeometry()), this);
+    head_length_property_ = new aviz::common::properties::FloatProperty(
+        QString("Head Length"), 0.3f,
+        QString("Length of the each arrow's head, in meters."), shape_property_,
+        SLOT(updateArrowsGeometry()), this);
 
-  head_radius_property_ = new aviz::common::properties::FloatProperty(
-      QString("Head Radius"), 0.1f, QString("Radius of the each arrow's head, in meters."), shape_property_,
-      SLOT(updateArrowsGeometry()), this);
+    head_radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Head Radius"), 0.1f,
+        QString("Radius of the each arrow's head, in meters."), shape_property_,
+        SLOT(updateArrowsGeometry()), this);
 
-  axes_length_property_ = new aviz::common::properties::FloatProperty(
-      QString("Axes Length"), 1.0f, QString("Length of each axis, in meters."), shape_property_,
-      SLOT(updateAxisGeometry()), this);
+    axes_length_property_ = new aviz::common::properties::FloatProperty(
+        QString("Axes Length"), 1.0f,
+        QString("Length of each axis, in meters."), shape_property_,
+        SLOT(updateAxisGeometry()), this);
 
-  axes_radius_property_ = new aviz::common::properties::FloatProperty(
-      QString("Axes Radius"), 0.1f, QString("Radius of each axis, in meters."), shape_property_,
-      SLOT(updateAxisGeometry()), this);
+    axes_radius_property_ = new aviz::common::properties::FloatProperty(
+        QString("Axes Radius"), 0.1f,
+        QString("Radius of each axis, in meters."), shape_property_,
+        SLOT(updateAxisGeometry()), this);
 }
 
 OdometryDisplay::~OdometryDisplay() = default;
 
 void OdometryDisplay::onInitialize() {
-  AutolinkTopicDisplay::onInitialize();
-  updateShapeChoice();
+    AutolinkTopicDisplay::onInitialize();
+    updateShapeChoice();
 }
 
 void OdometryDisplay::onEnable() {
-  AutolinkTopicDisplay::onEnable();
-  updateShapeVisibility();
+    AutolinkTopicDisplay::onEnable();
+    updateShapeVisibility();
 }
 
 void OdometryDisplay::reset() {
-  AutolinkTopicDisplay::reset();
-  clear();
+    AutolinkTopicDisplay::reset();
+    clear();
 }
 
 void OdometryDisplay::update(float wall_dt, float ros_dt) {
-  Q_UNUSED(wall_dt);
-  Q_UNUSED(ros_dt);
-  // No per-frame update needed
+    Q_UNUSED(wall_dt);
+    Q_UNUSED(ros_dt);
+    // No per-frame update needed
 }
 
-void OdometryDisplay::processMessage(const std::shared_ptr<autonomy::commsgs::planning_msgs::Odometry>& msg) {
-  if (!msg || !messageIsValid(msg)) {
-    return;
-  }
-
-  if (messageIsSimilarToPrevious(msg)) {
-    return;
-  }
-
-  // For now, assume identity transform (TODO: implement frame transformation)
-  Ogre::Vector3 position = pointMsgToOgre(msg->pose.pose.position);
-  Ogre::Quaternion orientation = quaternionMsgToOgre(msg->pose.pose.orientation);
-
-  auto shape = static_cast<Shape>(shape_property_->getOptionInt());
-  bool use_arrow = (shape == ArrowShape);
-  bool use_axes = (shape == AxesShape);
-
-  if (use_arrow) {
-    auto arrow = createAndSetArrow(position, orientation, true);
-    if (arrow) {
-      arrows_.push_back(std::move(arrow));
+void OdometryDisplay::processMessage(
+    const std::shared_ptr<autonomy::commsgs::planning_msgs::Odometry>& msg) {
+    if (!msg || !messageIsValid(msg)) {
+        return;
     }
-  }
 
-  if (use_axes) {
-    auto axes = createAndSetAxes(position, orientation, true);
-    if (axes) {
-      axes_.push_back(std::move(axes));
+    if (messageIsSimilarToPrevious(msg)) {
+        return;
     }
-  }
 
-  // Keep only the last N items
-  int keep = keep_property_->getInt();
-  if (keep > 0) {
-    while (static_cast<int>(arrows_.size()) > keep) {
-      arrows_.pop_front();
-    }
-    while (static_cast<int>(axes_.size()) > keep) {
-      axes_.pop_front();
-    }
-  }
+    // For now, assume identity transform (TODO: implement frame transformation)
+    Ogre::Vector3 position = pointMsgToOgre(msg->pose.pose.position);
+    Ogre::Quaternion orientation =
+        quaternionMsgToOgre(msg->pose.pose.orientation);
 
-  last_used_message_ = msg;
-  queueRender();
+    auto shape = static_cast<Shape>(shape_property_->getOptionInt());
+    bool use_arrow = (shape == ArrowShape);
+    bool use_axes = (shape == AxesShape);
+
+    if (use_arrow) {
+        auto arrow = createAndSetArrow(position, orientation, true);
+        if (arrow) {
+            arrows_.push_back(std::move(arrow));
+        }
+    }
+
+    if (use_axes) {
+        auto axes = createAndSetAxes(position, orientation, true);
+        if (axes) {
+            axes_.push_back(std::move(axes));
+        }
+    }
+
+    // Keep only the last N items
+    int keep = keep_property_->getInt();
+    if (keep > 0) {
+        while (static_cast<int>(arrows_.size()) > keep) {
+            arrows_.pop_front();
+        }
+        while (static_cast<int>(axes_.size()) > keep) {
+            axes_.pop_front();
+        }
+    }
+
+    last_used_message_ = msg;
+    queueRender();
 }
 
 void OdometryDisplay::updateCovariances() {
-  // TODO: Implement covariance visualization
-  queueRender();
+    // TODO: Implement covariance visualization
+    queueRender();
 }
 
 void OdometryDisplay::updateShapeChoice() {
-  updateShapeVisibility();
-  clear();
+    updateShapeVisibility();
+    clear();
 }
 
 void OdometryDisplay::updateShapeVisibility() {
-  auto shape = static_cast<Shape>(shape_property_->getOptionInt());
-  bool use_arrow = (shape == ArrowShape);
-  bool use_axes = (shape == AxesShape);
+    auto shape = static_cast<Shape>(shape_property_->getOptionInt());
+    bool use_arrow = (shape == ArrowShape);
+    bool use_axes = (shape == AxesShape);
 
-  // Show/hide properties based on shape
-  color_property_->setHidden(!use_arrow && !use_axes);
-  alpha_property_->setHidden(!use_arrow && !use_axes);
-  head_radius_property_->setHidden(!use_arrow);
-  head_length_property_->setHidden(!use_arrow);
-  shaft_radius_property_->setHidden(!use_arrow);
-  shaft_length_property_->setHidden(!use_arrow);
-  axes_length_property_->setHidden(!use_axes);
-  axes_radius_property_->setHidden(!use_axes);
+    // Show/hide properties based on shape
+    color_property_->setHidden(!use_arrow && !use_axes);
+    alpha_property_->setHidden(!use_arrow && !use_axes);
+    head_radius_property_->setHidden(!use_arrow);
+    head_length_property_->setHidden(!use_arrow);
+    shaft_radius_property_->setHidden(!use_arrow);
+    shaft_length_property_->setHidden(!use_arrow);
+    axes_length_property_->setHidden(!use_axes);
+    axes_radius_property_->setHidden(!use_axes);
 }
 
 void OdometryDisplay::updateColorAndAlpha() {
-  QColor color = color_property_->getColor();
-  float alpha = alpha_property_->getFloat();
+    QColor color = color_property_->getColor();
+    float alpha = alpha_property_->getFloat();
 
-  for (auto& arrow : arrows_) {
-    if (arrow) {
-      arrow->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
+    for (auto& arrow : arrows_) {
+        if (arrow) {
+            arrow->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
+        }
     }
-  }
 
-  for (auto& axes : axes_) {
-    if (axes) {
-      axes->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
+    for (auto& axes : axes_) {
+        if (axes) {
+            axes->setColor(color.redF(), color.greenF(), color.blueF(), alpha);
+        }
     }
-  }
 
-  queueRender();
+    queueRender();
 }
 
 void OdometryDisplay::updateArrowsGeometry() {
-  for (auto& arrow : arrows_) {
-    if (arrow) {
-      arrow->set(shaft_length_property_->getFloat(), shaft_radius_property_->getFloat(),
-                 head_length_property_->getFloat(), head_radius_property_->getFloat());
+    for (auto& arrow : arrows_) {
+        if (arrow) {
+            arrow->set(shaft_length_property_->getFloat(),
+                       shaft_radius_property_->getFloat(),
+                       head_length_property_->getFloat(),
+                       head_radius_property_->getFloat());
+        }
     }
-  }
-  queueRender();
+    queueRender();
 }
 
 void OdometryDisplay::updateAxisGeometry() {
-  for (auto& axes : axes_) {
-    if (axes) {
-      axes->set(axes_length_property_->getFloat(), axes_radius_property_->getFloat());
+    for (auto& axes : axes_) {
+        if (axes) {
+            axes->set(axes_length_property_->getFloat(),
+                      axes_radius_property_->getFloat());
+        }
     }
-  }
-  queueRender();
+    queueRender();
 }
 
 void OdometryDisplay::updateArrow(const std::unique_ptr<Arrow>& arrow) {
-  if (!arrow) {
-    return;
-  }
-  QColor color = color_property_->getColor();
-  arrow->setColor(color.redF(), color.greenF(), color.blueF(), alpha_property_->getFloat());
-  arrow->set(shaft_length_property_->getFloat(), shaft_radius_property_->getFloat(), head_length_property_->getFloat(),
-             head_radius_property_->getFloat());
+    if (!arrow) {
+        return;
+    }
+    QColor color = color_property_->getColor();
+    arrow->setColor(color.redF(), color.greenF(), color.blueF(),
+                    alpha_property_->getFloat());
+    arrow->set(
+        shaft_length_property_->getFloat(), shaft_radius_property_->getFloat(),
+        head_length_property_->getFloat(), head_radius_property_->getFloat());
 }
 
 void OdometryDisplay::updateAxes(const std::unique_ptr<Axes>& axes) {
-  if (!axes) {
-    return;
-  }
-  QColor color = color_property_->getColor();
-  axes->setColor(color.redF(), color.greenF(), color.blueF(), alpha_property_->getFloat());
-  axes->set(axes_length_property_->getFloat(), axes_radius_property_->getFloat());
+    if (!axes) {
+        return;
+    }
+    QColor color = color_property_->getColor();
+    axes->setColor(color.redF(), color.greenF(), color.blueF(),
+                   alpha_property_->getFloat());
+    axes->set(axes_length_property_->getFloat(),
+              axes_radius_property_->getFloat());
 }
 
-bool OdometryDisplay::messageIsValid(const std::shared_ptr<autonomy::commsgs::planning_msgs::Odometry>& message) {
-  // Basic validation
-  return message != nullptr;
+bool OdometryDisplay::messageIsValid(
+    const std::shared_ptr<autonomy::commsgs::planning_msgs::Odometry>&
+        message) {
+    // Basic validation
+    return message != nullptr;
 }
 
 bool OdometryDisplay::messageIsSimilarToPrevious(
-    const std::shared_ptr<autonomy::commsgs::planning_msgs::Odometry>& message) {
-  if (!last_used_message_) {
-    return false;
-  }
+    const std::shared_ptr<autonomy::commsgs::planning_msgs::Odometry>&
+        message) {
+    if (!last_used_message_) {
+        return false;
+    }
 
-  Ogre::Vector3 last_pos = pointMsgToOgre(last_used_message_->pose.pose.position);
-  Ogre::Vector3 current_pos = pointMsgToOgre(message->pose.pose.position);
-  float position_diff = (current_pos - last_pos).length();
+    Ogre::Vector3 last_pos =
+        pointMsgToOgre(last_used_message_->pose.pose.position);
+    Ogre::Vector3 current_pos = pointMsgToOgre(message->pose.pose.position);
+    float position_diff = (current_pos - last_pos).length();
 
-  if (position_diff > position_tolerance_property_->getFloat()) {
-    return false;
-  }
+    if (position_diff > position_tolerance_property_->getFloat()) {
+        return false;
+    }
 
-  Ogre::Quaternion last_orient = quaternionMsgToOgre(last_used_message_->pose.pose.orientation);
-  Ogre::Quaternion current_orient = quaternionMsgToOgre(message->pose.pose.orientation);
-  // Calculate angle difference between quaternions
-  Ogre::Quaternion diff = last_orient.Inverse() * current_orient;
-  float angle_diff = 2.0f * std::acos(std::abs(diff.w));
+    Ogre::Quaternion last_orient =
+        quaternionMsgToOgre(last_used_message_->pose.pose.orientation);
+    Ogre::Quaternion current_orient =
+        quaternionMsgToOgre(message->pose.pose.orientation);
+    // Calculate angle difference between quaternions
+    Ogre::Quaternion diff = last_orient.Inverse() * current_orient;
+    float angle_diff = 2.0f * std::acos(std::abs(diff.w));
 
-  if (angle_diff > angle_tolerance_property_->getFloat()) {
-    return false;
-  }
+    if (angle_diff > angle_tolerance_property_->getFloat()) {
+        return false;
+    }
 
-  return true;
+    return true;
 }
 
-std::unique_ptr<Arrow> OdometryDisplay::createAndSetArrow(const Ogre::Vector3& position,
-                                                          const Ogre::Quaternion& orientation, bool use_arrow) {
-  if (!use_arrow || !scene_manager_ || !scene_node_) {
-    return nullptr;
-  }
+std::unique_ptr<Arrow> OdometryDisplay::createAndSetArrow(
+    const Ogre::Vector3& position, const Ogre::Quaternion& orientation,
+    bool use_arrow) {
+    if (!use_arrow || !scene_manager_ || !scene_node_) {
+        return nullptr;
+    }
 
-  auto arrow = std::make_unique<Arrow>(scene_manager_, scene_node_, shaft_length_property_->getFloat(),
-                                       shaft_radius_property_->getFloat(), head_length_property_->getFloat(),
-                                       head_radius_property_->getFloat());
+    auto arrow = std::make_unique<Arrow>(
+        scene_manager_, scene_node_, shaft_length_property_->getFloat(),
+        shaft_radius_property_->getFloat(), head_length_property_->getFloat(),
+        head_radius_property_->getFloat());
 
-  QColor color = color_property_->getColor();
-  arrow->setColor(color.redF(), color.greenF(), color.blueF(), alpha_property_->getFloat());
-  arrow->setPosition(position);
-  arrow->setOrientation(orientation);
+    QColor color = color_property_->getColor();
+    arrow->setColor(color.redF(), color.greenF(), color.blueF(),
+                    alpha_property_->getFloat());
+    arrow->setPosition(position);
+    arrow->setOrientation(orientation);
 
-  return arrow;
+    return arrow;
 }
 
-std::unique_ptr<Axes> OdometryDisplay::createAndSetAxes(const Ogre::Vector3& position,
-                                                        const Ogre::Quaternion& orientation, bool use_axes) {
-  if (!use_axes || !scene_manager_ || !scene_node_) {
-    return nullptr;
-  }
+std::unique_ptr<Axes> OdometryDisplay::createAndSetAxes(
+    const Ogre::Vector3& position, const Ogre::Quaternion& orientation,
+    bool use_axes) {
+    if (!use_axes || !scene_manager_ || !scene_node_) {
+        return nullptr;
+    }
 
-  auto axes = std::make_unique<Axes>(scene_manager_, scene_node_, axes_length_property_->getFloat(),
-                                     axes_radius_property_->getFloat());
+    auto axes = std::make_unique<Axes>(scene_manager_, scene_node_,
+                                       axes_length_property_->getFloat(),
+                                       axes_radius_property_->getFloat());
 
-  QColor color = color_property_->getColor();
-  axes->setColor(color.redF(), color.greenF(), color.blueF(), alpha_property_->getFloat());
-  axes->setPosition(position);
-  axes->setOrientation(orientation);
+    QColor color = color_property_->getColor();
+    axes->setColor(color.redF(), color.greenF(), color.blueF(),
+                   alpha_property_->getFloat());
+    axes->setPosition(position);
+    axes->setOrientation(orientation);
 
-  return axes;
+    return axes;
 }
 
 void OdometryDisplay::clear() {
-  arrows_.clear();
-  axes_.clear();
-  last_used_message_.reset();
+    arrows_.clear();
+    axes_.clear();
+    last_used_message_.reset();
 }
 
 }  // namespace displays

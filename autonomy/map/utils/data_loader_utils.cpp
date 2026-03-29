@@ -20,7 +20,9 @@ namespace autonomy {
 namespace map {
 namespace utils {
 
-std::string GetMapDataFilesDirectory() { return std::string(common::kConfigurationFilesDirectory) + "/map/"; }
+std::string GetMapDataFilesDirectory() {
+    return std::string(common::kConfigurationFilesDirectory) + "/map/";
+}
 
 }  // namespace utils
 }  // namespace map

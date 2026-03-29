@@ -26,35 +26,40 @@ namespace properties {
 class Property;
 
 /// Forward declaration - full implementation can be added later
-class PropertyTreeModel : public QAbstractItemModel {
-  Q_OBJECT
+class PropertyTreeModel : public QAbstractItemModel
+{
+    Q_OBJECT
 
- public:
-  explicit PropertyTreeModel(Property* root_property, QObject* parent = nullptr);
-  virtual ~PropertyTreeModel();
+public:
+    explicit PropertyTreeModel(Property* root_property,
+                               QObject* parent = nullptr);
+    virtual ~PropertyTreeModel();
 
-  // Minimal interface for Property class to use
-  void beginInsert(Property* parent, int index);
-  void endInsert();
-  void beginRemove(Property* parent, int start_index, int count);
-  void endRemove();
-  void emitDataChanged(Property* property);
-  void emitPropertyHiddenChanged(Property* property);
-  void expandProperty(Property* property);
-  void collapseProperty(Property* property);
+    // Minimal interface for Property class to use
+    void beginInsert(Property* parent, int index);
+    void endInsert();
+    void beginRemove(Property* parent, int start_index, int count);
+    void endRemove();
+    void emitDataChanged(Property* property);
+    void emitPropertyHiddenChanged(Property* property);
+    void expandProperty(Property* property);
+    void collapseProperty(Property* property);
 
-  // QAbstractItemModel interface
-  QVariant data(const QModelIndex& index, int role) const override;
-  QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
-  QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const override;
-  QModelIndex parent(const QModelIndex& index) const override;
-  int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-  int columnCount(const QModelIndex& parent = QModelIndex()) const override;
-  bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override;
-  Qt::ItemFlags flags(const QModelIndex& index) const override;
+    // QAbstractItemModel interface
+    QVariant data(const QModelIndex& index, int role) const override;
+    QVariant headerData(int section, Qt::Orientation orientation,
+                        int role = Qt::DisplayRole) const override;
+    QModelIndex index(int row, int column,
+                      const QModelIndex& parent = QModelIndex()) const override;
+    QModelIndex parent(const QModelIndex& index) const override;
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+    bool setData(const QModelIndex& index, const QVariant& value,
+                 int role = Qt::EditRole) override;
+    Qt::ItemFlags flags(const QModelIndex& index) const override;
 
- private:
-  Property* root_property_;
+private:
+    Property* root_property_;
 };
 
 }  // namespace properties

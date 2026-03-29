@@ -24,44 +24,51 @@
 namespace autolink {
 namespace service_discovery {
 
-class TopologyTest : public ::testing::Test {
- protected:
-  TopologyTest() { topology_ = TopologyManager::Instance(); }
-  virtual ~TopologyTest() { topology_->Shutdown(); }
+class TopologyTest : public ::testing::Test
+{
+protected:
+    TopologyTest() {
+        topology_ = TopologyManager::Instance();
+    }
+    virtual ~TopologyTest() {
+        topology_->Shutdown();
+    }
 
-  virtual void SetUp() {}
+    virtual void SetUp() {}
 
-  virtual void TearDown() {}
+    virtual void TearDown() {}
 
-  TopologyManager* topology_;
+    TopologyManager* topology_;
 };
 
 TEST_F(TopologyTest, add_and_remove_change_listener) {
-  proto::RoleAttributes attr;
-  attr.set_host_name("");
-  attr.set_process_id(0);
+    proto::RoleAttributes attr;
+    attr.set_host_name("");
+    attr.set_process_id(0);
 
-  // add change listener
-  auto conn = topology_->AddChangeListener([&attr](const ChangeMsg& change_msg) {
-    if (change_msg.change_type() == ChangeType::CHANGE_PARTICIPANT &&
-        change_msg.operate_type() == OperateType::OPT_JOIN && change_msg.role_type() == RoleType::ROLE_PARTICIPANT) {
-      attr.CopyFrom(change_msg.role_attr());
-    }
-  });
+    // add change listener
+    auto conn =
+        topology_->AddChangeListener([&attr](const ChangeMsg& change_msg) {
+            if (change_msg.change_type() == ChangeType::CHANGE_PARTICIPANT &&
+                change_msg.operate_type() == OperateType::OPT_JOIN &&
+                change_msg.role_type() == RoleType::ROLE_PARTICIPANT) {
+                attr.CopyFrom(change_msg.role_attr());
+            }
+        });
 
-  // remove change listener
-  topology_->RemoveChangeListener(conn);
+    // remove change listener
+    topology_->RemoveChangeListener(conn);
 }
 
 TEST_F(TopologyTest, get_manager) {
-  auto node_manager = topology_->node_manager();
-  EXPECT_NE(node_manager, nullptr);
+    auto node_manager = topology_->node_manager();
+    EXPECT_NE(node_manager, nullptr);
 
-  auto channel_manager = topology_->channel_manager();
-  EXPECT_NE(channel_manager, nullptr);
+    auto channel_manager = topology_->channel_manager();
+    EXPECT_NE(channel_manager, nullptr);
 
-  auto service_manager = topology_->service_manager();
-  EXPECT_NE(service_manager, nullptr);
+    auto service_manager = topology_->service_manager();
+    EXPECT_NE(service_manager, nullptr);
 }
 
 }  // namespace service_discovery

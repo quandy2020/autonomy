@@ -36,114 +36,129 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-TruncatePathLocal::TruncatePathLocal(const std::string& name, const BT::NodeConfiguration& conf)
+TruncatePathLocal::TruncatePathLocal(const std::string& name,
+                                     const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(name, conf) {
-  tf_buffer_ = config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>("tf_buffer");
-  node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+    tf_buffer_ =
+        config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
+            "tf_buffer");
+    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 }
 
 BT::NodeStatus TruncatePathLocal::tick() {
-  setStatus(BT::NodeStatus::RUNNING);
+    setStatus(BT::NodeStatus::RUNNING);
 
-  double distance_forward, distance_backward;
-  commsgs::geometry_msgs::PoseStamped pose;
-  double angular_distance_weight;
-  double max_robot_pose_search_dist;
+    double distance_forward, distance_backward;
+    commsgs::geometry_msgs::PoseStamped pose;
+    double angular_distance_weight;
+    double max_robot_pose_search_dist;
 
-  getInput("distance_forward", distance_forward);
-  getInput("distance_backward", distance_backward);
-  getInput("angular_distance_weight", angular_distance_weight);
-  getInput("max_robot_pose_search_dist", max_robot_pose_search_dist);
+    getInput("distance_forward", distance_forward);
+    getInput("distance_backward", distance_backward);
+    getInput("angular_distance_weight", angular_distance_weight);
+    getInput("max_robot_pose_search_dist", max_robot_pose_search_dist);
 
-  bool path_pruning = std::isfinite(max_robot_pose_search_dist);
-  commsgs::planning_msgs::Path new_path;
-  getInput("input_path", new_path);
+    bool path_pruning = std::isfinite(max_robot_pose_search_dist);
+    commsgs::planning_msgs::Path new_path;
+    getInput("input_path", new_path);
 
-  // Check if path has changed (simple check by comparing size and first/last
-  // poses)
-  bool path_changed = !path_pruning || path_.poses.size() != new_path.poses.size() ||
-                      (path_.poses.size() > 0 && new_path.poses.size() > 0 &&
-                       (path_.poses[0].pose.position.x != new_path.poses[0].pose.position.x ||
-                        path_.poses[0].pose.position.y != new_path.poses[0].pose.position.y));
+    // Check if path has changed (simple check by comparing size and first/last
+    // poses)
+    bool path_changed =
+        !path_pruning || path_.poses.size() != new_path.poses.size() ||
+        (path_.poses.size() > 0 && new_path.poses.size() > 0 &&
+         (path_.poses[0].pose.position.x != new_path.poses[0].pose.position.x ||
+          path_.poses[0].pose.position.y != new_path.poses[0].pose.position.y));
 
-  if (path_changed) {
-    path_ = new_path;
-    closest_pose_detection_begin_ = path_.poses.begin();
-  }
+    if (path_changed) {
+        path_ = new_path;
+        closest_pose_detection_begin_ = path_.poses.begin();
+    }
 
-  if (!getRobotPose(path_.header.frame_id, pose)) {
-    return BT::NodeStatus::FAILURE;
-  }
+    if (!getRobotPose(path_.header.frame_id, pose)) {
+        return BT::NodeStatus::FAILURE;
+    }
 
-  if (path_.poses.empty()) {
-    setOutput("output_path", path_);
+    if (path_.poses.empty()) {
+        setOutput("output_path", path_);
+        return BT::NodeStatus::SUCCESS;
+    }
+
+    auto closest_pose_detection_end = path_.poses.end();
+    if (path_pruning) {
+        closest_pose_detection_end =
+            autonomy::map::costmap_2d::utils::first_after_integrated_distance(
+                closest_pose_detection_begin_, path_.poses.end(),
+                max_robot_pose_search_dist);
+    }
+
+    // find the closest pose on the path
+    auto current_pose = autonomy::map::costmap_2d::utils::min_by(
+        closest_pose_detection_begin_, closest_pose_detection_end,
+        [&pose, angular_distance_weight](
+            const commsgs::geometry_msgs::PoseStamped& ps) {
+            return poseDistance(pose, ps, angular_distance_weight);
+        });
+
+    if (path_pruning) {
+        closest_pose_detection_begin_ = current_pose;
+    }
+
+    // expand forwards to extract desired length
+    auto forward_pose_it =
+        autonomy::map::costmap_2d::utils::first_after_integrated_distance(
+            current_pose, path_.poses.end(), distance_forward);
+
+    // expand backwards to extract desired length
+    // Note: current_pose + 1 is used because reverse iterator points to a cell
+    // before it
+    auto backward_pose_it =
+        autonomy::map::costmap_2d::utils::first_after_integrated_distance(
+            std::reverse_iterator(current_pose + 1), path_.poses.rend(),
+            distance_backward);
+
+    commsgs::planning_msgs::Path output_path;
+    output_path.header = path_.header;
+    output_path.poses = std::vector<commsgs::geometry_msgs::PoseStamped>(
+        backward_pose_it.base(), forward_pose_it);
+    setOutput("output_path", output_path);
+
     return BT::NodeStatus::SUCCESS;
-  }
-
-  auto closest_pose_detection_end = path_.poses.end();
-  if (path_pruning) {
-    closest_pose_detection_end = autonomy::map::costmap_2d::utils::first_after_integrated_distance(
-        closest_pose_detection_begin_, path_.poses.end(), max_robot_pose_search_dist);
-  }
-
-  // find the closest pose on the path
-  auto current_pose = autonomy::map::costmap_2d::utils::min_by(
-      closest_pose_detection_begin_, closest_pose_detection_end,
-      [&pose, angular_distance_weight](const commsgs::geometry_msgs::PoseStamped& ps) {
-        return poseDistance(pose, ps, angular_distance_weight);
-      });
-
-  if (path_pruning) {
-    closest_pose_detection_begin_ = current_pose;
-  }
-
-  // expand forwards to extract desired length
-  auto forward_pose_it = autonomy::map::costmap_2d::utils::first_after_integrated_distance(
-      current_pose, path_.poses.end(), distance_forward);
-
-  // expand backwards to extract desired length
-  // Note: current_pose + 1 is used because reverse iterator points to a cell
-  // before it
-  auto backward_pose_it = autonomy::map::costmap_2d::utils::first_after_integrated_distance(
-      std::reverse_iterator(current_pose + 1), path_.poses.rend(), distance_backward);
-
-  commsgs::planning_msgs::Path output_path;
-  output_path.header = path_.header;
-  output_path.poses = std::vector<commsgs::geometry_msgs::PoseStamped>(backward_pose_it.base(), forward_pose_it);
-  setOutput("output_path", output_path);
-
-  return BT::NodeStatus::SUCCESS;
 }
 
-bool TruncatePathLocal::getRobotPose(std::string path_frame_id, commsgs::geometry_msgs::PoseStamped& pose) {
-  if (!getInput("pose", pose)) {
-    std::string robot_frame;
-    if (!getInput("robot_frame", robot_frame)) {
-      AERROR << "Neither pose nor robot_frame specified for " << name();
-      return false;
+bool TruncatePathLocal::getRobotPose(
+    std::string path_frame_id, commsgs::geometry_msgs::PoseStamped& pose) {
+    if (!getInput("pose", pose)) {
+        std::string robot_frame;
+        if (!getInput("robot_frame", robot_frame)) {
+            AERROR << "Neither pose nor robot_frame specified for " << name();
+            return false;
+        }
+        double transform_tolerance;
+        getInput("transform_tolerance", transform_tolerance);
+        if (!autonomy::tasks::utils::getCurrentPose(pose, tf_buffer_,
+                                                    path_frame_id, robot_frame,
+                                                    transform_tolerance)) {
+            AWARN << "Failed to lookup current robot pose for " << name();
+            return false;
+        }
     }
-    double transform_tolerance;
-    getInput("transform_tolerance", transform_tolerance);
-    if (!autonomy::tasks::utils::getCurrentPose(pose, tf_buffer_, path_frame_id, robot_frame, transform_tolerance)) {
-      AWARN << "Failed to lookup current robot pose for " << name();
-      return false;
-    }
-  }
-  return true;
+    return true;
 }
 
-double TruncatePathLocal::poseDistance(const commsgs::geometry_msgs::PoseStamped& pose1,
-                                       const commsgs::geometry_msgs::PoseStamped& pose2,
-                                       const double angular_distance_weight) {
-  double dx = pose1.pose.position.x - pose2.pose.position.x;
-  double dy = pose1.pose.position.y - pose2.pose.position.y;
-  // taking angular distance into account in addition to spatial distance
-  // (to improve picking a correct pose near cusps and loops)
-  transform::tf2::Quaternion q1, q2;
-  fromMsg(pose1.pose.orientation, q1);
-  fromMsg(pose2.pose.orientation, q2);
-  double da = angular_distance_weight * std::abs(q1.angleShortestPath(q2));
-  return std::sqrt(dx * dx + dy * dy + da * da);
+double TruncatePathLocal::poseDistance(
+    const commsgs::geometry_msgs::PoseStamped& pose1,
+    const commsgs::geometry_msgs::PoseStamped& pose2,
+    const double angular_distance_weight) {
+    double dx = pose1.pose.position.x - pose2.pose.position.x;
+    double dy = pose1.pose.position.y - pose2.pose.position.y;
+    // taking angular distance into account in addition to spatial distance
+    // (to improve picking a correct pose near cusps and loops)
+    transform::tf2::Quaternion q1, q2;
+    fromMsg(pose1.pose.orientation, q1);
+    fromMsg(pose2.pose.orientation, q2);
+    double da = angular_distance_weight * std::abs(q1.angleShortestPath(q2));
+    return std::sqrt(dx * dx + dy * dy + da * da);
 }
 
 }  // namespace action
@@ -154,5 +169,7 @@ double TruncatePathLocal::poseDistance(const commsgs::geometry_msgs::PoseStamped
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::TruncatePathLocal>("TruncatePathLocal");
+    factory.registerNodeType<
+        autonomy::tasks::behavior_tree::plugins::action::TruncatePathLocal>(
+        "TruncatePathLocal");
 }

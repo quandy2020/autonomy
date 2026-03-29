@@ -25,13 +25,14 @@
 namespace cartographer {
 namespace common {
 
-class Histogram {
- public:
-  void Add(float value);
-  std::string ToString(int buckets) const;
+class Histogram
+{
+public:
+    void Add(float value);
+    std::string ToString(int buckets) const;
 
- private:
-  std::vector<float> values_;
+private:
+    std::vector<float> values_;
 };
 
 }  // namespace common

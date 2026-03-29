@@ -26,24 +26,31 @@ namespace cartographer {
 namespace mapping {
 namespace testing {
 
-class MockTrajectoryBuilder : public mapping::TrajectoryBuilderInterface {
- public:
-  MockTrajectoryBuilder() = default;
-  ~MockTrajectoryBuilder() override = default;
+class MockTrajectoryBuilder : public mapping::TrajectoryBuilderInterface
+{
+public:
+    MockTrajectoryBuilder() = default;
+    ~MockTrajectoryBuilder() override = default;
 
-  MOCK_METHOD2(AddSensorData, void(const std::string&, const sensor::TimedPointCloudData&));
-  MOCK_METHOD2(AddSensorData, void(const std::string&, const sensor::ImuData&));
-  MOCK_METHOD2(AddSensorData, void(const std::string&, const sensor::OdometryData&));
-  MOCK_METHOD2(AddSensorData, void(const std::string&, const sensor::FixedFramePoseData&));
-  MOCK_METHOD2(AddSensorData, void(const std::string&, const sensor::LandmarkData&));
+    MOCK_METHOD2(AddSensorData,
+                 void(const std::string&, const sensor::TimedPointCloudData&));
+    MOCK_METHOD2(AddSensorData,
+                 void(const std::string&, const sensor::ImuData&));
+    MOCK_METHOD2(AddSensorData,
+                 void(const std::string&, const sensor::OdometryData&));
+    MOCK_METHOD2(AddSensorData,
+                 void(const std::string&, const sensor::FixedFramePoseData&));
+    MOCK_METHOD2(AddSensorData,
+                 void(const std::string&, const sensor::LandmarkData&));
 
-  // Some of the platforms we run on may ship with a version of gmock which
-  // does not yet support move-only types.
-  MOCK_METHOD1(DoAddLocalSlamResultData, void(mapping::LocalSlamResultData*));
+    // Some of the platforms we run on may ship with a version of gmock which
+    // does not yet support move-only types.
+    MOCK_METHOD1(DoAddLocalSlamResultData, void(mapping::LocalSlamResultData*));
 
-  void AddLocalSlamResultData(std::unique_ptr<mapping::LocalSlamResultData> local_slam_result_data) override {
-    DoAddLocalSlamResultData(local_slam_result_data.get());
-  }
+    void AddLocalSlamResultData(std::unique_ptr<mapping::LocalSlamResultData>
+                                    local_slam_result_data) override {
+        DoAddLocalSlamResultData(local_slam_result_data.get());
+    }
 };
 
 }  // namespace testing

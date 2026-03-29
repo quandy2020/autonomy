@@ -29,19 +29,23 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-class GetNextFewGoals : public BT::ActionNodeBase {
- public:
-  GetNextFewGoals(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class GetNextFewGoals : public BT::ActionNodeBase
+{
+public:
+    GetNextFewGoals(const std::string& xml_tag_name,
+                    const BT::NodeConfiguration& conf);
 
-  static BT::PortsList providedPorts() {
-    return {BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Input goals for navigation"),
-            BT::InputPort<int>("num_goals", "Number of goals to extract"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Output goals for navigation")};
-  }
+    static BT::PortsList providedPorts() {
+        return {BT::InputPort<commsgs::planning_msgs::Goals>(
+                    "input_goals", "Input goals for navigation"),
+                BT::InputPort<int>("num_goals", "Number of goals to extract"),
+                BT::OutputPort<commsgs::planning_msgs::Goals>(
+                    "output_goals", "Output goals for navigation")};
+    }
 
- private:
-  void halt() override {}
-  BT::NodeStatus tick() override;
+private:
+    void halt() override {}
+    BT::NodeStatus tick() override;
 };
 
 }  // namespace action

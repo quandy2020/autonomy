@@ -26,25 +26,30 @@ namespace aviz {
 namespace common {
 namespace interaction {
 
-class ViewPickerIface {
- public:
-  virtual ~ViewPickerIface() = default;
+class ViewPickerIface
+{
+public:
+    virtual ~ViewPickerIface() = default;
 
-  virtual void initialize() = 0;
+    virtual void initialize() = 0;
 
-  /// Return true if the point at x, y in the viewport is showing an object, false otherwise.
-  /**
-   * If it is showing an object, result will be changed to contain the 3D point
-   * corresponding to it.
-   */
-  virtual bool get3DPoint(SceneViewer* viewer, int x, int y, QVector3D& result_point) = 0;
+    /// Return true if the point at x, y in the viewport is showing an object,
+    /// false otherwise.
+    /**
+     * If it is showing an object, result will be changed to contain the 3D
+     * point corresponding to it.
+     */
+    virtual bool get3DPoint(SceneViewer* viewer, int x, int y,
+                            QVector3D& result_point) = 0;
 
-  /// Return true if the point at x,y in the viewport is showing an object, false otherwise.
-  /**
-   * Gets the 3D points in a box around a point in a view port.
-   */
-  virtual bool get3DPatch(SceneViewer* viewer, int x, int y, unsigned width, unsigned height, bool skip_missing,
-                          std::vector<QVector3D>& result_points) = 0;
+    /// Return true if the point at x,y in the viewport is showing an object,
+    /// false otherwise.
+    /**
+     * Gets the 3D points in a box around a point in a view port.
+     */
+    virtual bool get3DPatch(SceneViewer* viewer, int x, int y, unsigned width,
+                            unsigned height, bool skip_missing,
+                            std::vector<QVector3D>& result_points) = 0;
 };
 
 }  // namespace interaction

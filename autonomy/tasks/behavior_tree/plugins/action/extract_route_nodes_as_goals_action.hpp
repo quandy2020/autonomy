@@ -29,18 +29,22 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-class ExtractRouteNodesAsGoals : public BT::ActionNodeBase {
- public:
-  ExtractRouteNodesAsGoals(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class ExtractRouteNodesAsGoals : public BT::ActionNodeBase
+{
+public:
+    ExtractRouteNodesAsGoals(const std::string& xml_tag_name,
+                             const BT::NodeConfiguration& conf);
 
-  static BT::PortsList providedPorts() {
-    return {BT::InputPort<proto::Route>("route", "Route to extract nodes from"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>("goals", "Output goals for navigation")};
-  }
+    static BT::PortsList providedPorts() {
+        return {
+            BT::InputPort<proto::Route>("route", "Route to extract nodes from"),
+            BT::OutputPort<commsgs::planning_msgs::Goals>(
+                "goals", "Output goals for navigation")};
+    }
 
- private:
-  void halt() override {}
-  BT::NodeStatus tick() override;
+private:
+    void halt() override {}
+    BT::NodeStatus tick() override;
 };
 
 }  // namespace action

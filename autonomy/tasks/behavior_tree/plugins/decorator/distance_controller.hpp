@@ -37,42 +37,45 @@ namespace decorator {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class DistanceController : public BT::DecoratorNode {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::DistanceController
-   * @param name Name for the XML tag for this node
-   * @param conf BT node configuration
-   */
-  DistanceController(const std::string& name, const BT::NodeConfiguration& conf);
+class DistanceController : public BT::DecoratorNode
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::DistanceController
+     * @param name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    DistanceController(const std::string& name,
+                       const BT::NodeConfiguration& conf);
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing node-specific ports
-   */
-  static BT::PortsList providedPorts() {
-    return {BT::InputPort<double>("distance", 1.0, "Distance"),
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        return {
+            BT::InputPort<double>("distance", 1.0, "Distance"),
             BT::InputPort<std::string>("global_frame", "Global frame"),
             BT::InputPort<std::string>("robot_base_frame", "Robot base frame")};
-  }
+    }
 
- private:
-  /**
-   * @brief The main override required by a BT action
-   * @return BT::NodeStatus Status of tick execution
-   */
-  BT::NodeStatus tick() override;
+private:
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
 
-  std::shared_ptr<::autolink::Node> node_;
+    std::shared_ptr<::autolink::Node> node_;
 
-  std::shared_ptr<autonomy::transform::Buffer> tf_;
-  double transform_tolerance_;
+    std::shared_ptr<autonomy::transform::Buffer> tf_;
+    double transform_tolerance_;
 
-  commsgs::geometry_msgs::PoseStamped start_pose_;
-  double distance_;
-  std::string global_frame_, robot_base_frame_;
+    commsgs::geometry_msgs::PoseStamped start_pose_;
+    double distance_;
+    std::string global_frame_, robot_base_frame_;
 
-  bool first_time_;
+    bool first_time_;
 };
 
 }  // namespace decorator

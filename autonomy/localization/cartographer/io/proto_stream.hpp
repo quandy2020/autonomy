@@ -32,39 +32,41 @@ namespace io {
 //
 // TODO(whess): Compress the file instead of individual messages for better
 // compression performance? Should we use LZ4?
-class ProtoStreamWriter : public ProtoStreamWriterInterface {
- public:
-  ProtoStreamWriter(const std::string& filename);
-  ~ProtoStreamWriter() = default;
+class ProtoStreamWriter : public ProtoStreamWriterInterface
+{
+public:
+    ProtoStreamWriter(const std::string& filename);
+    ~ProtoStreamWriter() = default;
 
-  ProtoStreamWriter(const ProtoStreamWriter&) = delete;
-  ProtoStreamWriter& operator=(const ProtoStreamWriter&) = delete;
+    ProtoStreamWriter(const ProtoStreamWriter&) = delete;
+    ProtoStreamWriter& operator=(const ProtoStreamWriter&) = delete;
 
-  void WriteProto(const google::protobuf::Message& proto) override;
-  bool Close() override;
+    void WriteProto(const google::protobuf::Message& proto) override;
+    bool Close() override;
 
- private:
-  void Write(const std::string& uncompressed_data);
+private:
+    void Write(const std::string& uncompressed_data);
 
-  std::ofstream out_;
+    std::ofstream out_;
 };
 
 // A reader of the format produced by ProtoStreamWriter.
-class ProtoStreamReader : public ProtoStreamReaderInterface {
- public:
-  explicit ProtoStreamReader(const std::string& filename);
-  ~ProtoStreamReader() = default;
+class ProtoStreamReader : public ProtoStreamReaderInterface
+{
+public:
+    explicit ProtoStreamReader(const std::string& filename);
+    ~ProtoStreamReader() = default;
 
-  ProtoStreamReader(const ProtoStreamReader&) = delete;
-  ProtoStreamReader& operator=(const ProtoStreamReader&) = delete;
+    ProtoStreamReader(const ProtoStreamReader&) = delete;
+    ProtoStreamReader& operator=(const ProtoStreamReader&) = delete;
 
-  bool ReadProto(google::protobuf::Message* proto) override;
-  bool eof() const override;
+    bool ReadProto(google::protobuf::Message* proto) override;
+    bool eof() const override;
 
- private:
-  bool Read(std::string* decompressed_data);
+private:
+    bool Read(std::string* decompressed_data);
 
-  std::ifstream in_;
+    std::ifstream in_;
 };
 
 }  // namespace io

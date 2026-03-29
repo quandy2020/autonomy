@@ -28,20 +28,22 @@
 namespace autolink {
 namespace service_discovery {
 
-class SubscriberListener : public eprosima::fastrtps::SubscriberListener {
- public:
-  using NewMsgCallback = std::function<void(const std::string&)>;
+class SubscriberListener : public eprosima::fastrtps::SubscriberListener
+{
+public:
+    using NewMsgCallback = std::function<void(const std::string&)>;
 
-  explicit SubscriberListener(const NewMsgCallback& callback);
-  virtual ~SubscriberListener();
+    explicit SubscriberListener(const NewMsgCallback& callback);
+    virtual ~SubscriberListener();
 
-  void onNewDataMessage(eprosima::fastrtps::Subscriber* sub);
-  void onSubscriptionMatched(eprosima::fastrtps::Subscriber* sub,
-                             eprosima::fastrtps::rtps::MatchingInfo& info);  // NOLINT
+    void onNewDataMessage(eprosima::fastrtps::Subscriber* sub);
+    void onSubscriptionMatched(
+        eprosima::fastrtps::Subscriber* sub,
+        eprosima::fastrtps::rtps::MatchingInfo& info);  // NOLINT
 
- private:
-  NewMsgCallback callback_;
-  std::mutex mutex_;
+private:
+    NewMsgCallback callback_;
+    std::mutex mutex_;
 };
 
 }  // namespace service_discovery

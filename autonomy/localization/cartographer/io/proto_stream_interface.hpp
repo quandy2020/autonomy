@@ -24,28 +24,30 @@ namespace cartographer {
 namespace io {
 
 // A writer for writing proto messages to a pbstream.
-class ProtoStreamWriterInterface {
- public:
-  virtual ~ProtoStreamWriterInterface() {}
+class ProtoStreamWriterInterface
+{
+public:
+    virtual ~ProtoStreamWriterInterface() {}
 
-  // Serializes, compressed and writes the 'proto' to the file.
-  virtual void WriteProto(const google::protobuf::Message& proto) = 0;
+    // Serializes, compressed and writes the 'proto' to the file.
+    virtual void WriteProto(const google::protobuf::Message& proto) = 0;
 
-  // This should be called to check whether writing was successful.
-  virtual bool Close() = 0;
+    // This should be called to check whether writing was successful.
+    virtual bool Close() = 0;
 };
 
 // A reader of the format produced by ProtoStreamWriter.
-class ProtoStreamReaderInterface {
- public:
-  ProtoStreamReaderInterface() = default;
-  virtual ~ProtoStreamReaderInterface() {}
+class ProtoStreamReaderInterface
+{
+public:
+    ProtoStreamReaderInterface() = default;
+    virtual ~ProtoStreamReaderInterface() {}
 
-  // Deserialize compressed proto from the pb stream.
-  virtual bool ReadProto(google::protobuf::Message* proto) = 0;
+    // Deserialize compressed proto from the pb stream.
+    virtual bool ReadProto(google::protobuf::Message* proto) = 0;
 
-  // 'End-of-file' marker for the pb stream.
-  virtual bool eof() const = 0;
+    // 'End-of-file' marker for the pb stream.
+    virtual bool eof() const = 0;
 };
 
 }  // namespace io

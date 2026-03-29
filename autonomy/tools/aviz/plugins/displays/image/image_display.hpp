@@ -29,18 +29,22 @@ namespace displays {
  *
  * Displays sensor_msgs::Image messages
  */
-class ImageDisplay : public AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::Image> {
-  Q_OBJECT
+class ImageDisplay
+    : public AutolinkTopicDisplay<autonomy::commsgs::sensor_msgs::Image>
+{
+    Q_OBJECT
 
- public:
-  explicit ImageDisplay(const QString& name = "ImageDisplay");
-  ~ImageDisplay() override;
+public:
+    explicit ImageDisplay(const QString& name = "ImageDisplay");
+    ~ImageDisplay() override;
 
-  void onInitialize() override;
-  void reset() override;
+    void onInitialize() override;
+    void reset() override;
 
- protected:
-  void processMessage(const std::shared_ptr<autonomy::commsgs::sensor_msgs::Image>& msg) override;
+protected:
+    void processMessage(
+        const std::shared_ptr<autonomy::commsgs::sensor_msgs::Image>& msg)
+        override;
 };
 
 }  // namespace displays

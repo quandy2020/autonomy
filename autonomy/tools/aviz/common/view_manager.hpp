@@ -25,18 +25,19 @@ namespace common {
  * @brief ViewManager
  * Manages view controllers
  */
-class ViewManager {
- public:
-  ViewManager() = default;
-  ~ViewManager() = default;
+class ViewManager
+{
+public:
+    ViewManager() = default;
+    ~ViewManager() = default;
 
-  void addViewController(ViewController* view_controller);
-  void removeViewController(ViewController* view_controller);
-  ViewController* getCurrentViewController() const;
-  void setCurrentViewController(ViewController* view_controller);
+    void addViewController(ViewController* view_controller);
+    void removeViewController(ViewController* view_controller);
+    ViewController* getCurrentViewController() const;
+    void setCurrentViewController(ViewController* view_controller);
 
- private:
-  ViewController* current_view_controller_;
+private:
+    ViewController* current_view_controller_;
 };
 
 }  // namespace common

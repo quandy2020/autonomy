@@ -26,39 +26,42 @@ namespace aviz {
 namespace common {
 namespace properties {
 
-class StatusList : public StatusProperty {
-  Q_OBJECT
+class StatusList : public StatusProperty
+{
+    Q_OBJECT
 
- public:
-  explicit StatusList(const QString& name = QString("Status"), Property* parent = nullptr);
+public:
+    explicit StatusList(const QString& name = QString("Status"),
+                        Property* parent = nullptr);
 
-  virtual void setLevel(Level level);
+    virtual void setLevel(Level level);
 
-  /// Add and set a status to the list by name.
-  void setStatus(Level level, const QString& name, const QString& text);
+    /// Add and set a status to the list by name.
+    void setStatus(Level level, const QString& name, const QString& text);
 
-  /// Delete a status by name.
-  void deleteStatus(const QString& name);
+    /// Delete a status by name.
+    void deleteStatus(const QString& name);
 
-  /// Clear all statuses from the list.
-  void clear();
+    /// Clear all statuses from the list.
+    void clear();
 
-  /// Update the level of the list based on the contained statuses.
-  void updateLevel();
+    /// Update the level of the list based on the contained statuses.
+    void updateLevel();
 
-  /// Set the prefix of the name for added statuses.
-  /**
-   * Setting the name to "Foo" will give a displayed name like
-   * "Foo: Ok" or "Foo: Error".
-   */
-  virtual void setName(const QString& name);
+    /// Set the prefix of the name for added statuses.
+    /**
+     * Setting the name to "Foo" will give a displayed name like
+     * "Foo: Ok" or "Foo: Error".
+     */
+    virtual void setName(const QString& name);
 
- private:
-  /// Update the label text based on the name_prefix_ and the current status level.
-  void updateLabel();
+private:
+    /// Update the label text based on the name_prefix_ and the current status
+    /// level.
+    void updateLabel();
 
-  QHash<QString, StatusProperty*> status_children_;
-  QString name_prefix_;
+    QHash<QString, StatusProperty*> status_children_;
+    QString name_prefix_;
 };
 
 }  // namespace properties

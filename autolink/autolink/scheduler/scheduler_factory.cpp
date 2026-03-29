@@ -43,40 +43,41 @@ std::mutex mutex;
 }  // namespace
 
 Scheduler* Instance() {
-  Scheduler* obj = instance.load(std::memory_order_acquire);
-  if (obj == nullptr) {
-    std::lock_guard<std::mutex> lock(mutex);
-    obj = instance.load(std::memory_order_relaxed);
+    Scheduler* obj = instance.load(std::memory_order_acquire);
     if (obj == nullptr) {
-      std::string policy("classic");
-      std::string conf("conf/");
-      conf.append(GlobalData::Instance()->ProcessGroup()).append(".conf");
-      auto cfg_file = GetAbsolutePath(WorkRoot(), conf);
-      autolink::proto::AutolinkConfig cfg;
-      if (PathExists(cfg_file) && GetProtoFromFile(cfg_file, &cfg)) {
-        policy = cfg.scheduler_conf().policy();
-      } else {
-        ADEBUG << "Scheduler conf " << cfg_file << " not found, use default (classic).";
-      }
-      if (!policy.compare("classic")) {
-        obj = new SchedulerClassic();
-      } else if (!policy.compare("choreography")) {
-        obj = new SchedulerChoreography();
-      } else {
-        AWARN << "Invalid scheduler policy: " << policy;
-        obj = new SchedulerClassic();
-      }
-      instance.store(obj, std::memory_order_release);
+        std::lock_guard<std::mutex> lock(mutex);
+        obj = instance.load(std::memory_order_relaxed);
+        if (obj == nullptr) {
+            std::string policy("classic");
+            std::string conf("conf/");
+            conf.append(GlobalData::Instance()->ProcessGroup()).append(".conf");
+            auto cfg_file = GetAbsolutePath(WorkRoot(), conf);
+            autolink::proto::AutolinkConfig cfg;
+            if (PathExists(cfg_file) && GetProtoFromFile(cfg_file, &cfg)) {
+                policy = cfg.scheduler_conf().policy();
+            } else {
+                ADEBUG << "Scheduler conf " << cfg_file
+                       << " not found, use default (classic).";
+            }
+            if (!policy.compare("classic")) {
+                obj = new SchedulerClassic();
+            } else if (!policy.compare("choreography")) {
+                obj = new SchedulerChoreography();
+            } else {
+                AWARN << "Invalid scheduler policy: " << policy;
+                obj = new SchedulerClassic();
+            }
+            instance.store(obj, std::memory_order_release);
+        }
     }
-  }
-  return obj;
+    return obj;
 }
 
 void CleanUp() {
-  Scheduler* obj = instance.load(std::memory_order_acquire);
-  if (obj != nullptr) {
-    obj->Shutdown();
-  }
+    Scheduler* obj = instance.load(std::memory_order_acquire);
+    if (obj != nullptr) {
+        obj->Shutdown();
+    }
 }
 
 }  // namespace scheduler

@@ -27,18 +27,24 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(ReceiveLocalSlamResultsSignature, proto::ReceiveLocalSlamResultsRequest,
-                         autonomy::common::async_grpc::Stream<proto::ReceiveLocalSlamResultsResponse>,
-                         "/cartographer.cloud.proto.MapBuilderService/ReceiveLocalSlamResults")
+DEFINE_HANDLER_SIGNATURE(
+    ReceiveLocalSlamResultsSignature, proto::ReceiveLocalSlamResultsRequest,
+    autonomy::common::async_grpc::Stream<
+        proto::ReceiveLocalSlamResultsResponse>,
+    "/cartographer.cloud.proto.MapBuilderService/ReceiveLocalSlamResults")
 
 class ReceiveLocalSlamResultsHandler
-    : public autonomy::common::async_grpc::RpcHandler<ReceiveLocalSlamResultsSignature> {
- public:
-  void OnRequest(const proto::ReceiveLocalSlamResultsRequest& request) override;
-  void OnFinish() override;
+    : public autonomy::common::async_grpc::RpcHandler<
+          ReceiveLocalSlamResultsSignature>
+{
+public:
+    void OnRequest(
+        const proto::ReceiveLocalSlamResultsRequest& request) override;
+    void OnFinish() override;
 
- private:
-  std::unique_ptr<MapBuilderContextInterface::LocalSlamSubscriptionId> subscription_id_;
+private:
+    std::unique_ptr<MapBuilderContextInterface::LocalSlamSubscriptionId>
+        subscription_id_;
 };
 
 }  // namespace handlers

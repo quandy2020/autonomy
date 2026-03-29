@@ -29,28 +29,31 @@ namespace cartographer {
 namespace common {
 namespace testing {
 
-class ThreadPoolForTesting : public ThreadPoolInterface {
- public:
-  ThreadPoolForTesting();
-  ~ThreadPoolForTesting();
+class ThreadPoolForTesting : public ThreadPoolInterface
+{
+public:
+    ThreadPoolForTesting();
+    ~ThreadPoolForTesting();
 
-  std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task) LOCKS_EXCLUDED(mutex_) override;
+    std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task)
+        LOCKS_EXCLUDED(mutex_) override;
 
-  void WaitUntilIdle();
+    void WaitUntilIdle();
 
- private:
-  friend class Task;
+private:
+    friend class Task;
 
-  void DoWork();
+    void DoWork();
 
-  void NotifyDependenciesCompleted(Task* task) LOCKS_EXCLUDED(mutex_) override;
+    void NotifyDependenciesCompleted(Task* task)
+        LOCKS_EXCLUDED(mutex_) override;
 
-  absl::Mutex mutex_;
-  bool running_ GUARDED_BY(mutex_) = true;
-  bool idle_ GUARDED_BY(mutex_) = true;
-  std::deque<std::shared_ptr<Task>> task_queue_ GUARDED_BY(mutex_);
-  std::map<Task*, std::shared_ptr<Task>> tasks_not_ready_ GUARDED_BY(mutex_);
-  std::thread thread_ GUARDED_BY(mutex_);
+    absl::Mutex mutex_;
+    bool running_ GUARDED_BY(mutex_) = true;
+    bool idle_ GUARDED_BY(mutex_) = true;
+    std::deque<std::shared_ptr<Task>> task_queue_ GUARDED_BY(mutex_);
+    std::map<Task*, std::shared_ptr<Task>> tasks_not_ready_ GUARDED_BY(mutex_);
+    std::thread thread_ GUARDED_BY(mutex_);
 };
 
 }  // namespace testing

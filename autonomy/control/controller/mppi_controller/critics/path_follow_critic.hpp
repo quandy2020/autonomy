@@ -35,28 +35,29 @@ namespace critics {
  * samples to full speed faster and push the follow point further ahead,
  * creating some shortcutting.
  */
-class PathFollowCritic : public CriticFunction {
- public:
-  /**
-   * @brief Initialize critic
-   */
-  void initialize() override;
+class PathFollowCritic : public CriticFunction
+{
+public:
+    /**
+     * @brief Initialize critic
+     */
+    void initialize() override;
 
-  /**
-   * @brief Evaluate cost related to robot orientation at goal pose
-   * (considered only if robot near last goal in current plan)
-   *
-   * @param costs [out] add goal angle cost values to this tensor
-   */
-  void score(CriticData& data) override;
+    /**
+     * @brief Evaluate cost related to robot orientation at goal pose
+     * (considered only if robot near last goal in current plan)
+     *
+     * @param costs [out] add goal angle cost values to this tensor
+     */
+    void score(CriticData& data) override;
 
- protected:
-  float threshold_to_consider_{0};
-  size_t offset_from_furthest_{0};
+protected:
+    float threshold_to_consider_{0};
+    size_t offset_from_furthest_{0};
 
-  unsigned int power_{0};
-  float weight_{0};
-  bool enforce_path_inversion_{false};
+    unsigned int power_{0};
+    float weight_{0};
+    bool enforce_path_inversion_{false};
 };
 
 }  // namespace critics

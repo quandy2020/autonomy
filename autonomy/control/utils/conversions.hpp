@@ -28,8 +28,10 @@ namespace control {
 namespace utils {
 
 // Twist Transformations
-commsgs::geometry_msgs::Twist twist2Dto3D(const commsgs::planning_msgs::Twist2D& cmd_vel_2d);
-commsgs::planning_msgs::Twist2D twist3Dto2D(const commsgs::geometry_msgs::Twist& cmd_vel);
+commsgs::geometry_msgs::Twist twist2Dto3D(
+    const commsgs::planning_msgs::Twist2D& cmd_vel_2d);
+commsgs::planning_msgs::Twist2D twist3Dto2D(
+    const commsgs::geometry_msgs::Twist& cmd_vel);
 
 }  // namespace utils
 }  // namespace control

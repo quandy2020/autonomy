@@ -61,8 +61,8 @@ class TimeCacheInterface;
 typedef boost::shared_ptr<TimeCacheInterface> TimeCacheInterfacePtr;
 
 enum TransformableResult {
-  TransformAvailable,
-  TransformFailure,
+    TransformAvailable,
+    TransformFailure,
 };
 
 /** \brief A Class which provides coordinate transforms between any two frames
@@ -88,348 +88,385 @@ enum TransformableResult {
  * All function calls which pass frame ids can potentially throw the exception
  * tf::LookupException
  */
-class BufferCore {
- public:
-  /************* Constants ***********************/
-  static const uint64_t DEFAULT_CACHE_TIME = 10 * 1e9;  //!< The default amount of time to cache
-                                                        //!< data in seconds (nanoseconds)
-  static const uint32_t MAX_GRAPH_DEPTH = 1000UL;       //!< Maximum graph search depth (deeper graphs
-                                                        //!< will be assumed to have loops)
+class BufferCore
+{
+public:
+    /************* Constants ***********************/
+    static const uint64_t DEFAULT_CACHE_TIME =
+        10 * 1e9;  //!< The default amount of time to cache
+                   //!< data in seconds (nanoseconds)
+    static const uint32_t MAX_GRAPH_DEPTH =
+        1000UL;  //!< Maximum graph search depth (deeper graphs
+                 //!< will be assumed to have loops)
 
-  /** Constructor
-   * \param interpolating Whether to interpolate, if this is false the closest
-   * value will be returned
-   * \param cache_time How long to keep a history of transforms in nanoseconds
-   *
-   */
-  BufferCore(Duration cache_time_ = Duration(DEFAULT_CACHE_TIME));
-  virtual ~BufferCore(void);
+    /** Constructor
+     * \param interpolating Whether to interpolate, if this is false the closest
+     * value will be returned
+     * \param cache_time How long to keep a history of transforms in nanoseconds
+     *
+     */
+    BufferCore(Duration cache_time_ = Duration(DEFAULT_CACHE_TIME));
+    virtual ~BufferCore(void);
 
-  /** \brief Clear all data */
-  void clear();
+    /** \brief Clear all data */
+    void clear();
 
-  /** \brief Add transform information to the tf data structure
-   * \param transform The transform to store
-   * \param authority The source of the information for this transform
-   * \param is_static Record this transform as a static transform.  It will be
-   * good across all time.  (This cannot be changed after the first call.)
-   * \return True unless an error occured
-   */
-  bool setTransform(const geometry_msgs::TransformStamped& transform, const std::string& authority,
-                    bool is_static = false);
+    /** \brief Add transform information to the tf data structure
+     * \param transform The transform to store
+     * \param authority The source of the information for this transform
+     * \param is_static Record this transform as a static transform.  It will be
+     * good across all time.  (This cannot be changed after the first call.)
+     * \return True unless an error occured
+     */
+    bool setTransform(const geometry_msgs::TransformStamped& transform,
+                      const std::string& authority, bool is_static = false);
 
-  /*********** Accessors *************/
+    /*********** Accessors *************/
 
-  /** \brief Get the transform between two frames by frame ID.
-   * \param target_frame The frame to which data should be transformed
-   * \param source_frame The frame where the data originated
-   * \param time The time at which the value of the transform is desired. (0
-   * will get the latest)
-   * \return The transform between the frames
-   *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
-   */
-  geometry_msgs::TransformStamped lookupTransform(const std::string& target_frame, const std::string& source_frame,
-                                                  const Time& time) const;
+    /** \brief Get the transform between two frames by frame ID.
+     * \param target_frame The frame to which data should be transformed
+     * \param source_frame The frame where the data originated
+     * \param time The time at which the value of the transform is desired. (0
+     * will get the latest)
+     * \return The transform between the frames
+     *
+     * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
+     * tf2::ExtrapolationException, tf2::InvalidArgumentException
+     */
+    geometry_msgs::TransformStamped lookupTransform(
+        const std::string& target_frame, const std::string& source_frame,
+        const Time& time) const;
 
-  /** \brief Get the transform between two frames by frame ID assuming fixed
-   * frame.
-   * \param target_frame The frame to which data should be transformed
-   * \param target_time The time to which the data should be transformed. (0
-   * will get the latest)
-   * \param source_frame The frame where the data originated
-   * \param source_time The time at which the source_frame should be
-   * evaluated. (0 will get the latest)
-   * \param fixed_frame The frame in which to assume the transform is constant
-   * in time.
-   * \return The transform between the frames
-   *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
-   */
+    /** \brief Get the transform between two frames by frame ID assuming fixed
+     * frame.
+     * \param target_frame The frame to which data should be transformed
+     * \param target_time The time to which the data should be transformed. (0
+     * will get the latest)
+     * \param source_frame The frame where the data originated
+     * \param source_time The time at which the source_frame should be
+     * evaluated. (0 will get the latest)
+     * \param fixed_frame The frame in which to assume the transform is constant
+     * in time.
+     * \return The transform between the frames
+     *
+     * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
+     * tf2::ExtrapolationException, tf2::InvalidArgumentException
+     */
 
-  geometry_msgs::TransformStamped lookupTransform(const std::string& target_frame, const Time& target_time,
-                                                  const std::string& source_frame, const Time& source_time,
-                                                  const std::string& fixed_frame) const;
+    geometry_msgs::TransformStamped lookupTransform(
+        const std::string& target_frame, const Time& target_time,
+        const std::string& source_frame, const Time& source_time,
+        const std::string& fixed_frame) const;
 
-  /** \brief Lookup the twist of the tracking_frame with respect to the
-   * observation frame in the reference_frame using the reference point
-   * \param tracking_frame The frame to track
-   * \param observation_frame The frame from which to measure the twist
-   * \param reference_frame The reference frame in which to express the twist
-   * \param reference_point The reference point with which to express the
-   * twist
-   * \param reference_point_frame The frame_id in which the reference point is
-   * expressed
-   * \param time The time at which to get the velocity
-   * \param duration The period over which to average
-   * \return twist The twist output
-   *
-   * This will compute the average velocity on the interval
-   * (time - duration/2, time+duration/2). If that is too close to the most
-   * recent reading, in which case it will shift the interval up to
-   * duration/2 to prevent extrapolation.
-   *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
-   *
-   * New in geometry 1.1
-   */
-  /*
-  geometry_msgs::Twist
-    lookupTwist(const std::string& tracking_frame, const std::string&
-  observation_frame, const std::string& reference_frame, const tf::Point &
-  reference_point, const std::string& reference_point_frame, const Time& time,
-  const Duration& averaging_interval) const;
-  */
-  /** \brief lookup the twist of the tracking frame with respect to the
-   * observational frame
-   *
-   * This is a simplified version of
-   * lookupTwist with it assumed that the reference point is the
-   * origin of the tracking frame, and the reference frame is the
-   * observation frame.
-   *
-   * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
-   * tf2::ExtrapolationException, tf2::InvalidArgumentException
-   *
-   * New in geometry 1.1
-   */
-  /*
-  geometry_msgs::Twist
-    lookupTwist(const std::string& tracking_frame, const std::string&
-  observation_frame, const Time& time, const Duration& averaging_interval)
-  const;
-  */
-  /** \brief Test if a transform is possible
-   * \param target_frame The frame into which to transform
-   * \param source_frame The frame from which to transform
-   * \param time The time at which to transform
-   * \param error_msg A pointer to a string which will be filled with why the
-   * transform failed, if not NULL
-   * \return True if the transform is possible, false otherwise
-   */
-  bool canTransform(const std::string& target_frame, const std::string& source_frame, const Time& time,
-                    std::string* error_msg = NULL) const;
+    /** \brief Lookup the twist of the tracking_frame with respect to the
+     * observation frame in the reference_frame using the reference point
+     * \param tracking_frame The frame to track
+     * \param observation_frame The frame from which to measure the twist
+     * \param reference_frame The reference frame in which to express the twist
+     * \param reference_point The reference point with which to express the
+     * twist
+     * \param reference_point_frame The frame_id in which the reference point is
+     * expressed
+     * \param time The time at which to get the velocity
+     * \param duration The period over which to average
+     * \return twist The twist output
+     *
+     * This will compute the average velocity on the interval
+     * (time - duration/2, time+duration/2). If that is too close to the most
+     * recent reading, in which case it will shift the interval up to
+     * duration/2 to prevent extrapolation.
+     *
+     * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
+     * tf2::ExtrapolationException, tf2::InvalidArgumentException
+     *
+     * New in geometry 1.1
+     */
+    /*
+    geometry_msgs::Twist
+      lookupTwist(const std::string& tracking_frame, const std::string&
+    observation_frame, const std::string& reference_frame, const tf::Point &
+    reference_point, const std::string& reference_point_frame, const Time& time,
+    const Duration& averaging_interval) const;
+    */
+    /** \brief lookup the twist of the tracking frame with respect to the
+     * observational frame
+     *
+     * This is a simplified version of
+     * lookupTwist with it assumed that the reference point is the
+     * origin of the tracking frame, and the reference frame is the
+     * observation frame.
+     *
+     * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
+     * tf2::ExtrapolationException, tf2::InvalidArgumentException
+     *
+     * New in geometry 1.1
+     */
+    /*
+    geometry_msgs::Twist
+      lookupTwist(const std::string& tracking_frame, const std::string&
+    observation_frame, const Time& time, const Duration& averaging_interval)
+    const;
+    */
+    /** \brief Test if a transform is possible
+     * \param target_frame The frame into which to transform
+     * \param source_frame The frame from which to transform
+     * \param time The time at which to transform
+     * \param error_msg A pointer to a string which will be filled with why the
+     * transform failed, if not NULL
+     * \return True if the transform is possible, false otherwise
+     */
+    bool canTransform(const std::string& target_frame,
+                      const std::string& source_frame, const Time& time,
+                      std::string* error_msg = NULL) const;
 
-  /** \brief Test if a transform is possible
-   * \param target_frame The frame into which to transform
-   * \param target_time The time into which to transform
-   * \param source_frame The frame from which to transform
-   * \param source_time The time from which to transform
-   * \param fixed_frame The frame in which to treat the transform as constant
-   * in time
-   * \param error_msg A pointer to a string which will be filled with why the
-   * transform failed, if not NULL
-   * \return True if the transform is possible, false otherwise
-   */
-  bool canTransform(const std::string& target_frame, const Time& target_time, const std::string& source_frame,
-                    const Time& source_time, const std::string& fixed_frame, std::string* error_msg = NULL) const;
+    /** \brief Test if a transform is possible
+     * \param target_frame The frame into which to transform
+     * \param target_time The time into which to transform
+     * \param source_frame The frame from which to transform
+     * \param source_time The time from which to transform
+     * \param fixed_frame The frame in which to treat the transform as constant
+     * in time
+     * \param error_msg A pointer to a string which will be filled with why the
+     * transform failed, if not NULL
+     * \return True if the transform is possible, false otherwise
+     */
+    bool canTransform(const std::string& target_frame, const Time& target_time,
+                      const std::string& source_frame, const Time& source_time,
+                      const std::string& fixed_frame,
+                      std::string* error_msg = NULL) const;
 
-  /** \brief A way to see what frames have been cached in yaml format
-   * Useful for debugging tools
-   */
-  std::string allFramesAsYAML(double current_time) const;
+    /** \brief A way to see what frames have been cached in yaml format
+     * Useful for debugging tools
+     */
+    std::string allFramesAsYAML(double current_time) const;
 
-  /** Backwards compatibility for #84
-   */
-  std::string allFramesAsYAML() const;
+    /** Backwards compatibility for #84
+     */
+    std::string allFramesAsYAML() const;
 
-  /** \brief A way to see what frames have been cached
-   * Useful for debugging
-   */
-  std::string allFramesAsString() const;
+    /** \brief A way to see what frames have been cached
+     * Useful for debugging
+     */
+    std::string allFramesAsString() const;
 
-  typedef boost::function<void(TransformableRequestHandle request_handle, const std::string& target_frame,
-                               const std::string& source_frame, Time time, TransformableResult result)>
-      TransformableCallback;
+    typedef boost::function<void(TransformableRequestHandle request_handle,
+                                 const std::string& target_frame,
+                                 const std::string& source_frame, Time time,
+                                 TransformableResult result)>
+        TransformableCallback;
 
-  /// \brief Internal use only
-  TransformableCallbackHandle addTransformableCallback(const TransformableCallback& cb);
-  /// \brief Internal use only
-  void removeTransformableCallback(TransformableCallbackHandle handle);
-  /// \brief Internal use only
-  TransformableRequestHandle addTransformableRequest(TransformableCallbackHandle handle,
-                                                     const std::string& target_frame, const std::string& source_frame,
-                                                     Time time);
-  /// \brief Internal use only
-  void cancelTransformableRequest(TransformableRequestHandle handle);
+    /// \brief Internal use only
+    TransformableCallbackHandle addTransformableCallback(
+        const TransformableCallback& cb);
+    /// \brief Internal use only
+    void removeTransformableCallback(TransformableCallbackHandle handle);
+    /// \brief Internal use only
+    TransformableRequestHandle addTransformableRequest(
+        TransformableCallbackHandle handle, const std::string& target_frame,
+        const std::string& source_frame, Time time);
+    /// \brief Internal use only
+    void cancelTransformableRequest(TransformableRequestHandle handle);
 
-  // Tell the buffer that there are multiple threads serviciing it.
-  // This is useful for derived classes to know if they can block or not.
-  void setUsingDedicatedThread(bool value) { using_dedicated_thread_ = value; };
-  // Get the state of using_dedicated_thread_
-  bool isUsingDedicatedThread() const { return using_dedicated_thread_; };
+    // Tell the buffer that there are multiple threads serviciing it.
+    // This is useful for derived classes to know if they can block or not.
+    void setUsingDedicatedThread(bool value) {
+        using_dedicated_thread_ = value;
+    };
+    // Get the state of using_dedicated_thread_
+    bool isUsingDedicatedThread() const {
+        return using_dedicated_thread_;
+    };
 
-  /* Backwards compatability section for tf::Transformer you should not use
-   * these
-   */
+    /* Backwards compatability section for tf::Transformer you should not use
+     * these
+     */
 
-  /**
-   * \brief Add a callback that happens when a new transform has arrived
-   *
-   * \param callback The callback, of the form void func();
-   * \return A boost::signals2::connection object that can be used to remove
-   * this listener
-   */
-  boost::signals2::connection _addTransformsChangedListener(boost::function<void(void)> callback);
-  void _removeTransformsChangedListener(boost::signals2::connection c);
+    /**
+     * \brief Add a callback that happens when a new transform has arrived
+     *
+     * \param callback The callback, of the form void func();
+     * \return A boost::signals2::connection object that can be used to remove
+     * this listener
+     */
+    boost::signals2::connection _addTransformsChangedListener(
+        boost::function<void(void)> callback);
+    void _removeTransformsChangedListener(boost::signals2::connection c);
 
-  /**@brief Check if a frame exists in the tree
-   * @param frame_id_str The frame id in question  */
-  bool _frameExists(const std::string& frame_id_str) const;
+    /**@brief Check if a frame exists in the tree
+     * @param frame_id_str The frame id in question  */
+    bool _frameExists(const std::string& frame_id_str) const;
 
-  /**@brief Fill the parent of a frame.
-   * @param frame_id The frame id of the frame in question
-   * @param parent The reference to the string to fill the parent
-   * Returns true unless "NO_PARENT" */
-  bool _getParent(const std::string& frame_id, Time time, std::string& parent) const;
+    /**@brief Fill the parent of a frame.
+     * @param frame_id The frame id of the frame in question
+     * @param parent The reference to the string to fill the parent
+     * Returns true unless "NO_PARENT" */
+    bool _getParent(const std::string& frame_id, Time time,
+                    std::string& parent) const;
 
-  /** \brief A way to get a std::vector of available frame ids */
-  void _getFrameStrings(std::vector<std::string>& ids) const;
+    /** \brief A way to get a std::vector of available frame ids */
+    void _getFrameStrings(std::vector<std::string>& ids) const;
 
-  CompactFrameID _lookupFrameNumber(const std::string& frameid_str) const { return lookupFrameNumber(frameid_str); }
-  CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) {
-    return lookupOrInsertFrameNumber(frameid_str);
-  }
+    CompactFrameID _lookupFrameNumber(const std::string& frameid_str) const {
+        return lookupFrameNumber(frameid_str);
+    }
+    CompactFrameID _lookupOrInsertFrameNumber(const std::string& frameid_str) {
+        return lookupOrInsertFrameNumber(frameid_str);
+    }
 
-  int _getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, Time& time,
-                           std::string* error_string) const {
-    boost::mutex::scoped_lock lock(frame_mutex_);
-    return getLatestCommonTime(target_frame, source_frame, time, error_string);
-  }
+    int _getLatestCommonTime(CompactFrameID target_frame,
+                             CompactFrameID source_frame, Time& time,
+                             std::string* error_string) const {
+        boost::mutex::scoped_lock lock(frame_mutex_);
+        return getLatestCommonTime(target_frame, source_frame, time,
+                                   error_string);
+    }
 
-  CompactFrameID _validateFrameId(const char* function_name_arg, const std::string& frame_id) const {
-    return validateFrameId(function_name_arg, frame_id);
-  }
+    CompactFrameID _validateFrameId(const char* function_name_arg,
+                                    const std::string& frame_id) const {
+        return validateFrameId(function_name_arg, frame_id);
+    }
 
-  /**@brief Get the duration over which this transformer will cache */
-  Duration getCacheLength() { return cache_time_; }
+    /**@brief Get the duration over which this transformer will cache */
+    Duration getCacheLength() {
+        return cache_time_;
+    }
 
-  /** \brief Backwards compatabilityA way to see what frames have been cached
-   * Useful for debugging
-   */
-  std::string _allFramesAsDot(double current_time) const;
-  std::string _allFramesAsDot() const;
+    /** \brief Backwards compatabilityA way to see what frames have been cached
+     * Useful for debugging
+     */
+    std::string _allFramesAsDot(double current_time) const;
+    std::string _allFramesAsDot() const;
 
-  /** \brief Backwards compatabilityA way to see what frames are in a chain
-   * Useful for debugging
-   */
-  void _chainAsVector(const std::string& target_frame, Time target_time, const std::string& source_frame,
-                      Time source_time, const std::string& fixed_frame, std::vector<std::string>& output) const;
+    /** \brief Backwards compatabilityA way to see what frames are in a chain
+     * Useful for debugging
+     */
+    void _chainAsVector(const std::string& target_frame, Time target_time,
+                        const std::string& source_frame, Time source_time,
+                        const std::string& fixed_frame,
+                        std::vector<std::string>& output) const;
 
- private:
-  /** \brief A way to see what frames have been cached
-   * Useful for debugging. Use this call internally.
-   */
-  std::string allFramesAsStringNoLock() const;
+private:
+    /** \brief A way to see what frames have been cached
+     * Useful for debugging. Use this call internally.
+     */
+    std::string allFramesAsStringNoLock() const;
 
-  /******************** Internal Storage ****************/
+    /******************** Internal Storage ****************/
 
-  /** \brief The pointers to potential frames that the tree can be made of.
-   * The frames will be dynamically allocated at run time when set the first
-   * time. */
-  typedef std::vector<TimeCacheInterfacePtr> V_TimeCacheInterface;
-  V_TimeCacheInterface frames_;
+    /** \brief The pointers to potential frames that the tree can be made of.
+     * The frames will be dynamically allocated at run time when set the first
+     * time. */
+    typedef std::vector<TimeCacheInterfacePtr> V_TimeCacheInterface;
+    V_TimeCacheInterface frames_;
 
-  /** \brief A mutex to protect testing and allocating new frames on the above
-   * vector. */
-  mutable boost::mutex frame_mutex_;
+    /** \brief A mutex to protect testing and allocating new frames on the above
+     * vector. */
+    mutable boost::mutex frame_mutex_;
 
-  /** \brief A map from string frame ids to CompactFrameID */
-  typedef boost::unordered_map<std::string, CompactFrameID> M_StringToCompactFrameID;
-  M_StringToCompactFrameID frameIDs_;
-  /** \brief A map from CompactFrameID frame_id_numbers to string for
-   * debugging and output */
-  std::vector<std::string> frameIDs_reverse;
-  /** \brief A map to lookup the most recent authority for a given frame */
-  std::map<CompactFrameID, std::string> frame_authority_;
+    /** \brief A map from string frame ids to CompactFrameID */
+    typedef boost::unordered_map<std::string, CompactFrameID>
+        M_StringToCompactFrameID;
+    M_StringToCompactFrameID frameIDs_;
+    /** \brief A map from CompactFrameID frame_id_numbers to string for
+     * debugging and output */
+    std::vector<std::string> frameIDs_reverse;
+    /** \brief A map to lookup the most recent authority for a given frame */
+    std::map<CompactFrameID, std::string> frame_authority_;
 
-  /// How long to cache transform history
-  Duration cache_time_;
+    /// How long to cache transform history
+    Duration cache_time_;
 
-  typedef boost::unordered_map<TransformableCallbackHandle, TransformableCallback> M_TransformableCallback;
-  M_TransformableCallback transformable_callbacks_;
-  uint32_t transformable_callbacks_counter_;
-  boost::mutex transformable_callbacks_mutex_;
+    typedef boost::unordered_map<TransformableCallbackHandle,
+                                 TransformableCallback>
+        M_TransformableCallback;
+    M_TransformableCallback transformable_callbacks_;
+    uint32_t transformable_callbacks_counter_;
+    boost::mutex transformable_callbacks_mutex_;
 
-  struct TransformableRequest {
-    Time time;
-    TransformableRequestHandle request_handle;
-    TransformableCallbackHandle cb_handle;
-    CompactFrameID target_id;
-    CompactFrameID source_id;
-    std::string target_string;
-    std::string source_string;
-  };
-  typedef std::vector<TransformableRequest> V_TransformableRequest;
-  V_TransformableRequest transformable_requests_;
-  boost::mutex transformable_requests_mutex_;
-  uint64_t transformable_requests_counter_;
+    struct TransformableRequest {
+        Time time;
+        TransformableRequestHandle request_handle;
+        TransformableCallbackHandle cb_handle;
+        CompactFrameID target_id;
+        CompactFrameID source_id;
+        std::string target_string;
+        std::string source_string;
+    };
+    typedef std::vector<TransformableRequest> V_TransformableRequest;
+    V_TransformableRequest transformable_requests_;
+    boost::mutex transformable_requests_mutex_;
+    uint64_t transformable_requests_counter_;
 
-  struct RemoveRequestByCallback;
-  struct RemoveRequestByID;
+    struct RemoveRequestByCallback;
+    struct RemoveRequestByID;
 
-  // Backwards compatability for tf message_filter
-  typedef boost::signals2::signal<void(void)> TransformsChangedSignal;
-  /// Signal which is fired whenever new transform data has arrived, from the
-  /// thread the data arrived in
-  TransformsChangedSignal _transforms_changed_;
+    // Backwards compatability for tf message_filter
+    typedef boost::signals2::signal<void(void)> TransformsChangedSignal;
+    /// Signal which is fired whenever new transform data has arrived, from the
+    /// thread the data arrived in
+    TransformsChangedSignal _transforms_changed_;
 
-  /************************* Internal Functions ****************************/
+    /************************* Internal Functions ****************************/
 
-  /** \brief An accessor to get a frame, which will throw an exception if the
-   * frame is no there.
-   * \param frame_number The frameID of the desired Reference Frame
-   *
-   * This is an internal function which will get the pointer to the frame
-   * associated with the frame id Possible Exception: tf::LookupException
-   */
-  TimeCacheInterfacePtr getFrame(CompactFrameID c_frame_id) const;
+    /** \brief An accessor to get a frame, which will throw an exception if the
+     * frame is no there.
+     * \param frame_number The frameID of the desired Reference Frame
+     *
+     * This is an internal function which will get the pointer to the frame
+     * associated with the frame id Possible Exception: tf::LookupException
+     */
+    TimeCacheInterfacePtr getFrame(CompactFrameID c_frame_id) const;
 
-  TimeCacheInterfacePtr allocateFrame(CompactFrameID cfid, bool is_static);
+    TimeCacheInterfacePtr allocateFrame(CompactFrameID cfid, bool is_static);
 
-  bool warnFrameId(const char* function_name_arg, const std::string& frame_id) const;
-  CompactFrameID validateFrameId(const char* function_name_arg, const std::string& frame_id) const;
+    bool warnFrameId(const char* function_name_arg,
+                     const std::string& frame_id) const;
+    CompactFrameID validateFrameId(const char* function_name_arg,
+                                   const std::string& frame_id) const;
 
-  /// String to number for frame lookup with dynamic allocation of new frames
-  CompactFrameID lookupFrameNumber(const std::string& frameid_str) const;
+    /// String to number for frame lookup with dynamic allocation of new frames
+    CompactFrameID lookupFrameNumber(const std::string& frameid_str) const;
 
-  /// String to number for frame lookup with dynamic allocation of new frames
-  CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str);
+    /// String to number for frame lookup with dynamic allocation of new frames
+    CompactFrameID lookupOrInsertFrameNumber(const std::string& frameid_str);
 
-  /// Number to string frame lookup may throw LookupException if number
-  /// invalid
-  const std::string& lookupFrameString(CompactFrameID frame_id_num) const;
+    /// Number to string frame lookup may throw LookupException if number
+    /// invalid
+    const std::string& lookupFrameString(CompactFrameID frame_id_num) const;
 
-  void createConnectivityErrorString(CompactFrameID source_frame, CompactFrameID target_frame, std::string* out) const;
+    void createConnectivityErrorString(CompactFrameID source_frame,
+                                       CompactFrameID target_frame,
+                                       std::string* out) const;
 
-  /**@brief Return the latest rostime which is common across the spanning set
-   * zero if fails to cross */
-  int getLatestCommonTime(CompactFrameID target_frame, CompactFrameID source_frame, Time& time,
-                          std::string* error_string) const;
+    /**@brief Return the latest rostime which is common across the spanning set
+     * zero if fails to cross */
+    int getLatestCommonTime(CompactFrameID target_frame,
+                            CompactFrameID source_frame, Time& time,
+                            std::string* error_string) const;
 
-  template <typename F>
-  int walkToTopParent(F& f, Time time, CompactFrameID target_id, CompactFrameID source_id,
-                      std::string* error_string) const;
+    template <typename F>
+    int walkToTopParent(F& f, Time time, CompactFrameID target_id,
+                        CompactFrameID source_id,
+                        std::string* error_string) const;
 
-  /**@brief Traverse the transform tree. If frame_chain is not NULL, store the
-   * traversed frame tree in vector frame_chain.
-   * */
-  template <typename F>
-  int walkToTopParent(F& f, Time time, CompactFrameID target_id, CompactFrameID source_id, std::string* error_string,
-                      std::vector<CompactFrameID>* frame_chain) const;
+    /**@brief Traverse the transform tree. If frame_chain is not NULL, store the
+     * traversed frame tree in vector frame_chain.
+     * */
+    template <typename F>
+    int walkToTopParent(F& f, Time time, CompactFrameID target_id,
+                        CompactFrameID source_id, std::string* error_string,
+                        std::vector<CompactFrameID>* frame_chain) const;
 
-  void testTransformableRequests();
-  bool canTransformInternal(CompactFrameID target_id, CompactFrameID source_id, const Time& time,
-                            std::string* error_msg) const;
-  bool canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id, const Time& time,
-                          std::string* error_msg) const;
+    void testTransformableRequests();
+    bool canTransformInternal(CompactFrameID target_id,
+                              CompactFrameID source_id, const Time& time,
+                              std::string* error_msg) const;
+    bool canTransformNoLock(CompactFrameID target_id, CompactFrameID source_id,
+                            const Time& time, std::string* error_msg) const;
 
-  // Whether it is safe to use canTransform with a timeout. (If another thread
-  // is not provided it will always timeout.)
-  bool using_dedicated_thread_;
+    // Whether it is safe to use canTransform with a timeout. (If another thread
+    // is not provided it will always timeout.)
+    bool using_dedicated_thread_;
 };
 
 }  // namespace tf2

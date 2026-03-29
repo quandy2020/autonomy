@@ -26,7 +26,8 @@ namespace control {
 namespace controller {
 namespace pure_pursuit_controller {
 
-proto::PurePursuitControllerOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::PurePursuitControllerOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace pure_pursuit_controller
 }  // namespace controller

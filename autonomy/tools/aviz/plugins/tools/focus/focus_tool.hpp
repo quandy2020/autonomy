@@ -27,12 +27,13 @@ namespace tools {
  * @brief FocusTool
  * Focus tool for the visualizer
  */
-class FocusTool {
- public:
-  explicit FocusTool();
-  virtual ~FocusTool();
+class FocusTool
+{
+public:
+    explicit FocusTool();
+    virtual ~FocusTool();
 
-  // TODO: Implement tool interface
+    // TODO: Implement tool interface
 };
 
 }  // namespace tools

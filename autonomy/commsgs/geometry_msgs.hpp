@@ -31,102 +31,102 @@ namespace geometry_msgs {
 
 // This represents a vector in free space.
 struct Vector3 {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Vector3)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Vector3)
 
-  // This is semantically different than a point.
-  // A vector is always anchored at the origin.
-  // When a transform is applied to a vector, only the rotational component is
-  // applied.
-  float x;
-  float y;
-  float z;
+    // This is semantically different than a point.
+    // A vector is always anchored at the origin.
+    // When a transform is applied to a vector, only the rotational component is
+    // applied.
+    float x;
+    float y;
+    float z;
 };
 
 // This expresses acceleration in free space broken into its linear and angular
 // parts.
 struct Accel {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Accel)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Accel)
 
-  Vector3 linear;
-  Vector3 angular;
+    Vector3 linear;
+    Vector3 angular;
 };
 
 // This expresses acceleration in free space broken into its linear and angular
 // parts.
 struct AccelStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(AccelStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(AccelStamped)
 
-  //  An accel with reference coordinate frame and timestamp
-  std_msgs::Header header;
-  Accel accel;
+    //  An accel with reference coordinate frame and timestamp
+    std_msgs::Header header;
+    Accel accel;
 };
 
 // This expresses acceleration in free space with uncertainty.
 struct AccelWithCovariance {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(AccelWithCovariance)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(AccelWithCovariance)
 
-  Accel accel;
-  // Row-major representation of the 6x6 covariance matrix
-  // The orientation parameters use a fixed-axis representation.
-  // In order, the parameters are:
-  // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z
-  // axis)
-  std::vector<float> covariance;
+    Accel accel;
+    // Row-major representation of the 6x6 covariance matrix
+    // The orientation parameters use a fixed-axis representation.
+    // In order, the parameters are:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z
+    // axis)
+    std::vector<float> covariance;
 };
 
 // This represents an estimated accel with reference coordinate frame and
 // timestamp.
 struct AccelWithCovarianceStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(AccelWithCovarianceStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(AccelWithCovarianceStamped)
 
-  std_msgs::Header header;
-  AccelWithCovariance accel;
+    std_msgs::Header header;
+    AccelWithCovariance accel;
 };
 
 struct Inertia {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Inertia)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Inertia)
 
-  // Mass [kg]
-  float m;
+    // Mass [kg]
+    float m;
 
-  // Center of mass [m]
-  Vector3 com;
+    // Center of mass [m]
+    Vector3 com;
 
-  // Inertia Tensor [kg-m^2]
-  //     | ixx ixy ixz |
-  // I = | ixy iyy iyz |
-  //     | ixz iyz izz |
-  float ixx;
-  float ixy;
-  float ixz;
-  float iyy;
-  float iyz;
-  float izz;
+    // Inertia Tensor [kg-m^2]
+    //     | ixx ixy ixz |
+    // I = | ixy iyy iyz |
+    //     | ixz iyz izz |
+    float ixx;
+    float ixy;
+    float ixz;
+    float iyy;
+    float iyz;
+    float izz;
 };
 
 // An Inertia with a time stamp and reference frame.
 struct InertiaStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(InertiaStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(InertiaStamped)
 
-  std_msgs::Header header;
-  Inertia inertia;
+    std_msgs::Header header;
+    Inertia inertia;
 };
 
 // This contains the position of a point in free space
 struct Point {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Point)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Point)
 
-  double x;
-  double y;
-  double z;
+    double x;
+    double y;
+    double z;
 };
 
 // A point in the map reference frame. The map defines an origin, whose
@@ -139,35 +139,35 @@ struct Point {
 // The z field of PointENU can be omitted. If so, it is a 2D location and we do
 // not care its height.
 struct PointENU {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PointENU)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PointENU)
 
-  double x;  // East from the origin, in meters.
-  double y;  // North from the origin, in meters.
-  double z;  // Up from the WGS-84 ellipsoid, in meters.
+    double x;  // East from the origin, in meters.
+    double y;  // North from the origin, in meters.
+    double z;  // Up from the WGS-84 ellipsoid, in meters.
 };
 
 // A point in the global reference frame. Similar to PointENU, PointLLH allows
 // omitting the height field for representing a 2D location.
 struct PointLLH {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PointLLH)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PointLLH)
 
-  // Longitude in degrees, ranging from -180 to 180.
-  double lon;
-  // Latitude in degrees, ranging from -90 to 90.
-  double lat;
-  // WGS-84 ellipsoid height in meters.
-  double height;
+    // Longitude in degrees, ranging from -180 to 180.
+    double lon;
+    // Latitude in degrees, ranging from -90 to 90.
+    double lat;
+    // WGS-84 ellipsoid height in meters.
+    double height;
 };
 
 // This represents a Point with reference coordinate frame and timestamp
 struct PointStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PointStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PointStamped)
 
-  std_msgs::Header header;
-  Point point;
+    std_msgs::Header header;
+    Point point;
 };
 
 // This contains the position of a point in free space(with 32 bits of
@@ -179,41 +179,41 @@ struct PointStamped {
 // This struct is designed to take up less space when sending
 // lots of points at once, as in the case of a PointCloud.
 struct Point32 {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Point32)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Point32)
 
-  float x;
-  float y;
-  float z;
+    float x;
+    float y;
+    float z;
 };
 
 // This represents an orientation in free space in quaternion form.
 struct Quaternion {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Quaternion)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Quaternion)
 
-  double x;
-  double y;
-  double z;
-  double w;
+    double x;
+    double y;
+    double z;
+    double w;
 };
 
 // A specification of a polygon where the first and last points are assumed to
 // be connected
 struct Polygon {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Polygon)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Polygon)
 
-  std::vector<Point32> points;
+    std::vector<Point32> points;
 };
 
 // This represents a Polygon with reference coordinate frame and timestamp
 struct PolygonStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PolygonStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PolygonStamped)
 
-  std_msgs::Header header;
-  Polygon polygon;
+    std_msgs::Header header;
+    Polygon polygon;
 };
 
 // Deprecated as of Foxy and will potentially be removed in any following
@@ -234,226 +234,226 @@ struct PolygonStamped {
 // manifold.
 
 struct Pose2D {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Pose2D)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Pose2D)
 
-  double x;
-  double y;
-  double theta;
+    double x;
+    double y;
+    double theta;
 };
 
 // A representation of pose in free space, composed of position and orientation.
 struct Pose {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Pose)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Pose)
 
-  Point position;
-  Quaternion orientation;
+    Point position;
+    Quaternion orientation;
 };
 
 // An array of poses with a header for global reference.
 struct PoseArray {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PoseArray)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PoseArray)
 
-  std_msgs::Header header;
-  std::vector<Pose> poses;
+    std_msgs::Header header;
+    std::vector<Pose> poses;
 };
 
 // A Pose with reference coordinate frame and timestamp
 struct PoseStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PoseStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PoseStamped)
 
-  std_msgs::Header header;
-  Pose pose;
+    std_msgs::Header header;
+    Pose pose;
 };
 
 // This represents a pose in free space with uncertainty.
 struct PoseWithCovariance {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PoseWithCovariance)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PoseWithCovariance)
 
-  Pose pose;
+    Pose pose;
 
-  // Row-major representation of the 6x6 covariance matrix
-  // The orientation parameters use a fixed-axis representation.
-  // In order, the parameters are:
-  // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z
-  // axis)
-  std::vector<double> covariance;
+    // Row-major representation of the 6x6 covariance matrix
+    // The orientation parameters use a fixed-axis representation.
+    // In order, the parameters are:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z
+    // axis)
+    std::vector<double> covariance;
 };
 
 // This expresses an estimated pose with a reference coordinate frame and
 // timestamp
 struct PoseWithCovarianceStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(PoseWithCovarianceStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(PoseWithCovarianceStamped)
 
-  std_msgs::Header header;
-  PoseWithCovariance pose;
+    std_msgs::Header header;
+    PoseWithCovariance pose;
 };
 
 // This represents an orientation with reference coordinate frame and timestamp.
 struct QuaternionStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(QuaternionStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(QuaternionStamped)
 
-  std_msgs::Header header;
-  Quaternion quaternion;
+    std_msgs::Header header;
+    Quaternion quaternion;
 };
 
 // This represents the transform between two coordinate frames in free space.
 struct Transform {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Transform)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Transform)
 
-  Vector3 translation;
-  Quaternion rotation;
+    Vector3 translation;
+    Quaternion rotation;
 };
 
 struct TransformStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(TransformStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(TransformStamped)
 
-  // This expresses a transform from coordinate frame header.frame_id
-  // to the coordinate frame child_frame_id at the time of header.stamp
-  //
-  // This struct is mostly used by the
-  // <a href="https://index.ros.org/p/tf2/">tf2</a> package.
-  // See its documentation for more information.
-  //
-  // The child_frame_id is necessary in addition to the frame_id
-  // in the Header to communicate the full reference for the transform
-  // in a self contained struct.
+    // This expresses a transform from coordinate frame header.frame_id
+    // to the coordinate frame child_frame_id at the time of header.stamp
+    //
+    // This struct is mostly used by the
+    // <a href="https://index.ros.org/p/tf2/">tf2</a> package.
+    // See its documentation for more information.
+    //
+    // The child_frame_id is necessary in addition to the frame_id
+    // in the Header to communicate the full reference for the transform
+    // in a self contained struct.
 
-  // The frame id in the header is used as the reference frame of this
-  // transform.
-  std_msgs::Header header;
+    // The frame id in the header is used as the reference frame of this
+    // transform.
+    std_msgs::Header header;
 
-  // The frame id of the child frame to which this transform points.
-  std::string child_frame_id;
+    // The frame id of the child frame to which this transform points.
+    std::string child_frame_id;
 
-  // Translation and rotation in 3-dimensions of child_frame_id from
-  // header.frame_id.
-  Transform transform;
+    // Translation and rotation in 3-dimensions of child_frame_id from
+    // header.frame_id.
+    Transform transform;
 };
 struct TransformStampeds {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(TransformStampeds)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(TransformStampeds)
 
-  std_msgs::Header header;
-  std::vector<TransformStamped> transforms;
+    std_msgs::Header header;
+    std::vector<TransformStamped> transforms;
 };
 
 struct Twist2D {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Twist2D)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Twist2D)
 
-  float x;
-  float y;
-  float theta;
+    float x;
+    float y;
+    float theta;
 };
 
 // This expresses velocity in free space broken into its linear and angular
 // parts.
 struct Twist {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Twist)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Twist)
 
-  Vector3 linear;
-  Vector3 angular;
+    Vector3 linear;
+    Vector3 angular;
 };
 
 struct Twist2DStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Twist2DStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Twist2DStamped)
 
-  std_msgs::Header header;
-  Twist2D velocity;
+    std_msgs::Header header;
+    Twist2D velocity;
 };
 
 // A twist with reference coordinate frame and timestamp
 struct TwistStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(TwistStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(TwistStamped)
 
-  std_msgs::Header header;
-  Twist twist;
+    std_msgs::Header header;
+    Twist twist;
 };
 
 // This expresses velocity in free space with uncertainty.
 struct TwistWithCovariance {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(TwistWithCovariance)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(TwistWithCovariance)
 
-  Twist twist;
+    Twist twist;
 
-  // Row-major representation of the 6x6 covariance matrix
-  // The orientation parameters use a fixed-axis representation.
-  // In order, the parameters are:
-  // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z
-  // axis)
-  std::vector<double> covariance;
+    // Row-major representation of the 6x6 covariance matrix
+    // The orientation parameters use a fixed-axis representation.
+    // In order, the parameters are:
+    // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z
+    // axis)
+    std::vector<double> covariance;
 };
 
 // This represents an estimated twist with reference coordinate frame and
 // timestamp.
 struct TwistWithCovarianceStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(TwistWithCovarianceStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(TwistWithCovarianceStamped)
 
-  std_msgs::Header header;
-  TwistWithCovariance twist;
+    std_msgs::Header header;
+    TwistWithCovariance twist;
 };
 
 // This represents a Vector3 with reference coordinate frame and timestamp
 struct Vector3Stamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Vector3Stamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Vector3Stamped)
 
-  // Note that this follows vector semantics with it always anchored at the
-  // origin, so the rotational elements of a transform are the only parts
-  // applied when transforming.
-  std_msgs::Header header;
-  Vector3 vector;
+    // Note that this follows vector semantics with it always anchored at the
+    // origin, so the rotational elements of a transform are the only parts
+    // applied when transforming.
+    std_msgs::Header header;
+    Vector3 vector;
 };
 
 // This represents force in free space, separated into its linear and angular
 // parts.
 struct Wrench {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(Wrench)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(Wrench)
 
-  Vector3 force;
-  Vector3 torque;
+    Vector3 force;
+    Vector3 torque;
 };
 
 // A wrench with reference coordinate frame and timestamp
 struct WrenchStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(WrenchStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(WrenchStamped)
 
-  std_msgs::Header header;
-  Wrench wrench;
+    std_msgs::Header header;
+    Wrench wrench;
 };
 
 struct VelocityStamped {
-  // Define SharedPtr type
-  AUTONOMY_SMART_PTR_DEFINITIONS(VelocityStamped)
+    // Define SharedPtr type
+    AUTONOMY_SMART_PTR_DEFINITIONS(VelocityStamped)
 
-  // This expresses the timestamped velocity vector of a frame 'body_frame_id'
-  // in the reference frame 'reference_frame_id' expressed from arbitrary
-  // observation frame 'header.frame_id'.
-  // - If the 'body_frame_id' and 'header.frame_id' are identical, the
-  // velocity is observed and defined in the local coordinates system of the
-  // body
-  //   which is the usual use-case in mobile robotics and is also known as a
-  //   body twist.
-  std_msgs::Header header;
-  std::string body_frame_id;
-  std::string reference_frame_id;
-  Twist velocity;
+    // This expresses the timestamped velocity vector of a frame 'body_frame_id'
+    // in the reference frame 'reference_frame_id' expressed from arbitrary
+    // observation frame 'header.frame_id'.
+    // - If the 'body_frame_id' and 'header.frame_id' are identical, the
+    // velocity is observed and defined in the local coordinates system of the
+    // body
+    //   which is the usual use-case in mobile robotics and is also known as a
+    //   body twist.
+    std_msgs::Header header;
+    std::string body_frame_id;
+    std::string reference_frame_id;
+    Twist velocity;
 };
 
 // Converts 'data' to a proto::geometry_msgs::Vector3.
@@ -475,16 +475,20 @@ proto::geometry_msgs::AccelStamped ToProto(const AccelStamped& data);
 AccelStamped FromProto(const proto::geometry_msgs::AccelStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::AccelWithCovariance.
-proto::geometry_msgs::AccelWithCovariance ToProto(const AccelWithCovariance& data);
+proto::geometry_msgs::AccelWithCovariance ToProto(
+    const AccelWithCovariance& data);
 
 // Converts 'proto' to AccelWithCovariance.
-AccelWithCovariance FromProto(const proto::geometry_msgs::AccelWithCovariance& proto);
+AccelWithCovariance FromProto(
+    const proto::geometry_msgs::AccelWithCovariance& proto);
 
 // Converts 'data' to a proto::geometry_msgs::AccelWithCovarianceStamped.
-proto::geometry_msgs::AccelWithCovarianceStamped ToProto(const AccelWithCovarianceStamped& data);
+proto::geometry_msgs::AccelWithCovarianceStamped ToProto(
+    const AccelWithCovarianceStamped& data);
 
 // Converts 'proto' to AccelWithCovarianceStamped.
-AccelWithCovarianceStamped FromProto(const proto::geometry_msgs::AccelWithCovarianceStamped& proto);
+AccelWithCovarianceStamped FromProto(
+    const proto::geometry_msgs::AccelWithCovarianceStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Inertia.
 proto::geometry_msgs::Inertia ToProto(const Inertia& data);
@@ -571,22 +575,27 @@ proto::geometry_msgs::PoseStamped ToProto(const PoseStamped& data);
 PoseStamped FromProto(const proto::geometry_msgs::PoseStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::PoseWithCovariance.
-proto::geometry_msgs::PoseWithCovariance ToProto(const PoseWithCovariance& data);
+proto::geometry_msgs::PoseWithCovariance ToProto(
+    const PoseWithCovariance& data);
 
 // Converts 'proto' to PoseWithCovariance.
-PoseWithCovariance FromProto(const proto::geometry_msgs::PoseWithCovariance& proto);
+PoseWithCovariance FromProto(
+    const proto::geometry_msgs::PoseWithCovariance& proto);
 
 // Converts 'data' to a proto::geometry_msgs::PoseWithCovarianceStamped.
-proto::geometry_msgs::PoseWithCovarianceStamped ToProto(const PoseWithCovarianceStamped& data);
+proto::geometry_msgs::PoseWithCovarianceStamped ToProto(
+    const PoseWithCovarianceStamped& data);
 
 // Converts 'proto' to PoseWithCovarianceStamped.
-PoseWithCovarianceStamped FromProto(const proto::geometry_msgs::PoseWithCovarianceStamped& proto);
+PoseWithCovarianceStamped FromProto(
+    const proto::geometry_msgs::PoseWithCovarianceStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::QuaternionStamped.
 proto::geometry_msgs::QuaternionStamped ToProto(const QuaternionStamped& data);
 
 // Converts 'proto' to QuaternionStamped.
-QuaternionStamped FromProto(const proto::geometry_msgs::QuaternionStamped& proto);
+QuaternionStamped FromProto(
+    const proto::geometry_msgs::QuaternionStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Transform.
 proto::geometry_msgs::Transform ToProto(const Transform& data);
@@ -604,7 +613,8 @@ TransformStamped FromProto(const proto::geometry_msgs::TransformStamped& proto);
 proto::geometry_msgs::TransformStampeds ToProto(const TransformStampeds& data);
 
 // Converts 'proto' to TransformStampeds.
-TransformStampeds FromProto(const proto::geometry_msgs::TransformStampeds& proto);
+TransformStampeds FromProto(
+    const proto::geometry_msgs::TransformStampeds& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Twist.
 proto::geometry_msgs::Twist ToProto(const Twist& data);
@@ -619,16 +629,20 @@ proto::geometry_msgs::TwistStamped ToProto(const TwistStamped& data);
 TwistStamped FromProto(const proto::geometry_msgs::TwistStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::TwistWithCovariance.
-proto::geometry_msgs::TwistWithCovariance ToProto(const TwistWithCovariance& data);
+proto::geometry_msgs::TwistWithCovariance ToProto(
+    const TwistWithCovariance& data);
 
 // Converts 'proto' to TwistWithCovariance.
-TwistWithCovariance FromProto(const proto::geometry_msgs::TwistWithCovariance& proto);
+TwistWithCovariance FromProto(
+    const proto::geometry_msgs::TwistWithCovariance& proto);
 
 // Converts 'data' to a proto::geometry_msgs::TwistWithCovarianceStamped.
-proto::geometry_msgs::TwistWithCovarianceStamped ToProto(const TwistWithCovarianceStamped& data);
+proto::geometry_msgs::TwistWithCovarianceStamped ToProto(
+    const TwistWithCovarianceStamped& data);
 
 // Converts 'proto' to TwistWithCovarianceStamped.
-TwistWithCovarianceStamped FromProto(const proto::geometry_msgs::TwistWithCovarianceStamped& proto);
+TwistWithCovarianceStamped FromProto(
+    const proto::geometry_msgs::TwistWithCovarianceStamped& proto);
 
 // Converts 'data' to a proto::geometry_msgs::Vector3Stamped.
 proto::geometry_msgs::Vector3Stamped ToProto(const Vector3Stamped& data);

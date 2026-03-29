@@ -22,17 +22,19 @@ namespace common {
 BitAllocator::BitAllocator() : allocated_bits_(0) {}
 
 uint32_t BitAllocator::allocBit() {
-  for (uint32_t i = 0; i < 32; ++i) {
-    uint32_t bit = 1U << i;
-    if ((allocated_bits_ & bit) == 0) {
-      allocated_bits_ |= bit;
-      return bit;
+    for (uint32_t i = 0; i < 32; ++i) {
+        uint32_t bit = 1U << i;
+        if ((allocated_bits_ & bit) == 0) {
+            allocated_bits_ |= bit;
+            return bit;
+        }
     }
-  }
-  return 0;  // All bits allocated
+    return 0;  // All bits allocated
 }
 
-void BitAllocator::freeBits(uint32_t bits) { allocated_bits_ &= ~bits; }
+void BitAllocator::freeBits(uint32_t bits) {
+    allocated_bits_ &= ~bits;
+}
 
 }  // namespace common
 }  // namespace aviz

@@ -51,7 +51,7 @@ class AutolinkBridge {
 
   // 订阅 topic，回调收到序列化后的 bytes（RawMessage）。
   bool SubscribeSerialized(const std::string& topic,
-      const std::function<void(const std::string&, const std::shared_ptr<autolink::message::RawMessage>&)>& cb);
+      const std::function<void(const std::string&, const std::shared_ptr<::autolink::message::RawMessage>&)>& cb);
 
   // 将一条 protobuf 消息发到 Foxglove（再序列化）。
   void PublishProtobuf(const std::string& topic, const std::string& msg_type,

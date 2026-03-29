@@ -23,24 +23,32 @@ namespace plugins {
 namespace displays {
 
 WrenchDisplay::WrenchDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/Wrench");
-  setName(name);
+    setClassId("aviz/Wrench");
+    setName(name);
 }
 
 WrenchDisplay::~WrenchDisplay() = default;
 
-void WrenchDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void WrenchDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void WrenchDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void WrenchDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void WrenchDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void WrenchDisplay::reset() { aviz::common::Display::reset(); }
+void WrenchDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void WrenchDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void WrenchDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void WrenchDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

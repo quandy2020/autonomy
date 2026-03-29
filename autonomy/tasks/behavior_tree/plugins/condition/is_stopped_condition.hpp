@@ -38,51 +38,56 @@ namespace condition {
  * if robot is considered stopped for long enough, RUNNING if stopped but not
  * for long enough and FAILURE otherwise
  */
-class IsStoppedCondition : public BT::ConditionNode {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::IsStoppedCondition
-   * @param condition_name Name for the XML tag for this node
-   * @param conf BT node configuration
-   */
-  IsStoppedCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class IsStoppedCondition : public BT::ConditionNode
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::IsStoppedCondition
+     * @param condition_name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    IsStoppedCondition(const std::string& condition_name,
+                       const BT::NodeConfiguration& conf);
 
-  IsStoppedCondition() = delete;
+    IsStoppedCondition() = delete;
 
-  /**
-   * @brief A destructor for nav2_behavior_tree::IsStoppedCondition
-   */
-  ~IsStoppedCondition() override;
+    /**
+     * @brief A destructor for nav2_behavior_tree::IsStoppedCondition
+     */
+    ~IsStoppedCondition() override;
 
-  /**
-   * @brief The main override required by a BT action
-   * @return BT::NodeStatus Status of tick execution
-   */
-  BT::NodeStatus tick() override;
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing node-specific ports
-   */
-  static BT::PortsList providedPorts() {
-    // Register JSON definitions for the types used in the ports
-    // BT::RegisterJsonDefinition<std::chrono::milliseconds>(); //
-    // TODO: Implement JSON conversion
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        // Register JSON definitions for the types used in the ports
+        // BT::RegisterJsonDefinition<std::chrono::milliseconds>(); //
+        // TODO: Implement JSON conversion
 
-    return {
-        BT::InputPort<double>("velocity_threshold", 0.01, "Velocity threshold below which robot is considered stopped"),
-        BT::InputPort<std::chrono::milliseconds>("duration_stopped", 1000ms,
-                                                 "Duration (ms) the velocity must remain below the threshold"),
-    };
-  }
+        return {
+            BT::InputPort<double>(
+                "velocity_threshold", 0.01,
+                "Velocity threshold below which robot is considered stopped"),
+            BT::InputPort<std::chrono::milliseconds>(
+                "duration_stopped", 1000ms,
+                "Duration (ms) the velocity must remain below the threshold"),
+        };
+    }
 
- private:
-  std::shared_ptr<::autolink::Node> node_;
-  double velocity_threshold_;
-  std::chrono::milliseconds duration_stopped_;
-  commsgs::builtin_interfaces::Time stopped_stamp_;
+private:
+    std::shared_ptr<::autolink::Node> node_;
+    double velocity_threshold_;
+    std::chrono::milliseconds duration_stopped_;
+    commsgs::builtin_interfaces::Time stopped_stamp_;
 
-  std::shared_ptr<control::utils::OdomSmoother> odom_smoother_;
+    std::shared_ptr<control::utils::OdomSmoother> odom_smoother_;
 };
 
 }  // namespace condition

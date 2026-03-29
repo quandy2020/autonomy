@@ -29,15 +29,16 @@ namespace robot {
  *
  * Represents a single joint in the robot
  */
-class RobotJoint {
- public:
-  RobotJoint();
-  virtual ~RobotJoint();
+class RobotJoint
+{
+public:
+    RobotJoint();
+    virtual ~RobotJoint();
 
-  // TODO: Implement functionality
+    // TODO: Implement functionality
 
- private:
-  // TODO: Add members
+private:
+    // TODO: Add members
 };
 
 }  // namespace robot

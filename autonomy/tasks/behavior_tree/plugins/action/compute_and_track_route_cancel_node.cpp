@@ -22,9 +22,11 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ComputeAndTrackRouteCancel::ComputeAndTrackRouteCancel(const std::string& xml_tag_name, const std::string& action_name,
-                                                       const BT::NodeConfiguration& conf)
-    : BtCancelActionNode<proto::ComputeAndTrackRouteAction>(xml_tag_name, action_name, conf) {}
+ComputeAndTrackRouteCancel::ComputeAndTrackRouteCancel(
+    const std::string& xml_tag_name, const std::string& action_name,
+    const BT::NodeConfiguration& conf)
+    : BtCancelActionNode<proto::ComputeAndTrackRouteAction>(
+          xml_tag_name, action_name, conf) {}
 
 }  // namespace action
 }  // namespace plugins
@@ -34,11 +36,14 @@ ComputeAndTrackRouteCancel::ComputeAndTrackRouteCancel(const std::string& xml_ta
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  BT::NodeBuilder builder = [](const std::string& name, const BT::NodeConfiguration& config) {
-    return std::make_unique<autonomy::tasks::behavior_tree::plugins::action::ComputeAndTrackRouteCancel>(
-        name, "compute_and_track_route", config);
-  };
+    BT::NodeBuilder builder = [](const std::string& name,
+                                 const BT::NodeConfiguration& config) {
+        return std::make_unique<autonomy::tasks::behavior_tree::plugins::
+                                    action::ComputeAndTrackRouteCancel>(
+            name, "compute_and_track_route", config);
+    };
 
-  factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::ComputeAndTrackRouteCancel>(
-      "CancelComputeAndTrackRoute", builder);
+    factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::
+                                ComputeAndTrackRouteCancel>(
+        "CancelComputeAndTrackRoute", builder);
 }

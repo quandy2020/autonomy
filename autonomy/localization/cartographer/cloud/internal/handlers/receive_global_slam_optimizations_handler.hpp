@@ -26,19 +26,23 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(ReceiveGlobalSlamOptimizationsSignature, google::protobuf::Empty,
-                         autonomy::common::async_grpc::Stream<proto::ReceiveGlobalSlamOptimizationsResponse>,
+DEFINE_HANDLER_SIGNATURE(ReceiveGlobalSlamOptimizationsSignature,
+                         google::protobuf::Empty,
+                         autonomy::common::async_grpc::Stream<
+                             proto::ReceiveGlobalSlamOptimizationsResponse>,
                          "/cartographer.cloud.proto.MapBuilderService/"
                          "ReceiveGlobalSlamOptimizations")
 
 class ReceiveGlobalSlamOptimizationsHandler
-    : public autonomy::common::async_grpc::RpcHandler<ReceiveGlobalSlamOptimizationsSignature> {
- public:
-  void OnRequest(const google::protobuf::Empty& request) override;
-  void OnFinish() override;
+    : public autonomy::common::async_grpc::RpcHandler<
+          ReceiveGlobalSlamOptimizationsSignature>
+{
+public:
+    void OnRequest(const google::protobuf::Empty& request) override;
+    void OnFinish() override;
 
- private:
-  absl::optional<int> subscription_index_;
+private:
+    absl::optional<int> subscription_index_;
 };
 
 }  // namespace handlers

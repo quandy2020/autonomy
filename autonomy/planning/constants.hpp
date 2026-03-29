@@ -25,7 +25,8 @@ constexpr char kMapTopicName[] = "/map";
 constexpr char kPlanTopicName[] = "/plan";
 constexpr char kCostmapTopicName[] = "/global_costmap";
 constexpr char kComputePathToPoseServiceName[] = "/compute_path_to_pose";
-constexpr char kComputePathThroughPosesServiceName[] = "/compute_path_through_poses";
+constexpr char kComputePathThroughPosesServiceName[] =
+    "/compute_path_through_poses";
 
 }  // namespace planning
 }  // namespace autonomy

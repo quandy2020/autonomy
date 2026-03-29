@@ -22,54 +22,62 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ProgressCheckerSelector::ProgressCheckerSelector(const std::string& name, const BT::NodeConfiguration& conf)
+ProgressCheckerSelector::ProgressCheckerSelector(
+    const std::string& name, const BT::NodeConfiguration& conf)
     : BT::SyncActionNode(name, conf) {
-  initialize();
+    initialize();
 }
 
-void ProgressCheckerSelector::initialize() { createROSInterfaces(); }
+void ProgressCheckerSelector::initialize() {
+    createROSInterfaces();
+}
 
 void ProgressCheckerSelector::createROSInterfaces() {
-  std::string topic_new;
-  getInput("topic_name", topic_new);
-  if (topic_new != topic_name_ || !progress_checker_selector_sub_) {
-    topic_name_ = topic_new;
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
+    std::string topic_new;
+    getInput("topic_name", topic_new);
+    if (topic_new != topic_name_ || !progress_checker_selector_sub_) {
+        topic_name_ = topic_new;
+        node_ =
+            config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 
-    progress_checker_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
-        topic_name_,
-        [this](std::shared_ptr<const commsgs::std_msgs::String> msg) { callbackProgressCheckerSelect(msg); });
-  }
+        progress_checker_selector_sub_ =
+            node_->CreateReader<commsgs::std_msgs::String>(
+                topic_name_,
+                [this](std::shared_ptr<const commsgs::std_msgs::String> msg) {
+                    callbackProgressCheckerSelect(msg);
+                });
+    }
 }
 
 BT::NodeStatus ProgressCheckerSelector::tick() {
-  if (!BT::isStatusActive(status())) {
-    initialize();
-  }
-
-  // This behavior always use the last selected progress checker received
-  // from the topic input. When no input is specified it uses the default
-  // progress checker. If the default progress checker is not specified then
-  // we work in "required progress checker mode": In this mode, the behavior
-  // returns failure if the progress checker selection is not received from
-  // the topic input.
-  if (last_selected_progress_checker_.empty()) {
-    std::string default_progress_checker;
-    getInput("default_progress_checker", default_progress_checker);
-    if (default_progress_checker.empty()) {
-      return BT::NodeStatus::FAILURE;
-    } else {
-      last_selected_progress_checker_ = default_progress_checker;
+    if (!BT::isStatusActive(status())) {
+        initialize();
     }
-  }
 
-  setOutput("selected_progress_checker", last_selected_progress_checker_);
+    // This behavior always use the last selected progress checker received
+    // from the topic input. When no input is specified it uses the default
+    // progress checker. If the default progress checker is not specified then
+    // we work in "required progress checker mode": In this mode, the behavior
+    // returns failure if the progress checker selection is not received from
+    // the topic input.
+    if (last_selected_progress_checker_.empty()) {
+        std::string default_progress_checker;
+        getInput("default_progress_checker", default_progress_checker);
+        if (default_progress_checker.empty()) {
+            return BT::NodeStatus::FAILURE;
+        } else {
+            last_selected_progress_checker_ = default_progress_checker;
+        }
+    }
 
-  return BT::NodeStatus::SUCCESS;
+    setOutput("selected_progress_checker", last_selected_progress_checker_);
+
+    return BT::NodeStatus::SUCCESS;
 }
 
-void ProgressCheckerSelector::callbackProgressCheckerSelect(std::shared_ptr<const commsgs::std_msgs::String> msg) {
-  last_selected_progress_checker_ = msg->data;
+void ProgressCheckerSelector::callbackProgressCheckerSelect(
+    std::shared_ptr<const commsgs::std_msgs::String> msg) {
+    last_selected_progress_checker_ = msg->data;
 }
 
 }  // namespace action
@@ -80,6 +88,7 @@ void ProgressCheckerSelector::callbackProgressCheckerSelect(std::shared_ptr<cons
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ProgressCheckerSelector>(
-      "ProgressCheckerSelector");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
+                                 ProgressCheckerSelector>(
+        "ProgressCheckerSelector");
 }

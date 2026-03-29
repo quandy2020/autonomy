@@ -26,30 +26,30 @@ namespace autolink {
 namespace data {
 
 TEST(CacheBufferTest, cache_buffer_test) {
-  CacheBuffer<int> buffer(32);
-  EXPECT_TRUE(buffer.Empty());
-  for (int i = 0; i < 32 - 1; i++) {
-    buffer.Fill(std::move(i));
-    EXPECT_FALSE(buffer.Full());
-    EXPECT_EQ(i, buffer[i + 1]);
-    EXPECT_EQ(i, buffer.at(i + 1));
-  }
-  EXPECT_EQ(31, buffer.Size());
-  EXPECT_EQ(1, buffer.Head());
-  EXPECT_EQ(31, buffer.Tail());
-  EXPECT_EQ(0, buffer.Front());
-  EXPECT_EQ(30, buffer.Back());
-  buffer.Fill(31);
-  EXPECT_TRUE(buffer.Full());
-  EXPECT_EQ(32, buffer.Size());
+    CacheBuffer<int> buffer(32);
+    EXPECT_TRUE(buffer.Empty());
+    for (int i = 0; i < 32 - 1; i++) {
+        buffer.Fill(std::move(i));
+        EXPECT_FALSE(buffer.Full());
+        EXPECT_EQ(i, buffer[i + 1]);
+        EXPECT_EQ(i, buffer.at(i + 1));
+    }
+    EXPECT_EQ(31, buffer.Size());
+    EXPECT_EQ(1, buffer.Head());
+    EXPECT_EQ(31, buffer.Tail());
+    EXPECT_EQ(0, buffer.Front());
+    EXPECT_EQ(30, buffer.Back());
+    buffer.Fill(31);
+    EXPECT_TRUE(buffer.Full());
+    EXPECT_EQ(32, buffer.Size());
 
-  CacheBuffer<int> buffer1(std::move(buffer));
-  EXPECT_EQ(buffer.Size(), buffer1.Size());
-  EXPECT_EQ(buffer.Head(), buffer1.Head());
-  EXPECT_EQ(buffer.Tail(), buffer1.Tail());
-  EXPECT_EQ(buffer.Front(), buffer1.Front());
-  EXPECT_EQ(buffer.Back(), buffer1.Back());
-  EXPECT_TRUE(buffer1.Full());
+    CacheBuffer<int> buffer1(std::move(buffer));
+    EXPECT_EQ(buffer.Size(), buffer1.Size());
+    EXPECT_EQ(buffer.Head(), buffer1.Head());
+    EXPECT_EQ(buffer.Tail(), buffer1.Tail());
+    EXPECT_EQ(buffer.Front(), buffer1.Front());
+    EXPECT_EQ(buffer.Back(), buffer1.Back());
+    EXPECT_TRUE(buffer1.Full());
 }
 
 }  // namespace data

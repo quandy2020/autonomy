@@ -21,11 +21,11 @@ namespace plugins {
 namespace tools {
 
 SelectTool::SelectTool() {
-  // TODO: Initialize tool
+    // TODO: Initialize tool
 }
 
 SelectTool::~SelectTool() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace tools

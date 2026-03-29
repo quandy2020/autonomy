@@ -28,59 +28,63 @@ namespace planning {
 namespace math {
 
 TEST(CubicPolynomialCurve1dTest, Evaluate) {
-  {
-    double x0 = 0.0;
-    double dx0 = 0.0;
-    double ddx0 = 0.0;
-    double x1 = 10.0;
-    double param = 8.0;
+    {
+        double x0 = 0.0;
+        double dx0 = 0.0;
+        double ddx0 = 0.0;
+        double x1 = 10.0;
+        double param = 8.0;
 
-    CubicPolynomialCurve1d curve(x0, dx0, ddx0, x1, param);
-    EXPECT_NEAR(x1, curve.Evaluate(0, param), 1e-8);
-    EXPECT_NEAR(0, curve.Evaluate(0, 0.0), 1e-8);
-    EXPECT_NEAR(0, curve.Evaluate(1, 0.0), 1e-8);
-    EXPECT_NEAR(0, curve.Evaluate(2, 0.0), 1e-8);
-  }
-  {
-    double x0 = 0.0;
-    double dx0 = 0.0;
-    double ddx0 = 0.0;
-    double x1 = 5.0;
-    double param = 3.0;
+        CubicPolynomialCurve1d curve(x0, dx0, ddx0, x1, param);
+        EXPECT_NEAR(x1, curve.Evaluate(0, param), 1e-8);
+        EXPECT_NEAR(0, curve.Evaluate(0, 0.0), 1e-8);
+        EXPECT_NEAR(0, curve.Evaluate(1, 0.0), 1e-8);
+        EXPECT_NEAR(0, curve.Evaluate(2, 0.0), 1e-8);
+    }
+    {
+        double x0 = 0.0;
+        double dx0 = 0.0;
+        double ddx0 = 0.0;
+        double x1 = 5.0;
+        double param = 3.0;
 
-    CubicPolynomialCurve1d curve(x0, dx0, ddx0, x1, param);
-    EXPECT_NEAR(x1, curve.Evaluate(0, param), 1e-8);
-    EXPECT_NEAR(0, curve.Evaluate(0, 0.0), 1e-8);
-    EXPECT_NEAR(0, curve.Evaluate(1, 0.0), 1e-8);
-    EXPECT_NEAR(0, curve.Evaluate(2, 0.0), 1e-8);
-  }
+        CubicPolynomialCurve1d curve(x0, dx0, ddx0, x1, param);
+        EXPECT_NEAR(x1, curve.Evaluate(0, param), 1e-8);
+        EXPECT_NEAR(0, curve.Evaluate(0, 0.0), 1e-8);
+        EXPECT_NEAR(0, curve.Evaluate(1, 0.0), 1e-8);
+        EXPECT_NEAR(0, curve.Evaluate(2, 0.0), 1e-8);
+    }
 
-  {
-    double x0 = 1.0;
-    double dx0 = 2.0;
-    double ddx0 = 3.0;
-    double x1 = 5.0;
-    double param = 3.0;
+    {
+        double x0 = 1.0;
+        double dx0 = 2.0;
+        double ddx0 = 3.0;
+        double x1 = 5.0;
+        double param = 3.0;
 
-    CubicPolynomialCurve1d curve(x0, dx0, ddx0, x1, param);
-    EXPECT_NEAR(x1, curve.Evaluate(0, param), 1e-8);
-    EXPECT_NEAR(x0, curve.Evaluate(0, 0.0), 1e-8);
-    EXPECT_NEAR(dx0, curve.Evaluate(1, 0.0), 1e-8);
-    EXPECT_NEAR(ddx0, curve.Evaluate(2, 0.0), 1e-8);
-  }
+        CubicPolynomialCurve1d curve(x0, dx0, ddx0, x1, param);
+        EXPECT_NEAR(x1, curve.Evaluate(0, param), 1e-8);
+        EXPECT_NEAR(x0, curve.Evaluate(0, 0.0), 1e-8);
+        EXPECT_NEAR(dx0, curve.Evaluate(1, 0.0), 1e-8);
+        EXPECT_NEAR(ddx0, curve.Evaluate(2, 0.0), 1e-8);
+    }
 }
 
 TEST(CubicPolynomialCurve1dTest, derived_from_quartic_curve) {
-  QuarticPolynomialCurve1d quartic_curve(0., 0., 0.5, 1., 1., 2.);
-  CubicPolynomialCurve1d cubic_curve;
-  cubic_curve.DerivedFromQuarticCurve(quartic_curve);
+    QuarticPolynomialCurve1d quartic_curve(0., 0., 0.5, 1., 1., 2.);
+    CubicPolynomialCurve1d cubic_curve;
+    cubic_curve.DerivedFromQuarticCurve(quartic_curve);
 
-  for (double value = 0; value < 2.1; value += 0.1) {
-    EXPECT_NEAR(quartic_curve.Evaluate(1, value), cubic_curve.Evaluate(0, value), 1e-8);
-    EXPECT_NEAR(quartic_curve.Evaluate(2, value), cubic_curve.Evaluate(1, value), 1e-8);
-    EXPECT_NEAR(quartic_curve.Evaluate(3, value), cubic_curve.Evaluate(2, value), 1e-8);
-    EXPECT_NEAR(quartic_curve.Evaluate(4, value), cubic_curve.Evaluate(3, value), 1e-8);
-  }
+    for (double value = 0; value < 2.1; value += 0.1) {
+        EXPECT_NEAR(quartic_curve.Evaluate(1, value),
+                    cubic_curve.Evaluate(0, value), 1e-8);
+        EXPECT_NEAR(quartic_curve.Evaluate(2, value),
+                    cubic_curve.Evaluate(1, value), 1e-8);
+        EXPECT_NEAR(quartic_curve.Evaluate(3, value),
+                    cubic_curve.Evaluate(2, value), 1e-8);
+        EXPECT_NEAR(quartic_curve.Evaluate(4, value),
+                    cubic_curve.Evaluate(3, value), 1e-8);
+    }
 }
 }  // namespace math
 }  // namespace planning

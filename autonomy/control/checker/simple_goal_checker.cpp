@@ -37,59 +37,66 @@ SimpleGoalChecker::SimpleGoalChecker()
       check_xy_(true),
       xy_goal_tolerance_sq_(0.0625) {}
 
-void SimpleGoalChecker::Initialize(const std::string& plugin_name,
-                                   const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
-  plugin_name_ = plugin_name;
+void SimpleGoalChecker::Initialize(
+    const std::string& plugin_name,
+    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
+    plugin_name_ = plugin_name;
 
-  // TODO: Load parameters from configuration
-  // Default values
-  xy_goal_tolerance_ = 0.25;
-  yaw_goal_tolerance_ = 0.25;
-  stateful_ = true;
+    // TODO: Load parameters from configuration
+    // Default values
+    xy_goal_tolerance_ = 0.25;
+    yaw_goal_tolerance_ = 0.25;
+    stateful_ = true;
 
-  xy_goal_tolerance_sq_ = xy_goal_tolerance_ * xy_goal_tolerance_;
+    xy_goal_tolerance_sq_ = xy_goal_tolerance_ * xy_goal_tolerance_;
 }
 
-void SimpleGoalChecker::Reset() { check_xy_ = true; }
-
-bool SimpleGoalChecker::IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
-                                      const commsgs::geometry_msgs::Pose& goal_pose,
-                                      const commsgs::geometry_msgs::Twist& velocity) {
-  if (check_xy_) {
-    double dx = query_pose.position.x - goal_pose.position.x;
-    double dy = query_pose.position.y - goal_pose.position.y;
-    if (dx * dx + dy * dy > xy_goal_tolerance_sq_) {
-      return false;
-    }
-    // We are within the window
-    // If we are stateful, change the state.
-    if (stateful_) {
-      check_xy_ = false;
-    }
-  }
-  double dyaw = autonomy::common::math::AngleDiff(transform::tf2::getYaw(query_pose.orientation),
-                                                  transform::tf2::getYaw(goal_pose.orientation));
-  return std::abs(dyaw) <= yaw_goal_tolerance_;
+void SimpleGoalChecker::Reset() {
+    check_xy_ = true;
 }
 
-bool SimpleGoalChecker::GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                                      commsgs::geometry_msgs::Twist& vel_tolerance) {
-  double invalid_field = std::numeric_limits<double>::lowest();
+bool SimpleGoalChecker::IsGoalReached(
+    const commsgs::geometry_msgs::Pose& query_pose,
+    const commsgs::geometry_msgs::Pose& goal_pose,
+    const commsgs::geometry_msgs::Twist& velocity) {
+    if (check_xy_) {
+        double dx = query_pose.position.x - goal_pose.position.x;
+        double dy = query_pose.position.y - goal_pose.position.y;
+        if (dx * dx + dy * dy > xy_goal_tolerance_sq_) {
+            return false;
+        }
+        // We are within the window
+        // If we are stateful, change the state.
+        if (stateful_) {
+            check_xy_ = false;
+        }
+    }
+    double dyaw = autonomy::common::math::AngleDiff(
+        transform::tf2::getYaw(query_pose.orientation),
+        transform::tf2::getYaw(goal_pose.orientation));
+    return std::abs(dyaw) <= yaw_goal_tolerance_;
+}
 
-  pose_tolerance.position.x = xy_goal_tolerance_;
-  pose_tolerance.position.y = xy_goal_tolerance_;
-  pose_tolerance.position.z = invalid_field;
-  pose_tolerance.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw_goal_tolerance_);
+bool SimpleGoalChecker::GetTolerances(
+    commsgs::geometry_msgs::Pose& pose_tolerance,
+    commsgs::geometry_msgs::Twist& vel_tolerance) {
+    double invalid_field = std::numeric_limits<double>::lowest();
 
-  vel_tolerance.linear.x = invalid_field;
-  vel_tolerance.linear.y = invalid_field;
-  vel_tolerance.linear.z = invalid_field;
+    pose_tolerance.position.x = xy_goal_tolerance_;
+    pose_tolerance.position.y = xy_goal_tolerance_;
+    pose_tolerance.position.z = invalid_field;
+    pose_tolerance.orientation =
+        map::costmap_2d::utils::OrientationAroundZAxis(yaw_goal_tolerance_);
 
-  vel_tolerance.angular.x = invalid_field;
-  vel_tolerance.angular.y = invalid_field;
-  vel_tolerance.angular.z = invalid_field;
+    vel_tolerance.linear.x = invalid_field;
+    vel_tolerance.linear.y = invalid_field;
+    vel_tolerance.linear.z = invalid_field;
 
-  return true;
+    vel_tolerance.angular.x = invalid_field;
+    vel_tolerance.angular.y = invalid_field;
+    vel_tolerance.angular.z = invalid_field;
+
+    return true;
 }
 
 }  // namespace checker
@@ -97,4 +104,5 @@ bool SimpleGoalChecker::GetTolerances(commsgs::geometry_msgs::Pose& pose_toleran
 }  // namespace autonomy
 
 // Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::SimpleGoalChecker, autonomy::control::common::GoalChecker)
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::SimpleGoalChecker,
+                            autonomy::control::common::GoalChecker)

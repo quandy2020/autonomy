@@ -42,88 +42,101 @@ namespace visualization {
  * @tparam ProtoMsgs protobuf 消息类型
  */
 template <typename ProtoMsgs>
-class Channel {
- public:
-  AUTONOMY_SMART_PTR_DEFINITIONS(Channel)
+class Channel
+{
+public:
+    AUTONOMY_SMART_PTR_DEFINITIONS(Channel)
 
-  /// 构造函数
-  /// @param topic_name topic 名称
-  /// @param default_foxglove_schema 是否默认使用 Foxglove
-  /// schema（已弃用，自动选择）
-  explicit Channel(const std::string& topic_name, bool default_foxglove_schema = false);
+    /// 构造函数
+    /// @param topic_name topic 名称
+    /// @param default_foxglove_schema 是否默认使用 Foxglove
+    /// schema（已弃用，自动选择）
+    explicit Channel(const std::string& topic_name,
+                     bool default_foxglove_schema = false);
 
-  /// 发布消息（自动选择 protobuf 或 Foxglove 格式）
-  /// @param message 要发布的消息
-  /// @return 是否发布成功
-  bool Publish(const ProtoMsgs& message);
+    /// 发布消息（自动选择 protobuf 或 Foxglove 格式）
+    /// @param message 要发布的消息
+    /// @return 是否发布成功
+    bool Publish(const ProtoMsgs& message);
 
-  /// 获取 topic 名称
-  /// @return topic 名称
-  std::string topic_name() const { return topic_name_; }
+    /// 获取 topic 名称
+    /// @return topic 名称
+    std::string topic_name() const {
+        return topic_name_;
+    }
 
- private:
-  std::unique_ptr<ChannelType<ProtoMsgs>> channel_{nullptr};
-  std::string topic_name_;
-  ::foxglove::Schema schema_;
-  std::string serialized_descriptor_storage_;
+private:
+    std::unique_ptr<ChannelType<ProtoMsgs>> channel_{nullptr};
+    std::string topic_name_;
+    ::foxglove::Schema schema_;
+    std::string serialized_descriptor_storage_;
 };
 
 // Template implementation
 template <typename ProtoMsgs>
-Channel<ProtoMsgs>::Channel(const std::string& topic_name, bool default_foxglove_schema) : topic_name_(topic_name) {
-  using ChType = ChannelType<ProtoMsgs>;
+Channel<ProtoMsgs>::Channel(const std::string& topic_name,
+                            bool default_foxglove_schema)
+    : topic_name_(topic_name) {
+    using ChType = ChannelType<ProtoMsgs>;
 
-  // Always use schema channel for types that need conversion
-  if (NeedsConversion<ProtoMsgs>()) {
-    // Use Foxglove schema channel (SceneUpdateChannel, GridChannel,
-    // RawImageChannel)
-    channel_ = detail::CreateSchemaChannel<ProtoMsgs>(topic_name_);
-  } else if constexpr (std::is_same_v<ChType, ::foxglove::RawChannel>) {
-    // Use RawChannel with protobuf schema only for RawChannel types
-    const google::protobuf::Descriptor* descriptor = ProtoMsgs::descriptor();
-    // Build schema storage first
-    schema_ = detail::CreateProtobufSchema<ProtoMsgs>(descriptor, serialized_descriptor_storage_);
-    channel_ = detail::CreateProtobufChannel<ProtoMsgs>(topic_name_, descriptor, serialized_descriptor_storage_);
-  } else {
-    // Fallback: try schema channel
-    channel_ = detail::CreateSchemaChannel<ProtoMsgs>(topic_name_);
-  }
+    // Always use schema channel for types that need conversion
+    if (NeedsConversion<ProtoMsgs>()) {
+        // Use Foxglove schema channel (SceneUpdateChannel, GridChannel,
+        // RawImageChannel)
+        channel_ = detail::CreateSchemaChannel<ProtoMsgs>(topic_name_);
+    } else if constexpr (std::is_same_v<ChType, ::foxglove::RawChannel>) {
+        // Use RawChannel with protobuf schema only for RawChannel types
+        const google::protobuf::Descriptor* descriptor =
+            ProtoMsgs::descriptor();
+        // Build schema storage first
+        schema_ = detail::CreateProtobufSchema<ProtoMsgs>(
+            descriptor, serialized_descriptor_storage_);
+        channel_ = detail::CreateProtobufChannel<ProtoMsgs>(
+            topic_name_, descriptor, serialized_descriptor_storage_);
+    } else {
+        // Fallback: try schema channel
+        channel_ = detail::CreateSchemaChannel<ProtoMsgs>(topic_name_);
+    }
 }
 
 template <typename ProtoMsgs>
 bool Channel<ProtoMsgs>::Publish(const ProtoMsgs& message) {
-  if (channel_ == nullptr) {
-    AERROR << "Channel not initialized for: " << topic_name_;
-    return false;
-  }
-
-  // Get current time in nanoseconds since epoch
-  auto now = std::chrono::system_clock::now();
-  auto duration = now.time_since_epoch();
-  auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
-  uint64_t timestamp_ns = static_cast<uint64_t>(nanoseconds);
-
-  using ChType = ChannelType<ProtoMsgs>;
-  using Writer = detail::ChannelPublishTraits<ChType, ProtoMsgs>;
-
-  // 使用 trait 处理不同类型的 channel 发布
-  if constexpr (NeedsConversion<ProtoMsgs>()) {
-    // 对于需要转换的消息类型，使用对应的 schema channel trait
-    auto* typed_channel = static_cast<ChType*>(channel_.get());
-    if (typed_channel) {
-      return Writer::Publish(typed_channel, message, timestamp_ns, topic_name_);
+    if (channel_ == nullptr) {
+        AERROR << "Channel not initialized for: " << topic_name_;
+        return false;
     }
-    AERROR << "Channel type mismatch for converted message";
-    return false;
-  } else if constexpr (std::is_same_v<ChType, ::foxglove::RawChannel>) {
-    // 对于 RawChannel，使用 RawChannel trait
-    auto* raw_channel = static_cast<::foxglove::RawChannel*>(channel_.get());
-    if (raw_channel) {
-      return Writer::Publish(raw_channel, message, timestamp_ns, topic_name_);
-    }
-  }
 
-  return false;
+    // Get current time in nanoseconds since epoch
+    auto now = std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto nanoseconds =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+    uint64_t timestamp_ns = static_cast<uint64_t>(nanoseconds);
+
+    using ChType = ChannelType<ProtoMsgs>;
+    using Writer = detail::ChannelPublishTraits<ChType, ProtoMsgs>;
+
+    // 使用 trait 处理不同类型的 channel 发布
+    if constexpr (NeedsConversion<ProtoMsgs>()) {
+        // 对于需要转换的消息类型，使用对应的 schema channel trait
+        auto* typed_channel = static_cast<ChType*>(channel_.get());
+        if (typed_channel) {
+            return Writer::Publish(typed_channel, message, timestamp_ns,
+                                   topic_name_);
+        }
+        AERROR << "Channel type mismatch for converted message";
+        return false;
+    } else if constexpr (std::is_same_v<ChType, ::foxglove::RawChannel>) {
+        // 对于 RawChannel，使用 RawChannel trait
+        auto* raw_channel =
+            static_cast<::foxglove::RawChannel*>(channel_.get());
+        if (raw_channel) {
+            return Writer::Publish(raw_channel, message, timestamp_ns,
+                                   topic_name_);
+        }
+    }
+
+    return false;
 }
 
 }  // namespace visualization

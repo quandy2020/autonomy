@@ -29,15 +29,16 @@ namespace robot {
  *
  * Updates robot link poses from TF
  */
-class TfLinkUpdater {
- public:
-  TfLinkUpdater();
-  virtual ~TfLinkUpdater();
+class TfLinkUpdater
+{
+public:
+    TfLinkUpdater();
+    virtual ~TfLinkUpdater();
 
-  // TODO: Implement functionality
+    // TODO: Implement functionality
 
- private:
-  // TODO: Add members
+private:
+    // TODO: Add members
 };
 
 }  // namespace robot

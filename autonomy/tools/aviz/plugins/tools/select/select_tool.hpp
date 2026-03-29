@@ -27,12 +27,13 @@ namespace tools {
  * @brief SelectTool
  * Select tool for the visualizer
  */
-class SelectTool {
- public:
-  explicit SelectTool();
-  virtual ~SelectTool();
+class SelectTool
+{
+public:
+    explicit SelectTool();
+    virtual ~SelectTool();
 
-  // TODO: Implement tool interface
+    // TODO: Implement tool interface
 };
 
 }  // namespace tools

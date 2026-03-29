@@ -30,93 +30,109 @@ namespace autolink {
 namespace transport {
 
 template <typename MessageT>
-class History {
- public:
-  using MessagePtr = std::shared_ptr<MessageT>;
-  struct CachedMessage {
-    CachedMessage(const MessagePtr& message, const MessageInfo& message_info) : msg(message), msg_info(message_info) {}
+class History
+{
+public:
+    using MessagePtr = std::shared_ptr<MessageT>;
+    struct CachedMessage {
+        CachedMessage(const MessagePtr& message,
+                      const MessageInfo& message_info)
+            : msg(message), msg_info(message_info) {}
 
-    MessagePtr msg;
-    MessageInfo msg_info;
-  };
+        MessagePtr msg;
+        MessageInfo msg_info;
+    };
 
-  explicit History(const HistoryAttributes& attr);
-  virtual ~History();
+    explicit History(const HistoryAttributes& attr);
+    virtual ~History();
 
-  void Enable() { enabled_ = true; }
-  void Disable() { enabled_ = false; }
+    void Enable() {
+        enabled_ = true;
+    }
+    void Disable() {
+        enabled_ = false;
+    }
 
-  void Add(const MessagePtr& msg, const MessageInfo& msg_info);
-  void Clear();
-  void GetCachedMessage(std::vector<CachedMessage>* msgs) const;
-  size_t GetSize() const;
+    void Add(const MessagePtr& msg, const MessageInfo& msg_info);
+    void Clear();
+    void GetCachedMessage(std::vector<CachedMessage>* msgs) const;
+    size_t GetSize() const;
 
-  uint32_t depth() const { return depth_; }
-  uint32_t max_depth() const { return max_depth_; }
+    uint32_t depth() const {
+        return depth_;
+    }
+    uint32_t max_depth() const {
+        return max_depth_;
+    }
 
- private:
-  bool enabled_;
-  uint32_t depth_;
-  uint32_t max_depth_;
-  std::list<CachedMessage> msgs_;
-  mutable std::mutex msgs_mutex_;
+private:
+    bool enabled_;
+    uint32_t depth_;
+    uint32_t max_depth_;
+    std::list<CachedMessage> msgs_;
+    mutable std::mutex msgs_mutex_;
 };
 
 template <typename MessageT>
-History<MessageT>::History(const HistoryAttributes& attr) : enabled_(false), max_depth_(1000) {
-  auto& global_conf = common::GlobalData::Instance()->Config();
-  if (global_conf.transport_conf().resource_limit().max_history_depth() != 0) {
-    max_depth_ = global_conf.transport_conf().resource_limit().max_history_depth();
-  }
-
-  if (attr.history_policy == proto::QosHistoryPolicy::HISTORY_KEEP_ALL) {
-    depth_ = max_depth_;
-  } else {
-    depth_ = attr.depth;
-    if (depth_ > max_depth_) {
-      depth_ = max_depth_;
+History<MessageT>::History(const HistoryAttributes& attr)
+    : enabled_(false), max_depth_(1000) {
+    auto& global_conf = common::GlobalData::Instance()->Config();
+    if (global_conf.transport_conf().resource_limit().max_history_depth() !=
+        0) {
+        max_depth_ =
+            global_conf.transport_conf().resource_limit().max_history_depth();
     }
-  }
+
+    if (attr.history_policy == proto::QosHistoryPolicy::HISTORY_KEEP_ALL) {
+        depth_ = max_depth_;
+    } else {
+        depth_ = attr.depth;
+        if (depth_ > max_depth_) {
+            depth_ = max_depth_;
+        }
+    }
 }
 
 template <typename MessageT>
 History<MessageT>::~History() {
-  Clear();
+    Clear();
 }
 
 template <typename MessageT>
-void History<MessageT>::Add(const MessagePtr& msg, const MessageInfo& msg_info) {
-  if (!enabled_) {
-    return;
-  }
-  std::lock_guard<std::mutex> lock(msgs_mutex_);
-  msgs_.emplace_back(msg, msg_info);
-  while (msgs_.size() > depth_) {
-    msgs_.pop_front();
-  }
+void History<MessageT>::Add(const MessagePtr& msg,
+                            const MessageInfo& msg_info) {
+    if (!enabled_) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(msgs_mutex_);
+    msgs_.emplace_back(msg, msg_info);
+    while (msgs_.size() > depth_) {
+        msgs_.pop_front();
+    }
 }
 
 template <typename MessageT>
 void History<MessageT>::Clear() {
-  std::lock_guard<std::mutex> lock(msgs_mutex_);
-  msgs_.clear();
+    std::lock_guard<std::mutex> lock(msgs_mutex_);
+    msgs_.clear();
 }
 
 template <typename MessageT>
-void History<MessageT>::GetCachedMessage(std::vector<CachedMessage>* msgs) const {
-  if (msgs == nullptr) {
-    return;
-  }
+void History<MessageT>::GetCachedMessage(
+    std::vector<CachedMessage>* msgs) const {
+    if (msgs == nullptr) {
+        return;
+    }
 
-  std::lock_guard<std::mutex> lock(msgs_mutex_);
-  msgs->reserve(msgs_.size());
-  msgs->insert(msgs->begin(), msgs_.begin(), msgs_.end());
+    std::lock_guard<std::mutex> lock(msgs_mutex_);
+    msgs->reserve(msgs_.size());
+    msgs->insert(msgs->begin(), msgs_.begin(), msgs_.end());
 }
 
 template <typename MessageT>
 size_t History<MessageT>::GetSize() const {
-  std::lock_guard<std::mutex> lock(msgs_mutex_);
-  return msgs_.size();
+    std::lock_guard<std::mutex> lock(msgs_mutex_);
+    return msgs_.size();
 }
 
 }  // namespace transport

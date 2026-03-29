@@ -21,18 +21,23 @@
 namespace autolink {
 namespace transport {
 
-ShmConf::ShmConf() { Update(MESSAGE_SIZE_16K); }
+ShmConf::ShmConf() {
+    Update(MESSAGE_SIZE_16K);
+}
 
-ShmConf::ShmConf(const uint64_t& real_msg_size) { Update(real_msg_size); }
+ShmConf::ShmConf(const uint64_t& real_msg_size) {
+    Update(real_msg_size);
+}
 
 ShmConf::~ShmConf() {}
 
 void ShmConf::Update(const uint64_t& real_msg_size) {
-  ceiling_msg_size_ = GetCeilingMessageSize(real_msg_size);
-  block_buf_size_ = GetBlockBufSize(ceiling_msg_size_);
-  block_num_ = GetBlockNum(ceiling_msg_size_);
-  managed_shm_size_ = EXTRA_SIZE + STATE_SIZE + (BLOCK_SIZE + block_buf_size_) * block_num_ +
-                      (BLOCK_SIZE + ARENA_MESSAGE_SIZE) * ARENA_BLOCK_NUM;
+    ceiling_msg_size_ = GetCeilingMessageSize(real_msg_size);
+    block_buf_size_ = GetBlockBufSize(ceiling_msg_size_);
+    block_num_ = GetBlockNum(ceiling_msg_size_);
+    managed_shm_size_ = EXTRA_SIZE + STATE_SIZE +
+                        (BLOCK_SIZE + block_buf_size_) * block_num_ +
+                        (BLOCK_SIZE + ARENA_MESSAGE_SIZE) * ARENA_BLOCK_NUM;
 }
 
 const uint64_t ShmConf::EXTRA_SIZE = 1024 * 4;
@@ -62,51 +67,53 @@ const uint32_t ShmConf::BLOCK_NUM_MORE = 8;
 const uint64_t ShmConf::MESSAGE_SIZE_MORE = 1024 * 1024 * 32;
 
 uint64_t ShmConf::GetCeilingMessageSize(const uint64_t& real_msg_size) {
-  uint64_t ceiling_msg_size = MESSAGE_SIZE_16K;
-  if (real_msg_size <= MESSAGE_SIZE_16K) {
-    ceiling_msg_size = MESSAGE_SIZE_16K;
-  } else if (real_msg_size <= MESSAGE_SIZE_128K) {
-    ceiling_msg_size = MESSAGE_SIZE_128K;
-  } else if (real_msg_size <= MESSAGE_SIZE_1M) {
-    ceiling_msg_size = MESSAGE_SIZE_1M;
-  } else if (real_msg_size <= MESSAGE_SIZE_8M) {
-    ceiling_msg_size = MESSAGE_SIZE_8M;
-  } else if (real_msg_size <= MESSAGE_SIZE_16M) {
-    ceiling_msg_size = MESSAGE_SIZE_16M;
-  } else {
-    ceiling_msg_size = MESSAGE_SIZE_MORE;
-  }
-  return ceiling_msg_size;
+    uint64_t ceiling_msg_size = MESSAGE_SIZE_16K;
+    if (real_msg_size <= MESSAGE_SIZE_16K) {
+        ceiling_msg_size = MESSAGE_SIZE_16K;
+    } else if (real_msg_size <= MESSAGE_SIZE_128K) {
+        ceiling_msg_size = MESSAGE_SIZE_128K;
+    } else if (real_msg_size <= MESSAGE_SIZE_1M) {
+        ceiling_msg_size = MESSAGE_SIZE_1M;
+    } else if (real_msg_size <= MESSAGE_SIZE_8M) {
+        ceiling_msg_size = MESSAGE_SIZE_8M;
+    } else if (real_msg_size <= MESSAGE_SIZE_16M) {
+        ceiling_msg_size = MESSAGE_SIZE_16M;
+    } else {
+        ceiling_msg_size = MESSAGE_SIZE_MORE;
+    }
+    return ceiling_msg_size;
 }
 
-uint64_t ShmConf::GetBlockBufSize(const uint64_t& ceiling_msg_size) { return ceiling_msg_size + MESSAGE_INFO_SIZE; }
+uint64_t ShmConf::GetBlockBufSize(const uint64_t& ceiling_msg_size) {
+    return ceiling_msg_size + MESSAGE_INFO_SIZE;
+}
 
 uint32_t ShmConf::GetBlockNum(const uint64_t& ceiling_msg_size) {
-  uint32_t num = 0;
-  switch (ceiling_msg_size) {
-    case MESSAGE_SIZE_16K:
-      num = BLOCK_NUM_16K;
-      break;
-    case MESSAGE_SIZE_128K:
-      num = BLOCK_NUM_128K;
-      break;
-    case MESSAGE_SIZE_1M:
-      num = BLOCK_NUM_1M;
-      break;
-    case MESSAGE_SIZE_8M:
-      num = BLOCK_NUM_8M;
-      break;
-    case MESSAGE_SIZE_16M:
-      num = BLOCK_NUM_16M;
-      break;
-    case MESSAGE_SIZE_MORE:
-      num = BLOCK_NUM_MORE;
-      break;
-    default:
-      AERROR << "unknown ceiling_msg_size[" << ceiling_msg_size << "]";
-      break;
-  }
-  return num;
+    uint32_t num = 0;
+    switch (ceiling_msg_size) {
+        case MESSAGE_SIZE_16K:
+            num = BLOCK_NUM_16K;
+            break;
+        case MESSAGE_SIZE_128K:
+            num = BLOCK_NUM_128K;
+            break;
+        case MESSAGE_SIZE_1M:
+            num = BLOCK_NUM_1M;
+            break;
+        case MESSAGE_SIZE_8M:
+            num = BLOCK_NUM_8M;
+            break;
+        case MESSAGE_SIZE_16M:
+            num = BLOCK_NUM_16M;
+            break;
+        case MESSAGE_SIZE_MORE:
+            num = BLOCK_NUM_MORE;
+            break;
+        default:
+            AERROR << "unknown ceiling_msg_size[" << ceiling_msg_size << "]";
+            break;
+    }
+    return num;
 }
 
 }  // namespace transport

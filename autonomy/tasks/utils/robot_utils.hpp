@@ -38,8 +38,10 @@ namespace utils {
  * @return bool Whether it could be transformed successfully
  */
 bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
-                    std::shared_ptr<autonomy::transform::Buffer> tf_buffer, const std::string global_frame = "map",
-                    const std::string robot_frame = "base_link", const float transform_timeout = 0.1f);
+                    std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+                    const std::string global_frame = "map",
+                    const std::string robot_frame = "base_link",
+                    const float transform_timeout = 0.1f);
 
 /**
  * @brief get an arbitrary pose in a target frame
@@ -50,10 +52,11 @@ bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
  * @param transform_timeout TF Timeout to use for transformation
  * @return bool Whether it could be transformed successfully
  */
-bool transformPoseInTargetFrame(const commsgs::geometry_msgs::PoseStamped& input_pose,
-                                commsgs::geometry_msgs::PoseStamped& transformed_pose,
-                                std::shared_ptr<autonomy::transform::Buffer> tf_buffer, const std::string target_frame,
-                                const float transform_timeout = 0.1f);
+bool transformPoseInTargetFrame(
+    const commsgs::geometry_msgs::PoseStamped& input_pose,
+    commsgs::geometry_msgs::PoseStamped& transformed_pose,
+    std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+    const std::string target_frame, const float transform_timeout = 0.1f);
 
 /**
  * @brief Obtains a transform from source_frame_id -> to target_frame_id
@@ -64,8 +67,10 @@ bool transformPoseInTargetFrame(const commsgs::geometry_msgs::PoseStamped& input
  * @param tf_transform Output source->target transform
  * @return True if got correct transform, otherwise false
  */
-bool getTransform(const std::string& source_frame_id, const std::string& target_frame_id,
-                  const float transform_tolerance, std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+bool getTransform(const std::string& source_frame_id,
+                  const std::string& target_frame_id,
+                  const float transform_tolerance,
+                  std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
                   autonomy::transform::tf2::Transform& tf2_transform);
 
 /**
@@ -82,9 +87,12 @@ bool getTransform(const std::string& source_frame_id, const std::string& target_
  * @param tf_transform Output source->target transform
  * @return True if got correct transform, otherwise false
  */
-bool getTransform(const std::string& source_frame_id, const commsgs::builtin_interfaces::Time& source_time,
-                  const std::string& target_frame_id, const commsgs::builtin_interfaces::Time& target_time,
-                  const std::string& fixed_frame_id, const float transform_tolerance,
+bool getTransform(const std::string& source_frame_id,
+                  const commsgs::builtin_interfaces::Time& source_time,
+                  const std::string& target_frame_id,
+                  const commsgs::builtin_interfaces::Time& target_time,
+                  const std::string& fixed_frame_id,
+                  const float transform_tolerance,
                   std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
                   autonomy::transform::tf2::Transform& tf2_transform);
 
@@ -97,8 +105,10 @@ bool getTransform(const std::string& source_frame_id, const commsgs::builtin_int
  * @param transform_msg Output source->target transform msg
  * @return True if got correct transform, otherwise false
  */
-bool getTransform(const std::string& source_frame_id, const std::string& target_frame_id,
-                  const float transform_tolerance, std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+bool getTransform(const std::string& source_frame_id,
+                  const std::string& target_frame_id,
+                  const float transform_tolerance,
+                  std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
                   commsgs::geometry_msgs::TransformStamped& transform_msg);
 
 /**
@@ -115,9 +125,12 @@ bool getTransform(const std::string& source_frame_id, const std::string& target_
  * @param transform_msg Output source->target transform msg
  * @return True if got correct transform, otherwise false
  */
-bool getTransform(const std::string& source_frame_id, const commsgs::builtin_interfaces::Time& source_time,
-                  const std::string& target_frame_id, const commsgs::builtin_interfaces::Time& target_time,
-                  const std::string& fixed_frame_id, const float transform_tolerance,
+bool getTransform(const std::string& source_frame_id,
+                  const commsgs::builtin_interfaces::Time& source_time,
+                  const std::string& target_frame_id,
+                  const commsgs::builtin_interfaces::Time& target_time,
+                  const std::string& fixed_frame_id,
+                  const float transform_tolerance,
                   std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
                   commsgs::geometry_msgs::TransformStamped& transform_msg);
 

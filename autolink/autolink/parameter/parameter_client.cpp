@@ -21,58 +21,62 @@
 
 namespace autolink {
 
-ParameterClient::ParameterClient(const std::shared_ptr<Node>& node, const std::string& service_node_name)
+ParameterClient::ParameterClient(const std::shared_ptr<Node>& node,
+                                 const std::string& service_node_name)
     : node_(node) {
-  get_parameter_client_ =
-      node_->CreateClient<ParamName, Param>(FixParameterServiceName(service_node_name, GET_PARAMETER_SERVICE_NAME));
+    get_parameter_client_ = node_->CreateClient<ParamName, Param>(
+        FixParameterServiceName(service_node_name, GET_PARAMETER_SERVICE_NAME));
 
-  set_parameter_client_ =
-      node_->CreateClient<Param, BoolResult>(FixParameterServiceName(service_node_name, SET_PARAMETER_SERVICE_NAME));
+    set_parameter_client_ = node_->CreateClient<Param, BoolResult>(
+        FixParameterServiceName(service_node_name, SET_PARAMETER_SERVICE_NAME));
 
-  list_parameters_client_ =
-      node_->CreateClient<NodeName, Params>(FixParameterServiceName(service_node_name, LIST_PARAMETERS_SERVICE_NAME));
+    list_parameters_client_ =
+        node_->CreateClient<NodeName, Params>(FixParameterServiceName(
+            service_node_name, LIST_PARAMETERS_SERVICE_NAME));
 }
 
-bool ParameterClient::GetParameter(const std::string& param_name, Parameter* parameter) {
-  auto request = std::make_shared<ParamName>();
-  request->set_value(param_name);
-  auto response = get_parameter_client_->SendRequest(request);
-  if (response == nullptr) {
-    AERROR << "Call " << get_parameter_client_->ServiceName() << " failed";
-    return false;
-  }
-  if (response->type() == ParamType::NOT_SET) {
-    AWARN << "Parameter " << param_name << " not exists yet.";
-    return false;
-  }
-  parameter->FromProtoParam(*response);
-  return true;
+bool ParameterClient::GetParameter(const std::string& param_name,
+                                   Parameter* parameter) {
+    auto request = std::make_shared<ParamName>();
+    request->set_value(param_name);
+    auto response = get_parameter_client_->SendRequest(request);
+    if (response == nullptr) {
+        AERROR << "Call " << get_parameter_client_->ServiceName() << " failed";
+        return false;
+    }
+    if (response->type() == ParamType::NOT_SET) {
+        AWARN << "Parameter " << param_name << " not exists yet.";
+        return false;
+    }
+    parameter->FromProtoParam(*response);
+    return true;
 }
 
 bool ParameterClient::SetParameter(const Parameter& parameter) {
-  auto request = std::make_shared<Param>(parameter.ToProtoParam());
-  auto response = set_parameter_client_->SendRequest(request);
-  if (response == nullptr) {
-    AERROR << "Call " << set_parameter_client_->ServiceName() << " failed";
-    return false;
-  }
-  return response->value();
+    auto request = std::make_shared<Param>(parameter.ToProtoParam());
+    auto response = set_parameter_client_->SendRequest(request);
+    if (response == nullptr) {
+        AERROR << "Call " << set_parameter_client_->ServiceName() << " failed";
+        return false;
+    }
+    return response->value();
 }
 
 bool ParameterClient::ListParameters(std::vector<Parameter>* parameters) {
-  auto request = std::make_shared<NodeName>();
-  request->set_value(node_->Name());
-  auto response = list_parameters_client_->SendRequest(request);
-  if (response == nullptr) {
-    AERROR << "Call " << list_parameters_client_->ServiceName() << " failed";
-    return false;
-  }
-  for (auto& param : response->param()) {
-    Parameter parameter;
-    parameter.FromProtoParam(param);
-    parameters->emplace_back(parameter);
-  }
-  return true;
+    auto request = std::make_shared<NodeName>();
+    request->set_value(node_->Name());
+    auto response = list_parameters_client_->SendRequest(request);
+    if (response == nullptr) {
+        AERROR << "Call " << list_parameters_client_->ServiceName()
+               << " failed";
+        return false;
+    }
+    for (auto& param : response->param()) {
+        Parameter parameter;
+        parameter.FromProtoParam(param);
+        parameters->emplace_back(parameter);
+    }
+    return true;
 }
 
 }  // namespace autolink

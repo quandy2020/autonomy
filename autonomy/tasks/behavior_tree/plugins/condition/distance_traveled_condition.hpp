@@ -37,47 +37,50 @@ namespace condition {
  * @note This is an Asynchronous (long-running) node which may return a RUNNING
  * state while executing. It will re-initialize when halted.
  */
-class DistanceTraveledCondition : public BT::ConditionNode {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::DistanceTraveledCondition
-   * @param condition_name Name for the XML tag for this node
-   * @param conf BT node configuration
-   */
-  DistanceTraveledCondition(const std::string& condition_name, const BT::NodeConfiguration& conf);
+class DistanceTraveledCondition : public BT::ConditionNode
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::DistanceTraveledCondition
+     * @param condition_name Name for the XML tag for this node
+     * @param conf BT node configuration
+     */
+    DistanceTraveledCondition(const std::string& condition_name,
+                              const BT::NodeConfiguration& conf);
 
-  DistanceTraveledCondition() = delete;
+    DistanceTraveledCondition() = delete;
 
-  /**
-   * @brief The main override required by a BT action
-   * @return BT::NodeStatus Status of tick execution
-   */
-  BT::NodeStatus tick() override;
+    /**
+     * @brief The main override required by a BT action
+     * @return BT::NodeStatus Status of tick execution
+     */
+    BT::NodeStatus tick() override;
 
-  /**
-   * @brief Function to read parameters and initialize class variables
-   */
-  void initialize();
+    /**
+     * @brief Function to read parameters and initialize class variables
+     */
+    void initialize();
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing node-specific ports
-   */
-  static BT::PortsList providedPorts() {
-    return {BT::InputPort<double>("distance", 1.0, "Distance"),
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing node-specific ports
+     */
+    static BT::PortsList providedPorts() {
+        return {
+            BT::InputPort<double>("distance", 1.0, "Distance"),
             BT::InputPort<std::string>("global_frame", "Global frame"),
             BT::InputPort<std::string>("robot_base_frame", "Robot base frame")};
-  }
+    }
 
- private:
-  std::shared_ptr<::autolink::Node> node_;
-  std::shared_ptr<autonomy::transform::Buffer> tf_;
+private:
+    std::shared_ptr<::autolink::Node> node_;
+    std::shared_ptr<autonomy::transform::Buffer> tf_;
 
-  commsgs::geometry_msgs::PoseStamped start_pose_;
+    commsgs::geometry_msgs::PoseStamped start_pose_;
 
-  double distance_;
-  double transform_tolerance_;
-  std::string global_frame_, robot_base_frame_;
+    double distance_;
+    double transform_tolerance_;
+    std::string global_frame_, robot_base_frame_;
 };
 
 }  // namespace condition

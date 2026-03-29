@@ -18,46 +18,60 @@
 
 #include <QSpinBox>  // NOLINT: cpplint is unable to handle the include order here
 #include <QtGlobal>  // NOLINT: cpplint is unable to handle the include order here
-#include <climits>   // for INT_MAX and INT_MIN
+#include <climits>  // for INT_MAX and INT_MIN
 
 namespace aviz {
 namespace common {
 namespace properties {
 
-IntProperty::IntProperty(const QString& name, int default_value, const QString& description, Property* parent,
-                         const char* changed_slot, QObject* receiver, int min_value, int max_value)
-    : Property(name, default_value, description, parent, changed_slot, receiver), min_(min_value), max_(max_value) {}
+IntProperty::IntProperty(const QString& name, int default_value,
+                         const QString& description, Property* parent,
+                         const char* changed_slot, QObject* receiver,
+                         int min_value, int max_value)
+    : Property(name, default_value, description, parent, changed_slot,
+               receiver),
+      min_(min_value),
+      max_(max_value) {}
 
 bool IntProperty::setValue(const QVariant& new_value) {
-  return Property::setValue(qBound(min_, new_value.toInt(), max_));
+    return Property::setValue(qBound(min_, new_value.toInt(), max_));
 }
 
-int IntProperty::getInt() const { return getValue().toInt(); }
+int IntProperty::getInt() const {
+    return getValue().toInt();
+}
 
 void IntProperty::setMin(int min) {
-  min_ = min;
-  setValue(getValue());
+    min_ = min;
+    setValue(getValue());
 }
 
-int IntProperty::getMin() { return min_; }
+int IntProperty::getMin() {
+    return min_;
+}
 
 void IntProperty::setMax(int max) {
-  max_ = max;
-  setValue(getValue());
+    max_ = max;
+    setValue(getValue());
 }
 
-int IntProperty::getMax() { return max_; }
-
-QWidget* IntProperty::createEditor(QWidget* parent, const QStyleOptionViewItem& option) {
-  Q_UNUSED(option);
-  QSpinBox* editor = new QSpinBox(parent);
-  editor->setFrame(false);
-  editor->setRange(min_, max_);
-  connect(editor, SIGNAL(valueChanged(int)), this, SLOT(setInt(int)));
-  return editor;
+int IntProperty::getMax() {
+    return max_;
 }
 
-void IntProperty::setInt(int new_value) { setValue(new_value); }
+QWidget* IntProperty::createEditor(QWidget* parent,
+                                   const QStyleOptionViewItem& option) {
+    Q_UNUSED(option);
+    QSpinBox* editor = new QSpinBox(parent);
+    editor->setFrame(false);
+    editor->setRange(min_, max_);
+    connect(editor, SIGNAL(valueChanged(int)), this, SLOT(setInt(int)));
+    return editor;
+}
+
+void IntProperty::setInt(int new_value) {
+    setValue(new_value);
+}
 
 }  // namespace properties
 }  // namespace common

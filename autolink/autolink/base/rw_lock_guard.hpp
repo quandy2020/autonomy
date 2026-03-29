@@ -30,29 +30,39 @@ namespace autolink {
 namespace base {
 
 template <typename RWLock>
-class ReadLockGuard {
- public:
-  explicit ReadLockGuard(RWLock& lock) : rw_lock_(lock) { rw_lock_.ReadLock(); }
+class ReadLockGuard
+{
+public:
+    explicit ReadLockGuard(RWLock& lock) : rw_lock_(lock) {
+        rw_lock_.ReadLock();
+    }
 
-  ~ReadLockGuard() { rw_lock_.ReadUnlock(); }
+    ~ReadLockGuard() {
+        rw_lock_.ReadUnlock();
+    }
 
- private:
-  ReadLockGuard(const ReadLockGuard& other) = delete;
-  ReadLockGuard& operator=(const ReadLockGuard& other) = delete;
-  RWLock& rw_lock_;
+private:
+    ReadLockGuard(const ReadLockGuard& other) = delete;
+    ReadLockGuard& operator=(const ReadLockGuard& other) = delete;
+    RWLock& rw_lock_;
 };
 
 template <typename RWLock>
-class WriteLockGuard {
- public:
-  explicit WriteLockGuard(RWLock& lock) : rw_lock_(lock) { rw_lock_.WriteLock(); }
+class WriteLockGuard
+{
+public:
+    explicit WriteLockGuard(RWLock& lock) : rw_lock_(lock) {
+        rw_lock_.WriteLock();
+    }
 
-  ~WriteLockGuard() { rw_lock_.WriteUnlock(); }
+    ~WriteLockGuard() {
+        rw_lock_.WriteUnlock();
+    }
 
- private:
-  WriteLockGuard(const WriteLockGuard& other) = delete;
-  WriteLockGuard& operator=(const WriteLockGuard& other) = delete;
-  RWLock& rw_lock_;
+private:
+    WriteLockGuard(const WriteLockGuard& other) = delete;
+    WriteLockGuard& operator=(const WriteLockGuard& other) = delete;
+    RWLock& rw_lock_;
 };
 
 }  // namespace base

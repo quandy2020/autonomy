@@ -26,21 +26,24 @@ namespace aviz {
 namespace rendering {
 
 float mapAngleTo0_2Pi(float angle) {
-  angle = std::fmod(angle, Ogre::Math::TWO_PI);
-  if (angle < 0.0f) {
-    angle = Ogre::Math::TWO_PI + angle;
-  }
-  return angle;
+    angle = std::fmod(angle, Ogre::Math::TWO_PI);
+    if (angle < 0.0f) {
+        angle = Ogre::Math::TWO_PI + angle;
+    }
+    return angle;
 }
 
-Ogre::Vector2 project3DPointToViewportXY(const Ogre::Viewport* view, const Ogre::Vector3& pos) {
-  Ogre::Camera* cam = view->getCamera();
-  Ogre::Vector3 pos2D = cam->getProjectionMatrix() * (cam->getViewMatrix() * pos);
+Ogre::Vector2 project3DPointToViewportXY(const Ogre::Viewport* view,
+                                         const Ogre::Vector3& pos) {
+    Ogre::Camera* cam = view->getCamera();
+    Ogre::Vector3 pos2D =
+        cam->getProjectionMatrix() * (cam->getViewMatrix() * pos);
 
-  Ogre::Real x = static_cast<Ogre::Real>((pos2D.x * 0.5) + 0.5);
-  Ogre::Real y = static_cast<Ogre::Real>(1 - ((pos2D.y * 0.5) + 0.5));
+    Ogre::Real x = static_cast<Ogre::Real>((pos2D.x * 0.5) + 0.5);
+    Ogre::Real y = static_cast<Ogre::Real>(1 - ((pos2D.y * 0.5) + 0.5));
 
-  return Ogre::Vector2(x * view->getActualWidth(), y * view->getActualHeight());
+    return Ogre::Vector2(x * view->getActualWidth(),
+                         y * view->getActualHeight());
 }
 
 }  // namespace rendering

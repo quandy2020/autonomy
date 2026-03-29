@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-RelativeHumidityDisplay::RelativeHumidityDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/RelativeHumidity");
-  setName(name);
+RelativeHumidityDisplay::RelativeHumidityDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/RelativeHumidity");
+    setName(name);
 }
 
 RelativeHumidityDisplay::~RelativeHumidityDisplay() = default;
 
-void RelativeHumidityDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void RelativeHumidityDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void RelativeHumidityDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void RelativeHumidityDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void RelativeHumidityDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void RelativeHumidityDisplay::reset() { aviz::common::Display::reset(); }
+void RelativeHumidityDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void RelativeHumidityDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void RelativeHumidityDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void RelativeHumidityDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

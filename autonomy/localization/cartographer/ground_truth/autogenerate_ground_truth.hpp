@@ -27,8 +27,9 @@ namespace ground_truth {
 // criteria parameters. See
 // 'https://google-cartographer.readthedocs.io/en/latest/evaluation.html' for
 // more details.
-proto::GroundTruth GenerateGroundTruth(const mapping::proto::PoseGraph& pose_graph, double min_covered_distance,
-                                       double outlier_threshold_meters, double outlier_threshold_radians);
+proto::GroundTruth GenerateGroundTruth(
+    const mapping::proto::PoseGraph& pose_graph, double min_covered_distance,
+    double outlier_threshold_meters, double outlier_threshold_radians);
 
 }  // namespace ground_truth
 }  // namespace cartographer

@@ -31,8 +31,9 @@ namespace controller {
  * @param slowdown_radius Radius of the slowdown circle
  * @return visualization_msgs::msg::Marker Slowdown marker
  */
-commsgs::visualization_msgs::Marker CreateSlowdownMarker(const commsgs::geometry_msgs::PoseStamped& motion_target,
-                                                         const double& slowdown_radius);
+commsgs::visualization_msgs::Marker CreateSlowdownMarker(
+    const commsgs::geometry_msgs::PoseStamped& motion_target,
+    const double& slowdown_radius);
 
 }  // namespace controller
 }  // namespace control

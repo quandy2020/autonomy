@@ -28,14 +28,15 @@ namespace scheduler {
 
 using croutine::CRoutine;
 
-class ProcessorContext {
- public:
-  virtual void Shutdown();
-  virtual std::shared_ptr<CRoutine> NextRoutine() = 0;
-  virtual void Wait() = 0;
+class ProcessorContext
+{
+public:
+    virtual void Shutdown();
+    virtual std::shared_ptr<CRoutine> NextRoutine() = 0;
+    virtual void Wait() = 0;
 
- protected:
-  std::atomic<bool> stop_{false};
+protected:
+    std::atomic<bool> stop_{false};
 };
 
 }  // namespace scheduler

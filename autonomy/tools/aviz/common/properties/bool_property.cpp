@@ -22,26 +22,37 @@ namespace aviz {
 namespace common {
 namespace properties {
 
-BoolProperty::BoolProperty(const QString& name, bool default_value, const QString& description, Property* parent,
+BoolProperty::BoolProperty(const QString& name, bool default_value,
+                           const QString& description, Property* parent,
                            const char* changed_slot, QObject* receiver)
-    : Property(name, default_value, description, parent, changed_slot, receiver), disable_children_if_false_(false) {}
+    : Property(name, default_value, description, parent, changed_slot,
+               receiver),
+      disable_children_if_false_(false) {}
 
 BoolProperty::~BoolProperty() = default;
 
-bool BoolProperty::getBool() const { return getValue().toBool(); }
-
-void BoolProperty::setDisableChildrenIfFalse(bool disable) { disable_children_if_false_ = disable; }
-
-bool BoolProperty::getDisableChildrenIfFalse() { return disable_children_if_false_; }
-
-bool BoolProperty::getDisableChildren() {
-  if (disable_children_if_false_) {
-    return !getBool() || Property::getDisableChildren();
-  }
-  return Property::getDisableChildren();
+bool BoolProperty::getBool() const {
+    return getValue().toBool();
 }
 
-bool BoolProperty::setBool(bool value) { return setValue(value); }
+void BoolProperty::setDisableChildrenIfFalse(bool disable) {
+    disable_children_if_false_ = disable;
+}
+
+bool BoolProperty::getDisableChildrenIfFalse() {
+    return disable_children_if_false_;
+}
+
+bool BoolProperty::getDisableChildren() {
+    if (disable_children_if_false_) {
+        return !getBool() || Property::getDisableChildren();
+    }
+    return Property::getDisableChildren();
+}
+
+bool BoolProperty::setBool(bool value) {
+    return setValue(value);
+}
 
 }  // namespace properties
 }  // namespace common

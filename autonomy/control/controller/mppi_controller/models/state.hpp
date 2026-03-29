@@ -31,29 +31,29 @@ namespace models {
  * @brief State information: velocities, controls, poses, speed
  */
 struct State {
-  Eigen::ArrayXXf vx;
-  Eigen::ArrayXXf vy;
-  Eigen::ArrayXXf wz;
+    Eigen::ArrayXXf vx;
+    Eigen::ArrayXXf vy;
+    Eigen::ArrayXXf wz;
 
-  Eigen::ArrayXXf cvx;
-  Eigen::ArrayXXf cvy;
-  Eigen::ArrayXXf cwz;
+    Eigen::ArrayXXf cvx;
+    Eigen::ArrayXXf cvy;
+    Eigen::ArrayXXf cwz;
 
-  commsgs::geometry_msgs::PoseStamped pose;
-  commsgs::geometry_msgs::Twist speed;
+    commsgs::geometry_msgs::PoseStamped pose;
+    commsgs::geometry_msgs::Twist speed;
 
-  /**
-   * @brief Reset state data
-   */
-  void reset(unsigned int batch_size, unsigned int time_steps) {
-    vx.setZero(batch_size, time_steps);
-    vy.setZero(batch_size, time_steps);
-    wz.setZero(batch_size, time_steps);
+    /**
+     * @brief Reset state data
+     */
+    void reset(unsigned int batch_size, unsigned int time_steps) {
+        vx.setZero(batch_size, time_steps);
+        vy.setZero(batch_size, time_steps);
+        wz.setZero(batch_size, time_steps);
 
-    cvx.setZero(batch_size, time_steps);
-    cvy.setZero(batch_size, time_steps);
-    cwz.setZero(batch_size, time_steps);
-  }
+        cvx.setZero(batch_size, time_steps);
+        cvy.setZero(batch_size, time_steps);
+        cwz.setZero(batch_size, time_steps);
+    }
 };
 
 }  // namespace models

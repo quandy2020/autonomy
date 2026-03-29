@@ -38,53 +38,61 @@ using autonomy::tasks::common::OdomSmoother;
 
 /**
  * @class NavigateToPoseNavigator
- * @brief 导航到指定位姿的 Navigator，使用行为树实现（与 nav2 NavigateToPoseNavigator 对齐）。
+ * @brief 导航到指定位姿的 Navigator，使用行为树实现（与 nav2
+ * NavigateToPoseNavigator 对齐）。
  */
-class NavigateToPoseNavigator : public autonomy::tasks::common::BehaviorTreeNavigator<
-                                    autonomy::tasks::behavior_tree::proto::NavigateToPoseAction> {
- public:
-  /**
-   * Define ActionT type
-   */
-  using ActionT = autonomy::tasks::behavior_tree::proto::NavigateToPoseAction;
+class NavigateToPoseNavigator
+    : public autonomy::tasks::common::BehaviorTreeNavigator<
+          autonomy::tasks::behavior_tree::proto::NavigateToPoseAction>
+{
+public:
+    /**
+     * Define ActionT type
+     */
+    using ActionT = autonomy::tasks::behavior_tree::proto::NavigateToPoseAction;
 
-  /**
-   * Define NavigateToPoseNavigator::SharedPtr type
-   */
-  AUTONOMY_SMART_PTR_DEFINITIONS(NavigateToPoseNavigator)
+    /**
+     * Define NavigateToPoseNavigator::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(NavigateToPoseNavigator)
 
-  /** Default constructor for plugin loading; use (node, options) ctor for normal construction. */
-  NavigateToPoseNavigator() = default;
+    /** Default constructor for plugin loading; use (node, options) ctor for
+     * normal construction. */
+    NavigateToPoseNavigator() = default;
 
-  /**
-   * @brief 使用节点与 TaskOptions 构造
-   * @param node 用于创建 action server、tf、odom 等的节点
-   * @param options 任务选项（navigators、plugin_lib_names、坐标系、odom 等）
-   */
-  NavigateToPoseNavigator(std::shared_ptr<::autolink::Node> node, const autonomy::tasks::proto::TaskOptions& options);
+    /**
+     * @brief 使用节点与 TaskOptions 构造
+     * @param node 用于创建 action server、tf、odom 等的节点
+     * @param options 任务选项（navigators、plugin_lib_names、坐标系、odom 等）
+     */
+    NavigateToPoseNavigator(std::shared_ptr<::autolink::Node> node,
+                            const autonomy::tasks::proto::TaskOptions& options);
 
-  /**
-   * @brief 获取 Navigator 名称
-   * @return Navigator 名称
-   */
-  std::string GetName() override;
+    /**
+     * @brief 获取 Navigator 名称
+     * @return Navigator 名称
+     */
+    std::string GetName() override;
 
-  std::string GetDefaultBTFilepath() override;
-  bool GoalReceived(std::shared_ptr<const typename ActionT::Goal> goal) override;
-  void OnLoop() override;
-  void OnPreempt(std::shared_ptr<const typename ActionT::Goal> goal) override;
-  void GoalCompleted(std::shared_ptr<typename ActionT::Result> result, const BtStatus final_bt_status) override;
+    std::string GetDefaultBTFilepath() override;
+    bool GoalReceived(
+        std::shared_ptr<const typename ActionT::Goal> goal) override;
+    void OnLoop() override;
+    void OnPreempt(std::shared_ptr<const typename ActionT::Goal> goal) override;
+    void GoalCompleted(std::shared_ptr<typename ActionT::Result> result,
+                       const BtStatus final_bt_status) override;
 
-  /**
-   * @brief 将 goal 位姿变换到 global_frame 并写入 blackboard，重置 number_recoveries
-   * @return 成功返回 true
-   */
-  bool InitializeGoalPose(std::shared_ptr<const typename ActionT::Goal> goal);
+    /**
+     * @brief 将 goal 位姿变换到 global_frame 并写入 blackboard，重置
+     * number_recoveries
+     * @return 成功返回 true
+     */
+    bool InitializeGoalPose(std::shared_ptr<const typename ActionT::Goal> goal);
 
-  std::chrono::steady_clock::time_point start_time_;
-  std::string goal_blackboard_id_;
-  std::string path_blackboard_id_;
-  std::shared_ptr<OdomSmoother> odom_smoother_;
+    std::chrono::steady_clock::time_point start_time_;
+    std::string goal_blackboard_id_;
+    std::string path_blackboard_id_;
+    std::shared_ptr<OdomSmoother> odom_smoother_;
 };
 
 }  // namespace navigation

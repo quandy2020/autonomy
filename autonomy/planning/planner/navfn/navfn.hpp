@@ -71,197 +71,202 @@ namespace navfn {
  interpolated
  *          positions at about 1/2 cell resolution; else returns 0.
  */
-int create_nav_plan_astar(const COSTTYPE* costmap, int nx, int ny, int* goal, int* start, float* plan, int nplan);
+int create_nav_plan_astar(const COSTTYPE* costmap, int nx, int ny, int* goal,
+                          int* start, float* plan, int nplan);
 
 /**
  * @class NavFn
  * @brief Navigation function class. Holds buffers for costmap, navfn map. Maps
  * are pixel-based. Origin is upper left, x is right, y is down.
  */
-class NavFn {
- public:
-  /**
-   * @brief  Constructs the planner
-   * @param nx The x size of the map
-   * @param ny The y size of the map
-   */
-  NavFn(int nx, int ny);
+class NavFn
+{
+public:
+    /**
+     * @brief  Constructs the planner
+     * @param nx The x size of the map
+     * @param ny The y size of the map
+     */
+    NavFn(int nx, int ny);
 
-  ~NavFn();
+    ~NavFn();
 
-  /**
-   * @brief  Sets or resets the size of the map
-   * @param nx The x size of the map
-   * @param ny The y size of the map
-   */
-  void setNavArr(int nx, int ny);
-  int nx, ny, ns; /**< size of grid, in pixels */
+    /**
+     * @brief  Sets or resets the size of the map
+     * @param nx The x size of the map
+     * @param ny The y size of the map
+     */
+    void setNavArr(int nx, int ny);
+    int nx, ny, ns; /**< size of grid, in pixels */
 
-  /**
-   * @brief  Set up the cost array for the planner, usually from ROS
-   * @param cmap The costmap
-   * @param isROS Whether or not the costmap is coming in in ROS format
-   * @param allow_unknown Whether or not the planner should be allowed to plan
-   * through unknown space
-   */
-  void setCostmap(const COSTTYPE* cmap, bool isROS = true, bool allow_unknown = true);
+    /**
+     * @brief  Set up the cost array for the planner, usually from ROS
+     * @param cmap The costmap
+     * @param isROS Whether or not the costmap is coming in in ROS format
+     * @param allow_unknown Whether or not the planner should be allowed to plan
+     * through unknown space
+     */
+    void setCostmap(const COSTTYPE* cmap, bool isROS = true,
+                    bool allow_unknown = true);
 
-  /**
-   * @brief  Calculates a plan using the A* heuristic, returns true if one is
-   * found
-   * @param cancelChecker Function to check if the task has been canceled
-   * @return True if a plan is found, false otherwise
-   */
-  bool calcNavFnAstar(std::function<bool()> cancelChecker);
+    /**
+     * @brief  Calculates a plan using the A* heuristic, returns true if one is
+     * found
+     * @param cancelChecker Function to check if the task has been canceled
+     * @return True if a plan is found, false otherwise
+     */
+    bool calcNavFnAstar(std::function<bool()> cancelChecker);
 
-  /**
-   * @brief Calculates the full navigation function using Dijkstra
-   * @param cancelChecker Function to check if the task has been canceled
-   */
-  bool calcNavFnDijkstra(std::function<bool()> cancelChecker, bool atStart = false);
+    /**
+     * @brief Calculates the full navigation function using Dijkstra
+     * @param cancelChecker Function to check if the task has been canceled
+     */
+    bool calcNavFnDijkstra(std::function<bool()> cancelChecker,
+                           bool atStart = false);
 
-  /**
-   * @brief  Accessor for the x-coordinates of a path
-   * @return The x-coordinates of a path
-   */
-  float* getPathX();
+    /**
+     * @brief  Accessor for the x-coordinates of a path
+     * @return The x-coordinates of a path
+     */
+    float* getPathX();
 
-  /**
-   * @brief  Accessor for the y-coordinates of a path
-   * @return The y-coordinates of a path
-   */
-  float* getPathY();
+    /**
+     * @brief  Accessor for the y-coordinates of a path
+     * @return The y-coordinates of a path
+     */
+    float* getPathY();
 
-  /**
-   * @brief  Accessor for the length of a path
-   * @return The length of a path, 0 if not found
-   */
-  int getPathLen();
+    /**
+     * @brief  Accessor for the length of a path
+     * @return The length of a path, 0 if not found
+     */
+    int getPathLen();
 
-  /**
-   * @brief  Gets the cost of the path found the last time a navigation
-   * function was computed
-   * @return The cost of the last path found
-   */
-  float getLastPathCost();
+    /**
+     * @brief  Gets the cost of the path found the last time a navigation
+     * function was computed
+     * @return The cost of the last path found
+     */
+    float getLastPathCost();
 
-  /** cell arrays */
-  COSTTYPE* costarr; /**< cost array in 2D configuration space */
-  float* potarr;     /**< potential array, navigation function potential */
-  bool* pending;     /**< pending cells during propagation */
-  int nobs;          /**< number of obstacle cells */
+    /** cell arrays */
+    COSTTYPE* costarr; /**< cost array in 2D configuration space */
+    float* potarr;     /**< potential array, navigation function potential */
+    bool* pending;     /**< pending cells during propagation */
+    int nobs;          /**< number of obstacle cells */
 
-  /** block priority buffers */
-  int *pb1, *pb2, *pb3;      /**< storage buffers for priority blocks */
-  int *curP, *nextP, *overP; /**< priority buffer block ptrs */
-  int curPe, nextPe, overPe; /**< end points of arrays */
+    /** block priority buffers */
+    int *pb1, *pb2, *pb3;      /**< storage buffers for priority blocks */
+    int *curP, *nextP, *overP; /**< priority buffer block ptrs */
+    int curPe, nextPe, overPe; /**< end points of arrays */
 
-  /** block priority thresholds */
-  float curT;   /**< current threshold */
-  float priInc; /**< priority threshold increment */
+    /** block priority thresholds */
+    float curT;   /**< current threshold */
+    float priInc; /**< priority threshold increment */
 
-  /**< number of cycles between checks for cancellation */
-  static constexpr int terminal_checking_interval = 5000;
+    /**< number of cycles between checks for cancellation */
+    static constexpr int terminal_checking_interval = 5000;
 
-  /** goal and start positions */
-  /**
-   * @brief  Sets the goal position for the planner.
-   * Note: the navigation cost field computed gives the cost to get to a given
-   * point from the goal, not from the start.
-   * @param goal the goal position
-   */
-  void setGoal(int* goal);
+    /** goal and start positions */
+    /**
+     * @brief  Sets the goal position for the planner.
+     * Note: the navigation cost field computed gives the cost to get to a given
+     * point from the goal, not from the start.
+     * @param goal the goal position
+     */
+    void setGoal(int* goal);
 
-  /**
-   * @brief  Sets the start position for the planner.
-   * Note: the navigation cost field computed gives the cost to get to a given
-   * point from the goal, not from the start.
-   * @param start the start position
-   */
-  void setStart(int* start);
+    /**
+     * @brief  Sets the start position for the planner.
+     * Note: the navigation cost field computed gives the cost to get to a given
+     * point from the goal, not from the start.
+     * @param start the start position
+     */
+    void setStart(int* start);
 
-  int goal[2];
-  int start[2];
-  /**
-   * @brief  Initialize cell k with cost v for propagation
-   * @param k the cell to initialize
-   * @param v the cost to give to the cell
-   */
-  void initCost(int k, float v);
+    int goal[2];
+    int start[2];
+    /**
+     * @brief  Initialize cell k with cost v for propagation
+     * @param k the cell to initialize
+     * @param v the cost to give to the cell
+     */
+    void initCost(int k, float v);
 
-  /** propagation */
+    /** propagation */
 
-  /**
-   * @brief  Updates the cell at index n
-   * @param n The index to update
-   */
-  void updateCell(int n);
+    /**
+     * @brief  Updates the cell at index n
+     * @param n The index to update
+     */
+    void updateCell(int n);
 
-  /**
-   * @brief  Updates the cell at index n using the A* heuristic
-   * @param n The index to update
-   */
-  void updateCellAstar(int n);
+    /**
+     * @brief  Updates the cell at index n using the A* heuristic
+     * @param n The index to update
+     */
+    void updateCellAstar(int n);
 
-  /**
-   * @brief  Set up navigation potential arrays for new propagation
-   * @param keepit whether or not use COST_NEUTRAL
-   */
-  void setupNavFn(bool keepit = false);
+    /**
+     * @brief  Set up navigation potential arrays for new propagation
+     * @param keepit whether or not use COST_NEUTRAL
+     */
+    void setupNavFn(bool keepit = false);
 
-  /**
-   * @brief  Run propagation for <cycles> iterations, or until start is
-   * reached using breadth-first Dijkstra method
-   * @param cycles The maximum number of iterations to run for
-   * @param cancelChecker Function to check if the task has been canceled
-   * @param atStart Whether or not to stop when the start point is reached
-   * @return true if the start point is reached
-   */
-  bool propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker, bool atStart = false);
+    /**
+     * @brief  Run propagation for <cycles> iterations, or until start is
+     * reached using breadth-first Dijkstra method
+     * @param cycles The maximum number of iterations to run for
+     * @param cancelChecker Function to check if the task has been canceled
+     * @param atStart Whether or not to stop when the start point is reached
+     * @return true if the start point is reached
+     */
+    bool propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker,
+                           bool atStart = false);
 
-  /**
-   * @brief  Run propagation for <cycles> iterations, or until start is
-   * reached using the best-first A* method with Euclidean distance heuristic
-   * @param cycles The maximum number of iterations to run for
-   * @param cancelChecker Function to check if the task has been canceled
-   * @return true if the start point is reached
-   */
-  bool propNavFnAstar(int cycles, std::function<bool()> cancelChecker);
+    /**
+     * @brief  Run propagation for <cycles> iterations, or until start is
+     * reached using the best-first A* method with Euclidean distance heuristic
+     * @param cycles The maximum number of iterations to run for
+     * @param cancelChecker Function to check if the task has been canceled
+     * @return true if the start point is reached
+     */
+    bool propNavFnAstar(int cycles, std::function<bool()> cancelChecker);
 
-  /** gradient and paths */
-  float *gradx, *grady; /**< gradient arrays, size of potential array */
-  float *pathx, *pathy; /**< path points, as subpixel cell coordinates */
-  int npath;            /**< number of path points */
-  int npathbuf;         /**< size of pathx, pathy buffers */
+    /** gradient and paths */
+    float *gradx, *grady; /**< gradient arrays, size of potential array */
+    float *pathx, *pathy; /**< path points, as subpixel cell coordinates */
+    int npath;            /**< number of path points */
+    int npathbuf;         /**< size of pathx, pathy buffers */
 
-  float last_path_cost_; /**< Holds the cost of the path found the last time
-                            A* was called */
+    float last_path_cost_; /**< Holds the cost of the path found the last time
+                              A* was called */
 
-  /**
-   * @brief  Calculates the path for at mose <n> cycles
-   * @param n The maximum number of cycles to run for
-   * @return The lenght of the path found, 0 if none
-   */
-  int calcPath(int n, int* st = NULL);
+    /**
+     * @brief  Calculates the path for at mose <n> cycles
+     * @param n The maximum number of cycles to run for
+     * @return The lenght of the path found, 0 if none
+     */
+    int calcPath(int n, int* st = NULL);
 
-  /**
-   * @brief  Calculate gradient at a cell
-   * @param n Cell number <n>
-   * @return float norm
-   */
-  float gradCell(int n); /**< calculates gradient at cell <n>, returns norm */
+    /**
+     * @brief  Calculate gradient at a cell
+     * @param n Cell number <n>
+     * @return float norm
+     */
+    float gradCell(int n); /**< calculates gradient at cell <n>, returns norm */
 
-  float pathStep; /**< step size for following gradient */
+    float pathStep; /**< step size for following gradient */
 
-  /** display callback */
-  /**< <n> is the number of cycles between updates  */
-  // void display(void fn(NavFn * nav), int n = 100);
-  // int displayInt;  /**< save second argument of display() above */
-  // void (* displayFn)(NavFn * nav);  /**< display function itself */
+    /** display callback */
+    /**< <n> is the number of cycles between updates  */
+    // void display(void fn(NavFn * nav), int n = 100);
+    // int displayInt;  /**< save second argument of display() above */
+    // void (* displayFn)(NavFn * nav);  /**< display function itself */
 
-  /** save costmap */
-  /**< write out costmap and start/goal states as fname.pgm and fname.txt */
-  // void savemap(const char * fname);
+    /** save costmap */
+    /**< write out costmap and start/goal states as fname.pgm and fname.txt */
+    // void savemap(const char * fname);
 };
 
 }  // namespace navfn

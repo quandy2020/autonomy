@@ -43,21 +43,24 @@ namespace control {
  *   Restart the loop only if (reset_on_failure == true)
  *
  */
-class PersistentSequenceNode : public BT::ControlNode {
- public:
-  PersistentSequenceNode(const std::string& name, const BT::NodeConfiguration& conf);
+class PersistentSequenceNode : public BT::ControlNode
+{
+public:
+    PersistentSequenceNode(const std::string& name,
+                           const BT::NodeConfiguration& conf);
 
-  ~PersistentSequenceNode() override = default;
+    ~PersistentSequenceNode() override = default;
 
-  //! @brief Declare ports
-  static BT::PortsList providedPorts() {
-    return {
-        BT::BidirectionalPort<int>("current_child_idx", "The index of the current child"),
-    };
-  }
+    //! @brief Declare ports
+    static BT::PortsList providedPorts() {
+        return {
+            BT::BidirectionalPort<int>("current_child_idx",
+                                       "The index of the current child"),
+        };
+    }
 
- private:
-  BT::NodeStatus tick() override;
+private:
+    BT::NodeStatus tick() override;
 };
 
 }  // namespace control

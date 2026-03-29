@@ -33,12 +33,12 @@ static const std::string testLayer = "test";
  * accuracy of the normal estimation.
  */
 struct AnalyticalFunctions {
-  std::function<double(double, double)> f_;
+    std::function<double(double, double)> f_;
 };
 
 struct Point2D {
-  double x_ = 0.0;
-  double y_ = 0.0;
+    double x_ = 0.0;
+    double y_ = 0.0;
 };
 
 // Random generator engine.
@@ -47,7 +47,8 @@ extern std::mt19937 rndGenerator;
 // Maximal tolerance when comparing doubles in tests.
 const double maxAbsErrorValue = 1e-3;
 
-grid_map::GridMap createMap(const grid_map::Length& length, double resolution, const grid_map::Position& pos);
+grid_map::GridMap createMap(const grid_map::Length& length, double resolution,
+                            const grid_map::Position& pos);
 
 /*
  * Collections of methods that modify the grid map.
@@ -80,15 +81,17 @@ void fillGridMap(grid_map::GridMap* map, const AnalyticalFunctions& functions);
  * Create numPoints uniformly distributed random points that lie within the grid
  * map.
  */
-std::vector<Point2D> uniformlyDitributedPointsWithinMap(const grid_map::GridMap& map, unsigned int numPoints);
+std::vector<Point2D> uniformlyDitributedPointsWithinMap(
+    const grid_map::GridMap& map, unsigned int numPoints);
 
 /*
  * For each point in queryPoints, verify that the interpolated value of the grid
  * map is close to the ground truth which is contained in Analytical functions
  * structure. Called inside the tests. Calls macros from gtest.
  */
-void verifyValuesAtQueryPointsAreClose(const grid_map::GridMap& map, const AnalyticalFunctions& trueValues,
-                                       const std::vector<Point2D>& queryPoints,
-                                       grid_map::InterpolationMethods interpolationMethod);
+void verifyValuesAtQueryPointsAreClose(
+    const grid_map::GridMap& map, const AnalyticalFunctions& trueValues,
+    const std::vector<Point2D>& queryPoints,
+    grid_map::InterpolationMethods interpolationMethod);
 
 }  // namespace grid_map_test

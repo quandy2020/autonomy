@@ -35,52 +35,57 @@ double intbound(double s, double ds);
 
 // Raycast from start to end within [min, max), returning grid points in a
 // preallocated buffer.
-void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end, const Eigen::Vector3d& min,
-             const Eigen::Vector3d& max, int& output_points_cnt, Eigen::Vector3d* output);
+void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
+             const Eigen::Vector3d& min, const Eigen::Vector3d& max,
+             int& output_points_cnt, Eigen::Vector3d* output);
 
 // Raycast from start to end within [min, max), returning grid points in a
 // vector.
-void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end, const Eigen::Vector3d& min,
-             const Eigen::Vector3d& max, std::vector<Eigen::Vector3d>* output);
+void Raycast(const Eigen::Vector3d& start, const Eigen::Vector3d& end,
+             const Eigen::Vector3d& min, const Eigen::Vector3d& max,
+             std::vector<Eigen::Vector3d>* output);
 
-class RayCaster {
- public:
-  RayCaster() = default;
-  ~RayCaster() = default;
+class RayCaster
+{
+public:
+    RayCaster() = default;
+    ~RayCaster() = default;
 
-  bool setInput(const Eigen::Vector3d& start,
-                const Eigen::Vector3d& end /* , const Eigen::Vector3d& min, const Eigen::Vector3d& max */);
+    bool setInput(
+        const Eigen::Vector3d& start,
+        const Eigen::Vector3d&
+            end /* , const Eigen::Vector3d& min, const Eigen::Vector3d& max */);
 
-  bool step(Eigen::Vector3d& ray_pt, bool verbose = false);
+    bool step(Eigen::Vector3d& ray_pt, bool verbose = false);
 
- private:
-  Eigen::Vector3d start_;
-  Eigen::Vector3d end_;
-  Eigen::Vector3d direction_;
-  Eigen::Vector3d min_;
-  Eigen::Vector3d max_;
-  int x_;
-  int y_;
-  int z_;
-  int endX_;
-  int endY_;
-  int endZ_;
-  double maxDist_;
-  double dx_;
-  double dy_;
-  double dz_;
-  int stepX_;
-  int stepY_;
-  int stepZ_;
-  double tMaxX_;
-  double tMaxY_;
-  double tMaxZ_;
-  double tDeltaX_;
-  double tDeltaY_;
-  double tDeltaZ_;
-  double dist_;
+private:
+    Eigen::Vector3d start_;
+    Eigen::Vector3d end_;
+    Eigen::Vector3d direction_;
+    Eigen::Vector3d min_;
+    Eigen::Vector3d max_;
+    int x_;
+    int y_;
+    int z_;
+    int endX_;
+    int endY_;
+    int endZ_;
+    double maxDist_;
+    double dx_;
+    double dy_;
+    double dz_;
+    int stepX_;
+    int stepY_;
+    int stepZ_;
+    double tMaxX_;
+    double tMaxY_;
+    double tMaxZ_;
+    double tDeltaX_;
+    double tDeltaY_;
+    double tDeltaZ_;
+    double dist_;
 
-  int step_num_;
+    int step_num_;
 };
 
 }  // namespace egvg

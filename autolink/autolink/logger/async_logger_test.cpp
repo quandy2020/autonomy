@@ -24,44 +24,46 @@ namespace autolink {
 namespace logger {
 
 TEST(AsyncLoggerTest, WriteAndFlush) {
-  AsyncLogger logger(google::base::GetLogger(google::INFO));
+    AsyncLogger logger(google::base::GetLogger(google::INFO));
 
-  // write in stop state
-  time_t timep;
-  time(&timep);
-  std::string message = "I0909 99:99:99.999999 99999 logger_test.cc:999] ";
-  message.append(LEFT_BRACKET);
-  message.append("AsyncLoggerTest");
-  message.append(RIGHT_BRACKET);
-  message.append("async logger test message\n");
-  logger.Write(false, timep, message.c_str(), static_cast<int>(message.length()));
-  EXPECT_EQ(logger.LogSize(), 0);  // always zero
+    // write in stop state
+    time_t timep;
+    time(&timep);
+    std::string message = "I0909 99:99:99.999999 99999 logger_test.cc:999] ";
+    message.append(LEFT_BRACKET);
+    message.append("AsyncLoggerTest");
+    message.append(RIGHT_BRACKET);
+    message.append("async logger test message\n");
+    logger.Write(false, timep, message.c_str(),
+                 static_cast<int>(message.length()));
+    EXPECT_EQ(logger.LogSize(), 0);  // always zero
 
-  // write in start state
-  logger.Start();
-  logger.Write(true, timep, message.c_str(), static_cast<int>(message.length()));
-  EXPECT_EQ(logger.LogSize(), 0);  // always zero
+    // write in start state
+    logger.Start();
+    logger.Write(true, timep, message.c_str(),
+                 static_cast<int>(message.length()));
+    EXPECT_EQ(logger.LogSize(), 0);  // always zero
 
-  // flush
-  logger.Flush();
-  EXPECT_EQ(logger.LogSize(), 0);  // always zero
+    // flush
+    logger.Flush();
+    EXPECT_EQ(logger.LogSize(), 0);  // always zero
 
-  logger.Stop();
+    logger.Stop();
 }
 
 TEST(AsyncLoggerTest, SetLoggerToGlog) {
-  google::InitGoogleLogging("AsyncLoggerTest2");
-  google::SetLogDestination(google::ERROR, "");
-  google::SetLogDestination(google::WARNING, "");
-  google::SetLogDestination(google::FATAL, "");
-  AsyncLogger logger(google::base::GetLogger(google::INFO));
-  google::base::SetLogger(FLAGS_minloglevel, &logger);
-  logger.Start();
-  ALOG_MODULE("AsyncLoggerTest2", INFO) << "test set async logger to glog";
-  ALOG_MODULE("AsyncLoggerTest2", WARN) << "test set async logger to glog";
-  ALOG_MODULE("AsyncLoggerTest2", ERROR) << "test set async logger to glog";
-  logger.Stop();
-  google::ShutdownGoogleLogging();
+    google::InitGoogleLogging("AsyncLoggerTest2");
+    google::SetLogDestination(google::ERROR, "");
+    google::SetLogDestination(google::WARNING, "");
+    google::SetLogDestination(google::FATAL, "");
+    AsyncLogger logger(google::base::GetLogger(google::INFO));
+    google::base::SetLogger(FLAGS_minloglevel, &logger);
+    logger.Start();
+    ALOG_MODULE("AsyncLoggerTest2", INFO) << "test set async logger to glog";
+    ALOG_MODULE("AsyncLoggerTest2", WARN) << "test set async logger to glog";
+    ALOG_MODULE("AsyncLoggerTest2", ERROR) << "test set async logger to glog";
+    logger.Stop();
+    google::ShutdownGoogleLogging();
 }
 
 }  // namespace logger

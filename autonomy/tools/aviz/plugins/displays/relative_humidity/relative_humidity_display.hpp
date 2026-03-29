@@ -28,21 +28,23 @@ namespace displays {
  * @brief RelativeHumidityDisplay
  * Relative humidity display
  */
-class RelativeHumidityDisplay : public aviz::common::Display {
- public:
-  explicit RelativeHumidityDisplay(const QString& name = "RelativeHumidityDisplay");
-  ~RelativeHumidityDisplay() override;
+class RelativeHumidityDisplay : public aviz::common::Display
+{
+public:
+    explicit RelativeHumidityDisplay(
+        const QString& name = "RelativeHumidityDisplay");
+    ~RelativeHumidityDisplay() override;
 
-  // Overrides from Display
-  void onInitialize() override;
+    // Overrides from Display
+    void onInitialize() override;
 
-  void onEnable() override;
-  void onDisable() override;
-  void update(float wall_dt, float ros_dt) override;
-  void reset() override;
+    void onEnable() override;
+    void onDisable() override;
+    void update(float wall_dt, float ros_dt) override;
+    void reset() override;
 
- private:
-  // Implementation details
+private:
+    // Implementation details
 };
 
 }  // namespace displays

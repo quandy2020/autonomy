@@ -21,15 +21,20 @@
 namespace aviz {
 namespace common {
 
-class PluginDisplayFactory : public DisplayFactory {
- public:
-  std::unique_ptr<Display> make(const QString& class_id, const QString& name) override {
-    return PluginFactory::Instance().createDisplay(class_id.toStdString(), name.toStdString());
-  }
+class PluginDisplayFactory : public DisplayFactory
+{
+public:
+    std::unique_ptr<Display> make(const QString& class_id,
+                                  const QString& name) override {
+        return PluginFactory::Instance().createDisplay(class_id.toStdString(),
+                                                       name.toStdString());
+    }
 };
 
 // Factory function implementation
-std::unique_ptr<DisplayFactory> createDisplayFactory() { return std::make_unique<PluginDisplayFactory>(); }
+std::unique_ptr<DisplayFactory> createDisplayFactory() {
+    return std::make_unique<PluginDisplayFactory>();
+}
 
 }  // namespace common
 }  // namespace aviz

@@ -24,13 +24,13 @@ namespace autonomy {
 namespace common {
 
 TEST(StringUtilTest, EncodeBase64) {
-  EXPECT_EQ("", EncodeBase64(""));
-  EXPECT_EQ("Zg==", EncodeBase64("f"));
-  EXPECT_EQ("Zm8=", EncodeBase64("fo"));
-  EXPECT_EQ("Zm9v", EncodeBase64("foo"));
-  EXPECT_EQ("Zm9vYg==", EncodeBase64("foob"));
-  EXPECT_EQ("Zm9vYmE=", EncodeBase64("fooba"));
-  EXPECT_EQ("Zm9vYmFy", EncodeBase64("foobar"));
+    EXPECT_EQ("", EncodeBase64(""));
+    EXPECT_EQ("Zg==", EncodeBase64("f"));
+    EXPECT_EQ("Zm8=", EncodeBase64("fo"));
+    EXPECT_EQ("Zm9v", EncodeBase64("foo"));
+    EXPECT_EQ("Zm9vYg==", EncodeBase64("foob"));
+    EXPECT_EQ("Zm9vYmE=", EncodeBase64("fooba"));
+    EXPECT_EQ("Zm9vYmFy", EncodeBase64("foobar"));
 }
 
 }  // namespace common

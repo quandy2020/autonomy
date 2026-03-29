@@ -32,23 +32,28 @@ namespace action {
  * @brief A nav2_behavior_tree::BtActionNode class
  * that wraps nav2_msgs::action::ComputeAndTrackRoute cancellation
  */
-class ComputeAndTrackRouteCancel : public BtCancelActionNode<proto::ComputeAndTrackRouteAction> {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::ComputeAndTrackRouteCancel
-   * @param xml_tag_name Name for the XML tag for this node
-   * @param action_name Action name this node creates a client for
-   * @param conf BT node configuration
-   */
-  ComputeAndTrackRouteCancel(const std::string& xml_tag_name, const std::string& action_name,
-                             const BT::NodeConfiguration& conf);
+class ComputeAndTrackRouteCancel
+    : public BtCancelActionNode<proto::ComputeAndTrackRouteAction>
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::ComputeAndTrackRouteCancel
+     * @param xml_tag_name Name for the XML tag for this node
+     * @param action_name Action name this node creates a client for
+     * @param conf BT node configuration
+     */
+    ComputeAndTrackRouteCancel(const std::string& xml_tag_name,
+                               const std::string& action_name,
+                               const BT::NodeConfiguration& conf);
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing basic ports along with node-specific
-   * ports
-   */
-  static BT::PortsList providedPorts() { return providedBasicPorts({}); }
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing basic ports along with node-specific
+     * ports
+     */
+    static BT::PortsList providedPorts() {
+        return providedBasicPorts({});
+    }
 };
 
 }  // namespace action

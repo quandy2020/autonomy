@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-DepthCloudDisplay::DepthCloudDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/DepthCloud");
-  setName(name);
+DepthCloudDisplay::DepthCloudDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/DepthCloud");
+    setName(name);
 }
 
 DepthCloudDisplay::~DepthCloudDisplay() = default;
 
-void DepthCloudDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void DepthCloudDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void DepthCloudDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void DepthCloudDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void DepthCloudDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void DepthCloudDisplay::reset() { aviz::common::Display::reset(); }
+void DepthCloudDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void DepthCloudDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void DepthCloudDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void DepthCloudDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

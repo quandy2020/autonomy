@@ -22,57 +22,57 @@ namespace autolink {
 namespace transport {
 
 TEST(IdentityTest, testConstructFalse) {
-  Identity it(false);
+    Identity it(false);
 
-  EXPECT_EQ(it.HashValue(), static_cast<uint64_t>(0));
-  EXPECT_EQ(it.ToString(), "0");
+    EXPECT_EQ(it.HashValue(), static_cast<uint64_t>(0));
+    EXPECT_EQ(it.ToString(), "0");
 }
 
 TEST(IdentityTest, testConstructTrue) {
-  Identity it(true);
+    Identity it(true);
 
-  EXPECT_NE(it.HashValue(), static_cast<uint64_t>(0));
-  EXPECT_NE(it.ToString(), "0");
+    EXPECT_NE(it.HashValue(), static_cast<uint64_t>(0));
+    EXPECT_NE(it.ToString(), "0");
 }
 
 TEST(IdentityTest, testIdentityEqual) {
-  Identity id1;
-  Identity id2;
-  Identity id3;
-  EXPECT_NE(id1, id2);
-  EXPECT_NE(id2, id3);
-  EXPECT_NE(id1, id3);
-  EXPECT_NE(id1.HashValue(), id3.HashValue());
+    Identity id1;
+    Identity id2;
+    Identity id3;
+    EXPECT_NE(id1, id2);
+    EXPECT_NE(id2, id3);
+    EXPECT_NE(id1, id3);
+    EXPECT_NE(id1.HashValue(), id3.HashValue());
 
-  id2 = id2;
-  EXPECT_NE(id2, id3);
-  id2 = id3;
-  EXPECT_EQ(id2, id3);
+    id2 = id2;
+    EXPECT_NE(id2, id3);
+    id2 = id3;
+    EXPECT_EQ(id2, id3);
 
-  Identity id4(id1);
-  EXPECT_EQ(id1, id4);
-  EXPECT_EQ(id1.ToString(), id4.ToString());
-  EXPECT_EQ(id1.HashValue(), id4.HashValue());
+    Identity id4(id1);
+    EXPECT_EQ(id1, id4);
+    EXPECT_EQ(id1.ToString(), id4.ToString());
+    EXPECT_EQ(id1.HashValue(), id4.HashValue());
 }
 
 TEST(IdentityTest, testOperatorEqual) {
-  Identity it(true);
+    Identity it(true);
 
-  Identity it1(false);
+    Identity it1(false);
 
-  it1 = it;
+    it1 = it;
 
-  EXPECT_EQ(it.HashValue(), it1.HashValue());
-  EXPECT_EQ(it.ToString(), it1.ToString());
-  EXPECT_EQ(it1.Length(), it.Length());
+    EXPECT_EQ(it.HashValue(), it1.HashValue());
+    EXPECT_EQ(it.ToString(), it1.ToString());
+    EXPECT_EQ(it1.Length(), it.Length());
 
-  it.set_data(nullptr);
-  Identity it2;
+    it.set_data(nullptr);
+    Identity it2;
 
-  it2.set_data(it.data());
-  EXPECT_EQ(it2.HashValue(), it1.HashValue());
-  EXPECT_EQ(it2.ToString(), it1.ToString());
-  EXPECT_EQ(it1.Length(), it2.Length());
+    it2.set_data(it.data());
+    EXPECT_EQ(it2.HashValue(), it1.HashValue());
+    EXPECT_EQ(it2.ToString(), it1.ToString());
+    EXPECT_EQ(it1.Length(), it2.Length());
 }
 
 }  // namespace transport

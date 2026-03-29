@@ -23,27 +23,33 @@ namespace autonomy {
 namespace common {
 namespace state_vector {
 
-template class GenericState<float32_t, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION, variable::Y,
+template class GenericState<float32_t, variable::X, variable::X_VELOCITY,
+                            variable::X_ACCELERATION, variable::Y,
                             variable::Y_VELOCITY, variable::Y_ACCELERATION>;
-template class GenericState<float64_t, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION, variable::Y,
+template class GenericState<float64_t, variable::X, variable::X_VELOCITY,
+                            variable::X_ACCELERATION, variable::Y,
                             variable::Y_VELOCITY, variable::Y_ACCELERATION>;
 
-template class GenericState<float32_t, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION, variable::Y,
-                            variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::YAW, variable::YAW_CHANGE_RATE,
-                            variable::YAW_CHANGE_ACCELERATION>;
-template class GenericState<float64_t, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION, variable::Y,
-                            variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::YAW, variable::YAW_CHANGE_RATE,
-                            variable::YAW_CHANGE_ACCELERATION>;
+template class GenericState<
+    float32_t, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION,
+    variable::Y, variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::YAW,
+    variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
+template class GenericState<
+    float64_t, variable::X, variable::X_VELOCITY, variable::X_ACCELERATION,
+    variable::Y, variable::Y_VELOCITY, variable::Y_ACCELERATION, variable::YAW,
+    variable::YAW_CHANGE_RATE, variable::YAW_CHANGE_ACCELERATION>;
 
-template class GenericState<float32_t, variable::X, variable::Y, variable::YAW, variable::XY_VELOCITY,
-                            variable::YAW_CHANGE_RATE, variable::XY_ACCELERATION>;
-template class GenericState<float64_t, variable::X, variable::Y, variable::YAW, variable::XY_VELOCITY,
-                            variable::YAW_CHANGE_RATE, variable::XY_ACCELERATION>;
+template class GenericState<float32_t, variable::X, variable::Y, variable::YAW,
+                            variable::XY_VELOCITY, variable::YAW_CHANGE_RATE,
+                            variable::XY_ACCELERATION>;
+template class GenericState<float64_t, variable::X, variable::Y, variable::YAW,
+                            variable::XY_VELOCITY, variable::YAW_CHANGE_RATE,
+                            variable::XY_ACCELERATION>;
 
-template class GenericState<float32_t, variable::X, variable::Y, variable::YAW, variable::XY_VELOCITY,
-                            variable::YAW_CHANGE_RATE>;
-template class GenericState<float64_t, variable::X, variable::Y, variable::YAW, variable::XY_VELOCITY,
-                            variable::YAW_CHANGE_RATE>;
+template class GenericState<float32_t, variable::X, variable::Y, variable::YAW,
+                            variable::XY_VELOCITY, variable::YAW_CHANGE_RATE>;
+template class GenericState<float64_t, variable::X, variable::Y, variable::YAW,
+                            variable::XY_VELOCITY, variable::YAW_CHANGE_RATE>;
 
 }  // namespace state_vector
 }  // namespace common

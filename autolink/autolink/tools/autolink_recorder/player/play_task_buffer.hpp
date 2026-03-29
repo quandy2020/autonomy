@@ -26,26 +26,27 @@
 namespace autolink {
 namespace record {
 
-class PlayTaskBuffer {
- public:
-  using TaskPtr = std::shared_ptr<PlayTask>;
-  // if all tasks are in order, we can use other container to replace this
-  using TaskMap = std::multimap<uint64_t, TaskPtr>;
+class PlayTaskBuffer
+{
+public:
+    using TaskPtr = std::shared_ptr<PlayTask>;
+    // if all tasks are in order, we can use other container to replace this
+    using TaskMap = std::multimap<uint64_t, TaskPtr>;
 
-  PlayTaskBuffer();
-  virtual ~PlayTaskBuffer();
+    PlayTaskBuffer();
+    virtual ~PlayTaskBuffer();
 
-  size_t Size() const;
-  bool Empty() const;
+    size_t Size() const;
+    bool Empty() const;
 
-  void Push(const TaskPtr& task);
-  TaskPtr Front();
-  void PopFront();
-  void Clear();
+    void Push(const TaskPtr& task);
+    TaskPtr Front();
+    void PopFront();
+    void Clear();
 
- private:
-  TaskMap tasks_;
-  mutable std::mutex mutex_;
+private:
+    TaskMap tasks_;
+    mutable std::mutex mutex_;
 };
 
 }  // namespace record

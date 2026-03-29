@@ -25,12 +25,17 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(RunFinalOptimizationSignature, google::protobuf::Empty, google::protobuf::Empty,
-                         "/cartographer.cloud.proto.MapBuilderService/RunFinalOptimization")
+DEFINE_HANDLER_SIGNATURE(
+    RunFinalOptimizationSignature, google::protobuf::Empty,
+    google::protobuf::Empty,
+    "/cartographer.cloud.proto.MapBuilderService/RunFinalOptimization")
 
-class RunFinalOptimizationHandler : public autonomy::common::async_grpc::RpcHandler<RunFinalOptimizationSignature> {
- public:
-  void OnRequest(const google::protobuf::Empty& request) override;
+class RunFinalOptimizationHandler
+    : public autonomy::common::async_grpc::RpcHandler<
+          RunFinalOptimizationSignature>
+{
+public:
+    void OnRequest(const google::protobuf::Empty& request) override;
 };
 
 }  // namespace handlers

@@ -28,44 +28,45 @@ namespace autolink {
 namespace transport {
 
 TEST(MessageInfoTest, test) {
-  Identity id, id2, id3;
-  MessageInfo msgInfo(id, 123);
-  MessageInfo msgInfoX;
+    Identity id, id2, id3;
+    MessageInfo msgInfo(id, 123);
+    MessageInfo msgInfoX;
 
-  msgInfo = msgInfo;
-  msgInfoX = msgInfo;
+    msgInfo = msgInfo;
+    msgInfoX = msgInfo;
 
-  msgInfo.set_spare_id(id3);
-  EXPECT_NE(msgInfo, msgInfoX);
-  msgInfo.set_sender_id(id2);
-  EXPECT_NE(msgInfo, msgInfoX);
-  msgInfo.set_seq_num(789);
-  EXPECT_NE(msgInfo, msgInfoX);
-  msgInfo.set_channel_id(123);
-  EXPECT_NE(msgInfo, msgInfoX);
+    msgInfo.set_spare_id(id3);
+    EXPECT_NE(msgInfo, msgInfoX);
+    msgInfo.set_sender_id(id2);
+    EXPECT_NE(msgInfo, msgInfoX);
+    msgInfo.set_seq_num(789);
+    EXPECT_NE(msgInfo, msgInfoX);
+    msgInfo.set_channel_id(123);
+    EXPECT_NE(msgInfo, msgInfoX);
 
-  MessageInfo msgInfo2(msgInfo);
+    MessageInfo msgInfo2(msgInfo);
 
-  EXPECT_EQ(msgInfo.sender_id(), msgInfo2.sender_id());
-  EXPECT_EQ(msgInfo.seq_num(), msgInfo2.seq_num());
-  EXPECT_EQ(msgInfo.spare_id(), msgInfo2.spare_id());
-  EXPECT_EQ(msgInfo, msgInfo2);
+    EXPECT_EQ(msgInfo.sender_id(), msgInfo2.sender_id());
+    EXPECT_EQ(msgInfo.seq_num(), msgInfo2.seq_num());
+    EXPECT_EQ(msgInfo.spare_id(), msgInfo2.spare_id());
+    EXPECT_EQ(msgInfo, msgInfo2);
 
-  std::string msgStr, msgStr2;
-  EXPECT_TRUE(msgInfo.SerializeTo(&msgStr));
-  msgStr2.resize(msgStr.size());
+    std::string msgStr, msgStr2;
+    EXPECT_TRUE(msgInfo.SerializeTo(&msgStr));
+    msgStr2.resize(msgStr.size());
 
-  EXPECT_FALSE(msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), 2));
-  EXPECT_TRUE(msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), msgStr2.size()));
+    EXPECT_FALSE(msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), 2));
+    EXPECT_TRUE(
+        msgInfo.SerializeTo(const_cast<char*>(msgStr2.data()), msgStr2.size()));
 
-  EXPECT_EQ(msgStr, msgStr2);
+    EXPECT_EQ(msgStr, msgStr2);
 
-  MessageInfo msgInfo3, msgInfo4;
-  EXPECT_TRUE(msgInfo3.DeserializeFrom(msgStr));
-  EXPECT_FALSE(msgInfo4.DeserializeFrom(msgStr2.data(), 2));
-  EXPECT_TRUE(msgInfo4.DeserializeFrom(msgStr2.data(), msgStr2.size()));
+    MessageInfo msgInfo3, msgInfo4;
+    EXPECT_TRUE(msgInfo3.DeserializeFrom(msgStr));
+    EXPECT_FALSE(msgInfo4.DeserializeFrom(msgStr2.data(), 2));
+    EXPECT_TRUE(msgInfo4.DeserializeFrom(msgStr2.data(), msgStr2.size()));
 
-  EXPECT_EQ(msgInfo3, msgInfo4);
+    EXPECT_EQ(msgInfo3, msgInfo4);
 }
 
 }  // namespace transport

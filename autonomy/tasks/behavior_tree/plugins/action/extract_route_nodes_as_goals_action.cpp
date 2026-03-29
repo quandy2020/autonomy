@@ -26,39 +26,40 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ExtractRouteNodesAsGoals::ExtractRouteNodesAsGoals(const std::string& name, const BT::NodeConfiguration& conf)
+ExtractRouteNodesAsGoals::ExtractRouteNodesAsGoals(
+    const std::string& name, const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(name, conf) {}
 
 BT::NodeStatus ExtractRouteNodesAsGoals::tick() {
-  setStatus(BT::NodeStatus::RUNNING);
+    setStatus(BT::NodeStatus::RUNNING);
 
-  proto::Route route;
-  getInput("route", route);
+    proto::Route route;
+    getInput("route", route);
 
-  if (route.nodes_size() == 0) {
-    return BT::NodeStatus::FAILURE;
-  }
+    if (route.nodes_size() == 0) {
+        return BT::NodeStatus::FAILURE;
+    }
 
-  commsgs::planning_msgs::Goals goals;
-  goals.header = commsgs::std_msgs::FromProto(route.header());
-  goals.goals.reserve(route.nodes_size());
+    commsgs::planning_msgs::Goals goals;
+    goals.header = commsgs::std_msgs::FromProto(route.header());
+    goals.goals.reserve(route.nodes_size());
 
-  for (const auto& node : route.nodes()) {
-    commsgs::geometry_msgs::PoseStamped goal;
-    goal.header = goals.header;
-    goal.pose.position.x = node.position().x();
-    goal.pose.position.y = node.position().y();
-    goal.pose.position.z = node.position().z();
-    // Set default orientation (identity quaternion)
-    goal.pose.orientation.w = 1.0;
-    goal.pose.orientation.x = 0.0;
-    goal.pose.orientation.y = 0.0;
-    goal.pose.orientation.z = 0.0;
-    goals.goals.push_back(goal);
-  }
+    for (const auto& node : route.nodes()) {
+        commsgs::geometry_msgs::PoseStamped goal;
+        goal.header = goals.header;
+        goal.pose.position.x = node.position().x();
+        goal.pose.position.y = node.position().y();
+        goal.pose.position.z = node.position().z();
+        // Set default orientation (identity quaternion)
+        goal.pose.orientation.w = 1.0;
+        goal.pose.orientation.x = 0.0;
+        goal.pose.orientation.y = 0.0;
+        goal.pose.orientation.z = 0.0;
+        goals.goals.push_back(goal);
+    }
 
-  setOutput("goals", goals);
-  return BT::NodeStatus::SUCCESS;
+    setOutput("goals", goals);
+    return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -69,6 +70,7 @@ BT::NodeStatus ExtractRouteNodesAsGoals::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ExtractRouteNodesAsGoals>(
-      "ExtractRouteNodesAsGoals");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
+                                 ExtractRouteNodesAsGoals>(
+        "ExtractRouteNodesAsGoals");
 }

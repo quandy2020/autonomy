@@ -25,75 +25,75 @@ namespace egvg {
 
 // 运行聚类，返回聚类总数
 int DBScan2D::run(std::vector<std::vector<int>>& clusters) {
-  int clusterId = 0;
-  for (size_t i = 0; i < points_.size(); ++i) {
-    if (labels_[i] == UNCLASSIFIED) {
-      if (expandCluster(static_cast<int>(i), clusterId)) {
-        ++clusterId;
-      }
+    int clusterId = 0;
+    for (size_t i = 0; i < points_.size(); ++i) {
+        if (labels_[i] == UNCLASSIFIED) {
+            if (expandCluster(static_cast<int>(i), clusterId)) {
+                ++clusterId;
+            }
+        }
     }
-  }
-  // 输出每个聚类包含的点编号
-  clusters.clear();
-  clusters.resize(clusterId);
-  for (size_t i = 0; i < labels_.size(); ++i) {
-    if (labels_[i] >= 0) {
-      clusters[labels_[i]].push_back(static_cast<int>(i));
+    // 输出每个聚类包含的点编号
+    clusters.clear();
+    clusters.resize(clusterId);
+    for (size_t i = 0; i < labels_.size(); ++i) {
+        if (labels_[i] >= 0) {
+            clusters[labels_[i]].push_back(static_cast<int>(i));
+        }
     }
-  }
-  return clusterId;
+    return clusterId;
 }
 
 // 计算欧氏距离平方（只使用 x,y）
 inline float DBScan2D::dist2(const Point& a, const Point& b) const {
-  const float dx = static_cast<float>(a.x - b.x);
-  const float dy = static_cast<float>(a.y - b.y);
-  return dx * dx + dy * dy;
+    const float dx = static_cast<float>(a.x - b.x);
+    const float dy = static_cast<float>(a.y - b.y);
+    return dx * dx + dy * dy;
 }
 
 // 找到邻域内所有点的索引
 std::vector<int> DBScan2D::regionQuery(int idx) const {
-  std::vector<int> neighbors;
-  for (size_t i = 0; i < points_.size(); ++i) {
-    if (dist2(points_[idx], points_[i]) <= eps_ * eps_) {
-      neighbors.push_back(static_cast<int>(i));
+    std::vector<int> neighbors;
+    for (size_t i = 0; i < points_.size(); ++i) {
+        if (dist2(points_[idx], points_[i]) <= eps_ * eps_) {
+            neighbors.push_back(static_cast<int>(i));
+        }
     }
-  }
-  return neighbors;
+    return neighbors;
 }
 
 // 尝试扩展一个聚类
 bool DBScan2D::expandCluster(int idx, int clusterId) {
-  auto seeds = regionQuery(idx);
-  if (static_cast<int>(seeds.size()) < minPts_) {
-    labels_[idx] = NOISE;
-    return false;
-  }
-  for (int seedIdx : seeds) {
-    labels_[seedIdx] = clusterId;
-  }
-  std::queue<int> q;
-  for (int seedIdx : seeds) {
-    if (seedIdx != idx) {
-      q.push(seedIdx);
+    auto seeds = regionQuery(idx);
+    if (static_cast<int>(seeds.size()) < minPts_) {
+        labels_[idx] = NOISE;
+        return false;
     }
-  }
-  while (!q.empty()) {
-    int curr = q.front();
-    q.pop();
-    auto neighbors = regionQuery(curr);
-    if (static_cast<int>(neighbors.size()) >= minPts_) {
-      for (int nIdx : neighbors) {
-        if (labels_[nIdx] == UNCLASSIFIED || labels_[nIdx] == NOISE) {
-          if (labels_[nIdx] == UNCLASSIFIED) {
-            q.push(nIdx);
-          }
-          labels_[nIdx] = clusterId;
+    for (int seedIdx : seeds) {
+        labels_[seedIdx] = clusterId;
+    }
+    std::queue<int> q;
+    for (int seedIdx : seeds) {
+        if (seedIdx != idx) {
+            q.push(seedIdx);
         }
-      }
     }
-  }
-  return true;
+    while (!q.empty()) {
+        int curr = q.front();
+        q.pop();
+        auto neighbors = regionQuery(curr);
+        if (static_cast<int>(neighbors.size()) >= minPts_) {
+            for (int nIdx : neighbors) {
+                if (labels_[nIdx] == UNCLASSIFIED || labels_[nIdx] == NOISE) {
+                    if (labels_[nIdx] == UNCLASSIFIED) {
+                        q.push(nIdx);
+                    }
+                    labels_[nIdx] = clusterId;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 }  // namespace egvg

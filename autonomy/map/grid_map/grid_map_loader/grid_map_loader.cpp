@@ -13,24 +13,26 @@ using namespace grid_map;
 
 namespace grid_map_loader {
 
-GridMapLoader::GridMapLoader() { readParameters(); }
+GridMapLoader::GridMapLoader() {
+    readParameters();
+}
 
 GridMapLoader::~GridMapLoader() {}
 
 bool GridMapLoader::readParameters() {
-  //   nodeHandle_.param("bag_topic", bagTopic_, std::string("/grid_map"));
-  //   nodeHandle_.param("publish_topic", publishTopic_, bagTopic_);
-  //   nodeHandle_.param("file_path", filePath_, std::string());
-  //   double durationInSec;
-  //   nodeHandle_.param("duration", durationInSec, 5.0);
-  //   duration_.fromSec(durationInSec);
-  return true;
+    //   nodeHandle_.param("bag_topic", bagTopic_, std::string("/grid_map"));
+    //   nodeHandle_.param("publish_topic", publishTopic_, bagTopic_);
+    //   nodeHandle_.param("file_path", filePath_, std::string());
+    //   double durationInSec;
+    //   nodeHandle_.param("duration", durationInSec, 5.0);
+    //   duration_.fromSec(durationInSec);
+    return true;
 }
 
 bool GridMapLoader::load() {
-  // ROS_INFO_STREAM("Loading grid map from path " << filePath_ << ".");
-  // return GridMapRosConverter::loadFromBag(filePath_, bagTopic_, map_);
-  return true;
+    // ROS_INFO_STREAM("Loading grid map from path " << filePath_ << ".");
+    // return GridMapRosConverter::loadFromBag(filePath_, bagTopic_, map_);
+    return true;
 }
 
 // void GridMapLoader::publish()

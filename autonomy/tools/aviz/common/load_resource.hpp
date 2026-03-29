@@ -22,7 +22,8 @@
  * @brief Resource loading utilities
  * Load resource from package or path
  *
- * Provides functions to load resources (files, shaders, etc.) from various locations
+ * Provides functions to load resources (files, shaders, etc.) from various
+ * locations
  */
 namespace aviz {
 namespace common {

@@ -22,33 +22,35 @@ namespace autolink {
 
 using autolink::common::GetEnv;
 
-SysMo::SysMo() { Start(); }
+SysMo::SysMo() {
+    Start();
+}
 
 void SysMo::Start() {
-  auto sysmo_start = GetEnv("sysmo_start");
-  if (sysmo_start != "" && std::stoi(sysmo_start)) {
-    start_ = true;
-    sysmo_ = std::thread(&SysMo::Checker, this);
-  }
+    auto sysmo_start = GetEnv("sysmo_start");
+    if (sysmo_start != "" && std::stoi(sysmo_start)) {
+        start_ = true;
+        sysmo_ = std::thread(&SysMo::Checker, this);
+    }
 }
 
 void SysMo::Shutdown() {
-  if (!start_ || shut_down_.exchange(true)) {
-    return;
-  }
+    if (!start_ || shut_down_.exchange(true)) {
+        return;
+    }
 
-  cv_.notify_all();
-  if (sysmo_.joinable()) {
-    sysmo_.join();
-  }
+    cv_.notify_all();
+    if (sysmo_.joinable()) {
+        sysmo_.join();
+    }
 }
 
 void SysMo::Checker() {
-  while (autolink_unlikely(!shut_down_.load())) {
-    scheduler::Instance()->CheckSchedStatus();
-    std::unique_lock<std::mutex> lk(lk_);
-    cv_.wait_for(lk, std::chrono::milliseconds(sysmo_interval_ms_));
-  }
+    while (autolink_unlikely(!shut_down_.load())) {
+        scheduler::Instance()->CheckSchedStatus();
+        std::unique_lock<std::mutex> lk(lk_);
+        cv_.wait_for(lk, std::chrono::milliseconds(sysmo_interval_ms_));
+    }
 }
 
 }  // namespace autolink

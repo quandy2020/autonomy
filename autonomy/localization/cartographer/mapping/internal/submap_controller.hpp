@@ -26,49 +26,56 @@ namespace cartographer {
 namespace mapping {
 
 template <class SubmapType>
-class SubmapController {
- public:
-  std::shared_ptr<SubmapType> UpdateSubmap(const mapping::proto::Submap& proto) {
-    mapping::SubmapId submap_id{proto.submap_id().trajectory_id(), proto.submap_id().submap_index()};
-    std::shared_ptr<SubmapType> submap_ptr;
-    auto submap_it = unfinished_submaps_.find(submap_id);
-    if (submap_it == unfinished_submaps_.end()) {
-      submap_ptr = CreateSubmap(proto);
-      if (submap_ptr) {
-        unfinished_submaps_.Insert(submap_id, submap_ptr);
-      }
-      return submap_ptr;
+class SubmapController
+{
+public:
+    std::shared_ptr<SubmapType> UpdateSubmap(
+        const mapping::proto::Submap& proto) {
+        mapping::SubmapId submap_id{proto.submap_id().trajectory_id(),
+                                    proto.submap_id().submap_index()};
+        std::shared_ptr<SubmapType> submap_ptr;
+        auto submap_it = unfinished_submaps_.find(submap_id);
+        if (submap_it == unfinished_submaps_.end()) {
+            submap_ptr = CreateSubmap(proto);
+            if (submap_ptr) {
+                unfinished_submaps_.Insert(submap_id, submap_ptr);
+            }
+            return submap_ptr;
+        }
+        submap_ptr = submap_it->data;
+        CHECK(submap_ptr);
+        submap_ptr->UpdateFromProto(proto);
+
+        // If the submap was just finished by the recent update, remove it from
+        // the list of unfinished submaps.
+        if (submap_ptr->insertion_finished()) {
+            unfinished_submaps_.Trim(submap_id);
+        } else {
+            // If the submap is unfinished set the 'num_range_data' to 0 since
+            // we haven't changed the HybridGrid.
+            submap_ptr->set_num_range_data(0);
+        }
+        return submap_ptr;
     }
-    submap_ptr = submap_it->data;
-    CHECK(submap_ptr);
-    submap_ptr->UpdateFromProto(proto);
 
-    // If the submap was just finished by the recent update, remove it from
-    // the list of unfinished submaps.
-    if (submap_ptr->insertion_finished()) {
-      unfinished_submaps_.Trim(submap_id);
-    } else {
-      // If the submap is unfinished set the 'num_range_data' to 0 since
-      // we haven't changed the HybridGrid.
-      submap_ptr->set_num_range_data(0);
-    }
-    return submap_ptr;
-  }
+private:
+    std::shared_ptr<SubmapType> CreateSubmap(
+        const mapping::proto::Submap& proto);
 
- private:
-  std::shared_ptr<SubmapType> CreateSubmap(const mapping::proto::Submap& proto);
+    mapping::MapById<mapping::SubmapId, std::shared_ptr<SubmapType>>
+        unfinished_submaps_;
 
-  mapping::MapById<mapping::SubmapId, std::shared_ptr<SubmapType>> unfinished_submaps_;
-
-  ValueConversionTables conversion_tables_;
+    ValueConversionTables conversion_tables_;
 };
 
 template <>
-std::shared_ptr<mapping::Submap2D> SubmapController<mapping::Submap2D>::CreateSubmap(
+std::shared_ptr<mapping::Submap2D>
+SubmapController<mapping::Submap2D>::CreateSubmap(
     const mapping::proto::Submap& proto);
 
 template <>
-std::shared_ptr<mapping::Submap3D> SubmapController<mapping::Submap3D>::CreateSubmap(
+std::shared_ptr<mapping::Submap3D>
+SubmapController<mapping::Submap3D>::CreateSubmap(
     const mapping::proto::Submap& proto);
 
 }  // namespace mapping

@@ -34,27 +34,32 @@ namespace transport {
 class Participant;
 using ParticipantPtr = std::shared_ptr<Participant>;
 
-class Participant {
- public:
-  Participant(const std::string& name, int send_port, eprosima::fastrtps::ParticipantListener* listener = nullptr);
-  virtual ~Participant();
+class Participant
+{
+public:
+    Participant(const std::string& name, int send_port,
+                eprosima::fastrtps::ParticipantListener* listener = nullptr);
+    virtual ~Participant();
 
-  void Shutdown();
+    void Shutdown();
 
-  eprosima::fastrtps::Participant* fastrtps_participant();
-  bool is_shutdown() const { return shutdown_.load(); }
+    eprosima::fastrtps::Participant* fastrtps_participant();
+    bool is_shutdown() const {
+        return shutdown_.load();
+    }
 
- private:
-  void CreateFastRtpsParticipant(const std::string& name, int send_port,
-                                 eprosima::fastrtps::ParticipantListener* listener);
+private:
+    void CreateFastRtpsParticipant(
+        const std::string& name, int send_port,
+        eprosima::fastrtps::ParticipantListener* listener);
 
-  std::atomic<bool> shutdown_;
-  std::string name_;
-  int send_port_;
-  eprosima::fastrtps::ParticipantListener* listener_;
-  UnderlayMessageType type_;
-  eprosima::fastrtps::Participant* fastrtps_participant_;
-  std::mutex mutex_;
+    std::atomic<bool> shutdown_;
+    std::string name_;
+    int send_port_;
+    eprosima::fastrtps::ParticipantListener* listener_;
+    UnderlayMessageType type_;
+    eprosima::fastrtps::Participant* fastrtps_participant_;
+    std::mutex mutex_;
 };
 
 }  // namespace transport

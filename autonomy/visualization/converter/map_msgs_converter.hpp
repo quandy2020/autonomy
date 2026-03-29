@@ -25,7 +25,8 @@ namespace converter {
 namespace impl {
 
 // map_msgs
-foxglove::schemas::Grid ToFoxgloveImpl(const autonomy::commsgs::proto::map_msgs::OccupancyGrid& message);
+foxglove::schemas::Grid ToFoxgloveImpl(
+    const autonomy::commsgs::proto::map_msgs::OccupancyGrid& message);
 
 }  // namespace impl
 }  // namespace converter

@@ -25,24 +25,25 @@
 #include "autonomy/tools/aviz/common/autolink_integration/autolink_client_abstraction.hpp"
 
 int main(int argc, char** argv) {
-  // Initialize autolink.
-  ::autolink::Init(argv[0]);
+    // Initialize autolink.
+    ::autolink::Init(argv[0]);
 
-  // Create the QApplication.
-  QApplication qapp(argc, argv);
+    // Create the QApplication.
+    QApplication qapp(argc, argv);
 
-  // Create the visualizer app.
-  autonomy::common::VisualizerApp vapp(std::make_unique<autonomy::common::AutolinkClientAbstraction>());
-  vapp.setApp(&qapp);
+    // Create the visualizer app.
+    autonomy::common::VisualizerApp vapp(
+        std::make_unique<autonomy::common::AutolinkClientAbstraction>());
+    vapp.setApp(&qapp);
 
-  // Initialize the visualizer app.
-  if (vapp.init(argc, argv)) {
-    AINFO << "Initialized the visualizer app.";
-    vapp.run();
-  } else {
-    AERROR << "Failed to initialize the visualizer app.";
-    return EXIT_FAILURE;
-  }
+    // Initialize the visualizer app.
+    if (vapp.init(argc, argv)) {
+        AINFO << "Initialized the visualizer app.";
+        vapp.run();
+    } else {
+        AERROR << "Failed to initialize the visualizer app.";
+        return EXIT_FAILURE;
+    }
 
-  return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }

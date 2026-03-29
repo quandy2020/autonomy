@@ -22,26 +22,29 @@
 
 class Screen;
 
-class GeneralMessage : public GeneralMessageBase {
- public:
-  GeneralMessage(GeneralMessageBase* parent, const google::protobuf::Message* msg,
-                 const google::protobuf::Reflection* reflection, const google::protobuf::FieldDescriptor* field);
+class GeneralMessage : public GeneralMessageBase
+{
+public:
+    GeneralMessage(GeneralMessageBase* parent,
+                   const google::protobuf::Message* msg,
+                   const google::protobuf::Reflection* reflection,
+                   const google::protobuf::FieldDescriptor* field);
 
-  ~GeneralMessage() {
-    field_ = nullptr;
-    message_ptr_ = nullptr;
-    reflection_ptr_ = nullptr;
-  }
+    ~GeneralMessage() {
+        field_ = nullptr;
+        message_ptr_ = nullptr;
+        reflection_ptr_ = nullptr;
+    }
 
-  int Render(const Screen* s, int key) override;
+    int Render(const Screen* s, int key) override;
 
- private:
-  GeneralMessage(const GeneralMessage&) = delete;
-  GeneralMessage& operator=(const GeneralMessage&) = delete;
+private:
+    GeneralMessage(const GeneralMessage&) = delete;
+    GeneralMessage& operator=(const GeneralMessage&) = delete;
 
-  int item_index_;
-  bool is_folded_;
-  const google::protobuf::FieldDescriptor* field_;
-  const google::protobuf::Message* message_ptr_;
-  const google::protobuf::Reflection* reflection_ptr_;
+    int item_index_;
+    bool is_folded_;
+    const google::protobuf::FieldDescriptor* field_;
+    const google::protobuf::Message* message_ptr_;
+    const google::protobuf::Reflection* reflection_ptr_;
 };

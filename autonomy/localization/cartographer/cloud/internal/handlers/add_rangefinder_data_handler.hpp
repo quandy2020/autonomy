@@ -26,13 +26,17 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(AddRangefinderDataSignature,
-                         autonomy::common::async_grpc::Stream<proto::AddRangefinderDataRequest>,
-                         google::protobuf::Empty, "/cartographer.cloud.proto.MapBuilderService/AddRangefinderData")
+DEFINE_HANDLER_SIGNATURE(
+    AddRangefinderDataSignature,
+    autonomy::common::async_grpc::Stream<proto::AddRangefinderDataRequest>,
+    google::protobuf::Empty,
+    "/cartographer.cloud.proto.MapBuilderService/AddRangefinderData")
 
-class AddRangefinderDataHandler : public AddSensorDataHandlerBase<AddRangefinderDataSignature> {
- public:
-  void OnSensorData(const proto::AddRangefinderDataRequest& request) override;
+class AddRangefinderDataHandler
+    : public AddSensorDataHandlerBase<AddRangefinderDataSignature>
+{
+public:
+    void OnSensorData(const proto::AddRangefinderDataRequest& request) override;
 };
 
 }  // namespace handlers

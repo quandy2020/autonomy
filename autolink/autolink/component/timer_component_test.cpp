@@ -26,36 +26,41 @@ namespace autolink {
 static bool ret_proc = true;
 static bool ret_init = true;
 
-class Component_Timer : public TimerComponent {
- public:
-  Component_Timer() {}
-  bool Init() { return ret_init; }
-  bool Proc() { return ret_proc; }
+class Component_Timer : public TimerComponent
+{
+public:
+    Component_Timer() {}
+    bool Init() {
+        return ret_init;
+    }
+    bool Proc() {
+        return ret_proc;
+    }
 };
 
 TEST(TimerComponent, timertest) {
-  ret_proc = true;
-  ret_init = true;
-  autolink::Init("timer component test");
-  autolink::proto::TimerComponentConfig compcfg;
-  compcfg.set_name("driver");
-  compcfg.set_interval(100);
+    ret_proc = true;
+    ret_init = true;
+    autolink::Init("timer component test");
+    autolink::proto::TimerComponentConfig compcfg;
+    compcfg.set_name("driver");
+    compcfg.set_interval(100);
 
-  std::shared_ptr<Component_Timer> com = std::make_shared<Component_Timer>();
-  EXPECT_TRUE(com->Initialize(compcfg));
-  EXPECT_TRUE(com->Process());
+    std::shared_ptr<Component_Timer> com = std::make_shared<Component_Timer>();
+    EXPECT_TRUE(com->Initialize(compcfg));
+    EXPECT_TRUE(com->Process());
 }
 
 TEST(TimerComponentFalse, timerfail) {
-  ret_proc = false;
-  ret_init = false;
-  autolink::Init("timer component test");
-  autolink::proto::TimerComponentConfig compcfg;
-  compcfg.set_name("driver1");
-  compcfg.set_interval(100);
+    ret_proc = false;
+    ret_init = false;
+    autolink::Init("timer component test");
+    autolink::proto::TimerComponentConfig compcfg;
+    compcfg.set_name("driver1");
+    compcfg.set_interval(100);
 
-  std::shared_ptr<Component_Timer> com = std::make_shared<Component_Timer>();
-  EXPECT_FALSE(com->Initialize(compcfg));
-  EXPECT_FALSE(com->Process());
+    std::shared_ptr<Component_Timer> com = std::make_shared<Component_Timer>();
+    EXPECT_FALSE(com->Initialize(compcfg));
+    EXPECT_FALSE(com->Process());
 }
 }  // namespace autolink

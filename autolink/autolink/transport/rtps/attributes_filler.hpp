@@ -30,16 +30,19 @@ using proto::QosHistoryPolicy;
 using proto::QosProfile;
 using proto::QosReliabilityPolicy;
 
-class AttributesFiller {
- public:
-  AttributesFiller();
-  virtual ~AttributesFiller();
+class AttributesFiller
+{
+public:
+    AttributesFiller();
+    virtual ~AttributesFiller();
 
-  static bool FillInPubAttr(const std::string& channel_name, const QosProfile& qos,
-                            eprosima::fastrtps::PublisherAttributes* pub_attr);
+    static bool FillInPubAttr(
+        const std::string& channel_name, const QosProfile& qos,
+        eprosima::fastrtps::PublisherAttributes* pub_attr);
 
-  static bool FillInSubAttr(const std::string& channel_name, const QosProfile& qos,
-                            eprosima::fastrtps::SubscriberAttributes* sub_attr);
+    static bool FillInSubAttr(
+        const std::string& channel_name, const QosProfile& qos,
+        eprosima::fastrtps::SubscriberAttributes* sub_attr);
 };
 
 }  // namespace transport

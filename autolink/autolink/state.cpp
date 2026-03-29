@@ -24,8 +24,12 @@ namespace {
 std::atomic<State> g_autolink_state;
 }
 
-State GetState() { return g_autolink_state.load(); }
+State GetState() {
+    return g_autolink_state.load();
+}
 
-void SetState(const State& state) { g_autolink_state.store(state); }
+void SetState(const State& state) {
+    g_autolink_state.store(state);
+}
 
 }  // namespace autolink

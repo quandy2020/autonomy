@@ -22,8 +22,8 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ReinitializeGlobalLocalizationService::ReinitializeGlobalLocalizationService(const std::string& service_node_name,
-                                                                             const BT::NodeConfiguration& conf)
+ReinitializeGlobalLocalizationService::ReinitializeGlobalLocalizationService(
+    const std::string& service_node_name, const BT::NodeConfiguration& conf)
     : BtServiceNode<proto::Empty>(service_node_name, conf) {}
 
 }  // namespace action
@@ -34,6 +34,7 @@ ReinitializeGlobalLocalizationService::ReinitializeGlobalLocalizationService(con
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::ReinitializeGlobalLocalizationService>(
-      "ReinitializeGlobalLocalization");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
+                                 ReinitializeGlobalLocalizationService>(
+        "ReinitializeGlobalLocalization");
 }

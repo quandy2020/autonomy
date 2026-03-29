@@ -28,42 +28,43 @@ namespace autolink {
 using autolink::proto::Chatter;
 
 TEST(NodeTest, cases) {
-  auto node = CreateNode("node_test");
-  EXPECT_EQ(node->Name(), "node_test");
+    auto node = CreateNode("node_test");
+    EXPECT_EQ(node->Name(), "node_test");
 
-  proto::RoleAttributes attr;
-  attr.set_channel_name("/node_test_channel");
-  auto channel_id = common::GlobalData::RegisterChannel(attr.channel_name());
-  attr.set_channel_id(channel_id);
-  attr.mutable_qos_profile()->set_depth(10);
+    proto::RoleAttributes attr;
+    attr.set_channel_name("/node_test_channel");
+    auto channel_id = common::GlobalData::RegisterChannel(attr.channel_name());
+    attr.set_channel_id(channel_id);
+    attr.mutable_qos_profile()->set_depth(10);
 
-  auto reader = node->CreateReader<Chatter>(attr);
-  EXPECT_TRUE(node->GetReader<Chatter>(attr.channel_name()));
+    auto reader = node->CreateReader<Chatter>(attr);
+    EXPECT_TRUE(node->GetReader<Chatter>(attr.channel_name()));
 
-  auto writer = node->CreateWriter<Chatter>(attr);
-  auto server = node->CreateService<Chatter, Chatter>(
-      "node_test_server", [](const std::shared_ptr<Chatter>& request, std::shared_ptr<Chatter>& response) {
-        AINFO << "server: I am server";
-        static uint64_t id = 0;
-        ++id;
-        response->set_seq(id);
-        response->set_timestamp(0);
-      });
-  auto client = node->CreateClient<Chatter, Chatter>("node_test_server");
-  auto chatter_msg = std::make_shared<Chatter>();
-  chatter_msg->set_seq(0);
-  chatter_msg->set_timestamp(0);
-  auto res = client->SendRequest(chatter_msg);
-  EXPECT_EQ(res->seq(), 1);
+    auto writer = node->CreateWriter<Chatter>(attr);
+    auto server = node->CreateService<Chatter, Chatter>(
+        "node_test_server", [](const std::shared_ptr<Chatter>& request,
+                               std::shared_ptr<Chatter>& response) {
+            AINFO << "server: I am server";
+            static uint64_t id = 0;
+            ++id;
+            response->set_seq(id);
+            response->set_timestamp(0);
+        });
+    auto client = node->CreateClient<Chatter, Chatter>("node_test_server");
+    auto chatter_msg = std::make_shared<Chatter>();
+    chatter_msg->set_seq(0);
+    chatter_msg->set_timestamp(0);
+    auto res = client->SendRequest(chatter_msg);
+    EXPECT_EQ(res->seq(), 1);
 
-  node->Observe();
-  node->ClearData();
+    node->Observe();
+    node->ClearData();
 }
 
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  return RUN_ALL_TESTS();
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    return RUN_ALL_TESTS();
 }

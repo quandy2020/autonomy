@@ -40,57 +40,64 @@ enum class BtStatus { SUCCEEDED, FAILED, CANCELED };
  * @class nav2_behavior_tree::BehaviorTreeEngine
  * @brief A class to create and handle behavior trees
  */
-class BehaviorTreeEngine {
- public:
-  /**
-   * @brief A constructor for
-   * autonomy::tasks::behavior_tree::BehaviorTreeEngine
-   * @param plugin_libraries vector of BT plugin library names to load
-   */
-  explicit BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries, std::shared_ptr<::autolink::Node> node);
+class BehaviorTreeEngine
+{
+public:
+    /**
+     * @brief A constructor for
+     * autonomy::tasks::behavior_tree::BehaviorTreeEngine
+     * @param plugin_libraries vector of BT plugin library names to load
+     */
+    explicit BehaviorTreeEngine(
+        const std::vector<std::string>& plugin_libraries,
+        std::shared_ptr<::autolink::Node> node);
 
-  virtual ~BehaviorTreeEngine() {}
+    virtual ~BehaviorTreeEngine() {}
 
-  /**
-   * @brief Function to execute a BT at a specific rate
-   * @param tree BT to execute
-   * @param onLoop Function to execute on each iteration of BT execution
-   * @param cancelRequested Function to check if cancel was requested during
-   * BT execution
-   * @param loopTimeout Time period for each iteration of BT execution
-   * @return nav2_behavior_tree::BtStatus Status of BT execution
-   */
-  BtStatus Run(BT::Tree* tree, std::function<void()> onLoop, std::function<bool()> cancelRequested,
-               std::chrono::milliseconds loopTimeout = std::chrono::milliseconds(10));
+    /**
+     * @brief Function to execute a BT at a specific rate
+     * @param tree BT to execute
+     * @param onLoop Function to execute on each iteration of BT execution
+     * @param cancelRequested Function to check if cancel was requested during
+     * BT execution
+     * @param loopTimeout Time period for each iteration of BT execution
+     * @return nav2_behavior_tree::BtStatus Status of BT execution
+     */
+    BtStatus Run(
+        BT::Tree* tree, std::function<void()> onLoop,
+        std::function<bool()> cancelRequested,
+        std::chrono::milliseconds loopTimeout = std::chrono::milliseconds(10));
 
-  /**
-   * @brief Function to create a BT from a XML string
-   * @param xml_string XML string representing BT
-   * @param blackboard Blackboard for BT
-   * @return BT::Tree Created behavior tree
-   */
-  BT::Tree CreateTreeFromText(const std::string& xml_string, BT::Blackboard::Ptr blackboard);
+    /**
+     * @brief Function to create a BT from a XML string
+     * @param xml_string XML string representing BT
+     * @param blackboard Blackboard for BT
+     * @return BT::Tree Created behavior tree
+     */
+    BT::Tree CreateTreeFromText(const std::string& xml_string,
+                                BT::Blackboard::Ptr blackboard);
 
-  /**
-   * @brief Function to create a BT from an XML file
-   * @param file_path Path to BT XML file
-   * @param blackboard Blackboard for BT
-   * @return BT::Tree Created behavior tree
-   */
-  BT::Tree CreateTreeFromFile(const std::string& file_path, BT::Blackboard::Ptr blackboard);
+    /**
+     * @brief Function to create a BT from an XML file
+     * @param file_path Path to BT XML file
+     * @param blackboard Blackboard for BT
+     * @return BT::Tree Created behavior tree
+     */
+    BT::Tree CreateTreeFromFile(const std::string& file_path,
+                                BT::Blackboard::Ptr blackboard);
 
-  /**
-   * @brief Function to explicitly reset all BT nodes to initial state
-   * @param tree Tree to halt
-   */
-  void HaltAllActions(BT::Tree& tree);
+    /**
+     * @brief Function to explicitly reset all BT nodes to initial state
+     * @param tree Tree to halt
+     */
+    void HaltAllActions(BT::Tree& tree);
 
- protected:
-  // The factory that will be used to dynamically construct the behavior tree
-  BT::BehaviorTreeFactory factory_;
+protected:
+    // The factory that will be used to dynamically construct the behavior tree
+    BT::BehaviorTreeFactory factory_;
 
-  // Groot2 monitor
-  std::unique_ptr<BT::Groot2Publisher> groot_monitor_;
+    // Groot2 monitor
+    std::unique_ptr<BT::Groot2Publisher> groot_monitor_;
 };
 
 }  // namespace behavior_tree

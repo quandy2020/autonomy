@@ -36,11 +36,13 @@ std::string BINARY_NAME = "autolink_benchmark_reader";  // NOLINT
 int nums_of_reader = 1;
 bool enable_cpuprofile = false;
 bool enable_heapprofile = false;
-std::string profile_filename = "autolink_benchmark_reader_cpu.prof";      // NOLINT
-std::string heapprofile_filename = "autolink_benchmark_reader_mem.prof";  // NOLINT
+std::string profile_filename = "autolink_benchmark_reader_cpu.prof";  // NOLINT
+std::string heapprofile_filename =
+    "autolink_benchmark_reader_mem.prof";  // NOLINT
 
 void DisplayUsage() {
-  AINFO << "Usage: \n    " << BINARY_NAME << " [OPTION]...\n"
+    AINFO
+        << "Usage: \n    " << BINARY_NAME << " [OPTION]...\n"
         << "Description: \n"
         << "    -h, --help: help information \n"
         << "    -n, --nums_of_reader=nums_of_reader: numbers of reader, "
@@ -60,116 +62,119 @@ void DisplayUsage() {
 }
 
 void GetOptions(const int argc, char* const argv[]) {
-  opterr = 0;  // extern int opterr
-  int long_index = 0;
-  const std::string short_opts = "hn:co:HO:";
-  static const struct option long_opts[] = {{"help", no_argument, nullptr, 'h'},
-                                            {"nums_of_reader", required_argument, nullptr, 'n'},
-                                            {"cpuprofile", no_argument, nullptr, 'c'},
-                                            {"profile_filename", required_argument, nullptr, 'o'},
-                                            {"heapprofile", no_argument, nullptr, 'H'},
-                                            {"heapprofile_filename", required_argument, nullptr, 'O'},
-                                            {NULL, no_argument, nullptr, 0}};
+    opterr = 0;  // extern int opterr
+    int long_index = 0;
+    const std::string short_opts = "hn:co:HO:";
+    static const struct option long_opts[] = {
+        {"help", no_argument, nullptr, 'h'},
+        {"nums_of_reader", required_argument, nullptr, 'n'},
+        {"cpuprofile", no_argument, nullptr, 'c'},
+        {"profile_filename", required_argument, nullptr, 'o'},
+        {"heapprofile", no_argument, nullptr, 'H'},
+        {"heapprofile_filename", required_argument, nullptr, 'O'},
+        {NULL, no_argument, nullptr, 0}};
 
-  // log command for info
-  std::string cmd("");
-  for (int i = 0; i < argc; ++i) {
-    cmd += argv[i];
-    cmd += " ";
-  }
-  AINFO << "command: " << cmd;
-
-  if (1 == argc) {
-    DisplayUsage();
-    exit(0);
-  }
-
-  do {
-    int opt = getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
-    if (opt == -1) {
-      break;
+    // log command for info
+    std::string cmd("");
+    for (int i = 0; i < argc; ++i) {
+        cmd += argv[i];
+        cmd += " ";
     }
-    switch (opt) {
-      case 'n':
-        nums_of_reader = std::stoi(std::string(optarg));
-        if (nums_of_reader < 0) {
-          AERROR << "Invalid numbers of reader. It should be grater than 0";
-          exit(-1);
-        }
-        break;
-      case 'c':
-#ifndef BASE_PROFILER_H_
-        AWARN << "gperftools not installed, ignore perf parameters";
-#endif
-        enable_cpuprofile = true;
-        break;
-      case 'o':
-        profile_filename = std::string(optarg);
-        break;
-      case 'H':
-#ifndef BASE_PROFILER_H_
-        AWARN << "gperftools not installed, ignore perf parameters";
-#endif
-        enable_heapprofile = true;
-        break;
-      case 'O':
-        heapprofile_filename = std::string(optarg);
-        break;
-      case 'h':
+    AINFO << "command: " << cmd;
+
+    if (1 == argc) {
         DisplayUsage();
         exit(0);
-      default:
-        break;
     }
-  } while (true);
 
-  if (optind < argc) {
-    AINFO << "Found non-option ARGV-element \"" << argv[optind++] << "\"";
-    DisplayUsage();
-    exit(1);
-  }
+    do {
+        int opt =
+            getopt_long(argc, argv, short_opts.c_str(), long_opts, &long_index);
+        if (opt == -1) {
+            break;
+        }
+        switch (opt) {
+            case 'n':
+                nums_of_reader = std::stoi(std::string(optarg));
+                if (nums_of_reader < 0) {
+                    AERROR << "Invalid numbers of reader. It should be grater "
+                              "than 0";
+                    exit(-1);
+                }
+                break;
+            case 'c':
+#ifndef BASE_PROFILER_H_
+                AWARN << "gperftools not installed, ignore perf parameters";
+#endif
+                enable_cpuprofile = true;
+                break;
+            case 'o':
+                profile_filename = std::string(optarg);
+                break;
+            case 'H':
+#ifndef BASE_PROFILER_H_
+                AWARN << "gperftools not installed, ignore perf parameters";
+#endif
+                enable_heapprofile = true;
+                break;
+            case 'O':
+                heapprofile_filename = std::string(optarg);
+                break;
+            case 'h':
+                DisplayUsage();
+                exit(0);
+            default:
+                break;
+        }
+    } while (true);
+
+    if (optind < argc) {
+        AINFO << "Found non-option ARGV-element \"" << argv[optind++] << "\"";
+        DisplayUsage();
+        exit(1);
+    }
 }
 
 int main(int argc, char** argv) {
-  GetOptions(argc, argv);
-  autolink::Init(argv[0], BINARY_NAME);
+    GetOptions(argc, argv);
+    autolink::Init(argv[0], BINARY_NAME);
 
-  autolink::ReaderConfig reader_config;
-  reader_config.channel_name = "/autolink/benchmark";
+    autolink::ReaderConfig reader_config;
+    reader_config.channel_name = "/autolink/benchmark";
 
-  std::vector<std::shared_ptr<autolink::Reader<BenchmarkMsg>>> vec;
+    std::vector<std::shared_ptr<autolink::Reader<BenchmarkMsg>>> vec;
 
-  for (int i = 0; i < nums_of_reader; i++) {
-    std::string node_name = BINARY_NAME + "-" + std::to_string(i);
-    auto node = autolink::CreateNode(node_name);
-    vec.push_back(
-        std::move(node->CreateReader<BenchmarkMsg>(reader_config, [](const std::shared_ptr<BenchmarkMsg> m) {})));
-  }
-
-#ifndef NO_TCMALLOC
-#ifdef BASE_PROFILER_H_
-  if (enable_cpuprofile) {
-    ProfilerStart(profile_filename.c_str());
-  }
-  if (enable_heapprofile) {
-    HeapProfilerStart(heapprofile_filename.c_str());
-  }
-#endif
-#endif
-
-  autolink::WaitForShutdown();
+    for (int i = 0; i < nums_of_reader; i++) {
+        std::string node_name = BINARY_NAME + "-" + std::to_string(i);
+        auto node = autolink::CreateNode(node_name);
+        vec.push_back(std::move(node->CreateReader<BenchmarkMsg>(
+            reader_config, [](const std::shared_ptr<BenchmarkMsg> m) {})));
+    }
 
 #ifndef NO_TCMALLOC
 #ifdef BASE_PROFILER_H_
-  if (enable_cpuprofile) {
-    ProfilerStop();
-  }
-  if (enable_heapprofile) {
-    HeapProfilerDump("Befor shutdown");
-    HeapProfilerStop();
-  }
+    if (enable_cpuprofile) {
+        ProfilerStart(profile_filename.c_str());
+    }
+    if (enable_heapprofile) {
+        HeapProfilerStart(heapprofile_filename.c_str());
+    }
 #endif
 #endif
 
-  return 0;
+    autolink::WaitForShutdown();
+
+#ifndef NO_TCMALLOC
+#ifdef BASE_PROFILER_H_
+    if (enable_cpuprofile) {
+        ProfilerStop();
+    }
+    if (enable_heapprofile) {
+        HeapProfilerDump("Befor shutdown");
+        HeapProfilerStop();
+    }
+#endif
+#endif
+
+    return 0;
 }

@@ -25,27 +25,27 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-AppendGoalPoseToGoalsAction::AppendGoalPoseToGoalsAction(const std::string& xml_tag_name,
-                                                         const BT::NodeConfiguration& conf)
+AppendGoalPoseToGoalsAction::AppendGoalPoseToGoalsAction(
+    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(xml_tag_name, conf) {}
 
 BT::NodeStatus AppendGoalPoseToGoalsAction::tick() {
-  commsgs::geometry_msgs::PoseStamped goal;
-  commsgs::planning_msgs::Goals goals;
+    commsgs::geometry_msgs::PoseStamped goal;
+    commsgs::planning_msgs::Goals goals;
 
-  if (!getInput("goal", goal)) {
-    return BT::NodeStatus::FAILURE;
-  }
+    if (!getInput("goal", goal)) {
+        return BT::NodeStatus::FAILURE;
+    }
 
-  if (!getInput("goals", goals)) {
-    // If no input goals, create a new goals array
-    goals.header = goal.header;
-  }
+    if (!getInput("goals", goals)) {
+        // If no input goals, create a new goals array
+        goals.header = goal.header;
+    }
 
-  goals.goals.push_back(goal);
-  setOutput("goals", goals);
+    goals.goals.push_back(goal);
+    setOutput("goals", goals);
 
-  return BT::NodeStatus::SUCCESS;
+    return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action
@@ -56,6 +56,7 @@ BT::NodeStatus AppendGoalPoseToGoalsAction::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::AppendGoalPoseToGoalsAction>(
-      "AppendGoalPoseToGoals");
+    factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::action::
+                                 AppendGoalPoseToGoalsAction>(
+        "AppendGoalPoseToGoals");
 }

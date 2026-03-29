@@ -27,12 +27,13 @@ namespace tools {
  * @brief InteractionTool
  * Interaction tool for the visualizer
  */
-class InteractionTool {
- public:
-  explicit InteractionTool();
-  virtual ~InteractionTool();
+class InteractionTool
+{
+public:
+    explicit InteractionTool();
+    virtual ~InteractionTool();
 
-  // TODO: Implement tool interface
+    // TODO: Implement tool interface
 };
 
 }  // namespace tools

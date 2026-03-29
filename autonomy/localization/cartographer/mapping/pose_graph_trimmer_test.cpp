@@ -27,15 +27,15 @@ namespace mapping {
 namespace {
 
 TEST(PureLocalizationTrimmerTest, MarksSubmapsAsExpected) {
-  const int kTrajectoryId = 42;
-  PureLocalizationTrimmer trimmer(kTrajectoryId, 15);
-  testing::FakeTrimmable fake_pose_graph(kTrajectoryId, 17);
-  trimmer.Trim(&fake_pose_graph);
+    const int kTrajectoryId = 42;
+    PureLocalizationTrimmer trimmer(kTrajectoryId, 15);
+    testing::FakeTrimmable fake_pose_graph(kTrajectoryId, 17);
+    trimmer.Trim(&fake_pose_graph);
 
-  const auto trimmed_submaps = fake_pose_graph.trimmed_submaps();
-  ASSERT_EQ(2, trimmed_submaps.size());
-  EXPECT_EQ((SubmapId{kTrajectoryId, 0}), trimmed_submaps[0]);
-  EXPECT_EQ((SubmapId{kTrajectoryId, 1}), trimmed_submaps[1]);
+    const auto trimmed_submaps = fake_pose_graph.trimmed_submaps();
+    ASSERT_EQ(2, trimmed_submaps.size());
+    EXPECT_EQ((SubmapId{kTrajectoryId, 0}), trimmed_submaps[0]);
+    EXPECT_EQ((SubmapId{kTrajectoryId, 1}), trimmed_submaps[1]);
 }
 
 }  // namespace

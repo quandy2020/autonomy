@@ -30,25 +30,30 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-class GetPoseFromPath : public BT::ActionNodeBase {
- public:
-  GetPoseFromPath(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class GetPoseFromPath : public BT::ActionNodeBase
+{
+public:
+    GetPoseFromPath(const std::string& xml_tag_name,
+                    const BT::NodeConfiguration& conf);
 
-  static BT::PortsList providedPorts() {
-    // Register JSON definitions for the types used in the ports
-    BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
-    BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
+    static BT::PortsList providedPorts() {
+        // Register JSON definitions for the types used in the ports
+        BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
+        BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
 
-    return {
-        BT::InputPort<commsgs::planning_msgs::Path>("path", "Path to extract pose from"),
-        BT::OutputPort<commsgs::geometry_msgs::PoseStamped>("pose", "Stamped Extracted Pose"),
-        BT::InputPort<int>("index", 0, "Index of pose to extract from. -1 is end of list"),
-    };
-  }
+        return {
+            BT::InputPort<commsgs::planning_msgs::Path>(
+                "path", "Path to extract pose from"),
+            BT::OutputPort<commsgs::geometry_msgs::PoseStamped>(
+                "pose", "Stamped Extracted Pose"),
+            BT::InputPort<int>(
+                "index", 0, "Index of pose to extract from. -1 is end of list"),
+        };
+    }
 
- private:
-  void halt() override {}
-  BT::NodeStatus tick() override;
+private:
+    void halt() override {}
+    BT::NodeStatus tick() override;
 };
 
 }  // namespace action

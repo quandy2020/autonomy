@@ -26,48 +26,48 @@ using ::autonomy::vehicle::proto::VehicleModel;
 Vehicle::Vehicle(const std::string& name) : name_(name) {}
 
 bool Vehicle::Initialize(const VehicleModel& model) {
-  model_ = model;
-  initialized_ = true;
+    model_ = model;
+    initialized_ = true;
 
-  // 用模型中的身份信息初始化 info
-  info_.set_vehicle_type(model_.vehicle_type());
-  info_.set_vehicle_id(model_.vehicle_id());
-  info_.set_vehicle_name(model_.vehicle_name());
+    // 用模型中的身份信息初始化 info
+    info_.set_vehicle_type(model_.vehicle_type());
+    info_.set_vehicle_id(model_.vehicle_id());
+    info_.set_vehicle_name(model_.vehicle_name());
 
-  return true;
+    return true;
 }
 
 bool Vehicle::GetVehicleInfo(VehicleInfo* info) {
-  if (!info) {
-    return false;
-  }
-  if (!initialized_) {
-    return false;
-  }
+    if (!info) {
+        return false;
+    }
+    if (!initialized_) {
+        return false;
+    }
 
-  *info = info_;
-  return true;
+    *info = info_;
+    return true;
 }
 
 bool Vehicle::ApplyCommand(const KinematicsControlCommand& command) {
-  if (!initialized_) {
-    return false;
-  }
+    if (!initialized_) {
+        return false;
+    }
 
-  // 缓存最近一次控制指令
-  last_command_ = command;
+    // 缓存最近一次控制指令
+    last_command_ = command;
 
-  // 将期望的速度 / 加速度直接反映到 info 中，便于上层观察
-  if (command.has_velocity()) {
-    *info_.mutable_velocity() = command.velocity();
-  }
-  if (command.has_acceleration()) {
-    *info_.mutable_acceleration() = command.acceleration();
-  }
+    // 将期望的速度 / 加速度直接反映到 info 中，便于上层观察
+    if (command.has_velocity()) {
+        *info_.mutable_velocity() = command.velocity();
+    }
+    if (command.has_acceleration()) {
+        *info_.mutable_acceleration() = command.acceleration();
+    }
 
-  // TODO(duyongquan): 在此处接入真实硬件 / 仿真底层，将 command 下发执行
+    // TODO(duyongquan): 在此处接入真实硬件 / 仿真底层，将 command 下发执行
 
-  return true;
+    return true;
 }
 
 }  // namespace vehicle

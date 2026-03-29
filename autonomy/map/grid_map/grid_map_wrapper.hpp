@@ -34,94 +34,103 @@ namespace autonomy {
 namespace map {
 namespace grid_map {
 
-class GridMapWrapper : public common::MapInterface {
- public:
-  /**
-   * Define GridMapWrapper::SharedPtr type
-   */
-  AUTONOMY_SMART_PTR_DEFINITIONS(GridMapWrapper)
+class GridMapWrapper : public common::MapInterface
+{
+public:
+    /**
+     * Define GridMapWrapper::SharedPtr type
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(GridMapWrapper)
 
-  /**
-   * @brief A constructor for autonomy::map::grid_map::GridMapWrapper
-   * @param options Additional options to control creation of the grid map.
-   * @param name Optional name for the grid map.
-   */
-  GridMapWrapper(const proto::GridMapOptions& options, const std::string& name = "");
+    /**
+     * @brief A constructor for autonomy::map::grid_map::GridMapWrapper
+     * @param options Additional options to control creation of the grid map.
+     * @param name Optional name for the grid map.
+     */
+    GridMapWrapper(const proto::GridMapOptions& options,
+                   const std::string& name = "");
 
-  /**
-   * @brief A Destructor for autonomy::map::grid_map::GridMapWrapper
-   */
-  ~GridMapWrapper();
+    /**
+     * @brief A Destructor for autonomy::map::grid_map::GridMapWrapper
+     */
+    ~GridMapWrapper();
 
-  /**
-   * @brief  Subscribes to sensor topics if necessary and starts grid map
-   * updates, can be called to restart the grid map after calls to either
-   * stop() or pause()
-   */
-  void Start() override;
+    /**
+     * @brief  Subscribes to sensor topics if necessary and starts grid map
+     * updates, can be called to restart the grid map after calls to either
+     * stop() or pause()
+     */
+    void Start() override;
 
-  /**
-   * @brief  Stops grid map updates and unsubscribes from sensor topics
-   */
-  void Stop() override;
+    /**
+     * @brief  Stops grid map updates and unsubscribes from sensor topics
+     */
+    void Stop() override;
 
-  /**
-   * @brief  Stops the grid map from updating, but sensor data still comes in
-   * over the wire
-   */
-  void Pause() override;
+    /**
+     * @brief  Stops the grid map from updating, but sensor data still comes in
+     * over the wire
+     */
+    void Pause() override;
 
-  /**
-   * @brief  Resumes grid map updates
-   */
-  void Resume() override;
+    /**
+     * @brief  Resumes grid map updates
+     */
+    void Resume() override;
 
-  /**
-   * @brief Get the grid map object
-   * @return Pointer to the GridMap
-   */
-  std::shared_ptr<::grid_map::GridMap> getGridMap() { return grid_map_; }
+    /**
+     * @brief Get the grid map object
+     * @return Pointer to the GridMap
+     */
+    std::shared_ptr<::grid_map::GridMap> getGridMap() {
+        return grid_map_;
+    }
 
-  /**
-   * @brief Get const grid map object
-   * @return Const pointer to the GridMap
-   */
-  std::shared_ptr<const ::grid_map::GridMap> getGridMap() const { return grid_map_; }
+    /**
+     * @brief Get const grid map object
+     * @return Const pointer to the GridMap
+     */
+    std::shared_ptr<const ::grid_map::GridMap> getGridMap() const {
+        return grid_map_;
+    }
 
-  /**
-   * @brief Returns grid map name
-   */
-  std::string getName() const { return name_; }
+    /**
+     * @brief Returns grid map name
+     */
+    std::string getName() const {
+        return name_;
+    }
 
-  /**
-   * @brief Load the map from file
-   * @param filename File path to load from
-   * @return Whether the map was loaded successfully
-   */
-  bool loadMap(const std::string& filename);
+    /**
+     * @brief Load the map from file
+     * @param filename File path to load from
+     * @return Whether the map was loaded successfully
+     */
+    bool loadMap(const std::string& filename);
 
-  /**
-   * @brief Publish the map to the topic
-   */
-  void publishMap();
+    /**
+     * @brief Publish the map to the topic
+     */
+    void publishMap();
 
- protected:
-  // Grid map data
-  std::shared_ptr<::grid_map::GridMap> grid_map_;
+protected:
+    // Grid map data
+    std::shared_ptr<::grid_map::GridMap> grid_map_;
 
-  // Grid map name
-  std::string name_;
+    // Grid map name
+    std::string name_;
 
-  // State management
-  std::atomic<bool> stopped_{true};
-  std::atomic<bool> paused_{false};
-  std::mutex mutex_;
+    // State management
+    std::atomic<bool> stopped_{true};
+    std::atomic<bool> paused_{false};
+    std::mutex mutex_;
 
-  // Options for grid map
-  proto::GridMapOptions options_;
+    // Options for grid map
+    proto::GridMapOptions options_;
 };
 
-proto::GridMapOptions CreateGridMapOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::GridMapOptions CreateGridMapOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace grid_map
 }  // namespace map

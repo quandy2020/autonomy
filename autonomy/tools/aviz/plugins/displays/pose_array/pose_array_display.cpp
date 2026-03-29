@@ -22,25 +22,34 @@ namespace aviz {
 namespace plugins {
 namespace displays {
 
-PoseArrayDisplay::PoseArrayDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/PoseArray");
-  setName(name);
+PoseArrayDisplay::PoseArrayDisplay(const QString& name)
+    : aviz::common::Display() {
+    setClassId("aviz/PoseArray");
+    setName(name);
 }
 
 PoseArrayDisplay::~PoseArrayDisplay() = default;
 
-void PoseArrayDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void PoseArrayDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void PoseArrayDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void PoseArrayDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void PoseArrayDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void PoseArrayDisplay::reset() { aviz::common::Display::reset(); }
+void PoseArrayDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void PoseArrayDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void PoseArrayDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void PoseArrayDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

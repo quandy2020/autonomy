@@ -35,11 +35,13 @@ namespace rendering {
 /// Return the input angle mapped back to the range 0 to 2*PI
 float mapAngleTo0_2Pi(float angle);
 
-/// Project a 3D point into the view plane based on a given 3D position and a Viewport
+/// Project a 3D point into the view plane based on a given 3D position and a
+/// Viewport
 /**
  * \return The 2D floating-point pixel position of the projection.
  */
-Ogre::Vector2 project3DPointToViewportXY(const Ogre::Viewport* view, const Ogre::Vector3& pos);
+Ogre::Vector2 project3DPointToViewportXY(const Ogre::Viewport* view,
+                                         const Ogre::Vector3& pos);
 
 }  // namespace rendering
 }  // namespace aviz

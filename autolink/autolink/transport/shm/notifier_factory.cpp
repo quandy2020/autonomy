@@ -29,27 +29,31 @@ namespace transport {
 using common::GlobalData;
 
 auto NotifierFactory::CreateNotifier() -> NotifierPtr {
-  std::string notifier_type(ConditionNotifier::Type());
-  auto& g_conf = GlobalData::Instance()->Config();
-  if (!g_conf.transport_conf().shm_conf().notifier_type().empty()) {
-    notifier_type = g_conf.transport_conf().shm_conf().notifier_type();
-  }
+    std::string notifier_type(ConditionNotifier::Type());
+    auto& g_conf = GlobalData::Instance()->Config();
+    if (!g_conf.transport_conf().shm_conf().notifier_type().empty()) {
+        notifier_type = g_conf.transport_conf().shm_conf().notifier_type();
+    }
 
-  ADEBUG << "notifier type: " << notifier_type;
+    ADEBUG << "notifier type: " << notifier_type;
 
-  if (notifier_type == MulticastNotifier::Type()) {
-    return CreateMulticastNotifier();
-  } else if (notifier_type == ConditionNotifier::Type()) {
+    if (notifier_type == MulticastNotifier::Type()) {
+        return CreateMulticastNotifier();
+    } else if (notifier_type == ConditionNotifier::Type()) {
+        return CreateConditionNotifier();
+    }
+
+    AINFO << "unknown notifier, we use default notifier: " << notifier_type;
     return CreateConditionNotifier();
-  }
-
-  AINFO << "unknown notifier, we use default notifier: " << notifier_type;
-  return CreateConditionNotifier();
 }
 
-auto NotifierFactory::CreateConditionNotifier() -> NotifierPtr { return ConditionNotifier::Instance(); }
+auto NotifierFactory::CreateConditionNotifier() -> NotifierPtr {
+    return ConditionNotifier::Instance();
+}
 
-auto NotifierFactory::CreateMulticastNotifier() -> NotifierPtr { return MulticastNotifier::Instance(); }
+auto NotifierFactory::CreateMulticastNotifier() -> NotifierPtr {
+    return MulticastNotifier::Instance();
+}
 
 }  // namespace transport
 }  // namespace autolink

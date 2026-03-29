@@ -26,26 +26,30 @@ namespace common {
 namespace properties {
 
 /// Property specialized for string values.
-class StringProperty : public Property {
-  Q_OBJECT
+class StringProperty : public Property
+{
+    Q_OBJECT
 
- public:
-  explicit StringProperty(const QString& name = QString(), const QString& default_value = QString(),
-                          const QString& description = QString(), Property* parent = nullptr,
-                          const char* changed_slot = nullptr, QObject* receiver = nullptr);
+public:
+    explicit StringProperty(const QString& name = QString(),
+                            const QString& default_value = QString(),
+                            const QString& description = QString(),
+                            Property* parent = nullptr,
+                            const char* changed_slot = nullptr,
+                            QObject* receiver = nullptr);
 
-  /// Get value as std::string.
-  std::string getStdString() const;
+    /// Get value as std::string.
+    std::string getStdString() const;
 
-  /// Get value as QString.
-  QString getString() const;
+    /// Get value as QString.
+    QString getString() const;
 
- public Q_SLOTS:
-  /// Set value from std::string.
-  bool setStdString(const std::string& std_str);
+public Q_SLOTS:
+    /// Set value from std::string.
+    bool setStdString(const std::string& std_str);
 
-  /// Set value from QString.
-  bool setString(const QString& str);
+    /// Set value from QString.
+    bool setString(const QString& str);
 };
 
 }  // namespace properties

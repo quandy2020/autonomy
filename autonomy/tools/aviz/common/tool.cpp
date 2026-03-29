@@ -26,91 +26,116 @@ Tool::Tool()
     : context_(nullptr),
       shortcut_key_(0),
       access_all_keys_(false),
-      property_container_(new properties::Property("Tool", QVariant(), "", nullptr)),
+      property_container_(
+          new properties::Property("Tool", QVariant(), "", nullptr)),
       class_id_(""),
       name_(""),
       description_("") {}
 
 Tool::~Tool() {
-  if (property_container_) {
-    delete property_container_;
-  }
+    if (property_container_) {
+        delete property_container_;
+    }
 }
 
 void Tool::initialize(DisplayContext* context) {
-  context_ = context;
-  onInitialize();
+    context_ = context;
+    onInitialize();
 }
 
-aviz::common::properties::Property* Tool::getPropertyContainer() const { return property_container_; }
+aviz::common::properties::Property* Tool::getPropertyContainer() const {
+    return property_container_;
+}
 
-char Tool::getShortcutKey() const { return shortcut_key_; }
+char Tool::getShortcutKey() const {
+    return shortcut_key_;
+}
 
-bool Tool::accessAllKeys() const { return access_all_keys_; }
+bool Tool::accessAllKeys() const {
+    return access_all_keys_;
+}
 
 void Tool::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+    (void)wall_dt;
+    (void)ros_dt;
 }
 
 int Tool::processMouseEvent(ViewportMouseEvent& event) {
-  (void)event;
-  return 0;
+    (void)event;
+    return 0;
 }
 
 int Tool::processKeyEvent(QKeyEvent* event, SceneViewer* viewer) {
-  (void)event;
-  (void)viewer;
-  return 0;
+    (void)event;
+    (void)viewer;
+    return 0;
 }
 
-QString Tool::getName() const { return name_; }
+QString Tool::getName() const {
+    return name_;
+}
 
 void Tool::setName(const QString& name) {
-  if (name_ != name) {
-    name_ = name;
-    Q_EMIT nameChanged(name);
-  }
+    if (name_ != name) {
+        name_ = name;
+        Q_EMIT nameChanged(name);
+    }
 }
 
-QString Tool::getDescription() const { return description_; }
+QString Tool::getDescription() const {
+    return description_;
+}
 
-void Tool::setDescription(const QString& description) { description_ = description; }
+void Tool::setDescription(const QString& description) {
+    description_ = description;
+}
 
-QString Tool::getClassId() const { return class_id_; }
+QString Tool::getClassId() const {
+    return class_id_;
+}
 
-void Tool::setClassId(const QString& class_id) { class_id_ = class_id; }
+void Tool::setClassId(const QString& class_id) {
+    class_id_ = class_id;
+}
 
 void Tool::load(const Config& config) {
-  QString name;
-  if (config.mapGetString("Name", &name)) {
-    setName(name);
-  }
-  if (property_container_) {
-    property_container_->load(config);
-  }
+    QString name;
+    if (config.mapGetString("Name", &name)) {
+        setName(name);
+    }
+    if (property_container_) {
+        property_container_->load(config);
+    }
 }
 
 void Tool::save(Config config) const {
-  config.mapSetValue("Name", name_);
-  config.mapSetValue("Class", class_id_);
-  if (property_container_) {
-    property_container_->save(config);
-  }
+    config.mapSetValue("Name", name_);
+    config.mapSetValue("Class", class_id_);
+    if (property_container_) {
+        property_container_->save(config);
+    }
 }
 
-void Tool::setIcon(const QIcon& icon) { icon_ = icon; }
+void Tool::setIcon(const QIcon& icon) {
+    icon_ = icon;
+}
 
-const QIcon& Tool::getIcon() { return icon_; }
+const QIcon& Tool::getIcon() {
+    return icon_;
+}
 
-void Tool::setCursor(const QCursor& cursor) { cursor_ = cursor; }
+void Tool::setCursor(const QCursor& cursor) {
+    cursor_ = cursor;
+}
 
-const QCursor& Tool::getCursor() { return cursor_; }
+const QCursor& Tool::getCursor() {
+    return cursor_;
+}
 
 void Tool::setStatus(const QString& message) {
-  if (context_) {
-    context_->setStatus(message);
-  }
+    if (context_) {
+        context_->setStatus(message);
+    }
 }
 
 }  // namespace common

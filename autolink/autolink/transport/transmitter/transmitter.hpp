@@ -31,37 +31,44 @@ using autolink::event::PerfEventCache;
 using autolink::event::TransPerf;
 
 template <typename M>
-class Transmitter : public Endpoint {
- public:
-  using MessagePtr = std::shared_ptr<M>;
+class Transmitter : public Endpoint
+{
+public:
+    using MessagePtr = std::shared_ptr<M>;
 
-  explicit Transmitter(const RoleAttributes& attr);
-  virtual ~Transmitter();
+    explicit Transmitter(const RoleAttributes& attr);
+    virtual ~Transmitter();
 
-  virtual void Enable() = 0;
-  virtual void Disable() = 0;
+    virtual void Enable() = 0;
+    virtual void Disable() = 0;
 
-  virtual bool AcquireMessage(std::shared_ptr<M>& msg) = 0;
+    virtual bool AcquireMessage(std::shared_ptr<M>& msg) = 0;
 
-  virtual void Enable(const RoleAttributes& opposite_attr);
-  virtual void Disable(const RoleAttributes& opposite_attr);
+    virtual void Enable(const RoleAttributes& opposite_attr);
+    virtual void Disable(const RoleAttributes& opposite_attr);
 
-  virtual bool Transmit(const MessagePtr& msg);
-  virtual bool Transmit(const MessagePtr& msg, const MessageInfo& msg_info) = 0;
+    virtual bool Transmit(const MessagePtr& msg);
+    virtual bool Transmit(const MessagePtr& msg,
+                          const MessageInfo& msg_info) = 0;
 
-  uint64_t NextSeqNum() { return ++seq_num_; }
+    uint64_t NextSeqNum() {
+        return ++seq_num_;
+    }
 
-  uint64_t seq_num() const { return seq_num_; }
+    uint64_t seq_num() const {
+        return seq_num_;
+    }
 
- protected:
-  uint64_t seq_num_;
-  MessageInfo msg_info_;
+protected:
+    uint64_t seq_num_;
+    MessageInfo msg_info_;
 };
 
 template <typename M>
-Transmitter<M>::Transmitter(const RoleAttributes& attr) : Endpoint(attr), seq_num_(0) {
-  msg_info_.set_sender_id(this->id_);
-  msg_info_.set_seq_num(this->seq_num_);
+Transmitter<M>::Transmitter(const RoleAttributes& attr)
+    : Endpoint(attr), seq_num_(0) {
+    msg_info_.set_sender_id(this->id_);
+    msg_info_.set_seq_num(this->seq_num_);
 }
 
 template <typename M>
@@ -69,23 +76,24 @@ Transmitter<M>::~Transmitter() {}
 
 template <typename M>
 bool Transmitter<M>::Transmit(const MessagePtr& msg) {
-  msg_info_.set_seq_num(NextSeqNum());
-  msg_info_.set_msg_seq_num(seq_num_);
-  msg_info_.set_send_time(Time::Now().ToNanosecond());
-  PerfEventCache::Instance()->AddTransportEvent(TransPerf::TRANSMIT_BEGIN, attr_.channel_id(), msg_info_.seq_num());
-  return Transmit(msg, msg_info_);
+    msg_info_.set_seq_num(NextSeqNum());
+    msg_info_.set_msg_seq_num(seq_num_);
+    msg_info_.set_send_time(Time::Now().ToNanosecond());
+    PerfEventCache::Instance()->AddTransportEvent(
+        TransPerf::TRANSMIT_BEGIN, attr_.channel_id(), msg_info_.seq_num());
+    return Transmit(msg, msg_info_);
 }
 
 template <typename M>
 void Transmitter<M>::Enable(const RoleAttributes& opposite_attr) {
-  (void)opposite_attr;
-  Enable();
+    (void)opposite_attr;
+    Enable();
 }
 
 template <typename M>
 void Transmitter<M>::Disable(const RoleAttributes& opposite_attr) {
-  (void)opposite_attr;
-  Disable();
+    (void)opposite_attr;
+    Disable();
 }
 
 }  // namespace transport

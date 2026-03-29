@@ -48,31 +48,38 @@ using autonomy::planning::proto::math::FemPosDeviationSmootherConfig;
  * points which makes the line P(start), P0, P(1) ... P(k-1) "smooth".
  */
 
-class FemPosDeviationSmoother {
- public:
-  explicit FemPosDeviationSmoother(const FemPosDeviationSmootherConfig& config);
+class FemPosDeviationSmoother
+{
+public:
+    explicit FemPosDeviationSmoother(
+        const FemPosDeviationSmootherConfig& config);
 
-  bool QpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d, const std::vector<double>& bounds,
-                  std::vector<double>* opt_x, std::vector<double>* opt_y);
-
-  bool NlpWithIpopt(const std::vector<std::pair<double, double>>& raw_point2d, const std::vector<double>& bounds,
+    bool QpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d,
+                    const std::vector<double>& bounds,
                     std::vector<double>* opt_x, std::vector<double>* opt_y);
 
-  bool SqpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d, const std::vector<double>& bounds,
-                   std::vector<double>* opt_x, std::vector<double>* opt_y);
+    bool NlpWithIpopt(const std::vector<std::pair<double, double>>& raw_point2d,
+                      const std::vector<double>& bounds,
+                      std::vector<double>* opt_x, std::vector<double>* opt_y);
 
- private:
-  FemPosDeviationSmootherConfig config_;
+    bool SqpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d,
+                     const std::vector<double>& bounds,
+                     std::vector<double>* opt_x, std::vector<double>* opt_y);
 
-  // park generic
- public:
-  bool Solve(const std::vector<std::pair<double, double>>& raw_point2d, const std::vector<double>& bounds,
-             std::vector<double>* opt_x, std::vector<double>* opt_y,
-             std::vector<std::vector<common::math::Vec2d>> point_box = {});
+private:
+    FemPosDeviationSmootherConfig config_;
 
-  bool SqpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d, const std::vector<double>& bounds,
-                   std::vector<double>* opt_x, std::vector<double>* opt_y,
-                   std::vector<std::vector<common::math::Vec2d>> point_box);
+    // park generic
+public:
+    bool Solve(const std::vector<std::pair<double, double>>& raw_point2d,
+               const std::vector<double>& bounds, std::vector<double>* opt_x,
+               std::vector<double>* opt_y,
+               std::vector<std::vector<common::math::Vec2d>> point_box = {});
+
+    bool SqpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d,
+                     const std::vector<double>& bounds,
+                     std::vector<double>* opt_x, std::vector<double>* opt_y,
+                     std::vector<std::vector<common::math::Vec2d>> point_box);
 };
 }  // namespace math
 }  // namespace planning

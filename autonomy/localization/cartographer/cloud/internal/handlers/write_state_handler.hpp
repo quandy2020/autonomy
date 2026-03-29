@@ -25,13 +25,16 @@ namespace cartographer {
 namespace cloud {
 namespace handlers {
 
-DEFINE_HANDLER_SIGNATURE(WriteStateSignature, google::protobuf::Empty,
-                         autonomy::common::async_grpc::Stream<proto::WriteStateResponse>,
-                         "/cartographer.cloud.proto.MapBuilderService/WriteState")
+DEFINE_HANDLER_SIGNATURE(
+    WriteStateSignature, google::protobuf::Empty,
+    autonomy::common::async_grpc::Stream<proto::WriteStateResponse>,
+    "/cartographer.cloud.proto.MapBuilderService/WriteState")
 
-class WriteStateHandler : public autonomy::common::async_grpc::RpcHandler<WriteStateSignature> {
- public:
-  void OnRequest(const google::protobuf::Empty& request) override;
+class WriteStateHandler
+    : public autonomy::common::async_grpc::RpcHandler<WriteStateSignature>
+{
+public:
+    void OnRequest(const google::protobuf::Empty& request) override;
 };
 
 }  // namespace handlers

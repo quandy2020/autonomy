@@ -23,7 +23,10 @@ import ctypes
 import threading
 import time
 
-from google.protobuf.descriptor_pb2 import FileDescriptorProto
+try:
+    from google.protobuf.descriptor_pb2 import FileDescriptorProto
+except ModuleNotFoundError:
+    FileDescriptorProto = None
 
 try:
     from ._loader import load_wrapper_module
@@ -183,6 +186,11 @@ class Node(object):
         """
         register proto message desc file.
         """
+        if FileDescriptorProto is None:
+            raise RuntimeError(
+                "python protobuf is required for register_message. "
+                "Install python3-protobuf or pip install protobuf."
+            )
         for dep in file_desc.dependencies:
             self.register_message(dep)
         proto = FileDescriptorProto()

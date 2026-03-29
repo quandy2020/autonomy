@@ -16,7 +16,8 @@
 
 #pragma once
 
-#define OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0 (OGRE_VERSION >= ((1 << 16) | (9 << 8) | 0))
+#define OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0 \
+    (OGRE_VERSION >= ((1 << 16) | (9 << 8) | 0))
 
 #include <OGRE/OgrePrerequisites.h>
 #include <OGRE/OgreRoot.h>
@@ -25,9 +26,9 @@
 #include <string>
 
 #if OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0
-// OgreOverlaySystem.h includes OgreOverlayPrerequisites.h which uses relative path
-// So we need to ensure OgrePrerequisites.h is already included
-// Include Overlay headers after OgrePrerequisites.h
+// OgreOverlaySystem.h includes OgreOverlayPrerequisites.h which uses relative
+// path So we need to ensure OgrePrerequisites.h is already included Include
+// Overlay headers after OgrePrerequisites.h
 #include <OGRE/Overlay/OgreOverlayPrerequisites.h>
 #include <OGRE/Overlay/OgreOverlaySystem.h>
 #endif
@@ -48,79 +49,85 @@ class Display;  // Forward declaration to avoid X11 Display conflict
 }  // namespace common
 namespace rendering {
 
-class RenderSystem {
- public:
+class RenderSystem
+{
+public:
 #if defined(__APPLE__) || defined(_WIN32)
-  typedef size_t WindowIDType;
+    typedef size_t WindowIDType;
 #else
-  typedef unsigned long WindowIDType;  // NOLINT: we need to use C longs here
+    typedef unsigned long WindowIDType;  // NOLINT: we need to use C longs here
 #endif
 
-  AVIZ_RENDERING_PUBLIC
-  static RenderSystem* get();
+    AVIZ_RENDERING_PUBLIC
+    static RenderSystem* get();
 
-  AVIZ_RENDERING_PUBLIC
-  Ogre::RenderWindow* makeRenderWindow(WindowIDType window_id, unsigned int width, unsigned int height,
-                                       double pixel_ratio = 1.0);
+    AVIZ_RENDERING_PUBLIC
+    Ogre::RenderWindow* makeRenderWindow(WindowIDType window_id,
+                                         unsigned int width,
+                                         unsigned int height,
+                                         double pixel_ratio = 1.0);
 
-  Ogre::Root* getOgreRoot() { return ogre_root_; }
+    Ogre::Root* getOgreRoot() {
+        return ogre_root_;
+    }
 
-  AVIZ_RENDERING_PUBLIC
-  ~RenderSystem();
+    AVIZ_RENDERING_PUBLIC
+    ~RenderSystem();
 
-  void Destroy();
+    void Destroy();
 
 #if OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0
-  // Prepare a scene_manager to render overlays
-  void prepareOverlays(Ogre::SceneManager* scene_manager);
+    // Prepare a scene_manager to render overlays
+    void prepareOverlays(Ogre::SceneManager* scene_manager);
 #endif
 
-  /// return OpenGL Version as integer, e.g. 320 for OpenGL 3.20
-  int getGlVersion();
+    /// return OpenGL Version as integer, e.g. 320 for OpenGL 3.20
+    int getGlVersion();
 
-  /// return GLSL Version as integer, e.g. 150 for GLSL 1.50
-  AVIZ_RENDERING_PUBLIC
-  int getGlslVersion();
+    /// return GLSL Version as integer, e.g. 150 for GLSL 1.50
+    AVIZ_RENDERING_PUBLIC
+    int getGlslVersion();
 
-  /// Disables the use of Anti Aliasing
-  static void disableAntiAliasing();
+    /// Disables the use of Anti Aliasing
+    static void disableAntiAliasing();
 
-  /// Force to use the provided OpenGL version on startup
-  static void forceGlVersion(int version);
+    /// Force to use the provided OpenGL version on startup
+    static void forceGlVersion(int version);
 
-  /// Disable stereo rendering even if supported in HW
-  static void forceNoStereo();
+    /// Disable stereo rendering even if supported in HW
+    static void forceNoStereo();
 
-  /// True if we can render stereo on this device
-  bool isStereoSupported();
+    /// True if we can render stereo on this device
+    bool isStereoSupported();
 
- private:
-  RenderSystem();
+private:
+    RenderSystem();
 
-  void setupDummyWindowId();
-  void loadOgrePlugins();
-  void setupRenderSystem();
-  void setResourceDirectory();
-  void setPluginDirectory();
-  void setupResources();
+    void setupDummyWindowId();
+    void loadOgrePlugins();
+    void setupRenderSystem();
+    void setResourceDirectory();
+    void setPluginDirectory();
+    void setupResources();
 
-  Ogre::RenderWindow* tryMakeRenderWindow(const std::string& name, unsigned int width, unsigned int height,
-                                          const Ogre::NameValuePairList* params, int max_attempts);
+    Ogre::RenderWindow* tryMakeRenderWindow(
+        const std::string& name, unsigned int width, unsigned int height,
+        const Ogre::NameValuePairList* params, int max_attempts);
 
-  static RenderSystem* instance_;
-  static int force_gl_version_;
-  static bool force_no_stereo_;
-  static bool use_anti_aliasing_;
+    static RenderSystem* instance_;
+    static int force_gl_version_;
+    static bool force_no_stereo_;
+    static bool use_anti_aliasing_;
 
-  Ogre::Root* ogre_root_;
+    Ogre::Root* ogre_root_;
 #if OGRE_VERSION_HIGHER_OR_EQUAL_1_9_0
-  Ogre::OverlaySystem* ogre_overlay_system_;
+    Ogre::OverlaySystem* ogre_overlay_system_;
 #endif
 
 #ifdef __linux__
-  aviz::common::Display* dummyDisplay;
-  Window dummyWindow;
-  GLXContext dummyContext;
+    aviz::common::Display* dummyDisplay;
+    Window dummyWindow;
+    GLXContext dummyContext;
 #endif
 };
 

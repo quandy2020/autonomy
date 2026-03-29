@@ -32,23 +32,28 @@ namespace action {
  * @brief A nav2_behavior_tree::BtActionNode class that wraps
  * nav2_msgs::action::BackUp
  */
-class AssistedTeleopCancel : public BtCancelActionNode<proto::AssistedTeleopAction> {
- public:
-  /**
-   * @brief A constructor for nav2_behavior_tree::BackUpAction
-   * @param xml_tag_name Name for the XML tag for this node
-   * @param action_name Action name this node creates a client for
-   * @param conf BT node configuration
-   */
-  AssistedTeleopCancel(const std::string& xml_tag_name, const std::string& action_name,
-                       const BT::NodeConfiguration& conf);
+class AssistedTeleopCancel
+    : public BtCancelActionNode<proto::AssistedTeleopAction>
+{
+public:
+    /**
+     * @brief A constructor for nav2_behavior_tree::BackUpAction
+     * @param xml_tag_name Name for the XML tag for this node
+     * @param action_name Action name this node creates a client for
+     * @param conf BT node configuration
+     */
+    AssistedTeleopCancel(const std::string& xml_tag_name,
+                         const std::string& action_name,
+                         const BT::NodeConfiguration& conf);
 
-  /**
-   * @brief Creates list of BT ports
-   * @return BT::PortsList Containing basic ports along with node-specific
-   * ports
-   */
-  static BT::PortsList providedPorts() { return providedBasicPorts({}); }
+    /**
+     * @brief Creates list of BT ports
+     * @return BT::PortsList Containing basic ports along with node-specific
+     * ports
+     */
+    static BT::PortsList providedPorts() {
+        return providedBasicPorts({});
+    }
 };
 
 }  // namespace action

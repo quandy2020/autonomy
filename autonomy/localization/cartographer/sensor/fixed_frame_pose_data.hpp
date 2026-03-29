@@ -30,8 +30,8 @@ namespace sensor {
 // The fixed frame pose data (like GPS, pose, etc.) will be used in the
 // optimization.
 struct FixedFramePoseData {
-  common::Time time;
-  absl::optional<transform::Rigid3d> pose;
+    common::Time time;
+    absl::optional<transform::Rigid3d> pose;
 };
 
 // Converts 'pose_data' to a proto::FixedFramePoseData.

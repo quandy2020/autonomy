@@ -37,64 +37,67 @@ namespace rendering {
  * @brief Base class for visible objects
  * Base object for scene entities
  *
- * Provides a minimal generic interface for rendering objects in the scene using Ogre
+ * Provides a minimal generic interface for rendering objects in the scene using
+ * Ogre
  */
-class AVIZ_RENDERING_PUBLIC Object {
- public:
-  /**
-   * @brief Constructor
-   * @param scene_manager The Ogre scene manager this object should be part of
-   */
-  explicit Object(Ogre::SceneManager* scene_manager);
-  virtual ~Object() = default;
+class AVIZ_RENDERING_PUBLIC Object
+{
+public:
+    /**
+     * @brief Constructor
+     * @param scene_manager The Ogre scene manager this object should be part of
+     */
+    explicit Object(Ogre::SceneManager* scene_manager);
+    virtual ~Object() = default;
 
-  /**
-   * @brief Set the position of this object
-   * @param position Position vector to set to
-   */
-  virtual void setPosition(const Ogre::Vector3& position) = 0;
+    /**
+     * @brief Set the position of this object
+     * @param position Position vector to set to
+     */
+    virtual void setPosition(const Ogre::Vector3& position) = 0;
 
-  /**
-   * @brief Set the orientation of the object
-   * @param orientation Quaternion orientation to set to
-   */
-  virtual void setOrientation(const Ogre::Quaternion& orientation) = 0;
+    /**
+     * @brief Set the orientation of the object
+     * @param orientation Quaternion orientation to set to
+     */
+    virtual void setOrientation(const Ogre::Quaternion& orientation) = 0;
 
-  /**
-   * @brief Set the scale of the object
-   * @param scale Scale vector to set to
-   */
-  virtual void setScale(const Ogre::Vector3& scale) = 0;
+    /**
+     * @brief Set the scale of the object
+     * @param scale Scale vector to set to
+     */
+    virtual void setScale(const Ogre::Vector3& scale) = 0;
 
-  /**
-   * @brief Set the color of the object. Values are in the range [0, 1]
-   * @param r Red component
-   * @param g Green component
-   * @param b Blue component
-   * @param a Alpha component
-   */
-  virtual void setColor(float r, float g, float b, float a) = 0;
+    /**
+     * @brief Set the color of the object. Values are in the range [0, 1]
+     * @param r Red component
+     * @param g Green component
+     * @param b Blue component
+     * @param a Alpha component
+     */
+    virtual void setColor(float r, float g, float b, float a) = 0;
 
-  /**
-   * @brief Get the local position of this object
-   * @return The position
-   */
-  virtual const Ogre::Vector3& getPosition() = 0;
+    /**
+     * @brief Get the local position of this object
+     * @return The position
+     */
+    virtual const Ogre::Vector3& getPosition() = 0;
 
-  /**
-   * @brief Get the local orientation of this object
-   * @return The orientation
-   */
-  virtual const Ogre::Quaternion& getOrientation() = 0;
+    /**
+     * @brief Get the local orientation of this object
+     * @return The orientation
+     */
+    virtual const Ogre::Quaternion& getOrientation() = 0;
 
-  /**
-   * @brief Set the user data on this object
-   * @param data User data to set
-   */
-  virtual void setUserData(const Ogre::Any& data) = 0;
+    /**
+     * @brief Set the user data on this object
+     * @param data User data to set
+     */
+    virtual void setUserData(const Ogre::Any& data) = 0;
 
- protected:
-  Ogre::SceneManager* scene_manager_;  ///< Ogre scene manager this object is part of
+protected:
+    Ogre::SceneManager*
+        scene_manager_;  ///< Ogre scene manager this object is part of
 };
 
 }  // namespace rendering

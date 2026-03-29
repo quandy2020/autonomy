@@ -21,49 +21,52 @@
 namespace autonomy {
 namespace transform {
 
-TransformServer::TransformServer(const autonomy::transform::proto::TransformOptions& options, ::autolink::Node* node)
+TransformServer::TransformServer(
+    const autonomy::transform::proto::TransformOptions& options,
+    ::autolink::Node* node)
     : transform_options_(options), node_(node) {
-  AINFO << "TransformServer created";
+    AINFO << "TransformServer created";
 }
 
 bool TransformServer::Initialize() {
-  if (initialized_) {
-    AWARN << "TransformServer already initialized";
+    if (initialized_) {
+        AWARN << "TransformServer already initialized";
+        return true;
+    }
+
+    // Create Static Transform component
+    if (node_) {
+        static_transform_ =
+            std::make_unique<StaticTransform>(transform_options_, node_);
+    }
+
+    initialized_ = true;
+    AINFO << "TransformServer initialized successfully";
     return true;
-  }
-
-  // Create Static Transform component
-  if (node_) {
-    static_transform_ = std::make_unique<StaticTransform>(transform_options_, node_);
-  }
-
-  initialized_ = true;
-  AINFO << "TransformServer initialized successfully";
-  return true;
 }
 
 void TransformServer::Start() {
-  if (!initialized_) {
-    AERROR << "TransformServer not initialized, call Initialize() first";
-    return;
-  }
+    if (!initialized_) {
+        AERROR << "TransformServer not initialized, call Initialize() first";
+        return;
+    }
 
-  if (running_) {
-    AWARN << "TransformServer already running";
-    return;
-  }
+    if (running_) {
+        AWARN << "TransformServer already running";
+        return;
+    }
 
-  running_ = true;
-  AINFO << "TransformServer started";
+    running_ = true;
+    AINFO << "TransformServer started";
 }
 
 void TransformServer::Stop() {
-  if (!running_) {
-    return;
-  }
+    if (!running_) {
+        return;
+    }
 
-  running_ = false;
-  AINFO << "TransformServer stopped";
+    running_ = false;
+    AINFO << "TransformServer stopped";
 }
 
 }  // namespace transform

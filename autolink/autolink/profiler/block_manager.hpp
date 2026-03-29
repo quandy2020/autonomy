@@ -26,24 +26,25 @@
 namespace autolink {
 namespace profiler {
 
-class BlockManager {
- public:
-  using RoutineName = std::string;
-  using RoutineFrameMap = std::unordered_map<RoutineName, Frame>;
+class BlockManager
+{
+public:
+    using RoutineName = std::string;
+    using RoutineFrameMap = std::unordered_map<RoutineName, Frame>;
 
- public:
-  void StartBlock(Block* block);
+public:
+    void StartBlock(Block* block);
 
-  void EndBlock();
+    void EndBlock();
 
- private:
-  std::string GetRoutineName();
-  Frame* GetRoutineFrame();
+private:
+    std::string GetRoutineName();
+    Frame* GetRoutineFrame();
 
- private:
-  static thread_local RoutineFrameMap routine_frame_map_;
+private:
+    static thread_local RoutineFrameMap routine_frame_map_;
 
-  DECLARE_SINGLETON(BlockManager)
+    DECLARE_SINGLETON(BlockManager)
 };
 
 }  // namespace profiler

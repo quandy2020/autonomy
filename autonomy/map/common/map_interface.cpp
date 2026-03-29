@@ -27,9 +27,9 @@ namespace map {
 namespace common {
 
 void MapInterface::AddSensorData(std::unique_ptr<sensor::Data> data) {
-  // 默认实现：什么都不做
-  // 子类可以重写此方法来实现具体的传感器数据处理逻辑
-  (void)data;  // 避免未使用参数警告
+    // 默认实现：什么都不做
+    // 子类可以重写此方法来实现具体的传感器数据处理逻辑
+    (void)data;  // 避免未使用参数警告
 }
 
 }  // namespace common

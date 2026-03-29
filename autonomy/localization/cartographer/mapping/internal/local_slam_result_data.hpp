@@ -23,15 +23,20 @@
 namespace cartographer {
 namespace mapping {
 
-class LocalSlamResultData : public sensor::Data {
- public:
-  LocalSlamResultData(const std::string& sensor_id, common::Time time) : Data(sensor_id), time_(time) {}
+class LocalSlamResultData : public sensor::Data
+{
+public:
+    LocalSlamResultData(const std::string& sensor_id, common::Time time)
+        : Data(sensor_id), time_(time) {}
 
-  common::Time GetTime() const override { return time_; }
-  virtual void AddToPoseGraph(int trajectory_id, PoseGraph* pose_graph) const = 0;
+    common::Time GetTime() const override {
+        return time_;
+    }
+    virtual void AddToPoseGraph(int trajectory_id,
+                                PoseGraph* pose_graph) const = 0;
 
- private:
-  common::Time time_;
+private:
+    common::Time time_;
 };
 
 }  // namespace mapping

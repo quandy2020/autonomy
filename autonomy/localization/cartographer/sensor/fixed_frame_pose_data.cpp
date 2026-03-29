@@ -23,18 +23,20 @@ namespace cartographer {
 namespace sensor {
 
 proto::FixedFramePoseData ToProto(const FixedFramePoseData& pose_data) {
-  proto::FixedFramePoseData proto;
-  proto.set_timestamp(common::ToUniversal(pose_data.time));
-  if (pose_data.pose.has_value()) {
-    *proto.mutable_pose() = transform::ToProto(pose_data.pose.value());
-  }
-  return proto;
+    proto::FixedFramePoseData proto;
+    proto.set_timestamp(common::ToUniversal(pose_data.time));
+    if (pose_data.pose.has_value()) {
+        *proto.mutable_pose() = transform::ToProto(pose_data.pose.value());
+    }
+    return proto;
 }
 
 FixedFramePoseData FromProto(const proto::FixedFramePoseData& proto) {
-  return FixedFramePoseData{common::FromUniversal(proto.timestamp()),
-                            proto.has_pose() ? absl::optional<transform::Rigid3d>(transform::ToRigid3(proto.pose()))
-                                             : absl::optional<transform::Rigid3d>()};
+    return FixedFramePoseData{common::FromUniversal(proto.timestamp()),
+                              proto.has_pose()
+                                  ? absl::optional<transform::Rigid3d>(
+                                        transform::ToRigid3(proto.pose()))
+                                  : absl::optional<transform::Rigid3d>()};
 }
 
 }  // namespace sensor

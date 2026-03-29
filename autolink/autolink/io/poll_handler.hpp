@@ -25,28 +25,33 @@
 namespace autolink {
 namespace io {
 
-class PollHandler {
- public:
-  explicit PollHandler(int fd);
-  virtual ~PollHandler() = default;
+class PollHandler
+{
+public:
+    explicit PollHandler(int fd);
+    virtual ~PollHandler() = default;
 
-  bool Block(int timeout_ms, bool is_read);
-  bool Unblock();
+    bool Block(int timeout_ms, bool is_read);
+    bool Unblock();
 
-  int fd() const { return fd_; }
-  void set_fd(int fd) { fd_ = fd; }
+    int fd() const {
+        return fd_;
+    }
+    void set_fd(int fd) {
+        fd_ = fd;
+    }
 
- private:
-  bool Check(int timeout_ms);
-  void Fill(int timeout_ms, bool is_read);
-  void ResponseCallback(const PollResponse& rsp);
+private:
+    bool Check(int timeout_ms);
+    void Fill(int timeout_ms, bool is_read);
+    void ResponseCallback(const PollResponse& rsp);
 
-  int fd_;
-  PollRequest request_;
-  PollResponse response_;
-  std::atomic<bool> is_read_;
-  std::atomic<bool> is_blocking_;
-  croutine::CRoutine* routine_;
+    int fd_;
+    PollRequest request_;
+    PollResponse response_;
+    std::atomic<bool> is_read_;
+    std::atomic<bool> is_blocking_;
+    croutine::CRoutine* routine_;
 };
 
 }  // namespace io

@@ -28,148 +28,148 @@ namespace autolink {
 namespace node_channel_impl {
 
 TEST(Node_Channel_ImplTest, test1) {
-  auto globalData = common::GlobalData::Instance();
-  globalData->DisableSimulationMode();
-  {
-    NodeChannelImpl nImpl("TestConstructor");
-    EXPECT_EQ(nImpl.NodeName(), "TestConstructor");
-  }
-  globalData->EnableSimulationMode();
-  {
-    NodeChannelImpl nImpl("TestConstructor");
-    EXPECT_EQ(nImpl.NodeName(), "TestConstructor");
-  }
+    auto globalData = common::GlobalData::Instance();
+    globalData->DisableSimulationMode();
+    {
+        NodeChannelImpl nImpl("TestConstructor");
+        EXPECT_EQ(nImpl.NodeName(), "TestConstructor");
+    }
+    globalData->EnableSimulationMode();
+    {
+        NodeChannelImpl nImpl("TestConstructor");
+        EXPECT_EQ(nImpl.NodeName(), "TestConstructor");
+    }
 }
 
 TEST(Node_Channel_ImplTest, test2) {
-  auto globalData = common::GlobalData::Instance();
-  std::string nodeName("TestConstructor");
-  std::string nameSpace("");
-  std::string channelName("/chatter1");
-  {
-    globalData->DisableSimulationMode();
-    auto n = CreateNode(nodeName, nameSpace);
-    EXPECT_EQ(n->Name(), nodeName);
+    auto globalData = common::GlobalData::Instance();
+    std::string nodeName("TestConstructor");
+    std::string nameSpace("");
+    std::string channelName("/chatter1");
+    {
+        globalData->DisableSimulationMode();
+        auto n = CreateNode(nodeName, nameSpace);
+        EXPECT_EQ(n->Name(), nodeName);
 
-    proto::RoleAttributes role_attr;
-    auto w = n->CreateWriter<proto::Chatter>(role_attr);
-    EXPECT_EQ(w, nullptr);
+        proto::RoleAttributes role_attr;
+        auto w = n->CreateWriter<proto::Chatter>(role_attr);
+        EXPECT_EQ(w, nullptr);
 
-    role_attr.set_channel_name(std::string());
-    w = n->CreateWriter<proto::Chatter>(role_attr);
-    EXPECT_EQ(w, nullptr);
+        role_attr.set_channel_name(std::string());
+        w = n->CreateWriter<proto::Chatter>(role_attr);
+        EXPECT_EQ(w, nullptr);
 
-    role_attr.set_channel_name(channelName);
-    w = n->CreateWriter<proto::Chatter>(role_attr);
-    EXPECT_NE(w, nullptr);
-  }
+        role_attr.set_channel_name(channelName);
+        w = n->CreateWriter<proto::Chatter>(role_attr);
+        EXPECT_NE(w, nullptr);
+    }
 
-  {
-    globalData->EnableSimulationMode();
-    auto n = CreateNode(nodeName, nameSpace);
-    EXPECT_EQ(n->Name(), nodeName);
+    {
+        globalData->EnableSimulationMode();
+        auto n = CreateNode(nodeName, nameSpace);
+        EXPECT_EQ(n->Name(), nodeName);
 
-    proto::RoleAttributes role_attr;
-    auto w = n->CreateWriter<proto::Chatter>(role_attr);
-    EXPECT_EQ(w, nullptr);
+        proto::RoleAttributes role_attr;
+        auto w = n->CreateWriter<proto::Chatter>(role_attr);
+        EXPECT_EQ(w, nullptr);
 
-    role_attr.set_channel_name(std::string());
-    w = n->CreateWriter<proto::Chatter>(role_attr);
-    EXPECT_EQ(w, nullptr);
+        role_attr.set_channel_name(std::string());
+        w = n->CreateWriter<proto::Chatter>(role_attr);
+        EXPECT_EQ(w, nullptr);
 
-    role_attr.set_channel_name(channelName);
-    w = n->CreateWriter<proto::Chatter>(role_attr);
-    EXPECT_NE(w, nullptr);
+        role_attr.set_channel_name(channelName);
+        w = n->CreateWriter<proto::Chatter>(role_attr);
+        EXPECT_NE(w, nullptr);
 
-    w = n->CreateWriter<proto::Chatter>(channelName);
-    EXPECT_NE(w, nullptr);
-  }
+        w = n->CreateWriter<proto::Chatter>(channelName);
+        EXPECT_NE(w, nullptr);
+    }
 }
 
 TEST(Node_Channel_ImplTest, test3) {
-  auto globalData = common::GlobalData::Instance();
-  std::string nodeName("TestConstructor");
-  std::string nameSpace("");
+    auto globalData = common::GlobalData::Instance();
+    std::string nodeName("TestConstructor");
+    std::string nameSpace("");
 
-  auto callback = [](const std::shared_ptr<proto::Chatter>& msg) {
-    std::cout << "msg size = " << msg->ByteSizeLong() << std::endl;
-  };
+    auto callback = [](const std::shared_ptr<proto::Chatter>& msg) {
+        std::cout << "msg size = " << msg->ByteSizeLong() << std::endl;
+    };
 
-  {
-    globalData->DisableSimulationMode();
-    auto n = CreateNode(nodeName, nameSpace);
-    EXPECT_EQ(n->Name(), nodeName);
+    {
+        globalData->DisableSimulationMode();
+        auto n = CreateNode(nodeName, nameSpace);
+        EXPECT_EQ(n->Name(), nodeName);
 
-    n->Observe();
-    n->ClearData();
+        n->Observe();
+        n->ClearData();
 
-    auto r = n->CreateReader<proto::Chatter>("/chatter1", callback);
-    EXPECT_NE(r, nullptr);
+        auto r = n->CreateReader<proto::Chatter>("/chatter1", callback);
+        EXPECT_NE(r, nullptr);
 
-    proto::RoleAttributes role_attr;
-    r = n->CreateReader<proto::Chatter>(role_attr, callback);
-    EXPECT_EQ(r, nullptr);
+        proto::RoleAttributes role_attr;
+        r = n->CreateReader<proto::Chatter>(role_attr, callback);
+        EXPECT_EQ(r, nullptr);
 
-    role_attr.set_channel_name(std::string());
-    r = n->CreateReader<proto::Chatter>(role_attr, callback);
-    EXPECT_EQ(r, nullptr);
+        role_attr.set_channel_name(std::string());
+        r = n->CreateReader<proto::Chatter>(role_attr, callback);
+        EXPECT_EQ(r, nullptr);
 
-    role_attr.set_channel_name("/chatter2");
-    r = n->CreateReader<proto::Chatter>(role_attr, callback);
-    EXPECT_NE(r, nullptr);
+        role_attr.set_channel_name("/chatter2");
+        r = n->CreateReader<proto::Chatter>(role_attr, callback);
+        EXPECT_NE(r, nullptr);
 
-    r = n->CreateReader<proto::Chatter>(role_attr);
-    EXPECT_EQ(r, nullptr);
+        r = n->CreateReader<proto::Chatter>(role_attr);
+        EXPECT_EQ(r, nullptr);
 
-    ReaderConfig rc;
-    rc.channel_name.assign("/chatter3");
-    r = n->CreateReader<proto::Chatter>(rc, callback);
-    EXPECT_NE(r, nullptr);
+        ReaderConfig rc;
+        rc.channel_name.assign("/chatter3");
+        r = n->CreateReader<proto::Chatter>(rc, callback);
+        EXPECT_NE(r, nullptr);
 
-    n->Observe();
-    n->ClearData();
-  }
+        n->Observe();
+        n->ClearData();
+    }
 
-  {
-    globalData->EnableSimulationMode();
-    auto n = CreateNode(nodeName, nameSpace);
-    EXPECT_EQ(n->Name(), nodeName);
+    {
+        globalData->EnableSimulationMode();
+        auto n = CreateNode(nodeName, nameSpace);
+        EXPECT_EQ(n->Name(), nodeName);
 
-    n->Observe();
-    n->ClearData();
+        n->Observe();
+        n->ClearData();
 
-    auto r = n->CreateReader<proto::Chatter>("/chatter1", callback);
-    EXPECT_NE(r, nullptr);
+        auto r = n->CreateReader<proto::Chatter>("/chatter1", callback);
+        EXPECT_NE(r, nullptr);
 
-    proto::RoleAttributes role_attr;
-    r = n->CreateReader<proto::Chatter>(role_attr, callback);
-    EXPECT_EQ(r, nullptr);
+        proto::RoleAttributes role_attr;
+        r = n->CreateReader<proto::Chatter>(role_attr, callback);
+        EXPECT_EQ(r, nullptr);
 
-    role_attr.set_channel_name(std::string());
-    r = n->CreateReader<proto::Chatter>(role_attr, callback);
-    EXPECT_EQ(r, nullptr);
+        role_attr.set_channel_name(std::string());
+        r = n->CreateReader<proto::Chatter>(role_attr, callback);
+        EXPECT_EQ(r, nullptr);
 
-    role_attr.set_channel_name("/chatter2");
-    r = n->CreateReader<proto::Chatter>(role_attr, callback);
-    EXPECT_NE(r, nullptr);
+        role_attr.set_channel_name("/chatter2");
+        r = n->CreateReader<proto::Chatter>(role_attr, callback);
+        EXPECT_NE(r, nullptr);
 
-    r = n->CreateReader<proto::Chatter>(role_attr);
-    EXPECT_EQ(r, nullptr);
+        r = n->CreateReader<proto::Chatter>(role_attr);
+        EXPECT_EQ(r, nullptr);
 
-    ReaderConfig rc;
-    rc.channel_name.assign("/chatter3");
-    r = n->CreateReader<proto::Chatter>(rc, callback);
-    EXPECT_NE(r, nullptr);
+        ReaderConfig rc;
+        rc.channel_name.assign("/chatter3");
+        r = n->CreateReader<proto::Chatter>(rc, callback);
+        EXPECT_NE(r, nullptr);
 
-    n->Observe();
-    n->ClearData();
-  }
+        n->Observe();
+        n->ClearData();
+    }
 }
 }  // namespace node_channel_impl
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  return RUN_ALL_TESTS();
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    return RUN_ALL_TESTS();
 }

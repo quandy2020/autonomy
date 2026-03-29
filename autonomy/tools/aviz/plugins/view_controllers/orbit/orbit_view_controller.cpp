@@ -21,11 +21,11 @@ namespace plugins {
 namespace view_controllers {
 
 OrbitViewController::OrbitViewController() {
-  // TODO: Initialize view controller
+    // TODO: Initialize view controller
 }
 
 OrbitViewController::~OrbitViewController() {
-  // TODO: Cleanup
+    // TODO: Cleanup
 }
 
 }  // namespace view_controllers

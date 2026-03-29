@@ -24,31 +24,37 @@ namespace message {
 
 class ArenaMessageWrapper;
 
-class ArenaManagerBase {
- public:
-  ArenaManagerBase() {}
-  virtual ~ArenaManagerBase() {}
+class ArenaManagerBase
+{
+public:
+    ArenaManagerBase() {}
+    virtual ~ArenaManagerBase() {}
 
-  virtual uint64_t GetBaseAddress(const ArenaMessageWrapper* wrapper) { return 0; }
+    virtual uint64_t GetBaseAddress(const ArenaMessageWrapper* wrapper) {
+        return 0;
+    }
 
-  virtual void* SetMessage(ArenaMessageWrapper* wrapper, const void* message) = 0;
-  virtual void* GetMessage(ArenaMessageWrapper* wrapper) = 0;
+    virtual void* SetMessage(ArenaMessageWrapper* wrapper,
+                             const void* message) = 0;
+    virtual void* GetMessage(ArenaMessageWrapper* wrapper) = 0;
 
-  std::shared_ptr<message::ArenaMessageWrapper> CreateMessageWrapper() {
-    return std::make_shared<message::ArenaMessageWrapper>(this);
-  }
+    std::shared_ptr<message::ArenaMessageWrapper> CreateMessageWrapper() {
+        return std::make_shared<message::ArenaMessageWrapper>(this);
+    }
 
-  template <typename MessageT>
-  MessageT* SetMessage(ArenaMessageWrapper* wrapper, const MessageT& message) {
-    void* msg = SetMessage(wrapper, reinterpret_cast<const void*>(&message));
-    return reinterpret_cast<MessageT*>(msg);
-  }
+    template <typename MessageT>
+    MessageT* SetMessage(ArenaMessageWrapper* wrapper,
+                         const MessageT& message) {
+        void* msg =
+            SetMessage(wrapper, reinterpret_cast<const void*>(&message));
+        return reinterpret_cast<MessageT*>(msg);
+    }
 
-  template <typename MessageT>
-  MessageT* GetMessage(ArenaMessageWrapper* wrapper) {
-    void* msg = GetMessage(wrapper);
-    return reinterpret_cast<MessageT*>(msg);
-  }
+    template <typename MessageT>
+    MessageT* GetMessage(ArenaMessageWrapper* wrapper) {
+        void* msg = GetMessage(wrapper);
+        return reinterpret_cast<MessageT*>(msg);
+    }
 };
 
 }  // namespace message

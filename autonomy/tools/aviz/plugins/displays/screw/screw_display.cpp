@@ -23,24 +23,32 @@ namespace plugins {
 namespace displays {
 
 ScrewDisplay::ScrewDisplay(const QString& name) : aviz::common::Display() {
-  setClassId("aviz/Screw");
-  setName(name);
+    setClassId("aviz/Screw");
+    setName(name);
 }
 
 ScrewDisplay::~ScrewDisplay() = default;
 
-void ScrewDisplay::onInitialize() { aviz::common::Display::onInitialize(); }
-
-void ScrewDisplay::onEnable() { aviz::common::Display::onEnable(); }
-
-void ScrewDisplay::onDisable() { aviz::common::Display::onDisable(); }
-
-void ScrewDisplay::update(float wall_dt, float ros_dt) {
-  (void)wall_dt;
-  (void)ros_dt;
+void ScrewDisplay::onInitialize() {
+    aviz::common::Display::onInitialize();
 }
 
-void ScrewDisplay::reset() { aviz::common::Display::reset(); }
+void ScrewDisplay::onEnable() {
+    aviz::common::Display::onEnable();
+}
+
+void ScrewDisplay::onDisable() {
+    aviz::common::Display::onDisable();
+}
+
+void ScrewDisplay::update(float wall_dt, float ros_dt) {
+    (void)wall_dt;
+    (void)ros_dt;
+}
+
+void ScrewDisplay::reset() {
+    aviz::common::Display::reset();
+}
 
 }  // namespace displays
 }  // namespace plugins

@@ -27,12 +27,13 @@ namespace view_controllers {
  * @brief OrthoViewController
  * Orthographic view controller
  */
-class OrthoViewController {
- public:
-  explicit OrthoViewController();
-  virtual ~OrthoViewController();
+class OrthoViewController
+{
+public:
+    explicit OrthoViewController();
+    virtual ~OrthoViewController();
 
-  // TODO: Implement view controller interface
+    // TODO: Implement view controller interface
 };
 
 }  // namespace view_controllers

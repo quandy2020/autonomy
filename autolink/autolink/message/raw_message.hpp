@@ -28,84 +28,97 @@ namespace autolink {
 namespace message {
 
 struct RawMessage {
-  RawMessage() : message(""), timestamp(0) {}
+    RawMessage() : message(""), timestamp(0) {}
 
-  explicit RawMessage(const std::string &data) : message(data), timestamp(0) {}
+    explicit RawMessage(const std::string& data)
+        : message(data), timestamp(0) {}
 
-  RawMessage(const std::string &data, uint64_t ts) : message(data), timestamp(ts) {}
+    RawMessage(const std::string& data, uint64_t ts)
+        : message(data), timestamp(ts) {}
 
-  RawMessage(const RawMessage &raw_msg) : message(raw_msg.message), timestamp(raw_msg.timestamp) {}
+    RawMessage(const RawMessage& raw_msg)
+        : message(raw_msg.message), timestamp(raw_msg.timestamp) {}
 
-  RawMessage &operator=(const RawMessage &raw_msg) {
-    if (this != &raw_msg) {
-      this->message = raw_msg.message;
-      this->timestamp = raw_msg.timestamp;
-    }
-    return *this;
-  }
-
-  ~RawMessage() {}
-
-  class Descriptor {
-   public:
-    std::string full_name() const { return "autolink.message.RawMessage"; }
-    std::string name() const { return "autolink.message.RawMessage"; }
-  };
-
-  static const Descriptor *descriptor() {
-    static Descriptor desc;
-    return &desc;
-  }
-
-  static void GetDescriptorString(const std::string &type, std::string *desc_str) {
-    ProtobufFactory::Instance()->GetDescriptorString(type, desc_str);
-  }
-
-  bool SerializeToArray(void *data, int size) const {
-    if (data == nullptr || size < ByteSize()) {
-      return false;
+    RawMessage& operator=(const RawMessage& raw_msg) {
+        if (this != &raw_msg) {
+            this->message = raw_msg.message;
+            this->timestamp = raw_msg.timestamp;
+        }
+        return *this;
     }
 
-    memcpy(data, message.data(), message.size());
-    return true;
-  }
+    ~RawMessage() {}
 
-  bool SerializeToString(std::string *str) const {
-    if (str == nullptr) {
-      return false;
-    }
-    *str = message;
-    return true;
-  }
+    class Descriptor
+    {
+    public:
+        std::string full_name() const {
+            return "autolink.message.RawMessage";
+        }
+        std::string name() const {
+            return "autolink.message.RawMessage";
+        }
+    };
 
-  // bool SerializeToArenaMessageWrapper(ArenaMessageWrapper *wrapper) const {
-  //   return true;
-  // }
-
-  bool ParseFromArray(const void *data, int size) {
-    if (data == nullptr || size <= 0) {
-      return false;
+    static const Descriptor* descriptor() {
+        static Descriptor desc;
+        return &desc;
     }
 
-    message.assign(reinterpret_cast<const char *>(data), size);
-    return true;
-  }
+    static void GetDescriptorString(const std::string& type,
+                                    std::string* desc_str) {
+        ProtobufFactory::Instance()->GetDescriptorString(type, desc_str);
+    }
 
-  bool ParseFromString(const std::string &str) {
-    message = str;
-    return true;
-  }
+    bool SerializeToArray(void* data, int size) const {
+        if (data == nullptr || size < ByteSize()) {
+            return false;
+        }
 
-  // bool ParseFromArenaMessageWrapper(const ArenaMessageWrapper &wrapper) {
-  //   return true;
-  // }
+        memcpy(data, message.data(), message.size());
+        return true;
+    }
 
-  int ByteSize() const { return static_cast<int>(message.size()); }
+    bool SerializeToString(std::string* str) const {
+        if (str == nullptr) {
+            return false;
+        }
+        *str = message;
+        return true;
+    }
 
-  static std::string TypeName() { return "autolink.message.RawMessage"; }
+    // bool SerializeToArenaMessageWrapper(ArenaMessageWrapper *wrapper) const {
+    //   return true;
+    // }
 
-  std::string message;
-  uint64_t timestamp;
+    bool ParseFromArray(const void* data, int size) {
+        if (data == nullptr || size <= 0) {
+            return false;
+        }
+
+        message.assign(reinterpret_cast<const char*>(data), size);
+        return true;
+    }
+
+    bool ParseFromString(const std::string& str) {
+        message = str;
+        return true;
+    }
+
+    // bool ParseFromArenaMessageWrapper(const ArenaMessageWrapper &wrapper) {
+    //   return true;
+    // }
+
+    int ByteSize() const {
+        return static_cast<int>(message.size());
+    }
+
+    static std::string TypeName() {
+        return "autolink.message.RawMessage";
+    }
+
+    std::string message;
+    uint64_t timestamp;
 };
 
 }  // namespace message

@@ -32,83 +32,92 @@ namespace egvg {
  * (integers).
  */
 template <typename T>
-class BucketPrioQueue {
- public:
-  /**
-   * Standard constructor. When called for the first time it creates a look up
-   * table that maps square distances to bucket numbers, which might take some
-   * time...
-   */
-  BucketPrioQueue();
+class BucketPrioQueue
+{
+public:
+    /**
+     * Standard constructor. When called for the first time it creates a look up
+     * table that maps square distances to bucket numbers, which might take some
+     * time...
+     */
+    BucketPrioQueue();
 
-  void clear() {
-    buckets.clear();
-    count = 0;
-    nextPop = buckets.end();
-  }
+    void clear() {
+        buckets.clear();
+        count = 0;
+        nextPop = buckets.end();
+    }
 
-  /**
-   * Check if the queue is empty
-   * @return True if the queue is empty, false otherwise
-   */
-  bool empty();
+    /**
+     * Check if the queue is empty
+     * @return True if the queue is empty, false otherwise
+     */
+    bool empty();
 
-  /**
-   * Push an element with a priority
-   * @param prio The priority of the element
-   * @param t The element to push
-   */
-  void push(int prio, T t);
+    /**
+     * Push an element with a priority
+     * @param prio The priority of the element
+     * @param t The element to push
+     */
+    void push(int prio, T t);
 
-  /**
-   * Pop the element with the lowest priority
-   * @return The element with the lowest priority
-   */
-  T pop();
+    /**
+     * Pop the element with the lowest priority
+     * @return The element with the lowest priority
+     */
+    T pop();
 
-  int size() { return count; }
-  int getNumBuckets() { return buckets.size(); }
+    int size() {
+        return count;
+    }
+    int getNumBuckets() {
+        return buckets.size();
+    }
 
-  int getTopPriority() { return nextPop->first; }
+    int getTopPriority() {
+        return nextPop->first;
+    }
 
- private:
-  int count;
+private:
+    int count;
 
-  typedef std::map<int, std::queue<T> > BucketType;
-  BucketType buckets;
-  typename BucketType::iterator nextPop;
+    typedef std::map<int, std::queue<T> > BucketType;
+    BucketType buckets;
+    typename BucketType::iterator nextPop;
 };
 
 template <class T>
 BucketPrioQueue<T>::BucketPrioQueue() {
-  clear();
+    clear();
 }
 
 template <class T>
 bool BucketPrioQueue<T>::empty() {
-  return (count == 0);
+    return (count == 0);
 }
 
 template <class T>
 void BucketPrioQueue<T>::push(int prio, T t) {
-  buckets[prio].push(t);
-  if (nextPop == buckets.end() || prio < nextPop->first) nextPop = buckets.find(prio);
-  count++;
+    buckets[prio].push(t);
+    if (nextPop == buckets.end() || prio < nextPop->first)
+        nextPop = buckets.find(prio);
+    count++;
 }
 
 template <class T>
 T BucketPrioQueue<T>::pop() {
-  while (nextPop != buckets.end() && nextPop->second.empty()) ++nextPop;
+    while (nextPop != buckets.end() && nextPop->second.empty())
+        ++nextPop;
 
-  T p = nextPop->second.front();
-  nextPop->second.pop();
-  if (nextPop->second.empty()) {
-    typename BucketType::iterator it = nextPop;
-    nextPop++;
-    buckets.erase(it);
-  }
-  count--;
-  return p;
+    T p = nextPop->second.front();
+    nextPop->second.pop();
+    if (nextPop->second.empty()) {
+        typename BucketType::iterator it = nextPop;
+        nextPop++;
+        buckets.erase(it);
+    }
+    count--;
+    return p;
 }
 
 }  // namespace egvg

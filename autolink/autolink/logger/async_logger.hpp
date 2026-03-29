@@ -67,125 +67,131 @@ namespace logger {
  * underlying log blocks for too long, eventually the threads generating the log
  * messages will block as well. This prevents runaway memory usage.
  */
-class AsyncLogger : public google::base::Logger {
- public:
-  explicit AsyncLogger(google::base::Logger* wrapped);
+class AsyncLogger : public google::base::Logger
+{
+public:
+    explicit AsyncLogger(google::base::Logger* wrapped);
 
-  ~AsyncLogger();
+    ~AsyncLogger();
 
-  /**
-   * @brief start the async logger
-   */
-  void Start();
+    /**
+     * @brief start the async logger
+     */
+    void Start();
 
-  /**
-   * @brief Stop the thread. Flush() and Write() must not be called after this.
-   * NOTE: this is currently only used in tests: in real life, we enable async
-   * logging once when the program starts and then never disable it.
-   * REQUIRES: Start() must have been called.
-   */
-  void Stop();
+    /**
+     * @brief Stop the thread. Flush() and Write() must not be called after
+     * this. NOTE: this is currently only used in tests: in real life, we enable
+     * async logging once when the program starts and then never disable it.
+     * REQUIRES: Start() must have been called.
+     */
+    void Stop();
 
-  /**
-   * @brief Write a message to the log. Start() must have been called.
-   *
-   * @param force_flush is set by the GLog library based on the configured
-   * '--logbuflevel' flag.
-   * Any messages logged at the configured level or higher result in
-   * 'force_flush' being set to true, indicating that the message should be
-   * immediately written to the log rather than buffered in memory.
-   * @param timestamp is the time of write a message
-   * @param message is the info to be written
-   * @param message_len is the length of message
-   */
-  void Write(bool force_flush, time_t timestamp, const char* message, size_t message_len) override;
+    /**
+     * @brief Write a message to the log. Start() must have been called.
+     *
+     * @param force_flush is set by the GLog library based on the configured
+     * '--logbuflevel' flag.
+     * Any messages logged at the configured level or higher result in
+     * 'force_flush' being set to true, indicating that the message should be
+     * immediately written to the log rather than buffered in memory.
+     * @param timestamp is the time of write a message
+     * @param message is the info to be written
+     * @param message_len is the length of message
+     */
+    void Write(bool force_flush, time_t timestamp, const char* message,
+               size_t message_len) override;
 
-  /**
-   * @brief Flush any buffered messages.
-   */
-  void Flush() override;
+    /**
+     * @brief Flush any buffered messages.
+     */
+    void Flush() override;
 
-  /**
-   * @brief Get the current LOG file size.
-   * The return value is an approximate value since some
-   * logged data may not have been flushed to disk yet.
-   *
-   * @return the log file size
-   */
-  uint32_t LogSize() override;
+    /**
+     * @brief Get the current LOG file size.
+     * The return value is an approximate value since some
+     * logged data may not have been flushed to disk yet.
+     *
+     * @return the log file size
+     */
+    uint32_t LogSize() override;
 
-  /**
-   * @brief get the log thead
-   *
-   * @return the pointer of log thread
-   */
-  std::thread* LogThread() { return &log_thread_; }
-
- private:
-  // A buffered message.
-  //
-  // TODO(todd): using std::string for buffered messages is convenient but not
-  // as efficient as it could be. It's better to make the buffers just be
-  // Arenas and allocate both the message data and Msg struct from them, forming
-  // a linked list.
-  struct Msg {
-    time_t ts;
-    std::string message;
-    int32_t level;
-    Msg() : ts(0), message(), level(google::INFO) {}
-    Msg(time_t ts, std::string&& message, int32_t level) : ts(ts), message(std::move(message)), level(level) {}
-    Msg(const Msg& rsh) {
-      ts = rsh.ts;
-      message = rsh.message;
-      level = rsh.level;
+    /**
+     * @brief get the log thead
+     *
+     * @return the pointer of log thread
+     */
+    std::thread* LogThread() {
+        return &log_thread_;
     }
-    Msg(Msg&& rsh) {
-      ts = rsh.ts;
-      message = rsh.message;
-      level = rsh.level;
-    }
-    Msg& operator=(Msg&& rsh) {
-      ts = rsh.ts;
-      message = std::move(rsh.message);
-      level = rsh.level;
-      return *this;
-    }
-    Msg& operator=(const Msg& rsh) {
-      ts = rsh.ts;
-      message = rsh.message;
-      level = rsh.level;
-      return *this;
-    }
-  };
 
-  void RunThread();
-  void FlushBuffer(const std::unique_ptr<std::deque<Msg>>& msg);
+private:
+    // A buffered message.
+    //
+    // TODO(todd): using std::string for buffered messages is convenient but not
+    // as efficient as it could be. It's better to make the buffers just be
+    // Arenas and allocate both the message data and Msg struct from them,
+    // forming a linked list.
+    struct Msg {
+        time_t ts;
+        std::string message;
+        int32_t level;
+        Msg() : ts(0), message(), level(google::INFO) {}
+        Msg(time_t ts, std::string&& message, int32_t level)
+            : ts(ts), message(std::move(message)), level(level) {}
+        Msg(const Msg& rsh) {
+            ts = rsh.ts;
+            message = rsh.message;
+            level = rsh.level;
+        }
+        Msg(Msg&& rsh) {
+            ts = rsh.ts;
+            message = rsh.message;
+            level = rsh.level;
+        }
+        Msg& operator=(Msg&& rsh) {
+            ts = rsh.ts;
+            message = std::move(rsh.message);
+            level = rsh.level;
+            return *this;
+        }
+        Msg& operator=(const Msg& rsh) {
+            ts = rsh.ts;
+            message = rsh.message;
+            level = rsh.level;
+            return *this;
+        }
+    };
 
-  google::base::Logger* const wrapped_;
-  std::thread log_thread_;
+    void RunThread();
+    void FlushBuffer(const std::unique_ptr<std::deque<Msg>>& msg);
 
-  // Count of how many times the writer thread has flushed the buffers.
-  // 64 bits should be enough to never worry about overflow.
-  std::atomic<uint64_t> flush_count_ = {0};
+    google::base::Logger* const wrapped_;
+    std::thread log_thread_;
 
-  // Count of how many times the writer thread has dropped the log messages.
-  // 64 bits should be enough to never worry about overflow.
-  uint64_t drop_count_ = 0;
+    // Count of how many times the writer thread has flushed the buffers.
+    // 64 bits should be enough to never worry about overflow.
+    std::atomic<uint64_t> flush_count_ = {0};
 
-  // The buffer to which application threads append new log messages.
-  std::unique_ptr<std::deque<Msg>> active_buf_;
+    // Count of how many times the writer thread has dropped the log messages.
+    // 64 bits should be enough to never worry about overflow.
+    uint64_t drop_count_ = 0;
 
-  // The buffer currently being flushed by the logger thread, cleared
-  // after a successful flush.
-  std::unique_ptr<std::deque<Msg>> flushing_buf_;
+    // The buffer to which application threads append new log messages.
+    std::unique_ptr<std::deque<Msg>> active_buf_;
 
-  // Trigger for the logger thread to stop.
-  enum State { INITTED, RUNNING, STOPPED };
-  std::atomic<State> state_ = {INITTED};
-  std::atomic_flag flag_ = ATOMIC_FLAG_INIT;
-  std::unordered_map<std::string, std::unique_ptr<LogFileObject>> module_logger_map_;
+    // The buffer currently being flushed by the logger thread, cleared
+    // after a successful flush.
+    std::unique_ptr<std::deque<Msg>> flushing_buf_;
 
-  DISALLOW_COPY_AND_ASSIGN(AsyncLogger);
+    // Trigger for the logger thread to stop.
+    enum State { INITTED, RUNNING, STOPPED };
+    std::atomic<State> state_ = {INITTED};
+    std::atomic_flag flag_ = ATOMIC_FLAG_INIT;
+    std::unordered_map<std::string, std::unique_ptr<LogFileObject>>
+        module_logger_map_;
+
+    DISALLOW_COPY_AND_ASSIGN(AsyncLogger);
 };
 
 }  // namespace logger

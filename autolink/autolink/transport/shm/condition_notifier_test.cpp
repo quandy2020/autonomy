@@ -22,32 +22,32 @@ namespace autolink {
 namespace transport {
 
 TEST(ConditionNotifierTest, constructor) {
-  auto notifier = ConditionNotifier::Instance();
-  EXPECT_NE(notifier, nullptr);
+    auto notifier = ConditionNotifier::Instance();
+    EXPECT_NE(notifier, nullptr);
 }
 
 TEST(ConditionNotifierTest, notify_listen) {
-  auto notifier = ConditionNotifier::Instance();
-  ReadableInfo readable_info;
-  while (notifier->Listen(100, &readable_info)) {
-  }
-  EXPECT_FALSE(notifier->Listen(100, &readable_info));
-  EXPECT_TRUE(notifier->Notify(readable_info));
-  EXPECT_TRUE(notifier->Listen(100, &readable_info));
-  EXPECT_FALSE(notifier->Listen(100, &readable_info));
-  EXPECT_TRUE(notifier->Notify(readable_info));
-  EXPECT_TRUE(notifier->Notify(readable_info));
-  EXPECT_TRUE(notifier->Listen(100, &readable_info));
-  EXPECT_TRUE(notifier->Listen(100, &readable_info));
-  EXPECT_FALSE(notifier->Listen(100, &readable_info));
+    auto notifier = ConditionNotifier::Instance();
+    ReadableInfo readable_info;
+    while (notifier->Listen(100, &readable_info)) {
+    }
+    EXPECT_FALSE(notifier->Listen(100, &readable_info));
+    EXPECT_TRUE(notifier->Notify(readable_info));
+    EXPECT_TRUE(notifier->Listen(100, &readable_info));
+    EXPECT_FALSE(notifier->Listen(100, &readable_info));
+    EXPECT_TRUE(notifier->Notify(readable_info));
+    EXPECT_TRUE(notifier->Notify(readable_info));
+    EXPECT_TRUE(notifier->Listen(100, &readable_info));
+    EXPECT_TRUE(notifier->Listen(100, &readable_info));
+    EXPECT_FALSE(notifier->Listen(100, &readable_info));
 }
 
 TEST(ConditionNotifierTest, shutdown) {
-  auto notifier = ConditionNotifier::Instance();
-  notifier->Shutdown();
-  ReadableInfo readable_info;
-  EXPECT_FALSE(notifier->Notify(readable_info));
-  EXPECT_FALSE(notifier->Listen(100, &readable_info));
+    auto notifier = ConditionNotifier::Instance();
+    notifier->Shutdown();
+    ReadableInfo readable_info;
+    EXPECT_FALSE(notifier->Notify(readable_info));
+    EXPECT_FALSE(notifier->Listen(100, &readable_info));
 }
 
 }  // namespace transport

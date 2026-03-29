@@ -44,243 +44,264 @@ using autolink::proto::QosDurabilityPolicy;
 using autolink::proto::RoleAttributes;
 
 template <typename M>
-class HybridReceiver : public Receiver<M> {
- public:
-  using HistoryPtr = std::shared_ptr<History<M>>;
-  using ReceiverPtr = std::shared_ptr<Receiver<M>>;
-  using ReceiverContainer = std::unordered_map<OptionalMode, ReceiverPtr, std::hash<int>>;
-  using TransmitterContainer =
-      std::unordered_map<OptionalMode, std::unordered_map<uint64_t, RoleAttributes>, std::hash<int>>;
-  using CommunicationModePtr = std::shared_ptr<proto::CommunicationMode>;
-  using MappingTable = std::unordered_map<Relation, OptionalMode, std::hash<int>>;
+class HybridReceiver : public Receiver<M>
+{
+public:
+    using HistoryPtr = std::shared_ptr<History<M>>;
+    using ReceiverPtr = std::shared_ptr<Receiver<M>>;
+    using ReceiverContainer =
+        std::unordered_map<OptionalMode, ReceiverPtr, std::hash<int>>;
+    using TransmitterContainer =
+        std::unordered_map<OptionalMode,
+                           std::unordered_map<uint64_t, RoleAttributes>,
+                           std::hash<int>>;
+    using CommunicationModePtr = std::shared_ptr<proto::CommunicationMode>;
+    using MappingTable =
+        std::unordered_map<Relation, OptionalMode, std::hash<int>>;
 
-  HybridReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener,
-                 const ParticipantPtr& participant);
-  virtual ~HybridReceiver();
+    HybridReceiver(const RoleAttributes& attr,
+                   const typename Receiver<M>::MessageListener& msg_listener,
+                   const ParticipantPtr& participant);
+    virtual ~HybridReceiver();
 
-  void Enable() override;
-  void Disable() override;
+    void Enable() override;
+    void Disable() override;
 
-  void Enable(const RoleAttributes& opposite_attr) override;
-  void Disable(const RoleAttributes& opposite_attr) override;
+    void Enable(const RoleAttributes& opposite_attr) override;
+    void Disable(const RoleAttributes& opposite_attr) override;
 
- private:
-  void InitMode();
-  void ObtainConfig();
-  void InitHistory();
-  void InitReceivers();
-  void ClearReceivers();
-  void InitTransmitters();
-  void ClearTransmitters();
-  void ReceiveHistoryMsg(const RoleAttributes& opposite_attr);
-  void ThreadFunc(const RoleAttributes& opposite_attr);
-  Relation GetRelation(const RoleAttributes& opposite_attr);
+private:
+    void InitMode();
+    void ObtainConfig();
+    void InitHistory();
+    void InitReceivers();
+    void ClearReceivers();
+    void InitTransmitters();
+    void ClearTransmitters();
+    void ReceiveHistoryMsg(const RoleAttributes& opposite_attr);
+    void ThreadFunc(const RoleAttributes& opposite_attr);
+    Relation GetRelation(const RoleAttributes& opposite_attr);
 
-  HistoryPtr history_;
-  ReceiverContainer receivers_;
-  TransmitterContainer transmitters_;
-  std::mutex mutex_;
+    HistoryPtr history_;
+    ReceiverContainer receivers_;
+    TransmitterContainer transmitters_;
+    std::mutex mutex_;
 
-  CommunicationModePtr mode_;
-  MappingTable mapping_table_;
+    CommunicationModePtr mode_;
+    MappingTable mapping_table_;
 
-  ParticipantPtr participant_;
+    ParticipantPtr participant_;
 };
 
 template <typename M>
-HybridReceiver<M>::HybridReceiver(const RoleAttributes& attr, const typename Receiver<M>::MessageListener& msg_listener,
-                                  const ParticipantPtr& participant)
-    : Receiver<M>(attr, msg_listener), history_(nullptr), participant_(participant) {
-  InitMode();
-  ObtainConfig();
-  InitHistory();
-  InitReceivers();
-  InitTransmitters();
+HybridReceiver<M>::HybridReceiver(
+    const RoleAttributes& attr,
+    const typename Receiver<M>::MessageListener& msg_listener,
+    const ParticipantPtr& participant)
+    : Receiver<M>(attr, msg_listener),
+      history_(nullptr),
+      participant_(participant) {
+    InitMode();
+    ObtainConfig();
+    InitHistory();
+    InitReceivers();
+    InitTransmitters();
 }
 
 template <typename M>
 HybridReceiver<M>::~HybridReceiver() {
-  ClearTransmitters();
-  ClearReceivers();
+    ClearTransmitters();
+    ClearReceivers();
 }
 
 template <typename M>
 void HybridReceiver<M>::Enable() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (auto& item : receivers_) {
-    item.second->Enable();
-  }
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& item : receivers_) {
+        item.second->Enable();
+    }
 }
 
 template <typename M>
 void HybridReceiver<M>::Disable() {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (auto& item : receivers_) {
-    item.second->Disable();
-  }
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& item : receivers_) {
+        item.second->Disable();
+    }
 }
 
 template <typename M>
 void HybridReceiver<M>::Enable(const RoleAttributes& opposite_attr) {
-  auto relation = GetRelation(opposite_attr);
-  RETURN_IF(relation == NO_RELATION);
+    auto relation = GetRelation(opposite_attr);
+    RETURN_IF(relation == NO_RELATION);
 
-  uint64_t id = opposite_attr.id();
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (transmitters_[mapping_table_[relation]].count(id) == 0) {
-    transmitters_[mapping_table_[relation]].insert(std::make_pair(id, opposite_attr));
-    receivers_[mapping_table_[relation]]->Enable(opposite_attr);
-    ReceiveHistoryMsg(opposite_attr);
-  }
+    uint64_t id = opposite_attr.id();
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (transmitters_[mapping_table_[relation]].count(id) == 0) {
+        transmitters_[mapping_table_[relation]].insert(
+            std::make_pair(id, opposite_attr));
+        receivers_[mapping_table_[relation]]->Enable(opposite_attr);
+        ReceiveHistoryMsg(opposite_attr);
+    }
 }
 
 template <typename M>
 void HybridReceiver<M>::Disable(const RoleAttributes& opposite_attr) {
-  auto relation = GetRelation(opposite_attr);
-  RETURN_IF(relation == NO_RELATION);
+    auto relation = GetRelation(opposite_attr);
+    RETURN_IF(relation == NO_RELATION);
 
-  uint64_t id = opposite_attr.id();
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (transmitters_[mapping_table_[relation]].count(id) > 0) {
-    transmitters_[mapping_table_[relation]].erase(id);
-    receivers_[mapping_table_[relation]]->Disable(opposite_attr);
-  }
+    uint64_t id = opposite_attr.id();
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (transmitters_[mapping_table_[relation]].count(id) > 0) {
+        transmitters_[mapping_table_[relation]].erase(id);
+        receivers_[mapping_table_[relation]]->Disable(opposite_attr);
+    }
 }
 
 template <typename M>
 void HybridReceiver<M>::InitMode() {
-  mode_ = std::make_shared<proto::CommunicationMode>();
-  mapping_table_[SAME_PROC] = mode_->same_proc();
-  mapping_table_[DIFF_PROC] = mode_->diff_proc();
-  mapping_table_[DIFF_HOST] = mode_->diff_host();
+    mode_ = std::make_shared<proto::CommunicationMode>();
+    mapping_table_[SAME_PROC] = mode_->same_proc();
+    mapping_table_[DIFF_PROC] = mode_->diff_proc();
+    mapping_table_[DIFF_HOST] = mode_->diff_host();
 }
 
 template <typename M>
 void HybridReceiver<M>::ObtainConfig() {
-  auto& global_conf = common::GlobalData::Instance()->Config();
-  if (false) {  // proto3: transport_conf always present
-    return;
-  }
-  if (false) {  // proto3: communication_mode always present
-    return;
-  }
-  mode_->CopyFrom(global_conf.transport_conf().communication_mode());
+    auto& global_conf = common::GlobalData::Instance()->Config();
+    if (false) {  // proto3: transport_conf always present
+        return;
+    }
+    if (false) {  // proto3: communication_mode always present
+        return;
+    }
+    mode_->CopyFrom(global_conf.transport_conf().communication_mode());
 
-  mapping_table_[SAME_PROC] = mode_->same_proc();
-  mapping_table_[DIFF_PROC] = mode_->diff_proc();
-  mapping_table_[DIFF_HOST] = mode_->diff_host();
+    mapping_table_[SAME_PROC] = mode_->same_proc();
+    mapping_table_[DIFF_PROC] = mode_->diff_proc();
+    mapping_table_[DIFF_HOST] = mode_->diff_host();
 }
 
 template <typename M>
 void HybridReceiver<M>::InitHistory() {
-  HistoryAttributes history_attr(this->attr_.qos_profile().history(), this->attr_.qos_profile().depth());
-  history_ = std::make_shared<History<M>>(history_attr);
-  if (this->attr_.qos_profile().durability() == QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
-    history_->Enable();
-  }
+    HistoryAttributes history_attr(this->attr_.qos_profile().history(),
+                                   this->attr_.qos_profile().depth());
+    history_ = std::make_shared<History<M>>(history_attr);
+    if (this->attr_.qos_profile().durability() ==
+        QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
+        history_->Enable();
+    }
 }
 
 template <typename M>
 void HybridReceiver<M>::InitReceivers() {
-  std::set<OptionalMode> modes;
-  modes.insert(mode_->same_proc());
-  modes.insert(mode_->diff_proc());
-  modes.insert(mode_->diff_host());
-  auto listener = std::bind(&HybridReceiver<M>::OnNewMessage, this, std::placeholders::_1, std::placeholders::_2);
-  for (auto& mode : modes) {
-    switch (mode) {
-      case OptionalMode::INTRA:
-        receivers_[mode] = std::make_shared<IntraReceiver<M>>(this->attr_, listener);
-        break;
-      case OptionalMode::SHM:
-        receivers_[mode] = std::make_shared<ShmReceiver<M>>(this->attr_, listener);
-        break;
-      default:
-        receivers_[mode] = std::make_shared<RtpsReceiver<M>>(this->attr_, listener);
-        break;
+    std::set<OptionalMode> modes;
+    modes.insert(mode_->same_proc());
+    modes.insert(mode_->diff_proc());
+    modes.insert(mode_->diff_host());
+    auto listener = std::bind(&HybridReceiver<M>::OnNewMessage, this,
+                              std::placeholders::_1, std::placeholders::_2);
+    for (auto& mode : modes) {
+        switch (mode) {
+            case OptionalMode::INTRA:
+                receivers_[mode] =
+                    std::make_shared<IntraReceiver<M>>(this->attr_, listener);
+                break;
+            case OptionalMode::SHM:
+                receivers_[mode] =
+                    std::make_shared<ShmReceiver<M>>(this->attr_, listener);
+                break;
+            default:
+                receivers_[mode] =
+                    std::make_shared<RtpsReceiver<M>>(this->attr_, listener);
+                break;
+        }
     }
-  }
 }
 
 template <typename M>
 void HybridReceiver<M>::ClearReceivers() {
-  receivers_.clear();
+    receivers_.clear();
 }
 
 template <typename M>
 void HybridReceiver<M>::InitTransmitters() {
-  std::unordered_map<uint64_t, RoleAttributes> empty;
-  for (auto& item : receivers_) {
-    transmitters_[item.first] = empty;
-  }
+    std::unordered_map<uint64_t, RoleAttributes> empty;
+    for (auto& item : receivers_) {
+        transmitters_[item.first] = empty;
+    }
 }
 
 template <typename M>
 void HybridReceiver<M>::ClearTransmitters() {
-  for (auto& item : transmitters_) {
-    for (auto& upper_reach : item.second) {
-      receivers_[item.first]->Disable(upper_reach.second);
+    for (auto& item : transmitters_) {
+        for (auto& upper_reach : item.second) {
+            receivers_[item.first]->Disable(upper_reach.second);
+        }
     }
-  }
-  transmitters_.clear();
+    transmitters_.clear();
 }
 
 template <typename M>
 void HybridReceiver<M>::ReceiveHistoryMsg(const RoleAttributes& opposite_attr) {
-  // check qos
-  if (opposite_attr.qos_profile().durability() != QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
-    return;
-  }
+    // check qos
+    if (opposite_attr.qos_profile().durability() !=
+        QosDurabilityPolicy::DURABILITY_TRANSIENT_LOCAL) {
+        return;
+    }
 
-  auto attr = opposite_attr;
-  autolink::Async(&HybridReceiver<M>::ThreadFunc, this, attr);
+    auto attr = opposite_attr;
+    autolink::Async(&HybridReceiver<M>::ThreadFunc, this, attr);
 }
 
 template <typename M>
 void HybridReceiver<M>::ThreadFunc(const RoleAttributes& opposite_attr) {
-  std::string channel_name = std::to_string(opposite_attr.id()) + std::to_string(this->attr_.id());
-  uint64_t channel_id = common::GlobalData::RegisterChannel(channel_name);
+    std::string channel_name =
+        std::to_string(opposite_attr.id()) + std::to_string(this->attr_.id());
+    uint64_t channel_id = common::GlobalData::RegisterChannel(channel_name);
 
-  RoleAttributes attr(this->attr_);
-  attr.set_channel_name(channel_name);
-  attr.set_channel_id(channel_id);
-  attr.mutable_qos_profile()->CopyFrom(opposite_attr.qos_profile());
+    RoleAttributes attr(this->attr_);
+    attr.set_channel_name(channel_name);
+    attr.set_channel_id(channel_id);
+    attr.mutable_qos_profile()->CopyFrom(opposite_attr.qos_profile());
 
-  volatile bool is_msg_arrived = false;
-  auto listener = [&](const std::shared_ptr<M>& msg, const MessageInfo& msg_info, const RoleAttributes& attr) {
-    is_msg_arrived = true;
-    this->OnNewMessage(msg, msg_info);
-  };
+    volatile bool is_msg_arrived = false;
+    auto listener = [&](const std::shared_ptr<M>& msg,
+                        const MessageInfo& msg_info,
+                        const RoleAttributes& attr) {
+        is_msg_arrived = true;
+        this->OnNewMessage(msg, msg_info);
+    };
 
-  auto receiver = std::make_shared<RtpsReceiver<M>>(attr, listener);
-  receiver->Enable();
+    auto receiver = std::make_shared<RtpsReceiver<M>>(attr, listener);
+    receiver->Enable();
 
-  do {
-    if (is_msg_arrived) {
-      is_msg_arrived = false;
-    }
-    autolink::USleep(1000000);
-  } while (is_msg_arrived);
+    do {
+        if (is_msg_arrived) {
+            is_msg_arrived = false;
+        }
+        autolink::USleep(1000000);
+    } while (is_msg_arrived);
 
-  receiver->Disable();
-  ADEBUG << "recv threadfunc exit.";
+    receiver->Disable();
+    ADEBUG << "recv threadfunc exit.";
 }
 
 template <typename M>
 Relation HybridReceiver<M>::GetRelation(const RoleAttributes& opposite_attr) {
-  if (opposite_attr.channel_name() != this->attr_.channel_name()) {
-    return NO_RELATION;
-  }
+    if (opposite_attr.channel_name() != this->attr_.channel_name()) {
+        return NO_RELATION;
+    }
 
-  if (opposite_attr.host_ip() != this->attr_.host_ip()) {
-    return DIFF_HOST;
-  }
+    if (opposite_attr.host_ip() != this->attr_.host_ip()) {
+        return DIFF_HOST;
+    }
 
-  if (opposite_attr.process_id() != this->attr_.process_id()) {
-    return DIFF_PROC;
-  }
+    if (opposite_attr.process_id() != this->attr_.process_id()) {
+        return DIFF_PROC;
+    }
 
-  return SAME_PROC;
+    return SAME_PROC;
 }
 
 }  // namespace transport

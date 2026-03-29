@@ -31,18 +31,22 @@ namespace optimization {
  * @ingroup ProblemFormulation
  * @sa Component
  */
-class VariableSet : public Component {
- public:
-  /**
-   * @brief Creates a set of variables representing a single concept.
-   * @param n_var  Number of variables.
-   * @param name   What the variables represent to (e.g. "spline coefficients").
-   */
-  VariableSet(int n_var, const std::string& name);
-  virtual ~VariableSet() = default;
+class VariableSet : public Component
+{
+public:
+    /**
+     * @brief Creates a set of variables representing a single concept.
+     * @param n_var  Number of variables.
+     * @param name   What the variables represent to (e.g. "spline
+     * coefficients").
+     */
+    VariableSet(int n_var, const std::string& name);
+    virtual ~VariableSet() = default;
 
-  // doesn't exist for variables, generated run-time error when used.
-  Jacobian GetJacobian() const final { throw std::runtime_error("not implemented for variables"); };
+    // doesn't exist for variables, generated run-time error when used.
+    Jacobian GetJacobian() const final {
+        throw std::runtime_error("not implemented for variables");
+    };
 };
 
 }  // namespace optimization

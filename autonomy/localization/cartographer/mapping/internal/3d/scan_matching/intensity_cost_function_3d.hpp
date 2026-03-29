@@ -34,52 +34,64 @@ namespace scan_matching {
 // for which different intensity has been observed, i.e. at voxels with
 // different values. Only points up to a certain threshold are evaluated which
 // is intended to ignore data from retroreflections.
-class IntensityCostFunction3D {
- public:
-  static ceres::CostFunction* CreateAutoDiffCostFunction(const double scaling_factor, const float intensity_threshold,
-                                                         const sensor::PointCloud& point_cloud,
-                                                         const IntensityHybridGrid& hybrid_grid);
+class IntensityCostFunction3D
+{
+public:
+    static ceres::CostFunction* CreateAutoDiffCostFunction(
+        const double scaling_factor, const float intensity_threshold,
+        const sensor::PointCloud& point_cloud,
+        const IntensityHybridGrid& hybrid_grid);
 
-  template <typename T>
-  bool operator()(const T* const translation, const T* const rotation, T* const residual) const {
-    const transform::Rigid3<T> transform(Eigen::Map<const Eigen::Matrix<T, 3, 1>>(translation),
-                                         Eigen::Quaternion<T>(rotation[0], rotation[1], rotation[2], rotation[3]));
-    return Evaluate(transform, residual);
-  }
-
- private:
-  IntensityCostFunction3D(const double scaling_factor, const float intensity_threshold,
-                          const sensor::PointCloud& point_cloud, const IntensityHybridGrid& hybrid_grid)
-      : scaling_factor_(scaling_factor),
-        intensity_threshold_(intensity_threshold),
-        point_cloud_(point_cloud),
-        interpolated_grid_(hybrid_grid) {}
-
-  IntensityCostFunction3D(const IntensityCostFunction3D&) = delete;
-  IntensityCostFunction3D& operator=(const IntensityCostFunction3D&) = delete;
-
-  template <typename T>
-  bool Evaluate(const transform::Rigid3<T>& transform, T* const residual) const {
-    for (size_t i = 0; i < point_cloud_.size(); ++i) {
-      if (point_cloud_.intensities()[i] > intensity_threshold_) {
-        residual[i] = T(0.f);
-      } else {
-        const Eigen::Matrix<T, 3, 1> point = point_cloud_[i].position.cast<T>();
-        const T intensity = T(point_cloud_.intensities()[i]);
-
-        const Eigen::Matrix<T, 3, 1> world = transform * point;
-        const T interpolated_intensity = interpolated_grid_.GetInterpolatedValue(world[0], world[1], world[2]);
-        residual[i] = scaling_factor_ * (interpolated_intensity - intensity);
-      }
+    template <typename T>
+    bool operator()(const T* const translation, const T* const rotation,
+                    T* const residual) const {
+        const transform::Rigid3<T> transform(
+            Eigen::Map<const Eigen::Matrix<T, 3, 1>>(translation),
+            Eigen::Quaternion<T>(rotation[0], rotation[1], rotation[2],
+                                 rotation[3]));
+        return Evaluate(transform, residual);
     }
-    return true;
-  }
 
-  const double scaling_factor_;
-  // We will ignore returns with intensity above this threshold.
-  const float intensity_threshold_;
-  const sensor::PointCloud& point_cloud_;
-  const InterpolatedIntensityGrid interpolated_grid_;
+private:
+    IntensityCostFunction3D(const double scaling_factor,
+                            const float intensity_threshold,
+                            const sensor::PointCloud& point_cloud,
+                            const IntensityHybridGrid& hybrid_grid)
+        : scaling_factor_(scaling_factor),
+          intensity_threshold_(intensity_threshold),
+          point_cloud_(point_cloud),
+          interpolated_grid_(hybrid_grid) {}
+
+    IntensityCostFunction3D(const IntensityCostFunction3D&) = delete;
+    IntensityCostFunction3D& operator=(const IntensityCostFunction3D&) = delete;
+
+    template <typename T>
+    bool Evaluate(const transform::Rigid3<T>& transform,
+                  T* const residual) const {
+        for (size_t i = 0; i < point_cloud_.size(); ++i) {
+            if (point_cloud_.intensities()[i] > intensity_threshold_) {
+                residual[i] = T(0.f);
+            } else {
+                const Eigen::Matrix<T, 3, 1> point =
+                    point_cloud_[i].position.cast<T>();
+                const T intensity = T(point_cloud_.intensities()[i]);
+
+                const Eigen::Matrix<T, 3, 1> world = transform * point;
+                const T interpolated_intensity =
+                    interpolated_grid_.GetInterpolatedValue(world[0], world[1],
+                                                            world[2]);
+                residual[i] =
+                    scaling_factor_ * (interpolated_intensity - intensity);
+            }
+        }
+        return true;
+    }
+
+    const double scaling_factor_;
+    // We will ignore returns with intensity above this threshold.
+    const float intensity_threshold_;
+    const sensor::PointCloud& point_cloud_;
+    const InterpolatedIntensityGrid interpolated_grid_;
 };
 
 }  // namespace scan_matching

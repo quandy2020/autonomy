@@ -20,19 +20,21 @@ namespace aviz {
 namespace common {
 
 void ViewManager::addViewController(ViewController* view_controller) {
-  (void)view_controller;
-  // TODO: Implement
+    (void)view_controller;
+    // TODO: Implement
 }
 
 void ViewManager::removeViewController(ViewController* view_controller) {
-  (void)view_controller;
-  // TODO: Implement
+    (void)view_controller;
+    // TODO: Implement
 }
 
-ViewController* ViewManager::getCurrentViewController() const { return current_view_controller_; }
+ViewController* ViewManager::getCurrentViewController() const {
+    return current_view_controller_;
+}
 
 void ViewManager::setCurrentViewController(ViewController* view_controller) {
-  current_view_controller_ = view_controller;
+    current_view_controller_ = view_controller;
 }
 
 }  // namespace common

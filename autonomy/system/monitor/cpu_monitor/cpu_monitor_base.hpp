@@ -29,33 +29,41 @@ namespace monitor {
 namespace cpu_monitor {
 
 /**
- * CPU 监控基类：从系统读取 CPU 信息与 tick，计算使用率，并可向 Prometheus 暴露指标。
+ * CPU 监控基类：从系统读取 CPU 信息与 tick，计算使用率，并可向 Prometheus
+ * 暴露指标。
  */
-class CpuMonitorBase : public MonitorBase {
- public:
-  std::string Name() const override { return "cpu"; }
+class CpuMonitorBase : public MonitorBase
+{
+public:
+    std::string Name() const override {
+        return "cpu";
+    }
 
-  void Collect() override;
+    void Collect() override;
 
-  void RegisterWithPrometheus(void* registry) override;
+    void RegisterWithPrometheus(void* registry) override;
 
-  const CpuInformation& info() const { return info_; }
-  const CpuUsageStatistics& usage() const { return usage_; }
+    const CpuInformation& info() const {
+        return info_;
+    }
+    const CpuUsageStatistics& usage() const {
+        return usage_;
+    }
 
- protected:
-  /// 子类可重写以提供平台特定信息
-  virtual void FillCpuInformation(CpuInformation* info);
-  /// 从系统读取当前 tick，返回各 cpu 行（cpu, cpu0, cpu1, ...）
-  virtual bool ReadProcStat(std::vector<CpuTickCounts>* out);
+protected:
+    /// 子类可重写以提供平台特定信息
+    virtual void FillCpuInformation(CpuInformation* info);
+    /// 从系统读取当前 tick，返回各 cpu 行（cpu, cpu0, cpu1, ...）
+    virtual bool ReadProcStat(std::vector<CpuTickCounts>* out);
 
-  CpuInformation info_;
-  CpuUsageStatistics usage_;
-  std::vector<CpuTickCounts> prev_ticks_;
-  bool first_collect_{true};
+    CpuInformation info_;
+    CpuUsageStatistics usage_;
+    std::vector<CpuTickCounts> prev_ticks_;
+    bool first_collect_{true};
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
-  struct PrometheusGauges;
-  std::unique_ptr<PrometheusGauges> gauges_;
+    struct PrometheusGauges;
+    std::unique_ptr<PrometheusGauges> gauges_;
 #endif
 };
 

@@ -28,37 +28,37 @@ namespace autolink {
  *
  */
 struct TimerOption {
-  /**
-   * @brief Construct a new Timer Option object
-   *
-   * @param period The period of the timer, unit is ms
-   * @param callback The task that the timer needs to perform
-   * @param oneshot Oneshot or period
-   */
-  TimerOption(uint32_t period, std::function<void()> callback, bool oneshot)
-      : period(period), callback(callback), oneshot(oneshot) {}
+    /**
+     * @brief Construct a new Timer Option object
+     *
+     * @param period The period of the timer, unit is ms
+     * @param callback The task that the timer needs to perform
+     * @param oneshot Oneshot or period
+     */
+    TimerOption(uint32_t period, std::function<void()> callback, bool oneshot)
+        : period(period), callback(callback), oneshot(oneshot) {}
 
-  /**
-   * @brief Default constructor for initializer list
-   *
-   */
-  TimerOption() : period(), callback(), oneshot() {}
+    /**
+     * @brief Default constructor for initializer list
+     *
+     */
+    TimerOption() : period(), callback(), oneshot() {}
 
-  /**
-   * @brief The period of the timer, unit is ms
-   * max: 512 * 64
-   * min: 1
-   */
-  uint32_t period = 0;
+    /**
+     * @brief The period of the timer, unit is ms
+     * max: 512 * 64
+     * min: 1
+     */
+    uint32_t period = 0;
 
-  /**The task that the timer needs to perform*/
-  std::function<void()> callback;
+    /**The task that the timer needs to perform*/
+    std::function<void()> callback;
 
-  /**
-   * True: perform the callback only after the first timing cycle
-   * False: perform the callback every timed period
-   */
-  bool oneshot;
+    /**
+     * True: perform the callback only after the first timing cycle
+     * False: perform the callback every timed period
+     */
+    bool oneshot;
 };
 
 /**
@@ -66,54 +66,55 @@ struct TimerOption {
  * @brief Used to perform oneshot or periodic timing tasks
  *
  */
-class Timer {
- public:
-  Timer();
+class Timer
+{
+public:
+    Timer();
 
-  /**
-   * @brief Construct a new Timer object
-   *
-   * @param opt Timer option
-   */
-  explicit Timer(TimerOption opt);
+    /**
+     * @brief Construct a new Timer object
+     *
+     * @param opt Timer option
+     */
+    explicit Timer(TimerOption opt);
 
-  /**
-   * @brief Construct a new Timer object
-   *
-   * @param period The period of the timer, unit is ms
-   * @param callback The tasks that the timer needs to perform
-   * @param oneshot True: perform the callback only after the first timing cycle
-   *                False: perform the callback every timed period
-   */
-  Timer(uint32_t period, std::function<void()> callback, bool oneshot);
-  ~Timer();
+    /**
+     * @brief Construct a new Timer object
+     *
+     * @param period The period of the timer, unit is ms
+     * @param callback The tasks that the timer needs to perform
+     * @param oneshot True: perform the callback only after the first timing
+     * cycle False: perform the callback every timed period
+     */
+    Timer(uint32_t period, std::function<void()> callback, bool oneshot);
+    ~Timer();
 
-  /**
-   * @brief Set the Timer Option object
-   *
-   * @param opt The timer option will be set
-   */
-  void SetTimerOption(TimerOption opt);
+    /**
+     * @brief Set the Timer Option object
+     *
+     * @param opt The timer option will be set
+     */
+    void SetTimerOption(TimerOption opt);
 
-  /**
-   * @brief Start the timer
-   *
-   */
-  void Start();
+    /**
+     * @brief Start the timer
+     *
+     */
+    void Start();
 
-  /**
-   * @brief Stop the timer
-   *
-   */
-  void Stop();
+    /**
+     * @brief Stop the timer
+     *
+     */
+    void Stop();
 
- private:
-  bool InitTimerTask();
-  uint64_t timer_id_;
-  TimerOption timer_opt_;
-  TimingWheel* timing_wheel_ = nullptr;
-  std::shared_ptr<TimerTask> task_;
-  std::atomic<bool> started_ = {false};
+private:
+    bool InitTimerTask();
+    uint64_t timer_id_;
+    TimerOption timer_opt_;
+    TimingWheel* timing_wheel_ = nullptr;
+    std::shared_ptr<TimerTask> task_;
+    std::atomic<bool> started_ = {false};
 };
 
 }  // namespace autolink

@@ -28,7 +28,8 @@ namespace helper_functions {
 /// template and `std::false_type` otherwise.
 /// \tparam ExpressionTemplate Expression to be checked in compile time
 /// \tparam T Template parameter to instantiate the expression.
-template <template <typename...> class ExpressionTemplate, typename T, typename = void>
+template <template <typename...> class ExpressionTemplate, typename T,
+          typename = void>
 struct expression_valid : std::false_type {};
 
 /// This struct is `std::true_type` if the expression is valid for a given
@@ -36,7 +37,9 @@ struct expression_valid : std::false_type {};
 /// \tparam ExpressionTemplate Expression to be checked in compile time
 /// \tparam T Template parameter to instantiate the expression.
 template <template <typename...> class ExpressionTemplate, typename T>
-struct expression_valid<ExpressionTemplate, T, types::void_t<ExpressionTemplate<T>>> : std::true_type {};
+struct expression_valid<ExpressionTemplate, T,
+                        types::void_t<ExpressionTemplate<T>>> : std::true_type {
+};
 
 /// This struct is `std::true_type` if the expression is valid for a given
 /// template type with the specified return type and `std::false_type`
@@ -44,7 +47,8 @@ struct expression_valid<ExpressionTemplate, T, types::void_t<ExpressionTemplate<
 /// \tparam ExpressionTemplate Expression to be checked in compile time
 /// \tparam T Template parameter to instantiate the expression.
 /// \tparam ReturnT Return type of the expression.
-template <template <typename...> class ExpressionTemplate, typename T, typename ReturnT, typename = void>
+template <template <typename...> class ExpressionTemplate, typename T,
+          typename ReturnT, typename = void>
 struct expression_valid_with_return : std::false_type {};
 
 /// This struct is `std::true_type` if the expression is valid for a given
@@ -53,9 +57,11 @@ struct expression_valid_with_return : std::false_type {};
 /// \tparam ExpressionTemplate Expression to be checked in compile time
 /// \tparam T Template parameter to instantiate the expression.
 /// \tparam ReturnT Return type of the expression.
-template <template <typename...> class ExpressionTemplate, typename T, typename ReturnT>
-struct expression_valid_with_return<ExpressionTemplate, T, ReturnT,
-                                    std::enable_if_t<std::is_same<ReturnT, ExpressionTemplate<T>>::value>>
+template <template <typename...> class ExpressionTemplate, typename T,
+          typename ReturnT>
+struct expression_valid_with_return<
+    ExpressionTemplate, T, ReturnT,
+    std::enable_if_t<std::is_same<ReturnT, ExpressionTemplate<T>>::value>>
     : std::true_type {};
 
 }  // namespace helper_functions

@@ -22,36 +22,37 @@ namespace behavior_tree {
 namespace plugins {
 namespace decorator {
 
-SingleTrigger::SingleTrigger(const std::string& name, const BT::NodeConfiguration& conf)
+SingleTrigger::SingleTrigger(const std::string& name,
+                             const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf), first_time_(true) {}
 
 BT::NodeStatus SingleTrigger::tick() {
-  if (!BT::isStatusActive(status())) {
-    first_time_ = true;
-  }
-
-  setStatus(BT::NodeStatus::RUNNING);
-
-  if (first_time_) {
-    const BT::NodeStatus child_state = child_node_->executeTick();
-
-    switch (child_state) {
-      case BT::NodeStatus::SKIPPED:
-      case BT::NodeStatus::RUNNING:
-        return child_state;
-
-      case BT::NodeStatus::FAILURE:
-      case BT::NodeStatus::SUCCESS:
-        first_time_ = false;
-        return child_state;
-
-      default:
-        first_time_ = false;
-        return BT::NodeStatus::FAILURE;
+    if (!BT::isStatusActive(status())) {
+        first_time_ = true;
     }
-  }
 
-  return BT::NodeStatus::FAILURE;
+    setStatus(BT::NodeStatus::RUNNING);
+
+    if (first_time_) {
+        const BT::NodeStatus child_state = child_node_->executeTick();
+
+        switch (child_state) {
+            case BT::NodeStatus::SKIPPED:
+            case BT::NodeStatus::RUNNING:
+                return child_state;
+
+            case BT::NodeStatus::FAILURE:
+            case BT::NodeStatus::SUCCESS:
+                first_time_ = false;
+                return child_state;
+
+            default:
+                first_time_ = false;
+                return BT::NodeStatus::FAILURE;
+        }
+    }
+
+    return BT::NodeStatus::FAILURE;
 }
 
 }  // namespace decorator
@@ -62,5 +63,7 @@ BT::NodeStatus SingleTrigger::tick() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-  factory.registerNodeType<autonomy::tasks::behavior_tree::plugins::decorator::SingleTrigger>("SingleTrigger");
+    factory.registerNodeType<
+        autonomy::tasks::behavior_tree::plugins::decorator::SingleTrigger>(
+        "SingleTrigger");
 }

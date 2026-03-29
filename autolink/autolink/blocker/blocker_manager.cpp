@@ -21,21 +21,23 @@ namespace blocker {
 
 BlockerManager::BlockerManager() {}
 
-BlockerManager::~BlockerManager() { blockers_.clear(); }
+BlockerManager::~BlockerManager() {
+    blockers_.clear();
+}
 
 void BlockerManager::Observe() {
-  std::lock_guard<std::mutex> lock(blocker_mutex_);
-  for (auto& item : blockers_) {
-    item.second->Observe();
-  }
+    std::lock_guard<std::mutex> lock(blocker_mutex_);
+    for (auto& item : blockers_) {
+        item.second->Observe();
+    }
 }
 
 void BlockerManager::Reset() {
-  std::lock_guard<std::mutex> lock(blocker_mutex_);
-  for (auto& item : blockers_) {
-    item.second->Reset();
-  }
-  blockers_.clear();
+    std::lock_guard<std::mutex> lock(blocker_mutex_);
+    for (auto& item : blockers_) {
+        item.second->Reset();
+    }
+    blockers_.clear();
 }
 
 }  // namespace blocker

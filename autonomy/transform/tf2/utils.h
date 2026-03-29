@@ -33,8 +33,8 @@ namespace tf2 {
  */
 template <class A>
 void getEulerYPR(const A& a, double& yaw, double& pitch, double& roll) {
-  tf2::Quaternion q = impl::toQuaternion(a);
-  impl::getEulerYPR(q, yaw, pitch, roll);
+    tf2::Quaternion q = impl::toQuaternion(a);
+    impl::getEulerYPR(q, yaw, pitch, roll);
 }
 
 /** Return the yaw of anything that can be converted to a tf2::Quaternion
@@ -46,8 +46,8 @@ void getEulerYPR(const A& a, double& yaw, double& pitch, double& roll) {
  */
 template <class A>
 double getYaw(const A& a) {
-  tf2::Quaternion q = impl::toQuaternion(a);
-  return impl::getYaw(q);
+    tf2::Quaternion q = impl::toQuaternion(a);
+    return impl::getYaw(q);
 }
 
 /** Return the identity for any type that can be converted to a tf2::Transform
@@ -55,11 +55,11 @@ double getYaw(const A& a) {
  */
 template <class A>
 A getTransformIdentity() {
-  tf2::Transform t;
-  t.setIdentity();
-  A a;
-  convert(t, a);
-  return a;
+    tf2::Transform t;
+    t.setIdentity();
+    A a;
+    convert(t, a);
+    return a;
 }
 
 }  // namespace tf2

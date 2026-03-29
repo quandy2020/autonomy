@@ -21,7 +21,10 @@
 
 import collections
 
-from google.protobuf.descriptor_pb2 import FileDescriptorProto
+try:
+    from google.protobuf.descriptor_pb2 import FileDescriptorProto
+except ModuleNotFoundError:
+    FileDescriptorProto = None
 
 try:
     from ._loader import load_wrapper_module
@@ -185,6 +188,11 @@ class RecordWriter(object):
             return _AUTOLINK_RECORD.PyRecordWriter_WriteMessage(
                 self.record_writer, channel_name, data, time, "")
 
+        if FileDescriptorProto is None:
+            raise RuntimeError(
+                "python protobuf is required for non-raw record writes. "
+                "Install python3-protobuf or pip install protobuf."
+            )
         file_desc = data.DESCRIPTOR.file
         proto = FileDescriptorProto()
         file_desc.CopyToProto(proto)

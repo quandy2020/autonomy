@@ -37,35 +37,44 @@ namespace action {
  * @brief A BT::ActionNodeBase that removes goals that the robot passed near to
  * @note This is an Asynchronous node. It will re-initialize when halted.
  */
-class RemovePassedGoals : public BT::ActionNodeBase {
- public:
-  RemovePassedGoals(const std::string& xml_tag_name, const BT::NodeConfiguration& conf);
+class RemovePassedGoals : public BT::ActionNodeBase
+{
+public:
+    RemovePassedGoals(const std::string& xml_tag_name,
+                      const BT::NodeConfiguration& conf);
 
-  /**
-   * @brief Function to read parameters and initialize class variables
-   */
-  void initialize();
+    /**
+     * @brief Function to read parameters and initialize class variables
+     */
+    void initialize();
 
-  static BT::PortsList providedPorts() {
-    return {BT::InputPort<commsgs::planning_msgs::Goals>("input_goals", "Original goals to remove viapoints from"),
-            BT::OutputPort<commsgs::planning_msgs::Goals>("output_goals", "Goals with passed viapoints removed"),
-            BT::InputPort<double>("radius", 0.5, "radius to goal for it to be considered for removal"),
+    static BT::PortsList providedPorts() {
+        return {
+            BT::InputPort<commsgs::planning_msgs::Goals>(
+                "input_goals", "Original goals to remove viapoints from"),
+            BT::OutputPort<commsgs::planning_msgs::Goals>(
+                "output_goals", "Goals with passed viapoints removed"),
+            BT::InputPort<double>(
+                "radius", 0.5,
+                "radius to goal for it to be considered for removal"),
             BT::InputPort<std::string>("robot_base_frame", "Robot base frame"),
             BT::InputPort<std::vector<proto::WaypointStatus>>(
-                "input_waypoint_statuses", "Original waypoint_statuses to mark waypoint status from"),
-            BT::OutputPort<std::vector<proto::WaypointStatus>>("output_waypoint_statuses",
-                                                               "Waypoint_statuses with passed waypoints marked")};
-  }
+                "input_waypoint_statuses",
+                "Original waypoint_statuses to mark waypoint status from"),
+            BT::OutputPort<std::vector<proto::WaypointStatus>>(
+                "output_waypoint_statuses",
+                "Waypoint_statuses with passed waypoints marked")};
+    }
 
- private:
-  void halt() override {}
-  BT::NodeStatus tick() override;
+private:
+    void halt() override {}
+    BT::NodeStatus tick() override;
 
-  double viapoint_achieved_radius_;
-  double transform_tolerance_;
-  std::shared_ptr<::autolink::Node> node_;
-  std::shared_ptr<autonomy::transform::Buffer> tf_;
-  std::string robot_base_frame_;
+    double viapoint_achieved_radius_;
+    double transform_tolerance_;
+    std::shared_ptr<::autolink::Node> node_;
+    std::shared_ptr<autonomy::transform::Buffer> tf_;
+    std::string robot_base_frame_;
 };
 
 }  // namespace action

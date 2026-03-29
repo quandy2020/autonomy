@@ -25,22 +25,24 @@ namespace autolink {
 namespace record {
 
 int64_t RecordFileBase::CurrentPosition() {
-  off_t pos = lseek(fd_, 0, SEEK_CUR);
-  if (pos < 0) {
-    AERROR << "lseek failed, file: " << path_ << ", fd: " << fd_ << ", offset: 0, whence: SEEK_CUR"
-           << ", position: " << pos << ", errno: " << errno;
-  }
-  return pos;
+    off_t pos = lseek(fd_, 0, SEEK_CUR);
+    if (pos < 0) {
+        AERROR << "lseek failed, file: " << path_ << ", fd: " << fd_
+               << ", offset: 0, whence: SEEK_CUR"
+               << ", position: " << pos << ", errno: " << errno;
+    }
+    return pos;
 }
 
 bool RecordFileBase::SetPosition(int64_t position) {
-  off_t pos = lseek(fd_, position, SEEK_SET);
-  if (pos < 0) {
-    AERROR << "lseek failed, file: " << path_ << ", fd: " << fd_ << ", offset: 0, whence: SEEK_SET"
-           << ", position: " << pos << ", errno: " << errno;
-    return false;
-  }
-  return true;
+    off_t pos = lseek(fd_, position, SEEK_SET);
+    if (pos < 0) {
+        AERROR << "lseek failed, file: " << path_ << ", fd: " << fd_
+               << ", offset: 0, whence: SEEK_SET"
+               << ", position: " << pos << ", errno: " << errno;
+        return false;
+    }
+    return true;
 }
 
 }  // namespace record

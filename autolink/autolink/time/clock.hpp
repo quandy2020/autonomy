@@ -33,58 +33,62 @@ using ::autolink::proto::ClockMode;
  * timestamp. The source can be either system(autolink) clock or a mock clock.
  * Mock clock is for testing purpose mainly.
  */
-class Clock {
- public:
-  static constexpr int64_t PRECISION =
-      std::chrono::system_clock::duration::period::den / std::chrono::system_clock::duration::period::num;
+class Clock
+{
+public:
+    static constexpr int64_t PRECISION =
+        std::chrono::system_clock::duration::period::den /
+        std::chrono::system_clock::duration::period::num;
 
-  /// PRECISION >= 1000000 means the precision is at least 1us.
-  static_assert(PRECISION >= 1000000,
-                "The precision of the system clock should be at least 1 "
-                "microsecond.");
+    /// PRECISION >= 1000000 means the precision is at least 1us.
+    static_assert(PRECISION >= 1000000,
+                  "The precision of the system clock should be at least 1 "
+                  "microsecond.");
 
-  /**
-   * @brief get current time.
-   * @return a Time object representing the current time.
-   */
-  static Time Now();
+    /**
+     * @brief get current time.
+     * @return a Time object representing the current time.
+     */
+    static Time Now();
 
-  /**
-   * @brief gets the current time in second.
-   * @return the current time in second.
-   */
-  static double NowInSeconds();
+    /**
+     * @brief gets the current time in second.
+     * @return the current time in second.
+     */
+    static double NowInSeconds();
 
-  /**
-   * @brief This is for mock clock mode only. It will set the timestamp
-   * for the mock clock.
-   */
-  static void SetNow(const Time& now);
+    /**
+     * @brief This is for mock clock mode only. It will set the timestamp
+     * for the mock clock.
+     */
+    static void SetNow(const Time& now);
 
-  /**
-   * @brief Set the behavior of the \class Clock.
-   * @param The new clock mode to be set.
-   */
-  static void SetMode(ClockMode mode);
+    /**
+     * @brief Set the behavior of the \class Clock.
+     * @param The new clock mode to be set.
+     */
+    static void SetMode(ClockMode mode);
 
-  /**
-   * @brief Gets the current clock mode.
-   * @return The current clock mode.
-   */
-  static ClockMode mode();
+    /**
+     * @brief Gets the current clock mode.
+     * @return The current clock mode.
+     */
+    static ClockMode mode();
 
-  /**
-   * @brief This is for mock clock mode only. It will set the timestamp
-   * for the mock clock with UNIX timestamp in seconds.
-   */
-  static void SetNowInSeconds(const double seconds) { Clock::SetNow(Time(seconds)); }
+    /**
+     * @brief This is for mock clock mode only. It will set the timestamp
+     * for the mock clock with UNIX timestamp in seconds.
+     */
+    static void SetNowInSeconds(const double seconds) {
+        Clock::SetNow(Time(seconds));
+    }
 
- private:
-  ClockMode mode_;
-  Time mock_now_;
-  ::autolink::base::AtomicRWLock rwlock_;
+private:
+    ClockMode mode_;
+    Time mock_now_;
+    ::autolink::base::AtomicRWLock rwlock_;
 
-  DECLARE_SINGLETON(Clock)
+    DECLARE_SINGLETON(Clock)
 };
 
 }  // namespace autolink

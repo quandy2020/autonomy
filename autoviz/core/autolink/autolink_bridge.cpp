@@ -32,7 +32,7 @@ void AutolinkBridge::Start() {
   }
 
   if (!node_) {
-    node_ = autolink::CreateNode("autoviz_bridge_" + std::to_string(getpid()));
+    node_ = ::autolink::CreateNode("autoviz_bridge_" + std::to_string(getpid()));
   }
 
   if (!node_) {
@@ -86,7 +86,7 @@ bool AutolinkBridge::TopicMatchesWhitelist(const std::string& topic) const {
 }
 
 void AutolinkBridge::PollTopicsAndSubscribe() {
-  auto* topo = autolink::service_discovery::TopologyManager::Instance();
+  auto* topo = ::autolink::service_discovery::TopologyManager::Instance();
   if (topo == nullptr || topo->channel_manager() == nullptr) {
     return;
   }
@@ -109,7 +109,7 @@ void AutolinkBridge::PollTopicsAndSubscribe() {
 }
 
 void AutolinkBridge::SubscribeToTopic(const std::string& topic_name) {
-  auto* topo = autolink::service_discovery::TopologyManager::Instance();
+  auto* topo = ::autolink::service_discovery::TopologyManager::Instance();
   if (topo == nullptr || topo->channel_manager() == nullptr) {
     return;
   }
@@ -117,12 +117,12 @@ void AutolinkBridge::SubscribeToTopic(const std::string& topic_name) {
   const bool subscribed = SubscribeSerialized(
       topic_name,
       [this](const std::string& topic,
-             const std::shared_ptr<autolink::message::RawMessage>& msg) {
-        const auto ts = static_cast<std::uint64_t>(autolink::Time::Now().ToNanosecond());
+             const std::shared_ptr<::autolink::message::RawMessage>& msg) {
+        const auto ts = static_cast<std::uint64_t>(::autolink::Time::Now().ToNanosecond());
 
         std::string msg_type;
         std::string proto_desc;
-        auto* t = autolink::service_discovery::TopologyManager::Instance();
+        auto* t = ::autolink::service_discovery::TopologyManager::Instance();
         if (t != nullptr && t->channel_manager() != nullptr) {
           t->channel_manager()->GetMsgType(topic, &msg_type);
           t->channel_manager()->GetProtoDesc(topic, &proto_desc);
@@ -184,8 +184,8 @@ void AutolinkBridge::PublishSerialized(const std::string& topic, const std::stri
 
 bool AutolinkBridge::SubscribeSerialized(
     const std::string& topic,
-    const std::function<void(const std::string&, const std::shared_ptr<autolink::message::RawMessage>&)>& cb) {
-  return SubscribeProtobuf<autolink::message::RawMessage>(topic, cb);
+    const std::function<void(const std::string&, const std::shared_ptr<::autolink::message::RawMessage>&)>& cb) {
+  return SubscribeProtobuf<::autolink::message::RawMessage>(topic, cb);
 }
 
 bool AutolinkBridge::RegisterSchemaForType(const std::string& msg_type) {

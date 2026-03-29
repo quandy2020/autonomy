@@ -23,7 +23,8 @@
  * @brief Float validation utilities
  * Float validation helpers
  *
- * Provides functions to validate that floating point values are valid (not NaN, not Inf)
+ * Provides functions to validate that floating point values are valid (not NaN,
+ * not Inf)
  */
 namespace aviz {
 namespace common {
@@ -31,19 +32,23 @@ namespace common {
 /**
  * @brief Check if a float value is valid (not NaN, not Inf)
  */
-inline bool validateFloat(float value) { return std::isfinite(value) && !std::isnan(value); }
+inline bool validateFloat(float value) {
+    return std::isfinite(value) && !std::isnan(value);
+}
 
 /**
  * @brief Check if a double value is valid (not NaN, not Inf)
  */
-inline bool validateFloat(double value) { return std::isfinite(value) && !std::isnan(value); }
+inline bool validateFloat(double value) {
+    return std::isfinite(value) && !std::isnan(value);
+}
 
 /**
  * @brief Validate a 3D vector (all components must be valid)
  */
 template <typename T>
 inline bool validateVector3(T x, T y, T z) {
-  return validateFloat(x) && validateFloat(y) && validateFloat(z);
+    return validateFloat(x) && validateFloat(y) && validateFloat(z);
 }
 
 /**
@@ -51,7 +56,8 @@ inline bool validateVector3(T x, T y, T z) {
  */
 template <typename T>
 inline bool validateQuaternion(T x, T y, T z, T w) {
-  return validateFloat(x) && validateFloat(y) && validateFloat(z) && validateFloat(w);
+    return validateFloat(x) && validateFloat(y) && validateFloat(z) &&
+           validateFloat(w);
 }
 
 /**
@@ -59,7 +65,7 @@ inline bool validateQuaternion(T x, T y, T z, T w) {
  */
 template <typename T>
 inline bool validatePose(T px, T py, T pz, T ox, T oy, T oz, T ow) {
-  return validateVector3(px, py, pz) && validateQuaternion(ox, oy, oz, ow);
+    return validateVector3(px, py, pz) && validateQuaternion(ox, oy, oz, ow);
 }
 
 }  // namespace common

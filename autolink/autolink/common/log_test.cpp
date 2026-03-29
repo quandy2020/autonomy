@@ -22,7 +22,9 @@
 namespace autolink {
 namespace common {
 
-TEST(LogTest, TestAll) { AINFO << "11111"; }
+TEST(LogTest, TestAll) {
+    AINFO << "11111";
+}
 
 }  // namespace common
 }  // namespace autolink

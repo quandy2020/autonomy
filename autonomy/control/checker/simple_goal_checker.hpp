@@ -37,26 +37,29 @@ namespace checker {
  * is by default). This means that the goal checker will not check if the xy
  * position matches again once it is found to be true.
  */
-class SimpleGoalChecker : public common::GoalChecker {
- public:
-  SimpleGoalChecker();
-  // Standard GoalChecker Interface
-  void Initialize(const std::string& plugin_name,
-                  const std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wraper) override;
+class SimpleGoalChecker : public common::GoalChecker
+{
+public:
+    SimpleGoalChecker();
+    // Standard GoalChecker Interface
+    void Initialize(const std::string& plugin_name,
+                    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
+                        costmap_wraper) override;
 
-  void Reset() override;
-  bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose, const commsgs::geometry_msgs::Pose& goal_pose,
-                     const commsgs::geometry_msgs::Twist& velocity) override;
+    void Reset() override;
+    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
+                       const commsgs::geometry_msgs::Pose& goal_pose,
+                       const commsgs::geometry_msgs::Twist& velocity) override;
 
-  bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                     commsgs::geometry_msgs::Twist& vel_tolerance) override;
+    bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
+                       commsgs::geometry_msgs::Twist& vel_tolerance) override;
 
- protected:
-  double xy_goal_tolerance_, yaw_goal_tolerance_;
-  bool stateful_, check_xy_;
-  // Cached squared xy_goal_tolerance_
-  double xy_goal_tolerance_sq_;
-  std::string plugin_name_;
+protected:
+    double xy_goal_tolerance_, yaw_goal_tolerance_;
+    bool stateful_, check_xy_;
+    // Cached squared xy_goal_tolerance_
+    double xy_goal_tolerance_sq_;
+    std::string plugin_name_;
 };
 
 }  // namespace checker

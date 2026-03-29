@@ -34,58 +34,60 @@ class TopologyManager;
  * @class ServiceManager
  * @brief Topology Manager of Service related
  */
-class ServiceManager : public Manager {
-  friend class TopologyManager;
+class ServiceManager : public Manager
+{
+    friend class TopologyManager;
 
- public:
-  using RoleAttrVec = std::vector<RoleAttributes>;
-  using ServerWarehouse = SingleValueWarehouse;
-  using ClientWarehouse = MultiValueWarehouse;
+public:
+    using RoleAttrVec = std::vector<RoleAttributes>;
+    using ServerWarehouse = SingleValueWarehouse;
+    using ClientWarehouse = MultiValueWarehouse;
 
-  /**
-   * @brief Construct a new Service Manager object
-   */
-  ServiceManager();
+    /**
+     * @brief Construct a new Service Manager object
+     */
+    ServiceManager();
 
-  /**
-   * @brief Destroy the Service Manager object
-   */
-  virtual ~ServiceManager();
+    /**
+     * @brief Destroy the Service Manager object
+     */
+    virtual ~ServiceManager();
 
-  /**
-   * @brief Inquire whether `service_name` exists in topology
-   *
-   * @param service_name the name we inquire
-   * @return true if service exists
-   * @return false if service not exists
-   */
-  bool HasService(const std::string& service_name);
+    /**
+     * @brief Inquire whether `service_name` exists in topology
+     *
+     * @param service_name the name we inquire
+     * @return true if service exists
+     * @return false if service not exists
+     */
+    bool HasService(const std::string& service_name);
 
-  /**
-   * @brief Get the All Server in the topology
-   *
-   * @param servers result RoleAttr vector
-   */
-  void GetServers(RoleAttrVec* servers);
+    /**
+     * @brief Get the All Server in the topology
+     *
+     * @param servers result RoleAttr vector
+     */
+    void GetServers(RoleAttrVec* servers);
 
-  /**
-   * @brief Get the Clients object that subscribes `service_name`
-   *
-   * @param service_name Name of service you want to get
-   * @param clients result vector
-   */
-  void GetClients(const std::string& service_name, RoleAttrVec* clients);
+    /**
+     * @brief Get the Clients object that subscribes `service_name`
+     *
+     * @param service_name Name of service you want to get
+     * @param clients result vector
+     */
+    void GetClients(const std::string& service_name, RoleAttrVec* clients);
 
- private:
-  bool Check(const RoleAttributes& attr) override;
-  void Dispose(const ChangeMsg& msg) override;
-  void OnTopoModuleLeave(const std::string& host_name, int process_id) override;
+private:
+    bool Check(const RoleAttributes& attr) override;
+    void Dispose(const ChangeMsg& msg) override;
+    void OnTopoModuleLeave(const std::string& host_name,
+                           int process_id) override;
 
-  void DisposeJoin(const ChangeMsg& msg);
-  void DisposeLeave(const ChangeMsg& msg);
+    void DisposeJoin(const ChangeMsg& msg);
+    void DisposeLeave(const ChangeMsg& msg);
 
-  ServerWarehouse servers_;
-  ClientWarehouse clients_;
+    ServerWarehouse servers_;
+    ClientWarehouse clients_;
 };
 
 }  // namespace service_discovery

@@ -32,9 +32,10 @@ namespace helper_functions {
  */
 template <typename T>
 bool abs_eq(const T& a, const T& b, const T& eps) {
-  static_assert(std::is_floating_point<T>::value, "Float comparisons only support floating point types.");
+    static_assert(std::is_floating_point<T>::value,
+                  "Float comparisons only support floating point types.");
 
-  return std::abs(a - b) <= eps;
+    return std::abs(a - b) <= eps;
 }
 
 /**
@@ -44,7 +45,7 @@ bool abs_eq(const T& a, const T& b, const T& eps) {
  */
 template <typename T>
 bool abs_lt(const T& a, const T& b, const T& eps) {
-  return !abs_eq(a, b, eps) && (a < b);
+    return !abs_eq(a, b, eps) && (a < b);
 }
 
 /**
@@ -54,7 +55,7 @@ bool abs_lt(const T& a, const T& b, const T& eps) {
  */
 template <typename T>
 bool abs_lte(const T& a, const T& b, const T& eps) {
-  return abs_eq(a, b, eps) || (a < b);
+    return abs_eq(a, b, eps) || (a < b);
 }
 
 /**
@@ -64,7 +65,7 @@ bool abs_lte(const T& a, const T& b, const T& eps) {
  */
 template <typename T>
 bool abs_gte(const T& a, const T& b, const T& eps) {
-  return !abs_lt(a, b, eps);
+    return !abs_lt(a, b, eps);
 }
 
 /**
@@ -74,7 +75,7 @@ bool abs_gte(const T& a, const T& b, const T& eps) {
  */
 template <typename T>
 bool abs_gt(const T& a, const T& b, const T& eps) {
-  return !abs_lte(a, b, eps);
+    return !abs_lte(a, b, eps);
 }
 
 /**
@@ -84,7 +85,7 @@ bool abs_gt(const T& a, const T& b, const T& eps) {
  */
 template <typename T>
 bool abs_eq_zero(const T& a, const T& eps) {
-  return abs_eq(a, static_cast<T>(0), eps);
+    return abs_eq(a, static_cast<T>(0), eps);
 }
 
 /**
@@ -95,12 +96,13 @@ bool abs_eq_zero(const T& a, const T& eps) {
  */
 template <typename T>
 bool rel_eq(const T& a, const T& b, const T& rel_eps) {
-  static_assert(std::is_floating_point<T>::value, "Float comparisons only support floating point types.");
+    static_assert(std::is_floating_point<T>::value,
+                  "Float comparisons only support floating point types.");
 
-  const auto delta = std::abs(a - b);
-  const auto larger = std::max(std::abs(a), std::abs(b));
-  const auto max_rel_delta = (larger * rel_eps);
-  return delta <= max_rel_delta;
+    const auto delta = std::abs(a - b);
+    const auto larger = std::max(std::abs(a), std::abs(b));
+    const auto max_rel_delta = (larger * rel_eps);
+    return delta <= max_rel_delta;
 }
 
 // TODO(jeff): As needed, add relative variants of <, <=, >, >=
@@ -117,9 +119,9 @@ bool rel_eq(const T& a, const T& b, const T& rel_eps) {
  */
 template <typename T>
 bool approx_eq(const T& a, const T& b, const T& abs_eps, const T& rel_eps) {
-  const auto are_absolute_eq = abs_eq(a, b, abs_eps);
-  const auto are_relative_eq = rel_eq(a, b, rel_eps);
-  return are_absolute_eq || are_relative_eq;
+    const auto are_absolute_eq = abs_eq(a, b, abs_eps);
+    const auto are_relative_eq = rel_eq(a, b, rel_eps);
+    return are_absolute_eq || are_relative_eq;
 }
 
 }  // namespace helper_functions

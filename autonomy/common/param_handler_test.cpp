@@ -29,43 +29,48 @@ namespace common {
 // float_param: 3.14
 // bool_param: true
 
-class ParamHandlerTest : public ::testing::Test {
- protected:
-  void SetUp() override { param_handler_ = new ParamHandler("test_params.yaml"); }
+class ParamHandlerTest : public ::testing::Test
+{
+protected:
+    void SetUp() override {
+        param_handler_ = new ParamHandler("test_params.yaml");
+    }
 
-  void TearDown() override { delete param_handler_; }
+    void TearDown() override {
+        delete param_handler_;
+    }
 
-  ParamHandler* param_handler_;
+    ParamHandler* param_handler_;
 };
 
 TEST_F(ParamHandlerTest, GetString) {
-  std::string str_value;
-  EXPECT_TRUE(param_handler_->GetString("str_param", str_value));
-  EXPECT_EQ(str_value, "hello world");
+    std::string str_value;
+    EXPECT_TRUE(param_handler_->GetString("str_param", str_value));
+    EXPECT_EQ(str_value, "hello world");
 }
 
 // 可以添加更多测试用例
 TEST_F(ParamHandlerTest, GetInteger) {
-  int int_value;
-  EXPECT_TRUE(param_handler_->GetInteger("int_param", int_value));
-  EXPECT_EQ(int_value, 42);
+    int int_value;
+    EXPECT_TRUE(param_handler_->GetInteger("int_param", int_value));
+    EXPECT_EQ(int_value, 42);
 }
 
 TEST_F(ParamHandlerTest, GetDouble) {
-  double double_value;
-  EXPECT_TRUE(param_handler_->GetDouble("float_param", double_value));
-  EXPECT_EQ(double_value, 3.14);
+    double double_value;
+    EXPECT_TRUE(param_handler_->GetDouble("float_param", double_value));
+    EXPECT_EQ(double_value, 3.14);
 }
 
 TEST_F(ParamHandlerTest, GetBoolean) {
-  bool bool_value;
-  EXPECT_TRUE(param_handler_->GetBoolean("bool_param", bool_value));
-  EXPECT_EQ(bool_value, true);
+    bool bool_value;
+    EXPECT_TRUE(param_handler_->GetBoolean("bool_param", bool_value));
+    EXPECT_EQ(bool_value, true);
 }
 
 TEST_F(ParamHandlerTest, InvalidKey) {
-  std::string str_value;
-  EXPECT_FALSE(param_handler_->GetString("nonexistent_param", str_value));
+    std::string str_value;
+    EXPECT_FALSE(param_handler_->GetString("nonexistent_param", str_value));
 }
 
 }  // namespace common

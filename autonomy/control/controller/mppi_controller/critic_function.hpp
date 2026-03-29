@@ -35,74 +35,79 @@ namespace mppi_controller {
  * @brief Utility for storing cost information
  */
 struct CollisionCost {
-  float cost{0};
-  bool using_footprint{false};
+    float cost{0};
+    bool using_footprint{false};
 };
 
 /**
  * @class mppi::critics::CriticFunction
  * @brief Abstract critic objective function to score trajectories
  */
-class CriticFunction {
- public:
-  /**
-   * @brief Constructor for mppi::critics::CriticFunction
-   */
-  CriticFunction() = default;
+class CriticFunction
+{
+public:
+    /**
+     * @brief Constructor for mppi::critics::CriticFunction
+     */
+    CriticFunction() = default;
 
-  /**
-   * @brief Destructor for mppi::critics::CriticFunction
-   */
-  virtual ~CriticFunction() = default;
+    /**
+     * @brief Destructor for mppi::critics::CriticFunction
+     */
+    virtual ~CriticFunction() = default;
 
-  /**
-   * @brief Configure critic on bringup
-   * @param parent WeakPtr to node
-   * @param parent_name name of the controller
-   * @param name Name of plugin
-   * @param costmap_ros Costmap2DROS object of environment
-   * @param dynamic_parameter_handler Parameter handler object
-   */
-  void configure(std::shared_ptr<autolink::Node> parent, const std::string& parent_name, const std::string& name,
-                 std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-                 const proto::MPPIControllerOptions* options) {
-    parent_ = parent;
-    name_ = name;
-    parent_name_ = parent_name;
-    costmap_ros_ = costmap_ros;
-    costmap_ = costmap_ros_->getCostmap();
-    options_ = options;
+    /**
+     * @brief Configure critic on bringup
+     * @param parent WeakPtr to node
+     * @param parent_name name of the controller
+     * @param name Name of plugin
+     * @param costmap_ros Costmap2DROS object of environment
+     * @param dynamic_parameter_handler Parameter handler object
+     */
+    void configure(
+        std::shared_ptr<autolink::Node> parent, const std::string& parent_name,
+        const std::string& name,
+        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
+        const proto::MPPIControllerOptions* options) {
+        parent_ = parent;
+        name_ = name;
+        parent_name_ = parent_name;
+        costmap_ros_ = costmap_ros;
+        costmap_ = costmap_ros_->getCostmap();
+        options_ = options;
 
-    // enabled_ will be set by each critic subclass from proto options
-    enabled_ = true;  // Default, will be overridden by specific critic
+        // enabled_ will be set by each critic subclass from proto options
+        enabled_ = true;  // Default, will be overridden by specific critic
 
-    initialize();
-  }
+        initialize();
+    }
 
-  /**
-   * @brief Main function to score trajectory
-   * @param data Critic data to use in scoring
-   */
-  virtual void score(CriticData& data) = 0;
+    /**
+     * @brief Main function to score trajectory
+     * @param data Critic data to use in scoring
+     */
+    virtual void score(CriticData& data) = 0;
 
-  /**
-   * @brief Initialize critic
-   */
-  virtual void initialize() = 0;
+    /**
+     * @brief Initialize critic
+     */
+    virtual void initialize() = 0;
 
-  /**
-   * @brief Get name of critic
-   */
-  std::string getName() { return name_; }
+    /**
+     * @brief Get name of critic
+     */
+    std::string getName() {
+        return name_;
+    }
 
- protected:
-  bool enabled_;
-  std::string name_, parent_name_;
-  std::shared_ptr<autolink::Node> parent_;
-  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros_;
-  map::costmap_2d::Costmap2D* costmap_{nullptr};
+protected:
+    bool enabled_;
+    std::string name_, parent_name_;
+    std::shared_ptr<autolink::Node> parent_;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros_;
+    map::costmap_2d::Costmap2D* costmap_{nullptr};
 
-  const proto::MPPIControllerOptions* options_;
+    const proto::MPPIControllerOptions* options_;
 };
 
 }  // namespace mppi_controller

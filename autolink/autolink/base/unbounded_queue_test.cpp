@@ -22,48 +22,48 @@ namespace autolink {
 namespace base {
 
 TEST(UnboundedQueueTest, all_in_one) {
-  UnboundedQueue<int> q;
-  EXPECT_TRUE(q.Empty());
-  EXPECT_EQ(q.Size(), 0);
+    UnboundedQueue<int> q;
+    EXPECT_TRUE(q.Empty());
+    EXPECT_EQ(q.Size(), 0);
 
-  int front = 0;
-  EXPECT_FALSE(q.Dequeue(&front));
+    int front = 0;
+    EXPECT_FALSE(q.Dequeue(&front));
 
-  q.Enqueue(1);
-  EXPECT_FALSE(q.Empty());
-  EXPECT_EQ(q.Size(), 1);
+    q.Enqueue(1);
+    EXPECT_FALSE(q.Empty());
+    EXPECT_EQ(q.Size(), 1);
 
-  q.Enqueue(2);
-  EXPECT_EQ(q.Size(), 2);
+    q.Enqueue(2);
+    EXPECT_EQ(q.Size(), 2);
 
-  EXPECT_TRUE(q.Dequeue(&front));
-  EXPECT_EQ(front, 1);
-  EXPECT_EQ(q.Size(), 1);
+    EXPECT_TRUE(q.Dequeue(&front));
+    EXPECT_EQ(front, 1);
+    EXPECT_EQ(q.Size(), 1);
 
-  EXPECT_TRUE(q.Dequeue(&front));
-  EXPECT_EQ(front, 2);
-  EXPECT_TRUE(q.Empty());
-  EXPECT_EQ(q.Size(), 0);
+    EXPECT_TRUE(q.Dequeue(&front));
+    EXPECT_EQ(front, 2);
+    EXPECT_TRUE(q.Empty());
+    EXPECT_EQ(q.Size(), 0);
 
-  EXPECT_FALSE(q.Dequeue(&front));
+    EXPECT_FALSE(q.Dequeue(&front));
 
-  q.Enqueue(3);
-  EXPECT_FALSE(q.Empty());
-  EXPECT_EQ(q.Size(), 1);
+    q.Enqueue(3);
+    EXPECT_FALSE(q.Empty());
+    EXPECT_EQ(q.Size(), 1);
 
-  q.Clear();
+    q.Clear();
 
-  EXPECT_FALSE(q.Dequeue(&front));
-  EXPECT_TRUE(q.Empty());
-  EXPECT_EQ(q.Size(), 0);
+    EXPECT_FALSE(q.Dequeue(&front));
+    EXPECT_TRUE(q.Empty());
+    EXPECT_EQ(q.Size(), 0);
 
-  q.Enqueue(4);
-  EXPECT_FALSE(q.Empty());
-  EXPECT_EQ(q.Size(), 1);
-  EXPECT_TRUE(q.Dequeue(&front));
-  EXPECT_EQ(front, 4);
-  EXPECT_TRUE(q.Empty());
-  EXPECT_EQ(q.Size(), 0);
+    q.Enqueue(4);
+    EXPECT_FALSE(q.Empty());
+    EXPECT_EQ(q.Size(), 1);
+    EXPECT_TRUE(q.Dequeue(&front));
+    EXPECT_EQ(front, 4);
+    EXPECT_TRUE(q.Empty());
+    EXPECT_EQ(q.Size(), 0);
 }
 
 }  // namespace base

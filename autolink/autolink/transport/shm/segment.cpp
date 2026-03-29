@@ -36,278 +36,283 @@ Segment::Segment(uint64_t channel_id)
       block_buf_addrs_(),
       arena_block_buf_addrs_() {}
 
-bool Segment::AcquireBlockToWrite(std::size_t msg_size, WritableBlock* writable_block) {
-  RETURN_VAL_IF_NULL(writable_block, false);
-  if (!init_ && !OpenOrCreate()) {
-    AERROR << "create shm failed, can't write now.";
-    return false;
-  }
+bool Segment::AcquireBlockToWrite(std::size_t msg_size,
+                                  WritableBlock* writable_block) {
+    RETURN_VAL_IF_NULL(writable_block, false);
+    if (!init_ && !OpenOrCreate()) {
+        AERROR << "create shm failed, can't write now.";
+        return false;
+    }
 
-  bool result = true;
-  if (state_->need_remap()) {
-    result = Remap();
-  }
+    bool result = true;
+    if (state_->need_remap()) {
+        result = Remap();
+    }
 
-  if (msg_size > conf_.ceiling_msg_size()) {
-    AINFO << "msg_size: " << msg_size << " larger than current shm_buffer_size: " << conf_.ceiling_msg_size()
-          << " , need recreate.";
-    result = Recreate(msg_size);
-  }
+    if (msg_size > conf_.ceiling_msg_size()) {
+        AINFO << "msg_size: " << msg_size
+              << " larger than current shm_buffer_size: "
+              << conf_.ceiling_msg_size() << " , need recreate.";
+        result = Recreate(msg_size);
+    }
 
-  if (!result) {
-    AERROR << "segment update failed.";
-    return false;
-  }
+    if (!result) {
+        AERROR << "segment update failed.";
+        return false;
+    }
 
-  uint32_t index = GetNextWritableBlockIndex();
-  writable_block->index = index;
-  writable_block->block = &blocks_[index];
-  writable_block->buf = block_buf_addrs_[index];
-  return true;
+    uint32_t index = GetNextWritableBlockIndex();
+    writable_block->index = index;
+    writable_block->block = &blocks_[index];
+    writable_block->buf = block_buf_addrs_[index];
+    return true;
 }
 
-bool Segment::AcquireArenaBlockToWrite(std::size_t msg_size, WritableBlock* writable_block) {
-  RETURN_VAL_IF_NULL(writable_block, false);
-  if (!init_ && !OpenOrCreate()) {
-    AERROR << "create shm failed, can't write now.";
-    return false;
-  }
+bool Segment::AcquireArenaBlockToWrite(std::size_t msg_size,
+                                       WritableBlock* writable_block) {
+    RETURN_VAL_IF_NULL(writable_block, false);
+    if (!init_ && !OpenOrCreate()) {
+        AERROR << "create shm failed, can't write now.";
+        return false;
+    }
 
-  if (state_->need_remap()) {
-    Remap();
-  }
+    if (state_->need_remap()) {
+        Remap();
+    }
 
-  uint32_t index = GetNextArenaWritableBlockIndex();
-  writable_block->index = index;
-  writable_block->block = &arena_blocks_[index];
-  writable_block->buf = arena_block_buf_addrs_[index];
-  return true;
+    uint32_t index = GetNextArenaWritableBlockIndex();
+    writable_block->index = index;
+    writable_block->block = &arena_blocks_[index];
+    writable_block->buf = arena_block_buf_addrs_[index];
+    return true;
 }
 
 void Segment::ReleaseWrittenBlock(const WritableBlock& writable_block) {
-  auto index = writable_block.index;
-  if (index >= conf_.block_num()) {
-    return;
-  }
-  blocks_[index].ReleaseWriteLock();
+    auto index = writable_block.index;
+    if (index >= conf_.block_num()) {
+        return;
+    }
+    blocks_[index].ReleaseWriteLock();
 }
 
 void Segment::ReleaseArenaWrittenBlock(const WritableBlock& writable_block) {
-  auto index = writable_block.index;
-  if (index >= ShmConf::ARENA_BLOCK_NUM) {
-    return;
-  }
-  arena_blocks_[index].ReleaseWriteLock();
+    auto index = writable_block.index;
+    if (index >= ShmConf::ARENA_BLOCK_NUM) {
+        return;
+    }
+    arena_blocks_[index].ReleaseWriteLock();
 }
 
 bool Segment::AcquireBlockToRead(ReadableBlock* readable_block) {
-  RETURN_VAL_IF_NULL(readable_block, false);
-  if (!init_ && !OpenOnly()) {
-    AERROR << "failed to open shared memory, can't read now.";
-    return false;
-  }
+    RETURN_VAL_IF_NULL(readable_block, false);
+    if (!init_ && !OpenOnly()) {
+        AERROR << "failed to open shared memory, can't read now.";
+        return false;
+    }
 
-  auto index = readable_block->index;
-  if (index >= conf_.block_num()) {
-    AERROR << "invalid block_index[" << index << "].";
-    return false;
-  }
+    auto index = readable_block->index;
+    if (index >= conf_.block_num()) {
+        AERROR << "invalid block_index[" << index << "].";
+        return false;
+    }
 
-  bool result = true;
-  if (state_->need_remap()) {
-    result = Remap();
-  }
+    bool result = true;
+    if (state_->need_remap()) {
+        result = Remap();
+    }
 
-  if (!result) {
-    AERROR << "segment update failed.";
-    return false;
-  }
+    if (!result) {
+        AERROR << "segment update failed.";
+        return false;
+    }
 
-  if (!blocks_[index].TryLockForRead()) {
-    return false;
-  }
-  readable_block->block = blocks_ + index;
-  readable_block->buf = block_buf_addrs_[index];
-  return true;
+    if (!blocks_[index].TryLockForRead()) {
+        return false;
+    }
+    readable_block->block = blocks_ + index;
+    readable_block->buf = block_buf_addrs_[index];
+    return true;
 }
 
 bool Segment::AcquireArenaBlockToRead(ReadableBlock* readable_block) {
-  RETURN_VAL_IF_NULL(readable_block, false);
-  if (!init_ && !OpenOnly()) {
-    AERROR << "failed to open shared memory, can't read now.";
-    return false;
-  }
+    RETURN_VAL_IF_NULL(readable_block, false);
+    if (!init_ && !OpenOnly()) {
+        AERROR << "failed to open shared memory, can't read now.";
+        return false;
+    }
 
-  auto index = readable_block->index;
-  if (index >= ShmConf::ARENA_BLOCK_NUM) {
-    AERROR << "invalid arena block_index[" << index << "].";
-    return false;
-  }
+    auto index = readable_block->index;
+    if (index >= ShmConf::ARENA_BLOCK_NUM) {
+        AERROR << "invalid arena block_index[" << index << "].";
+        return false;
+    }
 
-  bool result = true;
-  if (state_->need_remap()) {
-    result = Remap();
-  }
+    bool result = true;
+    if (state_->need_remap()) {
+        result = Remap();
+    }
 
-  if (!result) {
-    AERROR << "segment update failed.";
-    return false;
-  }
+    if (!result) {
+        AERROR << "segment update failed.";
+        return false;
+    }
 
-  if (!arena_blocks_[index].TryLockForRead()) {
-    return false;
-  }
-  readable_block->block = arena_blocks_ + index;
-  readable_block->buf = arena_block_buf_addrs_[index];
-  return true;
+    if (!arena_blocks_[index].TryLockForRead()) {
+        return false;
+    }
+    readable_block->block = arena_blocks_ + index;
+    readable_block->buf = arena_block_buf_addrs_[index];
+    return true;
 }
 
 void Segment::ReleaseArenaReadBlock(const ReadableBlock& readable_block) {
-  auto index = readable_block.index;
-  if (index >= ShmConf::ARENA_BLOCK_NUM) {
-    return;
-  }
-  arena_blocks_[index].ReleaseReadLock();
+    auto index = readable_block.index;
+    if (index >= ShmConf::ARENA_BLOCK_NUM) {
+        return;
+    }
+    arena_blocks_[index].ReleaseReadLock();
 }
 
 void Segment::ReleaseReadBlock(const ReadableBlock& readable_block) {
-  auto index = readable_block.index;
-  if (index >= conf_.block_num()) {
-    return;
-  }
-  blocks_[index].ReleaseReadLock();
+    auto index = readable_block.index;
+    if (index >= conf_.block_num()) {
+        return;
+    }
+    blocks_[index].ReleaseReadLock();
 }
 
 bool Segment::InitOnly(uint64_t message_size) {
-  if (init_) {
+    if (init_) {
+        return true;
+    }
+    conf_.Update(message_size);
+    if (!OpenOrCreate()) {
+        return false;
+    }
     return true;
-  }
-  conf_.Update(message_size);
-  if (!OpenOrCreate()) {
-    return false;
-  }
-  return true;
 }
 
-void* Segment::GetManagedShm() { return managed_shm_; }
+void* Segment::GetManagedShm() {
+    return managed_shm_;
+}
 
 bool Segment::LockBlockForWriteByIndex(uint64_t block_index) {
-  if (block_index >= conf_.block_num()) {
-    return false;
-  }
-  return blocks_[block_index].TryLockForWrite();
+    if (block_index >= conf_.block_num()) {
+        return false;
+    }
+    return blocks_[block_index].TryLockForWrite();
 }
 
 bool Segment::ReleaseBlockForWriteByIndex(uint64_t block_index) {
-  if (block_index >= conf_.block_num()) {
-    return false;
-  }
-  blocks_[block_index].ReleaseWriteLock();
-  return true;
+    if (block_index >= conf_.block_num()) {
+        return false;
+    }
+    blocks_[block_index].ReleaseWriteLock();
+    return true;
 }
 
 bool Segment::LockBlockForReadByIndex(uint64_t block_index) {
-  if (block_index >= conf_.block_num()) {
-    return false;
-  }
-  return blocks_[block_index].TryLockForRead();
+    if (block_index >= conf_.block_num()) {
+        return false;
+    }
+    return blocks_[block_index].TryLockForRead();
 }
 
 bool Segment::ReleaseBlockForReadByIndex(uint64_t block_index) {
-  if (block_index >= conf_.block_num()) {
-    return false;
-  }
-  blocks_[block_index].ReleaseReadLock();
-  return true;
+    if (block_index >= conf_.block_num()) {
+        return false;
+    }
+    blocks_[block_index].ReleaseReadLock();
+    return true;
 }
 
 bool Segment::LockArenaBlockForWriteByIndex(uint64_t block_index) {
-  if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
-    return false;
-  }
-  return arena_blocks_[block_index].TryLockForWrite();
+    if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
+        return false;
+    }
+    return arena_blocks_[block_index].TryLockForWrite();
 }
 
 bool Segment::ReleaseArenaBlockForWriteByIndex(uint64_t block_index) {
-  if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
-    return false;
-  }
-  arena_blocks_[block_index].ReleaseWriteLock();
-  return true;
+    if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
+        return false;
+    }
+    arena_blocks_[block_index].ReleaseWriteLock();
+    return true;
 }
 
 bool Segment::LockArenaBlockForReadByIndex(uint64_t block_index) {
-  if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
-    return false;
-  }
-  return arena_blocks_[block_index].TryLockForRead();
+    if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
+        return false;
+    }
+    return arena_blocks_[block_index].TryLockForRead();
 }
 
 bool Segment::ReleaseArenaBlockForReadByIndex(uint64_t block_index) {
-  if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
-    return false;
-  }
-  arena_blocks_[block_index].ReleaseReadLock();
-  return true;
+    if (block_index >= ShmConf::ARENA_BLOCK_NUM) {
+        return false;
+    }
+    arena_blocks_[block_index].ReleaseReadLock();
+    return true;
 }
 
 bool Segment::Destroy() {
-  if (!init_) {
-    return true;
-  }
-  init_ = false;
-
-  try {
-    state_->DecreaseReferenceCounts();
-    uint32_t reference_counts = state_->reference_counts();
-    if (reference_counts == 0) {
-      return Remove();
+    if (!init_) {
+        return true;
     }
-  } catch (...) {
-    AERROR << "exception.";
-    return false;
-  }
-  ADEBUG << "destroy.";
-  return true;
+    init_ = false;
+
+    try {
+        state_->DecreaseReferenceCounts();
+        uint32_t reference_counts = state_->reference_counts();
+        if (reference_counts == 0) {
+            return Remove();
+        }
+    } catch (...) {
+        AERROR << "exception.";
+        return false;
+    }
+    ADEBUG << "destroy.";
+    return true;
 }
 
 bool Segment::Remap() {
-  init_ = false;
-  ADEBUG << "before reset.";
-  Reset();
-  ADEBUG << "after reset.";
-  return OpenOnly();
+    init_ = false;
+    ADEBUG << "before reset.";
+    Reset();
+    ADEBUG << "after reset.";
+    return OpenOnly();
 }
 
 bool Segment::Recreate(const uint64_t& msg_size) {
-  init_ = false;
-  state_->set_need_remap(true);
-  Reset();
-  Remove();
-  conf_.Update(msg_size);
-  return OpenOrCreate();
+    init_ = false;
+    state_->set_need_remap(true);
+    Reset();
+    Remove();
+    conf_.Update(msg_size);
+    return OpenOrCreate();
 }
 
 uint32_t Segment::GetNextWritableBlockIndex() {
-  const auto block_num = conf_.block_num();
-  while (1) {
-    uint32_t try_idx = state_->FetchAddSeq(1) % block_num;
-    if (blocks_[try_idx].TryLockForWrite()) {
-      return try_idx;
+    const auto block_num = conf_.block_num();
+    while (1) {
+        uint32_t try_idx = state_->FetchAddSeq(1) % block_num;
+        if (blocks_[try_idx].TryLockForWrite()) {
+            return try_idx;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
 uint32_t Segment::GetNextArenaWritableBlockIndex() {
-  const auto block_num = ShmConf::ARENA_BLOCK_NUM;
-  while (1) {
-    uint32_t try_idx = state_->FetchAddArenaSeq(1) % block_num;
-    if (arena_blocks_[try_idx].TryLockForWrite()) {
-      return try_idx;
+    const auto block_num = ShmConf::ARENA_BLOCK_NUM;
+    while (1) {
+        uint32_t try_idx = state_->FetchAddArenaSeq(1) % block_num;
+        if (arena_blocks_[try_idx].TryLockForWrite()) {
+            return try_idx;
+        }
     }
-  }
-  return 0;
+    return 0;
 }
 
 }  // namespace transport

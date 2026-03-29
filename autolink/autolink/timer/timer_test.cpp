@@ -33,73 +33,73 @@ using autolink::Timer;
 using autolink::TimerOption;
 
 TEST(TimerTest, one_shot) {
-  int count = 0;
-  Timer timer(
-      100, [&count] { count = 100; }, true);
-  timer.Start();
-  std::this_thread::sleep_for(std::chrono::milliseconds(90));
-  EXPECT_EQ(0, count);
-  // Here we need to consider the scheduling delay, up to 500ms, make sure the
-  // unit test passes.
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  EXPECT_EQ(100, count);
-  timer.Stop();
+    int count = 0;
+    Timer timer(
+        100, [&count] { count = 100; }, true);
+    timer.Start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(90));
+    EXPECT_EQ(0, count);
+    // Here we need to consider the scheduling delay, up to 500ms, make sure the
+    // unit test passes.
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    EXPECT_EQ(100, count);
+    timer.Stop();
 }
 
 TEST(TimerTest, cycle) {
-  using TimerPtr = std::shared_ptr<Timer>;
-  int count = 0;
-  TimerPtr timers[1000];
-  TimerOption opt;
-  opt.oneshot = false;
-  opt.callback = [=] { AINFO << count; };
-  for (int i = 0; i < 1000; i++) {
-    opt.period = i + 1;
-    timers[i] = std::make_shared<Timer>();
-    timers[i]->SetTimerOption(opt);
-    timers[i]->Start();
-  }
+    using TimerPtr = std::shared_ptr<Timer>;
+    int count = 0;
+    TimerPtr timers[1000];
+    TimerOption opt;
+    opt.oneshot = false;
+    opt.callback = [=] { AINFO << count; };
+    for (int i = 0; i < 1000; i++) {
+        opt.period = i + 1;
+        timers[i] = std::make_shared<Timer>();
+        timers[i]->SetTimerOption(opt);
+        timers[i]->Start();
+    }
 
-  std::this_thread::sleep_for(std::chrono::seconds(3));
-  for (int i = 0; i < 1000; i++) {
-    timers[i]->Stop();
-  }
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    for (int i = 0; i < 1000; i++) {
+        timers[i]->Stop();
+    }
 }
 
 TEST(TimerTest, start_stop) {
-  int count = 0;
-  Timer timer(
-      2, [count] { AINFO << count; }, false);
-  for (int i = 0; i < 100; i++) {
-    timer.Start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    timer.Stop();
-  }
+    int count = 0;
+    Timer timer(
+        2, [count] { AINFO << count; }, false);
+    for (int i = 0; i < 100; i++) {
+        timer.Start();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        timer.Stop();
+    }
 }
 
 TEST(TimerTest, sim_mode) {
-  auto count = 0;
+    auto count = 0;
 
-  auto func = [count]() { AINFO << count; };
+    auto func = [count]() { AINFO << count; };
 
-  TimerOption to{1000, func, false};
+    TimerOption to{1000, func, false};
 
-  {
-    Timer t;
-    t.SetTimerOption(to);
-    common::GlobalData::Instance()->EnableSimulationMode();
-    t.Start();
-    common::GlobalData::Instance()->DisableSimulationMode();
-    t.Start();
-    t.Start();
-  }
+    {
+        Timer t;
+        t.SetTimerOption(to);
+        common::GlobalData::Instance()->EnableSimulationMode();
+        t.Start();
+        common::GlobalData::Instance()->DisableSimulationMode();
+        t.Start();
+        t.Start();
+    }
 }
 
 }  // namespace timer
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  return RUN_ALL_TESTS();
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    return RUN_ALL_TESTS();
 }

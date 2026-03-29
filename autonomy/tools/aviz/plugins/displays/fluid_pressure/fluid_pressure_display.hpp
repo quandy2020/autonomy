@@ -28,20 +28,21 @@ namespace displays {
  * @brief FluidPressureDisplay
  * Fluid pressure display
  */
-class FluidPressureDisplay : public aviz::common::Display {
- public:
-  explicit FluidPressureDisplay(const QString& name = "FluidPressureDisplay");
-  ~FluidPressureDisplay() override;
+class FluidPressureDisplay : public aviz::common::Display
+{
+public:
+    explicit FluidPressureDisplay(const QString& name = "FluidPressureDisplay");
+    ~FluidPressureDisplay() override;
 
-  // Overrides from Display
-  void onInitialize() override;
-  void onEnable() override;
-  void onDisable() override;
-  void update(float wall_dt, float ros_dt) override;
-  void reset() override;
+    // Overrides from Display
+    void onInitialize() override;
+    void onEnable() override;
+    void onDisable() override;
+    void update(float wall_dt, float ros_dt) override;
+    void reset() override;
 
- private:
-  // Implementation details
+private:
+    // Implementation details
 };
 
 }  // namespace displays

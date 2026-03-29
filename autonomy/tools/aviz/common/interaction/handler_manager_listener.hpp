@@ -23,11 +23,12 @@ namespace aviz {
 namespace common {
 namespace interaction {
 
-class HandlerManagerListener {
- public:
-  virtual ~HandlerManagerListener() = default;
+class HandlerManagerListener
+{
+public:
+    virtual ~HandlerManagerListener() = default;
 
-  virtual void onHandlerRemoved(CollObjectHandle handle) = 0;
+    virtual void onHandlerRemoved(CollObjectHandle handle) = 0;
 };
 
 }  // namespace interaction

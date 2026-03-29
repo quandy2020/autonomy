@@ -24,7 +24,8 @@ namespace autonomy {
 namespace perception {
 namespace common {
 
-proto::PerceptionOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+proto::PerceptionOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace common
 }  // namespace perception

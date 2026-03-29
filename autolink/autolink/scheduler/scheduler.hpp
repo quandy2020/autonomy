@@ -52,49 +52,55 @@ using autolink::proto::InnerThread;
 class Processor;
 class ProcessorContext;
 
-class Scheduler {
- public:
-  virtual ~Scheduler() {}
-  static Scheduler* Instance();
+class Scheduler
+{
+public:
+    virtual ~Scheduler() {}
+    static Scheduler* Instance();
 
-  bool CreateTask(const RoutineFactory& factory, const std::string& name);
-  bool CreateTask(std::function<void()>&& func, const std::string& name,
-                  std::shared_ptr<DataVisitorBase> visitor = nullptr);
-  bool NotifyTask(uint64_t crid);
+    bool CreateTask(const RoutineFactory& factory, const std::string& name);
+    bool CreateTask(std::function<void()>&& func, const std::string& name,
+                    std::shared_ptr<DataVisitorBase> visitor = nullptr);
+    bool NotifyTask(uint64_t crid);
 
-  void Shutdown();
-  uint32_t TaskPoolSize() { return task_pool_size_; }
+    void Shutdown();
+    uint32_t TaskPoolSize() {
+        return task_pool_size_;
+    }
 
-  virtual bool RemoveTask(const std::string& name) = 0;
+    virtual bool RemoveTask(const std::string& name) = 0;
 
-  void ProcessLevelResourceControl();
-  void SetInnerThreadAttr(const std::string& name, std::thread* thr);
+    void ProcessLevelResourceControl();
+    void SetInnerThreadAttr(const std::string& name, std::thread* thr);
 
-  virtual bool DispatchTask(const std::shared_ptr<CRoutine>&) = 0;
-  virtual bool NotifyProcessor(uint64_t crid) = 0;
-  virtual bool RemoveCRoutine(uint64_t crid) = 0;
+    virtual bool DispatchTask(const std::shared_ptr<CRoutine>&) = 0;
+    virtual bool NotifyProcessor(uint64_t crid) = 0;
+    virtual bool RemoveCRoutine(uint64_t crid) = 0;
 
-  void CheckSchedStatus();
+    void CheckSchedStatus();
 
-  void SetInnerThreadConfs(const std::unordered_map<std::string, InnerThread>& confs) { inner_thr_confs_ = confs; }
+    void SetInnerThreadConfs(
+        const std::unordered_map<std::string, InnerThread>& confs) {
+        inner_thr_confs_ = confs;
+    }
 
- protected:
-  Scheduler() : stop_(false) {}
+protected:
+    Scheduler() : stop_(false) {}
 
-  AtomicRWLock id_cr_lock_;
-  AtomicHashMap<uint64_t, MutexWrapper*> id_map_mutex_;
-  std::mutex cr_wl_mtx_;
+    AtomicRWLock id_cr_lock_;
+    AtomicHashMap<uint64_t, MutexWrapper*> id_map_mutex_;
+    std::mutex cr_wl_mtx_;
 
-  std::unordered_map<uint64_t, std::shared_ptr<CRoutine>> id_cr_;
-  std::vector<std::shared_ptr<ProcessorContext>> pctxs_;
-  std::vector<std::shared_ptr<Processor>> processors_;
+    std::unordered_map<uint64_t, std::shared_ptr<CRoutine>> id_cr_;
+    std::vector<std::shared_ptr<ProcessorContext>> pctxs_;
+    std::vector<std::shared_ptr<Processor>> processors_;
 
-  std::unordered_map<std::string, InnerThread> inner_thr_confs_;
+    std::unordered_map<std::string, InnerThread> inner_thr_confs_;
 
-  std::string process_level_cpuset_;
-  uint32_t proc_num_ = 0;
-  uint32_t task_pool_size_ = 0;
-  std::atomic<bool> stop_;
+    std::string process_level_cpuset_;
+    uint32_t proc_num_ = 0;
+    uint32_t task_pool_size_ = 0;
+    std::atomic<bool> stop_;
 };
 
 }  // namespace scheduler

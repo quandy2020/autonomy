@@ -23,37 +23,37 @@ namespace common {
 namespace {
 
 TEST(MathTest, testPower) {
-  EXPECT_EQ(0., Power(0, 42));
-  EXPECT_EQ(1., Power(0, 0));
-  EXPECT_EQ(1., Power(1, 0));
-  EXPECT_EQ(1., Power(1, 42));
-  EXPECT_EQ(4., Power(2, 2));
+    EXPECT_EQ(0., Power(0, 42));
+    EXPECT_EQ(1., Power(0, 0));
+    EXPECT_EQ(1., Power(1, 0));
+    EXPECT_EQ(1., Power(1, 42));
+    EXPECT_EQ(4., Power(2, 2));
 }
 
 TEST(MathTest, testPow2) {
-  EXPECT_EQ(0., Pow2(0));
-  EXPECT_EQ(1., Pow2(1));
-  EXPECT_EQ(4., Pow2(2));
-  EXPECT_EQ(49., Pow2(7));
+    EXPECT_EQ(0., Pow2(0));
+    EXPECT_EQ(1., Pow2(1));
+    EXPECT_EQ(4., Pow2(2));
+    EXPECT_EQ(49., Pow2(7));
 }
 
 TEST(MathTest, testDeg2rad) {
-  EXPECT_NEAR(M_PI, DegToRad(180.), 1e-9);
-  EXPECT_NEAR(2. * M_PI, DegToRad(360. - 1e-9), 1e-6);
+    EXPECT_NEAR(M_PI, DegToRad(180.), 1e-9);
+    EXPECT_NEAR(2. * M_PI, DegToRad(360. - 1e-9), 1e-6);
 }
 
 TEST(MathTest, testRad2deg) {
-  EXPECT_NEAR(180., RadToDeg(M_PI), 1e-9);
-  EXPECT_NEAR(360., RadToDeg(2. * M_PI - 1e-9), 1e-6);
+    EXPECT_NEAR(180., RadToDeg(M_PI), 1e-9);
+    EXPECT_NEAR(360., RadToDeg(2. * M_PI - 1e-9), 1e-6);
 }
 
 TEST(MathTest, testNormalizeAngleDifference) {
-  EXPECT_NEAR(0., NormalizeAngleDifference(0.), 1e-9);
-  EXPECT_NEAR(M_PI, NormalizeAngleDifference(M_PI), 1e-9);
-  EXPECT_NEAR(-M_PI, NormalizeAngleDifference(-M_PI), 1e-9);
-  EXPECT_NEAR(0., NormalizeAngleDifference(2. * M_PI), 1e-9);
-  EXPECT_NEAR(M_PI, NormalizeAngleDifference(5. * M_PI), 1e-9);
-  EXPECT_NEAR(-M_PI, NormalizeAngleDifference(-5. * M_PI), 1e-9);
+    EXPECT_NEAR(0., NormalizeAngleDifference(0.), 1e-9);
+    EXPECT_NEAR(M_PI, NormalizeAngleDifference(M_PI), 1e-9);
+    EXPECT_NEAR(-M_PI, NormalizeAngleDifference(-M_PI), 1e-9);
+    EXPECT_NEAR(0., NormalizeAngleDifference(2. * M_PI), 1e-9);
+    EXPECT_NEAR(M_PI, NormalizeAngleDifference(5. * M_PI), 1e-9);
+    EXPECT_NEAR(-M_PI, NormalizeAngleDifference(-5. * M_PI), 1e-9);
 }
 
 }  // namespace

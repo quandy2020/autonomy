@@ -26,108 +26,120 @@ namespace autolink {
 namespace message {
 
 union ArenaMessageWrapperMeta {
-  struct {
-    uint64_t version_;
-    uint64_t addr_offset_;
-  } struct_;
-  uint8_t bytes_[128];
+    struct {
+        uint64_t version_;
+        uint64_t addr_offset_;
+    } struct_;
+    uint8_t bytes_[128];
 };
 
 union ArenaMessageWrapperExtended {
-  uint8_t bytes_[256];
+    uint8_t bytes_[256];
 };
 
 union ArenaMessageWrapperDataStruct {
-  struct {
-    union ArenaMessageWrapperMeta meta_;
-    union ArenaMessageWrapperExtended extended_;
-  } struct_;
-  uint8_t bytes_[1024];
+    struct {
+        union ArenaMessageWrapperMeta meta_;
+        union ArenaMessageWrapperExtended extended_;
+    } struct_;
+    uint8_t bytes_[1024];
 };
 
-class ArenaMessageWrapper {
- public:
-  static const uint64_t kDefaultVersion = 1L;
+class ArenaMessageWrapper
+{
+public:
+    static const uint64_t kDefaultVersion = 1L;
 
-  ArenaMessageWrapper() : arena_manager_(nullptr) {
-    data_.struct_.meta_.struct_.version_ = kDefaultVersion;
-    data_.struct_.meta_.struct_.addr_offset_ = 0;
-  }
-
-  explicit ArenaMessageWrapper(ArenaManagerBase* arena_manager) : arena_manager_(arena_manager) {
-    data_.struct_.meta_.struct_.version_ = kDefaultVersion;
-    data_.struct_.meta_.struct_.addr_offset_ = 0;
-  }
-
-  virtual ~ArenaMessageWrapper() {}
-
-  void SetVersion(uint64_t version) { data_.struct_.meta_.struct_.version_ = version; }
-  uint64_t GetVersion() const { return data_.struct_.meta_.struct_.version_; }
-
-  uint64_t GetMessageAddress() const {
-    return arena_manager_->GetBaseAddress(this) + data_.struct_.meta_.struct_.addr_offset_;
-  }
-
-  void* GetData() { return reinterpret_cast<void*>(data_.bytes_); }
-
-  bool FillMeta(void* meta, uint64_t size) {
-    if (size > 128) {
-      return false;
+    ArenaMessageWrapper() : arena_manager_(nullptr) {
+        data_.struct_.meta_.struct_.version_ = kDefaultVersion;
+        data_.struct_.meta_.struct_.addr_offset_ = 0;
     }
-    memcpy(&data_.struct_.meta_, meta, size);
-    return true;
-  }
 
-  ArenaMessageWrapperMeta* GetMeta() { return reinterpret_cast<ArenaMessageWrapperMeta*>(data_.struct_.meta_.bytes_); }
-
-  bool FillExtended(void* extended, uint64_t size) {
-    if (size > 256) {
-      return false;
+    explicit ArenaMessageWrapper(ArenaManagerBase* arena_manager)
+        : arena_manager_(arena_manager) {
+        data_.struct_.meta_.struct_.version_ = kDefaultVersion;
+        data_.struct_.meta_.struct_.addr_offset_ = 0;
     }
-    memcpy(&data_.struct_.extended_, extended, size);
-    return true;
-  }
 
-  template <typename T>
-  T* GetExtended() {
-    return reinterpret_cast<T*>(data_.struct_.extended_.bytes_);
-  }
+    virtual ~ArenaMessageWrapper() {}
 
-  template <typename MessageT>
-  MessageT* GetMessage() {
-    // uint64_t base_address =
-    //     reinterpret_cast<uint64_t>(arena_manager_->GetBaseAddress());
-    // uint64_t message_address = base_address + data_.struct_.addr_offset_;
-    // return std::shared_ptr<MessageT>(
-    //     reinterpret_cast<MessageT*>(GetMessageAddress()));
-    auto msg_ptr = arena_manager_->GetMessage<MessageT>(this);
-    return msg_ptr;
-  }
+    void SetVersion(uint64_t version) {
+        data_.struct_.meta_.struct_.version_ = version;
+    }
+    uint64_t GetVersion() const {
+        return data_.struct_.meta_.struct_.version_;
+    }
 
-  template <typename MessageT>
-  MessageT* SetMessage(const MessageT& message) {
-    auto msg_ptr = arena_manager_->SetMessage(this, message);
-    return msg_ptr;
-  }
+    uint64_t GetMessageAddress() const {
+        return arena_manager_->GetBaseAddress(this) +
+               data_.struct_.meta_.struct_.addr_offset_;
+    }
 
- private:
-  // union {
-  //   struct {
-  //     union {
-  //       uint64_t version_;
-  //       uint64_t addr_offset_;
-  //       uint8_t bytes_[128];
-  //     } meta_;
-  //     union {
-  //       uint8_t bytes_[256];
-  //     } extended_;
-  //   } struct_;
-  //   uint8_t bytes_[1024];
-  // } data_;
-  ArenaMessageWrapperDataStruct data_;
-  // message holder
-  std::shared_ptr<void*> message_;
-  ArenaManagerBase* arena_manager_;
+    void* GetData() {
+        return reinterpret_cast<void*>(data_.bytes_);
+    }
+
+    bool FillMeta(void* meta, uint64_t size) {
+        if (size > 128) {
+            return false;
+        }
+        memcpy(&data_.struct_.meta_, meta, size);
+        return true;
+    }
+
+    ArenaMessageWrapperMeta* GetMeta() {
+        return reinterpret_cast<ArenaMessageWrapperMeta*>(
+            data_.struct_.meta_.bytes_);
+    }
+
+    bool FillExtended(void* extended, uint64_t size) {
+        if (size > 256) {
+            return false;
+        }
+        memcpy(&data_.struct_.extended_, extended, size);
+        return true;
+    }
+
+    template <typename T>
+    T* GetExtended() {
+        return reinterpret_cast<T*>(data_.struct_.extended_.bytes_);
+    }
+
+    template <typename MessageT>
+    MessageT* GetMessage() {
+        // uint64_t base_address =
+        //     reinterpret_cast<uint64_t>(arena_manager_->GetBaseAddress());
+        // uint64_t message_address = base_address + data_.struct_.addr_offset_;
+        // return std::shared_ptr<MessageT>(
+        //     reinterpret_cast<MessageT*>(GetMessageAddress()));
+        auto msg_ptr = arena_manager_->GetMessage<MessageT>(this);
+        return msg_ptr;
+    }
+
+    template <typename MessageT>
+    MessageT* SetMessage(const MessageT& message) {
+        auto msg_ptr = arena_manager_->SetMessage(this, message);
+        return msg_ptr;
+    }
+
+private:
+    // union {
+    //   struct {
+    //     union {
+    //       uint64_t version_;
+    //       uint64_t addr_offset_;
+    //       uint8_t bytes_[128];
+    //     } meta_;
+    //     union {
+    //       uint8_t bytes_[256];
+    //     } extended_;
+    //   } struct_;
+    //   uint8_t bytes_[1024];
+    // } data_;
+    ArenaMessageWrapperDataStruct data_;
+    // message holder
+    std::shared_ptr<void*> message_;
+    ArenaManagerBase* arena_manager_;
 };
 
 }  // namespace message

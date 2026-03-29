@@ -61,68 +61,78 @@ constexpr int64_t ONE_BILLION = 1000000000L;
 
 template <typename T>
 T UnixToGpsSeconds(T unix_seconds) {
-  for (size_t i = 0; i < LEAP_SECONDS.size(); ++i) {
-    if (unix_seconds >= LEAP_SECONDS[i].first) {
-      return unix_seconds - (UNIX_GPS_DIFF - LEAP_SECONDS[i].second);
+    for (size_t i = 0; i < LEAP_SECONDS.size(); ++i) {
+        if (unix_seconds >= LEAP_SECONDS[i].first) {
+            return unix_seconds - (UNIX_GPS_DIFF - LEAP_SECONDS[i].second);
+        }
     }
-  }
-  return static_cast<T>(0);
+    return static_cast<T>(0);
 }
 
 inline int64_t UnixToGpsMicroseconds(int64_t unix_microseconds) {
-  return UnixToGpsSeconds(unix_microseconds / ONE_MILLION) * ONE_MILLION + unix_microseconds % ONE_MILLION;
+    return UnixToGpsSeconds(unix_microseconds / ONE_MILLION) * ONE_MILLION +
+           unix_microseconds % ONE_MILLION;
 }
 
 inline int64_t UnixToGpsNanoseconds(int64_t unix_nanoseconds) {
-  return UnixToGpsSeconds(unix_nanoseconds / ONE_BILLION) * ONE_BILLION + unix_nanoseconds % ONE_BILLION;
+    return UnixToGpsSeconds(unix_nanoseconds / ONE_BILLION) * ONE_BILLION +
+           unix_nanoseconds % ONE_BILLION;
 }
 
 template <typename T>
 T GpsToUnixSeconds(T gps_seconds) {
-  for (size_t i = 0; i < LEAP_SECONDS.size(); ++i) {
-    T result = gps_seconds + (UNIX_GPS_DIFF - LEAP_SECONDS[i].second);
-    if ((int32_t)result >= LEAP_SECONDS[i].first) {
-      return result;
+    for (size_t i = 0; i < LEAP_SECONDS.size(); ++i) {
+        T result = gps_seconds + (UNIX_GPS_DIFF - LEAP_SECONDS[i].second);
+        if ((int32_t)result >= LEAP_SECONDS[i].first) {
+            return result;
+        }
     }
-  }
-  return static_cast<T>(0);
+    return static_cast<T>(0);
 }
 
 inline int64_t GpsToUnixMicroseconds(int64_t gps_microseconds) {
-  return GpsToUnixSeconds(gps_microseconds / ONE_MILLION) * ONE_MILLION + gps_microseconds % ONE_MILLION;
+    return GpsToUnixSeconds(gps_microseconds / ONE_MILLION) * ONE_MILLION +
+           gps_microseconds % ONE_MILLION;
 }
 
 inline int64_t GpsToUnixNanoseconds(int64_t gps_nanoseconds) {
-  return GpsToUnixSeconds(gps_nanoseconds / ONE_BILLION) * ONE_BILLION + gps_nanoseconds % ONE_BILLION;
+    return GpsToUnixSeconds(gps_nanoseconds / ONE_BILLION) * ONE_BILLION +
+           gps_nanoseconds % ONE_BILLION;
 }
 
 inline uint64_t GpsToUnixMicroseconds(uint64_t gps_microseconds) {
-  return GpsToUnixSeconds(gps_microseconds / ONE_MILLION) * ONE_MILLION + gps_microseconds % ONE_MILLION;
+    return GpsToUnixSeconds(gps_microseconds / ONE_MILLION) * ONE_MILLION +
+           gps_microseconds % ONE_MILLION;
 }
 
 inline uint64_t GpsToUnixNanoseconds(uint64_t gps_nanoseconds) {
-  return GpsToUnixSeconds(gps_nanoseconds / ONE_BILLION) * ONE_BILLION + gps_nanoseconds % ONE_BILLION;
+    return GpsToUnixSeconds(gps_nanoseconds / ONE_BILLION) * ONE_BILLION +
+           gps_nanoseconds % ONE_BILLION;
 }
 
-inline uint64_t StringToUnixSeconds(const std::string& time_str, const std::string& format_str = "%Y-%m-%d %H:%M:%S") {
-  tm tmp_time;
-  strptime(time_str.c_str(), format_str.c_str(), &tmp_time);
-  tmp_time.tm_isdst = -1;
-  time_t time = mktime(&tmp_time);
-  return static_cast<uint64_t>(time);
+inline uint64_t StringToUnixSeconds(
+    const std::string& time_str,
+    const std::string& format_str = "%Y-%m-%d %H:%M:%S") {
+    tm tmp_time;
+    strptime(time_str.c_str(), format_str.c_str(), &tmp_time);
+    tmp_time.tm_isdst = -1;
+    time_t time = mktime(&tmp_time);
+    return static_cast<uint64_t>(time);
 }
 
-inline std::string UnixSecondsToString(uint64_t unix_seconds, const std::string& format_str = "%Y-%m-%d-%H:%M:%S") {
-  std::time_t t = unix_seconds;
-  struct tm ptm;
-  struct tm* ret = localtime_r(&t, &ptm);
-  if (ret == nullptr) {
-    return std::string("");
-  }
-  uint32_t length = 64;
-  std::vector<char> buff(length, '\0');
-  strftime(buff.data(), length, format_str.c_str(), ret);
-  return std::string(buff.data());
+inline std::string UnixSecondsToString(
+    uint64_t unix_seconds,
+    const std::string& format_str = "%Y-%m-%d-%H:%M:%S") {
+    std::time_t t = unix_seconds;
+    struct tm ptm;
+    struct tm* ret = localtime_r(&t, &ptm);
+    if (ret == nullptr) {
+        return std::string("");
+    }
+    uint32_t length = 64;
+    std::vector<char> buff(length, '\0');
+    strftime(buff.data(), length, format_str.c_str(), ret);
+    return std::string(buff.data());
 }
 
 }  // namespace common

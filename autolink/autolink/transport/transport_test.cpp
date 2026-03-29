@@ -31,50 +31,57 @@ using TransmitterPtr = std::shared_ptr<Transmitter<proto::UnitTest>>;
 using ReceiverPtr = std::shared_ptr<Receiver<proto::UnitTest>>;
 
 TEST(TransportTest, constructor) {
-  auto transport_a = Transport::Instance();
-  auto transport_b = Transport::Instance();
-  EXPECT_EQ(transport_a->participant(), transport_b->participant());
+    auto transport_a = Transport::Instance();
+    auto transport_b = Transport::Instance();
+    EXPECT_EQ(transport_a->participant(), transport_b->participant());
 }
 
 TEST(TransportTest, create_transmitter) {
-  QosProfileConf qos_conf;
-  (void)qos_conf;
+    QosProfileConf qos_conf;
+    (void)qos_conf;
 
-  RoleAttributes attr;
-  attr.set_channel_name("create_transmitter");
-  Identity id;
-  attr.set_id(id.HashValue());
+    RoleAttributes attr;
+    attr.set_channel_name("create_transmitter");
+    Identity id;
+    attr.set_id(id.HashValue());
 
-  TransmitterPtr intra = Transport::Instance()->CreateTransmitter<proto::UnitTest>(attr, OptionalMode::INTRA);
-  EXPECT_EQ(typeid(*intra), typeid(IntraTransmitter<proto::UnitTest>));
+    TransmitterPtr intra =
+        Transport::Instance()->CreateTransmitter<proto::UnitTest>(
+            attr, OptionalMode::INTRA);
+    EXPECT_EQ(typeid(*intra), typeid(IntraTransmitter<proto::UnitTest>));
 
-  TransmitterPtr shm = Transport::Instance()->CreateTransmitter<proto::UnitTest>(attr, OptionalMode::SHM);
-  EXPECT_EQ(typeid(*shm), typeid(ShmTransmitter<proto::UnitTest>));
+    TransmitterPtr shm =
+        Transport::Instance()->CreateTransmitter<proto::UnitTest>(
+            attr, OptionalMode::SHM);
+    EXPECT_EQ(typeid(*shm), typeid(ShmTransmitter<proto::UnitTest>));
 }
 
 TEST(TransportTest, create_receiver) {
-  RoleAttributes attr;
-  attr.set_channel_name("create_receiver");
-  Identity id;
-  attr.set_id(id.HashValue());
+    RoleAttributes attr;
+    attr.set_channel_name("create_receiver");
+    Identity id;
+    attr.set_id(id.HashValue());
 
-  auto listener = [](const std::shared_ptr<proto::UnitTest>&, const MessageInfo&, const RoleAttributes&) {};
+    auto listener = [](const std::shared_ptr<proto::UnitTest>&,
+                       const MessageInfo&, const RoleAttributes&) {};
 
-  ReceiverPtr intra = Transport::Instance()->CreateReceiver<proto::UnitTest>(attr, listener, OptionalMode::INTRA);
-  EXPECT_EQ(typeid(*intra), typeid(IntraReceiver<proto::UnitTest>));
+    ReceiverPtr intra = Transport::Instance()->CreateReceiver<proto::UnitTest>(
+        attr, listener, OptionalMode::INTRA);
+    EXPECT_EQ(typeid(*intra), typeid(IntraReceiver<proto::UnitTest>));
 
-  ReceiverPtr shm = Transport::Instance()->CreateReceiver<proto::UnitTest>(attr, listener, OptionalMode::SHM);
-  EXPECT_EQ(typeid(*shm), typeid(ShmReceiver<proto::UnitTest>));
+    ReceiverPtr shm = Transport::Instance()->CreateReceiver<proto::UnitTest>(
+        attr, listener, OptionalMode::SHM);
+    EXPECT_EQ(typeid(*shm), typeid(ShmReceiver<proto::UnitTest>));
 }
 
 }  // namespace transport
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  autolink::transport::Transport::Instance();
-  auto res = RUN_ALL_TESTS();
-  autolink::transport::Transport::Instance()->Shutdown();
-  return res;
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    autolink::transport::Transport::Instance();
+    auto res = RUN_ALL_TESTS();
+    autolink::transport::Transport::Instance()->Shutdown();
+    return res;
 }

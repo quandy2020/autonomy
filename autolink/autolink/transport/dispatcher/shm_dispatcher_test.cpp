@@ -32,78 +32,84 @@ namespace autolink {
 namespace transport {
 
 TEST(ShmDispatcherTest, add_listener) {
-  auto dispatcher = ShmDispatcher::Instance();
-  RoleAttributes self_attr;
-  self_attr.set_channel_name("add_listener");
-  self_attr.set_channel_id(common::Hash("add_listener"));
-  Identity self_id;
-  self_attr.set_id(self_id.HashValue());
+    auto dispatcher = ShmDispatcher::Instance();
+    RoleAttributes self_attr;
+    self_attr.set_channel_name("add_listener");
+    self_attr.set_channel_id(common::Hash("add_listener"));
+    Identity self_id;
+    self_attr.set_id(self_id.HashValue());
 
-  dispatcher->AddListener<proto::Chatter>(self_attr, [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+    dispatcher->AddListener<proto::Chatter>(
+        self_attr,
+        [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 
-  RoleAttributes oppo_attr;
-  oppo_attr.CopyFrom(self_attr);
-  Identity oppo_id;
-  oppo_attr.set_id(oppo_id.HashValue());
+    RoleAttributes oppo_attr;
+    oppo_attr.CopyFrom(self_attr);
+    Identity oppo_id;
+    oppo_attr.set_id(oppo_id.HashValue());
 
-  dispatcher->AddListener<proto::Chatter>(self_attr, oppo_attr,
-                                          [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
+    dispatcher->AddListener<proto::Chatter>(
+        self_attr, oppo_attr,
+        [](const std::shared_ptr<proto::Chatter>&, const MessageInfo&) {});
 }
 
 TEST(ShmDispatcherTest, on_message) {
-  auto dispatcher = ShmDispatcher::Instance();
+    auto dispatcher = ShmDispatcher::Instance();
 
-  RoleAttributes oppo_attr;
-  oppo_attr.set_host_name(common::GlobalData::Instance()->HostName());
-  oppo_attr.set_host_ip(common::GlobalData::Instance()->HostIp());
-  oppo_attr.set_channel_name("on_message");
-  oppo_attr.set_channel_id(common::Hash("on_message"));
-  Identity oppo_id;
-  oppo_attr.set_id(oppo_id.HashValue());
+    RoleAttributes oppo_attr;
+    oppo_attr.set_host_name(common::GlobalData::Instance()->HostName());
+    oppo_attr.set_host_ip(common::GlobalData::Instance()->HostIp());
+    oppo_attr.set_channel_name("on_message");
+    oppo_attr.set_channel_id(common::Hash("on_message"));
+    Identity oppo_id;
+    oppo_attr.set_id(oppo_id.HashValue());
 
-  auto transmitter = Transport::Instance()->CreateTransmitter<message::RawMessage>(oppo_attr, proto::OptionalMode::SHM);
-  EXPECT_NE(transmitter, nullptr);
+    auto transmitter =
+        Transport::Instance()->CreateTransmitter<message::RawMessage>(
+            oppo_attr, proto::OptionalMode::SHM);
+    EXPECT_NE(transmitter, nullptr);
 
-  auto send_msg = std::make_shared<message::RawMessage>("raw_message");
-  transmitter->Transmit(send_msg);
+    auto send_msg = std::make_shared<message::RawMessage>("raw_message");
+    transmitter->Transmit(send_msg);
 
-  sleep(1);
+    sleep(1);
 
-  RoleAttributes self_attr;
-  self_attr.set_channel_name("on_message");
-  self_attr.set_channel_id(common::Hash("on_message"));
-  Identity self_id;
-  self_attr.set_id(self_id.HashValue());
+    RoleAttributes self_attr;
+    self_attr.set_channel_name("on_message");
+    self_attr.set_channel_id(common::Hash("on_message"));
+    Identity self_id;
+    self_attr.set_id(self_id.HashValue());
 
-  auto recv_msg = std::make_shared<message::RawMessage>();
-  dispatcher->AddListener<message::RawMessage>(
-      self_attr, [&recv_msg](const std::shared_ptr<message::RawMessage>& msg, const MessageInfo& msg_info) {
-        (void)msg_info;
-        recv_msg->message = msg->message;
-      });
+    auto recv_msg = std::make_shared<message::RawMessage>();
+    dispatcher->AddListener<message::RawMessage>(
+        self_attr, [&recv_msg](const std::shared_ptr<message::RawMessage>& msg,
+                               const MessageInfo& msg_info) {
+            (void)msg_info;
+            recv_msg->message = msg->message;
+        });
 
-  transmitter->Transmit(send_msg);
+    transmitter->Transmit(send_msg);
 
-  sleep(1);
-  EXPECT_EQ(recv_msg->message, send_msg->message);
+    sleep(1);
+    EXPECT_EQ(recv_msg->message, send_msg->message);
 }
 
 TEST(ShmDispatcherTest, shutdown) {
-  auto dispatcher = ShmDispatcher::Instance();
-  dispatcher->Shutdown();
+    auto dispatcher = ShmDispatcher::Instance();
+    dispatcher->Shutdown();
 
-  // repeated call
-  dispatcher->Shutdown();
+    // repeated call
+    dispatcher->Shutdown();
 }
 
 }  // namespace transport
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  autolink::Init(argv[0]);
-  autolink::transport::Transport::Instance();
-  auto res = RUN_ALL_TESTS();
-  autolink::transport::Transport::Instance()->Shutdown();
-  return res;
+    testing::InitGoogleTest(&argc, argv);
+    autolink::Init(argv[0]);
+    autolink::transport::Transport::Instance();
+    auto res = RUN_ALL_TESTS();
+    autolink::transport::Transport::Instance()->Shutdown();
+    return res;
 }

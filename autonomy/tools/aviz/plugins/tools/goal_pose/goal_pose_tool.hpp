@@ -27,12 +27,13 @@ namespace tools {
  * @brief GoalPoseTool
  * Goal pose tool for the visualizer
  */
-class GoalPoseTool {
- public:
-  explicit GoalPoseTool();
-  virtual ~GoalPoseTool();
+class GoalPoseTool
+{
+public:
+    explicit GoalPoseTool();
+    virtual ~GoalPoseTool();
 
-  // TODO: Implement tool interface
+    // TODO: Implement tool interface
 };
 
 }  // namespace tools

@@ -26,31 +26,44 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-class MemMonitor : public MonitorBase {
- public:
-  std::string Name() const override { return "mem"; }
-  void Collect() override;
-  void RegisterWithPrometheus(void* registry) override;
+class MemMonitor : public MonitorBase
+{
+public:
+    std::string Name() const override {
+        return "mem";
+    }
+    void Collect() override;
+    void RegisterWithPrometheus(void* registry) override;
 
-  uint64_t total_kb() const { return total_kb_; }
-  uint64_t available_kb() const { return available_kb_; }
-  double usage_percent() const { return usage_percent_; }
+    uint64_t total_kb() const {
+        return total_kb_;
+    }
+    uint64_t available_kb() const {
+        return available_kb_;
+    }
+    double usage_percent() const {
+        return usage_percent_;
+    }
 
-  static std::unique_ptr<MemMonitor> Create() { return std::make_unique<MemMonitor>(); }
+    static std::unique_ptr<MemMonitor> Create() {
+        return std::make_unique<MemMonitor>();
+    }
 
- private:
-  uint64_t total_kb_{0};
-  uint64_t available_kb_{0};
-  double usage_percent_{0.0};
+private:
+    uint64_t total_kb_{0};
+    uint64_t available_kb_{0};
+    double usage_percent_{0.0};
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
-  void* usage_gauge_{nullptr};
-  void* total_kb_gauge_{nullptr};
-  void* available_kb_gauge_{nullptr};
+    void* usage_gauge_{nullptr};
+    void* total_kb_gauge_{nullptr};
+    void* available_kb_gauge_{nullptr};
 #endif
 };
 
-inline std::unique_ptr<MemMonitor> CreateMemMonitor() { return MemMonitor::Create(); }
+inline std::unique_ptr<MemMonitor> CreateMemMonitor() {
+    return MemMonitor::Create();
+}
 
 }  // namespace monitor
 }  // namespace system

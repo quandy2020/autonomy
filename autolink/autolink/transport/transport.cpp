@@ -22,36 +22,39 @@ namespace autolink {
 namespace transport {
 
 Transport::Transport() {
-  CreateParticipant();
-  notifier_ = NotifierFactory::CreateNotifier();
-  intra_dispatcher_ = IntraDispatcher::Instance();
-  shm_dispatcher_ = ShmDispatcher::Instance();
-  rtps_dispatcher_ = RtpsDispatcher::Instance();
-  rtps_dispatcher_->set_participant(participant_);
+    CreateParticipant();
+    notifier_ = NotifierFactory::CreateNotifier();
+    intra_dispatcher_ = IntraDispatcher::Instance();
+    shm_dispatcher_ = ShmDispatcher::Instance();
+    rtps_dispatcher_ = RtpsDispatcher::Instance();
+    rtps_dispatcher_->set_participant(participant_);
 }
 
-Transport::~Transport() { Shutdown(); }
+Transport::~Transport() {
+    Shutdown();
+}
 
 void Transport::Shutdown() {
-  if (is_shutdown_.exchange(true)) {
-    return;
-  }
+    if (is_shutdown_.exchange(true)) {
+        return;
+    }
 
-  intra_dispatcher_->Shutdown();
-  shm_dispatcher_->Shutdown();
-  rtps_dispatcher_->Shutdown();
-  notifier_->Shutdown();
+    intra_dispatcher_->Shutdown();
+    shm_dispatcher_->Shutdown();
+    rtps_dispatcher_->Shutdown();
+    notifier_->Shutdown();
 
-  if (participant_ != nullptr) {
-    participant_->Shutdown();
-    participant_ = nullptr;
-  }
+    if (participant_ != nullptr) {
+        participant_->Shutdown();
+        participant_ = nullptr;
+    }
 }
 
 void Transport::CreateParticipant() {
-  std::string participant_name =
-      common::GlobalData::Instance()->HostName() + "+" + std::to_string(common::GlobalData::Instance()->ProcessId());
-  participant_ = std::make_shared<Participant>(participant_name, 11512);
+    std::string participant_name =
+        common::GlobalData::Instance()->HostName() + "+" +
+        std::to_string(common::GlobalData::Instance()->ProcessId());
+    participant_ = std::make_shared<Participant>(participant_name, 11512);
 }
 
 }  // namespace transport

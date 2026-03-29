@@ -26,42 +26,47 @@
 
 namespace autolink {
 
-class ParameterServerTest : public ::testing::Test {
- protected:
-  ParameterServerTest() {
-    autolink::Init("parameter_server_test");
-    node_ = CreateNode("parameter_server");
-  }
+class ParameterServerTest : public ::testing::Test
+{
+protected:
+    ParameterServerTest() {
+        autolink::Init("parameter_server_test");
+        node_ = CreateNode("parameter_server");
+    }
 
-  virtual void SetUp() {
-    // Called before every TEST_F(ParameterServerTest, *)
-    ps_.reset(new ParameterServer(node_));
-  }
+    virtual void SetUp() {
+        // Called before every TEST_F(ParameterServerTest, *)
+        ps_.reset(new ParameterServer(node_));
+    }
 
-  virtual void TearDown() { ps_.reset(); }
+    virtual void TearDown() {
+        ps_.reset();
+    }
 
- protected:
-  std::shared_ptr<Node> node_;
-  std::unique_ptr<ParameterServer> ps_;
+protected:
+    std::shared_ptr<Node> node_;
+    std::unique_ptr<ParameterServer> ps_;
 };
 
-TEST_F(ParameterServerTest, set_parameter) { ps_->SetParameter(Parameter("int", 1)); }
+TEST_F(ParameterServerTest, set_parameter) {
+    ps_->SetParameter(Parameter("int", 1));
+}
 
 TEST_F(ParameterServerTest, get_parameter) {
-  ps_->SetParameter(Parameter("int", 1));
-  Parameter parameter;
-  ps_->GetParameter("int", &parameter);
-  EXPECT_EQ("int", parameter.Name());
-  EXPECT_EQ(1, parameter.AsInt64());
+    ps_->SetParameter(Parameter("int", 1));
+    Parameter parameter;
+    ps_->GetParameter("int", &parameter);
+    EXPECT_EQ("int", parameter.Name());
+    EXPECT_EQ(1, parameter.AsInt64());
 }
 
 TEST_F(ParameterServerTest, list_parameter) {
-  ps_->SetParameter(Parameter("int", 1));
-  std::vector<Parameter> parameters;
-  ps_->ListParameters(&parameters);
-  EXPECT_EQ(1, parameters.size());
-  EXPECT_EQ("int", parameters[0].Name());
-  EXPECT_EQ(1, parameters[0].AsInt64());
+    ps_->SetParameter(Parameter("int", 1));
+    std::vector<Parameter> parameters;
+    ps_->ListParameters(&parameters);
+    EXPECT_EQ(1, parameters.size());
+    EXPECT_EQ("int", parameters[0].Name());
+    EXPECT_EQ(1, parameters[0].AsInt64());
 }
 
 }  // namespace autolink

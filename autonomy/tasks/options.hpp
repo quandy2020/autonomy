@@ -26,11 +26,15 @@ class LuaParameterDictionary;
 }
 namespace tasks {
 
-/** Load TaskOptions from Lua "tasks" table. All keys in tasks.lua must be read exactly once. */
-proto::TaskOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+/** Load TaskOptions from Lua "tasks" table. All keys in tasks.lua must be read
+ * exactly once. */
+proto::TaskOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
-/** Create TaskOptions from configuration directory and Lua basename (e.g. tasks/tasks.lua). */
-proto::TaskOptions CreateOptions(const std::string& configuration_directory, const std::string& configuration_basename);
+/** Create TaskOptions from configuration directory and Lua basename (e.g.
+ * tasks/tasks.lua). */
+proto::TaskOptions CreateOptions(const std::string& configuration_directory,
+                                 const std::string& configuration_basename);
 
 }  // namespace tasks
 }  // namespace autonomy

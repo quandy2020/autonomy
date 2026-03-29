@@ -45,39 +45,41 @@ namespace localization {
  * 以 30Hz 实时发布 TF 变换链：map -> odom -> base_link -> base_footprint
  * LocalizationServer 负责 map -> odom 变换
  */
-class LocalizationServer {
- public:
-  /**
-   * @brief 定义智能指针类型
-   */
-  AUTONOMY_SMART_PTR_DEFINITIONS(LocalizationServer)
+class LocalizationServer
+{
+public:
+    /**
+     * @brief 定义智能指针类型
+     */
+    AUTONOMY_SMART_PTR_DEFINITIONS(LocalizationServer)
 
-  /**
-   * @brief 构造函数
-   * @param options 定位选项配置
-   * @param node_name 可选的节点名称，如果为空则使用默认名称
-   */
-  explicit LocalizationServer(const proto::LocalizationOptions& options,
-                              const std::string& node_name = "localization_server");
+    /**
+     * @brief 构造函数
+     * @param options 定位选项配置
+     * @param node_name 可选的节点名称，如果为空则使用默认名称
+     */
+    explicit LocalizationServer(
+        const proto::LocalizationOptions& options,
+        const std::string& node_name = "localization_server");
 
-  /**
-   * @brief 析构函数
-   */
-  ~LocalizationServer();
+    /**
+     * @brief 析构函数
+     */
+    ~LocalizationServer();
 
-  /**
-   * @brief 启动定位服务器（配置并激活）
-   * @return true 成功，false 失败
-   */
-  bool Start();
+    /**
+     * @brief 启动定位服务器（配置并激活）
+     * @return true 成功，false 失败
+     */
+    bool Start();
 
-  /**
-   * @brief 停止定位服务器（停用、清理并关闭）
-   * @return true 成功，false 失败
-   */
-  bool Stop();
+    /**
+     * @brief 停止定位服务器（停用、清理并关闭）
+     * @return true 成功，false 失败
+     */
+    bool Stop();
 
- private:
+private:
 };
 
 }  // namespace localization

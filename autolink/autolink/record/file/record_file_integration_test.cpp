@@ -27,89 +27,98 @@
 namespace autolink {
 namespace record {
 
-class CpuSchedulerLatency {
- public:
-  CpuSchedulerLatency() : periodic_thread_([this] { this->Callback(); }) {}
+class CpuSchedulerLatency
+{
+public:
+    CpuSchedulerLatency() : periodic_thread_([this] { this->Callback(); }) {}
 
-  ~CpuSchedulerLatency() {
-    running_ = false;
-    periodic_thread_.join();
-  }
-
-  std::chrono::nanoseconds GetMaxJitter() { return std::chrono::nanoseconds(max_jitter_); }
-
-  int64_t GetNumSamples() { return samples_; }
-
- private:
-  void Callback() {
-    static constexpr std::chrono::milliseconds kSleepDuration(10);
-    auto prev_time = std::chrono::steady_clock::now();
-    std::this_thread::sleep_for(kSleepDuration);
-    while (running_) {
-      const auto current_time = std::chrono::steady_clock::now();
-      const auto time_since_sleep = current_time - prev_time;
-      const auto current_jitter = std::abs((time_since_sleep - kSleepDuration).count());
-      prev_time = current_time;
-      max_jitter_ = std::max(current_jitter, max_jitter_);
-      ++samples_;
-      std::this_thread::sleep_for(kSleepDuration);
+    ~CpuSchedulerLatency() {
+        running_ = false;
+        periodic_thread_.join();
     }
-  }
 
-  std::atomic<bool> running_{true};
-  int64_t max_jitter_ = 0;
-  int64_t samples_ = 0;
+    std::chrono::nanoseconds GetMaxJitter() {
+        return std::chrono::nanoseconds(max_jitter_);
+    }
 
-  std::thread periodic_thread_;
+    int64_t GetNumSamples() {
+        return samples_;
+    }
+
+private:
+    void Callback() {
+        static constexpr std::chrono::milliseconds kSleepDuration(10);
+        auto prev_time = std::chrono::steady_clock::now();
+        std::this_thread::sleep_for(kSleepDuration);
+        while (running_) {
+            const auto current_time = std::chrono::steady_clock::now();
+            const auto time_since_sleep = current_time - prev_time;
+            const auto current_jitter =
+                std::abs((time_since_sleep - kSleepDuration).count());
+            prev_time = current_time;
+            max_jitter_ = std::max(current_jitter, max_jitter_);
+            ++samples_;
+            std::this_thread::sleep_for(kSleepDuration);
+        }
+    }
+
+    std::atomic<bool> running_{true};
+    int64_t max_jitter_ = 0;
+    int64_t samples_ = 0;
+
+    std::thread periodic_thread_;
 };
 
 const char kTestFile[] = "integration_test.record";
 
 TEST(RecordFileTest, SmallMessageHighThroughputOKThreadJitter) {
-  CpuSchedulerLatency cpu_jitter;
+    CpuSchedulerLatency cpu_jitter;
 
-  RecordFileWriter rfw;
+    RecordFileWriter rfw;
 
-  ASSERT_TRUE(rfw.Open(kTestFile));
+    ASSERT_TRUE(rfw.Open(kTestFile));
 
-  proto::Header hdr1 = HeaderBuilder::GetHeaderWithSegmentParams(0, 0);
-  hdr1.set_chunk_interval(1000);
-  hdr1.set_chunk_raw_size(0);
-  ASSERT_TRUE(rfw.WriteHeader(hdr1));
-  ASSERT_FALSE(rfw.GetHeader().is_complete());
+    proto::Header hdr1 = HeaderBuilder::GetHeaderWithSegmentParams(0, 0);
+    hdr1.set_chunk_interval(1000);
+    hdr1.set_chunk_raw_size(0);
+    ASSERT_TRUE(rfw.WriteHeader(hdr1));
+    ASSERT_FALSE(rfw.GetHeader().is_complete());
 
-  // write chunk section
-  static const std::string kChannelName = "small_message";
+    // write chunk section
+    static const std::string kChannelName = "small_message";
 
-  static constexpr int kMaxIterations = 1000000000;
-  static constexpr int64_t kMaxSamples = 1000;
-  for (int i = 0; i < kMaxIterations && cpu_jitter.GetNumSamples() < kMaxSamples; ++i) {
-    proto::SingleMessage msg1;
-    msg1.set_channel_name(kChannelName);
-    msg1.set_content("0123456789");
-    msg1.set_time(i);
-    ASSERT_TRUE(rfw.WriteMessage(msg1));
-    ASSERT_EQ(i + 1, rfw.GetMessageNumber(kChannelName));
-  }
+    static constexpr int kMaxIterations = 1000000000;
+    static constexpr int64_t kMaxSamples = 1000;
+    for (int i = 0;
+         i < kMaxIterations && cpu_jitter.GetNumSamples() < kMaxSamples; ++i) {
+        proto::SingleMessage msg1;
+        msg1.set_channel_name(kChannelName);
+        msg1.set_content("0123456789");
+        msg1.set_time(i);
+        ASSERT_TRUE(rfw.WriteMessage(msg1));
+        ASSERT_EQ(i + 1, rfw.GetMessageNumber(kChannelName));
+    }
 
-  EXPECT_GE(cpu_jitter.GetNumSamples(), kMaxSamples)
-      << "This system may be to fast. Consider increasing kMaxIterations";
-  static constexpr int64_t kMaxJitterMS = 20;
-  const int64_t max_cpu_jitter_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(cpu_jitter.GetMaxJitter()).count();
-  EXPECT_LT(max_cpu_jitter_ms, kMaxJitterMS);
-  ASSERT_FALSE(remove(kTestFile));
+    EXPECT_GE(cpu_jitter.GetNumSamples(), kMaxSamples)
+        << "This system may be to fast. Consider increasing kMaxIterations";
+    static constexpr int64_t kMaxJitterMS = 20;
+    const int64_t max_cpu_jitter_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            cpu_jitter.GetMaxJitter())
+            .count();
+    EXPECT_LT(max_cpu_jitter_ms, kMaxJitterMS);
+    ASSERT_FALSE(remove(kTestFile));
 }
 
 }  // namespace record
 }  // namespace autolink
 
 int main(int argc, char** argv) {
-  testing::GTEST_FLAG(catch_exceptions) = 1;
-  testing::InitGoogleTest(&argc, argv);
-  google::InitGoogleLogging(argv[0]);
-  FLAGS_logtostderr = true;
-  const int ret_val = RUN_ALL_TESTS();
-  google::protobuf::ShutdownProtobufLibrary();
-  return ret_val;
+    testing::GTEST_FLAG(catch_exceptions) = 1;
+    testing::InitGoogleTest(&argc, argv);
+    google::InitGoogleLogging(argv[0]);
+    FLAGS_logtostderr = true;
+    const int ret_val = RUN_ALL_TESTS();
+    google::protobuf::ShutdownProtobufLibrary();
+    return ret_val;
 }

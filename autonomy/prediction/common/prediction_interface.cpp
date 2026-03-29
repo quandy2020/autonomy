@@ -22,9 +22,10 @@ namespace common {
 
 PredictionInterface::~PredictionInterface() {}
 
-proto::PredictionOptions LoadOptions(::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-  proto::PredictionOptions options;
-  return options;
+proto::PredictionOptions LoadOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
+    proto::PredictionOptions options;
+    return options;
 }
 
 }  // namespace common
