@@ -99,13 +99,13 @@ const std::string GIT_COMMIT_AUTHOR = "duyongquan";
 const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
 const std::string GIT_COMMIT_DATE =
     ""
-    "2026-03-29 22:41:29"
+    "2026-03-29 23:03:24"
     "";
-const std::string GIT_VERSION = "a0d26b9-dirty";
+const std::string GIT_VERSION = "2ada289-dirty";
 const std::string GIT_BRANCH = "main";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-03-29 14:47:55";
+const std::string BUILD_TIMESTAMP = "2026-03-29 15:07:31";
 const std::string BUILD_HOST = "bfbb3c8047d0";
 const std::string BUILD_USER = "root";
 
