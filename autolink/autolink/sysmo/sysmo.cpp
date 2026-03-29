@@ -16,19 +16,28 @@
 
 #include "autolink/sysmo/sysmo.hpp"
 
-#include "autolink/common/environment.hpp"
+#include <cstdlib>
+#include <string>
 
 namespace autolink {
-
-using autolink::common::GetEnv;
 
 SysMo::SysMo() {
     Start();
 }
 
 void SysMo::Start() {
-    auto sysmo_start = GetEnv("sysmo_start");
-    if (sysmo_start != "" && std::stoi(sysmo_start)) {
+    // Optional env: do not use common::GetEnv (it warns when unset).
+    const char* raw = std::getenv("sysmo_start");
+    if (raw == nullptr || raw[0] == '\0') {
+        return;
+    }
+    int flag = 0;
+    try {
+        flag = std::stoi(std::string(raw));
+    } catch (...) {
+        return;
+    }
+    if (flag) {
         start_ = true;
         sysmo_ = std::thread(&SysMo::Checker, this);
     }

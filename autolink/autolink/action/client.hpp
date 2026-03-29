@@ -298,6 +298,12 @@ Client<ActionT>::AsyncSendGoal(const Goal& goal,
 
             ADEBUG << "AsyncSendGoal: created goal handle for goal ID: "
                    << ToString(goal_id);
+
+            // Register get_result polling (sets is_result_aware_) before any
+            // waiter receives the handle; otherwise handle->AsyncGetResult()
+            // can race and throw UnawareGoalHandleError.
+            this->AsyncGetResult(goal_handle, options.result_callback);
+
             promise->set_value(goal_handle);
 
             if (options.goal_response_callback) {
@@ -305,13 +311,6 @@ Client<ActionT>::AsyncSendGoal(const Goal& goal,
                           "goal ID: "
                        << ToString(goal_id);
                 options.goal_response_callback(goal_handle);
-            }
-
-            if (options.result_callback) {
-                // Make result aware
-                ADEBUG << "AsyncSendGoal: calling AsyncGetResult for goal ID: "
-                       << ToString(goal_id);
-                this->AsyncGetResult(goal_handle, options.result_callback);
             }
         } catch (const std::exception& e) {
             AERROR << "Error in AsyncSendGoal response for goal ID: "
@@ -340,64 +339,61 @@ Client<ActionT>::AsyncGetResult(
         goal_handle->SetResultCallback(result_callback);
     }
 
-    // Make result aware
-    if (!goal_handle->SetResultAwareness(true)) {
-        // Already aware, return existing future
+    // SetResultAwareness returns the *previous* value. If already true,
+    // another GetResult poller is running — only return the shared future.
+    if (goal_handle->SetResultAwareness(true)) {
         return goal_handle->AsyncGetResult();
     }
 
-    // Request result
-    auto request = std::make_shared<internal::GetResultRequest>();
-    request->goal_id = goal_handle->GetGoalId();
-
-    auto response_future = get_result_client_->AsyncSendRequest(request);
-    std::thread([this, goal_handle, response_future]() {
+    std::thread([this, goal_handle]() {
         try {
-            auto response = response_future.get();
-            if (!response) {
-                AWARN << "AsyncGetResult: received null response for goal ID: "
-                      << ToString(goal_handle->GetGoalId());
-                return;
-            }
+            while (goal_handle->IsResultAware()) {
+                auto request = std::make_shared<internal::GetResultRequest>();
+                request->goal_id = goal_handle->GetGoalId();
 
-            GoalStatus response_status =
-                static_cast<GoalStatus>(response->status);
-            ADEBUG << "AsyncGetResult: received response for goal ID: "
-                   << ToString(goal_handle->GetGoalId())
-                   << " with status: " << static_cast<int>(response_status);
-
-            // If goal is not in terminal state yet, we need to poll again
-            // For now, we'll set the result even if not terminal (status will
-            // be current state) In a more complete implementation, we could
-            // poll until terminal state
-            if (response_status == GoalStatus::SUCCEEDED ||
-                response_status == GoalStatus::CANCELED ||
-                response_status == GoalStatus::ABORTED) {
-                // Goal is in terminal state, set result
-                WrappedResult wrapped_result;
-                wrapped_result.goal_id = goal_handle->GetGoalId();
-                wrapped_result.code = static_cast<ResultCode>(response_status);
-                wrapped_result.result =
-                    std::make_shared<Result>(response->result);
-
-                ADEBUG << "AsyncGetResult: setting result for goal ID: "
-                       << ToString(goal_handle->GetGoalId()) << " with code: "
-                       << static_cast<int>(wrapped_result.code);
-
-                goal_handle->SetResult(wrapped_result);
-
-                std::lock_guard<std::recursive_mutex> lock(goal_handles_mutex_);
-                goal_handles_.erase(goal_handle->GetGoalId());
-            } else {
-                // Goal not in terminal state yet, poll again after a delay
-                ADEBUG << "AsyncGetResult: goal not in terminal state yet, "
-                          "will poll again";
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                // Retry by calling AsyncGetResult again (but only if still
-                // aware)
-                if (goal_handle->IsResultAware()) {
-                    this->AsyncGetResult(goal_handle, nullptr);
+                auto response_future =
+                    get_result_client_->AsyncSendRequest(request);
+                auto response = response_future.get();
+                if (!response) {
+                    AWARN << "AsyncGetResult: received null response for goal "
+                             "ID: "
+                          << ToString(goal_handle->GetGoalId());
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    continue;
                 }
+
+                GoalStatus response_status =
+                    static_cast<GoalStatus>(response->status);
+                ADEBUG << "AsyncGetResult: received response for goal ID: "
+                       << ToString(goal_handle->GetGoalId())
+                       << " with status: " << static_cast<int>(response_status);
+
+                if (response_status == GoalStatus::SUCCEEDED ||
+                    response_status == GoalStatus::CANCELED ||
+                    response_status == GoalStatus::ABORTED) {
+                    WrappedResult wrapped_result;
+                    wrapped_result.goal_id = goal_handle->GetGoalId();
+                    wrapped_result.code =
+                        static_cast<ResultCode>(response_status);
+                    wrapped_result.result =
+                        std::make_shared<Result>(response->result);
+
+                    ADEBUG << "AsyncGetResult: setting result for goal ID: "
+                           << ToString(goal_handle->GetGoalId())
+                           << " with code: "
+                           << static_cast<int>(wrapped_result.code);
+
+                    goal_handle->SetResult(wrapped_result);
+
+                    std::lock_guard<std::recursive_mutex> lock(
+                        goal_handles_mutex_);
+                    goal_handles_.erase(goal_handle->GetGoalId());
+                    break;
+                }
+
+                ADEBUG << "AsyncGetResult: goal not in terminal state yet, "
+                          "polling again";
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         } catch (const std::exception& e) {
             AERROR << "Error in AsyncGetResult response: " << e.what();
