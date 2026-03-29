@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+// Action client/server API. GoalStatus / terminal ResultCode numeric values and
+// state names follow ROS 2 actions (action_msgs/GoalStatus); see types.hpp and
+// https://design.ros2.org/articles/actions.html
+
 #pragma once
 
 #include "autolink/action/client.hpp"

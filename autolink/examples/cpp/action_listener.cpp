@@ -1,8 +1,8 @@
 /******************************************************************************
  * Copyright 2025 The Openbot Authors (duyongquan). All Rights Reserved.
  *
- * Action server example: receives SimpleMessageAction goals, publishes
- * feedback, then returns success. Pair with action_talker.cpp (client).
+ * Action server example: accept goals, stream feedback, succeed. Pair with
+ * action_talker.cpp (client).
  *****************************************************************************/
 
 #include <chrono>
@@ -13,10 +13,10 @@
 #include "autolink/autolink.hpp"
 #include "examples.pb.h"
 
+namespace {
+
 namespace ae = autolink::examples;
 
-/// Maps protobuf nested messages to the Goal / Feedback / Result types the
-/// action stack expects.
 struct SimpleMessageActionTraits {
     using Goal = ae::SimpleMessageAction_Goal;
     using Feedback = ae::SimpleMessageAction_Feedback;
@@ -25,52 +25,69 @@ struct SimpleMessageActionTraits {
 
 using ActionServer =
     autolink::action::SimpleActionServer<SimpleMessageActionTraits>;
+using GoalPtr = std::shared_ptr<const SimpleMessageActionTraits::Goal>;
+using FeedbackPtr = std::shared_ptr<SimpleMessageActionTraits::Feedback>;
+using ResultPtr = std::shared_ptr<SimpleMessageActionTraits::Result>;
 
-static constexpr char kActionName[] = "examples/simple_message_action";
+constexpr char kActionName[] = "examples/simple_message_action";
+constexpr int kFeedbackSteps = 30;
+constexpr auto kFeedbackPeriod = std::chrono::milliseconds(1000);
+constexpr char kNodeName[] = "simple_action_server";
+
+void RunAcceptedGoal(const std::shared_ptr<ActionServer>& server) {
+    if (!server) {
+        return;
+    }
+
+    GoalPtr goal = server->GetCurrentGoal();
+    if (!goal) {
+        AERROR << "No current goal in execute callback";
+        return;
+    }
+
+    AINFO << "Executing goal, text=\"" << goal->text() << "\"";
+
+    for (int i = 0; i < kFeedbackSteps; ++i) {
+        if (server->IsCancelRequested()) {
+            ResultPtr aborted =
+                std::make_shared<SimpleMessageActionTraits::Result>();
+            aborted->set_success(false);
+            server->TerminateCurrent(aborted);
+            AINFO << "Goal terminated (cancel)";
+            return;
+        }
+
+        FeedbackPtr fb =
+            std::make_shared<SimpleMessageActionTraits::Feedback>();
+        fb->set_index(i);
+        server->PublishFeedback(fb);
+        AINFO << "Server sent feedback index=" << i;
+        std::this_thread::sleep_for(kFeedbackPeriod);
+    }
+
+    ResultPtr ok = std::make_shared<SimpleMessageActionTraits::Result>();
+    ok->set_success(true);
+    server->SucceededCurrent(ok);
+    AINFO << "Goal succeeded (terminal: SUCCEEDED)";
+}
+
+}  // namespace
 
 int main(int argc, char* argv[]) {
     if (!autolink::Init(argv[0])) {
         return 1;
     }
 
-    auto node = autolink::CreateNode("simple_action_server");
+    auto node = autolink::CreateNode(kNodeName);
+
     std::shared_ptr<ActionServer> server;
+    server = std::make_shared<ActionServer>(
+        node, kActionName, [&server]() { RunAcceptedGoal(server); });
 
-    server = std::make_shared<ActionServer>(node, kActionName, [&server]() {
-        if (!server) {
-            return;
-        }
-        auto goal = server->GetCurrentGoal();
-        if (!goal) {
-            AERROR << "Execute callback: no current goal";
-            return;
-        }
-        AINFO << "Server executing goal, text=" << goal->text();
+    AINFO << "Action server ready: \"" << kActionName
+          << "\" (ROS 2–style "
+             "send_goal / feedback / get_result under this prefix)";
 
-        for (int i = 0; i < 30; ++i) {
-            if (server->IsCancelRequested()) {
-                auto aborted =
-                    std::make_shared<SimpleMessageActionTraits::Result>();
-                aborted->set_success(false);
-                server->TerminateCurrent(aborted);
-                return;
-            }
-            auto fb = std::make_shared<SimpleMessageActionTraits::Feedback>();
-            fb->set_index(i);
-            server->PublishFeedback(fb);
-            AINFO << "Published feedback index=" << i;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        }
-
-        auto res_msg = std::make_shared<SimpleMessageActionTraits::Result>();
-        res_msg->set_success(true);
-        server->SucceededCurrent(res_msg);
-        AINFO << "Goal succeeded";
-    });
-
-    server->Activate();
-    AINFO << "SimpleMessageAction server ready on \"" << kActionName << "\"";
     autolink::WaitForShutdown();
-    server->Deactivate();
     return 0;
 }

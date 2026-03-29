@@ -87,11 +87,23 @@ public:
     }
 
     /**
-     * @brief Get the goal status code.
-     *
-     * @return int8_t The status code.
+     * @brief Status as int8_t; same encoding as ROS 2 action_msgs/GoalStatus
+     * (see https://design.ros2.org/articles/actions.html): 0=unknown,
+     * 1=accepted, 2=executing, 3=canceling, 4=succeeded, 5=canceled, 6=aborted.
      */
-    int8_t GetStatus();
+    int8_t GetStatus() const;
+
+    /** Typed goal status (same values as GetStatus()). */
+    GoalStatus GetGoalStatus() const;
+
+    /** Terminal: status == succeeded (4). */
+    bool IsSucceeded() const;
+
+    /** Terminal: status == aborted (6). */
+    bool IsAborted() const;
+
+    /** Terminal: status == canceled (5). */
+    bool IsCanceled() const;
 
     /**
      * @brief Check if an action client has subscribed to feedback for the goal.
@@ -183,6 +195,7 @@ ClientGoalHandle<ActionT>::~ClientGoalHandle() {
             error_result.goal_id = goal_info_.goal_id;
             error_result.code = ResultCode::ABORTED;
             error_result.result = std::make_shared<Result>();
+            status_ = static_cast<int8_t>(GoalStatus::ABORTED);
             result_promise_.set_value(error_result);
         } catch (...) {
             // Ignore exceptions in destructor
@@ -191,9 +204,33 @@ ClientGoalHandle<ActionT>::~ClientGoalHandle() {
 }
 
 template <typename ActionT>
-int8_t ClientGoalHandle<ActionT>::GetStatus() {
+int8_t ClientGoalHandle<ActionT>::GetStatus() const {
     std::lock_guard<std::recursive_mutex> lock(handle_mutex_);
     return status_;
+}
+
+template <typename ActionT>
+GoalStatus ClientGoalHandle<ActionT>::GetGoalStatus() const {
+    std::lock_guard<std::recursive_mutex> lock(handle_mutex_);
+    return static_cast<GoalStatus>(status_);
+}
+
+template <typename ActionT>
+bool ClientGoalHandle<ActionT>::IsSucceeded() const {
+    std::lock_guard<std::recursive_mutex> lock(handle_mutex_);
+    return status_ == static_cast<int8_t>(GoalStatus::SUCCEEDED);
+}
+
+template <typename ActionT>
+bool ClientGoalHandle<ActionT>::IsAborted() const {
+    std::lock_guard<std::recursive_mutex> lock(handle_mutex_);
+    return status_ == static_cast<int8_t>(GoalStatus::ABORTED);
+}
+
+template <typename ActionT>
+bool ClientGoalHandle<ActionT>::IsCanceled() const {
+    std::lock_guard<std::recursive_mutex> lock(handle_mutex_);
+    return status_ == static_cast<int8_t>(GoalStatus::CANCELED);
 }
 
 template <typename ActionT>
@@ -267,6 +304,9 @@ void ClientGoalHandle<ActionT>::SetStatus(int8_t status) {
 template <typename ActionT>
 void ClientGoalHandle<ActionT>::SetResult(const WrappedResult& wrapped_result) {
     std::lock_guard<std::recursive_mutex> lock(handle_mutex_);
+    // Align with ROS 2 terminal status codes (ResultCode matches terminal
+    // GoalStatus).
+    status_ = static_cast<int8_t>(wrapped_result.code);
     result_promise_.set_value(wrapped_result);
     if (result_callback_) {
         result_callback_(wrapped_result);

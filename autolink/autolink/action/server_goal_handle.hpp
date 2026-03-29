@@ -107,6 +107,15 @@ public:
      */
     GoalStatus GetStatus() const;
 
+    /** Same encoding as ROS 2 action_msgs/GoalStatus (0..6). */
+    int8_t GetStatusCode() const {
+        return static_cast<int8_t>(GetStatus());
+    }
+
+    bool IsSucceeded() const;
+    bool IsAborted() const;
+    bool IsCanceled() const;
+
     /**
      * @brief Indicate that a goal could not be reached and has been aborted.
      *
@@ -259,6 +268,24 @@ template <typename ActionT>
 GoalStatus ServerGoalHandle<ActionT>::GetStatus() const {
     std::lock_guard<std::mutex> lock(status_mutex_);
     return status_;
+}
+
+template <typename ActionT>
+bool ServerGoalHandle<ActionT>::IsSucceeded() const {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    return status_ == GoalStatus::SUCCEEDED;
+}
+
+template <typename ActionT>
+bool ServerGoalHandle<ActionT>::IsAborted() const {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    return status_ == GoalStatus::ABORTED;
+}
+
+template <typename ActionT>
+bool ServerGoalHandle<ActionT>::IsCanceled() const {
+    std::lock_guard<std::mutex> lock(status_mutex_);
+    return status_ == GoalStatus::CANCELED;
 }
 
 template <typename ActionT>
