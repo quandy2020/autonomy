@@ -39,36 +39,51 @@ void RunAcceptedGoal(const std::shared_ptr<ActionServer>& server) {
         return;
     }
 
-    GoalPtr goal = server->GetCurrentGoal();
-    if (!goal) {
-        AERROR << "No current goal in execute callback";
-        return;
-    }
-
-    AINFO << "Executing goal, text=\"" << goal->text() << "\"";
-
-    for (int i = 0; i < kFeedbackSteps; ++i) {
-        if (server->IsCancelRequested()) {
-            ResultPtr aborted =
-                std::make_shared<SimpleMessageActionTraits::Result>();
-            aborted->set_success(false);
-            server->TerminateCurrent(aborted);
-            AINFO << "Goal terminated (cancel)";
+    while (autolink::OK()) {
+        GoalPtr goal = server->GetCurrentGoal();
+        if (!goal) {
+            AERROR << "No current goal in execute callback";
             return;
         }
 
-        FeedbackPtr fb =
-            std::make_shared<SimpleMessageActionTraits::Feedback>();
-        fb->set_index(i);
-        server->PublishFeedback(fb);
-        AINFO << "Server sent feedback index=" << i;
-        std::this_thread::sleep_for(kFeedbackPeriod);
-    }
+        AINFO << "Executing goal, text=\"" << goal->text() << "\"";
 
-    ResultPtr ok = std::make_shared<SimpleMessageActionTraits::Result>();
-    ok->set_success(true);
-    server->SucceededCurrent(ok);
-    AINFO << "Goal succeeded (terminal: SUCCEEDED)";
+        bool preempted = false;
+        for (int i = 0; i < kFeedbackSteps; ++i) {
+            if (server->IsCancelRequested()) {
+                ResultPtr aborted =
+                    std::make_shared<SimpleMessageActionTraits::Result>();
+                aborted->set_success(false);
+                server->TerminateCurrent(aborted);
+                AINFO << "Goal terminated (cancel)";
+                return;
+            }
+
+            if (server->IsPreemptRequested()) {
+                AINFO << "Goal preempted; handing off to pending goal";
+                server->AcceptPendingGoal();
+                preempted = true;
+                break;
+            }
+
+            FeedbackPtr fb =
+                std::make_shared<SimpleMessageActionTraits::Feedback>();
+            fb->set_index(i);
+            server->PublishFeedback(fb);
+            AINFO << "Server sent feedback index=" << i;
+            std::this_thread::sleep_for(kFeedbackPeriod);
+        }
+
+        if (preempted) {
+            continue;
+        }
+
+        ResultPtr ok = std::make_shared<SimpleMessageActionTraits::Result>();
+        ok->set_success(true);
+        server->SucceededCurrent(ok);
+        AINFO << "Goal succeeded (terminal: SUCCEEDED)";
+        return;
+    }
 }
 
 }  // namespace

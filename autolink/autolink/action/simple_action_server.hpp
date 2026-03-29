@@ -209,7 +209,6 @@ public:
                 Terminate(pending_handle_);
             }
             pending_handle_ = handle;
-            preempt_requested_ = true;
         } else {
             if (IsActive(pending_handle_)) {
                 // Shouldn't reach a state with a pending goal but no current
@@ -218,7 +217,6 @@ public:
                     "Forgot to handle a preemption. Terminating the pending "
                     "goal.");
                 Terminate(pending_handle_);
-                preempt_requested_ = false;
             }
 
             current_handle_ = handle;
@@ -241,7 +239,23 @@ public:
      */
     void Work() {
         while (autolink::OK() && !stop_execution_ &&
-               IsActive(current_handle_)) {
+               (IsActive(current_handle_) || IsActive(pending_handle_))) {
+            {
+                std::lock_guard<std::recursive_mutex> lock(update_mutex_);
+                if (IsActive(pending_handle_) &&
+                    (!IsActive(current_handle_) ||
+                     current_handle_ != pending_handle_)) {
+                    DebugMsg(
+                        "Preemption: switching to pending goal before execute");
+                    AcceptPendingGoal();
+                }
+            }
+
+            if (!IsActive(current_handle_)) {
+                DebugMsg("Done processing available goals.");
+                break;
+            }
+
             DebugMsg("Executing the goal...");
             try {
                 execute_callback_();
@@ -268,17 +282,17 @@ public:
                 break;
             }
 
-            if (IsActive(current_handle_)) {
+            if (IsActive(pending_handle_)) {
+                // Preempt in flight: old goal is finished for this round;
+                // switch at loop head so execute_callback_ is never run again
+                // for it.
+                DebugMsg("Preemption pending; will switch before next execute");
+            } else if (IsActive(current_handle_)) {
                 WarnMsg("Current goal was not completed successfully.");
                 Terminate(current_handle_);
                 if (completion_callback_) {
                     completion_callback_();
                 }
-            }
-
-            if (IsActive(pending_handle_)) {
-                DebugMsg("Executing a pending handle on the existing thread.");
-                AcceptPendingGoal();
             } else {
                 DebugMsg("Done processing available goals.");
                 break;
@@ -358,13 +372,15 @@ public:
     }
 
     /**
-     * @brief Whether the action server has been asked to be preempted with
-     * a new goal
-     * @return bool If there's a preemption request or not
+     * @brief Whether a newer accepted goal is waiting to replace the current
+     * one (same condition @ref Work uses before each execute).
+     * @return bool If preemption is pending or not
      */
     bool IsPreemptRequested() const {
         std::lock_guard<std::recursive_mutex> lock(update_mutex_);
-        return preempt_requested_;
+        return IsActive(pending_handle_) &&
+               (!IsActive(current_handle_) ||
+                current_handle_ != pending_handle_);
     }
 
     /**
@@ -386,7 +402,6 @@ public:
 
         current_handle_ = pending_handle_;
         pending_handle_.reset();
-        preempt_requested_ = false;
 
         DebugMsg("Preempted goal");
         if (!current_handle_) {
@@ -412,7 +427,6 @@ public:
             return;
         }
         Terminate(pending_handle_);
-        preempt_requested_ = false;
         DebugMsg("Pending goal terminated");
     }
 
@@ -478,7 +492,6 @@ public:
         std::lock_guard<std::recursive_mutex> lock(update_mutex_);
         Terminate(current_handle_, result);
         Terminate(pending_handle_, result);
-        preempt_requested_ = false;
     }
 
     /**
@@ -532,7 +545,6 @@ protected:
 
     mutable std::recursive_mutex update_mutex_;
     bool server_active_{false};
-    bool preempt_requested_{false};
     std::chrono::milliseconds server_timeout_;
 
     std::shared_ptr<autolink::action::ServerGoalHandle<ActionT>>
