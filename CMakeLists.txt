@@ -126,12 +126,12 @@ if (${BUILD_TOOLS})
   add_subdirectory("autonomy/tools")
 endif()
 
-set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
+set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
   CACHE PATH ".lua configuration files directory")
-set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/configuration_files
+set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
   CACHE PATH ".lua configuration files directory for cartographer")
 
-install(DIRECTORY configuration_files DESTINATION share/autonomy)
+install(DIRECTORY config DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
 # Include generate_plugins.cmake early to collect plugin files and create plugin libraries
