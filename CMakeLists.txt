@@ -51,7 +51,6 @@ option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TEST "Build autonomy unit test" true)
 option(BUILD_EXAMPLES "Build autonomy examples" true)
-option(BUILD_FOXGLOVE "Build foxglove visualization support" true)
 option(BUILD_TOOLS "Build autonomy tools" true)
 option(BUILD_FORMAT_CODE "Build format code before building" true)
 
@@ -144,12 +143,6 @@ include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
 add_subdirectory(automsgs)
 add_subdirectory(autolink)
 
-# Include Foxglove SDK vendor file (optional, controlled by BUILD_FOXGLOVE option)
-if(${BUILD_FOXGLOVE})
-  include("${PROJECT_SOURCE_DIR}/3rdparty/foxglove/autonomy_foxglove_vendor.cmake")
-  add_subdirectory(autoviz)
-endif()
-
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
 file(GLOB_RECURSE AVIZ_FILES "autonomy/tools/aviz/*.cpp" "autonomy/tools/aviz/*.hpp" "autonomy/tools/aviz/*.h" "autonomy/tools/aviz/*.ui" "autonomy/tools/aviz/*.qrc")
@@ -215,20 +208,6 @@ if (NOT ${BUILD_PROMETHEUS})
   list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_PROMETHEUS_FILES})
   list(REMOVE_ITEM ALL_TESTS ${ALL_PROMETHEUS_FILES})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_PROMETHEUS_FILES})
-endif()
-
-# Foxglove visualization support (optional)
-file(GLOB_RECURSE ALL_FOXGLOVE_FILES 
-  "autonomy/visualization/*.hpp" 
-  "autonomy/visualization/*.cpp" 
-  "autonomy/visualization/*.h")
-if (NOT BUILD_FOXGLOVE)
-  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_FOXGLOVE_FILES})
-  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_FOXGLOVE_FILES})
-  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${ALL_FOXGLOVE_FILES})
-  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_FOXGLOVE_FILES})
-  list(REMOVE_ITEM ALL_TESTS ${ALL_FOXGLOVE_FILES})
-  list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_FOXGLOVE_FILES})
 endif()
 
 if (NOT ${BUILD_TOOLS})
@@ -366,10 +345,6 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
-# 3rdparty
-add_subdirectory(3rdparty/urdfdom_headers)
-add_subdirectory(3rdparty/urdfdom)
-
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 
@@ -463,18 +438,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OSQP_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
-# foxglove (optional)
-if(${BUILD_FOXGLOVE})
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${foxglove_SOURCE_DIR}/lib/libfoxglove.so)
-  target_sources(${PROJECT_NAME} PRIVATE ${FOXGLOVE_SOURCES})
-  target_compile_definitions(${PROJECT_NAME} PRIVATE AUTONOMY_HAS_FOXGLOVE)
-  # Install foxglove library so executables can find it at runtime
-  install(FILES ${foxglove_SOURCE_DIR}/lib/libfoxglove.so
-    DESTINATION lib
-    OPTIONAL
-  )
-endif()
-
 # BehaviorTree.CPP
 target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
 
@@ -524,9 +487,6 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(CAIRO REQUIRED cairo)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${CAIRO_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
-
-# urdfdom_headers and urdfdom (for transform/urdf)
-target_link_libraries(${PROJECT_NAME} PUBLIC urdfdom_headers urdf_parser)
 
 # autolink
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
@@ -578,20 +538,6 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/autonomy/tasks/navigator/navigator_client_test.
   )
 endif()
 
-# autonomy.visualization.launcher (requires foxglove)
-if(${BUILD_FOXGLOVE})
-  # google_binary(autonomy.visualization.launcher
-  #   SRCS
-  #     autonomy/visualization/main.cpp
-  # )
-endif()
-
-# # autonomy.visualization.data_publisher (publishes sensor data via autolink)
-# google_binary(autonomy.visualization.data_publisher
-#     SRCS
-#       autonomy/visualization/data_main.cpp
-# )
-
 ## Test unit
 if (${BUILD_TEST})
   set(TEST_LIB autonomy_test_library)
@@ -600,16 +546,6 @@ if (${BUILD_TEST})
   target_link_libraries(${TEST_LIB} PUBLIC ${GMOCK_LIBRARY})
   target_link_libraries(${TEST_LIB} PUBLIC ${PROJECT_NAME})
   
-  # Foxglove SDK for tests (if enabled)
-  if(${BUILD_FOXGLOVE} AND FOXGLOVE_SDK_FOUND)
-    if(FOXGLOVE_SDK_INCLUDE_DIRS)
-      target_include_directories(${TEST_LIB} SYSTEM PRIVATE ${FOXGLOVE_SDK_INCLUDE_DIRS})
-    endif()
-    if(TARGET foxglove_sdk)
-      target_link_libraries(${TEST_LIB} PRIVATE foxglove_sdk)
-    endif()
-  endif()
-
   foreach(ABS_FIL ${ALL_TESTS})
     file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${ABS_FIL})
     get_filename_component(DIR ${REL_FIL} DIRECTORY)
@@ -626,16 +562,6 @@ if (${BUILD_TEST})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-pull)
     endif()
     target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${TEST_LIB})
-    
-    # Foxglove SDK for individual test targets (if enabled)
-    if(BUILD_FOXGLOVE AND FOXGLOVE_SDK_FOUND)
-      if(FOXGLOVE_SDK_INCLUDE_DIRS)
-        target_include_directories("${TEST_TARGET_NAME}" SYSTEM PRIVATE ${FOXGLOVE_SDK_INCLUDE_DIRS})
-      endif()
-      if(TARGET foxglove_sdk)
-        target_link_libraries("${TEST_TARGET_NAME}" PRIVATE foxglove_sdk)
-      endif()
-    endif()
   endforeach()
 endif()
 

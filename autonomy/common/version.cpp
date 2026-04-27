@@ -95,24 +95,21 @@ const std::string PROJECT_NAME = "autonomy";
 const std::string PROJECT_VERSION = "";
 
 // Git提交信息
-const std::string GIT_COMMIT_AUTHOR = "duyongquan";
-const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
-const std::string GIT_COMMIT_DATE =
-    ""
-    "2026-03-29 23:22:22"
-    "";
-const std::string GIT_VERSION = "3e66d40-dirty";
-const std::string GIT_BRANCH = "main";
+const std::string GIT_COMMIT_AUTHOR = "";
+const std::string GIT_COMMIT_EMAIL = "";
+const std::string GIT_COMMIT_DATE = "";
+const std::string GIT_VERSION = "";
+const std::string GIT_BRANCH = "";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-03-29 15:23:57";
-const std::string BUILD_HOST = "bfbb3c8047d0";
+const std::string BUILD_TIMESTAMP = "2026-04-27 12:54:05";
+const std::string BUILD_HOST = "q-Precision-3680";
 const std::string BUILD_USER = "root";
 
 // 系统信息
 const std::string SYSTEM_NAME = "Linux";
 const std::string SYSTEM_PROCESSOR = "x86_64";
-const std::string SYSTEM_VERSION = "6.11.11-linuxkit";
+const std::string SYSTEM_VERSION = "6.8.0-60-generic";
 const std::string COMPILER_ID = "GNU";
 const std::string COMPILER_VERSION = "11.4.0";
 
