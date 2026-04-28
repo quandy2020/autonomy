@@ -20,12 +20,12 @@ set -euo pipefail
 
 # Install eProsima Fast DDS from source.
 # Optional environment variables:
-#   FASTDDS_VERSION   (default: v2.6.11)
+#   FASTDDS_VERSION   (default: v2.6.8)
 #   FASTDDS_REPO      (default: https://github.com/eProsima/Fast-DDS.git)
 #   INSTALL_PREFIX    (default: /usr/local)
 #   FORCE_INSTALL     (default: 0, set to 1 to reinstall even if already found)
 
-FASTDDS_VERSION="${FASTDDS_VERSION:-v2.6.11}"
+FASTDDS_VERSION="${FASTDDS_VERSION:-v2.6.8}"
 FASTDDS_REPO="${FASTDDS_REPO:-https://github.com/eProsima/Fast-DDS.git}"
 INSTALL_PREFIX="${INSTALL_PREFIX:-/usr/local}"
 FORCE_INSTALL="${FORCE_INSTALL:-0}"

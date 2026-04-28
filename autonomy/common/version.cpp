@@ -102,7 +102,7 @@ const std::string GIT_VERSION = "";
 const std::string GIT_BRANCH = "";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-04-27 13:09:20";
+const std::string BUILD_TIMESTAMP = "2026-04-27 13:22:01";
 const std::string BUILD_HOST = "q-Precision-3680";
 const std::string BUILD_USER = "root";
 
