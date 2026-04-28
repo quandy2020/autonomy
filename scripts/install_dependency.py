@@ -110,7 +110,6 @@ SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
         "/usr/local/lib/libbehaviortree_cpp.so",
         "/usr/lib/x86_64-linux-gnu/libbehaviortree_cpp.so",
     ],
-    "install_assimp.sh": ["/usr/local/lib/libassimp.so", "/usr/lib/x86_64-linux-gnu/libassimp.so"],
     "install_adolc.sh": ["/usr/local/lib/libadolc.so", "/usr/lib/x86_64-linux-gnu/libadolc.so"],
     "install_ipopt.sh": ["/usr/local/lib/libipopt.so", "/usr/lib/x86_64-linux-gnu/libipopt.so"],
 }
