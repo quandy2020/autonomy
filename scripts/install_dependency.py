@@ -92,7 +92,6 @@ THIRDPARTY_SCRIPTS: List[str] = [
     "install_osqp.sh",
     "install_behaviortree_cpp.sh",
     "install_python_modules.sh",
-    "install_assimp.sh",
     "install_adolc.sh",
     "install_ipopt.sh",
 ]
