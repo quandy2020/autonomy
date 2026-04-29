@@ -113,6 +113,7 @@ RUN bash /tmp/install/install_osqp.sh
 RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_python_modules.sh
 RUN bash /tmp/install/install_assimp.sh
+RUN bash /tmp/install/install_ogre.sh
 RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
 

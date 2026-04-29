@@ -173,10 +173,8 @@ RUN bash /tmp/install/install_ccache.sh
 RUN bash /tmp/install/install_ros2.sh
 RUN bash /tmp/install/install_assimp.sh
 RUN bash /tmp/install/install_ogre.sh
-RUN bash /tmp/install/install_mcap.sh
 RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
-RUN bash /tmp/install/install_gperftools.sh
 RUN bash /tmp/install/install_python_modules.sh
 
 # autonomy workspace

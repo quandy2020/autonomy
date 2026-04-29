@@ -111,10 +111,8 @@ RUN bash /tmp/install/install_nlohmann.sh
 RUN bash /tmp/install/install_osqp.sh
 RUN bash /tmp/install/install_behaviortree_cpp.sh
 RUN bash /tmp/install/install_python_modules.sh
-RUN bash /tmp/install/install_mcap.sh
 RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
-RUN bash /tmp/install/install_gperftools.sh
 
 # autonomy workspace
 ENV AUTONOMY_WS /workspace/autonomy
