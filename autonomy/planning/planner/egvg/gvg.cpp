@@ -292,7 +292,7 @@ void GVG::createGraph(const DynamicVoronoi& voronoi) {
                 if (dis_sq >= cle_thr_sq_high_ - 1e-3 &&
                     dis_sq <= cle_thr_sq_high2_ - 1e-3) {
                     truncated_points_.emplace_back(x, y);  // 记录被截断的点
-                    voronoi_new[y * sizeX_ + x] = true;  // 标记为已voronoi点
+                    voronoi_new[y * sizeX_ + x] = true;    // 标记为已voronoi点
                     if (x >= 2 && x < sizeX_ - 2 && y >= 2 && y < sizeY_ - 2) {
                         voronoi_pt_queue.emplace(x, y);  //
                     }
@@ -719,7 +719,7 @@ ExpansionResult GVG::expandGrid(const IntPoint& start, Direction dir) {
 std::unordered_map<IntPoint, GraphNode::Ptr> GVG::DFSSearch(
     const IntPoint& start) {
     std::unordered_map<IntPoint, GraphNode::Ptr> local_graph;  // 局部图结构
-    std::stack<IntPoint> stack;  // 使用栈代替队列
+    std::stack<IntPoint> stack;                                // 使用栈代替队列
     stack.push(start);
 
     while (!stack.empty()) {
@@ -1179,7 +1179,7 @@ void GVG::drawVoronoiByGraphs(cv::Mat& img) const {
                     int py = path.path[j].y;
                     img.at<cv::Vec3b>(sizeY_ - py - 1, px)[0] = 0;  // 蓝色通道
                     img.at<cv::Vec3b>(sizeY_ - py - 1, px)[1] =
-                        255;  // 绿色通道
+                        255;                                        // 绿色通道
                     img.at<cv::Vec3b>(sizeY_ - py - 1, px)[2] = 0;  // 红色通道
                 }
             }

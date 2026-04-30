@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autolink/common/log.hpp"
+#include "autolink/conf/autolink_conf.hpp"
 
 namespace autolink {
 namespace common {
@@ -38,7 +39,7 @@ inline std::string GetEnv(const std::string& var_name,
 inline const std::string WorkRoot() {
     std::string work_root = GetEnv("AUTOLINK_PATH");
     if (work_root.empty()) {
-        work_root = "/autolink";
+        work_root = autolink::conf::kDefaultAutolinkPath;
     }
     return work_root;
 }

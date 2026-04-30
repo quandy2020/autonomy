@@ -105,25 +105,29 @@ using StripStream = typename Strip<Stream, T>::type;
 template <typename Incoming, typename Outgoing>
 struct RpcType
     : public std::integral_constant<::grpc::internal::RpcMethod::RpcType,
-                                    ::grpc::internal::RpcMethod::NORMAL_RPC> {};
+                                    ::grpc::internal::RpcMethod::NORMAL_RPC> {
+};
 
 template <typename Incoming, typename Outgoing>
 struct RpcType<Stream<Incoming>, Outgoing>
     : public std::integral_constant<
           ::grpc::internal::RpcMethod::RpcType,
-          ::grpc::internal::RpcMethod::CLIENT_STREAMING> {};
+          ::grpc::internal::RpcMethod::CLIENT_STREAMING> {
+};
 
 template <typename Incoming, typename Outgoing>
 struct RpcType<Incoming, Stream<Outgoing>>
     : public std::integral_constant<
           ::grpc::internal::RpcMethod::RpcType,
-          ::grpc::internal::RpcMethod::SERVER_STREAMING> {};
+          ::grpc::internal::RpcMethod::SERVER_STREAMING> {
+};
 
 template <typename Incoming, typename Outgoing>
 struct RpcType<Stream<Incoming>, Stream<Outgoing>>
     : public std::integral_constant<
           ::grpc::internal::RpcMethod::RpcType,
-          ::grpc::internal::RpcMethod::BIDI_STREAMING> {};
+          ::grpc::internal::RpcMethod::BIDI_STREAMING> {
+};
 
 }  // namespace async_grpc
 }  // namespace common

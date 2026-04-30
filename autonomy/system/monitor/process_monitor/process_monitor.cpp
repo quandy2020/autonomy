@@ -24,8 +24,7 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-void ProcessMonitor::Collect() { /* stub: 可接入 /proc/self 等 */
-}
+void ProcessMonitor::Collect() { /* stub: 可接入 /proc/self 等 */ }
 
 void ProcessMonitor::RegisterWithPrometheus(void* registry) {
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS

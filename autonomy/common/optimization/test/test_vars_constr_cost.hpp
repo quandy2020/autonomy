@@ -56,7 +56,7 @@ public:
     // Every variable set has a name, here "var_set1". this allows the
     // constraints and costs to define values and Jacobians specifically w.r.t
     // this variable set.
-    ExVariables() : ExVariables("var_set1"){};
+    ExVariables() : ExVariables("var_set1") {};
     ExVariables(const std::string& name) : VariableSet(2, name) {
         // the initial values where the NLP starts iterating from
         x0_ = 3.5;

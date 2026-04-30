@@ -115,7 +115,8 @@ auto make_wiener_noise(
 template <typename ScalarT>
 struct number_of_acceleration_components<
     common::state_vector::ConstAccelerationXY<ScalarT>>
-    : public std::integral_constant<std::size_t, 2UL> {};
+    : public std::integral_constant<std::size_t, 2UL> {
+};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -125,7 +126,8 @@ struct number_of_acceleration_components<
 template <typename ScalarT>
 struct number_of_acceleration_components<
     common::state_vector::ConstAccelerationXYZ<ScalarT>>
-    : public std::integral_constant<std::size_t, 3UL> {};
+    : public std::integral_constant<std::size_t, 3UL> {
+};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -135,7 +137,8 @@ struct number_of_acceleration_components<
 template <typename ScalarT>
 struct number_of_acceleration_components<
     common::state_vector::ConstAccelerationXYYaw<ScalarT>>
-    : public std::integral_constant<std::size_t, 3UL> {};
+    : public std::integral_constant<std::size_t, 3UL> {
+};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -145,7 +148,8 @@ struct number_of_acceleration_components<
 template <typename ScalarT>
 struct number_of_acceleration_components<
     common::state_vector::ConstAccelerationXYZYaw<ScalarT>>
-    : public std::integral_constant<std::size_t, 4UL> {};
+    : public std::integral_constant<std::size_t, 4UL> {
+};
 
 ///
 /// @brief      A specialization of the number_of_acceleration_components trait
@@ -155,7 +159,8 @@ struct number_of_acceleration_components<
 template <typename ScalarT>
 struct number_of_acceleration_components<
     common::state_vector::ConstAccelerationXYZRPY<ScalarT>>
-    : public std::integral_constant<std::size_t, 6UL> {};
+    : public std::integral_constant<std::size_t, 6UL> {
+};
 
 }  // namespace state_estimation
 }  // namespace common

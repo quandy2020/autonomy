@@ -53,7 +53,8 @@ namespace sensor_msgs {
  * \brief Enum to type mapping.
  */
 template <int>
-struct pointFieldTypeAsType {};
+struct pointFieldTypeAsType {
+};
 /** \brief Concrete templatization of Enum to type for INT8 */
 template <>
 struct pointFieldTypeAsType<PointField::INT8> {
@@ -107,7 +108,8 @@ struct pointFieldTypeAsType<PointField::FLOAT64> {
  * \brief Type to enum mapping.
  */
 template <typename T>
-struct typeAsPointFieldType {};
+struct typeAsPointFieldType {
+};
 /** \brief Concrete templatization of type to enum for int8_t */
 template <>
 struct typeAsPointFieldType<int8_t> {

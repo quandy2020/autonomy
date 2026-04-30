@@ -18,6 +18,13 @@
 set(AUTOLINK_PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/proto")
 set(AUTOLINK_PROTO_GEN_DIR "${CMAKE_BINARY_DIR}/autolink/proto")
 file(MAKE_DIRECTORY "${AUTOLINK_PROTO_GEN_DIR}")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/autolink/conf")
+
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/conf/autolink_conf.hpp.in"
+  "${CMAKE_BINARY_DIR}/autolink/conf/autolink_conf.hpp"
+  @ONLY
+)
 
 file(GLOB AUTOLINK_PROTO_FILES "${AUTOLINK_PROTO_DIR}/*.proto")
 

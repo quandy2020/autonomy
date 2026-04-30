@@ -161,7 +161,7 @@ bool Spliter::Proc() {
                 break;
             }
         }  // end for switch
-    }      // end for while
+    }  // end for while
     AINFO << "split record file done.";
     return true;
 }  // end for Proc()

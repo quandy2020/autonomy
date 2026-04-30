@@ -33,7 +33,7 @@ class LineSegment : public DecompBase<Dim>
 {
 public:
     /// Simple constructor
-    LineSegment(){};
+    LineSegment() {};
     /**
      * @brief Basic constructor
      * @param p1 One end of the line seg

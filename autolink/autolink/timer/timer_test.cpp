@@ -34,8 +34,7 @@ using autolink::TimerOption;
 
 TEST(TimerTest, one_shot) {
     int count = 0;
-    Timer timer(
-        100, [&count] { count = 100; }, true);
+    Timer timer(100, [&count] { count = 100; }, true);
     timer.Start();
     std::this_thread::sleep_for(std::chrono::milliseconds(90));
     EXPECT_EQ(0, count);
@@ -68,8 +67,7 @@ TEST(TimerTest, cycle) {
 
 TEST(TimerTest, start_stop) {
     int count = 0;
-    Timer timer(
-        2, [count] { AINFO << count; }, false);
+    Timer timer(2, [count] { AINFO << count; }, false);
     for (int i = 0; i < 100; i++) {
         timer.Start();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));

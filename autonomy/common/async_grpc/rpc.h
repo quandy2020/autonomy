@@ -53,7 +53,7 @@ public:
 
     struct EventBase {
         explicit EventBase(Event event) : event(event) {}
-        virtual ~EventBase(){};
+        virtual ~EventBase() {};
         virtual void Handle() = 0;
 
         const Event event;

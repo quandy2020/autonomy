@@ -25,7 +25,7 @@ namespace optimization {
 class ExComponent : public Component
 {
 public:
-    ExComponent(int n_var, const std::string& name) : Component(n_var, name){};
+    ExComponent(int n_var, const std::string& name) : Component(n_var, name) {};
 
     virtual VectorXd GetValues() const {
         throw std::runtime_error("not implemented");
@@ -36,7 +36,7 @@ public:
     virtual Jacobian GetJacobian() const {
         throw std::runtime_error("not implemented");
     };
-    virtual void SetVariables(const VectorXd& x){};
+    virtual void SetVariables(const VectorXd& x) {};
 };
 
 TEST(Component, GetRows) {

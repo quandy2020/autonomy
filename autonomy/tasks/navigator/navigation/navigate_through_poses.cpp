@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,28 +12,18 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Design aligned with nav2_bt_navigator::NavigateToPoseNavigator.
  */
 
-#include "autonomy/system/monitor/net_monitor/net_monitor.hpp"
+ #include "autonomy/tasks/navigator/navigation/navigate_through_poses.hpp"
 
-#if defined(USE_PROMETHEUS) && USE_PROMETHEUS
-#include <prometheus/registry.h>
-#endif
+ namespace autonomy {
+ namespace tasks {
+ namespace navigator {
+ namespace navigation {
 
-namespace autonomy {
-namespace system {
-namespace monitor {
-
-void NetMonitor::Collect() { /* stub: 可接入 /proc/net/dev */ }
-
-void NetMonitor::RegisterWithPrometheus(void* registry) {
-#if defined(USE_PROMETHEUS) && USE_PROMETHEUS
-    (void)registry;
-#else
-    (void)registry;
-#endif
-}
-
-}  // namespace monitor
-}  // namespace system
-}  // namespace autonomy
+ }  // namespace navigation
+ }  // namespace navigator
+ }  // namespace tasks
+ }  // namespace autonomy

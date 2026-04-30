@@ -1,0 +1,9 @@
+#pragma once
+
+namespace autolink {
+namespace conf {
+
+inline constexpr const char* kDefaultAutolinkPath = "@CMAKE_CURRENT_SOURCE_DIR@";
+
+}  // namespace conf
+}  // namespace autolink
