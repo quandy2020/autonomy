@@ -122,7 +122,7 @@ private:
      * for quicker access later. This function can be overwritten for that.
      */
     virtual void InitVariableDependedQuantities(
-        const VariablesPtr& /*x_init*/){};
+        const VariablesPtr& /*x_init*/) {};
 
     // doesn't exist for constraints, generated run-time error when used
     void SetVariables(const VectorXd& /*x*/) final {

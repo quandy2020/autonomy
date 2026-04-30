@@ -20,10 +20,10 @@
 
 #pragma once
 
+#include <array>
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <array>
 
 #include "osqp/osqp.h"
 

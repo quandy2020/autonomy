@@ -44,7 +44,8 @@ enum { value = std::tuple_size<HeterTuple <Types...> >::value };
 */
 
 template <typename... Types>
-struct HeterTuple {};
+struct HeterTuple {
+};
 
 template <typename T>
 struct HeterTupleSize;
@@ -119,7 +120,8 @@ template <typename PrototypeList_, typename Callable,
               FindPrototypeDefaultArgTransformer>
 struct FindPrototypeByCallable
     : public FindPrototypeByCallableFromIndex<0, PrototypeList_, Callable,
-                                              ArgTransformer> {};
+                                              ArgTransformer> {
+};
 
 template <int N, typename PrototypeList_, typename... InArgs>
 struct FindPrototypeByArgsFromIndex;
@@ -161,7 +163,8 @@ struct FindPrototypeByArgsFromIndex<N, HeterTuple<>, InArgs...> {
 
 template <typename PrototypeList_, typename... InArgs>
 struct FindPrototypeByArgs
-    : public FindPrototypeByArgsFromIndex<0, PrototypeList_, InArgs...> {};
+    : public FindPrototypeByArgsFromIndex<0, PrototypeList_, InArgs...> {
+};
 
 template <int I, int N, typename PrototypeList_>
 struct FindPrototypeByIndexHelper;
@@ -198,7 +201,8 @@ struct FindPrototypeByIndexHelper<I, N, HeterTuple<>> {
 
 template <typename PrototypeList_, int N>
 struct FindPrototypeByIndex
-    : public FindPrototypeByIndexHelper<0, N, PrototypeList_> {};
+    : public FindPrototypeByIndexHelper<0, N, PrototypeList_> {
+};
 
 template <typename PrototypeList_, template <typename...> class Record>
 struct GetCallablePrototypeMaxSize;

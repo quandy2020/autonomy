@@ -21,7 +21,7 @@
 #include <vector>
 
 #ifndef CTRL
-#define CTRL(c) ((c)&0x1F)
+#define CTRL(c) ((c) & 0x1F)
 #endif
 
 class RenderableMessage;

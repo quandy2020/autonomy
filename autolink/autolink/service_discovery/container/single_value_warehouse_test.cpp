@@ -26,7 +26,9 @@ namespace service_discovery {
 using proto::RoleAttributes;
 
 TEST(SingleValueWarehouseTest, test1) {
-    { SingleValueWarehouse sh; }
+    {
+        SingleValueWarehouse sh;
+    }
 
     {
         SingleValueWarehouse sh;
