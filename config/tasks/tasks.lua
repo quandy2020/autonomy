@@ -24,6 +24,7 @@ tasks = {
     default_server_timeout = 20,
     wait_for_service_timeout = 1000,
     service_introspection_mode = "disabled",
+    local_survival_timeout = 120.0,
     plugin_lib_names = {
         "autonomy_behavior_tree_action_append_goal_pose_to_goals_action",
         "autonomy_behavior_tree_action_assisted_teleop_action",

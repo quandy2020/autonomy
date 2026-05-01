@@ -80,7 +80,24 @@ constexpr char kNavigatorBaseClass[] = "autonomy::tasks::common::NavigatorBase";
 BtNavigator::BtNavigator(std::shared_ptr<::autolink::Node> node,
                          const autonomy::tasks::proto::TaskOptions& options)
     : node_(node), options_(options) {
+    global_frame_ =
+        options.global_frame().empty() ? kDefaultGlobalFrame
+                                       : options.global_frame();
+    robot_frame_ = options.robot_base_frame().empty()
+                       ? kDefaultRobotFrame
+                       : options.robot_base_frame();
+    odom_topic_ =
+        options.odom_topic().empty() ? kDefaultOdomTopic : options.odom_topic();
+    filter_duration_ = options.filter_duration() > 0.0
+                           ? options.filter_duration()
+                           : kDefaultFilterDuration;
+    if (options.local_survival_timeout() > 0.0) {
+        local_survival_timeout_ = options.local_survival_timeout();
+    }
     AINFO << "BtNavigator creating (with node and options)";
+    AINFO << "BtNavigator frames: global=" << global_frame_
+          << ", robot=" << robot_frame_ << ", odom_topic=" << odom_topic_
+          << ", local_survival_timeout=" << local_survival_timeout_;
 }
 
 BtNavigator::~BtNavigator() {}
