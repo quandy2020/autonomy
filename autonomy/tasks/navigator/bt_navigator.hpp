@@ -75,6 +75,7 @@ protected:
     std::string global_frame_;
     double transform_tolerance_{0.1};
     double filter_duration_{0.3};
+    double local_survival_timeout_{120.0};
     std::string odom_topic_;
 
     // 变换 buffer，供 Navigator 与 BT 节点使用

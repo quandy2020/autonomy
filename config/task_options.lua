@@ -16,6 +16,7 @@ tasks = {
     default_server_timeout = 20,
     wait_for_service_timeout = 1000,
     service_introspection_mode = "disabled",
+    local_survival_timeout = 120.0,
     navigators = {"navigate_to_pose", "navigate_through_poses", "navigate_to_docking", "track_to_target", "explore_to_anywhere"},
     navigate_to_pose = {
         plugin = "autonomy_tasks/navigate_to_pose",

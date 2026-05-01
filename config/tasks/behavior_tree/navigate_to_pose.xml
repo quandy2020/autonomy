@@ -1,0 +1,101 @@
+<!--
+  局部自主导航框架（可执行版）：
+  - 全局定位可用时：按常规全局规划 + 跟随路径执行
+  - 全局定位不可用时：进入局部生存模式（低速前进/转向/后退）
+  - 持续尝试重定位，恢复后自动回到全局导航
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <RecoveryNode name="SafeNavigate" number_of_retries="8">
+      <ReactiveFallback name="AdaptiveNavigation">
+        <!-- 已到达目标时直接成功返回 -->
+        <GoalReached goal="{goal}" goal_reached_tol="0.25" transform_tolerance="0.1"/>
+
+        <!-- 模式 A：定位链路完整，执行全局导航 -->
+        <Sequence name="GlobalMode">
+          <InitialPoseReceived/>
+          <TransformAvailable child="{robot_base_frame}" parent="{global_frame}"/>
+          <PipelineSequence name="GlobalNavigatePipeline">
+            <ControllerSelector
+              selected_controller="{selected_controller}"
+              default_controller="FollowPath"
+              topic_name="controller_selector"/>
+            <PlannerSelector
+              selected_planner="{selected_planner}"
+              default_planner="GridBased"
+              topic_name="planner_selector"/>
+            <RateController hz="5.0">
+              <ComputePathToPose
+                goal="{goal}"
+                path="{path}"
+                planner_id="{selected_planner}"
+                error_code_id="{compute_path_error_code}"
+                error_msg="{compute_path_error_msg}"/>
+            </RateController>
+            <IsPathValid path="{path}"/>
+            <FollowPath
+              path="{path}"
+              controller_id="{selected_controller}"
+              error_code_id="{follow_path_error_code}"
+              error_msg="{follow_path_error_msg}"/>
+          </PipelineSequence>
+        </Sequence>
+
+        <!-- 模式 B：定位失效时，启用局部生存与重定位循环 -->
+        <RecoveryNode name="LocalSurvivalMode" number_of_retries="200">
+          <Sequence name="LocalMotionAndRelocalize">
+            <!--
+              局部生存时间窗：超时后触发失败，交由上层恢复链收敛并上报任务失败。
+              默认值由 blackboard 注入（local_survival_timeout）。
+            -->
+            <Inverter>
+              <TimeExpired seconds="{local_survival_timeout}"/>
+            </Inverter>
+            <Inverter>
+              <TransformAvailable child="{robot_base_frame}" parent="{global_frame}"/>
+            </Inverter>
+            <RoundRobin name="LocalMotionCycle">
+              <ForceFailure>
+                <DriveOnHeading
+                  dist_to_travel="0.8"
+                  speed="0.12"
+                  time_allowance="8.0"
+                  disable_collision_checks="false"/>
+              </ForceFailure>
+              <ForceFailure>
+                <Spin
+                  spin_dist="0.8"
+                  time_allowance="6.0"
+                  is_recovery="true"/>
+              </ForceFailure>
+              <ForceFailure>
+                <BackUp
+                  backup_dist="0.20"
+                  backup_speed="0.08"
+                  time_allowance="6.0"
+                  disable_collision_checks="false"/>
+              </ForceFailure>
+            </RoundRobin>
+          </Sequence>
+          <Sequence name="RelocalizationRecovery">
+            <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
+            <ReinitializeGlobalLocalization service_name="reinitialize_global_localization"/>
+            <Wait wait_duration="0.2"/>
+          </Sequence>
+        </RecoveryNode>
+      </ReactiveFallback>
+
+      <Sequence name="NavigationRecovery">
+        <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
+        <ClearEntireCostmap service_name="global_costmap/clear_costmap"/>
+        <BackUp
+          backup_dist="0.25"
+          backup_speed="0.08"
+          time_allowance="8.0"
+          disable_collision_checks="false"/>
+        <Spin spin_dist="1.57" time_allowance="8.0" is_recovery="true"/>
+        <ReinitializeGlobalLocalization service_name="reinitialize_global_localization"/>
+      </Sequence>
+    </RecoveryNode>
+  </BehaviorTree>
+</root>

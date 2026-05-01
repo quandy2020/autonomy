@@ -164,6 +164,10 @@ proto::TaskOptions LoadTaskOptions(
         options.set_groot_server_port(
             parameter_dictionary->GetInt("groot_server_port"));
     }
+    if (parameter_dictionary->HasKey("local_survival_timeout")) {
+        options.set_local_survival_timeout(
+            parameter_dictionary->GetDouble("local_survival_timeout"));
+    }
 
     return options;
 }

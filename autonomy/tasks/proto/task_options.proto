@@ -62,4 +62,6 @@ message TaskOptions {
   repeated string plugin_lib_names = 23;
   bool enable_groot_monitoring = 24;  // root-level default from tasks.lua
   uint32 groot_server_port = 25;      // root-level default from tasks.lua
+  // Timeout (seconds) for local-survival branch when localization is degraded/lost.
+  double local_survival_timeout = 26;
 }

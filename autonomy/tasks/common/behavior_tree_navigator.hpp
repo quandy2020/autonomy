@@ -51,6 +51,7 @@ struct FeedbackUtils {
     std::string robot_frame;
     std::string global_frame;
     double transform_tolerance = 0.1;
+    double local_survival_timeout = 120.0;
     std::shared_ptr<autonomy::transform::Buffer> tf;
     /** Resolved default BT XML path for this navigator (optional, set by
      * BtNavigator). */
@@ -159,6 +160,14 @@ public:
         blackboard->set("initial_pose_received", false);  // NOLINT
         blackboard->set("number_recoveries", 0);          // NOLINT
         blackboard->set("odom_smoother", odom_smoother);  // NOLINT
+        // Provide frame defaults to BT XML ports, so trees can safely use
+        // {global_frame}/{robot_base_frame} placeholders.
+        blackboard->set("global_frame", feedback_utils.global_frame);      // NOLINT
+        blackboard->set("robot_base_frame", feedback_utils.robot_frame);   // NOLINT
+        // Default timeout (seconds) for local-survival branch in degraded
+        // localization; tree may override it via blackboard remapping.
+        blackboard->set("local_survival_timeout",
+                        feedback_utils.local_survival_timeout);             // NOLINT
     }
 
     /**
