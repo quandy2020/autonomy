@@ -39,6 +39,15 @@ Examples:
 
     # Pass additional arguments to docker run
     python3 run_autonomy.py -- --rm
+
+    # NVIDIA / Isaac-Lab 衍生镜像：默认用 --entrypoint /bin/bash，避免继承镜像 ENTRYPOINT 自动拉起 Kit/流式
+
+    # 旧行为（保留镜像自带 ENTRYPOINT，可能再次自动启动 Kit / 流式服务）— CLI：
+    python3 run_autonomy.py -p x86_64 -n yes --keep-isaac-entrypoint
+    python3 run_autonomy.py --platform x86_64 --nvidia yes --keep-isaac-entrypoint
+
+    # 旧行为 — 环境变量（等价于 --keep-isaac-entrypoint）：
+    AUTONOMY_KEEP_ISAAC_ENTRYPOINT=1 python3 run_autonomy.py -p x86_64 -n yes
 """
 
 import argparse
@@ -104,6 +113,24 @@ class AutonomyRunner:
         self.docker_args = []
         self.remaining_args = []
         self.autonomy_dev_dir = os.environ.get("AUTONOMY_ENV", os.getcwd())
+        self.keep_isaac_entrypoint = False
+
+    @staticmethod
+    def _user_specified_entrypoint(remaining_args):
+        for a in remaining_args:
+            if a == "--entrypoint" or a.startswith("--entrypoint="):
+                return True
+        return False
+
+    def _use_plain_shell_for_nvidia_image(self):
+        """Isaac-Lab 基础镜像自带 ENTRYPOINT；覆盖为 /bin/bash 可避免容器启动即跑仿真/GUI。"""
+        if "nvidia" not in self.base_name:
+            return False
+        if self.keep_isaac_entrypoint:
+            return False
+        if os.environ.get("AUTONOMY_KEEP_ISAAC_ENTRYPOINT", "").strip() == "1":
+            return False
+        return True
 
     def setup_x11(self):
         """Configure X11 server permissions."""
@@ -370,7 +397,18 @@ class AutonomyRunner:
         # Use local image only if it exists, avoid remote pull attempts
         if use_local_only:
             cmd.append("--pull=never")
-        cmd.extend([*self.remaining_args, self.base_name, "/bin/bash"])
+
+        use_plain_shell = self._use_plain_shell_for_nvidia_image()
+        user_entrypoint = self._user_specified_entrypoint(self.remaining_args)
+        if use_plain_shell and not user_entrypoint:
+            print_info(
+                "NVIDIA Isaac-Lab 基础镜像：使用 --entrypoint /bin/bash，不继承镜像默认 ENTRYPOINT。"
+                "若需恢复镜像自带启动逻辑，请使用 --keep-isaac-entrypoint 或 AUTONOMY_KEEP_ISAAC_ENTRYPOINT=1。"
+            )
+            cmd.extend(["--entrypoint", "/bin/bash"])
+        cmd.extend([*self.remaining_args, self.base_name])
+        if not (use_plain_shell and not user_entrypoint):
+            cmd.append("/bin/bash")
 
         try:
             subprocess.run(cmd, check=False)
@@ -418,6 +456,9 @@ Examples:
   \033[91m# Pass additional arguments to docker run\033[0m
   \033[92mpython3 %(prog)s -- --rm\033[0m
   \033[93mpython3 %(prog)s -p x86_64 -- --detach\033[0m
+
+  \033[91m# NVIDIA 镜像：保留 Isaac-Lab 默认 ENTRYPOINT（可能自动启动 Kit/流式）\033[0m
+  \033[92mpython3 %(prog)s -p x86_64 -n yes --keep-isaac-entrypoint\033[0m
         """
     )
     parser.add_argument(
@@ -441,6 +482,15 @@ Examples:
              "  \033[91mauto: Auto-select image (prefers NVIDIA if both exist)\033[0m\n"
              "  \033[91myes:  Force use NVIDIA image\033[0m\n"
              "  \033[91mno:   Force use standard image\033[0m"
+    )
+    parser.add_argument(
+        "--keep-isaac-entrypoint",
+        action="store_true",
+        help=(
+            "仅对 NVIDIA / Isaac-Lab 衍生镜像有效：不要改用 /bin/bash 覆盖 ENTRYPOINT，"
+            "与旧版 docker run 行为一致（可能随镜像逻辑自动启动 Omniverse Kit / 流式服务）。"
+            "也可设置环境变量 AUTONOMY_KEEP_ISAAC_ENTRYPOINT=1。"
+        ),
     )
     return parser.parse_known_args()
 
@@ -467,7 +517,9 @@ def main():
         # No platform specified, will trigger interactive menu or auto-detect
         runner.platform_arch = ""
         runner.use_nvidia = args.nvidia
-    
+
+    runner.keep_isaac_entrypoint = bool(args.keep_isaac_entrypoint)
+
     runner.remaining_args = remaining
     runner.run()
 
