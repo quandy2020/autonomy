@@ -93,10 +93,12 @@ else()
   message(FATAL_ERROR "Plugin libraries for demo_navigation_to_pose not found")
 endif()
 
-# YOLO26 人体识别 demo（依赖 BUILD_ONNXRUNTIME + OpenCV）
+# Model pipeline demos（依赖 BUILD_ONNXRUNTIME + OpenCV）
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   add_autonomy_demo(autonomy.examples.apps.demo_yolo26_onnixruntime demo_yolo26_onnixruntime.cpp)
   target_link_libraries(autonomy.examples.apps.demo_yolo26_onnixruntime PRIVATE ${OpenCV_LIBS})
+  add_autonomy_demo(autonomy.examples.apps.demo_depth_angthing_v3 demo_depth_angthing_v3.cpp)
+  target_link_libraries(autonomy.examples.apps.demo_depth_angthing_v3 PRIVATE ${OpenCV_LIBS})
 endif()
 
 # Install the executables
@@ -109,5 +111,8 @@ set(EXAMPLE_APP_TARGETS
 )
 if(TARGET autonomy.examples.apps.demo_yolo26_onnixruntime)
   list(APPEND EXAMPLE_APP_TARGETS autonomy.examples.apps.demo_yolo26_onnixruntime)
+endif()
+if(TARGET autonomy.examples.apps.demo_depth_angthing_v3)
+  list(APPEND EXAMPLE_APP_TARGETS autonomy.examples.apps.demo_depth_angthing_v3)
 endif()
 install(TARGETS ${EXAMPLE_APP_TARGETS} RUNTIME DESTINATION bin)
