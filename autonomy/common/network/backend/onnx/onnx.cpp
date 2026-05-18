@@ -33,7 +33,8 @@ using onnx::detail::RunInference;
 namespace {
 
 bool AppendOnnxExecutionProviders(Ort::SessionOptions& options,
-                                  const OnnxRuntimeOptions& onnx_opts, std::string* error) {
+                                  const OnnxRuntimeOptions& onnx_opts,
+                                  std::string* error) {
     const std::string& ep = onnx_opts.execution_provider;
     if (ep.empty() || ep == "cpu") {
         return true;
@@ -46,13 +47,16 @@ bool AppendOnnxExecutionProviders(Ort::SessionOptions& options,
             return true;
         } catch (const Ort::Exception& e) {
             if (error != nullptr) {
-                *error = std::string("Failed to enable ONNX Runtime CUDA EP: ") + e.what();
+                *error =
+                    std::string("Failed to enable ONNX Runtime CUDA EP: ") +
+                    e.what();
             }
             return false;
         }
     }
     if (error != nullptr) {
-        *error = "Unknown onnx.execution_provider \"" + ep + "\" (use \"cpu\" or \"cuda\").";
+        *error = "Unknown onnx.execution_provider \"" + ep +
+                 "\" (use \"cpu\" or \"cuda\").";
     }
     return false;
 }
@@ -62,7 +66,8 @@ Ort::Env& OrtEnv() {
     return env;
 }
 
-bool FillInfos(Ort::Session* session, bool is_input, Ort::AllocatorWithDefaultOptions& alloc,
+bool FillInfos(Ort::Session* session, bool is_input,
+               Ort::AllocatorWithDefaultOptions& alloc,
                std::vector<ModelTensorInfo>* infos, std::string* error) {
     const size_t n =
         is_input ? session->GetInputCount() : session->GetOutputCount();
@@ -79,8 +84,10 @@ bool FillInfos(Ort::Session* session, bool is_input, Ort::AllocatorWithDefaultOp
         if (!MapOrtElementType(ts.GetElementType(), &element_type)) {
             if (error != nullptr) {
                 *error = std::string("Unsupported ONNX element type on ") +
-                         (is_input ? "input" : "output") + " \"" + name_ptr.get() +
-                         "\" (" + std::to_string(static_cast<int>(ts.GetElementType())) + ").";
+                         (is_input ? "input" : "output") + " \"" +
+                         name_ptr.get() + "\" (" +
+                         std::to_string(static_cast<int>(ts.GetElementType())) +
+                         ").";
             }
             return false;
         }
@@ -128,28 +135,32 @@ bool OnnxBackend::LoadFromOptions(const InferenceOptions& opt) {
     try {
         impl_->session_options = Ort::SessionOptions{};
         if (opt.onnx.intra_op_num_threads > 0) {
-            impl_->session_options.SetIntraOpNumThreads(opt.onnx.intra_op_num_threads);
+            impl_->session_options.SetIntraOpNumThreads(
+                opt.onnx.intra_op_num_threads);
         }
         if (opt.onnx.inter_op_num_threads > 0) {
-            impl_->session_options.SetInterOpNumThreads(opt.onnx.inter_op_num_threads);
+            impl_->session_options.SetInterOpNumThreads(
+                opt.onnx.inter_op_num_threads);
         }
         if (opt.onnx.graph_optimization_level >= 0) {
             impl_->session_options.SetGraphOptimizationLevel(
-                static_cast<GraphOptimizationLevel>(opt.onnx.graph_optimization_level));
+                static_cast<GraphOptimizationLevel>(
+                    opt.onnx.graph_optimization_level));
         }
         std::string ep_err;
-        if (!AppendOnnxExecutionProviders(impl_->session_options, opt.onnx, &ep_err)) {
+        if (!AppendOnnxExecutionProviders(impl_->session_options, opt.onnx,
+                                          &ep_err)) {
             SetLastError(ep_err);
             return false;
         }
         impl_->use_io_binding = opt.onnx.use_io_binding;
-        impl_->session = std::make_unique<Ort::Session>(OrtEnv(), opt.model_path.c_str(),
-                                                        impl_->session_options);
+        impl_->session = std::make_unique<Ort::Session>(
+            OrtEnv(), opt.model_path.c_str(), impl_->session_options);
         std::string fill_err;
-        if (!FillInfos(impl_->session.get(), true, impl_->allocator, &impl_->input_infos,
-                       &fill_err) ||
-            !FillInfos(impl_->session.get(), false, impl_->allocator, &impl_->output_infos,
-                       &fill_err)) {
+        if (!FillInfos(impl_->session.get(), true, impl_->allocator,
+                       &impl_->input_infos, &fill_err) ||
+            !FillInfos(impl_->session.get(), false, impl_->allocator,
+                       &impl_->output_infos, &fill_err)) {
             impl_->session.reset();
             impl_->input_infos.clear();
             impl_->output_infos.clear();
@@ -194,8 +205,9 @@ bool OnnxBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
 
     try {
         std::string run_err;
-        if (!RunInference(*impl_->session, impl_->input_infos, impl_->output_infos, inputs,
-                          outputs, impl_->use_io_binding, &run_err)) {
+        if (!RunInference(*impl_->session, impl_->input_infos,
+                          impl_->output_infos, inputs, outputs,
+                          impl_->use_io_binding, &run_err)) {
             SetLastError(run_err);
             return false;
         }

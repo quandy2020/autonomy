@@ -29,8 +29,8 @@ namespace network {
 namespace {
 using internal::SetErrorMessage;
 
-bool InferMapShape(const ModelTensorInfo& info, size_t element_count, int* height, int* width,
-                   size_t* offset) {
+bool InferMapShape(const ModelTensorInfo& info, size_t element_count,
+                   int* height, int* width, size_t* offset) {
     const std::vector<int64_t>& dimensions = info.shape.Dims();
     if (dimensions.size() < 2) {
         return false;
@@ -47,7 +47,8 @@ bool InferMapShape(const ModelTensorInfo& info, size_t element_count, int* heigh
         }
     }
     const int64_t spatial = map_height * map_width;
-    if (spatial <= 0 || static_cast<size_t>(leading * spatial) > element_count) {
+    if (spatial <= 0 ||
+        static_cast<size_t>(leading * spatial) > element_count) {
         return false;
     }
     *height = static_cast<int>(map_height);
@@ -74,7 +75,8 @@ bool ToMat(const std::vector<float>& output, const ModelTensorInfo& info,
     size_t offset = 0;
     if (!InferMapShape(info, output.size(), &height, &width, &offset)) {
         if (height <= 0 || width <= 0) {
-            const int side = static_cast<int>(std::sqrt(static_cast<double>(output.size())));
+            const int side =
+                static_cast<int>(std::sqrt(static_cast<double>(output.size())));
             height = side;
             width = side;
         }
@@ -89,13 +91,16 @@ bool ToMat(const std::vector<float>& output, const ModelTensorInfo& info,
     for (int row = 0; row < height; ++row) {
         float* row_ptr = small_map.ptr<float>(row);
         for (int col = 0; col < width; ++col) {
-            row_ptr[col] = output[offset + static_cast<size_t>(row * width + col)];
+            row_ptr[col] =
+                output[offset + static_cast<size_t>(row * width + col)];
         }
     }
 
-    const int output_height = meta.source_height > 0 ? meta.source_height : height;
+    const int output_height =
+        meta.source_height > 0 ? meta.source_height : height;
     const int output_width = meta.source_width > 0 ? meta.source_width : width;
-    cv::resize(small_map, *mat, cv::Size(output_width, output_height), 0, 0, cv::INTER_LINEAR);
+    cv::resize(small_map, *mat, cv::Size(output_width, output_height), 0, 0,
+               cv::INTER_LINEAR);
     return true;
 }
 

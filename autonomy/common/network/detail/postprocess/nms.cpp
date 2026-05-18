@@ -30,21 +30,24 @@ using internal::IoU;
 using internal::SetErrorMessage;
 }  // namespace
 
-bool Nms(float iou_threshold, std::vector<Detection>* detections, std::string* error) {
+bool Nms(float iou_threshold, std::vector<Detection>* detections,
+         std::string* error) {
     if (detections == nullptr) {
         SetErrorMessage(error, "detections is null.");
         return false;
     }
     std::vector<Detection>& boxes = *detections;
-    std::sort(boxes.begin(), boxes.end(), [](const Detection& a, const Detection& b) {
-        return a.confidence > b.confidence;
-    });
+    std::sort(boxes.begin(), boxes.end(),
+              [](const Detection& a, const Detection& b) {
+                  return a.confidence > b.confidence;
+              });
     for (size_t i = 0; i < boxes.size(); ++i) {
         if (boxes[i].confidence < 0.f) {
             continue;
         }
         for (size_t j = i + 1; j < boxes.size(); ++j) {
-            if (boxes[j].confidence >= 0.f && boxes[i].class_id == boxes[j].class_id &&
+            if (boxes[j].confidence >= 0.f &&
+                boxes[i].class_id == boxes[j].class_id &&
                 IoU(boxes[i], boxes[j]) > iou_threshold) {
                 boxes[j].confidence = -1.f;
             }

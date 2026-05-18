@@ -31,8 +31,8 @@ namespace network {
  * @file dims.hpp
  * @brief Model input dimension parsing and input-type classification
  *
- * Distinguishes image inputs (4-D/5-D) from vector inputs (1-D/2-D) before preprocess,
- * and extracts spatial height/width from @ref ModelTensorInfo.
+ * Distinguishes image inputs (4-D/5-D) from vector inputs (1-D/2-D) before
+ * preprocess, and extracts spatial height/width from @ref ModelTensorInfo.
  */
 
 /**
@@ -61,12 +61,15 @@ bool IsVector(const ModelTensorInfo& info);
  * @param width Output width
  * @return True when parsed from metadata; false if @p fallback was used
  */
-bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height, int* width);
+bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height,
+                    int* width);
 
 namespace internal {
 
 /** @brief True when a dimension value is a typical channel count (1 or 3) */
-inline bool IsChannelDim(int64_t dim) { return dim == 1 || dim == 3; }
+inline bool IsChannelDim(int64_t dim) {
+    return dim == 1 || dim == 3;
+}
 
 }  // namespace internal
 

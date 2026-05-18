@@ -17,8 +17,8 @@
 #ifndef AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_SHAPE_HPP_
 #define AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_SHAPE_HPP_
 
-#include "autonomy/common/network/detail/preprocess/types.hpp"
 #include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <string>
 #include <vector>
@@ -44,20 +44,23 @@ namespace internal {
  * @param default_w Fallback width when a dimension is dynamic or missing
  * @param shape Output parsed height, width, channels, and layout
  * @param error Optional failure reason; must not be null on hard errors
- * @return True when rank is 4 or 5 and parsing succeeded; false for unsupported rank
+ * @return True when rank is 4 or 5 and parsing succeeded; false for unsupported
+ * rank
  */
 bool ParseShape(const ModelTensorInfo& info, int default_h, int default_w,
                 ImageInputShape* shape, std::string* error = nullptr);
 
 /**
- * @brief Collapses a 5-D image input view to 4-D NCHW for single-batch preprocessing
+ * @brief Collapses a 5-D image input view to 4-D NCHW for single-batch
+ * preprocessing
  *
  * @param info Original model input descriptor
  * @param view On success, receives a 4-D view suitable for @ref Preprocess
  * @param error Optional failure reason
  * @return True on success; false when rank is unsupported
  */
-bool Collapse(const ModelTensorInfo& info, ModelTensorInfo* view, std::string* error = nullptr);
+bool Collapse(const ModelTensorInfo& info, ModelTensorInfo* view,
+              std::string* error = nullptr);
 
 /**
  * @brief Replicates a single-sample tensor to match a batched model input shape
@@ -70,7 +73,8 @@ bool Collapse(const ModelTensorInfo& info, ModelTensorInfo* view, std::string* e
  * @param error Optional failure reason when sizes are incompatible
  * @return True on success or when no expansion is required
  */
-bool Expand(const ModelTensorInfo& info, std::vector<float>* tensor, std::string* error = nullptr);
+bool Expand(const ModelTensorInfo& info, std::vector<float>* tensor,
+            std::string* error = nullptr);
 
 }  // namespace internal
 }  // namespace network

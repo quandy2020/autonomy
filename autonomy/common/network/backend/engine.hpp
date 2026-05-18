@@ -39,13 +39,15 @@ class Backend;
 /**
  * @brief Model inference engine (ONNX Runtime or TensorRT)
  *
- * Select backend via @ref InferenceOptions::backend_id (`"onnx"` or `"tensorrt"`).
- * Does not perform image preprocessing; use @ref RunPipeline (include network.hpp).
+ * Select backend via @ref InferenceOptions::backend_id (`"onnx"` or
+ * `"tensorrt"`). Does not perform image preprocessing; use @ref RunPipeline
+ * (include network.hpp).
  *
- * @note Not thread-safe: do not call @ref Run concurrently on the same @ref Engine
- *       from multiple threads unless you provide external synchronization.
+ * @note Not thread-safe: do not call @ref Run concurrently on the same @ref
+ * Engine from multiple threads unless you provide external synchronization.
  */
-class Engine {
+class Engine
+{
 public:
     /**
      * @brief Constructs an engine with no backend (not usable until created
@@ -89,11 +91,12 @@ public:
      * @param error_message If non-null, filled when creation fails
      * @return A loaded engine on success, or nullptr on failure
      */
-    static std::unique_ptr<Engine> CreateEngine(const std::string& model_path,
-                                                const std::string& backend_id = "onnx",
-                                                std::string* error_message = nullptr);
+    static std::unique_ptr<Engine> CreateEngine(
+        const std::string& model_path, const std::string& backend_id = "onnx",
+        std::string* error_message = nullptr);
 
-    /** @brief True when @p backend_id is registered (`"onnx"` / `"tensorrt"`) */
+    /** @brief True when @p backend_id is registered (`"onnx"` / `"tensorrt"`)
+     */
     static bool HasBackend(const std::string& backend_id);
 
     /**
@@ -149,15 +152,17 @@ public:
     bool Run(const TensorMap& inputs, TensorMap* outputs);
 
     /**
-     * @brief Runs inference using float32 maps (converts to/from @ref TensorMap).
+     * @brief Runs inference using float32 maps (converts to/from @ref
+     * TensorMap).
      */
     bool Run(const FloatTensorMap& inputs, FloatTensorMap* outputs);
 
     /**
-     * @brief Runs one warmup forward pass (zero-filled inputs, static shapes only)
+     * @brief Runs one warmup forward pass (zero-filled inputs, static shapes
+     * only)
      *
-     * Useful to pay session/provider initialization cost before measuring latency.
-     * Skips inputs whose shapes are not fully static.
+     * Useful to pay session/provider initialization cost before measuring
+     * latency. Skips inputs whose shapes are not fully static.
      *
      * @param[out] error Optional failure message
      * @return true when warmup ran or there was nothing to warm up
@@ -176,7 +181,9 @@ public:
     const std::string& GetLastError() const;
 
     /** @brief Factory id of the active backend (`"onnx"` or `"tensorrt"`) */
-    const std::string& backend_id() const { return backend_id_; }
+    const std::string& backend_id() const {
+        return backend_id_;
+    }
 
     /**
      * @brief Returns a non-owning pointer to the underlying backend.

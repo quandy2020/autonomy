@@ -49,7 +49,8 @@ constexpr PreprocessOptions Make(int height, int width) {
 /** @brief Letterbox + [0,1] normalization at @p height x @p width */
 template <int Height, int Width>
 constexpr PreprocessOptions Letterbox() {
-    return Make<ResizePolicy::kLetterbox, NormalizePolicy::kZeroOne>(Height, Width);
+    return Make<ResizePolicy::kLetterbox, NormalizePolicy::kZeroOne>(Height,
+                                                                     Width);
 }
 
 /** @brief Stretch resize at @p height x @p width */
@@ -67,9 +68,11 @@ constexpr PreprocessOptions CenterCrop(int height, int width) {
  * @param bound Longest-side target before align/fit
  * @param align Round H/W to this multiple (e.g. 14)
  */
-constexpr PreprocessOptions MakeBound(int bound, int align, int height, int width) {
+constexpr PreprocessOptions MakeBound(int bound, int align, int height,
+                                      int width) {
     PreprocessOptions opt =
-        Make<ResizePolicy::kUpperBound, NormalizePolicy::kImageNet>(height, width);
+        Make<ResizePolicy::kUpperBound, NormalizePolicy::kImageNet>(height,
+                                                                    width);
     opt.bound_resize_target = bound;
     opt.align_multiple = align;
     return opt;

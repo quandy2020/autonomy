@@ -25,19 +25,20 @@ namespace network {
  * @file types.hpp
  * @brief Postprocess result types and decode parameters
  *
- * @ref Detection / @ref ClassScore are decode outputs; @ref BoxOptions configures @ref Decode.
+ * @ref Detection / @ref ClassScore are decode outputs; @ref BoxOptions
+ * configures @ref Decode.
  */
 
 /**
  * @brief One axis-aligned detection in original image coordinates
  */
 struct Detection {
-    float x1 = 0.f;         //!< Left edge (pixels)
-    float y1 = 0.f;         //!< Top edge (pixels)
-    float x2 = 0.f;         //!< Right edge (pixels)
-    float y2 = 0.f;         //!< Bottom edge (pixels)
-    float confidence = 0.f; //!< Winning class score
-    int class_id = 0;       //!< Argmax class index
+    float x1 = 0.f;          //!< Left edge (pixels)
+    float y1 = 0.f;          //!< Top edge (pixels)
+    float x2 = 0.f;          //!< Right edge (pixels)
+    float y2 = 0.f;          //!< Bottom edge (pixels)
+    float confidence = 0.f;  //!< Winning class score
+    int class_id = 0;        //!< Argmax class index
 };
 
 /**
@@ -52,8 +53,8 @@ struct ClassScore {
  * @brief Inferred layout of a grid detection output tensor
  */
 struct OutputLayout {
-    int num_proposals = 0;  //!< Number of anchor/proposal rows or columns
-    bool row_major = false; //!< true if [N, stride]; else [stride, N]
+    int num_proposals = 0;   //!< Number of anchor/proposal rows or columns
+    bool row_major = false;  //!< true if [N, stride]; else [stride, N]
 };
 
 /**

@@ -30,9 +30,11 @@ namespace network {
 
 /**
  * @file norm.hpp
- * @brief Normalization: cv::dnn::blobFromImage params and per-channel std division
+ * @brief Normalization: cv::dnn::blobFromImage params and per-channel std
+ * division
  *
- * Runtime dispatch via @ref internal::VisitNorm to @ref NormalizePolicy specializations.
+ * Runtime dispatch via @ref internal::VisitNorm to @ref NormalizePolicy
+ * specializations.
  */
 
 namespace internal {
@@ -51,16 +53,18 @@ void DivStd(std::vector<float>* tensor, int channels, int height, int width,
             const float std_rgb[3], bool swap_rb);
 
 /**
- * @brief Fills scale and mean for cv::dnn::blobFromImage from normalization policy
+ * @brief Fills scale and mean for cv::dnn::blobFromImage from normalization
+ * policy
  */
-void BlobParams(NormalizePolicy policy, const NormalizeParams& custom, double* scale,
-                cv::Scalar* mean);
+void BlobParams(NormalizePolicy policy, const NormalizeParams& custom,
+                double* scale, cv::Scalar* mean);
 
 /**
  * @brief Applies policy-specific post-blob normalization (e.g. DivStd)
  */
-void ApplyNorm(std::vector<float>* tensor, NormalizePolicy policy, const NormalizeParams& custom,
-               int channels, int height, int width, bool swap_rb);
+void ApplyNorm(std::vector<float>* tensor, NormalizePolicy policy,
+               const NormalizeParams& custom, int channels, int height,
+               int width, bool swap_rb);
 
 }  // namespace internal
 

@@ -32,7 +32,8 @@ std::once_flag g_builtin_register_once;
 
 void RegisterBuiltinBackendsOnce() {
     if (!RegisterBuiltinNetworkBackends(BackendFactory::RegistryInstance())) {
-        LOG(ERROR) << "One or more built-in network backends failed to register.";
+        LOG(ERROR)
+            << "One or more built-in network backends failed to register.";
     }
 }
 
@@ -53,7 +54,7 @@ bool BackendFactory::HasBackend(const std::string& id) {
 }
 
 std::unique_ptr<Backend> BackendFactory::Create(const InferenceOptions& opt,
-                                              std::string* error_message) {
+                                                std::string* error_message) {
     EnsureBuiltinsRegistered();
     Registry& registry = RegistryInstance();
     const std::string& id = opt.backend_id.empty() ? "onnx" : opt.backend_id;
@@ -69,7 +70,8 @@ std::unique_ptr<Backend> BackendFactory::Create(const InferenceOptions& opt,
     }
     std::unique_ptr<Backend> backend(registry.CreateObjectOrNull(id));
     if (!backend) {
-        const std::string msg = "Factory failed to create backend \"" + id + "\".";
+        const std::string msg =
+            "Factory failed to create backend \"" + id + "\".";
         if (error_message != nullptr) {
             *error_message = msg;
         }

@@ -42,7 +42,8 @@ namespace network {
  * @param error Optional failure reason when @p detections is null
  * @return True on success; false when @p detections is null
  */
-bool Nms(float iou_threshold, std::vector<Detection>* detections, std::string* error = nullptr);
+bool Nms(float iou_threshold, std::vector<Detection>* detections,
+         std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

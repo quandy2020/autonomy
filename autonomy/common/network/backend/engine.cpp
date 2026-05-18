@@ -44,8 +44,8 @@ Engine::Engine(std::unique_ptr<Backend> backend, std::string backend_id)
 std::unique_ptr<Engine> Engine::CreateEngine(const InferenceOptions& opt,
                                              std::string* error_message) {
     std::string err;
-    std::unique_ptr<Backend> backend =
-        BackendFactory::Create(opt, error_message != nullptr ? error_message : &err);
+    std::unique_ptr<Backend> backend = BackendFactory::Create(
+        opt, error_message != nullptr ? error_message : &err);
     if (!backend) {
         return nullptr;
     }
@@ -180,7 +180,8 @@ bool Engine::Warmup(std::string* error) {
         }
         const size_t byte_size =
             static_cast<size_t>(count) * ElementTypeByteSize(info.element_type);
-        inputs.emplace(info.name, Tensor(info.element_type, std::vector<uint8_t>(byte_size)));
+        inputs.emplace(info.name, Tensor(info.element_type,
+                                         std::vector<uint8_t>(byte_size)));
     }
     if (inputs.empty()) {
         return true;

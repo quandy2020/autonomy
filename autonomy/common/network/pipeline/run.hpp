@@ -26,8 +26,8 @@
  * (@ref Decode, @ref ToMat, etc.).
  */
 
-#include "autonomy/common/network/detail/preprocess/types.hpp"
 #include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -48,7 +48,8 @@ class Engine;
  */
 struct RunResult {
     TensorMap outputs;  //!< Model outputs (types as declared; often float32)
-    TransformMeta meta;  //!< Geometry for the first image input (backward compatible)
+    TransformMeta
+        meta;  //!< Geometry for the first image input (backward compatible)
     //!< Per image-input geometry when the model has multiple image tensors
     std::unordered_map<std::string, TransformMeta> meta_by_input;
 };
@@ -68,8 +69,9 @@ struct RunResult {
  * @param[out] error Human-readable message on failure
  * @return false if any step fails
  */
-bool RunPipeline(Engine* engine, const Sample& sample, const PreprocessOptions& options,
-                 RunResult* result, std::string* error = nullptr);
+bool RunPipeline(Engine* engine, const Sample& sample,
+                 const PreprocessOptions& options, RunResult* result,
+                 std::string* error = nullptr);
 
 /**
  * @brief Preprocess a single BGR image and run inference
@@ -83,8 +85,9 @@ bool RunPipeline(Engine* engine, const Sample& sample, const PreprocessOptions& 
  * @param[out] error Error message
  * @return true on success
  */
-bool RunPipeline(Engine* engine, const cv::Mat& image, const PreprocessOptions& options,
-                 RunResult* result, std::string* error = nullptr);
+bool RunPipeline(Engine* engine, const cv::Mat& image,
+                 const PreprocessOptions& options, RunResult* result,
+                 std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

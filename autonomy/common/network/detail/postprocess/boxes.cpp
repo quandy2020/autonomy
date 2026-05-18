@@ -39,9 +39,11 @@ using internal::Sigmoid;
 using internal::VisitBoxFormat;
 using internal::VisitGridLayout;
 
-OutputLayout InferLayout(const ModelTensorInfo& info, size_t float_count, int stride) {
+OutputLayout InferLayout(const ModelTensorInfo& info, size_t float_count,
+                         int stride) {
     OutputLayout layout;
-    layout.num_proposals = static_cast<int>(float_count / static_cast<size_t>(stride));
+    layout.num_proposals =
+        static_cast<int>(float_count / static_cast<size_t>(stride));
     if (info.shape.Rank() != 3) {
         return layout;
     }
@@ -49,9 +51,11 @@ OutputLayout InferLayout(const ModelTensorInfo& info, size_t float_count, int st
     if (dimensions.size() >= 3 && dimensions[2] == stride) {
         layout.row_major = true;
     }
-    if (dimensions.size() >= 3 && dimensions[1] == stride && dimensions[2] > 0) {
+    if (dimensions.size() >= 3 && dimensions[1] == stride &&
+        dimensions[2] > 0) {
         layout.num_proposals = static_cast<int>(dimensions[2]);
-    } else if (dimensions.size() >= 3 && dimensions[2] == stride && dimensions[1] > 0) {
+    } else if (dimensions.size() >= 3 && dimensions[2] == stride &&
+               dimensions[1] > 0) {
         layout.num_proposals = static_cast<int>(dimensions[1]);
     }
     return layout;
@@ -72,15 +76,16 @@ bool DecodeImpl(const std::vector<float>& output, const OutputLayout& layout,
         double x2 = 0.;
         double y2 = 0.;
         const bool normalized =
-            std::max({tensor.At(index, 0), tensor.At(index, 1), tensor.At(index, 2),
-                      tensor.At(index, 3)}) <= 1.5f;
-        MapBoxToSource<XyxyFormat>(tensor.At(index, 0), tensor.At(index, 1), tensor.At(index, 2),
-                                   tensor.At(index, 3), normalized, geometry, &x1, &y1, &x2,
-                                   &y2);
+            std::max({tensor.At(index, 0), tensor.At(index, 1),
+                      tensor.At(index, 2), tensor.At(index, 3)}) <= 1.5f;
+        MapBoxToSource<XyxyFormat>(tensor.At(index, 0), tensor.At(index, 1),
+                                   tensor.At(index, 2), tensor.At(index, 3),
+                                   normalized, geometry, &x1, &y1, &x2, &y2);
 
         int class_id = 0;
         float confidence = Sigmoid(tensor.At(index, 4));
-        for (int class_index = 1; class_index < options.num_classes; ++class_index) {
+        for (int class_index = 1; class_index < options.num_classes;
+             ++class_index) {
             const float score = Sigmoid(tensor.At(index, 4 + class_index));
             if (score > confidence) {
                 confidence = score;
@@ -91,22 +96,23 @@ bool DecodeImpl(const std::vector<float>& output, const OutputLayout& layout,
             continue;
         }
 
-        const double clamped_x1 =
-            std::clamp(std::min(x1, x2), 0., static_cast<double>(geometry.source_width));
-        const double clamped_x2 =
-            std::clamp(std::max(x1, x2), 0., static_cast<double>(geometry.source_width));
-        const double clamped_y1 =
-            std::clamp(std::min(y1, y2), 0., static_cast<double>(geometry.source_height));
-        const double clamped_y2 =
-            std::clamp(std::max(y1, y2), 0., static_cast<double>(geometry.source_height));
+        const double clamped_x1 = std::clamp(
+            std::min(x1, x2), 0., static_cast<double>(geometry.source_width));
+        const double clamped_x2 = std::clamp(
+            std::max(x1, x2), 0., static_cast<double>(geometry.source_width));
+        const double clamped_y1 = std::clamp(
+            std::min(y1, y2), 0., static_cast<double>(geometry.source_height));
+        const double clamped_y2 = std::clamp(
+            std::max(y1, y2), 0., static_cast<double>(geometry.source_height));
         if (clamped_x2 - clamped_x1 < options.min_box_size ||
             clamped_y2 - clamped_y1 < options.min_box_size) {
             continue;
         }
 
-        boxes->push_back({static_cast<float>(clamped_x1), static_cast<float>(clamped_y1),
-                          static_cast<float>(clamped_x2), static_cast<float>(clamped_y2),
-                          confidence, class_id});
+        boxes->push_back(
+            {static_cast<float>(clamped_x1), static_cast<float>(clamped_y1),
+             static_cast<float>(clamped_x2), static_cast<float>(clamped_y2),
+             confidence, class_id});
     }
     return true;
 }
@@ -114,8 +120,8 @@ bool DecodeImpl(const std::vector<float>& output, const OutputLayout& layout,
 }  // namespace
 
 bool Decode(const std::vector<float>& output, const ModelTensorInfo& info,
-            const TransformMeta& meta, const BoxOptions& options, std::vector<Detection>* boxes,
-            std::string* error) {
+            const TransformMeta& meta, const BoxOptions& options,
+            std::vector<Detection>* boxes, std::string* error) {
     if (boxes == nullptr) {
         SetErrorMessage(error, "boxes output is null.");
         return false;
@@ -131,14 +137,17 @@ bool Decode(const std::vector<float>& output, const ModelTensorInfo& info,
 
     return VisitGridLayout(layout.row_major, [&](auto row_major_tag) {
         constexpr bool row_major = decltype(row_major_tag)::value;
-        const GridTensorView<row_major> tensor(output, stride, layout.num_proposals);
+        const GridTensorView<row_major> tensor(output, stride,
+                                               layout.num_proposals);
 
         int best_index = 0;
         float best_score = 0.f;
         for (int index = 0; index < layout.num_proposals; ++index) {
             float max_score = 0.f;
-            for (int class_index = 0; class_index < options.num_classes; ++class_index) {
-                max_score = std::max(max_score, Sigmoid(tensor.At(index, 4 + class_index)));
+            for (int class_index = 0; class_index < options.num_classes;
+                 ++class_index) {
+                max_score = std::max(
+                    max_score, Sigmoid(tensor.At(index, 4 + class_index)));
             }
             if (max_score > best_score) {
                 best_score = max_score;
@@ -154,7 +163,8 @@ bool Decode(const std::vector<float>& output, const ModelTensorInfo& info,
 
         return VisitBoxFormat(xyxy_format, [&](auto box_tag) {
             constexpr bool xyxy = decltype(box_tag)::value;
-            DecodeImpl<row_major, xyxy>(output, layout, geometry, options, boxes);
+            DecodeImpl<row_major, xyxy>(output, layout, geometry, options,
+                                        boxes);
             if (options.nms_iou > 0.f) {
                 if (!Nms(options.nms_iou, boxes, error)) {
                     return false;

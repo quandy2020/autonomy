@@ -35,10 +35,12 @@ bool ContainsNameKeyword(const std::string& name, const std::string& keyword) {
     }
     std::string lower_name = name;
     std::string lower_keyword = keyword;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    std::transform(lower_keyword.begin(), lower_keyword.end(), lower_keyword.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(
+        lower_name.begin(), lower_name.end(), lower_name.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(
+        lower_keyword.begin(), lower_keyword.end(), lower_keyword.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     return lower_name.find(lower_keyword) != std::string::npos;
 }
 
@@ -58,7 +60,8 @@ int64_t SpatialElementCount(const ModelTensorInfo& info) {
 
 }  // namespace
 
-bool FindFloatOutput(const TensorMap& outputs, const std::vector<ModelTensorInfo>& infos,
+bool FindFloatOutput(const TensorMap& outputs,
+                     const std::vector<ModelTensorInfo>& infos,
                      std::string* name, const std::vector<float>** data,
                      const std::string& keyword, std::string* error) {
     if (name == nullptr || data == nullptr) {

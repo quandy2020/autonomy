@@ -46,8 +46,9 @@ namespace network {
  * @param[out] meta Optional; for inverse mapping in postprocess
  * @param[out] error Failure reason
  */
-bool Resize(const cv::Mat& bgr, int height, int width, const PreprocessOptions& opt,
-            cv::Mat* out, TransformMeta* meta = nullptr, std::string* error = nullptr);
+bool Resize(const cv::Mat& bgr, int height, int width,
+            const PreprocessOptions& opt, cv::Mat* out,
+            TransformMeta* meta = nullptr, std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

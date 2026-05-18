@@ -43,7 +43,8 @@ inline float Sigmoid(float x) {
 }
 
 /**
- * @brief Computes axis-aligned intersection-over-union between two boxes in source coordinates
+ * @brief Computes axis-aligned intersection-over-union between two boxes in
+ * source coordinates
  *
  * @param a First detection
  * @param b Second detection

@@ -17,8 +17,8 @@
 #ifndef AUTONOMY_COMMON_NETWORK_PREPROCESS_INPUTS_HPP_
 #define AUTONOMY_COMMON_NETWORK_PREPROCESS_INPUTS_HPP_
 
-#include "autonomy/common/network/detail/preprocess/types.hpp"
 #include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <cstddef>
 #include <string>
@@ -38,7 +38,8 @@ namespace network {
 /**
  * @brief Writes a 1-D feature vector into a vector input slot
  *
- * @param features Feature values; length must match static shape (see @ref CheckSize)
+ * @param features Feature values; length must match static shape (see @ref
+ * CheckSize)
  * @param info Target input descriptor
  * @param[out] out Accumulated input map
  * @param[out] error Element count mismatch, etc.
@@ -64,7 +65,8 @@ bool SetNamed(const TensorMap& named, const std::vector<ModelTensorInfo>& infos,
  * @param count Actual element count
  * @param[out] error Mismatch message
  */
-bool CheckSize(const ModelTensorInfo& info, size_t count, std::string* error = nullptr);
+bool CheckSize(const ModelTensorInfo& info, size_t count,
+               std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

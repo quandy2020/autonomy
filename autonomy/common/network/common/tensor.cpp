@@ -44,8 +44,9 @@ uint16_t FloatToHalf(float value) {
     if (exponent >= 31) {
         return static_cast<uint16_t>(sign | 0x7c00u);
     }
-    return static_cast<uint16_t>(sign | (static_cast<uint32_t>(exponent) << 10) |
-                               ((mantissa + 0x1000) >> 13));
+    return static_cast<uint16_t>(sign |
+                                 (static_cast<uint32_t>(exponent) << 10) |
+                                 ((mantissa + 0x1000) >> 13));
 }
 
 uint16_t FloatToBfloat16(float value) {
@@ -147,7 +148,8 @@ Tensor Tensor::FromBytes(ElementType element_type, std::vector<uint8_t> bytes) {
     return Tensor(element_type, std::move(bytes));
 }
 
-bool Tensor::TryViewFloat32(const float** data, size_t* count, std::string* error) const {
+bool Tensor::TryViewFloat32(const float** data, size_t* count,
+                            std::string* error) const {
     if (data == nullptr || count == nullptr) {
         if (error != nullptr) {
             *error = "TryViewFloat32: output pointers are null.";
@@ -243,8 +245,10 @@ bool IsFullyStaticShape(const TensorShape& shape) {
     return true;
 }
 
-bool ResolveShapeForElementCount(const ModelTensorInfo& meta, size_t element_count,
-                                 std::vector<int64_t>* resolved_shape, std::string* error) {
+bool ResolveShapeForElementCount(const ModelTensorInfo& meta,
+                                 size_t element_count,
+                                 std::vector<int64_t>* resolved_shape,
+                                 std::string* error) {
     if (resolved_shape == nullptr) {
         if (error != nullptr) {
             *error = "ResolveShapeForElementCount: resolved_shape is null.";
@@ -282,8 +286,9 @@ bool ResolveShapeForElementCount(const ModelTensorInfo& meta, size_t element_cou
     } else {
         if (known <= 0 || static_cast<size_t>(known) != element_count) {
             if (error != nullptr) {
-                *error = "Input \"" + meta.name + "\": expected " + std::to_string(known) +
-                         " elements, got " + std::to_string(element_count);
+                *error = "Input \"" + meta.name + "\": expected " +
+                         std::to_string(known) + " elements, got " +
+                         std::to_string(element_count);
             }
             return false;
         }
@@ -292,8 +297,8 @@ bool ResolveShapeForElementCount(const ModelTensorInfo& meta, size_t element_cou
     return true;
 }
 
-Tensor FromPreprocessFloat(std::vector<float> float_data, ElementType target_type,
-                           std::string* error) {
+Tensor FromPreprocessFloat(std::vector<float> float_data,
+                           ElementType target_type, std::string* error) {
     if (float_data.empty()) {
         if (error != nullptr) {
             *error = "FromPreprocessFloat: empty buffer.";
@@ -379,15 +384,16 @@ bool ValidateInputsForModel(const TensorMap& inputs,
             return false;
         }
         std::vector<int64_t> resolved;
-        if (!ResolveShapeForElementCount(info, it->second.element_count(), &resolved,
-                                         error)) {
+        if (!ResolveShapeForElementCount(info, it->second.element_count(),
+                                         &resolved, error)) {
             return false;
         }
     }
     return true;
 }
 
-bool FromFloatTensorMap(const FloatTensorMap& inputs, TensorMap* out, std::string* error) {
+bool FromFloatTensorMap(const FloatTensorMap& inputs, TensorMap* out,
+                        std::string* error) {
     if (out == nullptr) {
         if (error != nullptr) {
             *error = "FromFloatTensorMap: out is null.";
@@ -402,7 +408,8 @@ bool FromFloatTensorMap(const FloatTensorMap& inputs, TensorMap* out, std::strin
     return true;
 }
 
-bool ToFloatTensorMap(const TensorMap& outputs, FloatTensorMap* out, std::string* error) {
+bool ToFloatTensorMap(const TensorMap& outputs, FloatTensorMap* out,
+                      std::string* error) {
     if (out == nullptr) {
         if (error != nullptr) {
             *error = "ToFloatTensorMap: out is null.";

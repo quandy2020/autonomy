@@ -29,7 +29,8 @@ namespace network {
 
 /**
  * @file find.hpp
- * @brief Select one float32 output from a multi-output @ref TensorMap (no OpenCV)
+ * @brief Select one float32 output from a multi-output @ref TensorMap (no
+ * OpenCV)
  *
  * Selection order:
  * 1. Exact name match when @p keyword is non-empty
@@ -49,9 +50,11 @@ namespace network {
  * @param[out] error Message when no output or not float32
  * @return true on success
  */
-bool FindFloatOutput(const TensorMap& outputs, const std::vector<ModelTensorInfo>& infos,
+bool FindFloatOutput(const TensorMap& outputs,
+                     const std::vector<ModelTensorInfo>& infos,
                      std::string* name, const std::vector<float>** data,
-                     const std::string& keyword = "", std::string* error = nullptr);
+                     const std::string& keyword = "",
+                     std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

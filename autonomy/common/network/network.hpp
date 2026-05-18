@@ -19,21 +19,25 @@
 
 /**
  * @file network.hpp
- * @brief Application umbrella header: inference, preprocess, postprocess, pipeline
+ * @brief Application umbrella header: inference, preprocess, postprocess,
+ * pipeline
  *
  * @namespace autonomy::common::network
  *
  * ## Responsibilities
  *
- * - **Inference**: @ref Engine loads ONNX / TensorRT models and runs forward passes
- * - **Preprocess**: @ref Preprocess converts BGR images, vectors, or pre-filled tensors
+ * - **Inference**: @ref Engine loads ONNX / TensorRT models and runs forward
+ * passes
+ * - **Preprocess**: @ref Preprocess converts BGR images, vectors, or pre-filled
+ * tensors
  * - **Postprocess**: @ref FindFloatOutput, @ref Decode, @ref ToMat, etc.
  * - **Pipeline**: @ref RunPipeline chains preprocess and @ref Engine::Run
  *
  * ## Recommended includes
  *
- * Application code should include this header only. For custom @ref Backend extensions,
- * also include `backend/backend.hpp` and the concrete backend (e.g. `backend/onnx/onnx.hpp`).
+ * Application code should include this header only. For custom @ref Backend
+ * extensions, also include `backend/backend.hpp` and the concrete backend (e.g.
+ * `backend/onnx/onnx.hpp`).
  *
  * ## Example
  *
@@ -55,20 +59,22 @@
  *
  * ## Runtime types
  *
- * Model I/O uses @ref Tensor / @ref TensorMap (float32, float16, bfloat16, int8, …).
+ * Model I/O uses @ref Tensor / @ref TensorMap (float32, float16, bfloat16,
+ * int8, …).
  * @ref Engine::Run(const FloatTensorMap&, …) is a float32 convenience overload.
- * Preprocess converts to each model input `element_type` via @ref FromPreprocessFloat.
- * Set `onnx.execution_provider` to `"cuda"` for GPU inference when ORT is built with CUDA.
- * Set `onnx.use_io_binding` to reduce host output copies when output shapes are static.
+ * Preprocess converts to each model input `element_type` via @ref
+ * FromPreprocessFloat. Set `onnx.execution_provider` to `"cuda"` for GPU
+ * inference when ORT is built with CUDA. Set `onnx.use_io_binding` to reduce
+ * host output copies when output shapes are static.
  *
- * @note Do not include `detail/**` or `backend/onnx/io.hpp` from application code.
+ * @note Do not include `detail/**` or `backend/onnx/io.hpp` from application
+ * code.
  * @note @ref Engine is not thread-safe across concurrent @ref Run calls.
  */
 
-#include "autonomy/common/network/common/tensor.hpp"
-#include "autonomy/common/network/common/options.hpp"
 #include "autonomy/common/network/backend/engine.hpp"
-#include "autonomy/common/network/preprocess.hpp"
+#include "autonomy/common/network/common/options.hpp"
+#include "autonomy/common/network/common/tensor.hpp"
 #include "autonomy/common/network/detail/postprocess/boxes.hpp"
 #include "autonomy/common/network/detail/postprocess/cls.hpp"
 #include "autonomy/common/network/detail/postprocess/find.hpp"
@@ -76,5 +82,6 @@
 #include "autonomy/common/network/detail/postprocess/nms.hpp"
 #include "autonomy/common/network/detail/postprocess/types.hpp"
 #include "autonomy/common/network/pipeline/run.hpp"
+#include "autonomy/common/network/preprocess.hpp"
 
 #endif  // AUTONOMY_COMMON_NETWORK_NETWORK_HPP_

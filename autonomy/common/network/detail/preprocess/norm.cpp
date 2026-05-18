@@ -26,10 +26,11 @@ namespace {
 constexpr float kEpsilon = 1e-6f;
 
 template <NormalizePolicy Policy>
-void ApplyNormImpl(std::vector<float>* tensor, const NormalizeParams& custom, int channels,
-                   int height, int width, bool swap_rb) {
+void ApplyNormImpl(std::vector<float>* tensor, const NormalizeParams& custom,
+                   int channels, int height, int width, bool swap_rb) {
     if constexpr (NormTraits<Policy>::kDivStd) {
-        DivStd(tensor, channels, height, width, NormTraits<Policy>::StdRgb(custom), swap_rb);
+        DivStd(tensor, channels, height, width,
+               NormTraits<Policy>::StdRgb(custom), swap_rb);
     }
 }
 
@@ -54,8 +55,8 @@ void DivStd(std::vector<float>* tensor, int channels, int height, int width,
     }
 }
 
-void BlobParams(NormalizePolicy policy, const NormalizeParams& custom, double* scale,
-                cv::Scalar* mean) {
+void BlobParams(NormalizePolicy policy, const NormalizeParams& custom,
+                double* scale, cv::Scalar* mean) {
     VisitNorm(policy, [&](auto tag) {
         constexpr NormalizePolicy selected = decltype(tag)::value;
         NormTraits<selected>::Blob(scale, mean, custom);
@@ -63,11 +64,13 @@ void BlobParams(NormalizePolicy policy, const NormalizeParams& custom, double* s
     });
 }
 
-void ApplyNorm(std::vector<float>* tensor, NormalizePolicy policy, const NormalizeParams& custom,
-               int channels, int height, int width, bool swap_rb) {
+void ApplyNorm(std::vector<float>* tensor, NormalizePolicy policy,
+               const NormalizeParams& custom, int channels, int height,
+               int width, bool swap_rb) {
     VisitNorm(policy, [&](auto tag) {
         constexpr NormalizePolicy selected = decltype(tag)::value;
-        ApplyNormImpl<selected>(tensor, custom, channels, height, width, swap_rb);
+        ApplyNormImpl<selected>(tensor, custom, channels, height, width,
+                                swap_rb);
         return true;
     });
 }

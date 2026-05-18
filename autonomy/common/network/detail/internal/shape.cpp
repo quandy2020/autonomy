@@ -16,8 +16,8 @@
 
 #include "autonomy/common/network/detail/internal/shape.hpp"
 
-#include "autonomy/common/network/detail/preprocess/dims.hpp"
 #include "autonomy/common/network/detail/internal/error.hpp"
+#include "autonomy/common/network/detail/preprocess/dims.hpp"
 
 #include <algorithm>
 
@@ -69,7 +69,8 @@ bool ParseShape(const ModelTensorInfo& info, int default_h, int default_w,
     return true;
 }
 
-bool Collapse(const ModelTensorInfo& info, ModelTensorInfo* view, std::string* error) {
+bool Collapse(const ModelTensorInfo& info, ModelTensorInfo* view,
+              std::string* error) {
     if (view == nullptr) {
         SetErrorMessage(error, "view is null.");
         return false;
@@ -84,12 +85,13 @@ bool Collapse(const ModelTensorInfo& info, ModelTensorInfo* view, std::string* e
         return false;
     }
     const std::vector<int64_t>& dims = info.shape.Dims();
-    view->shape = TensorShape(
-        {1, Dim(dims, 2, 3), Dim(dims, 3, 640), Dim(dims, 4, 640)});
+    view->shape =
+        TensorShape({1, Dim(dims, 2, 3), Dim(dims, 3, 640), Dim(dims, 4, 640)});
     return true;
 }
 
-bool Expand(const ModelTensorInfo& info, std::vector<float>* tensor, std::string* error) {
+bool Expand(const ModelTensorInfo& info, std::vector<float>* tensor,
+            std::string* error) {
     if (tensor == nullptr) {
         SetErrorMessage(error, "tensor is null.");
         return false;

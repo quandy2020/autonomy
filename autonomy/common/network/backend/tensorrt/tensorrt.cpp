@@ -19,9 +19,9 @@
 #include "autonomy/common/network/common/tensor.hpp"
 
 #include <fstream>
-#include <unordered_map>
 #include <numeric>
 #include <sstream>
+#include <unordered_map>
 #include <vector>
 
 #include "glog/logging.h"
@@ -41,7 +41,8 @@ namespace {
 
 #ifdef AUTONOMY_HAS_TENSORRT
 
-class TrtLogger : public nvinfer1::ILogger {
+class TrtLogger : public nvinfer1::ILogger
+{
 public:
     void log(Severity severity, const char* msg) noexcept override {
         if (severity <= Severity::kWARNING) {
@@ -57,7 +58,8 @@ TrtLogger& GetTrtLogger() {
 
 bool EndsWith(const std::string& path, const std::string& suffix) {
     return path.size() >= suffix.size() &&
-           path.compare(path.size() - suffix.size(), suffix.size(), suffix) == 0;
+           path.compare(path.size() - suffix.size(), suffix.size(), suffix) ==
+               0;
 }
 
 std::vector<int64_t> DimsToShape(const nvinfer1::Dims& dims) {
@@ -124,7 +126,8 @@ TensorRtBackend::~TensorRtBackend() {
 }
 
 TensorRtBackend::TensorRtBackend(TensorRtBackend&&) noexcept = default;
-TensorRtBackend& TensorRtBackend::operator=(TensorRtBackend&&) noexcept = default;
+TensorRtBackend& TensorRtBackend::operator=(TensorRtBackend&&) noexcept =
+    default;
 
 bool TensorRtBackend::LoadFromFile(const std::string& model_path) {
     InferenceOptions opt;
@@ -192,8 +195,10 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
             const std::string base =
                 slash == std::string::npos ? path : path.substr(slash + 1);
             cache_path += base + ".engine";
-            if (ReadBinaryFile(cache_path, &engine_blob) && load_engine_blob(engine_blob)) {
-                LOG(INFO) << "Loaded TensorRT engine from cache: " << cache_path;
+            if (ReadBinaryFile(cache_path, &engine_blob) &&
+                load_engine_blob(engine_blob)) {
+                LOG(INFO) << "Loaded TensorRT engine from cache: "
+                          << cache_path;
             } else {
                 engine_blob.clear();
                 impl_->engine.reset();
@@ -214,9 +219,9 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
                 builder->createNetworkV2(explicit_batch));
             auto parser = std::unique_ptr<nvonnxparser::IParser>(
                 nvonnxparser::createParser(*network, GetTrtLogger()));
-            if (!parser->parseFromFile(path.c_str(),
-                                       static_cast<int>(
-                                           nvinfer1::ILogger::Severity::kWARNING))) {
+            if (!parser->parseFromFile(
+                    path.c_str(),
+                    static_cast<int>(nvinfer1::ILogger::Severity::kWARNING))) {
                 SetLastError("nvonnxparser failed to parse: " + path);
                 return false;
             }
@@ -238,8 +243,9 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
             if (!cache_path.empty()) {
                 std::ofstream cache_file(cache_path, std::ios::binary);
                 if (cache_file) {
-                    cache_file.write(engine_blob.data(),
-                                     static_cast<std::streamsize>(engine_blob.size()));
+                    cache_file.write(
+                        engine_blob.data(),
+                        static_cast<std::streamsize>(engine_blob.size()));
                     LOG(INFO) << "Wrote TensorRT engine cache: " << cache_path;
                 }
             }
@@ -255,8 +261,8 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
 #endif
     } else {
         SetLastError(
-            "TensorRT model_path must be .onnx, .engine, or .plan (got: " + path +
-            ").");
+            "TensorRT model_path must be .onnx, .engine, or .plan (got: " +
+            path + ").");
         return false;
     }
 
@@ -278,9 +284,11 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
     const int32_t nb_io = impl_->engine->getNbIOTensors();
     for (int32_t i = 0; i < nb_io; ++i) {
         const char* name = impl_->engine->getIOTensorName(i);
-        const nvinfer1::TensorIOMode mode = impl_->engine->getTensorIOMode(name);
+        const nvinfer1::TensorIOMode mode =
+            impl_->engine->getTensorIOMode(name);
         nvinfer1::Dims dims = impl_->engine->getTensorShape(name);
-        const nvinfer1::DataType data_type = impl_->engine->getTensorDataType(name);
+        const nvinfer1::DataType data_type =
+            impl_->engine->getTensorDataType(name);
 
         ModelTensorInfo info;
         info.name = name;
@@ -308,7 +316,9 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
                 info.element_type = ElementType::kUint8;
                 break;
             default:
-                SetLastError(std::string("Unsupported TensorRT data type for tensor ") + name);
+                SetLastError(
+                    std::string("Unsupported TensorRT data type for tensor ") +
+                    name);
                 return false;
         }
 
@@ -318,7 +328,8 @@ bool TensorRtBackend::LoadFromOptions(const InferenceOptions& opt) {
             const size_t elem_bytes = ElementTypeByteSize(info.element_type);
             const size_t bytes = static_cast<size_t>(vol) * elem_bytes;
             if (cudaMalloc(&device_ptr, bytes) != cudaSuccess) {
-                SetLastError(std::string("cudaMalloc failed for tensor ") + name);
+                SetLastError(std::string("cudaMalloc failed for tensor ") +
+                             name);
                 return false;
             }
             impl_->device_buffers[name] = device_ptr;
@@ -389,7 +400,8 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
         }
         std::vector<int64_t> shape;
         std::string shape_err;
-        if (!ResolveShapeForElementCount(in, it->second.element_count(), &shape, &shape_err)) {
+        if (!ResolveShapeForElementCount(in, it->second.element_count(), &shape,
+                                         &shape_err)) {
             SetLastError(shape_err);
             return false;
         }
@@ -403,8 +415,8 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
             return false;
         }
 
-        const int64_t vol = std::accumulate(shape.begin(), shape.end(), int64_t{1},
-                                            std::multiplies<int64_t>());
+        const int64_t vol = std::accumulate(
+            shape.begin(), shape.end(), int64_t{1}, std::multiplies<int64_t>());
         const size_t elem_bytes = ElementTypeByteSize(in.element_type);
         const size_t need_bytes = static_cast<size_t>(vol) * elem_bytes;
         auto buf_it = impl_->device_buffers.find(in.name);
@@ -413,19 +425,21 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
             return false;
         }
         if (need_bytes > impl_->device_capacity_bytes[in.name]) {
-            SetLastError("Input size exceeds allocated device buffer for " + in.name);
+            SetLastError("Input size exceeds allocated device buffer for " +
+                         in.name);
             return false;
         }
         if (it->second.byte_size() < need_bytes) {
             SetLastError("Input \"" + in.name + "\" buffer too small.");
             return false;
         }
-        if (cudaMemcpy(buf_it->second, it->second.bytes(), need_bytes, cudaMemcpyHostToDevice) !=
-            cudaSuccess) {
+        if (cudaMemcpy(buf_it->second, it->second.bytes(), need_bytes,
+                       cudaMemcpyHostToDevice) != cudaSuccess) {
             SetLastError("cudaMemcpy H2D failed for " + in.name);
             return false;
         }
-        if (!impl_->context->setTensorAddress(in.name.c_str(), buf_it->second)) {
+        if (!impl_->context->setTensorAddress(in.name.c_str(),
+                                              buf_it->second)) {
             SetLastError("setTensorAddress failed for " + in.name);
             return false;
         }
@@ -442,10 +456,12 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
         const size_t elem_bytes = ElementTypeByteSize(out.element_type);
         const size_t need_bytes = static_cast<size_t>(vol) * elem_bytes;
         if (need_bytes > impl_->device_capacity_bytes[out.name]) {
-            SetLastError("Output size exceeds allocated device buffer for " + out.name);
+            SetLastError("Output size exceeds allocated device buffer for " +
+                         out.name);
             return false;
         }
-        if (!impl_->context->setTensorAddress(out.name.c_str(), buf_it->second)) {
+        if (!impl_->context->setTensorAddress(out.name.c_str(),
+                                              buf_it->second)) {
             SetLastError("setTensorAddress failed for " + out.name);
             return false;
         }
@@ -471,8 +487,8 @@ bool TensorRtBackend::Run(const TensorMap& inputs, TensorMap* outputs) {
         const size_t need_bytes = static_cast<size_t>(vol) * elem_bytes;
         std::vector<uint8_t> host(need_bytes);
         void* device_ptr = impl_->device_buffers[out.name];
-        if (cudaMemcpy(host.data(), device_ptr, need_bytes, cudaMemcpyDeviceToHost) !=
-            cudaSuccess) {
+        if (cudaMemcpy(host.data(), device_ptr, need_bytes,
+                       cudaMemcpyDeviceToHost) != cudaSuccess) {
             SetLastError("cudaMemcpy D2H failed for " + out.name);
             return false;
         }

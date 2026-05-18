@@ -43,7 +43,8 @@ namespace network {
  * - Run: CPU @ref Tensor ↔ `Ort::Value` (see `backend/onnx/io.hpp`)
  * - Supports float32 / float16 / int8 / int32 / int64 / uint8 I/O
  */
-class OnnxBackend : public Backend {
+class OnnxBackend : public Backend
+{
 public:
     /** @brief Constructs backend without a loaded session */
     OnnxBackend();
