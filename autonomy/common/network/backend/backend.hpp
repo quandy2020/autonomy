@@ -54,6 +54,8 @@ public:
 
     Backend(const Backend&) = delete;
     Backend& operator=(const Backend&) = delete;
+    Backend(Backend&&) noexcept = default;
+    Backend& operator=(Backend&&) noexcept = default;
 
     /**
      * @brief Loads a model from a file path

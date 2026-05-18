@@ -124,7 +124,7 @@ bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
     }
 
     const size_t count = host.element_count();
-    void* data = host.mutable_bytes();
+    void* data = const_cast<uint8_t*>(host.bytes());
 
     switch (meta.element_type) {
         case ElementType::kFloat32:
@@ -278,7 +278,7 @@ bool RunClassicInference(Ort::Session& session,
             }
             return false;
         }
-        Ort::Value tensor;
+        Ort::Value tensor{nullptr};
         if (!CreateOrtInputTensor(in, it->second, mem_info, &tensor, error)) {
             return false;
         }
@@ -334,7 +334,7 @@ bool RunIoBindingInference(Ort::Session& session,
             }
             return false;
         }
-        Ort::Value tensor;
+        Ort::Value tensor{nullptr};
         if (!CreateOrtInputTensor(in, it->second, mem_info, &tensor, error)) {
             return false;
         }
@@ -352,7 +352,7 @@ bool RunIoBindingInference(Ort::Session& session,
         if (!AllocateStaticOutputTensor(out, &host, error)) {
             return false;
         }
-        Ort::Value tensor;
+        Ort::Value tensor{nullptr};
         if (!CreateOrtInputTensor(out, host, mem_info, &tensor, error)) {
             return false;
         }

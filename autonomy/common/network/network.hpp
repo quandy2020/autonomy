@@ -51,7 +51,7 @@
  * RunResult result;
  * if (!RunPipeline(engine.get(), image, prep, &result, &err)) { ... }
  *
- * const std::vector<float>* depth = nullptr;
+ * const float* depth = nullptr;
  * std::string out_name;
  * FindFloatOutput(result.outputs, engine->GetOutputInfos(),
  *                 &out_name, &depth, "depth", &err);
