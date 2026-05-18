@@ -62,7 +62,8 @@ bool AppendOnnxExecutionProviders(Ort::SessionOptions& options,
 }
 
 Ort::Env& OrtEnv() {
-    static Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "autonomy_network");
+    // ERROR: suppress benign load-time warnings (e.g. constant_folding on Sqrt).
+    static Ort::Env env(ORT_LOGGING_LEVEL_ERROR, "autonomy_network");
     return env;
 }
 
@@ -134,6 +135,7 @@ bool OnnxBackend::LoadFromOptions(const InferenceOptions& opt) {
 
     try {
         impl_->session_options = Ort::SessionOptions{};
+        impl_->session_options.SetSessionLogSeverityLevel(ORT_LOGGING_LEVEL_ERROR);
         if (opt.onnx.intra_op_num_threads > 0) {
             impl_->session_options.SetIntraOpNumThreads(
                 opt.onnx.intra_op_num_threads);

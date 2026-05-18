@@ -15,11 +15,14 @@
 namespace network = autonomy::common::network;
 
 int main(int argc, char* argv[]) {
+    google::InitGoogleLogging(argv[0]);
+    google::InstallFailureSignalHandler();
+    FLAGS_logtostderr = true;
+
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <model.onnx> <image> [vis.png]\n";
         return 1;
     }
-    google::InitGoogleLogging(argv[0]);
 
     cv::Mat image = cv::imread(argv[2]);
     if (image.empty()) {
