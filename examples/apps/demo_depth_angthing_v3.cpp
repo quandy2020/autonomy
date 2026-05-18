@@ -5,6 +5,8 @@
 // Usage: demo_depth_angthing_v3 <model.onnx> <image> [vis.png]
 
 #include "autonomy/common/network/network.hpp"
+#include "autonomy/common/network/detail/preprocess/dims.hpp"
+#include "autonomy/common/network/detail/preprocess/policy.hpp"
 
 #include <glog/logging.h>
 #include <opencv2/opencv.hpp>
@@ -43,7 +45,7 @@ int main(int argc, char* argv[]) {
 
     int height = 518;
     int width = 518;
-    network::Size(inputs[0], 518, &height, &width);
+    network::GetSpatialSize(inputs[0], 518, &height, &width);
 
     const network::PreprocessOptions preprocess =
         network::MakeBound(504, 14, height, width);
