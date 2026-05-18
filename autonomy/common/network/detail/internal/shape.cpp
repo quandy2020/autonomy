@@ -14,21 +14,21 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/network/detail/preprocess/internal/shape.hpp"
+#include "autonomy/common/network/detail/internal/shape.hpp"
 
 #include "autonomy/common/network/detail/preprocess/dims.hpp"
-#include "autonomy/common/network/detail/preprocess/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
 
 #include <algorithm>
 
 namespace autonomy {
 namespace common {
 namespace network {
-namespace preprocess_internal {
+namespace internal {
 
 namespace {
 
-using preprocess_internal::SetErrorMessage;
+using internal::SetErrorMessage;
 
 }  // namespace
 
@@ -122,7 +122,7 @@ bool Expand(const ModelTensorInfo& info, std::vector<float>* tensor, std::string
     return true;
 }
 
-}  // namespace preprocess_internal
+}  // namespace internal
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy

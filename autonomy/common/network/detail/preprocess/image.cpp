@@ -18,9 +18,9 @@
 
 #include "autonomy/common/network/detail/preprocess/dims.hpp"
 #include "autonomy/common/network/detail/preprocess/inputs.hpp"
-#include "autonomy/common/network/detail/preprocess/internal/error.hpp"
-#include "autonomy/common/network/detail/preprocess/internal/shape.hpp"
-#include "autonomy/common/network/detail/preprocess/internal/traits.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/shape.hpp"
+#include "autonomy/common/network/detail/internal/traits.hpp"
 #include "autonomy/common/network/detail/preprocess/layout.hpp"
 #include "autonomy/common/network/detail/preprocess/norm.hpp"
 #include "autonomy/common/network/detail/preprocess/resize.hpp"
@@ -36,14 +36,14 @@ namespace network {
 
 namespace {
 
-using preprocess_internal::ApplyNorm;
-using preprocess_internal::BlobParams;
-using preprocess_internal::Collapse;
-using preprocess_internal::Expand;
-using preprocess_internal::ParseShape;
-using preprocess_internal::SetErrorMessage;
-using preprocess_internal::ToLayout;
-using preprocess_internal::VisitLayout;
+using internal::ApplyNorm;
+using internal::BlobParams;
+using internal::Collapse;
+using internal::Expand;
+using internal::ParseShape;
+using internal::SetErrorMessage;
+using internal::ToLayout;
+using internal::VisitLayout;
 
 TransformMeta* MetaTarget(bool* wrote, TransformMeta* user, TransformMeta* local) {
     if (*wrote) {
@@ -114,6 +114,7 @@ bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input, const Preproce
 
 bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs,
                 const PreprocessOptions& opt, TensorMap* tensors, TransformMeta* meta,
+                std::unordered_map<std::string, TransformMeta>* meta_by_input,
                 std::string* error) {
     if (tensors == nullptr) {
         SetErrorMessage(error, "tensors is null.");
@@ -125,6 +126,9 @@ bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs
     }
 
     tensors->clear();
+    if (meta_by_input != nullptr) {
+        meta_by_input->clear();
+    }
     bool wrote_meta = false;
     TransformMeta local_meta;
 
@@ -135,7 +139,12 @@ bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs
                 continue;
             }
             (*tensors)[info.name] = found->second;
-            if (!CheckSize(info, found->second.size(), error)) {
+            if (found->second.element_type() != info.element_type) {
+                SetErrorMessage(error, "Named input \"" + info.name +
+                                           "\" element type does not match model.");
+                return false;
+            }
+            if (!CheckSize(info, found->second.element_count(), error)) {
                 return false;
             }
         }
@@ -153,8 +162,18 @@ bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs
             }
             if (meta_out != nullptr) {
                 wrote_meta = true;
+                if (meta_by_input != nullptr) {
+                    (*meta_by_input)[info.name] = *meta_out;
+                }
             }
-            (*tensors)[info.name] = std::move(buffer);
+            std::string convert_err;
+            Tensor typed =
+                FromPreprocessFloat(std::move(buffer), info.element_type, &convert_err);
+            if (!convert_err.empty()) {
+                SetErrorMessage(error, convert_err);
+                return false;
+            }
+            (*tensors)[info.name] = std::move(typed);
         }
     }
 

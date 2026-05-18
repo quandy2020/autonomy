@@ -17,25 +17,59 @@
 #ifndef AUTONOMY_COMMON_NETWORK_NETWORK_HPP_
 #define AUTONOMY_COMMON_NETWORK_NETWORK_HPP_
 
-#include "autonomy/common/network/engine.hpp"
-#include "autonomy/common/network/process.hpp"
-#include "autonomy/common/network/tensor.hpp"
-
-namespace autonomy {
-namespace common {
-namespace network {
-
 /**
  * @file network.hpp
- * @brief Umbrella header for model inference and generic pre/postprocess
+ * @brief Application umbrella header: inference, preprocess, postprocess, pipeline
  *
- * Includes @ref Engine, @ref TensorMap / @ref ModelTensorInfo, and the full
- * process API (@ref RunPipeline, @ref Preprocess, @ref Find, @ref Decode, etc.).
- * See README.md in this directory for usage examples.
+ * @namespace autonomy::common::network
+ *
+ * ## Responsibilities
+ *
+ * - **Inference**: @ref Engine loads ONNX / TensorRT models and runs forward passes
+ * - **Preprocess**: @ref Preprocess converts BGR images, vectors, or pre-filled tensors
+ * - **Postprocess**: @ref FindFloatOutput, @ref Decode, @ref ToMat, etc.
+ * - **Pipeline**: @ref RunPipeline chains preprocess and @ref Engine::Run
+ *
+ * ## Recommended includes
+ *
+ * Application code should include this header only. For custom @ref Backend extensions,
+ * also include `backend/backend.hpp` and the concrete backend (e.g. `backend/onnx/onnx.hpp`).
+ *
+ * ## Example
+ *
+ * @code
+ * InferenceOptions opt;
+ * opt.model_path = "/path/to/model.onnx";
+ * std::string err;
+ * auto engine = Engine::CreateEngine(opt, &err);
+ *
+ * PreprocessOptions prep = Letterbox<640, 640>();
+ * RunResult result;
+ * if (!RunPipeline(engine.get(), image, prep, &result, &err)) { ... }
+ *
+ * const std::vector<float>* depth = nullptr;
+ * std::string out_name;
+ * FindFloatOutput(result.outputs, engine->GetOutputInfos(),
+ *                 &out_name, &depth, "depth", &err);
+ * @endcode
+ *
+ * ## Runtime types
+ *
+ * Model I/O uses @ref Tensor / @ref TensorMap (float32, float16, bfloat16, int8, …).
+ * @ref Engine::Run(const FloatTensorMap&, …) is a float32 convenience overload.
+ * Preprocess converts to each model input `element_type` via @ref FromPreprocessFloat.
+ * Set `onnx.execution_provider` to `"cuda"` for GPU inference when ORT is built with CUDA.
+ * Set `onnx.use_io_binding` to reduce host output copies when output shapes are static.
+ *
+ * @note Do not include `detail/**` or `backend/onnx/io.hpp` from application code.
+ * @note @ref Engine is not thread-safe across concurrent @ref Run calls.
  */
 
-}  // namespace network
-}  // namespace common
-}  // namespace autonomy
+#include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/common/options.hpp"
+#include "autonomy/common/network/backend/engine.hpp"
+#include "autonomy/common/network/preprocess.hpp"
+#include "autonomy/common/network/postprocess.hpp"
+#include "autonomy/common/network/pipeline/run.hpp"
 
 #endif  // AUTONOMY_COMMON_NETWORK_NETWORK_HPP_

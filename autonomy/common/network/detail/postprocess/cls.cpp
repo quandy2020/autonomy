@@ -16,7 +16,7 @@
 
 #include "autonomy/common/network/detail/postprocess/cls.hpp"
 
-#include "autonomy/common/network/detail/postprocess/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
 
 #include <algorithm>
 
@@ -25,7 +25,7 @@ namespace common {
 namespace network {
 
 namespace {
-using postprocess_internal::SetErrorMessage;
+using internal::SetErrorMessage;
 }  // namespace
 
 bool TopK(const std::vector<float>& logits, int top_k, std::vector<ClassScore>* result,

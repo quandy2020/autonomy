@@ -16,12 +16,10 @@
 
 #include "autonomy/common/network/detail/postprocess/map.hpp"
 
-#include "autonomy/common/network/detail/postprocess/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
 
 #include <opencv2/imgproc.hpp>
 
-#include <algorithm>
-#include <cctype>
 #include <cmath>
 
 namespace autonomy {
@@ -29,39 +27,7 @@ namespace common {
 namespace network {
 
 namespace {
-using postprocess_internal::SetErrorMessage;
-
-bool ContainsNameKeyword(const std::string& name, const std::string& keyword) {
-    if (keyword.empty()) {
-        return false;
-    }
-    std::string lower_name = name;
-    std::string lower_keyword = keyword;
-    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
-                 [](unsigned char character) {
-                     return static_cast<char>(std::tolower(character));
-                 });
-    std::transform(lower_keyword.begin(), lower_keyword.end(), lower_keyword.begin(),
-                 [](unsigned char character) {
-                     return static_cast<char>(std::tolower(character));
-                 });
-    return lower_name.find(lower_keyword) != std::string::npos;
-}
-
-int64_t SpatialElementCount(const ModelTensorInfo& tensor_info) {
-    const std::vector<int64_t>& dimensions = tensor_info.shape.Dims();
-    if (dimensions.size() < 2) {
-        return 0;
-    }
-    int64_t count = 1;
-    const size_t start_index = dimensions.size() - 2;
-    for (size_t index = start_index; index < dimensions.size(); ++index) {
-        if (dimensions[index] > 0) {
-            count *= dimensions[index];
-        }
-    }
-    return count;
-}
+using internal::SetErrorMessage;
 
 bool InferMapShape(const ModelTensorInfo& info, size_t element_count, int* height, int* width,
                    size_t* offset) {
@@ -91,63 +57,6 @@ bool InferMapShape(const ModelTensorInfo& info, size_t element_count, int* heigh
 }
 
 }  // namespace
-
-bool Find(
-    const std::unordered_map<std::string, std::vector<float>>& outputs,
-    const std::vector<ModelTensorInfo>& output_infos, std::string* output_name,
-    const std::vector<float>** output_data, const std::string& name_keyword,
-    std::string* error) {
-    if (output_name == nullptr || output_data == nullptr) {
-        SetErrorMessage(error, "output_name or output_data is null.");
-        return false;
-    }
-    if (outputs.empty()) {
-        SetErrorMessage(error, "model produced no outputs.");
-        return false;
-    }
-
-    if (!name_keyword.empty()) {
-        const auto exact = outputs.find(name_keyword);
-        if (exact != outputs.end()) {
-            *output_name = name_keyword;
-            *output_data = &exact->second;
-            return true;
-        }
-    }
-
-    const std::vector<float>* best_data = nullptr;
-    std::string best_name;
-    int64_t best_spatial_count = -1;
-
-    for (const ModelTensorInfo& tensor_info : output_infos) {
-        const auto found = outputs.find(tensor_info.name);
-        if (found == outputs.end()) {
-            continue;
-        }
-        if (ContainsNameKeyword(tensor_info.name, name_keyword)) {
-            *output_name = tensor_info.name;
-            *output_data = &found->second;
-            return true;
-        }
-        const int64_t spatial_count = SpatialElementCount(tensor_info);
-        if (spatial_count > best_spatial_count) {
-            best_spatial_count = spatial_count;
-            best_data = &found->second;
-            best_name = tensor_info.name;
-        }
-    }
-
-    if (best_data != nullptr) {
-        *output_name = best_name;
-        *output_data = best_data;
-        return true;
-    }
-
-    const auto first = outputs.begin();
-    *output_name = first->first;
-    *output_data = &first->second;
-    return true;
-}
 
 bool ToMat(const std::vector<float>& output, const ModelTensorInfo& info,
            const TransformMeta& meta, cv::Mat* mat, std::string* error) {

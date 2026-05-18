@@ -19,6 +19,7 @@
 
 #include "autonomy/common/network/detail/postprocess/types.hpp"
 
+#include <string>
 #include <vector>
 
 namespace autonomy {
@@ -31,14 +32,17 @@ namespace network {
  */
 
 /**
- * @brief Apply greedy NMS in-place on a detection list
+ * @brief Applies greedy NMS in-place on a detection list
  *
- * Sorts by confidence, then suppresses boxes with IoU above @p iou_threshold.
+ * Sorts by confidence, then suppresses same-class boxes with IoU above
+ * @p iou_threshold. Suppressed entries are removed from @p detections.
  *
  * @param iou_threshold Intersection-over-union threshold in [0, 1]
- * @param detections Input/output detection list; suppressed entries are removed
+ * @param detections Input/output detection list; must not be null
+ * @param error Optional failure reason when @p detections is null
+ * @return True on success; false when @p detections is null
  */
-void Nms(float iou_threshold, std::vector<Detection>* detections);
+bool Nms(float iou_threshold, std::vector<Detection>* detections, std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

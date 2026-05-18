@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_COMMON_NETWORK_PREPROCESS_LAYOUT_HPP_
 #define AUTONOMY_COMMON_NETWORK_PREPROCESS_LAYOUT_HPP_
 
-#include "autonomy/common/network/detail/preprocess/internal/traits.hpp"
+#include "autonomy/common/network/detail/internal/traits.hpp"
 #include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <cstdint>
@@ -29,16 +29,35 @@ namespace network {
 
 /**
  * @file layout.hpp
- * @brief NCHW / NHWC layout resolution and conversion
+ * @brief NCHW / NHWC layout resolution and tensor reordering
  */
 
+/**
+ * @brief Resolves final layout; for kAuto infers NCHW or NHWC from model dims
+ *
+ * @param requested Policy from @ref PreprocessOptions
+ * @param dims Model input shape (4-D or 5-D)
+ */
 LayoutPolicy ResolveLayout(LayoutPolicy requested, const std::vector<int64_t>& dims);
 
+/**
+ * @brief Converts NCHW float blob to NHWC
+ *
+ * @param nchw Flat [C,H,W] vector
+ * @param channels Channel count
+ * @param height Spatial height
+ * @param width Spatial width
+ * @param[out] nhwc Output buffer
+ */
 bool ToNhwc(const std::vector<float>& nchw, int channels, int height, int width,
             std::vector<float>* nhwc);
 
-namespace preprocess_internal {
+namespace internal {
 
+/**
+ * @brief Compile-time layout conversion (pass-through NCHW or convert to NHWC)
+ * @tparam Layout Target @ref LayoutPolicy
+ */
 template <LayoutPolicy Layout>
 bool ToLayout(std::vector<float> nchw, int channels, int height, int width,
               std::vector<float>* out) {
@@ -50,7 +69,7 @@ bool ToLayout(std::vector<float> nchw, int channels, int height, int width,
     }
 }
 
-}  // namespace preprocess_internal
+}  // namespace internal
 
 }  // namespace network
 }  // namespace common

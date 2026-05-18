@@ -18,11 +18,12 @@
 #define AUTONOMY_COMMON_NETWORK_PREPROCESS_IMAGE_HPP_
 
 #include "autonomy/common/network/detail/preprocess/types.hpp"
-#include "autonomy/common/network/tensor.hpp"
+#include "autonomy/common/network/common/tensor.hpp"
 
 #include <opencv2/core.hpp>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace autonomy {
@@ -37,8 +38,8 @@ namespace network {
 /**
  * @brief Build one image input tensor from a BGR image
  *
- * Pipeline: @ref Resize → blob + @ref preprocess_internal::ApplyNorm →
- * @ref preprocess_internal::ToLayout → @ref preprocess_internal::Expand.
+ * Pipeline: @ref Resize → blob + @ref internal::ApplyNorm →
+ * @ref internal::ToLayout → @ref internal::Expand.
  *
  * @param image_bgr Source image in BGR; must be non-empty
  * @param input Model input metadata from @ref Engine::GetInputInfos
@@ -62,13 +63,16 @@ bool Preprocess(const cv::Mat& image_bgr, const ModelTensorInfo& input,
  * @param inputs Model input descriptors
  * @param options Image preprocess options when sample contains an image
  * @param tensors On success, map of input name to float buffer
- * @param meta Optional transform metadata from the image branch
+ * @param meta Optional geometry for the first image input (backward compatible)
+ * @param meta_by_input Optional map of input name to geometry for each image tensor
  * @param error Optional failure message
  * @return True on success
  */
 bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs,
                 const PreprocessOptions& options, TensorMap* tensors,
-                TransformMeta* meta = nullptr, std::string* error = nullptr);
+                TransformMeta* meta = nullptr,
+                std::unordered_map<std::string, TransformMeta>* meta_by_input = nullptr,
+                std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

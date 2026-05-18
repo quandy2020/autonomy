@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_NETWORK_POSTPROCESS_INTERNAL_MATH_HPP_
-#define AUTONOMY_COMMON_NETWORK_POSTPROCESS_INTERNAL_MATH_HPP_
+#ifndef AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_MATH_HPP_
+#define AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_MATH_HPP_
 
 #include "autonomy/common/network/detail/postprocess/types.hpp"
 
@@ -25,29 +25,31 @@
 namespace autonomy {
 namespace common {
 namespace network {
-namespace postprocess_internal {
+namespace internal {
 
 /**
  * @file math.hpp
- * @brief Shared detection math (sigmoid, intersection-over-union)
+ * @brief Detection postprocess math (sigmoid, intersection-over-union)
  */
 
 /**
- * @brief Logistic activation for raw class/objectness logits
+ * @brief Applies logistic activation to a raw logit
+ *
  * @param x Logit value
- * @return Sigmoid in (0, 1)
+ * @return Value in (0, 1)
  */
 inline float Sigmoid(float x) {
     return 1.f / (1.f + std::exp(-x));
 }
 
 /**
- * @brief Axis-aligned IoU between two detections in source coordinates
- * @param a First box
- * @param b Second box
+ * @brief Computes axis-aligned intersection-over-union between two boxes in source coordinates
+ *
+ * @param a First detection
+ * @param b Second detection
  * @return IoU in [0, 1], or 0 when union area is negligible
  */
-inline float ComputeIoU(const Detection& a, const Detection& b) {
+inline float IoU(const Detection& a, const Detection& b) {
     const float ix1 = std::max(a.x1, b.x1);
     const float iy1 = std::max(a.y1, b.y1);
     const float ix2 = std::min(a.x2, b.x2);
@@ -59,9 +61,9 @@ inline float ComputeIoU(const Detection& a, const Detection& b) {
     return union_area > 1e-6f ? inter / union_area : 0.f;
 }
 
-}  // namespace postprocess_internal
+}  // namespace internal
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy
 
-#endif  // AUTONOMY_COMMON_NETWORK_POSTPROCESS_INTERNAL_MATH_HPP_
+#endif  // AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_MATH_HPP_

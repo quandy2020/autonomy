@@ -29,9 +29,23 @@ namespace network {
 
 /**
  * @file resize.hpp
- * @brief BGR resize for model spatial size (compile-time policy dispatch)
+ * @brief Resize BGR images to model spatial size (compile-time policy dispatch)
+ *
+ * Dispatches on @ref PreprocessOptions::resize to letterbox / stretch /
+ * center crop / upper bound (see `detail/internal/resize_impl.hpp`).
  */
 
+/**
+ * @brief Resizes BGR image to target size and records geometry metadata
+ *
+ * @param bgr Source 8UC3 image
+ * @param height Target height
+ * @param width Target width
+ * @param opt Resize policy, pad color, bound target, etc.
+ * @param[out] out Resized BGR image
+ * @param[out] meta Optional; for inverse mapping in postprocess
+ * @param[out] error Failure reason
+ */
 bool Resize(const cv::Mat& bgr, int height, int width, const PreprocessOptions& opt,
             cv::Mat* out, TransformMeta* meta = nullptr, std::string* error = nullptr);
 

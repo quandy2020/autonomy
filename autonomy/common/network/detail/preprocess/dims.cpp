@@ -16,7 +16,7 @@
 
 #include "autonomy/common/network/detail/preprocess/dims.hpp"
 
-#include "autonomy/common/network/detail/preprocess/internal/shape.hpp"
+#include "autonomy/common/network/detail/internal/shape.hpp"
 
 namespace autonomy {
 namespace common {
@@ -36,10 +36,10 @@ bool IsImage(const ModelTensorInfo& info) {
     }
     const std::vector<int64_t>& dims = info.shape.Dims();
     if (rank == 4) {
-        return (dims.size() > 1 && preprocess_internal::IsChannelDim(dims[1])) ||
-               (dims.size() > 3 && preprocess_internal::IsChannelDim(dims[3]));
+        return (dims.size() > 1 && internal::IsChannelDim(dims[1])) ||
+               (dims.size() > 3 && internal::IsChannelDim(dims[3]));
     }
-    return dims.size() > 2 && preprocess_internal::IsChannelDim(dims[2]);
+    return dims.size() > 2 && internal::IsChannelDim(dims[2]);
 }
 
 bool IsVector(const ModelTensorInfo& info) {
@@ -47,12 +47,12 @@ bool IsVector(const ModelTensorInfo& info) {
     return rank == 1 || rank == 2;
 }
 
-bool Size(const ModelTensorInfo& info, int fallback, int* height, int* width) {
+bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height, int* width) {
     if (height == nullptr || width == nullptr) {
         return false;
     }
     ImageInputShape shape;
-    if (!preprocess_internal::ParseShape(info, fallback, fallback, &shape, nullptr)) {
+    if (!internal::ParseShape(info, fallback, fallback, &shape, nullptr)) {
         *height = fallback;
         *width = fallback;
         return false;

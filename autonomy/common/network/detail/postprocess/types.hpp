@@ -23,45 +23,47 @@ namespace network {
 
 /**
  * @file types.hpp
- * @brief Postprocess result and option types
+ * @brief Postprocess result types and decode parameters
+ *
+ * @ref Detection / @ref ClassScore are decode outputs; @ref BoxOptions configures @ref Decode.
  */
 
 /**
  * @brief One axis-aligned detection in original image coordinates
  */
 struct Detection {
-    float x1 = 0.f;         //!< @brief Left edge (pixels)
-    float y1 = 0.f;         //!< @brief Top edge (pixels)
-    float x2 = 0.f;         //!< @brief Right edge (pixels)
-    float y2 = 0.f;         //!< @brief Bottom edge (pixels)
-    float confidence = 0.f; //!< @brief Score of the winning class
-    int class_id = 0;       //!< @brief Argmax class index
+    float x1 = 0.f;         //!< Left edge (pixels)
+    float y1 = 0.f;         //!< Top edge (pixels)
+    float x2 = 0.f;         //!< Right edge (pixels)
+    float y2 = 0.f;         //!< Bottom edge (pixels)
+    float confidence = 0.f; //!< Winning class score
+    int class_id = 0;       //!< Argmax class index
 };
 
 /**
  * @brief One classification label with score
  */
 struct ClassScore {
-    int class_id = 0;   //!< @brief Class index
-    float score = 0.f;  //!< @brief Logit or probability (caller-defined scale)
+    int class_id = 0;   //!< Class index
+    float score = 0.f;  //!< Logit or probability (caller-defined scale)
 };
 
 /**
  * @brief Inferred layout of a grid detection output tensor
  */
 struct OutputLayout {
-    int num_proposals = 0;  //!< @brief Number of anchor/proposal rows or columns
-    bool row_major = false; //!< @brief True if layout is [N, stride]; else [stride, N]
+    int num_proposals = 0;  //!< Number of anchor/proposal rows or columns
+    bool row_major = false; //!< true if [N, stride]; else [stride, N]
 };
 
 /**
  * @brief Parameters for @ref Decode
  */
 struct BoxOptions {
-    int num_classes = 80;          //!< @brief Number of classes (stride = 4 + num_classes)
-    float conf_threshold = 0.55f;  //!< @brief Minimum confidence to keep a box
-    float nms_iou = 0.45f;         //!< @brief IoU threshold for @ref Nms (0 to skip)
-    float min_box_size = 2.f;      //!< @brief Minimum box width/height in pixels
+    int num_classes = 80;          //!< Class count (stride = 4 + num_classes)
+    float conf_threshold = 0.55f;  //!< Minimum confidence to keep a box
+    float nms_iou = 0.45f;         //!< IoU threshold for @ref Nms (0 to skip)
+    float min_box_size = 2.f;      //!< Minimum box width/height in pixels
 };
 
 }  // namespace network

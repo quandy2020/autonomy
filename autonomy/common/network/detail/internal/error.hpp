@@ -22,17 +22,18 @@
 namespace autonomy {
 namespace common {
 namespace network {
-namespace detail {
+namespace internal {
 
 /**
  * @file error.hpp
- * @brief Shared optional error string helper for network detail modules
+ * @brief Shared optional error-string helper for network internal modules
  */
 
 /**
- * @brief Write @p text to @p error when the pointer is non-null
- * @param error Optional output error string
- * @param text Message to store
+ * @brief Writes @p text to @p error when the pointer is non-null
+ *
+ * @param error Optional output error string; ignored when null
+ * @param text Human-readable message to store
  */
 inline void SetErrorMessage(std::string* error, const std::string& text) {
     if (error != nullptr) {
@@ -40,7 +41,7 @@ inline void SetErrorMessage(std::string* error, const std::string& text) {
     }
 }
 
-}  // namespace detail
+}  // namespace internal
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy

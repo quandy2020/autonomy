@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_NETWORK_DETAIL_PREPROCESS_INTERNAL_RESIZE_OPS_HPP_
-#define AUTONOMY_COMMON_NETWORK_DETAIL_PREPROCESS_INTERNAL_RESIZE_OPS_HPP_
+#ifndef AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_RESIZE_IMPL_HPP_
+#define AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_RESIZE_IMPL_HPP_
 
-#include "autonomy/common/network/detail/preprocess/internal/traits.hpp"
+#include "autonomy/common/network/detail/internal/traits.hpp"
 #include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <opencv2/core.hpp>
@@ -29,11 +29,11 @@ namespace common {
 namespace network {
 
 /**
- * @file resize_ops.hpp
- * @brief Low-level BGR resize primitives and compile-time resize dispatch
+ * @file resize_impl.hpp
+ * @brief Low-level BGR resize primitives (library internal; see detail/preprocess/resize.hpp)
  */
 
-namespace preprocess_internal {
+namespace internal {
 
 void SetMeta(TransformMeta* meta, ResizePolicy policy, double scale, int pad_left, int pad_top,
              int crop_x, int crop_y, int in_h, int in_w, int src_h, int src_w);
@@ -56,10 +56,10 @@ bool ResizeForPolicy(ResizePolicy policy, const cv::Mat& bgr, int h, int w,
                      const PreprocessOptions& opt, cv::Mat* out, TransformMeta* meta,
                      std::string* error);
 
-}  // namespace preprocess_internal
+}  // namespace internal
 
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy
 
-#endif  // AUTONOMY_COMMON_NETWORK_DETAIL_PREPROCESS_INTERNAL_RESIZE_OPS_HPP_
+#endif  // AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_RESIZE_IMPL_HPP_
