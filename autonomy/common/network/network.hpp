@@ -69,7 +69,12 @@
 #include "autonomy/common/network/common/options.hpp"
 #include "autonomy/common/network/backend/engine.hpp"
 #include "autonomy/common/network/preprocess.hpp"
-#include "autonomy/common/network/postprocess.hpp"
+#include "autonomy/common/network/detail/postprocess/boxes.hpp"
+#include "autonomy/common/network/detail/postprocess/cls.hpp"
+#include "autonomy/common/network/detail/postprocess/find.hpp"
+#include "autonomy/common/network/detail/postprocess/map.hpp"
+#include "autonomy/common/network/detail/postprocess/nms.hpp"
+#include "autonomy/common/network/detail/postprocess/types.hpp"
 #include "autonomy/common/network/pipeline/run.hpp"
 
 #endif  // AUTONOMY_COMMON_NETWORK_NETWORK_HPP_
