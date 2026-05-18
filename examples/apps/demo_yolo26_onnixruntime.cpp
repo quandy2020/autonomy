@@ -28,11 +28,14 @@ void DrawBoxes(cv::Mat* image, const std::vector<network::Detection>& boxes) {
 }
 
 int main(int argc, char* argv[]) {
+    google::InitGoogleLogging(argv[0]);
+    google::InstallFailureSignalHandler();
+    FLAGS_logtostderr = true;
+
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <model.onnx> <image> [output.jpg]\n";
         return 1;
     }
-    google::InitGoogleLogging(argv[0]);
 
     std::string error;
     auto engine = network::Engine::CreateEngine(argv[1], "onnx", &error);

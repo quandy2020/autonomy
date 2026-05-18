@@ -93,12 +93,27 @@ else()
   message(FATAL_ERROR "Plugin libraries for demo_navigation_to_pose not found")
 endif()
 
-# Model pipeline demos（依赖 BUILD_ONNXRUNTIME + OpenCV）
-if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
-  add_autonomy_demo(autonomy.examples.apps.demo_yolo26_onnixruntime demo_yolo26_onnixruntime.cpp)
-  target_link_libraries(autonomy.examples.apps.demo_yolo26_onnixruntime PRIVATE ${OpenCV_LIBS})
-  add_autonomy_demo(autonomy.examples.apps.demo_depth_angthing_v3 demo_depth_angthing_v3.cpp)
-  target_link_libraries(autonomy.examples.apps.demo_depth_angthing_v3 PRIVATE ${OpenCV_LIBS})
+# Model pipeline demos: link only autonomy_network (not full libautonomy).
+if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND AND TARGET ${PROJECT_NAME}_network)
+  function(add_autonomy_onnx_demo target_name source_file)
+    add_executable(${target_name} ${source_file})
+    target_include_directories(${target_name} PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/../../..
+    )
+    if(EXISTS "/usr/local/lib/libglog.so")
+      target_link_directories(${target_name} PRIVATE /usr/local/lib)
+    endif()
+    target_link_libraries(${target_name} PRIVATE
+      ${PROJECT_NAME}_network
+      glog
+      gflags
+    )
+  endfunction()
+
+  add_autonomy_onnx_demo(autonomy.examples.apps.demo_yolo26_onnixruntime
+    demo_yolo26_onnixruntime.cpp)
+  add_autonomy_onnx_demo(autonomy.examples.apps.demo_depth_angthing_v3
+    demo_depth_angthing_v3.cpp)
 endif()
 
 # Install the executables
