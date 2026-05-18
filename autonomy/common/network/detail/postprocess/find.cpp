@@ -62,7 +62,7 @@ int64_t SpatialElementCount(const ModelTensorInfo& info) {
 
 bool FindFloatOutput(const TensorMap& outputs,
                      const std::vector<ModelTensorInfo>& infos,
-                     std::string* name, const std::vector<float>** data,
+                     std::string* name, const float** data,
                      const std::string& keyword, std::string* error) {
     if (name == nullptr || data == nullptr) {
         SetErrorMessage(error, "output_name or output_data is null.");
@@ -85,7 +85,7 @@ bool FindFloatOutput(const TensorMap& outputs,
         }
     }
 
-    const std::vector<float>* best_data = nullptr;
+    const float* best_data = nullptr;
     std::string best_name;
     int64_t best_spatial = -1;
 

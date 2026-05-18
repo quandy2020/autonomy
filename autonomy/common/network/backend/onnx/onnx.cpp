@@ -79,7 +79,7 @@ bool FillInfos(Ort::Session* session, bool is_input,
                      : session->GetOutputNameAllocated(i, alloc);
         Ort::TypeInfo type_info = is_input ? session->GetInputTypeInfo(i)
                                            : session->GetOutputTypeInfo(i);
-        Ort::TensorTypeAndShapeInfo ts = type_info.GetTensorTypeAndShapeInfo();
+        auto ts = type_info.GetTensorTypeAndShapeInfo();
         ElementType element_type = ElementType::kFloat32;
         if (!MapOrtElementType(ts.GetElementType(), &element_type)) {
             if (error != nullptr) {

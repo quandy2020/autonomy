@@ -52,7 +52,7 @@ namespace network {
  */
 bool FindFloatOutput(const TensorMap& outputs,
                      const std::vector<ModelTensorInfo>& infos,
-                     std::string* name, const std::vector<float>** data,
+                     std::string* name, const float** data,
                      const std::string& keyword = "",
                      std::string* error = nullptr);
 
