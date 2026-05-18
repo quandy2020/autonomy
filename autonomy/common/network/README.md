@@ -7,8 +7,7 @@ Model inference and shared preprocess/postprocess utilities. Namespace: `autonom
 ```
 network/
 ├── network.hpp              # Application umbrella (recommended entry)
-├── preprocess.hpp           # Preprocess public API
-├── postprocess.hpp          # Postprocess public API
+├── preprocess.hpp           # Preprocess public API (optional; see network.hpp)
 ├── common/                  # Tensor, InferenceOptions
 ├── backend/                 # Backend, BackendFactory, Engine
 │   ├── onnx/                # ONNX Runtime implementation
@@ -71,7 +70,7 @@ CUDA EP requires an ONNX Runtime build that includes the CUDA provider.
 
 ## Postprocess scope
 
-See the table in `postprocess.hpp`. `Decode` targets grid-style detection heads only.
+`Decode` targets grid-style YOLO grid heads only; see `detail/postprocess/` for API scope.
 
 ## Build
 
