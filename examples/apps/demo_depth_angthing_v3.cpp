@@ -4,7 +4,7 @@
 //
 // Usage: demo_depth_angthing_v3 <model.onnx> <image> [vis.png]
 
-#include "autonomy/common/network/process.hpp"
+#include "autonomy/common/network/network.hpp"
 
 #include <glog/logging.h>
 #include <opencv2/opencv.hpp>

@@ -1,7 +1,7 @@
 // Copyright 2025 The Openbot Authors. Apache 2.0.
 // Usage: demo_yolo26_onnixruntime <model.onnx> <image> [output.jpg]
 
-#include "autonomy/common/network/process.hpp"
+#include "autonomy/common/network/network.hpp"
 
 #include <glog/logging.h>
 #include <opencv2/opencv.hpp>
