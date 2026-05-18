@@ -18,7 +18,8 @@
 
 /**
  * @file io.hpp
- * @brief ONNX Runtime tensor create/copy helpers (library-internal, not installed)
+ * @brief ONNX Runtime tensor create/copy helpers (library-internal, not
+ * installed)
  *
  * Used by @ref OnnxBackend::Run. Not a stable public ABI.
  */
@@ -38,22 +39,27 @@ namespace detail {
 bool MapOrtElementType(ONNXTensorElementDataType ort_type, ElementType* out);
 
 bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
-                          Ort::MemoryInfo& memory_info, Ort::Value* out, std::string* error);
+                          Ort::MemoryInfo& memory_info, Ort::Value* out,
+                          std::string* error);
 
-bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta, Tensor* out,
-                         std::string* error);
+bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta,
+                         Tensor* out, std::string* error);
 
-/** @brief True when every output has a known static shape suitable for IoBinding */
+/** @brief True when every output has a known static shape suitable for
+ * IoBinding */
 bool CanUseIoBinding(const std::vector<ModelTensorInfo>& output_infos);
 
 /**
- * @brief Runs inference (IoBinding when @p prefer_io_binding and outputs are static)
+ * @brief Runs inference (IoBinding when @p prefer_io_binding and outputs are
+ * static)
  *
  * Inputs borrow host pointers from @p inputs; outputs are filled in @p outputs.
  */
-bool RunInference(Ort::Session& session, const std::vector<ModelTensorInfo>& input_infos,
-                  const std::vector<ModelTensorInfo>& output_infos, const TensorMap& inputs,
-                  TensorMap* outputs, bool prefer_io_binding, std::string* error);
+bool RunInference(Ort::Session& session,
+                  const std::vector<ModelTensorInfo>& input_infos,
+                  const std::vector<ModelTensorInfo>& output_infos,
+                  const TensorMap& inputs, TensorMap* outputs,
+                  bool prefer_io_binding, std::string* error);
 
 }  // namespace detail
 }  // namespace onnx

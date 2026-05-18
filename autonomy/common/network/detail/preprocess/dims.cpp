@@ -47,7 +47,8 @@ bool IsVector(const ModelTensorInfo& info) {
     return rank == 1 || rank == 2;
 }
 
-bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height, int* width) {
+bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height,
+                    int* width) {
     if (height == nullptr || width == nullptr) {
         return false;
     }

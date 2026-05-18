@@ -67,7 +67,8 @@ Backend* NewNetworkBackend() {
  */
 template <typename T>
 bool RegisterNetworkBackend(NetworkBackendFactory& factory) {
-    return factory.Register(NetworkBackendTraits<T>::kId, &NewNetworkBackend<T>);
+    return factory.Register(NetworkBackendTraits<T>::kId,
+                            &NewNetworkBackend<T>);
 }
 
 /**
@@ -77,8 +78,8 @@ bool RegisterNetworkBackend(NetworkBackendFactory& factory) {
 template <typename... Ts>
 bool RegisterNetworkBackends(NetworkBackendFactory& factory) {
     bool ok = true;
-    (void)std::initializer_list<int>{(ok = ok && RegisterNetworkBackend<Ts>(factory),
-                                       0)...};
+    (void)std::initializer_list<int>{
+        (ok = ok && RegisterNetworkBackend<Ts>(factory), 0)...};
     return ok;
 }
 

@@ -40,8 +40,8 @@ namespace network {
  * @param error Optional failure message
  * @return True on success
  */
-bool TopK(const std::vector<float>& logits, int top_k, std::vector<ClassScore>* result,
-          std::string* error = nullptr);
+bool TopK(const std::vector<float>& logits, int top_k,
+          std::vector<ClassScore>* result, std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

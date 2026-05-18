@@ -17,9 +17,9 @@
 #ifndef AUTONOMY_COMMON_NETWORK_POSTPROCESS_BOXES_HPP_
 #define AUTONOMY_COMMON_NETWORK_POSTPROCESS_BOXES_HPP_
 
+#include "autonomy/common/network/common/tensor.hpp"
 #include "autonomy/common/network/detail/postprocess/types.hpp"
 #include "autonomy/common/network/detail/preprocess/types.hpp"
-#include "autonomy/common/network/common/tensor.hpp"
 
 #include <string>
 #include <vector>
@@ -34,7 +34,8 @@ namespace network {
  *
  * Expects float output shaped as [num_proposals, 4 + num_classes] or transposed
  * [4 + num_classes, num_proposals]. Maps boxes back to source image coordinates
- * using @ref TransformMeta. Not a general decoder for arbitrary detection formats.
+ * using @ref TransformMeta. Not a general decoder for arbitrary detection
+ * formats.
  */
 
 /**

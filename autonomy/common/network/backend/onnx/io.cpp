@@ -39,13 +39,13 @@ int64_t ShapeElementCount(const std::vector<int64_t>& shape) {
 template <typename T>
 Ort::Value MakeOrtTensor(Ort::MemoryInfo& memory_info, void* data, size_t count,
                          const std::vector<int64_t>& shape) {
-    return Ort::Value::CreateTensor<T>(memory_info, reinterpret_cast<T*>(data), count,
-                                       shape.data(), shape.size());
+    return Ort::Value::CreateTensor<T>(memory_info, reinterpret_cast<T*>(data),
+                                       count, shape.data(), shape.size());
 }
 
 template <typename T>
-bool CopyTypedOutput(const T* src, size_t count, ElementType element_type, Tensor* out,
-                     std::string* error) {
+bool CopyTypedOutput(const T* src, size_t count, ElementType element_type,
+                     Tensor* out, std::string* error) {
     if (src == nullptr || out == nullptr) {
         if (error != nullptr) {
             *error = "CopyTypedOutput: null pointer.";
@@ -95,7 +95,8 @@ bool MapOrtElementType(ONNXTensorElementDataType ort_type, ElementType* out) {
 }
 
 bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
-                          Ort::MemoryInfo& memory_info, Ort::Value* out, std::string* error) {
+                          Ort::MemoryInfo& memory_info, Ort::Value* out,
+                          std::string* error) {
     if (out == nullptr) {
         if (error != nullptr) {
             *error = "CreateOrtInputTensor: out is null.";
@@ -104,7 +105,8 @@ bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
     }
     if (!IsRuntimeElementType(meta.element_type)) {
         if (error != nullptr) {
-            *error = "Input \"" + meta.name + "\" has unsupported element type.";
+            *error =
+                "Input \"" + meta.name + "\" has unsupported element type.";
         }
         return false;
     }
@@ -116,7 +118,8 @@ bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
     }
 
     std::vector<int64_t> shape;
-    if (!ResolveShapeForElementCount(meta, host.element_count(), &shape, error)) {
+    if (!ResolveShapeForElementCount(meta, host.element_count(), &shape,
+                                     error)) {
         return false;
     }
 
@@ -151,8 +154,8 @@ bool CreateOrtInputTensor(const ModelTensorInfo& meta, const Tensor& host,
     return false;
 }
 
-bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta, Tensor* out,
-                         std::string* error) {
+bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta,
+                         Tensor* out, std::string* error) {
     if (out == nullptr) {
         if (error != nullptr) {
             *error = "CopyOrtOutputTensor: out is null.";
@@ -171,8 +174,10 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta, Ten
     ElementType mapped = element_type;
     if (!MapOrtElementType(info.GetElementType(), &mapped)) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name + "\" has unsupported ONNX element type " +
-                     std::to_string(static_cast<int>(info.GetElementType())) + ".";
+            *error = "Output \"" + meta.name +
+                     "\" has unsupported ONNX element type " +
+                     std::to_string(static_cast<int>(info.GetElementType())) +
+                     ".";
         }
         return false;
     }
@@ -192,24 +197,24 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta, Ten
 
     switch (element_type) {
         case ElementType::kFloat32:
-            return CopyTypedOutput(ort_value.GetTensorData<float>(), n, element_type, out,
-                                   error);
+            return CopyTypedOutput(ort_value.GetTensorData<float>(), n,
+                                   element_type, out, error);
         case ElementType::kFloat16:
         case ElementType::kBfloat16:
-            return CopyTypedOutput(ort_value.GetTensorData<uint16_t>(), n, element_type, out,
-                                   error);
+            return CopyTypedOutput(ort_value.GetTensorData<uint16_t>(), n,
+                                   element_type, out, error);
         case ElementType::kInt8:
-            return CopyTypedOutput(ort_value.GetTensorData<int8_t>(), n, element_type, out,
-                                   error);
+            return CopyTypedOutput(ort_value.GetTensorData<int8_t>(), n,
+                                   element_type, out, error);
         case ElementType::kInt32:
-            return CopyTypedOutput(ort_value.GetTensorData<int32_t>(), n, element_type, out,
-                                   error);
+            return CopyTypedOutput(ort_value.GetTensorData<int32_t>(), n,
+                                   element_type, out, error);
         case ElementType::kInt64:
-            return CopyTypedOutput(ort_value.GetTensorData<int64_t>(), n, element_type, out,
-                                   error);
+            return CopyTypedOutput(ort_value.GetTensorData<int64_t>(), n,
+                                   element_type, out, error);
         case ElementType::kUint8:
-            return CopyTypedOutput(ort_value.GetTensorData<uint8_t>(), n, element_type, out,
-                                   error);
+            return CopyTypedOutput(ort_value.GetTensorData<uint8_t>(), n,
+                                   element_type, out, error);
         default:
             break;
     }
@@ -222,7 +227,8 @@ bool CopyOrtOutputTensor(Ort::Value& ort_value, const ModelTensorInfo& meta, Ten
 
 namespace {
 
-bool AllocateStaticOutputTensor(const ModelTensorInfo& meta, Tensor* out, std::string* error) {
+bool AllocateStaticOutputTensor(const ModelTensorInfo& meta, Tensor* out,
+                                std::string* error) {
     if (out == nullptr) {
         if (error != nullptr) {
             *error = "AllocateStaticOutputTensor: out is null.";
@@ -231,7 +237,8 @@ bool AllocateStaticOutputTensor(const ModelTensorInfo& meta, Tensor* out, std::s
     }
     if (!IsFullyStaticShape(meta.shape)) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name + "\" does not have a fully static shape.";
+            *error = "Output \"" + meta.name +
+                     "\" does not have a fully static shape.";
         }
         return false;
     }
@@ -239,24 +246,29 @@ bool AllocateStaticOutputTensor(const ModelTensorInfo& meta, Tensor* out, std::s
     const size_t elem_bytes = ElementTypeByteSize(meta.element_type);
     if (count <= 0 || elem_bytes == 0) {
         if (error != nullptr) {
-            *error = "Output \"" + meta.name + "\" has invalid static shape or element type.";
+            *error = "Output \"" + meta.name +
+                     "\" has invalid static shape or element type.";
         }
         return false;
     }
-    *out = Tensor(meta.element_type, std::vector<uint8_t>(static_cast<size_t>(count) * elem_bytes));
+    *out =
+        Tensor(meta.element_type,
+               std::vector<uint8_t>(static_cast<size_t>(count) * elem_bytes));
     return true;
 }
 
 bool RunClassicInference(Ort::Session& session,
                          const std::vector<ModelTensorInfo>& input_infos,
                          const std::vector<ModelTensorInfo>& output_infos,
-                         const TensorMap& inputs, TensorMap* outputs, std::string* error) {
+                         const TensorMap& inputs, TensorMap* outputs,
+                         std::string* error) {
     std::vector<Ort::Value> input_tensors;
     std::vector<const char*> input_names;
     input_tensors.reserve(input_infos.size());
     input_names.reserve(input_infos.size());
 
-    Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::MemoryInfo mem_info =
+        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     for (const ModelTensorInfo& in : input_infos) {
         const auto it = inputs.find(in.name);
@@ -306,9 +318,11 @@ bool RunClassicInference(Ort::Session& session,
 bool RunIoBindingInference(Ort::Session& session,
                            const std::vector<ModelTensorInfo>& input_infos,
                            const std::vector<ModelTensorInfo>& output_infos,
-                           const TensorMap& inputs, TensorMap* outputs, std::string* error) {
+                           const TensorMap& inputs, TensorMap* outputs,
+                           std::string* error) {
     Ort::IoBinding binding(session);
-    Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    Ort::MemoryInfo mem_info =
+        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     std::vector<Ort::Value> input_tensors;
     input_tensors.reserve(input_infos.size());
@@ -376,9 +390,11 @@ bool CanUseIoBinding(const std::vector<ModelTensorInfo>& output_infos) {
     return true;
 }
 
-bool RunInference(Ort::Session& session, const std::vector<ModelTensorInfo>& input_infos,
-                  const std::vector<ModelTensorInfo>& output_infos, const TensorMap& inputs,
-                  TensorMap* outputs, bool prefer_io_binding, std::string* error) {
+bool RunInference(Ort::Session& session,
+                  const std::vector<ModelTensorInfo>& input_infos,
+                  const std::vector<ModelTensorInfo>& output_infos,
+                  const TensorMap& inputs, TensorMap* outputs,
+                  bool prefer_io_binding, std::string* error) {
     if (outputs == nullptr) {
         if (error != nullptr) {
             *error = "RunInference: outputs is null.";
@@ -386,9 +402,11 @@ bool RunInference(Ort::Session& session, const std::vector<ModelTensorInfo>& inp
         return false;
     }
     if (prefer_io_binding && CanUseIoBinding(output_infos)) {
-        return RunIoBindingInference(session, input_infos, output_infos, inputs, outputs, error);
+        return RunIoBindingInference(session, input_infos, output_infos, inputs,
+                                     outputs, error);
     }
-    return RunClassicInference(session, input_infos, output_infos, inputs, outputs, error);
+    return RunClassicInference(session, input_infos, output_infos, inputs,
+                               outputs, error);
 }
 
 }  // namespace detail

@@ -41,10 +41,12 @@ namespace network {
 struct OnnxRuntimeOptions {
     int intra_op_num_threads = 0;  //!< Intra-op threads; 0 = ORT default
     int inter_op_num_threads = 0;  //!< Inter-op threads; 0 = ORT default
-    int graph_optimization_level = -1;  //!< Graph opt level; -1 = default, 0–3 = ORT levels
+    int graph_optimization_level =
+        -1;  //!< Graph opt level; -1 = default, 0–3 = ORT levels
 
     /**
-     * @brief Execution provider: `""` or `"cpu"` (default), `"cuda"` for CUDA EP
+     * @brief Execution provider: `""` or `"cpu"` (default), `"cuda"` for CUDA
+     * EP
      *
      * Requires an ONNX Runtime build with the CUDA provider linked.
      */
@@ -68,9 +70,11 @@ struct OnnxRuntimeOptions {
  * Used when building an engine from ONNX or loading a serialized engine.
  */
 struct TensorRtOptions {
-    std::optional<int> device_id;  //!< CUDA device index; nullopt = default device
+    std::optional<int>
+        device_id;  //!< CUDA device index; nullopt = default device
     int max_workspace_size_mb = 0;  //!< Builder workspace (MB); 0 = default
-    std::string trt_cache_path;  //!< Directory for ONNX→engine cache (may be empty)
+    std::string
+        trt_cache_path;  //!< Directory for ONNX→engine cache (may be empty)
 };
 
 /**
@@ -87,7 +91,8 @@ struct InferenceOptions {
     TensorRtOptions tensorrt;         //!< Used when backend_id is `"tensorrt"`
 
     /**
-     * @brief Overwrites fields from @p o (does not change backend_id unless set in @p o)
+     * @brief Overwrites fields from @p o (does not change backend_id unless set
+     * in @p o)
      * @param o Source options
      */
     void Merge(const InferenceOptions& o);

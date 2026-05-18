@@ -46,7 +46,8 @@ namespace network {
  * @note Not thread-safe unless documented otherwise for a specific backend.
  *       Assume single-threaded @ref Run unless externally synchronized.
  */
-class Backend {
+class Backend
+{
 public:
     Backend() = default;
     virtual ~Backend();
@@ -62,7 +63,8 @@ public:
     virtual bool LoadFromFile(const std::string& model_path) = 0;
 
     /**
-     * @brief Loads from @ref InferenceOptions (default: LoadFromFile(model_path))
+     * @brief Loads from @ref InferenceOptions (default:
+     * LoadFromFile(model_path))
      * @param opt Path and backend-specific options
      */
     virtual bool LoadFromOptions(const InferenceOptions& opt);
@@ -79,28 +81,36 @@ public:
     /**
      * @brief Runs one forward pass
      *
-     * @param inputs Keys are input names; element types must match @ref GetInputInfos
+     * @param inputs Keys are input names; element types must match @ref
+     * GetInputInfos
      * @param[out] outputs Filled by the implementation
      * @return true on success
      */
     virtual bool Run(const TensorMap& inputs, TensorMap* outputs) = 0;
 
     /**
-     * @brief float32 convenience Run (converts to/from @ref TensorMap internally)
+     * @brief float32 convenience Run (converts to/from @ref TensorMap
+     * internally)
      * @param inputs Float input map
      * @param[out] outputs Float output map
      */
     bool Run(const FloatTensorMap& inputs, FloatTensorMap* outputs);
 
     /** @return Last error description (may be empty) */
-    const std::string& GetLastError() const { return last_error_; }
+    const std::string& GetLastError() const {
+        return last_error_;
+    }
 
 protected:
     /** @brief Sets error message (overwrites previous) */
-    void SetLastError(std::string msg) { last_error_ = std::move(msg); }
+    void SetLastError(std::string msg) {
+        last_error_ = std::move(msg);
+    }
 
     /** @brief Clears error message */
-    void ClearLastError() { last_error_.clear(); }
+    void ClearLastError() {
+        last_error_.clear();
+    }
 
     std::string last_error_;  //!< Backend-level error cache
 };

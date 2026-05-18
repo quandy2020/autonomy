@@ -17,8 +17,8 @@
 #ifndef AUTONOMY_COMMON_NETWORK_POSTPROCESS_MAP_HPP_
 #define AUTONOMY_COMMON_NETWORK_POSTPROCESS_MAP_HPP_
 
-#include "autonomy/common/network/detail/preprocess/types.hpp"
 #include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -36,10 +36,12 @@ namespace network {
  */
 
 /**
- * @brief Convert a dense float map tensor to CV_32FC1 at source image resolution
+ * @brief Convert a dense float map tensor to CV_32FC1 at source image
+ * resolution
  *
  * Uses trailing HxW from @p info when available (supports leading batch/channel
- * dims). Resizes to @p meta.source_height x source_width with linear interpolation.
+ * dims). Resizes to @p meta.source_height x source_width with linear
+ * interpolation.
  *
  * @param output Row-major float buffer from the network
  * @param info Output tensor metadata
@@ -49,7 +51,8 @@ namespace network {
  * @return True on success
  */
 bool ToMat(const std::vector<float>& output, const ModelTensorInfo& info,
-           const TransformMeta& meta, cv::Mat* mat, std::string* error = nullptr);
+           const TransformMeta& meta, cv::Mat* mat,
+           std::string* error = nullptr);
 
 /**
  * @brief Apply OpenCV colormap to a single-channel float image for display

@@ -32,8 +32,8 @@ namespace network {
  * @file tensorrt.hpp
  * @brief TensorRT backend (factory id `"tensorrt"`)
  *
- * Requires TensorRT/CUDA at build time. Builds from ONNX or loads a serialized engine.
- * Options: @ref InferenceOptions::tensorrt.
+ * Requires TensorRT/CUDA at build time. Builds from ONNX or loads a serialized
+ * engine. Options: @ref InferenceOptions::tensorrt.
  */
 
 /**
@@ -41,7 +41,8 @@ namespace network {
  *
  * Host buffers use @ref Tensor; Run performs H2D / inference / D2H on device.
  */
-class TensorRtBackend : public Backend {
+class TensorRtBackend : public Backend
+{
 public:
     TensorRtBackend();
     ~TensorRtBackend() override;

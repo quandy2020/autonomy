@@ -43,7 +43,8 @@ namespace network {
 /**
  * @brief Static factory: register, query, and create @ref Backend instances
  */
-class BackendFactory {
+class BackendFactory
+{
 public:
     using Registry = NetworkBackendFactory;  //!< String-id factory type
 
@@ -69,8 +70,8 @@ public:
      * @param[out] error_message Failure reason; may be nullptr
      * @return Backend after successful LoadFromOptions, or nullptr
      */
-    static std::unique_ptr<Backend> Create(const InferenceOptions& opt,
-                                           std::string* error_message = nullptr);
+    static std::unique_ptr<Backend> Create(
+        const InferenceOptions& opt, std::string* error_message = nullptr);
 
     /**
      * @brief Registers a custom backend creator

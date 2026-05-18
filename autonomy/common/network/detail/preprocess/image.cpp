@@ -16,11 +16,11 @@
 
 #include "autonomy/common/network/detail/preprocess/image.hpp"
 
-#include "autonomy/common/network/detail/preprocess/dims.hpp"
-#include "autonomy/common/network/detail/preprocess/inputs.hpp"
 #include "autonomy/common/network/detail/internal/error.hpp"
 #include "autonomy/common/network/detail/internal/shape.hpp"
 #include "autonomy/common/network/detail/internal/traits.hpp"
+#include "autonomy/common/network/detail/preprocess/dims.hpp"
+#include "autonomy/common/network/detail/preprocess/inputs.hpp"
 #include "autonomy/common/network/detail/preprocess/layout.hpp"
 #include "autonomy/common/network/detail/preprocess/norm.hpp"
 #include "autonomy/common/network/detail/preprocess/resize.hpp"
@@ -45,7 +45,8 @@ using internal::SetErrorMessage;
 using internal::ToLayout;
 using internal::VisitLayout;
 
-TransformMeta* MetaTarget(bool* wrote, TransformMeta* user, TransformMeta* local) {
+TransformMeta* MetaTarget(bool* wrote, TransformMeta* user,
+                          TransformMeta* local) {
     if (*wrote) {
         return nullptr;
     }
@@ -54,8 +55,9 @@ TransformMeta* MetaTarget(bool* wrote, TransformMeta* user, TransformMeta* local
 
 }  // namespace
 
-bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input, const PreprocessOptions& opt,
-                std::vector<float>* tensor, TransformMeta* meta, std::string* error) {
+bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input,
+                const PreprocessOptions& opt, std::vector<float>* tensor,
+                TransformMeta* meta, std::string* error) {
     if (tensor == nullptr) {
         SetErrorMessage(error, "tensor is null.");
         return false;
@@ -83,9 +85,8 @@ bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input, const Preproce
     cv::Scalar mean;
     BlobParams(opt.normalize, opt.custom_normalize, &scale, &mean);
 
-    const cv::Mat blob =
-        cv::dnn::blobFromImage(resized, scale, cv::Size(), mean, opt.swap_red_blue, false,
-                               CV_32F);
+    const cv::Mat blob = cv::dnn::blobFromImage(
+        resized, scale, cv::Size(), mean, opt.swap_red_blue, false, CV_32F);
     std::vector<float> nchw(blob.begin<float>(), blob.end<float>());
     if (nchw.empty()) {
         SetErrorMessage(error, "failed to build image blob.");
@@ -93,13 +94,13 @@ bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input, const Preproce
     }
 
     const int channels = std::max(1, shape.channel_count);
-    ApplyNorm(&nchw, opt.normalize, opt.custom_normalize, channels, shape.height, shape.width,
-              opt.swap_red_blue);
+    ApplyNorm(&nchw, opt.normalize, opt.custom_normalize, channels,
+              shape.height, shape.width, opt.swap_red_blue);
 
     const bool layout_ok = VisitLayout(layout, [&](auto tag) {
         constexpr LayoutPolicy selected = decltype(tag)::value;
-        return ToLayout<selected>(std::move(nchw), channels, shape.height, shape.width,
-                                  tensor);
+        return ToLayout<selected>(std::move(nchw), channels, shape.height,
+                                  shape.width, tensor);
     });
     if (!layout_ok) {
         SetErrorMessage(error, "layout conversion failed.");
@@ -112,8 +113,10 @@ bool Preprocess(const cv::Mat& bgr, const ModelTensorInfo& input, const Preproce
     return CheckSize(input, tensor->size(), error);
 }
 
-bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs,
-                const PreprocessOptions& opt, TensorMap* tensors, TransformMeta* meta,
+bool Preprocess(const Sample& sample,
+                const std::vector<ModelTensorInfo>& inputs,
+                const PreprocessOptions& opt, TensorMap* tensors,
+                TransformMeta* meta,
                 std::unordered_map<std::string, TransformMeta>* meta_by_input,
                 std::string* error) {
     if (tensors == nullptr) {
@@ -140,8 +143,9 @@ bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs
             }
             (*tensors)[info.name] = found->second;
             if (found->second.element_type() != info.element_type) {
-                SetErrorMessage(error, "Named input \"" + info.name +
-                                           "\" element type does not match model.");
+                SetErrorMessage(error,
+                                "Named input \"" + info.name +
+                                    "\" element type does not match model.");
                 return false;
             }
             if (!CheckSize(info, found->second.element_count(), error)) {
@@ -155,9 +159,11 @@ bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs
             if (tensors->count(info.name) != 0 || !IsImage(info)) {
                 continue;
             }
-            TransformMeta* meta_out = MetaTarget(&wrote_meta, meta, &local_meta);
+            TransformMeta* meta_out =
+                MetaTarget(&wrote_meta, meta, &local_meta);
             std::vector<float> buffer;
-            if (!Preprocess(*sample.image_bgr, info, opt, &buffer, meta_out, error)) {
+            if (!Preprocess(*sample.image_bgr, info, opt, &buffer, meta_out,
+                            error)) {
                 return false;
             }
             if (meta_out != nullptr) {
@@ -167,8 +173,8 @@ bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs
                 }
             }
             std::string convert_err;
-            Tensor typed =
-                FromPreprocessFloat(std::move(buffer), info.element_type, &convert_err);
+            Tensor typed = FromPreprocessFloat(std::move(buffer),
+                                               info.element_type, &convert_err);
             if (!convert_err.empty()) {
                 SetErrorMessage(error, convert_err);
                 return false;

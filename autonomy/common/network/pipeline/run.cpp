@@ -28,8 +28,9 @@ namespace {
 
 using internal::SetErrorMessage;
 
-bool RunPipelineImpl(Engine* engine, const Sample& sample, const PreprocessOptions& options,
-                     RunResult* result, std::string* error) {
+bool RunPipelineImpl(Engine* engine, const Sample& sample,
+                     const PreprocessOptions& options, RunResult* result,
+                     std::string* error) {
     if (engine == nullptr) {
         SetErrorMessage(error, "engine is null.");
         return false;
@@ -49,8 +50,8 @@ bool RunPipelineImpl(Engine* engine, const Sample& sample, const PreprocessOptio
     }
 
     TensorMap inputs;
-    if (!Preprocess(sample, input_infos, options, &inputs, &result->meta, &result->meta_by_input,
-                    error)) {
+    if (!Preprocess(sample, input_infos, options, &inputs, &result->meta,
+                    &result->meta_by_input, error)) {
         return false;
     }
 
@@ -63,8 +64,9 @@ bool RunPipelineImpl(Engine* engine, const Sample& sample, const PreprocessOptio
 
 }  // namespace
 
-bool RunPipeline(Engine* engine, const cv::Mat& image, const PreprocessOptions& options,
-                 RunResult* result, std::string* error) {
+bool RunPipeline(Engine* engine, const cv::Mat& image,
+                 const PreprocessOptions& options, RunResult* result,
+                 std::string* error) {
     if (image.empty()) {
         SetErrorMessage(error, "empty image.");
         return false;
@@ -74,8 +76,9 @@ bool RunPipeline(Engine* engine, const cv::Mat& image, const PreprocessOptions& 
     return RunPipelineImpl(engine, sample, options, result, error);
 }
 
-bool RunPipeline(Engine* engine, const Sample& sample, const PreprocessOptions& options,
-                 RunResult* result, std::string* error) {
+bool RunPipeline(Engine* engine, const Sample& sample,
+                 const PreprocessOptions& options, RunResult* result,
+                 std::string* error) {
     return RunPipelineImpl(engine, sample, options, result, error);
 }
 

@@ -41,7 +41,8 @@ bool SetVector(const std::vector<float>& features, const ModelTensorInfo& info,
     }
     std::vector<float> data = features;
     std::string convert_err;
-    Tensor typed = FromPreprocessFloat(std::move(data), info.element_type, &convert_err);
+    Tensor typed =
+        FromPreprocessFloat(std::move(data), info.element_type, &convert_err);
     if (!convert_err.empty()) {
         SetErrorMessage(error, convert_err);
         return false;

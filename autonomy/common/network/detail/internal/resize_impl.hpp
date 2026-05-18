@@ -30,31 +30,37 @@ namespace network {
 
 /**
  * @file resize_impl.hpp
- * @brief Low-level BGR resize primitives (library internal; see detail/preprocess/resize.hpp)
+ * @brief Low-level BGR resize primitives (library internal; see
+ * detail/preprocess/resize.hpp)
  */
 
 namespace internal {
 
-void SetMeta(TransformMeta* meta, ResizePolicy policy, double scale, int pad_left, int pad_top,
-             int crop_x, int crop_y, int in_h, int in_w, int src_h, int src_w);
+void SetMeta(TransformMeta* meta, ResizePolicy policy, double scale,
+             int pad_left, int pad_top, int crop_x, int crop_y, int in_h,
+             int in_w, int src_h, int src_w);
 
-bool Letterbox(const cv::Mat& bgr, int h, int w, LetterboxOutput* out, int pad = 114);
+bool Letterbox(const cv::Mat& bgr, int h, int w, LetterboxOutput* out,
+               int pad = 114);
 
-bool Stretch(const cv::Mat& bgr, int h, int w, cv::Mat* out, TransformMeta* meta = nullptr);
+bool Stretch(const cv::Mat& bgr, int h, int w, cv::Mat* out,
+             TransformMeta* meta = nullptr);
 
-bool CenterCrop(const cv::Mat& bgr, int h, int w, cv::Mat* out, TransformMeta* meta = nullptr);
+bool CenterCrop(const cv::Mat& bgr, int h, int w, cv::Mat* out,
+                TransformMeta* meta = nullptr);
 
-bool UpperBound(const cv::Mat& bgr, int bound, cv::Mat* out, TransformMeta* meta = nullptr);
+bool UpperBound(const cv::Mat& bgr, int bound, cv::Mat* out,
+                TransformMeta* meta = nullptr);
 
 bool Align(cv::Mat* image, int multiple);
 
 template <ResizePolicy Policy>
-bool ResizeFor(const cv::Mat& bgr, int h, int w, const PreprocessOptions& opt, cv::Mat* out,
-               TransformMeta* meta, std::string* error);
+bool ResizeFor(const cv::Mat& bgr, int h, int w, const PreprocessOptions& opt,
+               cv::Mat* out, TransformMeta* meta, std::string* error);
 
 bool ResizeForPolicy(ResizePolicy policy, const cv::Mat& bgr, int h, int w,
-                     const PreprocessOptions& opt, cv::Mat* out, TransformMeta* meta,
-                     std::string* error);
+                     const PreprocessOptions& opt, cv::Mat* out,
+                     TransformMeta* meta, std::string* error);
 
 }  // namespace internal
 

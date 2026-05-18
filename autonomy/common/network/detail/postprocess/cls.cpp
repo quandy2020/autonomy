@@ -28,8 +28,8 @@ namespace {
 using internal::SetErrorMessage;
 }  // namespace
 
-bool TopK(const std::vector<float>& logits, int top_k, std::vector<ClassScore>* result,
-          std::string* error) {
+bool TopK(const std::vector<float>& logits, int top_k,
+          std::vector<ClassScore>* result, std::string* error) {
     if (result == nullptr) {
         SetErrorMessage(error, "result output is null.");
         return false;
@@ -44,7 +44,9 @@ bool TopK(const std::vector<float>& logits, int top_k, std::vector<ClassScore>* 
         indices[index] = static_cast<int>(index);
     }
     std::partial_sort(indices.begin(), indices.begin() + k, indices.end(),
-                      [&logits](int left, int right) { return logits[left] > logits[right]; });
+                      [&logits](int left, int right) {
+                          return logits[left] > logits[right];
+                      });
     result->clear();
     result->reserve(static_cast<size_t>(k));
     for (int rank = 0; rank < k; ++rank) {

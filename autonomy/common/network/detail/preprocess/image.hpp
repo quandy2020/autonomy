@@ -17,8 +17,8 @@
 #ifndef AUTONOMY_COMMON_NETWORK_PREPROCESS_IMAGE_HPP_
 #define AUTONOMY_COMMON_NETWORK_PREPROCESS_IMAGE_HPP_
 
-#include "autonomy/common/network/detail/preprocess/types.hpp"
 #include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -57,22 +57,25 @@ bool Preprocess(const cv::Mat& image_bgr, const ModelTensorInfo& input,
  * @brief Build all model input tensors from a @ref Sample
  *
  * Binds image tensors, vector inputs, and pre-filled @ref TensorMap entries to
- * each @ref ModelTensorInfo in @p inputs. Fails if any required input is missing.
+ * each @ref ModelTensorInfo in @p inputs. Fails if any required input is
+ * missing.
  *
  * @param sample Observation data
  * @param inputs Model input descriptors
  * @param options Image preprocess options when sample contains an image
  * @param tensors On success, map of input name to float buffer
  * @param meta Optional geometry for the first image input (backward compatible)
- * @param meta_by_input Optional map of input name to geometry for each image tensor
+ * @param meta_by_input Optional map of input name to geometry for each image
+ * tensor
  * @param error Optional failure message
  * @return True on success
  */
-bool Preprocess(const Sample& sample, const std::vector<ModelTensorInfo>& inputs,
-                const PreprocessOptions& options, TensorMap* tensors,
-                TransformMeta* meta = nullptr,
-                std::unordered_map<std::string, TransformMeta>* meta_by_input = nullptr,
-                std::string* error = nullptr);
+bool Preprocess(
+    const Sample& sample, const std::vector<ModelTensorInfo>& inputs,
+    const PreprocessOptions& options, TensorMap* tensors,
+    TransformMeta* meta = nullptr,
+    std::unordered_map<std::string, TransformMeta>* meta_by_input = nullptr,
+    std::string* error = nullptr);
 
 }  // namespace network
 }  // namespace common

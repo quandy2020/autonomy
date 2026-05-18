@@ -38,7 +38,8 @@ namespace network {
  * @param requested Policy from @ref PreprocessOptions
  * @param dims Model input shape (4-D or 5-D)
  */
-LayoutPolicy ResolveLayout(LayoutPolicy requested, const std::vector<int64_t>& dims);
+LayoutPolicy ResolveLayout(LayoutPolicy requested,
+                           const std::vector<int64_t>& dims);
 
 /**
  * @brief Converts NCHW float blob to NHWC

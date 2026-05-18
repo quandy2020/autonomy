@@ -22,7 +22,8 @@ namespace autonomy {
 namespace common {
 namespace network {
 
-LayoutPolicy ResolveLayout(LayoutPolicy requested, const std::vector<int64_t>& dims) {
+LayoutPolicy ResolveLayout(LayoutPolicy requested,
+                           const std::vector<int64_t>& dims) {
     if (requested != LayoutPolicy::kAuto) {
         return requested;
     }
@@ -42,7 +43,8 @@ bool ToNhwc(const std::vector<float>& nchw, int channels, int height, int width,
     for (int c = 0; c < channels; ++c) {
         for (int r = 0; r < height; ++r) {
             for (int col = 0; col < width; ++col) {
-                const size_t nchw_i = static_cast<size_t>(c * plane + r * width + col);
+                const size_t nchw_i =
+                    static_cast<size_t>(c * plane + r * width + col);
                 const size_t nhwc_i =
                     static_cast<size_t>((r * width + col) * channels + c);
                 (*nhwc)[nhwc_i] = nchw[nchw_i];

@@ -17,8 +17,8 @@
 #ifndef AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_TRAITS_HPP_
 #define AUTONOMY_COMMON_NETWORK_DETAIL_INTERNAL_TRAITS_HPP_
 
-#include "autonomy/common/network/detail/preprocess/types.hpp"
 #include "autonomy/common/network/detail/postprocess/types.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -39,7 +39,8 @@ namespace network {
 namespace internal {
 
 /**
- * @brief Traits for a fixed @ref NormalizePolicy (scale/mean/std for cv::dnn::blobFromImage)
+ * @brief Traits for a fixed @ref NormalizePolicy (scale/mean/std for
+ * cv::dnn::blobFromImage)
  * @tparam Policy Normalization mode selected at compile time
  */
 template <NormalizePolicy Policy>
@@ -48,7 +49,8 @@ struct NormTraits;
 /** @brief [0, 1] normalization from uint8 BGR */
 template <>
 struct NormTraits<NormalizePolicy::kZeroOne> {
-    static constexpr bool kDivStd = false;  //!< @brief No per-channel std division
+    static constexpr bool kDivStd =
+        false;  //!< @brief No per-channel std division
 
     static void Blob(double* scale, cv::Scalar* mean, const NormalizeParams&) {
         *scale = 1.0 / 255.0;
@@ -75,7 +77,8 @@ struct NormTraits<NormalizePolicy::kImageNet> {
     static void Blob(double* scale, cv::Scalar* mean, const NormalizeParams&) {
         constexpr float kMeanRgb[3] = {0.485f, 0.456f, 0.406f};
         *scale = 1.0 / 255.0;
-        *mean = cv::Scalar(kMeanRgb[0] * 255.f, kMeanRgb[1] * 255.f, kMeanRgb[2] * 255.f);
+        *mean = cv::Scalar(kMeanRgb[0] * 255.f, kMeanRgb[1] * 255.f,
+                           kMeanRgb[2] * 255.f);
     }
 
     static const float* StdRgb(const NormalizeParams&) {
@@ -89,13 +92,16 @@ template <>
 struct NormTraits<NormalizePolicy::kCustom> {
     static constexpr bool kDivStd = true;
 
-    static void Blob(double* scale, cv::Scalar* mean, const NormalizeParams& custom) {
+    static void Blob(double* scale, cv::Scalar* mean,
+                     const NormalizeParams& custom) {
         *scale = 1.0 / 255.0;
         *mean = cv::Scalar(custom.mean[0] * 255.f, custom.mean[1] * 255.f,
                            custom.mean[2] * 255.f);
     }
 
-    static const float* StdRgb(const NormalizeParams& custom) { return custom.std; }
+    static const float* StdRgb(const NormalizeParams& custom) {
+        return custom.std;
+    }
 };
 
 /**
@@ -104,7 +110,8 @@ struct NormTraits<NormalizePolicy::kCustom> {
  */
 template <LayoutPolicy Layout>
 struct LayoutTraits {
-    static constexpr bool kToNhwc = (Layout == LayoutPolicy::kNHWC);  //!< @brief True for NHWC output
+    static constexpr bool kToNhwc =
+        (Layout == LayoutPolicy::kNHWC);  //!< @brief True for NHWC output
 };
 
 /**
@@ -128,14 +135,18 @@ template <typename Callable>
 bool VisitNorm(NormalizePolicy policy, Callable&& fn) {
     switch (policy) {
         case NormalizePolicy::kZeroOne:
-            return fn(std::integral_constant<NormalizePolicy, NormalizePolicy::kZeroOne>{});
+            return fn(std::integral_constant<NormalizePolicy,
+                                             NormalizePolicy::kZeroOne>{});
         case NormalizePolicy::kMinusOneToOne:
             return fn(
-                std::integral_constant<NormalizePolicy, NormalizePolicy::kMinusOneToOne>{});
+                std::integral_constant<NormalizePolicy,
+                                       NormalizePolicy::kMinusOneToOne>{});
         case NormalizePolicy::kImageNet:
-            return fn(std::integral_constant<NormalizePolicy, NormalizePolicy::kImageNet>{});
+            return fn(std::integral_constant<NormalizePolicy,
+                                             NormalizePolicy::kImageNet>{});
         case NormalizePolicy::kCustom:
-            return fn(std::integral_constant<NormalizePolicy, NormalizePolicy::kCustom>{});
+            return fn(std::integral_constant<NormalizePolicy,
+                                             NormalizePolicy::kCustom>{});
     }
     return false;
 }
@@ -143,7 +154,8 @@ bool VisitNorm(NormalizePolicy policy, Callable&& fn) {
 /**
  * @brief Dispatches @p fn with a compile-time @ref LayoutPolicy tag
  *
- * Does not invoke @p fn for @ref LayoutPolicy::kAuto (caller must infer layout).
+ * Does not invoke @p fn for @ref LayoutPolicy::kAuto (caller must infer
+ * layout).
  *
  * @tparam Callable `bool( std::integral_constant<LayoutPolicy, ...> )`
  * @param policy Runtime layout mode
@@ -154,9 +166,11 @@ template <typename Callable>
 bool VisitLayout(LayoutPolicy policy, Callable&& fn) {
     switch (policy) {
         case LayoutPolicy::kNCHW:
-            return fn(std::integral_constant<LayoutPolicy, LayoutPolicy::kNCHW>{});
+            return fn(
+                std::integral_constant<LayoutPolicy, LayoutPolicy::kNCHW>{});
         case LayoutPolicy::kNHWC:
-            return fn(std::integral_constant<LayoutPolicy, LayoutPolicy::kNHWC>{});
+            return fn(
+                std::integral_constant<LayoutPolicy, LayoutPolicy::kNHWC>{});
         case LayoutPolicy::kAuto:
             break;
     }
@@ -175,13 +189,17 @@ template <typename Callable>
 bool VisitResize(ResizePolicy policy, Callable&& fn) {
     switch (policy) {
         case ResizePolicy::kLetterbox:
-            return fn(std::integral_constant<ResizePolicy, ResizePolicy::kLetterbox>{});
+            return fn(std::integral_constant<ResizePolicy,
+                                             ResizePolicy::kLetterbox>{});
         case ResizePolicy::kStretch:
-            return fn(std::integral_constant<ResizePolicy, ResizePolicy::kStretch>{});
+            return fn(
+                std::integral_constant<ResizePolicy, ResizePolicy::kStretch>{});
         case ResizePolicy::kCenterCrop:
-            return fn(std::integral_constant<ResizePolicy, ResizePolicy::kCenterCrop>{});
+            return fn(std::integral_constant<ResizePolicy,
+                                             ResizePolicy::kCenterCrop>{});
         case ResizePolicy::kUpperBound:
-            return fn(std::integral_constant<ResizePolicy, ResizePolicy::kUpperBound>{});
+            return fn(std::integral_constant<ResizePolicy,
+                                             ResizePolicy::kUpperBound>{});
     }
     return false;
 }
@@ -189,19 +207,23 @@ bool VisitResize(ResizePolicy policy, Callable&& fn) {
 /**
  * @brief Non-owning view over a flat detection-head tensor
  *
- * @tparam RowMajor When true, layout is `[num_proposals, stride]`; otherwise channel-major
+ * @tparam RowMajor When true, layout is `[num_proposals, stride]`; otherwise
+ * channel-major
  */
 template <bool RowMajor>
-class GridTensorView {
+class GridTensorView
+{
 public:
     /**
      * @brief Constructs a view over a model output buffer
      *
      * @param output Flat float buffer from inference
-     * @param stride Channels per proposal (row-major) or stride between channels
+     * @param stride Channels per proposal (row-major) or stride between
+     * channels
      * @param num_proposals Number of anchor or proposal rows
      */
-    GridTensorView(const std::vector<float>& output, int stride, int num_proposals)
+    GridTensorView(const std::vector<float>& output, int stride,
+                   int num_proposals)
         : output_(output), stride_(stride), num_proposals_(num_proposals) {}
 
     /**
@@ -213,7 +235,8 @@ public:
      */
     float At(int proposal_index, int channel_index) const {
         if constexpr (RowMajor) {
-            return output_[static_cast<size_t>(proposal_index * stride_ + channel_index)];
+            return output_[static_cast<size_t>(proposal_index * stride_ +
+                                               channel_index)];
         } else {
             return output_[static_cast<size_t>(channel_index * num_proposals_ +
                                                proposal_index)];
@@ -222,8 +245,8 @@ public:
 
 private:
     const std::vector<float>& output_;  //!< @brief Referenced model output
-    int stride_ = 0;                    //!< @brief Stride between channels or proposals
-    int num_proposals_ = 0;             //!< @brief Number of proposals in the grid
+    int stride_ = 0;         //!< @brief Stride between channels or proposals
+    int num_proposals_ = 0;  //!< @brief Number of proposals in the grid
 };
 
 /**
@@ -243,9 +266,11 @@ struct Geometry {
     int input_width = 640;    //!< @brief Network input width after resize
     int source_height = 640;  //!< @brief Original image height
     int source_width = 640;   //!< @brief Original image width
-    double scale_gain = 1.0;  //!< @brief Uniform scale from source to letterboxed input
-    int padding_left = 0;     //!< @brief Horizontal letterbox padding in input pixels
-    int padding_top = 0;      //!< @brief Vertical letterbox padding in input pixels
+    double scale_gain =
+        1.0;  //!< @brief Uniform scale from source to letterboxed input
+    int padding_left =
+        0;  //!< @brief Horizontal letterbox padding in input pixels
+    int padding_top = 0;  //!< @brief Vertical letterbox padding in input pixels
 };
 
 /**
@@ -264,9 +289,9 @@ struct Geometry {
  * @param y2 Output bottom-right y in source space
  */
 template <bool XyxyFormat>
-void MapBoxToSource(double coord0, double coord1, double coord2, double coord3, bool normalized,
-                    const Geometry& geometry, double* x1, double* y1, double* x2,
-                    double* y2) {
+void MapBoxToSource(double coord0, double coord1, double coord2, double coord3,
+                    bool normalized, const Geometry& geometry, double* x1,
+                    double* y1, double* x2, double* y2) {
     double center_x = coord0;
     double center_y = coord1;
     double box_width = coord2;
@@ -286,8 +311,10 @@ void MapBoxToSource(double coord0, double coord1, double coord2, double coord3, 
     } else {
         const double half_width = (box_width * 0.5) / geometry.scale_gain;
         const double half_height = (box_height * 0.5) / geometry.scale_gain;
-        const double mapped_x = (center_x - geometry.padding_left) / geometry.scale_gain;
-        const double mapped_y = (center_y - geometry.padding_top) / geometry.scale_gain;
+        const double mapped_x =
+            (center_x - geometry.padding_left) / geometry.scale_gain;
+        const double mapped_y =
+            (center_y - geometry.padding_top) / geometry.scale_gain;
         *x1 = mapped_x - half_width;
         *y1 = mapped_y - half_height;
         *x2 = mapped_x + half_width;
@@ -296,7 +323,8 @@ void MapBoxToSource(double coord0, double coord1, double coord2, double coord3, 
 }
 
 /**
- * @brief Dispatches @p callable with a row-major vs channel-major grid layout tag
+ * @brief Dispatches @p callable with a row-major vs channel-major grid layout
+ * tag
  *
  * @tparam Callable Invoked as `bool(std::integral_constant<bool, RowMajor>)`
  * @param row_major True for `[proposals, stride]` layout
@@ -339,12 +367,14 @@ inline Geometry MakeGeometry(const TransformMeta& transform_meta) {
         transform_meta.input_height > 0 ? transform_meta.input_height : 640;
     geometry.input_width =
         transform_meta.input_width > 0 ? transform_meta.input_width : 640;
-    geometry.source_width = transform_meta.source_width > 0 ? transform_meta.source_width
-                                                            : geometry.input_width;
+    geometry.source_width = transform_meta.source_width > 0
+                                ? transform_meta.source_width
+                                : geometry.input_width;
     geometry.source_height = transform_meta.source_height > 0
                                  ? transform_meta.source_height
                                  : geometry.input_height;
-    geometry.scale_gain = transform_meta.scale_gain > 0. ? transform_meta.scale_gain : 1.;
+    geometry.scale_gain =
+        transform_meta.scale_gain > 0. ? transform_meta.scale_gain : 1.;
     geometry.padding_left = transform_meta.padding_left;
     geometry.padding_top = transform_meta.padding_top;
     return geometry;
