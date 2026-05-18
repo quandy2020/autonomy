@@ -52,9 +52,7 @@ TEST(ReentrantRWLockTest, read_lock) {
             ReadLockGuard<ReentrantRWLock> lg2(lock);
             {
                 ReadLockGuard<ReentrantRWLock> lg3(lock);
-                {
-                    ReadLockGuard<ReentrantRWLock> lg4(lock);
-                }
+                { ReadLockGuard<ReentrantRWLock> lg4(lock); }
             }
         }
     }
@@ -87,9 +85,7 @@ TEST(ReentrantRWLockTest, write_lock) {
         WriteLockGuard<ReentrantRWLock> lg1(lock);
         {
             WriteLockGuard<ReentrantRWLock> lg2(lock);
-            {
-                ReadLockGuard<ReentrantRWLock> lg3(lock);
-            }
+            { ReadLockGuard<ReentrantRWLock> lg3(lock); }
         }
     }
 }

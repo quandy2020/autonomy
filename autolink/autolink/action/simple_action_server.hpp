@@ -580,22 +580,18 @@ protected:
      * test_msgs::action::Fibonacci
      */
     template <typename T, typename = void>
-    struct has_error_msg : std::false_type {
-    };
+    struct has_error_msg : std::false_type {};
 
     template <typename T>
     struct has_error_msg<T, std::void_t<decltype(T::error_msg)>>
-        : std::true_type {
-    };
+        : std::true_type {};
 
     template <typename T, typename = void>
-    struct has_error_code : std::false_type {
-    };
+    struct has_error_code : std::false_type {};
 
     template <typename T>
     struct has_error_code<T, std::void_t<decltype(T::error_code)>>
-        : std::true_type {
-    };
+        : std::true_type {};
 
     /**
      * @brief Log error details if available

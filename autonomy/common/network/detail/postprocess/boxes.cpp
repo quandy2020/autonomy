@@ -175,6 +175,20 @@ bool Decode(const std::vector<float>& output, const ModelTensorInfo& info,
     });
 }
 
+bool Decode(const Tensor& output, const ModelTensorInfo& info,
+            const TransformMeta& meta, const BoxOptions& options,
+            std::vector<Detection>* boxes, std::string* error) {
+    std::vector<float> floats = output.ToFloat32(error);
+    if (floats.empty()) {
+        if (error != nullptr && error->empty()) {
+            SetErrorMessage(error,
+                            "failed to convert output tensor to float32.");
+        }
+        return false;
+    }
+    return Decode(floats, info, meta, options, boxes, error);
+}
+
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy

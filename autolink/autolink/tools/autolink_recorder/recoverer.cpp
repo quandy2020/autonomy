@@ -122,7 +122,7 @@ bool Recoverer::Proc() {
                 return false;
             }
         }  // end for switch
-    }  // end for while
+    }      // end for while
     AINFO << "recover record file done.";
     return true;
 }  // end for Proc()

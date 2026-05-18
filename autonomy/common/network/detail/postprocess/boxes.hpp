@@ -56,6 +56,11 @@ bool Decode(const std::vector<float>& output, const ModelTensorInfo& info,
             const TransformMeta& meta, const BoxOptions& options,
             std::vector<Detection>* boxes, std::string* error = nullptr);
 
+/** @brief @ref Decode convenience overload for @ref Tensor outputs */
+bool Decode(const Tensor& output, const ModelTensorInfo& info,
+            const TransformMeta& meta, const BoxOptions& options,
+            std::vector<Detection>* boxes, std::string* error = nullptr);
+
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy
