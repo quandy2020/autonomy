@@ -56,6 +56,17 @@ bool FindFloatOutput(const TensorMap& outputs,
                      const std::string& keyword = "",
                      std::string* error = nullptr);
 
+/**
+ * @brief Legacy helper: selects a float32 output and exposes it as @ref
+ * std::vector<float>
+ *
+ * Data is copied into internal storage; valid until the next @ref Find call on
+ * the same thread. Prefer @ref FindFloatOutput for zero-copy views.
+ */
+bool Find(const TensorMap& outputs, const std::vector<ModelTensorInfo>& infos,
+          std::string* name, const std::vector<float>** data,
+          const std::string& keyword = "", std::string* error = nullptr);
+
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy

@@ -2,7 +2,6 @@
 // Usage: demo_yolo26_onnixruntime <model.onnx> <image> [output.jpg]
 
 #include "autonomy/common/network/network.hpp"
-#include "autonomy/common/network/detail/preprocess/policy.hpp"
 
 #include <glog/logging.h>
 #include <opencv2/opencv.hpp>

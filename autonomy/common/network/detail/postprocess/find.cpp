@@ -130,6 +130,31 @@ bool FindFloatOutput(const TensorMap& outputs,
     return true;
 }
 
+bool Find(const TensorMap& outputs, const std::vector<ModelTensorInfo>& infos,
+          std::string* name, const std::vector<float>** data,
+          const std::string& keyword, std::string* error) {
+    if (data == nullptr) {
+        SetErrorMessage(error, "output_data is null.");
+        return false;
+    }
+    const float* view = nullptr;
+    if (!FindFloatOutput(outputs, infos, name, &view, keyword, error)) {
+        return false;
+    }
+    const auto it = outputs.find(*name);
+    if (it == outputs.end()) {
+        SetErrorMessage(error, "selected output not found in map.");
+        return false;
+    }
+    static thread_local std::vector<float> cached;
+    cached = it->second.ToFloat32(error);
+    if (cached.empty() && error != nullptr && !error->empty()) {
+        return false;
+    }
+    *data = &cached;
+    return true;
+}
+
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy

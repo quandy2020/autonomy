@@ -27,9 +27,7 @@ namespace service_discovery {
 using proto::RoleAttributes;
 
 TEST(MultiValueWarehouseTest, test1) {
-    {
-        MultiValueWarehouse wh;
-    }
+    { MultiValueWarehouse wh; }
 
     {
         MultiValueWarehouse wh;

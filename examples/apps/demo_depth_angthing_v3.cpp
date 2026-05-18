@@ -5,8 +5,6 @@
 // Usage: demo_depth_angthing_v3 <model.onnx> <image> [vis.png]
 
 #include "autonomy/common/network/network.hpp"
-#include "autonomy/common/network/detail/preprocess/dims.hpp"
-#include "autonomy/common/network/detail/preprocess/policy.hpp"
 
 #include <glog/logging.h>
 #include <opencv2/opencv.hpp>

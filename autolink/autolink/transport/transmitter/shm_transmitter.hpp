@@ -37,8 +37,7 @@ namespace autolink {
 namespace transport {
 
 template <typename T, typename U>
-struct type_check : std::is_same<typename std::decay<T>::type, U>::type {
-};
+struct type_check : std::is_same<typename std::decay<T>::type, U>::type {};
 
 template <typename M>
 class ShmTransmitter : public Transmitter<M>

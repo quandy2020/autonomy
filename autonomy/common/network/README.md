@@ -7,7 +7,6 @@ Model inference and shared preprocess/postprocess utilities. Namespace: `autonom
 ```
 network/
 ├── network.hpp              # Application umbrella (recommended entry)
-├── preprocess.hpp           # Preprocess public API (optional; see network.hpp)
 ├── common/                  # Tensor, InferenceOptions
 ├── backend/                 # Backend, BackendFactory, Engine
 │   ├── onnx/                # ONNX Runtime implementation

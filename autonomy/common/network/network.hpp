@@ -75,6 +75,8 @@
 #include "autonomy/common/network/backend/engine.hpp"
 #include "autonomy/common/network/common/options.hpp"
 #include "autonomy/common/network/common/tensor.hpp"
+#include "autonomy/common/network/detail/preprocess/dims.hpp"
+#include "autonomy/common/network/detail/preprocess/policy.hpp"
 #include "autonomy/common/network/detail/postprocess/boxes.hpp"
 #include "autonomy/common/network/detail/postprocess/cls.hpp"
 #include "autonomy/common/network/detail/postprocess/find.hpp"
@@ -82,6 +84,5 @@
 #include "autonomy/common/network/detail/postprocess/nms.hpp"
 #include "autonomy/common/network/detail/postprocess/types.hpp"
 #include "autonomy/common/network/pipeline/run.hpp"
-#include "autonomy/common/network/preprocess.hpp"
 
 #endif  // AUTONOMY_COMMON_NETWORK_NETWORK_HPP_
