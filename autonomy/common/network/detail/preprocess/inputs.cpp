@@ -16,14 +16,14 @@
 
 #include "autonomy/common/network/detail/preprocess/inputs.hpp"
 
-#include "autonomy/common/network/detail/preprocess/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
 
 namespace autonomy {
 namespace common {
 namespace network {
 
 namespace {
-using preprocess_internal::SetErrorMessage;
+using internal::SetErrorMessage;
 }  // namespace
 
 bool SetVector(const std::vector<float>& features, const ModelTensorInfo& info,
@@ -39,7 +39,14 @@ bool SetVector(const std::vector<float>& features, const ModelTensorInfo& info,
     if (!CheckSize(info, features.size(), error)) {
         return false;
     }
-    (*out)[info.name] = features;
+    std::vector<float> data = features;
+    std::string convert_err;
+    Tensor typed = FromPreprocessFloat(std::move(data), info.element_type, &convert_err);
+    if (!convert_err.empty()) {
+        SetErrorMessage(error, convert_err);
+        return false;
+    }
+    (*out)[info.name] = std::move(typed);
     return true;
 }
 
@@ -55,7 +62,12 @@ bool SetNamed(const TensorMap& named, const std::vector<ModelTensorInfo>& infos,
             SetErrorMessage(error, "missing named tensor: " + info.name);
             return false;
         }
-        if (!CheckSize(info, found->second.size(), error)) {
+        if (found->second.element_type() != info.element_type) {
+            SetErrorMessage(error, "Named input \"" + info.name +
+                                       "\" element type does not match model.");
+            return false;
+        }
+        if (!CheckSize(info, found->second.element_count(), error)) {
             return false;
         }
         (*out)[info.name] = found->second;
@@ -65,7 +77,7 @@ bool SetNamed(const TensorMap& named, const std::vector<ModelTensorInfo>& infos,
 
 bool CheckSize(const ModelTensorInfo& info, size_t count, std::string* error) {
     std::vector<int64_t> resolved;
-    return ResolveShapeForFloatCount(info, count, &resolved, error);
+    return ResolveShapeForElementCount(info, count, &resolved, error);
 }
 
 }  // namespace network

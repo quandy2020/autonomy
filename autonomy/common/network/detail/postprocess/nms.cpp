@@ -16,7 +16,8 @@
 
 #include "autonomy/common/network/detail/postprocess/nms.hpp"
 
-#include "autonomy/common/network/detail/postprocess/internal/math.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/math.hpp"
 
 #include <algorithm>
 
@@ -25,12 +26,14 @@ namespace common {
 namespace network {
 
 namespace {
-using postprocess_internal::ComputeIoU;
+using internal::IoU;
+using internal::SetErrorMessage;
 }  // namespace
 
-void Nms(float iou_threshold, std::vector<Detection>* detections) {
+bool Nms(float iou_threshold, std::vector<Detection>* detections, std::string* error) {
     if (detections == nullptr) {
-        return;
+        SetErrorMessage(error, "detections is null.");
+        return false;
     }
     std::vector<Detection>& boxes = *detections;
     std::sort(boxes.begin(), boxes.end(), [](const Detection& a, const Detection& b) {
@@ -42,7 +45,7 @@ void Nms(float iou_threshold, std::vector<Detection>* detections) {
         }
         for (size_t j = i + 1; j < boxes.size(); ++j) {
             if (boxes[j].confidence >= 0.f && boxes[i].class_id == boxes[j].class_id &&
-                ComputeIoU(boxes[i], boxes[j]) > iou_threshold) {
+                IoU(boxes[i], boxes[j]) > iou_threshold) {
                 boxes[j].confidence = -1.f;
             }
         }
@@ -52,6 +55,7 @@ void Nms(float iou_threshold, std::vector<Detection>* detections) {
                                    return detection.confidence < 0.f;
                                }),
                 boxes.end());
+    return true;
 }
 
 }  // namespace network

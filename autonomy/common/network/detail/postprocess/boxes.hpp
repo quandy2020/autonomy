@@ -19,7 +19,7 @@
 
 #include "autonomy/common/network/detail/postprocess/types.hpp"
 #include "autonomy/common/network/detail/preprocess/types.hpp"
-#include "autonomy/common/network/tensor.hpp"
+#include "autonomy/common/network/common/tensor.hpp"
 
 #include <string>
 #include <vector>

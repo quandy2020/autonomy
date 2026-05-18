@@ -26,6 +26,9 @@ namespace network {
 /**
  * @file policy.hpp
  * @brief Compile-time @ref PreprocessOptions builders
+ *
+ * Builds common preprocess configs in constexpr context.
+ * Example: `constexpr auto opt = Letterbox<640, 640>();`
  */
 
 /**
@@ -70,11 +73,6 @@ constexpr PreprocessOptions MakeBound(int bound, int align, int height, int widt
     opt.bound_resize_target = bound;
     opt.align_multiple = align;
     return opt;
-}
-
-/** @brief Alias of @ref MakeBound for backward compatibility */
-constexpr PreprocessOptions MakeUpperBound(int bound, int align, int height, int width) {
-    return MakeBound(bound, align, height, width);
 }
 
 }  // namespace network

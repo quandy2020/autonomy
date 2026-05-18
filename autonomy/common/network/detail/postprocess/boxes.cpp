@@ -16,9 +16,9 @@
 
 #include "autonomy/common/network/detail/postprocess/boxes.hpp"
 
-#include "autonomy/common/network/detail/postprocess/internal/error.hpp"
-#include "autonomy/common/network/detail/postprocess/internal/math.hpp"
-#include "autonomy/common/network/detail/postprocess/internal/traits.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/math.hpp"
+#include "autonomy/common/network/detail/internal/traits.hpp"
 #include "autonomy/common/network/detail/postprocess/nms.hpp"
 
 #include <algorithm>
@@ -30,14 +30,14 @@ namespace network {
 
 namespace {
 
-using postprocess_internal::Geometry;
-using postprocess_internal::GridTensorView;
-using postprocess_internal::MakeGeometry;
-using postprocess_internal::MapBoxToSource;
-using postprocess_internal::SetErrorMessage;
-using postprocess_internal::Sigmoid;
-using postprocess_internal::VisitBoxFormat;
-using postprocess_internal::VisitGridLayout;
+using internal::Geometry;
+using internal::GridTensorView;
+using internal::MakeGeometry;
+using internal::MapBoxToSource;
+using internal::SetErrorMessage;
+using internal::Sigmoid;
+using internal::VisitBoxFormat;
+using internal::VisitGridLayout;
 
 OutputLayout InferLayout(const ModelTensorInfo& info, size_t float_count, int stride) {
     OutputLayout layout;
@@ -155,7 +155,11 @@ bool Decode(const std::vector<float>& output, const ModelTensorInfo& info,
         return VisitBoxFormat(xyxy_format, [&](auto box_tag) {
             constexpr bool xyxy = decltype(box_tag)::value;
             DecodeImpl<row_major, xyxy>(output, layout, geometry, options, boxes);
-            Nms(options.nms_iou, boxes);
+            if (options.nms_iou > 0.f) {
+                if (!Nms(options.nms_iou, boxes, error)) {
+                    return false;
+                }
+            }
             return true;
         });
     });

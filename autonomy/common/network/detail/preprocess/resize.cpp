@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/network/detail/preprocess/internal/resize_ops.hpp"
+#include "autonomy/common/network/detail/internal/resize_impl.hpp"
 #include "autonomy/common/network/detail/preprocess/resize.hpp"
 
-#include "autonomy/common/network/detail/preprocess/internal/error.hpp"
+#include "autonomy/common/network/detail/internal/error.hpp"
 
 #include <opencv2/imgproc.hpp>
 
@@ -29,11 +29,11 @@ namespace autonomy {
 namespace common {
 namespace network {
 
-namespace preprocess_internal {
+namespace internal {
 
 namespace {
 
-using preprocess_internal::SetErrorMessage;
+using internal::SetErrorMessage;
 
 cv::Scalar PadBgr(int value) { return cv::Scalar(value, value, value); }
 
@@ -189,11 +189,11 @@ bool ResizeForPolicy(ResizePolicy policy, const cv::Mat& bgr, int h, int w,
     });
 }
 
-}  // namespace preprocess_internal
+}  // namespace internal
 
 bool Resize(const cv::Mat& bgr, int height, int width, const PreprocessOptions& opt,
             cv::Mat* out, TransformMeta* meta, std::string* error) {
-    return preprocess_internal::ResizeForPolicy(opt.resize, bgr, height, width, opt, out, meta,
+    return internal::ResizeForPolicy(opt.resize, bgr, height, width, opt, out, meta,
                                                 error);
 }
 

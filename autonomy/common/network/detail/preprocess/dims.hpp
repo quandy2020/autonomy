@@ -17,7 +17,7 @@
 #ifndef AUTONOMY_COMMON_NETWORK_PREPROCESS_DIMS_HPP_
 #define AUTONOMY_COMMON_NETWORK_PREPROCESS_DIMS_HPP_
 
-#include "autonomy/common/network/tensor.hpp"
+#include "autonomy/common/network/common/tensor.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -29,7 +29,10 @@ namespace network {
 
 /**
  * @file dims.hpp
- * @brief Tensor dimension helpers for image and vector model inputs
+ * @brief Model input dimension parsing and input-type classification
+ *
+ * Distinguishes image inputs (4-D/5-D) from vector inputs (1-D/2-D) before preprocess,
+ * and extracts spatial height/width from @ref ModelTensorInfo.
  */
 
 /**
@@ -58,13 +61,14 @@ bool IsVector(const ModelTensorInfo& info);
  * @param width Output width
  * @return True when parsed from metadata; false if @p fallback was used
  */
-bool Size(const ModelTensorInfo& info, int fallback, int* height, int* width);
+bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height, int* width);
 
-namespace preprocess_internal {
+namespace internal {
 
+/** @brief True when a dimension value is a typical channel count (1 or 3) */
 inline bool IsChannelDim(int64_t dim) { return dim == 1 || dim == 3; }
 
-}  // namespace preprocess_internal
+}  // namespace internal
 
 }  // namespace network
 }  // namespace common

@@ -14,26 +14,19 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_NETWORK_DETAIL_POSTPROCESS_INTERNAL_ERROR_HPP_
-#define AUTONOMY_COMMON_NETWORK_DETAIL_POSTPROCESS_INTERNAL_ERROR_HPP_
-
-#include "autonomy/common/network/detail/internal/error.hpp"
-
-namespace autonomy {
-namespace common {
-namespace network {
-namespace postprocess_internal {
+#ifndef AUTONOMY_COMMON_NETWORK_PREPROCESS_HPP_
+#define AUTONOMY_COMMON_NETWORK_PREPROCESS_HPP_
 
 /**
- * @file error.hpp
- * @brief Re-exports @ref detail::SetErrorMessage for postprocess_internal
+ * @file preprocess.hpp
+ * @brief Public preprocess API (types, policy builders, Preprocess, GetSpatialSize)
+ *
+ * Implementations live under `detail/preprocess/`.
  */
 
-using detail::SetErrorMessage;
+#include "autonomy/common/network/detail/preprocess/dims.hpp"
+#include "autonomy/common/network/detail/preprocess/image.hpp"
+#include "autonomy/common/network/detail/preprocess/policy.hpp"
+#include "autonomy/common/network/detail/preprocess/types.hpp"
 
-}  // namespace postprocess_internal
-}  // namespace network
-}  // namespace common
-}  // namespace autonomy
-
-#endif  // AUTONOMY_COMMON_NETWORK_DETAIL_POSTPROCESS_INTERNAL_ERROR_HPP_
+#endif  // AUTONOMY_COMMON_NETWORK_PREPROCESS_HPP_

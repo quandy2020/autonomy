@@ -18,7 +18,7 @@
 #define AUTONOMY_COMMON_NETWORK_POSTPROCESS_MAP_HPP_
 
 #include "autonomy/common/network/detail/preprocess/types.hpp"
-#include "autonomy/common/network/tensor.hpp"
+#include "autonomy/common/network/common/tensor.hpp"
 
 #include <opencv2/core.hpp>
 
@@ -34,26 +34,6 @@ namespace network {
  * @file map.hpp
  * @brief Dense float tensor to OpenCV map and pseudo-color visualization
  */
-
-/**
- * @brief Select one output tensor from a forward pass
- *
- * Resolution order when @p keyword is non-empty: exact name match, substring
- * match (case-insensitive), then largest trailing spatial size. Otherwise
- * picks the largest spatial output or the first map entry.
- *
- * @param outputs Engine output map
- * @param infos Output @ref ModelTensorInfo list from the model
- * @param name On success, selected tensor name
- * @param data On success, pointer to data inside @p outputs (not owned)
- * @param keyword Optional exact or substring name hint (e.g. "depth")
- * @param error Optional failure message
- * @return True when a tensor was selected
- */
-bool Find(const std::unordered_map<std::string, std::vector<float>>& outputs,
-          const std::vector<ModelTensorInfo>& infos, std::string* name,
-          const std::vector<float>** data, const std::string& keyword = "",
-          std::string* error = nullptr);
 
 /**
  * @brief Convert a dense float map tensor to CV_32FC1 at source image resolution

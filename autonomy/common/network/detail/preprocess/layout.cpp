@@ -26,7 +26,7 @@ LayoutPolicy ResolveLayout(LayoutPolicy requested, const std::vector<int64_t>& d
     if (requested != LayoutPolicy::kAuto) {
         return requested;
     }
-    if (dims.size() == 4 && preprocess_internal::IsChannelDim(dims[3])) {
+    if (dims.size() == 4 && internal::IsChannelDim(dims[3])) {
         return LayoutPolicy::kNHWC;
     }
     return LayoutPolicy::kNCHW;

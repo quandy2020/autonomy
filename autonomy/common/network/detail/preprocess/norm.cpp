@@ -19,7 +19,7 @@
 namespace autonomy {
 namespace common {
 namespace network {
-namespace preprocess_internal {
+namespace internal {
 
 namespace {
 
@@ -72,7 +72,7 @@ void ApplyNorm(std::vector<float>* tensor, NormalizePolicy policy, const Normali
     });
 }
 
-}  // namespace preprocess_internal
+}  // namespace internal
 }  // namespace network
 }  // namespace common
 }  // namespace autonomy
