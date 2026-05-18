@@ -42,7 +42,7 @@ public:
     static std::unique_ptr<IntensityToColorPointsProcessor> FromDictionary(
         common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
-    ~IntensityToColorPointsProcessor() override {};
+    ~IntensityToColorPointsProcessor() override{};
 
     IntensityToColorPointsProcessor(const IntensityToColorPointsProcessor&) =
         delete;

@@ -205,7 +205,7 @@ static IntPoint getDirection(Direction dir) {
 // 定义路径
 struct Path {
     std::vector<IntPoint> path;  // 路径上的点，不包含起点和终点
-    float path_length;           // 路径长度，从起点到终点的实际距离 - 1
+    float path_length;  // 路径长度，从起点到终点的实际距离 - 1
     float path_length_x;
     float path_length_y;
 };
@@ -266,11 +266,11 @@ struct GraphNode {
         neighbor_paths.emplace_back(neighbor_path);
         this->neighbors.emplace_back(neighbor);
     }
-    IntPoint pos;                      // 节点坐标
-    NODE_TYPE type = None;             // 节点类型
-    bool IsVisitedStage3 = false;      // 用于Stage3的访问标记
-    bool RemovedByPVS = false;         // 用于标记是否被某个阶段删除
-    std::vector<WeakPtr> neighbors;    // 邻居节点（使用WeakPtr）
+    IntPoint pos;                    // 节点坐标
+    NODE_TYPE type = None;           // 节点类型
+    bool IsVisitedStage3 = false;    // 用于Stage3的访问标记
+    bool RemovedByPVS = false;       // 用于标记是否被某个阶段删除
+    std::vector<WeakPtr> neighbors;  // 邻居节点（使用WeakPtr）
     std::vector<Path> neighbor_paths;  // 到邻居的路径
 
     enum NODE_STATE {
@@ -396,8 +396,8 @@ private:
     std::vector<GRID_TYPE>
         grid_types_;  // 网格类型,
                       // 0表示none，1表示强节点，2表示弱节点，3表示edge
-    std::vector<uint8_t> grid_adjs_;          // 邻接方向
-    std::vector<uint8_t> grid_adjs_origin_;   // 邻接方向，保留最初数据
+    std::vector<uint8_t> grid_adjs_;         // 邻接方向
+    std::vector<uint8_t> grid_adjs_origin_;  // 邻接方向，保留最初数据
     std::vector<IntPoint> truncated_points_;  // 被cle_thr_sq_high_截断的点
     std::vector<IntPoint> completeCoonction_points_;
     std::vector<bool> voronoi_new;  // 在gvg里面单独弄一个紧凑维诺图

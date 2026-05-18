@@ -398,8 +398,7 @@ private:
 /// @tparam     StateT  A query potential state type.
 ///
 template <typename StateT>
-struct is_state : public std::false_type {
-};
+struct is_state : public std::false_type {};
 
 ///
 /// @brief      A specialization of this trait for GenericState type.

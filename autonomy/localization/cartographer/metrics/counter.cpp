@@ -25,8 +25,8 @@ namespace {
 class NullCounter : public Counter
 {
 public:
-    void Increment() override {};
-    void Increment(double) override {};
+    void Increment() override{};
+    void Increment(double) override{};
 };
 
 }  // namespace

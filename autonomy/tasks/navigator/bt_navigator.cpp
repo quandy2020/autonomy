@@ -80,9 +80,8 @@ constexpr char kNavigatorBaseClass[] = "autonomy::tasks::common::NavigatorBase";
 BtNavigator::BtNavigator(std::shared_ptr<::autolink::Node> node,
                          const autonomy::tasks::proto::TaskOptions& options)
     : node_(node), options_(options) {
-    global_frame_ =
-        options.global_frame().empty() ? kDefaultGlobalFrame
-                                       : options.global_frame();
+    global_frame_ = options.global_frame().empty() ? kDefaultGlobalFrame
+                                                   : options.global_frame();
     robot_frame_ = options.robot_base_frame().empty()
                        ? kDefaultRobotFrame
                        : options.robot_base_frame();

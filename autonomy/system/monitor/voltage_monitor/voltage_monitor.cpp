@@ -24,7 +24,8 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-void VoltageMonitor::Collect() { /* stub: 可接入 SoC 电压等 */ }
+void VoltageMonitor::Collect() { /* stub: 可接入 SoC 电压等 */
+}
 
 void VoltageMonitor::RegisterWithPrometheus(void* registry) {
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS

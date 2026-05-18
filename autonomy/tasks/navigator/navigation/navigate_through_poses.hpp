@@ -69,7 +69,8 @@ public:
      * @param options 任务选项（navigators、plugin_lib_names、坐标系、odom 等）
      */
     NavigateThroughPosesNavigator(std::shared_ptr<::autolink::Node> node,
-        const autonomy::tasks::behavior_tree::proto::NavigateThroughPosesOptions& options);
+                                  const autonomy::tasks::behavior_tree::proto::
+                                      NavigateThroughPosesOptions& options);
 
     /**
      * @brief Get action name for this navigator
@@ -91,7 +92,8 @@ protected:
      * @param goal Action template's goal message
      * @return bool if goal was received successfully to be processed
      */
-    bool GoalReceived(std::shared_ptr<const typename ActionT::Goal> goal) override;
+    bool GoalReceived(
+        std::shared_ptr<const typename ActionT::Goal> goal) override;
 
     /**
      * @brief A callback that defines execution that happens on one iteration
@@ -111,15 +113,15 @@ protected:
      * @param final_bt_status Resulting status of the behavior tree execution
      * that may be referenced while populating the result.
      */
-    void GoalCompleted(
-        std::shared_ptr<typename ActionT::Result> result,
-        const BtStatus final_bt_status) override;
+    void GoalCompleted(std::shared_ptr<typename ActionT::Result> result,
+                       const BtStatus final_bt_status) override;
 
     /**
      * @brief Goal pose initialization on the blackboard
      * @return bool if goal was initialized successfully to be processed
      */
-    bool InitializeGoalPoses(std::shared_ptr<const typename ActionT::Goal> goal);
+    bool InitializeGoalPoses(
+        std::shared_ptr<const typename ActionT::Goal> goal);
 
     std::chrono::steady_clock::time_point start_time_;
     std::string goals_blackboard_id_;
