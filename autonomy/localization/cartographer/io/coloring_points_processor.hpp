@@ -38,7 +38,7 @@ public:
     static std::unique_ptr<ColoringPointsProcessor> FromDictionary(
         common::LuaParameterDictionary* dictionary, PointsProcessor* next);
 
-    ~ColoringPointsProcessor() override {};
+    ~ColoringPointsProcessor() override{};
 
     ColoringPointsProcessor(const ColoringPointsProcessor&) = delete;
     ColoringPointsProcessor& operator=(const ColoringPointsProcessor&) = delete;

@@ -25,7 +25,8 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-void HddMonitor::Collect() { /* stub: 可接入 df / 磁盘 IO */ }
+void HddMonitor::Collect() { /* stub: 可接入 df / 磁盘 IO */
+}
 
 void HddMonitor::RegisterWithPrometheus(void* registry) {
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS

@@ -25,7 +25,7 @@ namespace costmap_3d {
                       val, fdl)                                               \
     (ck) = (x) == 0 || (x) == (bx) || (y) == 0 || (y) == (by) || (z) == 0 ||  \
            (z) == (bz);                                                       \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y) - (sy);                                                         \
     (k) = (z) - (sz);                                                         \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -34,7 +34,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y) - (sy);                                                         \
     (k) = (z);                                                                \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -42,7 +42,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y) - (sy);                                                         \
     (k) = (z) + (sz);                                                         \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -51,7 +51,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y);                                                                \
     (k) = (z) - (sz);                                                         \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -59,7 +59,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y);                                                                \
     (k) = (z);                                                                \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -67,7 +67,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y);                                                                \
     (k) = (z) + (sz);                                                         \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -75,7 +75,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y) + (sy);                                                         \
     (k) = (z) - (sz);                                                         \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -84,7 +84,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y) + (sy);                                                         \
     (k) = (z);                                                                \
     (ofst) = (i) + (j) + (k);                                                 \
@@ -92,7 +92,7 @@ namespace costmap_3d {
         (ogm)[(ofst)] = (val);                                                \
         (fdl).emplace_back((i), (j), (k));                                    \
     }                                                                         \
-    (i) = (x) - 1;                                                            \
+    (i) = (x)-1;                                                              \
     (j) = (y) + (sy);                                                         \
     (k) = (z) + (sz);                                                         \
     (ofst) = (i) + (j) + (k);                                                 \

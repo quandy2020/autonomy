@@ -58,16 +58,14 @@ struct index {
 /// recursion.
 template <class HeadT, class... Tail>
 struct index<HeadT, std::tuple<HeadT, Tail...>>
-    : std::integral_constant<std::int32_t, 0> {
-};
+    : std::integral_constant<std::int32_t, 0> {};
 
 /// Specialization for a tuple with a type different to QueryT that calls the
 /// recursive step.
 template <class QueryT, class HeadT, class... Tail>
 struct index<QueryT, std::tuple<HeadT, Tail...>>
     : std::integral_constant<std::int32_t,
-                             1 + index<QueryT, std::tuple<Tail...>>::value> {
-};
+                             1 + index<QueryT, std::tuple<Tail...>>::value> {};
 
 ///
 /// @brief      Visit every element in a tuple.
@@ -125,17 +123,14 @@ inline constexpr typename std::enable_if_t<I != sizeof...(TypesT)> visit(
 
 /// @brief      A class to compute a conjunction over given traits.
 template <class...>
-struct conjunction : std::true_type {
-};
+struct conjunction : std::true_type {};
 /// @brief      A conjunction of another type shall derive from that type.
 template <class TraitT>
-struct conjunction<TraitT> : TraitT {
-};
+struct conjunction<TraitT> : TraitT {};
 template <class TraitT, class... TraitsTs>
 struct conjunction<TraitT, TraitsTs...>
     : std::conditional_t<static_cast<bool>(TraitT::value),
-                         conjunction<TraitsTs...>, TraitT> {
-};
+                         conjunction<TraitsTs...>, TraitT> {};
 
 ///
 /// @brief      A trait to check if a tuple has a type.
@@ -156,8 +151,7 @@ struct has_type;
 /// @tparam     QueryT     Any type.
 ///
 template <typename QueryT>
-struct has_type<QueryT, std::tuple<>> : std::false_type {
-};
+struct has_type<QueryT, std::tuple<>> : std::false_type {};
 
 ///
 /// @brief      Recursive override of the main trait.
@@ -168,8 +162,7 @@ struct has_type<QueryT, std::tuple<>> : std::false_type {
 ///
 template <typename QueryT, typename HeadT, typename... TailTs>
 struct has_type<QueryT, std::tuple<HeadT, TailTs...>>
-    : has_type<QueryT, std::tuple<TailTs...>> {
-};
+    : has_type<QueryT, std::tuple<TailTs...>> {};
 
 ///
 /// @brief      End of recursion for the main `has_type` trait. Becomes a
@@ -180,8 +173,7 @@ struct has_type<QueryT, std::tuple<HeadT, TailTs...>>
 /// @tparam     TailTs  Other types in the tuple.
 ///
 template <typename QueryT, typename... TailTs>
-struct has_type<QueryT, std::tuple<QueryT, TailTs...>> : std::true_type {
-};
+struct has_type<QueryT, std::tuple<QueryT, TailTs...>> : std::true_type {};
 
 ///
 /// @brief      A trait used to intersect types stored in tuples at compile

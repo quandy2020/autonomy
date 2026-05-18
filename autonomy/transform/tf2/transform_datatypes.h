@@ -51,14 +51,14 @@ public:
 
     /** Default constructor */
     Stamped()
-        : frame_id_("NO_ID_STAMPED_DEFAULT_CONSTRUCTION") {
-          };  // Default constructor
-              // used only for
-              // preallocation
+        : frame_id_(
+              "NO_ID_STAMPED_DEFAULT_CONSTRUCTION"){};  // Default constructor
+                                                        // used only for
+                                                        // preallocation
 
     /** Full constructor */
     Stamped(const T& input, const Time& timestamp, const std::string& frame_id)
-        : T(input), stamp_(timestamp), frame_id_(frame_id) {};
+        : T(input), stamp_(timestamp), frame_id_(frame_id){};
 
     /** Copy Constructor */
     Stamped(const Stamped<T>& s)

@@ -153,8 +153,7 @@ struct DefaultPolicies {
 };
 
 template <template <typename> class... Mixins>
-struct MixinList {
-};
+struct MixinList {};
 
 }  // namespace eventpp
 }  // namespace common

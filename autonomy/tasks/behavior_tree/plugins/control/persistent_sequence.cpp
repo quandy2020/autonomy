@@ -64,7 +64,7 @@ BT::NodeStatus PersistentSequenceNode::tick() {
             case BT::NodeStatus::IDLE:
                 throw std::runtime_error("A child node must never return IDLE");
         }  // end switch
-    }  // end while loop
+    }      // end while loop
 
     // The entire while loop completed. This means that all the children
     // returned SUCCESS.

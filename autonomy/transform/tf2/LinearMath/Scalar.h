@@ -287,7 +287,7 @@ TF2SIMD_FORCE_INLINE tf2Scalar tf2Degrees(tf2Scalar x) {
 #define TF2_DECLARE_HANDLE(name) \
     typedef struct name##__ {    \
         int unused;              \
-    }* name
+    } * name
 
 #ifndef tf2Fsel
 TF2SIMD_FORCE_INLINE tf2Scalar tf2Fsel(tf2Scalar a, tf2Scalar b, tf2Scalar c) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 The Openbot Authors (duyongquan)
+ * Copyright 2025 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,16 +12,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Design aligned with nav2_bt_navigator::NavigateToPoseNavigator.
  */
 
-#include "autonomy/tasks/navigator/navigation/navigate_through_poses.hpp"
+#ifndef AUTONOMY_COMMON_NETWORK_BACKEND_HPP_
+#define AUTONOMY_COMMON_NETWORK_BACKEND_HPP_
 
-namespace autonomy {
-namespace tasks {
-namespace navigator {
-namespace navigation {}  // namespace navigation
-}  // namespace navigator
-}  // namespace tasks
-}  // namespace autonomy
+/** @deprecated Include `backend/backend.hpp` instead. */
+#include "autonomy/common/network/backend/backend.hpp"
+
+#endif  // AUTONOMY_COMMON_NETWORK_BACKEND_HPP_

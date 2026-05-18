@@ -24,7 +24,8 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-void NtpMonitor::Collect() { /* stub: 可接入 ntpq / chronyc */ }
+void NtpMonitor::Collect() { /* stub: 可接入 ntpq / chronyc */
+}
 
 void NtpMonitor::RegisterWithPrometheus(void* registry) {
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS

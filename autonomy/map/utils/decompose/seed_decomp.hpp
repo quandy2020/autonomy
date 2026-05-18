@@ -32,7 +32,7 @@ class SeedDecomp : public DecompBase<Dim>
 {
 public:
     /// Simple constructor
-    SeedDecomp() {};
+    SeedDecomp(){};
     /**
      * @brief Basic constructor
      * @param p1 One end of the line seg

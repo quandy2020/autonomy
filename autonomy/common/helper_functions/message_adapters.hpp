@@ -32,12 +32,10 @@ using TimeStamp = builtin_interfaces::Time;
 /// \brief Helper class to check existence of header file in compile time:
 /// https://stackoverflow.com/a/16000226/2325407
 template <typename T, typename = nullptr_t>
-struct HasHeader : std::false_type {
-};
+struct HasHeader : std::false_type {};
 
 template <typename T>
-struct HasHeader<T, decltype((void)T::header, nullptr)> : std::true_type {
-};
+struct HasHeader<T, decltype((void)T::header, nullptr)> : std::true_type {};
 
 /////////// Template declarations
 

@@ -24,7 +24,8 @@ namespace autonomy {
 namespace system {
 namespace monitor {
 
-void NetMonitor::Collect() { /* stub: 可接入 /proc/net/dev */ }
+void NetMonitor::Collect() { /* stub: 可接入 /proc/net/dev */
+}
 
 void NetMonitor::RegisterWithPrometheus(void* registry) {
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS

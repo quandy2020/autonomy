@@ -10,12 +10,10 @@ namespace eventpp {
 namespace internal_ {
 
 template <size_t... Indexes>
-struct IndexSequence {
-};
+struct IndexSequence {};
 
 template <size_t N, size_t... Indexes>
-struct MakeIndexSequence : MakeIndexSequence<N - 1, N - 1, Indexes...> {
-};
+struct MakeIndexSequence : MakeIndexSequence<N - 1, N - 1, Indexes...> {};
 
 template <std::size_t... Indexes>
 struct MakeIndexSequence<0, Indexes...> {

@@ -75,8 +75,7 @@ struct function_traits<ReturnTypeT(Args...)> {
 // Function pointers
 template <typename ReturnTypeT, typename... Args>
 struct function_traits<ReturnTypeT (*)(Args...)>
-    : function_traits<ReturnTypeT(Args...)> {
-};
+    : function_traits<ReturnTypeT(Args...)> {};
 
 // std::bind for object methods
 template <typename ClassT, typename ReturnTypeT, typename... Args,
@@ -143,16 +142,13 @@ struct function_traits<
 // Lambdas
 template <typename ClassT, typename ReturnTypeT, typename... Args>
 struct function_traits<ReturnTypeT (ClassT::*)(Args...) const>
-    : function_traits<ReturnTypeT(ClassT&, Args...)> {
-};
+    : function_traits<ReturnTypeT(ClassT&, Args...)> {};
 
 template <typename FunctionT>
-struct function_traits<FunctionT&> : function_traits<FunctionT> {
-};
+struct function_traits<FunctionT&> : function_traits<FunctionT> {};
 
 template <typename FunctionT>
-struct function_traits<FunctionT&&> : function_traits<FunctionT> {
-};
+struct function_traits<FunctionT&&> : function_traits<FunctionT> {};
 
 /* NOTE(esteve):
  * VS2015 does not support expression SFINAE, so we're using this template to
@@ -161,20 +157,17 @@ struct function_traits<FunctionT&&> : function_traits<FunctionT> {
 template <std::size_t Arity, typename FunctorT>
 struct arity_comparator
     : std::integral_constant<bool,
-                             (Arity == function_traits<FunctorT>::arity)> {
-};
+                             (Arity == function_traits<FunctorT>::arity)> {};
 
 template <typename FunctorT, typename... Args>
 struct check_arguments
     : std::is_same<typename function_traits<FunctorT>::arguments,
-                   std::tuple<Args...>> {
-};
+                   std::tuple<Args...>> {};
 
 template <typename FunctorAT, typename FunctorBT>
 struct same_arguments
     : std::is_same<typename function_traits<FunctorAT>::arguments,
-                   typename function_traits<FunctorBT>::arguments> {
-};
+                   typename function_traits<FunctorBT>::arguments> {};
 
 namespace detail {
 
