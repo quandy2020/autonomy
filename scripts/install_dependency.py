@@ -2,8 +2,11 @@
 """
 Install dependencies for the autonomy workspace.
 
-APT packages mirror docker/dockerfile/autonomy.x86_64.dockerfile.
-Third-party installers mirror the dockerfile RUN steps.
+APT packages mirror docker/dockerfile/autonomy.x86_64.dockerfile (plus a few
+extras for standalone CMake builds without ROS base images).
+
+Third-party installers mirror the dockerfile RUN steps under docker/install/.
+Boost / Autolink / Bazel are no longer required (C++17 + CMake-only libautonomy).
 """
 
 from __future__ import annotations
@@ -16,14 +19,18 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-# Keep in sync with docker/dockerfile/autonomy.x86_64.dockerfile (apt-get install).
-APT_PACKAGES: List[str] = [
+# ---------------------------------------------------------------------------
+# APT packages (keep in sync with docker/dockerfile/autonomy.x86_64.dockerfile)
+# ---------------------------------------------------------------------------
+_APT_BUILD_TOOLS: List[str] = [
     "sudo",
     "software-properties-common",
     "pkg-config",
     "autoconf",
     "automake",
     "cmake",
+    "ninja-build",
+    "libtool",
     "curl",
     "git",
     "unzip",
@@ -31,51 +38,79 @@ APT_PACKAGES: List[str] = [
     "wget",
     "bc",
     "gdb",
-    "libsdl2-dev",
-    "libblas-dev",
-    "liblapack-dev",
-    "libtinyxml2-dev",
-    "liblua5.3-dev",
-    "ninja-build",
-    "sphinx",
+    "clang-format",
+    "stow",
+    "lsb-release",
+]
+
+_APT_PYTHON: List[str] = [
     "python3-pip",
     "python3-dev",
     "python3-sphinx",
-    "uuid-dev",
-    "libcivetweb-dev",
-    "libsuitesparse-dev",
-    "lsb-release",
+    "sphinx",
+]
+
+_APT_CMAKE_LIBS: List[str] = [
+    # find_package / link targets used in CMakeLists.txt (system or third-party)
+    "libeigen3-dev",
+    "liblua5.3-dev",
+    "libyaml-cpp-dev",
+    "libprotobuf-dev",
+    "protobuf-compiler",
     "libcairo2-dev",
-    "libasio-dev",
-    "libncurses5-dev",
+    "libsuitesparse-dev",  # Ceres
+    "libblas-dev",
+    "liblapack-dev",
+    "libmetis-dev",
+    "libflann-dev",
+    "libqhull-dev",
+    "libtinyxml2-dev",
+    "libsqlite3-dev",
+    "libzmq3-dev",
+    "liburdfdom-dev",
+]
+
+_APT_MULTIMEDIA_GUI: List[str] = [
+    "libsdl2-dev",
     "libavcodec-dev",
     "libswscale-dev",
+    "libgtk2.0-dev",
+    "libfltk1.3-dev",
+    "libtiff-dev",
+]
+
+_APT_NETWORK_MISC: List[str] = [
+    "libcivetweb-dev",
+    "libasio-dev",
+    "libncurses5-dev",
     "libpoco-dev",
     "libpcap0.8",
     "libpcap0.8-dev",
     "libusb-1.0-0",
     "libusb-1.0-0-dev",
-    "libmetis-dev",
-    "libyaml-cpp-dev",
-    "libfltk1.3-dev",
-    "libtool",
-    "libtiff-dev",
     "libcurl4-openssl-dev",
     "libwebsocketpp-dev",
-    "libeigen3-dev",
-    "libsqlite3-dev",
-    "libzmq3-dev",
-    "liburdfdom-dev",
-    "libgtk2.0-dev",
-    "clang-format",
+    "uuid-dev",
     "sqlite3",
-    "stow",
-    # Protobuf compiler/libs for plain Ubuntu (ROS images often already have these).
-    "libprotobuf-dev",
-    "protobuf-compiler",
 ]
 
-# Order matches dockerfile third-party RUN steps.
+_APT_TESTING: List[str] = [
+    "libgtest-dev",
+    "libgmock-dev",
+]
+
+APT_PACKAGES: List[str] = sorted(
+    set(
+        _APT_BUILD_TOOLS
+        + _APT_PYTHON
+        + _APT_CMAKE_LIBS
+        + _APT_MULTIMEDIA_GUI
+        + _APT_NETWORK_MISC
+        + _APT_TESTING
+    )
+)
+
+# Order matches dockerfile third-party RUN steps (docker/install/*.sh).
 THIRDPARTY_SCRIPTS: List[str] = [
     "install_gtest.sh",
     "install_glog.sh",
@@ -86,7 +121,7 @@ THIRDPARTY_SCRIPTS: List[str] = [
     "install_ceres_solver.sh",
     "install_nlohmann.sh",
     "install_osqp.sh",
-    "install_behaviortree_cpp.sh",
+    "install_behaviortree_cpp.sh",  # required when BUILD_TASKS=ON
     "install_python_modules.sh",
     "install_assimp.sh",
     "install_ogre.sh",
@@ -175,7 +210,7 @@ def check_ubuntu() -> None:
 def install_apt_dependencies(*, dry_run: bool) -> None:
     run_command(["sudo", "apt-get", "update"], dry_run=dry_run)
     run_command(["sudo", "apt-get", "-y", "--fix-broken", "install"], dry_run=dry_run)
-    cmd = ["sudo", "apt-get", "install", "-y"] + sorted(set(APT_PACKAGES))
+    cmd = ["sudo", "apt-get", "install", "-y"] + APT_PACKAGES
     try:
         run_command(cmd, dry_run=dry_run)
     except subprocess.CalledProcessError:
@@ -234,6 +269,11 @@ def install_thirdparty(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Install autonomy dependencies (apt + docker/install scripts).",
+        epilog=(
+            "CMake expects third-party libs under /usr/local from docker/install "
+            "(glog, gflags, Ceres, OpenCV, OSQP, BehaviorTree.CPP, etc.). "
+            "Boost is not required."
+        ),
     )
     parser.add_argument(
         "--repo-root",
@@ -257,6 +297,11 @@ def parse_args() -> argparse.Namespace:
         help="Print commands without executing.",
     )
     parser.add_argument(
+        "--list-apt",
+        action="store_true",
+        help="Print apt package names and exit.",
+    )
+    parser.add_argument(
         "--resume-from",
         type=str,
         default=None,
@@ -272,6 +317,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+
+    if args.list_apt:
+        for pkg in APT_PACKAGES:
+            print(pkg)
+        return 0
+
     repo_root = args.repo_root.resolve()
 
     if args.apt_only and args.thirdparty_only:
@@ -285,11 +336,11 @@ def main() -> int:
 
     try:
         if not args.thirdparty_only:
-            print("==> Installing apt dependencies")
+            print(f"==> Installing {len(APT_PACKAGES)} apt packages")
             install_apt_dependencies(dry_run=args.dry_run)
 
         if not args.apt_only:
-            print("==> Installing third-party dependencies")
+            print(f"==> Installing {len(THIRDPARTY_SCRIPTS)} third-party scripts")
             install_thirdparty(
                 repo_root=repo_root,
                 dry_run=args.dry_run,
