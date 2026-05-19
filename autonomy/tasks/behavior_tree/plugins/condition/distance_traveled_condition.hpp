@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
@@ -73,7 +72,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     std::shared_ptr<autonomy::transform::Buffer> tf_;
 
     commsgs::geometry_msgs::PoseStamped start_pose_;

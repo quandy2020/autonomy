@@ -15,10 +15,8 @@
  */
 
 #include "autonomy/map/costmap_2d/filters/speed_filter.hpp"
-
-#include "absl/strings/str_cat.h"
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/str_cat.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 
 namespace autonomy {
@@ -140,10 +138,10 @@ void SpeedFilter::maskCallback(
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!filter_mask_) {
-        LOG(INFO) << absl::StrCat("SpeedFilter: Received filter mask from ",
+        LOG(INFO) << common::StrCat("SpeedFilter: Received filter mask from ",
                                   mask_topic_, " topic.");
     } else {
-        LOG(WARNING) << absl::StrCat(
+        LOG(WARNING) << common::StrCat(
             "SpeedFilter: New filter mask arrived from ", mask_topic_,
             "topic. Updating old filter mask.");
         filter_mask_.reset();
@@ -190,7 +188,7 @@ void SpeedFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
     } else if (speed_mask_data == SPEED_MASK_UNKNOWN) {
         // Corresponding filter mask cell is unknown.
         // Do nothing.
-        LOG(ERROR) << absl::StrCat(
+        LOG(ERROR) << common::StrCat(
             "SpeedFilter: Found unknown cell in filter_mask[", mask_robot_i,
             mask_robot_j, "] which is invalid for this kind of filter");
         return;
@@ -260,7 +258,3 @@ bool SpeedFilter::isActive() {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::SpeedFilter,
-                            autonomy::map::costmap_2d::CostmapFilter)

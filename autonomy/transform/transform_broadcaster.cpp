@@ -17,33 +17,12 @@
 #include "autonomy/transform/transform_broadcaster.hpp"
 
 #include "autonomy/common/log.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
 
 namespace autonomy {
 namespace transform {
 
-TransformBroadcaster::TransformBroadcaster(
-    const std::shared_ptr<::autolink::Node>& node)
-    : node_(node) {
-    if (!node_) {
-        AERROR << "TransformBroadcaster: Node is null.";
-        return;
-    }
-    ::autolink::proto::RoleAttributes attr;
-    attr.set_channel_name("/tf");
-    writer_ =
-        node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
-}
-
-TransformBroadcaster::TransformBroadcaster(::autolink::Node* node) {
-    if (!node) {
-        AERROR << "TransformBroadcaster: Node pointer is null.";
-        return;
-    }
-    ::autolink::proto::RoleAttributes attr;
-    attr.set_channel_name("/tf");
-    writer_ =
-        node->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
-}
+TransformBroadcaster::TransformBroadcaster() = default;
 
 void TransformBroadcaster::SendTransform(
     const commsgs::geometry_msgs::TransformStamped& transform) {
@@ -54,15 +33,10 @@ void TransformBroadcaster::SendTransform(
 
 void TransformBroadcaster::SendTransform(
     const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
-    if (!writer_) {
-        AERROR
-            << "TransformBroadcaster: Writer is null, cannot send transform.";
-        return;
-    }
-    auto message =
-        std::make_shared<commsgs::geometry_msgs::TransformStampeds>();
-    message->transforms = transforms;
-    writer_->Write(message);
+    transform_stampeds_.transforms = transforms;
+    transform_stampeds_.header.stamp =
+        commsgs::builtin_interfaces::Time::Now();
 }
+
 }  // namespace transform
 }  // namespace autonomy

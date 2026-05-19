@@ -27,25 +27,12 @@ namespace control {
 PauseResumeController::PauseResumeController(const std::string& xml_tag_name,
                                              const BT::NodeConfiguration& conf)
     : BT::ControlNode(xml_tag_name, conf), state_(RESUMED) {
-    auto node =
-        config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     std::string pause_service_name;
     getInput("pause_service_name", pause_service_name);
-    pause_srv_ = node->CreateService<Trigger::Request, Trigger::Response>(
-        pause_service_name,
-        [this](const std::shared_ptr<Trigger::Request>& request,
-               std::shared_ptr<Trigger::Response>& response) {
-            this->pauseServiceCallback(request, response);
-        });
-
     std::string resume_service_name;
     getInput("resume_service_name", resume_service_name);
-    resume_srv_ = node->CreateService<Trigger::Request, Trigger::Response>(
-        resume_service_name,
-        [this](const std::shared_ptr<Trigger::Request>& request,
-               std::shared_ptr<Trigger::Response>& response) {
-            this->resumeServiceCallback(request, response);
-        });
+    (void)pause_service_name;
+    (void)resume_service_name;
 }
 
 BT::NodeStatus PauseResumeController::tick() {

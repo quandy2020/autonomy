@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/strings/str_cat.h"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/footprint.hpp"
 

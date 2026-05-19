@@ -26,6 +26,7 @@
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/planner/navfn/navfn.hpp"
 #include "autonomy/transform/buffer.hpp"

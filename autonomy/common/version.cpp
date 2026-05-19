@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "absl/strings/str_cat.h"
+#include "autonomy/common/str_cat.hpp"
 #include "glog/logging.h"
 #include "autonomy/common/version.hpp"
 
@@ -93,12 +93,12 @@ const std::string PROJECT_VERSION = "";
 // Git提交信息
 const std::string GIT_COMMIT_AUTHOR = "duyongquan";
 const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
-const std::string GIT_COMMIT_DATE = """2026-05-19 17:14:50""";
-const std::string GIT_VERSION = "c717d82e-dirty";
+const std::string GIT_COMMIT_DATE = """2026-05-19 19:59:35""";
+const std::string GIT_VERSION = "bc3c2350-dirty";
 const std::string GIT_BRANCH = "feature/library";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-05-19 11:57:47";
+const std::string BUILD_TIMESTAMP = "2026-05-19 13:47:24";
 const std::string BUILD_HOST = "9b2023bccf6b";
 const std::string BUILD_USER = "root";
 
@@ -113,7 +113,7 @@ const std::string COMPILER_VERSION = "11.4.0";
 
 std::string GetVersionInfo() 
 {
-  return absl::StrCat("Autonomy ", AUTONOMY_VERSION);
+  return common::StrCat("Autonomy ", AUTONOMY_VERSION);
 }
 
 std::string GetBuildInfo() 
@@ -123,12 +123,12 @@ std::string GetBuildInfo()
 #else
   const char* cuda_info = "without CUDA";
 #endif
-  return absl::StrCat("Autonomy develop info: Commit ", AUTONOMY_COMMIT_ID, " on ", AUTONOMY_COMMIT_DATE, " ", cuda_info);
+  return common::StrCat("Autonomy develop info: Commit ", AUTONOMY_COMMIT_ID, " on ", AUTONOMY_COMMIT_DATE, " ", cuda_info);
 }
 
 std::string GetGitCommitID()
 {
-  return absl::StrCat("Autonomy git commit ID: ", AUTONOMY_COMMIT_ID, " on ", AUTONOMY_COMMIT_DATE);
+  return common::StrCat("Autonomy git commit ID: ", AUTONOMY_COMMIT_ID, " on ", AUTONOMY_COMMIT_DATE);
 }
 
 std::string GetCudaInfo()
@@ -150,33 +150,33 @@ void ShowVersion()
 
     // 项目信息
     LOG(INFO) << GREEN_INFO("Project Info:");
-    LOG(INFO) << GREEN_INFO(absl::StrCat("  [   name  ]: ", PROJECT_NAME));
-    LOG(INFO) << GREEN_INFO(absl::StrCat("  [ version ]: ", common::GetVersionInfo().c_str()));
-    LOG(INFO) << GREEN_INFO(absl::StrCat("  [ develop ]: ", common::GetGitCommitID().c_str()));
-    LOG(INFO) << GREEN_INFO(absl::StrCat("  [ cuda    ]: ", common::GetCudaInfo().c_str()));
+    LOG(INFO) << GREEN_INFO(common::StrCat("  [   name  ]: ", PROJECT_NAME));
+    LOG(INFO) << GREEN_INFO(common::StrCat("  [ version ]: ", common::GetVersionInfo().c_str()));
+    LOG(INFO) << GREEN_INFO(common::StrCat("  [ develop ]: ", common::GetGitCommitID().c_str()));
+    LOG(INFO) << GREEN_INFO(common::StrCat("  [ cuda    ]: ", common::GetCudaInfo().c_str()));
     LOG(INFO) << GREEN_INFO("  [ contact ]: " << "quandy2020@126.com");
 
     // Git信息
     LOG(INFO) << BLUE_INFO("Git Info:");
-    LOG(INFO) << BLUE_INFO(absl::StrCat("  [  author ]: ", GIT_COMMIT_AUTHOR));
-    LOG(INFO) << BLUE_INFO(absl::StrCat("  [  e-mail ]: ", GIT_COMMIT_EMAIL));
-    LOG(INFO) << BLUE_INFO(absl::StrCat("  [  time   ]: ", GIT_COMMIT_DATE));
-    LOG(INFO) << BLUE_INFO(absl::StrCat("  [ version ]: ", GIT_VERSION));
-    LOG(INFO) << BLUE_INFO(absl::StrCat("  [ branch  ]: ", GIT_BRANCH));
+    LOG(INFO) << BLUE_INFO(common::StrCat("  [  author ]: ", GIT_COMMIT_AUTHOR));
+    LOG(INFO) << BLUE_INFO(common::StrCat("  [  e-mail ]: ", GIT_COMMIT_EMAIL));
+    LOG(INFO) << BLUE_INFO(common::StrCat("  [  time   ]: ", GIT_COMMIT_DATE));
+    LOG(INFO) << BLUE_INFO(common::StrCat("  [ version ]: ", GIT_VERSION));
+    LOG(INFO) << BLUE_INFO(common::StrCat("  [ branch  ]: ", GIT_BRANCH));
   
     // 构建信息
     LOG(INFO) << YELLOW_INFO("Build Info:");
-    LOG(INFO) << YELLOW_INFO(absl::StrCat("  [  time   ]: ", BUILD_TIMESTAMP));
-    LOG(INFO) << YELLOW_INFO(absl::StrCat("  [  host   ]: ", BUILD_HOST));
-    LOG(INFO) << YELLOW_INFO(absl::StrCat("  [  user   ]: ", BUILD_USER));
+    LOG(INFO) << YELLOW_INFO(common::StrCat("  [  time   ]: ", BUILD_TIMESTAMP));
+    LOG(INFO) << YELLOW_INFO(common::StrCat("  [  host   ]: ", BUILD_HOST));
+    LOG(INFO) << YELLOW_INFO(common::StrCat("  [  user   ]: ", BUILD_USER));
 
     // 系统信息
     LOG(INFO) << MAGENTA_INFO("System Info:");
-    LOG(INFO) << MAGENTA_INFO(absl::StrCat("  [ system  ]: ", SYSTEM_NAME));
-    LOG(INFO) << MAGENTA_INFO(absl::StrCat("  [  arch   ]: ", SYSTEM_PROCESSOR));
-    LOG(INFO) << MAGENTA_INFO(absl::StrCat("  [ version ]: ", SYSTEM_VERSION));
-    LOG(INFO) << MAGENTA_INFO(absl::StrCat("  [   g++   ]: ", COMPILER_ID));
-    LOG(INFO) << MAGENTA_INFO(absl::StrCat("  [ version ]: ", COMPILER_VERSION));
+    LOG(INFO) << MAGENTA_INFO(common::StrCat("  [ system  ]: ", SYSTEM_NAME));
+    LOG(INFO) << MAGENTA_INFO(common::StrCat("  [  arch   ]: ", SYSTEM_PROCESSOR));
+    LOG(INFO) << MAGENTA_INFO(common::StrCat("  [ version ]: ", SYSTEM_VERSION));
+    LOG(INFO) << MAGENTA_INFO(common::StrCat("  [   g++   ]: ", COMPILER_ID));
+    LOG(INFO) << MAGENTA_INFO(common::StrCat("  [ version ]: ", COMPILER_VERSION));
 
     LOG(INFO) << RED_INFO("==============================================");
 }

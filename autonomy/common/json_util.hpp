@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "absl/strings/str_split.h"
+#include "autonomy/common/string_util.hpp"
 #include "glog/logging.h"
 #include "google/protobuf/message.h"
 #include "nlohmann/json.hpp"
@@ -118,7 +118,7 @@ public:
     template <class T>
     static bool GetNumberByPath(const nlohmann::json& json,
                                 const std::string& path, T* value) {
-        std::vector<std::string> paths = absl::StrSplit(path, '.');
+        std::vector<std::string> paths = common::StringSplit(path, ".");
         std::string key = paths.back();
         paths.pop_back();
         nlohmann::json upper_layer_json = json;

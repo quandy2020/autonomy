@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/transform/proto/transform_options.pb.h"
 #include "autonomy/transform/static_transform.hpp"
@@ -44,10 +43,8 @@ public:
     /**
      * @brief Constructor
      * @param options The options for the transform server
-     * @param node The node to use for the transform server
      */
-    TransformServer(const autonomy::transform::proto::TransformOptions& options,
-                    ::autolink::Node* node = nullptr);
+    TransformServer(const autonomy::transform::proto::TransformOptions& options);
 
     /**
      * @brief Destructor
@@ -88,9 +85,6 @@ public:
     }
 
 private:
-    // Node
-    ::autolink::Node* node_;
-
     // Static transform component
     std::unique_ptr<StaticTransform> static_transform_;
 

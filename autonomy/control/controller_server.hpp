@@ -23,12 +23,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "autolink/action/server.hpp"
-#include "autolink/autolink.hpp"
-#include "autolink/plugin_manager/plugin_manager.hpp"
+
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/simple_action_server.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
@@ -40,7 +37,6 @@
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/robot_utils.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
 
 namespace autonomy {
 namespace control {
@@ -54,8 +50,6 @@ public:
         std::unordered_map<std::string, common::GoalChecker::SharedPtr>;
     using ProgressCheckerMap =
         std::unordered_map<std::string, common::ProgressChecker::SharedPtr>;
-    using Action = autonomy::tasks::behavior_tree::proto::FollowPathAction;
-    using ActionServer = autonomy::common::SimpleActionServer<Action>;
 
     /**
      * Define ControllerServer::SharedPtr type
@@ -205,19 +199,10 @@ protected:
     std::unique_ptr<std::thread> costmap_thread_{nullptr};
 
     // Publishers and subscribers
-    std::shared_ptr<::autolink::Node> node_{nullptr};
-    ::autolink::Writer<commsgs::geometry_msgs::TwistStamped>::SharedPtr
-        vel_publisher_{nullptr};
-    ::autolink::Reader<commsgs::planning_msgs::SpeedLimit>::SharedPtr
-        speed_limit_subscriber_{nullptr};
     std::unique_ptr<utils::OdomSmoother> odom_sub_{nullptr};
 
-    // Our action server implements the FollowPath action
-    std::shared_ptr<ActionServer> action_server_{nullptr};
 
     // Progress Checker Plugin
-    std::shared_ptr<::autolink::class_loader::ClassLoader>
-        progress_checker_loader_;
     ProgressCheckerMap progress_checkers_;
     std::vector<std::string> default_progress_checker_ids_;
     std::vector<std::string> default_progress_checker_types_;
@@ -226,7 +211,6 @@ protected:
     std::string progress_checker_ids_concat_, current_progress_checker_;
 
     // Goal Checker Plugin
-    std::shared_ptr<::autolink::class_loader::ClassLoader> goal_checker_loader_;
     GoalCheckerMap goal_checkers_;
     std::vector<std::string> default_goal_checker_ids_;
     std::vector<std::string> default_goal_checker_types_;
@@ -235,7 +219,6 @@ protected:
     std::string goal_checker_ids_concat_, current_goal_checker_;
 
     // Controller Plugins
-    std::shared_ptr<::autolink::class_loader::ClassLoader> controller_loader_;
     ControllerMap controllers_;
     std::vector<std::string> default_ids_;
     std::vector<std::string> default_types_;

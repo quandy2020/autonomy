@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_service_node.hpp"
 #include "autonomy/tasks/navigator/proto/srv.pb.h"

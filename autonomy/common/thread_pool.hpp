@@ -17,14 +17,15 @@
 #ifndef AUTONOMY_COMMON_THREAD_POOL_HPP_
 #define AUTONOMY_COMMON_THREAD_POOL_HPP_
 
+#include <condition_variable>
 #include <deque>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/synchronization/mutex.h"
 #include "autonomy/common/task.hpp"
 
 namespace autonomy {
@@ -49,12 +50,6 @@ private:
     virtual void NotifyDependenciesCompleted(Task* task) = 0;
 };
 
-// A fixed number of threads working on tasks. Adding a task does not block.
-// Tasks may be added whether or not their dependencies are completed.
-// When all dependencies of a task are completed, it is queued up for execution
-// in a background thread. The queue must be empty before calling the
-// destructor. The thread pool will then wait for the currently executing work
-// items to finish and then destroy the threads.
 class ThreadPool : public ThreadPoolInterface
 {
 public:
@@ -64,8 +59,6 @@ public:
     ThreadPool(const ThreadPool&) = delete;
     ThreadPool& operator=(const ThreadPool&) = delete;
 
-    // When the returned weak pointer is expired, 'task' has certainly
-    // completed, so dependants no longer need to add it as a dependency.
     std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task) override;
 
 private:
@@ -73,11 +66,12 @@ private:
 
     void NotifyDependenciesCompleted(Task* task) override;
 
-    absl::Mutex mutex_;
+    std::mutex mutex_;
+    std::condition_variable cv_;
     bool running_ = true;
     std::vector<std::thread> pool_;
     std::deque<std::shared_ptr<Task>> task_queue_;
-    absl::flat_hash_map<Task*, std::shared_ptr<Task>> tasks_not_ready_;
+    std::unordered_map<Task*, std::shared_ptr<Task>> tasks_not_ready_;
 };
 
 }  // namespace common

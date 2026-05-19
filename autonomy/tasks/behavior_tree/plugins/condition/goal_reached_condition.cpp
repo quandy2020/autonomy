@@ -30,20 +30,13 @@ GoalReachedCondition::GoalReachedCondition(const std::string& condition_name,
                                            const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf),
       goal_reached_tol_(0.25),
-      transform_tolerance_(0.1) {
-    auto node =
-        config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-
-    robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(
-        node, "robot_base_frame", this);
-}
+      transform_tolerance_(0.1) {}
 
 GoalReachedCondition::~GoalReachedCondition() {
     cleanup();
 }
 
 void GoalReachedCondition::initialize() {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 
     getInput("goal_reached_tol", goal_reached_tol_);
     tf_ =
@@ -51,6 +44,7 @@ void GoalReachedCondition::initialize() {
             "tf_buffer");
 
     getInput("transform_tolerance", transform_tolerance_);
+    GetInputOrBlackboard("robot_base_frame", robot_base_frame_);
 }
 
 BT::NodeStatus GoalReachedCondition::tick() {

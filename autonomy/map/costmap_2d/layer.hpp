@@ -25,10 +25,6 @@
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 
-// Forward declaration for Node interface
-namespace autolink {
-class Node;
-}
 
 // Forward declaration for proto
 namespace autonomy {
@@ -66,13 +62,10 @@ public:
      * @brief Initialization process of layer on startup
      * @param parent The parent LayeredCostmap
      * @param name The name of this layer
-     * @param node Optional autolink Node pointer for creating
-     * publishers/subscribers
      * @param options Optional Costmap2DOptions pointer for layer-specific
      * configuration
      */
     void initialize(LayeredCostmap* parent, std::string name,
-                    autolink::Node* node = nullptr,
                     const proto::Costmap2DOptions* options = nullptr);
 
     /**
@@ -152,14 +145,6 @@ public:
     std::string getFullName(const std::string& param_name);
 
     /**
-     * @brief Get the autolink Node pointer (if available)
-     * @return Pointer to the Node, or nullptr if not set
-     */
-    autolink::Node* getNode() const {
-        return node_;
-    }
-
-    /**
      * @brief Get the Costmap2DOptions pointer (if available)
      * @return Pointer to the options, or nullptr if not set
      */
@@ -176,7 +161,7 @@ protected:
      * @brief This is called at the end of initialize().  Override to
      * implement subclass-specific initialization.
      *
-     * tf_, name_, layered_costmap_, and node_ will all be set already when this
+     * tf_, name_, layered_costmap_, will all be set already when this
      * is called.
      */
     virtual void onInitialize() {}
@@ -184,11 +169,8 @@ protected:
     bool current_;
 
     // Currently this var is managed by subclasses.
-    // TODO(bpwilcox): make this managed by this class and/or container class.
+    // TODO(duyongquan): make this managed by this class and/or container class.
     bool enabled_;
-
-    // autolink Node pointer for creating publishers/subscribers (optional)
-    autolink::Node* node_{nullptr};
 
     // Costmap2DOptions pointer for layer-specific configuration (optional)
     const proto::Costmap2DOptions* options_{nullptr};

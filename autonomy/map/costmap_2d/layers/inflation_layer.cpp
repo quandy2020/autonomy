@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "autonomy/common/log.hpp"
 #include "autonomy/map/costmap_2d//costmap_math.hpp"
 #include "autonomy/map/costmap_2d//footprint.hpp"
 
@@ -390,7 +391,3 @@ int InflationLayer::generateIntegerDistances() {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::InflationLayer,
-                            autonomy::map::costmap_2d::Layer)

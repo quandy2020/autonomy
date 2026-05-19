@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
@@ -67,7 +66,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     commsgs::builtin_interfaces::Time start_;
     double period_;
 };

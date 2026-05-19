@@ -16,6 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/decorator/goal_updater_node.hpp"
 
+#include "autonomy/common/log.hpp"
+
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
@@ -35,17 +37,8 @@ void GoalUpdater::initialize() {
 }
 
 void GoalUpdater::createROSInterfaces() {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    std::string goal_updater_topic_new;
-    std::string goals_updater_topic_new;
-    goal_updater_topic_ = goal_updater_topic_new;
-    goals_updater_topic_ = goals_updater_topic_new;
-    goal_sub_ = node_->CreateReader<commsgs::geometry_msgs::PoseStamped>(
-        goal_updater_topic_, std::bind(&GoalUpdater::callback_updated_goal,
-                                       this, std::placeholders::_1));
-    goals_sub_ = node_->CreateReader<commsgs::planning_msgs::Goals>(
-        goals_updater_topic_, std::bind(&GoalUpdater::callback_updated_goals,
-                                        this, std::placeholders::_1));
+    getInput("goal_updater_topic", goal_updater_topic_);
+    getInput("goals_updater_topic", goals_updater_topic_);
 }
 
 inline BT::NodeStatus GoalUpdater::tick() {

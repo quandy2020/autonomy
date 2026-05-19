@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "behaviortree_cpp/action_node.h"
 
@@ -93,12 +92,7 @@ private:
     void callbackPlannerSelect(
         std::shared_ptr<const commsgs::std_msgs::String> msg);
 
-    std::shared_ptr<autolink::Reader<commsgs::std_msgs::String>>
-        planner_selector_sub_;
-
     std::string last_selected_planner_;
-
-    std::shared_ptr<::autolink::Node> node_;
 
     std::string topic_name_;
 };

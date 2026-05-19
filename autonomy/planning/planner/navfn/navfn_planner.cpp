@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 
 #include <chrono>
@@ -25,8 +27,8 @@
 #include <string>
 #include <vector>
 
-#include "absl/strings/str_cat.h"
 #include "autonomy/common/log.hpp"
+#include "autonomy/common/str_cat.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
@@ -42,7 +44,7 @@ namespace navfn {
 NavfnPlanner::NavfnPlanner() : name_("NavfnPlanner"), costmap_(nullptr) {}
 
 NavfnPlanner::~NavfnPlanner() {
-    AINFO << absl::StrCat("Destroying plugin ", name_,
+    AINFO << ::autonomy::common::StrCat("Destroying plugin ", name_,
                           " of type NavfnPlanner.");
 }
 
@@ -50,7 +52,7 @@ bool NavfnPlanner::Configure(
     const proto::PlannerOptions& options, const std::string& name,
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
     name_ = name;
-    AINFO << absl::StrCat("Configuring plugin ", name_,
+    AINFO << ::autonomy::common::StrCat("Configuring plugin ", name_,
                           " of type NavfnPlanner");
 
     // Initialize parameters
@@ -420,7 +422,7 @@ bool NavfnPlanner::worldToMap(double wx, double wy, unsigned int& mx,
         return true;
     }
 
-    AERROR << absl::StrCat("worldToMap failed: mx,my: ", mx, ",", my,
+    AERROR << ::autonomy::common::StrCat("worldToMap failed: mx,my: ", mx, ",", my,
                            ", size_x,size_y: ", costmap->getSizeInCellsX(), ",",
                            costmap->getSizeInCellsY());
 

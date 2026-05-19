@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/node/reader.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_layer.hpp"
@@ -156,11 +155,6 @@ protected:
     unsigned int y_{0};
     unsigned int width_{0};
     unsigned int height_{0};
-
-    std::shared_ptr<::autolink::Reader<commsgs::map_msgs::OccupancyGrid>>
-        map_sub_{nullptr};
-    std::shared_ptr<::autolink::Reader<commsgs::map_msgs::OccupancyGridUpdate>>
-        map_update_sub_{nullptr};
 
     // Parameters
     std::string map_topic_;

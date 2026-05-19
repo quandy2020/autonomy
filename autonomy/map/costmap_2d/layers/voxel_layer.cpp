@@ -16,8 +16,6 @@
 
 #include "autonomy/map/costmap_2d/layers/voxel_layer.hpp"
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
-
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
@@ -436,7 +434,3 @@ void VoxelLayer::updateOrigin(double new_origin_x, double new_origin_y) {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::VoxelLayer,
-                            autonomy::map::costmap_2d::Layer)

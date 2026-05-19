@@ -26,7 +26,6 @@
 #include <memory>
 #include <string>
 
-#include "absl/strings/str_cat.h"
 #include "google/protobuf/message.h"
 
 /**
@@ -68,7 +67,7 @@ static void FillHeader(const std::string& module_name, T* msg) {
 
 //   auto sequence_num = msg->header().sequence_num();
 //   return ::cyber::common::SetProtoToASCIIFile(
-//       *msg, absl::StrCat(dump_path, "/", sequence_num, ".pb.txt"));
+//       *msg, common::StrCat(dump_path, "/", sequence_num, ".pb.txt"));
 
 //   return false;
 // }

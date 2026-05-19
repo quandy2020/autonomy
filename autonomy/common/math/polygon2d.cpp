@@ -21,8 +21,7 @@
 #include <limits>
 #include <utility>
 
-#include "absl/strings/str_cat.h"
-#include "absl/strings/str_join.h"
+#include "autonomy/common/str_cat.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/common/string_util.hpp"
 #include "glog/logging.h"
@@ -688,9 +687,9 @@ void Polygon2d::CalculateVertices(const Vec2d& shift_vec) {
 }
 
 std::string Polygon2d::DebugString() const {
-    return absl::StrCat(
+    return common::StrCat(
         "polygon2d (  num_points = ", num_points_, "  points = (",
-        absl::StrJoin(points_, " ", DebugStringFormatter()), " )  ",
+        common::StrJoin(points_, " ", DebugStringFormatter()), " )  ",
         is_convex_ ? "convex" : "non-convex", "  area = ", area_, " )");
 }
 

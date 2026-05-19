@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
@@ -65,8 +64,6 @@ private:
      * @return BT::NodeStatus Status of tick execution
      */
     BT::NodeStatus tick() override;
-
-    std::shared_ptr<::autolink::Node> node_;
 
     std::shared_ptr<autonomy::transform::Buffer> tf_;
     double transform_tolerance_;

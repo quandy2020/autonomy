@@ -62,39 +62,18 @@ void MapServer::Start() {
 
     running_.store(true);
 
-    // 如果配置了发布频率 > 0，启动周期性发布定时器
-    if (!static_map_name_.empty() && options_.publish_frequency() > 0.0) {
-        double static_publish_freq = options_.publish_frequency();
-        uint32_t period_ms =
-            static_cast<uint32_t>(1000.0 / static_publish_freq);
-
-        static_map_timer_ = std::make_shared<::autolink::Timer>(
-            period_ms,
-            [this]() {
-                // 只在第一次读取地图，后续直接使用缓存
-                if (!static_map_msg_) {
-                    static_map_msg_ =
-                        std::make_shared<commsgs::map_msgs::OccupancyGrid>();
-                    if (GetRawStaticMap(*static_map_msg_)) {
-                        AINFO << "Static map loaded and cached.";
-                    } else {
-                        AWARN << "Failed to load static map.";
-                        static_map_msg_.reset();
-                        return;
-                    }
-                }
-
-                // 使用缓存的地图消息进行发布
-                if (static_map_msg_ && static_map_writer_) {
-                    static_map_writer_->Write(*static_map_msg_);
-                    AINFO << "Static map published.";
-                }
-            },
-            false  // 周期性执行
-        );
-        static_map_timer_->Start();
-        AINFO << "Static map publish timer started with frequency: "
-              << static_publish_freq << " Hz (" << period_ms << " ms).";
+    if (!static_map_name_.empty() && !options_.map_file().empty()) {
+        std::lock_guard<std::mutex> lock(publish_mutex_);
+        if (!static_map_msg_) {
+            static_map_msg_ =
+                std::make_shared<commsgs::map_msgs::OccupancyGrid>();
+            if (GetRawStaticMap(*static_map_msg_)) {
+                AINFO << "Static map loaded and cached.";
+            } else {
+                AWARN << "Failed to load static map.";
+                static_map_msg_.reset();
+            }
+        }
     }
 
     AINFO << "MapServer started.";
@@ -107,10 +86,9 @@ void MapServer::Shutdown() {
 
     running_.store(false);
 
-    // 停止静态地图发布定时器
-    if (static_map_timer_) {
-        static_map_timer_->Stop();
-        static_map_timer_.reset();
+    {
+        std::lock_guard<std::mutex> lock(publish_mutex_);
+        static_map_msg_.reset();
     }
 
     AINFO << "MapServer shutdown.";

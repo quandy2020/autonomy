@@ -20,7 +20,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
@@ -109,7 +108,6 @@ private:
     commsgs::planning_msgs::Path old_path_;
     double prox_len_ = std::numeric_limits<double>::max();
     double length_factor_ = std::numeric_limits<double>::max();
-    std::shared_ptr<::autolink::Node> node_;
     bool first_time_ = true;
 };
 

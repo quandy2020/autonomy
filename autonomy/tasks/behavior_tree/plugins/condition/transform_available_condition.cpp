@@ -28,7 +28,6 @@ namespace condition {
 TransformAvailableCondition::TransformAvailableCondition(
     const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), was_found_(false) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     tf_ =
         config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
             "tf_buffer");

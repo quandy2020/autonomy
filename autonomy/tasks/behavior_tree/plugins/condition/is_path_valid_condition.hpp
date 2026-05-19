@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
@@ -81,10 +80,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Client<proto::IsPathValid::Request,
-                                       proto::IsPathValid::Response>>
-        client_;
     // The timeout value while waiting for a response from the
     // is path valid service
     std::chrono::milliseconds server_timeout_;

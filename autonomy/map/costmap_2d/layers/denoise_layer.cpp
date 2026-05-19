@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/logging.hpp"
 
 namespace autonomy {
@@ -201,7 +200,3 @@ bool DenoiseLayer::isBackground(uint8_t pixel) const {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::DenoiseLayer,
-                            autonomy::map::costmap_2d::Layer)

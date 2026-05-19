@@ -21,8 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
-
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
@@ -697,7 +695,3 @@ void ObstacleLayer::resetBuffersLastUpdated() {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::ObstacleLayer,
-                            autonomy::map::costmap_2d::Layer)

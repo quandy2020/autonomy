@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/log.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -410,30 +409,21 @@ inline std::chrono::milliseconds ConvertFromStringMilliseconds(
 
 /**
  * @brief Return parameter value from behavior tree node or ros2 parameter file.
- * @param node ::autolink::Node::SharedPtr
  * @param param_name std::string
  * @param behavior_tree_node T2
  * @return <T1>
  */
 template <typename T1, typename T2 = BT::TreeNode>
-T1 DeconflictPortAndParamFrame(std::shared_ptr<::autolink::Node> node,
-                               const std::string& param_name,
+T1 DeconflictPortAndParamFrame(const std::string& param_name,
                                const T2* behavior_tree_node) {
     T1 param_value;
     bool param_from_input =
         behavior_tree_node->getInput(param_name, param_value).has_value();
 
     if (!param_from_input) {
-        // TODO: Implement parameter getting from autolink node
-        // LOG(DEBUG) << "Parameter '" << param_name << "' not provided by
-        // behavior tree xml file, using parameter from autolink";
-        // node->get_parameter(param_name, param_value);
-        // return param_value;
         throw std::runtime_error("Parameter '" + param_name +
                                  "' not provided by behavior tree xml file");
     } else {
-        // LOG(DEBUG) << "Parameter '" << param_name << "' provided by behavior
-        // tree xml file";
         return param_value;
     }
 }

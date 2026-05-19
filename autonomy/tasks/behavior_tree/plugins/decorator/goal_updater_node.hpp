@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
@@ -98,17 +97,10 @@ private:
     void callback_updated_goals(
         const commsgs::planning_msgs::Goals::SharedPtr msg);
 
-    std::shared_ptr<::autolink::Reader<commsgs::geometry_msgs::PoseStamped>>
-        goal_sub_;
-    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Goals>>
-        goals_sub_;
-
     commsgs::geometry_msgs::PoseStamped last_goal_received_;
     bool last_goal_received_set_{false};
     commsgs::planning_msgs::Goals last_goals_received_;
     bool last_goals_received_set_{false};
-
-    std::shared_ptr<::autolink::Node> node_;
     std::string goal_updater_topic_;
     std::string goals_updater_topic_;
 };

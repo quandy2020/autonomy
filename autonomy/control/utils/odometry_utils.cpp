@@ -20,9 +20,7 @@ namespace autonomy {
 namespace control {
 namespace utils {
 
-OdomSmoother::OdomSmoother(const std::shared_ptr<::autolink::Node>& parent,
-                           double filter_duration,
-                           const std::string& odom_topic)
+OdomSmoother::OdomSmoother(double filter_duration, const std::string& odom_topic)
     : received_odom_(false),
       odom_history_duration_(
           commsgs::builtin_interfaces::Duration::FromSeconds(filter_duration)) {

@@ -24,7 +24,7 @@
 #include <sstream>
 #include <vector>
 
-#include "absl/strings/str_cat.h"
+#include "autonomy/common/str_cat.hpp"
 
 namespace autonomy {
 namespace common {
@@ -113,13 +113,13 @@ std::string EncodeBase64(std::string_view in) {
     const size_t in_size = in.length();
     out.reserve(((in_size - 1) / 3 + 1) * 4);
     for (size_t i = 0; i + 2 < in_size; i += 3) {
-        absl::StrAppend(&out, Base64Piece(in[i], in[i + 1], in[i + 2]));
+        common::StrAppend(&out, Base64Piece(in[i], in[i + 1], in[i + 2]));
     }
     if (in_size % 3 == 1) {
-        absl::StrAppend(&out, Base64Piece(in[in_size - 1], 0, 0));
+        common::StrAppend(&out, Base64Piece(in[in_size - 1], 0, 0));
     }
     if (in_size % 3 == 2) {
-        absl::StrAppend(&out, Base64Piece(in[in_size - 2], in[in_size - 1], 0));
+        common::StrAppend(&out, Base64Piece(in[in_size - 2], in[in_size - 1], 0));
     }
     return out;
 }

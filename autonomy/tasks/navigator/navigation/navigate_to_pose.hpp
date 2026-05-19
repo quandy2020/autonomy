@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
@@ -61,12 +60,10 @@ public:
     NavigateToPoseNavigator() = default;
 
     /**
-     * @brief 使用节点与 TaskOptions 构造
-     * @param node 用于创建 action server、tf、odom 等的节点
+     * @brief 使用 TaskOptions 构造
      * @param options 任务选项（navigators、plugin_lib_names、坐标系、odom 等）
      */
-    NavigateToPoseNavigator(std::shared_ptr<::autolink::Node> node,
-                            const autonomy::tasks::proto::TaskOptions& options);
+    NavigateToPoseNavigator(const autonomy::tasks::proto::TaskOptions& options);
 
     /**
      * @brief 获取 Navigator 名称

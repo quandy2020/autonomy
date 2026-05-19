@@ -16,6 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/compute_path_to_pose_action.hpp"
 
+#include "autonomy/common/log.hpp"
+
 #include <set>
 #include <string>
 #include <vector>

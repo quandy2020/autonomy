@@ -24,9 +24,6 @@ CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
 TARGET_ARCH="$(uname -m)"
 
-## NOTE:
-## buildifier/buildozer was moved into install_bazel.sh.
-
 apt_get_update_and_install \
     lcov
 #    cppcheck

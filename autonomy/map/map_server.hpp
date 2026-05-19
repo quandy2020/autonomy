@@ -34,9 +34,7 @@ namespace map {
  * @class autonomy::map::MapServer
  * @brief 地图服务类，负责加载和发布静态地图
  *
- * MapServer 负责：
- * 1. 从文件加载静态地图
- * 2. 通过 autolink 发布静态地图
+ * MapServer 负责从文件加载静态地图并缓存在内存中。
  */
 class MapServer
 {

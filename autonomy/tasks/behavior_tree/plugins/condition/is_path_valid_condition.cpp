@@ -33,11 +33,6 @@ IsPathValidCondition::IsPathValidCondition(const std::string& condition_name,
     : BT::ConditionNode(condition_name, conf),
       max_cost_(253),
       consider_unknown_as_obstacle_(false) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    client_ =
-        node_->CreateClient<proto::IsPathValid::Request,
-                            proto::IsPathValid::Response>("is_path_valid");
-
     server_timeout_ =
         config().blackboard->template get<std::chrono::milliseconds>(
             "server_timeout");
@@ -69,16 +64,8 @@ BT::NodeStatus IsPathValidCondition::tick() {
     request->set_max_cost(max_cost_);
     request->set_consider_unknown_as_obstacle(consider_unknown_as_obstacle_);
 
-    auto future_result = client_->AsyncSendRequest(request);
-    auto status = future_result.wait_for(server_timeout_);
-
-    if (status == std::future_status::ready) {
-        auto response = future_result.get();
-        if (response && response->is_valid()) {
-            return BT::NodeStatus::SUCCESS;
-        }
-    }
-    return BT::NodeStatus::FAILURE;
+    (void)request;
+    return path.poses.empty() ? BT::NodeStatus::FAILURE : BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace condition

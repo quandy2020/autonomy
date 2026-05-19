@@ -20,8 +20,6 @@
 #include <memory>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/container/flat_hash_set.h"
 #include "autonomy/sensor/collator_interface.hpp"
 #include "autonomy/sensor/data.hpp"
 #include "autonomy/sensor/internal/ordered_multi_queue.hpp"
@@ -38,7 +36,7 @@ public:
     Collator& operator=(const Collator&) = delete;
 
     // void AddToCostmap(
-    //     const absl::flat_hash_set<std::string>& expected_sensor_ids,
+    //     const std::unordered_set<std::string>& expected_sensor_ids,
     //     const Callback& callback) override;
 
     void FinishCostmap() override;
@@ -52,7 +50,7 @@ private:
     //   OrderedMultiQueue queue_;
 
     //   // Map of trajectory ID to all associated QueueKeys.
-    //   absl::flat_hash_set<std::vector<QueueKey>> queue_keys_;
+    //   std::unordered_set<std::vector<QueueKey>> queue_keys_;
 };
 
 }  // namespace sensor

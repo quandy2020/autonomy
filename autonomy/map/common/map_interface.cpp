@@ -16,12 +16,6 @@
 
 #include "autonomy/map/common/map_interface.hpp"
 
-#include "autonomy/common/log.hpp"
-#include "autonomy/common/configuration_file_resolver.hpp"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
-#include "autonomy/map/costmap_3d/costmap_3d_wrapper.hpp"
-#include "autonomy/map/grid_map/grid_map_wrapper.hpp"
-
 namespace autonomy {
 namespace map {
 namespace common {

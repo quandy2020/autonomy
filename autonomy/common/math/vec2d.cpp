@@ -18,7 +18,7 @@
 
 #include <cmath>
 
-#include "absl/strings/str_cat.h"
+#include "autonomy/common/str_cat.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {
@@ -130,7 +130,7 @@ Vec2d operator*(const double ratio, const Vec2d& vec) {
 }
 
 std::string Vec2d::DebugString() const {
-    return absl::StrCat("vec2d ( x = ", x_, "  y = ", y_, " )");
+    return common::StrCat("vec2d ( x = ", x_, "  y = ", y_, " )");
 }
 
 }  // namespace math

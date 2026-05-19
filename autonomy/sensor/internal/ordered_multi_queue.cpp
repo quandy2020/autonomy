@@ -20,7 +20,6 @@
 #include <sstream>
 #include <vector>
 
-#include "absl/memory/memory.h"
 #include "glog/logging.h"
 
 namespace autonomy {

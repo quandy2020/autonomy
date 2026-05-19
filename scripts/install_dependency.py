@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Install dependencies for autonomy workspace.
+Install dependencies for the autonomy workspace.
 
-This script mirrors dependencies declared in:
-docker/dockerfile/autonomy.x86_64.dockerfile
+APT packages mirror docker/dockerfile/autonomy.x86_64.dockerfile.
+Third-party installers mirror the dockerfile RUN steps.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-
+# Keep in sync with docker/dockerfile/autonomy.x86_64.dockerfile (apt-get install).
 APT_PACKAGES: List[str] = [
     "sudo",
     "software-properties-common",
@@ -45,7 +45,6 @@ APT_PACKAGES: List[str] = [
     "libcivetweb-dev",
     "libsuitesparse-dev",
     "lsb-release",
-    "libompl-dev",
     "libcairo2-dev",
     "libboost-all-dev",
     "libasio-dev",
@@ -53,8 +52,6 @@ APT_PACKAGES: List[str] = [
     "libavcodec-dev",
     "libswscale-dev",
     "libpoco-dev",
-    "libflann-dev",
-    "libqhull-dev",
     "libpcap0.8",
     "libpcap0.8-dev",
     "libusb-1.0-0",
@@ -64,7 +61,6 @@ APT_PACKAGES: List[str] = [
     "libfltk1.3-dev",
     "libtool",
     "libtiff-dev",
-    "libunwind-dev",
     "libcurl4-openssl-dev",
     "libwebsocketpp-dev",
     "libeigen3-dev",
@@ -72,43 +68,91 @@ APT_PACKAGES: List[str] = [
     "libzmq3-dev",
     "liburdfdom-dev",
     "libgtk2.0-dev",
+    "clang-format",
     "sqlite3",
     "stow",
+    # Protobuf compiler/libs for plain Ubuntu (ROS images often already have these).
+    "libprotobuf-dev",
+    "protobuf-compiler",
 ]
 
+# Order matches dockerfile third-party RUN steps.
 THIRDPARTY_SCRIPTS: List[str] = [
     "install_gtest.sh",
     "install_glog.sh",
     "install_gflags.sh",
     "install_grpc.sh",
-    "install_fastdds.sh",
     "install_gperftools.sh",
     "install_opencv.sh",
     "install_ceres_solver.sh",
     "install_nlohmann.sh",
     "install_osqp.sh",
     "install_behaviortree_cpp.sh",
+    "install_python_modules.sh",
+    "install_assimp.sh",
+    "install_ogre.sh",
     "install_adolc.sh",
     "install_ipopt.sh",
 ]
 
-SCRIPT_INSTALL_CHECKS: Dict[str, List[str]] = {
-    "install_gtest.sh": ["/usr/local/lib/libgtest.a", "/usr/lib/x86_64-linux-gnu/libgtest.a"],
-    "install_glog.sh": ["/usr/local/lib/libglog.so", "/usr/lib/x86_64-linux-gnu/libglog.so"],
-    "install_gflags.sh": ["/usr/local/lib/libgflags.so", "/usr/lib/x86_64-linux-gnu/libgflags.so"],
-    "install_grpc.sh": ["/usr/local/lib/libgrpc++.so", "/usr/lib/x86_64-linux-gnu/libgrpc++.so"],
-    "install_fastdds.sh": ["/usr/local/lib/libfastrtps.so", "/usr/lib/x86_64-linux-gnu/libfastrtps.so"],
-    "install_gperftools.sh": ["/usr/local/lib/libtcmalloc.so", "/usr/lib/x86_64-linux-gnu/libtcmalloc.so"],
-    "install_opencv.sh": ["/usr/local/lib/libopencv_core.so", "/usr/lib/x86_64-linux-gnu/libopencv_core.so"],
-    "install_ceres_solver.sh": ["/usr/local/lib/libceres.so", "/usr/lib/x86_64-linux-gnu/libceres.so"],
-    "install_nlohmann.sh": ["/usr/local/include/nlohmann/json.hpp", "/usr/include/nlohmann/json.hpp"],
-    "install_osqp.sh": ["/usr/local/lib/libosqp.so", "/usr/lib/x86_64-linux-gnu/libosqp.so"],
+# Optional skip detection for --skip-installed (any path match is treated as installed).
+_SCRIPT_CHECK_PATHS: Dict[str, List[str]] = {
+    "install_gtest.sh": [
+        "/usr/local/lib/libgtest.a",
+        "/usr/lib/x86_64-linux-gnu/libgtest.a",
+    ],
+    "install_glog.sh": [
+        "/usr/local/lib/libglog.so",
+        "/usr/lib/x86_64-linux-gnu/libglog.so",
+    ],
+    "install_gflags.sh": [
+        "/usr/local/lib/libgflags.so",
+        "/usr/lib/x86_64-linux-gnu/libgflags.so",
+    ],
+    "install_grpc.sh": [
+        "/usr/local/lib/libgrpc++.so",
+        "/usr/lib/x86_64-linux-gnu/libgrpc++.so",
+    ],
+    "install_gperftools.sh": [
+        "/usr/local/lib/libtcmalloc.so",
+        "/usr/lib/x86_64-linux-gnu/libtcmalloc.so",
+    ],
+    "install_opencv.sh": [
+        "/usr/local/lib/libopencv_core.so",
+        "/usr/lib/x86_64-linux-gnu/libopencv_core.so",
+    ],
+    "install_ceres_solver.sh": [
+        "/usr/local/lib/libceres.so",
+        "/usr/lib/x86_64-linux-gnu/libceres.so",
+    ],
+    "install_nlohmann.sh": [
+        "/usr/local/include/nlohmann/json.hpp",
+        "/usr/include/nlohmann/json.hpp",
+    ],
+    "install_osqp.sh": [
+        "/usr/local/lib/libosqp.so",
+        "/usr/lib/x86_64-linux-gnu/libosqp.so",
+    ],
     "install_behaviortree_cpp.sh": [
         "/usr/local/lib/libbehaviortree_cpp.so",
         "/usr/lib/x86_64-linux-gnu/libbehaviortree_cpp.so",
     ],
-    "install_adolc.sh": ["/usr/local/lib/libadolc.so", "/usr/lib/x86_64-linux-gnu/libadolc.so"],
-    "install_ipopt.sh": ["/usr/local/lib/libipopt.so", "/usr/lib/x86_64-linux-gnu/libipopt.so"],
+    "install_adolc.sh": [
+        "/usr/local/lib/libadolc.so",
+        "/usr/lib/x86_64-linux-gnu/libadolc.so",
+    ],
+    "install_ipopt.sh": [
+        "/usr/local/lib/libipopt.so",
+        "/usr/lib/x86_64-linux-gnu/libipopt.so",
+    ],
+    "install_assimp.sh": [
+        "/usr/local/lib/libassimp.so",
+        "/usr/lib/x86_64-linux-gnu/libassimp.so",
+    ],
+    "install_ogre.sh": [
+        "/usr/local/lib/libOgreMain.so",
+        "/usr/lib/x86_64-linux-gnu/libOgreMain.so",
+    ],
 }
 
 
@@ -131,10 +175,7 @@ def check_ubuntu() -> None:
 
 def install_apt_dependencies(*, dry_run: bool) -> None:
     run_command(["sudo", "apt-get", "update"], dry_run=dry_run)
-    # Repair interrupted/held dependency states before bulk install.
     run_command(["sudo", "apt-get", "-y", "--fix-broken", "install"], dry_run=dry_run)
-    # Install known prerequisite early to avoid libgstreamer1.0-dev dependency failure.
-    run_command(["sudo", "apt-get", "install", "-y", "libunwind-dev"], dry_run=dry_run)
     cmd = ["sudo", "apt-get", "install", "-y"] + sorted(set(APT_PACKAGES))
     try:
         run_command(cmd, dry_run=dry_run)
@@ -143,17 +184,15 @@ def install_apt_dependencies(*, dry_run: bool) -> None:
             raise
         print("Retry apt install after dependency repair...", file=sys.stderr)
         run_command(["sudo", "apt-get", "-y", "--fix-broken", "install"], dry_run=dry_run)
-        run_command(["sudo", "apt-get", "install", "-y", "libunwind-dev"], dry_run=dry_run)
         run_command(cmd, dry_run=dry_run)
 
 
 def _can_detect_installed(script_name: str) -> bool:
-    return script_name in SCRIPT_INSTALL_CHECKS
+    return script_name in _SCRIPT_CHECK_PATHS
 
 
 def _is_script_dependency_installed(script_name: str) -> bool:
-    check_paths = SCRIPT_INSTALL_CHECKS.get(script_name, [])
-    return any(Path(p).exists() for p in check_paths)
+    return any(Path(p).exists() for p in _SCRIPT_CHECK_PATHS.get(script_name, []))
 
 
 def install_thirdparty(
@@ -169,7 +208,8 @@ def install_thirdparty(
 
     if resume_from is not None and resume_from not in THIRDPARTY_SCRIPTS:
         raise ValueError(
-            f"--resume-from={resume_from} is invalid, choose one of: {', '.join(THIRDPARTY_SCRIPTS)}"
+            f"--resume-from={resume_from} is invalid, choose one of: "
+            f"{', '.join(THIRDPARTY_SCRIPTS)}"
         )
 
     start = resume_from is None
@@ -194,7 +234,7 @@ def install_thirdparty(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Install autonomy dependencies from dockerfile definition.",
+        description="Install autonomy dependencies (apt + docker/install scripts).",
     )
     parser.add_argument(
         "--repo-root",
@@ -221,12 +261,12 @@ def parse_args() -> argparse.Namespace:
         "--resume-from",
         type=str,
         default=None,
-        help="Resume third-party installation from specific script name (e.g. install_gperftools.sh).",
+        help="Resume third-party installation from a script name (e.g. install_opencv.sh).",
     )
     parser.add_argument(
         "--skip-installed",
         action="store_true",
-        help="Skip known third-party installers when libraries/headers already exist.",
+        help="Skip third-party installers when known libraries/headers already exist.",
     )
     return parser.parse_args()
 

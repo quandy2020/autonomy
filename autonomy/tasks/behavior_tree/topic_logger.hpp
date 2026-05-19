@@ -20,7 +20,6 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/tasks/proto/behavior_tree_log.pb.h"
 #include "behaviortree_cpp/loggers/abstract_logger.h"
 

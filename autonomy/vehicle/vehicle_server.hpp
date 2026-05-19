@@ -19,10 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
-#include "autolink/node/node.hpp"
-#include "autolink/node/reader.hpp"
-#include "autolink/node/writer.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/vehicle/common/vehicle_inteface.hpp"
 #include "autonomy/vehicle/motion/kinematics_control.hpp"
@@ -119,13 +115,6 @@ private:
 
     // 运动学限幅工具
     motion::KinematicsControl kinematics_;
-
-    // Node for publishing and subscribing vehicle messages via autolink
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Reader<::autonomy::vehicle::proto::Vehicle>>
-        vehicle_reader_;
-    std::shared_ptr<::autolink::Writer<::autonomy::vehicle::proto::Vehicle>>
-        vehicle_writer_;
 
     /**
      * @brief 处理从外部收到的 Vehicle 消息（例如来自远程监控 / 仿真）

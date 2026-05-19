@@ -27,7 +27,6 @@ namespace decorator {
 PathLongerOnApproach::PathLongerOnApproach(const std::string& name,
                                            const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf) {
-    node_ = config().blackboard->get<std::shared_ptr<autolink::Node>>("node");
 }
 
 bool PathLongerOnApproach::isPathUpdated(

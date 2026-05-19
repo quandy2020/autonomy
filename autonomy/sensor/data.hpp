@@ -20,7 +20,6 @@
 #include <memory>
 #include <string>
 
-#include "absl/memory/memory.h"
 #include "autonomy/common/time.hpp"
 #include "autonomy/sensor/point_cloud.hpp"
 #include "autonomy/sensor/range_data.hpp"

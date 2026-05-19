@@ -29,7 +29,6 @@ namespace condition {
 GloballyUpdatedGoalCondition::GloballyUpdatedGoalCondition(
     const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), first_time(true) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 }
 
 BT::NodeStatus GloballyUpdatedGoalCondition::tick() {

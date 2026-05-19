@@ -16,11 +16,12 @@
 
 #pragma once
 
+#include <condition_variable>
 #include <cstddef>
 #include <deque>
 #include <memory>
+#include <mutex>
 
-#include "absl/synchronization/mutex.h"
 #include "autonomy/common/port.hpp"
 #include "autonomy/common/time.hpp"
 #include "glog/logging.h"
@@ -36,108 +37,91 @@ class BlockingQueue
 public:
     static constexpr size_t kInfiniteQueueSize = 0;
 
-    // Constructs a blocking queue with infinite queue size.
     BlockingQueue() : BlockingQueue(kInfiniteQueueSize) {}
 
     BlockingQueue(const BlockingQueue&) = delete;
     BlockingQueue& operator=(const BlockingQueue&) = delete;
 
-    // Constructs a blocking queue with a size of 'queue_size'.
     explicit BlockingQueue(const size_t queue_size) : queue_size_(queue_size) {}
 
-    // Pushes a value onto the queue. Blocks if the queue is full.
     void Push(T t) {
-        const auto predicate = [this]() { return QueueNotFullCondition(); };
-        absl::MutexLock lock(&mutex_);
-        mutex_.Await(absl::Condition(&predicate));
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait(lock, [this]() { return QueueNotFullCondition(); });
         deque_.push_back(std::move(t));
+        cv_.notify_one();
     }
 
-    // Like push, but returns false if 'timeout' is reached.
     bool PushWithTimeout(T t, const common::Duration timeout) {
-        const auto predicate = [this]() { return QueueNotFullCondition(); };
-        absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!cv_.wait_for(lock, timeout,
+                          [this]() { return QueueNotFullCondition(); })) {
             return false;
         }
         deque_.push_back(std::move(t));
+        cv_.notify_one();
         return true;
     }
 
-    // Pops the next value from the queue. Blocks until a value is available.
     T Pop() {
-        const auto predicate = [this]() { return !QueueEmptyCondition(); };
-        absl::MutexLock lock(&mutex_);
-        mutex_.Await(absl::Condition(&predicate));
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait(lock, [this]() { return !QueueEmptyCondition(); });
 
         T t = std::move(deque_.front());
         deque_.pop_front();
+        cv_.notify_one();
         return t;
     }
 
-    // Like Pop, but can timeout. Returns nullptr in this case.
     T PopWithTimeout(const common::Duration timeout) {
-        const auto predicate = [this]() { return !QueueEmptyCondition(); };
-        absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!cv_.wait_for(lock, timeout,
+                          [this]() { return !QueueEmptyCondition(); })) {
             return nullptr;
         }
         T t = std::move(deque_.front());
         deque_.pop_front();
+        cv_.notify_one();
         return t;
     }
 
-    // Like Peek, but can timeout. Returns nullptr in this case.
     template <typename R>
     R* PeekWithTimeout(const common::Duration timeout) {
-        const auto predicate = [this]() { return !QueueEmptyCondition(); };
-        absl::MutexLock lock(&mutex_);
-        if (!mutex_.AwaitWithTimeout(absl::Condition(&predicate),
-                                     absl::FromChrono(timeout))) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (!cv_.wait_for(lock, timeout,
+                          [this]() { return !QueueEmptyCondition(); })) {
             return nullptr;
         }
         return deque_.front().get();
     }
 
-    // Returns the next value in the queue or nullptr if the queue is empty.
-    // Maintains ownership. This assumes a member function get() that returns
-    // a pointer to the given type R.
     template <typename R>
     const R* Peek() {
-        absl::MutexLock lock(&mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         if (deque_.empty()) {
             return nullptr;
         }
         return deque_.front().get();
     }
 
-    // Returns the number of items currently in the queue.
     size_t Size() {
-        absl::MutexLock lock(&mutex_);
+        std::lock_guard<std::mutex> lock(mutex_);
         return deque_.size();
     }
 
-    // Blocks until the queue is empty.
     void WaitUntilEmpty() {
-        const auto predicate = [this]() { return QueueEmptyCondition(); };
-        absl::MutexLock lock(&mutex_);
-        mutex_.Await(absl::Condition(&predicate));
+        std::unique_lock<std::mutex> lock(mutex_);
+        cv_.wait(lock, [this]() { return QueueEmptyCondition(); });
     }
 
 private:
-    // Returns true iff the queue is empty.
-    bool QueueEmptyCondition() {
-        return deque_.empty();
-    }
+    bool QueueEmptyCondition() const { return deque_.empty(); }
 
-    // Returns true iff the queue is not full.
-    bool QueueNotFullCondition() {
+    bool QueueNotFullCondition() const {
         return queue_size_ == kInfiniteQueueSize || deque_.size() < queue_size_;
     }
 
-    absl::Mutex mutex_;
+    mutable std::mutex mutex_;
+    std::condition_variable cv_;
     const size_t queue_size_;
     std::deque<T> deque_;
 };

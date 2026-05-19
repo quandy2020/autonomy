@@ -19,7 +19,6 @@
 #include <cmath>
 #include <utility>
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
@@ -248,7 +247,3 @@ void BinaryFilter::changeState(const bool state) {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::BinaryFilter,
-                            autonomy::map::costmap_2d::Layer)

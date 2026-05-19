@@ -61,7 +61,6 @@ RUN apt-get update && apt-get --no-install-recommends install -y \
     libcivetweb-dev \
     libsuitesparse-dev \
     lsb-release \
-    libompl-dev \
     libfontconfig1-dev \
     libfreetype6-dev \
     libcairo2-dev \

@@ -16,12 +16,8 @@
 
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -37,18 +33,9 @@ public:
     AUTONOMY_SMART_PTR_DEFINITIONS(TransformBroadcaster)
 
     /**
-     * @brief Constructor (needs a autolink::Node reference)
-     * @param node The node to use for publishing
+     * @brief Constructor
      */
-    explicit TransformBroadcaster(
-        const std::shared_ptr<::autolink::Node>& node);
-
-    /**
-     * @brief Constructor (needs a autolink::Node pointer)
-     * @param node The node pointer to use for publishing (does not take
-     * ownership)
-     */
-    explicit TransformBroadcaster(::autolink::Node* node);
+    explicit TransformBroadcaster();
 
     /**
      * @brief Send a TransformStamped message
@@ -69,11 +56,13 @@ public:
         const std::vector<commsgs::geometry_msgs::TransformStamped>&
             transforms);
 
+    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
+        const {
+        return transform_stampeds_;
+    }
+
 private:
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<
-        ::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>>
-        writer_;
+    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
 };
 
 }  // namespace transform

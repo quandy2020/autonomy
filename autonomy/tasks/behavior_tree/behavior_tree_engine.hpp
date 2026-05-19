@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "behaviortree_cpp/behavior_tree.h"
 #include "behaviortree_cpp/bt_factory.h"
 #include "behaviortree_cpp/loggers/groot2_publisher.h"
@@ -48,9 +47,7 @@ public:
      * autonomy::tasks::behavior_tree::BehaviorTreeEngine
      * @param plugin_libraries vector of BT plugin library names to load
      */
-    explicit BehaviorTreeEngine(
-        const std::vector<std::string>& plugin_libraries,
-        std::shared_ptr<::autolink::Node> node);
+    explicit BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries);
 
     virtual ~BehaviorTreeEngine() {}
 

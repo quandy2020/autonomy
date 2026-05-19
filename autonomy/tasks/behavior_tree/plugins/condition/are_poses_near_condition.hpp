@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
@@ -87,7 +86,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     std::shared_ptr<autonomy::transform::Buffer> tf_;
     double transform_tolerance_;
     std::string global_frame_;
