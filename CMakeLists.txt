@@ -50,7 +50,6 @@ option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TEST "Build autonomy unit test" true)
-option(BUILD_EXAMPLES "Build autonomy examples" true)
 option(BUILD_TOOLS "Build autonomy tools" true)
 option(BUILD_FORMAT_CODE "Build format code before building" true)
 
@@ -499,11 +498,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
-
-# Build examples (after plugins are created)
-if (${BUILD_EXAMPLES})
-  add_subdirectory("examples")
-endif()
 
 install(
   TARGETS ${PROJECT_NAME}
