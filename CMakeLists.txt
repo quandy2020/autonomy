@@ -58,10 +58,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Ensure all targets (including plugins) can find libraries produced into
-# the common lib/ directory at link time (e.g. vendored autolink).
-link_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
-
 include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 google_initialize_autonomy_project()
 google_enable_testing()
@@ -84,8 +80,6 @@ find_package(Eigen3 REQUIRED)
 find_package(LuaGoogle REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glog REQUIRED)
-find_package(GRAPHICSMAGICKCPP REQUIRED)
-find_package(octomap REQUIRED)
 find_package(OMPL REQUIRED)
 find_package(OSQP REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -94,9 +88,7 @@ find_package(PCL REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
-find_package(websocketpp REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(FastDDS REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(Adolc REQUIRED)
 find_package(Ipopt QUIET)
@@ -139,18 +131,13 @@ install(DIRECTORY cmake DESTINATION share/autonomy/)
 # This must also be done before examples so plugin libraries are available for linking
 include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
 
-# Add automsgs and autolink subdirectories
-add_subdirectory(automsgs)
-add_subdirectory(autolink)
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
-file(GLOB_RECURSE AVIZ_FILES "autonomy/tools/aviz/*.cpp" "autonomy/tools/aviz/*.hpp" "autonomy/tools/aviz/*.h" "autonomy/tools/aviz/*.ui" "autonomy/tools/aviz/*.qrc")
-file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/common/async_grpc/*.h" "autonomy/bridge/plugins/grpc/*.hpp")
-file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/common/async_grpc/*.c" "autonomy/bridge/plugins/grpc/*.cpp")
+file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/bridge/plugins/grpc/*.hpp")
+file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/bridge/plugins/grpc/*.cpp")
 file(GLOB_RECURSE ALL_GRPC_FILES "autonomy/common/async_grpc/*" "autonomy/bridge/plugins/grpc/*")
 file(GLOB_RECURSE ALL_GRPC_BRIDGE_FILES "autonomy/bridge/bridge_server.*")
-file(GLOB_RECURSE ALL_PROMETHEUS_FILES "autonomy/localization/cartographer/cloud/metrics/prometheus/*.hpp" "autonomy/localization/cartographer/cloud/metrics/prometheus/*.cpp")
 file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
 file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/*test*.cpp" "autonomy/mock_*.cpp")
 file(GLOB_RECURSE ALL_TOOLS "autonomy/tools/*")
@@ -181,9 +168,6 @@ endif()
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
 list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
-# Exclude aviz files - they are built as a separate visualizer_lib target
-list(REMOVE_ITEM ALL_LIBRARY_HDRS ${AVIZ_FILES})
-list(REMOVE_ITEM ALL_LIBRARY_SRCS ${AVIZ_FILES})
 
 # Exclude ONNX Runtime network wrapper when not building with ONNX
 file(GLOB_RECURSE ONNX_NETWORK_SRCS "autonomy/common/network/*.cpp")
@@ -200,14 +184,6 @@ if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_GRPC_FILES})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_BRIDGE_FILES})
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_GRPC_BRIDGE_FILES})
-endif()
-if (NOT ${BUILD_PROMETHEUS})
-  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_PROMETHEUS_FILES})
-  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_PROMETHEUS_FILES})
-  list(REMOVE_ITEM TEST_LIBRARY_HDRS ${ALL_PROMETHEUS_FILES})
-  list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_PROMETHEUS_FILES})
-  list(REMOVE_ITEM ALL_TESTS ${ALL_PROMETHEUS_FILES})
-  list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_PROMETHEUS_FILES})
 endif()
 
 if (NOT ${BUILD_TOOLS})
@@ -326,11 +302,6 @@ configure_file(
   ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp.cmake
   ${PROJECT_SOURCE_DIR}/autonomy/common/config.hpp)
 
-# cartographer configuration files
-configure_file(
-  ${PROJECT_SOURCE_DIR}/autonomy/localization/cartographer/common/config.hpp.cmake
-  ${PROJECT_SOURCE_DIR}/autonomy/localization/cartographer/common/config.hpp)
-
 # autonomy version
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/cmake/autonomy-config-version.cmake.in
@@ -410,10 +381,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
 
-# octomap
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OCTOMAP_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OCTOMAP_LIBRARIES})
-
 # OpenCV
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
@@ -421,10 +388,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
 # Yaml-cpp
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${YAML_CPP_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp)
-
-# graphicsmagick++
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${GRAPHICSMAGICKCPP_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${GRAPHICSMAGICKCPP_LIBRARIES})
 
 # ompl
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
@@ -488,10 +451,6 @@ pkg_check_modules(CAIRO REQUIRED cairo)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${CAIRO_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
 
-# autolink
-target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/autolink>)
-
 # ADOL-C (Automatic Differentiation Library)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${ADOLC_LIBRARIES})
@@ -504,38 +463,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${IPOPT_LIBRARIES})
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
   target_link_libraries(${PROJECT_NAME} PUBLIC ${OnnxRuntime_LIBRARIES})
-endif()
-
-# autonomy.bridge.launcher
-google_binary(autonomy.bridge.launcher
-  SRCS
-    autonomy/bridge/bridge_main.cpp
-)
-
-# autonomy.simulator.launcher
-google_binary(autonomy.simulator.launcher
-  SRCS
-    autonomy/simulation/simulator_main.cpp
-)
-
-# autonomy.system.launcher
-google_binary(autonomy.system.launcher
-  SRCS
-    autonomy/system/main.cpp
-)
-
-# autonomy.tasks.launcher (behavior-tree navigators, TaskManager)
-google_binary(autonomy.tasks.launcher
-  SRCS
-    autonomy/tasks/main.cpp
-)
-
-# autonomy.tasks.navigator_client_test (action client for track_to_target testing; optional when not yet implemented)
-if(EXISTS "${PROJECT_SOURCE_DIR}/autonomy/tasks/navigator/navigator_client_test.cpp")
-  google_binary(autonomy.tasks.navigator_client_test
-    SRCS
-      autonomy/tasks/navigator/navigator_client_test.cpp
-  )
 endif()
 
 ## Test unit
@@ -586,19 +513,6 @@ install(
   RUNTIME DESTINATION bin
 )
 
-# If we build vendored autolink from source, autonomy's exported library can
-# link against `autolink` target. Add it to the export set so that
-# `install(EXPORT ...)` generation doesn't fail.
-if(TARGET autolink)
-  install(
-    TARGETS autolink
-    EXPORT AutonomyExport
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-  )
-endif()
-
 foreach(HDR ${INSTALL_SOURCE_HDRS})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})
   get_filename_component(DIR ${REL_FIL} DIRECTORY)
@@ -627,7 +541,6 @@ configure_package_config_file(
 )
 
 # Install the export set for find_package
-# Include autolink target in the export since autonomy depends on it
 install(
   EXPORT AutonomyExport
   NAMESPACE autonomy::
