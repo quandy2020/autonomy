@@ -16,30 +16,9 @@ cmake_minimum_required(VERSION 3.20)
 
 project(autonomy)
 
-# Set CMake policies to suppress warnings
-if(POLICY CMP0072)
-  cmake_policy(SET CMP0072 NEW)  # Prefer GLVND for OpenGL
-endif()
-
-if(POLICY CMP0144)
-  cmake_policy(SET CMP0144 NEW)  # Use uppercase <PACKAGENAME>_ROOT variables
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-# Suppress warnings from third-party libraries being treated as errors
-add_compile_options(-Wno-error=missing-braces -Wno-error=sign-compare)
-
-# Suppress RPATH warnings for system directories  
-if(POLICY CMP0060)
-  cmake_policy(SET CMP0060 NEW)  # Link libraries by full path
-endif()
-
-if(POLICY CMP0095)
-  cmake_policy(SET CMP0095 NEW)  # RPATH entries are properly escaped
-endif()
 
 # Read version from version.json using common function
 include("${PROJECT_SOURCE_DIR}/cmake/version.cmake")
@@ -50,8 +29,6 @@ option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TEST "Build autonomy unit test" true)
-option(BUILD_TOOLS "Build autonomy tools" true)
-option(BUILD_FORMAT_CODE "Build format code before building" true)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -60,14 +37,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 google_initialize_autonomy_project()
 google_enable_testing()
-
-# add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
-#   add_link_options(-fsanitize=address)
-  
-# # Set a default install prefix if not specified by the user
-# if(NOT CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-#   set(CMAKE_INSTALL_PREFIX "/usr/local" CACHE PATH "Default install prefix" FORCE)
-# endif()
 
 # Set module path to find custom Find modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
@@ -95,11 +64,6 @@ find_package(Ipopt QUIET)
 option(BUILD_ONNXRUNTIME "Build ONNX Runtime inference support (common/network)" true)
 find_package(OnnxRuntime QUIET)
 
-# Create alias for behaviortree_cpp target if needed
-if(TARGET BT::behaviortree_cpp AND NOT TARGET behaviortree_cpp::behaviortree_cpp)
-    add_library(behaviortree_cpp::behaviortree_cpp ALIAS BT::behaviortree_cpp)
-endif()
-
 if (${BUILD_GRPC})
   find_package(gRPC REQUIRED)
 endif()
@@ -112,11 +76,6 @@ if (${BUILD_DOCS})
   endif()
 endif()
 
-# Build autonomy visualizer (Qt QML application)
-if (${BUILD_TOOLS})
-  add_subdirectory("autonomy/tools")
-endif()
-
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
   CACHE PATH ".lua configuration files directory")
 set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
@@ -124,12 +83,6 @@ set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/aut
 
 install(DIRECTORY config DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
-
-# Include generate_plugins.cmake early to collect plugin files and create plugin libraries
-# This must be done before GLOB_RECURSE so we can exclude plugin files
-# This must also be done before examples so plugin libraries are available for linking
-include(${PROJECT_SOURCE_DIR}/cmake/generate_plugins.cmake)
-
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
 file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
@@ -156,14 +109,6 @@ endif()
 
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
-
-# Remove plugin files (collected in generate_plugins.cmake, already in absolute paths)
-if(ALL_PLUGINS_HDRS)
-  list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_PLUGINS_HDRS})
-endif()
-if(ALL_PLUGINS_SRCS)
-  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_PLUGINS_SRCS})
-endif()
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
 list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
@@ -197,23 +142,6 @@ endif()
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
 file(GLOB_RECURSE INTERNAL_HDRS "autonomy/*/internal/*.h" "autonomy/*/internal/*.hpp")
 list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
-
-# Create symlinks for control/controller/* to control/plugins/* during install
-# This allows code to include from plugins/ directory while files are in controller/ directory
-file(GLOB_RECURSE CONTROLLER_PLUGIN_HDRS "autonomy/control/controller/*/*.hpp" "autonomy/control/controller/*/*.h")
-foreach(HDR ${CONTROLLER_PLUGIN_HDRS})
-  file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})
-  # Replace controller/ with plugins/ in the path
-  string(REPLACE "control/controller/" "control/plugins/" PLUGIN_REL_FIL ${REL_FIL})
-  get_filename_component(PLUGIN_DIR ${PLUGIN_REL_FIL} DIRECTORY)
-  # Install to plugins directory instead of controller directory
-  install(
-    FILES ${HDR}
-    DESTINATION include/${PLUGIN_DIR}
-  )
-endforeach()
-# Remove controller headers from regular install list to avoid duplicate installation
-list(FILTER INSTALL_SOURCE_HDRS EXCLUDE REGEX "autonomy/control/controller/")
 
 file(GLOB_RECURSE ALL_PROTOS "autonomy/*.proto")
 file(GLOB_RECURSE ALL_GRPC_SERVICES "autonomy/*_service.proto")
@@ -317,24 +245,6 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
-
-# Auto-format code before building (if enabled)
-google_format_code(
-  TARGET_NAME ${PROJECT_NAME}
-  ENABLED ${BUILD_FORMAT_CODE}
-  PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR}
-)
-
-# causes the shared library to have a version number
-set_target_properties(${PROJECT_NAME} PROPERTIES 
-  VERSION ${AUTONOMY_VERSION}
-  SOVERSION ${AUTONOMY_MAJOR_VERSION}
-  BUILD_RPATH_USE_ORIGIN TRUE
-  INSTALL_RPATH_USE_LINK_PATH FALSE
-  INSTALL_RPATH "\$ORIGIN:${CMAKE_INSTALL_PREFIX}/lib"
-  BUILD_RPATH "\$ORIGIN:${CMAKE_BINARY_DIR}/lib"
-  SKIP_BUILD_RPATH FALSE
-)
 
 # protobuf
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
@@ -443,12 +353,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   OpenSSL::SSL
   ZLIB::ZLIB
   ${FastDDS_LIBRARIES})
-
-# Cairo
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CAIRO REQUIRED cairo)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${CAIRO_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${CAIRO_LIBRARIES})
 
 # ADOL-C (Automatic Differentiation Library)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
