@@ -16,31 +16,7 @@
 
 #pragma once
 
-#if __cplusplus == 201103L || __cplusplus == 201402L
-#include "absl/strings/string_view.h"
-#include "absl/types/optional.h"
-#endif
-
-#if __cplusplus == 201103L
-#include "absl/memory/memory.h"
-#include "absl/utility/utility.h"
-#endif
-
-namespace std {
-// Drop-in replacement for code compliant with future C++ versions.
-
-#if __cplusplus == 201103L || __cplusplus == 201402L
-
-// Borrow from C++ 17 (201703L)
-using absl::optional;
-using absl::string_view;
-
-#endif
-
-#if __cplusplus == 201103L
-// Borrow from C++ 14.
-using absl::make_integer_sequence;
-using absl::make_unique;
-#endif
-
-}  // namespace std
+#include <memory>
+#include <optional>
+#include <string_view>
+#include <utility>
