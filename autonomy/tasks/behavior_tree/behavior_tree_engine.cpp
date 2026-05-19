@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include <chrono>
 #include <memory>
 #include <string>

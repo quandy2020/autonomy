@@ -20,7 +20,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace common {

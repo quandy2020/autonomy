@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_action_server.hpp"
 
 namespace autonomy {

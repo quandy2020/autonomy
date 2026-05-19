@@ -16,7 +16,7 @@
 
 #include "autonomy/control/controller_server.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"

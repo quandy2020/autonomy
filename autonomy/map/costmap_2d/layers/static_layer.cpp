@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <string>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/proto/map_2d_option.pb.h"
 #include "autonomy/transform/tf2/convert.h"

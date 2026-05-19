@@ -16,7 +16,7 @@
 
 #include "autonomy/transform/transform_broadcaster.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 
 namespace autonomy {

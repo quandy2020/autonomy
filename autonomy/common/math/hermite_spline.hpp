@@ -23,7 +23,7 @@
 #include <array>
 #include <utility>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {

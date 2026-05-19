@@ -40,7 +40,7 @@
 #include <sstream>
 
 #include "autonomy/common/config.hpp"
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"

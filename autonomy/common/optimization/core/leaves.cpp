@@ -17,7 +17,7 @@
 #include <iomanip>
 #include <sstream>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/optimization/core/constraint_set.hpp"
 #include "autonomy/common/optimization/core/cost_term.hpp"
 #include "autonomy/common/optimization/core/variable_set.hpp"
