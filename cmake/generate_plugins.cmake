@@ -20,9 +20,6 @@
 # Initialize plugin_libs list
 set(plugin_libs "")
 
-################################ driver plugins #################################
-include(${PROJECT_SOURCE_DIR}/cmake/plugins/drivers_plugins.cmake)
-
 ################################ map plugins ####################################
 include(${PROJECT_SOURCE_DIR}/cmake/plugins/map_plugins.cmake)
 
