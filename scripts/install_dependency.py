@@ -46,7 +46,6 @@ APT_PACKAGES: List[str] = [
     "libsuitesparse-dev",
     "lsb-release",
     "libcairo2-dev",
-    "libboost-all-dev",
     "libasio-dev",
     "libncurses5-dev",
     "libavcodec-dev",

@@ -32,10 +32,17 @@
 #ifndef TF2_BUFFER_CORE_H
 #define TF2_BUFFER_CORE_H
 
-#include <boost/signals2.hpp>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
+#include "autonomy/transform/tf2/signal.hpp"
 #include "autonomy/transform/tf2/time.h"
+#include "autonomy/transform/tf2/time_cache.h"
 #include "autonomy/transform/tf2/transform_storage.h"
 
 // #include "geometry_msgs/TwistStamped.h"
@@ -44,11 +51,6 @@
 //////////////////////////backwards startup for porting
 // #include "tf/tf.h"
 
-#include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/unordered_map.hpp>
-
 namespace autonomy {
 namespace transform {
 namespace tf2 {
@@ -56,9 +58,6 @@ namespace tf2 {
 typedef std::pair<Time, CompactFrameID> P_TimeAndFrameID;
 typedef uint32_t TransformableCallbackHandle;
 typedef uint64_t TransformableRequestHandle;
-
-class TimeCacheInterface;
-typedef boost::shared_ptr<TimeCacheInterface> TimeCacheInterfacePtr;
 
 enum TransformableResult {
     TransformAvailable,
@@ -249,11 +248,11 @@ public:
      */
     std::string allFramesAsString() const;
 
-    typedef boost::function<void(TransformableRequestHandle request_handle,
-                                 const std::string& target_frame,
-                                 const std::string& source_frame, Time time,
-                                 TransformableResult result)>
-        TransformableCallback;
+    using TransformableCallback =
+        std::function<void(TransformableRequestHandle request_handle,
+                           const std::string& target_frame,
+                           const std::string& source_frame, Time time,
+                           TransformableResult result)>;
 
     /// \brief Internal use only
     TransformableCallbackHandle addTransformableCallback(
@@ -285,12 +284,11 @@ public:
      * \brief Add a callback that happens when a new transform has arrived
      *
      * \param callback The callback, of the form void func();
-     * \return A boost::signals2::connection object that can be used to remove
-     * this listener
+     * \return A connection object that can be used to remove this listener
      */
-    boost::signals2::connection _addTransformsChangedListener(
-        boost::function<void(void)> callback);
-    void _removeTransformsChangedListener(boost::signals2::connection c);
+    VoidSignal::Connection _addTransformsChangedListener(
+        std::function<void()> callback);
+    void _removeTransformsChangedListener(VoidSignal::Connection c);
 
     /**@brief Check if a frame exists in the tree
      * @param frame_id_str The frame id in question  */
@@ -316,7 +314,7 @@ public:
     int _getLatestCommonTime(CompactFrameID target_frame,
                              CompactFrameID source_frame, Time& time,
                              std::string* error_string) const {
-        boost::mutex::scoped_lock lock(frame_mutex_);
+        std::lock_guard<std::mutex> lock(frame_mutex_);
         return getLatestCommonTime(target_frame, source_frame, time,
                                    error_string);
     }
@@ -361,11 +359,11 @@ private:
 
     /** \brief A mutex to protect testing and allocating new frames on the above
      * vector. */
-    mutable boost::mutex frame_mutex_;
+    mutable std::mutex frame_mutex_;
 
     /** \brief A map from string frame ids to CompactFrameID */
-    typedef boost::unordered_map<std::string, CompactFrameID>
-        M_StringToCompactFrameID;
+    using M_StringToCompactFrameID =
+        std::unordered_map<std::string, CompactFrameID>;
     M_StringToCompactFrameID frameIDs_;
     /** \brief A map from CompactFrameID frame_id_numbers to string for
      * debugging and output */
@@ -376,12 +374,11 @@ private:
     /// How long to cache transform history
     Duration cache_time_;
 
-    typedef boost::unordered_map<TransformableCallbackHandle,
-                                 TransformableCallback>
-        M_TransformableCallback;
+    using M_TransformableCallback =
+        std::unordered_map<TransformableCallbackHandle, TransformableCallback>;
     M_TransformableCallback transformable_callbacks_;
     uint32_t transformable_callbacks_counter_;
-    boost::mutex transformable_callbacks_mutex_;
+    std::mutex transformable_callbacks_mutex_;
 
     struct TransformableRequest {
         Time time;
@@ -394,14 +391,14 @@ private:
     };
     typedef std::vector<TransformableRequest> V_TransformableRequest;
     V_TransformableRequest transformable_requests_;
-    boost::mutex transformable_requests_mutex_;
+    std::mutex transformable_requests_mutex_;
     uint64_t transformable_requests_counter_;
 
     struct RemoveRequestByCallback;
     struct RemoveRequestByID;
 
     // Backwards compatability for tf message_filter
-    typedef boost::signals2::signal<void(void)> TransformsChangedSignal;
+    using TransformsChangedSignal = VoidSignal;
     /// Signal which is fired whenever new transform data has arrived, from the
     /// thread the data arrived in
     TransformsChangedSignal _transforms_changed_;

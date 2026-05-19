@@ -16,7 +16,7 @@
 
 #include "autonomy/planning/planner_server.hpp"
 
-#include "autonomy/common/str_cat.hpp"
+#include "autonomy/common/string_util.hpp"
 #include <unistd.h>  // for getpid()
 
 #include <atomic>

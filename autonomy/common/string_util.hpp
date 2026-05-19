@@ -21,8 +21,10 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "autonomy/common/future.hpp"
@@ -72,6 +74,36 @@ void StringToUpper(std::string* str);
 
 // Check whether the sub-string is contained in the given string.
 bool StringContains(const std::string& str, const std::string& sub_str);
+
+template <typename T>
+void StrAppend(std::string* out, const T& value) {
+    std::ostringstream stream;
+    stream << value;
+    out->append(stream.str());
+}
+
+template <typename... Args>
+std::string StrCat(Args&&... args) {
+    std::string out;
+    out.reserve(64);
+    (StrAppend(&out, std::forward<Args>(args)), ...);
+    return out;
+}
+
+template <typename Range, typename Formatter>
+std::string StrJoin(const Range& range, const std::string& delimiter,
+                    Formatter formatter) {
+    std::string out;
+    bool first = true;
+    for (const auto& item : range) {
+        if (!first) {
+            out.append(delimiter);
+        }
+        formatter(&out, item);
+        first = false;
+    }
+    return out;
+}
 
 }  // namespace common
 }  // namespace autonomy

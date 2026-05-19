@@ -45,7 +45,6 @@ RUN apt-get update && apt-get install -y sudo \
     libsuitesparse-dev \
     lsb-release \
     libcairo2-dev \
-    libboost-all-dev \
     libasio-dev \
     libncurses5-dev \
     libavcodec-dev \

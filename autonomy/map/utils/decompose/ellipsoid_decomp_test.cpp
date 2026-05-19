@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#include <boost/geometry.hpp>
-#include <boost/geometry/geometries/point_xy.hpp>
-#include <boost/geometry/geometries/polygon.hpp>
 #include <fstream>
 #include <string>
 

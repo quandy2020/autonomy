@@ -17,14 +17,11 @@
 #include "autonomy/common/string_util.hpp"
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <cmath>
 #include <cstdarg>
 #include <fstream>
 #include <sstream>
 #include <vector>
-
-#include "autonomy/common/str_cat.hpp"
 
 namespace autonomy {
 namespace common {
@@ -162,8 +159,33 @@ std::string StringGetAfter(const std::string& str, const std::string& key) {
 std::vector<std::string> StringSplit(const std::string& str,
                                      const std::string& delim) {
     std::vector<std::string> elems;
-    // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
-    boost::split(elems, str, boost::is_any_of(delim), boost::token_compress_on);
+    if (delim.empty()) {
+        if (!str.empty()) {
+            elems.push_back(str);
+        }
+        return elems;
+    }
+
+    auto is_delim = [&delim](char c) {
+        return delim.find(c) != std::string::npos;
+    };
+
+    size_t start = 0;
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (!is_delim(str[i])) {
+            continue;
+        }
+        if (i > start) {
+            elems.emplace_back(str.substr(start, i - start));
+        }
+        while (i + 1 < str.size() && is_delim(str[i + 1])) {
+            ++i;
+        }
+        start = i + 1;
+    }
+    if (start < str.size()) {
+        elems.emplace_back(str.substr(start));
+    }
     return elems;
 }
 

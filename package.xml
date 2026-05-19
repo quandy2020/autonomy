@@ -33,7 +33,6 @@
   <build_depend>gtest</build_depend>
   <build_depend>python3-sphinx</build_depend>
 
-  <depend>libboost-dev</depend>
   <depend>eigen</depend>
   <depend>libcairo2-dev</depend>
   <depend>libceres-dev</depend>

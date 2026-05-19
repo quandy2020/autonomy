@@ -16,7 +16,7 @@
 
 #include <iostream>
 
-#include "autonomy/common/str_cat.hpp"
+#include "autonomy/common/string_util.hpp"
 #include "glog/logging.h"
 #include "autonomy/common/version.hpp"
 
@@ -93,12 +93,12 @@ const std::string PROJECT_VERSION = "";
 // Git提交信息
 const std::string GIT_COMMIT_AUTHOR = "duyongquan";
 const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
-const std::string GIT_COMMIT_DATE = """2026-05-19 19:59:35""";
-const std::string GIT_VERSION = "bc3c2350-dirty";
+const std::string GIT_COMMIT_DATE = """2026-05-19 21:49:32""";
+const std::string GIT_VERSION = "0d10d149-dirty";
 const std::string GIT_BRANCH = "feature/library";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-05-19 13:47:24";
+const std::string BUILD_TIMESTAMP = "2026-05-19 14:08:23";
 const std::string BUILD_HOST = "9b2023bccf6b";
 const std::string BUILD_USER = "root";
 
