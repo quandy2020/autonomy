@@ -52,7 +52,6 @@ find_package(OMPL REQUIRED)
 find_package(OSQP REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(PCL REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
@@ -61,7 +60,7 @@ find_package(behaviortree_cpp REQUIRED)
 find_package(Adolc REQUIRED)
 find_package(Ipopt QUIET)
 
-option(BUILD_ONNXRUNTIME "Build ONNX Runtime inference support (common/network)" true)
+option(BUILD_ONNXRUNTIME "Build ONNX Runtime support" true)
 find_package(OnnxRuntime QUIET)
 
 if (${BUILD_GRPC})
@@ -118,6 +117,41 @@ file(GLOB_RECURSE ONNX_NETWORK_SRCS "autonomy/common/network/*.cpp")
 if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
 endif()
+
+# Exclude sources that still use autolink middleware (Node/Reader/Writer/actions/plugins).
+file(GLOB_RECURSE AUTOLINK_DEPENDENT_SRCS
+  "${PROJECT_SOURCE_DIR}/autonomy/tasks/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/transform/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/vehicle/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/system/system.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/planning/planner_server.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/planning/planner/navfn/navfn_planner.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller_server.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/smoother/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/utils/odometry_utils.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/graceful_controller/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/mppi_controller/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/mppi_controller/**/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/pure_pursuit_controller/collision_checker.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/pure_pursuit_controller/regulated_pure_pursuit_controller.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/map/map_server.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/map/common/map_interface.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/costmap_2d_wrapper.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layer.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/*.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/filters/*.cpp"
+)
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${AUTOLINK_DEPENDENT_SRCS})
+
+# Exclude octomap-dependent grid_map converter (no octomap link in core library).
+file(GLOB_RECURSE OCTOMAP_DEPENDENT_SRCS
+  "${PROJECT_SOURCE_DIR}/autonomy/map/grid_map/grid_map_octomap/*.cpp"
+)
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${OCTOMAP_DEPENDENT_SRCS})
+
+list(APPEND ALL_LIBRARY_SRCS
+  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/graceful_controller/parameter_options.cpp"
+)
 
 if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_HDRS})
@@ -286,10 +320,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${GLOG_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
 
-# PCL
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${PCL_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PCL_LIBRARIES})
-
 # OpenCV
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
@@ -310,8 +340,16 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OSQP_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
-# BehaviorTree.CPP
-target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
+# BehaviorTree.CPP (tasks module only; 4.7.x exports BT::behaviortree_cpp)
+if(TARGET BT::behaviortree_cpp)
+  target_link_libraries(${PROJECT_NAME} PUBLIC BT::behaviortree_cpp)
+elseif(TARGET behaviortree_cpp::behaviortree_cpp)
+  target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
+elseif(BUILD_TASKS)
+  message(FATAL_ERROR
+    "BUILD_TASKS is ON but behaviortree_cpp was not found. "
+    "Install BehaviorTree.CPP or run install_behaviortree_cpp.sh.")
+endif()
 
 # prometheus (optional, for system/monitor and cartographer metrics/visualization)
 if(${BUILD_PROMETHEUS})

@@ -23,8 +23,7 @@
 #include <mutex>
 #include <string>
 
-#include "autolink/autolink.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -128,8 +127,6 @@ protected:
     void updateState();
 
     bool received_odom_;
-    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>>
-        odom_sub_;
     commsgs::planning_msgs::Odometry odom_cumulate_;
     commsgs::geometry_msgs::TwistStamped vel_smooth_;
     std::mutex odom_mutex_;

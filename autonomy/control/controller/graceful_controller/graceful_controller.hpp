@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/node/writer.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
 #include "autonomy/control/controller/graceful_controller/path_handler.hpp"
@@ -201,15 +200,6 @@ protected:
     // True from the time a new path arrives until we have completed an initial
     // rotation
     bool do_initial_rotation_;
-
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-        transformed_plan_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-        local_plan_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>>
-        motion_target_pub_;
-    std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::Marker>>
-        slowdown_pub_;
     std::unique_ptr<PathHandler> path_handler_;
     std::unique_ptr<SmoothControlLaw> control_law_;
 };

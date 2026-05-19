@@ -37,7 +37,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/class_loader/class_loader_manager.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/config.hpp"
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"

@@ -26,10 +26,6 @@ OdomSmoother::OdomSmoother(const std::shared_ptr<::autolink::Node>& parent,
     : received_odom_(false),
       odom_history_duration_(
           commsgs::builtin_interfaces::Duration::FromSeconds(filter_duration)) {
-    odom_sub_ = parent->CreateReader<commsgs::planning_msgs::Odometry>(
-        odom_topic,
-        std::bind(&OdomSmoother::odomCallback, this, std::placeholders::_1));
-
     odom_cumulate_.twist.twist.linear.x = 0;
     odom_cumulate_.twist.twist.linear.y = 0;
     odom_cumulate_.twist.twist.linear.z = 0;

@@ -26,8 +26,7 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
-#include "autolink/class_loader/class_loader_register_macro.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
@@ -451,7 +450,3 @@ void NavfnPlanner::clearRobotCell(unsigned int mx, unsigned int my) {
 }  // namespace planner
 }  // namespace planning
 }  // namespace autonomy
-
-// Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::planning::planner::navfn::NavfnPlanner,
-                            autonomy::planning::common::GlobalPlanner)

@@ -61,9 +61,6 @@ RUN apt-get update && apt-get install -y sudo \
     libusb-1.0-0-dev \
     libmetis-dev \
     libyaml-cpp-dev \
-    libpcl-dev \
-    liboctomap-dev \
-    libgraphicsmagick++-dev \
     libfltk1.3-dev \
     libtool \
     libtiff-dev \

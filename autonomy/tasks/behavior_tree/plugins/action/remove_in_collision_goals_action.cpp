@@ -18,7 +18,7 @@
 
 #include <cmath>
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/navigator/proto/msg.pb.h"
 #include "autonomy/tasks/navigator/proto/srv.pb.h"

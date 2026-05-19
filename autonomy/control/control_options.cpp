@@ -18,8 +18,6 @@
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
-#include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
-#include "autonomy/control/controller/pure_pursuit_controller/parameter_options.hpp"
 #include "autonomy/map/map_options.hpp"
 
 namespace autonomy {
@@ -45,14 +43,6 @@ proto::ControllerOptions LoadOptions(
         }
     }
 
-    if (parameter_dictionary->HasKey("mppi_controller")) {
-        auto mppi_dict = parameter_dictionary->GetDictionary("mppi_controller");
-        if (mppi_dict) {
-            *options.mutable_mppi_controller_options() =
-                controller::mppi_controller::tools::LoadOptions(
-                    mppi_dict.get());
-        }
-    }
     if (parameter_dictionary->HasKey("graceful_controller")) {
         auto graceful_dict =
             parameter_dictionary->GetDictionary("graceful_controller");
@@ -60,14 +50,6 @@ proto::ControllerOptions LoadOptions(
             *options.mutable_graceful_controller_options() =
                 controller::graceful_controller::LoadOptions(
                     graceful_dict.get());
-        }
-    }
-    if (parameter_dictionary->HasKey("pure_pursuit_controller")) {
-        auto pp_dict =
-            parameter_dictionary->GetDictionary("pure_pursuit_controller");
-        if (pp_dict) {
-            *options.mutable_pure_pursuit_controller_options() =
-                controller::pure_pursuit_controller::LoadOptions(pp_dict.get());
         }
     }
     return options;

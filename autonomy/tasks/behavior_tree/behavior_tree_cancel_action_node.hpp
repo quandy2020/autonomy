@@ -23,7 +23,7 @@
 
 #include "autolink/action/action.hpp"
 #include "autolink/autolink.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "behaviortree_cpp/action_node.h"

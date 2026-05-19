@@ -100,7 +100,3 @@ void PositionGoalChecker::SetXYGoalTolerance(double tolerance) {
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
-
-// Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::PositionGoalChecker,
-                            autonomy::control::common::GoalChecker)

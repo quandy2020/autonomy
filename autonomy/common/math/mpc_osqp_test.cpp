@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "gtest/gtest.h"
 
 namespace autonomy {

@@ -20,7 +20,6 @@ import "autonomy/bridge/proto/bridge_options.proto";
 import "autonomy/map/proto/map_options.proto";
 import "autonomy/prediction/proto/prediction_options.proto";
 import "autonomy/perception/proto/perception_options.proto";
-import "autonomy/localization/proto/localization_options.proto";
 import "autonomy/control/proto/controller_options.proto";
 import "autonomy/planning/proto/planning_options.proto"; 
 import "autonomy/tasks/proto/task_options.proto"; 
@@ -32,7 +31,6 @@ message AutonomyOptions
     control.proto.ControllerOptions controller_options = 2;
     planning.proto.PlannerOptions planner_options = 3;
     autonomy.map.proto.MapOptions map_options = 4;
-    localization.proto.LocalizationOptions localization_options = 5;
     prediction.proto.PredictionOptions  prediction_options = 6;
     perception.proto.PerceptionOptions perception_options = 7;
     tasks.proto.TaskOptions task_options = 8;

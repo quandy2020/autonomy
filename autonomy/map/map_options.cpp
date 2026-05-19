@@ -96,13 +96,5 @@ proto::Costmap2DOptions CreateCostmap2DOptions(
     return options;
 }
 
-proto::Costmap3DOptions CreateCostmap3DOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::Costmap3DOptions options;
-    options.set_map_file(parameter_dictionary->GetString("map_file"));
-    options.set_name(parameter_dictionary->GetString("name"));
-    return options;
-}
-
 }  // namespace map
 }  // namespace autonomy

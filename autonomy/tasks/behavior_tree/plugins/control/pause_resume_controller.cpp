@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/control/pause_resume_controller.hpp"
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 
 namespace autonomy {
 namespace tasks {

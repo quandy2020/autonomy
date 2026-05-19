@@ -20,6 +20,7 @@
 #include <memory>
 #include <vector>
 
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
 namespace autonomy {
@@ -27,6 +28,8 @@ namespace planning {
 namespace smoother {
 
 using namespace std::chrono;  // NOLINT
+
+SimpleSmoother::~SimpleSmoother() = default;
 
 void SimpleSmoother::Configure(
     std::string name, std::shared_ptr<void> /*costmap_sub*/,

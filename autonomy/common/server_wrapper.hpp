@@ -24,7 +24,7 @@
 #include <string>
 #include <thread>
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autolink/service/service.hpp"
 
 namespace autonomy {

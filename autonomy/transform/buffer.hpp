@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -144,14 +143,6 @@ private:
         const geometry_msgs::TransformStamped& tf2_trans_stamped,
         commsgs::geometry_msgs::TransformStamped& trans_stamped)
         const;  // NOLINT
-
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<
-        ::autolink::Reader<commsgs::geometry_msgs::TransformStampeds>>
-        message_subscriber_tf_;
-    std::shared_ptr<
-        ::autolink::Reader<commsgs::geometry_msgs::TransformStampeds>>
-        message_subscriber_tf_static_;
 
     commsgs::builtin_interfaces::Time last_update_;
     std::vector<geometry_msgs::TransformStamped> static_msgs_;

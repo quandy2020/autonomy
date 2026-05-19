@@ -23,8 +23,17 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
-#include "autonomy/transform/buffer.hpp"
+
+namespace autonomy {
+namespace map {
+namespace costmap_2d {
+class Costmap2DWrapper;
+}  // namespace costmap_2d
+}  // namespace map
+namespace transform {
+class Buffer;
+}  // namespace transform
+}  // namespace autonomy
 
 namespace autonomy {
 namespace control {

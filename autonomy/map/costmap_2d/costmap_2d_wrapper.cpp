@@ -39,8 +39,8 @@
 
 #include <sstream>
 
-#include "autolink/common/file.hpp"
 #include "autonomy/common/config.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
@@ -57,8 +57,7 @@ Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options,
       default_plugins_{"static_layer", "obstacle_layer", "inflation_layer"},
       default_types_{"autonomy::map::costmap_2d::StaticLayer",
                      "autonomy::map::costmap_2d::ObstacleLayer",
-                     "autonomy::map::costmap_2d::InflationLayer"},
-      node_{node} {
+                     "autonomy::map::costmap_2d::InflationLayer"} {
     // declare_parameter("map_topic",
     // rclcpp::ParameterValue(std::string("map")));
     is_lifecycle_follower_ = false;
@@ -238,116 +237,22 @@ void Costmap2DWrapper::init() {
             origin_x_, origin_y_);
     }
 
-    // Helper function to get library path for a plugin
-    auto GetPluginLibraryPath =
-        [](const std::string& plugin_name) -> std::string {
-        // Try install directory first
-        std::string install_path =
-            std::string(::autonomy::common::kLibraryInstallDir) +
-            "/lib/libautonomy_map_layers_" + plugin_name + ".so";
-        if (autolink::common::PathExists(install_path)) {
-            return install_path;
-        }
-        // Try build directory
-        std::string build_path =
-            std::string(::autonomy::common::kLibraryBuildDir) +
-            "/lib/libautonomy_map_layers_" + plugin_name + ".so";
-        if (autolink::common::PathExists(build_path)) {
-            return build_path;
-        }
-        // Try with filter prefix for filters
-        install_path = std::string(::autonomy::common::kLibraryInstallDir) +
-                       "/lib/libautonomy_map_filters_" + plugin_name + ".so";
-        if (autolink::common::PathExists(install_path)) {
-            return install_path;
-        }
-        build_path = std::string(::autonomy::common::kLibraryBuildDir) +
-                     "/lib/libautonomy_map_filters_" + plugin_name + ".so";
-        if (autolink::common::PathExists(build_path)) {
-            return build_path;
-        }
-        return "";
-    };
-
-    // Then load and add the plug-ins to the costmap
-    AINFO << "Loading " << plugin_names_.size()
-          << " costmap layer plugin(s)...";
+    // Layer/filter plugins require explicit registration when built in-tree.
     for (unsigned int i = 0; i < plugin_names_.size(); ++i) {
         const auto& plugin_name = plugin_names_[i];
         const auto& plugin_type = plugin_types_[i];
-
-        // Get library path for this plugin
-        std::string library_path = GetPluginLibraryPath(plugin_name);
-        if (!library_path.empty()) {
-            // Load the library if not already loaded
-            if (!plugin_loader_manager_.IsLibraryValid(library_path)) {
-                if (!plugin_loader_manager_.LoadLibrary(library_path)) {
-                    AERROR << "  [x] " << plugin_name
-                           << " - failed to load library";
-                    continue;
-                }
-            }
-        }
-
-        // Create plugin instance using ClassLoaderManager
-        std::shared_ptr<Layer> plugin =
-            plugin_loader_manager_.CreateClassObj<Layer>(plugin_type);
-        if (!plugin) {
-            AERROR << "  [x] " << plugin_name << " - failed to create instance";
-            continue;
-        }
-
-        // Lock the costmap because no update is allowed until the plugin is
-        // initialized
-        std::unique_lock<Costmap2D::mutex_t> lock(
-            *(layered_costmap_->getCostmap()->getMutex()));
-        layered_costmap_->addPlugin(plugin);
-        plugin->initialize(layered_costmap_.get(), plugin_name, node_,
-                           &options_);
-        lock.unlock();
-
-        AINFO << "Initialized " << plugin_name << " success";
+        AWARN << "Skipping costmap layer plugin (no class_loader): " << plugin_name
+              << " type=" << plugin_type;
     }
 
-    // and costmap filters as well
     if (!filter_names_.empty()) {
         AINFO << "Loading " << filter_names_.size() << " costmap filter(s)...";
     }
     for (unsigned int i = 0; i < filter_names_.size(); ++i) {
         const auto& filter_name = filter_names_[i];
         const auto& filter_type = filter_types_[i];
-
-        // Get library path for this filter
-        std::string library_path = GetPluginLibraryPath(filter_name);
-        if (!library_path.empty()) {
-            // Load the library if not already loaded
-            if (!plugin_loader_manager_.IsLibraryValid(library_path)) {
-                if (!plugin_loader_manager_.LoadLibrary(library_path)) {
-                    AERROR << "  [x] " << filter_name
-                           << " - failed to load library";
-                    continue;
-                }
-            }
-        }
-
-        // Create filter instance using ClassLoaderManager
-        std::shared_ptr<Layer> filter =
-            plugin_loader_manager_.CreateClassObj<Layer>(filter_type);
-        if (!filter) {
-            AERROR << "  [x] " << filter_name << " - failed to create instance";
-            continue;
-        }
-
-        // Lock the costmap because no update is allowed until the filter is
-        // initialized
-        std::unique_lock<Costmap2D::mutex_t> lock(
-            *(layered_costmap_->getCostmap()->getMutex()));
-        layered_costmap_->addFilter(filter);
-        filter->initialize(layered_costmap_.get(), filter_name, node_,
-                           &options_);
-        lock.unlock();
-
-        AINFO << " Initialized " << filter_name << " success";
+        AWARN << "Skipping costmap filter plugin (no class_loader): " << filter_name
+              << " type=" << filter_type;
     }
 
     auto layers = layered_costmap_->getPlugins();

@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/wait_action.hpp"
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 
 namespace autonomy {

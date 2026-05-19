@@ -20,8 +20,7 @@
 #include <memory>
 #include <mutex>
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/utils/controller_utils.hpp"
@@ -604,7 +603,3 @@ void GracefulController::ValidateOrientations(
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy
-
-// Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::controller::GracefulController,
-                            autonomy::control::common::ControllerInterface)

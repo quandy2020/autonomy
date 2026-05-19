@@ -16,7 +16,7 @@
 
 #include "autonomy/planning/planner_options.hpp"
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/config.hpp"
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"

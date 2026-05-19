@@ -24,7 +24,6 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/control/checker/simple_goal_checker.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 
 namespace autonomy {
 namespace control {
