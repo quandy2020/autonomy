@@ -68,8 +68,6 @@ private:
      * @return BT::NodeStatus Status of tick execution
      */
     BT::NodeStatus tick() override;
-
-    std::shared_ptr<::autolink::Node> node_;
     std::string global_frame_, robot_base_frame_;
     std::shared_ptr<autonomy::transform::Buffer> tf_;
     float transform_tolerance_;

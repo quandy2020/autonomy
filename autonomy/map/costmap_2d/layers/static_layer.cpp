@@ -19,8 +19,6 @@
 #include <algorithm>
 #include <string>
 
-#include "autolink/autolink.hpp"
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/log.hpp"
 #include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/proto/map_2d_option.pb.h"
@@ -38,33 +36,6 @@ void StaticLayer::onInitialize() {
     global_frame_ = layered_costmap_->getGlobalFrameID();
 
     getParameters();
-
-    // 检查 node_ 是否有效
-    if (!node_) {
-        AWARN << "StaticLayer: node_ is null, skipping topic subscription. "
-              << "Map updates will not be received from topic: " << map_topic_;
-        return;
-    }
-
-    map_sub_ = node_->CreateReader<commsgs::map_msgs::OccupancyGrid>(
-        map_topic_,
-        std::bind(&StaticLayer::incomingMap, this, std::placeholders::_1));
-
-    if (map_sub_) {
-        AINFO << "StaticLayer: Subscribed to map topic: " << map_topic_;
-    } else {
-        AERROR << "StaticLayer: Failed to subscribe to map topic: "
-               << map_topic_;
-    }
-
-    if (subscribe_to_updates_) {
-        AINFO << "Subscribing to updates";
-        map_update_sub_ =
-            node_->CreateReader<commsgs::map_msgs::OccupancyGridUpdate>(
-                map_topic_ + "_updates",
-                std::bind(&StaticLayer::incomingUpdate, this,
-                          std::placeholders::_1));
-    }
 }
 
 void StaticLayer::activate() {}
@@ -457,7 +428,3 @@ void StaticLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::StaticLayer,
-                            autonomy::map::costmap_2d::Layer)

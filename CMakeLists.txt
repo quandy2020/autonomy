@@ -41,21 +41,17 @@ google_enable_testing()
 # Set module path to find custom Find modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 
-find_package(absl REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(LuaGoogle REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(glog REQUIRED)
-find_package(OMPL REQUIRED)
 find_package(OSQP REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Protobuf 3.0.0 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
-find_package(ZLIB REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(Adolc REQUIRED)
 find_package(Ipopt QUIET)
@@ -117,41 +113,6 @@ file(GLOB_RECURSE ONNX_NETWORK_SRCS "autonomy/common/network/*.cpp")
 if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
 endif()
-
-# Exclude sources that still use autolink middleware (Node/Reader/Writer/actions/plugins).
-file(GLOB_RECURSE AUTOLINK_DEPENDENT_SRCS
-  "${PROJECT_SOURCE_DIR}/autonomy/tasks/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/transform/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/vehicle/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/system/system.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/planning/planner_server.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/planning/planner/navfn/navfn_planner.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller_server.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/smoother/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/utils/odometry_utils.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/graceful_controller/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/mppi_controller/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/mppi_controller/**/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/pure_pursuit_controller/collision_checker.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/pure_pursuit_controller/regulated_pure_pursuit_controller.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/map/map_server.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/map/common/map_interface.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/costmap_2d_wrapper.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layer.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/layers/*.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/map/costmap_2d/filters/*.cpp"
-)
-list(REMOVE_ITEM ALL_LIBRARY_SRCS ${AUTOLINK_DEPENDENT_SRCS})
-
-# Exclude octomap-dependent grid_map converter (no octomap link in core library).
-file(GLOB_RECURSE OCTOMAP_DEPENDENT_SRCS
-  "${PROJECT_SOURCE_DIR}/autonomy/map/grid_map/grid_map_octomap/*.cpp"
-)
-list(REMOVE_ITEM ALL_LIBRARY_SRCS ${OCTOMAP_DEPENDENT_SRCS})
-
-list(APPEND ALL_LIBRARY_SRCS
-  "${PROJECT_SOURCE_DIR}/autonomy/control/controller/graceful_controller/parameter_options.cpp"
-)
 
 if (NOT ${BUILD_GRPC})
   list(REMOVE_ITEM ALL_LIBRARY_HDRS ${ALL_GRPC_HDRS})
@@ -291,22 +252,23 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
 # Ceres solver
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
-# SuiteSparse (required by Ceres cholmod solver)
-find_library(CHOLMOD_LIBRARY NAMES cholmod PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
-if(CHOLMOD_LIBRARY)
-  target_link_libraries(${PROJECT_NAME} PUBLIC ${CHOLMOD_LIBRARY})
-endif()
-# LAPACK (required by Ceres)
-find_package(LAPACK QUIET)
-if(LAPACK_FOUND)
-  target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARIES})
-else()
-  # Fallback: try to find lapack directly
-  find_library(LAPACK_LIBRARY NAMES lapack PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
-  if(LAPACK_LIBRARY)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARY})
-  endif()
-endif()
+
+# # SuiteSparse (required by Ceres cholmod solver)
+# find_library(CHOLMOD_LIBRARY NAMES cholmod PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
+# if(CHOLMOD_LIBRARY)
+#   target_link_libraries(${PROJECT_NAME} PUBLIC ${CHOLMOD_LIBRARY})
+# endif()
+# # LAPACK (required by Ceres)
+# find_package(LAPACK QUIET)
+# if(LAPACK_FOUND)
+#   target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARIES})
+# else()
+#   # Fallback: try to find lapack directly
+#   find_library(LAPACK_LIBRARY NAMES lapack PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
+#   if(LAPACK_LIBRARY)
+#     target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARY})
+#   endif()
+# endif()
 
 # Lua5.3
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
@@ -316,10 +278,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${LUA_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Boost_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
-# Glog
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${GLOG_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${GLOG_LIBRARIES})
-
 # OpenCV
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
@@ -327,10 +285,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
 # Yaml-cpp
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${YAML_CPP_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp)
-
-# ompl
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OMPL_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARIES})
 
 # OSQP
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OSQP_INCLUDE_DIRS}")
@@ -360,37 +314,9 @@ if(${BUILD_PROMETHEUS})
   endif()
 endif()
 
-# abseil-cpp
-set(ABSL_LIBRARY
-  absl::algorithm
-  absl::base
-  absl::debugging
-  absl::flat_hash_map
-  absl::memory
-  absl::meta
-  absl::numeric
-  absl::str_format
-  absl::strings
-  absl::synchronization
-  absl::time
-  absl::utility)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${ABSL_LIBRARY})
-
 if(${BUILD_GRPC})
   target_link_libraries(${PROJECT_NAME} PUBLIC grpc++ grpc)
-  # if(${BUILD_PROMETHEUS})
-  #   target_link_libraries(cartographer_grpc_server PUBLIC ${ZLIB_LIBRARIES})
-  #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-core)
-  #   target_link_libraries(cartographer_grpc_server PUBLIC prometheus-cpp-pull)
-  # endif()
 endif()
-
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${FastDDS_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC
-  OpenSSL::Crypto
-  OpenSSL::SSL
-  ZLIB::ZLIB
-  ${FastDDS_LIBRARIES})
 
 # ADOL-C (Automatic Differentiation Library)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
@@ -425,7 +351,6 @@ if (${BUILD_TEST})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++ grpc)
     endif()
     if(${BUILD_PROMETHEUS})
-      target_link_libraries("${TEST_TARGET_NAME}" PUBLIC ${ZLIB_LIBRARIES})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-core)
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC prometheus-cpp-pull)
     endif()
@@ -489,7 +414,3 @@ install(
   FILES ${PROJECT_BINARY_DIR}/autonomy-config.cmake
   DESTINATION share/autonomy/
 )
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/autonomy/launch 
-  DESTINATION launch)

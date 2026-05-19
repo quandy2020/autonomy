@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/control/proto/smoother_options.pb.h"
@@ -42,11 +41,9 @@ class VelocitySmoother
 public:
     /**
      * @brief A constructor for VelocitySmoother
-     * @param node The node to use
      * @param options The options to use
      */
-    explicit VelocitySmoother(const std::shared_ptr<::autolink::Node>& node,
-                              const proto::VelocitySmootherOptions& options);
+    explicit VelocitySmoother(const proto::VelocitySmootherOptions& options);
 
     /**
      * @brief Destructor for VelocitySmoother
@@ -94,14 +91,7 @@ protected:
     void smootherTimer();
 
     // Network interfaces
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Timer> timer_;
     std::unique_ptr<utils::OdomSmoother> odom_smoother_;
-    std::shared_ptr<::autolink::Writer<commsgs::geometry_msgs::TwistStamped>>
-        smoothed_cmd_pub_;
-    std::shared_ptr<::autolink::Reader<commsgs::geometry_msgs::TwistStamped>>
-        cmd_sub_;
-
     std::shared_ptr<commsgs::geometry_msgs::TwistStamped> last_cmd_;
     std::shared_ptr<commsgs::geometry_msgs::TwistStamped> command_;
 

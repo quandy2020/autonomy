@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {

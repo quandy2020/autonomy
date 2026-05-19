@@ -16,6 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/condition/is_stuck_condition.hpp"
 
+#include "autonomy/common/log.hpp"
+
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
@@ -29,11 +31,6 @@ IsStuckCondition::IsStuckCondition(const std::string& condition_name,
       odom_history_size_(10),
       current_accel_(0.0),
       brake_accel_limit_(-10.0) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    odom_sub_ = node_->CreateReader<commsgs::planning_msgs::Odometry>(
-        "odom", std::bind(&IsStuckCondition::onOdomReceived, this,
-                          std::placeholders::_1));
-
     AINFO << "Initialized an IsStuckCondition BT node";
 }
 

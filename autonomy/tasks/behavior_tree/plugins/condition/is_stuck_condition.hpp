@@ -20,7 +20,6 @@
 #include <deque>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
@@ -92,12 +91,9 @@ public:
 
 private:
     // The node that will be used for any ROS operations
-    std::shared_ptr<::autolink::Node> node_;
     std::atomic<bool> is_stuck_;
 
     // Listen to odometry
-    std::shared_ptr<::autolink::Reader<commsgs::planning_msgs::Odometry>>
-        odom_sub_;
     // Store history of odometry measurements
     std::deque<commsgs::planning_msgs::Odometry> odom_history_;
     std::deque<commsgs::planning_msgs::Odometry>::size_type odom_history_size_;

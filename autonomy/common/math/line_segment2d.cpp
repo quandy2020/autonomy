@@ -20,8 +20,8 @@
 #include <cmath>
 #include <utility>
 
-#include "absl/strings/str_cat.h"
 #include "autonomy/common/math/math_utils.hpp"
+#include "autonomy/common/str_cat.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {
@@ -225,7 +225,7 @@ double LineSegment2d::GetPerpendicularFoot(const Vec2d& point,
 }
 
 std::string LineSegment2d::DebugString() const {
-    return absl::StrCat("segment2d ( start = ", start_.DebugString(),
+    return common::StrCat("segment2d ( start = ", start_.DebugString(),
                         "  end = ", end_.DebugString(), " )");
 }
 

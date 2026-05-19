@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/transform/buffer.hpp"
@@ -120,7 +119,6 @@ private:
                                const double angular_distance_weight);
 
     std::shared_ptr<autonomy::transform::Buffer> tf_buffer_;
-    std::shared_ptr<::autolink::Node> node_;
 
     commsgs::planning_msgs::Path path_;
     std::vector<commsgs::geometry_msgs::PoseStamped>::iterator

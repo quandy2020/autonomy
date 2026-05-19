@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/tasks/navigator/proto/srv.pb.h"
 #include "behaviortree_cpp/bt_factory.h"
 #include "behaviortree_cpp/control_node.h"
@@ -133,11 +132,6 @@ private:
      * Do nothing if in end state
      */
     void switchToNextState();
-
-    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>>
-        pause_srv_;
-    std::shared_ptr<::autolink::Service<Trigger::Request, Trigger::Response>>
-        resume_srv_;
     state_t state_;
 };
 

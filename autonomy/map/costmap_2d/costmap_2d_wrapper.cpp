@@ -51,8 +51,7 @@ namespace map {
 namespace costmap_2d {
 
 Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options,
-                                   const std::string& name,
-                                   autolink::Node* node)
+                                   const std::string& name)
     : options_{options},
       default_plugins_{"static_layer", "obstacle_layer", "inflation_layer"},
       default_types_{"autonomy::map::costmap_2d::StaticLayer",

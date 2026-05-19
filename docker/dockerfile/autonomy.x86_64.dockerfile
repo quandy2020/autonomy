@@ -45,7 +45,6 @@ RUN apt-get update && apt-get install -y sudo \
     libcivetweb-dev \
     libsuitesparse-dev \
     lsb-release \
-    libompl-dev \
     libcairo2-dev \
     libboost-all-dev \
     libasio-dev \

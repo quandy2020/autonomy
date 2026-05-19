@@ -20,7 +20,6 @@
 #include <mutex>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
@@ -90,10 +89,6 @@ private:
      */
     void batteryCallback(
         const std::shared_ptr<commsgs::sensor_msgs::BatteryState>& msg);
-
-    std::shared_ptr<::autolink::Node> node_;
-    std::shared_ptr<::autolink::Reader<commsgs::sensor_msgs::BatteryState>>
-        battery_sub_;
     std::string battery_topic_;
     double min_battery_;
     bool is_voltage_;

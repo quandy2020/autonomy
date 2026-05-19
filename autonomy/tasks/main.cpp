@@ -19,8 +19,6 @@
 #include <csignal>
 #include <cstdlib>
 
-#include "autolink/autolink.hpp"
-#include "autolink/init.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/version.hpp"
 #include "autonomy/tasks/navigator/bt_navigator.hpp"
@@ -48,11 +46,9 @@ void Run() {
     auto options = autonomy::tasks::CreateOptions(
         autonomy::common::FLAGS_configuration_directory,
         autonomy::common::FLAGS_configuration_basename);
-    // Create node
-    auto node = ::autolink::CreateNode("navigator_node");
 
     // Create navigator
-    auto navigator = autonomy::tasks::navigator::BtNavigator(node, options);
+    auto navigator = autonomy::tasks::navigator::BtNavigator(options);
 }
 
 }  // namespace
@@ -60,7 +56,6 @@ void Run() {
 }  // namespace autonomy
 
 int main(int argc, char** argv) {
-    ::autolink::Init(argv[0]);
     google::SetUsageMessage(
         "\n\n"
         "\033[31m This program runs autonomy tasks (behavior-tree navigators) "
@@ -91,6 +86,5 @@ int main(int argc, char** argv) {
 
     autonomy::tasks::Run();
     google::ShutdownGoogleLogging();
-    ::autolink::Clear();
     return EXIT_SUCCESS;
 }

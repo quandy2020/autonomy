@@ -31,7 +31,6 @@ IsStoppedCondition::IsStoppedCondition(const std::string& condition_name,
       velocity_threshold_(0.01),
       duration_stopped_(1000ms),
       stopped_stamp_(commsgs::builtin_interfaces::Time(0, 0)) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     odom_smoother_ =
         config().blackboard->get<std::shared_ptr<control::utils::OdomSmoother>>(
             "odom_smoother");

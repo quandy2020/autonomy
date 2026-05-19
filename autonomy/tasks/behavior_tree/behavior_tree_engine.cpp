@@ -16,15 +16,13 @@
 
 #include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 
-#include <glog/logging.h>
-
+#include "autonomy/common/log.hpp"
 #include <chrono>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "behaviortree_cpp/json_export.h"
 #include "behaviortree_cpp/utils/shared_library.h"
@@ -33,9 +31,7 @@ namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-BehaviorTreeEngine::BehaviorTreeEngine(
-    const std::vector<std::string>& plugin_libraries,
-    std::shared_ptr<::autolink::Node> node) {
+BehaviorTreeEngine::BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries) {
     BT::SharedLibrary loader;
     for (const auto& p : plugin_libraries) {
         factory_.registerFromPlugin(loader.getOSName(p));

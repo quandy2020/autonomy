@@ -21,7 +21,6 @@
 #include <limits>
 #include <string>
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -50,10 +49,10 @@ bool NavigateToPoseNavigator::GoalReceived(
     }
 
     std::string bt_xml = goal->behavior_tree().empty()
-                             ? action_server_->GetDefaultBTFilename()
+                             ? bt_->GetDefaultBTFilename()
                              : goal->behavior_tree();
-    if (!action_server_->LoadBehaviorTree(bt_xml)) {
-        action_server_->SetInternalError(
+    if (!bt_->LoadBehaviorTree(bt_xml)) {
+        bt_->SetInternalError(
             static_cast<uint16_t>(
                 behavior_tree::proto::
                     NAVIGATE_TO_POSE_ERROR_FAILED_TO_LOAD_BEHAVIOR_TREE),
@@ -70,7 +69,7 @@ void NavigateToPoseNavigator::GoalCompleted(
         return;
     if (result->error_code() ==
         static_cast<int>(behavior_tree::proto::NAVIGATE_TO_POSE_ERROR_NONE)) {
-        if (action_server_->PopulateInternalError(result)) {
+        if (bt_->PopulateInternalError(result)) {
             AWARN << "NavigateToPoseNavigator::GoalCompleted: internal error "
                   << result->error_code() << ":" << result->error_msg();
         }
@@ -93,7 +92,7 @@ void NavigateToPoseNavigator::OnLoop() {
         return;
     }
 
-    auto blackboard = action_server_->GetBlackboard();
+    auto blackboard = bt_->GetBlackboard();
     commsgs::planning_msgs::Path current_path;
     double distance_remaining = 0.0;
     if (blackboard && blackboard->get(path_blackboard_id_, current_path) &&
@@ -131,8 +130,8 @@ void NavigateToPoseNavigator::OnLoop() {
     }
 
     int recovery_count = 0;
-    if (blackboard) {
-        blackboard->get("number_recoveries", recovery_count);
+    if (blackboard && !blackboard->get("number_recoveries", recovery_count)) {
+        recovery_count = 0;
     }
     feedback_msg->set_number_of_recoveries(recovery_count);
     *feedback_msg->mutable_current_pose() =
@@ -145,30 +144,30 @@ void NavigateToPoseNavigator::OnLoop() {
         commsgs::builtin_interfaces::ToProto(
             commsgs::builtin_interfaces::Duration::FromSeconds(nav_duration));
 
-    action_server_->PublishFeedback(feedback_msg);
+    bt_->PublishFeedback(feedback_msg);
 }
 
 void NavigateToPoseNavigator::OnPreempt(
     std::shared_ptr<const typename ActionT::Goal> goal) {
     AUTONOMY_UNUSED(goal);
     AINFO << "NavigateToPoseNavigator: preempt requested";
-    const std::string current_bt = action_server_->GetCurrentBTFilename();
-    const std::string default_bt = action_server_->GetDefaultBTFilename();
+    const std::string current_bt = bt_->GetCurrentBTFilename();
+    const std::string default_bt = bt_->GetDefaultBTFilename();
     bool same_bt = (goal && !goal->behavior_tree().empty())
                        ? (goal->behavior_tree() == current_bt)
                        : (current_bt == default_bt);
     if (same_bt) {
-        auto pending = action_server_->AcceptPendingGoal();
+        auto pending = bt_->AcceptPendingGoal();
         if (!pending || !InitializeGoalPose(pending)) {
             AWARN << "Preemption: could not transform goal pose, continuing "
                      "previous goal.";
-            action_server_->TerminatePendingGoal();
+            bt_->TerminatePendingGoal();
         }
     } else {
         AWARN << "Preemption rejected (different BT requested). Cancel current "
                  "goal and send new "
                  "request to use another BT.";
-        action_server_->TerminatePendingGoal();
+        bt_->TerminatePendingGoal();
     }
 }
 
@@ -182,7 +181,7 @@ bool NavigateToPoseNavigator::InitializeGoalPose(
             current_pose, feedback_utils_.tf, feedback_utils_.global_frame,
             feedback_utils_.robot_frame,
             static_cast<float>(feedback_utils_.transform_tolerance))) {
-        action_server_->SetInternalError(
+        bt_->SetInternalError(
             static_cast<uint16_t>(
                 behavior_tree::proto::NAVIGATE_TO_POSE_ERROR_TF_ERROR),
             "Initial robot pose is not available.");
@@ -196,7 +195,7 @@ bool NavigateToPoseNavigator::InitializeGoalPose(
             goal_in, goal_pose, feedback_utils_.tf,
             feedback_utils_.global_frame,
             static_cast<float>(feedback_utils_.transform_tolerance))) {
-        action_server_->SetInternalError(
+        bt_->SetInternalError(
             static_cast<uint16_t>(
                 behavior_tree::proto::NAVIGATE_TO_POSE_ERROR_TF_ERROR),
             "Failed to transform goal from frame '" +
@@ -211,7 +210,7 @@ bool NavigateToPoseNavigator::InitializeGoalPose(
           << ")";
 
     start_time_ = std::chrono::steady_clock::now();
-    auto blackboard = action_server_->GetBlackboard();
+    auto blackboard = bt_->GetBlackboard();
     if (blackboard) {
         blackboard->set("number_recoveries", 0);          // NOLINT
         blackboard->set(goal_blackboard_id_, goal_pose);  // NOLINT
@@ -223,7 +222,3 @@ bool NavigateToPoseNavigator::InitializeGoalPose(
 }  // namespace navigator
 }  // namespace tasks
 }  // namespace autonomy
-
-CLASS_LOADER_REGISTER_CLASS(
-    autonomy::tasks::navigator::navigation::NavigateToPoseNavigator,
-    autonomy::tasks::common::NavigatorBase)

@@ -34,9 +34,6 @@ macro(_common_compile_stuff)
     target_link_directories(${NAME} PRIVATE /usr/local/lib)
   endif()
   target_link_libraries(${NAME} PUBLIC ${PROJECT_NAME})
-  
-  # Link FastDDS when DDS transport is enabled
-  target_link_libraries(${NAME} PRIVATE ${FastDDS_LIBRARIES})
   target_link_libraries(${NAME} PRIVATE glog gflags)
 endmacro(_common_compile_stuff)
 
@@ -57,7 +54,6 @@ function(google_test NAME ARG_SRC)
   target_include_directories("${NAME}" SYSTEM PRIVATE
     "${GMOCK_INCLUDE_DIRS}")
   target_link_libraries("${NAME}" PUBLIC ${GMOCK_LIBRARIES})
-  # Suppress warnings from FastDDS headers (missing-braces warning in VendorId_t.hpp)
   target_compile_options(${NAME} PRIVATE -Wno-error=missing-braces)
 
   add_test(${NAME} ${NAME})

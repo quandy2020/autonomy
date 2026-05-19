@@ -15,8 +15,6 @@
  */
 
 #include "autonomy/map/costmap_2d/layers/range_sensor_layer.hpp"
-
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/math/angle.hpp"
 
 using namespace std::literals::chrono_literals;
@@ -502,7 +500,3 @@ void RangeSensorLayer::activate() {
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy
-
-// Register the class as a plugin for dynamic library loading
-CLASS_LOADER_REGISTER_CLASS(autonomy::map::costmap_2d::RangeSensorLayer,
-                            autonomy::map::costmap_2d::Layer)

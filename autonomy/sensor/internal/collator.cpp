@@ -20,7 +20,7 @@ namespace autonomy {
 namespace sensor {
 
 // void Collator::AddToCostmap(
-//     const absl::flat_hash_set<std::string>& expected_sensor_ids,
+//     const std::unordered_set<std::string>& expected_sensor_ids,
 //     const Callback& callback)
 // {
 // //   for (const auto& sensor_id : expected_sensor_ids) {

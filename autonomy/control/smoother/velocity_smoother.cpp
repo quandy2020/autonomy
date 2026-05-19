@@ -15,8 +15,6 @@
  */
 
 #include "autonomy/control/smoother/velocity_smoother.hpp"
-
-#include "autolink/timer/timer.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 
@@ -27,10 +25,8 @@ namespace smoother {
 using Time = commsgs::builtin_interfaces::Time;
 using Duration = commsgs::builtin_interfaces::Duration;
 
-VelocitySmoother::VelocitySmoother(
-    const std::shared_ptr<::autolink::Node>& node,
-    const proto::VelocitySmootherOptions& options)
-    : node_(node), last_command_time_(Time::Now()) {
+VelocitySmoother::VelocitySmoother(const proto::VelocitySmootherOptions& options)
+    : last_command_time_(Time::Now()) {
     AINFO << "Configuring velocity smoother";
 
     // Get parameters from options proto
@@ -113,45 +109,16 @@ VelocitySmoother::VelocitySmoother(
         open_loop_ = true;
     } else if (feedback == "CLOSED_LOOP") {
         open_loop_ = false;
-        odom_smoother_ = std::make_unique<utils::OdomSmoother>(
-            node, odom_duration_, odom_topic_);
+        odom_smoother_ = std::make_unique<utils::OdomSmoother>(odom_duration_, odom_topic_);
     } else {
         AERROR
             << "Invalid feedback_type, options are OPEN_LOOP and CLOSED_LOOP.";
         return;
     }
-
-    // Setup inputs / outputs
-    smoothed_cmd_pub_ =
-        node->CreateWriter<commsgs::geometry_msgs::TwistStamped>(
-            "cmd_vel_smoothed");
-
-    // Create reader with callback for TwistStamped messages
-    auto callback =
-        [this](
-            const std::shared_ptr<commsgs::geometry_msgs::TwistStamped>& msg) {
-            this->inputCommandStampedCallback(msg);
-        };
-    cmd_sub_ = node->CreateReader<commsgs::geometry_msgs::TwistStamped>(
-        "cmd_vel", callback);
-
-    // Note: Real-time priority setting is not available in autolink
-    // Skipping use_realtime_priority option
-
-    // Create timer
-    uint32_t timer_duration_ms =
-        static_cast<uint32_t>(1000.0 / smoothing_frequency_);
-    auto timer_callback = [this]() { this->smootherTimer(); };
-    timer_ = std::make_shared<::autolink::Timer>(timer_duration_ms,
-                                                 timer_callback, false);
-    timer_->Start();
 }
 
 VelocitySmoother::~VelocitySmoother() {
-    if (timer_) {
-        timer_->Stop();
-        timer_.reset();
-    }
+
 }
 
 void VelocitySmoother::inputCommandStampedCallback(
@@ -345,8 +312,6 @@ void VelocitySmoother::smootherTimer() {
         fabs(cmd_vel->twist.angular.z) < deadband_velocities_[2]
             ? 0.0
             : cmd_vel->twist.angular.z;
-
-    smoothed_cmd_pub_->Write(*cmd_vel);
 }
 
 }  // namespace smoother

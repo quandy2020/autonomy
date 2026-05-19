@@ -30,15 +30,12 @@ namespace action {
 GetCurrentPoseAction::GetCurrentPoseAction(const std::string& name,
                                            const BT::NodeConfiguration& conf)
     : BT::ActionNodeBase(name, conf) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     tf_ =
         config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
             "tf_buffer");
     getInput("transform_tolerance", transform_tolerance_);
-    global_frame_ =
-        DeconflictPortAndParamFrame<std::string>(node_, "global_frame", this);
-    robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(
-        node_, "robot_base_frame", this);
+    GetInputOrBlackboard("global_frame", global_frame_);
+    GetInputOrBlackboard("robot_base_frame", robot_base_frame_);
 }
 
 BT::NodeStatus GetCurrentPoseAction::tick() {

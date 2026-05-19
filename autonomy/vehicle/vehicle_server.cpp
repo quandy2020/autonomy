@@ -29,26 +29,6 @@ VehicleServer::VehicleServer(const VehicleModel& model,
     : interface_(std::move(iface)), kinematics_(model) {
     // 初始化内部 Vehicle 消息中的模型配置
     *vehicle_.mutable_model() = model;
-
-    // 创建 autolink 节点，用于在图中发布 / 订阅 Vehicle 消息
-    node_ = ::autolink::CreateNode("vehicle_server", "");
-    if (node_) {
-        // 订阅外部 Vehicle 消息（例如远程监控 / 仿真）
-        vehicle_reader_ =
-            node_->CreateReader<::autonomy::vehicle::proto::Vehicle>(
-                "vehicle",
-                [this](
-                    const std::shared_ptr<::autonomy::vehicle::proto::Vehicle>&
-                        msg) {
-                    if (msg) {
-                        this->HandleVehicleMessage(*msg);
-                    }
-                });
-
-        // 发布本地聚合的 Vehicle 状态
-        vehicle_writer_ =
-            node_->CreateWriter<::autonomy::vehicle::proto::Vehicle>("vehicle");
-    }
 }
 
 VehicleServer::~VehicleServer() = default;
@@ -64,12 +44,6 @@ bool VehicleServer::UpdateInfoFromInterface() {
     }
 
     *vehicle_.mutable_info() = info;
-
-    // 将最新状态发布到 autolink 网络（如果有 writer）
-    if (vehicle_writer_) {
-        vehicle_writer_->Write(vehicle_);
-    }
-
     return true;
 }
 
@@ -88,10 +62,6 @@ void VehicleServer::SetCommand(const KinematicsControlCommand& command) {
     // 下发到底层接口
     interface_->ApplyCommand(limited_cmd);
 
-    // 将更新后的 Vehicle 消息发布出去
-    if (vehicle_writer_) {
-        vehicle_writer_->Write(vehicle_);
-    }
 }
 
 void VehicleServer::HandleVehicleMessage(

@@ -33,19 +33,7 @@ void SmootherSelector::initialize() {
 }
 
 void SmootherSelector::createROSInterfaces() {
-    std::string topic_new;
-    getInput("topic_name", topic_new);
-    if (topic_new != topic_name_ || !smoother_selector_sub_) {
-        topic_name_ = topic_new;
-        node_ =
-            config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-
-        smoother_selector_sub_ = node_->CreateReader<commsgs::std_msgs::String>(
-            topic_name_,
-            [this](std::shared_ptr<const commsgs::std_msgs::String> msg) {
-                callbackSmootherSelect(msg);
-            });
-    }
+    getInput("topic_name", topic_name_);
 }
 
 void SmootherSelector::callbackSmootherSelect(
@@ -59,9 +47,6 @@ BT::NodeStatus SmootherSelector::tick() {
     if (!BT::isStatusActive(status())) {
         initialize();
     }
-
-    // Process callbacks if needed (autolink handles this internally via
-    // readers)
 
     // This behavior always use the last selected smoother received from the
     // topic input. When no input is specified it uses the default smoother. If

@@ -12,9 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Design aligned with nav2_core::behavior_tree_navigator.hpp
- * (FeedbackUtils, NavigatorMuxer, NavigatorBase, BehaviorTreeNavigator).
  */
 
 #pragma once
@@ -25,11 +22,11 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_action_server.hpp"
+#include "autonomy/tasks/proto/task_options.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
@@ -38,44 +35,25 @@ namespace common {
 
 namespace behavior_tree = autonomy::tasks::behavior_tree;
 
-// Re-export for navigator plugins
 using BtStatus = behavior_tree::BtStatus;
 using OdomSmoother = autonomy::control::utils::OdomSmoother;
 
-/**
- * @struct FeedbackUtils
- * @brief Navigator feedback utilities (transforms, frames).
- *        Aligned with nav2_core::FeedbackUtils.
- */
 struct FeedbackUtils {
     std::string robot_frame;
     std::string global_frame;
     double transform_tolerance = 0.1;
     double local_survival_timeout = 120.0;
     std::shared_ptr<autonomy::transform::Buffer> tf;
-    /** Resolved default BT XML path for this navigator (optional, set by
-     * BtNavigator). */
     std::string default_bt_xml_filename;
-    /** Optional resolver to convert relative BT filename to absolute path. */
     std::function<std::string(const std::string&)> bt_xml_path_resolver;
 };
 
-/**
- * @class NavigatorBase
- * @brief Abstract base for all navigator plugins (BT-based or other).
- *        Aligned with nav2_core::NavigatorBase.
- */
 class NavigatorBase
 {
 public:
     virtual ~NavigatorBase() = default;
 };
 
-/**
- * @class NavigatorMuxer
- * @brief Ensures only one navigator is active at a time.
- *        Aligned with nav2_core::NavigatorMuxer.
- */
 class NavigatorMuxer
 {
 public:
@@ -90,8 +68,7 @@ public:
         std::scoped_lock lock(mutex_);
         if (!current_navigator_.empty()) {
             AERROR << "NavigatorMuxer: navigation requested while another "
-                      "navigation task is in "
-                      "progress.";
+                      "navigation task is in progress.";
         }
         current_navigator_ = navigator_name;
     }
@@ -112,23 +89,15 @@ protected:
 };
 
 /**
- * @class BehaviorTreeNavigator
- * @brief Base class for all BT-based Navigator action plugins. Implements
- * NavigatorBase; final methods (Configure/Activate/Deactivate/Cleanup) delegate
- * to BtActionServer and to virtual configure/activate/deactivate/cleanup.
- * Subclasses implement GoalReceived, OnLoop, OnPreempt, GoalCompleted, GetName,
- * GetDefaultBTFilepath, and optionally configure, cleanup. Aligned with
- * nav2_core::BehaviorTreeNavigator.
+ * @brief BT-based navigator without middleware action server.
  */
 template <class ActionT>
 class BehaviorTreeNavigator : public NavigatorBase
 {
 public:
-    /** Default constructor for plugin loading; object must be initialized
-     * before use. */
     BehaviorTreeNavigator() : NavigatorBase(), plugin_muxer_(nullptr) {}
 
-    BehaviorTreeNavigator(std::shared_ptr<autolink::Node> node,
+    BehaviorTreeNavigator(const autonomy::tasks::proto::TaskOptions& /*options*/,
                           const std::vector<std::string>& plugin_lib_names,
                           const FeedbackUtils& feedback_utils,
                           const std::shared_ptr<NavigatorMuxer>& plugin_muxer,
@@ -137,56 +106,46 @@ public:
         feedback_utils_ = feedback_utils;
         std::string default_bt_xml =
             feedback_utils.default_bt_xml_filename.empty()
-                ? GetDefaultBTFilepath(node)
+                ? GetDefaultBTFilepath()
                 : feedback_utils.default_bt_xml_filename;
         if (feedback_utils.bt_xml_path_resolver && !default_bt_xml.empty()) {
             default_bt_xml =
                 feedback_utils.bt_xml_path_resolver(default_bt_xml);
         }
 
-        action_server_ =
-            std::make_unique<behavior_tree::BtActionServer<ActionT>>(
-                node, GetName(), plugin_lib_names, default_bt_xml,
-                std::bind(&BehaviorTreeNavigator::OnGoalReceived, this,
-                          std::placeholders::_1),
-                std::bind(&BehaviorTreeNavigator::OnLoop, this),
-                std::bind(&BehaviorTreeNavigator::OnPreempt, this,
-                          std::placeholders::_1),
-                std::bind(&BehaviorTreeNavigator::OnCompletion, this,
-                          std::placeholders::_1, std::placeholders::_2));
+        bt_ = std::make_unique<behavior_tree::BtActionServer<ActionT>>(
+            GetName(), plugin_lib_names, default_bt_xml,
+            std::bind(&BehaviorTreeNavigator::OnGoalReceived, this,
+                      std::placeholders::_1),
+            std::bind(&BehaviorTreeNavigator::OnLoop, this),
+            std::bind(&BehaviorTreeNavigator::OnPreempt, this,
+                      std::placeholders::_1),
+            std::bind(&BehaviorTreeNavigator::OnCompletion, this,
+                      std::placeholders::_1, std::placeholders::_2));
 
-        BT::Blackboard::Ptr blackboard = action_server_->GetBlackboard();
+        BT::Blackboard::Ptr blackboard = bt_->GetBlackboard();
         blackboard->set("tf_buffer", feedback_utils.tf);  // NOLINT
         blackboard->set("initial_pose_received", false);  // NOLINT
         blackboard->set("number_recoveries", 0);          // NOLINT
         blackboard->set("odom_smoother", odom_smoother);  // NOLINT
-        // Provide frame defaults to BT XML ports, so trees can safely use
-        // {global_frame}/{robot_base_frame} placeholders.
         blackboard->set("global_frame", feedback_utils.global_frame);  // NOLINT
-        blackboard->set("robot_base_frame",
-                        feedback_utils.robot_frame);  // NOLINT
-        // Default timeout (seconds) for local-survival branch in degraded
-        // localization; tree may override it via blackboard remapping.
+        blackboard->set("robot_base_frame", feedback_utils.robot_frame);  // NOLINT
         blackboard->set("local_survival_timeout",
                         feedback_utils.local_survival_timeout);  // NOLINT
     }
 
-    /**
-     * @brief 析构
-     */
     virtual ~BehaviorTreeNavigator() = default;
 
-    /**
-     * @brief 获取默认的 BT XML 文件路径
-     * @return 默认的 BT XML 文件路径
-     */
     virtual std::string GetDefaultBTFilepath() = 0;
-
-    /**
-     * @brief 获取 Navigator 名称
-     * @return Navigator 名称
-     */
     virtual std::string GetName() = 0;
+
+    behavior_tree::BtActionServer<ActionT>& Bt() {
+        return *bt_;
+    }
+
+    const behavior_tree::BtActionServer<ActionT>& Bt() const {
+        return *bt_;
+    }
 
 protected:
     bool OnGoalReceived(std::shared_ptr<const typename ActionT::Goal> goal) {
@@ -204,8 +163,9 @@ protected:
 
     void OnCompletion(std::shared_ptr<typename ActionT::Result> result,
                       const BtStatus final_bt_status) {
-        if (plugin_muxer_)
+        if (plugin_muxer_) {
             plugin_muxer_->StopNavigating(GetName());
+        }
         GoalCompleted(result, final_bt_status);
     }
 
@@ -217,7 +177,7 @@ protected:
     virtual void GoalCompleted(std::shared_ptr<typename ActionT::Result> result,
                                const BtStatus final_bt_status) = 0;
 
-    std::unique_ptr<behavior_tree::BtActionServer<ActionT>> action_server_;
+    std::unique_ptr<behavior_tree::BtActionServer<ActionT>> bt_;
     FeedbackUtils feedback_utils_;
     NavigatorMuxer* plugin_muxer_;
 };

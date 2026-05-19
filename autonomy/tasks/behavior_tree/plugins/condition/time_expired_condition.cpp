@@ -30,7 +30,6 @@ TimeExpiredCondition::TimeExpiredCondition(const std::string& condition_name,
 
 void TimeExpiredCondition::initialize() {
     getInput("seconds", period_);
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     start_ = autonomy::commsgs::builtin_interfaces::Time::Now();
 }
 

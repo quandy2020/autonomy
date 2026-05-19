@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
@@ -72,7 +71,6 @@ private:
 
     double viapoint_achieved_radius_;
     double transform_tolerance_;
-    std::shared_ptr<::autolink::Node> node_;
     std::shared_ptr<autonomy::transform::Buffer> tf_;
     std::string robot_base_frame_;
 };

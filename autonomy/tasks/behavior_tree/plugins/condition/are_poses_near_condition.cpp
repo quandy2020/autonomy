@@ -29,14 +29,10 @@ namespace condition {
 ArePosesNearCondition::ArePosesNearCondition(const std::string& condition_name,
                                              const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf) {
-    auto node =
-        config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-    global_frame_ =
-        DeconflictPortAndParamFrame<std::string>(node, "global_frame", this);
+    GetInputOrBlackboard("global_frame", global_frame_);
 }
 
 void ArePosesNearCondition::initialize() {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     tf_ =
         config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
             "tf_buffer");

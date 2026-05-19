@@ -42,7 +42,6 @@ TruncatePathLocal::TruncatePathLocal(const std::string& name,
     tf_buffer_ =
         config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
             "tf_buffer");
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 }
 
 BT::NodeStatus TruncatePathLocal::tick() {

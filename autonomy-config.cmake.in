@@ -39,8 +39,6 @@ find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
 if (WIN32)
     find_package(glog REQUIRED)
 endif()
-find_package(absl ${QUIET_OR_REQUIRED_OPTION})
-
 # Find urdfdom dependencies (they are installed as part of autonomy)
 # These packages are installed alongside autonomy, so we need to find them
 # in the install directory relative to autonomy-config.cmake location

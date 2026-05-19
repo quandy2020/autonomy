@@ -18,7 +18,6 @@
 
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
@@ -70,7 +69,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     commsgs::builtin_interfaces::Time start_;
     commsgs::planning_msgs::Path prev_path_;
     double period_;

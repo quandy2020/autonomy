@@ -19,8 +19,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "absl/strings/str_cat.h"
 #include "autonomy/common/math/math_utils.hpp"
+#include "autonomy/common/str_cat.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {
@@ -151,7 +151,7 @@ void AABox2d::MergeFrom(const Vec2d& other_point) {
 }
 
 std::string AABox2d::DebugString() const {
-    return absl::StrCat("aabox2d ( center = ", center_.DebugString(),
+    return common::StrCat("aabox2d ( center = ", center_.DebugString(),
                         "  length = ", length_, "  width = ", width_, " )");
 }
 

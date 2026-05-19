@@ -19,7 +19,6 @@
 // #include <memory>
 // #include <queue>
 
-// #include "absl/memory/memory.h"
 // #include "openbot/common/thread_pool.hpp"
 // #include "gmock/gmock.h"
 // #include "gtest/gtest.h"
@@ -72,7 +71,7 @@
 // };
 
 // TEST_F(TaskTest, RunTask) {
-//   auto a = absl::make_unique<Task>();
+//   auto a = std::make_unique<Task>();
 //   MockCallback callback;
 //   a->SetWorkItem([&callback]() { callback.Run(); });
 //   EXPECT_EQ(a->GetState(), Task::NEW);
@@ -86,8 +85,8 @@
 // }
 
 // TEST_F(TaskTest, RunTaskWithDependency) {
-//   auto a = absl::make_unique<Task>();
-//   auto b = absl::make_unique<Task>();
+//   auto a = std::make_unique<Task>();
+//   auto b = std::make_unique<Task>();
 //   MockCallback callback_a;
 //   a->SetWorkItem([&callback_a]() { callback_a.Run(); });
 //   MockCallback callback_b;
@@ -117,10 +116,10 @@
 //   /*         c \
 //    *  a -->  b --> d
 //    */
-//   auto a = absl::make_unique<Task>();
-//   auto b = absl::make_unique<Task>();
-//   auto c = absl::make_unique<Task>();
-//   auto d = absl::make_unique<Task>();
+//   auto a = std::make_unique<Task>();
+//   auto b = std::make_unique<Task>();
+//   auto c = std::make_unique<Task>();
+//   auto d = std::make_unique<Task>();
 //   MockCallback callback_a;
 //   a->SetWorkItem([&callback_a]() { callback_a.Run(); });
 //   MockCallback callback_b;
@@ -160,7 +159,7 @@
 // }
 
 // TEST_F(TaskTest, RunWithCompletedDependency) {
-//   auto a = absl::make_unique<Task>();
+//   auto a = std::make_unique<Task>();
 //   MockCallback callback_a;
 //   a->SetWorkItem([&callback_a]() { callback_a.Run(); });
 //   auto shared_a = thread_pool()->Schedule(std::move(a)).lock();
@@ -169,7 +168,7 @@
 //   EXPECT_CALL(callback_a, Run()).Times(1);
 //   thread_pool()->RunNext();
 //   EXPECT_EQ(shared_a->GetState(), Task::COMPLETED);
-//   auto b = absl::make_unique<Task>();
+//   auto b = std::make_unique<Task>();
 //   MockCallback callback_b;
 //   b->SetWorkItem([&callback_b]() { callback_b.Run(); });
 //   b->AddDependency(shared_a);

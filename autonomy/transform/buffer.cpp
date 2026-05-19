@@ -18,7 +18,6 @@
 
 #include <thread>
 
-#include "absl/strings/str_cat.h"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/transform/tf2/exceptions.h"
 

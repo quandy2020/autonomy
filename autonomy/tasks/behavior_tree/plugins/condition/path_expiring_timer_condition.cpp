@@ -27,7 +27,6 @@ namespace condition {
 PathExpiringTimerCondition::PathExpiringTimerCondition(
     const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), period_(1.0), first_time_(true) {
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
 }
 
 BT::NodeStatus PathExpiringTimerCondition::tick() {

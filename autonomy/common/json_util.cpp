@@ -16,6 +16,7 @@
 
 #include "autonomy/common/json_util.hpp"
 
+#include "autonomy/common/string_util.hpp"
 #include "google/protobuf/util/json_util.h"
 
 namespace autonomy {
@@ -97,7 +98,7 @@ bool JsonUtil::GetJsonByPath(const nlohmann::json& json,
 
 bool JsonUtil::GetStringByPath(const Json& json, const std::string& path,
                                std::string* value) {
-    std::vector<std::string> paths = absl::StrSplit(path, '.');
+    std::vector<std::string> paths = common::StringSplit(path, ".");
     std::string key = paths.back();
     paths.pop_back();
     Json upper_layer_json;
@@ -153,7 +154,7 @@ bool JsonUtil::GetBoolean(const nlohmann::json& json, const std::string& key,
 
 bool JsonUtil::GetBooleanByPath(const Json& json, const std::string& path,
                                 bool* value) {
-    std::vector<std::string> paths = absl::StrSplit(path, '.');
+    std::vector<std::string> paths = common::StringSplit(path, ".");
     std::string key = paths.back();
     paths.pop_back();
     Json upper_layer_json;

@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
@@ -102,7 +101,6 @@ protected:
     void cleanup() {}
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     std::shared_ptr<autonomy::transform::Buffer> tf_;
 
     double goal_reached_tol_;

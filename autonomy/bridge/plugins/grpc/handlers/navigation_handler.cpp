@@ -52,7 +52,7 @@ void SendNavigationHandler::OnRequest(
     //                 << status.error_message();
     //     }
     // }
-    // Send(absl::make_unique<google::protobuf::Empty>());
+    // Send(std::make_unique<google::protobuf::Empty>());
 }
 
 }  // namespace handlers

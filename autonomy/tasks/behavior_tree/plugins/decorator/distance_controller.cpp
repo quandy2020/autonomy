@@ -32,7 +32,6 @@ DistanceController::DistanceController(const std::string& name,
                                        const BT::NodeConfiguration& conf)
     : BT::DecoratorNode(name, conf), distance_(1.0), first_time_(false) {
     getInput("distance", distance_);
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     tf_ =
         config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
             "tf_buffer");
@@ -41,10 +40,8 @@ DistanceController::DistanceController(const std::string& name,
         transform_tolerance_ = 0.1;  // Default value
     }
 
-    global_frame_ =
-        DeconflictPortAndParamFrame<std::string>(node_, "global_frame", this);
-    robot_base_frame_ = DeconflictPortAndParamFrame<std::string>(
-        node_, "robot_base_frame", this);
+    GetInputOrBlackboard("global_frame", global_frame_);
+    GetInputOrBlackboard("robot_base_frame", robot_base_frame_);
 }
 
 inline BT::NodeStatus DistanceController::tick() {

@@ -21,11 +21,8 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/log.hpp"
-#include "autonomy/common/client_wrapper.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/server_wrapper.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
@@ -35,6 +32,28 @@
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
+
+template <typename Request, typename Response>
+class BtServiceClient
+{
+public:
+    explicit BtServiceClient(const std::string& service_name)
+        : service_name_(service_name) {}
+
+    bool WaitForService(std::chrono::milliseconds /*timeout*/) {
+        return true;
+    }
+
+    std::shared_future<std::shared_ptr<Response>> AsyncSendRequest(
+        std::shared_ptr<Request> /*request*/) {
+        std::promise<std::shared_ptr<Response>> promise;
+        promise.set_value(std::make_shared<Response>());
+        return promise.get_future().share();
+    }
+
+private:
+    std::string service_name_;
+};
 
 /**
  * @brief Abstract class representing a service based BT node
@@ -99,32 +118,12 @@ public:
         max_timeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(
             bt_loop_duration * 0.5);
 
-        // Now that we have node_ to use, create the service client for this BT
-        // service
-        createROSInterfaces();
-    }
-
-    /**
-     * @brief Function to create ROS interfaces
-     */
-    void createROSInterfaces() {
-        std::string service_new;
-        getInput("service_name", service_new);
-        if (service_new != service_name_ || !service_client_) {
-            service_name_ = service_new;
-            node_ =
-                config()
-                    .blackboard
-                    ->template get<std::shared_ptr<::autolink::Node>>("node");
-            service_client_ =
-                node_->CreateClient<typename ServiceT::Request,
-                                    typename ServiceT::Response>(service_name_);
-            if (!service_client_) {
-                AERROR << "Failed to create service client for "
-                       << service_name_;
-                throw std::runtime_error("Failed to create service client");
-            }
+        if (service_name_.empty()) {
+            getInput("service_name", service_name_);
         }
+        service_client_ = std::make_shared<
+            BtServiceClient<typename ServiceT::Request,
+                              typename ServiceT::Response>>(service_name_);
     }
 
     /**
@@ -280,13 +279,11 @@ protected:
     }
 
     std::string service_name_, service_node_name_;
-    std::shared_ptr<::autolink::Client<typename ServiceT::Request,
-                                       typename ServiceT::Response>>
-        service_client_;
     std::shared_ptr<typename ServiceT::Request> request_;
+    std::shared_ptr<BtServiceClient<typename ServiceT::Request,
+                                    typename ServiceT::Response>>
+        service_client_;
 
-    // The node that will be used for any ROS operations
-    std::shared_ptr<::autolink::Node> node_;
 
     // The timeout value while to use in the tick loop while waiting for a
     // result from the server

@@ -43,12 +43,10 @@ class OdomSmoother
 public:
     /**
      * @brief Constructor that subscribes to an Odometry topic
-     * @param parent NodeHandle for creating subscriber
      * @param filter_duration Duration for odom history (seconds)
      * @param odom_topic Topic on which odometry should be received
      */
-    explicit OdomSmoother(const std::shared_ptr<::autolink::Node>& parent,
-                          double filter_duration = 0.3,
+    explicit OdomSmoother(double filter_duration = 0.3,
                           const std::string& odom_topic = "odom");
 
     /**

@@ -18,10 +18,9 @@
 
 #include <functional>
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
-#include "absl/types/optional.h"
 #include "autonomy/sensor/data.hpp"
 
 namespace autonomy {
@@ -42,7 +41,7 @@ public:
     // Adds a costmap to produce sorted sensor output for. Calls 'callback'
     // for each collated sensor data.
     virtual void AddToCostmap(
-        const absl::flat_hash_set<std::string>& expected_sensor_ids,
+        const std::unordered_set<std::string>& expected_sensor_ids,
         const Callback& callback) = 0;
 
     // Marks 'costmap' as finished.

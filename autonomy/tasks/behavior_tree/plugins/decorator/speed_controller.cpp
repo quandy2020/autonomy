@@ -36,7 +36,6 @@ SpeedController::SpeedController(const std::string& name,
       min_speed_(0.0),
       max_speed_(0.5) {
     // node_ =
-    node_ = config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
     // TODO: Get node from blackboard
 
     getInput("min_rate", min_rate_);

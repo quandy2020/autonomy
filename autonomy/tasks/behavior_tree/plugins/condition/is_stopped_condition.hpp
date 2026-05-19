@@ -19,7 +19,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
@@ -82,7 +81,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     double velocity_threshold_;
     std::chrono::milliseconds duration_stopped_;
     commsgs::builtin_interfaces::Time stopped_stamp_;

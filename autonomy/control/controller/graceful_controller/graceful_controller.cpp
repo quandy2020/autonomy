@@ -70,11 +70,6 @@ void GracefulController::Configure(
 }
 
 void GracefulController::Cleanup() {
-    // Cleanup resources - reset smart pointers
-    transformed_plan_pub_.reset();
-    local_plan_pub_.reset();
-    motion_target_pub_.reset();
-    slowdown_pub_.reset();
     collision_checker_.reset();
     path_handler_.reset();
     control_law_.reset();
@@ -262,22 +257,7 @@ uint32 GracefulController::ComputeVelocityCommands(
         // Compute velocity at this moment if valid target pose is found
         if (ValidateTargetPose(target_pose, dist_to_target, dist_to_goal,
                                local_plan, costmap_transform, cmd_vel)) {
-            // Publish the selected target_pose
-            if (motion_target_pub_) {
-                motion_target_pub_->Write(target_pose);
-            }
-            // Publish marker for slowdown radius around motion target for
-            // debugging / visualization
-            auto slowdown_marker =
-                CreateSlowdownMarker(target_pose, slowdown_radius);
-            if (slowdown_pub_) {
-                slowdown_pub_->Write(slowdown_marker);
-            }
-            // Publish the local plan
             local_plan.header = transformed_plan.header;
-            if (local_plan_pub_) {
-                local_plan_pub_->Write(local_plan);
-            }
             // Successfully found velocity command
             message = "";
             return 0;  // Return success code

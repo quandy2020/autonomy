@@ -152,9 +152,7 @@ void StaticTransform::SendTransform(
         }
     }
 
-    // Set timestamp
     transform_stampeds_.header.stamp = commsgs::builtin_interfaces::Time::Now();
-    writer_->Write(transform_stampeds_);
 }
 
 }  // namespace transform

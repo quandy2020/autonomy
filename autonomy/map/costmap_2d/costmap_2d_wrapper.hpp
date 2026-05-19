@@ -76,12 +76,9 @@ public:
      * @brief A constructor for nautonomy::map::costmap_2d::Costmap2DWrapper
      * @param options Additional options to control creation of the node.
      * @param name The name of the costmap wrapper
-     * @param node Optional autolink Node pointer for creating
-     * publishers/subscribers in layers
      */
     Costmap2DWrapper(const proto::Costmap2DOptions& options,
-                     const std::string& name = "",
-                     autolink::Node* node = nullptr);
+                     const std::string& name = "");
 
     /**
      * @brief A Destructor for autonomy::map::costmap_2d::Costmap2DWrapper

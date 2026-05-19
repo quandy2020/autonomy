@@ -20,7 +20,6 @@
 #include <memory>
 #include <string>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "behaviortree_cpp/condition_node.h"
@@ -78,7 +77,6 @@ public:
     }
 
 private:
-    std::shared_ptr<::autolink::Node> node_;
     std::shared_ptr<autonomy::transform::Buffer> tf_;
 
     std::atomic<bool> was_found_;

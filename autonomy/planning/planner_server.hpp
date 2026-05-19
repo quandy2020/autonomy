@@ -21,27 +21,14 @@
 #include <string>
 #include <unordered_map>
 
-#include "autolink/class_loader/class_loader.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/common/simple_action_server.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
-// Forward declarations for autolink communication
-namespace autolink {
-template <typename T>
-class Reader;
-template <typename T>
-class Writer;
-class Node;
-}  // namespace autolink
-
-// 前向声明
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
@@ -63,22 +50,10 @@ public:
     using TfBuffer = autonomy::transform::Buffer;
 
     /**
-     * Define ClassLoader type
-     */
-    using ClassLoader = ::autolink::class_loader::ClassLoader;
-
-    /**
      * Define PlannerMap type
      */
     using PlannerMap =
         std::unordered_map<std::string, common::GlobalPlanner::SharedPtr>;
-
-    /**
-     * Action types
-     */
-    using Action =
-        autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction;
-    using ActionServer = autonomy::common::SimpleActionServer<Action>;
 
     /**
      * Define TaskBridge::SharedPtr type
@@ -181,8 +156,6 @@ protected:
 
     // All planners
     PlannerMap planners_;
-    std::unique_ptr<ClassLoader> gp_loader_{nullptr};
-
     std::vector<std::string> default_ids_;
     std::vector<std::string> default_types_;
     std::vector<std::string> planner_ids_;
@@ -196,12 +169,6 @@ protected:
     // Global Costmap
     map::costmap_2d::Costmap2DWrapper::SharedPtr costmap_wrapper_{nullptr};
     map::costmap_2d::Costmap2D* costmap_{nullptr};
-
-    // Node
-    std::shared_ptr<::autolink::Node> node_{nullptr};
-    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-        path_publisher_{nullptr};
-    std::shared_ptr<ActionServer> action_server_{nullptr};
     std::atomic<bool> costmap_received_{false};
     std::mutex costmap_update_mutex_;
 

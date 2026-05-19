@@ -20,9 +20,9 @@
 #include <cmath>
 #include <utility>
 
-#include "absl/strings/str_cat.h"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/common/math/polygon2d.hpp"
+#include "autonomy/common/str_cat.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {
@@ -422,7 +422,7 @@ void Box2d::LateralExtend(const double extension_length) {
 }
 
 std::string Box2d::DebugString() const {
-    return absl::StrCat("box2d ( center = ", center_.DebugString(),
+    return common::StrCat("box2d ( center = ", center_.DebugString(),
                         "  heading = ", heading_, "  length = ", length_,
                         "  width = ", width_, " )");
 }

@@ -107,8 +107,6 @@ private:
         period_ = 1.0 / rate;
     }
 
-    std::shared_ptr<::autolink::Node> node_;
-
     // To keep track of time to reset
     commsgs::builtin_interfaces::Time start_;
 

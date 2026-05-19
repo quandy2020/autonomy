@@ -22,21 +22,16 @@
 #pragma once
 
 #include <string>
+#include <string_view>
+#include <vector>
 
-#include "absl/strings/str_format.h"
 #include "autonomy/common/future.hpp"
 
 #define FORMAT_TIMESTAMP(timestamp) \
     std::fixed << std::setprecision(9) << timestamp
 
-/**
- * @namespace autonomy::common
- * @brief autonomy::common
- */
 namespace autonomy {
 namespace common {
-
-using absl::StrFormat;
 
 struct DebugStringFormatter {
     template <class T>

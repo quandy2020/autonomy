@@ -23,7 +23,6 @@
 #include <chrono>
 #include <numeric>
 
-#include "absl/memory/memory.h"
 #include "autonomy/common/task.hpp"
 #include "glog/logging.h"
 
@@ -40,7 +39,7 @@ void ThreadPoolInterface::SetThreadPool(Task* task) {
 
 ThreadPool::ThreadPool(int num_threads) {
     CHECK_GT(num_threads, 0) << "ThreadPool requires a positive num_threads!";
-    absl::MutexLock locker(&mutex_);
+    std::lock_guard<std::mutex> locker(mutex_);
     for (int i = 0; i != num_threads; ++i) {
         pool_.emplace_back([this]() { ThreadPool::DoWork(); });
     }
@@ -48,27 +47,29 @@ ThreadPool::ThreadPool(int num_threads) {
 
 ThreadPool::~ThreadPool() {
     {
-        absl::MutexLock locker(&mutex_);
+        std::lock_guard<std::mutex> locker(mutex_);
         CHECK(running_);
         running_ = false;
     }
+    cv_.notify_all();
     for (std::thread& thread : pool_) {
         thread.join();
     }
 }
 
 void ThreadPool::NotifyDependenciesCompleted(Task* task) {
-    absl::MutexLock locker(&mutex_);
+    std::lock_guard<std::mutex> locker(mutex_);
     auto it = tasks_not_ready_.find(task);
     CHECK(it != tasks_not_ready_.end());
     task_queue_.push_back(it->second);
     tasks_not_ready_.erase(it);
+    cv_.notify_one();
 }
 
 std::weak_ptr<Task> ThreadPool::Schedule(std::unique_ptr<Task> task) {
     std::shared_ptr<Task> shared_task;
     {
-        absl::MutexLock locker(&mutex_);
+        std::lock_guard<std::mutex> locker(mutex_);
         auto insert_result = tasks_not_ready_.insert(
             std::make_pair(task.get(), std::move(task)));
         CHECK(insert_result.second) << "Schedule called twice";
@@ -80,19 +81,15 @@ std::weak_ptr<Task> ThreadPool::Schedule(std::unique_ptr<Task> task) {
 
 void ThreadPool::DoWork() {
 #ifdef __linux__
-    // This changes the per-thread nice level of the current thread on Linux. We
-    // do this so that the background work done by the thread pool is not taking
-    // away CPU resources from more important foreground threads.
     CHECK_NE(nice(10), -1);
 #endif
-    const auto predicate = [this]() {
-        return !task_queue_.empty() || !running_;
-    };
     for (;;) {
         std::shared_ptr<Task> task;
         {
-            absl::MutexLock locker(&mutex_);
-            mutex_.Await(absl::Condition(&predicate));
+            std::unique_lock<std::mutex> locker(mutex_);
+            cv_.wait(locker, [this]() {
+                return !task_queue_.empty() || !running_;
+            });
             if (!task_queue_.empty()) {
                 task = std::move(task_queue_.front());
                 task_queue_.pop_front();

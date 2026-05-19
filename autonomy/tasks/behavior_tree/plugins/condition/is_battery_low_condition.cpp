@@ -45,13 +45,8 @@ void IsBatteryLowCondition::createROSInterfaces() {
 
     // Only create a new subscriber if the topic has changed or subscriber is
     // empty
-    if (battery_topic_new != battery_topic_ || !battery_sub_) {
+    if (battery_topic_new != battery_topic_) {
         battery_topic_ = battery_topic_new;
-        node_ =
-            config().blackboard->get<std::shared_ptr<::autolink::Node>>("node");
-        battery_sub_ = node_->CreateReader<commsgs::sensor_msgs::BatteryState>(
-            battery_topic_, std::bind(&IsBatteryLowCondition::batteryCallback,
-                                      this, std::placeholders::_1));
     }
 }
 

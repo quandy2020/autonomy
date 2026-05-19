@@ -23,10 +23,10 @@
 
 #include "Eigen/Core"
 #include "Eigen/Geometry"
-#include "absl/strings/substitute.h"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/math/math.hpp"
 #include "autonomy/common/port.hpp"
+#include "autonomy/common/string_util.hpp"
 
 namespace autonomy {
 namespace common {
@@ -87,8 +87,9 @@ public:
     }
 
     std::string DebugString() const {
-        return absl::Substitute("{ t: [$0, $1], r: [$2] }", translation().x(),
-                                translation().y(), rotation().angle());
+        return common::StringPrintf("{ t: [%f, %f], r: [%f] }",
+                                    translation().x(), translation().y(),
+                                    rotation().angle());
     }
 
 private:
@@ -180,10 +181,10 @@ public:
     }
 
     std::string DebugString() const {
-        return absl::Substitute("{ t: [$0, $1, $2], q: [$3, $4, $5, $6] }",
-                                translation().x(), translation().y(),
-                                translation().z(), rotation().w(),
-                                rotation().x(), rotation().y(), rotation().z());
+        return common::StringPrintf(
+            "{ t: [%f, %f, %f], q: [%f, %f, %f, %f] }", translation().x(),
+            translation().y(), translation().z(), rotation().w(),
+            rotation().x(), rotation().y(), rotation().z());
     }
 
     bool IsValid() const {

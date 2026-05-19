@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/autolink.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
@@ -76,7 +75,6 @@ public:
 
 private:
     bool first_time;
-    std::shared_ptr<::autolink::Node> node_;
     commsgs::geometry_msgs::PoseStamped goal_;
     commsgs::planning_msgs::Goals goals_;
 };
