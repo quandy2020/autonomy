@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/optimization/core/problem.hpp"
 #include "autonomy/common/optimization/ipopt/ipopt_solver.hpp"
 #include "autonomy/common/optimization/test/test_vars_constr_cost.hpp"

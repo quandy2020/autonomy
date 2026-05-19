@@ -24,15 +24,8 @@ namespace autonomy {
 namespace transform {
 
 StaticTransform::StaticTransform(
-    const autonomy::transform::proto::TransformOptions& options,
-    ::autolink::Node* node)
-    : static_transform_options_(options), node_(node) {
-    ::autolink::proto::RoleAttributes attr;
-    attr.set_channel_name("/tf_static");
-    attr.mutable_qos_profile()->CopyFrom(
-        ::autolink::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
-    writer_ =
-        node_->CreateWriter<commsgs::geometry_msgs::TransformStampeds>(attr);
+    const autonomy::transform::proto::TransformOptions& options)
+    : static_transform_options_(options) {
     SendTransforms();
 }
 

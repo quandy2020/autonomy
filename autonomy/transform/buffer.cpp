@@ -35,30 +35,7 @@ Buffer::Buffer() : BufferCore() {
 }
 
 int Buffer::Init() {
-    const std::string node_name =
-        absl::StrCat("transform_listener_", Time::Now().Nanoseconds());
-    node_ = ::autolink::CreateNode(node_name);
-    ::autolink::proto::RoleAttributes attr;
-    attr.set_channel_name("/tf");
-    message_subscriber_tf_ =
-        node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
-            attr,
-            [&](const std::shared_ptr<
-                const commsgs::geometry_msgs::TransformStampeds>& msg_evt) {
-                SubscriptionCallbackImpl(msg_evt, false);
-            });
-
-    ::autolink::proto::RoleAttributes attr_static;
-    attr_static.set_channel_name("/tf_static");
-    message_subscriber_tf_static_ =
-        node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
-            attr_static,
-            [&](const std::shared_ptr<
-                const commsgs::geometry_msgs::TransformStampeds>& msg_evt) {
-                SubscriptionCallbackImpl(msg_evt, true);
-            });
-
-    return ::autolink::SUCC;
+    return 0;
 }
 
 commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(

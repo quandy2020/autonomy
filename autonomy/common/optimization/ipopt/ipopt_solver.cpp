@@ -16,7 +16,7 @@
 
 #include "autonomy/common/optimization/ipopt/ipopt_solver.hpp"
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/optimization/ipopt/ipopt_adapter.hpp"
 
 namespace autonomy {

@@ -28,7 +28,6 @@
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/smoother_interface.hpp"
 
 namespace autonomy {
@@ -50,7 +49,7 @@ public:
     /**
      * @brief A destructor for nav2_smoother::SimpleSmoother
      */
-    ~SimpleSmoother() override = default;
+    ~SimpleSmoother() override;
 
     void Configure(
         std::string name, std::shared_ptr<void> /*costmap_sub*/,

@@ -43,8 +43,6 @@
 #include <thread>
 #include <vector>
 
-#include "autolink/class_loader/class_loader.hpp"
-#include "autolink/class_loader/class_loader_manager.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
@@ -60,11 +58,6 @@
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
-// Forward declaration for autolink Node
-namespace autolink {
-class Node;
-}
-
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
@@ -73,8 +66,6 @@ class Costmap2DWrapper : public common::MapInterface
 {
 public:
     using TfBuffer = autonomy::transform::Buffer;
-    using ClassLoader = ::autolink::class_loader::ClassLoader;
-    using ClassLoaderManager = ::autolink::class_loader::ClassLoaderManager;
 
     /**
      * Define Costmap2DWrapper::SharedPtr type
@@ -309,8 +300,6 @@ protected:
         map_update_thread_;  ///< @brief A thread for updating the map
     commsgs::builtin_interfaces::Time last_publish_{0, 0};
     // builtin_interfaces::builtin_interfaces::Duration publish_cycle_{1, 0};
-    // ClassLoaderManager for loading Layer plugins
-    ClassLoaderManager plugin_loader_manager_;
 
     bool always_send_full_costmap_{false};
     std::string footprint_;
@@ -355,9 +344,6 @@ protected:
 
     // options for costmap 2D
     proto::Costmap2DOptions options_;
-
-    // autolink Node pointer for layers and filters
-    autolink::Node* node_{nullptr};
 };
 
 }  // namespace costmap_2d

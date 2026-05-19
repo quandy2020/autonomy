@@ -29,7 +29,6 @@
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
 #include "autonomy/planning/common/smoother_interface.hpp"
 

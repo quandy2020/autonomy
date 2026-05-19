@@ -21,7 +21,7 @@
 #include <exception>
 #include <iostream>
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/string_util.hpp"
 
 // Option checker macros. In contrast to glog, this function does not abort the

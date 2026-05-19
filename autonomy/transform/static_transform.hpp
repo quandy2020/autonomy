@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/transform/proto/transform_options.pb.h"
@@ -38,10 +37,8 @@ public:
     /**
      * @brief Constructor
      * @param options The options for the static transform
-     * @param node The node to use for the static transform
      */
-    StaticTransform(const autonomy::transform::proto::TransformOptions& options,
-                    ::autolink::Node* node = nullptr);
+    StaticTransform(const autonomy::transform::proto::TransformOptions& options);
 
     /**
      * @brief Destructor
@@ -80,16 +77,8 @@ private:
         const std::string& file_path,
         std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
 
-    // node
-    ::autolink::Node* node_;
-
     // transform_stampeds
     commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
-
-    // writer
-    std::shared_ptr<
-        ::autolink::Writer<commsgs::geometry_msgs::TransformStampeds>>
-        writer_;
 
     // static_transform_options
     autonomy::transform::proto::TransformOptions static_transform_options_;

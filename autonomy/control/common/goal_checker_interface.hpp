@@ -22,7 +22,14 @@
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+
+namespace autonomy {
+namespace map {
+namespace costmap_2d {
+class Costmap2DWrapper;
+}  // namespace costmap_2d
+}  // namespace map
+}  // namespace autonomy
 
 namespace autonomy {
 namespace control {

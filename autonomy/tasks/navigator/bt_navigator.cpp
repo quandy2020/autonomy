@@ -23,7 +23,7 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
 

@@ -19,7 +19,6 @@
 #include "autonomy/bridge/common/bridge_interface.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
-#include "autonomy/localization/common/localization_interface.hpp"
 #include "autonomy/map/common/map_interface.hpp"
 #include "autonomy/perception/common/perception_interface.hpp"
 #include "autonomy/prediction/common/prediction_interface.hpp"

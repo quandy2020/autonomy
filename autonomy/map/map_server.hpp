@@ -22,8 +22,6 @@
 #include <mutex>
 #include <string>
 
-#include "autolink/autolink.hpp"
-#include "autolink/timer/timer.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/proto/map_options.pb.h"
@@ -101,12 +99,6 @@ protected:
 
     // 配置选项
     proto::MapOptions options_;
-
-    // autolink 节点
-    std::shared_ptr<::autolink::Node> node_{nullptr};
-    std::shared_ptr<autolink::Writer<commsgs::map_msgs::OccupancyGrid>>
-        static_map_writer_{nullptr};
-    std::shared_ptr<::autolink::Timer> static_map_timer_{nullptr};
 
     // map message
     commsgs::map_msgs::OccupancyGrid::SharedPtr static_map_msg_{nullptr};

@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "autolink/class_loader/class_loader_register_macro.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/utils.h"
@@ -102,7 +101,3 @@ bool SimpleGoalChecker::GetTolerances(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
-
-// Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::SimpleGoalChecker,
-                            autonomy::control::common::GoalChecker)

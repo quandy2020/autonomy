@@ -22,7 +22,7 @@
 #include <string>
 
 #include "autolink/autolink.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/client_wrapper.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/server_wrapper.hpp"

@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/concatenate_paths_action.hpp"
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 

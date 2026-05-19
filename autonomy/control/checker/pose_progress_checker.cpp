@@ -64,7 +64,3 @@ double PoseProgressChecker::PoseAngleDistance(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
-
-// Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::PoseProgressChecker,
-                            autonomy::control::common::ProgressChecker)

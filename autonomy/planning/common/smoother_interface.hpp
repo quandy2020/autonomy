@@ -23,6 +23,14 @@
 #include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
+namespace map {
+namespace costmap_2d {
+class Costmap2DWrapper;
+}  // namespace costmap_2d
+}  // namespace map
+}  // namespace autonomy
+
+namespace autonomy {
 namespace planning {
 namespace common {
 

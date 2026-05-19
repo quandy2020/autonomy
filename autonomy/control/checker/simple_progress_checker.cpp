@@ -72,7 +72,3 @@ double SimpleProgressChecker::PoseDistance(
 }  // namespace checker
 }  // namespace control
 }  // namespace autonomy
-
-// Plugins
-CLASS_LOADER_REGISTER_CLASS(autonomy::control::checker::SimpleProgressChecker,
-                            autonomy::control::common::ProgressChecker)

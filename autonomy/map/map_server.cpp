@@ -18,7 +18,7 @@
 
 #include <unistd.h>  // for getpid()
 
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/map/constants.hpp"
 #include "autonomy/map/costmap_2d/map_io.hpp"
@@ -30,15 +30,6 @@ namespace map {
 MapServer::MapServer(const proto::MapOptions& options,
                      const std::string& node_name)
     : options_{options} {
-    // 创建 autolink 节点
-    std::string actual_node_name =
-        node_name.empty() ? kMapServerNodeName : node_name;
-    // 添加进程ID以确保节点名唯一（避免共享内存冲突）
-    actual_node_name += "_" + std::to_string(getpid());
-    node_ = ::autolink::CreateNode(actual_node_name, "");
-
-    AINFO << "MapServer created with node name: " << actual_node_name;
-
     // 检查 map_file 是否有效
     bool has_static_map = !options_.map_file().empty();
     if (has_static_map) {
@@ -52,14 +43,8 @@ MapServer::MapServer(const proto::MapOptions& options,
         AWARN << "Static map file is not configured.";
     }
 
-    // 创建静态地图发布器
-    std::string static_map_topic =
-        options_.map_topic().empty() ? "map" : options_.map_topic();
-    static_map_writer_ =
-        node_->CreateWriter<commsgs::map_msgs::OccupancyGrid>(static_map_topic);
-
     AINFO << "MapServer initialized successfully. Static map topic: "
-          << static_map_topic;
+          << options_.map_topic();
 }
 
 MapServer::~MapServer() {

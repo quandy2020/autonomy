@@ -19,7 +19,6 @@
 #include <string>
 
 #include "autonomy/map/proto/map_2d_option.pb.h"
-#include "autonomy/map/proto/map_3d_option.pb.h"
 #include "autonomy/map/proto/map_options.pb.h"
 
 namespace autonomy {
@@ -37,14 +36,6 @@ proto::MapOptions LoadOptions(
  * @return Costmap2DOptions 配置对象
  */
 proto::Costmap2DOptions CreateCostmap2DOptions(
-    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
-
-/**
- * @brief 从 Lua 参数字典创建 Costmap3DOptions
- * @param parameter_dictionary Lua 参数字典
- * @return Costmap3DOptions 配置对象
- */
-proto::Costmap3DOptions CreateCostmap3DOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 }  // namespace map

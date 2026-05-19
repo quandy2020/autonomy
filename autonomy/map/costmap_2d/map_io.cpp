@@ -18,27 +18,17 @@
 
 #include <libgen.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <mutex>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "Magick++.h"
+#include <opencv2/imgcodecs.hpp>
 
-namespace {
-// 确保 ImageMagick 只初始化一次（线程安全）
-std::once_flag g_magick_init_flag;
-std::mutex g_magick_mutex;  // 保护 ImageMagick 操作
-
-void InitMagickOnce() {
-    std::call_once(g_magick_init_flag,
-                   []() { Magick::InitializeMagick(nullptr); });
-}
-}  // namespace
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/map/costmap_2d/map_mode.hpp"
@@ -47,6 +37,50 @@ void InitMagickOnce() {
 #include "autonomy/transform/tf2/LinearMath/Matrix3x3.h"
 #include "autonomy/transform/tf2/LinearMath/Quaternion.h"
 #include "yaml-cpp/yaml.h"
+namespace {
+constexpr double kPixelMax = 255.0;
+
+double ComputeShade(const cv::Mat& img, int x, int y,
+                    autonomy::map::costmap_2d::MapMode mode,
+                    bool* has_transparency = nullptr) {
+    const int channels = img.channels();
+    if (channels == 1) {
+        return img.at<uint8_t>(y, x) / kPixelMax;
+    }
+
+    uint8_t red = 0;
+    uint8_t green = 0;
+    uint8_t blue = 0;
+    uint8_t alpha = 255;
+    if (channels == 4) {
+        const cv::Vec4b pixel = img.at<cv::Vec4b>(y, x);
+        blue = pixel[0];
+        green = pixel[1];
+        red = pixel[2];
+        alpha = pixel[3];
+        if (has_transparency != nullptr) {
+            *has_transparency = (alpha != 255);
+        }
+    } else {
+        const cv::Vec3b pixel = img.at<cv::Vec3b>(y, x);
+        blue = pixel[0];
+        green = pixel[1];
+        red = pixel[2];
+    }
+
+    std::vector<double> values = {red / kPixelMax, green / kPixelMax,
+                                  blue / kPixelMax};
+    if (mode == autonomy::map::costmap_2d::MapMode::Trinary && channels == 4) {
+        values.push_back((kPixelMax - alpha) / kPixelMax);
+    }
+
+    double sum = 0.0;
+    for (double value : values) {
+        sum += value;
+    }
+    return sum / static_cast<double>(values.size());
+}
+}  // namespace
 
 namespace autonomy {
 namespace map {
@@ -153,18 +187,18 @@ LoadParameters loadMapYaml(const std::string& yaml_filename) {
 
 void loadMapFromFile(const LoadParameters& load_parameters,
                      commsgs::map_msgs::OccupancyGrid& map) {
-    // 确保 ImageMagick 只初始化一次，并加锁保护所有 ImageMagick 操作
-    InitMagickOnce();
-    std::lock_guard<std::mutex> lock(g_magick_mutex);
-
     commsgs::map_msgs::OccupancyGrid msg;
 
     AINFO << "[map_io] Loading image_file: " << load_parameters.image_file_name;
-    Magick::Image img(load_parameters.image_file_name);
+    cv::Mat img =
+        cv::imread(load_parameters.image_file_name, cv::IMREAD_UNCHANGED);
+    if (img.empty()) {
+        throw std::runtime_error("Failed to load image: " +
+                               load_parameters.image_file_name);
+    }
 
-    // Copy the image data into the map structure
-    msg.info.width = img.size().width();
-    msg.info.height = img.size().height();
+    msg.info.width = static_cast<uint32_t>(img.cols);
+    msg.info.height = static_cast<uint32_t>(img.rows);
 
     msg.info.resolution = load_parameters.resolution;
     msg.info.origin.position.x = load_parameters.origin[0];
@@ -173,35 +207,19 @@ void loadMapFromFile(const LoadParameters& load_parameters,
     msg.info.origin.orientation =
         utils::OrientationAroundZAxis(load_parameters.origin[2]);
 
-    // Allocate space to hold the data
     msg.data.resize(msg.info.width * msg.info.height);
 
-    // Copy pixel data into the map structure
     for (size_t y = 0; y < msg.info.height; y++) {
+        const int src_y = static_cast<int>(y);
         for (size_t x = 0; x < msg.info.width; x++) {
-            auto pixel = img.pixelColor(x, y);
+            const int src_x = static_cast<int>(x);
+            bool has_transparency = false;
+            const double shade =
+                ComputeShade(img, src_x, src_y, load_parameters.mode,
+                             &has_transparency);
 
-            std::vector<Magick::Quantum> channels = {
-                pixel.redQuantum(), pixel.greenQuantum(), pixel.blueQuantum()};
-            if (load_parameters.mode == MapMode::Trinary && img.matte()) {
-                // To preserve existing behavior, average in alpha with color
-                // channels in Trinary mode. CAREFUL. alpha is inverted from
-                // what you might expect. High = transparent, low = opaque
-                channels.push_back(MaxRGB - pixel.alphaQuantum());
-            }
-            double sum = 0;
-            for (auto c : channels) {
-                sum += c;
-            }
-            /// on a scale from 0.0 to 1.0 how bright is the pixel?
-            double shade =
-                Magick::ColorGray::scaleQuantumToDouble(sum / channels.size());
-
-            // If negate is true, we consider blacker pixels free, and whiter
-            // pixels occupied. Otherwise, it's vice versa.
-            /// on a scale from 0.0 to 1.0, how occupied is the map cell (before
-            /// thresholding)?
-            double occ = (load_parameters.negate ? shade : 1.0 - shade);
+            const double occ =
+                (load_parameters.negate ? shade : 1.0 - shade);
 
             int8_t map_cell;
             switch (load_parameters.mode) {
@@ -215,7 +233,7 @@ void loadMapFromFile(const LoadParameters& load_parameters,
                     }
                     break;
                 case MapMode::Scale:
-                    if (pixel.alphaQuantum() != OpaqueOpacity) {
+                    if (has_transparency) {
                         map_cell = utils::OCC_GRID_UNKNOWN;
                     } else if (load_parameters.occupied_thresh < occ) {
                         map_cell = utils::OCC_GRID_OCCUPIED;
@@ -246,8 +264,6 @@ void loadMapFromFile(const LoadParameters& load_parameters,
         }
     }
 
-    // Since loadMapFromFile() does not belong to any node, publishing in a
-    // system time.
     msg.info.map_load_time = Time::Now();
     msg.header.frame_id = "map";
     msg.header.stamp = Time::Now();
@@ -301,9 +317,6 @@ LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file,
  * @throw std::exception in case of inconsistent parameters
  */
 void checkSaveParameters(SaveParameters& save_parameters) {
-    // 确保 ImageMagick 只初始化一次
-    InitMagickOnce();
-
     // Checking map file name
     if (save_parameters.map_file_name == "") {
         // rclcpp::Clock clock(RCL_SYSTEM_TIME);
@@ -372,19 +385,13 @@ void checkSaveParameters(SaveParameters& save_parameters) {
     }
     const std::string FALLBACK_FORMAT = "png";
 
-    try {
-        Magick::CoderInfo info(save_parameters.image_format);
-        if (!info.isWritable()) {
-            AWARN << "[map_io] Format '" << save_parameters.image_format
-                  << "' is not writable. Using '" << FALLBACK_FORMAT
-                  << "' instead";
-            save_parameters.image_format = FALLBACK_FORMAT;
-        }
-    } catch (Magick::ErrorOption& e) {
+    const std::vector<std::string> WRITABLE_FORMATS{"bmp", "pgm", "png", "jpg",
+                                                    "jpeg"};
+    if (std::find(WRITABLE_FORMATS.begin(), WRITABLE_FORMATS.end(),
+                  save_parameters.image_format) == WRITABLE_FORMATS.end()) {
         AWARN << "[map_io] Format '" << save_parameters.image_format
-              << "' is not usable. Using '" << FALLBACK_FORMAT
-              << "' instead:" << std::endl
-              << e.what();
+              << "' may not be supported by OpenCV. Using '" << FALLBACK_FORMAT
+              << "' instead";
         save_parameters.image_format = FALLBACK_FORMAT;
     }
 
@@ -409,84 +416,77 @@ void checkSaveParameters(SaveParameters& save_parameters) {
  */
 void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
                        const SaveParameters& save_parameters) {
-    // 确保 ImageMagick 只初始化一次，并加锁保护所有 ImageMagick 操作
-    InitMagickOnce();
-    std::lock_guard<std::mutex> lock(g_magick_mutex);
-
     AINFO << "[map_io] Received a " << map.info.width << " X "
           << map.info.height << " map @ " << map.info.resolution << " m/pix";
 
     std::string mapdatafile =
         save_parameters.map_file_name + "." + save_parameters.image_format;
     {
-        // should never see this color, so the initialization value is just for
-        // debugging
-        Magick::Image image({map.info.width, map.info.height}, "red");
+        const int width = static_cast<int>(map.info.width);
+        const int height = static_cast<int>(map.info.height);
+        const int free_thresh_int =
+            static_cast<int>(std::rint(save_parameters.free_thresh * 100.0));
+        const int occupied_thresh_int =
+            static_cast<int>(std::rint(save_parameters.occupied_thresh * 100.0));
 
-        // In scale mode, we need the alpha (matte) channel. Else, we don't.
-        // NOTE: GraphicsMagick seems to have trouble loading the alpha channel
-        // when saved with Magick::GreyscaleMatte, so we use TrueColorMatte
-        // instead.
-        image.type(save_parameters.mode == MapMode::Scale
-                       ? Magick::TrueColorMatteType
-                       : Magick::GrayscaleType);
+        cv::Mat image;
+        if (save_parameters.mode == MapMode::Scale) {
+            image = cv::Mat(height, width, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+        } else {
+            image = cv::Mat(height, width, CV_8UC1, cv::Scalar(205));
+        }
 
-        // Since we only need to support 100 different pixel levels, 8 bits is
-        // fine
-        image.depth(8);
-
-        int free_thresh_int = std::rint(save_parameters.free_thresh * 100.0);
-        int occupied_thresh_int =
-            std::rint(save_parameters.occupied_thresh * 100.0);
-
-        for (size_t y = 0; y < map.info.height; y++) {
-            for (size_t x = 0; x < map.info.width; x++) {
-                int8_t map_cell =
-                    map.data[map.info.width * (map.info.height - y - 1) + x];
-
-                Magick::Color pixel;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                const int8_t map_cell = map.data[map.info.width *
+                                                     (map.info.height - y - 1) +
+                                                 x];
 
                 switch (save_parameters.mode) {
-                    case MapMode::Trinary:
-                        if (map_cell < 0 || 100 < map_cell) {
-                            pixel = Magick::ColorGray(205 / 255.0);
+                    case MapMode::Trinary: {
+                        uint8_t gray = 205;
+                        if (map_cell < 0 || map_cell > 100) {
+                            gray = 205;
                         } else if (map_cell <= free_thresh_int) {
-                            pixel = Magick::ColorGray(254 / 255.0);
+                            gray = 254;
                         } else if (occupied_thresh_int <= map_cell) {
-                            pixel = Magick::ColorGray(0 / 255.0);
+                            gray = 0;
+                        }
+                        image.at<uint8_t>(y, x) = gray;
+                        break;
+                    }
+                    case MapMode::Scale: {
+                        cv::Vec4b& pixel = image.at<cv::Vec4b>(y, x);
+                        if (map_cell < 0 || map_cell > 100) {
+                            pixel = cv::Vec4b(128, 128, 128, 0);
                         } else {
-                            pixel = Magick::ColorGray(205 / 255.0);
+                            const uint8_t gray = static_cast<uint8_t>(std::round(
+                                (100.0 - map_cell) * 255.0 / 100.0));
+                            pixel = cv::Vec4b(gray, gray, gray, 255);
                         }
                         break;
-                    case MapMode::Scale:
-                        if (map_cell < 0 || 100 < map_cell) {
-                            pixel = Magick::ColorGray{0.5};
-                            pixel.alphaQuantum(TransparentOpacity);
-                        } else {
-                            pixel =
-                                Magick::ColorGray{(100.0 - map_cell) / 100.0};
+                    }
+                    case MapMode::Raw: {
+                        uint8_t gray = 255;
+                        if (map_cell >= 0 && map_cell <= 100) {
+                            gray = static_cast<uint8_t>(map_cell);
                         }
+                        image.at<uint8_t>(y, x) = gray;
                         break;
-                    case MapMode::Raw:
-                        Magick::Quantum q;
-                        if (map_cell < 0 || 100 < map_cell) {
-                            q = MaxRGB;
-                        } else {
-                            q = map_cell / 255.0 * MaxRGB;
-                        }
-                        pixel = Magick::Color(q, q, q);
-                        break;
+                    }
                     default:
                         AERROR << "[map_io] Map mode should be Trinary, Scale "
                                   "or Raw";
                         throw std::runtime_error("Invalid map mode");
                 }
-                image.pixelColor(x, y, pixel);
             }
         }
 
         AINFO << "[map_io] Writing map occupancy data to " << mapdatafile;
-        image.write(mapdatafile);
+        if (!cv::imwrite(mapdatafile, image)) {
+            throw std::runtime_error("OpenCV failed to write map image: " +
+                                   mapdatafile);
+        }
     }
 
     std::string mapmetadatafile = save_parameters.map_file_name + ".yaml";

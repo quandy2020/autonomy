@@ -18,111 +18,113 @@
 
 #include <algorithm>
 #include <cctype>
-#include <list>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <vector>
 
-#include "Magick++.h"
-#include "autolink/common/log.hpp"
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
+
+#include "autonomy/common/log.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/map_io.hpp"
 #include "autonomy/map/costmap_2d/map_mode.hpp"
 
 namespace {
 
-std::once_flag g_magick_init_flag;
-std::mutex g_magick_mutex;
-
-void initMagickOnce() {
-    std::call_once(g_magick_init_flag,
-                   []() { Magick::InitializeMagick(nullptr); });
-}
-
 constexpr double kUnknownGray = 0.5;
 constexpr double kFreeGray = 1.0;
 constexpr double kObstacleGray = 0.0;
 constexpr double kCostNormFactor = 0.7;
 constexpr double kPathPointRadius = 2.0;
-constexpr double kMarkerStrokeWidth = 1.0;
+constexpr int kMarkerStrokeWidth = 1;
 
 double costToGray(unsigned char cost) {
-    if (cost == autonomy::map::costmap_2d::NO_INFORMATION)
+    if (cost == autonomy::map::costmap_2d::NO_INFORMATION) {
         return kUnknownGray;
-    if (cost == autonomy::map::costmap_2d::FREE_SPACE)
+    }
+    if (cost == autonomy::map::costmap_2d::FREE_SPACE) {
         return kFreeGray;
-    if (cost >= autonomy::map::costmap_2d::LETHAL_OBSTACLE)
+    }
+    if (cost >= autonomy::map::costmap_2d::LETHAL_OBSTACLE) {
         return kObstacleGray;
-    double norm =
+    }
+    const double norm =
         static_cast<double>(cost) /
         static_cast<double>(autonomy::map::costmap_2d::LETHAL_OBSTACLE);
     return kFreeGray - norm * kCostNormFactor;
 }
 
-Magick::Image createImageFromCostmap(
+cv::Mat createImageFromCostmap(
     const autonomy::map::costmap_2d::Costmap2D& costmap) {
     const unsigned int width = costmap.getSizeInCellsX();
     const unsigned int height = costmap.getSizeInCellsY();
-    Magick::Image image({width, height}, "white");
-    image.type(Magick::TrueColorType);
-    image.depth(8);
+    cv::Mat image(static_cast<int>(height), static_cast<int>(width), CV_8UC3,
+                  cv::Scalar(255, 255, 255));
 
     const unsigned char* data = costmap.getCharMap();
     for (unsigned int y = 0; y < height; ++y) {
         for (unsigned int x = 0; x < width; ++x) {
             const double gray = costToGray(data[costmap.getIndex(x, y)]);
-            const unsigned int img_y = height - 1 - y;  // Flip Y axis
-            image.pixelColor(x, img_y, Magick::ColorRGB(gray, gray, gray));
+            const uint8_t value =
+                static_cast<uint8_t>(std::clamp(gray, 0.0, 1.0) * 255.0);
+            const unsigned int img_y = height - 1 - y;
+            image.at<cv::Vec3b>(static_cast<int>(img_y),
+                                static_cast<int>(x)) =
+                cv::Vec3b(value, value, value);
         }
     }
     return image;
 }
 
-std::vector<Magick::Coordinate> convertPathToImageCoords(
+std::vector<cv::Point> convertPathToImageCoords(
     const autonomy::map::costmap_2d::Costmap2D& costmap,
     const autonomy::commsgs::planning_msgs::Path& path, unsigned int height,
     unsigned int width) {
-    std::vector<Magick::Coordinate> coords;
+    std::vector<cv::Point> coords;
     coords.reserve(path.poses.size());
     for (const auto& pose : path.poses) {
-        unsigned int mx, my;
+        unsigned int mx = 0;
+        unsigned int my = 0;
         if (costmap.worldToMap(pose.pose.position.x, pose.pose.position.y, mx,
                                my)) {
-            coords.push_back(
-                Magick::Coordinate(std::min(mx, width - 1),
-                                   std::min(height - 1 - my, height - 1)));
+            coords.emplace_back(
+                static_cast<int>(std::min(mx, width - 1)),
+                static_cast<int>(std::min(height - 1 - my, height - 1)));
         }
     }
     return coords;
 }
 
-void addCircle(std::list<Magick::Drawable>& draw_list,
-               const Magick::Coordinate& pt, double size,
-               const std::string& color) {
-    draw_list.push_back(Magick::DrawableFillColor(color));
-    draw_list.push_back(Magick::DrawableStrokeColor(color));
-    draw_list.push_back(Magick::DrawableStrokeWidth(kMarkerStrokeWidth));
-    draw_list.push_back(
-        Magick::DrawableCircle(pt.x(), pt.y(), pt.x() + size, pt.y()));
-}
-
-void addPathToDrawList(
-    std::list<Magick::Drawable>& draw_list,
-    const std::vector<Magick::Coordinate>& coords,
-    const autonomy::planning::utils::PgmConverter::RenderParameters& params) {
-    draw_list.push_back(Magick::DrawableStrokeColor("red"));
-    draw_list.push_back(Magick::DrawableStrokeWidth(params.path_line_width));
-    draw_list.push_back(Magick::DrawableFillColor("none"));
-    for (size_t i = 0; i < coords.size() - 1; ++i) {
-        draw_list.push_back(Magick::DrawableLine(coords[i].x(), coords[i].y(),
-                                                 coords[i + 1].x(),
-                                                 coords[i + 1].y()));
+void drawPath(cv::Mat& image, const std::vector<cv::Point>& coords,
+              const autonomy::planning::utils::PgmConverter::RenderParameters&
+                  params) {
+    if (coords.size() < 2) {
+        return;
     }
+
+    const cv::Scalar path_color(0, 0, 255);
+    for (size_t i = 0; i + 1 < coords.size(); ++i) {
+        cv::line(image, coords[i], coords[i + 1], path_color,
+                 static_cast<int>(params.path_line_width), cv::LINE_AA);
+    }
+
     if (params.draw_path_points) {
         for (const auto& pt : coords) {
-            addCircle(draw_list, pt, kPathPointRadius, "red");
+            cv::circle(image, pt, static_cast<int>(kPathPointRadius), path_color,
+                       -1, cv::LINE_AA);
         }
+    }
+
+    if (params.draw_start_marker) {
+        cv::circle(image, coords.front(),
+                   static_cast<int>(params.start_marker_size),
+                   cv::Scalar(0, 255, 0), -1, cv::LINE_AA);
+    }
+    if (params.draw_goal_marker) {
+        cv::circle(image, coords.back(),
+                   static_cast<int>(params.goal_marker_size),
+                   cv::Scalar(255, 0, 0), -1, cv::LINE_AA);
     }
 }
 
@@ -211,36 +213,25 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
                                    const std::string& output_file_path,
                                    const RenderParameters& params) {
     try {
-        initMagickOnce();
-        std::lock_guard<std::mutex> lock(g_magick_mutex);
-
-        Magick::Image image = createImageFromCostmap(costmap);
+        cv::Mat image = createImageFromCostmap(costmap);
         const unsigned int width = costmap.getSizeInCellsX();
         const unsigned int height = costmap.getSizeInCellsY();
 
         if (!path.poses.empty()) {
-            std::vector<Magick::Coordinate> coords =
+            const std::vector<cv::Point> coords =
                 convertPathToImageCoords(costmap, path, height, width);
             if (coords.size() >= 2) {
-                std::list<Magick::Drawable> draw_list;
-                addPathToDrawList(draw_list, coords, params);
-                if (params.draw_start_marker) {
-                    addCircle(draw_list, coords[0], params.start_marker_size,
-                              "green");
-                }
-                if (params.draw_goal_marker) {
-                    addCircle(draw_list, coords.back(), params.goal_marker_size,
-                              "blue");
-                }
-                image.draw(draw_list);
+                drawPath(image, coords, params);
             }
         }
 
         const std::string format = normalizeFormat(params.output_format);
         const std::string final_path =
             ensureExtension(output_file_path, format);
-        image.magick(format);
-        image.write(final_path);
+        if (!cv::imwrite(final_path, image)) {
+            throw std::runtime_error("OpenCV failed to write image: " +
+                                   final_path);
+        }
 
         AINFO << "Saved map with path to: " << final_path
               << " (format: " << format << ", points: " << path.poses.size()

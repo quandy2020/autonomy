@@ -21,7 +21,7 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/class_loader/class_loader_register_macro.hpp"
-#include "autolink/common/log.hpp"
+#include "autonomy/common/log.hpp"
 #include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/proto/map_2d_option.pb.h"
 #include "autonomy/transform/tf2/convert.h"
