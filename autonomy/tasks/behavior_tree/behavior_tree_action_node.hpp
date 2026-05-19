@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"

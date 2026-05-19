@@ -18,7 +18,7 @@
 
 #include <unistd.h>  // for getpid()
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/map/constants.hpp"
 #include "autonomy/map/costmap_2d/map_io.hpp"

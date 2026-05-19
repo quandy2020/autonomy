@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/navigate_through_poses_action.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 

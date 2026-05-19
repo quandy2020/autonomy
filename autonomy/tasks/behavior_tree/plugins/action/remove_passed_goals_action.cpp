@@ -18,7 +18,7 @@
 
 #include <cmath>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/std_msgs.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"

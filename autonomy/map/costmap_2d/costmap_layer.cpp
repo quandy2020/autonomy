@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace map {

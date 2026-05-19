@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/condition/are_poses_near_condition.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/utils/robot_utils.hpp"
 

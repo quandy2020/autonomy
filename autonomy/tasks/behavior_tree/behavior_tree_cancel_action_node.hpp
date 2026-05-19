@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "behaviortree_cpp/action_node.h"

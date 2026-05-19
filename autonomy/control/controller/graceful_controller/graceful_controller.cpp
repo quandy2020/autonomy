@@ -20,7 +20,7 @@
 #include <memory>
 #include <mutex>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/utils/controller_utils.hpp"

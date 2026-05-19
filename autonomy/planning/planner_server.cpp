@@ -36,7 +36,7 @@
 #include <vector>
 
 #include "autonomy/common/config.hpp"
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"

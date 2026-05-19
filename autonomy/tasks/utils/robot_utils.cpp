@@ -20,7 +20,7 @@
 #include <memory>
 #include <string>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/tf2/buffer_core.h"

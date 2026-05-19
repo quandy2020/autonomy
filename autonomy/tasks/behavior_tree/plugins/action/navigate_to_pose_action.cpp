@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
 namespace autonomy {

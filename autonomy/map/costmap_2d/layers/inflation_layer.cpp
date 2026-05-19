@@ -22,7 +22,7 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d//costmap_math.hpp"
 #include "autonomy/map/costmap_2d//footprint.hpp"
 

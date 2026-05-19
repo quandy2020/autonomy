@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/decorator/goal_updater_node.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace tasks {

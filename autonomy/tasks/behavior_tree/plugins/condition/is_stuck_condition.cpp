@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/condition/is_stuck_condition.hpp"
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace tasks {

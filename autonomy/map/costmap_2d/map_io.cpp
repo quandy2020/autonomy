@@ -28,7 +28,7 @@
 
 #include <opencv2/imgcodecs.hpp>
 
-#include "autonomy/common/log.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/map/costmap_2d/map_mode.hpp"
