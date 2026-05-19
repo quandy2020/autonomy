@@ -1,8 +1,0 @@
---- # Subcommands available inside automsgs (msg CLI).
-format: 1.0.0
-library_name: @PROJECT_NAME@
-library_version: @PROJECT_VERSION@
-library_path: @automsgs_library_path@
-commands:
-    - msg   : Print information about messages.
----
