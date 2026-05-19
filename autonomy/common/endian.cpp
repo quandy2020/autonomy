@@ -16,32 +16,37 @@
 
 #include "autonomy/common/endian.hpp"
 
-#include <boost/predef/other/endian.h>
+#include <cstdint>
 
 #include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace common {
 
+namespace {
+
+bool IsLittleEndianRuntime() {
+    const uint16_t value = 0x0100;
+    return *reinterpret_cast<const uint8_t*>(&value) == 0;
+}
+
+}  // namespace
+
 bool IsLittleEndian() {
-#if BOOST_ENDIAN_LITTLE_BYTE
-    return true;
-#elif BOOST_ENDIAN_LITTLE_WORD
-    // We do not support such exotic architectures.
-    LOG(FATAL) << "Unsupported byte ordering";
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
+    defined(__ORDER_BIG_ENDIAN__)
+    return __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
 #else
-    return false;
+    return IsLittleEndianRuntime();
 #endif
 }
 
 bool IsBigEndian() {
-#if BOOST_ENDIAN_BIG_BYTE
-    return true;
-#elif BOOST_ENDIAN_BIG_WORD
-    // We do not support such exotic architectures.
-    LOG(FATAL) << "Unsupported byte ordering";
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
+    defined(__ORDER_BIG_ENDIAN__)
+    return __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__;
 #else
-    return false;
+    return !IsLittleEndianRuntime();
 #endif
 }
 

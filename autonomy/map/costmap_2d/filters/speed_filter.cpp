@@ -16,7 +16,7 @@
 
 #include "autonomy/map/costmap_2d/filters/speed_filter.hpp"
 #include "autonomy/common/logging.hpp"
-#include "autonomy/common/str_cat.hpp"
+#include "autonomy/common/string_util.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 
 namespace autonomy {

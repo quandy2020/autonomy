@@ -41,7 +41,6 @@ google_enable_testing()
 # Set module path to find custom Find modules
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 
-find_package(Boost REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(LuaGoogle REQUIRED)
@@ -253,30 +252,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${CERES_INCLUDE_DIRS}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${CERES_LIBRARIES})
 
-# # SuiteSparse (required by Ceres cholmod solver)
-# find_library(CHOLMOD_LIBRARY NAMES cholmod PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
-# if(CHOLMOD_LIBRARY)
-#   target_link_libraries(${PROJECT_NAME} PUBLIC ${CHOLMOD_LIBRARY})
-# endif()
-# # LAPACK (required by Ceres)
-# find_package(LAPACK QUIET)
-# if(LAPACK_FOUND)
-#   target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARIES})
-# else()
-#   # Fallback: try to find lapack directly
-#   find_library(LAPACK_LIBRARY NAMES lapack PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
-#   if(LAPACK_LIBRARY)
-#     target_link_libraries(${PROJECT_NAME} PUBLIC ${LAPACK_LIBRARY})
-#   endif()
-# endif()
-
 # Lua5.3
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${LUA_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${LUA_LIBRARIES})
-
-# Boost
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${Boost_INCLUDE_DIRS}")
-target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
 # OpenCV
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}")

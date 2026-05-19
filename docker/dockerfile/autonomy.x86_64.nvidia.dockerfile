@@ -64,7 +64,6 @@ RUN apt-get update && apt-get --no-install-recommends install -y \
     libfontconfig1-dev \
     libfreetype6-dev \
     libcairo2-dev \
-    libboost-all-dev \
     libasio-dev \
     libncurses5-dev \
     libavcodec-dev \

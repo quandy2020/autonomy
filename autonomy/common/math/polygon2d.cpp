@@ -21,7 +21,7 @@
 #include <limits>
 #include <utility>
 
-#include "autonomy/common/str_cat.hpp"
+#include "autonomy/common/string_util.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/common/string_util.hpp"
 #include "glog/logging.h"
