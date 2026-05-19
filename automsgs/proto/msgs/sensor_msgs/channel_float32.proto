@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package automsgs.msgs.sensor_msgs;
-
-// Optional per-point data channel used by PointCloud.
-message ChannelFloat32 {
-  string name = 1;
-  repeated double values = 2;  // one value per point
-}
