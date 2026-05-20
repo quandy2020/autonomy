@@ -44,7 +44,7 @@ namespace utils {
 //     string and so on 2> Logic Check: to avoid value with bad logic,
 //             like the size of `map` should be equal to `height*width`
 //     3> Any other needed condition could be joint here in future
-bool validateMsg(const double& num) {
+inline bool validateMsg(const double& num) {
     /*  @brief double/float value check
      *  if here'a need to check message validation
      *  it should be avoid to use double value like `nan`, `inf`
@@ -60,7 +60,7 @@ bool validateMsg(const double& num) {
 }
 
 template <size_t N>
-bool validateMsg(const std::array<double, N>& msg) {
+inline bool validateMsg(const std::array<double, N>& msg) {
     /*  @brief value check for double-array
      *     like the field `covariance` used in the msg-type:
      *       geometry_msgs::msg::PoseWithCovarianceStamped
@@ -73,7 +73,7 @@ bool validateMsg(const std::array<double, N>& msg) {
     return true;
 }
 
-bool validateMsg(const std::vector<double>& msg) {
+inline bool validateMsg(const std::vector<double>& msg) {
     /*  @brief value check for double-array
      *     like the field `covariance` used in the msg-type:
      *       geometry_msgs::msg::PoseWithCovarianceStamped
@@ -86,15 +86,15 @@ bool validateMsg(const std::vector<double>& msg) {
     return true;
 }
 
-const int NSEC_PER_SEC = 1e9;  // 1 second = 1e9 nanosecond
-bool validateMsg(const commsgs::builtin_interfaces::Time& msg) {
+inline constexpr int NSEC_PER_SEC = 1000000000;  // 1 second in nanoseconds
+inline bool validateMsg(const commsgs::builtin_interfaces::Time& msg) {
     if (msg.nanosec >= NSEC_PER_SEC) {
         return false;  // invalid nanosec-stamp
     }
     return true;
 }
 
-bool validateMsg(const commsgs::std_msgs::Header& msg) {
+inline bool validateMsg(const commsgs::std_msgs::Header& msg) {
     //  check sub-type
     if (!validateMsg(msg.stamp)) {
         return false;
@@ -111,7 +111,7 @@ bool validateMsg(const commsgs::std_msgs::Header& msg) {
     return true;
 }
 
-bool validateMsg(const commsgs::geometry_msgs::Point& msg) {
+inline bool validateMsg(const commsgs::geometry_msgs::Point& msg) {
     //  check sub-type
     if (!validateMsg(msg.x)) {
         return false;
@@ -125,8 +125,8 @@ bool validateMsg(const commsgs::geometry_msgs::Point& msg) {
     return true;
 }
 
-const double epsilon = 1e-4;
-bool validateMsg(const commsgs::geometry_msgs::Quaternion& msg) {
+inline constexpr double kQuaternionEpsilon = 1e-4;
+inline bool validateMsg(const commsgs::geometry_msgs::Quaternion& msg) {
     //  check sub-type
     if (!validateMsg(msg.x)) {
         return false;
@@ -141,15 +141,15 @@ bool validateMsg(const commsgs::geometry_msgs::Quaternion& msg) {
         return false;
     }
 
-    if (abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w -
-            1.0) >= epsilon) {
+    if (std::abs(msg.x * msg.x + msg.y * msg.y + msg.z * msg.z + msg.w * msg.w -
+                 1.0) >= kQuaternionEpsilon) {
         return false;
     }
 
     return true;
 }
 
-bool validateMsg(const commsgs::geometry_msgs::Pose& msg) {
+inline bool validateMsg(const commsgs::geometry_msgs::Pose& msg) {
     // check sub-type
     if (!validateMsg(msg.position)) {
         return false;
@@ -160,7 +160,7 @@ bool validateMsg(const commsgs::geometry_msgs::Pose& msg) {
     return true;
 }
 
-bool validateMsg(const commsgs::geometry_msgs::PoseWithCovariance& msg) {
+inline bool validateMsg(const commsgs::geometry_msgs::PoseWithCovariance& msg) {
     // check sub-type
     if (!validateMsg(msg.pose)) {
         return false;
@@ -172,7 +172,8 @@ bool validateMsg(const commsgs::geometry_msgs::PoseWithCovariance& msg) {
     return true;
 }
 
-bool validateMsg(const commsgs::geometry_msgs::PoseWithCovarianceStamped& msg) {
+inline bool validateMsg(
+    const commsgs::geometry_msgs::PoseWithCovarianceStamped& msg) {
     // check sub-type
     if (!validateMsg(msg.header)) {
         return false;
@@ -184,7 +185,7 @@ bool validateMsg(const commsgs::geometry_msgs::PoseWithCovarianceStamped& msg) {
 }
 
 // Function to verify map meta information
-bool validateMsg(const commsgs::map_msgs::MapMetaData& msg) {
+inline bool validateMsg(const commsgs::map_msgs::MapMetaData& msg) {
     // check sub-type
     if (!validateMsg(msg.origin)) {
         return false;
@@ -202,7 +203,7 @@ bool validateMsg(const commsgs::map_msgs::MapMetaData& msg) {
 }
 
 // for msg-type like map, costmap and others as `OccupancyGrid`
-bool validateMsg(const commsgs::map_msgs::OccupancyGrid& msg) {
+inline bool validateMsg(const commsgs::map_msgs::OccupancyGrid& msg) {
     // check sub-type
     if (!validateMsg(msg.header)) {
         return false;

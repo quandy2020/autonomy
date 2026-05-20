@@ -70,11 +70,9 @@ void InflationLayer::onInitialize() {
         inflate_around_unknown_ = false;
     }
 
-    AINFO << "InflationLayer initialized: enabled=" << enabled_ 
-          << ", inflation_radius=" << inflation_radius_
-          << ", cost_scaling_factor=" << cost_scaling_factor_
-          << ", inflate_unknown=" << inflate_unknown_
-          << ", inflate_around_unknown=" << inflate_around_unknown_;
+    AINFO << "Loaded costmap layer: "
+          << (name_.empty() ? "inflation_layer" : name_)
+          << " (type=autonomy::map::costmap_2d::InflationLayer)";
 
     current_ = true;
     seen_.clear();
@@ -83,6 +81,7 @@ void InflationLayer::onInitialize() {
     need_reinflation_ = false;
     cell_inflation_radius_ = cellDistance(inflation_radius_);
     matchSize();
+    onFootprintChanged();
 }
 
 void InflationLayer::matchSize() {
@@ -127,6 +126,10 @@ void InflationLayer::updateBounds(double /*robot_x*/, double /*robot_y*/,
 }
 
 void InflationLayer::onFootprintChanged() {
+    if (!layered_costmap_) {
+        return;
+    }
+
     std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
     inscribed_radius_ = layered_costmap_->getInscribedRadius();
     cell_inflation_radius_ = cellDistance(inflation_radius_);
@@ -134,20 +137,19 @@ void InflationLayer::onFootprintChanged() {
     need_reinflation_ = true;
 
     if (inflation_radius_ < inscribed_radius_) {
-        // RCLCPP_ERROR(
-        //   logger_,
-        //   "The configured inflation radius (%.3f) is smaller than "
-        //   "the computed inscribed radius (%.3f) of your footprint, "
-        //   "it is highly recommended to set inflation radius to be at "
-        //   "least as big as the inscribed radius to avoid collisions",
-        //   inflation_radius_, inscribed_radius_);
+        AERROR << "InflationLayer [" << name_
+               << "]: inflation_radius (" << inflation_radius_
+               << ") is smaller than footprint inscribed_radius ("
+               << inscribed_radius_
+               << "); set inflation_radius >= inscribed_radius to avoid "
+                  "collisions";
     }
 
-    //   RCLCPP_DEBUG(
-    //     logger_, "InflationLayer::onFootprintChanged(): num footprint points:
-    //     %zu," " inscribed_radius_ = %.3f, inflation_radius_ = %.3f",
-    //     layered_costmap_->getFootprint().size(), inscribed_radius_,
-    //     inflation_radius_);
+    ADEBUG << "InflationLayer::onFootprintChanged(): footprint points="
+           << layered_costmap_->getFootprint().size()
+           << " inscribed_radius=" << inscribed_radius_
+           << " inflation_radius=" << inflation_radius_
+           << " cell_inflation_radius=" << cell_inflation_radius_;
 }
 
 void InflationLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
