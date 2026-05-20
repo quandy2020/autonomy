@@ -184,6 +184,11 @@ void RunMockSimulation(
 void SetupMockTfTree(const std::string& global_frame,
                      const std::string& robot_frame, double robot_x,
                      double robot_y, double robot_yaw) {
+    // Ensure a clean TF tree in demo mode. The singleton buffer may already
+    // contain stale transforms from earlier initialization paths.
+    if (auto* buffer = autonomy::transform::Buffer::Instance()) {
+        buffer->clear();
+    }
     PublishMockStaticTransform(global_frame, kOdomFrame, 0.0, 0.0, 0.0);
     PublishMockTransform(kOdomFrame, robot_frame, robot_x, robot_y, robot_yaw,
                          false);
