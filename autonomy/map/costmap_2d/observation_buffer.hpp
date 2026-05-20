@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <list>
 #include <string>
 #include <vector>
@@ -127,9 +128,9 @@ private:
     void purgeStaleObservations();
 
     TfBuffer& tf_buffer_;
-    // const rclcpp::Duration observation_keep_time_;
-    // const rclcpp::Duration expected_update_rate_;
-    commsgs::builtin_interfaces::Time last_updated_;
+    double observation_keep_time_{0.0};
+    double expected_update_rate_{0.0};
+    std::chrono::steady_clock::time_point last_updated_steady_;
     std::string global_frame_;
     std::string sensor_frame_;
     std::list<Observation> observation_list_;

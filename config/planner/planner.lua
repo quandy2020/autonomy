@@ -55,7 +55,6 @@ AUTONOMY_PLANNER = {
     smoother_plugins = {
         "simple_smoother",
         "savitzky_golay_smoother",
-        -- Advanced (requires BUILD_PLANNING_ADVANCED_MATH=ON and OSQP/Ipopt):
         -- "fem_pos_smoother",
         -- "cos_theta_smoother",
     },

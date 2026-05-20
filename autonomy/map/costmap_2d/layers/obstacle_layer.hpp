@@ -27,6 +27,7 @@
 #include "autonomy/map/costmap_2d/footprint.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 #include "autonomy/map/costmap_2d/observation_buffer.hpp"
+#include "autonomy/transform/tf2/buffer_core.h"
 
 namespace autonomy {
 namespace map {
@@ -208,9 +209,10 @@ protected:
     std::vector<Observation> static_clearing_observations_;
     std::vector<Observation> static_marking_observations_;
 
-    bool rolling_window_;
-    bool was_reset_;
-    // CombinationMethod combination_method_;
+    bool rolling_window_{false};
+    bool was_reset_{false};
+    int combination_method_{1};
+    transform::tf2::Duration transform_tolerance_{0};
 };
 
 }  // namespace costmap_2d

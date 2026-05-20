@@ -27,13 +27,19 @@ class LuaParameterDictionary;
 }
 namespace map {
 
+/**
+ * @brief Loads MapServer options from a Lua parameter dictionary (e.g. AUTONOMY_MAP).
+ * @param parameter_dictionary Lua table with map_name, map_file, map_topic,
+ *        publish_frequency, and frame_id.
+ * @return Populated MapOptions protobuf message.
+ */
 proto::MapOptions LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
 /**
- * @brief 从 Lua 参数字典创建 Costmap2DOptions
- * @param parameter_dictionary Lua 参数字典
- * @return Costmap2DOptions 配置对象
+ * @brief Builds Costmap2DOptions from a Lua costmap configuration table.
+ * @param parameter_dictionary Lua dictionary for layers, plugins, and costmap params.
+ * @return Populated Costmap2DOptions protobuf message.
  */
 proto::Costmap2DOptions CreateCostmap2DOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);

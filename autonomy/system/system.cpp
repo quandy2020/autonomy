@@ -16,8 +16,26 @@
 
 #include "autonomy/system/system.hpp"
 
+#include "autonomy/common/logging.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
+
 namespace autonomy {
 namespace system {
+namespace {
+
+void ApplyMapToCostmap(
+    const map::costmap_2d::Costmap2DWrapper::SharedPtr& wrapper,
+    const commsgs::map_msgs::OccupancyGrid::SharedPtr& map) {
+    if (!wrapper || !map) {
+        return;
+    }
+    if (!wrapper->applyOccupancyGrid(*map)) {
+        AWARN << "Failed to apply map from MapServer to costmap wrapper";
+    }
+}
+
+}  // namespace
 
 AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
     : options_{options} {
@@ -72,6 +90,17 @@ void AutonomyNode::Start() {
     }
 
     if (map_server_ != nullptr) {
+        map_server_->SetMapPublishCallback(
+            [this](const commsgs::map_msgs::OccupancyGrid::SharedPtr& map) {
+                if (planner_server_) {
+                    ApplyMapToCostmap(planner_server_->GetCostmapWrapper(),
+                                      map);
+                }
+                if (controller_server_) {
+                    ApplyMapToCostmap(controller_server_->GetCostmapWrapper(),
+                                      map);
+                }
+            });
         map_server_->Start();
     }
 
@@ -97,6 +126,18 @@ void AutonomyNode::Start() {
                 planner_server_->GetCostmapWrapper());
         }
         controller_server_->Start();
+    }
+
+    if (map_server_ != nullptr) {
+        const auto map = map_server_->GetStaticMapShared();
+        if (map) {
+            if (planner_server_) {
+                ApplyMapToCostmap(planner_server_->GetCostmapWrapper(), map);
+            } else if (controller_server_) {
+                ApplyMapToCostmap(controller_server_->GetCostmapWrapper(),
+                                  map);
+            }
+        }
     }
 }
 

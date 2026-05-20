@@ -17,6 +17,7 @@
 #include "autonomy/map/costmap_2d/layers/static_layer.hpp"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
 #include "autonomy/common/logging.hpp"
@@ -195,6 +196,13 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
     has_updated_data_ = true;
 
     current_ = true;
+}
+
+void StaticLayer::loadOccupancyGrid(
+    const commsgs::map_msgs::OccupancyGrid& new_map) {
+    auto map_msg =
+        std::make_shared<commsgs::map_msgs::OccupancyGrid>(new_map);
+    incomingMap(map_msg);
 }
 
 void StaticLayer::matchSize() {

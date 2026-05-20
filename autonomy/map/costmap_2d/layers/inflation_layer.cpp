@@ -53,8 +53,9 @@ InflationLayer::~InflationLayer() {
 
 void InflationLayer::onInitialize() {
     // 从 options_ 获取 inflation_layer 配置参数
-    if (options_ && options_->has_inflation_layer()) {
-        const auto& inflation_opts = options_->inflation_layer();
+    const auto* layer_options = getOptions();
+    if (layer_options && layer_options->has_inflation_layer()) {
+        const auto& inflation_opts = layer_options->inflation_layer();
         enabled_ = inflation_opts.enabled();
         inflation_radius_ = inflation_opts.inflation_radius();
         cost_scaling_factor_ = inflation_opts.cost_scaling_factor();
@@ -69,7 +70,7 @@ void InflationLayer::onInitialize() {
         inflate_around_unknown_ = false;
     }
 
-    AINFO << "InflationLayer initialized: enabled=" << enabled_
+    AINFO << "InflationLayer initialized: enabled=" << enabled_ 
           << ", inflation_radius=" << inflation_radius_
           << ", cost_scaling_factor=" << cost_scaling_factor_
           << ", inflate_unknown=" << inflate_unknown_

@@ -21,7 +21,7 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
-#include "autonomy/planning/planning_plugin_manager.hpp"
+#include "autonomy/planning/plugin_manager.hpp"
 
 namespace autonomy {
 namespace planning {
@@ -65,11 +65,11 @@ void SmootherServer::LoadPlugins() {
         plugin_entries = {"simple_smoother", "savitzky_golay_smoother"};
     }
 
-    auto& loader = PlanningPluginManager::Instance();
+    auto& loader = PluginManager::Instance();
     loader.Initialize(options_);
 
     const auto specs =
-        PlanningPluginManager::ParseSmootherPluginSpecs(plugin_entries);
+        PluginManager::ParseSmootherPluginEntries(plugin_entries);
 
     for (const auto& spec : specs) {
         if (smoothers_.count(spec.id) > 0) {

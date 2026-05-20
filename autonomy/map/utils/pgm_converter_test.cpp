@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/utils/pgm_converter.hpp"
+#include "autonomy/map/utils/pgm_converter.hpp"
 
 #include <fstream>
 #include <memory>
@@ -28,7 +28,7 @@
 #include "gtest/gtest.h"
 
 namespace autonomy {
-namespace planning {
+namespace map {
 namespace utils {
 namespace {
 
@@ -263,5 +263,5 @@ TEST(PgmConverterTest, SavePathToImagePathOutsideBounds) {
 
 }  // namespace
 }  // namespace utils
-}  // namespace planning
+}  // namespace map
 }  // namespace autonomy

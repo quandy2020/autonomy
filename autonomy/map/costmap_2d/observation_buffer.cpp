@@ -16,20 +16,79 @@
 
 #include "autonomy/map/costmap_2d/observation_buffer.hpp"
 
+#include "autonomy/map/costmap_2d/costmap_math.hpp"
+
 #include <algorithm>
-#include <chrono>
+#include <cmath>
+#include <cstring>
 #include <list>
 #include <string>
 #include <vector>
 
+#include "autonomy/commsgs/point_field_conversion.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/transform/tf2/convert.h"
-// #include "sensor_msgs/point_cloud2_iterator.hpp"
-
-using namespace std::chrono_literals;
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
+namespace {
+
+using commsgs::sensor_msgs::PointCloud2;
+using commsgs::sensor_msgs::PointField;
+
+struct XYZFieldOffsets {
+    int x{-1};
+    int y{-1};
+    int z{-1};
+    uint8_t x_datatype{PointField::FLOAT32};
+    uint8_t y_datatype{PointField::FLOAT32};
+    uint8_t z_datatype{PointField::FLOAT32};
+    int point_step{0};
+    bool valid() const { return x >= 0 && y >= 0 && z >= 0 && point_step > 0; }
+};
+
+XYZFieldOffsets FindXYZOffsets(const PointCloud2& cloud) {
+    XYZFieldOffsets offsets;
+    offsets.point_step = static_cast<int>(cloud.point_step);
+    for (const auto& field : cloud.fields) {
+        if (field.name == "x") {
+            offsets.x = static_cast<int>(field.offset);
+            offsets.x_datatype = field.datatype;
+        } else if (field.name == "y") {
+            offsets.y = static_cast<int>(field.offset);
+            offsets.y_datatype = field.datatype;
+        } else if (field.name == "z") {
+            offsets.z = static_cast<int>(field.offset);
+            offsets.z_datatype = field.datatype;
+        }
+    }
+    return offsets;
+}
+
+void TransformPoint(const commsgs::geometry_msgs::Transform& transform,
+                    double x, double y, double z, double& out_x, double& out_y,
+                    double& out_z) {
+    const auto& q = transform.rotation;
+    const auto& t = transform.translation;
+    const double qx = q.x;
+    const double qy = q.y;
+    const double qz = q.z;
+    const double qw = q.w;
+    const double ix = qw * x + qy * z - qz * y;
+    const double iy = qw * y + qz * x - qx * z;
+    const double iz = qw * z + qx * y - qy * x;
+    const double iw = -qx * x - qy * y - qz * z;
+    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x;
+    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y;
+    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z;
+}
+
+float TimeoutSeconds(transform::tf2::Duration tolerance) {
+    return static_cast<float>(SecondsFromDuration(tolerance));
+}
+
+}  // namespace
 
 ObservationBuffer::ObservationBuffer(
     std::string topic_name, double observation_keep_time,
@@ -39,8 +98,8 @@ ObservationBuffer::ObservationBuffer(
     double raytrace_min_range, TfBuffer& tf_buffer, std::string global_frame,
     std::string sensor_frame, transform::tf2::Duration tf_tolerance)
     : tf_buffer_(tf_buffer),
-      //   observation_keep_time_(rclcpp::Duration::from_seconds(observation_keep_time)),
-      //   expected_update_rate_(rclcpp::Duration::from_seconds(expected_update_rate)),
+      observation_keep_time_(observation_keep_time),
+      expected_update_rate_(expected_update_rate),
       global_frame_(global_frame),
       sensor_frame_(sensor_frame),
       topic_name_(topic_name),
@@ -51,106 +110,111 @@ ObservationBuffer::ObservationBuffer(
       raytrace_max_range_(raytrace_max_range),
       raytrace_min_range_(raytrace_min_range),
       tf_tolerance_(tf_tolerance) {
-    // last_updated_ = node->now();
+    last_updated_steady_ = std::chrono::steady_clock::now();
 }
 
 ObservationBuffer::~ObservationBuffer() {}
 
 void ObservationBuffer::bufferCloud(
     const commsgs::sensor_msgs::PointCloud2& cloud) {
-    commsgs::geometry_msgs::PointStamped global_origin;
-
-    // create a new observation on the list to be populated
     observation_list_.push_front(Observation());
+    Observation& observation = observation_list_.front();
 
-    // check whether the origin frame has been set explicitly
-    // or whether we should get it from the cloud
-    std::string origin_frame =
-        sensor_frame_ == "" ? cloud.header.frame_id : sensor_frame_;
+    const std::string origin_frame =
+        sensor_frame_.empty() ? cloud.header.frame_id : sensor_frame_;
+    const float timeout = TimeoutSeconds(tf_tolerance_);
 
     try {
-        // given these observations come from sensors...
-        // we'll need to store the origin pt of the sensor
-        commsgs::geometry_msgs::PointStamped local_origin;
-        local_origin.header.stamp = cloud.header.stamp;
-        local_origin.header.frame_id = origin_frame;
-        local_origin.point.x = 0;
-        local_origin.point.y = 0;
-        local_origin.point.z = 0;
-        // tf_buffer_.transform(local_origin, global_origin, global_frame_,
-        // tf_tolerance_); tf2::convert(global_origin.point,
-        // observation_list_.front().origin_);
+        if (origin_frame == global_frame_) {
+            observation.origin_.x = 0.0;
+            observation.origin_.y = 0.0;
+            observation.origin_.z = 0.0;
+        } else {
+            const auto origin_transform = tf_buffer_.lookupTransform(
+                global_frame_, origin_frame, cloud.header.stamp, timeout);
+            TransformPoint(origin_transform.transform, 0.0, 0.0, 0.0,
+                           observation.origin_.x, observation.origin_.y,
+                           observation.origin_.z);
+        }
 
-        // make sure to pass on the raytrace/obstacle range
-        // of the observation buffer to the observations
-        observation_list_.front().raytrace_max_range_ = raytrace_max_range_;
-        observation_list_.front().raytrace_min_range_ = raytrace_min_range_;
-        observation_list_.front().obstacle_max_range_ = obstacle_max_range_;
-        observation_list_.front().obstacle_min_range_ = obstacle_min_range_;
+        observation.raytrace_max_range_ = raytrace_max_range_;
+        observation.raytrace_min_range_ = raytrace_min_range_;
+        observation.obstacle_max_range_ = obstacle_max_range_;
+        observation.obstacle_min_range_ = obstacle_min_range_;
 
-        commsgs::sensor_msgs::PointCloud2 global_frame_cloud;
+        const XYZFieldOffsets offsets = FindXYZOffsets(cloud);
+        if (!offsets.valid()) {
+            observation_list_.pop_front();
+            AWARN << "ObservationBuffer " << topic_name_
+                  << ": point cloud missing x/y/z fields";
+            return;
+        }
 
-        //     // transform the point cloud
-        //     tf2_buffer_.transform(cloud, global_frame_cloud, global_frame_,
-        //     tf_tolerance_); global_frame_cloud.header.stamp =
-        //     cloud.header.stamp;
+        commsgs::geometry_msgs::Transform cloud_transform;
+        bool need_transform = cloud.header.frame_id != global_frame_;
+        if (need_transform) {
+            const auto stamped_transform = tf_buffer_.lookupTransform(
+                global_frame_, cloud.header.frame_id, cloud.header.stamp,
+                timeout);
+            cloud_transform = stamped_transform.transform;
+        }
 
-        // now we need to remove observations from the cloud that are below
-        // or above our height thresholds
-        commsgs::sensor_msgs::PointCloud2& observation_cloud =
-            *(observation_list_.front().cloud_);
-        observation_cloud.height = global_frame_cloud.height;
-        observation_cloud.width = global_frame_cloud.width;
-        observation_cloud.fields = global_frame_cloud.fields;
-        observation_cloud.is_bigendian = global_frame_cloud.is_bigendian;
-        observation_cloud.point_step = global_frame_cloud.point_step;
-        observation_cloud.row_step = global_frame_cloud.row_step;
-        observation_cloud.is_dense = global_frame_cloud.is_dense;
+        PointCloud2& observation_cloud = *(observation.cloud_);
+        observation_cloud = cloud;
+        observation_cloud.header.frame_id = global_frame_;
+        observation_cloud.data.clear();
 
-        // unsigned int cloud_size = global_frame_cloud.height *
-        // global_frame_cloud.width; commsgs::sensor_msgs::PointCloud2Modifier
-        // modifier(observation_cloud); modifier.resize(cloud_size); unsigned
-        // int point_count = 0;
+        const size_t point_count =
+            static_cast<size_t>(cloud.width) * static_cast<size_t>(cloud.height);
+        observation_cloud.data.reserve(point_count * cloud.point_step);
 
-        // // copy over the points that are within our height bounds
-        // commsgs::sensor_msgs::PointCloud2Iterator<float>
-        // iter_z(global_frame_cloud, "z"); std::vector<unsigned
-        // char>::const_iterator iter_global = global_frame_cloud.data.begin(),
-        // iter_global_end = global_frame_cloud.data.end();
-        // std::vector<unsigned char>::iterator iter_obs =
-        // observation_cloud.data.begin(); for (; iter_global !=
-        // iter_global_end;
-        // ++iter_z, iter_global += global_frame_cloud.point_step) {
-        //     if ((*iter_z) <= max_obstacle_height_ && (*iter_z) >=
-        //     min_obstacle_height_) {
-        //         std::copy(iter_global, iter_global +
-        //         global_frame_cloud.point_step, iter_obs); iter_obs +=
-        //         global_frame_cloud.point_step;
-        //         ++point_count;
-        //     }
-        // }
+        for (size_t point_index = 0; point_index < point_count; ++point_index) {
+            const size_t point_offset = point_index * cloud.point_step;
+            const unsigned char* point_data = cloud.data.data() + point_offset;
+            double px = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+                point_data + offsets.x, offsets.x_datatype);
+            double py = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+                point_data + offsets.y, offsets.y_datatype);
+            double pz = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+                point_data + offsets.z, offsets.z_datatype);
 
-        //     // resize the cloud for the number of legal points
-        //     modifier.resize(point_count);
-        //     observation_cloud.header.stamp = cloud.header.stamp;
-        //     observation_cloud.header.frame_id =
-        //     global_frame_cloud.header.frame_id;
-    } catch (transform::tf2::TransformException& ex) {
-        // if an exception occurs, we need to remove the empty observation from
-        // the list
+            if (need_transform) {
+                double tx = 0.0;
+                double ty = 0.0;
+                double tz = 0.0;
+                TransformPoint(cloud_transform, px, py, pz, tx, ty, tz);
+                px = tx;
+                py = ty;
+                pz = tz;
+            }
+
+            if (pz < min_obstacle_height_ || pz > max_obstacle_height_) {
+                continue;
+            }
+
+            observation_cloud.data.insert(
+                observation_cloud.data.end(), point_data,
+                point_data + cloud.point_step);
+        }
+
+        observation_cloud.width =
+            observation_cloud.point_step > 0
+                ? static_cast<uint32_t>(observation_cloud.data.size() /
+                                        observation_cloud.point_step)
+                : 0;
+        observation_cloud.height = 1;
+        observation_cloud.row_step =
+            observation_cloud.width * observation_cloud.point_step;
+        observation_cloud.is_dense = false;
+    } catch (const transform::tf2::TransformException& ex) {
         observation_list_.pop_front();
-        // RCLCPP_ERROR(
-        //     logger_,
-        //     "TF Exception that should never happen for sensor frame: %s,
-        //     cloud frame: %s, %s", sensor_frame_.c_str(),
-        //     cloud.header.frame_id.c_str(), ex.what());
+        AWARN << "ObservationBuffer " << topic_name_
+              << " TF error (" << origin_frame << " -> " << global_frame_
+              << "): " << ex.what();
         return;
     }
 
-    // // if the update was successful, we want to update the last updated time
-    // last_updated_ = clock_->now();
-
-    // we'll also remove any stale observations from the list
+    last_updated_steady_ = std::chrono::steady_clock::now();
     purgeStaleObservations();
 }
 
@@ -169,54 +233,48 @@ void ObservationBuffer::getObservations(
 }
 
 void ObservationBuffer::purgeStaleObservations() {
-    if (!observation_list_.empty()) {
-        std::list<Observation>::iterator obs_it = observation_list_.begin();
-        // // if we're keeping observations for no time... then we'll only keep
-        // one observation if (observation_keep_time_ == rclcpp::Duration(0.0s))
-        // {
-        //     observation_list_.erase(++obs_it, observation_list_.end());
-        //     return;
-        // }
+    if (observation_list_.empty()) {
+        return;
+    }
 
-        // otherwise... we'll have to loop through the observations to see which
-        // ones are stale
-        for (obs_it = observation_list_.begin();
-             obs_it != observation_list_.end(); ++obs_it) {
-            Observation& obs = *obs_it;
-            // // check if the observation is out of date... and if it is,
-            // // remove it and those that follow from the list
-            // if ((clock_->now() - obs.cloud_->header.stamp) >
-            // observation_keep_time_)
-            // {
-            //     observation_list_.erase(obs_it, observation_list_.end());
-            //     return;
-            // }
+    if (observation_keep_time_ <= 0.0) {
+        auto next = std::next(observation_list_.begin());
+        observation_list_.erase(next, observation_list_.end());
+        return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto keep_duration =
+        std::chrono::duration<double>(observation_keep_time_);
+    for (auto obs_it = observation_list_.begin();
+         obs_it != observation_list_.end();) {
+        const auto age = now - last_updated_steady_;
+        if (age > keep_duration) {
+            obs_it = observation_list_.erase(obs_it);
+        } else {
+            ++obs_it;
         }
     }
 }
 
 bool ObservationBuffer::isCurrent() const {
-    // if (expected_update_rate_ == rclcpp::Duration(0.0s)) {
-    //     return true;
-    // }
+    if (expected_update_rate_ <= 0.0) {
+        return true;
+    }
 
-    // bool current = (clock_->now() - last_updated_) <=
-    //     expected_update_rate_;
-    // if (!current) {
-    //     RCLCPP_WARN(
-    //     logger_,
-    //     "The %s observation buffer has not been updated for %.2f seconds, "
-    //     "and it should be updated every %.2f seconds.",
-    //     topic_name_.c_str(),
-    //     (clock_->now() - last_updated_).seconds(),
-    //     expected_update_rate_.seconds());
-    // }
-    // return current;
+    const auto elapsed = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - last_updated_steady_);
+    if (elapsed.count() > expected_update_rate_) {
+        AWARN << "ObservationBuffer " << topic_name_
+              << " not updated for " << elapsed.count()
+              << "s (expected every " << expected_update_rate_ << "s)";
+        return false;
+    }
     return true;
 }
 
 void ObservationBuffer::resetLastUpdated() {
-    // last_updated_ = clock_->now();
+    last_updated_steady_ = std::chrono::steady_clock::now();
 }
 
 }  // namespace costmap_2d
