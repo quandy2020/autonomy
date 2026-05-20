@@ -16,17 +16,55 @@
 
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
-#include <exception>
+#include <cmath>
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/costmap_math.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
+#include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/tf2/exceptions.h"
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
+namespace {
 
-CostmapFilter::CostmapFilter() : filter_info_topic_(""), mask_topic_("") {
+void TransformPoint(const commsgs::geometry_msgs::Transform& transform,
+                    double x, double y, double z, double& out_x, double& out_y,
+                    double& out_z) {
+    const auto& q = transform.rotation;
+    const auto& t = transform.translation;
+    const double qx = q.x;
+    const double qy = q.y;
+    const double qz = q.z;
+    const double qw = q.w;
+    const double ix = qw * x + qy * z - qz * y;
+    const double iy = qw * y + qz * x - qx * z;
+    const double iz = qw * z + qx * y - qy * x;
+    const double iw = -qx * x - qy * y - qz * z;
+    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x;
+    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y;
+    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z;
+}
+
+commsgs::builtin_interfaces::Time LatestTfTime() {
+    commsgs::builtin_interfaces::Time stamp;
+    stamp.sec = 0;
+    stamp.nanosec = 0;
+    return stamp;
+}
+
+}  // namespace
+
+CostmapFilter::CostmapFilter()
+    : filter_info_topic_(""),
+      mask_topic_(""),
+      transform_tolerance_(DurationFromSeconds(0.1)) {
     access_ = new mutex_t();
+    latest_pose_.x = 0.0;
+    latest_pose_.y = 0.0;
+    latest_pose_.theta = 0.0;
 }
 
 CostmapFilter::~CostmapFilter() {
@@ -34,40 +72,35 @@ CostmapFilter::~CostmapFilter() {
 }
 
 void CostmapFilter::onInitialize() {
-    //   rclcpp_lifecycle::LifecycleNode::SharedPtr node = node_.lock();
-    //   if (!node) {
-    //     throw std::runtime_error{"Failed to lock node"};
-    //   }
+    enabled_ = true;
+    current_ = true;
+    transform_tolerance_ = DurationFromSeconds(0.1);
 
-    //   try {
-    //     // Declare common for all costmap filters parameters
-    //     declareParameter("enabled", rclcpp::ParameterValue(true));
-    //     declareParameter("filter_info_topic", rclcpp::PARAMETER_STRING);
-    //     declareParameter("transform_tolerance", rclcpp::ParameterValue(0.1));
+    const auto* layer_options = getOptions();
+    if (layer_options && layer_options->has_static_layer()) {
+        const double tol = layer_options->static_layer().transform_tolerance();
+        if (tol > 0.0) {
+            transform_tolerance_ = DurationFromSeconds(tol);
+        }
+    }
 
-    //     // Get parameters
-    //     node->get_parameter(name_ + "." + "enabled", enabled_);
-    //     filter_info_topic_ = node->get_parameter(name_ + "." +
-    //     "filter_info_topic").as_string(); double transform_tolerance {};
-    //     node->get_parameter(name_ + "." + "transform_tolerance",
-    //     transform_tolerance); transform_tolerance_ =
-    //     tf2::durationFromSec(transform_tolerance);
+    if (filter_info_topic_.empty() && !name_.empty()) {
+        filter_info_topic_ = name_ + "/filter_info";
+    }
 
-    //     // Costmap Filter enabling service
-    //     enable_service_ = node->create_service<std_srvs::srv::SetBool>(
-    //       name_ + "/toggle_filter",
-    //       std::bind(
-    //         &CostmapFilter::enableCallback, this,
-    //         std::placeholders::_1, std::placeholders::_2,
-    //         std::placeholders::_3));
-    //   } catch (const std::exception & ex) {
-    //     RCLCPP_ERROR(logger_, "Parameter problem: %s", ex.what());
-    //     throw ex;
-    //   }
+    AINFO << "CostmapFilter '" << name_
+          << "' initialized: enabled=" << enabled_
+          << " filter_info_topic=" << filter_info_topic_
+          << " transform_tolerance="
+          << SecondsFromDuration(transform_tolerance_) << "s";
 }
 
 void CostmapFilter::activate() {
-    initializeFilter(filter_info_topic_);
+    if (!filter_info_topic_.empty()) {
+        initializeFilter(filter_info_topic_);
+    } else {
+        initializeFilter(name_ + "/filter_info");
+    }
 }
 
 void CostmapFilter::deactivate() {
@@ -76,7 +109,9 @@ void CostmapFilter::deactivate() {
 
 void CostmapFilter::reset() {
     resetFilter();
-    initializeFilter(filter_info_topic_);
+    if (!filter_info_topic_.empty()) {
+        initializeFilter(filter_info_topic_);
+    }
     current_ = false;
 }
 
@@ -99,65 +134,53 @@ void CostmapFilter::updateCosts(Costmap2D& master_grid, int min_i, int min_j,
         return;
     }
 
+    std::lock_guard<mutex_t> guard(*access_);
     process(master_grid, min_i, min_j, max_i, max_j, latest_pose_);
     current_ = true;
 }
-
-// void CostmapFilter::enableCallback(
-//   const std::shared_ptr<rmw_request_id_t>/*request_header*/,
-//   const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
-//   std::shared_ptr<std_srvs::srv::SetBool::Response> response)
-// {
-//   enabled_ = request->data;
-//   response->success = true;
-//   if (enabled_) {
-//     response->message = "Enabled";
-//   } else {
-//     response->message = "Disabled";
-//   }
-// }
 
 bool CostmapFilter::transformPose(
     const std::string global_frame,
     const commsgs::geometry_msgs::Pose2D& global_pose,
     const std::string mask_frame,
     commsgs::geometry_msgs::Pose2D& mask_pose) const {
-    if (mask_frame != global_frame) {
-        // Filter mask and current layer are in different frames:
-        // Transform (global_pose.x, global_pose.y) point from current layer
-        // frame (global_frame) to mask_pose point in mask_frame
-        commsgs::geometry_msgs::TransformStamped transform;
-        commsgs::geometry_msgs::PointStamped in, out;
-        // in.header.stamp = clock_->now();
-        in.header.frame_id = global_frame;
-        in.point.x = global_pose.x;
-        in.point.y = global_pose.y;
-        in.point.z = 0;
-
-        // try {
-        //     tf_->transform(in, out, mask_frame, transform_tolerance_);
-        // } catch (tf2::TransformException & ex) {
-        //     RCLCPP_ERROR(
-        //         logger_,
-        //         "CostmapFilter: failed to get costmap frame (%s) "
-        //         "transformation to mask frame (%s) with error: %s",
-        //         global_frame.c_str(), mask_frame.c_str(), ex.what());
-        //     return false;
-        // }
-        mask_pose.x = out.point.x;
-        mask_pose.y = out.point.y;
-    } else {
-        // Filter mask and current layer are in the same frame:
-        // Just use global_pose coordinates
+    if (mask_frame.empty() || mask_frame == global_frame) {
         mask_pose = global_pose;
+        return true;
     }
 
-    return true;
+    auto* tf_buffer = autonomy::transform::Buffer::Instance();
+    if (!tf_buffer) {
+        AWARN << "CostmapFilter: TF buffer unavailable for " << global_frame
+              << " -> " << mask_frame;
+        return false;
+    }
+
+    try {
+        const float timeout = static_cast<float>(
+            SecondsFromDuration(transform_tolerance_));
+        const auto stamped_transform = tf_buffer->lookupTransform(
+            mask_frame, global_frame, LatestTfTime(), timeout);
+
+        double tz = 0.0;
+        TransformPoint(stamped_transform.transform, global_pose.x,
+                       global_pose.y, 0.0, mask_pose.x, mask_pose.y, tz);
+        mask_pose.theta = global_pose.theta;
+        return true;
+    } catch (const transform::tf2::TransformException& ex) {
+        AWARN << "CostmapFilter: failed to transform pose from " << global_frame
+              << " to " << mask_frame << ": " << ex.what();
+        return false;
+    }
 }
 
 bool CostmapFilter::worldToMask(
     commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask, double wx,
     double wy, unsigned int& mx, unsigned int& my) const {
+    if (!filter_mask || filter_mask->info.resolution <= 0.0) {
+        return false;
+    }
+
     const double origin_x = filter_mask->info.origin.position.x;
     const double origin_y = filter_mask->info.origin.position.y;
     const double resolution = filter_mask->info.resolution;
@@ -180,19 +203,26 @@ bool CostmapFilter::worldToMask(
 unsigned char CostmapFilter::getMaskCost(
     commsgs::map_msgs::OccupancyGrid::ConstSharedPtr filter_mask,
     const unsigned int mx, const unsigned int& my) const {
-    const unsigned int index = my * filter_mask->info.width + mx;
+    if (!filter_mask || filter_mask->data.empty()) {
+        return NO_INFORMATION;
+    }
 
-    const char data = filter_mask->data[index];
+    const unsigned int index = my * filter_mask->info.width + mx;
+    if (index >= filter_mask->data.size()) {
+        return NO_INFORMATION;
+    }
+
+    const int8_t data = filter_mask->data[index];
     if (data == utils::OCC_GRID_UNKNOWN) {
         return NO_INFORMATION;
-    } else {
-        // Linear conversion from OccupancyGrid data range
-        // [OCC_GRID_FREE..OCC_GRID_OCCUPIED] to costmap data range
-        // [FREE_SPACE..LETHAL_OBSTACLE]
-        return std::round(static_cast<double>(data) *
-                          (LETHAL_OBSTACLE - FREE_SPACE) /
-                          (utils::OCC_GRID_OCCUPIED - utils::OCC_GRID_FREE));
     }
+
+    const double scale =
+        static_cast<double>(LETHAL_OBSTACLE - FREE_SPACE) /
+        static_cast<double>(utils::OCC_GRID_OCCUPIED - utils::OCC_GRID_FREE);
+    const double cost =
+        static_cast<double>(data) * scale + static_cast<double>(FREE_SPACE);
+    return static_cast<unsigned char>(std::lround(cost));
 }
 
 }  // namespace costmap_2d

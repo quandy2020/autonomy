@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/utils/pgm_converter.hpp"
+#include "autonomy/map/utils/pgm_converter.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -97,7 +97,7 @@ std::vector<cv::Point> convertPathToImageCoords(
 }
 
 void drawPath(cv::Mat& image, const std::vector<cv::Point>& coords,
-              const autonomy::planning::utils::PgmConverter::RenderParameters&
+              const autonomy::map::utils::PgmConverter::RenderParameters&
                   params) {
     if (coords.size() < 2) {
         return;
@@ -142,7 +142,7 @@ std::string ensureExtension(const std::string& path,
 }  // namespace
 
 namespace autonomy {
-namespace planning {
+namespace map {
 namespace utils {
 
 map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromPgm(
@@ -244,5 +244,5 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
 }
 
 }  // namespace utils
-}  // namespace planning
+}  // namespace map
 }  // namespace autonomy

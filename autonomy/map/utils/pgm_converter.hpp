@@ -23,7 +23,7 @@
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
 namespace autonomy {
-namespace planning {
+namespace map {
 namespace utils {
 
 // Utility for converting PGM maps to Costmap2D and rendering paths.
@@ -76,5 +76,5 @@ public:
 };
 
 }  // namespace utils
-}  // namespace planning
+}  // namespace map
 }  // namespace autonomy

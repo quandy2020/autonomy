@@ -22,8 +22,11 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/map/costmap_2d/costmap_math.hpp"
 #include "autonomy/map/costmap_2d/layer.hpp"
 #include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/tf2/buffer_core.h"
 
 namespace autonomy {
 namespace map {
@@ -107,8 +110,37 @@ public:
     /**
      * @brief If clearing operations should be processed on this layer or not
      */
-    bool isClearable() {
+    bool isClearable() override {
         return false;
+    }
+
+    /**
+     * @brief Set the filter info topic (used on activate/reset).
+     */
+    void setFilterInfoTopic(const std::string& topic) {
+        filter_info_topic_ = topic;
+    }
+
+    /**
+     * @brief Set the filter mask topic name (for logging / external subscribers).
+     */
+    void setMaskTopic(const std::string& topic) {
+        mask_topic_ = topic;
+    }
+
+    /**
+     * @brief Enable or disable this filter at runtime.
+     */
+    void setFilterEnabled(bool enabled) {
+        enabled_ = enabled;
+    }
+
+    const std::string& getFilterInfoTopic() const {
+        return filter_info_topic_;
+    }
+
+    const std::string& getMaskTopic() const {
+        return mask_topic_;
     }
 
     /** CostmapFilter API **/
@@ -215,9 +247,9 @@ protected:
     std::string mask_topic_;
 
     /**
-     * @brief: mask_frame->global_frame_ transform tolerance
+     * @brief mask_frame->global_frame transform tolerance (nanoseconds).
      */
-    transform::tf2::Duration transform_tolerance_;
+    transform::tf2::Duration transform_tolerance_{0};
 
     // /**
     //  * @brief: A service to enable/disable costmap filter

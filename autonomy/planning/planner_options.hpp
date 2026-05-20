@@ -26,6 +26,24 @@ class LuaParameterDictionary;
 }
 namespace planning {
 
+/**
+ * @brief Load planning stack options from a Lua parameter dictionary.
+ *
+ * Parses config/planner/planner.lua (or equivalent) into proto::PlannerOptions,
+ * including planner and smoother plugin lists, per-plugin tuning, global
+ * costmap settings, and path post-processing flags.
+ *
+ * Typical usage:
+ * @code
+ *   auto resolver = std::make_unique<ConfigurationFileResolver>(config_dirs);
+ *   auto dict = resolver->GetDictionary("planner.lua");
+ *   auto options = autonomy::planning::LoadOptions(dict.get());
+ * @endcode
+ *
+ * @param parameter_dictionary Root dictionary for the planner config file.
+ * @return Populated PlannerOptions proto used by PlannerServer and
+ * SmootherServer.
+ */
 proto::PlannerOptions LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 

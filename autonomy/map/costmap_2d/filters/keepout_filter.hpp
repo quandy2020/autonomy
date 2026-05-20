@@ -20,6 +20,7 @@
 #include <string>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
@@ -35,51 +36,86 @@ namespace costmap_2d {
 class KeepoutFilter : public CostmapFilter
 {
 public:
-    /**
-     * @brief A constructor
-     */
     KeepoutFilter();
 
-    /**
-     * @brief Initialize the filter and subscribe to the info topic
-     */
-    void initializeFilter(const std::string& filter_info_topic);
+    void initializeFilter(const std::string& filter_info_topic) override;
 
-    /**
-     * @brief Process the keepout layer at the current pose / bounds / grid
-     */
     void process(Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                 int max_j, const commsgs::geometry_msgs::Pose2D& pose);
+                 int max_j,
+                 const commsgs::geometry_msgs::Pose2D& pose) override;
 
-    /**
-     * @brief Reset the costmap filter / topic / info
-     */
-    void resetFilter();
+    void resetFilter() override;
 
-    /**
-     * @brief If this filter is active
-     */
     bool isActive();
 
-private:
     /**
-     * @brief Callback for the filter information
+     * @brief Inject filter info (replaces subscription callback).
      */
+    void handleFilterInfo(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg);
+
+    /**
+     * @brief Inject filter mask OccupancyGrid directly.
+     */
+    void setFilterMask(const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg);
+
+    /**
+     * @brief One-shot setup for offline / test pipelines (info then mask).
+     */
+    void applyConfiguration(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+        const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask);
+
+    /**
+     * @brief Build default keepout filter info for a given mask topic.
+     */
+    static commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+    makeDefaultFilterInfo(const std::string& mask_topic);
+
+    bool hasFilterMask();
+
+    const commsgs::map_msgs::OccupancyGrid::SharedPtr& getFilterMask() const {
+        return filter_mask_;
+    }
+
+    /**
+     * @brief Occupancy value (0–100) at or above which a mask cell is keepout.
+     */
+    void setOccupancyThreshold(int8_t threshold) {
+        occupancy_threshold_ = threshold;
+    }
+
+    int8_t getOccupancyThreshold() const {
+        return occupancy_threshold_;
+    }
+
+private:
     void filterInfoCallback(
         const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg);
 
-    /**
-     * @brief Callback for the filter mask
-     */
     void maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg);
 
-    // rclcpp::Subscription<nav2_msgs::msg::CostmapFilterInfo>::SharedPtr
-    // filter_info_sub_;
-    // rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr mask_sub_;
+    bool lookupGlobalToMaskTransform(const std::string& mask_frame,
+                                     transform::tf2::Transform& out) const;
+
+    void computeIterationBounds(Costmap2D& master_grid, int min_i, int min_j,
+                                int max_i, int max_j,
+                                const std::string& mask_frame, int& mg_min_x,
+                                int& mg_min_y, int& mg_max_x,
+                                int& mg_max_y) const;
+
+    static bool validateFilterMask(
+        const commsgs::map_msgs::OccupancyGrid& msg);
+
+    std::string resolveMaskFrame() const;
+
+    unsigned char keepoutCostFromMaskCell(unsigned int mx, unsigned int my) const;
 
     commsgs::map_msgs::OccupancyGrid::SharedPtr filter_mask_;
 
-    std::string global_frame_;  // Frame of currnet layer (master_grid)
+    std::string global_frame_;
+    int8_t occupancy_threshold_{50};
+    bool mask_missing_warned_{false};
 };
 
 }  // namespace costmap_2d

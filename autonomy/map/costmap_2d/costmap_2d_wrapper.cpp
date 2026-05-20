@@ -37,15 +37,57 @@
 
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 
+#include <memory>
 #include <sstream>
 
-#include "autonomy/common/config.hpp"
-#include "autonomy/common/logging.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/layers/denoise_layer.hpp"
+#include "autonomy/map/costmap_2d/layers/inflation_layer.hpp"
+#include "autonomy/map/costmap_2d/layers/obstacle_layer.hpp"
+#include "autonomy/map/costmap_2d/layers/range_sensor_layer.hpp"
+#include "autonomy/map/costmap_2d/layers/static_layer.hpp"
+#include "autonomy/map/costmap_2d/layers/voxel_layer.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
+#include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/utils/data_loader_utils.hpp"
 #include "autonomy/transform/tf2/exceptions.h"
+#include "autonomy/transform/tf2/utils.h"
+
+namespace {
+
+using autonomy::map::costmap_2d::Layer;
+
+std::shared_ptr<Layer> CreateCostmapLayerInstance(
+    const std::string& plugin_name, const std::string& plugin_type) {
+    const auto matches = [&](const char* short_name,
+                             const char* class_suffix) -> bool {
+        return plugin_name == short_name ||
+               plugin_type.find(class_suffix) != std::string::npos;
+    };
+
+    if (matches("static_layer", "StaticLayer")) {
+        return std::make_shared<autonomy::map::costmap_2d::StaticLayer>();
+    }
+    if (matches("obstacle_layer", "ObstacleLayer")) {
+        return std::make_shared<autonomy::map::costmap_2d::ObstacleLayer>();
+    }
+    if (matches("inflation_layer", "InflationLayer")) {
+        return std::make_shared<autonomy::map::costmap_2d::InflationLayer>();
+    }
+    if (matches("denoise_layer", "DenoiseLayer")) {
+        return std::make_shared<autonomy::map::costmap_2d::DenoiseLayer>();
+    }
+    if (matches("voxel_layer", "VoxelLayer")) {
+        return std::make_shared<autonomy::map::costmap_2d::VoxelLayer>();
+    }
+    if (matches("range_sensor_layer", "RangeSensorLayer")) {
+        return std::make_shared<autonomy::map::costmap_2d::RangeSensorLayer>();
+    }
+    return nullptr;
+}
+
+}  // namespace
 
 namespace autonomy {
 namespace map {
@@ -54,6 +96,7 @@ namespace costmap_2d {
 Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options,
                                    const std::string& name)
     : options_{options},
+      name_{name},
       default_plugins_{"static_layer", "obstacle_layer", "inflation_layer"},
       default_types_{"autonomy::map::costmap_2d::StaticLayer",
                      "autonomy::map::costmap_2d::ObstacleLayer",
@@ -237,37 +280,12 @@ void Costmap2DWrapper::init() {
             origin_x_, origin_y_);
     }
 
-    // Layer/filter plugins require explicit registration when built in-tree.
-    for (unsigned int i = 0; i < plugin_names_.size(); ++i) {
-        const auto& plugin_name = plugin_names_[i];
-        const auto& plugin_type = plugin_types_[i];
-        AWARN << "Skipping costmap layer plugin (no class_loader): " << plugin_name
-              << " type=" << plugin_type;
-    }
+    loadPlugins();
 
     if (!filter_names_.empty()) {
-        AINFO << "Loading " << filter_names_.size() << " costmap filter(s)...";
+        AWARN << "Costmap filters configured (" << filter_names_.size()
+              << ") but filter plugins are not loaded yet";
     }
-    for (unsigned int i = 0; i < filter_names_.size(); ++i) {
-        const auto& filter_name = filter_names_[i];
-        const auto& filter_type = filter_types_[i];
-        AWARN << "Skipping costmap filter plugin (no class_loader): " << filter_name
-              << " type=" << filter_type;
-    }
-
-    auto layers = layered_costmap_->getPlugins();
-
-    // for (auto & layer : *layers) {
-    //     auto costmap_layer = std::dynamic_pointer_cast<CostmapLayer>(layer);
-    //     if (costmap_layer != nullptr) {
-    //         layer_publishers_.emplace_back(
-    //             std::make_unique<Costmap2DPublisher>(
-    //             shared_from_this(),
-    //             costmap_layer.get(), global_frame_,
-    //             layer->getName(), always_send_full_costmap_, map_vis_z_)
-    //         );
-    //     }
-    // }
 
     // Set the footprint
     if (use_radius_) {
@@ -289,6 +307,126 @@ void Costmap2DWrapper::init() {
             AWARN << "Failed to parse footprint, using robot_radius instead.";
             setRobotFootprint(makeFootprintFromRadius(robot_radius_));
         }
+    }
+}
+
+void Costmap2DWrapper::loadPlugins() {
+    if (!layered_costmap_) {
+        return;
+    }
+
+    for (size_t i = 0; i < plugin_names_.size(); ++i) {
+        const auto& plugin_name = plugin_names_[i];
+        const auto& plugin_type = plugin_types_[i];
+        std::shared_ptr<Layer> plugin =
+            CreateCostmapLayerInstance(plugin_name, plugin_type);
+        if (!plugin) {
+            AWARN << "Unknown costmap layer plugin: " << plugin_name
+                  << " type=" << plugin_type;
+            continue;
+        }
+
+        plugin->initialize(layered_costmap_.get(), plugin_name, &options_);
+        layered_costmap_->addPlugin(plugin);
+        AINFO << "Loaded costmap layer: " << plugin_name
+              << " (type=" << plugin_type << ")";
+    }
+
+    if (plugin_names_.empty()) {
+        AINFO << "Costmap has no layer plugins (base grid only)";
+    }
+}
+
+void Costmap2DWrapper::applyLoadedOccupancyGrid() {
+    if (!layered_costmap_ || occupancy_grid_.info.width == 0 ||
+        occupancy_grid_.info.height == 0) {
+        return;
+    }
+
+    bool fed_to_static_layer = false;
+    auto* plugins = layered_costmap_->getPlugins();
+    if (plugins != nullptr) {
+        for (auto& plugin : *plugins) {
+            auto static_layer =
+                std::dynamic_pointer_cast<StaticLayer>(plugin);
+            if (static_layer == nullptr) {
+                continue;
+            }
+            static_layer->loadOccupancyGrid(occupancy_grid_);
+            fed_to_static_layer = true;
+            AINFO << "Applied loaded map to StaticLayer";
+            break;
+        }
+    }
+
+    if (!fed_to_static_layer) {
+        Costmap2D loaded_grid(occupancy_grid_);
+        *layered_costmap_->getCostmap() = loaded_grid;
+        AINFO << "Applied loaded map directly to master costmap";
+    }
+
+    if (plugins != nullptr && !plugins->empty()) {
+        layered_costmap_->updateMap(0.0, 0.0, 0.0);
+    }
+    ready_ = true;
+}
+
+void Costmap2DWrapper::setPluginsActive(bool active) {
+    if (!layered_costmap_) {
+        return;
+    }
+    auto* plugins = layered_costmap_->getPlugins();
+    if (plugins == nullptr) {
+        return;
+    }
+
+    for (auto& plugin : *plugins) {
+        if (active) {
+            if (auto static_layer =
+                    std::dynamic_pointer_cast<StaticLayer>(plugin)) {
+                static_layer->activate();
+            } else if (auto obstacle_layer =
+                           std::dynamic_pointer_cast<ObstacleLayer>(plugin)) {
+                obstacle_layer->activate();
+            } else if (auto range_layer =
+                           std::dynamic_pointer_cast<RangeSensorLayer>(
+                               plugin)) {
+                range_layer->activate();
+            }
+        } else {
+            if (auto static_layer =
+                    std::dynamic_pointer_cast<StaticLayer>(plugin)) {
+                static_layer->deactivate();
+            } else if (auto obstacle_layer =
+                           std::dynamic_pointer_cast<ObstacleLayer>(plugin)) {
+                obstacle_layer->deactivate();
+            } else if (auto range_layer =
+                           std::dynamic_pointer_cast<RangeSensorLayer>(
+                               plugin)) {
+                range_layer->deactivate();
+            }
+        }
+    }
+}
+
+void Costmap2DWrapper::updateMap() {
+    if (!layered_costmap_) {
+        return;
+    }
+
+    double robot_x = 0.0;
+    double robot_y = 0.0;
+    double robot_yaw = 0.0;
+    commsgs::geometry_msgs::PoseStamped robot_pose;
+    if (getRobotPose(robot_pose)) {
+        robot_x = robot_pose.pose.position.x;
+        robot_y = robot_pose.pose.position.y;
+        robot_yaw = autonomy::transform::tf2::getYaw(robot_pose.pose.orientation);
+    }
+
+    layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
+    if (!ready_) {
+        ready_ = true;
     }
 }
 
@@ -324,6 +462,14 @@ void Costmap2DWrapper::Start() {
         }
     }
 
+    setPluginsActive(true);
+    stopped_ = false;
+
+    if (plugin_names_.empty() && !ready_) {
+        ready_ = true;
+        AINFO << "Costmap ready (no layer plugins)";
+    }
+
     // 确定发布频率：优先使用 map_publish_frequency_，否则使用
     // update_frequency，最后使用默认值 1.0 Hz
     double publish_frequency =
@@ -348,21 +494,15 @@ void Costmap2DWrapper::Start() {
         std::make_unique<std::thread>([this, publish_interval_ms]() {
             AINFO << "Costmap2D update thread started.";
             while (!stop_updates_) {
-                // 更新 costmap（调用所有 layer 的 updateBounds 和 updateCosts）
-                // 使用机器人位置 (0,0,0) 作为默认值，实际应从定位模块获取
-                double robot_x = 0.0, robot_y = 0.0, robot_yaw = 0.0;
                 try {
-                    layered_costmap_->updateMap(robot_x, robot_y, robot_yaw);
-                    // 标记 costmap 已经至少更新过一次
+                    updateMap();
                     if (!ready_) {
-                        ready_ = true;
                         AINFO << "Costmap2D is now ready after first update.";
                     }
                 } catch (const std::exception& e) {
                     AERROR << "Failed to update costmap: " << e.what();
                 }
 
-                // 发布更新后的地图
                 publishMap();
                 std::this_thread::sleep_for(
                     std::chrono::milliseconds(publish_interval_ms));
@@ -388,15 +528,7 @@ void Costmap2DWrapper::Stop() {
         std::vector<std::shared_ptr<Layer>>* filters =
             layered_costmap_->getFilters();
 
-        // unsubscribe from topics
-        for (auto plugin = plugins->begin(); plugin != plugins->end();
-             ++plugin) {
-            // (*plugin)->deactivate();
-        }
-        for (auto filter = filters->begin(); filter != filters->end();
-             ++filter) {
-            // (*filter)->deactivate();
-        }
+        setPluginsActive(false);
     }
     initialized_ = false;
     stopped_ = true;
@@ -409,11 +541,11 @@ void Costmap2DWrapper::Pause() {
 
 void Costmap2DWrapper::Resume() {
     stop_updates_ = false;
-    // block until the costmap is re-initialized.. meaning one update cycle has
-    // run
-    while (!initialized_) {
+    setPluginsActive(true);
+    while (!ready_ && !stop_updates_) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    initialized_ = ready_;
 }
 
 void Costmap2DWrapper::resetLayers() {
@@ -450,13 +582,14 @@ void Costmap2DWrapper::getOrientedFootprint(
     std::vector<commsgs::geometry_msgs::Point>& oriented_footprint) {
     commsgs::geometry_msgs::PoseStamped global_pose;
     if (!getRobotPose(global_pose)) {
+        oriented_footprint = padded_footprint_;
         return;
     }
 
-    // double yaw = transform::tf2::getYaw(global_pose.pose.orientation);
-    // transformFootprint(
-    //     global_pose.pose.position.x, global_pose.pose.position.y, yaw,
-    //     padded_footprint_, oriented_footprint);
+    const double yaw =
+        autonomy::transform::tf2::getYaw(global_pose.pose.orientation);
+    transformFootprint(global_pose.pose.position.x, global_pose.pose.position.y,
+                       yaw, padded_footprint_, oriented_footprint);
 }
 
 void Costmap2DWrapper::mapUpdateLoop(double frequency) {}
@@ -529,11 +662,44 @@ bool Costmap2DWrapper::loadMap(const std::string& filename) {
         AINFO << "Map loaded and resized: " << size_x << "x" << size_y << " @ "
               << resolution << " m/cell, origin: (" << origin_x << ", "
               << origin_y << ")";
+        applyLoadedOccupancyGrid();
     }
 
-    // 标记地图已加载，避免重复加载
     map_loaded_ = true;
+    return true;
+}
 
+bool Costmap2DWrapper::applyOccupancyGrid(
+    const commsgs::map_msgs::OccupancyGrid& grid) {
+    if (!utils::validateMsg(grid)) {
+        AERROR << "Costmap2DWrapper: rejected malformed OccupancyGrid";
+        return false;
+    }
+
+    occupancy_grid_ = grid;
+
+    if (layered_costmap_ && occupancy_grid_.info.width > 0 &&
+        occupancy_grid_.info.height > 0) {
+        const unsigned int size_x = occupancy_grid_.info.width;
+        const unsigned int size_y = occupancy_grid_.info.height;
+        const double resolution = occupancy_grid_.info.resolution;
+        const double origin_x = occupancy_grid_.info.origin.position.x;
+        const double origin_y = occupancy_grid_.info.origin.position.y;
+
+        resolution_ = resolution;
+        map_width_meters_ = size_x * resolution;
+        map_height_meters_ = size_y * resolution;
+        origin_x_ = origin_x;
+        origin_y_ = origin_y;
+
+        layered_costmap_->resizeMap(size_x, size_y, resolution, origin_x,
+                                    origin_y);
+        applyLoadedOccupancyGrid();
+    }
+
+    map_loaded_ = true;
+    ready_ = true;
+    AINFO << "Costmap2DWrapper: applied external OccupancyGrid";
     return true;
 }
 

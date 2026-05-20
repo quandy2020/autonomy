@@ -16,73 +16,54 @@
 
 #include "autonomy/map/costmap_2d/layers/denoise_layer.hpp"
 
-#include <algorithm>
-#include <memory>
+#include <cmath>
 #include <string>
-#include <vector>
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/proto/map_2d_option.pb.h"
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
 void DenoiseLayer::onInitialize() {
-    // // Enable/disable plugin
-    // declareParameter("enabled", rclcpp::ParameterValue(true));
-    // // Smaller groups should be filtered
-    // declareParameter("minimal_group_size", rclcpp::ParameterValue(2));
-    // // Pixels connectivity type
-    // declareParameter("group_connectivity_type", rclcpp::ParameterValue(8));
+    enabled_ = true;
+    minimal_group_size_ = 2;
+    group_connectivity_type_ = ConnectivityType::Way8;
 
-    // const auto node = node_.lock();
+    if (options_ && options_->has_denoise_layer()) {
+        const auto& denoise_opts = options_->denoise_layer();
+        enabled_ = denoise_opts.enabled();
 
-    // if (!node) {
-    //     throw std::runtime_error("DenoiseLayer::onInitialize: Failed to lock
-    //     node");
-    // }
-    // node->get_parameter(name_ + "." + "enabled", enabled_);
+        // denoise_radius in config maps to Nav2 minimal_group_size (cells).
+        const int minimal_group_size_param =
+            static_cast<int>(std::lround(denoise_opts.denoise_radius()));
+        if (minimal_group_size_param <= 1) {
+            AWARN << "DenoiseLayer: denoise_radius=" << denoise_opts.denoise_radius()
+                  << " (minimal_group_size <= 1): no denoising will be applied";
+            minimal_group_size_ = 1;
+        } else {
+            minimal_group_size_ =
+                static_cast<size_t>(minimal_group_size_param);
+        }
 
-    // auto getInt = [&](const std::string & parameter_name) {
-    //     int param{};
-    //     node->get_parameter(name_ + "." + parameter_name, param);
-    //     return param;
-    // };
+        const int connectivity = denoise_opts.group_connectivity_type();
+        if (connectivity == 4) {
+            group_connectivity_type_ = ConnectivityType::Way4;
+        } else if (connectivity == 8) {
+            group_connectivity_type_ = ConnectivityType::Way8;
+        } else if (connectivity != 0) {
+            AWARN << "DenoiseLayer: group_connectivity_type=" << connectivity
+                  << " invalid, using 8";
+            group_connectivity_type_ = ConnectivityType::Way8;
+        }
+    }
 
-    // const int minimal_group_size_param = getInt("minimal_group_size");
-
-    // if (minimal_group_size_param <= 1) {
-    //     // RCLCPP_WARN(
-    //     //     logger_,
-    //     //     "DenoiseLayer::onInitialize(): param minimal_group_size: %i."
-    //     //     " A value of 1 or less means that all map cells will be left
-    //     as they are.",
-    //     //     minimal_group_size_param);
-    //     minimal_group_size_ = 1;
-    // } else {
-    //     minimal_group_size_ = static_cast<size_t>(minimal_group_size_param);
-    // }
-
-    // const int group_connectivity_type_param =
-    // getInt("group_connectivity_type");
-
-    // if (group_connectivity_type_param == 4) {
-    //     group_connectivity_type_ = ConnectivityType::Way4;
-    // } else {
-    //     group_connectivity_type_ = ConnectivityType::Way8;
-
-    //     if (group_connectivity_type_param != 8) {
-    //         // RCLCPP_WARN(
-    //         //     logger_, "DenoiseLayer::onInitialize(): param
-    //         group_connectivity_type: %i."
-    //         //     " Possible values are  4 (neighbors pixels are connected
-    //         horizontally and vertically) "
-    //         //     "or 8 (neighbors pixels are connected horizontally,
-    //         vertically and diagonally)."
-    //         //     "The default value 8 will be used",
-    //         //     group_connectivity_type_param);
-    //     }
-    // }
+    AINFO << "DenoiseLayer initialized: enabled=" << enabled_
+          << ", minimal_group_size=" << minimal_group_size_
+          << ", connectivity="
+          << (group_connectivity_type_ == ConnectivityType::Way4 ? 4 : 8);
 
     current_ = true;
 }
@@ -98,7 +79,9 @@ bool DenoiseLayer::isClearable() {
 void DenoiseLayer::updateBounds(double /*robot_x*/, double /*robot_y*/,
                                 double /*robot_yaw*/, double* /*min_x*/,
                                 double* /*min_y*/, double* /*max_x*/,
-                                double* /*max_y*/) {}
+                                double* /*max_y*/) {
+    // Filter layer: does not expand update bounds.
+}
 
 void DenoiseLayer::updateCosts(Costmap2D& master_grid, int min_x, int min_y,
                                int max_x, int max_y) {
@@ -109,22 +92,27 @@ void DenoiseLayer::updateCosts(Costmap2D& master_grid, int min_x, int min_y,
     if (min_x >= max_x || min_y >= max_y) {
         return;
     }
+
+    if (minimal_group_size_ <= 1) {
+        current_ = true;
+        return;
+    }
+
     no_information_is_obstacle_ =
         master_grid.getDefaultValue() != NO_INFORMATION;
 
-    // wrap roi_image over existing costmap2d buffer
     unsigned char* master_array = master_grid.getCharMap();
     const int step = static_cast<int>(master_grid.getSizeInCellsX());
 
-    const size_t width = max_x - min_x;
-    const size_t height = max_y - min_y;
+    const size_t width = static_cast<size_t>(max_x - min_x);
+    const size_t height = static_cast<size_t>(max_y - min_y);
     Image<uint8_t> roi_image(height, width, master_array + min_y * step + min_x,
                              step);
 
     try {
         denoise(roi_image);
-    } catch (std::exception& ex) {
-        LOG(ERROR) << "Inner error: " << ex.what();
+    } catch (const std::exception& ex) {
+        AWARN << "DenoiseLayer updateCosts failed: " << ex.what();
     }
 
     current_ = true;
@@ -136,14 +124,12 @@ void DenoiseLayer::denoise(Image<uint8_t>& image) const {
     }
 
     if (minimal_group_size_ <= 1) {
-        return;  // A smaller group cannot exist. No one pixel will be changed
+        return;
     }
 
     if (minimal_group_size_ == 2) {
-        // Performs fast filtration based on erosion function
         removeSinglePixels(image);
     } else {
-        // Performs a slower segmentation-based operation
         removeGroups(image);
     }
 }
@@ -155,15 +141,10 @@ void DenoiseLayer::removeGroups(Image<uint8_t>& image) const {
 }
 
 void DenoiseLayer::removeSinglePixels(Image<uint8_t>& image) const {
-    // Building a map of 4 or 8-connected neighbors.
-    // The pixel of the map is 255 if there is an obstacle nearby
     uint8_t* buf = buffer_.get<uint8_t>(image.rows() * image.columns());
     Image<uint8_t> max_neighbors_image(image.rows(), image.columns(), buf,
                                        image.columns());
 
-    // If NO_INFORMATION (=255) isn't obstacle, we can't use a simple max() to
-    // check any obstacle nearby. In this case, we interpret NO_INFORMATION as
-    // an empty space.
     if (!no_information_is_obstacle_) {
         auto replace_to_free = [](uint8_t v) {
             return v == NO_INFORMATION ? FREE_SPACE : v;
@@ -183,17 +164,17 @@ void DenoiseLayer::removeSinglePixels(Image<uint8_t>& image) const {
     }
 
     max_neighbors_image.convert(
-        image, [this](uint8_t maxNeighbor, uint8_t& img) {
-            if (!isBackground(img) && isBackground(maxNeighbor)) {
+        image, [this](uint8_t max_neighbor, uint8_t& img) {
+            if (!isBackground(img) && isBackground(max_neighbor)) {
                 img = FREE_SPACE;
             }
         });
 }
 
 bool DenoiseLayer::isBackground(uint8_t pixel) const {
-    bool is_obstacle = pixel == LETHAL_OBSTACLE ||
-                       pixel == INSCRIBED_INFLATED_OBSTACLE ||
-                       (pixel == NO_INFORMATION && no_information_is_obstacle_);
+    const bool is_obstacle =
+        pixel == LETHAL_OBSTACLE || pixel == INSCRIBED_INFLATED_OBSTACLE ||
+        (pixel == NO_INFORMATION && no_information_is_obstacle_);
     return !is_obstacle;
 }
 

@@ -255,6 +255,11 @@ public:
     bool loadMap(const std::string& filename);
 
     /**
+     * @brief Apply an OccupancyGrid from MapServer or SLAM into StaticLayer.
+     */
+    bool applyOccupancyGrid(const commsgs::map_msgs::OccupancyGrid& grid);
+
+    /**
      * @brief Publish the map to the topic
      */
     void publishMap();
@@ -280,6 +285,15 @@ public:
     }
 
 protected:
+    /** @brief Instantiate and register configured layer plugins. */
+    void loadPlugins();
+
+    /** @brief Push occupancy_grid_ into StaticLayer or the master costmap. */
+    void applyLoadedOccupancyGrid();
+
+    /** @brief Activate or deactivate all loaded layer plugins. */
+    void setPluginsActive(bool active);
+
     std::unique_ptr<LayeredCostmap> layered_costmap_{nullptr};
     std::string name_;
 

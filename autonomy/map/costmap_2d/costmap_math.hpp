@@ -39,14 +39,27 @@
 
 #include <math.h>
 
+#include <cstdint>
 #include <algorithm>
 #include <vector>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/transform/tf2/time.h"
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
+
+/** @brief Convert seconds to tf2 Duration (nanoseconds). */
+inline transform::tf2::Duration DurationFromSeconds(double seconds) {
+    return static_cast<transform::tf2::Duration>(
+        static_cast<uint64_t>(seconds * 1e9));
+}
+
+/** @brief Convert tf2 Duration (nanoseconds) to seconds. */
+inline double SecondsFromDuration(transform::tf2::Duration duration) {
+    return static_cast<double>(duration) * 1e-9;
+}
 
 /** @brief Return -1 if x < 0, +1 otherwise. */
 inline double sign(double x) {

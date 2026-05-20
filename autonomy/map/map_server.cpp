@@ -16,67 +16,264 @@
 
 #include "autonomy/map/map_server.hpp"
 
-#include <unistd.h>  // for getpid()
+#include <chrono>
+#include <cmath>
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/map/constants.hpp"
 #include "autonomy/map/costmap_2d/map_io.hpp"
+#include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/utils/data_loader_utils.hpp"
 
 namespace autonomy {
 namespace map {
+namespace {
+
+bool IsAbsolutePath(const std::string& path) {
+    return !path.empty() && path.front() == '/';
+}
+
+std::string DefaultMapTopic() {
+    return "map";
+}
+
+std::string DefaultFrameId() {
+    return "map";
+}
+
+}  // namespace
 
 MapServer::MapServer(const proto::MapOptions& options,
                      const std::string& node_name)
     : options_{options} {
-    // 检查 map_file 是否有效
-    bool has_static_map = !options_.map_file().empty();
-    if (has_static_map) {
-        // 静态地图名称
-        static_map_name_ =
-            options_.map_name().empty() ? "map" : options_.map_name();
+    node_name_ = node_name.empty() ? kMapServerNodeName : node_name;
 
-        AINFO << "Static map configuration: map_file=" << options_.map_file()
-              << ", map_name=" << static_map_name_;
-    } else {
-        AWARN << "Static map file is not configured.";
+    if (options_.map_topic().empty()) {
+        options_.set_map_topic(DefaultMapTopic());
     }
 
-    AINFO << "MapServer initialized successfully. Static map topic: "
-          << options_.map_topic();
+    if (!options_.map_file().empty()) {
+        static_map_name_ =
+            options_.map_name().empty() ? "map" : options_.map_name();
+        AINFO << "MapServer[" << node_name_ << "]: static map map_file="
+              << options_.map_file()
+              << " resolved=" << resolveMapFilePath()
+              << " map_name=" << static_map_name_;
+    } else {
+        AWARN << "MapServer[" << node_name_ << "]: map_file is not configured";
+    }
+
+    AINFO << "MapServer[" << node_name_ << "]: topic=" << options_.map_topic()
+          << " frame_id="
+          << (options_.frame_id().empty() ? DefaultFrameId()
+                                          : options_.frame_id())
+          << " publish_frequency=" << options_.publish_frequency() << " Hz";
 }
 
 MapServer::~MapServer() {
     if (running_.load()) {
         Shutdown();
     }
-    AINFO << "MapServer destroyed.";
+    AINFO << "MapServer[" << node_name_ << "] destroyed";
+}
+
+void MapServer::applyMapHeader(
+    commsgs::map_msgs::OccupancyGrid& map) const {
+    if (!options_.frame_id().empty()) {
+        map.header.frame_id = options_.frame_id();
+    } else if (map.header.frame_id.empty()) {
+        map.header.frame_id = DefaultFrameId();
+    }
+    map.header.stamp = commsgs::builtin_interfaces::Time::Now();
+}
+
+std::string MapServer::resolveMapFilePath() const {
+    if (options_.map_file().empty()) {
+        return "";
+    }
+    if (IsAbsolutePath(options_.map_file())) {
+        return options_.map_file();
+    }
+    return utils::GetMapDataFilesDirectory() + options_.map_file();
+}
+
+bool MapServer::loadMapFromFile(const std::string& map_file_path) {
+    if (map_file_path.empty()) {
+        AWARN << "MapServer[" << node_name_ << "]: empty map file path";
+        return false;
+    }
+
+    auto map_msg = std::make_shared<commsgs::map_msgs::OccupancyGrid>();
+    const auto status =
+        costmap_2d::loadMapFromYaml(map_file_path, *map_msg);
+    if (status != costmap_2d::LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
+        AERROR << "MapServer[" << node_name_
+               << "]: failed to load map from " << map_file_path
+               << " (status=" << static_cast<int>(status) << ")";
+        return false;
+    }
+
+    if (!costmap_2d::utils::validateMsg(*map_msg)) {
+        AERROR << "MapServer[" << node_name_
+               << "]: loaded map is malformed: " << map_file_path;
+        return false;
+    }
+
+    applyMapHeader(*map_msg);
+
+    std::lock_guard<std::mutex> lock(map_mutex_);
+    static_map_msg_ = std::move(map_msg);
+
+    AINFO << "MapServer[" << node_name_ << "]: loaded map "
+          << static_map_msg_->info.width << "x"
+          << static_map_msg_->info.height << " @ "
+          << static_map_msg_->info.resolution << " m/cell, frame="
+          << static_map_msg_->header.frame_id;
+    return true;
+}
+
+bool MapServer::loadMapFromFileLocked() {
+    return loadMapFromFile(resolveMapFilePath());
+}
+
+void MapServer::SetMapPublishCallback(MapPublishCallback callback) {
+    std::lock_guard<std::mutex> lock(map_mutex_);
+    map_publish_callback_ = std::move(callback);
+}
+
+bool MapServer::HasStaticMap() const {
+    std::lock_guard<std::mutex> lock(map_mutex_);
+    return static_map_msg_ != nullptr;
+}
+
+commsgs::map_msgs::OccupancyGrid::SharedPtr MapServer::GetStaticMapShared()
+    const {
+    std::lock_guard<std::mutex> lock(map_mutex_);
+    return static_map_msg_;
+}
+
+bool MapServer::GetRawStaticMap(
+    commsgs::map_msgs::OccupancyGrid& static_map) const {
+    std::lock_guard<std::mutex> lock(map_mutex_);
+    if (static_map_msg_) {
+        static_map = *static_map_msg_;
+        return true;
+    }
+
+    const std::string map_file = resolveMapFilePath();
+    if (map_file.empty()) {
+        AWARN << "MapServer[" << node_name_ << "]: no map file configured";
+        return false;
+    }
+
+    const auto status = costmap_2d::loadMapFromYaml(map_file, static_map);
+    if (status != costmap_2d::LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
+        AERROR << "MapServer[" << node_name_
+               << "]: failed to load map from " << map_file;
+        return false;
+    }
+
+    applyMapHeader(static_map);
+    return true;
+}
+
+bool MapServer::SetStaticMap(const commsgs::map_msgs::OccupancyGrid& map) {
+    if (!costmap_2d::utils::validateMsg(map)) {
+        AERROR << "MapServer[" << node_name_ << "]: rejected invalid map";
+        return false;
+    }
+
+    auto map_msg = std::make_shared<commsgs::map_msgs::OccupancyGrid>(map);
+    applyMapHeader(*map_msg);
+
+    {
+        std::lock_guard<std::mutex> lock(map_mutex_);
+        static_map_msg_ = std::move(map_msg);
+    }
+
+    AINFO << "MapServer[" << node_name_ << "]: static map set externally ("
+          << static_map_msg_->info.width << "x"
+          << static_map_msg_->info.height << ")";
+    return true;
+}
+
+bool MapServer::ReloadMap() {
+    if (options_.map_file().empty()) {
+        AWARN << "MapServer[" << node_name_
+              << "]: cannot reload without map_file";
+        return false;
+    }
+    return loadMapFromFileLocked();
+}
+
+bool MapServer::PublishMap() {
+    commsgs::map_msgs::OccupancyGrid::SharedPtr map_copy;
+    MapPublishCallback callback;
+    {
+        std::lock_guard<std::mutex> lock(map_mutex_);
+        if (!static_map_msg_) {
+            AWARN << "MapServer[" << node_name_
+                  << "]: no map to publish on topic " << options_.map_topic();
+            return false;
+        }
+        map_copy = static_map_msg_;
+        map_copy->header.stamp = commsgs::builtin_interfaces::Time::Now();
+        callback = map_publish_callback_;
+    }
+
+    if (callback) {
+        callback(map_copy);
+        return true;
+    }
+
+    ADEBUG << "MapServer[" << node_name_ << "]: map ready on topic "
+           << options_.map_topic()
+           << " (no MapPublishCallback registered)";
+    return true;
+}
+
+void MapServer::publishLoop() {
+    const double hz = options_.publish_frequency();
+    if (hz <= 0.0 || !std::isfinite(hz)) {
+        return;
+    }
+
+    const auto period = std::chrono::duration<double>(1.0 / hz);
+    while (running_.load()) {
+        PublishMap();
+        std::this_thread::sleep_for(
+            std::chrono::duration_cast<std::chrono::milliseconds>(period));
+    }
 }
 
 void MapServer::Start() {
     if (running_.load()) {
-        AWARN << "MapServer is already running.";
+        AWARN << "MapServer[" << node_name_ << "]: already running";
         return;
     }
 
     running_.store(true);
 
-    if (!static_map_name_.empty() && !options_.map_file().empty()) {
-        std::lock_guard<std::mutex> lock(publish_mutex_);
-        if (!static_map_msg_) {
-            static_map_msg_ =
-                std::make_shared<commsgs::map_msgs::OccupancyGrid>();
-            if (GetRawStaticMap(*static_map_msg_)) {
-                AINFO << "Static map loaded and cached.";
-            } else {
-                AWARN << "Failed to load static map.";
-                static_map_msg_.reset();
-            }
+    if (!options_.map_file().empty()) {
+        if (!loadMapFromFileLocked()) {
+            AWARN << "MapServer[" << node_name_ << "]: failed to load static map";
         }
     }
 
-    AINFO << "MapServer started.";
+    PublishMap();
+
+    const double hz = options_.publish_frequency();
+    if (hz > 0.0 && std::isfinite(hz)) {
+        publish_thread_ = std::thread(&MapServer::publishLoop, this);
+        AINFO << "MapServer[" << node_name_ << "]: publishing at " << hz
+              << " Hz on " << options_.map_topic();
+    } else {
+        AINFO << "MapServer[" << node_name_
+              << "]: publish_frequency<=0, map published on Start() only";
+    }
+
+    AINFO << "MapServer[" << node_name_ << "]: started";
 }
 
 void MapServer::Shutdown() {
@@ -86,45 +283,33 @@ void MapServer::Shutdown() {
 
     running_.store(false);
 
+    if (publish_thread_.joinable()) {
+        publish_thread_.join();
+    }
+
     {
-        std::lock_guard<std::mutex> lock(publish_mutex_);
+        std::lock_guard<std::mutex> lock(map_mutex_);
         static_map_msg_.reset();
     }
 
-    AINFO << "MapServer shutdown.";
-}
-
-bool MapServer::GetRawStaticMap(
-    commsgs::map_msgs::OccupancyGrid& static_map) const {
-    AINFO << "MapServer::Start: Publishing static map";
-
-    std::string map_file =
-        utils::GetMapDataFilesDirectory() + options_.map_file();
-
-    if (map_file.empty()) {
-        AWARN << "Static map file is not configured.";
-        return false;
-    }
-
-    // 直接从文件加载原始地图数据（不经过 costmap 处理）
-    if (::autonomy::map::costmap_2d::loadMapFromYaml(map_file, static_map) !=
-        ::autonomy::map::costmap_2d::LOAD_MAP_STATUS::LOAD_MAP_SUCCESS) {
-        AERROR << "Failed to load raw static map from file: " << map_file;
-        return false;
-    }
-
-    // 设置 frame_id
-    if (!options_.frame_id().empty()) {
-        static_map.header.frame_id = options_.frame_id();
-    } else {
-        static_map.header.frame_id = "map";
-    }
-
-    return true;
+    AINFO << "MapServer[" << node_name_ << "]: shutdown";
 }
 
 std::string MapServer::GetStaticMapFile() const {
     return options_.map_file();
+}
+
+std::string MapServer::GetResolvedMapFilePath() const {
+    return resolveMapFilePath();
+}
+
+std::string MapServer::GetMapTopic() const {
+    return options_.map_topic().empty() ? DefaultMapTopic()
+                                      : options_.map_topic();
+}
+
+std::string MapServer::GetFrameId() const {
+    return options_.frame_id().empty() ? DefaultFrameId() : options_.frame_id();
 }
 
 }  // namespace map

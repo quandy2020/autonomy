@@ -91,6 +91,12 @@ public:
      */
     void Shutdown();
 
+    /**
+     * @brief Re-run Configure() on all loaded planner plugins (e.g. after replacing
+     * the costmap grid offline).
+     */
+    void ReconfigurePlugins();
+
     map::costmap_2d::Costmap2DWrapper::SharedPtr GetCostmapWrapper() const {
         return costmap_wrapper_;
     }

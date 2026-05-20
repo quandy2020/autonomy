@@ -16,10 +16,12 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
@@ -29,76 +31,88 @@ namespace costmap_2d {
 
 /**
  * @class BinaryFilter
- * @brief Reads in a speed restriction mask and enables a robot to
- * dynamically adjust speed based on pose in map to slow in dangerous
- * areas. Done via absolute speed setting or percentage of maximum speed
+ * @brief Reads a binary mask and flips a boolean state when the robot enters
+ * regions where (base + mask_data * multiplier) exceeds flip_threshold_.
  */
 class BinaryFilter : public CostmapFilter
 {
 public:
-    /**
-     * @brief A constructor
-     */
+    using BinaryStateCallback = std::function<void(bool state)>;
+
     BinaryFilter();
 
-    /**
-     * @brief Initialize the filter and subscribe to the info topic
-     */
-    void initializeFilter(const std::string& filter_info_topic);
+    void initializeFilter(const std::string& filter_info_topic) override;
 
-    /**
-     * @brief Process the keepout layer at the current pose / bounds / grid
-     */
     void process(Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                 int max_j, const commsgs::geometry_msgs::Pose2D& pose);
+                 int max_j,
+                 const commsgs::geometry_msgs::Pose2D& pose) override;
 
-    /**
-     * @brief Reset the costmap filter / topic / info
-     */
-    void resetFilter();
+    void resetFilter() override;
 
-    /**
-     * @brief If this filter is active
-     */
     bool isActive();
 
+    void handleFilterInfo(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg);
+
+    void setFilterMask(const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg);
+
+    void applyConfiguration(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+        const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask);
+
+    static commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+    makeDefaultFilterInfo(const std::string& mask_topic, float base = 0.0f,
+                          float multiplier = 1.0f);
+
+    bool hasFilterMask();
+
+    const commsgs::map_msgs::OccupancyGrid::SharedPtr& getFilterMask() const {
+        return filter_mask_;
+    }
+
+    void setBinaryStateCallback(BinaryStateCallback callback);
+
+    bool getBinaryState();
+
+    void setDefaultState(bool default_state);
+
+    bool getDefaultState();
+
+    void setFlipThreshold(double threshold);
+
+    double getFlipThreshold();
+
+    bool isFilterConfigured();
+
 private:
-    /**
-     * @brief Callback for the filter information
-     */
     void filterInfoCallback(
         const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg);
 
-    /**
-     * @brief Callback for the filter mask
-     */
     void maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg);
 
-    /**
-     * @brief Changes binary state of filter. Sends a message with new state.
-     * @param state New binary state
-     */
-    void changeState(const bool state);
+    static bool validateFilterMask(
+        const commsgs::map_msgs::OccupancyGrid& msg);
 
-    // // Working with filter info and mask
-    // rclcpp::Subscription<nav2_msgs::msg::CostmapFilterInfo>::SharedPtr
-    // filter_info_sub_;
-    // rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr mask_sub_;
+    std::string resolveMaskFrame() const;
 
-    // rclcpp_lifecycle::LifecyclePublisher<std_msgs::msg::Bool>::SharedPtr
-    // binary_state_pub_;
+    bool evaluateMaskCell(int8_t mask_data) const;
+
+    void changeState(bool state);
 
     commsgs::map_msgs::OccupancyGrid::SharedPtr filter_mask_;
 
-    std::string global_frame_;  // Frame of currnet layer (master_grid)
-
-    double base_, multiplier_;
-    // Filter values higher than this threshold,
-    // will set binary state to non-default
-    double flip_threshold_;
-
-    bool default_state_;  // Default Binary Filter state
-    bool binary_state_;   // Current Binary Filter state
+    std::string global_frame_;
+    std::string mask_frame_;
+    double base_{0.0};
+    double multiplier_{1.0};
+    double flip_threshold_{50.0};
+    bool default_state_{false};
+    bool binary_state_{false};
+    bool mask_missing_warned_{false};
+    bool unknown_cell_warned_{false};
+    bool outside_mask_warned_{false};
+    bool filter_info_received_{false};
+    BinaryStateCallback binary_state_callback_;
 };
 
 }  // namespace costmap_2d

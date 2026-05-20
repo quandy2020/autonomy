@@ -124,9 +124,8 @@ private:
     bool isBackground(uint8_t pixel) const;
 
 private:
-    // The border value of group size. Groups of this and larger size will be
-    // kept
-    size_t minimal_group_size_{};
+    // Minimum obstacle group size (cells). Config key: denoise_radius.
+    size_t minimal_group_size_{2};
     // Pixels connectivity type. Determines how pixels belonging to the same
     // group can be arranged
     ConnectivityType group_connectivity_type_{ConnectivityType::Way8};

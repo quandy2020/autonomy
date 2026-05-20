@@ -25,6 +25,7 @@
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 #include "autonomy/map/costmap_2d/layers/obstacle_layer.hpp"
 #include "autonomy/map/costmap_2d/observation_buffer.hpp"
+#include "autonomy/map/costmap_2d/voxel_grid.hpp"
 #include "autonomy/transform/tf2/buffer_core.h"
 
 namespace autonomy {
@@ -115,9 +116,13 @@ protected:
                                    double* min_x, double* min_y, double* max_x,
                                    double* max_y);
 
-    bool publish_voxel_;
-    double z_resolution_, origin_z_;
-    int unknown_threshold_, mark_threshold_, size_z_;
+    bool publish_voxel_{false};
+    double z_resolution_{0.2};
+    double origin_z_{0.0};
+    int unknown_threshold_{15};
+    int mark_threshold_{0};
+    int size_z_{10};
+    VoxelGrid voxel_grid_;
 
     /**
      * @brief Covert world coordinates into map coordinates

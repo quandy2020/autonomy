@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <list>
 #include <mutex>
 #include <string>
@@ -28,6 +29,7 @@
 #include "autonomy/map/costmap_2d/costmap_layer.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 #include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/tf2/buffer_core.h"
 
 namespace autonomy {
 namespace map {
@@ -193,9 +195,9 @@ protected:
     bool was_reset_;
 
     transform::tf2::Duration transform_tolerance_;
-    double no_readings_timeout_;
-    commsgs::builtin_interfaces::Time last_reading_time_;
-    unsigned int buffered_readings_;
+    double no_readings_timeout_{0.0};
+    std::chrono::steady_clock::time_point last_reading_steady_;
+    unsigned int buffered_readings_{0};
     // std::vector<rclcpp::Subscription<sensor_msgs::msg::Range>::SharedPtr>
     // range_subs_;
     double min_x_, min_y_, max_x_, max_y_;

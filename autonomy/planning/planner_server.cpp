@@ -47,7 +47,7 @@
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 #include "autonomy/planning/common/planner_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
-#include "autonomy/planning/planning_plugin_manager.hpp"
+#include "autonomy/planning/plugin_manager.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
 #include "autonomy/planning/smoother_server.hpp"
 #include "autonomy/planning/utils/path_simplifier.hpp"
@@ -204,11 +204,11 @@ void PlannerServer::LoadPlugins() {
         plugin_entries = {"navfn_planner", "dijkstra_planner"};
     }
 
-    auto& loader = PlanningPluginManager::Instance();
+    auto& loader = PluginManager::Instance();
     loader.Initialize(options_);
 
     const auto specs =
-        PlanningPluginManager::ParsePlannerPluginSpecs(plugin_entries);
+        PluginManager::ParsePlannerPluginEntries(plugin_entries);
 
     for (const auto& spec : specs) {
         if (planners_.find(spec.id) != planners_.end()) {
@@ -300,6 +300,15 @@ void PlannerServer::Shutdown() {
     }
 
     AINFO << "Planner server shutdown successfully.";
+}
+
+void PlannerServer::ReconfigurePlugins() {
+    if (!costmap_wrapper_) {
+        return;
+    }
+    for (auto& entry : planners_) {
+        entry.second->Configure(options_, entry.first, costmap_wrapper_);
+    }
 }
 
 void PlannerServer::SetSmootherServer(

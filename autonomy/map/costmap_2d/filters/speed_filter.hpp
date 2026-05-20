@@ -16,13 +16,14 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <string>
 
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
-
-// #include "nav2_msgs/msg/costmap_filter_info.hpp"
-// #include "nav2_msgs/msg/speed_limit.hpp"
 
 namespace autonomy {
 namespace map {
@@ -30,66 +31,85 @@ namespace costmap_2d {
 
 /**
  * @class SpeedFilter
- * @brief Reads in a speed restriction mask and enables a robot to
- * dynamically adjust speed based on pose in map to slow in dangerous
- * areas. Done via absolute speed setting or percentage of maximum speed
+ * @brief Reads a speed restriction mask and derives a speed limit from the
+ * robot pose. Supports absolute (m/s) or percentage-of-max modes via filter info.
  */
 class SpeedFilter : public CostmapFilter
 {
 public:
-    /**
-     * @brief A constructor
-     */
+    using SpeedLimitCallback = std::function<void(
+        const commsgs::planning_msgs::SpeedLimit::SharedPtr&)>;
+
     SpeedFilter();
 
-    /**
-     * @brief Initialize the filter and subscribe to the info topic
-     */
-    void initializeFilter(const std::string& filter_info_topic);
+    void initializeFilter(const std::string& filter_info_topic) override;
 
-    /**
-     * @brief Process the keepout layer at the current pose / bounds / grid
-     */
     void process(Costmap2D& master_grid, int min_i, int min_j, int max_i,
-                 int max_j, const commsgs::geometry_msgs::Pose2D& pose);
+                 int max_j,
+                 const commsgs::geometry_msgs::Pose2D& pose) override;
 
-    /**
-     * @brief Reset the costmap filter / topic / info
-     */
-    void resetFilter();
+    void resetFilter() override;
 
-    /**
-     * @brief If this filter is active
-     */
     bool isActive();
 
-private:
-    // /**
-    //  * @brief Callback for the filter information
-    //  */
-    // void filterInfoCallback(const
-    // commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg);
+    void handleFilterInfo(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg);
 
-    /**
-     * @brief Callback for the filter mask
-     */
+    void setFilterMask(const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg);
+
+    void applyConfiguration(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+        const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask);
+
+    static commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+    makeDefaultFilterInfo(const std::string& mask_topic, bool percentage,
+                          float base = 0.0f, float multiplier = 1.0f);
+
+    bool hasFilterMask();
+
+    const commsgs::map_msgs::OccupancyGrid::SharedPtr& getFilterMask() const {
+        return filter_mask_;
+    }
+
+    /** Register callback invoked when the computed speed limit changes. */
+    void setSpeedLimitCallback(SpeedLimitCallback callback);
+
+    /** Latest computed limit (NO_SPEED_LIMIT = 0 means unrestricted). */
+    double getSpeedLimit();
+
+    bool isPercentageMode();
+
+    bool isFilterConfigured();
+
+private:
+    void filterInfoCallback(
+        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg);
+
     void maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg);
 
-    // rclcpp::Subscription<commsgs::map_msgs::CostmapFilterInfo>::SharedPtr
-    // filter_info_sub_;
-    // rclcpp::Subscription<commsgs::map_msgs::OccupancyGrid>::SharedPtr
-    // mask_sub_;
+    static bool validateFilterMask(
+        const commsgs::map_msgs::OccupancyGrid& msg);
 
-    // rclcpp_lifecycle::LifecyclePublisher<nav2_msgs::msg::SpeedLimit>::SharedPtr
-    // speed_limit_pub_;
+    std::string resolveMaskFrame() const;
+
+    double computeSpeedLimitFromMaskCell(int8_t speed_mask_data) const;
+
+    void notifySpeedLimitIfChanged();
+
+    commsgs::planning_msgs::SpeedLimit::SharedPtr buildSpeedLimitMessage() const;
 
     commsgs::map_msgs::OccupancyGrid::SharedPtr filter_mask_;
 
-    std::string global_frame_;  // Frame of currnet layer (master_grid)
-
-    double base_, multiplier_;
-    bool percentage_;
-    double speed_limit_, speed_limit_prev_;
+    std::string global_frame_;
+    double base_{0.0};
+    double multiplier_{1.0};
+    bool percentage_{false};
+    double speed_limit_{0.0};
+    double speed_limit_prev_{0.0};
+    bool mask_missing_warned_{false};
+    bool unknown_cell_warned_{false};
+    bool filter_info_received_{false};
+    SpeedLimitCallback speed_limit_callback_;
 };
 
 }  // namespace costmap_2d

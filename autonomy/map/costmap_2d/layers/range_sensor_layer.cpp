@@ -15,121 +15,138 @@
  */
 
 #include "autonomy/map/costmap_2d/layers/range_sensor_layer.hpp"
-#include "autonomy/common/math/angle.hpp"
 
-using namespace std::literals::chrono_literals;
+#include <algorithm>
+#include <cctype>
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <string>
+
+#include "autonomy/common/logging.hpp"
+#include "autonomy/common/math/angle.hpp"
+#include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/costmap_math.hpp"
+#include "autonomy/map/proto/map_2d_option.pb.h"
+#include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/tf2/exceptions.h"
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
+namespace {
 
-RangeSensorLayer::RangeSensorLayer() {}
+void TransformPoint(const commsgs::geometry_msgs::Transform& transform,
+                    double x, double y, double z, double& out_x, double& out_y,
+                    double& out_z) {
+    const auto& q = transform.rotation;
+    const auto& t = transform.translation;
+    const double qx = q.x;
+    const double qy = q.y;
+    const double qz = q.z;
+    const double qw = q.w;
+    const double ix = qw * x + qy * z - qz * y;
+    const double iy = qw * y + qz * x - qx * z;
+    const double iz = qw * z + qx * y - qy * x;
+    const double iw = -qx * x - qy * y - qz * z;
+    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x;
+    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y;
+    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z;
+}
+
+}  // namespace
+
+RangeSensorLayer::RangeSensorLayer() {
+    processRangeMessageFunc_ =
+        [this](commsgs::sensor_msgs::Range& msg) { processRangeMsg(msg); };
+}
 
 void RangeSensorLayer::onInitialize() {
-    //   current_ = true;
-    //   was_reset_ = false;
-    //   buffered_readings_ = 0;
-    //   last_reading_time_ = clock_->now();
-    //   default_value_ = to_cost(0.5);
-
-    //   matchSize();
-    //   resetRange();
-
-    //   auto node = node_.lock();
-    //   if (!node) {
-    //     throw std::runtime_error{"Failed to lock node"};
-    //   }
-
-    //   declareParameter("enabled", rclcpp::ParameterValue(true));
-    //   node->get_parameter(name_ + "." + "enabled", enabled_);
-    //   declareParameter("phi", rclcpp::ParameterValue(1.2));
-    //   node->get_parameter(name_ + "." + "phi", phi_v_);
-    //   declareParameter("inflate_cone", rclcpp::ParameterValue(1.0));
-    //   node->get_parameter(name_ + "." + "inflate_cone", inflate_cone_);
-    //   declareParameter("no_readings_timeout", rclcpp::ParameterValue(0.0));
-    //   node->get_parameter(name_ + "." + "no_readings_timeout",
-    //   no_readings_timeout_); declareParameter("clear_threshold",
-    //   rclcpp::ParameterValue(0.2)); node->get_parameter(name_ + "." +
-    //   "clear_threshold", clear_threshold_);
-    //   declareParameter("mark_threshold", rclcpp::ParameterValue(0.8));
-    //   node->get_parameter(name_ + "." + "mark_threshold", mark_threshold_);
-    //   declareParameter("clear_on_max_reading",
-    //   rclcpp::ParameterValue(false)); node->get_parameter(name_ + "." +
-    //   "clear_on_max_reading", clear_on_max_reading_);
-
-    //   double temp_tf_tol = 0.0;
-    //   node->get_parameter("transform_tolerance", temp_tf_tol);
-    //   transform_tolerance_ = tf2::durationFromSec(temp_tf_tol);
-
-    //   std::vector<std::string> topic_names{};
-    //   declareParameter("topics", rclcpp::ParameterValue(topic_names));
-    //   node->get_parameter(name_ + "." + "topics", topic_names);
-
-    //   InputSensorType input_sensor_type = InputSensorType::ALL;
-    //   std::string sensor_type_name;
-    //   declareParameter("input_sensor_type", rclcpp::ParameterValue("ALL"));
-    //   node->get_parameter(name_ + "." + "input_sensor_type",
-    //   sensor_type_name);
-
-    //   std::transform(
-    //     sensor_type_name.begin(), sensor_type_name.end(),
-    //     sensor_type_name.begin(), ::toupper);
-    //   RCLCPP_INFO(
-    //     logger_, "%s: %s as input_sensor_type given",
-    //     name_.c_str(), sensor_type_name.c_str());
-
-    //   if (sensor_type_name == "VARIABLE") {
-    //     input_sensor_type = InputSensorType::VARIABLE;
-    //   } else if (sensor_type_name == "FIXED") {
-    //     input_sensor_type = InputSensorType::FIXED;
-    //   } else if (sensor_type_name == "ALL") {
-    //     input_sensor_type = InputSensorType::ALL;
-    //   } else {
-    //     RCLCPP_ERROR(
-    //       logger_, "%s: Invalid input sensor type: %s. Defaulting to ALL.",
-    //       name_.c_str(), sensor_type_name.c_str());
-    //   }
-
-    //   // Validate topic names list: it must be a (normally non-empty) list of
-    //   strings if (topic_names.empty()) {
-    //     RCLCPP_FATAL(
-    //       logger_, "Invalid topic names list: it must"
-    //       "be a non-empty list of strings");
-    //     return;
-    //   }
-
-    //   // Traverse the topic names list subscribing to all of them with the
-    //   same callback method for (auto & topic_name : topic_names) {
-    //     if (input_sensor_type == InputSensorType::VARIABLE) {
-    //       processRangeMessageFunc_ = std::bind(
-    //         &RangeSensorLayer::processVariableRangeMsg, this,
-    //         std::placeholders::_1);
-    //     } else if (input_sensor_type == InputSensorType::FIXED) {
-    //       processRangeMessageFunc_ = std::bind(
-    //         &RangeSensorLayer::processFixedRangeMsg, this,
-    //         std::placeholders::_1);
-    //     } else if (input_sensor_type == InputSensorType::ALL) {
-    //       processRangeMessageFunc_ = std::bind(
-    //         &RangeSensorLayer::processRangeMsg, this,
-    //         std::placeholders::_1);
-    //     } else {
-    //       RCLCPP_ERROR(
-    //         logger_,
-    //         "%s: Invalid input sensor type: %s. Did you make a new type"
-    //         "and forgot to choose the subscriber for it?",
-    //         name_.c_str(), sensor_type_name.c_str());
-    //     }
-    //     range_subs_.push_back(
-    //       node->create_subscription<sensor_msgs::msg::Range>(
-    //         topic_name, rclcpp::SensorDataQoS(), std::bind(
-    //           &RangeSensorLayer::bufferIncomingRangeMsg, this,
-    //           std::placeholders::_1)));
-
-    //     RCLCPP_INFO(
-    //       logger_, "RangeSensorLayer: subscribed to "
-    //       "topic %s", range_subs_.back()->get_topic_name());
-    //   }
+    enabled_ = true;
+    current_ = true;
+    was_reset_ = false;
+    buffered_readings_ = 0;
+    phi_v_ = 1.2;
+    inflate_cone_ = 1.0;
+    no_readings_timeout_ = 0.0;
+    clear_threshold_ = 0.2;
+    mark_threshold_ = 0.8;
+    clear_on_max_reading_ = false;
+    transform_tolerance_ = DurationFromSeconds(0.3);
+    last_reading_steady_ = std::chrono::steady_clock::now();
+    default_value_ = to_cost(0.5);
     global_frame_ = layered_costmap_->getGlobalFrameID();
+
+    const auto* layer_options = getOptions();
+    if (layer_options && layer_options->has_range_sensor_layer()) {
+        const auto& range_opts = layer_options->range_sensor_layer();
+        enabled_ = range_opts.enabled();
+        if (range_opts.phi() > 0.0) {
+            phi_v_ = range_opts.phi();
+        }
+        if (range_opts.inflate_cone() > 0.0) {
+            inflate_cone_ = range_opts.inflate_cone();
+        }
+        no_readings_timeout_ = range_opts.no_readings_timeout();
+        clear_threshold_ = range_opts.clear_threshold();
+        mark_threshold_ = range_opts.mark_threshold();
+        clear_on_max_reading_ = range_opts.clear_on_max_reading();
+        if (range_opts.transform_tolerance() > 0.0) {
+            transform_tolerance_ =
+                DurationFromSeconds(range_opts.transform_tolerance());
+        }
+
+        std::string sensor_type_name = range_opts.input_sensor_type();
+        std::transform(sensor_type_name.begin(), sensor_type_name.end(),
+                       sensor_type_name.begin(),
+                       [](unsigned char c) {
+                           return static_cast<char>(std::toupper(c));
+                       });
+
+        if (sensor_type_name == "VARIABLE") {
+            processRangeMessageFunc_ = [this](commsgs::sensor_msgs::Range& msg) {
+                processVariableRangeMsg(msg);
+            };
+        } else if (sensor_type_name == "FIXED") {
+            processRangeMessageFunc_ = [this](commsgs::sensor_msgs::Range& msg) {
+                processFixedRangeMsg(msg);
+            };
+        } else {
+            processRangeMessageFunc_ = [this](commsgs::sensor_msgs::Range& msg) {
+                processRangeMsg(msg);
+            };
+            if (!sensor_type_name.empty() && sensor_type_name != "ALL") {
+                AWARN << "RangeSensorLayer: unknown input_sensor_type '"
+                      << range_opts.input_sensor_type() << "', using ALL";
+            }
+        }
+
+        if (range_opts.topics_size() > 0) {
+            std::string topics;
+            for (int i = 0; i < range_opts.topics_size(); ++i) {
+                if (!topics.empty()) {
+                    topics += ", ";
+                }
+                topics += range_opts.topics(i);
+            }
+            AINFO << "RangeSensorLayer topics configured: " << topics
+                  << " (feed via bufferIncomingRangeMsg)";
+        }
+    } else if (layer_options && layer_options->has_static_layer()) {
+        const double tol = layer_options->static_layer().transform_tolerance();
+        if (tol > 0.0) {
+            transform_tolerance_ = DurationFromSeconds(tol);
+        }
+    }
+
+    matchSize();
+    resetRange();
+
+    AINFO << "RangeSensorLayer initialized: enabled=" << enabled_
+          << " phi=" << phi_v_ << " inflate_cone=" << inflate_cone_
+          << " clear_threshold=" << clear_threshold_
+          << " mark_threshold=" << mark_threshold_;
 }
 
 double RangeSensorLayer::gamma(double theta) {
@@ -177,6 +194,7 @@ void RangeSensorLayer::bufferIncomingRangeMsg(
     const commsgs::sensor_msgs::Range::SharedPtr range_message) {
     range_message_mutex_.lock();
     range_msgs_buffer_.push_back(*range_message);
+    last_reading_steady_ = std::chrono::steady_clock::now();
     range_message_mutex_.unlock();
 }
 
@@ -249,30 +267,35 @@ void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
                                      bool clear_sensor_cone) {
     max_angle_ = range_message.field_of_view / 2;
 
-    commsgs::geometry_msgs::PointStamped in, out;
-    in.header.stamp = range_message.header.stamp;
-    in.header.frame_id = range_message.header.frame_id;
+    auto* tf_buffer = autonomy::transform::Buffer::Instance();
+    if (!tf_buffer) {
+        AWARN << "RangeSensorLayer: TF buffer unavailable";
+        return;
+    }
 
-    // if (!tf_->canTransform(
-    //     in.header.frame_id, global_frame_,
-    //     tf2_ros::fromMsg(in.header.stamp),
-    //     tf2_ros::fromRclcpp(transform_tolerance_)))
-    // {
-    //     RCLCPP_INFO(
-    //     logger_, "Range sensor layer can't transform from %s to %s",
-    //     global_frame_.c_str(), in.header.frame_id.c_str());
-    //     return;
-    // }
+    const float timeout = static_cast<float>(
+        SecondsFromDuration(transform_tolerance_));
+    double ox = 0.0;
+    double oy = 0.0;
+    double tx = 0.0;
+    double ty = 0.0;
 
-    // tf_->transform(in, out, global_frame_, transform_tolerance_);
-
-    double ox = out.point.x, oy = out.point.y;
-
-    in.point.x = range_message.range;
-
-    // tf_->transform(in, out, global_frame_, transform_tolerance_);
-
-    double tx = out.point.x, ty = out.point.y;
+    try {
+        const auto origin_transform = tf_buffer->lookupTransform(
+            global_frame_, range_message.header.frame_id,
+            range_message.header.stamp, timeout);
+        double oz = 0.0;
+        double tz = 0.0;
+        TransformPoint(origin_transform.transform, 0.0, 0.0, 0.0, ox, oy, oz);
+        TransformPoint(origin_transform.transform, range_message.range, 0.0, 0.0,
+                       tx, ty, tz);
+        (void)oz;
+        (void)tz;
+    } catch (const transform::tf2::TransformException& ex) {
+        AWARN << "RangeSensorLayer TF error (" << range_message.header.frame_id
+              << " -> " << global_frame_ << "): " << ex.what();
+        return;
+    }
 
     // calculate target props
     double dx = tx - ox, dy = ty - oy, theta = atan2(dy, dx),
@@ -421,18 +444,15 @@ void RangeSensorLayer::updateBounds(double robot_x, double robot_y,
         return;
     }
 
-    // if (buffered_readings_ == 0) {
-    //     if (no_readings_timeout_ > 0.0 && (clock_->now() -
-    //     last_reading_time_).seconds() > no_readings_timeout_) {
-    //         // RCLCPP_WARN(
-    //         //     logger_,
-    //         //     "No range readings received for %.2f seconds, while
-    //         expected at least every %.2f seconds.",
-    //         //     (clock_->now() - last_reading_time_).seconds(),
-    //         //     no_readings_timeout_);
-    //         current_ = false;
-    //     }
-    // }
+    if (buffered_readings_ == 0 && no_readings_timeout_ > 0.0) {
+        const auto elapsed = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - last_reading_steady_);
+        if (elapsed.count() > no_readings_timeout_) {
+            AWARN << "RangeSensorLayer: no readings for " << elapsed.count()
+                  << "s (timeout " << no_readings_timeout_ << "s)";
+            current_ = false;
+        }
+    }
 }
 
 void RangeSensorLayer::updateCosts(Costmap2D& master_grid, int min_i, int min_j,

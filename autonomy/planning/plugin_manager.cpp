@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "autonomy/planning/planning_plugin_manager.hpp"
+#include "autonomy/planning/plugin_manager.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -23,10 +23,8 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/planning/smoother/savitzky_golay_smoother.hpp"
 #include "autonomy/planning/smoother/simple_smoother.hpp"
-#ifdef AUTONOMY_PLANNING_ADVANCED_MATH
 #include "autonomy/planning/smoother/cos_theta_path_smoother.hpp"
 #include "autonomy/planning/smoother/fem_pos_smoother.hpp"
-#endif
 
 namespace autonomy {
 namespace planning {
@@ -37,73 +35,71 @@ constexpr char kNavfnType[] = "NavfnPlanner";
 constexpr char kDijkstraType[] = "DijkstraPlanner";
 constexpr char kThetaStarType[] = "ThetaStarPlanner";
 
-autolink::plugin_manager::PluginManager* PluginManager() {
+autolink::plugin_manager::PluginManager* AutolinkPluginManager() {
     return autolink::plugin_manager::PluginManager::Instance();
 }
 
 template <typename Base>
 bool IsClassRegistered(const std::string& type) {
     const auto names =
-        PluginManager()->GetDerivedClassNameByBaseClass<Base>();
+        AutolinkPluginManager()->GetDerivedClassNameByBaseClass<Base>();
     return std::find(names.begin(), names.end(), type) != names.end();
 }
 
 template <typename Base>
 std::shared_ptr<Base> CreatePluginInstance(const std::string& type) {
-    return PluginManager()->CreateInstance<Base>(type);
+    return AutolinkPluginManager()->CreateInstance<Base>(type);
 }
 
-std::vector<PlannerPluginSpec> ParsePluginSpecs(
+std::vector<PlannerPluginEntry> ParsePluginEntries(
     const std::vector<std::string>& plugin_entries,
     const std::function<std::string(const std::string&)>& resolve_type) {
-    std::vector<PlannerPluginSpec> specs;
-    specs.reserve(plugin_entries.size());
-    for (const auto& entry : plugin_entries) {
-        if (entry.empty()) {
+    std::vector<PlannerPluginEntry> entries;
+    entries.reserve(plugin_entries.size());
+    for (const auto& entry_str : plugin_entries) {
+        if (entry_str.empty()) {
             continue;
         }
-        PlannerPluginSpec spec;
-        const size_t colon_pos = entry.find(':');
+        PlannerPluginEntry entry;
+        const size_t colon_pos = entry_str.find(':');
         if (colon_pos != std::string::npos) {
-            spec.id = entry.substr(0, colon_pos);
-            spec.type = entry.substr(colon_pos + 1);
+            entry.id = entry_str.substr(0, colon_pos);
+            entry.type = entry_str.substr(colon_pos + 1);
         } else {
-            spec.id = entry;
-            spec.type = resolve_type(entry);
+            entry.id = entry_str;
+            entry.type = resolve_type(entry_str);
         }
-        if (!spec.id.empty() && !spec.type.empty()) {
-            specs.push_back(std::move(spec));
+        if (!entry.id.empty() && !entry.type.empty()) {
+            entries.push_back(std::move(entry));
         }
     }
-    return specs;
+    return entries;
 }
 
 }  // namespace
 
-PlanningPluginManager::PlanningPluginManager() {
+PluginManager::PluginManager() {
     RegisterBuiltinPlugins();
 }
 
-PlanningPluginManager& PlanningPluginManager::Instance() {
-    static PlanningPluginManager instance;
+PluginManager& PluginManager::Instance() {
+    static PluginManager instance;
     return instance;
 }
 
-void PlanningPluginManager::RegisterBuiltinPlugins() {
-    auto* pm = PluginManager();
+void PluginManager::RegisterBuiltinPlugins() {
+    auto* pm = AutolinkPluginManager();
     pm->RegisterInProcessClass<common::GlobalPlanner>(kNavfnType);
     pm->RegisterInProcessClass<common::GlobalPlanner>(kDijkstraType);
     pm->RegisterInProcessClass<common::GlobalPlanner>(kThetaStarType);
 
     pm->RegisterInProcessClass<common::Smoother>("SimpleSmoother");
     pm->RegisterInProcessClass<common::Smoother>("SavitzkyGolaySmoother");
-#ifdef AUTONOMY_PLANNING_ADVANCED_MATH
     pm->RegisterInProcessClass<common::Smoother>("FemPosSmoother");
     pm->RegisterInProcessClass<common::Smoother>("CosThetaPathSmoother");
-#endif
 }
 
-void PlanningPluginManager::Initialize(const proto::PlannerOptions& options) {
+void PluginManager::Initialize(const proto::PlannerOptions& options) {
     if (initialized_) {
         return;
     }
@@ -118,20 +114,19 @@ void PlanningPluginManager::Initialize(const proto::PlannerOptions& options) {
         }
     }
 
-    LoadInstalledPlugins();
+    LoadPlugins();
     initialized_ = true;
 }
 
-bool PlanningPluginManager::LoadPluginDescription(
-    const std::string& description_path) {
-    return PluginManager()->LoadPlugin(description_path);
+bool PluginManager::LoadPluginDescription(const std::string& description_path) {
+    return AutolinkPluginManager()->LoadPlugin(description_path);
 }
 
-void PlanningPluginManager::LoadInstalledPlugins() {
-    PluginManager()->LoadInstalledPlugins();
+void PluginManager::LoadPlugins() {
+    AutolinkPluginManager()->LoadInstalledPlugins();
 }
 
-common::GlobalPlanner::SharedPtr PlanningPluginManager::CreatePlanner(
+common::GlobalPlanner::SharedPtr PluginManager::CreatePlanner(
     const std::string& type) {
     const std::string resolved = ResolvePlannerType(type);
     auto instance = CreatePluginInstance<common::GlobalPlanner>(resolved);
@@ -139,53 +134,51 @@ common::GlobalPlanner::SharedPtr PlanningPluginManager::CreatePlanner(
                     : nullptr;
 }
 
-common::Smoother::SharedPtr PlanningPluginManager::CreateSmoother(
+common::Smoother::SharedPtr PluginManager::CreateSmoother(
     const std::string& type) {
     const std::string resolved = ResolveSmootherType(type);
     auto instance = CreatePluginInstance<common::Smoother>(resolved);
     return instance ? common::Smoother::SharedPtr(std::move(instance)) : nullptr;
 }
 
-bool PlanningPluginManager::IsPlannerRegistered(const std::string& type) const {
+bool PluginManager::IsPlannerRegistered(const std::string& type) const {
     return IsClassRegistered<common::GlobalPlanner>(ResolvePlannerType(type));
 }
 
-bool PlanningPluginManager::IsSmootherRegistered(
-    const std::string& type) const {
+bool PluginManager::IsSmootherRegistered(const std::string& type) const {
     return IsClassRegistered<common::Smoother>(ResolveSmootherType(type));
 }
 
-std::vector<PlannerPluginSpec> PlanningPluginManager::ParsePlannerPluginSpecs(
+std::vector<PlannerPluginEntry> PluginManager::ParsePlannerPluginEntries(
     const std::vector<std::string>& plugin_entries) {
-    return ParsePluginSpecs(plugin_entries, ResolvePlannerType);
+    return ParsePluginEntries(plugin_entries, ResolvePlannerType);
 }
 
-std::vector<SmootherPluginSpec> PlanningPluginManager::ParseSmootherPluginSpecs(
+std::vector<SmootherPluginEntry> PluginManager::ParseSmootherPluginEntries(
     const std::vector<std::string>& plugin_entries) {
-    std::vector<SmootherPluginSpec> specs;
-    specs.reserve(plugin_entries.size());
-    for (const auto& entry : plugin_entries) {
-        if (entry.empty()) {
+    std::vector<SmootherPluginEntry> entries;
+    entries.reserve(plugin_entries.size());
+    for (const auto& entry_str : plugin_entries) {
+        if (entry_str.empty()) {
             continue;
         }
-        SmootherPluginSpec spec;
-        const size_t colon_pos = entry.find(':');
+        SmootherPluginEntry entry;
+        const size_t colon_pos = entry_str.find(':');
         if (colon_pos != std::string::npos) {
-            spec.id = entry.substr(0, colon_pos);
-            spec.type = entry.substr(colon_pos + 1);
+            entry.id = entry_str.substr(0, colon_pos);
+            entry.type = entry_str.substr(colon_pos + 1);
         } else {
-            spec.id = entry;
-            spec.type = ResolveSmootherType(entry);
+            entry.id = entry_str;
+            entry.type = ResolveSmootherType(entry_str);
         }
-        if (!spec.id.empty() && !spec.type.empty()) {
-            specs.push_back(std::move(spec));
+        if (!entry.id.empty() && !entry.type.empty()) {
+            entries.push_back(std::move(entry));
         }
     }
-    return specs;
+    return entries;
 }
 
-std::string PlanningPluginManager::ResolvePlannerType(
-    const std::string& plugin_id) {
+std::string PluginManager::ResolvePlannerType(const std::string& plugin_id) {
     if (plugin_id == "navfn_planner") {
         return kNavfnType;
     }
@@ -198,22 +191,19 @@ std::string PlanningPluginManager::ResolvePlannerType(
     return plugin_id;
 }
 
-std::string PlanningPluginManager::ResolveSmootherType(
-    const std::string& smoother_id) {
+std::string PluginManager::ResolveSmootherType(const std::string& smoother_id) {
     if (smoother_id == "simple_smoother") {
         return "SimpleSmoother";
     }
     if (smoother_id == "savitzky_golay_smoother") {
         return "SavitzkyGolaySmoother";
     }
-#ifdef AUTONOMY_PLANNING_ADVANCED_MATH
     if (smoother_id == "fem_pos_smoother") {
         return "FemPosSmoother";
     }
     if (smoother_id == "cos_theta_smoother") {
         return "CosThetaPathSmoother";
     }
-#endif
     return smoother_id;
 }
 
@@ -228,7 +218,6 @@ void ApplySmootherOptions(common::Smoother& smoother,
         sg->ApplyOptions(options.savitzky_golay_smoother());
         return;
     }
-#ifdef AUTONOMY_PLANNING_ADVANCED_MATH
     if (auto* fem = dynamic_cast<smoother::FemPosSmoother*>(&smoother)) {
         fem->ApplyOptions(options.fem_pos_smoother(),
                           options.fem_pos_smoother_path_bound());
@@ -240,7 +229,6 @@ void ApplySmootherOptions(common::Smoother& smoother,
                                 options.cos_theta_smoother_path_bound());
         return;
     }
-#endif
     (void)smoother_id;
 }
 

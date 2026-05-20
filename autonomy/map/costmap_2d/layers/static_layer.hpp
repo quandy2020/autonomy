@@ -105,6 +105,11 @@ public:
      */
     virtual void matchSize();
 
+    /**
+     * @brief Load map data from an occupancy grid (e.g. YAML/PGM via Costmap2DWrapper).
+     */
+    void loadOccupancyGrid(const commsgs::map_msgs::OccupancyGrid& new_map);
+
 protected:
     /**
      * @brief Get parameters of layer

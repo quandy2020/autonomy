@@ -21,88 +21,143 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/proto/map_options.pb.h"
-#include "autonomy/map/utils/data_loader_utils.hpp"
 
 namespace autonomy {
 namespace map {
 
 /**
- * @class autonomy::map::MapServer
- * @brief 地图服务类，负责加载和发布静态地图
+ * @class MapServer
+ * @brief Loads, caches, and publishes static OccupancyGrid maps (Nav2 map_server style).
  *
- * MapServer 负责从文件加载静态地图并缓存在内存中。
+ * Map data is loaded from a YAML map file or injected at runtime. Consumers receive
+ * updates through MapPublishCallback; periodic publishing is optional via publish_frequency.
  */
 class MapServer
 {
 public:
-    /**
-     * Define MapServer::SharedPtr type
-     */
+    /** Callback invoked when a map is published (once or periodically). */
+    using MapPublishCallback = std::function<void(
+        const commsgs::map_msgs::OccupancyGrid::SharedPtr& map)>;
+
     AUTONOMY_SMART_PTR_DEFINITIONS(MapServer)
 
     /**
-     * @brief 构造函数
-     * @param options 地图服务配置选项
-     * @param node_name 可选的节点名称，如果为空则使用默认名称
+     * @brief Construct MapServer with configuration options.
+     * @param options Map server options (file path, topic, frame, publish rate).
+     * @param node_name Optional node name for logging; defaults to "map_server".
      */
     MapServer(const proto::MapOptions& options,
               const std::string& node_name = "");
 
-    /**
-     * @brief 析构函数
-     */
     ~MapServer();
 
     MapServer(const MapServer&) = delete;
     MapServer& operator=(const MapServer&) = delete;
 
-    /**
-     * @brief 启动地图服务
-     */
+    /** @brief Load map (if configured), publish once, and start periodic publish thread. */
     void Start();
 
-    /**
-     * @brief 关闭地图服务（调用 Stop 并等待关闭完成）
-     */
+    /** @brief Stop publish thread and release cached map data. */
     void Shutdown();
 
+    /** @brief True after Start() until Shutdown(). */
+    bool IsRunning() const {
+        return running_.load();
+    }
+
+    /** @brief True if a static map is loaded or injected. */
+    bool HasStaticMap() const;
+
     /**
-     * @brief 获取原始静态地图数据
-     * @param static_map 输出的静态地图数据
-     * @return 是否成功获取
+     * @brief Returns the cached static map (shared ownership with MapServer).
+     */
+    commsgs::map_msgs::OccupancyGrid::SharedPtr GetStaticMapShared() const;
+
+    /**
+     * @brief Copies the static map into @p static_map (uses cache when available).
+     * @return True on success.
      */
     bool GetRawStaticMap(commsgs::map_msgs::OccupancyGrid& static_map) const;
 
     /**
-     * @brief 获取静态地图文件路径
-     * @return 静态地图文件路径
+     * @brief Reloads the map from the configured YAML file path.
+     * @return True on success.
      */
-    std::string GetStaticMapFile() const;
+    bool ReloadMap();
 
     /**
-     * @brief 获取静态地图名称
-     * @return 静态地图名称
+     * @brief Injects an external map (e.g. from SLAM), replacing the file-based cache.
+     * @return True if the message is valid and accepted.
      */
+    bool SetStaticMap(const commsgs::map_msgs::OccupancyGrid& map);
+
+    /**
+     * @brief Publishes the current map once via MapPublishCallback (refreshes header stamp).
+     * @return True if a map is available to publish.
+     */
+    bool PublishMap();
+
+    /** @brief Registers the callback used by PublishMap() and the publish thread. */
+    void SetMapPublishCallback(MapPublishCallback callback);
+
+    /** @brief Returns the configuration options passed at construction. */
+    const proto::MapOptions& GetOptions() const {
+        return options_;
+    }
+
+    /** @brief Configured map file path as in MapOptions (may be relative). */
+    std::string GetStaticMapFile() const;
+
+    /** @brief Fully resolved path to the map YAML file on disk. */
+    std::string GetResolvedMapFilePath() const;
+
+    /** @brief Topic name used for map publication (default: "map"). */
+    std::string GetMapTopic() const;
+
+    /** @brief Frame ID applied to the map header (default: "map"). */
+    std::string GetFrameId() const;
+
+    /** @brief Logical map name from configuration. */
     std::string GetStaticMapName() const {
         return static_map_name_;
     }
 
-protected:
-    // 原始地图名称（静态地图，从文件加载或SLAM提供）
-    std::string static_map_name_;
+    /** @brief Node name used for logging. */
+    std::string GetNodeName() const {
+        return node_name_;
+    }
 
-    // 配置选项
+private:
+    /** @brief Resolves map_file to an absolute or data-directory-relative path. */
+    std::string resolveMapFilePath() const;
+
+    /** @brief Sets frame_id and stamp on the map header from options. */
+    void applyMapHeader(commsgs::map_msgs::OccupancyGrid& map) const;
+
+    /** @brief Loads map from file under map_mutex_. */
+    bool loadMapFromFileLocked();
+
+    /** @brief Loads and caches map from @p map_file_path. */
+    bool loadMapFromFile(const std::string& map_file_path);
+
+    /** @brief Background loop for periodic PublishMap() when publish_frequency > 0. */
+    void publishLoop();
+
+    std::string static_map_name_;
+    std::string node_name_;
     proto::MapOptions options_;
 
-    // map message
     commsgs::map_msgs::OccupancyGrid::SharedPtr static_map_msg_{nullptr};
+    MapPublishCallback map_publish_callback_;
 
     std::atomic<bool> running_{false};
-    std::mutex publish_mutex_;
+    mutable std::mutex map_mutex_;
+    std::thread publish_thread_;
 };
 
 }  // namespace map

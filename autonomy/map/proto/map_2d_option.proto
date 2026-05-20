@@ -38,7 +38,10 @@ message DenoiseLayer
 {
     string plugin = 1;
     bool enabled = 2;
+    // Minimum obstacle group size in cells (Nav2: minimal_group_size).
     double denoise_radius = 3;
+    // Pixel connectivity: 4 (orthogonal) or 8 (with diagonals). Default 8.
+    int32 group_connectivity_type = 4;
 }
 
 message Footprint
@@ -62,6 +65,36 @@ message ObstacleLayer
     bool enabled = 2;
     bool footprint_clearing_enabled = 3;
     map<string, SensorSource> sensor_sources = 4;
+}
+
+message VoxelLayer
+{
+    string plugin = 1;
+    bool enabled = 2;
+    bool footprint_clearing_enabled = 3;
+    map<string, SensorSource> sensor_sources = 4;
+    int32 z_voxels = 5;
+    double origin_z = 6;
+    double z_resolution = 7;
+    double max_obstacle_height = 8;
+    int32 unknown_threshold = 9;
+    int32 mark_threshold = 10;
+    bool publish_voxel_map = 11;
+}
+
+message RangeSensorLayer
+{
+    string plugin = 1;
+    bool enabled = 2;
+    double phi = 3;
+    double inflate_cone = 4;
+    double no_readings_timeout = 5;
+    double clear_threshold = 6;
+    double mark_threshold = 7;
+    bool clear_on_max_reading = 8;
+    double transform_tolerance = 9;
+    repeated string topics = 10;
+    string input_sensor_type = 11;
 }
 
 message StaticLayer
@@ -129,4 +162,10 @@ message Costmap2DOptions
 
     // inflation layer
     InflationLayer inflation_layer = 18;
+
+    // voxel layer
+    VoxelLayer voxel_layer = 19;
+
+    // range sensor layer
+    RangeSensorLayer range_sensor_layer = 20;
 }
