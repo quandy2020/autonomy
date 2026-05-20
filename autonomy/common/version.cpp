@@ -93,19 +93,19 @@ const std::string PROJECT_VERSION = "";
 // Git提交信息
 const std::string GIT_COMMIT_AUTHOR = "duyongquan";
 const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
-const std::string GIT_COMMIT_DATE = """2026-05-20 16:13:18""";
-const std::string GIT_VERSION = "15c1bc5c-dirty";
+const std::string GIT_COMMIT_DATE = """2026-05-20 16:21:09""";
+const std::string GIT_VERSION = "26e8fe74-dirty";
 const std::string GIT_BRANCH = "feature/library";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-05-20 08:20:16";
-const std::string BUILD_HOST = "9b2023bccf6b";
-const std::string BUILD_USER = "root";
+const std::string BUILD_TIMESTAMP = "2026-05-20 09:19:20";
+const std::string BUILD_HOST = "q-Precision-3680";
+const std::string BUILD_USER = "q";
 
 // 系统信息
 const std::string SYSTEM_NAME = "Linux";
 const std::string SYSTEM_PROCESSOR = "x86_64";
-const std::string SYSTEM_VERSION = "6.11.11-linuxkit";
+const std::string SYSTEM_VERSION = "6.8.0-60-generic";
 const std::string COMPILER_ID = "GNU";
 const std::string COMPILER_VERSION = "11.4.0";
 
