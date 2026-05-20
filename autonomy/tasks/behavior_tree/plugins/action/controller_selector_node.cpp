@@ -16,6 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/controller_selector_node.hpp"
 
+#include "autonomy/tasks/common/task_context.hpp"
+
 #include <functional>
 #include <set>
 #include <string>
@@ -66,6 +68,12 @@ BT::NodeStatus ControllerSelector::tick() {
     }
 
     setOutput("selected_controller", last_selected_controller_);
+    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
+            "task_context")) {
+        if (ctx) {
+            ctx->selected_controller_id = last_selected_controller_;
+        }
+    }
 
     return BT::NodeStatus::SUCCESS;
 }

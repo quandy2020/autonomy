@@ -37,14 +37,31 @@ proto::MapOptions LoadOptions(
 proto::Costmap2DOptions CreateCostmap2DOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
     proto::Costmap2DOptions options;
+    if (parameter_dictionary->HasKey("enabled")) {
+        options.set_enabled(parameter_dictionary->GetBool("enabled"));
+    }
     options.set_frame_id(parameter_dictionary->GetString("frame_id"));
     options.set_name(parameter_dictionary->GetString("name"));
     options.set_resolution(parameter_dictionary->GetDouble("resolution"));
     options.set_update_frequency(
         parameter_dictionary->GetDouble("update_frequency"));
     options.set_robot_radius(parameter_dictionary->GetDouble("robot_radius"));
-    options.set_always_send_full_costmap(
-        parameter_dictionary->GetBool("always_send_full_costmap"));
+    if (parameter_dictionary->HasKey("always_send_full_costmap")) {
+        options.set_always_send_full_costmap(
+            parameter_dictionary->GetBool("always_send_full_costmap"));
+    }
+    if (parameter_dictionary->HasKey("width")) {
+        options.set_width(
+            static_cast<int32_t>(parameter_dictionary->GetDouble("width")));
+    }
+    if (parameter_dictionary->HasKey("height")) {
+        options.set_height(
+            static_cast<int32_t>(parameter_dictionary->GetDouble("height")));
+    }
+    if (parameter_dictionary->HasKey("rolling_window")) {
+        options.set_rolling_window(
+            parameter_dictionary->GetBool("rolling_window"));
+    }
 
     auto plugins_dict = parameter_dictionary->GetDictionary("plugins");
     auto plugins = plugins_dict->GetArrayValuesAsStrings();
@@ -75,6 +92,17 @@ proto::Costmap2DOptions CreateCostmap2DOptions(
         denoise_layer->set_enabled(denoise_layer_dict->GetBool("enabled"));
         denoise_layer->set_denoise_radius(
             denoise_layer_dict->GetDouble("denoise_radius"));
+    }
+
+    if (parameter_dictionary->HasKey("obstacle_layer")) {
+        auto obstacle_layer_dict =
+            parameter_dictionary->GetNonReferenceCountedDictionary(
+                "obstacle_layer");
+        auto* obstacle_layer = options.mutable_obstacle_layer();
+        obstacle_layer->set_plugin(obstacle_layer_dict->GetString("plugin"));
+        obstacle_layer->set_enabled(obstacle_layer_dict->GetBool("enabled"));
+        obstacle_layer->set_footprint_clearing_enabled(
+            obstacle_layer_dict->GetBool("footprint_clearing_enabled"));
     }
 
     if (parameter_dictionary->HasKey("inflation_layer")) {

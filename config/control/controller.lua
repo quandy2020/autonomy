@@ -211,3 +211,6 @@ AUTONOMY_CONTROLLER = {
     },
 
 }
+
+-- LuaParameterDictionary expects the script to return a table when loaded directly.
+return { AUTONOMY_CONTROLLER = AUTONOMY_CONTROLLER }

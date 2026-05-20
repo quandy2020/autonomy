@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -37,6 +38,7 @@
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/robot_utils.hpp"
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace control {
@@ -76,6 +78,34 @@ public:
      * @brief Shutdown planning tasks
      */
     void Shutdown();
+
+    enum class FollowPathTickResult {
+        Running,
+        Succeeded,
+        Failed,
+        Cancelled,
+    };
+
+    map::costmap_2d::Costmap2DWrapper::SharedPtr GetCostmapWrapper() const {
+        return costmap_wrapper_;
+    }
+
+    /** TF + frames for in-process goal checks (set by TaskScheduler). */
+    void SetNavigationContext(std::shared_ptr<transform::Buffer> tf_buffer,
+                              const std::string& global_frame,
+                              const std::string& robot_base_frame);
+
+    /**
+     * @brief Begin following a path in-process (one control step per TickFollowPath).
+     */
+    bool BeginFollowPath(const commsgs::planning_msgs::Path& path,
+                         const std::string& controller_id,
+                         const std::string& goal_checker_id,
+                         const std::string& progress_checker_id);
+
+    FollowPathTickResult TickFollowPath(std::function<bool()> cancel_checker);
+
+    void EndFollowPath();
 
 protected:
     /**
@@ -196,6 +226,10 @@ protected:
 
     // The controller needs a costmap node
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+    std::shared_ptr<transform::Buffer> tf_buffer_;
+    std::string global_frame_{"map"};
+    std::string robot_base_frame_{"base_link"};
+    double goal_reached_tolerance_{0.25};
     std::unique_ptr<std::thread> costmap_thread_{nullptr};
 
     // Publishers and subscribers
@@ -244,6 +278,8 @@ protected:
 
     // Current path container
     commsgs::planning_msgs::Path current_path_;
+
+    bool follow_path_active_{false};
 
     // Dynamic parameters lock
     std::mutex dynamic_params_lock_;

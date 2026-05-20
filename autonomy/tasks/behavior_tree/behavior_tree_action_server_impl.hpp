@@ -28,6 +28,7 @@ BtActionServer<ActionT>::BtActionServer(
     const std::string& name,
     const std::vector<std::string>& plugin_lib_names,
     const std::string& default_bt_xml_filename,
+    const std::string& plugin_lib_path,
     OnGoalReceivedCallback on_goal_received_callback,
     OnLoopCallback on_loop_callback, OnPreemptCallback on_preempt_callback,
     OnCompletionCallback on_completion_callback)
@@ -44,7 +45,8 @@ BtActionServer<ActionT>::BtActionServer(
       wait_for_service_timeout_(std::chrono::milliseconds(1000)),
       internal_error_code_(0),
       internal_error_msg_("") {
-    bt_ = std::make_unique<BehaviorTreeEngine>(plugin_lib_names);
+    bt_ = std::make_unique<BehaviorTreeEngine>(plugin_lib_names,
+                                               plugin_lib_path);
     blackboard_ = BT::Blackboard::create();  // NOLINT
     blackboard_->set("bt_loop_duration", bt_loop_duration_);  // NOLINT
     blackboard_->set("wait_for_service_timeout", wait_for_service_timeout_);  // NOLINT

@@ -16,19 +16,18 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 
 namespace autonomy {
-namespace common {
+namespace tasks {
+namespace utils {
 
-DECLARE_bool(verbose);
-DECLARE_string(configuration_directory);
-DECLARE_string(configuration_basename);
-DECLARE_bool(run_navigate_to_pose);
-DECLARE_double(nav_goal_x);
-DECLARE_double(nav_goal_y);
-DECLARE_double(nav_goal_yaw);
-DECLARE_bool(mock_static_tf);
+bool IsPathValidOnCostmap(
+    const map::costmap_2d::Costmap2DWrapper::SharedPtr& costmap,
+    const commsgs::planning_msgs::Path& path, unsigned int max_cost,
+    bool consider_unknown_as_obstacle);
 
-}  // namespace common
+}  // namespace utils
+}  // namespace tasks
 }  // namespace autonomy

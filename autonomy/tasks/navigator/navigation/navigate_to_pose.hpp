@@ -24,6 +24,8 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/tasks/common/feedback_utils.hpp"
+#include "autonomy/tasks/common/task_context.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
@@ -63,15 +65,14 @@ public:
      * @brief 使用 TaskOptions 构造
      * @param options 任务选项（navigators、plugin_lib_names、坐标系、odom 等）
      */
-    NavigateToPoseNavigator(const autonomy::tasks::proto::TaskOptions& options);
+    NavigateToPoseNavigator(
+        const autonomy::tasks::proto::TaskOptions& options,
+        const std::shared_ptr<autonomy::tasks::common::TaskContext>& task_context,
+        const std::vector<std::string>& plugin_lib_names,
+        const autonomy::tasks::common::FeedbackUtils& feedback_utils,
+        const std::shared_ptr<autonomy::tasks::common::NavigatorMuxer>& muxer,
+        std::shared_ptr<OdomSmoother> odom_smoother);
 
-    /**
-     * @brief 获取 Navigator 名称
-     * @return Navigator 名称
-     */
-    std::string GetName() override;
-
-    std::string GetDefaultBTFilepath() override;
     bool GoalReceived(
         std::shared_ptr<const typename ActionT::Goal> goal) override;
     void OnLoop() override;

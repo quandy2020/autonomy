@@ -54,6 +54,7 @@ public:
     explicit BtActionServer(const std::string& name,
                             const std::vector<std::string>& plugin_lib_names,
                             const std::string& default_bt_xml_filename,
+                            const std::string& plugin_lib_path,
                             OnGoalReceivedCallback on_goal_received_callback,
                             OnLoopCallback on_loop_callback,
                             OnPreemptCallback on_preempt_callback,
@@ -64,6 +65,10 @@ public:
     void SetGrootMonitoring(const bool enable, const unsigned server_port);
 
     bool LoadBehaviorTree(const std::string& bt_xml_filename = "");
+
+    void SetLoopDuration(std::chrono::milliseconds bt_loop_duration) {
+        bt_loop_duration_ = bt_loop_duration;
+    }
 
     BT::Blackboard::Ptr GetBlackboard() const {
         return blackboard_;

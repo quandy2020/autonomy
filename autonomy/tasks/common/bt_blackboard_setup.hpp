@@ -16,19 +16,24 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+#include <chrono>
+#include <memory>
+
+#include "autonomy/tasks/common/feedback_utils.hpp"
+#include "autonomy/tasks/common/task_context.hpp"
+#include "autonomy/tasks/proto/task_options.pb.h"
+#include "behaviortree_cpp/blackboard.h"
 
 namespace autonomy {
+namespace tasks {
 namespace common {
 
-DECLARE_bool(verbose);
-DECLARE_string(configuration_directory);
-DECLARE_string(configuration_basename);
-DECLARE_bool(run_navigate_to_pose);
-DECLARE_double(nav_goal_x);
-DECLARE_double(nav_goal_y);
-DECLARE_double(nav_goal_yaw);
-DECLARE_bool(mock_static_tf);
+/** Initialize blackboard keys used by navigate_to_pose.xml. */
+void SetupNavigateToPoseBlackboard(
+    const BT::Blackboard::Ptr& blackboard,
+    const std::shared_ptr<TaskContext>& task_context,
+    const proto::TaskOptions& options, const FeedbackUtils& feedback);
 
 }  // namespace common
+}  // namespace tasks
 }  // namespace autonomy

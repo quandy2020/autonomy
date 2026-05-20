@@ -20,6 +20,7 @@
 
 #include <limits>
 #include <string>
+#include <vector>
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
@@ -33,12 +34,47 @@ namespace tasks {
 namespace navigator {
 namespace navigation {
 
-std::string NavigateToPoseNavigator::GetName() {
-    return "navigate_to_pose";
+namespace {
+
+std::string ResolveBehaviorTreeFile(
+    const std::string& bt_file,
+    const autonomy::tasks::common::FeedbackUtils& feedback) {
+    if (bt_file.empty()) {
+        return bt_file;
+    }
+    if (bt_file.find('/') != std::string::npos) {
+        return bt_file;
+    }
+    if (feedback.bt_xml_path_resolver) {
+        return feedback.bt_xml_path_resolver(bt_file);
+    }
+    return bt_file;
 }
 
-std::string NavigateToPoseNavigator::GetDefaultBTFilepath() {
-    return "navigate_to_pose_w_replanning_and_recovery.xml";
+}  // namespace
+
+NavigateToPoseNavigator::NavigateToPoseNavigator(
+    const autonomy::tasks::proto::TaskOptions& options,
+    const std::shared_ptr<autonomy::tasks::common::TaskContext>& task_context,
+    const std::vector<std::string>& plugin_lib_names,
+    const autonomy::tasks::common::FeedbackUtils& feedback_utils,
+    const std::shared_ptr<autonomy::tasks::common::NavigatorMuxer>& muxer,
+    std::shared_ptr<OdomSmoother> odom_smoother)
+    : BehaviorTreeNavigator<ActionT>("navigate_to_pose", "navigate_to_pose.xml",
+                                     options, task_context, plugin_lib_names,
+                                     feedback_utils, muxer, odom_smoother),
+      odom_smoother_(odom_smoother) {
+    goal_blackboard_id_ = "goal";
+    path_blackboard_id_ = "path";
+    if (options.has_navigate_to_pose_options()) {
+        const auto& nav_opts = options.navigate_to_pose_options();
+        if (!nav_opts.goal_blackboard_key().empty()) {
+            goal_blackboard_id_ = nav_opts.goal_blackboard_key();
+        }
+        if (!nav_opts.path_blackboard_key().empty()) {
+            path_blackboard_id_ = nav_opts.path_blackboard_key();
+        }
+    }
 }
 
 bool NavigateToPoseNavigator::GoalReceived(
@@ -51,6 +87,7 @@ bool NavigateToPoseNavigator::GoalReceived(
     std::string bt_xml = goal->behavior_tree().empty()
                              ? bt_->GetDefaultBTFilename()
                              : goal->behavior_tree();
+    bt_xml = ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
     if (!bt_->LoadBehaviorTree(bt_xml)) {
         bt_->SetInternalError(
             static_cast<uint16_t>(
@@ -83,16 +120,21 @@ void NavigateToPoseNavigator::OnLoop() {
     auto feedback_msg = std::make_shared<typename ActionT::Feedback>();
 
     commsgs::geometry_msgs::PoseStamped current_pose;
+    auto blackboard = bt_->GetBlackboard();
     if (!feedback_utils_.tf ||
         !autonomy::tasks::utils::getCurrentPose(
             current_pose, feedback_utils_.tf, feedback_utils_.global_frame,
             feedback_utils_.robot_frame,
             static_cast<float>(feedback_utils_.transform_tolerance))) {
-        AERROR << "NavigateToPoseNavigator: robot pose not available.";
+        if (blackboard) {
+            blackboard->set("initial_pose_received", false);  // NOLINT
+        }
         return;
     }
+    if (blackboard) {
+        blackboard->set("initial_pose_received", true);  // NOLINT
+    }
 
-    auto blackboard = bt_->GetBlackboard();
     commsgs::planning_msgs::Path current_path;
     double distance_remaining = 0.0;
     if (blackboard && blackboard->get(path_blackboard_id_, current_path) &&
@@ -212,8 +254,13 @@ bool NavigateToPoseNavigator::InitializeGoalPose(
     start_time_ = std::chrono::steady_clock::now();
     auto blackboard = bt_->GetBlackboard();
     if (blackboard) {
-        blackboard->set("number_recoveries", 0);          // NOLINT
+        blackboard->set("number_recoveries", 0);  // NOLINT
         blackboard->set(goal_blackboard_id_, goal_pose);  // NOLINT
+        blackboard->set("goal", goal_pose);  // NOLINT navigate_to_pose.xml
+        commsgs::planning_msgs::Path empty_path;
+        blackboard->set(path_blackboard_id_, empty_path);  // NOLINT
+        blackboard->set("path", empty_path);  // NOLINT
+        blackboard->set("initial_pose_received", true);  // NOLINT
     }
     return true;
 }

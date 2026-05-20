@@ -29,5 +29,14 @@ DEFINE_string(configuration_basename, "",
               "Basename, i.e. not containing any directory prefix, of the "
               "configuration file.");
 
+DEFINE_bool(run_navigate_to_pose, false,
+            "If true, run NavigateToPose once at startup (see nav_goal_*).");
+DEFINE_double(nav_goal_x, 0.0, "Navigation goal x in global_frame.");
+DEFINE_double(nav_goal_y, 0.0, "Navigation goal y in global_frame.");
+DEFINE_double(nav_goal_yaw, 0.0, "Navigation goal yaw (rad) in global_frame.");
+DEFINE_bool(mock_static_tf, true,
+            "Publish static identity TF map->odom->base_link for standalone "
+            "tasks testing (no localization node).");
+
 }  // namespace common
 }  // namespace autonomy

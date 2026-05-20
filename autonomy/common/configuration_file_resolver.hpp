@@ -44,6 +44,16 @@ private:
     std::vector<std::string> configuration_files_directories_;
 };
 
+// Search order: user dir (if non-empty), source tree config/, then install prefix.
+std::vector<std::string> ConfigurationSearchDirectories(
+    const std::string& user_configuration_directory);
+
+// Returns the config root directory that contains probe_relative_path (e.g.
+// "tasks/tasks.lua").
+std::string ResolveConfigurationRootDirectory(
+    const std::string& user_configuration_directory,
+    const std::string& probe_relative_path);
+
 }  // namespace common
 }  // namespace autonomy
 

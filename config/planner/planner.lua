@@ -24,7 +24,7 @@ AUTONOMY_PLANNER = {
         use_astar = false,
 
         -- Whether to allow unknown regions (NO_INFORMATION) in planning
-        allow_unknown = false,
+        allow_unknown = true,
 
         -- Whether to use final approach orientation
         use_final_approach_orientation = false,
@@ -36,10 +36,13 @@ AUTONOMY_PLANNER = {
 
     -- Global map configuration (for global path planning)
     costmap = {
+        enabled = true,
         -- Default map name (used if name is not specified in costmap configuration)
         name = "global_map",
         frame_id = "map",
         resolution = 0.05,
+        width = 20.0,
+        height = 20.0,
         update_frequency = 5.0,
         robot_radius = 0.22,
         always_send_full_costmap = true,
@@ -76,3 +79,6 @@ AUTONOMY_PLANNER = {
         },
     },
 }
+
+-- LuaParameterDictionary expects the script to return a table when loaded directly.
+return { AUTONOMY_PLANNER = AUTONOMY_PLANNER }
