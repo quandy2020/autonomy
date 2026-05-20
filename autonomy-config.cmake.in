@@ -43,10 +43,6 @@ endif()
 # These packages are installed alongside autonomy, so we need to find them
 # in the install directory relative to autonomy-config.cmake location
 set(_autonomy_install_prefix "${CMAKE_CURRENT_LIST_DIR}/../..")
-set(urdfdom_headers_DIR "${_autonomy_install_prefix}/lib/urdfdom_headers/cmake")
-set(urdfdom_DIR "${_autonomy_install_prefix}/lib/urdfdom/cmake")
-find_package(urdfdom_headers REQUIRED PATHS "${urdfdom_headers_DIR}" NO_DEFAULT_PATH)
-find_package(urdfdom REQUIRED PATHS "${urdfdom_DIR}" NO_DEFAULT_PATH)
 unset(_autonomy_install_prefix)
 
 # Find BehaviorTree.CPP dependency
@@ -54,5 +50,3 @@ find_package(behaviortree_cpp ${QUIET_OR_REQUIRED_OPTION})
 
 # Include the exported targets
 include("${AUTONOMY_CMAKE_DIR}/AutonomyTargets.cmake")
-
-unset(QUIET_OR_REQUIRED_OPTION)
