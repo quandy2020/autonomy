@@ -290,6 +290,14 @@ std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::GetDictionary(
     return PopDictionary(reference_count_);
 }
 
+std::unique_ptr<LuaParameterDictionary>
+LuaParameterDictionary::GetNonReferenceCountedDictionary(
+    const std::string& key) {
+    CheckHasKeyAndReference(key);
+    GetValueFromLuaTable(L_, key);
+    return PopDictionary(ReferenceCount::NO);
+}
+
 std::unique_ptr<LuaParameterDictionary> LuaParameterDictionary::PopDictionary(
     ReferenceCount reference_count) const {
     CheckTableIsAtTopOfStack(L_);

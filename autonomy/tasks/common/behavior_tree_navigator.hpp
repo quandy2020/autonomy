@@ -26,6 +26,9 @@
 #include "autonomy/common/macros.hpp"
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_action_server.hpp"
+#include "autonomy/tasks/common/bt_blackboard_setup.hpp"
+#include "autonomy/tasks/common/feedback_utils.hpp"
+#include "autonomy/tasks/common/task_context.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
@@ -37,16 +40,6 @@ namespace behavior_tree = autonomy::tasks::behavior_tree;
 
 using BtStatus = behavior_tree::BtStatus;
 using OdomSmoother = autonomy::control::utils::OdomSmoother;
-
-struct FeedbackUtils {
-    std::string robot_frame;
-    std::string global_frame;
-    double transform_tolerance = 0.1;
-    double local_survival_timeout = 120.0;
-    std::shared_ptr<autonomy::transform::Buffer> tf;
-    std::string default_bt_xml_filename;
-    std::function<std::string(const std::string&)> bt_xml_path_resolver;
-};
 
 class NavigatorBase
 {
@@ -97,24 +90,31 @@ class BehaviorTreeNavigator : public NavigatorBase
 public:
     BehaviorTreeNavigator() : NavigatorBase(), plugin_muxer_(nullptr) {}
 
-    BehaviorTreeNavigator(const autonomy::tasks::proto::TaskOptions& /*options*/,
-                          const std::vector<std::string>& plugin_lib_names,
-                          const FeedbackUtils& feedback_utils,
-                          const std::shared_ptr<NavigatorMuxer>& plugin_muxer,
-                          std::shared_ptr<OdomSmoother> odom_smoother)
-        : NavigatorBase(), plugin_muxer_(plugin_muxer.get()) {
+    BehaviorTreeNavigator(
+        std::string navigator_name, std::string default_bt_filepath,
+        const autonomy::tasks::proto::TaskOptions& options,
+        const std::shared_ptr<TaskContext>& task_context,
+        const std::vector<std::string>& plugin_lib_names,
+        const FeedbackUtils& feedback_utils,
+        const std::shared_ptr<NavigatorMuxer>& plugin_muxer,
+        std::shared_ptr<OdomSmoother> odom_smoother)
+        : NavigatorBase(),
+          plugin_muxer_(plugin_muxer.get()),
+          navigator_name_(std::move(navigator_name)),
+          default_bt_filepath_(std::move(default_bt_filepath)) {
         feedback_utils_ = feedback_utils;
         std::string default_bt_xml =
             feedback_utils.default_bt_xml_filename.empty()
-                ? GetDefaultBTFilepath()
+                ? default_bt_filepath_
                 : feedback_utils.default_bt_xml_filename;
         if (feedback_utils.bt_xml_path_resolver && !default_bt_xml.empty()) {
             default_bt_xml =
                 feedback_utils.bt_xml_path_resolver(default_bt_xml);
         }
 
+        const std::string plugin_lib_path = options.plugin_lib_path();
         bt_ = std::make_unique<behavior_tree::BtActionServer<ActionT>>(
-            GetName(), plugin_lib_names, default_bt_xml,
+            navigator_name_, plugin_lib_names, default_bt_xml, plugin_lib_path,
             std::bind(&BehaviorTreeNavigator::OnGoalReceived, this,
                       std::placeholders::_1),
             std::bind(&BehaviorTreeNavigator::OnLoop, this),
@@ -124,20 +124,29 @@ public:
                       std::placeholders::_1, std::placeholders::_2));
 
         BT::Blackboard::Ptr blackboard = bt_->GetBlackboard();
+        blackboard->set("task_context", task_context);  // NOLINT
         blackboard->set("tf_buffer", feedback_utils.tf);  // NOLINT
-        blackboard->set("initial_pose_received", false);  // NOLINT
-        blackboard->set("number_recoveries", 0);          // NOLINT
         blackboard->set("odom_smoother", odom_smoother);  // NOLINT
-        blackboard->set("global_frame", feedback_utils.global_frame);  // NOLINT
-        blackboard->set("robot_base_frame", feedback_utils.robot_frame);  // NOLINT
-        blackboard->set("local_survival_timeout",
-                        feedback_utils.local_survival_timeout);  // NOLINT
+        SetupNavigateToPoseBlackboard(blackboard, task_context, options,
+                                      feedback_utils);
+
+        const auto bt_loop_ms = options.bt_loop_duration() > 0
+                                    ? std::chrono::milliseconds(
+                                          options.bt_loop_duration())
+                                    : std::chrono::milliseconds(10);
+        bt_->SetLoopDuration(bt_loop_ms);
+
+        if (!default_bt_xml.empty() && !bt_->LoadBehaviorTree(default_bt_xml)) {
+            AWARN << navigator_name_
+                  << ": failed to preload behavior tree: " << default_bt_xml;
+        }
     }
 
     virtual ~BehaviorTreeNavigator() = default;
 
-    virtual std::string GetDefaultBTFilepath() = 0;
-    virtual std::string GetName() = 0;
+    virtual std::string GetName() const {
+        return navigator_name_;
+    }
 
     behavior_tree::BtActionServer<ActionT>& Bt() {
         return *bt_;
@@ -180,6 +189,8 @@ protected:
     std::unique_ptr<behavior_tree::BtActionServer<ActionT>> bt_;
     FeedbackUtils feedback_utils_;
     NavigatorMuxer* plugin_muxer_;
+    std::string navigator_name_;
+    std::string default_bt_filepath_;
 };
 
 }  // namespace common

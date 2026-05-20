@@ -96,8 +96,15 @@ tasks = {
         "autonomy_behavior_tree_decorator_speed_controller",
     },
     plugin_index_path = "/workspace/autonomy/install/autonomy/share/autolink_plugin_index",
-    -- plugin_lib_path = "/workspace/autonomy/install/autonomy/lib",  -- optional, overrides default lib search
-    navigators = {"navigate_to_pose", "navigate_through_poses", "navigate_to_docking", "track_to_target", "explore_to_anywhere"},
+    -- Directory containing libautonomy_behavior_tree_*.so (built by CMake).
+    plugin_lib_path = "/workspace/autonomy/src/autonomy/build/lib",
+    navigators = {
+        "navigate_to_pose",
+        "navigate_through_poses",
+        "navigate_to_docking",
+        "track_to_target",
+        "explore_to_anywhere",
+    },
     -- navigate_to_pose = {
     --     enable = false,
     --     plugin = "autonomy_tasks_navigator_navigate_to_pose",

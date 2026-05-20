@@ -16,40 +16,83 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/clear_costmap_service.hpp"
 
+#include "autonomy/common/logging.hpp"
+#include "autonomy/tasks/utils/costmap_clear_utils.hpp"
+
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ClearEntireCostmapService::ClearEntireCostmapService(
-    const std::string& service_node_name, const BT::NodeConfiguration& conf)
-    : BtServiceNode<proto::ClearEntireCostmap>(service_node_name, conf) {}
+void BtCostmapClearNode::incrementRecoveryCount() {
+    int recovery_count = 0;
+    [[maybe_unused]] auto res =
+        config().blackboard->get("number_recoveries", recovery_count);  // NOLINT
+    recovery_count += 1;
+    config().blackboard->set("number_recoveries", recovery_count);  // NOLINT
+}
 
-void ClearEntireCostmapService::on_tick() {
-    increment_recovery_count();
+std::string BtCostmapClearNode::serviceNameFromPorts() const {
+    std::string service_name;
+    if (getInput("service_name", service_name)) {
+        return service_name;
+    }
+    return "";
+}
+
+ClearEntireCostmapService::ClearEntireCostmapService(
+    const std::string& /*service_node_name*/, const BT::NodeConfiguration& conf)
+    : BtCostmapClearNode("ClearEntireCostmap", conf) {}
+
+BT::NodeStatus ClearEntireCostmapService::onStart() {
+    incrementRecoveryCount();
+    auto ctx = taskContext();
+    auto costmap = utils::ResolveCostmap(ctx, serviceNameFromPorts());
+    if (!costmap) {
+        AERROR << "ClearEntireCostmap: no costmap available.";
+        return BT::NodeStatus::FAILURE;
+    }
+    utils::ClearEntireCostmap(costmap);
+    return BT::NodeStatus::SUCCESS;
 }
 
 ClearCostmapExceptRegionService::ClearCostmapExceptRegionService(
-    const std::string& service_node_name, const BT::NodeConfiguration& conf)
-    : BtServiceNode<proto::ClearCostmapExceptRegion>(service_node_name, conf) {}
+    const std::string& /*service_node_name*/, const BT::NodeConfiguration& conf)
+    : BtCostmapClearNode("ClearCostmapExceptRegion", conf) {}
 
-void ClearCostmapExceptRegionService::on_tick() {
-    double reset_distance;
+BT::NodeStatus ClearCostmapExceptRegionService::onStart() {
+    incrementRecoveryCount();
+    double reset_distance = 1.0;
     getInput("reset_distance", reset_distance);
-    request_->set_reset_distance(reset_distance);
-    increment_recovery_count();
+
+    auto ctx = taskContext();
+    auto costmap = utils::ResolveCostmap(ctx, serviceNameFromPorts());
+    if (!costmap) {
+        AERROR << "ClearCostmapExceptRegion: no costmap available.";
+        return BT::NodeStatus::FAILURE;
+    }
+    utils::ClearCostmapExceptRegion(costmap, reset_distance);
+    return BT::NodeStatus::SUCCESS;
 }
 
 ClearCostmapAroundRobotService::ClearCostmapAroundRobotService(
-    const std::string& service_node_name, const BT::NodeConfiguration& conf)
-    : BtServiceNode<proto::ClearCostmapAroundRobot>(service_node_name, conf) {}
+    const std::string& /*service_node_name*/, const BT::NodeConfiguration& conf)
+    : BtCostmapClearNode("ClearCostmapAroundRobot", conf) {}
 
-void ClearCostmapAroundRobotService::on_tick() {
-    double reset_distance;
+BT::NodeStatus ClearCostmapAroundRobotService::onStart() {
+    incrementRecoveryCount();
+    double reset_distance = 1.0;
     getInput("reset_distance", reset_distance);
-    request_->set_reset_distance(reset_distance);
-    increment_recovery_count();
+
+    auto ctx = taskContext();
+    auto costmap = utils::ResolveCostmap(ctx, serviceNameFromPorts());
+    if (!costmap) {
+        AERROR << "ClearCostmapAroundRobot: no costmap available.";
+        return BT::NodeStatus::FAILURE;
+    }
+    utils::ClearCostmapAroundRobot(costmap, reset_distance);
+    return BT::NodeStatus::SUCCESS;
 }
 
 }  // namespace action

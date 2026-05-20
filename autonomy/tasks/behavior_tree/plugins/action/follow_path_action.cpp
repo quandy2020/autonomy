@@ -16,13 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/follow_path_action.hpp"
 
-#include <set>
-#include <string>
-#include <vector>
-
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/common/logging.hpp"
+#include "autonomy/control/controller_server.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -30,114 +25,137 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
+namespace {
+
+using ErrorCode = proto::FollowPathErrorCode;
+using TickResult = control::ControllerServer::FollowPathTickResult;
+
+}  // namespace
+
 FollowPathAction::FollowPathAction(const std::string& xml_tag_name,
-                                   const std::string& action_name,
                                    const BT::NodeConfiguration& conf)
-    : BtActionNode<Action>(xml_tag_name, action_name, conf) {}
+    : BtStatefulActionNode(xml_tag_name, conf) {}
 
-void FollowPathAction::on_tick() {
-    commsgs::planning_msgs::Path path;
-    if (getInput("path", path)) {
-        auto* proto_path = goal_.mutable_path();
-        *proto_path->mutable_header() = commsgs::std_msgs::ToProto(path.header);
-        proto_path->clear_poses();
-        for (const auto& pose : path.poses) {
-            auto* proto_pose = proto_path->add_poses();
-            *proto_pose = commsgs::geometry_msgs::ToProto(pose);
-        }
-    }
-
-    std::string controller_id;
-    if (getInput("controller_id", controller_id)) {
-        goal_.set_controller_id(controller_id);
-    }
-
-    std::string goal_checker_id;
-    if (getInput("goal_checker_id", goal_checker_id)) {
-        goal_.set_goal_checker_id(goal_checker_id);
-    }
-
-    std::string progress_checker_id;
-    if (getInput("progress_checker_id", progress_checker_id)) {
-        goal_.set_progress_checker_id(progress_checker_id);
-    }
+void FollowPathAction::setFailure(int32_t code, const std::string& msg) {
+    setOutput("error_code_id", code);
+    setOutput("error_msg", msg);
 }
 
-BT::NodeStatus FollowPathAction::on_success() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  proto::FollowPathErrorCode::FOLLOW_PATH_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-BT::NodeStatus FollowPathAction::on_aborted() {
-    if (result_.result) {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
-    } else {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(
-                      proto::FollowPathErrorCode::FOLLOW_PATH_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Action aborted"));
-    }
-    return BT::NodeStatus::FAILURE;
-}
-
-BT::NodeStatus FollowPathAction::on_cancelled() {
-    // Set empty error code, action was cancelled
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  proto::FollowPathErrorCode::FOLLOW_PATH_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-void FollowPathAction::on_timeout() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::FollowPathErrorCode::
-                                       FOLLOW_PATH_ERROR_CONTROLLER_TIMED_OUT));
-    setOutput("error_msg",
-              std::string("Behavior Tree action client timed out waiting."));
-}
-
-void FollowPathAction::on_wait_for_result(
-    std::shared_ptr<const Action::Feedback> /*feedback*/) {
-    // Grab the new path
+void FollowPathAction::maybeUpdatePathFromPorts() {
     commsgs::planning_msgs::Path new_path;
-    if (getInput("path", new_path)) {
-        auto* proto_path = goal_.mutable_path();
-        *proto_path->mutable_header() =
-            commsgs::std_msgs::ToProto(new_path.header);
-        proto_path->clear_poses();
-        for (const auto& pose : new_path.poses) {
-            auto* proto_pose = proto_path->add_poses();
-            *proto_pose = commsgs::geometry_msgs::ToProto(pose);
+    if (getInput("path", new_path) && !new_path.poses.empty()) {
+        const bool path_changed =
+            path_.poses.size() != new_path.poses.size() ||
+            path_.poses.empty() ||
+            path_.poses.back().pose.position.x !=
+                new_path.poses.back().pose.position.x ||
+            path_.poses.back().pose.position.y !=
+                new_path.poses.back().pose.position.y;
+        if (path_changed) {
+            path_ = std::move(new_path);
+            auto ctx = taskContext();
+            if (ctx && ctx->controller && follow_started_) {
+                ctx->controller->BeginFollowPath(path_, controller_id_,
+                                                 goal_checker_id_,
+                                                 progress_checker_id_);
+            }
         }
-        goal_updated_ = true;
     }
 
     std::string new_controller_id;
     if (getInput("controller_id", new_controller_id) &&
-        goal_.controller_id() != new_controller_id) {
-        goal_.set_controller_id(new_controller_id);
-        goal_updated_ = true;
+        new_controller_id != controller_id_) {
+        controller_id_ = new_controller_id;
     }
-
     std::string new_goal_checker_id;
     if (getInput("goal_checker_id", new_goal_checker_id) &&
-        goal_.goal_checker_id() != new_goal_checker_id) {
-        goal_.set_goal_checker_id(new_goal_checker_id);
-        goal_updated_ = true;
+        new_goal_checker_id != goal_checker_id_) {
+        goal_checker_id_ = new_goal_checker_id;
     }
-
     std::string new_progress_checker_id;
     if (getInput("progress_checker_id", new_progress_checker_id) &&
-        goal_.progress_checker_id() != new_progress_checker_id) {
-        goal_.set_progress_checker_id(new_progress_checker_id);
-        goal_updated_ = true;
+        new_progress_checker_id != progress_checker_id_) {
+        progress_checker_id_ = new_progress_checker_id;
     }
+}
+
+BT::NodeStatus FollowPathAction::onStart() {
+    follow_started_ = false;
+    auto ctx = taskContext();
+    if (!ctx || !ctx->controller) {
+        setFailure(static_cast<int32_t>(ErrorCode::FOLLOW_PATH_ERROR_UNKNOWN),
+                   "TaskContext or ControllerServer is not available.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    if (!getInput("path", path_) || path_.poses.empty()) {
+        setFailure(static_cast<int32_t>(ErrorCode::FOLLOW_PATH_ERROR_INVALID_PATH),
+                   "Missing or empty path input.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    controller_id_ = ctx->selected_controller_id;
+    goal_checker_id_ = ctx->selected_goal_checker_id;
+    progress_checker_id_ = ctx->selected_progress_checker_id;
+    getInput("controller_id", controller_id_);
+    getInput("goal_checker_id", goal_checker_id_);
+    getInput("progress_checker_id", progress_checker_id_);
+
+    if (!ctx->controller->BeginFollowPath(path_, controller_id_,
+                                          goal_checker_id_,
+                                          progress_checker_id_)) {
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::FOLLOW_PATH_ERROR_INVALID_CONTROLLER),
+                   "Failed to start follow path on controller.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    follow_started_ = true;
+    return BT::NodeStatus::RUNNING;
+}
+
+BT::NodeStatus FollowPathAction::onRunning() {
+    maybeUpdatePathFromPorts();
+
+    auto ctx = taskContext();
+    if (!ctx || !ctx->controller) {
+        setFailure(static_cast<int32_t>(ErrorCode::FOLLOW_PATH_ERROR_UNKNOWN),
+                   "ControllerServer is not available.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    const TickResult tick =
+        ctx->controller->TickFollowPath(ctx->CancelChecker());
+    switch (tick) {
+        case TickResult::Running:
+            return BT::NodeStatus::RUNNING;
+        case TickResult::Succeeded:
+            setOutput("error_code_id",
+                      static_cast<int32_t>(ErrorCode::FOLLOW_PATH_ERROR_NONE));
+            setOutput("error_msg", std::string(""));
+            follow_started_ = false;
+            return BT::NodeStatus::SUCCESS;
+        case TickResult::Cancelled:
+            setOutput("error_code_id",
+                      static_cast<int32_t>(ErrorCode::FOLLOW_PATH_ERROR_NONE));
+            setOutput("error_msg", std::string(""));
+            follow_started_ = false;
+            return BT::NodeStatus::SUCCESS;
+        case TickResult::Failed:
+        default:
+            setFailure(static_cast<int32_t>(ErrorCode::FOLLOW_PATH_ERROR_UNKNOWN),
+                       "Follow path failed.");
+            follow_started_ = false;
+            return BT::NodeStatus::FAILURE;
+    }
+}
+
+void FollowPathAction::onHalted() {
+    auto ctx = taskContext();
+    if (ctx && ctx->controller) {
+        ctx->controller->EndFollowPath();
+    }
+    follow_started_ = false;
 }
 
 }  // namespace action
@@ -152,7 +170,7 @@ BT_REGISTER_NODES(factory) {
                                  const BT::NodeConfiguration& config) {
         return std::make_unique<
             autonomy::tasks::behavior_tree::plugins::action::FollowPathAction>(
-            name, "follow_path", config);
+            name, config);
     };
 
     factory.registerBuilder<

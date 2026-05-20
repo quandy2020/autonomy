@@ -16,13 +16,12 @@
 
 #pragma once
 
-#include <set>
 #include <string>
-#include <vector>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
 
 namespace autonomy {
@@ -32,100 +31,50 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A nav2_behavior_tree::BtActionNode class that wraps
- * nav2_msgs::action::ComputePathToPose
- * @note This is an Asynchronous (long-running) node which may return a RUNNING
- * state while executing. It will re-initialize when halted.
+ * @brief In-process ComputePathToPose: calls PlannerServer::GetPlan via TaskContext.
  */
-class ComputePathToPoseAction
-    : public BtActionNode<
-          autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction>
+class ComputePathToPoseAction : public BtStatefulActionNode
 {
-    using Action =
-        autonomy::tasks::behavior_tree::proto::ComputePathToPoseAction;
-    using ActionResult = Action::Result;
-
 public:
-    /**
-     * @brief A constructor for
-     * autonomy::tasks::behavior_tree::plugins::action::ComputePathToPoseAction
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param action_name Action name this node creates a client for
-     * @param conf BT node configuration
-     */
     ComputePathToPoseAction(const std::string& xml_tag_name,
-                            const std::string& action_name,
                             const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
-    void on_tick() override;
-
-    /**
-     * @brief Function to perform some user-defined operation upon successful
-     * completion of the action
-     */
-    BT::NodeStatus on_success() override;
-
-    /**
-     * @brief Function to perform some user-defined operation upon abortion of
-     * the action
-     */
-    BT::NodeStatus on_aborted() override;
-
-    /**
-     * @brief Function to perform some user-defined operation upon cancellation
-     * of the action
-     */
-    BT::NodeStatus on_cancelled() override;
-
-    /**
-     * @brief Function to perform work in a BT Node when the action server times
-     * out Such as setting the error code ID status to timed out for action
-     * clients.
-     */
-    void on_timeout() override;
-
-    /**
-     * \brief Override required by the a BT action. Cancel the action and set
-     * the path output
-     */
-    void halt() override;
-
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
     static BT::PortsList providedPorts() {
-        // Register JSON definitions for the types used in the ports
         BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
         BT::RegisterJsonDefinition<commsgs::geometry_msgs::PoseStamped>();
 
-        return providedBasicPorts({
+        return {
             BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
                 "goal", "Destination to plan to"),
             BT::InputPort<commsgs::geometry_msgs::PoseStamped>(
                 "start",
-                "Used as the planner start pose instead of the current robot "
-                "pose, "
-                "if use_start is"
-                " not false (i.e. not provided or set to true)"),
+                "Planner start pose when use_start is true"),
             BT::InputPort<bool>("use_start",
-                                "For using or not using (i.e. ignoring) the "
-                                "provided start pose"),
+                                "Use the provided start pose instead of the "
+                                "current robot pose"),
             BT::InputPort<std::string>(
                 "planner_id", "",
-                "Mapped name to the planner plugin type to use"),
-            BT::OutputPort<commsgs::planning_msgs::Path>(
-                "path", "Path created by ComputePathToPose node"),
+                "Planner plugin id; empty uses TaskContext default"),
+            BT::OutputPort<commsgs::planning_msgs::Path>("path",
+                                                         "Planned path"),
             BT::OutputPort<int32_t>("error_code_id",
-                                    "The compute path to pose error code"),
+                                    "Compute path error code"),
             BT::OutputPort<std::string>("error_msg",
-                                        "The compute path to pose error msg"),
-        });
+                                        "Compute path error message"),
+        };
     }
+
+    BT::NodeStatus onStart() override;
+    BT::NodeStatus onRunning() override;
+    void onHalted() override;
+
+private:
+    void setFailure(int32_t code, const std::string& msg);
+
+    commsgs::geometry_msgs::PoseStamped start_pose_;
+    commsgs::geometry_msgs::PoseStamped goal_pose_;
+    std::string planner_id_;
+    bool poses_ready_{false};
 };
 
 }  // namespace action

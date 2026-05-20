@@ -315,6 +315,7 @@ void NavfnPlanner::smoothApproachToGoal(
         }
     }
     commsgs::geometry_msgs::PoseStamped goal_copy;
+    goal_copy.header.frame_id = plan.header.frame_id;
     goal_copy.pose = goal;
     plan.poses.push_back(goal_copy);
 }
@@ -373,6 +374,7 @@ bool NavfnPlanner::getPlanFromPotential(
         mapToWorld(x[i], y[i], world_x, world_y);
 
         commsgs::geometry_msgs::PoseStamped pose;
+        pose.header.frame_id = plan.header.frame_id;
         pose.pose.position.x = world_x;
         pose.pose.position.y = world_y;
         pose.pose.position.z = 0.0;

@@ -16,14 +16,12 @@
 
 #pragma once
 
-#include <set>
 #include <string>
-#include <vector>
 
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/json_utils.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
-#include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
@@ -32,72 +30,17 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief A nav2_behavior_tree::BtActionNode class that wraps
- * nav2_msgs::action::FollowPath
- * @note This is an Asynchronous (long-running) node which may return a RUNNING
- * state while executing. It will re-initialize when halted.
+ * @brief In-process FollowPath: one ControllerServer control step per BT tick.
  */
-class FollowPathAction : public BtActionNode<proto::FollowPathAction>
+class FollowPathAction : public BtStatefulActionNode
 {
-    using Action = proto::FollowPathAction;
-    using ActionResult = Action::Result;
-
 public:
-    /**
-     * @brief A constructor for nav2_behavior_tree::FollowPathAction
-     * @param xml_tag_name Name for the XML tag for this node
-     * @param action_name Action name this node creates a client for
-     * @param conf BT node configuration
-     */
     FollowPathAction(const std::string& xml_tag_name,
-                     const std::string& action_name,
                      const BT::NodeConfiguration& conf);
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
-    void on_tick() override;
-
-    /**
-     * @brief Function to perform some user-defined operation upon successful
-     * completion of the action
-     */
-    BT::NodeStatus on_success() override;
-
-    /**
-     * @brief Function to perform some user-defined operation upon abortion of
-     * the action
-     */
-    BT::NodeStatus on_aborted() override;
-
-    /**
-     * @brief Function to perform some user-defined operation upon cancellation
-     * of the action
-     */
-    BT::NodeStatus on_cancelled() override;
-
-    /**
-     * @brief Function to perform work in a BT Node when the action server times
-     * out Such as setting the error code ID status to timed out for action
-     * clients.
-     */
-    void on_timeout() override;
-
-    /**
-     * @brief Function to perform some user-defined operation after a timeout
-     * waiting for a result that hasn't been received yet
-     * @param feedback shared_ptr to latest feedback message
-     */
-    void on_wait_for_result(
-        std::shared_ptr<const Action::Feedback> feedback) override;
-
-    /**
-     * @brief Creates list of BT ports
-     * @return BT::PortsList Containing basic ports along with node-specific
-     * ports
-     */
     static BT::PortsList providedPorts() {
-        return providedBasicPorts({
+        BT::RegisterJsonDefinition<commsgs::planning_msgs::Path>();
+        return {
             BT::InputPort<commsgs::planning_msgs::Path>("path",
                                                         "Path to follow"),
             BT::InputPort<std::string>("controller_id", ""),
@@ -107,8 +50,22 @@ public:
                                     "The follow path error code"),
             BT::OutputPort<std::string>("error_msg",
                                         "The follow path error msg"),
-        });
+        };
     }
+
+    BT::NodeStatus onStart() override;
+    BT::NodeStatus onRunning() override;
+    void onHalted() override;
+
+private:
+    void setFailure(int32_t code, const std::string& msg);
+    void maybeUpdatePathFromPorts();
+
+    commsgs::planning_msgs::Path path_;
+    std::string controller_id_;
+    std::string goal_checker_id_;
+    std::string progress_checker_id_;
+    bool follow_started_{false};
 };
 
 }  // namespace action

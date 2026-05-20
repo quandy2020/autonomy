@@ -23,15 +23,58 @@
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/utils/conversions.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
+#include "autonomy/transform/tf2/transform_datatypes.h"
 
 namespace autonomy {
 namespace control {
 
 using Time = commsgs::builtin_interfaces::Time;
 using namespace autonomy::control::utils;
+using autonomy::transform::tf2::TransformException;
+
+namespace {
+
+bool TransformPoseToFrame(
+    const commsgs::geometry_msgs::PoseStamped& input_pose,
+    commsgs::geometry_msgs::PoseStamped& transformed_pose,
+    const std::shared_ptr<transform::Buffer>& tf_buffer,
+    const std::string& target_frame, float transform_timeout) {
+    if (!tf_buffer) {
+        return false;
+    }
+    try {
+        transformed_pose =
+            tf_buffer->transform(input_pose, target_frame, transform_timeout);
+        return true;
+    } catch (const TransformException& ex) {
+        AERROR << "Transform error: " << ex.what();
+    } catch (const std::exception& ex) {
+        AERROR << "Transform error: " << ex.what();
+    }
+    return false;
+}
+
+bool GetRobotPoseInFrame(
+    commsgs::geometry_msgs::PoseStamped& pose_in_frame,
+    const std::shared_ptr<transform::Buffer>& tf_buffer,
+    const std::string& global_frame, const std::string& robot_frame,
+    float transform_timeout) {
+    commsgs::geometry_msgs::PoseStamped robot_pose;
+    robot_pose.pose.orientation.w = 1.0;
+    robot_pose.header.frame_id = robot_frame;
+    robot_pose.header.stamp = Time::Now();
+    return TransformPoseToFrame(robot_pose, pose_in_frame, tf_buffer,
+                                global_frame, transform_timeout);
+}
+
+}  // namespace
 
 ControllerServer::ControllerServer(const proto::ControllerOptions& options)
-    : options_{options} {
+    : options_{options}, publish_zero_velocity_{false} {
+    if (options_.has_costmap_2d_options()) {
+        costmap_wrapper_ = std::make_shared<map::costmap_2d::Costmap2DWrapper>(
+            options_.costmap_2d_options(), "local_costmap");
+    }
     default_progress_checker_ids_ = {"progress_checker"};
     default_progress_checker_types_ = {
         "nav2_controller::SimpleProgressChecker"};
@@ -50,12 +93,95 @@ ControllerServer::~ControllerServer() {
     AINFO << "Control server shutdown successfully.";
 }
 
+void ControllerServer::SetNavigationContext(
+    std::shared_ptr<transform::Buffer> tf_buffer,
+    const std::string& global_frame, const std::string& robot_base_frame) {
+    tf_buffer_ = std::move(tf_buffer);
+    if (!global_frame.empty()) {
+        global_frame_ = global_frame;
+    }
+    if (!robot_base_frame.empty()) {
+        robot_base_frame_ = robot_base_frame;
+    }
+}
+
 void ControllerServer::Start() {
     AINFO << "Starting controller server...";
+    if (costmap_wrapper_) {
+        costmap_wrapper_->Start();
+    }
 }
 
 void ControllerServer::Shutdown() {
+    EndFollowPath();
     AINFO << "Shutting down controller server...";
+}
+
+bool ControllerServer::BeginFollowPath(
+    const commsgs::planning_msgs::Path& path,
+    const std::string& controller_id, const std::string& goal_checker_id,
+    const std::string& progress_checker_id) {
+    if (path.poses.empty()) {
+        AERROR << "BeginFollowPath: path is empty.";
+        return false;
+    }
+
+    if (!FindControllerId(controller_id, current_controller_)) {
+        AERROR << "BeginFollowPath: invalid controller_id.";
+        return false;
+    }
+    if (!FindGoalCheckerId(goal_checker_id, current_goal_checker_)) {
+        AERROR << "BeginFollowPath: invalid goal_checker_id.";
+        return false;
+    }
+    if (!FindProgressCheckerId(progress_checker_id,
+                              current_progress_checker_)) {
+        AERROR << "BeginFollowPath: invalid progress_checker_id.";
+        return false;
+    }
+
+    SetPlannerPath(path);
+    end_pose_ = path.poses.back();
+    if (end_pose_.header.frame_id.empty()) {
+        end_pose_.header.frame_id = path.header.frame_id.empty()
+                                        ? global_frame_
+                                        : path.header.frame_id;
+    }
+    if (end_pose_.header.stamp.sec == 0 && end_pose_.header.stamp.nanosec == 0) {
+        end_pose_.header.stamp = Time::Now();
+    }
+    follow_path_active_ = true;
+    AINFO << "BeginFollowPath with " << path.poses.size() << " poses.";
+    return true;
+}
+
+ControllerServer::FollowPathTickResult ControllerServer::TickFollowPath(
+    std::function<bool()> cancel_checker) {
+    if (!follow_path_active_) {
+        return FollowPathTickResult::Failed;
+    }
+
+    if (cancel_checker && cancel_checker()) {
+        EndFollowPath();
+        return FollowPathTickResult::Cancelled;
+    }
+
+    if (IsGoalReached()) {
+        EndFollowPath();
+        return FollowPathTickResult::Succeeded;
+    }
+
+    UpdateGlobalPath();
+    ComputeAndPublishVelocity();
+    return FollowPathTickResult::Running;
+}
+
+void ControllerServer::EndFollowPath() {
+    if (!follow_path_active_) {
+        return;
+    }
+    follow_path_active_ = false;
+    OnGoalExit();
 }
 
 bool ControllerServer::FindControllerId(const std::string& c_name,
@@ -118,7 +244,8 @@ void ControllerServer::PublishZeroVelocity() {
     velocity.twist.linear.x = 0;
     velocity.twist.linear.y = 0;
     velocity.twist.linear.z = 0;
-    velocity.header.frame_id = costmap_wrapper_->getBaseFrameID();
+    velocity.header.frame_id =
+        costmap_wrapper_ ? costmap_wrapper_->getBaseFrameID() : robot_base_frame_;
     velocity.header.stamp = Time::Now();
 }
 
@@ -134,18 +261,38 @@ void ControllerServer::OnGoalExit() {
 }
 
 bool ControllerServer::IsGoalReached() {
-    commsgs::geometry_msgs::PoseStamped pose;
+    if (!follow_path_active_ || !tf_buffer_) {
+        return false;
+    }
 
-    return true;
+    commsgs::geometry_msgs::PoseStamped current_pose;
+    if (!GetRobotPoseInFrame(current_pose, tf_buffer_, global_frame_,
+                             robot_base_frame_, 0.1f)) {
+        return false;
+    }
+
+    commsgs::geometry_msgs::PoseStamped goal_in_global = end_pose_;
+    if (!end_pose_.header.frame_id.empty() &&
+        end_pose_.header.frame_id != global_frame_ &&
+        !TransformPoseToFrame(end_pose_, goal_in_global, tf_buffer_,
+                              global_frame_, 0.1f)) {
+        return false;
+    }
+
+    const double dx =
+        current_pose.pose.position.x - goal_in_global.pose.position.x;
+    const double dy =
+        current_pose.pose.position.y - goal_in_global.pose.position.y;
+    const double dist_sq = dx * dx + dy * dy;
+    return dist_sq <= goal_reached_tolerance_ * goal_reached_tolerance_;
 }
 
 bool ControllerServer::GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose) {
-    commsgs::geometry_msgs::PoseStamped current_pose;
-    if (!costmap_wrapper_->getRobotPose(current_pose)) {
-        return false;
+    if (costmap_wrapper_ && costmap_wrapper_->getRobotPose(pose)) {
+        return true;
     }
-    pose = current_pose;
-    return true;
+    return GetRobotPoseInFrame(pose, tf_buffer_, global_frame_, robot_base_frame_,
+                               0.1f);
 }
 
 void ControllerServer::SpeedLimitCallback(

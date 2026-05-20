@@ -31,16 +31,17 @@ proto::ControllerOptions LoadOptions(
         return options;
     }
 
-    if (parameter_dictionary->HasKey("costmap_2d")) {
-        auto costmap_dict = parameter_dictionary->GetDictionary("costmap_2d");
-        if (costmap_dict && costmap_dict->HasKey("costmap_2d")) {
-            auto nested_costmap_dict =
-                costmap_dict->GetDictionary("costmap_2d");
-            if (nested_costmap_dict) {
-                *options.mutable_costmap_2d_options() =
-                    map::CreateCostmap2DOptions(nested_costmap_dict.get());
-            }
-        }
+    if (parameter_dictionary->HasKey("costmap")) {
+        auto costmap_dict =
+            parameter_dictionary->GetNonReferenceCountedDictionary("costmap");
+        *options.mutable_costmap_2d_options() =
+            map::CreateCostmap2DOptions(costmap_dict.get());
+    }
+
+    // MPPI loader not wired yet; consume the table so Lua key checks pass.
+    if (parameter_dictionary->HasKey("mppi_controller")) {
+        parameter_dictionary->GetNonReferenceCountedDictionary(
+            "mppi_controller");
     }
 
     if (parameter_dictionary->HasKey("graceful_controller")) {

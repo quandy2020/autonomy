@@ -70,6 +70,10 @@ public:
     std::unique_ptr<LuaParameterDictionary> GetDictionary(
         const std::string& key);
 
+    // Like GetDictionary(), but does not require every nested key to be read.
+    std::unique_ptr<LuaParameterDictionary> GetNonReferenceCountedDictionary(
+        const std::string& key);
+
     // Gets an int from the dictionary and CHECK()s that it is non-negative.
     int GetNonNegativeInt(const std::string& key);
 

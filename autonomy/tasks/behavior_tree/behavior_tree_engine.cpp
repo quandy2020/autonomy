@@ -16,8 +16,11 @@
 
 #include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 
+#include "autonomy/common/config.hpp"
 #include "autonomy/common/logging.hpp"
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <thread>
@@ -30,11 +33,54 @@
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
+namespace {
 
-BehaviorTreeEngine::BehaviorTreeEngine(const std::vector<std::string>& plugin_libraries) {
+std::string PluginLibraryFilename(const std::string& plugin_name) {
     BT::SharedLibrary loader;
+    return loader.getOSName(plugin_name);
+}
+
+std::vector<std::filesystem::path> PluginSearchDirectories(
+    const std::string& plugin_lib_path) {
+    std::vector<std::filesystem::path> dirs;
+    if (!plugin_lib_path.empty()) {
+        dirs.emplace_back(plugin_lib_path);
+    }
+    dirs.emplace_back(std::string(autonomy::common::kLibraryBuildDir) + "/lib");
+    if (const char* env = std::getenv("AUTONOMY_BT_PLUGIN_PATH");
+        env != nullptr && env[0] != '\0') {
+        dirs.emplace_back(env);
+    }
+    return dirs;
+}
+
+std::string ResolvePluginLibraryPath(const std::string& plugin_name,
+                                     const std::string& plugin_lib_path) {
+    const std::string filename = PluginLibraryFilename(plugin_name);
+    for (const auto& dir : PluginSearchDirectories(plugin_lib_path)) {
+        const auto candidate = dir / filename;
+        if (std::filesystem::exists(candidate)) {
+            return candidate.string();
+        }
+    }
+    return filename;
+}
+
+}  // namespace
+
+BehaviorTreeEngine::BehaviorTreeEngine(
+    const std::vector<std::string>& plugin_libraries,
+    const std::string& plugin_lib_path) {
     for (const auto& p : plugin_libraries) {
-        factory_.registerFromPlugin(loader.getOSName(p));
+        const std::string lib_path =
+            ResolvePluginLibraryPath(p, plugin_lib_path);
+        try {
+            factory_.registerFromPlugin(lib_path);
+        } catch (const std::exception& ex) {
+            AERROR << "Failed to load BT plugin '" << p << "' from '"
+                   << lib_path << "': " << ex.what();
+            throw;
+        }
     }
 
     // FIXME: the next two line are needed for back-compatibility with

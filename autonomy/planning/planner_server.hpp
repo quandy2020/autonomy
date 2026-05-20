@@ -81,6 +81,10 @@ public:
      */
     void Shutdown();
 
+    map::costmap_2d::Costmap2DWrapper::SharedPtr GetCostmapWrapper() const {
+        return costmap_wrapper_;
+    }
+
     /**
      * @brief Method to get plan from the desired plugin
      * @param start starting pose

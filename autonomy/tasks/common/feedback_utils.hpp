@@ -16,19 +16,26 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+#include <functional>
+#include <memory>
+#include <string>
+
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
+namespace tasks {
 namespace common {
 
-DECLARE_bool(verbose);
-DECLARE_string(configuration_directory);
-DECLARE_string(configuration_basename);
-DECLARE_bool(run_navigate_to_pose);
-DECLARE_double(nav_goal_x);
-DECLARE_double(nav_goal_y);
-DECLARE_double(nav_goal_yaw);
-DECLARE_bool(mock_static_tf);
+struct FeedbackUtils {
+    std::string robot_frame;
+    std::string global_frame;
+    double transform_tolerance = 0.1;
+    double local_survival_timeout = 120.0;
+    std::shared_ptr<autonomy::transform::Buffer> tf;
+    std::string default_bt_xml_filename;
+    std::function<std::string(const std::string&)> bt_xml_path_resolver;
+};
 
 }  // namespace common
+}  // namespace tasks
 }  // namespace autonomy

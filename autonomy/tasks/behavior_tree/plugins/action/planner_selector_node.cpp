@@ -16,6 +16,9 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/planner_selector_node.hpp"
 
+#include "autonomy/tasks/common/task_context.hpp"
+#include "autonomy/tasks/utils/planner_id_utils.hpp"
+
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
@@ -60,7 +63,22 @@ BT::NodeStatus PlannerSelector::tick() {
         }
     }
 
+    std::string default_id = "navfn_planner";
+    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
+            "task_context")) {
+        if (ctx && !ctx->selected_planner_id.empty()) {
+            default_id = ctx->selected_planner_id;
+        }
+    }
+    last_selected_planner_ =
+        utils::ResolvePlannerId(last_selected_planner_, default_id);
     setOutput("selected_planner", last_selected_planner_);
+    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
+            "task_context")) {
+        if (ctx) {
+            ctx->selected_planner_id = last_selected_planner_;
+        }
+    }
 
     return BT::NodeStatus::SUCCESS;
 }

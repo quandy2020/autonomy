@@ -18,9 +18,9 @@
 
 #include <future>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/tasks/common/task_context.hpp"
+#include "autonomy/tasks/utils/path_validation_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -31,12 +31,9 @@ namespace condition {
 IsPathValidCondition::IsPathValidCondition(const std::string& condition_name,
                                            const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf),
+      server_timeout_(std::chrono::milliseconds(20)),
       max_cost_(253),
-      consider_unknown_as_obstacle_(false) {
-    server_timeout_ =
-        config().blackboard->template get<std::chrono::milliseconds>(
-            "server_timeout");
-}
+      consider_unknown_as_obstacle_(false) {}
 
 void IsPathValidCondition::initialize() {
     getInput<std::chrono::milliseconds>("server_timeout", server_timeout_);
@@ -51,21 +48,22 @@ BT::NodeStatus IsPathValidCondition::tick() {
     }
 
     commsgs::planning_msgs::Path path;
-    getInput("path", path);
-
-    auto request = std::make_shared<proto::IsPathValid::Request>();
-
-    // Convert path to proto format manually
-    auto* path_proto = request->mutable_path();
-    *path_proto->mutable_header() = commsgs::std_msgs::ToProto(path.header);
-    for (const auto& pose : path.poses) {
-        *path_proto->add_poses() = commsgs::geometry_msgs::ToProto(pose);
+    if (!getInput("path", path) || path.poses.empty()) {
+        return BT::NodeStatus::FAILURE;
     }
-    request->set_max_cost(max_cost_);
-    request->set_consider_unknown_as_obstacle(consider_unknown_as_obstacle_);
 
-    (void)request;
-    return path.poses.empty() ? BT::NodeStatus::FAILURE : BT::NodeStatus::SUCCESS;
+    auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
+        "task_context");
+    auto costmap =
+        ctx && ctx->global_costmap ? ctx->global_costmap : nullptr;
+    if (!costmap) {
+        return BT::NodeStatus::FAILURE;
+    }
+
+    return utils::IsPathValidOnCostmap(costmap, path, max_cost_,
+                                       consider_unknown_as_obstacle_)
+               ? BT::NodeStatus::SUCCESS
+               : BT::NodeStatus::FAILURE;
 }
 
 }  // namespace condition

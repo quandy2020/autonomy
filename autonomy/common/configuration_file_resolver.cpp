@@ -18,6 +18,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <streambuf>
 
 #include "autonomy/common/config.hpp"
@@ -42,7 +43,38 @@ std::string ConfigurationFileResolver::GetFullPathOrDie(
             return filename;
         }
     }
-    LOG(FATAL) << "File '" << basename << "' was not found.";
+    std::ostringstream searched;
+    searched << "File '" << basename << "' was not found. Searched:";
+    for (const auto& path : configuration_files_directories_) {
+        searched << "\n  " << path << "/" << basename;
+    }
+    LOG(FATAL) << searched.str();
+}
+
+std::vector<std::string> ConfigurationSearchDirectories(
+    const std::string& user_configuration_directory) {
+    std::vector<std::string> directories;
+    if (!user_configuration_directory.empty()) {
+        directories.push_back(user_configuration_directory);
+    }
+    directories.emplace_back(std::string(kSourceDirectory) + "/config");
+    return directories;
+}
+
+std::string ResolveConfigurationRootDirectory(
+    const std::string& user_configuration_directory,
+    const std::string& probe_relative_path) {
+    ConfigurationFileResolver resolver(
+        ConfigurationSearchDirectories(user_configuration_directory));
+    const std::string full_path =
+        resolver.GetFullPathOrDie(probe_relative_path);
+    const std::string suffix = "/" + probe_relative_path;
+    CHECK_GE(full_path.size(), suffix.size());
+    CHECK_EQ(full_path.compare(full_path.size() - suffix.size(),
+                               suffix.size(), suffix),
+             0)
+        << full_path << " does not end with " << suffix;
+    return full_path.substr(0, full_path.size() - suffix.size());
 }
 
 std::string ConfigurationFileResolver::GetFileContentOrDie(

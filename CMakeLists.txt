@@ -103,6 +103,11 @@ endif()
 
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
+
+# BT plugins are built as separate .so files (see cmake/modules/behavior_tree_plugins.cmake).
+file(GLOB_RECURSE BEHAVIOR_TREE_PLUGIN_SRCS
+  "autonomy/tasks/behavior_tree/plugins/*.cpp")
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${BEHAVIOR_TREE_PLUGIN_SRCS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
 list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
@@ -309,6 +314,15 @@ if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
   target_link_libraries(${PROJECT_NAME} PUBLIC ${OnnxRuntime_LIBRARIES})
 endif()
+
+include("${PROJECT_SOURCE_DIR}/cmake/modules/behavior_tree_plugins.cmake")
+autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
+
+# Single-process tasks entry (autonomy/tasks/main.cpp is excluded from libautonomy).
+google_binary(autonomy_tasks_main
+  SRCS autonomy/tasks/main.cpp
+)
+add_dependencies(autonomy_tasks_main behavior_tree_plugins)
 
 ## Test unit
 if (${BUILD_TEST})

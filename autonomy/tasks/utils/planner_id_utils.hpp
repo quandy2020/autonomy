@@ -16,19 +16,24 @@
 
 #pragma once
 
-#include "gflags/gflags.h"
+#include <string>
 
 namespace autonomy {
-namespace common {
+namespace tasks {
+namespace utils {
 
-DECLARE_bool(verbose);
-DECLARE_string(configuration_directory);
-DECLARE_string(configuration_basename);
-DECLARE_bool(run_navigate_to_pose);
-DECLARE_double(nav_goal_x);
-DECLARE_double(nav_goal_y);
-DECLARE_double(nav_goal_yaw);
-DECLARE_bool(mock_static_tf);
+/** Map BT/XML aliases (e.g. GridBased) to configured planner plugin ids. */
+inline std::string ResolvePlannerId(const std::string& planner_id,
+                                    const std::string& default_planner_id) {
+    if (planner_id == "GridBased" || planner_id == "grid_based") {
+        return default_planner_id.empty() ? "navfn_planner" : default_planner_id;
+    }
+    if (planner_id.empty()) {
+        return default_planner_id.empty() ? "navfn_planner" : default_planner_id;
+    }
+    return planner_id;
+}
 
-}  // namespace common
+}  // namespace utils
+}  // namespace tasks
 }  // namespace autonomy
