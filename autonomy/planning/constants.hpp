@@ -22,7 +22,6 @@ namespace planning {
 constexpr char kMakePlanServiceName[] = "get_trajectory_states";
 constexpr char kMapNodeName[] = "/planner_server";
 constexpr char kMapTopicName[] = "/map";
-constexpr char kPlanTopicName[] = "/plan";
 constexpr char kCostmapTopicName[] = "/global_costmap";
 constexpr char kComputePathToPoseServiceName[] = "/compute_path_to_pose";
 constexpr char kComputePathThroughPosesServiceName[] =

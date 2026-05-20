@@ -555,7 +555,7 @@ std::vector<double> Spline2dConstraint::AffineThirdDerivativeCoef(
 
 double Spline2dConstraint::SignDistance(const Vec2d& xy_point,
                                         const double angle) const {
-    return common::math::InnerProd(xy_point.x(), xy_point.y(), -std::sin(angle),
+    return ::autonomy::common::math::InnerProd(xy_point.x(), xy_point.y(), -std::sin(angle),
                                    std::cos(angle));
 }
 

@@ -39,7 +39,7 @@ bool FemPosDeviationSmoother::Solve(
     const std::vector<std::pair<double, double>>& raw_point2d,
     const std::vector<double>& bounds, std::vector<double>* opt_x,
     std::vector<double>* opt_y,
-    std::vector<std::vector<common::math::Vec2d>> point_box) {
+    std::vector<std::vector<::autonomy::common::math::Vec2d>> point_box) {
     // Use default values for fields not in proto
     const bool apply_curvature_constraint =
         config_.curvature_constraint() > 0.0;
@@ -93,7 +93,7 @@ bool FemPosDeviationSmoother::SqpWithOsqp(
     const std::vector<std::pair<double, double>>& raw_point2d,
     const std::vector<double>& bounds, std::vector<double>* opt_x,
     std::vector<double>* opt_y,
-    std::vector<std::vector<common::math::Vec2d>> point_box) {
+    std::vector<std::vector<::autonomy::common::math::Vec2d>> point_box) {
     if (opt_x == nullptr || opt_y == nullptr) {
         AERROR << "opt_x or opt_y is nullptr";
         return false;

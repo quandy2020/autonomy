@@ -31,7 +31,7 @@ namespace plugins {
 namespace action {
 
 /**
- * @brief In-process ComputePathToPose: calls PlannerServer::GetPlan via TaskContext.
+ * @brief In-process ComputePathToPose: calls PlannerServer::ComputePathToPose via TaskContext.
  */
 class ComputePathToPoseAction : public BtStatefulActionNode
 {

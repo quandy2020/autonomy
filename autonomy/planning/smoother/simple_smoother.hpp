@@ -29,6 +29,7 @@
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/planning/common/smoother_interface.hpp"
+#include "autonomy/planning/proto/simple_smoother.pb.h"
 
 namespace autonomy {
 namespace planning {
@@ -55,6 +56,8 @@ public:
         std::string name, std::shared_ptr<void> /*costmap_sub*/,
         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/)
         override;
+
+    void ApplyOptions(const proto::SimpleSmootherOptions& options);
 
     /**
      * @brief Method to cleanup resources.

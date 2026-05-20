@@ -186,11 +186,23 @@ protected:
     void mapToWorld(double mx, double my, double& wx, double& wy);
 
     /**
-     * @brief Set the corresponding cell cost to be free space
-     * @param mx int of map X coordinate
-     * @param my int of map Y coordinate
+     * @brief Force A* on/off (used by DijkstraPlanner plugin).
      */
-    void clearRobotCell(unsigned int mx, unsigned int my);
+    void SetUseAstar(bool use_astar) {
+        use_astar_ = use_astar;
+    }
+
+    void SetTolerance(double tolerance) {
+        tolerance_ = tolerance;
+    }
+
+    void SetAllowUnknown(bool allow_unknown) {
+        allow_unknown_ = allow_unknown;
+    }
+
+    void SetUseFinalApproachOrientation(bool value) {
+        use_final_approach_orientation_ = value;
+    }
 
     /**
      * @brief Determine if a new planner object should be made
@@ -217,6 +229,9 @@ protected:
 
     // Whether to use the astar planner or default dijkstras
     bool use_astar_;
+
+    // Local copy of the costmap used during planning (avoids mutating global map)
+    std::vector<unsigned char> planning_costmap_copy_;
 };
 
 }  // namespace navfn

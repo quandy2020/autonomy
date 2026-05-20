@@ -25,6 +25,7 @@
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/planner_server.hpp"
+#include "autonomy/planning/smoother_server.hpp"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
@@ -35,6 +36,7 @@ namespace common {
  * "task_context"). */
 struct TaskContext {
     std::shared_ptr<planning::PlannerServer> planner;
+    std::shared_ptr<planning::SmootherServer> smoother;
     std::shared_ptr<control::ControllerServer> controller;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> global_costmap;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> local_costmap;
@@ -46,6 +48,7 @@ struct TaskContext {
     double transform_tolerance{0.1};
 
     std::string selected_planner_id{"navfn_planner"};
+    std::string selected_smoother_id{"simple_smoother"};
     std::string selected_controller_id{"FollowPath"};
     std::string selected_goal_checker_id;
     std::string selected_progress_checker_id;

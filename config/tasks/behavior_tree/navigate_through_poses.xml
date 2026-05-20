@@ -3,6 +3,7 @@
     <PipelineSequence name="NavigateThroughPosesWithReplanning">
       <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
       <PlannerSelector selected_planner="{selected_planner}" default_planner="navfn_planner" topic_name="planner_selector"/>
+      <SmootherSelector selected_smoother="{selected_smoother}" default_smoother="simple_smoother" topic_name="smoother_selector"/>
       <RateController hz="10.0">
         <ComputePathThroughPoses
           goals="{goals}"
@@ -10,6 +11,12 @@
           planner_id="{selected_planner}"
           error_code_id="{compute_path_through_poses_error_code}"/>
       </RateController>
+      <SmoothPath
+        unsmoothed_path="{path}"
+        smoothed_path="{path}"
+        smoother_id="{selected_smoother}"
+        max_smoothing_duration="1.0"
+        check_for_collisions="false"/>
       <FollowPath
         path="{path}"
         controller_id="{selected_controller}"

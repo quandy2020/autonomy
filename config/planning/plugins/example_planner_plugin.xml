@@ -1,0 +1,9 @@
+<!-- Example external planner plugin description (autolink plugin_manager format).
+     Install under share/autonomy/planning_plugins/ and reference from
+     planner_plugin_libraries in planner.lua, or register via autolink_plugin_index.
+     The .so must register classes with CLASS_LOADER_REGISTER_CLASS / AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN.
+-->
+<library path="lib/libmy_planner_plugin.so">
+  <class type="MyCustomPlanner"
+         base_class="autonomy::planning::common::GlobalPlanner"/>
+</library>

@@ -16,6 +16,8 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/smoother_selector_node.hpp"
 
+#include "autonomy/tasks/common/task_context.hpp"
+
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
@@ -56,14 +58,25 @@ BT::NodeStatus SmootherSelector::tick() {
     if (last_selected_smoother_.empty()) {
         std::string default_smoother;
         getInput("default_smoother", default_smoother);
+        if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
+                "task_context")) {
+            if (ctx && !ctx->selected_smoother_id.empty()) {
+                default_smoother = ctx->selected_smoother_id;
+            }
+        }
         if (default_smoother.empty()) {
             return BT::NodeStatus::FAILURE;
-        } else {
-            last_selected_smoother_ = default_smoother;
         }
+        last_selected_smoother_ = default_smoother;
     }
 
     setOutput("selected_smoother", last_selected_smoother_);
+    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
+            "task_context")) {
+        if (ctx) {
+            ctx->selected_smoother_id = last_selected_smoother_;
+        }
+    }
 
     return BT::NodeStatus::SUCCESS;
 }

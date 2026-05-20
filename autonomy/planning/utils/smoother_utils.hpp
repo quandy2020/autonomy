@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/common/math/angle_utils.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/utils.h"
@@ -30,6 +29,10 @@
 namespace autonomy {
 namespace planning {
 namespace utils {
+
+inline double shortestAngularDistance(double from, double to) {
+    return std::atan2(std::sin(to - from), std::cos(to - from));
+}
 
 /**
  * @class nav2_util::PathSegment
@@ -86,10 +89,12 @@ inline std::vector<PathSegment> findDirectionalPathSegments(
         }
 
         // Checking for the existence of a differential rotation in place.
-        double cur_theta = tf2::getYaw(path.poses[idx].pose.orientation);
-        double next_theta = tf2::getYaw(path.poses[idx + 1].pose.orientation);
+        double cur_theta =
+            transform::tf2::getYaw(path.poses[idx].pose.orientation);
+        double next_theta =
+            transform::tf2::getYaw(path.poses[idx + 1].pose.orientation);
         double dtheta =
-            angles::shortest_angular_distance(cur_theta, next_theta);
+            shortestAngularDistance(cur_theta, next_theta);
         if (fabs(ab_x) < 1e-4 && fabs(ab_y) < 1e-4 && fabs(dtheta) > 1e-4) {
             curr_segment.end = idx;
             segments.push_back(curr_segment);
@@ -121,9 +126,9 @@ inline void updateApproximatePathOrientations(
     dx = path.poses[2].pose.position.x - path.poses[1].pose.position.x;
     dy = path.poses[2].pose.position.y - path.poses[1].pose.position.y;
     theta = atan2(dy, dx);
-    pt_yaw = tf2::getYaw(path.poses[1].pose.orientation);
+    pt_yaw = transform::tf2::getYaw(path.poses[1].pose.orientation);
     if (!is_holonomic &&
-        fabs(angles::shortest_angular_distance(pt_yaw, theta)) > M_PI_2) {
+        fabs(shortestAngularDistance(pt_yaw, theta)) > M_PI_2) {
         reversing_segment = true;
     }
 

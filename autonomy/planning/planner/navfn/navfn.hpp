@@ -124,6 +124,11 @@ public:
     bool calcNavFnDijkstra(std::function<bool()> cancelChecker,
                            bool atStart = false);
 
+    /** @return True if the last propagation was cancelled via cancelChecker. */
+    bool wasPropagationCancelled() const {
+        return propagation_cancelled_;
+    }
+
     /**
      * @brief  Accessor for the x-coordinates of a path
      * @return The x-coordinates of a path
@@ -257,6 +262,8 @@ public:
     float gradCell(int n); /**< calculates gradient at cell <n>, returns norm */
 
     float pathStep; /**< step size for following gradient */
+
+    bool propagation_cancelled_{false};
 
     /** display callback */
     /**< <n> is the number of cycles between updates  */

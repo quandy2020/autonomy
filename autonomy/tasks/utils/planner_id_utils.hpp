@@ -28,6 +28,9 @@ inline std::string ResolvePlannerId(const std::string& planner_id,
     if (planner_id == "GridBased" || planner_id == "grid_based") {
         return default_planner_id.empty() ? "navfn_planner" : default_planner_id;
     }
+    if (planner_id == "Dijkstra" || planner_id == "dijkstra") {
+        return "dijkstra_planner";
+    }
     if (planner_id.empty()) {
         return default_planner_id.empty() ? "navfn_planner" : default_planner_id;
     }

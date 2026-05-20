@@ -35,7 +35,7 @@ namespace autonomy {
 namespace planning {
 namespace math {
 
-using common::math::Vec2d;
+using ::autonomy::common::math::Vec2d;
 
 bool FemPosDeviationSqpOsqpInterface::Solve() {
     // Sanity Check

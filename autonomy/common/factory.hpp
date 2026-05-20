@@ -69,7 +69,7 @@ public:
         return producers_.insert(std::make_pair(id, creator)).second;
     }
 
-    bool Contains(const IdentifierType& id) {
+    bool Contains(const IdentifierType& id) const {
         return producers_.find(id) != producers_.end();
     }
 
@@ -98,7 +98,7 @@ public:
      */
     template <typename... Args>
     std::unique_ptr<AbstractProduct> CreateObjectOrNull(
-        const IdentifierType& id, Args&&... args) {
+        const IdentifierType& id, Args&&... args) const {
         auto id_iter = producers_.find(id);
         if (id_iter != producers_.end()) {
             return std::unique_ptr<AbstractProduct>(
@@ -115,7 +115,7 @@ public:
      */
     template <typename... Args>
     std::unique_ptr<AbstractProduct> CreateObject(const IdentifierType& id,
-                                                  Args&&... args) {
+                                                  Args&&... args) const {
         auto result = CreateObjectOrNull(id, std::forward<Args>(args)...);
         // AERROR_IF(!result) << "Factory could not create Object of type : " <<
         // id;

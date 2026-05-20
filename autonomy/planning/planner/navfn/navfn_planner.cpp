@@ -18,8 +18,11 @@
 
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 
+#include "autolink/plugin_manager/plugin_manager.hpp"
+
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -122,10 +125,11 @@ uint32 NavfnPlanner::CreatePlan(
 
     if (makePlan(start.pose, goal.pose, tolerance_, cancel_checker, plan)) {
         return static_cast<uint32>(proto::PlannerResultCode::PLANNER_SUCCESS);
-    } else {
-        return static_cast<uint32>(
-            proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
     }
+    if (planner_ && planner_->wasPropagationCancelled()) {
+        return static_cast<uint32>(proto::PlannerResultCode::PLANNER_CANCELED);
+    }
+    return static_cast<uint32>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
 }
 
 void NavfnPlanner::Cleanup() {
@@ -173,10 +177,6 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
         return false;
     }
 
-    // clear the starting cell within the costmap because we know it can't be an
-    // obstacle
-    clearRobotCell(mx, my);
-
     auto* costmap_ptr = costmap_->getCostmap();
     if (!costmap_ptr) {
         AERROR << "Failed to get costmap from wrapper";
@@ -186,11 +186,17 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
     std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> lock(
         *(costmap_ptr->getMutex()));
 
-    // make sure to resize the underlying array that Navfn uses
-    planner_->setNavArr(costmap_ptr->getSizeInCellsX(),
-                        costmap_ptr->getSizeInCellsY());
+    const unsigned int size_x = costmap_ptr->getSizeInCellsX();
+    const unsigned int size_y = costmap_ptr->getSizeInCellsY();
+    const size_t map_size = static_cast<size_t>(size_x) * size_y;
+    planning_costmap_copy_.resize(map_size);
+    std::memcpy(planning_costmap_copy_.data(), costmap_ptr->getCharMap(),
+                map_size);
+    planning_costmap_copy_[static_cast<size_t>(my) * size_x + mx] =
+        map::costmap_2d::FREE_SPACE;
 
-    planner_->setCostmap(costmap_ptr->getCharMap(), true, allow_unknown_);
+    planner_->setNavArr(size_x, size_y);
+    planner_->setCostmap(planning_costmap_copy_.data(), true, allow_unknown_);
 
     lock.unlock();
 
@@ -441,16 +447,12 @@ void NavfnPlanner::mapToWorld(double mx, double my, double& wx, double& wy) {
     wy = costmap->getOriginY() + my * costmap->getResolution();
 }
 
-void NavfnPlanner::clearRobotCell(unsigned int mx, unsigned int my) {
-    // TODO(orduno): check usage of this function, might instead be a request to
-    //               world_model / map server
-    auto* costmap = costmap_->getCostmap();
-    if (costmap) {
-        costmap->setCost(mx, my, map::costmap_2d::FREE_SPACE);
-    }
-}
-
 }  // namespace navfn
 }  // namespace planner
 }  // namespace planning
 }  // namespace autonomy
+
+using autonomy::planning::common::GlobalPlanner;
+using autonomy::planning::planner::navfn::NavfnPlanner;
+
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(NavfnPlanner, GlobalPlanner);

@@ -17,9 +17,11 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -27,7 +29,6 @@
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
-#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace map {
@@ -41,14 +42,23 @@ class Costmap2DWrapper;
 namespace autonomy {
 namespace planning {
 
+class SmootherServer;
+
+struct PlannerMetrics {
+    std::atomic<uint64_t> plans_requested{0};
+    std::atomic<uint64_t> plans_succeeded{0};
+    std::atomic<uint64_t> plans_failed{0};
+};
+
+/**
+ * Pose frame contract for ComputePath* / GetPlan:
+ * - Prefer poses in the costmap global frame (frame_id == costmap.frame_id).
+ * - Empty frame_id is normalized to the costmap global frame before TF.
+ * - Other frames require a valid transform::Buffer.
+ */
 class PlannerServer
 {
 public:
-    /**
-     * Define Buffer type
-     */
-    using TfBuffer = autonomy::transform::Buffer;
-
     /**
      * Define PlannerMap type
      */
@@ -85,6 +95,16 @@ public:
         return costmap_wrapper_;
     }
 
+    const std::string& GetDefaultPlannerId() const {
+        return default_planner_id_;
+    }
+
+    void SetSmootherServer(const std::shared_ptr<SmootherServer>& smoother);
+
+    const PlannerMetrics& GetMetrics() const {
+        return metrics_;
+    }
+
     /**
      * @brief Method to get plan from the desired plugin
      * @param start starting pose
@@ -98,19 +118,33 @@ public:
         const commsgs::geometry_msgs::PoseStamped& goal,
         const std::string& planner_id, std::function<bool()> cancel_checker);
 
+    /**
+     * @brief Wait for costmap, validate poses, and plan through waypoints.
+     */
+    commsgs::planning_msgs::Path ComputePathThroughPoses(
+        const commsgs::geometry_msgs::PoseStamped& start,
+        const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
+        const std::string& planner_id, std::function<bool()> cancel_checker);
+
+    /**
+     * @brief Wait for costmap, validate poses, and plan a path.
+     */
+    commsgs::planning_msgs::Path ComputePathToPose(
+        const commsgs::geometry_msgs::PoseStamped& start,
+        const commsgs::geometry_msgs::PoseStamped& goal,
+        const std::string& planner_id, std::function<bool()> cancel_checker);
+
 protected:
+    void LoadPlugins();
+
     /**
      * @brief Wait for costmap to be valid with updated sensor data or
-     * repopulate after a clearing recovery. Blocks until true without timeout.
+     * repopulate after a clearing recovery. Uses isReady() or isCurrent().
      */
     void WaitForCostmap();
 
-    /**
-     * @brief Get the current pose of the robot in the global frame
-     * @param pose Output pose of the robot
-     * @return True if the pose was obtained successfully, false otherwise
-     */
-    bool GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose);
+    bool TransformPoseToGlobalFrame(
+        commsgs::geometry_msgs::PoseStamped& pose);
 
     /**
      * @brief Transform start and goal poses into the costmap
@@ -135,50 +169,37 @@ protected:
                       const commsgs::planning_msgs::Path& path,
                       const std::string& planner_id);
 
-    /**
-     * @brief Process compute plan requests in a dedicated thread (thread
-     * function)
-     */
-    void ComputePlan();
+    void ValidateStartGoalOnCostmap(
+        const commsgs::geometry_msgs::PoseStamped& start,
+        const commsgs::geometry_msgs::PoseStamped& goal,
+        const std::string& planner_id);
 
-    /**
-     * @brief Publish a path for visualization purposes
-     * @param path Reference to Global Path
-     */
-    void PublishPlan(const commsgs::planning_msgs::Path& path);
+    commsgs::planning_msgs::Path PostProcessPath(
+        commsgs::planning_msgs::Path path,
+        const std::function<bool()>& cancel_checker);
 
-    /**
-     * @brief Print wanning info
-     */
-    void ExceptionWarning(const commsgs::geometry_msgs::PoseStamped& start,
-                          const commsgs::geometry_msgs::PoseStamped& goal,
-                          const std::string& planner_id,
-                          const std::exception& ex);
+    bool AllowUnknownForValidation(const std::string& planner_id) const;
 
     // Options planners
     proto::PlannerOptions options_;
 
     // All planners
     PlannerMap planners_;
-    std::vector<std::string> default_ids_;
-    std::vector<std::string> default_types_;
     std::vector<std::string> planner_ids_;
     std::vector<std::string> planner_types_;
     double max_planner_duration_;
     std::string planner_ids_concat_;
-
-    // TF buffer
-    TfBuffer* tf_{nullptr};
+    std::string default_planner_id_;
+    bool plugins_loaded_{false};
 
     // Global Costmap
     map::costmap_2d::Costmap2DWrapper::SharedPtr costmap_wrapper_{nullptr};
     map::costmap_2d::Costmap2D* costmap_{nullptr};
     std::atomic<bool> costmap_received_{false};
+    std::atomic<bool> shutdown_called_{false};
     std::mutex costmap_update_mutex_;
-
-    // Thread
-    std::unique_ptr<std::thread> compute_path_to_pose_thread_{nullptr};
-    std::unique_ptr<std::thread> compute_path_through_poses_thread_{nullptr};
+    std::weak_ptr<SmootherServer> smoother_server_;
+    PlannerMetrics metrics_;
 };
 
 }  // namespace planning

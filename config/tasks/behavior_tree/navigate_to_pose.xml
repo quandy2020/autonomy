@@ -24,6 +24,10 @@
               selected_planner="{selected_planner}"
               default_planner="navfn_planner"
               topic_name="planner_selector"/>
+            <SmootherSelector
+              selected_smoother="{selected_smoother}"
+              default_smoother="simple_smoother"
+              topic_name="smoother_selector"/>
             <RateController hz="5.0">
               <ComputePathToPose
                 goal="{goal}"
@@ -32,6 +36,12 @@
                 error_code_id="{compute_path_error_code}"
                 error_msg="{compute_path_error_msg}"/>
             </RateController>
+            <SmoothPath
+              unsmoothed_path="{path}"
+              smoothed_path="{path}"
+              smoother_id="{selected_smoother}"
+              max_smoothing_duration="1.0"
+              check_for_collisions="false"/>
             <IsPathValid path="{path}"/>
             <FollowPath
               path="{path}"

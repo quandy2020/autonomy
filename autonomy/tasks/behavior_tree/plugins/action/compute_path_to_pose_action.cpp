@@ -63,14 +63,7 @@ BT::NodeStatus ComputePathToPoseAction::onStart() {
         return BT::NodeStatus::FAILURE;
     }
 
-    if (!utils::transformPoseInTargetFrame(
-            goal, goal_pose_, ctx->tf, ctx->global_frame,
-            static_cast<float>(ctx->transform_tolerance))) {
-        setFailure(static_cast<int32_t>(
-                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR),
-                   "Failed to transform goal to global frame.");
-        return BT::NodeStatus::FAILURE;
-    }
+    goal_pose_ = goal;
 
     bool use_start = false;
     getInput("use_start", use_start);
@@ -82,14 +75,7 @@ BT::NodeStatus ComputePathToPoseAction::onStart() {
                        "Missing required port: start");
             return BT::NodeStatus::FAILURE;
         }
-        if (!utils::transformPoseInTargetFrame(
-                start, start_pose_, ctx->tf, ctx->global_frame,
-                static_cast<float>(ctx->transform_tolerance))) {
-            setFailure(static_cast<int32_t>(
-                           ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR),
-                       "Failed to transform start to global frame.");
-            return BT::NodeStatus::FAILURE;
-        }
+        start_pose_ = start;
     } else {
         if (!utils::getGlobalRobotPose(start_pose_, ctx->tf, ctx->odom_smoother,
                                        ctx->global_frame, ctx->robot_base_frame,
@@ -129,17 +115,63 @@ BT::NodeStatus ComputePathToPoseAction::onRunning() {
     }
 
     try {
-        commsgs::planning_msgs::Path path = ctx->planner->GetPlan(
+        commsgs::planning_msgs::Path path = ctx->planner->ComputePathToPose(
             start_pose_, goal_pose_, planner_id_, ctx->CancelChecker());
         setOutput("path", path);
         setOutput("error_code_id",
                   static_cast<int32_t>(ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE));
         setOutput("error_msg", std::string(""));
         return BT::NodeStatus::SUCCESS;
+    } catch (const planning::common::PlannerCancelled&) {
+        setFailure(static_cast<int32_t>(ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NONE),
+                   "");
+        return BT::NodeStatus::FAILURE;
     } catch (const planning::common::InvalidPlanner& ex) {
         AERROR << "ComputePathToPose: " << ex.what();
         setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_INVALID_PLANNER),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::StartOccupied& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_START_OCCUPIED),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::GoalOccupied& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_GOAL_OCCUPIED),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::NoValidPathCouldBeFound& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
                        ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_NO_VALID_PATH),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::PlannerTimedOut& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::StartOutsideMapBounds& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_START_OUTSIDE_MAP),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::GoalOutsideMapBounds& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_GOAL_OUTSIDE_MAP),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::PlannerTFError& ex) {
+        AERROR << "ComputePathToPose: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR),
                    ex.what());
         return BT::NodeStatus::FAILURE;
     } catch (const std::exception& ex) {

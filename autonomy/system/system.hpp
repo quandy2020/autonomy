@@ -16,12 +16,15 @@
 
 #pragma once
 
-#include <unordered_map>
+#include <memory>
+#include <string>
 
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
+#include "autonomy/planning/smoother_server.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
+#include "autonomy/tasks/common/task_context.hpp"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
@@ -32,72 +35,52 @@ class AutonomyNode
 public:
     using TfBuffer = autonomy::transform::Buffer;
 
-    /**
-     * Define AutonomyNode::SharedPtr type
-     */
     AUTONOMY_SMART_PTR_DEFINITIONS(AutonomyNode)
 
-    /**
-     * @brief A constructor for autonomy::system::AutonomyNode
-     * @param options Additional options to control creation of the node.
-     */
     AutonomyNode() = default;
 
-    /**
-     * @brief Destroy the Autonomy Node object
-     *
-     * @param options
-     */
     explicit AutonomyNode(const proto::AutonomyOptions& options);
 
-    /**
-     * @brief A Destructor for autonomy::system::AutonomyNode
-     */
-    ~AutonomyNode() = default;
+    ~AutonomyNode();
 
-    /**
-     * @brief Starts autonomy tasks
-     */
     void Start();
 
-    /**
-     * @brief Shutdown the autonomy system
-     */
     void Shutdown();
 
-    /**
-     * @brief Get map_server
-     *
-     * @return pointer
-     */
     map::MapServer* map_server() {
         return map_server_.get();
     }
 
-    /**
-     * @brief Get planner_server
-     *
-     * @return planning::PlannerServer pointer
-     */
     planning::PlannerServer* planner_server() {
         return planner_server_.get();
     }
 
+    planning::SmootherServer* smoother_server() {
+        return smoother_server_.get();
+    }
+
+    tasks::common::TaskContext* task_context() {
+        return task_context_.get();
+    }
+
+    control::ControllerServer* controller_server() {
+        return controller_server_.get();
+    }
+
 private:
-    // Configuration for auronomy options
     proto::AutonomyOptions options_;
 
-    // Tf2 buffer
     TfBuffer* tf_buffer_{nullptr};
 
-    // map
     map::MapServer::SharedPtr map_server_{nullptr};
 
-    // controller
     control::ControllerServer::SharedPtr controller_server_{nullptr};
 
-    // planner
     planning::PlannerServer::SharedPtr planner_server_{nullptr};
+
+    planning::SmootherServer::SharedPtr smoother_server_{nullptr};
+
+    std::shared_ptr<tasks::common::TaskContext> task_context_{nullptr};
 };
 
 AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options);

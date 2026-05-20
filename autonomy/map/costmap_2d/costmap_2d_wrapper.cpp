@@ -45,6 +45,7 @@
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 #include "autonomy/map/utils/data_loader_utils.hpp"
+#include "autonomy/transform/tf2/exceptions.h"
 
 namespace autonomy {
 namespace map {
@@ -470,16 +471,32 @@ bool Costmap2DWrapper::getRobotPose(
 bool Costmap2DWrapper::transformPoseToGlobalFrame(
     const commsgs::geometry_msgs::PoseStamped& input_pose,
     commsgs::geometry_msgs::PoseStamped& transformed_pose) {
-    // if (input_pose.header.frame_id == global_frame_) {
-    //     transformed_pose = input_pose;
-    //     return true;
-    // } else {
-    //     return utils::transformPoseInTargetFrame(
-    //     input_pose, transformed_pose, *tf_buffer_,
-    //     global_frame_, transform_tolerance_);
-    // }
+    if (input_pose.header.frame_id.empty() ||
+        input_pose.header.frame_id == global_frame_) {
+        transformed_pose = input_pose;
+        transformed_pose.header.frame_id = global_frame_;
+        return true;
+    }
 
-    return true;
+    auto* tf_buffer = autonomy::transform::Buffer::Instance();
+    if (!tf_buffer) {
+        AERROR << "TF buffer is null, cannot transform pose to global frame";
+        return false;
+    }
+
+    try {
+        transformed_pose = tf_buffer->transform(
+            input_pose, global_frame_,
+            static_cast<float>(transform_tolerance_));
+        return true;
+    } catch (const autonomy::transform::tf2::TransformException& ex) {
+        AERROR << "Failed to transform pose from " << input_pose.header.frame_id
+               << " to " << global_frame_ << ": " << ex.what();
+    } catch (const std::exception& ex) {
+        AERROR << "Failed to transform pose from " << input_pose.header.frame_id
+               << " to " << global_frame_ << ": " << ex.what();
+    }
+    return false;
 }
 
 bool Costmap2DWrapper::loadMap(const std::string& filename) {

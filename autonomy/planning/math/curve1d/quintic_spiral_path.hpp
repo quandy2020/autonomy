@@ -54,7 +54,7 @@ public:
             const auto a = Evaluate(0, s);
             return std::cos(a);
         };
-        return common::math::IntegrateByGaussLegendre<N>(cos_theta, 0.0, s);
+        return ::autonomy::common::math::IntegrateByGaussLegendre<N>(cos_theta, 0.0, s);
     }
 
     template <size_t N>
@@ -63,13 +63,13 @@ public:
             const auto a = Evaluate(0, s);
             return std::sin(a);
         };
-        return common::math::IntegrateByGaussLegendre<N>(sin_theta, 0.0, s);
+        return ::autonomy::common::math::IntegrateByGaussLegendre<N>(sin_theta, 0.0, s);
     }
 
     template <size_t N>
     std::pair<double, double> DeriveCartesianDeviation(
         const size_t param_index) const {
-        auto gauss_points = common::math::GetGaussLegendrePoints<N>();
+        auto gauss_points = ::autonomy::common::math::GetGaussLegendrePoints<N>();
         std::array<double, N> x = gauss_points.first;
         std::array<double, N> w = gauss_points.second;
 
