@@ -301,10 +301,22 @@ void Run() {
                   << mock_state.y << ", yaw=" << mock_state.yaw << ")";
         }
 
-        cancel_on_shutdown.join();
-
+        switch (status) {
+            case behavior_tree::BtStatus::SUCCEEDED:
+                AINFO << "NavigateToPose succeeded (goal reached).";
+                break;
+            case behavior_tree::BtStatus::CANCELED:
+                AWARN << "NavigateToPose canceled.";
+                break;
+            case behavior_tree::BtStatus::FAILED:
+            default:
+                AERROR << "NavigateToPose failed.";
+                break;
+        }
         AINFO << "NavigateToPose finished with BT status "
               << static_cast<int>(status);
+
+        cancel_on_shutdown.detach();
     }
 
     while (!g_shutdown.load()) {
