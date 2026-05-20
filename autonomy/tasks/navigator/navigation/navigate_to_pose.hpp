@@ -87,6 +87,8 @@ public:
      */
     bool InitializeGoalPose(std::shared_ptr<const typename ActionT::Goal> goal);
 
+    std::shared_ptr<OdomSmoother> ActiveOdomSmoother() const;
+
     std::chrono::steady_clock::time_point start_time_;
     std::string goal_blackboard_id_;
     std::string path_blackboard_id_;

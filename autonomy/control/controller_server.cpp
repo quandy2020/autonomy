@@ -749,6 +749,16 @@ bool ControllerServer::IsGoalReached() {
 }
 
 bool ControllerServer::GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose) {
+  if (odom_smoother_) {
+    commsgs::planning_msgs::Odometry odom;
+    if (odom_smoother_->GetLatestOdometry(odom) &&
+        !odom.header.frame_id.empty()) {
+      pose.header.frame_id = global_frame_;
+      pose.header.stamp = odom.header.stamp;
+      pose.pose = odom.pose.pose;
+      return true;
+    }
+  }
   if (GetRobotPoseInFrame(pose, tf_buffer_, global_frame_, robot_base_frame_,
                           transform_tolerance_)) {
     return true;

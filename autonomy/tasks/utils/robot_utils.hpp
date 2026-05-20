@@ -21,6 +21,7 @@
 
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/tf2/transform_datatypes.h"
 
@@ -42,6 +43,21 @@ bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
                     const std::string global_frame = "map",
                     const std::string robot_frame = "base_link",
                     const float transform_timeout = 0.1f);
+
+/**
+ * @brief Resolve the robot pose in global_frame, preferring odometry over a
+ * multi-hop TF lookup (map<-odom<-base_link).
+ *
+ * When odometry is published in the odom frame and map->odom is identity (mock
+ * demo and many stacks), the odom pose is used directly. Otherwise a single-hop
+ * global<-odom transform is applied before falling back to getCurrentPose().
+ */
+bool getGlobalRobotPose(
+    commsgs::geometry_msgs::PoseStamped& global_pose,
+    std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+    std::shared_ptr<control::utils::OdomSmoother> odom_smoother,
+    const std::string& global_frame, const std::string& robot_frame,
+    float transform_timeout = 0.1f);
 
 /**
  * @brief get an arbitrary pose in a target frame

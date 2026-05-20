@@ -51,6 +51,7 @@ public:
                           const std::string& odom_topic = "odom");
 
     bool HasOdometry() const;
+    bool GetLatestOdometry(commsgs::planning_msgs::Odometry& odom) const;
 
     /** Inject odometry (e.g. from a subscriber or demo harness). */
     void UpdateOdometry(const commsgs::planning_msgs::Odometry& msg);

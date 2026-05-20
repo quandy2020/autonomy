@@ -18,6 +18,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
+#include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/tasks/utils/robot_utils.hpp"
 
 namespace autonomy {
@@ -63,9 +64,15 @@ bool GoalReachedCondition::isGoalReached() {
     getInput("goal", goal);
 
     commsgs::geometry_msgs::PoseStamped current_pose;
-    if (!autonomy::tasks::utils::getCurrentPose(
-            current_pose, tf_, goal.header.frame_id, robot_base_frame_,
-            static_cast<float>(transform_tolerance_))) {
+    std::shared_ptr<autonomy::control::utils::OdomSmoother> odom_smoother;
+    if (config().blackboard) {
+        config().blackboard->get<std::shared_ptr<
+            autonomy::control::utils::OdomSmoother>>("odom_smoother",
+                                                     odom_smoother);
+    }
+    if (!autonomy::tasks::utils::getGlobalRobotPose(
+            current_pose, tf_, odom_smoother, goal.header.frame_id,
+            robot_base_frame_, static_cast<float>(transform_tolerance_))) {
         ADEBUG << "Current robot pose is not available.";
         return false;
     }

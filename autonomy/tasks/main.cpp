@@ -156,7 +156,7 @@ void RunMockSimulation(
             std::chrono::duration<double>(now - last_tick).count(), 0.1);
         last_tick = now;
 
-        commsgs::geometry_msgs::Twist cmd;
+        commsgs::geometry_msgs::Twist cmd{};
         if (const auto ctx = scheduler->TaskContext()) {
             if (ctx->controller) {
                 cmd = ctx->controller->GetLastCmdVel().twist;
@@ -280,7 +280,8 @@ void Run() {
         MockRobotState mock_state;
         std::atomic<bool> mock_sim_running{false};
         std::thread mock_sim_thread;
-        if (autonomy::common::FLAGS_mock_static_tf) {
+        if (autonomy::common::FLAGS_run_navigate_to_pose &&
+            autonomy::common::FLAGS_mock_static_tf) {
             mock_sim_running.store(true);
             mock_sim_thread = std::thread(RunMockSimulation, scheduler,
                                           robot_frame, &mock_state,

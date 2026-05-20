@@ -150,9 +150,12 @@ uint32 GracefulController::ComputeVelocityCommands(
     // Transform local frame to global frame to use in collision checking
     commsgs::geometry_msgs::TransformStamped costmap_transform;
     try {
+        // Query latest available transform to avoid tiny future extrapolation
+        // in single-process mock mode.
         costmap_transform = tf_buffer_->lookupTransform(
             costmap_wrapper_->getGlobalFrameID(),
-            costmap_wrapper_->getBaseFrameID(), Time::Now(), 0.1f);
+            costmap_wrapper_->getBaseFrameID(),
+            commsgs::builtin_interfaces::Time{}, 0.1f);
     } catch (const std::exception& ex) {
         AERROR << "Could not transform " << costmap_wrapper_->getBaseFrameID()
                << " to " << costmap_wrapper_->getGlobalFrameID() << ": "
