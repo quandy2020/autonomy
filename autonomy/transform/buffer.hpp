@@ -45,6 +45,9 @@ public:
      */
     int Init();
 
+    /** \brief Clear dynamic and static transforms plus cached static messages. */
+    void clear();
+
     /** \brief Get the transform between two frames by frame ID.
      * \param target_frame The frame to which data should be transformed
      * \param source_frame The frame where the data originated

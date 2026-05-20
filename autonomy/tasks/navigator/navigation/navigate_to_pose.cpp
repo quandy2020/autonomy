@@ -27,6 +27,7 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
+#include "autonomy/tasks/common/task_context.hpp"
 #include "autonomy/tasks/utils/robot_utils.hpp"
 
 namespace autonomy {
@@ -52,6 +53,25 @@ std::string ResolveBehaviorTreeFile(
 }
 
 }  // namespace
+
+std::shared_ptr<OdomSmoother> NavigateToPoseNavigator::ActiveOdomSmoother()
+    const {
+    if (odom_smoother_) {
+        return odom_smoother_;
+    }
+    if (!bt_) {
+        return nullptr;
+    }
+    const auto blackboard = bt_->GetBlackboard();
+    if (!blackboard) {
+        return nullptr;
+    }
+    std::shared_ptr<autonomy::tasks::common::TaskContext> ctx;
+    if (blackboard->get("task_context", ctx) && ctx) {
+        return ctx->odom_smoother;
+    }
+    return blackboard->get<std::shared_ptr<OdomSmoother>>("odom_smoother");
+}
 
 NavigateToPoseNavigator::NavigateToPoseNavigator(
     const autonomy::tasks::proto::TaskOptions& options,
@@ -122,9 +142,9 @@ void NavigateToPoseNavigator::OnLoop() {
     commsgs::geometry_msgs::PoseStamped current_pose;
     auto blackboard = bt_->GetBlackboard();
     if (!feedback_utils_.tf ||
-        !autonomy::tasks::utils::getCurrentPose(
-            current_pose, feedback_utils_.tf, feedback_utils_.global_frame,
-            feedback_utils_.robot_frame,
+        !autonomy::tasks::utils::getGlobalRobotPose(
+            current_pose, feedback_utils_.tf, ActiveOdomSmoother(),
+            feedback_utils_.global_frame, feedback_utils_.robot_frame,
             static_cast<float>(feedback_utils_.transform_tolerance))) {
         if (blackboard) {
             blackboard->set("initial_pose_received", false);  // NOLINT
@@ -219,9 +239,9 @@ bool NavigateToPoseNavigator::InitializeGoalPose(
         return false;
 
     commsgs::geometry_msgs::PoseStamped current_pose;
-    if (!autonomy::tasks::utils::getCurrentPose(
-            current_pose, feedback_utils_.tf, feedback_utils_.global_frame,
-            feedback_utils_.robot_frame,
+    if (!autonomy::tasks::utils::getGlobalRobotPose(
+            current_pose, feedback_utils_.tf, ActiveOdomSmoother(),
+            feedback_utils_.global_frame, feedback_utils_.robot_frame,
             static_cast<float>(feedback_utils_.transform_tolerance))) {
         bt_->SetInternalError(
             static_cast<uint16_t>(

@@ -45,6 +45,11 @@ int Buffer::Init() {
     return 0;
 }
 
+void Buffer::clear() {
+    static_msgs_.clear();
+    tf2::BufferCore::clear();
+}
+
 commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
     const std::string& target_frame, const std::string& source_frame,
     const commsgs::builtin_interfaces::Time& time,
@@ -71,9 +76,12 @@ commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
         throw tf2::TimeoutException("TF lookupTransform timeout: " + err);
     }
 
-    const uint64_t tf2_time_ns = ToTf2TimeNs(time);
-    const auto tf2_transform = tf2::BufferCore::lookupTransform(
-        target_frame, source_frame, tf2_time_ns);
+    uint64_t tf2_time_ns = ToTf2TimeNs(time);
+    if (tf2_time_ns != 0 && IsFutureExtrapolation(err)) {
+        tf2_time_ns = 0ULL;
+    }
+    const auto tf2_transform =
+        tf2::BufferCore::lookupTransform(target_frame, source_frame, tf2_time_ns);
     commsgs::geometry_msgs::TransformStamped out;
     TF2MsgToConvert(tf2_transform, out);
     return out;
@@ -108,8 +116,12 @@ commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
         throw tf2::TimeoutException("TF lookupTransform timeout: " + err);
     }
 
-    const uint64_t target_ns = ToTf2TimeNs(target_time);
-    const uint64_t source_ns = ToTf2TimeNs(source_time);
+    uint64_t target_ns = ToTf2TimeNs(target_time);
+    uint64_t source_ns = ToTf2TimeNs(source_time);
+    if ((target_ns != 0 || source_ns != 0) && IsFutureExtrapolation(err)) {
+        target_ns = 0ULL;
+        source_ns = 0ULL;
+    }
     const auto tf2_transform = tf2::BufferCore::lookupTransform(
         target_frame, target_ns, source_frame, source_ns, fixed_frame);
     commsgs::geometry_msgs::TransformStamped out;

@@ -58,7 +58,7 @@ void doTransform<commsgs::geometry_msgs::PoseStamped>(
     // and bogus poses when the mock odom thread publishes just behind the main
     // thread.
     data_out.header.stamp = data_in.header.stamp;
-    data_out.header.frame_id = transform.child_frame_id;
+    data_out.header.frame_id = transform.header.frame_id;
 
     // Transform position
     data_out.pose.position.x =

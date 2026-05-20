@@ -313,7 +313,7 @@ protected:
 
     // Current path container
     commsgs::planning_msgs::Path current_path_;
-    commsgs::geometry_msgs::TwistStamped last_cmd_vel_;
+    commsgs::geometry_msgs::TwistStamped last_cmd_vel_{};
 
     bool follow_path_active_{false};
     bool recovery_active_{false};

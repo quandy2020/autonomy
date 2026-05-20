@@ -22,7 +22,11 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
+#include "autonomy/transform/tf2/LinearMath/Quaternion.h"
+#include "autonomy/transform/tf2/LinearMath/Transform.h"
+#include "autonomy/transform/tf2/LinearMath/Vector3.h"
 #include "autonomy/transform/tf2/buffer_core.h"
 #include "autonomy/transform/tf2/convert.h"
 #include "autonomy/transform/tf2/transform_datatypes.h"
@@ -35,7 +39,89 @@ namespace autonomy {
 namespace tasks {
 namespace utils {
 
+namespace {
+
 using autonomy::transform::tf2::BufferCore;
+using autonomy::transform::tf2::Quaternion;
+using autonomy::transform::tf2::Vector3;
+
+constexpr const char* kOdomFrame = "odom";
+
+void MsgToTransform(const geometry_msgs::Transform& msg, Transform& out) {
+    out.setOrigin(Vector3(msg.translation.x, msg.translation.y,
+                          msg.translation.z));
+    out.setRotation(Quaternion(msg.rotation.x, msg.rotation.y, msg.rotation.z,
+                               msg.rotation.w));
+}
+
+void TransformToPose(const Transform& tf, commsgs::geometry_msgs::Pose& pose) {
+    const Vector3& origin = tf.getOrigin();
+    const Quaternion& rotation = tf.getRotation();
+    pose.position.x = origin.x();
+    pose.position.y = origin.y();
+    pose.position.z = origin.z();
+    pose.orientation.x = rotation.x();
+    pose.orientation.y = rotation.y();
+    pose.orientation.z = rotation.z();
+    pose.orientation.w = rotation.w();
+}
+
+bool LookupRobotPoseViaOdom(
+    commsgs::geometry_msgs::PoseStamped& global_pose,
+    std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+    const std::string& global_frame, const std::string& robot_frame) {
+    if (!tf_buffer || global_frame == robot_frame) {
+        return false;
+    }
+    try {
+        const geometry_msgs::TransformStamped map_to_odom =
+            static_cast<BufferCore&>(*tf_buffer).lookupTransform(
+                global_frame, kOdomFrame, 0ULL);
+        const geometry_msgs::TransformStamped odom_to_robot =
+            static_cast<BufferCore&>(*tf_buffer).lookupTransform(
+                kOdomFrame, robot_frame, 0ULL);
+        Transform tf_map_odom;
+        Transform tf_odom_robot;
+        MsgToTransform(map_to_odom.transform, tf_map_odom);
+        MsgToTransform(odom_to_robot.transform, tf_odom_robot);
+        const Transform tf_map_robot = tf_map_odom * tf_odom_robot;
+        global_pose.header.frame_id = global_frame;
+        TransformToPose(tf_map_robot, global_pose.pose);
+        return true;
+    } catch (const TransformException& ex) {
+        ADEBUG << "Two-hop TF lookup via odom failed: " << ex.what();
+    } catch (const std::exception& ex) {
+        ADEBUG << "Two-hop TF lookup via odom failed: " << ex.what();
+    }
+    return false;
+}
+
+}  // namespace
+
+bool getGlobalRobotPose(
+    commsgs::geometry_msgs::PoseStamped& global_pose,
+    std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
+    std::shared_ptr<control::utils::OdomSmoother> odom_smoother,
+    const std::string& global_frame, const std::string& robot_frame,
+    float transform_timeout) {
+    (void)transform_timeout;
+    if (odom_smoother) {
+        commsgs::planning_msgs::Odometry odom;
+        if (odom_smoother->GetLatestOdometry(odom) &&
+            !odom.header.frame_id.empty()) {
+            // Odometry pose is authoritative. Do not apply TF offsets here:
+            // map<-odom lookups have returned corrupt translations in
+            // single-process mock mode, and demo map->odom is identity.
+            global_pose.header.frame_id = global_frame;
+            global_pose.header.stamp = odom.header.stamp;
+            global_pose.pose = odom.pose.pose;
+            return true;
+        }
+    }
+
+    return getCurrentPose(global_pose, tf_buffer, global_frame, robot_frame,
+                          transform_timeout);
+}
 
 bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
                     std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
@@ -47,9 +133,6 @@ bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
         return false;
     }
 
-    // Wait using Buffer::canTransform, then read the raw tf2 geometry message.
-    // Buffer::lookupTransform + TF2MsgToConvert has produced bogus translation.x
-    // (float Vector3 in commsgs vs double in internal geometry_msgs).
     try {
         const commsgs::builtin_interfaces::Time latest{};
         std::string err;
@@ -59,11 +142,20 @@ bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
                    << global_frame << ": " << err;
             return false;
         }
+
+        global_pose.header.frame_id = global_frame;
+        global_pose.header.stamp = latest;
+
+        // Avoid multi-hop map<-base_link lookup; compose map<-odom and
+        // odom<-base_link instead.
+        if (LookupRobotPoseViaOdom(global_pose, tf_buffer, global_frame,
+                                   robot_frame)) {
+            return true;
+        }
+
         const geometry_msgs::TransformStamped gt =
             static_cast<BufferCore&>(*tf_buffer).lookupTransform(
                 global_frame, robot_frame, 0ULL);
-        global_pose.header.frame_id = global_frame;
-        global_pose.header.stamp = latest;
         global_pose.pose.position.x = gt.transform.translation.x;
         global_pose.pose.position.y = gt.transform.translation.y;
         global_pose.pose.position.z = gt.transform.translation.z;
@@ -92,6 +184,12 @@ bool transformPoseInTargetFrame(
     if (!tf_buffer) {
         AERROR << "TF buffer is null";
         return false;
+    }
+
+    if (input_pose.header.frame_id == target_frame) {
+        transformed_pose = input_pose;
+        transformed_pose.header.frame_id = target_frame;
+        return true;
     }
 
     try {

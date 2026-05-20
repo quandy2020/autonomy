@@ -39,6 +39,16 @@ bool OdomSmoother::HasOdometry() const {
   return received_odom_;
 }
 
+bool OdomSmoother::GetLatestOdometry(
+    commsgs::planning_msgs::Odometry& odom) const {
+  std::lock_guard<std::mutex> lock(odom_mutex_);
+  if (!received_odom_ || odom_history_.empty()) {
+    return false;
+  }
+  odom = odom_history_.back();
+  return true;
+}
+
 void OdomSmoother::UpdateOdometry(
     const commsgs::planning_msgs::Odometry& msg) {
   odomCallback(std::make_shared<commsgs::planning_msgs::Odometry>(msg));

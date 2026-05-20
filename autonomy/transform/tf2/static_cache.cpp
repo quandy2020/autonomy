@@ -53,8 +53,8 @@ bool StaticCache::insertData(const TransformStorage& new_data) {
 };
 
 void StaticCache::clearList() {
-    return;
-};
+    storage_ = TransformStorage();
+}
 
 unsigned int StaticCache::getListLength() {
     return 1;

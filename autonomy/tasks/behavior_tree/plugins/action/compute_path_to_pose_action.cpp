@@ -90,14 +90,16 @@ BT::NodeStatus ComputePathToPoseAction::onStart() {
                        "Failed to transform start to global frame.");
             return BT::NodeStatus::FAILURE;
         }
-    } else if (!utils::getCurrentPose(start_pose_, ctx->tf, ctx->global_frame,
-                                      ctx->robot_base_frame,
-                                      static_cast<float>(
-                                          ctx->transform_tolerance))) {
-        setFailure(static_cast<int32_t>(
-                       ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR),
-                   "Robot pose is not available.");
-        return BT::NodeStatus::FAILURE;
+    } else {
+        if (!utils::getGlobalRobotPose(start_pose_, ctx->tf, ctx->odom_smoother,
+                                       ctx->global_frame, ctx->robot_base_frame,
+                                       static_cast<float>(
+                                           ctx->transform_tolerance))) {
+            setFailure(static_cast<int32_t>(
+                           ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR),
+                       "Robot pose is not available.");
+            return BT::NodeStatus::FAILURE;
+        }
     }
 
     std::string planner_input;
