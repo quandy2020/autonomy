@@ -33,6 +33,8 @@ namespace autonomy {
 namespace control {
 namespace controller {
 
+using Time = commsgs::builtin_interfaces::Time;
+
 void GracefulController::Configure(
     const proto::ControllerOptions& options, std::string name,
     std::shared_ptr<transform::Buffer> tf,
@@ -89,6 +91,13 @@ uint32 GracefulController::ComputeVelocityCommands(
     const commsgs::geometry_msgs::TwistStamped& velocity,
     commsgs::geometry_msgs::TwistStamped& cmd_vel,
     common::GoalChecker* goal_checker, std::string& message) {
+    cmd_vel.twist.linear.x = 0.0f;
+    cmd_vel.twist.linear.y = 0.0f;
+    cmd_vel.twist.linear.z = 0.0f;
+    cmd_vel.twist.angular.x = 0.0f;
+    cmd_vel.twist.angular.y = 0.0f;
+    cmd_vel.twist.angular.z = 0.0f;
+    (void)velocity;
     // TODO: Add param_handler_ and params_ support
     // std::lock_guard<std::mutex> param_lock(param_handler_->getMutex());
 
@@ -141,12 +150,9 @@ uint32 GracefulController::ComputeVelocityCommands(
     // Transform local frame to global frame to use in collision checking
     commsgs::geometry_msgs::TransformStamped costmap_transform;
     try {
-        commsgs::builtin_interfaces::Time zero_time;
-        zero_time.sec = 0;
-        zero_time.nanosec = 0;
         costmap_transform = tf_buffer_->lookupTransform(
             costmap_wrapper_->getGlobalFrameID(),
-            costmap_wrapper_->getBaseFrameID(), zero_time, 0.1f);
+            costmap_wrapper_->getBaseFrameID(), Time::Now(), 0.1f);
     } catch (const std::exception& ex) {
         AERROR << "Could not transform " << costmap_wrapper_->getBaseFrameID()
                << " to " << costmap_wrapper_->getGlobalFrameID() << ": "
@@ -485,9 +491,14 @@ commsgs::geometry_msgs::Twist GracefulController::RotateToTarget(
     double v_angular_max = 1.0;
     double v_angular_min_in_place = 0.1;
 
-    commsgs::geometry_msgs::Twist vel;
-    vel.linear.x = 0.0;
-    vel.angular.z = rotation_scaling_factor * angle_to_target * v_angular_max;
+    commsgs::geometry_msgs::Twist vel{};
+    vel.linear.x = 0.0f;
+    vel.linear.y = 0.0f;
+    vel.linear.z = 0.0f;
+    vel.angular.x = 0.0f;
+    vel.angular.y = 0.0f;
+    vel.angular.z = static_cast<float>(
+        rotation_scaling_factor * angle_to_target * v_angular_max);
     vel.angular.z = std::copysign(1.0, vel.angular.z) *
                     std::max(static_cast<double>(std::abs(vel.angular.z)),
                              v_angular_min_in_place);

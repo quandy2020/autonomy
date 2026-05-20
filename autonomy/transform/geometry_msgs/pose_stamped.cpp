@@ -52,15 +52,12 @@ void doTransform<commsgs::geometry_msgs::PoseStamped>(
     const commsgs::geometry_msgs::PoseStamped& data_in,
     commsgs::geometry_msgs::PoseStamped& data_out,
     const geometry_msgs::TransformStamped& transform) {
-    // Convert geometry_msgs::TransformStamped to
-    // commsgs::builtin_interfaces::Time for stamp
-    commsgs::builtin_interfaces::Time stamp;
-    stamp.sec = static_cast<int32_t>(transform.header.stamp / 1000000000ULL);
-    stamp.nanosec =
-        static_cast<uint32_t>(transform.header.stamp % 1000000000ULL);
-
-    // Update header
-    data_out.header.stamp = stamp;
+    // Keep the query stamp (e.g. Time{} = latest). Using the composed
+    // transform's header.stamp can be slightly ahead of the newest dynamic TF
+    // sample; reusing it for follow-up lookups causes extrapolation-into-future
+    // and bogus poses when the mock odom thread publishes just behind the main
+    // thread.
+    data_out.header.stamp = data_in.header.stamp;
     data_out.header.frame_id = transform.child_frame_id;
 
     // Transform position

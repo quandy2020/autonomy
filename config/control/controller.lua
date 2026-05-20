@@ -12,11 +12,29 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+include "common.lua"
+
 AUTONOMY_CONTROLLER = {
-    -- Costmap2D
+    controller_frequency = 20.0,
+    failure_tolerance = 0.0,
+    publish_zero_velocity = false,
+
+    -- Shared with tasks.lua / BT GoalReached (see config/common.lua).
+    goal_checker = {
+        xy_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
+        yaw_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
+        stateful = true,
+    },
+    progress_checker = {
+        required_movement_radius = 0.5,
+        movement_time_allowance = 10.0,
+    },
+
+    -- Single-process demo: local costmap disabled; controller reuses planner global costmap.
     costmap = {
+        enabled = false,
         name = "local_costmap",
-        frame_id = "odom",
+        frame_id = AUTONOMY_COMMON.global_frame,
         resolution = 0.05,
         width = 3.0,
         height = 3.0,
@@ -76,6 +94,18 @@ AUTONOMY_CONTROLLER = {
         -- },
     },
 
+    graceful_controller = {
+        transform_tolerance = AUTONOMY_COMMON.transform_tolerance,
+        max_lookahead = 1.0,
+        min_lookahead = 0.25,
+        v_linear_max = 0.5,
+        v_linear_min = 0.05,
+        v_angular_max = 1.0,
+        slowdown_radius = 0.5,
+        initial_rotation = true,
+        allow_backward = false,
+    },
+
     mppi_controller = {
         -- Progress checker plugin
         progress_checker = {
@@ -83,11 +113,11 @@ AUTONOMY_CONTROLLER = {
             required_movement_radius = 0.5,
             movement_time_allowance = 10.0,
         },
-        -- Goal checker plugin
+        -- Goal checker plugin (legacy path; prefer top-level goal_checker above)
         goal_checker = {
             plugin = "nav2_controller::SimpleGoalChecker",
-            xy_goal_tolerance = 0.25,
-            yaw_goal_tolerance = 0.25,
+            xy_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
+            yaw_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
             stateful = true,
         },
         name = "mppi_controller",

@@ -12,6 +12,7 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+include "common.lua"
 
 AUTONOMY_PLANNER = {
 
@@ -39,7 +40,7 @@ AUTONOMY_PLANNER = {
         enabled = true,
         -- Default map name (used if name is not specified in costmap configuration)
         name = "global_map",
-        frame_id = "map",
+        frame_id = AUTONOMY_COMMON.global_frame,
         resolution = 0.05,
         width = 20.0,
         height = 20.0,

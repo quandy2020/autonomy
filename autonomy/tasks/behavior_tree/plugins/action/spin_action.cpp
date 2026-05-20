@@ -1,22 +1,11 @@
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #include "autonomy/tasks/behavior_tree/plugins/action/spin_action.hpp"
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/common/logging.hpp"
+#include "autonomy/control/controller_server.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -25,70 +14,81 @@ namespace plugins {
 namespace action {
 
 SpinAction::SpinAction(const std::string& xml_tag_name,
-                       const std::string& action_name,
                        const BT::NodeConfiguration& conf)
-    : BtActionNode<proto::SpinAction>(xml_tag_name, action_name, conf) {}
+    : BtStatefulActionNode(xml_tag_name, conf) {}
 
-void SpinAction::initialize() {
-    double dist;
-    getInput("spin_dist", dist);
-    double time_allowance;
+BT::NodeStatus SpinAction::onStart() {
+    auto ctx = taskContext();
+    if (!ctx || !ctx->controller) {
+        setOutput("error_code_id",
+                  static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_UNKNOWN));
+        setOutput("error_msg", std::string("Controller unavailable"));
+        return BT::NodeStatus::FAILURE;
+    }
+
+    double spin_dist = 1.57;
+    double time_allowance = 10.0;
+    getInput("spin_dist", spin_dist);
     getInput("time_allowance", time_allowance);
-    goal_.set_target_yaw(dist);
-    auto duration =
-        commsgs::builtin_interfaces::Duration::FromSeconds(time_allowance);
-    int64_t ns = duration.Nanoseconds();
-    int32_t sec = static_cast<int32_t>(ns / 1'000'000'000LL);
-    uint32_t nanosec = static_cast<uint32_t>(ns % 1'000'000'000LL);
-    goal_.mutable_time_allowance()->mutable_stamp()->set_sec(sec);
-    goal_.mutable_time_allowance()->mutable_stamp()->set_nanosec(nanosec);
     getInput("is_recovery", is_recovery_);
-    goal_.set_disable_collision_checks(false);  // Default value
-}
 
-void SpinAction::on_tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
+    control::ControllerServer::RecoveryMotionCommand cmd;
+    cmd.type = control::ControllerServer::RecoveryMotionType::Spin;
+    cmd.distance = spin_dist;
+    cmd.speed = 0.5;
+    cmd.time_allowance_sec = time_allowance;
+
+    if (!ctx->controller->BeginRecoveryMotion(cmd)) {
+        setOutput("error_code_id",
+                  static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_UNKNOWN));
+        setOutput("error_msg", std::string("Failed to start spin"));
+        return BT::NodeStatus::FAILURE;
     }
 
     if (is_recovery_) {
-        increment_recovery_count();
+        incrementRecoveryCount();
     }
+    started_motion_ = true;
+    return BT::NodeStatus::RUNNING;
 }
 
-BT::NodeStatus SpinAction::on_success() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
+BT::NodeStatus SpinAction::onRunning() {
+    auto ctx = taskContext();
+    if (!ctx || !ctx->controller) {
+        return BT::NodeStatus::FAILURE;
+    }
 
-BT::NodeStatus SpinAction::on_aborted() {
-    if (result_.result) {
+    const auto result = ctx->controller->TickRecoveryMotion(
+        ctx->CancelChecker());
+    if (result == control::ControllerServer::RecoveryTickResult::Running) {
+        return BT::NodeStatus::RUNNING;
+    }
+    if (result == control::ControllerServer::RecoveryTickResult::Succeeded) {
         setOutput("error_code_id",
-                  static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
-    } else {
-        setOutput(
-            "error_code_id",
-            static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Unknown error"));
+                  static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_NONE));
+        setOutput("error_msg", std::string(""));
+        return BT::NodeStatus::SUCCESS;
     }
-    return BT::NodeStatus::FAILURE;
+    setOutput("error_code_id",
+              static_cast<int32_t>(
+                  result == control::ControllerServer::RecoveryTickResult::Cancelled
+                      ? proto::SpinErrorCode::SPIN_ERROR_NONE
+                      : proto::SpinErrorCode::SPIN_ERROR_TIMEOUT));
+    setOutput("error_msg", std::string("Spin recovery failed or timed out"));
+    return result == control::ControllerServer::RecoveryTickResult::Cancelled
+               ? BT::NodeStatus::SUCCESS
+               : BT::NodeStatus::FAILURE;
 }
 
-BT::NodeStatus SpinAction::on_cancelled() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-void SpinAction::on_timeout() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::SpinErrorCode::SPIN_ERROR_TIMEOUT));
-    setOutput("error_msg",
-              std::string("Behavior Tree action client timed out waiting."));
+void SpinAction::onHalted() {
+    if (started_motion_) {
+        if (auto ctx = taskContext()) {
+            if (ctx->controller) {
+                ctx->controller->EndRecoveryMotion();
+            }
+        }
+        started_motion_ = false;
+    }
 }
 
 }  // namespace action
@@ -99,14 +99,6 @@ void SpinAction::on_timeout() {
 
 #include "behaviortree_cpp/bt_factory.h"
 BT_REGISTER_NODES(factory) {
-    BT::NodeBuilder builder = [](const std::string& name,
-                                 const BT::NodeConfiguration& config) {
-        return std::make_unique<
-            autonomy::tasks::behavior_tree::plugins::action::SpinAction>(
-            name, "spin", config);
-    };
-
-    factory.registerBuilder<
-        autonomy::tasks::behavior_tree::plugins::action::SpinAction>("Spin",
-                                                                     builder);
+    factory.registerNodeType<
+        autonomy::tasks::behavior_tree::plugins::action::SpinAction>("Spin");
 }

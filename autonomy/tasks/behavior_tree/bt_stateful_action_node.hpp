@@ -88,6 +88,15 @@ protected:
         return ctx && ctx->IsCancelRequested();
     }
 
+    void incrementRecoveryCount() {
+        if (!config().blackboard) {
+            return;
+        }
+        int recovery_count = 0;
+        config().blackboard->get("number_recoveries", recovery_count);  // NOLINT
+        config().blackboard->set("number_recoveries", recovery_count + 1);  // NOLINT
+    }
+
 private:
     bool started_{false};
 };

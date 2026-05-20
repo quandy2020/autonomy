@@ -1,20 +1,10 @@
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #include "autonomy/tasks/scheduler/task_scheduler.hpp"
+
+#include <algorithm>
 
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/common/logging.hpp"
@@ -22,6 +12,7 @@
 #include "autonomy/control/control_options.hpp"
 #include "autonomy/planning/planner_options.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/tasks/navigator/navigator_factory.hpp"
 #include "autonomy/tasks/options.hpp"
 #include "autonomy/transform/buffer.hpp"
 
@@ -61,6 +52,27 @@ std::string ResolveBehaviorTreePath(const std::string& configuration_directory,
     return configuration_directory + "/tasks/behavior_tree/" + filename;
 }
 
+const proto::NavigatorConfig& NavigatorConfigFor(
+    const proto::TaskOptions& options, const std::string& id) {
+    if (id == "navigate_to_pose") {
+        return options.navigate_to_pose();
+    }
+    if (id == "navigate_through_poses") {
+        return options.navigate_through_poses();
+    }
+    if (id == "navigate_to_docking") {
+        return options.navigate_to_docking();
+    }
+    if (id == "track_to_target") {
+        return options.track_to_target();
+    }
+    if (id == "explore_to_anywhere") {
+        return options.explore_to_anywhere();
+    }
+    static const proto::NavigatorConfig kEmpty{};
+    return kEmpty;
+}
+
 }  // namespace
 
 void TaskScheduler::Initialize(const std::string& configuration_directory) {
@@ -84,9 +96,6 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
     controller_ = std::make_shared<control::ControllerServer>(
         LoadControllerOptions(configuration_directory_));
 
-    planner_->Start();
-    controller_->Start();
-
     task_context_ = std::make_shared<common::TaskContext>();
     task_context_->planner = planner_;
     task_context_->controller = controller_;
@@ -105,24 +114,40 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
         task_options_.robot_base_frame().empty()
             ? "base_link"
             : task_options_.robot_base_frame();
+    if (!task_options_.default_planner_id().empty()) {
+        task_context_->selected_planner_id = task_options_.default_planner_id();
+    }
+    if (!task_options_.default_controller_id().empty()) {
+        task_context_->selected_controller_id =
+            task_options_.default_controller_id();
+    }
+    if (!task_options_.default_goal_checker_id().empty()) {
+        task_context_->selected_goal_checker_id =
+            task_options_.default_goal_checker_id();
+    }
     controller_->SetNavigationContext(task_context_->tf, task_context_->global_frame,
                                       task_context_->robot_base_frame);
-    if (task_options_.filter_duration() > 0.0) {
-        task_context_->odom_smoother =
-            std::make_shared<control::utils::OdomSmoother>(
-                task_options_.filter_duration());
-        odom_smoother_ = task_context_->odom_smoother;
-    }
+    controller_->SetSharedCostmap(planner_->GetCostmapWrapper());
+    task_context_->odom_smoother =
+        std::make_shared<control::utils::OdomSmoother>(
+            std::max(0.0, task_options_.filter_duration()));
+    odom_smoother_ = task_context_->odom_smoother;
+    controller_->SetOdomSmoother(task_context_->odom_smoother);
+
+    planner_->Start();
+    controller_->Start();
 
     SetupNavigators();
     initialized_ = true;
-    AINFO << "TaskScheduler initialized (single-process BT).";
+    AINFO << "TaskScheduler initialized (single-process BT, "
+          << navigators_.size() << " navigator(s)).";
 }
 
 void TaskScheduler::Shutdown() {
     if (!initialized_) {
         return;
     }
+    navigators_.clear();
     if (controller_) {
         controller_->Shutdown();
     }
@@ -134,6 +159,7 @@ void TaskScheduler::Shutdown() {
 
 void TaskScheduler::SetupNavigators() {
     std::vector<std::string> plugin_libs;
+    plugin_libs.reserve(task_options_.plugin_lib_names_size());
     for (const auto& name : task_options_.plugin_lib_names()) {
         plugin_libs.push_back(name);
     }
@@ -151,44 +177,60 @@ void TaskScheduler::SetupNavigators() {
             return ResolveBehaviorTreePath(configuration_directory_, filename);
         };
 
-    const auto& nav_cfg = task_options_.navigate_to_pose();
-    bool navigate_to_pose_listed = false;
-    for (const auto& name : task_options_.navigators()) {
-        if (name == "navigate_to_pose") {
-            navigate_to_pose_listed = true;
-            break;
+    auto muxer_alias = std::shared_ptr<common::NavigatorMuxer>(
+        &muxer_, [](common::NavigatorMuxer*) {});
+
+    navigator::NavigatorCreateContext ctx{
+        task_options_, task_context_, plugin_libs, feedback, muxer_alias,
+        odom_smoother_};
+
+    for (const auto& id : task_options_.navigators()) {
+        const auto& nav_cfg = NavigatorConfigFor(task_options_, id);
+        if (!nav_cfg.enable()) {
+            AINFO << "Navigator '" << id << "' disabled in config.";
+            continue;
         }
-    }
-    if (nav_cfg.enable() || navigate_to_pose_listed) {
-        feedback.default_bt_xml_filename =
-            nav_cfg.default_behavior_tree_file().empty()
-                ? "navigate_to_pose.xml"
-                : nav_cfg.default_behavior_tree_file();
-        auto muxer_alias = std::shared_ptr<common::NavigatorMuxer>(
-            &muxer_, [](common::NavigatorMuxer*) {});
-        navigate_to_pose_ =
-            std::make_shared<navigator::navigation::NavigateToPoseNavigator>(
-                task_options_, task_context_, plugin_libs, feedback,
-                muxer_alias, odom_smoother_);
+        if (!navigator::NavigatorFactory::HasNavigator(id)) {
+            AWARN << "Navigator '" << id
+                  << "' is not registered in NavigatorFactory; skipping.";
+            continue;
+        }
+        auto instance =
+            navigator::NavigatorFactory::Create(id, ctx, nav_cfg);
+        if (!instance) {
+            AERROR << "NavigatorFactory failed to create '" << id << "'.";
+            continue;
+        }
+        navigators_[id] = std::move(instance);
+        AINFO << "Registered navigator '" << id << "' (BT: "
+              << (nav_cfg.default_behavior_tree_file().empty()
+                      ? "default"
+                      : nav_cfg.default_behavior_tree_file())
+              << ").";
     }
 }
 
 behavior_tree::BtStatus TaskScheduler::NavigateToPose(
     std::shared_ptr<const behavior_tree::proto::NavigateToPoseAction::Goal>
         goal) {
-    if (!navigate_to_pose_) {
-        AERROR << "NavigateToPose navigator is disabled in config.";
+    auto navigate_to_pose =
+        GetNavigator<navigator::navigation::NavigateToPoseNavigator>(
+            "navigate_to_pose");
+    if (!navigate_to_pose) {
+        AERROR << "NavigateToPose navigator is disabled or not registered.";
         return behavior_tree::BtStatus::FAILED;
     }
     cancel_requested_.store(false);
-    return navigate_to_pose_->Bt().Run(
+    return navigate_to_pose->Bt().Run(
         goal, [this]() { return cancel_requested_.load(); });
 }
 
 void TaskScheduler::RequestCancel() {
     cancel_requested_.store(true);
-    if (navigate_to_pose_) {
-        navigate_to_pose_->Bt().RequestCancel();
+    for (auto& entry : navigators_) {
+        if (entry.second) {
+            entry.second->RequestCancel();
+        }
     }
 }
 

@@ -22,7 +22,7 @@
               topic_name="controller_selector"/>
             <PlannerSelector
               selected_planner="{selected_planner}"
-              default_planner="GridBased"
+              default_planner="navfn_planner"
               topic_name="planner_selector"/>
             <RateController hz="5.0">
               <ComputePathToPose

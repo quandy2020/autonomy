@@ -35,24 +35,53 @@ namespace autonomy {
 namespace tasks {
 namespace utils {
 
+using autonomy::transform::tf2::BufferCore;
+
 bool getCurrentPose(commsgs::geometry_msgs::PoseStamped& global_pose,
                     std::shared_ptr<autonomy::transform::Buffer> tf_buffer,
                     const std::string global_frame,
                     const std::string robot_frame,
                     const float transform_timeout) {
-    // Create identity pose in robot frame
-    global_pose.pose.position.x = 0.0;
-    global_pose.pose.position.y = 0.0;
-    global_pose.pose.position.z = 0.0;
-    global_pose.pose.orientation.x = 0.0;
-    global_pose.pose.orientation.y = 0.0;
-    global_pose.pose.orientation.z = 0.0;
-    global_pose.pose.orientation.w = 1.0;
-    global_pose.header.frame_id = robot_frame;
-    global_pose.header.stamp = commsgs::builtin_interfaces::Time::Now();
+    if (!tf_buffer) {
+        AERROR << "TF buffer is null";
+        return false;
+    }
 
-    return transformPoseInTargetFrame(global_pose, global_pose, tf_buffer,
-                                      global_frame, transform_timeout);
+    // Wait using Buffer::canTransform, then read the raw tf2 geometry message.
+    // Buffer::lookupTransform + TF2MsgToConvert has produced bogus translation.x
+    // (float Vector3 in commsgs vs double in internal geometry_msgs).
+    try {
+        const commsgs::builtin_interfaces::Time latest{};
+        std::string err;
+        if (!tf_buffer->canTransform(global_frame, robot_frame, latest,
+                                     transform_timeout, &err)) {
+            AERROR << "canTransform failed for " << robot_frame << " in "
+                   << global_frame << ": " << err;
+            return false;
+        }
+        const geometry_msgs::TransformStamped gt =
+            static_cast<BufferCore&>(*tf_buffer).lookupTransform(
+                global_frame, robot_frame, 0ULL);
+        global_pose.header.frame_id = global_frame;
+        global_pose.header.stamp = latest;
+        global_pose.pose.position.x = gt.transform.translation.x;
+        global_pose.pose.position.y = gt.transform.translation.y;
+        global_pose.pose.position.z = gt.transform.translation.z;
+        global_pose.pose.orientation.x = gt.transform.rotation.x;
+        global_pose.pose.orientation.y = gt.transform.rotation.y;
+        global_pose.pose.orientation.z = gt.transform.rotation.z;
+        global_pose.pose.orientation.w = gt.transform.rotation.w;
+        return true;
+    } catch (const TransformException& ex) {
+        AERROR << "Transform error looking up robot pose: " << ex.what();
+        AERROR << "Failed to lookup " << robot_frame << " in " << global_frame
+               << ": " << ex.what();
+    } catch (const std::exception& ex) {
+        AERROR << "Failed to lookup " << robot_frame << " in " << global_frame
+               << ": " << ex.what();
+    }
+
+    return false;
 }
 
 bool transformPoseInTargetFrame(

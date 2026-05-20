@@ -64,4 +64,12 @@ message TaskOptions {
   uint32 groot_server_port = 25;      // root-level default from tasks.lua
   // Timeout (seconds) for local-survival branch when localization is degraded/lost.
   double local_survival_timeout = 26;
+  // "minimal" | "full" — selects plugin_lib_names_* when plugin_lib_names is empty.
+  string plugin_profile = 27;
+  repeated string plugin_lib_names_minimal = 28;
+  repeated string plugin_lib_names_full = 29;
+  string default_planner_id = 30;
+  string default_controller_id = 31;
+  string default_goal_checker_id = 32;
+  double goal_reached_tolerance = 33;
 }

@@ -34,6 +34,12 @@ void SetupNavigateToPoseBlackboard(
     const std::shared_ptr<TaskContext>& task_context,
     const proto::TaskOptions& options, const FeedbackUtils& feedback);
 
+/** Dispatch blackboard setup by navigator id (see config/tasks/tasks.lua). */
+void SetupNavigatorBlackboard(
+    const std::string& navigator_id, const BT::Blackboard::Ptr& blackboard,
+    const std::shared_ptr<TaskContext>& task_context,
+    const proto::TaskOptions& options, const FeedbackUtils& feedback);
+
 }  // namespace common
 }  // namespace tasks
 }  // namespace autonomy
