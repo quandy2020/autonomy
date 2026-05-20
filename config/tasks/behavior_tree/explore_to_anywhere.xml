@@ -34,7 +34,7 @@
         <!-- 规划器选择：可通过 {selected_planner} 切换不同规划器 -->
         <PlannerSelector
           selected_planner="{selected_planner}"
-          default_planner="GridBased"
+          default_planner="navfn_planner"
           topic_name="planner_selector"/>
 
         <!--
@@ -71,7 +71,7 @@
         <ClearEntireCostmap service_name="global_costmap/clear_costmap"/>
 
         <!-- 轻微后退，避免陷入障碍或死角 -->
-        <BackUp distance="0.3" speed="0.1"/>
+        <BackUp backup_dist="0.3" backup_speed="0.1"/>
 
         <!-- 原地旋转观察，帮助传感器更新周围环境，利于重新规划 -->
         <Spin spin_dist="1.57"/>

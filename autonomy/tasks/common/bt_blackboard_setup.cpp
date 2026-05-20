@@ -17,19 +17,17 @@
 #include "autonomy/tasks/common/bt_blackboard_setup.hpp"
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
 namespace tasks {
 namespace common {
+namespace {
 
-void SetupNavigateToPoseBlackboard(
+void SetupCommonBlackboardKeys(
     const BT::Blackboard::Ptr& blackboard,
     const std::shared_ptr<TaskContext>& task_context,
     const proto::TaskOptions& options, const FeedbackUtils& feedback) {
-    if (!blackboard) {
-        return;
-    }
-
     const auto bt_loop_ms = options.bt_loop_duration() > 0
                                 ? std::chrono::milliseconds(
                                       options.bt_loop_duration())
@@ -53,29 +51,95 @@ void SetupNavigateToPoseBlackboard(
     blackboard->set("local_survival_timeout",
                     feedback.local_survival_timeout);  // NOLINT
 
-    commsgs::planning_msgs::Path empty_path;
-    blackboard->set("path", empty_path);  // NOLINT
-    blackboard->set("goal", commsgs::geometry_msgs::PoseStamped{});  // NOLINT
-
     const std::string controller_id =
-        task_context && !task_context->selected_controller_id.empty()
-            ? task_context->selected_controller_id
-            : "FollowPath";
+        !options.default_controller_id().empty()
+            ? options.default_controller_id()
+            : (task_context && !task_context->selected_controller_id.empty()
+                   ? task_context->selected_controller_id
+                   : "FollowPath");
     const std::string planner_id =
-        task_context && !task_context->selected_planner_id.empty()
-            ? task_context->selected_planner_id
-            : "navfn_planner";
+        !options.default_planner_id().empty()
+            ? options.default_planner_id()
+            : (task_context && !task_context->selected_planner_id.empty()
+                   ? task_context->selected_planner_id
+                   : "navfn_planner");
 
     blackboard->set("selected_controller", controller_id);  // NOLINT
     blackboard->set("selected_planner", planner_id);        // NOLINT
+
+    if (options.goal_reached_tolerance() > 0.0) {
+        blackboard->set("goal_reached_tol",  // NOLINT
+                        options.goal_reached_tolerance());
+    }
+
+    commsgs::planning_msgs::Path empty_path;
+    blackboard->set("path", empty_path);  // NOLINT
 
     blackboard->set("compute_path_error_code", int32_t{0});  // NOLINT
     blackboard->set("compute_path_error_msg", std::string{});  // NOLINT
     blackboard->set("follow_path_error_code", int32_t{0});     // NOLINT
     blackboard->set("follow_path_error_msg", std::string{});   // NOLINT
-
     blackboard->set("initial_pose_received", false);  // NOLINT
     blackboard->set("number_recoveries", 0);          // NOLINT
+}
+
+}  // namespace
+
+void SetupNavigateToPoseBlackboard(
+    const BT::Blackboard::Ptr& blackboard,
+    const std::shared_ptr<TaskContext>& task_context,
+    const proto::TaskOptions& options, const FeedbackUtils& feedback) {
+    if (!blackboard) {
+        return;
+    }
+    SetupCommonBlackboardKeys(blackboard, task_context, options, feedback);
+    blackboard->set("goal", commsgs::geometry_msgs::PoseStamped{});  // NOLINT
+}
+
+void SetupNavigatorBlackboard(
+    const std::string& navigator_id, const BT::Blackboard::Ptr& blackboard,
+    const std::shared_ptr<TaskContext>& task_context,
+    const proto::TaskOptions& options, const FeedbackUtils& feedback) {
+    if (!blackboard) {
+        return;
+    }
+
+    if (navigator_id == "navigate_to_pose") {
+        SetupNavigateToPoseBlackboard(blackboard, task_context, options,
+                                      feedback);
+        return;
+    }
+
+    SetupCommonBlackboardKeys(blackboard, task_context, options, feedback);
+
+    if (navigator_id == "navigate_through_poses") {
+        blackboard->set("goals", commsgs::planning_msgs::Goals{});  // NOLINT
+        blackboard->set("compute_path_through_poses_error_code",
+                        int32_t{0});  // NOLINT
+        return;
+    }
+
+    if (navigator_id == "track_to_target") {
+        blackboard->set("target_pose",
+                        commsgs::geometry_msgs::PoseStamped{});  // NOLINT
+        return;
+    }
+
+    if (navigator_id == "explore_to_anywhere") {
+        blackboard->set("explore_goal",
+                        commsgs::geometry_msgs::PoseStamped{});  // NOLINT
+        blackboard->set("goal", commsgs::geometry_msgs::PoseStamped{});  // NOLINT
+        return;
+    }
+
+    if (navigator_id == "navigate_to_docking") {
+        blackboard->set("dock_id", std::string{});  // NOLINT
+        blackboard->set("dock_pose",
+                        commsgs::geometry_msgs::PoseStamped{});  // NOLINT
+        return;
+    }
+
+    SetupNavigateToPoseBlackboard(blackboard, task_context, options, feedback);
 }
 
 }  // namespace common

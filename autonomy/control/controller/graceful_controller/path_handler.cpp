@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "autonomy/control/common/controller_exceptions.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/convert.h"
 
@@ -101,12 +102,14 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     auto TransformGlobalPoseToLocal = [&](const auto& global_plan_pose) {
         commsgs::geometry_msgs::PoseStamped stamped_pose, transformed_pose;
         stamped_pose.header.frame_id = global_plan_.header.frame_id;
-        stamped_pose.header.stamp = robot_pose.header.stamp;
+        // Always use "latest" TF; path pose stamps may be stale or ahead of the
+        // newest odom->base_link sample (mock thread vs BT thread).
+        stamped_pose.header.stamp = commsgs::builtin_interfaces::Time{};
         stamped_pose.pose = global_plan_pose.pose;
         try {
             // Use Buffer's transform method directly
             transformed_pose = tf_buffer_->transform(
-                stamped_pose, costmap_wrapper_->getGlobalFrameID(),
+                stamped_pose, costmap_wrapper_->getBaseFrameID(),
                 static_cast<float>(transform_tolerance_));
         } catch (const std::exception& e) {
             // Return empty pose to skip this pose (will be filtered out)
@@ -120,8 +123,7 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
     // Transform the near part of the global plan into the robot's frame of
     // reference.
     commsgs::planning_msgs::Path transformed_plan;
-    transformed_plan.header.frame_id =
-        costmap_wrapper_->getGlobalFrameID();  // Use global frame as base frame
+    transformed_plan.header.frame_id = costmap_wrapper_->getBaseFrameID();
     transformed_plan.header.stamp = robot_pose.header.stamp;
     for (auto it = transformation_begin; it != transformation_end; ++it) {
         auto transformed = TransformGlobalPoseToLocal(*it);

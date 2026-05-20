@@ -12,6 +12,7 @@
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
 
+include "common.lua"
 include "bridge/bridge.lua"
 include "control/controller.lua"
 include "map/map.lua"
@@ -19,16 +20,16 @@ include "prediction/prediction.lua"
 include "perception/perception.lua"
 include "localization/localization.lua"
 include "planner/planner.lua"
-include "tasks/navigator.lua"
+include "tasks/tasks.lua"
 include "transform/transform.lua"
 
 -- Autonomy all lua config
 AUTONOMY = {
-  -- bridge = AUTONOMY_BRIDGE,                 -- bridge options
-  -- localization = AUTONOMY_LOCALIZATION,     -- localization options
-  map = AUTONOMY_MAP,                       -- map options
-  -- transform = AUTONOMY_TRANSFORM,           -- transform options
-  planning = AUTONOMY_PLANNER,              -- planner options
+  common = AUTONOMY_COMMON,
+  map = AUTONOMY_MAP,
+  planning = AUTONOMY_PLANNER,
+  control = AUTONOMY_CONTROLLER,
+  tasks = tasks,
 }
 
 return AUTONOMY

@@ -45,6 +45,10 @@ class NavigatorBase
 {
 public:
     virtual ~NavigatorBase() = default;
+
+    virtual std::string GetNavigatorId() const = 0;
+
+    virtual void RequestCancel() = 0;
 };
 
 class NavigatorMuxer
@@ -127,8 +131,8 @@ public:
         blackboard->set("task_context", task_context);  // NOLINT
         blackboard->set("tf_buffer", feedback_utils.tf);  // NOLINT
         blackboard->set("odom_smoother", odom_smoother);  // NOLINT
-        SetupNavigateToPoseBlackboard(blackboard, task_context, options,
-                                      feedback_utils);
+        SetupNavigatorBlackboard(navigator_name_, blackboard, task_context,
+                                 options, feedback_utils);
 
         const auto bt_loop_ms = options.bt_loop_duration() > 0
                                     ? std::chrono::milliseconds(
@@ -146,6 +150,16 @@ public:
 
     virtual std::string GetName() const {
         return navigator_name_;
+    }
+
+    std::string GetNavigatorId() const override {
+        return navigator_name_;
+    }
+
+    void RequestCancel() override {
+        if (bt_) {
+            bt_->RequestCancel();
+        }
     }
 
     behavior_tree::BtActionServer<ActionT>& Bt() {

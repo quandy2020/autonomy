@@ -34,12 +34,24 @@ void AutonomyNode::Start() {
         map_server_->Start();
     }
 
-    if (controller_server_ != nullptr) {
-        controller_server_->Start();
-    }
-
     if (planner_server_ != nullptr) {
         planner_server_->Start();
+    }
+
+    if (controller_server_ != nullptr) {
+        const std::string global_frame =
+            options_.planner_options().costmap().frame_id().empty()
+                ? "map"
+                : options_.planner_options().costmap().frame_id();
+        std::shared_ptr<transform::Buffer> tf_shared(
+            tf_buffer_, [](transform::Buffer*) {});
+        controller_server_->SetNavigationContext(tf_shared, global_frame,
+                                                 "base_link");
+        if (planner_server_) {
+            controller_server_->SetSharedCostmap(
+                planner_server_->GetCostmapWrapper());
+        }
+        controller_server_->Start();
     }
 }
 

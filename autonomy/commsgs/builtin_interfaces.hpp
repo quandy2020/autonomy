@@ -58,6 +58,9 @@ struct Time {
 
     uint32 Nanoseconds() const;
 
+    /** Full epoch timestamp in nanoseconds (sec * 1e9 + nanosec). Zero means latest. */
+    uint64_t ToUnixTimeNanos() const;
+
     static Time Min();
 
     static Time Max();

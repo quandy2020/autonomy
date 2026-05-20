@@ -91,9 +91,9 @@ commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
     v = (curvature != 0.0) ? (w_bound / curvature) : v;
 
     // Return the velocity command
-    commsgs::geometry_msgs::Twist cmd_vel;
-    cmd_vel.linear.x = v;
-    cmd_vel.angular.z = w_bound;
+    commsgs::geometry_msgs::Twist cmd_vel{};
+    cmd_vel.linear.x = static_cast<float>(v);
+    cmd_vel.angular.z = static_cast<float>(w_bound);
     return cmd_vel;
 }
 
@@ -119,6 +119,10 @@ commsgs::geometry_msgs::Pose SmoothControlLaw::CalculateNextPose(
 
 double SmoothControlLaw::CalculateCurvature(double r, double phi,
                                             double delta) {
+    constexpr double kMinRadius = 1e-4;
+    if (r < kMinRadius) {
+        return 0.0;
+    }
     // Calculate the proportional term of the control law as the product of the
     // gain and the error: difference between the actual steering angle and the
     // virtual control for the slow subsystem

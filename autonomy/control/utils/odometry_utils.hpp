@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <deque>
@@ -49,85 +50,36 @@ public:
     explicit OdomSmoother(double filter_duration = 0.3,
                           const std::string& odom_topic = "odom");
 
-    /**
-     * @brief Get twist msg from smoother
-     * @return twist Twist msg
-     */
-    inline commsgs::geometry_msgs::Twist getTwist() {
-        std::lock_guard<std::mutex> lock(odom_mutex_);
-        if (!received_odom_) {
-            AERROR << "OdomSmoother has not received any data yet, returning "
-                      "empty Twist";
-            commsgs::geometry_msgs::Twist twist;
-            return twist;
-        }
-        return vel_smooth_.twist;
-    }
+    bool HasOdometry() const;
 
-    /**
-     * @brief Get twist stamped msg from smoother
-     * @return twist TwistStamped msg
-     */
-    inline commsgs::geometry_msgs::TwistStamped getTwistStamped() {
-        std::lock_guard<std::mutex> lock(odom_mutex_);
-        if (!received_odom_) {
-            AERROR << "OdomSmoother has not received any data yet, returning "
-                      "empty Twist";
-            commsgs::geometry_msgs::TwistStamped twist_stamped;
-            return twist_stamped;
-        }
-        return vel_smooth_;
-    }
+    /** Inject odometry (e.g. from a subscriber or demo harness). */
+    void UpdateOdometry(const commsgs::planning_msgs::Odometry& msg);
 
-    /**
-     * @brief Get raw twist msg from smoother (without smoothing)
-     * @return twist Twist msg
-     */
-    inline commsgs::geometry_msgs::Twist getRawTwist() {
-        std::lock_guard<std::mutex> lock(odom_mutex_);
-        if (!received_odom_) {
-            AERROR << "OdomSmoother has not received any data yet, returning "
-                      "empty Twist";
-            commsgs::geometry_msgs::Twist twist;
-            return twist;
-        }
-        return odom_history_.back().twist.twist;
-    }
+    /** Seed zero velocity for single-process demos without an odom publisher. */
+    void SeedZeroOdometry(const std::string& child_frame_id,
+                          const std::string& parent_frame_id = "odom");
 
-    /**
-     * @brief Get raw twist stamped msg from smoother (without smoothing)
-     * @return twist TwistStamped msg
-     */
-    inline commsgs::geometry_msgs::TwistStamped getRawTwistStamped() {
-        std::lock_guard<std::mutex> lock(odom_mutex_);
-        commsgs::geometry_msgs::TwistStamped twist_stamped;
-        if (!received_odom_) {
-            AERROR << "OdomSmoother has not received any data yet, returning "
-                      "empty Twist";
-            return twist_stamped;
-        }
-        twist_stamped.header = odom_history_.back().header;
-        twist_stamped.twist = odom_history_.back().twist.twist;
-        return twist_stamped;
-    }
+    commsgs::geometry_msgs::Twist getTwist();
+    commsgs::geometry_msgs::TwistStamped getTwistStamped();
+    commsgs::geometry_msgs::Twist getRawTwist();
+    commsgs::geometry_msgs::TwistStamped getRawTwistStamped();
 
 protected:
-    /**
-     * @brief Callback of odometry subscriber to process
-     * @param msg Odometry msg to smooth
-     */
     void odomCallback(
         const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg);
+
+    void LogMissingOdometryOnce();
 
     /**
      * @brief Update internal state of the smoother after getting new data
      */
     void updateState();
 
-    bool received_odom_;
+    bool received_odom_{false};
+    std::atomic<bool> logged_missing_odom_{false};
     commsgs::planning_msgs::Odometry odom_cumulate_;
     commsgs::geometry_msgs::TwistStamped vel_smooth_;
-    std::mutex odom_mutex_;
+    mutable std::mutex odom_mutex_;
 
     commsgs::builtin_interfaces::Duration odom_history_duration_;
     std::deque<commsgs::planning_msgs::Odometry> odom_history_;

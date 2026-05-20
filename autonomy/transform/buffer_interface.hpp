@@ -114,13 +114,15 @@ public:
                  float timeout = 0.0f) const {
         // Convert tf2::Time (uint64_t nanoseconds) to
         // commsgs::builtin_interfaces::Time
-        const tf2::Time& tf2_time = tf2::getTimestamp(in);
-        commsgs::builtin_interfaces::Time time;
-        time.sec = static_cast<int32_t>(tf2_time / 1'000'000'000);
-        time.nanosec = static_cast<uint32_t>(tf2_time % 1'000'000'000);
+        // Copy timestamp by value: PoseStamped getTimestamp uses thread-local
+        // storage; holding a reference across lookupTransform is unsafe.
+        const tf2::Time tf2_time = tf2::getTimestamp(in);
+        commsgs::builtin_interfaces::Time stamp;
+        stamp.sec = static_cast<int32_t>(tf2_time / 1'000'000'000);
+        stamp.nanosec = static_cast<uint32_t>(tf2_time % 1'000'000'000);
         // Get transform in commsgs format
         const auto& commsgs_transform =
-            lookupTransform(target_frame, tf2::getFrameId(in), time, timeout);
+            lookupTransform(target_frame, tf2::getFrameId(in), stamp, timeout);
         // Convert commsgs::geometry_msgs::TransformStamped to
         // geometry_msgs::TransformStamped
         geometry_msgs::TransformStamped tf2_transform;
@@ -175,7 +177,7 @@ public:
                  const std::string& fixed_frame, float timeout = 0.0f) const {
         // Convert tf2::Time (uint64_t nanoseconds) to
         // commsgs::builtin_interfaces::Time
-        const tf2::Time& tf2_time = tf2::getTimestamp(in);
+        const tf2::Time tf2_time = tf2::getTimestamp(in);
         commsgs::builtin_interfaces::Time source_time;
         source_time.sec = static_cast<int32_t>(tf2_time / 1'000'000'000);
         source_time.nanosec = static_cast<uint32_t>(tf2_time % 1'000'000'000);

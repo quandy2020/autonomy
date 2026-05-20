@@ -23,16 +23,21 @@
 #include <csignal>
 #include <cstdlib>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/common/version.hpp"
 #include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/planning/planner_server.hpp"
+#include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/tasks/scheduler/task_scheduler.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
@@ -43,9 +48,18 @@ namespace {
 
 std::atomic<bool> g_shutdown{false};
 
-// Spawn away from costmap (0,0) corner: NavFn setupNavFn() marks map borders lethal.
+// Spawn in map frame (see config/common.lua demo_robot_spawn_*).
 constexpr double kMockRobotSpawnX = 1.0;
 constexpr double kMockRobotSpawnY = 1.0;
+constexpr double kMockRobotSpawnYaw = 0.0;
+constexpr const char* kOdomFrame = "odom";
+
+struct MockRobotState {
+    double x{kMockRobotSpawnX};
+    double y{kMockRobotSpawnY};
+    double yaw{kMockRobotSpawnYaw};
+    std::mutex mutex;
+};
 
 void SigintHandler(int /*sig*/) {
     g_shutdown.store(true);
@@ -68,12 +82,13 @@ MakeNavigateGoal(double x, double y, double yaw, const std::string& frame) {
     return goal;
 }
 
-void PublishMockStaticTransform(const std::string& parent_frame,
-                                const std::string& child_frame, double x,
-                                double y, double yaw) {
+void PublishMockTransform(const std::string& parent_frame,
+                          const std::string& child_frame, double x, double y,
+                          double yaw, bool is_static) {
     geometry_msgs::TransformStamped tf;
-    tf.header.stamp =
-        autonomy::commsgs::builtin_interfaces::Time::Now().Nanoseconds();
+    const auto now = commsgs::builtin_interfaces::Time::Now();
+    tf.header.stamp = static_cast<uint64_t>(now.sec) * 1'000'000'000ULL +
+                        now.nanosec;
     tf.header.frame_id = parent_frame;
     tf.child_frame_id = child_frame;
     tf.transform.translation.x = x;
@@ -86,21 +101,103 @@ void PublishMockStaticTransform(const std::string& parent_frame,
     tf.transform.rotation.w = std::cos(half_yaw);
 
     auto* buffer = autonomy::transform::Buffer::Instance();
-    if (!buffer->setTransform(tf, "autonomy_tasks_main", true)) {
-        AERROR << "Failed to publish mock static TF " << parent_frame << " -> "
+    if (!buffer->setTransform(tf, "autonomy_tasks_main", is_static)) {
+        AERROR << "Failed to publish mock TF " << parent_frame << " -> "
                << child_frame;
+    }
+}
+
+void PublishMockStaticTransform(const std::string& parent_frame,
+                                const std::string& child_frame, double x,
+                                double y, double yaw) {
+    PublishMockTransform(parent_frame, child_frame, x, y, yaw, true);
+    AINFO << "Mock static TF " << parent_frame << " -> " << child_frame << " ("
+          << x << ", " << y << ", yaw=" << yaw << ")";
+}
+
+void IntegrateDiffDrive(const commsgs::geometry_msgs::Twist& cmd, double dt,
+                        double& x, double& y, double& yaw) {
+    const double v = cmd.linear.x;
+    const double w = cmd.angular.z;
+    x += v * std::cos(yaw) * dt;
+    y += v * std::sin(yaw) * dt;
+    yaw = ::autonomy::common::math::NormalizeAngle(yaw + w * dt);
+}
+
+void PublishMockOdometry(
+    const std::shared_ptr<scheduler::TaskScheduler>& scheduler,
+    const std::string& robot_frame, double x, double y, double yaw,
+    const commsgs::geometry_msgs::Twist& twist) {
+    const auto ctx = scheduler->TaskContext();
+    if (!ctx || !ctx->odom_smoother) {
         return;
     }
-    AINFO << "Mock static TF " << parent_frame << " -> " << child_frame
-          << " (" << x << ", " << y << ", yaw=" << yaw << ")";
+    commsgs::planning_msgs::Odometry odom;
+    odom.header.stamp = commsgs::builtin_interfaces::Time::Now();
+    odom.header.frame_id = kOdomFrame;
+    odom.child_frame_id = robot_frame;
+    odom.pose.pose.position.x = x;
+    odom.pose.pose.position.y = y;
+    const double half_yaw = yaw * 0.5;
+    odom.pose.pose.orientation.z = std::sin(half_yaw);
+    odom.pose.pose.orientation.w = std::cos(half_yaw);
+    odom.twist.twist = twist;
+    ctx->odom_smoother->UpdateOdometry(odom);
+}
+
+void RunMockSimulation(
+    const std::shared_ptr<scheduler::TaskScheduler>& scheduler,
+    const std::string& robot_frame, MockRobotState* state,
+    std::atomic<bool>* running) {
+    auto last_tick = std::chrono::steady_clock::now();
+    while (running->load()) {
+        const auto now = std::chrono::steady_clock::now();
+        const double dt = std::min(
+            std::chrono::duration<double>(now - last_tick).count(), 0.1);
+        last_tick = now;
+
+        commsgs::geometry_msgs::Twist cmd;
+        if (const auto ctx = scheduler->TaskContext()) {
+            if (ctx->controller) {
+                cmd = ctx->controller->GetLastCmdVel().twist;
+            }
+        }
+
+        double x = kMockRobotSpawnX;
+        double y = kMockRobotSpawnY;
+        double yaw = kMockRobotSpawnYaw;
+        {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            IntegrateDiffDrive(cmd, dt, state->x, state->y, state->yaw);
+            x = state->x;
+            y = state->y;
+            yaw = state->yaw;
+        }
+
+        PublishMockTransform(kOdomFrame, robot_frame, x, y, yaw, false);
+        PublishMockOdometry(scheduler, robot_frame, x, y, yaw, cmd);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 }
 
 void SetupMockTfTree(const std::string& global_frame,
                      const std::string& robot_frame, double robot_x,
-                     double robot_y) {
-    constexpr const char* kOdomFrame = "odom";
+                     double robot_y, double robot_yaw) {
     PublishMockStaticTransform(global_frame, kOdomFrame, 0.0, 0.0, 0.0);
-    PublishMockStaticTransform(kOdomFrame, robot_frame, robot_x, robot_y, 0.0);
+    PublishMockTransform(kOdomFrame, robot_frame, robot_x, robot_y, robot_yaw,
+                         false);
+    AINFO << "Mock TF " << kOdomFrame << " -> " << robot_frame << " (" << robot_x
+          << ", " << robot_y << ", yaw=" << robot_yaw << ")";
+}
+
+void SeedMockOdometry(
+    const std::shared_ptr<scheduler::TaskScheduler>& scheduler,
+    const std::string& robot_frame, double x, double y, double yaw) {
+    PublishMockOdometry(scheduler, robot_frame, x, y, yaw,
+                        commsgs::geometry_msgs::Twist{});
+    AINFO << "Seeded mock odometry at (" << x << ", " << y << ") in "
+          << kOdomFrame;
 }
 
 void SeedDemoGlobalCostmap(
@@ -124,8 +221,10 @@ void SeedDemoGlobalCostmap(
     unsigned char* data = costmap->getCharMap();
     std::fill(data, data + cell_count, map::costmap_2d::FREE_SPACE);
     AINFO << "Seeded planner costmap with FREE_SPACE ("
+          << (costmap->getSizeInCellsX() * costmap->getResolution()) << "m x "
+          << (costmap->getSizeInCellsY() * costmap->getResolution()) << "m, "
           << costmap->getSizeInCellsX() << "x" << costmap->getSizeInCellsY()
-          << ", res=" << costmap->getResolution() << ")";
+          << " cells, res=" << costmap->getResolution() << ")";
 }
 
 void Run() {
@@ -146,14 +245,19 @@ void Run() {
                                             ? ctx->robot_base_frame
                                             : "base_link";
         SetupMockTfTree(global_frame, robot_frame, kMockRobotSpawnX,
-                        kMockRobotSpawnY);
+                        kMockRobotSpawnY, kMockRobotSpawnYaw);
         SeedDemoGlobalCostmap(scheduler);
+        SeedMockOdometry(scheduler, robot_frame, kMockRobotSpawnX,
+                         kMockRobotSpawnY, kMockRobotSpawnYaw);
     }
 
     if (autonomy::common::FLAGS_run_navigate_to_pose) {
         const auto ctx = scheduler->TaskContext();
         const std::string frame =
             ctx && !ctx->global_frame.empty() ? ctx->global_frame : "map";
+        const std::string robot_frame = ctx && !ctx->robot_base_frame.empty()
+                                            ? ctx->robot_base_frame
+                                            : "base_link";
         auto goal = MakeNavigateGoal(autonomy::common::FLAGS_nav_goal_x,
                                    autonomy::common::FLAGS_nav_goal_y,
                                    autonomy::common::FLAGS_nav_goal_yaw, frame);
@@ -168,7 +272,29 @@ void Run() {
             scheduler->RequestCancel();
         });
 
+        MockRobotState mock_state;
+        std::atomic<bool> mock_sim_running{false};
+        std::thread mock_sim_thread;
+        if (autonomy::common::FLAGS_mock_static_tf) {
+            mock_sim_running.store(true);
+            mock_sim_thread = std::thread(RunMockSimulation, scheduler,
+                                          robot_frame, &mock_state,
+                                          &mock_sim_running);
+            AINFO << "Mock cmd_vel integrator running (odom -> " << robot_frame
+                  << ").";
+        }
+
         const auto status = scheduler->NavigateToPose(goal);
+
+        if (mock_sim_running.load()) {
+            mock_sim_running.store(false);
+            if (mock_sim_thread.joinable()) {
+                mock_sim_thread.join();
+            }
+            AINFO << "Mock robot final pose (" << mock_state.x << ", "
+                  << mock_state.y << ", yaw=" << mock_state.yaw << ")";
+        }
+
         cancel_on_shutdown.join();
 
         AINFO << "NavigateToPose finished with BT status "
@@ -193,7 +319,7 @@ int main(int argc, char** argv) {
         "\033[31m Single-process autonomy tasks (behavior-tree + "
         "PlannerServer/ControllerServer).\033[0m \n"
         "  Optional: --run_navigate_to_pose --nav_goal_x=1 --nav_goal_y=2\n"
-        "  Default: --mock_static_tf publishes map->odom->base_link\n");
+        "  Default: --mock_static_tf integrates cmd_vel into odom TF for demo\n");
 
     google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);

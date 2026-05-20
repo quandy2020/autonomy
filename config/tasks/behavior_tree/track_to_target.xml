@@ -27,7 +27,7 @@
       <!-- 规划器选择，可通过黑板变量 {selected_planner} 动态切换不同规划器 -->
       <PlannerSelector
         selected_planner="{selected_planner}"
-        default_planner="GridBased"
+        default_planner="navfn_planner"
         topic_name="planner_selector"/>
 
       <!--

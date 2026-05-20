@@ -60,6 +60,10 @@ message ControllerOptions
     autonomy.control.proto.MPPIControllerOptions mppi_controller_options = 2;
     autonomy.control.proto.GracefulControllerOptions graceful_controller_options = 3;
     autonomy.control.proto.PurePursuitControllerOptions pure_pursuit_controller_options = 4;
+    autonomy.control.proto.CheckerOptions checker_options = 5;
+    double controller_frequency = 6;
+    double failure_tolerance = 7;
+    bool publish_zero_velocity = 8;
 }
 
 

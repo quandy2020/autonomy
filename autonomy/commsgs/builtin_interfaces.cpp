@@ -26,7 +26,7 @@ Time::Time(int32_t seconds, uint32_t nanoseconds)
     : sec{seconds}, nanosec{nanoseconds} {}
 
 bool Time::operator==(const Time& rhs) const {
-    return this->nanosec == rhs.nanosec;
+    return sec == rhs.sec && nanosec == rhs.nanosec;
 }
 
 bool Time::operator!=(const Time& rhs) const {
@@ -34,23 +34,39 @@ bool Time::operator!=(const Time& rhs) const {
 }
 
 bool Time::operator<(const Time& rhs) const {
-    return this->nanosec < rhs.nanosec;
+    if (sec != rhs.sec) {
+        return sec < rhs.sec;
+    }
+    return nanosec < rhs.nanosec;
 }
 
 bool Time::operator<=(const Time& rhs) const {
-    return this->nanosec <= rhs.nanosec;
+    if (sec != rhs.sec) {
+        return sec < rhs.sec;
+    }
+    return nanosec <= rhs.nanosec;
 }
 
 bool Time::operator>=(const Time& rhs) const {
-    return this->nanosec >= rhs.nanosec;
+    if (sec != rhs.sec) {
+        return sec > rhs.sec;
+    }
+    return nanosec >= rhs.nanosec;
 }
 
 bool Time::operator>(const Time& rhs) const {
-    return this->nanosec > rhs.nanosec;
+    if (sec != rhs.sec) {
+        return sec > rhs.sec;
+    }
+    return nanosec > rhs.nanosec;
 }
 
 uint32 Time::Nanoseconds() const {
     return nanosec;
+}
+
+uint64_t Time::ToUnixTimeNanos() const {
+    return static_cast<uint64_t>(sec) * 1'000'000'000ULL + nanosec;
 }
 
 Time Time::Min() {
@@ -62,7 +78,8 @@ Time Time::Max() {
 }
 
 double Time::Seconds() const {
-    return sec;
+    return static_cast<double>(sec) +
+           static_cast<double>(nanosec) * 1e-9;
 }
 
 Time Time::Now() {

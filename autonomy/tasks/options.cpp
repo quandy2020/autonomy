@@ -168,6 +168,51 @@ proto::TaskOptions LoadTaskOptions(
         options.set_local_survival_timeout(
             parameter_dictionary->GetDouble("local_survival_timeout"));
     }
+    if (parameter_dictionary->HasKey("plugin_profile")) {
+        options.set_plugin_profile(
+            parameter_dictionary->GetString("plugin_profile"));
+    }
+    if (parameter_dictionary->HasKey("default_planner_id")) {
+        options.set_default_planner_id(
+            parameter_dictionary->GetString("default_planner_id"));
+    }
+    if (parameter_dictionary->HasKey("default_controller_id")) {
+        options.set_default_controller_id(
+            parameter_dictionary->GetString("default_controller_id"));
+    }
+    if (parameter_dictionary->HasKey("default_goal_checker_id")) {
+        options.set_default_goal_checker_id(
+            parameter_dictionary->GetString("default_goal_checker_id"));
+    }
+    if (parameter_dictionary->HasKey("goal_reached_tolerance")) {
+        options.set_goal_reached_tolerance(
+            parameter_dictionary->GetDouble("goal_reached_tolerance"));
+    }
+    if (parameter_dictionary->HasKey("plugin_lib_names_minimal")) {
+        auto dict =
+            parameter_dictionary->GetDictionary("plugin_lib_names_minimal");
+        for (const auto& name : dict->GetArrayValuesAsStrings()) {
+            options.add_plugin_lib_names_minimal(name);
+        }
+    }
+    if (parameter_dictionary->HasKey("plugin_lib_names_full")) {
+        auto dict =
+            parameter_dictionary->GetDictionary("plugin_lib_names_full");
+        for (const auto& name : dict->GetArrayValuesAsStrings()) {
+            options.add_plugin_lib_names_full(name);
+        }
+    }
+
+    // Resolve plugin_lib_names: explicit list wins, else profile-based list.
+    if (options.plugin_lib_names().empty()) {
+        const bool use_full = options.plugin_profile() == "full";
+        const auto& profile_list =
+            use_full ? options.plugin_lib_names_full()
+                     : options.plugin_lib_names_minimal();
+        for (const auto& name : profile_list) {
+            options.add_plugin_lib_names(name);
+        }
+    }
 
     return options;
 }

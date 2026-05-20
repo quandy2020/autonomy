@@ -75,16 +75,13 @@ BT::NodeStatus ComputePathToPoseAction::onStart() {
     bool use_start = false;
     getInput("use_start", use_start);
     commsgs::geometry_msgs::PoseStamped start;
-    if (use_start && getInput("start", start)) {
-        if (!utils::transformPoseInTargetFrame(
-                start, start_pose_, ctx->tf, ctx->global_frame,
-                static_cast<float>(ctx->transform_tolerance))) {
+    if (use_start) {
+        if (!getInput("start", start)) {
             setFailure(static_cast<int32_t>(
-                           ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR),
-                       "Failed to transform start to global frame.");
+                           ErrorCode::COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN),
+                       "Missing required port: start");
             return BT::NodeStatus::FAILURE;
         }
-    } else if (getInput("start", start)) {
         if (!utils::transformPoseInTargetFrame(
                 start, start_pose_, ctx->tf, ctx->global_frame,
                 static_cast<float>(ctx->transform_tolerance))) {

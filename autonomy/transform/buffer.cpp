@@ -27,6 +27,14 @@ namespace transform {
 namespace {
 constexpr float kSecondToNanoFactor = 1e9f;
 constexpr uint64_t kMilliToNanoFactor = 1e6;
+
+uint64_t ToTf2TimeNs(const commsgs::builtin_interfaces::Time& time) {
+    return time.ToUnixTimeNanos();
+}
+
+bool IsFutureExtrapolation(const std::string& err) {
+    return err.find("extrapolation into the future") != std::string::npos;
+}
 }  // namespace
 
 Buffer::Buffer() : BufferCore() {
@@ -63,7 +71,7 @@ commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
         throw tf2::TimeoutException("TF lookupTransform timeout: " + err);
     }
 
-    const uint64_t tf2_time_ns = time.Nanoseconds();
+    const uint64_t tf2_time_ns = ToTf2TimeNs(time);
     const auto tf2_transform = tf2::BufferCore::lookupTransform(
         target_frame, source_frame, tf2_time_ns);
     commsgs::geometry_msgs::TransformStamped out;
@@ -100,8 +108,8 @@ commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
         throw tf2::TimeoutException("TF lookupTransform timeout: " + err);
     }
 
-    const uint64_t target_ns = target_time.Nanoseconds();
-    const uint64_t source_ns = source_time.Nanoseconds();
+    const uint64_t target_ns = ToTf2TimeNs(target_time);
+    const uint64_t source_ns = ToTf2TimeNs(source_time);
     const auto tf2_transform = tf2::BufferCore::lookupTransform(
         target_frame, target_ns, source_frame, source_ns, fixed_frame);
     commsgs::geometry_msgs::TransformStamped out;
@@ -114,16 +122,28 @@ bool Buffer::canTransform(const std::string& target_frame,
                           const commsgs::builtin_interfaces::Time& time,
                           const float timeout_second,
                           std::string* errstr) const {
+    const uint64_t requested_ns = ToTf2TimeNs(time);
     uint64_t timeout_ns =
         static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-    uint64_t start_time = Time::Now().Nanoseconds();  // time.ToNanosecond();
-    while (Time::Now().Nanoseconds() < start_time + timeout_ns) {
+    const uint64_t start_time = ToTf2TimeNs(Time::Now());
+    while (ToTf2TimeNs(Time::Now()) < start_time + timeout_ns) {
         errstr->clear();
-        bool retval = tf2::BufferCore::canTransform(target_frame, source_frame,
-                                                    time.Nanoseconds(), errstr);
+        bool retval = tf2::BufferCore::canTransform(
+            target_frame, source_frame, requested_ns, errstr);
         if (retval) {
             return true;
-        } else {
+        }
+        // In single-process mock mode, cmd_vel integration may publish TF
+        // slightly behind the caller thread. If caller asks for a tiny future
+        // timestamp, gracefully fall back to latest available transform.
+        if (requested_ns != 0 && IsFutureExtrapolation(*errstr)) {
+            std::string latest_err;
+            if (tf2::BufferCore::canTransform(target_frame, source_frame, 0ULL,
+                                              &latest_err)) {
+                return true;
+            }
+        }
+        {
             const int sleep_time_ms = 3;
             LOG(WARNING) << "BufferCore::canTransform failed: " << *errstr;
             std::this_thread::sleep_for(
@@ -141,20 +161,32 @@ bool Buffer::canTransform(const std::string& target_frame,
                           const std::string& fixed_frame,
                           const float timeout_second,
                           std::string* errstr) const {
+    const uint64_t target_ns = ToTf2TimeNs(target_time);
+    const uint64_t source_ns = ToTf2TimeNs(source_time);
     // poll for transform if timeout is set
     uint64_t timeout_ns =
         static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-    uint64_t start_time = Time::Now().Nanoseconds();
-    while (Time::Now().Nanoseconds() < start_time + timeout_ns) {
+    const uint64_t start_time = ToTf2TimeNs(Time::Now());
+    while (ToTf2TimeNs(Time::Now()) < start_time + timeout_ns) {
         // Make sure we haven't been stopped
         errstr->clear();
 
         bool retval = tf2::BufferCore::canTransform(
-            target_frame, target_time.Nanoseconds(), source_frame,
-            source_time.Nanoseconds(), fixed_frame, errstr);
+            target_frame, target_ns, source_frame, source_ns, fixed_frame,
+            errstr);
         if (retval) {
             return true;
-        } else {
+        }
+        if ((target_ns != 0 || source_ns != 0) &&
+            IsFutureExtrapolation(*errstr)) {
+            std::string latest_err;
+            if (tf2::BufferCore::canTransform(target_frame, 0ULL, source_frame,
+                                              0ULL, fixed_frame,
+                                              &latest_err)) {
+                return true;
+            }
+        }
+        {
             const int sleep_time_ms = 3;
             LOG(WARNING) << "BufferCore::canTransform failed: " << *errstr;
             std::this_thread::sleep_for(
@@ -162,7 +194,7 @@ bool Buffer::canTransform(const std::string& target_frame,
         }
     }
     *errstr = *errstr + ":timeout";
-    return true;
+    return false;
 }
 
 bool Buffer::GetLatestStaticTF(const std::string& frame_id,
@@ -198,7 +230,7 @@ void Buffer::SubscriptionCallbackImpl(
     commsgs::builtin_interfaces::Time now = Time::Now();
     std::string authority =
         "autolink_tf";  // msg_evt.getPublisherName(); // lookup the authority
-    if (now.Nanoseconds() < last_update_.Nanoseconds()) {
+    if (now.ToUnixTimeNanos() < last_update_.ToUnixTimeNanos()) {
         AINFO << "Detected jump back in time. Clearing TF buffer.";
         clear();
         // cache static transform stamped again.

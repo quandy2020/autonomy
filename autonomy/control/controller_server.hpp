@@ -95,6 +95,12 @@ public:
                               const std::string& global_frame,
                               const std::string& robot_base_frame);
 
+    /** Use planner global costmap when local costmap is disabled (single-process). */
+    void SetSharedCostmap(
+        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
+
+    void SetOdomSmoother(std::shared_ptr<utils::OdomSmoother> odom_smoother);
+
     /**
      * @brief Begin following a path in-process (one control step per TickFollowPath).
      */
@@ -106,6 +112,28 @@ public:
     FollowPathTickResult TickFollowPath(std::function<bool()> cancel_checker);
 
     void EndFollowPath();
+
+    enum class RecoveryMotionType { Spin, BackUp, DriveOnHeading };
+
+    enum class RecoveryTickResult { Running, Succeeded, Failed, Cancelled };
+
+    struct RecoveryMotionCommand {
+        RecoveryMotionType type{RecoveryMotionType::Spin};
+        double distance{0.0};
+        double speed{0.0};
+        double time_allowance_sec{10.0};
+        bool disable_collision_checks{false};
+    };
+
+    /** Begin an open-loop recovery motion (ends active FollowPath). */
+    bool BeginRecoveryMotion(const RecoveryMotionCommand& cmd);
+
+    RecoveryTickResult TickRecoveryMotion(std::function<bool()> cancel_checker);
+
+    void EndRecoveryMotion();
+
+    /** Last velocity command (in-process demo / mock integrator). */
+    commsgs::geometry_msgs::TwistStamped GetLastCmdVel() const;
 
 protected:
     /**
@@ -197,6 +225,14 @@ protected:
      */
     bool GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose);
 
+    void LoadPlugins();
+    void ActivateControllers();
+    void DeactivateControllers();
+
+    common::ControllerInterface* GetController(const std::string& id);
+    common::GoalChecker* GetGoalChecker(const std::string& id);
+    common::ProgressChecker* GetProgressChecker(const std::string& id);
+
     /**
      * @brief get the thresholded velocity
      * @param velocity The current velocity from odometry
@@ -232,8 +268,7 @@ protected:
     double goal_reached_tolerance_{0.25};
     std::unique_ptr<std::thread> costmap_thread_{nullptr};
 
-    // Publishers and subscribers
-    std::unique_ptr<utils::OdomSmoother> odom_sub_{nullptr};
+    std::shared_ptr<utils::OdomSmoother> odom_smoother_;
 
 
     // Progress Checker Plugin
@@ -278,8 +313,17 @@ protected:
 
     // Current path container
     commsgs::planning_msgs::Path current_path_;
+    commsgs::geometry_msgs::TwistStamped last_cmd_vel_;
 
     bool follow_path_active_{false};
+    bool recovery_active_{false};
+    RecoveryMotionCommand recovery_cmd_;
+    commsgs::geometry_msgs::PoseStamped recovery_start_pose_;
+    double recovery_start_yaw_{0.0};
+    commsgs::builtin_interfaces::Time recovery_deadline_;
+    bool plugins_loaded_{false};
+    bool controllers_active_{false};
+    float transform_tolerance_{0.1f};
 
     // Dynamic parameters lock
     std::mutex dynamic_params_lock_;

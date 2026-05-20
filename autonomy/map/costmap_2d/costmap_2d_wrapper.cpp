@@ -462,10 +462,9 @@ void Costmap2DWrapper::mapUpdateLoop(double frequency) {}
 
 bool Costmap2DWrapper::getRobotPose(
     commsgs::geometry_msgs::PoseStamped& global_pose) {
-    return true;
-    // return nav2_util::getCurrentPose(
-    //     global_pose, *tf_buffer_,
-    //     global_frame_, robot_base_frame_, transform_tolerance_);
+    (void)global_pose;
+    // TF lookup is handled by ControllerServer / planners via transform::Buffer.
+    return false;
 }
 
 bool Costmap2DWrapper::transformPoseToGlobalFrame(
