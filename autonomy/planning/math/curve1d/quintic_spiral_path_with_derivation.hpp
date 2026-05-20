@@ -82,7 +82,7 @@ public:
             const auto a = Evaluate(0, s);
             return std::cos(a);
         };
-        return common::math::IntegrateByGaussLegendre<N>(cos_theta, 0.0, s);
+        return ::autonomy::common::math::IntegrateByGaussLegendre<N>(cos_theta, 0.0, s);
     }
 
     double ComputeCartesianDeviationY(const double s) const {
@@ -90,7 +90,7 @@ public:
             const auto a = Evaluate(0, s);
             return std::sin(a);
         };
-        return common::math::IntegrateByGaussLegendre<N>(sin_theta, 0.0, s);
+        return ::autonomy::common::math::IntegrateByGaussLegendre<N>(sin_theta, 0.0, s);
     }
 
 private:
@@ -128,7 +128,7 @@ QuinticSpiralPathWithDerivation<N>::QuinticSpiralPathWithDerivation(
     : QuinticPolynomialCurve1d(x0, dx0, ddx0, x1, dx1, ddx1, s) {
     ACHECK(s > 0.0);
 
-    auto gauss_points = common::math::GetGaussLegendrePoints<N>();
+    auto gauss_points = ::autonomy::common::math::GetGaussLegendrePoints<N>();
     gauss_points_ = gauss_points.first;
     gauss_point_weights_ = gauss_points.second;
 

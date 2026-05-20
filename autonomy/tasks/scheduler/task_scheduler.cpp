@@ -91,13 +91,17 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
     task_options_ =
         CreateOptions(configuration_directory_, "tasks/tasks.lua");
 
-    planner_ = std::make_shared<planning::PlannerServer>(
-        LoadPlannerOptions(configuration_directory_));
+    const auto planner_options = LoadPlannerOptions(configuration_directory_);
+    planner_ = std::make_shared<planning::PlannerServer>(planner_options);
+    smoother_ = std::make_shared<planning::SmootherServer>(
+        planner_options, planner_->GetCostmapWrapper());
+    planner_->SetSmootherServer(smoother_);
     controller_ = std::make_shared<control::ControllerServer>(
         LoadControllerOptions(configuration_directory_));
 
     task_context_ = std::make_shared<common::TaskContext>();
     task_context_->planner = planner_;
+    task_context_->smoother = smoother_;
     task_context_->controller = controller_;
     task_context_->global_costmap = planner_->GetCostmapWrapper();
     task_context_->local_costmap = controller_->GetCostmapWrapper();
@@ -116,6 +120,14 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
             : task_options_.robot_base_frame();
     if (!task_options_.default_planner_id().empty()) {
         task_context_->selected_planner_id = task_options_.default_planner_id();
+    } else if (planner_) {
+        task_context_->selected_planner_id = planner_->GetDefaultPlannerId();
+    }
+    if (!planner_options.default_smoother_id().empty()) {
+        task_context_->selected_smoother_id =
+            planner_options.default_smoother_id();
+    } else if (smoother_) {
+        task_context_->selected_smoother_id = smoother_->GetDefaultSmootherId();
     }
     if (!task_options_.default_controller_id().empty()) {
         task_context_->selected_controller_id =
@@ -135,6 +147,7 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
     controller_->SetOdomSmoother(task_context_->odom_smoother);
 
     planner_->Start();
+    smoother_->Start();
     controller_->Start();
 
     SetupNavigators();
@@ -150,6 +163,9 @@ void TaskScheduler::Shutdown() {
     navigators_.clear();
     if (controller_) {
         controller_->Shutdown();
+    }
+    if (smoother_) {
+        smoother_->Shutdown();
     }
     if (planner_) {
         planner_->Shutdown();

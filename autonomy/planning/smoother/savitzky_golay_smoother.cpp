@@ -16,6 +16,8 @@
 
 #include "autonomy/planning/smoother/savitzky_golay_smoother.hpp"
 
+#include "autolink/plugin_manager/plugin_manager.hpp"
+
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -31,9 +33,24 @@ namespace smoother {
 
 using namespace std::chrono;  // NOLINT
 
+void SavitzkyGolaySmoother::ApplyOptions(
+    const proto::SavitzkyGolaySmootherOptions& options) {
+    do_refinement_ = options.do_refinement();
+    refinement_num_ = options.refinement_num() > 0 ? options.refinement_num() : 2;
+    enforce_path_inversion_ = options.enforce_path_inversion();
+    window_size_ = options.window_size() > 2 ? options.window_size() : 7;
+    poly_order_ = options.poly_order() > 0 ? options.poly_order() : 3;
+    if (window_size_ % 2 == 0) {
+        ++window_size_;
+    }
+    half_window_size_ = (window_size_ - 1) / 2;
+    CalculateCoefficients();
+}
+
 void SavitzkyGolaySmoother::Configure(
     std::string name, std::shared_ptr<void> /*costmap_sub*/,
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) {
+    ApplyOptions(proto::SavitzkyGolaySmootherOptions{});
     // declare_parameter_if_not_declared(
     // node, name + ".do_refinement", rclcpp::ParameterValue(true));
     // declare_parameter_if_not_declared(
@@ -183,3 +200,8 @@ bool SavitzkyGolaySmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
 }  // namespace smoother
 }  // namespace planning
 }  // namespace autonomy
+
+using autonomy::planning::common::Smoother;
+using autonomy::planning::smoother::SavitzkyGolaySmoother;
+
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(SavitzkyGolaySmoother, Smoother);

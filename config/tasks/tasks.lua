@@ -15,6 +15,8 @@ local plugin_lib_names_minimal = {
     "autonomy_behavior_tree_action_drive_on_heading_action",
     "autonomy_behavior_tree_action_follow_path_action",
     "autonomy_behavior_tree_action_planner_selector_node",
+    "autonomy_behavior_tree_action_smooth_path_action",
+    "autonomy_behavior_tree_action_smoother_selector_node",
     "autonomy_behavior_tree_action_reinitialize_global_localization_service",
     "autonomy_behavior_tree_action_spin_action",
     "autonomy_behavior_tree_action_wait_action",

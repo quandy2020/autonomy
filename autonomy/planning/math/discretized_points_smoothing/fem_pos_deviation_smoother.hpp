@@ -74,12 +74,12 @@ public:
     bool Solve(const std::vector<std::pair<double, double>>& raw_point2d,
                const std::vector<double>& bounds, std::vector<double>* opt_x,
                std::vector<double>* opt_y,
-               std::vector<std::vector<common::math::Vec2d>> point_box = {});
+               std::vector<std::vector<::autonomy::common::math::Vec2d>> point_box = {});
 
     bool SqpWithOsqp(const std::vector<std::pair<double, double>>& raw_point2d,
                      const std::vector<double>& bounds,
                      std::vector<double>* opt_x, std::vector<double>* opt_y,
-                     std::vector<std::vector<common::math::Vec2d>> point_box);
+                     std::vector<std::vector<::autonomy::common::math::Vec2d>> point_box);
 };
 }  // namespace math
 }  // namespace planning

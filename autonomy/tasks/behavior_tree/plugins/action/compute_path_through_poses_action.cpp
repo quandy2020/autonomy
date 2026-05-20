@@ -16,9 +16,10 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/compute_path_through_poses_action.hpp"
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/common/logging.hpp"
+#include "autonomy/planning/common/planner_exceptions.hpp"
+#include "autonomy/tasks/utils/planner_id_utils.hpp"
+#include "autonomy/tasks/utils/robot_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -26,99 +27,178 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
+namespace {
+
+using ErrorCode = proto::ComputePathThroughPosesErrorCode;
+
+}  // namespace
+
 ComputePathThroughPosesAction::ComputePathThroughPosesAction(
-    const std::string& xml_tag_name, const std::string& action_name,
-    const BT::NodeConfiguration& conf)
-    : BtActionNode<Action>(xml_tag_name, action_name, conf) {}
+    const std::string& xml_tag_name, const BT::NodeConfiguration& conf)
+    : BtStatefulActionNode(xml_tag_name, conf) {}
 
-void ComputePathThroughPosesAction::on_tick() {
+void ComputePathThroughPosesAction::setFailure(int32_t code,
+                                               const std::string& msg) {
+    commsgs::planning_msgs::Path empty_path;
+    setOutput("path", empty_path);
+    setOutput("error_code_id", code);
+    setOutput("error_msg", msg);
+}
+
+BT::NodeStatus ComputePathThroughPosesAction::onStart() {
+    poses_ready_ = false;
+    goal_poses_.clear();
+
+    auto ctx = taskContext();
+    if (!ctx || !ctx->planner) {
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
+                   "TaskContext or PlannerServer is not available.");
+        return BT::NodeStatus::FAILURE;
+    }
+
     commsgs::planning_msgs::Goals goals;
-    if (getInput("goals", goals)) {
-        // Convert commsgs Goals to proto Goals
-        auto* proto_goals = goal_.mutable_goals();
-        *proto_goals->mutable_header() =
-            commsgs::std_msgs::ToProto(goals.header);
-        for (const auto& goal : goals.goals) {
-            auto* proto_goal = proto_goals->add_goals();
-            *proto_goal = commsgs::geometry_msgs::ToProto(goal);
+    if (!getInput("goals", goals) || goals.goals.empty()) {
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VIAPOINTS_GIVEN),
+                   "Missing or empty goals port.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    goal_poses_ = goals.goals;
+
+    bool use_start = false;
+    getInput("use_start", use_start);
+    if (use_start) {
+        commsgs::geometry_msgs::PoseStamped start;
+        if (!getInput("start", start)) {
+            setFailure(static_cast<int32_t>(
+                           ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
+                       "Missing required port: start");
+            return BT::NodeStatus::FAILURE;
         }
-    }
-
-    std::string planner_id;
-    if (getInput("planner_id", planner_id)) {
-        goal_.set_planner_id(planner_id);
-    }
-
-    commsgs::geometry_msgs::PoseStamped start_pose;
-    if (getInput("start", start_pose)) {
-        auto* proto_start = goal_.mutable_start();
-        *proto_start = commsgs::geometry_msgs::ToProto(start_pose);
-        goal_.set_use_start(true);
-    }
-}
-
-BT::NodeStatus ComputePathThroughPosesAction::on_success() {
-    if (result_.result) {
-        commsgs::planning_msgs::Path path;
-        // Convert proto Path to commsgs Path
-        path.header =
-            commsgs::std_msgs::FromProto(result_.result->path().header());
-        for (const auto& pose_proto : result_.result->path().poses()) {
-            path.poses.push_back(commsgs::geometry_msgs::FromProto(pose_proto));
-        }
-        setOutput("path", path);
-    }
-    // Set empty error code, action was successful
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::ComputePathThroughPosesErrorCode::
-                                       COMPUTE_PATH_THROUGH_POSES_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-BT::NodeStatus ComputePathThroughPosesAction::on_aborted() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    if (result_.result) {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
+        start_pose_ = start;
     } else {
-        setOutput(
-            "error_code_id",
-            static_cast<int32_t>(proto::ComputePathThroughPosesErrorCode::
-                                     COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Action aborted"));
+        if (!utils::getGlobalRobotPose(start_pose_, ctx->tf, ctx->odom_smoother,
+                                       ctx->global_frame, ctx->robot_base_frame,
+                                       static_cast<float>(
+                                           ctx->transform_tolerance))) {
+            setFailure(static_cast<int32_t>(
+                           ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_TF_ERROR),
+                       "Robot pose is not available.");
+            return BT::NodeStatus::FAILURE;
+        }
     }
-    return BT::NodeStatus::FAILURE;
+
+    std::string planner_input;
+    getInput("planner_id", planner_input);
+    planner_id_ =
+        utils::ResolvePlannerId(planner_input, ctx->selected_planner_id);
+    poses_ready_ = true;
+    return BT::NodeStatus::RUNNING;
 }
 
-BT::NodeStatus ComputePathThroughPosesAction::on_cancelled() {
+BT::NodeStatus ComputePathThroughPosesAction::onRunning() {
+    if (!poses_ready_) {
+        return BT::NodeStatus::FAILURE;
+    }
+
+    auto ctx = taskContext();
+    if (!ctx || !ctx->planner) {
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
+                   "PlannerServer is not available.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    if (ctx->IsCancelRequested()) {
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NONE),
+                   "");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    try {
+        commsgs::planning_msgs::Path path =
+            ctx->planner->ComputePathThroughPoses(
+                start_pose_, goal_poses_, planner_id_, ctx->CancelChecker());
+        setOutput("path", path);
+        setOutput("error_code_id",
+                  static_cast<int32_t>(
+                      ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NONE));
+        setOutput("error_msg", std::string(""));
+        return BT::NodeStatus::SUCCESS;
+    } catch (const planning::common::PlannerCancelled&) {
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NONE),
+                   "");
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::InvalidPlanner& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_INVALID_PLANNER),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::StartOccupied& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_START_OCCUPIED),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::GoalOccupied& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_GOAL_OCCUPIED),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::NoValidPathCouldBeFound& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VALID_PATH),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::PlannerTimedOut& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_TIMEOUT),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::StartOutsideMapBounds& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_START_OUTSIDE_MAP),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::GoalOutsideMapBounds& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_GOAL_OUTSIDE_MAP),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::PlannerTFError& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_TF_ERROR),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::NoViapointsGiven& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VIAPOINTS_GIVEN),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const std::exception& ex) {
+        AERROR << "ComputePathThroughPoses: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    }
+}
+
+void ComputePathThroughPosesAction::onHalted() {
     commsgs::planning_msgs::Path empty_path;
     setOutput("path", empty_path);
-    // Set empty error code, action was cancelled
-    setOutput("error_code_id",
-              static_cast<int32_t>(proto::ComputePathThroughPosesErrorCode::
-                                       COMPUTE_PATH_THROUGH_POSES_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-void ComputePathThroughPosesAction::on_timeout() {
-    setOutput(
-        "error_code_id",
-        static_cast<int32_t>(proto::ComputePathThroughPosesErrorCode::
-                                 COMPUTE_PATH_THROUGH_POSES_ERROR_TIMEOUT));
-    setOutput("error_msg",
-              std::string("Behavior Tree action client timed out waiting."));
-}
-
-void ComputePathThroughPosesAction::halt() {
-    commsgs::planning_msgs::Path empty_path;
-    setOutput("path", empty_path);
-    // DO NOT reset "error_code_id" output port, we want to read it later
-    // DO NOT reset "error_msg" output port, we want to read it later
-    BtActionNode<Action>::halt();
 }
 
 }  // namespace action
@@ -133,7 +213,7 @@ BT_REGISTER_NODES(factory) {
                                  const BT::NodeConfiguration& config) {
         return std::make_unique<autonomy::tasks::behavior_tree::plugins::
                                     action::ComputePathThroughPosesAction>(
-            name, "compute_path_through_poses", config);
+            name, config);
     };
 
     factory.registerBuilder<autonomy::tasks::behavior_tree::plugins::action::

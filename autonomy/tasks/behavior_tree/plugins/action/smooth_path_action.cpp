@@ -16,10 +16,10 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/smooth_path_action.hpp"
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include <chrono>
+
+#include "autonomy/common/logging.hpp"
+#include "autonomy/planning/common/smoother_exceptions.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -27,110 +27,133 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
+namespace {
+
+using ErrorCode = proto::SmoothPathErrorCode;
+
+std::string ResolveSmootherId(const std::string& smoother_id,
+                              const std::string& default_smoother_id) {
+    if (smoother_id.empty()) {
+        return default_smoother_id.empty() ? "simple_smoother"
+                                           : default_smoother_id;
+    }
+    return smoother_id;
+}
+
+}  // namespace
+
 SmoothPathAction::SmoothPathAction(const std::string& xml_tag_name,
-                                   const std::string& action_name,
                                    const BT::NodeConfiguration& conf)
-    : BtActionNode<proto::SmoothPathAction>(xml_tag_name, action_name, conf) {}
+    : BtStatefulActionNode(xml_tag_name, conf) {}
 
-void SmoothPathAction::on_tick() {
-    commsgs::planning_msgs::Path path;
-    getInput("unsmoothed_path", path);
-    auto* proto_path = goal_.mutable_path();
-    *proto_path->mutable_header() = commsgs::std_msgs::ToProto(path.header);
-    proto_path->clear_poses();
-    for (const auto& pose : path.poses) {
-        auto* proto_pose = proto_path->add_poses();
-        *proto_pose = commsgs::geometry_msgs::ToProto(pose);
-    }
-
-    std::string smoother_id;
-    getInput("smoother_id", smoother_id);
-    goal_.set_smoother_id(smoother_id);
-
-    double max_smoothing_duration;
-    getInput("max_smoothing_duration", max_smoothing_duration);
-    auto duration = commsgs::builtin_interfaces::Duration::FromSeconds(
-        max_smoothing_duration);
-    int64_t ns = duration.Nanoseconds();
-    int32_t sec = static_cast<int32_t>(ns / 1'000'000'000LL);
-    uint32_t nanosec = static_cast<uint32_t>(ns % 1'000'000'000LL);
-    goal_.mutable_max_smoothing_duration()->mutable_stamp()->set_sec(sec);
-    goal_.mutable_max_smoothing_duration()->mutable_stamp()->set_nanosec(
-        nanosec);
-
-    bool check_for_collisions;
-    getInput("check_for_collisions", check_for_collisions);
-    goal_.set_check_for_collisions(check_for_collisions);
-}
-
-BT::NodeStatus SmoothPathAction::on_success() {
-    if (result_.result && result_.result->has_path()) {
-        commsgs::planning_msgs::Path path;
-        const auto& proto_path = result_.result->path();
-        path.header = commsgs::std_msgs::FromProto(proto_path.header());
-        for (const auto& proto_pose : proto_path.poses()) {
-            path.poses.push_back(commsgs::geometry_msgs::FromProto(proto_pose));
-        }
-        setOutput("smoothed_path", path);
-    } else {
-        commsgs::planning_msgs::Path empty_path;
-        setOutput("smoothed_path", empty_path);
-    }
-
-    if (result_.result && result_.result->has_smoothing_duration()) {
-        const auto& proto_duration = result_.result->smoothing_duration();
-        double seconds = proto_duration.stamp().sec() +
-                         proto_duration.stamp().nanosec() / 1000000000.0;
-        setOutput("smoothing_duration", seconds);
-    } else {
-        setOutput("smoothing_duration", 0.0);
-    }
-
-    bool was_completed =
-        result_.result ? result_.result->was_completed() : false;
-    setOutput("was_completed", was_completed);
-
-    // Set empty error code, action was successful
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  proto::SmoothPathErrorCode::SMOOTH_PATH_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-BT::NodeStatus SmoothPathAction::on_aborted() {
+void SmoothPathAction::setFailure(int32_t code, const std::string& msg) {
     commsgs::planning_msgs::Path empty_path;
     setOutput("smoothed_path", empty_path);
-    if (result_.result) {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(result_.result->error_code()));
-        setOutput("error_msg", result_.result->error_msg());
-    } else {
-        setOutput("error_code_id",
-                  static_cast<int32_t>(
-                      proto::SmoothPathErrorCode::SMOOTH_PATH_ERROR_UNKNOWN));
-        setOutput("error_msg", std::string("Unknown error"));
-    }
-    return BT::NodeStatus::FAILURE;
+    setOutput("smoothing_duration", 0.0);
+    setOutput("was_completed", false);
+    setOutput("error_code_id", code);
+    setOutput("error_msg", msg);
 }
 
-BT::NodeStatus SmoothPathAction::on_cancelled() {
+BT::NodeStatus SmoothPathAction::onStart() {
+    input_ready_ = false;
+
+    auto ctx = taskContext();
+    if (!ctx || !ctx->smoother) {
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_UNKNOWN),
+                   "TaskContext or SmootherServer is not available.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    if (!getInput("unsmoothed_path", input_path_) ||
+        input_path_.poses.size() < 2) {
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_INVALID_PATH),
+                   "Input path must contain at least 2 poses.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    getInput("max_smoothing_duration", max_smoothing_duration_);
+    getInput("check_for_collisions", check_for_collisions_);
+
+    std::string smoother_input;
+    getInput("smoother_id", smoother_input);
+    smoother_id_ =
+        ResolveSmootherId(smoother_input, ctx->selected_smoother_id);
+
+    input_ready_ = true;
+    return BT::NodeStatus::RUNNING;
+}
+
+BT::NodeStatus SmoothPathAction::onRunning() {
+    if (!input_ready_) {
+        return BT::NodeStatus::FAILURE;
+    }
+
+    auto ctx = taskContext();
+    if (!ctx || !ctx->smoother) {
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_UNKNOWN),
+                   "SmootherServer is not available.");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    if (ctx->IsCancelRequested()) {
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_NONE), "");
+        return BT::NodeStatus::FAILURE;
+    }
+
+    const auto max_time = std::chrono::milliseconds(static_cast<int>(
+        max_smoothing_duration_ * 1000.0));
+
+    try {
+        const planning::SmoothPathResult result = ctx->smoother->SmoothPath(
+            input_path_, smoother_id_, max_time, check_for_collisions_,
+            ctx->CancelChecker());
+        setOutput("smoothed_path", result.path);
+        setOutput("smoothing_duration", result.smoothing_duration_sec);
+        setOutput("was_completed", result.was_completed);
+        setOutput("error_code_id",
+                  static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_NONE));
+        setOutput("error_msg", std::string(""));
+        return BT::NodeStatus::SUCCESS;
+    } catch (const planning::common::InvalidSmoother& ex) {
+        AERROR << "SmoothPath: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::SMOOTH_PATH_ERROR_INVALID_SMOOTHER),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::InvalidPath& ex) {
+        AERROR << "SmoothPath: " << ex.what();
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_INVALID_PATH),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::SmootherTimedOut& ex) {
+        AERROR << "SmoothPath: " << ex.what();
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_TIMEOUT),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::SmoothedPathInCollision& ex) {
+        AERROR << "SmoothPath: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::SMOOTH_PATH_ERROR_SMOOTHED_PATH_IN_COLLISION),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const planning::common::FailedToSmoothPath& ex) {
+        AERROR << "SmoothPath: " << ex.what();
+        setFailure(static_cast<int32_t>(
+                       ErrorCode::SMOOTH_PATH_ERROR_FAILED_TO_SMOOTH_PATH),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    } catch (const std::exception& ex) {
+        AERROR << "SmoothPath: " << ex.what();
+        setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_UNKNOWN),
+                   ex.what());
+        return BT::NodeStatus::FAILURE;
+    }
+}
+
+void SmoothPathAction::onHalted() {
     commsgs::planning_msgs::Path empty_path;
     setOutput("smoothed_path", empty_path);
-    // Set empty error code, action was cancelled
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  proto::SmoothPathErrorCode::SMOOTH_PATH_ERROR_NONE));
-    setOutput("error_msg", std::string(""));
-    return BT::NodeStatus::SUCCESS;
-}
-
-void SmoothPathAction::on_timeout() {
-    setOutput("error_code_id",
-              static_cast<int32_t>(
-                  proto::SmoothPathErrorCode::SMOOTH_PATH_ERROR_TIMEOUT));
-    setOutput("error_msg",
-              std::string("Behavior Tree action client timed out waiting."));
 }
 
 }  // namespace action
@@ -145,7 +168,7 @@ BT_REGISTER_NODES(factory) {
                                  const BT::NodeConfiguration& config) {
         return std::make_unique<
             autonomy::tasks::behavior_tree::plugins::action::SmoothPathAction>(
-            name, "smooth_path", config);
+            name, config);
     };
 
     factory.registerBuilder<

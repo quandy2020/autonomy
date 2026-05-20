@@ -318,6 +318,7 @@ int NavFn::getPathLen() {
 // Set up navigation potential arrays for new propagation
 
 void NavFn::setupNavFn(bool keepit) {
+    propagation_cancelled_ = false;
     // reset values in propagation arrays
     for (int i = 0; i < ns; i++) {
         potarr[i] = POT_HIGH;
@@ -599,8 +600,10 @@ bool NavFn::propNavFnDijkstra(int cycles, std::function<bool()> cancelChecker,
 
     for (; cycle < cycles;
          cycle++) {  // go for this many cycles, unless interrupted
-        if (cycle % terminal_checking_interval == 0 && cancelChecker()) {
-            //   throw nav2_core::PlannerCancelled("Planner was cancelled");
+        if (cycle % terminal_checking_interval == 0 && cancelChecker &&
+            cancelChecker()) {
+            propagation_cancelled_ = true;
+            return false;
         }
 
         if (curPe == 0 && nextPe == 0) {  // priority blocks empty
@@ -688,8 +691,10 @@ bool NavFn::propNavFnAstar(int cycles, std::function<bool()> cancelChecker) {
     // do main cycle
     for (; cycle < cycles;
          cycle++) {  // go for this many cycles, unless interrupted
-        if (cycle % terminal_checking_interval == 0 && cancelChecker()) {
-            //   throw nav2_core::PlannerCancelled("Planner was cancelled");
+        if (cycle % terminal_checking_interval == 0 && cancelChecker &&
+            cancelChecker()) {
+            propagation_cancelled_ = true;
+            return false;
         }
 
         if (curPe == 0 && nextPe == 0) {  // priority blocks empty

@@ -27,15 +27,60 @@ AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
         options_.controller_options());
     planner_server_ =
         std::make_shared<planning::PlannerServer>(options_.planner_options());
+    smoother_server_ = std::make_shared<planning::SmootherServer>(
+        options_.planner_options(), planner_server_->GetCostmapWrapper());
+    planner_server_->SetSmootherServer(smoother_server_);
+}
+
+AutonomyNode::~AutonomyNode() {
+    Shutdown();
 }
 
 void AutonomyNode::Start() {
+    task_context_ = std::make_shared<tasks::common::TaskContext>();
+    task_context_->planner = planner_server_;
+    task_context_->smoother = smoother_server_;
+    task_context_->controller = controller_server_;
+    task_context_->global_costmap = planner_server_
+                                        ? planner_server_->GetCostmapWrapper()
+                                        : nullptr;
+    task_context_->local_costmap = controller_server_
+                                       ? controller_server_->GetCostmapWrapper()
+                                       : task_context_->global_costmap;
+    task_context_->tf = std::shared_ptr<transform::Buffer>(
+        tf_buffer_, [](transform::Buffer*) {});
+    if (planner_server_) {
+        const auto& planner_options = options_.planner_options();
+        if (!planner_options.default_planner_id().empty()) {
+            task_context_->selected_planner_id =
+                planner_options.default_planner_id();
+        } else {
+            task_context_->selected_planner_id =
+                planner_server_->GetDefaultPlannerId();
+        }
+        if (!planner_options.default_smoother_id().empty()) {
+            task_context_->selected_smoother_id =
+                planner_options.default_smoother_id();
+        } else if (smoother_server_) {
+            task_context_->selected_smoother_id =
+                smoother_server_->GetDefaultSmootherId();
+        }
+        task_context_->global_frame =
+            planner_options.costmap().frame_id().empty()
+                ? "map"
+                : planner_options.costmap().frame_id();
+    }
+
     if (map_server_ != nullptr) {
         map_server_->Start();
     }
 
     if (planner_server_ != nullptr) {
         planner_server_->Start();
+    }
+
+    if (smoother_server_ != nullptr) {
+        smoother_server_->Start();
     }
 
     if (controller_server_ != nullptr) {
@@ -56,16 +101,20 @@ void AutonomyNode::Start() {
 }
 
 void AutonomyNode::Shutdown() {
-    if (map_server_ != nullptr) {
-        map_server_->Shutdown();
-    }
-
     if (controller_server_ != nullptr) {
         controller_server_->Shutdown();
     }
 
+    if (smoother_server_ != nullptr) {
+        smoother_server_->Shutdown();
+    }
+
     if (planner_server_ != nullptr) {
         planner_server_->Shutdown();
+    }
+
+    if (map_server_ != nullptr) {
+        map_server_->Shutdown();
     }
 }
 

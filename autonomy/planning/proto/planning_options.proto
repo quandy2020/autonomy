@@ -18,7 +18,11 @@ package autonomy.planning.proto;
 
 import "autonomy/planning/proto/dijkstra_planner.proto";
 import "autonomy/planning/proto/navfn_planner.proto";
+import "autonomy/planning/proto/savitzky_golay_smoother.proto";
+import "autonomy/planning/proto/simple_smoother.proto";
 import "autonomy/planning/proto/theta_star_planner.proto";
+import "autonomy/planning/proto/math/fem_pos_deviation_smoother_config.proto";
+import "autonomy/planning/proto/math/cos_theta_smoother_config.proto";
 import "autonomy/map/proto/map_2d_option.proto";
 
 // Planner result codes returned by MakePlan method
@@ -63,4 +67,30 @@ message PlannerOptions
 
     // Global costmap options
     autonomy.map.proto.Costmap2DOptions costmap = 6;
+
+    // Planner plugins: each entry is "id" or "id:TypeName"
+    repeated string planner_plugins = 7;
+
+    // Default planner plugin id when BT/clients pass an empty planner_id
+    string default_planner_id = 8;
+
+    // Smoother plugins: each entry is "id" or "id:TypeName"
+    repeated string smoother_plugins = 9;
+    string default_smoother_id = 10;
+    SimpleSmootherOptions simple_smoother = 11;
+    SavitzkyGolaySmootherOptions savitzky_golay_smoother = 12;
+
+    // Path post-processing (0 disables Douglas-Peucker simplification)
+    double path_simplify_epsilon = 13;
+    bool auto_smooth_after_plan = 14;
+    double auto_smooth_duration = 15;
+
+    // Optional external plugin description XML files (autolink plugin_manager)
+    repeated string planner_plugin_libraries = 16;
+
+    // Advanced smoothers (optional, require OSQP/Ipopt)
+    autonomy.planning.proto.math.FemPosDeviationSmootherConfig fem_pos_smoother = 17;
+    double fem_pos_smoother_path_bound = 18;
+    autonomy.planning.proto.math.CosThetaSmootherConfig cos_theta_smoother = 19;
+    double cos_theta_smoother_path_bound = 20;
 }

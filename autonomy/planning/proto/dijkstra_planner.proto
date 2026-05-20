@@ -16,6 +16,8 @@ syntax = "proto3";
 
 package autonomy.planning.proto;
 
-message DijkstraPlanner
-{
+message DijkstraPlanner {
+    double tolerance = 1;
+    bool allow_unknown = 2;
+    bool use_final_approach_orientation = 3;
 }

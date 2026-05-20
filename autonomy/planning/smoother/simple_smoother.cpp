@@ -16,6 +16,8 @@
 
 #include "autonomy/planning/smoother/simple_smoother.hpp"
 
+#include "autolink/plugin_manager/plugin_manager.hpp"
+
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -23,6 +25,7 @@
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
+#include "autonomy/planning/utils/smoother_utils.hpp"
 namespace autonomy {
 namespace planning {
 namespace smoother {
@@ -31,10 +34,37 @@ using namespace std::chrono;  // NOLINT
 
 SimpleSmoother::~SimpleSmoother() = default;
 
+void SimpleSmoother::ApplyOptions(const proto::SimpleSmootherOptions& options) {
+    if (options.tolerance() > 0.0) {
+        tolerance_ = options.tolerance();
+    }
+    if (options.max_iterations() > 0) {
+        max_its_ = options.max_iterations();
+    }
+    if (options.w_data() >= 0.0) {
+        data_w_ = options.w_data();
+    }
+    if (options.w_smooth() >= 0.0) {
+        smooth_w_ = options.w_smooth();
+    }
+    do_refinement_ = options.do_refinement();
+    if (options.refinement_num() > 0) {
+        refinement_num_ = options.refinement_num();
+    }
+    enforce_path_inversion_ = options.enforce_path_inversion();
+}
+
 void SimpleSmoother::Configure(
     std::string name, std::shared_ptr<void> /*costmap_sub*/,
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
     costmap_wrapper_ = costmap_wrapper;
+
+    ApplyOptions(proto::SimpleSmootherOptions{});
+    tolerance_ = tolerance_ > 0.0 ? tolerance_ : 1e-10;
+    max_its_ = max_its_ > 0 ? max_its_ : 1000;
+    data_w_ = data_w_ >= 0.0 ? data_w_ : 0.2;
+    smooth_w_ = smooth_w_ >= 0.0 ? smooth_w_ : 0.3;
+    refinement_num_ = refinement_num_ > 0 ? refinement_num_ : 2;
 
     // declare_parameter_if_not_declared(
     // node, name + ".tolerance", rclcpp::ParameterValue(1e-10));
@@ -78,15 +108,22 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
     commsgs::planning_msgs::Path curr_path_segment;
     curr_path_segment.header = path.header;
 
-    // Simple path segment: entire path as one segment
+    const auto directional_segments =
+        utils::findDirectionalPathSegments(path, false);
     struct PathSegment {
         unsigned int start;
         unsigned int end;
     };
-    std::vector<PathSegment> path_segments{
-        PathSegment{0u, static_cast<unsigned int>(path.poses.size() - 1)}};
-    // Note: findDirectionalPathSegments is not implemented, using single
-    // segment for now
+    std::vector<PathSegment> path_segments;
+    path_segments.reserve(directional_segments.size());
+    for (const auto& segment : directional_segments) {
+        path_segments.push_back(
+            PathSegment{segment.start, segment.end});
+    }
+    if (path_segments.empty() && path.poses.size() >= 2) {
+        path_segments.push_back(PathSegment{
+            0u, static_cast<unsigned int>(path.poses.size() - 1)});
+    }
 
     // Note: Costmap2D mutex locking removed - costmap access should be
     // thread-safe via wrapper
@@ -245,3 +282,8 @@ void SimpleSmoother::SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg,
 }  // namespace smoother
 }  // namespace planning
 }  // namespace autonomy
+
+using autonomy::planning::common::Smoother;
+using autonomy::planning::smoother::SimpleSmoother;
+
+AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(SimpleSmoother, Smoother);

@@ -56,7 +56,7 @@ public:
     // reference line kernel, x_coord in strictly increasing order
     bool AddReferenceLineKernelMatrix(
         const std::vector<double>& t_coord,
-        const std::vector<common::math::Vec2d>& ref_points,
+        const std::vector<::autonomy::common::math::Vec2d>& ref_points,
         const double weight);
 
 private:

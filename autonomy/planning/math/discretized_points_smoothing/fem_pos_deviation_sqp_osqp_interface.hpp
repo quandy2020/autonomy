@@ -183,7 +183,7 @@ private:
     // park generic
 public:
     void set_point_box(
-        std::vector<std::vector<common::math::Vec2d>> point_box) {
+        std::vector<std::vector<::autonomy::common::math::Vec2d>> point_box) {
         point_box_ = point_box;
     }
 
@@ -191,7 +191,7 @@ private:
     void CalculateOffset(std::vector<std::pair<double, double>> points,
                          std::vector<c_float>* q);
 
-    std::vector<std::vector<common::math::Vec2d>> point_box_;
+    std::vector<std::vector<::autonomy::common::math::Vec2d>> point_box_;
 };
 }  // namespace math
 }  // namespace planning

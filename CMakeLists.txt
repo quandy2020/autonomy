@@ -29,6 +29,8 @@ option(BUILD_GRPC "Build autonomy gRPC support" true)
 option(BUILD_PROMETHEUS "Build prometheus monitoring support" false)
 option(BUILD_DOCS "Build autonomy docs support" true)
 option(BUILD_TEST "Build autonomy unit test" true)
+option(BUILD_PLANNING_ADVANCED_MATH
+       "Build planning/math optimizers and FEM/cos-theta smoothers" true)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -69,6 +71,10 @@ if (${BUILD_DOCS})
     add_subdirectory("docs")
   endif()
 endif()
+
+
+# autolink
+add_subdirectory(autolink)
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
   CACHE PATH ".lua configuration files directory")
@@ -116,6 +122,14 @@ list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
 file(GLOB_RECURSE ONNX_NETWORK_SRCS "autonomy/common/network/*.cpp")
 if(NOT BUILD_ONNXRUNTIME OR NOT OnnxRuntime_FOUND)
   list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ONNX_NETWORK_SRCS})
+endif()
+
+if(NOT BUILD_PLANNING_ADVANCED_MATH)
+  file(GLOB_RECURSE PLANNING_MATH_SRCS "autonomy/planning/math/*.cpp")
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS ${PLANNING_MATH_SRCS})
+  list(REMOVE_ITEM ALL_LIBRARY_SRCS
+    "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/planning/smoother/fem_pos_smoother.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/planning/smoother/cos_theta_path_smoother.cpp")
 endif()
 
 if (NOT ${BUILD_GRPC})
@@ -245,6 +259,10 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 
+if(BUILD_PLANNING_ADVANCED_MATH)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC AUTONOMY_PLANNING_ADVANCED_MATH)
+endif()
+
 # protobuf
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY})
@@ -276,6 +294,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OSQP_LIBRARIES})
 # glog
 target_link_libraries(${PROJECT_NAME} PUBLIC glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
+
+# autolink (planning plugin_manager)
+target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
 
 # BehaviorTree.CPP (tasks module only; 4.7.x exports BT::behaviortree_cpp)
 if(TARGET BT::behaviortree_cpp)

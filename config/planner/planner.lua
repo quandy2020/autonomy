@@ -16,29 +16,92 @@ include "common.lua"
 
 AUTONOMY_PLANNER = {
 
-    -- NavFn global planner configuration
     navfn_planner = {
-        -- Tolerance near the goal point (meters)
         tolerance = 0.1,
-
-        -- Whether to use A* algorithm (false uses Dijkstra)
         use_astar = false,
-
-        -- Whether to allow unknown regions (NO_INFORMATION) in planning
         allow_unknown = true,
-
-        -- Whether to use final approach orientation
         use_final_approach_orientation = false,
     },
 
-    -- Expected planner frequency (Hz), used for internal performance checks (PlannerServer::expected_planner_frequency)
+    dijkstra_planner = {
+        tolerance = 0.1,
+        allow_unknown = true,
+        use_final_approach_orientation = false,
+    },
+
+    -- Theta* any-angle grid planner
+    theta_star_planner = {
+        how_many_corners = 8,
+        allow_unknown = true,
+        w_euc_cost = 2.0,
+        w_traversal_cost = 1.0,
+        w_heuristic_cost = 1.0,
+        terminal_checking_interval = 5000,
+    },
+
     expected_planner_frequency = 5.0,
+    costmap_update_timeout = 5.0,
 
+    planner_plugins = {
+        "navfn_planner",
+        "dijkstra_planner",
+        "theta_star_planner",
+    },
+    default_planner_id = "navfn_planner",
 
-    -- Global map configuration (for global path planning)
+    -- Optional external planner plugin description XML files (autolink format)
+    planner_plugin_libraries = {},
+
+    smoother_plugins = {
+        "simple_smoother",
+        "savitzky_golay_smoother",
+        -- Advanced (requires BUILD_PLANNING_ADVANCED_MATH=ON and OSQP/Ipopt):
+        -- "fem_pos_smoother",
+        -- "cos_theta_smoother",
+    },
+    default_smoother_id = "simple_smoother",
+
+    simple_smoother = {
+        tolerance = 1e-10,
+        max_iterations = 1000,
+        w_data = 0.2,
+        w_smooth = 0.3,
+        do_refinement = true,
+        refinement_num = 2,
+        enforce_path_inversion = true,
+    },
+
+    savitzky_golay_smoother = {
+        do_refinement = true,
+        refinement_num = 2,
+        enforce_path_inversion = true,
+        window_size = 7,
+        poly_order = 3,
+    },
+
+    -- Optional advanced smoothers (enable in smoother_plugins when needed)
+    fem_pos_smoother = {
+        weight_fem_pos_deviation = 1.0e5,
+        weight_ref_deviation = 1.0,
+        weight_path_length = 1.0,
+        max_iter = 500,
+        time_limit = 0.0,
+    },
+    fem_pos_smoother_path_bound = 0.5,
+
+    cos_theta_smoother = {
+        weight_cos_included_angle = 10000.0,
+        weight_anchor_points = 1.0,
+        weight_length = 1.0,
+    },
+    cos_theta_smoother_path_bound = 0.5,
+
+    path_simplify_epsilon = 0.02,
+    auto_smooth_after_plan = false,
+    auto_smooth_duration = 1.0,
+
     costmap = {
         enabled = true,
-        -- Default map name (used if name is not specified in costmap configuration)
         name = "global_map",
         frame_id = AUTONOMY_COMMON.global_frame,
         resolution = 0.05,
@@ -47,39 +110,35 @@ AUTONOMY_PLANNER = {
         update_frequency = 5.0,
         robot_radius = 0.22,
         always_send_full_costmap = true,
-        -- Plugin list (executed in order)
-        -- Layers: static_layer, obstacle_layer, voxel_layer, range_sensor_layer, denoise_layer, inflation_layer
-        -- Filters: keepout_filter, speed_filter, binary_filter
+        -- Global costmap: static map + inflation only (no rolling window).
+        -- Dynamic obstacles are handled by the local costmap on the controller.
+        -- To add live global obstacles, append "obstacle_layer" and configure it.
         plugins = {"static_layer", "denoise_layer", "inflation_layer"},
-        
-        -- Static layer configuration: load static obstacles from SLAM map
+
         static_layer = {
             plugin = "libautonomy_map_layers_static_layer.so",
             enabled = true,
-            subscribe_to_updates = false,        -- Whether to subscribe to map updates
-            transform_tolerance = 0.1,           -- Transform tolerance (seconds)
-            footprint_clearing_enabled = false,  -- Whether to clear robot footprint area
-            map_topic = "map",                   -- Static map topic
+            subscribe_to_updates = false,
+            transform_tolerance = 0.1,
+            footprint_clearing_enabled = false,
+            map_topic = "map",
         },
-        
-        -- Denoise layer configuration: filter isolated obstacles caused by noise
+
         denoise_layer = {
             plugin = "libautonomy_map_layers_denoise_layer.so",
             enabled = true,
-            denoise_radius = 2,  -- Denoise radius (pixels), obstacle groups smaller than this size will be removed
+            denoise_radius = 2,
         },
-        
-        -- Inflation layer configuration: inflate obstacles to maintain safe distance
+
         inflation_layer = {
             plugin = "libautonomy_map_layers_inflation_layer.so",
             enabled = true,
-            cost_scaling_factor = 3.0,  -- Cost decay factor (larger values decay faster)
-            inflation_radius = 0.55,    -- Inflation radius (meters), should be larger than robot radius
-            inflate_unknown = false,    -- Whether to inflate unknown regions
-            inflate_around_unknown = false,  -- Whether to inflate around unknown regions
+            cost_scaling_factor = 3.0,
+            inflation_radius = 0.55,
+            inflate_unknown = false,
+            inflate_around_unknown = false,
         },
     },
 }
 
--- LuaParameterDictionary expects the script to return a table when loaded directly.
 return { AUTONOMY_PLANNER = AUTONOMY_PLANNER }
