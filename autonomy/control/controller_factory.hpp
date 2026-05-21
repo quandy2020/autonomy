@@ -55,7 +55,8 @@ using ControllerFactoryRegistry =
 /**
  * @brief Process-wide local controller factory (string id → configured plugin).
  *
- * Built-in ids: graceful_controller, nmpc_controller, tdmpc_controller.
+ * Built-in ids: graceful_controller, nmpc_controller, tdmpc_controller,
+ * mppi_controller.
  * @ref ResolveControllerTypeId maps legacy C++ type strings and aliases.
  */
 class ControllerFactory
