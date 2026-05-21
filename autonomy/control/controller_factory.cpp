@@ -21,6 +21,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/controller/graceful_controller/graceful_controller.hpp"
+#include "autonomy/control/controller/mppi_controller/mppi_controller.hpp"
 #include "autonomy/control/controller/nmpc_controller/nmpc_controller.hpp"
 #include "autonomy/control/controller/tdmpc_controller/tdmpc_controller.hpp"
 
@@ -79,7 +80,7 @@ std::string ControllerFactory::ResolveControllerTypeId(
         return "graceful_controller";
     }
     if (key.find("mppi") != std::string::npos) {
-        return "graceful_controller";
+        return "mppi_controller";
     }
 
     return controller_type;
@@ -131,6 +132,10 @@ bool RegisterBuiltinControllers(ControllerFactoryRegistry& factory) {
         "tdmpc_controller", [](const ControllerCreateContext& ctx) {
             return MakeController<controller::TdmpcController>(ctx);
         });
+    ok &= factory.Register(
+        "mppi_controller", [](const ControllerCreateContext& ctx) {
+            return MakeController<controller::MppiController>(ctx);
+        });
 
     // Legacy Nav2 / fully-qualified type strings (same creators).
     ok &= factory.Register(
@@ -147,6 +152,16 @@ bool RegisterBuiltinControllers(ControllerFactoryRegistry& factory) {
         "autonomy::control::controller::TdmpcController",
         [](const ControllerCreateContext& ctx) {
             return MakeController<controller::TdmpcController>(ctx);
+        });
+    ok &= factory.Register(
+        "autonomy::control::controller::MppiController",
+        [](const ControllerCreateContext& ctx) {
+            return MakeController<controller::MppiController>(ctx);
+        });
+    ok &= factory.Register(
+        "nav2_mppi_controller::MPPIController",
+        [](const ControllerCreateContext& ctx) {
+            return MakeController<controller::MppiController>(ctx);
         });
 
     if (!ok) {

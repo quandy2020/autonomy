@@ -18,6 +18,7 @@
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
+#include "autonomy/control/controller/mppi_controller/parameter_options.hpp"
 #include "autonomy/control/controller/nmpc_controller/parameter_options.hpp"
 #include "autonomy/control/controller/tdmpc_controller/parameter_options.hpp"
 #include "autonomy/map/map_options.hpp"
@@ -119,6 +120,8 @@ proto::ControllerOptions LoadOptions(
                 progress_dict.get(),
                 options.mutable_checker_options()->mutable_progress_checker());
         }
+        *options.mutable_mppi_controller_options() =
+            controller::mppi::LoadOptions(mppi_dict.get());
     }
 
     if (parameter_dictionary->HasKey("graceful_controller")) {
