@@ -21,6 +21,7 @@
 #include <mutex>
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/math/math.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/utils/controller_utils.hpp"
@@ -43,12 +44,40 @@ void GracefulController::Configure(
     tf_buffer_ = tf;
     plugin_name_ = name;
 
-    // Default transform tolerance
     double transform_tolerance = 0.1;
+    if (options.has_graceful_controller_options()) {
+        graceful_options_ = options.graceful_controller_options();
+        if (graceful_options_.transform_tolerance() > 0.0) {
+            transform_tolerance = graceful_options_.transform_tolerance();
+        }
+    }
+    const double k_phi =
+        graceful_options_.k_phi() > 0.0 ? graceful_options_.k_phi() : 1.0;
+    const double k_delta =
+        graceful_options_.k_delta() > 0.0 ? graceful_options_.k_delta() : 1.0;
+    const double beta =
+        graceful_options_.beta() > 0.0 ? graceful_options_.beta() : 1.0;
+    const double lambda =
+        graceful_options_.lambda() > 0.0 ? graceful_options_.lambda() : 1.0;
+    const double slowdown_radius =
+        graceful_options_.slowdown_radius() > 0.0
+            ? graceful_options_.slowdown_radius()
+            : 0.5;
+    const double v_linear_min = graceful_options_.v_linear_min();
+    const double v_linear_max =
+        graceful_options_.v_linear_max() > 0.0
+            ? graceful_options_.v_linear_max()
+            : 0.5;
+    const double v_angular_max =
+        graceful_options_.v_angular_max() > 0.0
+            ? graceful_options_.v_angular_max()
+            : 1.0;
+    control_law_ = std::make_unique<SmoothControlLaw>(
+        k_phi, k_delta, beta, lambda, slowdown_radius, v_linear_min, v_linear_max,
+        v_angular_max);
 
-    // Handles global path transformations
-    path_handler_ = std::make_unique<PathHandler>(transform_tolerance,
-                                                  tf_buffer_, costmap_wrapper_);
+    path_handler_ = std::make_unique<PathHandler>(transform_tolerance, tf_buffer_,
+                                                  costmap_wrapper_);
 
     // Initialize footprint collision checker
     // TODO: Add params_ and collision detection support
@@ -101,22 +130,39 @@ uint32 GracefulController::ComputeVelocityCommands(
     // TODO: Add param_handler_ and params_ support
     // std::lock_guard<std::mutex> param_lock(param_handler_->getMutex());
 
-    // Default parameters - TODO: Load from params_
-    double max_robot_pose_search_dist = 3.0;
-    double max_lookahead = 2.0;
-    double min_lookahead = 0.3;
+    const auto& g = graceful_options_;
+    double max_robot_pose_search_dist =
+        g.max_robot_pose_search_dist() > 0.0 ? g.max_robot_pose_search_dist()
+                                             : 3.0;
+    double max_lookahead =
+        g.max_lookahead() > 0.0 ? g.max_lookahead() : 2.0;
+    double min_lookahead =
+        g.min_lookahead() > 0.0 ? g.min_lookahead() : 0.3;
     double goal_dist_tolerance = 0.25;
-    double in_place_collision_resolution = 0.1;
-    double initial_rotation_tolerance = 0.1;
-    bool use_collision_detection = false;
-    bool prefer_final_rotation = false;
-    bool allow_backward = false;
-    bool initial_rotation = true;
-    double k_phi = 1.0, k_delta = 1.0, beta = 1.0, lambda = 1.0;
-    double slowdown_radius = 0.5;
-    double v_linear_min = 0.0, v_linear_max = 0.5, v_angular_max = 1.0;
-    double rotation_scaling_factor = 1.0;
-    double v_angular_min_in_place = 0.1;
+    double in_place_collision_resolution =
+        g.in_place_collision_resolution() > 0.0
+            ? g.in_place_collision_resolution()
+            : 0.1;
+    double initial_rotation_tolerance =
+        g.initial_rotation_tolerance() > 0.0 ? g.initial_rotation_tolerance()
+                                             : 0.1;
+    bool use_collision_detection = g.use_collision_detection();
+    bool prefer_final_rotation = g.prefer_final_rotation();
+    bool allow_backward = g.allow_backward();
+    bool initial_rotation = g.initial_rotation();
+    double k_phi = g.k_phi() > 0.0 ? g.k_phi() : 1.0;
+    double k_delta = g.k_delta() > 0.0 ? g.k_delta() : 1.0;
+    double beta = g.beta() > 0.0 ? g.beta() : 1.0;
+    double lambda = g.lambda() > 0.0 ? g.lambda() : 1.0;
+    double slowdown_radius =
+        g.slowdown_radius() > 0.0 ? g.slowdown_radius() : 0.5;
+    double v_linear_min = g.v_linear_min();
+    double v_linear_max = g.v_linear_max() > 0.0 ? g.v_linear_max() : 0.5;
+    double v_angular_max = g.v_angular_max() > 0.0 ? g.v_angular_max() : 1.0;
+    double rotation_scaling_factor =
+        g.rotation_scaling_factor() > 0.0 ? g.rotation_scaling_factor() : 1.0;
+    double v_angular_min_in_place =
+        g.v_angular_min_in_place() > 0.0 ? g.v_angular_min_in_place() : 0.1;
 
     // Update for the current goal checker's state
     commsgs::geometry_msgs::Pose pose_tolerance;
@@ -172,21 +218,61 @@ uint32 GracefulController::ComputeVelocityCommands(
             transformed_plan.poses[i - 1], transformed_plan.poses[i]);
     }
 
-    // If we've reached the XY goal tolerance, just rotate
-    if (dist_to_goal < goal_dist_tolerance_ || goal_reached_) {
+    // XY distance to the true path goal in base frame (not the cropped window
+    // endpoint, which can falsely trigger goal_reached on long paths).
+    double dist_to_true_goal_xy = std::hypot(
+        transformed_plan.poses.back().pose.position.x,
+        transformed_plan.poses.back().pose.position.y);
+    const commsgs::planning_msgs::Path& global_plan = path_handler_->GetPlan();
+    if (!global_plan.poses.empty()) {
+        try {
+            const commsgs::geometry_msgs::PoseStamped goal_in_base =
+                tf_buffer_->transform(
+                    global_plan.poses.back(),
+                    costmap_wrapper_->getBaseFrameID(), 0.1f);
+            dist_to_true_goal_xy = std::hypot(goal_in_base.pose.position.x,
+                                              goal_in_base.pose.position.y);
+        } catch (const std::exception&) {
+            // Keep cropped-window fallback above.
+        }
+    }
+
+    // If we've reached the XY goal tolerance, rotate in place to goal heading
+    if (dist_to_true_goal_xy < goal_dist_tolerance_ || goal_reached_) {
         goal_reached_ = true;
-        double angle_to_goal = transform::tf2::getYaw(
+
+        commsgs::geometry_msgs::PoseStamped robot_in_base;
+        try {
+            robot_in_base = tf_buffer_->transform(
+                pose, costmap_wrapper_->getBaseFrameID(), 0.1f);
+        } catch (const std::exception& ex) {
+            message = "Transform error: " + std::string(ex.what());
+            return 1;
+        }
+
+        const double robot_yaw =
+            transform::tf2::getYaw(robot_in_base.pose.orientation);
+        const double goal_yaw = transform::tf2::getYaw(
             transformed_plan.poses.back().pose.orientation);
+        const double angle_error =
+            ::autonomy::common::NormalizeAngleDifference(goal_yaw - robot_yaw);
+
+        if (std::abs(angle_error) < initial_rotation_tolerance) {
+            cmd_vel.twist = commsgs::geometry_msgs::Twist{};
+            message = "";
+            return 0;
+        }
+
         // Check for collisions between our current pose and goal pose
-        size_t num_steps = static_cast<size_t>(fabs(angle_to_goal) /
-                                               in_place_collision_resolution);
+        size_t num_steps = static_cast<size_t>(
+            std::fabs(angle_error) / in_place_collision_resolution);
         // Need to check at least the end pose
         num_steps = std::max(static_cast<size_t>(1), num_steps);
         bool collision_free = true;
         for (size_t i = 1; i <= num_steps; ++i) {
             double step =
                 static_cast<double>(i) / static_cast<double>(num_steps);
-            double yaw = step * angle_to_goal;
+            double yaw = robot_yaw + step * angle_error;
             commsgs::geometry_msgs::PoseStamped next_pose;
             next_pose.header.frame_id = costmap_wrapper_->getBaseFrameID();
             next_pose.pose.orientation =
@@ -226,7 +312,7 @@ uint32 GracefulController::ComputeVelocityCommands(
         }
         // Compute velocity if rotation is possible
         if (collision_free) {
-            cmd_vel.twist = RotateToTarget(angle_to_goal);
+            cmd_vel.twist = RotateToTarget(angle_error);
             message = "";
             return 0;  // Return success code
         }
@@ -323,11 +409,13 @@ bool GracefulController::ValidateTargetPose(
     double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
     commsgs::geometry_msgs::TransformStamped& costmap_transform,
     commsgs::geometry_msgs::TwistStamped& cmd_vel) {
-    // Default parameters - TODO: Load from params_
-    double max_lookahead = 2.0;
-    double min_lookahead = 0.3;
-    bool prefer_final_rotation = false;
-    bool allow_backward = false;
+    const auto& g = graceful_options_;
+    double max_lookahead =
+        g.max_lookahead() > 0.0 ? g.max_lookahead() : 2.0;
+    double min_lookahead =
+        g.min_lookahead() > 0.0 ? g.min_lookahead() : 0.3;
+    bool prefer_final_rotation = g.prefer_final_rotation();
+    bool allow_backward = g.allow_backward();
 
     // Continue if target_pose is too far away from robot
     if (dist_to_target > max_lookahead) {
@@ -376,11 +464,13 @@ bool GracefulController::SimulateTrajectory(
     commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward) {
     trajectory.poses.clear();
 
-    // Default parameters - TODO: Load from params_
-    bool initial_rotation = true;
-    double initial_rotation_tolerance = 0.1;
-    double v_linear_max = 0.5;
-    bool use_collision_detection = false;
+    const auto& g = graceful_options_;
+    bool initial_rotation = g.initial_rotation();
+    double initial_rotation_tolerance =
+        g.initial_rotation_tolerance() > 0.0 ? g.initial_rotation_tolerance()
+                                             : 0.1;
+    double v_linear_max = g.v_linear_max() > 0.0 ? g.v_linear_max() : 0.5;
+    bool use_collision_detection = g.use_collision_detection();
 
     // First pose is robot current pose
     commsgs::geometry_msgs::PoseStamped next_pose;
@@ -423,6 +513,7 @@ bool GracefulController::SimulateTrajectory(
             if (fabs(angle_to_target - next_pose_yaw) <
                 initial_rotation_tolerance) {
                 sim_initial_rotation = false;
+                do_initial_rotation_ = false;
             }
 
             // Forward simulate rotation command
@@ -489,10 +580,18 @@ bool GracefulController::SimulateTrajectory(
 
 commsgs::geometry_msgs::Twist GracefulController::RotateToTarget(
     double angle_to_target) {
-    // Default parameters - TODO: Load from params_
-    double rotation_scaling_factor = 1.0;
-    double v_angular_max = 1.0;
-    double v_angular_min_in_place = 0.1;
+    const auto& g = graceful_options_;
+    const double initial_rotation_tolerance =
+        g.initial_rotation_tolerance() > 0.0 ? g.initial_rotation_tolerance()
+                                             : 0.1;
+    if (std::abs(angle_to_target) < initial_rotation_tolerance) {
+        return commsgs::geometry_msgs::Twist{};
+    }
+    double rotation_scaling_factor =
+        g.rotation_scaling_factor() > 0.0 ? g.rotation_scaling_factor() : 1.0;
+    double v_angular_max = g.v_angular_max() > 0.0 ? g.v_angular_max() : 1.0;
+    double v_angular_min_in_place =
+        g.v_angular_min_in_place() > 0.0 ? g.v_angular_min_in_place() : 0.1;
 
     commsgs::geometry_msgs::Twist vel{};
     vel.linear.x = 0.0f;

@@ -171,9 +171,9 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
   default_goal_checker_ids_ = {"goal_checker"};
   default_goal_checker_types_ = {"nav2_controller::SimpleGoalChecker"};
   default_ids_ = {"FollowPath", "graceful_controller", "nmpc_controller",
-                  "tdmpc_controller"};
+                  "tdmpc_controller", "mppi_controller"};
   default_types_ = {"graceful_controller", "graceful_controller",
-                    "nmpc_controller", "tdmpc_controller"};
+                    "nmpc_controller", "tdmpc_controller", "mppi_controller"};
 
   controller_frequency_ = options_.controller_frequency() > 0.0
                               ? options_.controller_frequency()
@@ -657,12 +657,12 @@ void ControllerServer::ComputeAndPublishVelocity() {
 }
 
 void ControllerServer::UpdateGlobalPath() {
-  if (!follow_path_active_ || current_path_.poses.empty()) {
-    return;
-  }
-  if (auto* ctrl = GetController(current_controller_)) {
-    ctrl->SetPlan(current_path_);
-  }
+  // Global path is installed once in BeginFollowPath / SetPlannerPath.
+  // Do not call ControllerInterface::SetPlan every control tick: that resets
+  // internal state (e.g. graceful_controller do_initial_rotation_ /
+  // goal_reached_) and prevents path tracking — only in-place rotation at
+  // v_angular_min_in_place.
+  (void)current_path_;
 }
 
 void ControllerServer::PublishVelocity(

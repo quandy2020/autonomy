@@ -28,6 +28,7 @@
 #include "autonomy/control/controller/graceful_controller/path_handler.hpp"
 #include "autonomy/control/controller/graceful_controller/smooth_control_law.hpp"
 #include "autonomy/control/controller/graceful_controller/utils.hpp"
+#include "autonomy/control/proto/graceful_controller.pb.h"
 #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
 
 namespace autonomy {
@@ -200,6 +201,7 @@ protected:
     // True from the time a new path arrives until we have completed an initial
     // rotation
     bool do_initial_rotation_;
+    proto::GracefulControllerOptions graceful_options_;
     std::unique_ptr<PathHandler> path_handler_;
     std::unique_ptr<SmoothControlLaw> control_law_;
 };

@@ -83,17 +83,30 @@ std::vector<cv::Point> convertPathToImageCoords(
     unsigned int width) {
     std::vector<cv::Point> coords;
     coords.reserve(path.poses.size());
+    const double ox = costmap.getOriginX();
+    const double oy = costmap.getOriginY();
+    const double max_x = ox + costmap.getSizeInMetersX();
+    const double max_y = oy + costmap.getSizeInMetersY();
     for (const auto& pose : path.poses) {
+        double wx = pose.pose.position.x;
+        double wy = pose.pose.position.y;
+        wx = std::clamp(wx, ox, max_x);
+        wy = std::clamp(wy, oy, max_y);
         unsigned int mx = 0;
         unsigned int my = 0;
-        if (costmap.worldToMap(pose.pose.position.x, pose.pose.position.y, mx,
-                               my)) {
+        if (costmap.worldToMap(wx, wy, mx, my)) {
             coords.emplace_back(
                 static_cast<int>(std::min(mx, width - 1)),
                 static_cast<int>(std::min(height - 1 - my, height - 1)));
         }
     }
     return coords;
+}
+
+cv::Scalar pathLineColor(
+    const autonomy::map::utils::PgmConverter::RenderParameters& params) {
+    return cv::Scalar(params.path_color_b, params.path_color_g,
+                      params.path_color_r);
 }
 
 void drawPath(cv::Mat& image, const std::vector<cv::Point>& coords,
@@ -103,7 +116,7 @@ void drawPath(cv::Mat& image, const std::vector<cv::Point>& coords,
         return;
     }
 
-    const cv::Scalar path_color(0, 0, 255);
+    const cv::Scalar path_color = pathLineColor(params);
     for (size_t i = 0; i + 1 < coords.size(); ++i) {
         cv::line(image, coords[i], coords[i + 1], path_color,
                  static_cast<int>(params.path_line_width), cv::LINE_AA);
@@ -202,16 +215,9 @@ map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromYaml(
     }
 }
 
-bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                   const commsgs::planning_msgs::Path& path,
-                                   const std::string& output_file_path) {
-    return savePathToImage(costmap, path, output_file_path, RenderParameters());
-}
-
-bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
-                                   const commsgs::planning_msgs::Path& path,
-                                   const std::string& output_file_path,
-                                   const RenderParameters& params) {
+cv::Mat PgmConverter::renderPathToImage(
+    const map::costmap_2d::Costmap2D& costmap,
+    const commsgs::planning_msgs::Path& path, const RenderParameters& params) {
     try {
         cv::Mat image = createImageFromCostmap(costmap);
         const unsigned int width = costmap.getSizeInCellsX();
@@ -224,6 +230,28 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
                 drawPath(image, coords, params);
             }
         }
+        return image;
+    } catch (const std::exception& e) {
+        AERROR << "Failed to render map with path: " << e.what();
+        return {};
+    }
+}
+
+bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
+                                   const commsgs::planning_msgs::Path& path,
+                                   const std::string& output_file_path) {
+    return savePathToImage(costmap, path, output_file_path, RenderParameters());
+}
+
+bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
+                                   const commsgs::planning_msgs::Path& path,
+                                   const std::string& output_file_path,
+                                   const RenderParameters& params) {
+    try {
+        const cv::Mat image = renderPathToImage(costmap, path, params);
+        if (image.empty()) {
+            return false;
+        }
 
         const std::string format = normalizeFormat(params.output_format);
         const std::string final_path =
@@ -233,12 +261,98 @@ bool PgmConverter::savePathToImage(const map::costmap_2d::Costmap2D& costmap,
                                    final_path);
         }
 
-        AINFO << "Saved map with path to: " << final_path
-              << " (format: " << format << ", points: " << path.poses.size()
-              << ")";
+        if (params.log_on_save) {
+            AINFO << "Saved map with path to: " << final_path
+                  << " (format: " << format << ", points: "
+                  << path.poses.size() << ")";
+        }
         return true;
     } catch (const std::exception& e) {
         AERROR << "Failed to save map with path: " << e.what();
+        return false;
+    }
+}
+
+void drawPathOnCostmapImage(
+    cv::Mat& image, const map::costmap_2d::Costmap2D& costmap,
+    const commsgs::planning_msgs::Path& path,
+    const PgmConverter::RenderParameters& params) {
+    if (path.poses.empty()) {
+        return;
+    }
+    const unsigned int width = costmap.getSizeInCellsX();
+    const unsigned int height = costmap.getSizeInCellsY();
+    const std::vector<cv::Point> coords =
+        convertPathToImageCoords(costmap, path, height, width);
+    if (coords.size() >= 2) {
+        drawPath(image, coords, params);
+    }
+}
+
+cv::Mat PgmConverter::renderDualPathsToImage(
+    const map::costmap_2d::Costmap2D& costmap,
+    const commsgs::planning_msgs::Path& global_plan_path,
+    const commsgs::planning_msgs::Path& executed_path) {
+    try {
+        cv::Mat image = createImageFromCostmap(costmap);
+
+        RenderParameters reference_params;
+        reference_params.path_color_b = 255;
+        reference_params.path_color_g = 200;
+        reference_params.path_color_r = 0;
+        reference_params.path_line_width = 2.0;
+        reference_params.draw_start_marker = true;
+        reference_params.draw_goal_marker = true;
+        drawPathOnCostmapImage(image, costmap, global_plan_path, reference_params);
+
+        RenderParameters executed_params;
+        executed_params.path_color_b = 0;
+        executed_params.path_color_g = 0;
+        executed_params.path_color_r = 255;
+        executed_params.path_line_width = 3.0;
+        executed_params.draw_start_marker = false;
+        executed_params.draw_goal_marker = false;
+        drawPathOnCostmapImage(image, costmap, executed_path, executed_params);
+
+        if (!executed_path.poses.empty()) {
+            const unsigned int width = costmap.getSizeInCellsX();
+            const unsigned int height = costmap.getSizeInCellsY();
+            const std::vector<cv::Point> coords = convertPathToImageCoords(
+                costmap, executed_path, height, width);
+            if (!coords.empty()) {
+                cv::circle(image, coords.back(), 6, cv::Scalar(0, 255, 255), -1,
+                           cv::LINE_AA);
+            }
+        }
+        return image;
+    } catch (const std::exception& e) {
+        AERROR << "Failed to render dual paths: " << e.what();
+        return {};
+    }
+}
+
+bool PgmConverter::saveDualPathsToImage(
+    const map::costmap_2d::Costmap2D& costmap,
+    const commsgs::planning_msgs::Path& global_plan_path,
+    const commsgs::planning_msgs::Path& executed_path,
+    const std::string& output_file_path) {
+    try {
+        const cv::Mat image =
+            renderDualPathsToImage(costmap, global_plan_path, executed_path);
+        if (image.empty()) {
+            return false;
+        }
+        const std::string final_path = ensureExtension(output_file_path, "png");
+        if (!cv::imwrite(final_path, image)) {
+            throw std::runtime_error("OpenCV failed to write image: " +
+                                   final_path);
+        }
+        AINFO << "Saved map with global plan + executed paths to: " << final_path
+              << " (global plan poses: " << global_plan_path.poses.size()
+              << ", executed poses: " << executed_path.poses.size() << ")";
+        return true;
+    } catch (const std::exception& e) {
+        AERROR << "Failed to save dual paths image: " << e.what();
         return false;
     }
 }
