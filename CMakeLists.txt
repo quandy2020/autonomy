@@ -71,7 +71,12 @@ if (${BUILD_DOCS})
 endif()
 
 
-# autolink
+# autolink (embedded build: skip autolink tests/examples to speed up colcon)
+set(AUTOLINK_BUILD_TEST OFF CACHE BOOL "" FORCE)
+set(AUTOLINK_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(AUTOLINK_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(AUTOLINK_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+set(AUTOLINK_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 add_subdirectory(autolink)
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
@@ -112,7 +117,7 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 list(REMOVE_ITEM ALL_TESTS "autonomy/planning/tools/planning_test.cpp")
 list(REMOVE_ITEM ALL_TESTS "autonomy/control/tools/controller_server_test.cpp")
 
-# BT plugins are built as separate .so files (see cmake/modules/behavior_tree_plugins.cmake).
+# BT plugins are built as separate .so files (see cmake/plugin/behavior_tree_plugins.cmake).
 file(GLOB_RECURSE BEHAVIOR_TREE_PLUGIN_SRCS
   "autonomy/tasks/behavior_tree/plugins/*.cpp")
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${BEHAVIOR_TREE_PLUGIN_SRCS})
@@ -326,7 +331,7 @@ if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   target_link_libraries(${PROJECT_NAME} PUBLIC ${OnnxRuntime_LIBRARIES})
 endif()
 
-include("${PROJECT_SOURCE_DIR}/cmake/modules/behavior_tree_plugins.cmake")
+include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
 autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
 add_subdirectory(autonomy/planning/tools)
@@ -366,14 +371,15 @@ endif()
 
 # Add the binary directory first, so that port.h is included after it has
 # been generated.
-target_include_directories(${PROJECT_NAME} PUBLIC
+target_include_directories(${PROJECT_NAME} BEFORE PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/autolink>
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
 install(
-  TARGETS ${PROJECT_NAME}
+  TARGETS ${PROJECT_NAME} autolink
   EXPORT AutonomyExport
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
