@@ -18,6 +18,8 @@
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
+#include "autonomy/control/controller/nmpc_controller/parameter_options.hpp"
+#include "autonomy/control/controller/tdmpc_controller/parameter_options.hpp"
 #include "autonomy/map/map_options.hpp"
 
 namespace autonomy {
@@ -126,6 +128,24 @@ proto::ControllerOptions LoadOptions(
             *options.mutable_graceful_controller_options() =
                 controller::graceful_controller::LoadOptions(
                     graceful_dict.get());
+        }
+    }
+
+    if (parameter_dictionary->HasKey("nmpc_controller")) {
+        auto nmpc_dict =
+            parameter_dictionary->GetDictionary("nmpc_controller");
+        if (nmpc_dict) {
+            *options.mutable_nmpc_controller_options() =
+                controller::nmpc::LoadOptions(nmpc_dict.get());
+        }
+    }
+
+    if (parameter_dictionary->HasKey("tdmpc_controller")) {
+        auto tdmpc_dict =
+            parameter_dictionary->GetDictionary("tdmpc_controller");
+        if (tdmpc_dict) {
+            *options.mutable_tdmpc_controller_options() =
+                controller::tdmpc::LoadOptions(tdmpc_dict.get());
         }
     }
     return options;

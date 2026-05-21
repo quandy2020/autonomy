@@ -28,7 +28,7 @@
 #include "autonomy/control/checker/simple_progress_checker.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/common/math/math.hpp"
-#include "autonomy/control/controller/graceful_controller/graceful_controller.hpp"
+#include "autonomy/control/controller_factory.hpp"
 #include "autonomy/transform/tf2/utils.h"
 #include "autonomy/control/utils/conversions.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
@@ -170,9 +170,10 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
       "nav2_controller::SimpleProgressChecker"};
   default_goal_checker_ids_ = {"goal_checker"};
   default_goal_checker_types_ = {"nav2_controller::SimpleGoalChecker"};
-  default_ids_ = {"FollowPath", "graceful_controller"};
-  default_types_ = {"autonomy::control::controller::GracefulController",
-                    "autonomy::control::controller::GracefulController"};
+  default_ids_ = {"FollowPath", "graceful_controller", "nmpc_controller",
+                  "tdmpc_controller"};
+  default_types_ = {"graceful_controller", "graceful_controller",
+                    "nmpc_controller", "tdmpc_controller"};
 
   controller_frequency_ = options_.controller_frequency() > 0.0
                               ? options_.controller_frequency()
@@ -269,13 +270,20 @@ void ControllerServer::LoadPlugins() {
   controller_ids_ = default_ids_;
   controller_types_ = default_types_;
   for (size_t i = 0; i < controller_ids_.size(); ++i) {
-    auto controller =
-        std::make_shared<controller::GracefulController>();
-    controller->Configure(options_, controller_ids_[i], tf_buffer_,
-                          costmap_wrapper_);
+    const std::string type =
+        i < controller_types_.size() ? controller_types_[i]
+                                     : "graceful_controller";
+    const std::string resolved = ControllerFactory::ResolveControllerTypeId(type);
+    ControllerCreateContext ctx{options_, controller_ids_[i], tf_buffer_,
+                                costmap_wrapper_};
+    auto controller = ControllerFactory::Create(type, ctx);
+    if (!controller) {
+      AWARN << "Failed to create controller plugin: " << controller_ids_[i];
+      continue;
+    }
     controllers_.insert({controller_ids_[i], controller});
     AINFO << "Created controller plugin: " << controller_ids_[i]
-          << " of type: " << controller_types_[i];
+          << " (type=" << type << ", factory_id=" << resolved << ")";
   }
 
   progress_checker_ids_concat_.clear();
