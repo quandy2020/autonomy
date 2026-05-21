@@ -108,8 +108,9 @@ endif()
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 
-# Offline planner visualization binary (main in planning_test.cpp, not gtest).
+# Offline planner/controller visualization binaries (not gtest).
 list(REMOVE_ITEM ALL_TESTS "autonomy/planning/tools/planning_test.cpp")
+list(REMOVE_ITEM ALL_TESTS "autonomy/control/tools/controller_server_test.cpp")
 
 # BT plugins are built as separate .so files (see cmake/modules/behavior_tree_plugins.cmake).
 file(GLOB_RECURSE BEHAVIOR_TREE_PLUGIN_SRCS
@@ -329,6 +330,7 @@ include("${PROJECT_SOURCE_DIR}/cmake/modules/behavior_tree_plugins.cmake")
 autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
 add_subdirectory(autonomy/planning/tools)
+add_subdirectory(autonomy/control/tools)
 
 # Single-process tasks entry (autonomy/tasks/main.cpp is excluded from libautonomy).
 google_binary(autonomy_tasks_main

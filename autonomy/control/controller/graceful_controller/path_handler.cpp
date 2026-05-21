@@ -98,6 +98,13 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
                        global_plan_pose, robot_pose) > dist_threshold;
         });
 
+    // Ensure at least one plan pose is transformed (robot can be beyond the
+    // costmap radius of the closest point while still tracking the path).
+    if (transformation_end == transformation_begin &&
+        transformation_begin != global_plan_.poses.end()) {
+        transformation_end = std::next(transformation_begin);
+    }
+
     // Lambda to transform a PoseStamped from global frame to local
     auto TransformGlobalPoseToLocal = [&](const auto& global_plan_pose) {
         commsgs::geometry_msgs::PoseStamped stamped_pose, transformed_pose;
@@ -133,13 +140,33 @@ commsgs::planning_msgs::Path PathHandler::TransformGlobalPlan(
         // Skip poses that couldn't be transformed (empty frame_id)
     }
 
-    // Remove the portion of the global plan that we've already passed so we
-    // don't process it on the next iteration (this is called path pruning)
-    global_plan_.poses.erase(begin(global_plan_.poses), transformation_begin);
+    if (transformed_plan.poses.empty()) {
+        const auto try_add = [&](const auto it) {
+            if (it == global_plan_.poses.end()) {
+                return;
+            }
+            auto transformed = TransformGlobalPoseToLocal(*it);
+            if (!transformed.header.frame_id.empty()) {
+                transformed_plan.poses.push_back(transformed);
+            }
+        };
+        try_add(transformation_begin);
+        if (transformed_plan.poses.empty() && !global_plan_.poses.empty()) {
+            try_add(std::prev(global_plan_.poses.end()));
+        }
+    }
 
     if (transformed_plan.poses.empty()) {
         throw autonomy::control::common::InvalidPath(
             "Resulting plan has 0 poses in it.");
+    }
+
+    // Remove the portion of the global plan that we've already passed so we
+    // don't process it on the next iteration (this is called path pruning).
+    // Always keep at least the final goal pose until the controller finishes.
+    if (transformation_begin != global_plan_.poses.end() &&
+        transformation_begin != std::prev(global_plan_.poses.end())) {
+        global_plan_.poses.erase(global_plan_.poses.begin(), transformation_begin);
     }
 
     return transformed_plan;

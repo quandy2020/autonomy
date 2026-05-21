@@ -93,12 +93,12 @@ const std::string PROJECT_VERSION = "";
 // Git提交信息
 const std::string GIT_COMMIT_AUTHOR = "duyongquan";
 const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
-const std::string GIT_COMMIT_DATE = """2026-05-21 15:55:33""";
-const std::string GIT_VERSION = "4f5428a8-dirty";
+const std::string GIT_COMMIT_DATE = """2026-05-21 16:16:06""";
+const std::string GIT_VERSION = "ec6e5723-dirty";
 const std::string GIT_BRANCH = "feature/library";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-05-21 08:14:58";
+const std::string BUILD_TIMESTAMP = "2026-05-21 08:51:25";
 const std::string BUILD_HOST = "9b2023bccf6b";
 const std::string BUILD_USER = "root";
 

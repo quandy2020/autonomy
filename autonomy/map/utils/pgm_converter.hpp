@@ -19,6 +19,8 @@
 #include <memory>
 #include <string>
 
+#include <opencv2/core.hpp>
+
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
@@ -60,7 +62,30 @@ public:
         bool draw_start_marker{true};
         bool draw_goal_marker{true};
         bool draw_path_points{false};
+        bool log_on_save{true};
+        // BGR path line color (OpenCV convention).
+        uint8_t path_color_b{0};
+        uint8_t path_color_g{0};
+        uint8_t path_color_r{255};
     };
+
+    // Renders costmap with path overlay in memory. Empty Mat on failure.
+    static cv::Mat renderPathToImage(
+        const map::costmap_2d::Costmap2D& costmap,
+        const commsgs::planning_msgs::Path& path,
+        const RenderParameters& params);
+
+    // Planner global path (cyan) + executed trajectory (red) on one image.
+    static cv::Mat renderDualPathsToImage(
+        const map::costmap_2d::Costmap2D& costmap,
+        const commsgs::planning_msgs::Path& global_plan_path,
+        const commsgs::planning_msgs::Path& executed_path);
+
+    static bool saveDualPathsToImage(
+        const map::costmap_2d::Costmap2D& costmap,
+        const commsgs::planning_msgs::Path& global_plan_path,
+        const commsgs::planning_msgs::Path& executed_path,
+        const std::string& output_file_path);
 
     // Renders costmap with path overlay and saves as image. Returns false on
     // failure.
