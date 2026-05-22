@@ -38,9 +38,8 @@ Costmap2D::Costmap2D(const commsgs::map_msgs::OccupancyGrid& map)
     costmap_ = new unsigned char[size_x_ * size_y_];
 
     // fill the costmap with a data
-    int8_t data;
     for (unsigned int it = 0; it < size_x_ * size_y_; it++) {
-        data = map.data[it];
+        const int16_t data = map.data[it];
         if (data == utils::OCC_GRID_UNKNOWN) {
             costmap_[it] = NO_INFORMATION;
         } else {

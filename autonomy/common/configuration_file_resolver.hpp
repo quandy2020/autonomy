@@ -54,6 +54,14 @@ std::string ResolveConfigurationRootDirectory(
     const std::string& user_configuration_directory,
     const std::string& probe_relative_path);
 
+// Loads basename after common.lua in one Lua session (planner/controller when
+// not loaded via autonomy.lua, which already includes common.lua).
+std::string GetLuaScriptWithCommonOrDie(FileResolver& file_resolver,
+                                        const std::string& basename);
+
+// Read an already-resolved absolute path (no second directory search / log).
+std::string ReadFileAtPathOrDie(const std::string& full_path);
+
 }  // namespace common
 }  // namespace autonomy
 

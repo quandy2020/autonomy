@@ -91,14 +91,14 @@ const std::string PROJECT_NAME = "autonomy";
 const std::string PROJECT_VERSION = "";
 
 // Git提交信息
-const std::string GIT_COMMIT_AUTHOR = "duyongquan3";
-const std::string GIT_COMMIT_EMAIL = "duyongquan3@jd.com";
-const std::string GIT_COMMIT_DATE = """2026-05-21 22:30:04""";
-const std::string GIT_VERSION = "4b511fd8-dirty";
+const std::string GIT_COMMIT_AUTHOR = "duyongquan";
+const std::string GIT_COMMIT_EMAIL = "quandy2020@126.com";
+const std::string GIT_COMMIT_DATE = """2026-05-22 11:43:57""";
+const std::string GIT_VERSION = "3311094d-dirty";
 const std::string GIT_BRANCH = "feature/library";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-05-22 03:37:09";
+const std::string BUILD_TIMESTAMP = "2026-05-22 09:13:42";
 const std::string BUILD_HOST = "9b2023bccf6b";
 const std::string BUILD_USER = "root";
 

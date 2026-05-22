@@ -19,7 +19,9 @@
 #include <libgen.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -27,6 +29,7 @@
 #include <vector>
 
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/time.hpp"
@@ -39,6 +42,88 @@
 #include "yaml-cpp/yaml.h"
 namespace {
 constexpr double kPixelMax = 255.0;
+
+bool endsWithIgnoreCase(const std::string& path, const std::string& suffix) {
+    if (path.size() < suffix.size()) {
+        return false;
+    }
+    const size_t offset = path.size() - suffix.size();
+    for (size_t i = 0; i < suffix.size(); ++i) {
+        if (std::tolower(static_cast<unsigned char>(path[offset + i])) !=
+            std::tolower(static_cast<unsigned char>(suffix[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// OpenCV imread can mis-read some P5 PGM maps (uniform gray). Parse P5 directly.
+// Avoid cv::Mat here: mixed OpenCV 4.x/5.x ABIs in some deployments crash on Mat::create.
+bool loadPgmP5Raster(const std::string& path, int& width, int& height,
+                     std::vector<uint8_t>& raster) {
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs.good()) {
+        return false;
+    }
+
+    auto readToken = [&ifs](std::string& token) -> bool {
+        token.clear();
+        while (ifs.good()) {
+            const int ch = ifs.peek();
+            if (ch == EOF) {
+                return false;
+            }
+            if (ch == '#') {
+                std::string line;
+                std::getline(ifs, line);
+                continue;
+            }
+            if (std::isspace(static_cast<unsigned char>(ch)) != 0) {
+                ifs.get();
+                if (!token.empty()) {
+                    return true;
+                }
+                continue;
+            }
+            token.push_back(static_cast<char>(ifs.get()));
+        }
+        return !token.empty();
+    };
+
+    std::string magic;
+    if (!readToken(magic) || magic != "P5") {
+        return false;
+    }
+
+    int maxval = 0;
+    width = 0;
+    height = 0;
+    for (int* field : {&width, &height, &maxval}) {
+        std::string tok;
+        if (!readToken(tok)) {
+            return false;
+        }
+        *field = std::stoi(tok);
+    }
+    if (width <= 0 || height <= 0 || maxval <= 0 || maxval >= 256) {
+        return false;
+    }
+
+    // readToken() usually consumed whitespace after maxval; skip any remainder.
+    while (ifs.good() &&
+           std::isspace(static_cast<unsigned char>(ifs.peek())) != 0) {
+        ifs.get();
+    }
+
+    const size_t npixels =
+        static_cast<size_t>(width) * static_cast<size_t>(height);
+    raster.resize(npixels);
+    ifs.read(reinterpret_cast<char*>(raster.data()),
+            static_cast<std::streamsize>(npixels));
+    return static_cast<size_t>(ifs.gcount()) == npixels;
+}
+
+double ShadeFromGray(uint8_t gray) { return gray / kPixelMax; }
 
 double ComputeShade(const cv::Mat& img, int x, int y,
                     autonomy::map::costmap_2d::MapMode mode,
@@ -190,15 +275,75 @@ void loadMapFromFile(const LoadParameters& load_parameters,
     commsgs::map_msgs::OccupancyGrid msg;
 
     AINFO << "[map_io] Loading image_file: " << load_parameters.image_file_name;
-    cv::Mat img =
-        cv::imread(load_parameters.image_file_name, cv::IMREAD_UNCHANGED);
-    if (img.empty()) {
-        throw std::runtime_error("Failed to load image: " +
-                               load_parameters.image_file_name);
-    }
 
-    msg.info.width = static_cast<uint32_t>(img.cols);
-    msg.info.height = static_cast<uint32_t>(img.rows);
+    auto assignMapCell = [&](double shade, bool has_transparency) -> int8_t {
+        const double occ =
+            (load_parameters.negate ? shade : 1.0 - shade);
+        switch (load_parameters.mode) {
+            case MapMode::Trinary:
+                if (load_parameters.occupied_thresh < occ) {
+                    return utils::OCC_GRID_OCCUPIED;
+                }
+                if (occ < load_parameters.free_thresh) {
+                    return utils::OCC_GRID_FREE;
+                }
+                return utils::OCC_GRID_UNKNOWN;
+            case MapMode::Scale:
+                if (has_transparency) {
+                    return utils::OCC_GRID_UNKNOWN;
+                }
+                if (load_parameters.occupied_thresh < occ) {
+                    return utils::OCC_GRID_OCCUPIED;
+                }
+                if (occ < load_parameters.free_thresh) {
+                    return utils::OCC_GRID_FREE;
+                }
+                return static_cast<int8_t>(std::rint(
+                    (occ - load_parameters.free_thresh) /
+                    (load_parameters.occupied_thresh -
+                     load_parameters.free_thresh) *
+                    100.0));
+            case MapMode::Raw: {
+                const double occ_percent = std::round(shade * 255);
+                if (utils::OCC_GRID_FREE <= occ_percent &&
+                    occ_percent <= utils::OCC_GRID_OCCUPIED) {
+                    return static_cast<int8_t>(occ_percent);
+                }
+                return utils::OCC_GRID_UNKNOWN;
+            }
+            default:
+                throw std::runtime_error("Invalid map mode");
+        }
+    };
+
+    const bool is_pgm =
+        endsWithIgnoreCase(load_parameters.image_file_name, ".pgm");
+    int pgm_width = 0;
+    int pgm_height = 0;
+    std::vector<uint8_t> pgm_raster;
+    const bool used_pgm_parser =
+        is_pgm && loadPgmP5Raster(load_parameters.image_file_name, pgm_width,
+                                  pgm_height, pgm_raster);
+
+    cv::Mat img;
+    if (used_pgm_parser) {
+        AINFO << "[map_io] Loaded PGM using P5 parser (cv::imread skipped)";
+        msg.info.width = static_cast<uint32_t>(pgm_width);
+        msg.info.height = static_cast<uint32_t>(pgm_height);
+    } else {
+        img = cv::imread(load_parameters.image_file_name, cv::IMREAD_UNCHANGED);
+        if (img.empty()) {
+            throw std::runtime_error("Failed to load image: " +
+                                   load_parameters.image_file_name);
+        }
+        if (img.channels() > 1) {
+            cv::Mat gray;
+            cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+            img = gray;
+        }
+        msg.info.width = static_cast<uint32_t>(img.cols);
+        msg.info.height = static_cast<uint32_t>(img.rows);
+    }
 
     msg.info.resolution = load_parameters.resolution;
     msg.info.origin.position.x = load_parameters.origin[0];
@@ -209,58 +354,30 @@ void loadMapFromFile(const LoadParameters& load_parameters,
 
     msg.data.resize(msg.info.width * msg.info.height);
 
+    double shade_min = 1.0;
+    double shade_max = 0.0;
     for (size_t y = 0; y < msg.info.height; y++) {
         const int src_y = static_cast<int>(y);
         for (size_t x = 0; x < msg.info.width; x++) {
             const int src_x = static_cast<int>(x);
             bool has_transparency = false;
-            const double shade =
-                ComputeShade(img, src_x, src_y, load_parameters.mode,
-                             &has_transparency);
-
-            const double occ =
-                (load_parameters.negate ? shade : 1.0 - shade);
-
-            int8_t map_cell;
-            switch (load_parameters.mode) {
-                case MapMode::Trinary:
-                    if (load_parameters.occupied_thresh < occ) {
-                        map_cell = utils::OCC_GRID_OCCUPIED;
-                    } else if (occ < load_parameters.free_thresh) {
-                        map_cell = utils::OCC_GRID_FREE;
-                    } else {
-                        map_cell = utils::OCC_GRID_UNKNOWN;
-                    }
-                    break;
-                case MapMode::Scale:
-                    if (has_transparency) {
-                        map_cell = utils::OCC_GRID_UNKNOWN;
-                    } else if (load_parameters.occupied_thresh < occ) {
-                        map_cell = utils::OCC_GRID_OCCUPIED;
-                    } else if (occ < load_parameters.free_thresh) {
-                        map_cell = utils::OCC_GRID_FREE;
-                    } else {
-                        map_cell =
-                            std::rint((occ - load_parameters.free_thresh) /
-                                      (load_parameters.occupied_thresh -
-                                       load_parameters.free_thresh) *
-                                      100.0);
-                    }
-                    break;
-                case MapMode::Raw: {
-                    double occ_percent = std::round(shade * 255);
-                    if (utils::OCC_GRID_FREE <= occ_percent &&
-                        occ_percent <= utils::OCC_GRID_OCCUPIED) {
-                        map_cell = static_cast<int8_t>(occ_percent);
-                    } else {
-                        map_cell = utils::OCC_GRID_UNKNOWN;
-                    }
-                    break;
-                }
-                default:
-                    throw std::runtime_error("Invalid map mode");
+            double shade = 0.0;
+            if (used_pgm_parser) {
+                const size_t idx =
+                    static_cast<size_t>(src_y) *
+                        static_cast<size_t>(pgm_width) +
+                    static_cast<size_t>(src_x);
+                shade = ShadeFromGray(pgm_raster[idx]);
+            } else {
+                shade = ComputeShade(img, src_x, src_y, load_parameters.mode,
+                                     &has_transparency);
             }
-            msg.data[msg.info.width * (msg.info.height - y - 1) + x] = map_cell;
+            shade_min = std::min(shade_min, shade);
+            shade_max = std::max(shade_max, shade);
+
+            msg.data[msg.info.width * (msg.info.height - y - 1) + x] =
+                static_cast<int16_t>(
+                    assignMapCell(shade, has_transparency));
         }
     }
 
@@ -268,9 +385,20 @@ void loadMapFromFile(const LoadParameters& load_parameters,
     msg.header.frame_id = "map";
     msg.header.stamp = Time::Now();
 
-    AERROR << "[map_io] Read map " << load_parameters.image_file_name << ": "
-           << msg.info.width << " X " << msg.info.height << " map @ "
-           << msg.info.resolution << " m/cell";
+    size_t occupied = 0;
+    size_t unknown = 0;
+    for (int16_t cell : msg.data) {
+        if (cell == utils::OCC_GRID_OCCUPIED) {
+            ++occupied;
+        } else if (cell < 0) {
+            ++unknown;
+        }
+    }
+
+    AINFO << "[map_io] Read map " << load_parameters.image_file_name << ": "
+          << msg.info.width << " X " << msg.info.height << " map @ "
+          << msg.info.resolution << " m/cell, shade=[" << shade_min << ","
+          << shade_max << "] occ=" << occupied << " unknown=" << unknown;
 
     map = msg;
 }

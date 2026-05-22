@@ -23,6 +23,7 @@
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/map/constants.hpp"
 #include "autonomy/map/costmap_2d/map_io.hpp"
+#include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 #include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/utils/data_loader_utils.hpp"
 
@@ -125,11 +126,21 @@ bool MapServer::loadMapFromFile(const std::string& map_file_path) {
     std::lock_guard<std::mutex> lock(map_mutex_);
     static_map_msg_ = std::move(map_msg);
 
+    size_t occupied = 0;
+    size_t unknown = 0;
+    for (int16_t cell : static_map_msg_->data) {
+        if (cell == costmap_2d::utils::OCC_GRID_OCCUPIED) {
+            ++occupied;
+        } else if (cell < 0) {
+            ++unknown;
+        }
+    }
     AINFO << "MapServer[" << node_name_ << "]: loaded map "
           << static_map_msg_->info.width << "x"
           << static_map_msg_->info.height << " @ "
           << static_map_msg_->info.resolution << " m/cell, frame="
-          << static_map_msg_->header.frame_id;
+          << static_map_msg_->header.frame_id << " occ=" << occupied
+          << " unknown=" << unknown;
     return true;
 }
 

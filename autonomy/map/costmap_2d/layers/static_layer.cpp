@@ -109,7 +109,7 @@ void StaticLayer::getParameters() {
 }
 
 void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
-    AINFO << "StaticLayer: Process map";
+    ADEBUG << "StaticLayer: Process map";
 
     unsigned int size_x = new_map.info.width;
     unsigned int size_y = new_map.info.height;
@@ -128,8 +128,8 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
          !layered_costmap_->isSizeLocked())) {
         // Update the size of the layered costmap (and all layers, including
         // this one)
-        AINFO << "StaticLayer: Resizing costmap to " << size_x << " X "
-              << size_y << " at " << new_map.info.resolution << " m/pix";
+        ADEBUG << "StaticLayer: Resizing costmap to " << size_x << " X "
+               << size_y << " at " << new_map.info.resolution << " m/pix";
         layered_costmap_->resizeMap(size_x, size_y, new_map.info.resolution,
                                     new_map.info.origin.position.x,
                                     new_map.info.origin.position.y, true);
@@ -138,8 +138,8 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
                origin_x_ != new_map.info.origin.position.x ||
                origin_y_ != new_map.info.origin.position.y) {
         // only update the size of the costmap stored locally in this layer
-        AINFO << "StaticLayer: Resizing static layer to " << size_x << " X "
-              << size_y << " at " << new_map.info.resolution << " m/pix";
+        ADEBUG << "StaticLayer: Resizing static layer to " << size_x << " X "
+               << size_y << " at " << new_map.info.resolution << " m/pix";
         resizeMap(size_x, size_y, new_map.info.resolution,
                   new_map.info.origin.position.x,
                   new_map.info.origin.position.y);
@@ -155,18 +155,20 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
     int count_free = 0, count_occupied = 0, count_unknown = 0, count_other = 0;
     for (unsigned int i = 0; i < size_y; ++i) {
         for (unsigned int j = 0; j < size_x; ++j) {
-            // new_map.data 是 int16_t，需要正确转换
-            int16_t raw_value = new_map.data[index];
-            unsigned char value;
+            const int16_t raw_value = new_map.data[index];
+            unsigned char cost;
             if (raw_value < 0) {
-                value = 255;  // unknown -> 0xff
-            } else if (raw_value > 255) {
-                value = 255;
+                cost = track_unknown_space_ ? NO_INFORMATION : FREE_SPACE;
+            } else if (raw_value >= lethal_threshold_) {
+                cost = LETHAL_OBSTACLE;
+            } else if (trinary_costmap_) {
+                cost = FREE_SPACE;
             } else {
-                value = static_cast<unsigned char>(raw_value);
+                const double scale =
+                    static_cast<double>(raw_value) /
+                    static_cast<double>(lethal_threshold_);
+                cost = static_cast<unsigned char>(scale * LETHAL_OBSTACLE);
             }
-
-            unsigned char cost = interpretValue(value);
             costmap_[index] = cost;
 
             // 统计
@@ -234,9 +236,9 @@ unsigned char StaticLayer::interpretValue(unsigned char value) {
 
 void StaticLayer::incomingMap(
     const commsgs::map_msgs::OccupancyGrid::SharedPtr new_map) {
-    AINFO << "StaticLayer: Received map (" << new_map->info.width << "x"
-          << new_map->info.height << " @ " << new_map->info.resolution
-          << " m/cell, data size: " << new_map->data.size() << ")";
+    ADEBUG << "StaticLayer: Received map (" << new_map->info.width << "x"
+           << new_map->info.height << " @ " << new_map->info.resolution
+           << " m/cell, data size: " << new_map->data.size() << ")";
 
     if (!utils::validateMsg(*new_map)) {
         AWARN << "Received map message is malformed. Rejecting. "

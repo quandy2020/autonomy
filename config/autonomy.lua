@@ -20,16 +20,15 @@ include "prediction/prediction.lua"
 include "perception/perception.lua"
 include "localization/localization.lua"
 include "planner/planner.lua"
-include "tasks/tasks.lua"
 include "transform/transform.lua"
+-- tasks/tasks.lua is loaded separately by TaskScheduler (includes common.lua itself).
 
 -- Autonomy all lua config
+-- Only export tables consumed by system/options.cpp (map, planning, controller).
 AUTONOMY = {
-  common = AUTONOMY_COMMON,
   map = AUTONOMY_MAP,
   planning = AUTONOMY_PLANNER,
-  control = AUTONOMY_CONTROLLER,
-  tasks = tasks,
+  controller = AUTONOMY_CONTROLLER,
 }
 
 return AUTONOMY

@@ -22,8 +22,9 @@ AUTONOMY_MAP = {
     -- Map publish topic (default: "map")
     map_topic = "map",
     
-    -- Map publish frequency (Hz, 0.0 means no automatic publishing, only publish on request)
-    publish_frequency = 1.0,
+    -- Map publish frequency (Hz). 0 = load once at startup (static YAML/PGM).
+    -- >0 republishes periodically (for SLAM); each tick re-applies StaticLayer unless deduped.
+    publish_frequency = 0.0,
     
     -- Frame ID (usually "map")
     frame_id = "odom",
