@@ -378,8 +378,10 @@ target_include_directories(${PROJECT_NAME} BEFORE PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+# autolink is installed with EXPORT AutonomyExport from autolink/CMakeLists.txt
+# when embedded in this project; do not list it here again.
 install(
-  TARGETS ${PROJECT_NAME} autolink
+  TARGETS ${PROJECT_NAME}
   EXPORT AutonomyExport
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib

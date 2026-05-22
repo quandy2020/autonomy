@@ -112,6 +112,12 @@ public:
     void resetBuffersLastUpdated();
 
     /**
+     * @brief Inject a laser scan from an external bridge (e.g. ROS /scan).
+     * @param scan Laser scan in commsgs form; forwarded to marking buffers.
+     */
+    void feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan);
+
+    /**
      * @brief  A callback to handle buffering LaserScan messages
      * @param message The message returned from a message notifier
      * @param buffer A pointer to the observation buffer to update

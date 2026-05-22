@@ -135,6 +135,12 @@ public:
     /** Last velocity command (in-process demo / mock integrator). */
     commsgs::geometry_msgs::TwistStamped GetLastCmdVel() const;
 
+    /**
+     * @brief Apply a dynamic speed limit to all loaded controller plugins.
+     * @param msg speed_limit in m/s or percent per msg->percentage.
+     */
+    void ApplySpeedLimit(const commsgs::planning_msgs::SpeedLimit& msg);
+
 protected:
     /**
      * @brief FollowPath action server callback. Handles action server updates

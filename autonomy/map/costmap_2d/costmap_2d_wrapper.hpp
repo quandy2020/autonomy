@@ -265,6 +265,17 @@ public:
     void publishMap();
 
     /**
+     * @brief Inject laser scan into ObstacleLayer plugins (ROS bridge entry).
+     */
+    void feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan);
+
+    /**
+     * @brief Fill @p grid with the latest costmap as an OccupancyGrid snapshot.
+     * @return false if the costmap is not initialized.
+     */
+    bool snapshotOccupancyGrid(commsgs::map_msgs::OccupancyGrid& grid);
+
+    /**
      * @brief  Get the costmap's use_radius_ parameter, corresponding to
      * whether the footprint for the robot is a circle with radius robot_radius_
      * or an arbitrarily defined footprint in footprint_.

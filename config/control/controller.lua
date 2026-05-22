@@ -30,7 +30,7 @@ AUTONOMY_CONTROLLER = {
         movement_time_allowance = 10.0,
     },
 
-    -- Single-process demo: local costmap disabled; controller reuses planner global costmap.
+    -- Local costmap disabled in attached mode; TaskScheduler shares planner global costmap.
     costmap = {
         enabled = false,
         name = "local_costmap",
@@ -50,7 +50,6 @@ AUTONOMY_CONTROLLER = {
             enabled = true,
             footprint_clearing_enabled = true,   -- 清除机器人足迹区域的障碍物
             sensor_sources = {
-                -- 点云传感器
                 pointcloud = {
                     topic = "/points2",
                     data_type = "PointCloud2",

@@ -22,6 +22,7 @@
 │  Application (main, 未来 TaskManager API)                │
 ├─────────────────────────────────────────────────────────┤
 │  TaskScheduler — 配置、生命周期、NavigateToPose API       │
+│    InitializeAttached: 复用 system::AutonomyNode server   │
 ├─────────────────────────────────────────────────────────┤
 │  NavigateToPoseNavigator — goal 变换、BT 加载、feedback   │
 ├─────────────────────────────────────────────────────────┤
