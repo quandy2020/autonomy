@@ -109,10 +109,24 @@ AUTONOMY_PLANNER = {
         update_frequency = 5.0,
         robot_radius = 0.22,
         always_send_full_costmap = true,
-        -- Global costmap: static map + inflation only (no rolling window).
-        -- Dynamic obstacles are handled by the local costmap on the controller.
-        -- To add live global obstacles, append "obstacle_layer" and configure it.
-        plugins = {"static_layer", "denoise_layer", "inflation_layer"},
+        -- Global costmap: static map + laser obstacles (via autonomy_ros /scan bridge).
+        plugins = {"static_layer", "obstacle_layer", "denoise_layer", "inflation_layer"},
+
+        obstacle_layer = {
+            plugin = "libautonomy_map_layers_obstacle_layer.so",
+            enabled = true,
+            footprint_clearing_enabled = true,
+            sensor_sources = {
+                scan = {
+                    topic = "scan",
+                    data_type = "LaserScan",
+                    marking = true,
+                    clearing = true,
+                    obstacle_max_range = 3.0,
+                    raytrace_max_range = 3.0,
+                },
+            },
+        },
 
         static_layer = {
             plugin = "libautonomy_map_layers_static_layer.so",

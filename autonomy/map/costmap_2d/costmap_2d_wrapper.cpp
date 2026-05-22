@@ -801,6 +801,73 @@ void Costmap2DWrapper::publishMap() {
     }
 }
 
+void Costmap2DWrapper::feedLaserScan(
+    const commsgs::sensor_msgs::LaserScan& scan) {
+    if (!layered_costmap_) {
+        return;
+    }
+    auto* plugins = layered_costmap_->getPlugins();
+    if (plugins == nullptr) {
+        return;
+    }
+    for (auto& plugin : *plugins) {
+        if (auto obstacle_layer =
+                std::dynamic_pointer_cast<ObstacleLayer>(plugin)) {
+            obstacle_layer->feedLaserScan(scan);
+        }
+    }
+}
+
+bool Costmap2DWrapper::snapshotOccupancyGrid(
+    commsgs::map_msgs::OccupancyGrid& grid) {
+    if (!layered_costmap_ || !layered_costmap_->getCostmap()) {
+        return false;
+    }
+
+    Costmap2D* costmap = layered_costmap_->getCostmap();
+    const unsigned int size_x = costmap->getSizeInCellsX();
+    const unsigned int size_y = costmap->getSizeInCellsY();
+    if (size_x == 0 || size_y == 0) {
+        return false;
+    }
+
+    const double resolution = costmap->getResolution();
+    grid.header.frame_id = global_frame_;
+    grid.header.stamp = commsgs::builtin_interfaces::Time::Now();
+    grid.info.width = size_x;
+    grid.info.height = size_y;
+    grid.info.resolution = resolution;
+    grid.info.origin.position.x = costmap->getOriginX();
+    grid.info.origin.position.y = costmap->getOriginY();
+    grid.info.origin.position.z = 0.0;
+    grid.info.origin.orientation.w = 1.0;
+
+    const unsigned char* costmap_data = costmap->getCharMap();
+    const unsigned int total_size = size_x * size_y;
+    grid.data.clear();
+    grid.data.reserve(total_size);
+
+    for (unsigned int i = 0; i < total_size; ++i) {
+        const unsigned char cost = costmap_data[i];
+        int8_t occ_value;
+        if (cost == NO_INFORMATION) {
+            occ_value = utils::OCC_GRID_UNKNOWN;
+        } else if (cost == FREE_SPACE) {
+            occ_value = utils::OCC_GRID_FREE;
+        } else if (cost >= LETHAL_OBSTACLE) {
+            occ_value = utils::OCC_GRID_OCCUPIED;
+        } else {
+            const double normalized =
+                static_cast<double>(cost - FREE_SPACE) /
+                static_cast<double>(LETHAL_OBSTACLE - FREE_SPACE);
+            occ_value = static_cast<int8_t>(
+                std::round(normalized * (utils::OCC_GRID_OCCUPIED - 1) + 1));
+        }
+        grid.data.push_back(occ_value);
+    }
+    return true;
+}
+
 }  // namespace costmap_2d
 }  // namespace map
 }  // namespace autonomy

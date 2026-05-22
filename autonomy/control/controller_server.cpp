@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
@@ -779,9 +780,18 @@ bool ControllerServer::GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose) {
 
 void ControllerServer::SpeedLimitCallback(
     const commsgs::planning_msgs::SpeedLimit::SharedPtr msg) {
+  if (!msg) {
+    return;
+  }
   for (auto& entry : controllers_) {
     entry.second->SetSpeedLimit(msg->speed_limit, msg->percentage);
   }
+}
+
+void ControllerServer::ApplySpeedLimit(
+    const commsgs::planning_msgs::SpeedLimit& msg) {
+  SpeedLimitCallback(
+    std::make_shared<commsgs::planning_msgs::SpeedLimit>(msg));
 }
 
 }  // namespace control

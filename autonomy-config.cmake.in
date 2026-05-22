@@ -40,8 +40,8 @@ find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
 # Find BehaviorTree.CPP dependency
 find_package(behaviortree_cpp ${QUIET_OR_REQUIRED_OPTION})
 
-# autolink is linked by libautonomy (planning plugin_manager)
-find_package(TinyXML2 QUIET)
+# autolink plugin_manager (INTERFACE dep of autonomy::autonomy)
+find_package(TinyXML2 REQUIRED)
 
 # Include the exported targets
 include("${AUTONOMY_CMAKE_DIR}/AutonomyTargets.cmake")

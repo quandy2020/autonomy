@@ -75,6 +75,45 @@ const proto::NavigatorConfig& NavigatorConfigFor(
 
 }  // namespace
 
+void TaskScheduler::ApplyTaskOptionsToContext() {
+    if (!task_context_) {
+        return;
+    }
+    task_context_->cancel_flag = &cancel_requested_;
+    if (!task_options_.global_frame().empty()) {
+        task_context_->global_frame = task_options_.global_frame();
+    } else if (task_context_->global_frame.empty()) {
+        task_context_->global_frame = "map";
+    }
+    if (!task_options_.robot_base_frame().empty()) {
+        task_context_->robot_base_frame = task_options_.robot_base_frame();
+    } else if (task_context_->robot_base_frame.empty()) {
+        task_context_->robot_base_frame = "base_link";
+    }
+    if (!task_options_.default_planner_id().empty()) {
+        task_context_->selected_planner_id = task_options_.default_planner_id();
+    } else if (planner_) {
+        task_context_->selected_planner_id = planner_->GetDefaultPlannerId();
+    }
+    if (planner_) {
+        const auto planner_options = LoadPlannerOptions(configuration_directory_);
+        if (!planner_options.default_smoother_id().empty()) {
+            task_context_->selected_smoother_id =
+                planner_options.default_smoother_id();
+        } else if (smoother_) {
+            task_context_->selected_smoother_id = smoother_->GetDefaultSmootherId();
+        }
+    }
+    if (!task_options_.default_controller_id().empty()) {
+        task_context_->selected_controller_id =
+            task_options_.default_controller_id();
+    }
+    if (!task_options_.default_goal_checker_id().empty()) {
+        task_context_->selected_goal_checker_id =
+            task_options_.default_goal_checker_id();
+    }
+}
+
 void TaskScheduler::Initialize(const std::string& configuration_directory) {
     if (initialized_) {
         return;
@@ -110,33 +149,9 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
     }
     task_context_->tf = std::shared_ptr<transform::Buffer>(
         transform::Buffer::Instance(), [](transform::Buffer*) {});
-    task_context_->cancel_flag = &cancel_requested_;
-    task_context_->global_frame = task_options_.global_frame().empty()
-                                      ? "map"
-                                      : task_options_.global_frame();
-    task_context_->robot_base_frame =
-        task_options_.robot_base_frame().empty()
-            ? "base_link"
-            : task_options_.robot_base_frame();
-    if (!task_options_.default_planner_id().empty()) {
-        task_context_->selected_planner_id = task_options_.default_planner_id();
-    } else if (planner_) {
-        task_context_->selected_planner_id = planner_->GetDefaultPlannerId();
-    }
-    if (!planner_options.default_smoother_id().empty()) {
-        task_context_->selected_smoother_id =
-            planner_options.default_smoother_id();
-    } else if (smoother_) {
-        task_context_->selected_smoother_id = smoother_->GetDefaultSmootherId();
-    }
-    if (!task_options_.default_controller_id().empty()) {
-        task_context_->selected_controller_id =
-            task_options_.default_controller_id();
-    }
-    if (!task_options_.default_goal_checker_id().empty()) {
-        task_context_->selected_goal_checker_id =
-            task_options_.default_goal_checker_id();
-    }
+
+    ApplyTaskOptionsToContext();
+
     controller_->SetNavigationContext(task_context_->tf, task_context_->global_frame,
                                       task_context_->robot_base_frame);
     controller_->SetSharedCostmap(planner_->GetCostmapWrapper());
@@ -151,9 +166,64 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
     controller_->Start();
 
     SetupNavigators();
+    owns_servers_ = true;
     initialized_ = true;
-    AINFO << "TaskScheduler initialized (single-process BT, "
-          << navigators_.size() << " navigator(s)).";
+    AINFO << "TaskScheduler initialized (owned servers, " << navigators_.size()
+          << " navigator(s)).";
+}
+
+void TaskScheduler::InitializeAttached(const std::string& configuration_directory,
+                                       const SharedSystem& system) {
+    if (initialized_) {
+        return;
+    }
+    if (!system.planner || !system.controller || !system.task_context) {
+        AERROR << "InitializeAttached requires planner, controller, and task_context.";
+        return;
+    }
+
+    configuration_directory_ =
+        ::autonomy::common::ResolveConfigurationRootDirectory(
+            configuration_directory, "tasks/tasks.lua");
+    if (!configuration_directory.empty() &&
+        configuration_directory != configuration_directory_) {
+        AWARN << "Configuration directory '" << configuration_directory
+              << "' was not found; using '" << configuration_directory_ << "'.";
+    }
+    AINFO << "TaskScheduler attached to shared system (config="
+          << configuration_directory_ << ")";
+    task_options_ =
+        CreateOptions(configuration_directory_, "tasks/tasks.lua");
+
+    planner_ = system.planner;
+    smoother_ = system.smoother;
+    controller_ = system.controller;
+    task_context_ = system.task_context;
+    odom_smoother_ = system.odom_smoother;
+
+    if (odom_smoother_) {
+        task_context_->odom_smoother = odom_smoother_;
+        controller_->SetOdomSmoother(odom_smoother_);
+    }
+
+    ApplyTaskOptionsToContext();
+
+    if (task_context_->tf && !task_context_->global_frame.empty()) {
+        controller_->SetNavigationContext(
+            task_context_->tf, task_context_->global_frame,
+            task_context_->robot_base_frame.empty()
+                ? "base_link"
+                : task_context_->robot_base_frame);
+    }
+    if (task_context_->global_costmap) {
+        controller_->SetSharedCostmap(task_context_->global_costmap);
+    }
+
+    SetupNavigators();
+    owns_servers_ = false;
+    initialized_ = true;
+    AINFO << "TaskScheduler initialized (attached, " << navigators_.size()
+          << " navigator(s)).";
 }
 
 void TaskScheduler::Shutdown() {
@@ -161,16 +231,27 @@ void TaskScheduler::Shutdown() {
         return;
     }
     navigators_.clear();
-    if (controller_) {
-        controller_->Shutdown();
+    if (owns_servers_) {
+        if (controller_) {
+            controller_->Shutdown();
+        }
+        if (smoother_) {
+            smoother_->Shutdown();
+        }
+        if (planner_) {
+            planner_->Shutdown();
+        }
     }
-    if (smoother_) {
-        smoother_->Shutdown();
+    if (task_context_) {
+        task_context_->cancel_flag = nullptr;
     }
-    if (planner_) {
-        planner_->Shutdown();
-    }
+    planner_.reset();
+    smoother_.reset();
+    controller_.reset();
+    task_context_.reset();
+    odom_smoother_.reset();
     initialized_ = false;
+    owns_servers_ = false;
 }
 
 void TaskScheduler::SetupNavigators() {

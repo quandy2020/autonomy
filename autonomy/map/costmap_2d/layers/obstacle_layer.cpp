@@ -276,6 +276,18 @@ void ObstacleLayer::onInitialize() {
           << " buffers=" << observation_buffers_.size();
 }
 
+void ObstacleLayer::feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan) {
+    if (!enabled_ || marking_buffers_.empty()) {
+        return;
+    }
+    const auto message = std::make_shared<LaserScan>(scan);
+    for (const auto& buffer : marking_buffers_) {
+        if (buffer) {
+            laserScanCallback(message, buffer);
+        }
+    }
+}
+
 void ObstacleLayer::laserScanCallback(
     commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
     const std::shared_ptr<ObservationBuffer>& buffer) {

@@ -25,6 +25,15 @@ namespace autonomy {
 namespace tasks {
 namespace scheduler {
 
+/** Shared planner / controller / context owned by system::AutonomyNode. */
+struct SharedSystem {
+    std::shared_ptr<planning::PlannerServer> planner;
+    std::shared_ptr<planning::SmootherServer> smoother;
+    std::shared_ptr<control::ControllerServer> controller;
+    std::shared_ptr<common::TaskContext> task_context;
+    std::shared_ptr<control::utils::OdomSmoother> odom_smoother;
+};
+
 class TaskScheduler
 {
 public:
@@ -32,9 +41,22 @@ public:
 
     TaskScheduler() = default;
 
+    /** Creates and owns planner / smoother / controller (standalone tools). */
     void Initialize(const std::string& configuration_directory);
 
+    /**
+     * @brief Registers BT navigators using existing servers (ROS / system::AutonomyNode).
+     * Does not Start/Shutdown planner or controller.
+     */
+    void InitializeAttached(const std::string& configuration_directory,
+                            const SharedSystem& system);
+
     void Shutdown();
+
+    bool IsInitialized() const { return initialized_; }
+
+    /** True when Initialize() created servers; false when InitializeAttached(). */
+    bool OwnsServers() const { return owns_servers_; }
 
     behavior_tree::BtStatus NavigateToPose(
         std::shared_ptr<const behavior_tree::proto::NavigateToPoseAction::Goal>
@@ -68,8 +90,11 @@ private:
     std::unordered_map<std::string, std::shared_ptr<common::NavigatorBase>>
         navigators_;
     common::NavigatorMuxer muxer_;
+    void ApplyTaskOptionsToContext();
+
     std::atomic<bool> cancel_requested_{false};
     bool initialized_{false};
+    bool owns_servers_{false};
 };
 
 }  // namespace scheduler
