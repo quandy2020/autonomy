@@ -34,6 +34,8 @@
 #include <functional>
 #include <memory>
 
+#include "autonomy/common/configuration_file_resolver.hpp"
+
 namespace autonomy {
 namespace common {
 
@@ -461,8 +463,7 @@ int LuaParameterDictionary::LuaInclude(lua_State* L) {
     lua_pop(L, 1);
     CHECK_EQ(lua_gettop(L), 0);
 
-    const std::string content =
-        parameter_dictionary->file_resolver_->GetFileContentOrDie(basename);
+    const std::string content = ReadFileAtPathOrDie(filename);
     CheckForLuaErrors(L, luaL_loadbuffer(L, content.c_str(), content.size(),
                                          filename.c_str()));
     CheckForLuaErrors(L, lua_pcall(L, 0, LUA_MULTRET, 0));

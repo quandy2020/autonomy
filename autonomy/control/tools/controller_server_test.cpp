@@ -144,8 +144,8 @@ planning::proto::PlannerOptions LoadPlannerOptionsFromLua(
         configuration_directory);
     auto file_resolver =
         std::make_unique<::autonomy::common::ConfigurationFileResolver>(dirs);
-    const std::string code =
-        file_resolver->GetFileContentOrDie("planner/planner.lua");
+    const std::string code = ::autonomy::common::GetLuaScriptWithCommonOrDie(
+        *file_resolver, "planner/planner.lua");
     ::autonomy::common::LuaParameterDictionary lua_dictionary(
         code, std::move(file_resolver));
     return planning::LoadOptions(
@@ -158,8 +158,8 @@ proto::ControllerOptions LoadControllerOptionsFromLua(
         configuration_directory);
     auto file_resolver =
         std::make_unique<::autonomy::common::ConfigurationFileResolver>(dirs);
-    const std::string code =
-        file_resolver->GetFileContentOrDie("control/controller.lua");
+    const std::string code = ::autonomy::common::GetLuaScriptWithCommonOrDie(
+        *file_resolver, "control/controller.lua");
     ::autonomy::common::LuaParameterDictionary lua_dictionary(
         code, std::move(file_resolver));
     return LoadOptions(

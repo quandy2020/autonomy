@@ -77,13 +77,27 @@ std::string ResolveConfigurationRootDirectory(
     return full_path.substr(0, full_path.size() - suffix.size());
 }
 
+std::string ReadFileAtPathOrDie(const std::string& full_path) {
+    CHECK(!full_path.empty()) << "File path cannot be empty.";
+    std::ifstream stream(full_path.c_str());
+    CHECK(stream.good()) << "Failed to read '" << full_path << "'.";
+    return std::string((std::istreambuf_iterator<char>(stream)),
+                       std::istreambuf_iterator<char>());
+}
+
 std::string ConfigurationFileResolver::GetFileContentOrDie(
     const std::string& basename) {
     CHECK(!basename.empty()) << "File basename cannot be empty." << basename;
-    const std::string filename = GetFullPathOrDie(basename);
-    std::ifstream stream(filename.c_str());
-    return std::string((std::istreambuf_iterator<char>(stream)),
-                       std::istreambuf_iterator<char>());
+    return ReadFileAtPathOrDie(GetFullPathOrDie(basename));
+}
+
+std::string GetLuaScriptWithCommonOrDie(FileResolver& file_resolver,
+                                        const std::string& basename) {
+    const std::string common_path =
+        file_resolver.GetFullPathOrDie("common.lua");
+    const std::string script_path = file_resolver.GetFullPathOrDie(basename);
+    return ReadFileAtPathOrDie(common_path) + "\n" +
+           ReadFileAtPathOrDie(script_path);
 }
 
 }  // namespace common

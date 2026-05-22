@@ -300,7 +300,7 @@ protected:
     void loadPlugins();
 
     /** @brief Push occupancy_grid_ into StaticLayer or the master costmap. */
-    void applyLoadedOccupancyGrid();
+    void applyLoadedOccupancyGrid(const commsgs::map_msgs::OccupancyGrid& grid);
 
     /** @brief Activate or deactivate all loaded layer plugins. */
     void setPluginsActive(bool active);

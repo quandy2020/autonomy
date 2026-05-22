@@ -41,6 +41,23 @@
 #include <sstream>
 
 #include "autonomy/common/logging.hpp"
+
+namespace {
+bool occupancyGridContentEqual(
+    const autonomy::commsgs::map_msgs::OccupancyGrid& a,
+    const autonomy::commsgs::map_msgs::OccupancyGrid& b) {
+    if (a.info.width != b.info.width || a.info.height != b.info.height ||
+        a.info.resolution != b.info.resolution) {
+        return false;
+    }
+    const auto& oa = a.info.origin.position;
+    const auto& ob = b.info.origin.position;
+    if (oa.x != ob.x || oa.y != ob.y || oa.z != ob.z) {
+        return false;
+    }
+    return a.data == b.data;
+}
+}  // namespace
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/layers/denoise_layer.hpp"
 #include "autonomy/map/costmap_2d/layers/inflation_layer.hpp"
@@ -337,9 +354,9 @@ void Costmap2DWrapper::loadPlugins() {
     }
 }
 
-void Costmap2DWrapper::applyLoadedOccupancyGrid() {
-    if (!layered_costmap_ || occupancy_grid_.info.width == 0 ||
-        occupancy_grid_.info.height == 0) {
+void Costmap2DWrapper::applyLoadedOccupancyGrid(
+    const commsgs::map_msgs::OccupancyGrid& grid) {
+    if (!layered_costmap_ || grid.info.width == 0 || grid.info.height == 0) {
         return;
     }
 
@@ -352,15 +369,15 @@ void Costmap2DWrapper::applyLoadedOccupancyGrid() {
             if (static_layer == nullptr) {
                 continue;
             }
-            static_layer->loadOccupancyGrid(occupancy_grid_);
+            static_layer->loadOccupancyGrid(grid);
             fed_to_static_layer = true;
-            AINFO << "Applied loaded map to StaticLayer";
+            ADEBUG << "Applied loaded map to StaticLayer";
             break;
         }
     }
 
     if (!fed_to_static_layer) {
-        Costmap2D loaded_grid(occupancy_grid_);
+        Costmap2D loaded_grid(grid);
         *layered_costmap_->getCostmap() = loaded_grid;
         AINFO << "Applied loaded map directly to master costmap";
     }
@@ -662,7 +679,7 @@ bool Costmap2DWrapper::loadMap(const std::string& filename) {
         AINFO << "Map loaded and resized: " << size_x << "x" << size_y << " @ "
               << resolution << " m/cell, origin: (" << origin_x << ", "
               << origin_y << ")";
-        applyLoadedOccupancyGrid();
+        applyLoadedOccupancyGrid(occupancy_grid_);
     }
 
     map_loaded_ = true;
@@ -676,15 +693,21 @@ bool Costmap2DWrapper::applyOccupancyGrid(
         return false;
     }
 
-    occupancy_grid_ = grid;
+    if (map_loaded_ && occupancyGridContentEqual(occupancy_grid_, grid)) {
+        ADEBUG << "Costmap2DWrapper: static map unchanged, skip reapply";
+        return true;
+    }
 
-    if (layered_costmap_ && occupancy_grid_.info.width > 0 &&
-        occupancy_grid_.info.height > 0) {
-        const unsigned int size_x = occupancy_grid_.info.width;
-        const unsigned int size_y = occupancy_grid_.info.height;
-        const double resolution = occupancy_grid_.info.resolution;
-        const double origin_x = occupancy_grid_.info.origin.position.x;
-        const double origin_y = occupancy_grid_.info.origin.position.y;
+    const commsgs::map_msgs::OccupancyGrid grid_copy = grid;
+    occupancy_grid_ = grid_copy;
+
+    if (layered_costmap_ && grid_copy.info.width > 0 &&
+        grid_copy.info.height > 0) {
+        const unsigned int size_x = grid_copy.info.width;
+        const unsigned int size_y = grid_copy.info.height;
+        const double resolution = grid_copy.info.resolution;
+        const double origin_x = grid_copy.info.origin.position.x;
+        const double origin_y = grid_copy.info.origin.position.y;
 
         resolution_ = resolution;
         map_width_meters_ = size_x * resolution;
@@ -694,110 +717,29 @@ bool Costmap2DWrapper::applyOccupancyGrid(
 
         layered_costmap_->resizeMap(size_x, size_y, resolution, origin_x,
                                     origin_y);
-        applyLoadedOccupancyGrid();
+        applyLoadedOccupancyGrid(grid_copy);
     }
 
     map_loaded_ = true;
     ready_ = true;
-    AINFO << "Costmap2DWrapper: applied external OccupancyGrid";
+    ADEBUG << "Costmap2DWrapper: applied external OccupancyGrid";
     return true;
 }
 
 void Costmap2DWrapper::publishMap() {
-    // 检查是否有有效的 costmap
-    if (!layered_costmap_ || !layered_costmap_->getCostmap()) {
-        static int not_initialized_warn_count = 0;
-        if (not_initialized_warn_count < 5 ||
-            not_initialized_warn_count % 100 == 0) {
-            AWARN << "Costmap not initialized, cannot publish map.";
-        }
-        ++not_initialized_warn_count;
+    // Build a costmap snapshot only. Do not mutate occupancy_grid_, which stores
+    // the static map from MapServer (race with applyOccupancyGrid caused malformed
+    // maps and heap corruption).
+    commsgs::map_msgs::OccupancyGrid snapshot;
+    if (!snapshotOccupancyGrid(snapshot)) {
         return;
     }
 
-    Costmap2D* costmap = layered_costmap_->getCostmap();
-
-    // 获取 costmap 的基本信息
-    unsigned int size_x = costmap->getSizeInCellsX();
-    unsigned int size_y = costmap->getSizeInCellsY();
-    double resolution = costmap->getResolution();
-    double origin_x = costmap->getOriginX();
-    double origin_y = costmap->getOriginY();
-
-    // 如果 costmap
-    // 为空，不发布（只在前几次或每隔一段时间打印一次日志，避免刷屏）
-    if (size_x == 0 || size_y == 0) {
-        static int empty_warn_count = 0;
-        if (empty_warn_count < 5 || empty_warn_count % 100 == 0) {
-            AWARN << "Costmap is empty, cannot publish map.";
-        }
-        ++empty_warn_count;
-        return;
-    }
-
-    // 更新 OccupancyGrid 的 header
-    occupancy_grid_.header.frame_id = global_frame_;
-    occupancy_grid_.header.stamp = commsgs::builtin_interfaces::Time::Now();
-
-    // 更新地图元数据
-    occupancy_grid_.info.width = size_x;
-    occupancy_grid_.info.height = size_y;
-    occupancy_grid_.info.resolution = resolution;
-    occupancy_grid_.info.origin.position.x = origin_x;
-    occupancy_grid_.info.origin.position.y = origin_y;
-    occupancy_grid_.info.origin.position.z = 0.0;
-    // 设置方向为 0（无旋转）
-    occupancy_grid_.info.origin.orientation.x = 0.0;
-    occupancy_grid_.info.origin.orientation.y = 0.0;
-    occupancy_grid_.info.origin.orientation.z = 0.0;
-    occupancy_grid_.info.origin.orientation.w = 1.0;
-
-    // 获取 costmap 的原始数据
-    const unsigned char* costmap_data = costmap->getCharMap();
-    unsigned int total_size = size_x * size_y;
-
-    // 调整 data 数组大小
-    occupancy_grid_.data.clear();
-    occupancy_grid_.data.reserve(total_size);
-
-    // 将 costmap 值转换为 OccupancyGrid 值
-    // Costmap: 0 (FREE_SPACE) -> 254 (LETHAL_OBSTACLE), 255 (NO_INFORMATION)
-    // OccupancyGrid: -1 (UNKNOWN), 0 (FREE), 1-100 (OCCUPIED)
-    for (unsigned int i = 0; i < total_size; ++i) {
-        unsigned char cost = costmap_data[i];
-        int8_t occ_value;
-
-        if (cost == NO_INFORMATION) {
-            // 未知区域
-            occ_value = utils::OCC_GRID_UNKNOWN;
-        } else if (cost == FREE_SPACE) {
-            // 自由空间
-            occ_value = utils::OCC_GRID_FREE;
-        } else if (cost >= LETHAL_OBSTACLE) {
-            // 致命障碍物
-            occ_value = utils::OCC_GRID_OCCUPIED;
-        } else {
-            // 线性映射：从 [FREE_SPACE+1, LETHAL_OBSTACLE-1] 映射到 [1, 99]
-            // 这样可以保留 costmap 中的中间值信息
-            double normalized =
-                static_cast<double>(cost - FREE_SPACE) /
-                static_cast<double>(LETHAL_OBSTACLE - FREE_SPACE);
-            occ_value = static_cast<int8_t>(
-                std::round(normalized * (utils::OCC_GRID_OCCUPIED - 1) + 1));
-        }
-
-        occupancy_grid_.data.push_back(occ_value);
-    }
-
-    // 注意：这里只是更新了 occupancy_grid_ 成员变量
-    // 实际的发布需要通过 autolink Writer 或 ROS 2 publisher 来实现
-    // 如果需要在 autolink 中发布，可以通过 MapInterface 的接口
-    // 只在需要时输出详细信息（避免频繁日志）
     static int publish_count = 0;
     if (++publish_count % 10 == 0) {
-        AINFO << "Map updated: " << size_x << "x" << size_y
-              << " resolution: " << resolution
-              << " m/cell, frame: " << global_frame_;
+        AINFO << "Costmap snapshot: " << snapshot.info.width << "x"
+              << snapshot.info.height << " resolution: "
+              << snapshot.info.resolution << " m/cell, frame: " << global_frame_;
     }
 }
 

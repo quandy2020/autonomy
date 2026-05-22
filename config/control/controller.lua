@@ -11,8 +11,9 @@
 -- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 -- See the License for the specific language governing permissions and
 -- limitations under the License.
-
-include "common.lua"
+if AUTONOMY_COMMON == nil then
+  include "common.lua"
+end
 
 AUTONOMY_CONTROLLER = {
     controller_frequency = 20.0,
