@@ -9,10 +9,19 @@
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/control/control_options.hpp"
 #include "autonomy/planning/planner_options.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/tasks/constants.hpp"
+#include "autonomy/tasks/navigator/docking/navigate_to_docking.hpp"
+#include "autonomy/tasks/navigator/exploration/explore_to_anywhere.hpp"
+#include "autonomy/tasks/navigator/navigation/navigate_through_poses.hpp"
+#include "autonomy/tasks/navigator/navigation/navigate_to_pose.hpp"
 #include "autonomy/tasks/navigator/navigator_factory.hpp"
+#include "autonomy/tasks/navigator/teleop/teleop_drive.hpp"
+#include "autonomy/tasks/navigator/teleop/teleop_session.hpp"
+#include "autonomy/tasks/navigator/tracking/track_to_target.hpp"
 #include "autonomy/tasks/options.hpp"
 #include "autonomy/transform/buffer.hpp"
 
@@ -68,6 +77,9 @@ const proto::NavigatorConfig& NavigatorConfigFor(
     }
     if (id == "explore_to_anywhere") {
         return options.explore_to_anywhere();
+    }
+    if (id == "teleop_drive") {
+        return options.teleop_drive();
     }
     static const proto::NavigatorConfig kEmpty{};
     return kEmpty;
@@ -155,11 +167,8 @@ void TaskScheduler::Initialize(const std::string& configuration_directory) {
     controller_->SetNavigationContext(task_context_->tf, task_context_->global_frame,
                                       task_context_->robot_base_frame);
     controller_->SetSharedCostmap(planner_->GetCostmapWrapper());
-    task_context_->odom_smoother =
-        std::make_shared<control::utils::OdomSmoother>(
-            std::max(0.0, task_options_.filter_duration()));
-    odom_smoother_ = task_context_->odom_smoother;
-    controller_->SetOdomSmoother(task_context_->odom_smoother);
+    odom_smoother_ = controller_->GetOdomSmoother();
+    task_context_->odom_smoother = odom_smoother_;
 
     planner_->Start();
     smoother_->Start();
@@ -199,11 +208,9 @@ void TaskScheduler::InitializeAttached(const std::string& configuration_director
     smoother_ = system.smoother;
     controller_ = system.controller;
     task_context_ = system.task_context;
-    odom_smoother_ = system.odom_smoother;
-
+    odom_smoother_ = controller_->GetOdomSmoother();
     if (odom_smoother_) {
         task_context_->odom_smoother = odom_smoother_;
-        controller_->SetOdomSmoother(odom_smoother_);
     }
 
     ApplyTaskOptionsToContext();
@@ -307,19 +314,260 @@ void TaskScheduler::SetupNavigators() {
     }
 }
 
-behavior_tree::BtStatus TaskScheduler::NavigateToPose(
-    std::shared_ptr<const behavior_tree::proto::NavigateToPoseAction::Goal>
-        goal) {
-    auto navigate_to_pose =
-        GetNavigator<navigator::navigation::NavigateToPoseNavigator>(
-            "navigate_to_pose");
-    if (!navigate_to_pose) {
-        AERROR << "NavigateToPose navigator is disabled or not registered.";
+behavior_tree::BtStatus TaskScheduler::RunNavigator(
+    const std::string& id,
+    const std::function<behavior_tree::BtStatus(CancelFn)>& run) {
+    if (!initialized_) {
+        AERROR << "TaskScheduler not initialized.";
+        return behavior_tree::BtStatus::FAILED;
+    }
+    if (!HasNavigator(id)) {
+        AERROR << "Navigator '" << id << "' is disabled or not registered.";
         return behavior_tree::BtStatus::FAILED;
     }
     cancel_requested_.store(false);
-    return navigate_to_pose->Bt().Run(
-        goal, [this]() { return cancel_requested_.load(); });
+    CancelFn cancel_fn = [this]() { return cancel_requested_.load(); };
+    return run(cancel_fn);
+}
+
+bool TaskScheduler::HasNavigator(const std::string& id) const {
+    return navigators_.find(id) != navigators_.end();
+}
+
+bool TaskScheduler::IsNavigatorConfigured(const std::string& id) const {
+    const auto& cfg = NavigatorConfigFor(task_options_, id);
+    if (id.empty()) {
+        return false;
+    }
+    for (const auto& nav_id : task_options_.navigators()) {
+        if (nav_id == id) {
+            return cfg.enable();
+        }
+    }
+    return false;
+}
+
+std::vector<std::string> TaskScheduler::RegisteredNavigatorIds() const {
+    std::vector<std::string> ids;
+    ids.reserve(navigators_.size());
+    for (const auto& entry : navigators_) {
+        ids.push_back(entry.first);
+    }
+    std::sort(ids.begin(), ids.end());
+    return ids;
+}
+
+behavior_tree::BtStatus TaskScheduler::NavigateToPose(
+    std::shared_ptr<const behavior_tree::proto::NavigateToPoseAction::Goal>
+        goal) {
+    return RunNavigator(kNavigatorNavigateToPose,
+        [&](CancelFn cancel) {
+            auto navigate_to_pose =
+                GetNavigator<navigator::navigation::NavigateToPoseNavigator>(
+                    kNavigatorNavigateToPose);
+            return navigate_to_pose->Bt().Run(goal, cancel);
+        });
+}
+
+behavior_tree::BtStatus TaskScheduler::NavigateThroughPoses(
+    std::shared_ptr<const behavior_tree::proto::NavigateThroughPosesAction::Goal>
+        goal) {
+    return RunNavigator(kNavigatorNavigateThroughPoses,
+        [&](CancelFn cancel) {
+            auto nav =
+                GetNavigator<navigator::navigation::NavigateThroughPosesNavigator>(
+                    kNavigatorNavigateThroughPoses);
+            return nav->Bt().Run(goal, cancel);
+        });
+}
+
+behavior_tree::BtStatus TaskScheduler::NavigateThroughPoses(
+    const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
+    const std::string& behavior_tree) {
+    if (poses.empty()) {
+        AERROR << "NavigateThroughPoses requires at least one pose.";
+        return behavior_tree::BtStatus::FAILED;
+    }
+    auto goal = std::make_shared<
+        behavior_tree::proto::NavigateThroughPosesAction::Goal>();
+    for (const auto& pose : poses) {
+        *goal->mutable_poses()->add_goals() =
+            commsgs::geometry_msgs::ToProto(pose);
+    }
+    if (!behavior_tree.empty()) {
+        goal->set_behavior_tree(behavior_tree);
+    }
+    return NavigateThroughPoses(goal);
+}
+
+behavior_tree::BtStatus TaskScheduler::NavigateToDock(
+    std::shared_ptr<const behavior_tree::proto::DockRobotAction::Goal> goal) {
+    return RunNavigator(kNavigatorNavigateToDocking,
+        [&](CancelFn cancel) {
+            auto nav = GetNavigator<navigator::docking::NavigateToDockingNavigator>(
+                kNavigatorNavigateToDocking);
+            return nav->Bt().Run(goal, cancel);
+        });
+}
+
+behavior_tree::BtStatus TaskScheduler::NavigateToDockPose(
+    const commsgs::geometry_msgs::PoseStamped& dock_pose,
+    const std::string& dock_type, const std::string& dock_id) {
+    auto goal = std::make_shared<behavior_tree::proto::DockRobotAction::Goal>();
+    goal->set_use_dock_id(!dock_id.empty());
+    goal->set_dock_id(dock_id);
+    goal->set_dock_type(dock_type);
+    goal->set_navigate_to_staging_pose(true);
+    *goal->mutable_dock_pose() = commsgs::geometry_msgs::ToProto(dock_pose);
+    return NavigateToDock(goal);
+}
+
+behavior_tree::BtStatus TaskScheduler::TrackToTarget(
+    std::shared_ptr<const behavior_tree::proto::TrackToTargetAction::Goal>
+        goal) {
+    return RunNavigator(kNavigatorTrackToTarget,
+        [&](CancelFn cancel) {
+            auto nav = GetNavigator<navigator::tracking::TrackToTargetNavigator>(
+                kNavigatorTrackToTarget);
+            return nav->Bt().Run(goal, cancel);
+        });
+}
+
+behavior_tree::BtStatus TaskScheduler::TrackToTarget(const uint32_t target_id) {
+    auto goal = std::make_shared<
+        behavior_tree::proto::TrackToTargetAction::Goal>();
+    goal->set_target_id(target_id);
+    return TrackToTarget(goal);
+}
+
+bool TaskScheduler::UpdateTrackTargetPose(
+    const commsgs::geometry_msgs::PoseStamped& target_pose) {
+    auto nav = GetNavigator<navigator::tracking::TrackToTargetNavigator>(
+        kNavigatorTrackToTarget);
+    if (!nav) {
+        return false;
+    }
+    nav->UpdateTargetPose(target_pose);
+    return true;
+}
+
+behavior_tree::BtStatus TaskScheduler::ExploreToAnywhere(
+    std::shared_ptr<const behavior_tree::proto::ExploreToAnywhereAction::Goal>
+        goal) {
+    return RunNavigator(kNavigatorExploreToAnywhere,
+        [&](CancelFn cancel) {
+            auto nav =
+                GetNavigator<navigator::exploration::ExploreToAnywhereNavigator>(
+                    kNavigatorExploreToAnywhere);
+            return nav->Bt().Run(goal, cancel);
+        });
+}
+
+behavior_tree::BtStatus TaskScheduler::ExploreToAnywhere(
+    const double time_allowance_sec) {
+    auto goal = std::make_shared<
+        behavior_tree::proto::ExploreToAnywhereAction::Goal>();
+    if (time_allowance_sec > 0.0) {
+        *goal->mutable_time_allowance() = commsgs::builtin_interfaces::ToProto(
+            commsgs::builtin_interfaces::Duration::FromSeconds(
+                time_allowance_sec));
+    }
+    return ExploreToAnywhere(goal);
+}
+
+bool TaskScheduler::UpdateExploreGoal(
+    const commsgs::geometry_msgs::PoseStamped& explore_goal) {
+    auto nav = GetNavigator<navigator::exploration::ExploreToAnywhereNavigator>(
+        kNavigatorExploreToAnywhere);
+    if (!nav) {
+        return false;
+    }
+    nav->UpdateExploreGoal(explore_goal);
+    return true;
+}
+
+behavior_tree::BtStatus TaskScheduler::TeleopDrive(
+    std::shared_ptr<const behavior_tree::proto::AssistedTeleopAction::Goal> goal,
+    const double max_linear_vel, const double max_angular_vel,
+    std::function<bool()> cancel_checker) {
+    if (!initialized_ || !goal) {
+        return behavior_tree::BtStatus::FAILED;
+    }
+    return RunNavigator(kNavigatorTeleopDrive,
+        [&, checker = std::move(cancel_checker)](CancelFn cancel) {
+            auto nav = GetNavigator<navigator::teleop::TeleopDriveNavigator>(
+                kNavigatorTeleopDrive);
+            if (!nav) {
+                return behavior_tree::BtStatus::FAILED;
+            }
+            nav->setRunLimits(max_linear_vel, max_angular_vel);
+            CancelFn merged_cancel = [cancel, &checker]() {
+                return cancel() || (checker && checker());
+            };
+            return nav->Bt().Run(goal, merged_cancel);
+        });
+}
+
+behavior_tree::BtStatus TaskScheduler::TeleopDrive(
+    const double time_allowance_sec,
+    const double max_linear_vel, const double max_angular_vel,
+    std::function<bool()> cancel_checker) {
+    auto goal = std::make_shared<
+        behavior_tree::proto::AssistedTeleopAction::Goal>();
+    if (time_allowance_sec > 0.0) {
+        *goal->mutable_time_allowance() = commsgs::builtin_interfaces::ToProto(
+            commsgs::builtin_interfaces::Duration::FromSeconds(
+                time_allowance_sec));
+    }
+    return TeleopDrive(goal, max_linear_vel, max_angular_vel, std::move(cancel_checker));
+}
+
+bool TaskScheduler::UpdateTeleopCommand(
+    const commsgs::geometry_msgs::TwistStamped& cmd) {
+    auto nav = GetNavigator<navigator::teleop::TeleopDriveNavigator>(
+        kNavigatorTeleopDrive);
+    if (!nav || !nav->session()) {
+        return false;
+    }
+    nav->session()->UpdateCommand(cmd);
+    return true;
+}
+
+void TaskScheduler::BeginTeleopSession(
+    const double max_linear_vel, const double max_angular_vel) {
+    auto nav = GetNavigator<navigator::teleop::TeleopDriveNavigator>(
+        kNavigatorTeleopDrive);
+    if (!nav || !nav->session()) {
+        return;
+    }
+    navigator::teleop::TeleopSession::Limits limits;
+    if (task_options_.has_teleop_drive_options()) {
+        const auto& opts = task_options_.teleop_drive_options();
+        limits.max_linear_vel = opts.default_max_linear_vel();
+        limits.max_angular_vel = opts.default_max_angular_vel();
+        limits.cmd_stale_timeout_sec = opts.cmd_stale_timeout_sec();
+    }
+    if (max_linear_vel > 0.0) {
+        limits.max_linear_vel = max_linear_vel;
+    }
+    if (max_angular_vel > 0.0) {
+        limits.max_angular_vel = max_angular_vel;
+    }
+    nav->session()->Begin(0.0, limits);
+}
+
+void TaskScheduler::EndTeleopSession() {
+    auto nav = GetNavigator<navigator::teleop::TeleopDriveNavigator>(
+        kNavigatorTeleopDrive);
+    if (nav && nav->session()) {
+        nav->session()->End();
+    }
+}
+
+bool TaskScheduler::IsTeleopActive() const {
+    auto nav = GetNavigator<navigator::teleop::TeleopDriveNavigator>(
+        kNavigatorTeleopDrive);
+    return nav && nav->session() && nav->session()->IsActive();
 }
 
 void TaskScheduler::RequestCancel() {

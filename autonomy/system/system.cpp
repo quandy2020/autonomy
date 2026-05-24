@@ -16,151 +16,270 @@
 
 #include "autonomy/system/system.hpp"
 
-#include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 
 namespace autonomy {
 namespace system {
-namespace {
 
-void ApplyMapToCostmap(
-    const map::costmap_2d::Costmap2DWrapper::SharedPtr& wrapper,
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& map) {
-    if (!wrapper || !map) {
-        return;
-    }
-    if (!wrapper->applyOccupancyGrid(*map)) {
-        AWARN << "Failed to apply map from MapServer to costmap wrapper";
-    }
+AutonomyNode::AutonomyNode(const proto::AutonomyOptions & options)
+: task_(std::make_unique<tasks::Task>(options))
+{
 }
 
-}  // namespace
+AutonomyNode::~AutonomyNode() = default;
 
-AutonomyNode::AutonomyNode(const proto::AutonomyOptions& options)
-    : options_{options} {
-    tf_buffer_ = TfBuffer::Instance();
-    map_server_ = std::make_shared<map::MapServer>(options_.map_options());
-    controller_server_ = std::make_shared<control::ControllerServer>(
-        options_.controller_options());
-    planner_server_ =
-        std::make_shared<planning::PlannerServer>(options_.planner_options());
-    smoother_server_ = std::make_shared<planning::SmootherServer>(
-        options_.planner_options(), planner_server_->GetCostmapWrapper());
-    planner_server_->SetSmootherServer(smoother_server_);
+void AutonomyNode::Start()
+{
+  if (task_) {
+    task_->start();
+  }
 }
 
-AutonomyNode::~AutonomyNode() {
-    Shutdown();
+void AutonomyNode::Shutdown()
+{
+  if (task_) {
+    task_->shutdown();
+  }
 }
 
-void AutonomyNode::Start() {
-    task_context_ = std::make_shared<tasks::common::TaskContext>();
-    task_context_->planner = planner_server_;
-    task_context_->smoother = smoother_server_;
-    task_context_->controller = controller_server_;
-    task_context_->global_costmap = planner_server_
-                                        ? planner_server_->GetCostmapWrapper()
-                                        : nullptr;
-    task_context_->local_costmap = controller_server_
-                                       ? controller_server_->GetCostmapWrapper()
-                                       : task_context_->global_costmap;
-    task_context_->tf = std::shared_ptr<transform::Buffer>(
-        tf_buffer_, [](transform::Buffer*) {});
-    if (planner_server_) {
-        const auto& planner_options = options_.planner_options();
-        if (!planner_options.default_planner_id().empty()) {
-            task_context_->selected_planner_id =
-                planner_options.default_planner_id();
-        } else {
-            task_context_->selected_planner_id =
-                planner_server_->GetDefaultPlannerId();
-        }
-        if (!planner_options.default_smoother_id().empty()) {
-            task_context_->selected_smoother_id =
-                planner_options.default_smoother_id();
-        } else if (smoother_server_) {
-            task_context_->selected_smoother_id =
-                smoother_server_->GetDefaultSmootherId();
-        }
-        task_context_->global_frame =
-            planner_options.costmap().frame_id().empty()
-                ? "map"
-                : planner_options.costmap().frame_id();
-    }
-
-    if (map_server_ != nullptr) {
-        map_server_->SetMapPublishCallback(
-            [this](const commsgs::map_msgs::OccupancyGrid::SharedPtr& map) {
-                if (planner_server_) {
-                    ApplyMapToCostmap(planner_server_->GetCostmapWrapper(),
-                                      map);
-                }
-                if (controller_server_) {
-                    ApplyMapToCostmap(controller_server_->GetCostmapWrapper(),
-                                      map);
-                }
-            });
-        map_server_->Start();
-    }
-
-    if (planner_server_ != nullptr) {
-        planner_server_->Start();
-    }
-
-    if (smoother_server_ != nullptr) {
-        smoother_server_->Start();
-    }
-
-    if (controller_server_ != nullptr) {
-        const std::string global_frame =
-            options_.planner_options().costmap().frame_id().empty()
-                ? "map"
-                : options_.planner_options().costmap().frame_id();
-        std::shared_ptr<transform::Buffer> tf_shared(
-            tf_buffer_, [](transform::Buffer*) {});
-        controller_server_->SetNavigationContext(tf_shared, global_frame,
-                                                 "base_link");
-        if (planner_server_) {
-            controller_server_->SetSharedCostmap(
-                planner_server_->GetCostmapWrapper());
-        }
-        controller_server_->Start();
-    }
-
-    if (map_server_ != nullptr) {
-        const auto map = map_server_->GetStaticMapShared();
-        if (map) {
-            if (planner_server_) {
-                ApplyMapToCostmap(planner_server_->GetCostmapWrapper(), map);
-            } else if (controller_server_) {
-                ApplyMapToCostmap(controller_server_->GetCostmapWrapper(),
-                                  map);
-            }
-        }
-    }
+void AutonomyNode::configure(const RuntimeOptions & options)
+{
+  if (task_) {
+    task_->configure(options);
+  }
 }
 
-void AutonomyNode::Shutdown() {
-    if (controller_server_ != nullptr) {
-        controller_server_->Shutdown();
-    }
-
-    if (smoother_server_ != nullptr) {
-        smoother_server_->Shutdown();
-    }
-
-    if (planner_server_ != nullptr) {
-        planner_server_->Shutdown();
-    }
-
-    if (map_server_ != nullptr) {
-        map_server_->Shutdown();
-    }
+map::costmap_2d::Costmap2DWrapper * AutonomyNode::globalCostmap()
+{
+  if (!task_ || !task_->planner_server()) {
+    return nullptr;
+  }
+  return task_->planner_server()->GetCostmapWrapper().get();
 }
 
-AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions& options) {
-    return std::make_unique<AutonomyNode>(options);
+void AutonomyNode::addMapPublishListener(MapPublishListener listener)
+{
+  if (task_) {
+    task_->addMapPublishListener(std::move(listener));
+  }
+}
+
+void AutonomyNode::addPathListener(PathListener listener)
+{
+  if (task_) {
+    task_->addPathListener(std::move(listener));
+  }
+}
+
+void AutonomyNode::updateOdometry(const commsgs::planning_msgs::Odometry & odom)
+{
+  if (task_) {
+    task_->updateOdometry(odom);
+  }
+}
+
+void AutonomyNode::feedLaserScan(const commsgs::sensor_msgs::LaserScan & scan)
+{
+  if (task_) {
+    task_->feedLaserScan(scan);
+  }
+}
+
+void AutonomyNode::feedPointCloud2(const commsgs::sensor_msgs::PointCloud2 & cloud)
+{
+  if (task_) {
+    task_->feedPointCloud2(cloud);
+  }
+}
+
+void AutonomyNode::feedRange(const commsgs::sensor_msgs::Range & range)
+{
+  if (task_) {
+    task_->feedRange(range);
+  }
+}
+
+bool AutonomyNode::planToGoal(const commsgs::geometry_msgs::PoseStamped & goal)
+{
+  return task_ && task_->planToGoal(goal);
+}
+
+void AutonomyNode::replanToGoal(const commsgs::geometry_msgs::PoseStamped & goal)
+{
+  if (task_) {
+    task_->replanToGoal(goal);
+  }
+}
+
+bool AutonomyNode::navigateToPose(
+  const commsgs::geometry_msgs::PoseStamped & goal,
+  std::function<bool()> cancel_checker,
+  std::function<bool()> continue_predicate,
+  const double timeout_sec)
+{
+  return task_ && task_->navigateToPose(
+    goal, std::move(cancel_checker), std::move(continue_predicate), timeout_sec);
+}
+
+void AutonomyNode::setControllerEnabled(bool enabled)
+{
+  if (task_) {
+    task_->setControllerEnabled(enabled);
+  }
+}
+
+void AutonomyNode::requestCancelNavigation()
+{
+  if (task_) {
+    task_->requestCancelNavigation();
+  }
+}
+
+void AutonomyNode::applySpeedLimit(const commsgs::planning_msgs::SpeedLimit & limit)
+{
+  if (task_) {
+    task_->applySpeedLimit(limit);
+  }
+}
+
+void AutonomyNode::clearSpeedLimit()
+{
+  if (task_) {
+    task_->clearSpeedLimit();
+  }
+}
+
+commsgs::geometry_msgs::TwistStamped AutonomyNode::tickControl()
+{
+  if (!task_) {
+    return {};
+  }
+  return task_->tickControl();
+}
+
+std::optional<commsgs::planning_msgs::Path> AutonomyNode::lastPath() const
+{
+  if (!task_) {
+    return std::nullopt;
+  }
+  return task_->lastPath();
+}
+
+bool AutonomyNode::transformPoseToGlobalFrame(
+  commsgs::geometry_msgs::PoseStamped & pose)
+{
+  return task_ && task_->transformPoseToGlobalFrame(pose);
+}
+
+bool AutonomyNode::useBehaviorTreeNavigation() const
+{
+  return task_ && task_->useBehaviorTreeNavigation();
+}
+
+tasks::behavior_tree::BtStatus AutonomyNode::navigateThroughPoses(
+  const std::vector<commsgs::geometry_msgs::PoseStamped> & poses,
+  const std::string & behavior_tree)
+{
+  if (!task_) {
+    return tasks::behavior_tree::BtStatus::FAILED;
+  }
+  return task_->navigateThroughPoses(poses, behavior_tree);
+}
+
+tasks::behavior_tree::BtStatus AutonomyNode::navigateToDock(
+  const commsgs::geometry_msgs::PoseStamped & dock_pose,
+  const std::string & dock_type, const std::string & dock_id)
+{
+  if (!task_) {
+    return tasks::behavior_tree::BtStatus::FAILED;
+  }
+  return task_->navigateToDock(dock_pose, dock_type, dock_id);
+}
+
+tasks::behavior_tree::BtStatus AutonomyNode::trackToTarget(const uint32_t target_id)
+{
+  if (!task_) {
+    return tasks::behavior_tree::BtStatus::FAILED;
+  }
+  return task_->trackToTarget(target_id);
+}
+
+tasks::behavior_tree::BtStatus AutonomyNode::exploreAnywhere(
+  const double time_allowance_sec)
+{
+  if (!task_) {
+    return tasks::behavior_tree::BtStatus::FAILED;
+  }
+  return task_->exploreAnywhere(time_allowance_sec);
+}
+
+bool AutonomyNode::updateTrackTargetPose(
+  const commsgs::geometry_msgs::PoseStamped & pose)
+{
+  return task_ && task_->updateTrackTargetPose(pose);
+}
+
+bool AutonomyNode::updateExploreGoal(
+  const commsgs::geometry_msgs::PoseStamped & goal)
+{
+  return task_ && task_->updateExploreGoal(goal);
+}
+
+bool AutonomyNode::hasNavigator(const std::string & id) const
+{
+  return task_ && task_->hasNavigator(id);
+}
+
+std::vector<std::string> AutonomyNode::registeredNavigatorIds() const
+{
+  if (!task_) {
+    return {};
+  }
+  return task_->registeredNavigatorIds();
+}
+
+tasks::behavior_tree::BtStatus AutonomyNode::teleopDrive(
+  const double time_allowance_sec,
+  const double max_linear_vel,
+  const double max_angular_vel,
+  std::function<bool()> cancel_checker)
+{
+  if (!task_) {
+    return tasks::behavior_tree::BtStatus::FAILED;
+  }
+  return task_->teleopDrive(
+    time_allowance_sec, max_linear_vel, max_angular_vel, std::move(cancel_checker));
+}
+
+void AutonomyNode::beginTeleop(
+  const double max_linear_vel, const double max_angular_vel)
+{
+  if (task_) {
+    task_->beginTeleop(max_linear_vel, max_angular_vel);
+  }
+}
+
+void AutonomyNode::endTeleop()
+{
+  if (task_) {
+    task_->endTeleop();
+  }
+}
+
+bool AutonomyNode::isTeleopActive() const
+{
+  return task_ && task_->isTeleopActive();
+}
+
+bool AutonomyNode::updateTeleopCommand(
+  const commsgs::geometry_msgs::TwistStamped & cmd)
+{
+  return task_ && task_->updateTeleopCommand(cmd);
+}
+
+AutonomyNode::UniquePtr CreateAutonomy(const proto::AutonomyOptions & options)
+{
+  return std::make_unique<AutonomyNode>(options);
 }
 
 }  // namespace system

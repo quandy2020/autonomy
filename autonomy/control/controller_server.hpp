@@ -99,7 +99,14 @@ public:
     void SetSharedCostmap(
         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
 
-    void SetOdomSmoother(std::shared_ptr<utils::OdomSmoother> odom_smoother);
+    /** Shared odom state used by control and BT (owned by ControllerServer). */
+    std::shared_ptr<utils::OdomSmoother> GetOdomSmoother() const {
+        return odom_smoother_;
+    }
+
+    void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
+    bool HasOdometry() const;
+    bool GetLatestOdometry(commsgs::planning_msgs::Odometry& odom) const;
 
     /**
      * @brief Begin following a path in-process (one control step per TickFollowPath).

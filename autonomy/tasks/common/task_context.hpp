@@ -30,6 +30,12 @@
 
 namespace autonomy {
 namespace tasks {
+namespace navigator {
+namespace teleop {
+class TeleopSession;
+}  // namespace teleop
+}  // namespace navigator
+
 namespace common {
 
 /** Shared in-process services for behavior-tree plugins (blackboard key:
@@ -41,9 +47,10 @@ struct TaskContext {
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> global_costmap;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> local_costmap;
     std::shared_ptr<transform::Buffer> tf;
-    std::shared_ptr<control::utils::OdomSmoother> odom_smoother;
+  std::shared_ptr<control::utils::OdomSmoother> odom_smoother;
+  std::shared_ptr<navigator::teleop::TeleopSession> teleop_session;
 
-    std::string global_frame{"map"};
+  std::string global_frame{"map"};
     std::string robot_base_frame{"base_link"};
     double transform_tolerance{0.1};
 

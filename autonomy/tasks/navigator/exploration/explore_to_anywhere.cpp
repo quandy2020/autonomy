@@ -7,6 +7,7 @@
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
 
 namespace autonomy {
@@ -77,6 +78,17 @@ void ExploreToAnywhereNavigator::OnLoop() {
 void ExploreToAnywhereNavigator::OnPreempt(
     std::shared_ptr<const typename ActionT::Goal> /*goal*/) {
     bt_->TerminatePendingGoal();
+}
+
+void ExploreToAnywhereNavigator::UpdateExploreGoal(
+    const commsgs::geometry_msgs::PoseStamped& explore_goal) {
+    auto blackboard = bt_->GetBlackboard();
+    if (!blackboard) {
+        return;
+    }
+    blackboard->set(explore_goal_blackboard_id_, explore_goal);  // NOLINT
+    blackboard->set("explore_goal", explore_goal);               // NOLINT
+    blackboard->set("goal", explore_goal);                       // NOLINT
 }
 
 }  // namespace exploration

@@ -269,6 +269,10 @@ public:
      */
     void feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan);
 
+    void feedPointCloud2(const commsgs::sensor_msgs::PointCloud2& cloud);
+
+    void feedRange(const commsgs::sensor_msgs::Range& range);
+
     /**
      * @brief Fill @p grid with the latest costmap as an OccupancyGrid snapshot.
      * @return false if the costmap is not initialized.

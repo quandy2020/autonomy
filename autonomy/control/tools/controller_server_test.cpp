@@ -980,9 +980,8 @@ int RunControllerVisualization(int argc, char** argv) {
             ? controller_options.controller_frequency()
             : 20.0;
     const double dt = 1.0 / control_hz;
-    auto odom_smoother = std::make_shared<utils::OdomSmoother>(0.3);
-    controller.SetOdomSmoother(odom_smoother);
     controller.Start();
+    auto odom_smoother = controller.GetOdomSmoother();
 
     const auto controller_ids = ResolveControllerIds(controller_options);
     if (controller_ids.empty()) {

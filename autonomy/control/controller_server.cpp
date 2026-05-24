@@ -201,6 +201,8 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
   tf_buffer_ = std::shared_ptr<transform::Buffer>(
       transform::Buffer::Instance(), [](transform::Buffer*) {});
 
+  odom_smoother_ = std::make_shared<utils::OdomSmoother>();
+
   AINFO << "Control server init successfully.";
 }
 
@@ -231,9 +233,20 @@ void ControllerServer::SetSharedCostmap(
   LoadPlugins();
 }
 
-void ControllerServer::SetOdomSmoother(
-    std::shared_ptr<utils::OdomSmoother> odom_smoother) {
-  odom_smoother_ = std::move(odom_smoother);
+void ControllerServer::UpdateOdometry(
+    const commsgs::planning_msgs::Odometry& odom) {
+  if (odom_smoother_) {
+    odom_smoother_->UpdateOdometry(odom);
+  }
+}
+
+bool ControllerServer::HasOdometry() const {
+  return odom_smoother_ && odom_smoother_->HasOdometry();
+}
+
+bool ControllerServer::GetLatestOdometry(
+    commsgs::planning_msgs::Odometry& odom) const {
+  return odom_smoother_ && odom_smoother_->GetLatestOdometry(odom);
 }
 
 void ControllerServer::LoadPlugins() {

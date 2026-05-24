@@ -21,6 +21,7 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
@@ -51,6 +52,13 @@ public:
     void OnPreempt(std::shared_ptr<const typename ActionT::Goal> goal) override;
     void GoalCompleted(std::shared_ptr<typename ActionT::Result> result,
                        const common::BtStatus final_bt_status) override;
+
+    /** @brief 更新黑板目标位姿（跟踪模块在 BT 运行期间调用）。 */
+    void UpdateTargetPose(const commsgs::geometry_msgs::PoseStamped& target_pose);
+
+    const std::string& targetPoseBlackboardId() const {
+        return target_pose_blackboard_id_;
+    }
 
     std::string target_pose_blackboard_id_{"target_pose"};
     uint32_t target_id_{0};

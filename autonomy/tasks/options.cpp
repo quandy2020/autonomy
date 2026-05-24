@@ -130,6 +130,36 @@ proto::TaskOptions LoadTaskOptions(
             LoadNavigatorConfig(explore_to_anywhere_dict.get());
     }
 
+    if (parameter_dictionary->HasKey("teleop_drive")) {
+        auto teleop_drive_dict =
+            parameter_dictionary->GetDictionary("teleop_drive");
+        *options.mutable_teleop_drive() =
+            LoadNavigatorConfig(teleop_drive_dict.get());
+    }
+
+    if (parameter_dictionary->HasKey("teleop_drive_options")) {
+        auto dict = parameter_dictionary->GetDictionary("teleop_drive_options");
+        auto* opts = options.mutable_teleop_drive_options();
+        if (dict->HasKey("default_max_linear_vel")) {
+            opts->set_default_max_linear_vel(
+                dict->GetDouble("default_max_linear_vel"));
+        }
+        if (dict->HasKey("default_max_angular_vel")) {
+            opts->set_default_max_angular_vel(
+                dict->GetDouble("default_max_angular_vel"));
+        }
+        if (dict->HasKey("cmd_stale_timeout_sec")) {
+            opts->set_cmd_stale_timeout_sec(
+                dict->GetDouble("cmd_stale_timeout_sec"));
+        }
+        if (dict->HasKey("projection_time_sec")) {
+            opts->set_projection_time_sec(dict->GetDouble("projection_time_sec"));
+        }
+        if (dict->HasKey("simulation_step_sec")) {
+            opts->set_simulation_step_sec(dict->GetDouble("simulation_step_sec"));
+        }
+    }
+
     if (parameter_dictionary->HasKey("error_code_name_prefixes")) {
         auto error_code_prefixes_dict =
             parameter_dictionary->GetDictionary("error_code_name_prefixes");

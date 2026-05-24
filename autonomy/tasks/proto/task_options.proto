@@ -19,6 +19,7 @@ package autonomy.tasks.proto;
 import "autonomy/tasks/proto/task_tracker.proto";
 import "autonomy/tasks/proto/task_navigation.proto";
 import "autonomy/tasks/proto/task_exploration.proto";
+import "autonomy/tasks/proto/task_teleop.proto";
 import "autonomy/tasks/proto/task_dock.proto";
 
 // Per-navigator config (from tasks.lua sub-tables like navigate_to_pose, track_to_target).
@@ -47,6 +48,7 @@ message TaskOptions {
   NavigatorConfig navigate_to_docking = 12;
   NavigatorConfig track_to_target = 13;
   NavigatorConfig explore_to_anywhere = 14;
+  NavigatorConfig teleop_drive = 34;
   repeated string error_code_name_prefixes = 15;
   // Task-specific options (blackboard keys, default BT file, etc.); from task_*.proto.
   NavigateToPoseOptions navigate_to_pose_options = 16;
@@ -54,6 +56,7 @@ message TaskOptions {
   NavigateToDockingOptions navigate_to_docking_options = 18;
   TrackToTargetOptions track_to_target_options = 19;
   ExploreToAnywhereOptions explore_to_anywhere_options = 20;
+  TeleopDriveOptions teleop_drive_options = 35;
   // Plugin search paths (override env when set). Avoids "plugin of class ... have not been loaded".
   string plugin_index_path = 21;  // e.g. /path/to/install/autonomy/share/autolink_plugin_index
   string plugin_lib_path = 22;    // e.g. /path/to/install/autonomy/lib

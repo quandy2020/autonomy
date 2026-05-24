@@ -36,20 +36,62 @@ enum AssistedTeleopErrorCode
     ASSISTED_TELEOP_ERROR_UNKNOWN = 730;
     ASSISTED_TELEOP_ERROR_TIMEOUT = 731;
     ASSISTED_TELEOP_ERROR_TF_ERROR = 732;
+    ASSISTED_TELEOP_ERROR_INVALID_INPUT = 733;
+}
+
+// Teleop motion mode relative to robot base_link (+x forward, +z CCW rotation).
+enum TeleopMotionMode
+{
+    TELEOP_MOTION_VELOCITY = 0;
+    TELEOP_MOTION_FORWARD = 1;
+    TELEOP_MOTION_BACKWARD = 2;
+    TELEOP_MOTION_ROTATE = 3;
+    TELEOP_MOTION_SEQUENCE = 4;
+    TELEOP_MOTION_RAW = 5;
 }
 
 message AssistedTeleopAction
 {
     message Goal
     {
-        // Time allowance
+        // Session / motion time allowance
         autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 1;
+
+        // Motion mode (VELOCITY = continuous assisted cmd_vel; RAW = passthrough)
+        TeleopMotionMode mode = 2;
+
+        // base_link +x linear distance (m). Positive = forward, negative = backward.
+        // Used by FORWARD/BACKWARD/SEQUENCE modes.
+        float linear_distance = 3;
+
+        // Linear speed cap (m/s) in VELOCITY mode; travel speed in scripted modes.
+        // 0 = use navigator config default.
+        float linear_speed = 4;
+
+        // base_link relative yaw (rad, + = counter-clockwise). Used by ROTATE/SEQUENCE.
+        float rotation_angle = 5;
+
+        // Angular speed cap (rad/s) in VELOCITY mode. 0 = use config default.
+        float angular_speed = 6;
+
+        // Skip costmap collision filtering in VELOCITY mode.
+        bool disable_collision_checks = 7;
     }
 
     message Feedback
     {
         // Current teleop duration
         autonomy.commsgs.proto.builtin_interfaces.Duration current_teleop_duration = 1;
+
+        // Scripted motion progress (base_link frame)
+        float linear_distance_traveled = 2;
+        float angular_distance_traveled = 3;
+
+        // VELOCITY mode: operator intent vs BT-applied safe velocity
+        float commanded_linear_vel = 4;
+        float commanded_angular_vel = 5;
+        float applied_linear_vel = 6;
+        float applied_angular_vel = 7;
     }
 
     message Result
