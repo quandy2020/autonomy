@@ -18,6 +18,7 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/tasks/navigator/proto/action.pb.h"
 
 namespace autonomy {
 namespace tasks {
@@ -136,6 +137,41 @@ void SetupNavigatorBlackboard(
         blackboard->set("dock_id", std::string{});  // NOLINT
         blackboard->set("dock_pose",
                         commsgs::geometry_msgs::PoseStamped{});  // NOLINT
+        return;
+    }
+
+    if (navigator_id == "teleop_drive") {
+        double max_linear = 0.5;
+        double max_angular = 1.5;
+        double stale_timeout = 0.5;
+        double projection_time = 1.5;
+        double simulation_step = 0.1;
+        if (options.has_teleop_drive_options()) {
+            const auto& opts = options.teleop_drive_options();
+            max_linear = opts.default_max_linear_vel();
+            max_angular = opts.default_max_angular_vel();
+            stale_timeout = opts.cmd_stale_timeout_sec();
+            if (opts.projection_time_sec() > 0.0) {
+                projection_time = opts.projection_time_sec();
+            }
+            if (opts.simulation_step_sec() > 0.0) {
+                simulation_step = opts.simulation_step_sec();
+            }
+        }
+        blackboard->set("teleop_mode",
+                        static_cast<int>(behavior_tree::proto::TELEOP_MOTION_VELOCITY));  // NOLINT
+        blackboard->set("teleop_time_allowance", 0.0);  // NOLINT
+        blackboard->set("teleop_max_linear_vel", max_linear);  // NOLINT
+        blackboard->set("teleop_max_angular_vel", max_angular);  // NOLINT
+        blackboard->set("teleop_cmd_stale_timeout_sec", stale_timeout);  // NOLINT
+        blackboard->set("teleop_linear_distance", 0.0);  // NOLINT
+        blackboard->set("teleop_linear_signed", 0.0);  // NOLINT
+        blackboard->set("teleop_linear_speed", max_linear);  // NOLINT
+        blackboard->set("teleop_rotation_angle", 0.0);  // NOLINT
+        blackboard->set("teleop_angular_speed", max_angular);  // NOLINT
+        blackboard->set("teleop_disable_collision_checks", false);  // NOLINT
+        blackboard->set("teleop_projection_time_sec", projection_time);  // NOLINT
+        blackboard->set("teleop_simulation_step_sec", simulation_step);  // NOLINT
         return;
     }
 

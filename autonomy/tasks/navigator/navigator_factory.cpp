@@ -10,6 +10,7 @@
 #include "autonomy/tasks/navigator/exploration/explore_to_anywhere.hpp"
 #include "autonomy/tasks/navigator/navigation/navigate_through_poses.hpp"
 #include "autonomy/tasks/navigator/navigation/navigate_to_pose.hpp"
+#include "autonomy/tasks/navigator/teleop/teleop_drive.hpp"
 #include "autonomy/tasks/navigator/tracking/track_to_target.hpp"
 
 namespace autonomy {
@@ -105,6 +106,13 @@ bool RegisterBuiltinNavigators(NavigatorFactoryRegistry& factory) {
            const proto::NavigatorConfig& config) {
             return MakeNavigator<exploration::ExploreToAnywhereNavigator>(
                 ctx, config, "explore_to_anywhere.xml");
+        });
+    ok &= factory.Register(
+        "teleop_drive",
+        [](const NavigatorCreateContext& ctx,
+           const proto::NavigatorConfig& config) {
+            return MakeNavigator<teleop::TeleopDriveNavigator>(
+                ctx, config, "teleop_drive.xml");
         });
     if (!ok) {
         AERROR << "Failed to register one or more builtin BT navigators.";

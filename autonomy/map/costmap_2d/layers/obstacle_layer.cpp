@@ -288,6 +288,19 @@ void ObstacleLayer::feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan) {
     }
 }
 
+void ObstacleLayer::feedPointCloud2(
+    const commsgs::sensor_msgs::PointCloud2& cloud) {
+    if (!enabled_ || marking_buffers_.empty()) {
+        return;
+    }
+    const auto message = std::make_shared<PointCloud2>(cloud);
+    for (const auto& buffer : marking_buffers_) {
+        if (buffer) {
+            pointCloud2Callback(message, buffer);
+        }
+    }
+}
+
 void ObstacleLayer::laserScanCallback(
     commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
     const std::shared_ptr<ObservationBuffer>& buffer) {

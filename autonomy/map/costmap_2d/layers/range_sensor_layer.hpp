@@ -109,6 +109,9 @@ public:
     void bufferIncomingRangeMsg(
         const commsgs::sensor_msgs::Range::SharedPtr range_message);
 
+    /** @brief Inject range measurement from an external bridge (e.g. ROS). */
+    void feedRange(const commsgs::sensor_msgs::Range& range);
+
 protected:
     /**
      * @brief Processes all sensors into the costmap buffered from callbacks

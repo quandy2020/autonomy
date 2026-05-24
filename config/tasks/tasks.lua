@@ -8,9 +8,11 @@ include "common.lua"
 
 -- Plugins required by config/tasks/behavior_tree/navigate_to_pose.xml
 local plugin_lib_names_minimal = {
+    "autonomy_behavior_tree_action_assisted_teleop_velocity_action",
     "autonomy_behavior_tree_action_back_up_action",
     "autonomy_behavior_tree_action_clear_costmap_service",
     "autonomy_behavior_tree_action_compute_path_to_pose_action",
+    "autonomy_behavior_tree_action_compute_path_through_poses_action",
     "autonomy_behavior_tree_action_controller_selector_node",
     "autonomy_behavior_tree_action_drive_on_heading_action",
     "autonomy_behavior_tree_action_follow_path_action",
@@ -19,10 +21,14 @@ local plugin_lib_names_minimal = {
     "autonomy_behavior_tree_action_smoother_selector_node",
     "autonomy_behavior_tree_action_reinitialize_global_localization_service",
     "autonomy_behavior_tree_action_spin_action",
+    "autonomy_behavior_tree_action_teleop_drive_action",
     "autonomy_behavior_tree_action_wait_action",
     "autonomy_behavior_tree_condition_goal_reached_condition",
     "autonomy_behavior_tree_condition_initial_pose_received_condition",
     "autonomy_behavior_tree_condition_is_path_valid_condition",
+    "autonomy_behavior_tree_condition_is_teleop_linear_sign_condition",
+    "autonomy_behavior_tree_condition_is_teleop_mode_condition",
+    "autonomy_behavior_tree_condition_is_teleop_rotate_requested_condition",
     "autonomy_behavior_tree_condition_time_expired_condition",
     "autonomy_behavior_tree_condition_transform_available_condition",
     "autonomy_behavior_tree_control_pipeline_sequence",
@@ -36,6 +42,7 @@ local plugin_lib_names_full = {
     "autonomy_behavior_tree_action_append_goal_pose_to_goals_action",
     "autonomy_behavior_tree_action_assisted_teleop_action",
     "autonomy_behavior_tree_action_assisted_teleop_cancel_node",
+    "autonomy_behavior_tree_action_assisted_teleop_velocity_action",
     "autonomy_behavior_tree_action_back_up_action",
     "autonomy_behavior_tree_action_back_up_cancel_node",
     "autonomy_behavior_tree_action_clear_costmap_service",
@@ -66,6 +73,7 @@ local plugin_lib_names_full = {
     "autonomy_behavior_tree_action_smoother_selector_node",
     "autonomy_behavior_tree_action_spin_action",
     "autonomy_behavior_tree_action_spin_cancel_node",
+    "autonomy_behavior_tree_action_teleop_drive_action",
     "autonomy_behavior_tree_action_truncate_path_action",
     "autonomy_behavior_tree_action_truncate_path_local_action",
     "autonomy_behavior_tree_action_wait_action",
@@ -82,6 +90,9 @@ local plugin_lib_names_full = {
     "autonomy_behavior_tree_condition_is_path_valid_condition",
     "autonomy_behavior_tree_condition_is_stopped_condition",
     "autonomy_behavior_tree_condition_is_stuck_condition",
+    "autonomy_behavior_tree_condition_is_teleop_linear_sign_condition",
+    "autonomy_behavior_tree_condition_is_teleop_mode_condition",
+    "autonomy_behavior_tree_condition_is_teleop_rotate_requested_condition",
     "autonomy_behavior_tree_condition_path_expiring_timer_condition",
     "autonomy_behavior_tree_condition_time_expired_condition",
     "autonomy_behavior_tree_condition_transform_available_condition",
@@ -140,6 +151,7 @@ tasks = {
         "navigate_to_docking",
         "track_to_target",
         "explore_to_anywhere",
+        "teleop_drive",
     },
 
     navigate_to_pose = {
@@ -148,20 +160,33 @@ tasks = {
     },
 
     navigate_through_poses = {
-        enable = false,
+        enable = true,
         default_behavior_tree_file = "navigate_through_poses.xml",
     },
     navigate_to_docking = {
-        enable = false,
+        enable = true,
         default_behavior_tree_file = "navigate_to_dock.xml",
     },
     track_to_target = {
-        enable = false,
+        enable = true,
         default_behavior_tree_file = "track_to_target.xml",
     },
     explore_to_anywhere = {
-        enable = false,
+        enable = true,
         default_behavior_tree_file = "explore_to_anywhere.xml",
+    },
+
+    teleop_drive = {
+        enable = true,
+        default_behavior_tree_file = "teleop_drive.xml",
+    },
+
+    teleop_drive_options = {
+        default_max_linear_vel = 0.5,
+        default_max_angular_vel = 1.5,
+        cmd_stale_timeout_sec = 0.5,
+        projection_time_sec = 1.5,
+        simulation_step_sec = 0.1,
     },
 
     error_code_name_prefixes = {

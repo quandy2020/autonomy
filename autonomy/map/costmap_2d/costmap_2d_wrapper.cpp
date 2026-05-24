@@ -760,6 +760,39 @@ void Costmap2DWrapper::feedLaserScan(
     }
 }
 
+void Costmap2DWrapper::feedPointCloud2(
+    const commsgs::sensor_msgs::PointCloud2& cloud) {
+    if (!layered_costmap_) {
+        return;
+    }
+    auto* plugins = layered_costmap_->getPlugins();
+    if (plugins == nullptr) {
+        return;
+    }
+    for (auto& plugin : *plugins) {
+        if (auto obstacle_layer =
+                std::dynamic_pointer_cast<ObstacleLayer>(plugin)) {
+            obstacle_layer->feedPointCloud2(cloud);
+        }
+    }
+}
+
+void Costmap2DWrapper::feedRange(const commsgs::sensor_msgs::Range& range) {
+    if (!layered_costmap_) {
+        return;
+    }
+    auto* plugins = layered_costmap_->getPlugins();
+    if (plugins == nullptr) {
+        return;
+    }
+    for (auto& plugin : *plugins) {
+        if (auto range_layer =
+                std::dynamic_pointer_cast<RangeSensorLayer>(plugin)) {
+            range_layer->feedRange(range);
+        }
+    }
+}
+
 bool Costmap2DWrapper::snapshotOccupancyGrid(
     commsgs::map_msgs::OccupancyGrid& grid) {
     if (!layered_costmap_ || !layered_costmap_->getCostmap()) {

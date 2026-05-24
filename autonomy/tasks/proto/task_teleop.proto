@@ -1,0 +1,15 @@
+// Copyright 2026 autonomy contributors
+//
+// Options for teleop_drive navigator (manual / remote control session).
+
+syntax = "proto3";
+
+package autonomy.tasks.proto;
+
+message TeleopDriveOptions {
+  double default_max_linear_vel = 1;   // m/s
+  double default_max_angular_vel = 2;  // rad/s
+  double cmd_stale_timeout_sec = 3;    // s; 0 = disable stale watchdog
+  double projection_time_sec = 4;      // assisted teleop forward simulation horizon
+  double simulation_step_sec = 5;      // assisted teleop simulation dt
+}

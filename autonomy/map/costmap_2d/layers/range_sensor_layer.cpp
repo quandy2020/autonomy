@@ -198,6 +198,10 @@ void RangeSensorLayer::bufferIncomingRangeMsg(
     range_message_mutex_.unlock();
 }
 
+void RangeSensorLayer::feedRange(const commsgs::sensor_msgs::Range& range) {
+    bufferIncomingRangeMsg(std::make_shared<commsgs::sensor_msgs::Range>(range));
+}
+
 void RangeSensorLayer::updateCostmap() {
     std::list<commsgs::sensor_msgs::Range> range_msgs_buffer_copy;
 

@@ -1,0 +1,103 @@
+<!--
+  遥操行为树：按 AssistedTeleopAction.Goal.mode 分发。
+
+  数据流（VELOCITY 模式，默认）：
+    /cmd_vel_teleop → TeleopSession(raw) → AssistedTeleopVelocity(costmap 约束)
+    → TeleopSession(safe) → Task::tickControl → 底盘
+
+  模式：
+    velocity  - 连续速度 + 障碍物辅助（AssistedTeleopVelocity）
+    raw       - 直通限幅（TeleopDrive）
+    forward   - base_link 前进固定距离（DriveOnHeading）
+    backward  - base_link 后退固定距离（BackUp）
+    rotate    - base_link 旋转固定角度（Spin）
+    sequence  - 先直线位移后旋转（可选跳过零位移/零角度）
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <BehaviorTree ID="MainTree">
+    <Fallback name="TeleopGoalDispatch">
+
+      <Sequence name="AssistedVelocityTeleop">
+        <IsTeleopMode mode="velocity"/>
+        <AssistedTeleopVelocity
+          time_allowance="{teleop_time_allowance}"
+          max_linear_vel="{teleop_max_linear_vel}"
+          max_angular_vel="{teleop_max_angular_vel}"
+          disable_collision_checks="{teleop_disable_collision_checks}"
+          projection_time_sec="{teleop_projection_time_sec}"
+          simulation_step_sec="{teleop_simulation_step_sec}"/>
+      </Sequence>
+
+      <Sequence name="RawVelocityTeleop">
+        <IsTeleopMode mode="raw"/>
+        <TeleopDrive
+          time_allowance="{teleop_time_allowance}"
+          max_linear_vel="{teleop_max_linear_vel}"
+          max_angular_vel="{teleop_max_angular_vel}"/>
+      </Sequence>
+
+      <Sequence name="BaselinkForward">
+        <IsTeleopMode mode="forward"/>
+        <DriveOnHeading
+          dist_to_travel="{teleop_linear_distance}"
+          speed="{teleop_linear_speed}"
+          time_allowance="{teleop_time_allowance}"/>
+      </Sequence>
+
+      <Sequence name="BaselinkBackward">
+        <IsTeleopMode mode="backward"/>
+        <BackUp
+          backup_dist="{teleop_linear_distance}"
+          backup_speed="{teleop_linear_speed}"
+          time_allowance="{teleop_time_allowance}"/>
+      </Sequence>
+
+      <Sequence name="BaselinkRotate">
+        <IsTeleopMode mode="rotate"/>
+        <Spin
+          spin_dist="{teleop_rotation_angle}"
+          time_allowance="{teleop_time_allowance}"/>
+      </Sequence>
+
+      <Sequence name="BaselinkSequence">
+        <IsTeleopMode mode="sequence"/>
+        <Fallback name="OptionalLinear">
+          <Sequence>
+            <IsTeleopLinearSign sign="positive"/>
+            <DriveOnHeading
+              dist_to_travel="{teleop_linear_distance}"
+              speed="{teleop_linear_speed}"
+              time_allowance="{teleop_time_allowance}"/>
+          </Sequence>
+          <Sequence>
+            <IsTeleopLinearSign sign="negative"/>
+            <BackUp
+              backup_dist="{teleop_linear_distance}"
+              backup_speed="{teleop_linear_speed}"
+              time_allowance="{teleop_time_allowance}"/>
+          </Sequence>
+          <Wait wait_duration="0"/>
+        </Fallback>
+        <Fallback name="OptionalRotate">
+          <Sequence>
+            <IsTeleopRotateRequested/>
+            <Spin
+              spin_dist="{teleop_rotation_angle}"
+              time_allowance="{teleop_time_allowance}"/>
+          </Sequence>
+          <Wait wait_duration="0"/>
+        </Fallback>
+      </Sequence>
+
+      <!-- mode 未匹配或未设置时默认辅助速度遥操 -->
+      <AssistedTeleopVelocity
+        time_allowance="{teleop_time_allowance}"
+        max_linear_vel="{teleop_max_linear_vel}"
+        max_angular_vel="{teleop_max_angular_vel}"
+        disable_collision_checks="{teleop_disable_collision_checks}"
+        projection_time_sec="{teleop_projection_time_sec}"
+        simulation_step_sec="{teleop_simulation_step_sec}"/>
+
+    </Fallback>
+  </BehaviorTree>
+</root>

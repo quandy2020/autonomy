@@ -117,6 +117,9 @@ public:
      */
     void feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan);
 
+    /** @brief Inject PointCloud2 from an external bridge (e.g. ROS). */
+    void feedPointCloud2(const commsgs::sensor_msgs::PointCloud2& cloud);
+
     /**
      * @brief  A callback to handle buffering LaserScan messages
      * @param message The message returned from a message notifier

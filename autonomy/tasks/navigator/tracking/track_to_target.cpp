@@ -4,6 +4,7 @@
 
 #include "autonomy/tasks/navigator/tracking/track_to_target.hpp"
 
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
@@ -77,6 +78,16 @@ void TrackToTargetNavigator::OnPreempt(
     } else {
         bt_->TerminatePendingGoal();
     }
+}
+
+void TrackToTargetNavigator::UpdateTargetPose(
+    const commsgs::geometry_msgs::PoseStamped& target_pose) {
+    auto blackboard = bt_->GetBlackboard();
+    if (!blackboard) {
+        return;
+    }
+    blackboard->set(target_pose_blackboard_id_, target_pose);  // NOLINT
+    blackboard->set("target_pose", target_pose);               // NOLINT
 }
 
 }  // namespace tracking

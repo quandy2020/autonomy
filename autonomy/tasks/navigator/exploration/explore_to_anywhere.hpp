@@ -22,6 +22,7 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/tasks/navigator/proto/action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
@@ -52,6 +53,14 @@ public:
     void OnPreempt(std::shared_ptr<const typename ActionT::Goal> goal) override;
     void GoalCompleted(std::shared_ptr<typename ActionT::Result> result,
                        const common::BtStatus final_bt_status) override;
+
+    /** @brief 更新黑板探索目标（探索模块在 BT 运行期间调用）。 */
+    void UpdateExploreGoal(
+        const commsgs::geometry_msgs::PoseStamped& explore_goal);
+
+    const std::string& exploreGoalBlackboardId() const {
+        return explore_goal_blackboard_id_;
+    }
 
     std::chrono::steady_clock::time_point start_time_;
     std::string explore_goal_blackboard_id_{"explore_goal"};

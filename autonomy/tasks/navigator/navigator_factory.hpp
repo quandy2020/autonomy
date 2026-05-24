@@ -56,7 +56,7 @@ using NavigatorFactoryRegistry =
  * @brief Process-wide BT navigator factory (string id → navigator instance).
  *
  * Built-in ids: navigate_to_pose, navigate_through_poses, navigate_to_docking,
- * track_to_target, explore_to_anywhere.
+ * track_to_target, explore_to_anywhere, teleop_drive.
  */
 class NavigatorFactory
 {
