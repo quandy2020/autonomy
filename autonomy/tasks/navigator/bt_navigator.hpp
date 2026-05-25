@@ -16,9 +16,6 @@
 #include "autonomy/tasks/proto/bt_action.pb.h"
 
 namespace autonomy {
-namespace control {
-class ControllerServer;
-}
 namespace tasks {
 namespace proto {
 class TaskOptions;
@@ -47,8 +44,7 @@ public:
 
   void attach(
     const std::string & config_directory,
-    std::shared_ptr<common::TaskContext> task_context,
-    std::shared_ptr<control::ControllerServer> controller);
+    std::shared_ptr<common::TaskContext> task_context);
   void shutdown();
   bool isReady() const;
 

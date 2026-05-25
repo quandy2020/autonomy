@@ -151,7 +151,6 @@ struct NavigatorRegistry::Impl
     navigators.clear();
     ready = false;
     task_context.reset();
-    controller.reset();
   }
 
   template <typename NavigatorT>
@@ -172,7 +171,7 @@ struct NavigatorRegistry::Impl
 
   void applyTaskOptionsToContext()
   {
-    if (!task_context || !controller) {
+    if (!task_context || !task_context->controller) {
       return;
     }
     const std::string global_frame =
@@ -181,7 +180,7 @@ struct NavigatorRegistry::Impl
       !task_options_.robot_base_frame().empty()
         ? task_options_.robot_base_frame()
         : "base_link";
-    controller->SetNavigationContext(
+    task_context->controller->SetNavigationContext(
       task_context->tf_buffer, global_frame, robot_frame);
   }
 
