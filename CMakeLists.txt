@@ -337,12 +337,6 @@ autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 add_subdirectory(autonomy/planning/tools)
 add_subdirectory(autonomy/control/tools)
 
-# Single-process tasks entry (autonomy/tasks/main.cpp is excluded from libautonomy).
-google_binary(autonomy_tasks_main
-  SRCS autonomy/tasks/main.cpp
-)
-add_dependencies(autonomy_tasks_main behavior_tree_plugins)
-
 ## Test unit
 if (${BUILD_TEST})
   set(TEST_LIB autonomy_test_library)

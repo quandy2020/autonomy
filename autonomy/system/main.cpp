@@ -45,9 +45,9 @@ void Run() {
         autonomy::common::FLAGS_configuration_directory,
         autonomy::common::FLAGS_configuration_basename);
 
-    // Create autonomy node
-    auto autonomy = autonomy::system::CreateAutonomy(options);
-    autonomy->Start();
+    // // Create autonomy node
+    // auto autonomy = autonomy::system::CreateAutonomy(options);
+    // autonomy->Start();
 
     // Shutdown autonomy node
     autonomy->Shutdown();

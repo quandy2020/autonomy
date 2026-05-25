@@ -8,9 +8,7 @@ include "common.lua"
 
 -- Plugins required by config/tasks/behavior_tree/navigate_to_pose.xml
 local plugin_lib_names_minimal = {
-    "autonomy_behavior_tree_action_assisted_teleop_velocity_action",
     "autonomy_behavior_tree_action_back_up_action",
-    "autonomy_behavior_tree_action_clear_costmap_service",
     "autonomy_behavior_tree_action_compute_path_to_pose_action",
     "autonomy_behavior_tree_action_compute_path_through_poses_action",
     "autonomy_behavior_tree_action_controller_selector_node",
@@ -20,7 +18,6 @@ local plugin_lib_names_minimal = {
     "autonomy_behavior_tree_action_smooth_path_action",
     "autonomy_behavior_tree_action_smoother_selector_node",
     "autonomy_behavior_tree_action_spin_action",
-    "autonomy_behavior_tree_action_teleop_drive_action",
     "autonomy_behavior_tree_action_wait_action",
     "autonomy_behavior_tree_condition_goal_reached_condition",
     "autonomy_behavior_tree_condition_initial_pose_received_condition",
@@ -61,10 +58,7 @@ tasks = {
     navigators = {
         "navigate_to_pose",
         "navigate_through_poses",
-        "navigate_to_docking",
-        "track_to_target",
         "explore_to_anywhere",
-        "teleop_drive",
     },
 
     navigate_to_pose = {
@@ -76,22 +70,9 @@ tasks = {
         enable = true,
         default_behavior_tree_file = "navigate_through_poses.xml",
     },
-    navigate_to_docking = {
-        enable = true,
-        default_behavior_tree_file = "navigate_to_dock.xml",
-    },
-    track_to_target = {
-        enable = true,
-        default_behavior_tree_file = "track_to_target.xml",
-    },
     explore_to_anywhere = {
         enable = true,
         default_behavior_tree_file = "explore_to_anywhere.xml",
-    },
-
-    teleop_drive = {
-        enable = true,
-        default_behavior_tree_file = "teleop_drive.xml",
     },
 
     teleop_drive_options = {
