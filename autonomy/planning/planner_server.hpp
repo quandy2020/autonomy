@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"

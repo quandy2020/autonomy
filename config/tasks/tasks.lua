@@ -19,6 +19,7 @@ local plugin_lib_names_minimal = {
     "autonomy_behavior_tree_action_smoother_selector_node",
     "autonomy_behavior_tree_action_spin_action",
     "autonomy_behavior_tree_action_wait_action",
+    "autonomy_behavior_tree_action_clear_costmap_service",
     "autonomy_behavior_tree_condition_goal_reached_condition",
     "autonomy_behavior_tree_condition_initial_pose_received_condition",
     "autonomy_behavior_tree_condition_is_path_valid_condition",

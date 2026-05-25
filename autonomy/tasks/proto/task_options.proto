@@ -16,63 +16,10 @@ syntax = "proto3";
 
 package autonomy.tasks.proto;
 
-import "autonomy/tasks/proto/task_tracker.proto";
 import "autonomy/tasks/proto/task_navigation.proto";
 import "autonomy/tasks/proto/task_exploration.proto";
-import "autonomy/tasks/proto/task_teleop.proto";
-import "autonomy/tasks/proto/task_dock.proto";
 
-// Per-navigator config (from tasks.lua sub-tables like navigate_to_pose, track_to_target).
-message NavigatorConfig {
-  string plugin = 1;                        // e.g. autonomy_tasks_navigator_navigate_to_pose
-  bool enable_groot_monitoring = 2;
-  uint32 groot_server_port = 3;
-  string default_behavior_tree_file = 4;    // e.g. navigate_to_pose_w_replanning_and_recovery.xml
-  bool enable = 5;                          // if false, navigator is not loaded
-}
 
-// Task options (from Lua / config). Loaded from "tasks" table and passed to BtNavigator.
-// NavigatorConfig (10-14) for plugin/groot; *_options (16-20) for task-specific blackboard/BT.
 message TaskOptions {
-  string global_frame = 1;
-  string robot_base_frame = 2;
-  string odom_topic = 3;
-  uint32 bt_loop_duration = 4;
-  double filter_duration = 5;
-  uint32 default_server_timeout = 6;
-  uint32 wait_for_service_timeout = 7;
-  string service_introspection_mode = 8;
-  repeated string navigators = 9;
-  NavigatorConfig navigate_to_pose = 10;
-  NavigatorConfig navigate_through_poses = 11;
-  NavigatorConfig navigate_to_docking = 12;
-  NavigatorConfig track_to_target = 13;
-  NavigatorConfig explore_to_anywhere = 14;
-  NavigatorConfig teleop_drive = 34;
-  repeated string error_code_name_prefixes = 15;
-  // Task-specific options (blackboard keys, default BT file, etc.); from task_*.proto.
-  NavigateToPoseOptions navigate_to_pose_options = 16;
-  NavigateThroughPosesOptions navigate_through_poses_options = 17;
-  NavigateToDockingOptions navigate_to_docking_options = 18;
-  TrackToTargetOptions track_to_target_options = 19;
-  ExploreToAnywhereOptions explore_to_anywhere_options = 20;
-  TeleopDriveOptions teleop_drive_options = 35;
-  // Plugin search paths (override env when set). Avoids "plugin of class ... have not been loaded".
-  string plugin_index_path = 21;  // e.g. /path/to/install/autonomy/share/autolink_plugin_index
-  string plugin_lib_path = 22;    // e.g. /path/to/install/autonomy/lib
-  // BT plugin library names from config (e.g. autonomy_behavior_tree_control_pipeline_sequence).
-  // If set, used instead of discovering from filesystem.
-  repeated string plugin_lib_names = 23;
-  bool enable_groot_monitoring = 24;  // root-level default from tasks.lua
-  uint32 groot_server_port = 25;      // root-level default from tasks.lua
-  // Timeout (seconds) for local-survival branch when localization is degraded/lost.
-  double local_survival_timeout = 26;
-  // "minimal" | "full" — selects plugin_lib_names_* when plugin_lib_names is empty.
-  string plugin_profile = 27;
-  repeated string plugin_lib_names_minimal = 28;
-  repeated string plugin_lib_names_full = 29;
-  string default_planner_id = 30;
-  string default_controller_id = 31;
-  string default_goal_checker_id = 32;
-  double goal_reached_tolerance = 33;
+ 
 }
