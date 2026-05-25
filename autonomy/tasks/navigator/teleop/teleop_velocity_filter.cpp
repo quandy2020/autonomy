@@ -72,20 +72,26 @@ commsgs::geometry_msgs::TwistStamped FilterVelocityForObstacles(
   }
 
   CostmapWrapper * costmap = nullptr;
-  if (ctx.local_costmap && ctx.local_costmap->getCostmap()) {
-    costmap = ctx.local_costmap.get();
-  } else if (ctx.global_costmap && ctx.global_costmap->getCostmap()) {
-    costmap = ctx.global_costmap.get();
+  if (ctx.controller) {
+    const auto local = ctx.controller->GetCostmapWrapper();
+    if (local && local->getCostmap()) {
+      costmap = local.get();
+    }
   }
-  if (!costmap || !ctx.tf) {
+  if (!costmap && ctx.planner) {
+    const auto global = ctx.planner->GetCostmapWrapper();
+    if (global && global->getCostmap()) {
+      costmap = global.get();
+    }
+  }
+  if (!costmap || !ctx.tf_buffer) {
     return safe;
   }
 
   commsgs::geometry_msgs::PoseStamped pose;
   if (!utils::getCurrentPose(
-        pose, ctx.tf, costmap->getGlobalFrameID(),
-        ctx.robot_base_frame,
-        static_cast<float>(ctx.transform_tolerance))) {
+        pose, ctx.tf_buffer, costmap->getGlobalFrameID(), costmap->getBaseFrameID(),
+        static_cast<float>(costmap->getTransformTolerance()))) {
     AWARN << "AssistedTeleopVelocity: failed to lookup robot pose";
     return safe;
   }

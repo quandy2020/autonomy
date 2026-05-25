@@ -21,8 +21,8 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/common/bt_navigator.hpp"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
@@ -31,10 +31,10 @@ namespace navigator {
 namespace docking {
 
 class NavigateToDockingNavigator
-    : public common::BehaviorTreeNavigator<behavior_tree::proto::DockRobotAction>
+    : public common::BtNavigator<proto::DockRobotAction>
 {
 public:
-    using ActionT = behavior_tree::proto::DockRobotAction;
+    using ActionT = proto::DockRobotAction;
 
     AUTONOMY_SMART_PTR_DEFINITIONS(NavigateToDockingNavigator)
 

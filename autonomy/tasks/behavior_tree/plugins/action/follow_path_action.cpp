@@ -17,7 +17,6 @@
 #include "autonomy/tasks/behavior_tree/plugins/action/follow_path_action.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/control/controller_server.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -44,21 +43,12 @@ void FollowPathAction::setFailure(int32_t code, const std::string& msg) {
 void FollowPathAction::maybeUpdatePathFromPorts() {
     commsgs::planning_msgs::Path new_path;
     if (getInput("path", new_path) && !new_path.poses.empty()) {
-        const bool path_changed =
-            path_.poses.size() != new_path.poses.size() ||
-            path_.poses.empty() ||
-            path_.poses.back().pose.position.x !=
-                new_path.poses.back().pose.position.x ||
-            path_.poses.back().pose.position.y !=
-                new_path.poses.back().pose.position.y;
-        if (path_changed) {
-            path_ = std::move(new_path);
-            auto ctx = taskContext();
-            if (ctx && ctx->controller && follow_started_) {
-                ctx->controller->BeginFollowPath(path_, controller_id_,
-                                                 goal_checker_id_,
-                                                 progress_checker_id_);
-            }
+        path_ = std::move(new_path);
+        auto ctx = taskContext();
+        if (ctx && ctx->controller && follow_started_) {
+            ctx->controller->BeginFollowPath(path_, controller_id_,
+                                             goal_checker_id_,
+                                             progress_checker_id_);
         }
     }
 
@@ -94,9 +84,10 @@ BT::NodeStatus FollowPathAction::onStart() {
         return BT::NodeStatus::FAILURE;
     }
 
-    controller_id_ = ctx->selected_controller_id;
-    goal_checker_id_ = ctx->selected_goal_checker_id;
-    progress_checker_id_ = ctx->selected_progress_checker_id;
+    const auto bb = config().blackboard;
+    controller_id_ = common::DefaultControllerFromBlackboard(bb);
+    goal_checker_id_ = common::DefaultGoalCheckerFromBlackboard(bb);
+    progress_checker_id_ = common::DefaultProgressCheckerFromBlackboard(bb);
     getInput("controller_id", controller_id_);
     getInput("goal_checker_id", goal_checker_id_);
     getInput("progress_checker_id", progress_checker_id_);
@@ -124,8 +115,8 @@ BT::NodeStatus FollowPathAction::onRunning() {
         return BT::NodeStatus::FAILURE;
     }
 
-    const TickResult tick =
-        ctx->controller->TickFollowPath(ctx->CancelChecker());
+    const TickResult tick = ctx->controller->TickFollowPath(
+        common::CancelCheckerFromConfig(config()));
     switch (tick) {
         case TickResult::Running:
             return BT::NodeStatus::RUNNING;

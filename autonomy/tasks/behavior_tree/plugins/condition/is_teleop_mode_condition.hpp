@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/behavior_tree.h"
 
 namespace autonomy {

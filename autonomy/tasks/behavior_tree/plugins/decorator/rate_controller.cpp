@@ -35,29 +35,18 @@ void RateController::initialize() {
 BT::NodeStatus RateController::tick() {
     if (!BT::isStatusActive(status())) {
         initialize();
-    }
-
-    if (!BT::isStatusActive(status())) {
-        // Reset the starting point since we're starting a new iteration of
-        // the rate controller (moving from IDLE to RUNNING)
         start_ = std::chrono::high_resolution_clock::now();
         first_time_ = true;
     }
 
     setStatus(BT::NodeStatus::RUNNING);
 
-    // Determine how long its been since we've started this iteration
-    auto now = std::chrono::high_resolution_clock::now();
-    auto elapsed = now - start_;
+    const auto now = std::chrono::high_resolution_clock::now();
+    const auto elapsed = now - start_;
+    using float_seconds = std::chrono::duration<double>;
+    const auto seconds = std::chrono::duration_cast<float_seconds>(elapsed);
 
-    // Now, get that in seconds
-    typedef std::chrono::duration<float> float_seconds;
-    auto seconds = std::chrono::duration_cast<float_seconds>(elapsed);
-
-    // The child gets ticked the first time through and any time the period has
-    // expired. In addition, once the child begins to run, it is ticked each
-    // time 'til completion
-    if (first_time_ || (child_node_->status() == BT::NodeStatus::RUNNING) ||
+    if (first_time_ || child_node_->status() == BT::NodeStatus::RUNNING ||
         seconds.count() >= period_) {
         first_time_ = false;
         const BT::NodeStatus child_state = child_node_->executeTick();
@@ -67,13 +56,9 @@ BT::NodeStatus RateController::tick() {
             case BT::NodeStatus::RUNNING:
             case BT::NodeStatus::FAILURE:
                 return child_state;
-
             case BT::NodeStatus::SUCCESS:
-                start_ =
-                    std::chrono::high_resolution_clock::now();  // Reset the
-                                                                // timer
+                start_ = std::chrono::high_resolution_clock::now();
                 return BT::NodeStatus::SUCCESS;
-
             default:
                 return BT::NodeStatus::FAILURE;
         }

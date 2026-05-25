@@ -22,12 +22,17 @@ AssistedTeleopVelocityAction::AssistedTeleopVelocityAction(
 
 BT::NodeStatus AssistedTeleopVelocityAction::onStart()
 {
-  auto ctx = taskContext();
-  if (!ctx || !ctx->teleop_session) {
-    AERROR << "AssistedTeleopVelocity: task_context or teleop_session missing";
+  if (!config().blackboard) {
+    AERROR << "AssistedTeleopVelocity: blackboard missing";
     return BT::NodeStatus::FAILURE;
   }
-  session_ = ctx->teleop_session;
+  session_ =
+    config().blackboard->get<std::shared_ptr<navigator::teleop::TeleopSession>>(
+      "teleop_session");
+  if (!session_) {
+    AERROR << "AssistedTeleopVelocity: teleop_session missing on blackboard";
+    return BT::NodeStatus::FAILURE;
+  }
 
   time_allowance_sec_ = 0.0;
   getInput("time_allowance", time_allowance_sec_);
@@ -95,7 +100,7 @@ BT::NodeStatus AssistedTeleopVelocityAction::onRunning()
     filter_opts.simulation_step_sec = simulation_step_sec_;
     filter_opts.disable_collision_checks = disable_collision_checks_;
     const auto safe = navigator::teleop::FilterVelocityForObstacles(
-      *ctx, session_->RequestedCommand(), filter_opts);
+      *ctx, session_->lastRawCommand(), filter_opts);
     session_->SetOutputCommand(safe);
   }
 

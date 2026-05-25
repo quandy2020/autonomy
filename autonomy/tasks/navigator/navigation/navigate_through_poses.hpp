@@ -21,8 +21,8 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/common/bt_navigator.hpp"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
@@ -31,11 +31,11 @@ namespace navigator {
 namespace navigation {
 
 class NavigateThroughPosesNavigator
-    : public common::BehaviorTreeNavigator<
-          behavior_tree::proto::NavigateThroughPosesAction>
+    : public common::BtNavigator<
+          proto::NavigateThroughPosesAction>
 {
 public:
-    using ActionT = behavior_tree::proto::NavigateThroughPosesAction;
+    using ActionT = proto::NavigateThroughPosesAction;
 
     AUTONOMY_SMART_PTR_DEFINITIONS(NavigateThroughPosesNavigator)
 

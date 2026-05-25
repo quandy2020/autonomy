@@ -20,9 +20,9 @@
 #include <string>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
-#include "autonomy/tasks/navigator/proto/srv.pb.h"
+#include "autonomy/tasks/proto/bt_srv.pb.h"
 #include "behaviortree_cpp/condition_node.h"
 #include "behaviortree_cpp/json_export.h"
 

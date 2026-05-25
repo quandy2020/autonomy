@@ -71,32 +71,14 @@ void AutonomyNode::addPathListener(PathListener listener)
   }
 }
 
-void AutonomyNode::updateOdometry(const commsgs::planning_msgs::Odometry & odom)
+sensor::CollatorInterface & AutonomyNode::sensorCollator()
 {
-  if (task_) {
-    task_->updateOdometry(odom);
-  }
+  return task_->sensorCollator();
 }
 
-void AutonomyNode::feedLaserScan(const commsgs::sensor_msgs::LaserScan & scan)
+const sensor::CollatorInterface & AutonomyNode::sensorCollator() const
 {
-  if (task_) {
-    task_->feedLaserScan(scan);
-  }
-}
-
-void AutonomyNode::feedPointCloud2(const commsgs::sensor_msgs::PointCloud2 & cloud)
-{
-  if (task_) {
-    task_->feedPointCloud2(cloud);
-  }
-}
-
-void AutonomyNode::feedRange(const commsgs::sensor_msgs::Range & range)
-{
-  if (task_) {
-    task_->feedRange(range);
-  }
+  return task_->sensorCollator();
 }
 
 bool AutonomyNode::planToGoal(const commsgs::geometry_msgs::PoseStamped & goal)
@@ -132,20 +114,6 @@ void AutonomyNode::requestCancelNavigation()
 {
   if (task_) {
     task_->requestCancelNavigation();
-  }
-}
-
-void AutonomyNode::applySpeedLimit(const commsgs::planning_msgs::SpeedLimit & limit)
-{
-  if (task_) {
-    task_->applySpeedLimit(limit);
-  }
-}
-
-void AutonomyNode::clearSpeedLimit()
-{
-  if (task_) {
-    task_->clearSpeedLimit();
   }
 }
 

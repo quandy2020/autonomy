@@ -90,7 +90,7 @@ public:
         return costmap_wrapper_;
     }
 
-    /** TF + frames for in-process goal checks (set by TaskScheduler). */
+    /** TF + frames for in-process goal checks (set by tasks::Task). */
     void SetNavigationContext(std::shared_ptr<transform::Buffer> tf_buffer,
                               const std::string& global_frame,
                               const std::string& robot_base_frame);

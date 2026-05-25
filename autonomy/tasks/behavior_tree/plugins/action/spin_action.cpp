@@ -35,7 +35,7 @@ BT::NodeStatus SpinAction::onStart() {
     control::ControllerServer::RecoveryMotionCommand cmd;
     cmd.type = control::ControllerServer::RecoveryMotionType::Spin;
     cmd.distance = spin_dist;
-    cmd.speed = 0.5;
+    cmd.speed = spin_dist >= 0.0 ? 0.5 : -0.5;
     cmd.time_allowance_sec = time_allowance;
 
     if (!ctx->controller->BeginRecoveryMotion(cmd)) {
@@ -59,7 +59,7 @@ BT::NodeStatus SpinAction::onRunning() {
     }
 
     const auto result = ctx->controller->TickRecoveryMotion(
-        ctx->CancelChecker());
+        common::CancelCheckerFromConfig(config()));
     if (result == control::ControllerServer::RecoveryTickResult::Running) {
         return BT::NodeStatus::RUNNING;
     }

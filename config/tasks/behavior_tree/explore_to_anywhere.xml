@@ -52,7 +52,7 @@
         </RateController>
 
         <!-- 路径有效性检查（若无效会触发 RecoveryNode 的恢复逻辑） -->
-        <IsPathValid/>
+        <IsPathValid path="{path}"/>
 
         <!-- 沿路径执行自主运动，控制器内执行局部避障 -->
         <FollowPath

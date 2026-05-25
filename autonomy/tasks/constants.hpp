@@ -24,7 +24,7 @@ namespace tasks {
 
 constexpr char kTaskNodeName[] = "task_manager";
 
-/** @brief Registered BT navigator ids (NavigatorFactory / tasks.lua). */
+/** @brief Registered BT navigator ids (NavigatorRegistry / tasks.lua). */
 constexpr char kNavigatorNavigateToPose[] = "navigate_to_pose";
 constexpr char kNavigatorNavigateThroughPoses[] = "navigate_through_poses";
 constexpr char kNavigatorNavigateToDocking[] = "navigate_to_docking";
@@ -33,7 +33,6 @@ constexpr char kNavigatorExploreToAnywhere[] = "explore_to_anywhere";
 constexpr char kNavigatorTeleopDrive[] = "teleop_drive";
 
 inline constexpr std::size_t kMinPathPoses = 2;
-inline constexpr double kClearedSpeedLimit = 0.0;
 inline constexpr double kDirectNavDefaultTimeoutSec = 300.0;
 inline constexpr int kBtWaitPollMs = 50;
 inline constexpr int kSpinRateHz = 10;

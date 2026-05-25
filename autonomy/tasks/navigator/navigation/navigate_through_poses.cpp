@@ -19,7 +19,6 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
 #include "autonomy/tasks/utils/robot_utils.hpp"
 
 namespace autonomy {
@@ -34,7 +33,7 @@ NavigateThroughPosesNavigator::NavigateThroughPosesNavigator(
     const common::FeedbackUtils& feedback_utils,
     const std::shared_ptr<common::NavigatorMuxer>& muxer,
     std::shared_ptr<common::OdomSmoother> odom_smoother)
-    : BehaviorTreeNavigator<ActionT>("navigate_through_poses",
+    : BtNavigator<ActionT>("navigate_through_poses",
                                      "navigate_through_poses.xml", options,
                                      task_context, plugin_lib_names,
                                      feedback_utils, muxer, odom_smoother),
@@ -56,12 +55,12 @@ bool NavigateThroughPosesNavigator::GoalReceived(
         return false;
     }
     std::string bt_xml = goal->behavior_tree().empty()
-                             ? bt_->GetDefaultBTFilename()
+                             ? GetDefaultBTFilename()
                              : goal->behavior_tree();
-    bt_xml = utils::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
-    if (!bt_->LoadBehaviorTree(bt_xml)) {
-        bt_->SetInternalError(
-            static_cast<uint16_t>(behavior_tree::proto::
+    bt_xml = common::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
+    if (!LoadBehaviorTree(bt_xml)) {
+        SetInternalError(
+            static_cast<uint16_t>(proto::
                                       NAVIGATE_THROUGH_POSES_ERROR_FAILED_TO_LOAD_BEHAVIOR_TREE),
             "Error loading XML file: " + bt_xml);
         return false;
@@ -73,7 +72,7 @@ void NavigateThroughPosesNavigator::GoalCompleted(
     std::shared_ptr<typename ActionT::Result> result,
     const common::BtStatus /*final_bt_status*/) {
     if (result && result->error_code() !=
-                      static_cast<int>(behavior_tree::proto::
+                      static_cast<int>(proto::
                                            NAVIGATE_THROUGH_POSES_ERROR_NONE)) {
         AWARN << "NavigateThroughPoses completed with error "
               << result->error_code() << ": " << result->error_msg();
@@ -96,23 +95,23 @@ void NavigateThroughPosesNavigator::OnLoop() {
         commsgs::builtin_interfaces::ToProto(
             commsgs::builtin_interfaces::Duration::FromSeconds(
                 std::chrono::duration<double>(now - start_time_).count()));
-    bt_->PublishFeedback(feedback_msg);
+    PublishFeedback(feedback_msg);
 }
 
 void NavigateThroughPosesNavigator::OnPreempt(
     std::shared_ptr<const typename ActionT::Goal> goal) {
     if (goal && InitializeGoalPoses(goal)) {
-        bt_->AcceptPendingGoal();
+        AcceptPendingGoal();
     } else {
-        bt_->TerminatePendingGoal();
+        TerminatePendingGoal();
     }
 }
 
 bool NavigateThroughPosesNavigator::InitializeGoalPoses(
     std::shared_ptr<const typename ActionT::Goal> goal) {
     if (!goal || goal->poses().goals().empty()) {
-        bt_->SetInternalError(
-            static_cast<uint16_t>(behavior_tree::proto::
+        SetInternalError(
+            static_cast<uint16_t>(proto::
                                       NAVIGATE_THROUGH_POSES_ERROR_INVALID_GOALS),
             "NavigateThroughPoses requires at least one pose.");
         return false;
@@ -124,7 +123,7 @@ bool NavigateThroughPosesNavigator::InitializeGoalPoses(
     }
 
     start_time_ = std::chrono::steady_clock::now();
-    auto blackboard = bt_->GetBlackboard();
+    auto blackboard = GetBlackboard();
     if (blackboard) {
         blackboard->set("number_recoveries", 0);  // NOLINT
         blackboard->set(goals_blackboard_id_, goals);  // NOLINT

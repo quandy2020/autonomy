@@ -7,7 +7,6 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -21,7 +20,7 @@ NavigateToDockingNavigator::NavigateToDockingNavigator(
     const common::FeedbackUtils& feedback_utils,
     const std::shared_ptr<common::NavigatorMuxer>& muxer,
     std::shared_ptr<common::OdomSmoother> odom_smoother)
-    : BehaviorTreeNavigator<ActionT>("navigate_to_docking",
+    : BtNavigator<ActionT>("navigate_to_docking",
                                      "navigate_to_dock.xml", options,
                                      task_context, plugin_lib_names,
                                      feedback_utils, muxer, odom_smoother) {}
@@ -31,13 +30,13 @@ bool NavigateToDockingNavigator::GoalReceived(
     if (!goal) {
         return false;
     }
-    std::string bt_xml = bt_->GetDefaultBTFilename();
-    bt_xml = utils::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
-    if (!bt_->LoadBehaviorTree(bt_xml)) {
+    std::string bt_xml = GetDefaultBTFilename();
+    bt_xml = common::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
+    if (!LoadBehaviorTree(bt_xml)) {
         return false;
     }
     start_time_ = std::chrono::steady_clock::now();
-    auto blackboard = bt_->GetBlackboard();
+    auto blackboard = GetBlackboard();
     if (blackboard) {
         blackboard->set("number_recoveries", 0);  // NOLINT
         blackboard->set("dock_id", goal->dock_id());  // NOLINT
@@ -54,7 +53,7 @@ void NavigateToDockingNavigator::GoalCompleted(
     const common::BtStatus /*final_bt_status*/) {
     if (result && result->error_code() !=
                       static_cast<int>(
-                          behavior_tree::proto::DOCK_ROBOT_ERROR_NONE)) {
+                          proto::DOCK_ROBOT_ERROR_NONE)) {
         AWARN << "NavigateToDocking error " << result->error_code() << ": "
               << result->error_msg();
     }
@@ -66,15 +65,15 @@ void NavigateToDockingNavigator::OnLoop() {
         std::chrono::steady_clock::now() - start_time_);
     *feedback->mutable_docking_time() = commsgs::builtin_interfaces::ToProto(
         commsgs::builtin_interfaces::Duration::FromSeconds(elapsed.count()));
-    bt_->PublishFeedback(feedback);
+    PublishFeedback(feedback);
 }
 
 void NavigateToDockingNavigator::OnPreempt(
     std::shared_ptr<const typename ActionT::Goal> goal) {
     if (goal && GoalReceived(goal)) {
-        bt_->AcceptPendingGoal();
+        AcceptPendingGoal();
     } else {
-        bt_->TerminatePendingGoal();
+        TerminatePendingGoal();
     }
 }
 

@@ -17,7 +17,7 @@
 #include "autonomy/tasks/behavior_tree/plugins/condition/goal_reached_condition.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/tasks/utils/robot_utils.hpp"
 
@@ -38,13 +38,13 @@ GoalReachedCondition::~GoalReachedCondition() {
 }
 
 void GoalReachedCondition::initialize() {
-
     getInput("goal_reached_tol", goal_reached_tol_);
-    tf_ =
-        config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
-            "tf_buffer");
-
+    tf_ = common::TransformBufferFromBlackboard(config().blackboard);
+    transform_tolerance_ = common::TransformToleranceFromBlackboard(
+        config().blackboard, static_cast<float>(transform_tolerance_));
     getInput("transform_tolerance", transform_tolerance_);
+    robot_base_frame_ = common::RobotBaseFrameFromBlackboard(
+        config().blackboard, robot_base_frame_);
     GetInputOrBlackboard("robot_base_frame", robot_base_frame_);
 }
 
@@ -65,10 +65,11 @@ bool GoalReachedCondition::isGoalReached() {
 
     commsgs::geometry_msgs::PoseStamped current_pose;
     std::shared_ptr<autonomy::control::utils::OdomSmoother> odom_smoother;
-    if (config().blackboard) {
-        config().blackboard->get<std::shared_ptr<
-            autonomy::control::utils::OdomSmoother>>("odom_smoother",
-                                                     odom_smoother);
+    if (const auto ctx = common::TaskContextFromBlackboard(config().blackboard)) {
+        odom_smoother = ctx->odom_smoother;
+    }
+    if (!tf_) {
+        return false;
     }
     if (!autonomy::tasks::utils::getGlobalRobotPose(
             current_pose, tf_, odom_smoother, goal.header.frame_id,

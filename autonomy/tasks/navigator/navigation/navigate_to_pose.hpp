@@ -23,10 +23,9 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
-#include "autonomy/tasks/common/feedback_utils.hpp"
+#include "autonomy/tasks/common/bt_navigator.hpp"
 #include "autonomy/tasks/common/task_context.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
@@ -43,14 +42,14 @@ using autonomy::tasks::common::OdomSmoother;
  * NavigateToPoseNavigator 对齐）。
  */
 class NavigateToPoseNavigator
-    : public autonomy::tasks::common::BehaviorTreeNavigator<
-          autonomy::tasks::behavior_tree::proto::NavigateToPoseAction>
+    : public autonomy::tasks::common::BtNavigator<
+          autonomy::tasks::proto::NavigateToPoseAction>
 {
 public:
     /**
      * Define ActionT type
      */
-    using ActionT = autonomy::tasks::behavior_tree::proto::NavigateToPoseAction;
+    using ActionT = autonomy::tasks::proto::NavigateToPoseAction;
 
     /**
      * Define NavigateToPoseNavigator::SharedPtr type

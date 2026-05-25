@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/smoother_selector_node.hpp"
 
-#include "autonomy/tasks/common/task_context.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -24,59 +24,32 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-SmootherSelector::SmootherSelector(const std::string& name,
+SmootherSelector::SmootherSelector(const std::string& xml_tag_name,
                                    const BT::NodeConfiguration& conf)
-    : BT::SyncActionNode(name, conf) {
-    initialize();
-}
+    : BT::SyncActionNode(xml_tag_name, conf) {}
 
-void SmootherSelector::initialize() {
-    createROSInterfaces();
-}
-
-void SmootherSelector::createROSInterfaces() {
-    getInput("topic_name", topic_name_);
-}
-
-void SmootherSelector::callbackSmootherSelect(
-    std::shared_ptr<const commsgs::std_msgs::String> msg) {
-    if (msg && !msg->data.empty()) {
-        last_selected_smoother_ = msg->data;
+void SmootherSelector::readDefaultFromPorts() {
+    std::string default_smoother;
+    getInput("default_smoother", default_smoother);
+    if (default_smoother.empty()) {
+        default_smoother =
+            common::DefaultSmootherFromBlackboard(config().blackboard);
+    }
+    if (!default_smoother.empty()) {
+        last_selected_smoother_ = default_smoother;
     }
 }
 
 BT::NodeStatus SmootherSelector::tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
-    }
-
-    // This behavior always use the last selected smoother received from the
-    // topic input. When no input is specified it uses the default smoother. If
-    // the default smoother is not specified then we work in "required smoother
-    // mode": In this mode, the behavior returns failure if the smoother
-    // selection is not received from the topic input.
     if (last_selected_smoother_.empty()) {
-        std::string default_smoother;
-        getInput("default_smoother", default_smoother);
-        if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
-                "task_context")) {
-            if (ctx && !ctx->selected_smoother_id.empty()) {
-                default_smoother = ctx->selected_smoother_id;
-            }
-        }
-        if (default_smoother.empty()) {
-            return BT::NodeStatus::FAILURE;
-        }
-        last_selected_smoother_ = default_smoother;
+        readDefaultFromPorts();
+    }
+    if (last_selected_smoother_.empty()) {
+        return BT::NodeStatus::FAILURE;
     }
 
     setOutput("selected_smoother", last_selected_smoother_);
-    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
-            "task_context")) {
-        if (ctx) {
-            ctx->selected_smoother_id = last_selected_smoother_;
-        }
-    }
+    config().blackboard->set("selected_smoother", last_selected_smoother_);  // NOLINT
 
     return BT::NodeStatus::SUCCESS;
 }

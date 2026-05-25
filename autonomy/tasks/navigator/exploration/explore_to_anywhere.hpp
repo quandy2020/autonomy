@@ -21,9 +21,9 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/tasks/common/bt_navigator.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
@@ -32,11 +32,11 @@ namespace navigator {
 namespace exploration {
 
 class ExploreToAnywhereNavigator
-    : public common::BehaviorTreeNavigator<
-          behavior_tree::proto::ExploreToAnywhereAction>
+    : public common::BtNavigator<
+          proto::ExploreToAnywhereAction>
 {
 public:
-    using ActionT = behavior_tree::proto::ExploreToAnywhereAction;
+    using ActionT = proto::ExploreToAnywhereAction;
 
     AUTONOMY_SMART_PTR_DEFINITIONS(ExploreToAnywhereNavigator)
 

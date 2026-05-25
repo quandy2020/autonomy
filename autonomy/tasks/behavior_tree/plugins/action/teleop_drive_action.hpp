@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/tasks/navigator/teleop/teleop_session.hpp"
 
 namespace autonomy {

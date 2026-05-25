@@ -16,11 +16,8 @@
 
 #pragma once
 
-#include <set>
 #include <string>
-#include <vector>
 
-#include "autonomy/commsgs/std_msgs.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
@@ -29,14 +26,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-/**
- * @brief The SmootherSelector behavior is used to switch the smoother
- * that will be used by the smoother server. It subscribes to a topic
- * "smoother_selector" to get the decision about what smoother must be used. It
- * is usually used before of the FollowPath. The selected_smoother output port
- * is passed to smoother_id input port of the FollowPath
- * @note This is an Asynchronous node. It will re-initialize when halted.
- */
+/** @brief Select smoother id from blackboard default or BT input ports. */
 class SmootherSelector : public BT::SyncActionNode
 {
 public:
@@ -64,36 +54,16 @@ public:
                     "topic_name", "smoother_selector",
                     "the input topic name to select the smoother"),
 
-                BT::OutputPort<std::string>(
-                    "selected_smoother", "Selected smoother by subscription")};
+                BT::OutputPort<std::string>("selected_smoother",
+                                           "Selected smoother id")};
     }
 
 private:
-    /**
-     * @brief Function to read parameters and initialize class variables
-     */
-    void initialize();
-    /**
-     * @brief Function to create ROS interfaces
-     */
-    void createROSInterfaces();
+    void readDefaultFromPorts();
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
     BT::NodeStatus tick() override;
 
-    /**
-     * @brief callback function for the smoother_selector topic
-     *
-     * @param msg the message with the id of the smoother_selector
-     */
-    void callbackSmootherSelect(
-        std::shared_ptr<const commsgs::std_msgs::String> msg);
-
     std::string last_selected_smoother_;
-
-    std::string topic_name_;
 };
 
 }  // namespace action

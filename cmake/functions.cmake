@@ -54,6 +54,9 @@ function(google_test NAME ARG_SRC)
   target_include_directories("${NAME}" SYSTEM PRIVATE
     "${GMOCK_INCLUDE_DIRS}")
   target_link_libraries("${NAME}" PUBLIC ${GMOCK_LIBRARIES})
+  # Link the main library after gtest/gmock so unresolved symbols from the test
+  # translation unit are pulled from libautonomy.so reliably.
+  target_link_libraries("${NAME}" PUBLIC ${PROJECT_NAME})
   target_compile_options(${NAME} PRIVATE -Wno-error=missing-braces)
 
   add_test(${NAME} ${NAME})

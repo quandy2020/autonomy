@@ -1,0 +1,398 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.tasks.proto;
+
+import "google/protobuf/empty.proto";
+
+import "autonomy/commsgs/proto/planning_msgs.proto";
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/commsgs/proto/map_msgs.proto";
+import "autonomy/tasks/proto/bt_msg.proto";
+
+
+message Empty
+{
+    message Request
+    {
+        // Empty request
+        google.protobuf.Empty request = 1;
+    }
+
+    message Response
+    {
+        // Empty request
+        google.protobuf.Empty response = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message SetBool
+{
+    message Request
+    {
+        bool data = 1; // e.g. for hardware enabling / disabling
+    }
+
+    message Response
+    {
+        bool success = 1; // indicate successful run of triggered service
+        string message = 2; // informational, e.g. for error messages
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message Trigger
+{
+    message Request
+    {
+        // Empty request
+        google.protobuf.Empty request = 1;
+    }
+
+    message Response
+    {
+        // indicate successful run of triggered service
+        bool success = 1;
+        // informational, e.g. for error messages
+        string message = 2;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2; 
+}
+
+message ClearCostmapAroundRobot
+{
+    message Request
+    {
+        //  Clears the costmap within a distance
+        float reset_distance = 1; 
+    }
+
+    message Response
+    {
+        // Empty response
+        google.protobuf.Empty response = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;  
+}
+
+message ClearCostmapExceptRegion
+{
+    message Request 
+    {
+        // Clears the costmap except a rectangular region specified by reset_distance
+        float reset_distance = 1;
+    }
+
+    message Response
+    {
+        // Empty response
+        google.protobuf.Empty response = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+// Clears all layers on the costmap
+message ClearEntireCostmap
+{
+    message Request 
+    {
+        // Empty request
+        google.protobuf.Empty request = 1;
+    }
+
+    message Response
+    {
+        // Empty response
+        google.protobuf.Empty response = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message DynamicEdges
+{
+    message Request 
+    {
+        repeated uint32 closed_edges = 1;
+        repeated uint32 opened_edges = 2;
+        repeated EdgeCost adjust_edges = 3;
+    }
+
+    message Response
+    {
+        // response
+        bool success = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+// Get the costmap
+message GetCostmap
+{
+    message Request 
+    {
+        // Specifications for the requested costmap
+        CostmapMetaData specs = 1;
+    }
+
+    message Response
+    {
+        // response
+        Costmap map = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+// Get costmap costs at given poses
+message GetCosts
+{
+    message Request 
+    {
+        bool use_footprint = 1;
+        repeated autonomy.commsgs.proto.geometry_msgs.PoseStamped poses = 2;
+    }
+
+    message Response
+    {
+        repeated float costs = 1;
+        bool success = 2;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+// Determine if the current path is still valid
+message IsPathValid
+{
+    message Request 
+    {
+        autonomy.commsgs.proto.planning_msgs.Path path = 1;
+        uint32 max_cost = 2;  
+        bool consider_unknown_as_obstacle = 3;
+    }
+
+    message Response
+    {
+        bool is_valid = 1;
+        repeated int32 invalid_pose_indices = 2;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+enum LoadMapResultCode
+{
+    // Result code definitions
+    LOAD_MAP_RESULT_SUCCESS = 0;
+    LOAD_MAP_RESULT_MAP_DOES_NOT_EXIST = 1;
+    LOAD_MAP_RESULT_INVALID_MAP_DATA = 2;
+    LOAD_MAP_RESULT_INVALID_MAP_METADATA = 3;
+    LOAD_MAP_RESULT_UNDEFINED_FAILURE = 255;
+}
+
+message LoadMap
+{
+    message Request 
+    {
+        // URL of map resource
+        // Can be an absolute path to a file: file:///path/to/maps/floor1.yaml
+        // Or, relative to a ROS package: package://my_ros_package/maps/floor2.yaml
+        string map_url = 1;
+    }
+
+    message Response
+    {
+        // Returned map is only valid if result equals RESULT_SUCCESS
+        autonomy.commsgs.proto.map_msgs.OccupancyGrid map = 1;
+        LoadMapResultCode result = 2;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+// Lifecycle node command
+enum LifecycleNodeCommand
+{
+    LIFECYCLE_COMMAND_STARTUP = 0;
+    LIFECYCLE_COMMAND_PAUSE = 1;
+    LIFECYCLE_COMMAND_RESUME = 2;
+    LIFECYCLE_COMMAND_RESET = 3;
+    LIFECYCLE_COMMAND_SHUTDOWN = 4;
+    LIFECYCLE_COMMAND_CONFIGURE = 5;
+    LIFECYCLE_COMMAND_CLEANUP = 6;
+}
+
+message ManageLifecycleNodes
+{
+    message Request 
+    {
+        LifecycleNodeCommand command = 1;
+    }
+
+    message Response
+    {
+        bool success = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+// Reloads the dock's database with a new filepath
+message ReloadDockDatabase
+{
+    message Request 
+    {
+        string filepath = 1;
+    }
+
+    message Response
+    {
+        bool success = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message SaveMap
+{
+    message Request 
+    {
+        // URL of map resource
+        // Can be an absolute path to a file: file:///path/to/maps/floor1.yaml
+        // Or, relative to a ROS package: package://my_ros_package/maps/floor2.yaml
+        string map_topic = 1;
+        string map_url = 2;
+
+        // Constants for image_format. Supported formats: pgm, png, bmp
+        string image_format = 3;
+
+        // Map modes: trinary, scale or raw
+        string map_mode = 4;
+
+        // Thresholds. Values in range of [0.0 .. 1.0]
+        float free_thresh = 5;
+        float occupied_thresh = 6;
+    }
+
+    message Response
+    {
+        bool result = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message SetInitialPose
+{
+    message Request 
+    {
+        autonomy.commsgs.proto.geometry_msgs.PoseWithCovarianceStamped pose = 1;
+    }
+
+    message Response
+    {
+        // Empty response
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}
+
+message SetRouteGraph
+{
+    message Request 
+    {
+        string graph_filepath = 1;
+    }
+
+    message Response
+    {
+        bool success = 1;
+    }
+
+    // Request
+    Request request = 1;
+
+    // Response
+    Response response = 2;
+}

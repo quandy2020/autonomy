@@ -1,0 +1,1250 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.tasks.proto;
+
+import "google/protobuf/empty.proto";
+
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/commsgs/proto/planning_msgs.proto";
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "autonomy/commsgs/proto/std_msgs.proto";
+import "autonomy/tasks/proto/bt_msg.proto";
+
+// ============================================================================
+// AssistedTeleop Action
+// ============================================================================
+
+// Error codes for AssistedTeleop
+// Note: The expected priority order of the errors should match the message order
+enum AssistedTeleopErrorCode
+{
+    ASSISTED_TELEOP_ERROR_NONE = 0;
+    ASSISTED_TELEOP_ERROR_UNKNOWN = 730;
+    ASSISTED_TELEOP_ERROR_TIMEOUT = 731;
+    ASSISTED_TELEOP_ERROR_TF_ERROR = 732;
+    ASSISTED_TELEOP_ERROR_INVALID_INPUT = 733;
+}
+
+// Teleop motion mode relative to robot base_link (+x forward, +z CCW rotation).
+enum TeleopMotionMode
+{
+    TELEOP_MOTION_VELOCITY = 0;
+    TELEOP_MOTION_FORWARD = 1;
+    TELEOP_MOTION_BACKWARD = 2;
+    TELEOP_MOTION_ROTATE = 3;
+    TELEOP_MOTION_SEQUENCE = 4;
+    TELEOP_MOTION_RAW = 5;
+}
+
+message AssistedTeleopAction
+{
+    message Goal
+    {
+        // Session / motion time allowance
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 1;
+
+        // Motion mode (VELOCITY = continuous assisted cmd_vel; RAW = passthrough)
+        TeleopMotionMode mode = 2;
+
+        // base_link +x linear distance (m). Positive = forward, negative = backward.
+        // Used by FORWARD/BACKWARD/SEQUENCE modes.
+        float linear_distance = 3;
+
+        // Linear speed cap (m/s) in VELOCITY mode; travel speed in scripted modes.
+        // 0 = use navigator config default.
+        float linear_speed = 4;
+
+        // base_link relative yaw (rad, + = counter-clockwise). Used by ROTATE/SEQUENCE.
+        float rotation_angle = 5;
+
+        // Angular speed cap (rad/s) in VELOCITY mode. 0 = use config default.
+        float angular_speed = 6;
+
+        // Skip costmap collision filtering in VELOCITY mode.
+        bool disable_collision_checks = 7;
+    }
+
+    message Feedback
+    {
+        // Current teleop duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration current_teleop_duration = 1;
+
+        // Scripted motion progress (base_link frame)
+        float linear_distance_traveled = 2;
+        float angular_distance_traveled = 3;
+
+        // VELOCITY mode: operator intent vs BT-applied safe velocity
+        float commanded_linear_vel = 4;
+        float commanded_angular_vel = 5;
+        float applied_linear_vel = 6;
+        float applied_angular_vel = 7;
+    }
+
+    message Result
+    {
+        // Total elapsed time
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 1;
+        
+        // Error code
+        AssistedTeleopErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// BackUp Action
+// ============================================================================
+
+// Error codes for BackUp
+// Note: The expected priority order of the errors should match the message order
+enum BackUpErrorCode
+{
+    BACK_UP_ERROR_NONE = 0;
+    BACK_UP_ERROR_UNKNOWN = 710;
+    BACK_UP_ERROR_TIMEOUT = 711;
+    BACK_UP_ERROR_TF_ERROR = 712;
+    BACK_UP_ERROR_INVALID_INPUT = 713;
+    BACK_UP_ERROR_COLLISION_AHEAD = 714;
+}
+
+message BackUpAction
+{
+    message Goal
+    {
+        // Target point to back up to
+        autonomy.commsgs.proto.geometry_msgs.Point target = 1;
+        
+        // Speed for backing up
+        float speed = 2;
+        
+        // Time allowance
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 3;
+        
+        // Whether to disable collision checks
+        bool disable_collision_checks = 4;
+    }
+
+    message Feedback
+    {
+        // Distance traveled
+        float distance_traveled = 1;
+    }
+
+    message Result
+    {
+        // Total elapsed time
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 1;
+        
+        // Error code
+        BackUpErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+
+enum ComputeRouteActionErrorCode
+{
+    COMPUTE_ROUTE_ERROR_NONE=0;
+    COMPUTE_ROUTE_ERROR_UNKNOWN=400;
+    COMPUTE_ROUTE_ERROR_TF_ERROR=401;
+    COMPUTE_ROUTE_ERROR_NO_VALID_GRAPH=402;
+    COMPUTE_ROUTE_ERROR_INDETERMINANT_NODES_ON_GRAPH=403;
+    COMPUTE_ROUTE_ERROR_TIMEOUT=404;
+    COMPUTE_ROUTE_ERROR_NO_VALID_ROUTE=405;
+    COMPUTE_ROUTE_IERROR_NVALID_EDGE_SCORER_USE=407;
+}
+
+message ComputeRouteAction
+{
+    // goal definition
+    message Goal
+    {
+        uint32 start_id = 1;
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped start = 2;
+        uint32 goal_id = 3;
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped goal = 4;
+
+        // Whether to use the start field or find the start pose in TF
+        bool use_start = 5; 
+
+        // Whether to use the poses or the IDs fields for request
+        bool use_poses = 6; 
+    }
+
+    message Feedback
+    {
+         google.protobuf.Empty empty = 1;
+    }
+
+    message Result
+    {
+        autonomy.commsgs.proto.builtin_interfaces.Duration planning_time = 1;
+        autonomy.commsgs.proto.planning_msgs.Path path = 2;
+        Route route = 3;
+        uint32 error_code = 4;
+        string error_msg = 5;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// ComputeAndTrackRoute Action
+// ============================================================================
+
+// Error codes for ComputeAndTrackRoute
+enum ComputeAndTrackRouteErrorCode
+{
+    COMPUTE_AND_TRACK_ROUTE_ERROR_NONE = 0;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_UNKNOWN = 400;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_TF_ERROR = 401;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_NO_VALID_GRAPH = 402;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_INDETERMINANT_NODES_ON_GRAPH = 403;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_TIMEOUT = 404;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_NO_VALID_ROUTE = 405;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_OPERATION_FAILED = 406;
+    COMPUTE_AND_TRACK_ROUTE_ERROR_INVALID_EDGE_SCORER_USE = 407;
+}
+
+
+message ComputeAndTrackRouteAction
+{
+    message Goal
+    {
+        // Start node ID
+        uint32 start_id = 1;
+        
+        // Start pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped start = 2;
+        
+        // Goal node ID
+        uint32 goal_id = 3;
+        
+        // Goal pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped goal = 4;
+        
+        // Whether to use the start field or find the start pose in TF
+        bool use_start = 5;
+        
+        // Whether to use the poses or the IDs fields for request
+        bool use_poses = 6;
+    }
+
+    message Feedback
+    {
+        // Last node ID
+        uint32 last_node_id = 1;
+        
+        // Next node ID
+        uint32 next_node_id = 2;
+        
+        // Current edge ID
+        uint32 current_edge_id = 3;
+        
+        // Route
+        Route route = 4;
+        
+        // Path
+        autonomy.commsgs.proto.planning_msgs.Path path = 5;
+        
+        // Operations triggered
+        repeated string operations_triggered = 6;
+        
+        // Whether route was rerouted
+        bool rerouted = 7;
+    }
+
+    message Result
+    {
+        // Execution duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration execution_duration = 1;
+        
+        // Error code
+        ComputeAndTrackRouteErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+enum TrackToTargetErrorCode
+{
+    TRACK_TO_TARGET_ERROR_NONE = 0;
+    TRACK_TO_TARGET_ERROR_UNKNOWN = 500;
+    TRACK_TO_TARGET_ERROR_TF_ERROR = 501;
+    TRACK_TO_TARGET_ERROR_NO_VALID_GRAPH = 502;
+    TRACK_TO_TARGET_ERROR_INDETERMINANT_NODES_ON_GRAPH = 503;
+}
+
+message TrackToTargetAction
+{
+    message Goal
+    {
+        // Target ID
+        uint32 target_id = 1;
+    }
+
+    message Feedback
+    {
+        // Current target ID
+        uint32 current_target_id = 1;
+    }
+
+    message Result
+    {
+        // Error code
+        TrackToTargetErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// ComputePathThroughPoses Action
+// ============================================================================
+
+// Error codes for ComputePathThroughPoses
+// Note: The expected priority order of the errors should match the message order
+enum ComputePathThroughPosesErrorCode
+{
+    COMPUTE_PATH_THROUGH_POSES_ERROR_NONE = 0;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN = 300;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_INVALID_PLANNER = 301;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_TF_ERROR = 302;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_START_OUTSIDE_MAP = 303;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_GOAL_OUTSIDE_MAP = 304;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_START_OCCUPIED = 305;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_GOAL_OCCUPIED = 306;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_TIMEOUT = 307;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VALID_PATH = 308;
+    COMPUTE_PATH_THROUGH_POSES_ERROR_NO_VIAPOINTS_GIVEN = 309;
+}
+
+message ComputePathThroughPosesAction
+{
+    message Goal
+    {
+        // Goal poses (via points)
+        autonomy.commsgs.proto.planning_msgs.Goals goals = 1;
+        
+        // Start pose (optional)
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped start = 2;
+        
+        // Planner ID to use
+        string planner_id = 3;
+        
+        // If false, use current robot pose as path start, if true, use start above instead
+        bool use_start = 4;
+    }
+
+    message Feedback
+    {
+        // Feedback definition (currently empty)
+    }
+
+    message Result
+    {
+        // Planned path
+        autonomy.commsgs.proto.planning_msgs.Path path = 1;
+        
+        // Planning time duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration planning_time = 2;
+        
+        // Error code
+        ComputePathThroughPosesErrorCode error_code = 3;
+        
+        // Error message
+        string error_msg = 4;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// ComputePathToPose Action
+// ============================================================================
+
+// Error codes for ComputePathToPose
+// Note: The expected priority order of the errors should match the message order
+enum ComputePathToPoseErrorCode 
+{
+    COMPUTE_PATH_TO_POSE_ERROR_NONE = 0;
+    COMPUTE_PATH_TO_POSE_ERROR_UNKNOWN = 200;
+    COMPUTE_PATH_TO_POSE_ERROR_INVALID_PLANNER = 201;
+    COMPUTE_PATH_TO_POSE_ERROR_TF_ERROR = 202;
+    COMPUTE_PATH_TO_POSE_ERROR_START_OUTSIDE_MAP = 203;
+    COMPUTE_PATH_TO_POSE_ERROR_GOAL_OUTSIDE_MAP = 204;
+    COMPUTE_PATH_TO_POSE_ERROR_START_OCCUPIED = 205;
+    COMPUTE_PATH_TO_POSE_ERROR_GOAL_OCCUPIED = 206;
+    COMPUTE_PATH_TO_POSE_ERROR_TIMEOUT = 207;
+    COMPUTE_PATH_TO_POSE_ERROR_NO_VALID_PATH = 208;
+}
+
+message ComputePathToPoseAction 
+{
+    message Goal
+    {
+        // Goal pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped goal = 1;
+        
+        // Start pose (optional)
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped start = 2;
+        
+        // Planner ID to use
+        string planner_id = 3;
+        
+        // If false, use current robot pose as path start, if true, use start above instead
+        bool use_start = 4;
+    }
+
+    message Feedback
+    {
+        // No feedback fields defined for compute_path_to_pose action
+    }
+
+    message Result
+    {
+        // Planned path
+        autonomy.commsgs.proto.planning_msgs.Path path = 1;
+        
+        // Planning time duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration planning_time = 2;
+        
+        // Error code
+        ComputePathToPoseErrorCode error_code = 3;
+        
+        // Error message
+        string error_msg = 4;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// DockRobot Action
+// ============================================================================
+
+// Docking state codes
+enum DockingStateCode
+{
+    DOCKING_STATE_NONE = 0;
+    DOCKING_STATE_NAV_TO_STAGING_POSE = 1;
+    DOCKING_STATE_INITIAL_PERCEPTION = 2;
+    DOCKING_STATE_CONTROLLING = 3;
+    DOCKING_STATE_WAIT_FOR_CHARGE = 4;
+    DOCKING_STATE_RETRY = 5;
+}
+
+// Error codes for DockRobot
+// Note: The expected priority order of the errors should match the message order
+enum DockRobotErrorCode
+{
+    DOCK_ROBOT_ERROR_NONE = 0;
+    DOCK_ROBOT_ERROR_DOCK_NOT_IN_DB = 901;
+    DOCK_ROBOT_ERROR_DOCK_NOT_VALID = 902;
+    DOCK_ROBOT_ERROR_FAILED_TO_STAGE = 903;
+    DOCK_ROBOT_ERROR_FAILED_TO_DETECT_DOCK = 904;
+    DOCK_ROBOT_ERROR_FAILED_TO_CONTROL = 905;
+    DOCK_ROBOT_ERROR_FAILED_TO_CHARGE = 906;
+    DOCK_ROBOT_ERROR_TIMEOUT = 907;
+    DOCK_ROBOT_ERROR_UNKNOWN = 999;
+}
+
+message DockRobotAction
+{
+    message Goal
+    {
+        // Whether to use the dock_id or dock_pose fields
+        bool use_dock_id = 1;
+        
+        // Dock name or ID to dock at, from given dock database
+        string dock_id = 2;
+        
+        // Dock pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped dock_pose = 3;
+        
+        // If using dock_pose, what type of dock it is
+        string dock_type = 4;
+        
+        // Maximum time for navigation to get to the dock's staging pose
+        float max_staging_time = 5;
+        
+        // Whether or not to navigate to staging pose or assume robot is already at staging pose within tolerance
+        bool navigate_to_staging_pose = 6;
+    }
+
+    message Feedback
+    {
+        // Current docking state
+        DockingStateCode state = 1;
+        
+        // Docking time elapsed
+        autonomy.commsgs.proto.builtin_interfaces.Duration docking_time = 2;
+        
+        // Number of retries attempted
+        uint32 num_retries = 3;
+    }
+
+    message Result
+    {
+        // Docking success status
+        bool success = 1;
+        
+        // Error code
+        DockRobotErrorCode error_code = 2;
+        
+        // Number of retries attempted
+        uint32 num_retries = 3;
+        
+        // Error message
+        string error_msg = 4;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// DriveOnHeading Action
+// ============================================================================
+
+// Error codes for DriveOnHeading
+// Note: The expected priority order of the errors should match the message order
+enum DriveOnHeadingErrorCode
+{
+    DRIVE_ON_HEADING_ERROR_NONE = 0;
+    DRIVE_ON_HEADING_ERROR_UNKNOWN = 720;
+    DRIVE_ON_HEADING_ERROR_TIMEOUT = 721;
+    DRIVE_ON_HEADING_ERROR_TF_ERROR = 722;
+    DRIVE_ON_HEADING_ERROR_COLLISION_AHEAD = 723;
+    DRIVE_ON_HEADING_ERROR_INVALID_INPUT = 724;
+}
+
+message DriveOnHeadingAction
+{
+    message Goal
+    {
+        // Target point
+        autonomy.commsgs.proto.geometry_msgs.Point target = 1;
+        
+        // Speed
+        float speed = 2;
+        
+        // Time allowance
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 3;
+        
+        // Whether to disable collision checks
+        bool disable_collision_checks = 4;
+    }
+
+    message Feedback
+    {
+        // Distance traveled
+        float distance_traveled = 1;
+    }
+
+    message Result
+    {
+        // Total elapsed time
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 1;
+        
+        // Error code
+        DriveOnHeadingErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// DummyBehavior Action
+// ============================================================================
+
+message DummyBehaviorAction
+{
+    message Goal
+    {
+        // Command string
+        autonomy.commsgs.proto.std_msgs.String command = 1;
+    }
+
+    message Feedback
+    {
+        // Feedback definition (currently empty)
+    }
+
+    message Result
+    {
+        // Total elapsed time
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 1;
+        
+        // Error code (no enum defined in original action file)
+        uint32 error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// FollowGPSWaypoints Action
+// ============================================================================
+
+// Error codes for FollowGPSWaypoints
+// Note: The expected priority order of the errors should match the message order
+enum FollowGPSWaypointsErrorCode
+{
+    FOLLOW_GPS_WAYPOINTS_ERROR_NONE = 0;
+    FOLLOW_GPS_WAYPOINTS_ERROR_UNKNOWN = 600;
+    FOLLOW_GPS_WAYPOINTS_ERROR_TASK_EXECUTOR_FAILED = 601;
+    FOLLOW_GPS_WAYPOINTS_ERROR_NO_WAYPOINTS_GIVEN = 602;
+    FOLLOW_GPS_WAYPOINTS_ERROR_STOP_ON_MISSED_WAYPOINT = 603;
+}
+
+message FollowGPSWaypointsAction
+{
+    message Goal
+    {
+        // Number of loops
+        uint32 number_of_loops = 1;
+        
+        // Goal index
+        uint32 goal_index = 2;
+        
+        // Array of GPS poses (GeoPose not available, using placeholder)
+        // Note: Geographic messages not available, this may need to be implemented
+        repeated bytes gps_poses = 3;
+    }
+
+    message Feedback
+    {
+        // Current waypoint index
+        uint32 current_waypoint = 1;
+    }
+
+    message Result
+    {
+        // Missed waypoints (simplified - using WaypointStatus from follow_waypoints would cause import issues)
+        repeated uint32 missed_waypoint_indices = 1;
+        
+        // Error code
+        FollowGPSWaypointsErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// FollowPath Action
+// ============================================================================
+
+// Error codes for FollowPath
+// Note: The expected priority order of the errors should match the message order
+enum FollowPathErrorCode 
+{
+    FOLLOW_PATH_ERROR_NONE = 0;
+    FOLLOW_PATH_ERROR_UNKNOWN = 100;
+    FOLLOW_PATH_ERROR_INVALID_CONTROLLER = 101;
+    FOLLOW_PATH_ERROR_TF_ERROR = 102;
+    FOLLOW_PATH_ERROR_INVALID_PATH = 103;
+    FOLLOW_PATH_ERROR_PATIENCE_EXCEEDED = 104;
+    FOLLOW_PATH_ERROR_FAILED_TO_MAKE_PROGRESS = 105;
+    FOLLOW_PATH_ERROR_NO_VALID_CONTROL = 106;
+    FOLLOW_PATH_ERROR_CONTROLLER_TIMED_OUT = 107;
+}
+
+message FollowPathAction 
+{
+    message Goal
+    {
+        // Path to follow
+        autonomy.commsgs.proto.planning_msgs.Path path = 1;
+        
+        // Controller ID to use
+        string controller_id = 2;
+        
+        // Goal checker ID to use
+        string goal_checker_id = 3;
+        
+        // Progress checker ID to use
+        string progress_checker_id = 4;
+    }
+
+    message Feedback
+    {
+        // Distance to goal
+        float distance_to_goal = 1;
+        
+        // Current speed
+        float speed = 2;
+    }
+
+    message Result
+    {
+        // Empty result (following ROS2 convention)
+        google.protobuf.Empty result = 1;
+        
+        // Error code
+        FollowPathErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// FollowWaypoints Action
+// ============================================================================
+
+// Error codes for FollowWaypoints
+// Note: The expected priority order of the errors should match the message order
+enum FollowWaypointsErrorCode
+{
+    FOLLOW_WAYPOINTS_ERROR_NONE = 0;
+    FOLLOW_WAYPOINTS_ERROR_UNKNOWN = 600;
+    FOLLOW_WAYPOINTS_ERROR_TASK_EXECUTOR_FAILED = 601;
+    FOLLOW_WAYPOINTS_ERROR_NO_VALID_WAYPOINTS = 602;
+    FOLLOW_WAYPOINTS_ERROR_STOP_ON_MISSED_WAYPOINT = 603;
+}
+
+message FollowWaypointsAction
+{
+    message Goal
+    {
+        // Number of loops
+        uint32 number_of_loops = 1;
+        
+        // Goal index
+        uint32 goal_index = 2;
+        
+        // Array of poses (waypoints)
+        repeated autonomy.commsgs.proto.geometry_msgs.PoseStamped poses = 3;
+    }
+
+    message Feedback
+    {
+        // Current waypoint index
+        uint32 current_waypoint = 1;
+    }
+
+    message Result
+    {
+        // Missed waypoints
+        repeated WaypointStatus missed_waypoints = 1;
+        
+        // Error code
+        FollowWaypointsErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// NavigateToPose Action
+// ============================================================================
+
+// Error codes for NavigateToPose
+// Note: The expected priority order of the errors should match the message order
+enum NavigateToPoseErrorCode 
+{
+    NAVIGATE_TO_POSE_ERROR_NONE = 0;
+    NAVIGATE_TO_POSE_ERROR_UNKNOWN = 9000;
+    NAVIGATE_TO_POSE_ERROR_FAILED_TO_LOAD_BEHAVIOR_TREE = 9001;
+    NAVIGATE_TO_POSE_ERROR_TF_ERROR = 9002;
+    NAVIGATE_TO_POSE_ERROR_TIMEOUT = 9003;
+}
+
+message NavigateToPoseAction 
+{
+    message Goal
+    {
+        // Goal pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped pose = 1;
+        
+        // Behavior tree file path
+        string behavior_tree = 2;
+    }
+
+    message Feedback
+    {
+        // Current pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped current_pose = 1;
+        
+        // Navigation time duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration navigation_time = 2;
+        
+        // Estimated time remaining duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration estimated_time_remaining = 3;
+        
+        // Number of recoveries
+        int32 number_of_recoveries = 4;
+        
+        // Distance remaining
+        float distance_remaining = 5;
+    }
+
+    message Result
+    {
+        // Error code
+        NavigateToPoseErrorCode error_code = 1;
+        
+        // Error message
+        string error_msg = 2;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// NavigateThroughPoses Action (multi-waypoint navigation)
+// ============================================================================
+
+// Error codes for NavigateThroughPoses
+enum NavigateThroughPosesErrorCode
+{
+    NAVIGATE_THROUGH_POSES_ERROR_NONE = 0;
+    NAVIGATE_THROUGH_POSES_ERROR_UNKNOWN = 9100;
+    NAVIGATE_THROUGH_POSES_ERROR_FAILED_TO_LOAD_BEHAVIOR_TREE = 9101;
+    NAVIGATE_THROUGH_POSES_ERROR_TF_ERROR = 9102;
+    NAVIGATE_THROUGH_POSES_ERROR_TIMEOUT = 9103;
+    NAVIGATE_THROUGH_POSES_ERROR_INVALID_GOALS = 9104;
+}
+
+message NavigateThroughPosesAction
+{
+    message Goal
+    {
+        // Ordered list of poses to navigate through (via points)
+        autonomy.commsgs.proto.planning_msgs.Goals poses = 1;
+
+        // Optional behavior tree file path
+        string behavior_tree = 2;
+    }
+
+    message Feedback
+    {
+        // Index of the current pose being navigated to (0-based)
+        uint32 current_pose_index = 1;
+
+        // Total number of poses
+        uint32 total_poses = 2;
+
+        // Current pose
+        autonomy.commsgs.proto.geometry_msgs.PoseStamped current_pose = 3;
+
+        // Navigation time so far
+        autonomy.commsgs.proto.builtin_interfaces.Duration navigation_time = 4;
+    }
+
+    message Result
+    {
+        NavigateThroughPosesErrorCode error_code = 1;
+        string error_msg = 2;
+    }
+
+    Goal goal = 1;
+    Feedback feedback = 2;
+    Result result = 3;
+}
+
+// ============================================================================
+// SmoothPath Action
+// ============================================================================
+
+// Error codes for SmoothPath
+// Note: The expected priority order of the errors should match the message order
+enum SmoothPathErrorCode
+{
+    SMOOTH_PATH_ERROR_NONE = 0;
+    SMOOTH_PATH_ERROR_UNKNOWN = 500;
+    SMOOTH_PATH_ERROR_INVALID_SMOOTHER = 501;
+    SMOOTH_PATH_ERROR_TIMEOUT = 502;
+    SMOOTH_PATH_ERROR_SMOOTHED_PATH_IN_COLLISION = 503;
+    SMOOTH_PATH_ERROR_FAILED_TO_SMOOTH_PATH = 504;
+    SMOOTH_PATH_ERROR_INVALID_PATH = 505;
+}
+
+message SmoothPathAction 
+{
+    message Goal
+    {
+        // Path to smooth
+        autonomy.commsgs.proto.planning_msgs.Path path = 1;
+        
+        // Smoother plugin ID
+        string smoother_id = 2;
+        
+        // Maximum smoothing duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration max_smoothing_duration = 3;
+        
+        // Whether to check for collisions
+        bool check_for_collisions = 4;
+    }
+
+    message Feedback
+    {
+        // Feedback definition (currently empty)
+    }
+
+    message Result
+    {
+        // Smoothed path
+        autonomy.commsgs.proto.planning_msgs.Path path = 1;
+        
+        // Actual smoothing duration
+        autonomy.commsgs.proto.builtin_interfaces.Duration smoothing_duration = 2;
+        
+        // Whether smoothing was completed
+        bool was_completed = 3;
+        
+        // Error code
+        SmoothPathErrorCode error_code = 4;
+        
+        // Error message
+        string error_msg = 5;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// Spin Action
+// ============================================================================
+
+// Error codes for Spin
+// Note: The expected priority order of the errors should match the message order
+enum SpinErrorCode
+{
+    SPIN_ERROR_NONE = 0;
+    SPIN_ERROR_UNKNOWN = 700;
+    SPIN_ERROR_TIMEOUT = 701;
+    SPIN_ERROR_TF_ERROR = 702;
+    SPIN_ERROR_COLLISION_AHEAD = 703;
+}
+
+message SpinAction
+{
+    message Goal
+    {
+        // Target yaw angle
+        float target_yaw = 1;
+        
+        // Time allowance
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 2;
+        
+        // Whether to disable collision checks
+        bool disable_collision_checks = 3;
+    }
+
+    message Feedback
+    {
+        // Angular distance traveled
+        float angular_distance_traveled = 1;
+    }
+
+    message Result
+    {
+        // Total elapsed time
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 1;
+        
+        // Error code
+        SpinErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// UndockRobot Action
+// ============================================================================
+
+// Error codes for UndockRobot
+// Note: The expected priority order of the errors should match the message order
+enum UndockRobotErrorCode
+{
+    UNDOCK_ROBOT_ERROR_NONE = 0;
+    UNDOCK_ROBOT_ERROR_DOCK_NOT_VALID = 902;
+    UNDOCK_ROBOT_ERROR_FAILED_TO_CONTROL = 905;
+    UNDOCK_ROBOT_ERROR_TIMEOUT = 907;
+    UNDOCK_ROBOT_ERROR_UNKNOWN = 999;
+}
+
+message UndockRobotAction
+{
+    message Goal
+    {
+        // If initialized on a dock so the server doesn't know what type of dock its on,
+        // you must specify what dock it is to know where to stage for undocking.
+        // If only one type of dock plugin is present, it is not necessary to set.
+        // If not set & server instance was used to dock, server will use current dock information from last docking request.
+        string dock_type = 1;
+        
+        // Maximum time to undock
+        float max_undocking_time = 2;
+    }
+
+    message Feedback
+    {
+        // Feedback definition (currently empty)
+    }
+
+    message Result
+    {
+        // Undocking success status
+        bool success = 1;
+        
+        // Error code
+        UndockRobotErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+
+// ============================================================================
+// ExploreToAnywhere Action
+// ============================================================================
+
+enum ExploreToAnywhereErrorCode
+{
+    EXPLORE_TO_ANYWHERE_ERROR_NONE = 0;
+    EXPLORE_TO_ANYWHERE_ERROR_UNKNOWN = 800;
+    EXPLORE_TO_ANYWHERE_ERROR_TF_ERROR = 801;
+    EXPLORE_TO_ANYWHERE_ERROR_TIMEOUT = 802;
+}
+
+message ExploreToAnywhereAction
+{
+    message Goal
+    {
+        // Optional time allowance; 0 means no limit
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_allowance = 1;
+    }
+
+    message Feedback
+    {
+        autonomy.commsgs.proto.builtin_interfaces.Duration exploration_time = 1;
+    }
+
+    message Result
+    {
+        ExploreToAnywhereErrorCode error_code = 1;
+        string error_msg = 2;
+    }
+
+    Goal goal = 1;
+    Feedback feedback = 2;
+    Result result = 3;
+}
+
+// ============================================================================
+// Wait Action
+// ============================================================================
+
+// Error codes for Wait
+// Note: The expected priority order of the errors should match the message order
+enum WaitErrorCode
+{
+    WAIT_ERROR_NONE = 0;
+    WAIT_ERROR_UNKNOWN = 740;
+    WAIT_ERROR_TIMEOUT = 741;
+}
+
+message WaitAction
+{
+    message Goal
+    {
+        // Time to wait
+        autonomy.commsgs.proto.builtin_interfaces.Duration time = 1;
+    }
+
+    message Feedback
+    {
+        // Time left
+        autonomy.commsgs.proto.builtin_interfaces.Duration time_left = 1;
+    }
+
+    message Result
+    {
+        // Total elapsed time
+        autonomy.commsgs.proto.builtin_interfaces.Duration total_elapsed_time = 1;
+        
+        // Error code
+        WaitErrorCode error_code = 2;
+        
+        // Error message
+        string error_msg = 3;
+    }
+
+    // Goal
+    Goal goal = 1;
+
+    // Feedback
+    Feedback feedback = 2;
+
+    // Result
+    Result result = 3;
+}
+

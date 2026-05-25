@@ -21,9 +21,10 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/proto/bt_action.pb.h"
+#include "behaviortree_cpp/json_export.h"
 
 namespace autonomy {
 namespace tasks {

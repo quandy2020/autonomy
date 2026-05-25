@@ -7,7 +7,6 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
 #include "autonomy/tasks/utils/robot_utils.hpp"
 
 namespace autonomy {
@@ -22,7 +21,7 @@ TrackToTargetNavigator::TrackToTargetNavigator(
     const common::FeedbackUtils& feedback_utils,
     const std::shared_ptr<common::NavigatorMuxer>& muxer,
     std::shared_ptr<common::OdomSmoother> odom_smoother)
-    : BehaviorTreeNavigator<ActionT>("track_to_target", "track_to_target.xml",
+    : BtNavigator<ActionT>("track_to_target", "track_to_target.xml",
                                      options, task_context, plugin_lib_names,
                                      feedback_utils, muxer, odom_smoother) {
     if (options.has_track_to_target_options()) {
@@ -40,12 +39,12 @@ bool TrackToTargetNavigator::GoalReceived(
     }
     target_id_ = goal->target_id();
     const std::string bt_xml =
-        utils::ResolveBehaviorTreeFile(bt_->GetDefaultBTFilename(),
+        common::ResolveBehaviorTreeFile(GetDefaultBTFilename(),
                                        feedback_utils_);
-    if (!bt_->LoadBehaviorTree(bt_xml)) {
+    if (!LoadBehaviorTree(bt_xml)) {
         return false;
     }
-    auto blackboard = bt_->GetBlackboard();
+    auto blackboard = GetBlackboard();
     if (blackboard) {
         blackboard->set("number_recoveries", 0);  // NOLINT
         blackboard->set("initial_pose_received", true);  // NOLINT
@@ -58,7 +57,7 @@ void TrackToTargetNavigator::GoalCompleted(
     const common::BtStatus /*final_bt_status*/) {
     if (result && result->error_code() !=
                       static_cast<int>(
-                          behavior_tree::proto::TRACK_TO_TARGET_ERROR_NONE)) {
+                          proto::TRACK_TO_TARGET_ERROR_NONE)) {
         AWARN << "TrackToTarget error " << result->error_code() << ": "
               << result->error_msg();
     }
@@ -67,22 +66,22 @@ void TrackToTargetNavigator::GoalCompleted(
 void TrackToTargetNavigator::OnLoop() {
     auto feedback = std::make_shared<typename ActionT::Feedback>();
     feedback->set_current_target_id(target_id_);
-    bt_->PublishFeedback(feedback);
+    PublishFeedback(feedback);
 }
 
 void TrackToTargetNavigator::OnPreempt(
     std::shared_ptr<const typename ActionT::Goal> goal) {
     if (goal) {
         target_id_ = goal->target_id();
-        bt_->AcceptPendingGoal();
+        AcceptPendingGoal();
     } else {
-        bt_->TerminatePendingGoal();
+        TerminatePendingGoal();
     }
 }
 
 void TrackToTargetNavigator::UpdateTargetPose(
     const commsgs::geometry_msgs::PoseStamped& target_pose) {
-    auto blackboard = bt_->GetBlackboard();
+    auto blackboard = GetBlackboard();
     if (!blackboard) {
         return;
     }

@@ -16,12 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/controller_selector_node.hpp"
 
-#include "autonomy/tasks/common/task_context.hpp"
-
-#include <functional>
-#include <set>
-#include <string>
-#include <vector>
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -29,58 +24,35 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-ControllerSelector::ControllerSelector(const std::string& name,
+ControllerSelector::ControllerSelector(const std::string& xml_tag_name,
                                        const BT::NodeConfiguration& conf)
-    : BT::SyncActionNode(name, conf) {
-    initialize();
-}
+    : BT::SyncActionNode(xml_tag_name, conf) {}
 
-void ControllerSelector::initialize() {
-    createROSInterfaces();
-}
-
-void ControllerSelector::createROSInterfaces() {
-    std::string topic_new;
-    getInput("topic_name", topic_new);
-    if (topic_new != topic_name_) {
-        topic_name_ = topic_new;
+void ControllerSelector::readDefaultFromPorts() {
+    std::string default_controller;
+    getInput("default_controller", default_controller);
+    if (default_controller.empty()) {
+        default_controller =
+            common::DefaultControllerFromBlackboard(config().blackboard);
+    }
+    if (!default_controller.empty()) {
+        last_selected_controller_ = default_controller;
     }
 }
 
 BT::NodeStatus ControllerSelector::tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
-    }
-
-    // This behavior always use the last selected controller received from the
-    // topic input. When no input is specified it uses the default controller.
-    // If the default controller is not specified then we work in "required
-    // controller mode": In this mode, the behavior returns failure if the
-    // controller selection is not received from the topic input.
     if (last_selected_controller_.empty()) {
-        std::string default_controller;
-        getInput("default_controller", default_controller);
-        if (default_controller.empty()) {
-            return BT::NodeStatus::FAILURE;
-        } else {
-            last_selected_controller_ = default_controller;
-        }
+        readDefaultFromPorts();
+    }
+    if (last_selected_controller_.empty()) {
+        return BT::NodeStatus::FAILURE;
     }
 
     setOutput("selected_controller", last_selected_controller_);
-    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
-            "task_context")) {
-        if (ctx) {
-            ctx->selected_controller_id = last_selected_controller_;
-        }
-    }
+    config().blackboard->set("selected_controller",
+                             last_selected_controller_);  // NOLINT
 
     return BT::NodeStatus::SUCCESS;
-}
-
-void ControllerSelector::callbackControllerSelect(
-    std::shared_ptr<const commsgs::std_msgs::String> msg) {
-    last_selected_controller_ = msg->data;
 }
 
 }  // namespace action

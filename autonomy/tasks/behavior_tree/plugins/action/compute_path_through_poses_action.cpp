@@ -50,12 +50,17 @@ BT::NodeStatus ComputePathThroughPosesAction::onStart() {
     goal_poses_.clear();
 
     auto ctx = taskContext();
-    if (!ctx || !ctx->planner) {
+    if (!ctx || !ctx->planner || !ctx->tf_buffer) {
         setFailure(static_cast<int32_t>(
                        ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_UNKNOWN),
                    "TaskContext or PlannerServer is not available.");
         return BT::NodeStatus::FAILURE;
     }
+
+    const auto bb = config().blackboard;
+    const auto global_frame = common::GlobalFrameFromBlackboard(bb);
+    const auto robot_frame = common::RobotBaseFrameFromBlackboard(bb);
+    const auto tf_tol = common::TransformToleranceFromBlackboard(bb);
 
     commsgs::planning_msgs::Goals goals;
     if (!getInput("goals", goals) || goals.goals.empty()) {
@@ -65,7 +70,17 @@ BT::NodeStatus ComputePathThroughPosesAction::onStart() {
         return BT::NodeStatus::FAILURE;
     }
 
-    goal_poses_ = goals.goals;
+    for (const auto& goal : goals.goals) {
+        commsgs::geometry_msgs::PoseStamped transformed_goal = goal;
+        if (!utils::transformPoseInTargetFrame(
+                transformed_goal, transformed_goal, ctx->tf_buffer, global_frame, tf_tol)) {
+            setFailure(static_cast<int32_t>(
+                           ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_TF_ERROR),
+                       "Failed to transform goal to global frame.");
+            return BT::NodeStatus::FAILURE;
+        }
+        goal_poses_.push_back(transformed_goal);
+    }
 
     bool use_start = false;
     getInput("use_start", use_start);
@@ -77,12 +92,16 @@ BT::NodeStatus ComputePathThroughPosesAction::onStart() {
                        "Missing required port: start");
             return BT::NodeStatus::FAILURE;
         }
-        start_pose_ = start;
+        if (!utils::transformPoseInTargetFrame(
+                start, start_pose_, ctx->tf_buffer, global_frame, tf_tol)) {
+            setFailure(static_cast<int32_t>(
+                           ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_TF_ERROR),
+                       "Failed to transform start to global frame.");
+            return BT::NodeStatus::FAILURE;
+        }
     } else {
-        if (!utils::getGlobalRobotPose(start_pose_, ctx->tf, ctx->odom_smoother,
-                                       ctx->global_frame, ctx->robot_base_frame,
-                                       static_cast<float>(
-                                           ctx->transform_tolerance))) {
+        if (!utils::getGlobalRobotPose(start_pose_, ctx->tf_buffer, ctx->odom_smoother,
+                                       global_frame, robot_frame, tf_tol)) {
             setFailure(static_cast<int32_t>(
                            ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_TF_ERROR),
                        "Robot pose is not available.");
@@ -92,8 +111,8 @@ BT::NodeStatus ComputePathThroughPosesAction::onStart() {
 
     std::string planner_input;
     getInput("planner_id", planner_input);
-    planner_id_ =
-        utils::ResolvePlannerId(planner_input, ctx->selected_planner_id);
+    planner_id_ = utils::ResolvePlannerId(
+        planner_input, common::DefaultPlannerFromBlackboard(bb));
     poses_ready_ = true;
     return BT::NodeStatus::RUNNING;
 }
@@ -111,7 +130,7 @@ BT::NodeStatus ComputePathThroughPosesAction::onRunning() {
         return BT::NodeStatus::FAILURE;
     }
 
-    if (ctx->IsCancelRequested()) {
+    if (isCancelRequested()) {
         setFailure(static_cast<int32_t>(
                        ErrorCode::COMPUTE_PATH_THROUGH_POSES_ERROR_NONE),
                    "");
@@ -121,7 +140,8 @@ BT::NodeStatus ComputePathThroughPosesAction::onRunning() {
     try {
         commsgs::planning_msgs::Path path =
             ctx->planner->ComputePathThroughPoses(
-                start_pose_, goal_poses_, planner_id_, ctx->CancelChecker());
+                start_pose_, goal_poses_, planner_id_,
+                common::CancelCheckerFromConfig(config()));
         setOutput("path", path);
         setOutput("error_code_id",
                   static_cast<int32_t>(
