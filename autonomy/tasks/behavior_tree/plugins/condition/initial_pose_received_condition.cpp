@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/condition/initial_pose_received_condition.hpp"
 
-#include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {

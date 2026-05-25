@@ -19,7 +19,7 @@
 #include <future>
 
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/tasks/common/task_context.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/tasks/utils/path_validation_utils.hpp"
 
 namespace autonomy {
@@ -52,10 +52,9 @@ BT::NodeStatus IsPathValidCondition::tick() {
         return BT::NodeStatus::FAILURE;
     }
 
-    auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
-        "task_context");
-    auto costmap =
-        ctx && ctx->global_costmap ? ctx->global_costmap : nullptr;
+    const auto ctx = common::TaskContextFromBlackboard(config().blackboard);
+    const auto costmap =
+        ctx && ctx->planner ? ctx->planner->GetCostmapWrapper() : nullptr;
     if (!costmap) {
         return BT::NodeStatus::FAILURE;
     }

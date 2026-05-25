@@ -95,7 +95,7 @@ public:
     }
 
     template <typename R>
-    const R* Peek() {
+    const R* Peek() const {
         std::lock_guard<std::mutex> lock(mutex_);
         if (deque_.empty()) {
             return nullptr;
@@ -103,7 +103,7 @@ public:
         return deque_.front().get();
     }
 
-    size_t Size() {
+    size_t Size() const {
         std::lock_guard<std::mutex> lock(mutex_);
         return deque_.size();
     }

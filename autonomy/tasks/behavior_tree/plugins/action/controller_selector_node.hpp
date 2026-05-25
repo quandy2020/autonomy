@@ -16,10 +16,8 @@
 
 #pragma once
 
-#include <memory>
 #include <string>
 
-#include "autonomy/commsgs/std_msgs.hpp"
 #include "behaviortree_cpp/action_node.h"
 namespace autonomy {
 namespace tasks {
@@ -27,14 +25,7 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-/**
- * @brief The ControllerSelector behavior is used to switch the controller
- * that will be used by the controller server. It subscribes to a topic
- * "controller_selector" to get the decision about what controller must be used.
- * It is usually used before of the FollowPath. The selected_controller output
- * port is passed to controller_id input port of the FollowPath
- * @note This is an Asynchronous node. It will re-initialize when halted.
- */
+/** @brief Select controller id from blackboard default or BT input ports. */
 class ControllerSelector : public BT::SyncActionNode
 {
 public:
@@ -64,35 +55,15 @@ public:
                 "the input topic name to select the controller"),
 
             BT::OutputPort<std::string>("selected_controller",
-                                        "Selected controller by subscription")};
+                                        "Selected controller id")};
     }
 
 private:
-    /**
-     * @brief Function to read parameters and initialize class variables
-     */
-    void initialize();
-    /**
-     * @brief Function to create ROS interfaces
-     */
-    void createROSInterfaces();
+    void readDefaultFromPorts();
 
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
     BT::NodeStatus tick() override;
 
-    /**
-     * @brief callback function for the controller_selector topic
-     *
-     * @param msg the message with the id of the controller_selector
-     */
-    void callbackControllerSelect(
-        std::shared_ptr<const commsgs::std_msgs::String> msg);
-
     std::string last_selected_controller_;
-
-    std::string topic_name_;
 };
 
 }  // namespace action

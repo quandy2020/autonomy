@@ -20,9 +20,9 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
+#include "autonomy/tasks/common/bt_navigator.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
@@ -31,11 +31,11 @@ namespace navigator {
 namespace tracking {
 
 class TrackToTargetNavigator
-    : public common::BehaviorTreeNavigator<
-          behavior_tree::proto::TrackToTargetAction>
+    : public common::BtNavigator<
+          proto::TrackToTargetAction>
 {
 public:
-    using ActionT = behavior_tree::proto::TrackToTargetAction;
+    using ActionT = proto::TrackToTargetAction;
 
     AUTONOMY_SMART_PTR_DEFINITIONS(TrackToTargetNavigator)
 

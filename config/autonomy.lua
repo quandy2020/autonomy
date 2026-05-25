@@ -21,7 +21,7 @@ include "perception/perception.lua"
 include "localization/localization.lua"
 include "planner/planner.lua"
 include "transform/transform.lua"
--- tasks/tasks.lua is loaded separately by TaskScheduler (includes common.lua itself).
+-- tasks/tasks.lua is loaded separately by tasks::Task (includes common.lua itself).
 
 -- Autonomy all lua config
 -- Only export tables consumed by system/options.cpp (map, planning, controller).

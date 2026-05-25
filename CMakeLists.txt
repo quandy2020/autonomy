@@ -358,6 +358,9 @@ if (${BUILD_TEST})
     # Replace slashes as required for CMP0037.
     string(REPLACE "/" "." TEST_TARGET_NAME "${DIR}/${FIL_WE}")
     google_test("${TEST_TARGET_NAME}" ${ABS_FIL})
+    # Ensure libautonomy is fully linked before unit tests (avoids undefined refs
+    # when incremental builds relink tests against a stale/incomplete shared lib).
+    add_dependencies("${TEST_TARGET_NAME}" ${PROJECT_NAME})
     if(${BUILD_GRPC})
       target_link_libraries("${TEST_TARGET_NAME}" PUBLIC grpc++ grpc)
     endif()

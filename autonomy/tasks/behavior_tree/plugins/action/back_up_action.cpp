@@ -59,7 +59,7 @@ BT::NodeStatus BackUpAction::onRunning() {
     }
 
     const auto result = ctx->controller->TickRecoveryMotion(
-        ctx->CancelChecker());
+        common::CancelCheckerFromConfig(config()));
     if (result == control::ControllerServer::RecoveryTickResult::Running) {
         return BT::NodeStatus::RUNNING;
     }

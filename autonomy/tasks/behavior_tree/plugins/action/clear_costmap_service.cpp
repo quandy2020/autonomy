@@ -25,14 +25,6 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-void BtCostmapClearNode::incrementRecoveryCount() {
-    int recovery_count = 0;
-    [[maybe_unused]] auto res =
-        config().blackboard->get("number_recoveries", recovery_count);  // NOLINT
-    recovery_count += 1;
-    config().blackboard->set("number_recoveries", recovery_count);  // NOLINT
-}
-
 std::string BtCostmapClearNode::serviceNameFromPorts() const {
     std::string service_name;
     if (getInput("service_name", service_name)) {

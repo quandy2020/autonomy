@@ -25,7 +25,7 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/sensor/collator_interface.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
 #include "autonomy/tasks/task.hpp"
 
@@ -87,10 +87,8 @@ public:
   void addMapPublishListener(MapPublishListener listener);
   void addPathListener(PathListener listener);
 
-  void updateOdometry(const commsgs::planning_msgs::Odometry & odom);
-  void feedLaserScan(const commsgs::sensor_msgs::LaserScan & scan);
-  void feedPointCloud2(const commsgs::sensor_msgs::PointCloud2 & cloud);
-  void feedRange(const commsgs::sensor_msgs::Range & range);
+  sensor::CollatorInterface & sensorCollator();
+  const sensor::CollatorInterface & sensorCollator() const;
 
   bool planToGoal(const commsgs::geometry_msgs::PoseStamped & goal);
   void replanToGoal(const commsgs::geometry_msgs::PoseStamped & goal);
@@ -103,8 +101,6 @@ public:
 
   void setControllerEnabled(bool enabled);
   void requestCancelNavigation();
-  void applySpeedLimit(const commsgs::planning_msgs::SpeedLimit & limit);
-  void clearSpeedLimit();
 
   /** @brief One control period: BT relay or TickFollowPath; returns latest cmd_vel. */
   commsgs::geometry_msgs::TwistStamped tickControl();

@@ -16,7 +16,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/action/planner_selector_node.hpp"
 
-#include "autonomy/tasks/common/task_context.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/tasks/utils/planner_id_utils.hpp"
 
 namespace autonomy {
@@ -25,67 +25,32 @@ namespace behavior_tree {
 namespace plugins {
 namespace action {
 
-PlannerSelector::PlannerSelector(const std::string& name,
+PlannerSelector::PlannerSelector(const std::string& xml_tag_name,
                                  const BT::NodeConfiguration& conf)
-    : BT::SyncActionNode(name, conf) {
-    initialize();
-}
-
-void PlannerSelector::initialize() {
-    createROSInterfaces();
-}
-
-void PlannerSelector::createROSInterfaces() {
-    std::string topic_new;
-    getInput("topic_name", topic_new);
-    if (topic_new != topic_name_) {
-        topic_name_ = topic_new;
-    }
-}
+    : BT::SyncActionNode(xml_tag_name, conf) {}
 
 BT::NodeStatus PlannerSelector::tick() {
-    if (!BT::isStatusActive(status())) {
-        initialize();
-    }
-
-    // This behavior always use the last selected planner received from the
-    // topic input. When no input is specified it uses the default planner. If
-    // the default planner is not specified then we work in "required planner
-    // mode": In this mode, the behavior returns failure if the planner
-    // selection is not received from the topic input.
     if (last_selected_planner_.empty()) {
         std::string default_planner;
         getInput("default_planner", default_planner);
         if (default_planner.empty()) {
-            return BT::NodeStatus::FAILURE;
-        } else {
-            last_selected_planner_ = default_planner;
+            default_planner =
+                common::DefaultPlannerFromBlackboard(config().blackboard);
         }
+        if (default_planner.empty()) {
+            return BT::NodeStatus::FAILURE;
+        }
+        last_selected_planner_ = default_planner;
     }
 
-    std::string default_id = "navfn_planner";
-    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
-            "task_context")) {
-        if (ctx && !ctx->selected_planner_id.empty()) {
-            default_id = ctx->selected_planner_id;
-        }
-    }
+    const std::string default_id =
+        common::DefaultPlannerFromBlackboard(config().blackboard);
     last_selected_planner_ =
         utils::ResolvePlannerId(last_selected_planner_, default_id);
     setOutput("selected_planner", last_selected_planner_);
-    if (auto ctx = config().blackboard->get<std::shared_ptr<common::TaskContext>>(
-            "task_context")) {
-        if (ctx) {
-            ctx->selected_planner_id = last_selected_planner_;
-        }
-    }
+    config().blackboard->set("selected_planner", last_selected_planner_);  // NOLINT
 
     return BT::NodeStatus::SUCCESS;
-}
-
-void PlannerSelector::callbackPlannerSelect(
-    std::shared_ptr<const commsgs::std_msgs::String> msg) {
-    last_selected_planner_ = msg->data;
 }
 
 }  // namespace action

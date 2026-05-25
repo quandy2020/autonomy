@@ -4,7 +4,7 @@
 
 #include "autonomy/tasks/behavior_tree/plugins/condition/is_teleop_mode_condition.hpp"
 
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 
 namespace autonomy {
 namespace tasks {

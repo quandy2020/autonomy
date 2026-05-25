@@ -8,7 +8,6 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -22,7 +21,7 @@ ExploreToAnywhereNavigator::ExploreToAnywhereNavigator(
     const common::FeedbackUtils& feedback_utils,
     const std::shared_ptr<common::NavigatorMuxer>& muxer,
     std::shared_ptr<common::OdomSmoother> odom_smoother)
-    : BehaviorTreeNavigator<ActionT>("explore_to_anywhere",
+    : BtNavigator<ActionT>("explore_to_anywhere",
                                      "explore_to_anywhere.xml", options,
                                      task_context, plugin_lib_names,
                                      feedback_utils, muxer, odom_smoother) {
@@ -37,17 +36,17 @@ ExploreToAnywhereNavigator::ExploreToAnywhereNavigator(
 bool ExploreToAnywhereNavigator::GoalReceived(
     std::shared_ptr<const typename ActionT::Goal> goal) {
     AUTONOMY_UNUSED(goal);
-    std::string bt_xml = bt_->GetDefaultBTFilename();
-    bt_xml = utils::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
-    if (!bt_->LoadBehaviorTree(bt_xml)) {
-        bt_->SetInternalError(
+    std::string bt_xml = GetDefaultBTFilename();
+    bt_xml = common::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
+    if (!LoadBehaviorTree(bt_xml)) {
+        SetInternalError(
             static_cast<uint16_t>(
-                behavior_tree::proto::EXPLORE_TO_ANYWHERE_ERROR_UNKNOWN),
+                proto::EXPLORE_TO_ANYWHERE_ERROR_UNKNOWN),
             "Failed to load explore behavior tree.");
         return false;
     }
     start_time_ = std::chrono::steady_clock::now();
-    auto blackboard = bt_->GetBlackboard();
+    auto blackboard = GetBlackboard();
     if (blackboard) {
         blackboard->set("number_recoveries", 0);  // NOLINT
         blackboard->set("initial_pose_received", true);  // NOLINT
@@ -60,7 +59,7 @@ void ExploreToAnywhereNavigator::GoalCompleted(
     const common::BtStatus /*final_bt_status*/) {
     if (result && result->error_code() !=
                       static_cast<int>(
-                          behavior_tree::proto::EXPLORE_TO_ANYWHERE_ERROR_NONE)) {
+                          proto::EXPLORE_TO_ANYWHERE_ERROR_NONE)) {
         AWARN << "ExploreToAnywhere error " << result->error_code() << ": "
               << result->error_msg();
     }
@@ -72,17 +71,17 @@ void ExploreToAnywhereNavigator::OnLoop() {
         std::chrono::steady_clock::now() - start_time_);
     *feedback->mutable_exploration_time() = commsgs::builtin_interfaces::ToProto(
         commsgs::builtin_interfaces::Duration::FromSeconds(elapsed.count()));
-    bt_->PublishFeedback(feedback);
+    PublishFeedback(feedback);
 }
 
 void ExploreToAnywhereNavigator::OnPreempt(
     std::shared_ptr<const typename ActionT::Goal> /*goal*/) {
-    bt_->TerminatePendingGoal();
+    TerminatePendingGoal();
 }
 
 void ExploreToAnywhereNavigator::UpdateExploreGoal(
     const commsgs::geometry_msgs::PoseStamped& explore_goal) {
-    auto blackboard = bt_->GetBlackboard();
+    auto blackboard = GetBlackboard();
     if (!blackboard) {
         return;
     }

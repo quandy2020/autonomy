@@ -1,78 +1,43 @@
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 
 #include "autonomy/common/time.hpp"
-#include "autonomy/sensor/point_cloud.hpp"
-#include "autonomy/sensor/range_data.hpp"
 
 namespace autonomy {
-
-namespace map {
-namespace common {
-class MapInterface;
-}  // namespace common
-}  // namespace map
-
 namespace sensor {
 
-using Time = common::Time;
+class SensorConsumer;
 
-struct SensorId {
-    enum class SensorType {
-        RANGE = 0,
-        IMU,
-        ODOMETRY,
-        LANDMARK,
-        FIXED_FRAME_POSE
-    };
-
-    SensorType type;
-    std::string id;
-
-    bool operator==(const SensorId& other) const {
-        return std::forward_as_tuple(type, id) ==
-               std::forward_as_tuple(other.type, other.id);
-    }
-
-    bool operator<(const SensorId& other) const {
-        return std::forward_as_tuple(type, id) <
-               std::forward_as_tuple(other.type, other.id);
-    }
+enum class SensorDataType
+{
+  kOdometry,
+  kLaserScan,
+  kPointCloud2,
+  kRange
 };
+
+using Time = common::Time;
 
 class Data
 {
 public:
-    explicit Data(const std::string& sensor_id) : sensor_id_(sensor_id) {}
-    virtual ~Data() {}
+  explicit Data(std::string sensor_id) : sensor_id_(std::move(sensor_id)) {}
+  virtual ~Data() = default;
 
-    virtual Time GetTime() const = 0;
-    const std::string& GetSensorId() const {
-        return sensor_id_;
-    }
-    virtual void AddToCostmap(map::common::MapInterface* costmap_builder) = 0;
+  virtual SensorDataType GetType() const = 0;
+  virtual Time GetTime() const = 0;
+  const std::string & GetSensorId() const { return sensor_id_; }
+
+  virtual void Dispatch(SensorConsumer & consumer) const = 0;
 
 protected:
-    const std::string sensor_id_;
+  std::string sensor_id_;
 };
 
 }  // namespace sensor

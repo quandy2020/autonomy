@@ -98,13 +98,16 @@ map::costmap_2d::Costmap2DWrapper::SharedPtr ResolveCostmap(
     if (!ctx) {
         return nullptr;
     }
-    if (IsLocalCostmapService(service_name) && ctx->local_costmap) {
-        return ctx->local_costmap;
+    if (IsLocalCostmapService(service_name) && ctx->controller) {
+        return ctx->controller->GetCostmapWrapper();
     }
-    if (ctx->global_costmap) {
-        return ctx->global_costmap;
+    if (ctx->planner) {
+        return ctx->planner->GetCostmapWrapper();
     }
-    return ctx->local_costmap;
+    if (ctx->controller) {
+        return ctx->controller->GetCostmapWrapper();
+    }
+    return nullptr;
 }
 
 void ClearEntireCostmap(

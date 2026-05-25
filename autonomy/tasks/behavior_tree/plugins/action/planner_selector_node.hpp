@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/std_msgs.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
@@ -31,9 +30,9 @@ namespace action {
 
 /**
  * @brief The PlannerSelector behavior is used to switch the planner
- * that will be used by the planner server. It subscribes to a topic
- * "planner_selector" to get the decision about what planner must be used. It is
- * usually used before of the ComputePathToPoseAction. The selected_planner
+ * that will be used by the planner server. Reads default_planner / blackboard;
+ * topic_name is kept for BT XML compatibility (no external subscription).
+ * Usually runs before ComputePathToPose. The selected_planner
  * output port is passed to planner_id input port of the ComputePathToPoseAction
  * @note This is an Asynchronous node. It will re-initialize when halted.
  */
@@ -72,29 +71,9 @@ private:
     /**
      * @brief Function to read parameters and initialize class variables
      */
-    void initialize();
-
-    /**
-     * @brief Function to create ROS interfaces
-     */
-    void createROSInterfaces();
-
-    /**
-     * @brief Function to perform some user-defined operation on tick
-     */
     BT::NodeStatus tick() override;
 
-    /**
-     * @brief callback function for the planner_selector topic
-     *
-     * @param msg the message with the id of the planner_selector
-     */
-    void callbackPlannerSelect(
-        std::shared_ptr<const commsgs::std_msgs::String> msg);
-
     std::string last_selected_planner_;
-
-    std::string topic_name_;
 };
 
 }  // namespace action

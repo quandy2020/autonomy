@@ -1,56 +1,91 @@
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/control/utils/odometry_utils.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
-#include "autonomy/tasks/proto/task_options.pb.h"
-#include "autonomy/transform/buffer.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/tasks/behavior_tree/bt_engine.hpp"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 
 namespace autonomy {
+namespace control {
+class ControllerServer;
+}
 namespace tasks {
+namespace proto {
+class TaskOptions;
+}
+namespace common {
+class TaskContext;
+}
 namespace navigator {
+namespace teleop {
+class TeleopSession;
+}
 
-class BtNavigator
+/**
+ * @brief Registers and runs in-process BT navigators (one instance per tasks.lua id).
+ *
+ * Not to be confused with common::BtNavigator<ActionT>, which executes a single
+ * behavior tree for one action type.
+ */
+class NavigatorRegistry
 {
 public:
-    AUTONOMY_SMART_PTR_DEFINITIONS(BtNavigator)
+  AUTONOMY_SMART_PTR_DEFINITIONS(NavigatorRegistry)
 
-    explicit BtNavigator(const autonomy::tasks::proto::TaskOptions& options);
+  NavigatorRegistry();
+  ~NavigatorRegistry();
 
-    ~BtNavigator();
+  void attach(
+    const std::string & config_directory,
+    std::shared_ptr<common::TaskContext> task_context,
+    std::shared_ptr<control::ControllerServer> controller);
+  void shutdown();
+  bool isReady() const;
 
-protected:
-    std::vector<std::shared_ptr<common::NavigatorBase>> navigators_;
-    common::NavigatorMuxer plugin_muxer_;
-    std::shared_ptr<control::utils::OdomSmoother> odom_smoother_;
-    std::string robot_frame_;
-    std::string global_frame_;
-    double transform_tolerance_{0.1};
-    double filter_duration_{0.3};
-    double local_survival_timeout_{120.0};
-    std::string odom_topic_;
-    std::shared_ptr<transform::Buffer> tf_;
-    autonomy::tasks::proto::TaskOptions options_;
+  void requestCancel();
+
+  behavior_tree::BtStatus navigateToPose(
+    std::shared_ptr<const proto::NavigateToPoseAction::Goal> goal);
+  behavior_tree::BtStatus navigateThroughPoses(
+    const std::vector<commsgs::geometry_msgs::PoseStamped> & poses,
+    const std::string & behavior_tree = "");
+  behavior_tree::BtStatus navigateToDock(
+    const commsgs::geometry_msgs::PoseStamped & dock_pose,
+    const std::string & dock_type = "default",
+    const std::string & dock_id = "");
+  behavior_tree::BtStatus trackToTarget(uint32_t target_id);
+  behavior_tree::BtStatus exploreAnywhere(double time_allowance_sec = 0.0);
+  behavior_tree::BtStatus teleopDrive(
+    double time_allowance_sec = 0.0,
+    double max_linear_vel = 0.0,
+    double max_angular_vel = 0.0,
+    std::function<bool()> cancel_checker = nullptr);
+
+  /** Active teleop_drive navigator session; null if teleop is disabled. */
+  teleop::TeleopSession * teleopSession();
+  const teleop::TeleopSession * teleopSession() const;
+
+  bool updateTrackTargetPose(const commsgs::geometry_msgs::PoseStamped & pose);
+  bool updateExploreGoal(const commsgs::geometry_msgs::PoseStamped & goal);
+
+  bool hasNavigator(const std::string & id) const;
+  std::vector<std::string> registeredNavigatorIds() const;
+
+  const proto::TaskOptions & taskOptions() const;
+
+private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
 };
 
 }  // namespace navigator

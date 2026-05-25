@@ -7,7 +7,6 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/tasks/constants.hpp"
-#include "autonomy/tasks/navigator/utils/navigator_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -16,7 +15,7 @@ namespace teleop {
 
 namespace {
 
-double TimeAllowanceSec(const behavior_tree::proto::AssistedTeleopAction::Goal & goal)
+double TimeAllowanceSec(const proto::AssistedTeleopAction::Goal & goal)
 {
   if (!goal.has_time_allowance() || !goal.time_allowance().has_stamp()) {
     return 0.0;
@@ -47,14 +46,15 @@ TeleopDriveNavigator::TeleopDriveNavigator(
   const common::FeedbackUtils & feedback_utils,
   const std::shared_ptr<common::NavigatorMuxer> & muxer,
   std::shared_ptr<common::OdomSmoother> odom_smoother)
-: BehaviorTreeNavigator<ActionT>(
+: BtNavigator<ActionT>(
     kNavigatorTeleopDrive, "teleop_drive.xml", options, task_context,
     plugin_lib_names, feedback_utils, muxer, odom_smoother),
   task_context_(task_context),
-  options_(options)
+  options_(options),
+  teleop_session_(std::make_shared<TeleopSession>())
 {
-  if (task_context && !task_context->teleop_session) {
-    task_context->teleop_session = std::make_shared<TeleopSession>();
+  if (auto blackboard = GetBlackboard()) {
+    blackboard->set("teleop_session", teleop_session_);  // NOLINT
   }
 }
 
@@ -67,7 +67,7 @@ void TeleopDriveNavigator::setRunLimits(
 
 std::shared_ptr<TeleopSession> TeleopDriveNavigator::session() const
 {
-  return task_context_ ? task_context_->teleop_session : nullptr;
+  return teleop_session_;
 }
 
 bool TeleopDriveNavigator::GoalReceived(
@@ -77,12 +77,12 @@ bool TeleopDriveNavigator::GoalReceived(
     return false;
   }
 
-  std::string bt_xml = bt_->GetDefaultBTFilename();
-  bt_xml = utils::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
-  if (!bt_->LoadBehaviorTree(bt_xml)) {
-    bt_->SetInternalError(
+  std::string bt_xml = GetDefaultBTFilename();
+  bt_xml = common::ResolveBehaviorTreeFile(bt_xml, feedback_utils_);
+  if (!LoadBehaviorTree(bt_xml)) {
+    SetInternalError(
       static_cast<uint16_t>(
-        behavior_tree::proto::ASSISTED_TELEOP_ERROR_UNKNOWN),
+        proto::ASSISTED_TELEOP_ERROR_UNKNOWN),
       "Failed to load teleop behavior tree: " + bt_xml);
     return false;
   }
@@ -96,7 +96,7 @@ bool TeleopDriveNavigator::GoalReceived(
   }
 
   start_time_ = std::chrono::steady_clock::now();
-  if (auto blackboard = bt_->GetBlackboard()) {
+  if (auto blackboard = GetBlackboard()) {
     const int mode = static_cast<int>(goal->mode());
 
     double linear_speed = goal->linear_speed();
@@ -162,13 +162,13 @@ void TeleopDriveNavigator::GoalCompleted(
 
   if (final_bt_status == common::BtStatus::SUCCEEDED) {
     result->set_error_code(
-      behavior_tree::proto::ASSISTED_TELEOP_ERROR_NONE);
+      proto::ASSISTED_TELEOP_ERROR_NONE);
   } else if (final_bt_status == common::BtStatus::CANCELED) {
     result->set_error_code(
-      behavior_tree::proto::ASSISTED_TELEOP_ERROR_NONE);
+      proto::ASSISTED_TELEOP_ERROR_NONE);
   } else {
     result->set_error_code(
-      behavior_tree::proto::ASSISTED_TELEOP_ERROR_UNKNOWN);
+      proto::ASSISTED_TELEOP_ERROR_UNKNOWN);
     result->set_error_msg("Teleop behavior tree failed");
   }
 }
@@ -191,16 +191,16 @@ void TeleopDriveNavigator::OnLoop()
     feedback->set_applied_angular_vel(
       static_cast<float>(teleop->appliedAngularVel()));
   }
-  bt_->PublishFeedback(feedback);
+  PublishFeedback(feedback);
 }
 
 void TeleopDriveNavigator::OnPreempt(
   std::shared_ptr<const typename ActionT::Goal> goal)
 {
   if (goal && GoalReceived(goal)) {
-    bt_->AcceptPendingGoal();
+    AcceptPendingGoal();
   } else {
-    bt_->TerminatePendingGoal();
+    TerminatePendingGoal();
   }
 }
 

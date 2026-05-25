@@ -33,12 +33,13 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/math/math_utils.hpp"
 #include "autonomy/common/version.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_engine.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/behavior_tree/bt_engine.hpp"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/control/utils/odometry_utils.hpp"
-#include "autonomy/tasks/scheduler/task_scheduler.hpp"
+#include "autonomy/tasks/task.hpp"
+#include "autonomy/system/options.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 
@@ -65,10 +66,10 @@ void SigintHandler(int /*sig*/) {
     g_shutdown.store(true);
 }
 
-std::shared_ptr<behavior_tree::proto::NavigateToPoseAction::Goal>
+std::shared_ptr<proto::NavigateToPoseAction::Goal>
 MakeNavigateGoal(double x, double y, double yaw, const std::string& frame) {
     auto goal =
-        std::make_shared<behavior_tree::proto::NavigateToPoseAction::Goal>();
+        std::make_shared<proto::NavigateToPoseAction::Goal>();
     auto* pose = goal->mutable_pose();
     pose->mutable_header()->set_frame_id(frame);
     pose->mutable_pose()->mutable_position()->set_x(x);
@@ -125,10 +126,10 @@ void IntegrateDiffDrive(const commsgs::geometry_msgs::Twist& cmd, double dt,
 }
 
 void PublishMockOdometry(
-    const std::shared_ptr<scheduler::TaskScheduler>& scheduler,
+    const std::shared_ptr<Task>& task,
     const std::string& robot_frame, double x, double y, double yaw,
     const commsgs::geometry_msgs::Twist& twist) {
-    const auto ctx = scheduler->TaskContext();
+    const auto ctx = task->task_context();
     if (!ctx || !ctx->odom_smoother) {
         return;
     }
@@ -146,7 +147,7 @@ void PublishMockOdometry(
 }
 
 void RunMockSimulation(
-    const std::shared_ptr<scheduler::TaskScheduler>& scheduler,
+    const std::shared_ptr<Task>& task,
     const std::string& robot_frame, MockRobotState* state,
     std::atomic<bool>* running) {
     auto last_tick = std::chrono::steady_clock::now();
@@ -157,7 +158,7 @@ void RunMockSimulation(
         last_tick = now;
 
         commsgs::geometry_msgs::Twist cmd{};
-        if (const auto ctx = scheduler->TaskContext()) {
+        if (const auto ctx = task->task_context()) {
             if (ctx->controller) {
                 cmd = ctx->controller->GetLastCmdVel().twist;
             }
@@ -175,7 +176,7 @@ void RunMockSimulation(
         }
 
         PublishMockTransform(kOdomFrame, robot_frame, x, y, yaw, false);
-        PublishMockOdometry(scheduler, robot_frame, x, y, yaw, cmd);
+        PublishMockOdometry(task, robot_frame, x, y, yaw, cmd);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -184,8 +185,6 @@ void RunMockSimulation(
 void SetupMockTfTree(const std::string& global_frame,
                      const std::string& robot_frame, double robot_x,
                      double robot_y, double robot_yaw) {
-    // Ensure a clean TF tree in demo mode. The singleton buffer may already
-    // contain stale transforms from earlier initialization paths.
     if (auto* buffer = autonomy::transform::Buffer::Instance()) {
         buffer->clear();
     }
@@ -197,17 +196,16 @@ void SetupMockTfTree(const std::string& global_frame,
 }
 
 void SeedMockOdometry(
-    const std::shared_ptr<scheduler::TaskScheduler>& scheduler,
+    const std::shared_ptr<Task>& task,
     const std::string& robot_frame, double x, double y, double yaw) {
-    PublishMockOdometry(scheduler, robot_frame, x, y, yaw,
+    PublishMockOdometry(task, robot_frame, x, y, yaw,
                         commsgs::geometry_msgs::Twist{});
     AINFO << "Seeded mock odometry at (" << x << ", " << y << ") in "
           << kOdomFrame;
 }
 
-void SeedDemoGlobalCostmap(
-    const std::shared_ptr<scheduler::TaskScheduler>& scheduler) {
-    const auto ctx = scheduler->TaskContext();
+void SeedDemoGlobalCostmap(const std::shared_ptr<Task>& task) {
+    const auto ctx = task->task_context();
     if (!ctx || !ctx->planner) {
         return;
     }
@@ -237,32 +235,39 @@ void Run() {
     signal(SIGTERM, SigintHandler);
 
     autonomy::common::ShowVersion();
-    LOG(INFO) << "Autonomy tasks entry (single-process TaskScheduler).";
+    LOG(INFO) << "Autonomy tasks entry (single-process Task + BT).";
 
-    auto scheduler = std::make_shared<scheduler::TaskScheduler>();
-    scheduler->Initialize(autonomy::common::FLAGS_configuration_directory);
+    const auto sys_options = system::CreateOptions(
+        autonomy::common::FLAGS_configuration_directory,
+        autonomy::common::FLAGS_configuration_basename);
+
+    auto task = std::make_shared<Task>(sys_options);
+    task->start();
+
+    RuntimeOptions runtime;
+    runtime.enable_bt_tasks = true;
+    runtime.config_directory = autonomy::common::FLAGS_configuration_directory;
+    task->configure(runtime);
+
+    if (!task->isSchedulerReady()) {
+        AERROR << "BT navigators failed to attach.";
+        task->shutdown();
+        return;
+    }
 
     if (autonomy::common::FLAGS_mock_static_tf) {
-        const auto ctx = scheduler->TaskContext();
-        const std::string global_frame =
-            ctx && !ctx->global_frame.empty() ? ctx->global_frame : "map";
-        const std::string robot_frame = ctx && !ctx->robot_base_frame.empty()
-                                            ? ctx->robot_base_frame
-                                            : "base_link";
+        const std::string global_frame = "map";
+        const std::string robot_frame = "base_link";
         SetupMockTfTree(global_frame, robot_frame, kMockRobotSpawnX,
                         kMockRobotSpawnY, kMockRobotSpawnYaw);
-        SeedDemoGlobalCostmap(scheduler);
-        SeedMockOdometry(scheduler, robot_frame, kMockRobotSpawnX,
+        SeedDemoGlobalCostmap(task);
+        SeedMockOdometry(task, robot_frame, kMockRobotSpawnX,
                          kMockRobotSpawnY, kMockRobotSpawnYaw);
     }
 
     if (autonomy::common::FLAGS_run_navigate_to_pose) {
-        const auto ctx = scheduler->TaskContext();
-        const std::string frame =
-            ctx && !ctx->global_frame.empty() ? ctx->global_frame : "map";
-        const std::string robot_frame = ctx && !ctx->robot_base_frame.empty()
-                                            ? ctx->robot_base_frame
-                                            : "base_link";
+        const std::string frame = "map";
+        const std::string robot_frame = "base_link";
         auto goal = MakeNavigateGoal(autonomy::common::FLAGS_nav_goal_x,
                                    autonomy::common::FLAGS_nav_goal_y,
                                    autonomy::common::FLAGS_nav_goal_yaw, frame);
@@ -270,11 +275,11 @@ void Run() {
               << ", " << autonomy::common::FLAGS_nav_goal_y << ") in frame "
               << frame;
 
-        std::thread cancel_on_shutdown([&scheduler]() {
+        std::thread cancel_on_shutdown([&task]() {
             while (!g_shutdown.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-            scheduler->RequestCancel();
+            task->requestCancel();
         });
 
         MockRobotState mock_state;
@@ -283,14 +288,14 @@ void Run() {
         if (autonomy::common::FLAGS_run_navigate_to_pose &&
             autonomy::common::FLAGS_mock_static_tf) {
             mock_sim_running.store(true);
-            mock_sim_thread = std::thread(RunMockSimulation, scheduler,
+            mock_sim_thread = std::thread(RunMockSimulation, task,
                                           robot_frame, &mock_state,
                                           &mock_sim_running);
             AINFO << "Mock cmd_vel integrator running (odom -> " << robot_frame
                   << ").";
         }
 
-        const auto status = scheduler->NavigateToPose(goal);
+        const auto status = task->navigateToPose(goal);
 
         if (mock_sim_running.load()) {
             mock_sim_running.store(false);
@@ -323,8 +328,8 @@ void Run() {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    scheduler->Shutdown();
-    LOG(INFO) << "TaskScheduler shut down.";
+    task->shutdown();
+    LOG(INFO) << "Task shut down.";
 }
 
 }  // namespace

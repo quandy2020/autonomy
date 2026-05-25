@@ -18,7 +18,7 @@
 
 #include <string>
 
-#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -41,14 +41,10 @@ public:
         return basic;
     }
 
-    BT::NodeStatus onRunning() override {
-        return BT::NodeStatus::SUCCESS;
-    }
-
 protected:
-    void incrementRecoveryCount();
-
     std::string serviceNameFromPorts() const;
+
+    BT::NodeStatus onRunning() override { return BT::NodeStatus::SUCCESS; }
 };
 
 class ClearEntireCostmapService : public BtCostmapClearNode
@@ -57,9 +53,7 @@ public:
     ClearEntireCostmapService(const std::string& service_node_name,
                               const BT::NodeConfiguration& conf);
 
-    static BT::PortsList providedPorts() {
-        return providedBasicPorts({});
-    }
+    static BT::PortsList providedPorts() { return providedBasicPorts({}); }
 
     BT::NodeStatus onStart() override;
 };

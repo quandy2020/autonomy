@@ -21,12 +21,17 @@ TeleopDriveAction::TeleopDriveAction(
 
 BT::NodeStatus TeleopDriveAction::onStart()
 {
-  auto ctx = taskContext();
-  if (!ctx || !ctx->teleop_session) {
-    AERROR << "TeleopDrive: task_context or teleop_session missing";
+  if (!config().blackboard) {
+    AERROR << "TeleopDrive: blackboard missing";
     return BT::NodeStatus::FAILURE;
   }
-  session_ = ctx->teleop_session;
+  session_ =
+    config().blackboard->get<std::shared_ptr<navigator::teleop::TeleopSession>>(
+      "teleop_session");
+  if (!session_) {
+    AERROR << "TeleopDrive: teleop_session missing on blackboard";
+    return BT::NodeStatus::FAILURE;
+  }
 
   time_allowance_sec_ = 0.0;
   getInput("time_allowance", time_allowance_sec_);

@@ -9,8 +9,8 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/tasks/common/behavior_tree_navigator.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/common/bt_navigator.hpp"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 #include "autonomy/tasks/navigator/teleop/teleop_session.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
@@ -23,11 +23,11 @@ namespace teleop {
  * @brief BT-based teleop navigator (@ref AssistedTeleopAction + TeleopDrive BT node).
  */
 class TeleopDriveNavigator
-    : public common::BehaviorTreeNavigator<
-          behavior_tree::proto::AssistedTeleopAction>
+    : public common::BtNavigator<
+          proto::AssistedTeleopAction>
 {
 public:
-  using ActionT = behavior_tree::proto::AssistedTeleopAction;
+  using ActionT = proto::AssistedTeleopAction;
 
   AUTONOMY_SMART_PTR_DEFINITIONS(TeleopDriveNavigator)
 
@@ -52,6 +52,7 @@ public:
   std::chrono::steady_clock::time_point start_time_;
   double run_max_linear_vel_{0.0};
   double run_max_angular_vel_{0.0};
+  std::shared_ptr<TeleopSession> teleop_session_;
   std::shared_ptr<common::TaskContext> task_context_;
   proto::TaskOptions options_;
 };

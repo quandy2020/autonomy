@@ -19,7 +19,7 @@
 #include <string>
 
 #include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -40,8 +40,8 @@ public:
     BT::NodeStatus onRunning() override;
 
 private:
+    double duration_sec_{0.0};
     commsgs::builtin_interfaces::Time start_;
-    double duration_sec_;
 };
 
 }  // namespace action

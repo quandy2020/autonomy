@@ -18,6 +18,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -28,9 +29,7 @@ namespace condition {
 TransformAvailableCondition::TransformAvailableCondition(
     const std::string& condition_name, const BT::NodeConfiguration& conf)
     : BT::ConditionNode(condition_name, conf), was_found_(false) {
-    tf_ =
-        config().blackboard->get<std::shared_ptr<autonomy::transform::Buffer>>(
-            "tf_buffer");
+    tf_ = common::TransformBufferFromBlackboard(config().blackboard);
 }
 
 TransformAvailableCondition::~TransformAvailableCondition() {
@@ -59,6 +58,10 @@ BT::NodeStatus TransformAvailableCondition::tick() {
 
     if (was_found_) {
         return BT::NodeStatus::SUCCESS;
+    }
+
+    if (!tf_) {
+        return BT::NodeStatus::FAILURE;
     }
 
     std::string tf_error;

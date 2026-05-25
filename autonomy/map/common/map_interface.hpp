@@ -19,7 +19,6 @@
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/map/proto/map_options.pb.h"
-#include "autonomy/sensor/data.hpp"
 
 namespace autonomy {
 namespace map {
@@ -61,12 +60,6 @@ public:
      * @brief  Resumes costmap updates
      */
     virtual void Resume() = 0;
-
-    /**
-     * @brief  Adds sensor data to the map
-     * @param  data The sensor data to add
-     */
-    void AddSensorData(std::unique_ptr<sensor::Data> data);
 };
 
 }  // namespace common

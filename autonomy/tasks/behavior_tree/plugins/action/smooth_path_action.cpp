@@ -20,6 +20,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
+#include "autonomy/tasks/utils/planner_id_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -77,8 +78,8 @@ BT::NodeStatus SmoothPathAction::onStart() {
 
     std::string smoother_input;
     getInput("smoother_id", smoother_input);
-    smoother_id_ =
-        ResolveSmootherId(smoother_input, ctx->selected_smoother_id);
+    smoother_id_ = ResolveSmootherId(
+        smoother_input, common::DefaultSmootherFromBlackboard(config().blackboard));
 
     input_ready_ = true;
     return BT::NodeStatus::RUNNING;
@@ -96,7 +97,7 @@ BT::NodeStatus SmoothPathAction::onRunning() {
         return BT::NodeStatus::FAILURE;
     }
 
-    if (ctx->IsCancelRequested()) {
+    if (isCancelRequested()) {
         setFailure(static_cast<int32_t>(ErrorCode::SMOOTH_PATH_ERROR_NONE), "");
         return BT::NodeStatus::FAILURE;
     }
@@ -107,7 +108,7 @@ BT::NodeStatus SmoothPathAction::onRunning() {
     try {
         const planning::SmoothPathResult result = ctx->smoother->SmoothPath(
             input_path_, smoother_id_, max_time, check_for_collisions_,
-            ctx->CancelChecker());
+            common::CancelCheckerFromConfig(config()));
         setOutput("smoothed_path", result.path);
         setOutput("smoothing_duration", result.smoothing_duration_sec);
         setOutput("was_completed", result.was_completed);

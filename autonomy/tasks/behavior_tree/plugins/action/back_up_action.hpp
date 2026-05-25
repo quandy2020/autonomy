@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include "autonomy/tasks/behavior_tree/bt_stateful_action_node.hpp"
-#include "autonomy/tasks/navigator/proto/action.pb.h"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
+#include "autonomy/tasks/proto/bt_action.pb.h"
 
 namespace autonomy {
 namespace tasks {

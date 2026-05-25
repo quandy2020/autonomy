@@ -89,7 +89,6 @@
           </Sequence>
           <Sequence name="RelocalizationRecovery">
             <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
-            <ReinitializeGlobalLocalization service_name="reinitialize_global_localization"/>
             <Wait wait_duration="0.2"/>
           </Sequence>
         </RecoveryNode>
@@ -104,7 +103,6 @@
           time_allowance="8.0"
           disable_collision_checks="false"/>
         <Spin spin_dist="1.57" time_allowance="8.0" is_recovery="true"/>
-        <ReinitializeGlobalLocalization service_name="reinitialize_global_localization"/>
       </Sequence>
     </RecoveryNode>
   </BehaviorTree>

@@ -8,19 +8,43 @@
 #include <cmath>
 #include <future>
 #include <thread>
-#include <vector>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_exceptions.hpp"
+#include "autonomy/sensor/internal/sensor_collator.hpp"
 #include "autonomy/tasks/constants.hpp"
 #include "autonomy/tasks/navigator/teleop/teleop_session.hpp"
+#include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autonomy {
 namespace tasks {
 namespace {
+
+void BeginTeleopSession(
+  navigator::teleop::TeleopSession * session,
+  const proto::TaskOptions & task_options,
+  double max_linear_vel,
+  double max_angular_vel)
+{
+  if (!session) {
+    return;
+  }
+  navigator::teleop::TeleopSession::Limits limits;
+  if (task_options.has_teleop_drive_options()) {
+    const auto & opts = task_options.teleop_drive_options();
+    limits.max_linear_vel = opts.default_max_linear_vel();
+    limits.max_angular_vel = opts.default_max_angular_vel();
+    limits.cmd_stale_timeout_sec = opts.cmd_stale_timeout_sec();
+  }
+  if (max_linear_vel > 0.0) {
+    limits.max_linear_vel = max_linear_vel;
+  }
+  if (max_angular_vel > 0.0) {
+    limits.max_angular_vel = max_angular_vel;
+  }
+  session->Begin(0.0, limits);
+}
 
 void ApplyMapToCostmap(
   const map::costmap_2d::Costmap2DWrapper::SharedPtr & wrapper,
@@ -70,6 +94,7 @@ Task::Task(const system::proto::AutonomyOptions & options) : options_{options}
   smoother_server_ = std::make_shared<planning::SmootherServer>(
     options_.planner_options(), planner_server_->GetCostmapWrapper());
   planner_server_->SetSmootherServer(smoother_server_);
+  navigator_registry_ = std::make_unique<navigator::NavigatorRegistry>();
 }
 
 Task::~Task()
@@ -87,36 +112,12 @@ void Task::start()
   task_context_->planner = planner_server_;
   task_context_->smoother = smoother_server_;
   task_context_->controller = controller_server_;
-  task_context_->global_costmap = planner_server_
-    ? planner_server_->GetCostmapWrapper()
-    : nullptr;
-  task_context_->local_costmap = controller_server_
-    ? controller_server_->GetCostmapWrapper()
-    : task_context_->global_costmap;
-  task_context_->tf = std::shared_ptr<transform::Buffer>(
+  task_context_->tf_buffer = std::shared_ptr<transform::Buffer>(
     tf_buffer_, [](transform::Buffer *) {});
   if (controller_server_) {
     task_context_->odom_smoother = controller_server_->GetOdomSmoother();
   }
-  task_context_->teleop_session =
-    std::make_shared<navigator::teleop::TeleopSession>();
-  if (planner_server_) {
-    const auto & planner_options = options_.planner_options();
-    if (!planner_options.default_planner_id().empty()) {
-      task_context_->selected_planner_id = planner_options.default_planner_id();
-    } else {
-      task_context_->selected_planner_id = planner_server_->GetDefaultPlannerId();
-    }
-    if (!planner_options.default_smoother_id().empty()) {
-      task_context_->selected_smoother_id = planner_options.default_smoother_id();
-    } else if (smoother_server_) {
-      task_context_->selected_smoother_id = smoother_server_->GetDefaultSmootherId();
-    }
-    task_context_->global_frame =
-      planner_options.costmap().frame_id().empty()
-        ? "map"
-        : planner_options.costmap().frame_id();
-  }
+  setupSensorCollator();
 
   if (map_server_ != nullptr) {
     map_server_->SetMapPublishCallback(
@@ -139,11 +140,9 @@ void Task::start()
   if (planner_server_ != nullptr) {
     planner_server_->Start();
   }
-
   if (smoother_server_ != nullptr) {
     smoother_server_->Start();
   }
-
   if (controller_server_ != nullptr) {
     const std::string global_frame =
       options_.planner_options().costmap().frame_id().empty()
@@ -174,87 +173,56 @@ void Task::start()
 
 void Task::shutdown()
 {
-  if (scheduler_) {
-    scheduler_->Shutdown();
-    scheduler_.reset();
+  if (navigator_registry_) {
+    navigator_registry_->shutdown();
   }
-
   if (controller_server_ != nullptr) {
     controller_server_->Shutdown();
   }
-
   if (smoother_server_ != nullptr) {
     smoother_server_->Shutdown();
   }
-
   if (planner_server_ != nullptr) {
     planner_server_->Shutdown();
   }
-
   if (map_server_ != nullptr) {
     map_server_->Shutdown();
   }
-
   task_context_.reset();
   started_ = false;
 }
 
 void Task::attachScheduler(const TaskAttachOptions & options)
 {
-  if (scheduler_) {
-    scheduler_->Shutdown();
-    scheduler_.reset();
+  if (!navigator_registry_) {
+    navigator_registry_ = std::make_unique<navigator::NavigatorRegistry>();
   }
+  navigator_registry_->shutdown();
 
   if (!options.enable_bt_tasks || !started_) {
     return;
   }
-
   if (!planner_server_ || !controller_server_ || !task_context_) {
     return;
   }
 
-  scheduler_ = std::make_unique<scheduler::TaskScheduler>();
-  scheduler::SharedSystem attachment;
-  attachment.planner = planner_server_;
-  attachment.smoother = smoother_server_;
-  attachment.controller = controller_server_;
-  attachment.task_context = task_context_;
-  scheduler_->InitializeAttached(options.config_directory, attachment);
-
-  if (!scheduler_->IsInitialized()) {
-    scheduler_.reset();
-    return;
-  }
-
-  if (auto * ctx = task_context_.get()) {
-    if (!options.global_frame.empty()) {
-      ctx->global_frame = options.global_frame;
-    }
-    if (!options.controller_id.empty()) {
-      ctx->selected_controller_id = options.controller_id;
-    }
-    if (!options.goal_checker_id.empty()) {
-      ctx->selected_goal_checker_id = options.goal_checker_id;
-    }
-  }
+  navigator_registry_->attach(
+    options.config_directory, task_context_, controller_server_);
 }
 
 bool Task::isSchedulerReady() const
 {
-  return scheduler_ != nullptr && scheduler_->IsInitialized();
+  return navigator_registry_ && navigator_registry_->isReady();
 }
 
 behavior_tree::BtStatus Task::navigateToPose(
-  std::shared_ptr<const behavior_tree::proto::NavigateToPoseAction::Goal> goal)
+  std::shared_ptr<const proto::NavigateToPoseAction::Goal> goal)
 {
-  if (!isSchedulerReady() || !goal) {
-    return behavior_tree::BtStatus::FAILED;
-  }
-  return scheduler_->NavigateToPose(goal);
+  return navigator_registry_ ? navigator_registry_->navigateToPose(goal)
+                      : behavior_tree::BtStatus::FAILED;
 }
 
-behavior_tree::BtStatus Task::runBlockingBtTask(
+behavior_tree::BtStatus Task::runBlockingBt(
   std::function<behavior_tree::BtStatus()> task_fn,
   std::function<bool()> cancel_checker,
   std::function<bool()> continue_predicate)
@@ -291,32 +259,31 @@ behavior_tree::BtStatus Task::navigateThroughPoses(
   const std::vector<commsgs::geometry_msgs::PoseStamped> & poses,
   const std::string & behavior_tree)
 {
-  return runBlockingBtTask(
-    [this, poses, behavior_tree]() {
-      return scheduler_->NavigateThroughPoses(poses, behavior_tree);
-    });
+  return runBlockingBt([this, poses, behavior_tree]() {
+    return navigator_registry_->navigateThroughPoses(poses, behavior_tree);
+  });
 }
 
 behavior_tree::BtStatus Task::navigateToDock(
   const commsgs::geometry_msgs::PoseStamped & dock_pose,
   const std::string & dock_type, const std::string & dock_id)
 {
-  return runBlockingBtTask([this, dock_pose, dock_type, dock_id]() {
-    return scheduler_->NavigateToDockPose(dock_pose, dock_type, dock_id);
+  return runBlockingBt([this, dock_pose, dock_type, dock_id]() {
+    return navigator_registry_->navigateToDock(dock_pose, dock_type, dock_id);
   });
 }
 
 behavior_tree::BtStatus Task::trackToTarget(const uint32_t target_id)
 {
-  return runBlockingBtTask([this, target_id]() {
-    return scheduler_->TrackToTarget(target_id);
+  return runBlockingBt([this, target_id]() {
+    return navigator_registry_->trackToTarget(target_id);
   });
 }
 
 behavior_tree::BtStatus Task::exploreAnywhere(const double time_allowance_sec)
 {
-  return runBlockingBtTask([this, time_allowance_sec]() {
-    return scheduler_->ExploreToAnywhere(time_allowance_sec);
+  return runBlockingBt([this, time_allowance_sec]() {
+    return navigator_registry_->exploreAnywhere(time_allowance_sec);
   });
 }
 
@@ -333,79 +300,82 @@ behavior_tree::BtStatus Task::teleopDrive(
   setControllerEnabled(false);
   requestCancelNavigation();
 
-  const auto status = scheduler_->TeleopDrive(
+  const auto status = navigator_registry_->teleopDrive(
     time_allowance_sec, max_linear_vel, max_angular_vel, std::move(cancel_checker));
 
   nav_.teleop_active.store(false);
-  if (scheduler_) {
-    scheduler_->EndTeleopSession();
-  }
+  endTeleop();
   return status;
 }
 
 void Task::beginTeleop(const double max_linear_vel, const double max_angular_vel)
 {
-  if (!scheduler_) {
+  if (!navigator_registry_) {
     return;
   }
   nav_.teleop_active.store(true);
   setControllerEnabled(false);
   requestCancelNavigation();
-  scheduler_->BeginTeleopSession(max_linear_vel, max_angular_vel);
+  BeginTeleopSession(
+    navigator_registry_->teleopSession(), navigator_registry_->taskOptions(),
+    max_linear_vel, max_angular_vel);
 }
 
 void Task::endTeleop()
 {
   nav_.teleop_active.store(false);
-  if (scheduler_) {
-    scheduler_->EndTeleopSession();
+  if (auto * session = navigator_registry_ ? navigator_registry_->teleopSession()
+                                          : nullptr) {
+    session->End();
   }
 }
 
 bool Task::isTeleopActive() const
 {
-  return nav_.teleop_active.load() ||
-    (scheduler_ && scheduler_->IsTeleopActive());
+  if (nav_.teleop_active.load()) {
+    return true;
+  }
+  const auto * session =
+    navigator_registry_ ? navigator_registry_->teleopSession() : nullptr;
+  return session && session->IsActive();
 }
 
 bool Task::updateTeleopCommand(const commsgs::geometry_msgs::TwistStamped & cmd)
 {
-  if (task_context_ && task_context_->teleop_session &&
-    task_context_->teleop_session->IsActive())
-  {
-    task_context_->teleop_session->UpdateCommand(cmd);
-    return true;
+  auto * session =
+    navigator_registry_ ? navigator_registry_->teleopSession() : nullptr;
+  if (!session) {
+    return false;
   }
-  return scheduler_ && scheduler_->UpdateTeleopCommand(cmd);
+  session->UpdateCommand(cmd);
+  return true;
 }
 
 bool Task::updateTrackTargetPose(const commsgs::geometry_msgs::PoseStamped & pose)
 {
-  return scheduler_ && scheduler_->UpdateTrackTargetPose(pose);
+  return navigator_registry_ && navigator_registry_->updateTrackTargetPose(pose);
 }
 
 bool Task::updateExploreGoal(const commsgs::geometry_msgs::PoseStamped & goal)
 {
-  return scheduler_ && scheduler_->UpdateExploreGoal(goal);
+  return navigator_registry_ && navigator_registry_->updateExploreGoal(goal);
 }
 
 bool Task::hasNavigator(const std::string & id) const
 {
-  return scheduler_ && scheduler_->HasNavigator(id);
+  return navigator_registry_ && navigator_registry_->hasNavigator(id);
 }
 
 std::vector<std::string> Task::registeredNavigatorIds() const
 {
-  if (!scheduler_) {
-    return {};
-  }
-  return scheduler_->RegisteredNavigatorIds();
+  return navigator_registry_ ? navigator_registry_->registeredNavigatorIds()
+                       : std::vector<std::string>{};
 }
 
 void Task::requestCancel()
 {
-  if (scheduler_) {
-    scheduler_->RequestCancel();
+  if (navigator_registry_) {
+    navigator_registry_->requestCancel();
   }
 }
 
@@ -433,38 +403,52 @@ void Task::addPathListener(PathListener listener)
   }
 }
 
-void Task::updateOdometry(const commsgs::planning_msgs::Odometry & odom)
+sensor::CollatorInterface & Task::sensorCollator()
 {
-  if (controller_server_) {
-    controller_server_->UpdateOdometry(odom);
+  if (!sensor_collator_) {
+    setupSensorCollator();
   }
+  return *sensor_collator_;
 }
 
-void Task::feedLaserScan(const commsgs::sensor_msgs::LaserScan & scan)
+const sensor::CollatorInterface & Task::sensorCollator() const
 {
-  if (planner_server_) {
-    if (auto wrapper = planner_server_->GetCostmapWrapper()) {
-      wrapper->feedLaserScan(scan);
-    }
-  }
+  return const_cast<Task *>(this)->sensorCollator();
 }
 
-void Task::feedPointCloud2(const commsgs::sensor_msgs::PointCloud2 & cloud)
+void Task::setupSensorCollator()
 {
-  if (planner_server_) {
-    if (auto wrapper = planner_server_->GetCostmapWrapper()) {
-      wrapper->feedPointCloud2(cloud);
-    }
+  if (sensor_collator_) {
+    return;
   }
-}
 
-void Task::feedRange(const commsgs::sensor_msgs::Range & range)
-{
+  sensor_consumer_.controller = controller_server_.get();
   if (planner_server_) {
     if (auto wrapper = planner_server_->GetCostmapWrapper()) {
-      wrapper->feedRange(range);
+      auto * costmap = wrapper.get();
+      sensor_consumer_.on_laser_scan =
+        [costmap](const commsgs::sensor_msgs::LaserScan & scan) {
+          costmap->feedLaserScan(scan);
+        };
+      sensor_consumer_.on_point_cloud =
+        [costmap](const commsgs::sensor_msgs::PointCloud2 & cloud) {
+          costmap->feedPointCloud2(cloud);
+        };
+      sensor_consumer_.on_range =
+        [costmap](const commsgs::sensor_msgs::Range & range) {
+          costmap->feedRange(range);
+        };
     }
   }
+
+  auto collator = std::make_unique<sensor::SensorCollator>(sensor_consumer_);
+  collator->SetDispatchCallback(
+    [this](const std::string & /*sensor_id*/, std::unique_ptr<sensor::Data> data) {
+      if (data) {
+        data->Dispatch(sensor_consumer_);
+      }
+    });
+  sensor_collator_ = std::move(collator);
 }
 
 bool Task::useBehaviorTreeNavigation() const
@@ -549,22 +533,6 @@ void Task::setControllerEnabled(bool enabled)
   }
 }
 
-void Task::applySpeedLimit(const commsgs::planning_msgs::SpeedLimit & limit)
-{
-  if (controller_server_) {
-    controller_server_->ApplySpeedLimit(limit);
-  }
-}
-
-void Task::clearSpeedLimit()
-{
-  commsgs::planning_msgs::SpeedLimit cleared;
-  cleared.header.stamp = commsgs::builtin_interfaces::Time::Now();
-  cleared.percentage = false;
-  cleared.speed_limit = kClearedSpeedLimit;
-  applySpeedLimit(cleared);
-}
-
 bool Task::navigateToPose(
   const commsgs::geometry_msgs::PoseStamped & goal,
   std::function<bool()> cancel_checker,
@@ -581,10 +549,10 @@ bool Task::navigateToPose(
       goal_com.header.frame_id = runtime_.global_frame;
     }
     auto proto_goal = std::make_shared<
-      behavior_tree::proto::NavigateToPoseAction::Goal>();
+      proto::NavigateToPoseAction::Goal>();
     *proto_goal->mutable_pose() = commsgs::geometry_msgs::ToProto(goal_com);
 
-    const auto status = runBlockingBtTask(
+    const auto status = runBlockingBt(
       [this, proto_goal]() { return navigateToPose(proto_goal); },
       cancel_checker, continue_predicate);
 
@@ -684,11 +652,14 @@ commsgs::geometry_msgs::TwistStamped Task::tickControl()
     return zero;
   }
 
-  if (nav_.teleop_active.load() && task_context_ && task_context_->teleop_session &&
-    task_context_->teleop_session->IsActive())
-  {
-    task_context_->teleop_session->Tick([]() { return false; });
-    return task_context_->teleop_session->CurrentCommand();
+  if (nav_.teleop_active.load() && navigator_registry_) {
+    commsgs::geometry_msgs::TwistStamped zero;
+    auto * session = navigator_registry_->teleopSession();
+    if (!session || !session->IsActive()) {
+      return zero;
+    }
+    session->Tick([]() { return false; });
+    return session->CurrentCommand();
   }
 
   if (!nav_.controller_enabled.load() || !controller_server_) {

@@ -21,9 +21,9 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "autonomy/tasks/behavior_tree/json_utils.hpp"
-#include "autonomy/tasks/navigator/proto/msg.pb.h"
+#include "autonomy/tasks/proto/bt_msg.pb.h"
 #include "autonomy/transform/buffer.hpp"
 #include "behaviortree_cpp/condition_node.h"
 #include "behaviortree_cpp/json_export.h"
