@@ -98,7 +98,7 @@ const std::string GIT_VERSION = "8a2115cf-dirty";
 const std::string GIT_BRANCH = "feature/library";
 
 // 构建信息
-const std::string BUILD_TIMESTAMP = "2026-05-27 17:53:16";
+const std::string BUILD_TIMESTAMP = "2026-05-27 17:54:41";
 const std::string BUILD_HOST = "9b2023bccf6b";
 const std::string BUILD_USER = "root";
 
