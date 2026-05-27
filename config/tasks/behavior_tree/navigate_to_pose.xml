@@ -9,7 +9,7 @@
     <RecoveryNode name="SafeNavigate" number_of_retries="8">
       <ReactiveFallback name="AdaptiveNavigation">
         <!-- 已到达目标时直接成功返回 -->
-        <GoalReached goal="{goal}" goal_reached_tol="0.25" transform_tolerance="0.1"/>
+        <GoalReached goal="{goal}" goal_reached_tol="{goal_reached_tol}" transform_tolerance="0.1"/>
 
         <!-- 模式 A：定位链路完整，执行全局导航 -->
         <Sequence name="GlobalMode">
@@ -18,11 +18,11 @@
           <PipelineSequence name="GlobalNavigatePipeline">
             <ControllerSelector
               selected_controller="{selected_controller}"
-              default_controller="FollowPath"
+              default_controller="{default_controller_id}"
               topic_name="controller_selector"/>
             <PlannerSelector
               selected_planner="{selected_planner}"
-              default_planner="navfn_planner"
+              default_planner="{default_planner_id}"
               topic_name="planner_selector"/>
             <SmootherSelector
               selected_smoother="{selected_smoother}"

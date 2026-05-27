@@ -11,8 +11,10 @@ AUTONOMY_COMMON = {
     default_planner_id = "navfn_planner",
     default_controller_id = "FollowPath",
     default_goal_checker_id = "goal_checker",
+    default_progress_checker_id = "progress_checker",
+    default_smoother_id = "simple_smoother",
 
-    -- Must match BT GoalReached and controller SimpleGoalChecker xy tolerance.
+    -- Must match BT GoalReached (goal_reached_tol) and controller goal checker.
     goal_reached_tolerance = 0.25,
 
     -- Single-process demo spawn (map frame); matches autonomy_tasks_main defaults.

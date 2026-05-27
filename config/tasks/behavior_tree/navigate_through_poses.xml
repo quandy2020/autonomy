@@ -1,27 +1,49 @@
-<root BTCPP_format="4">
+<!--
+  Multi-waypoint navigation: replan through {goals} at 10 Hz, smooth, follow.
+  Blackboard keys are seeded in bt_utils::PopulateBlackboardDefaults and
+  NavigateThroughPosesNavigator::OnGoalReceived.
+-->
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
-    <PipelineSequence name="NavigateThroughPosesWithReplanning">
-      <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
-      <PlannerSelector selected_planner="{selected_planner}" default_planner="navfn_planner" topic_name="planner_selector"/>
-      <SmootherSelector selected_smoother="{selected_smoother}" default_smoother="simple_smoother" topic_name="smoother_selector"/>
-      <RateController hz="10.0">
-        <ComputePathThroughPoses
-          goals="{goals}"
+    <RecoveryNode name="NavigateThroughPoses" number_of_retries="6">
+      <PipelineSequence name="NavigateThroughPosesWithReplanning">
+        <ControllerSelector
+          selected_controller="{selected_controller}"
+          default_controller="{default_controller_id}"
+          topic_name="controller_selector"/>
+        <PlannerSelector
+          selected_planner="{selected_planner}"
+          default_planner="{default_planner_id}"
+          topic_name="planner_selector"/>
+        <SmootherSelector
+          selected_smoother="{selected_smoother}"
+          default_smoother="simple_smoother"
+          topic_name="smoother_selector"/>
+        <RateController hz="10.0">
+          <ComputePathThroughPoses
+            goals="{goals}"
+            path="{path}"
+            planner_id="{selected_planner}"
+            error_code_id="{compute_path_through_poses_error_code}"/>
+        </RateController>
+        <SmoothPath
+          unsmoothed_path="{path}"
+          smoothed_path="{path}"
+          smoother_id="{selected_smoother}"
+          max_smoothing_duration="1.0"
+          check_for_collisions="false"/>
+        <IsPathValid path="{path}"/>
+        <FollowPath
           path="{path}"
-          planner_id="{selected_planner}"
-          error_code_id="{compute_path_through_poses_error_code}"/>
-      </RateController>
-      <SmoothPath
-        unsmoothed_path="{path}"
-        smoothed_path="{path}"
-        smoother_id="{selected_smoother}"
-        max_smoothing_duration="1.0"
-        check_for_collisions="false"/>
-      <FollowPath
-        path="{path}"
-        controller_id="{selected_controller}"
-        error_code_id="{follow_path_error_code}"
-        error_msg="{follow_path_error_msg}"/>
-    </PipelineSequence>
+          controller_id="{selected_controller}"
+          error_code_id="{follow_path_error_code}"
+          error_msg="{follow_path_error_msg}"/>
+      </PipelineSequence>
+      <Sequence name="ThroughPosesRecovery">
+        <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
+        <ClearEntireCostmap service_name="global_costmap/clear_costmap"/>
+        <Wait wait_duration="0.5"/>
+      </Sequence>
+    </RecoveryNode>
   </BehaviorTree>
 </root>

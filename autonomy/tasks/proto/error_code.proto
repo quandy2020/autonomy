@@ -1,0 +1,79 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.tasks.proto;
+
+// Behavior-tree node errors (blackboard error_code_id, uint16).
+// Values 0-99: shared BT pipeline errors used by ComputePath / FollowPath / SmoothPath.
+enum BehaviorTreeErrorCode {
+  BT_NONE = 0;
+  BT_UNKNOWN = 1;
+  BT_TIMEOUT = 2;
+  BT_CONTROLLER_TIMED_OUT = 3;
+  BT_PLANNER_FAILED = 4;
+  BT_CONTROLLER_FAILED = 5;
+  BT_SMOOTHER_FAILED = 6;
+  BT_TF_ERROR = 7;
+  BT_INVALID_PATH = 8;
+  BT_GOAL_CHECKER_FAILED = 9;
+  BT_SERVICE_UNAVAILABLE = 10;
+  BT_SERVER_TIMEOUT = 11;
+  BT_PATH_INVALID = 12;
+  BT_COSTMAP_ERROR = 13;
+  BT_TRANSFORM_UNAVAILABLE = 14;
+  BT_CANCELED = 15;
+  BT_PREEMPTED = 16;
+  BT_NOT_INITIALIZED = 17;
+  BT_INVALID_GOAL = 18;
+}
+
+// navigate_to_pose action result errors (Nav2-compatible 9000+).
+enum NavigateToPoseErrorCode {
+  NAV_TO_POSE_NONE = 0;
+  NAV_TO_POSE_UNKNOWN = 9000;
+  NAV_TO_POSE_FAILED_TO_LOAD_BEHAVIOR_TREE = 9001;
+  NAV_TO_POSE_TF_ERROR = 9002;
+  NAV_TO_POSE_TIMEOUT = 9003;
+  NAV_TO_POSE_NO_VALID_PATH = 9004;
+  NAV_TO_POSE_CANCELED = 9005;
+  NAV_TO_POSE_PREEMPTED = 9006;
+  NAV_TO_POSE_INVALID_GOAL = 9007;
+  NAV_TO_POSE_NOT_INITIALIZED = 9008;
+  NAV_TO_POSE_PLANNER_FAILED = 9009;
+  NAV_TO_POSE_CONTROLLER_FAILED = 9010;
+  NAV_TO_POSE_SMOOTHER_FAILED = 9011;
+  NAV_TO_POSE_PATH_INVALID = 9012;
+  NAV_TO_POSE_GOAL_CHECKER_FAILED = 9013;
+}
+
+// navigate_through_poses action result errors (Nav2-compatible 9100+).
+enum NavigateThroughPosesErrorCode {
+  NAV_THROUGH_POSES_NONE = 0;
+  NAV_THROUGH_POSES_UNKNOWN = 9100;
+  NAV_THROUGH_POSES_FAILED_TO_LOAD_BEHAVIOR_TREE = 9101;
+  NAV_THROUGH_POSES_TF_ERROR = 9102;
+  NAV_THROUGH_POSES_TIMEOUT = 9103;
+  NAV_THROUGH_POSES_NO_VALID_PATH = 9104;
+  NAV_THROUGH_POSES_CANCELED = 9105;
+  NAV_THROUGH_POSES_PREEMPTED = 9106;
+  NAV_THROUGH_POSES_INVALID_GOAL = 9107;
+  NAV_THROUGH_POSES_NOT_INITIALIZED = 9108;
+  NAV_THROUGH_POSES_PLANNER_FAILED = 9109;
+  NAV_THROUGH_POSES_CONTROLLER_FAILED = 9110;
+  NAV_THROUGH_POSES_SMOOTHER_FAILED = 9111;
+  NAV_THROUGH_POSES_PATH_INVALID = 9112;
+  NAV_THROUGH_POSES_GOAL_CHECKER_FAILED = 9113;
+}

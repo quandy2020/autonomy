@@ -26,8 +26,24 @@ class LuaParameterDictionary;
 }
 namespace tasks {
 
-/** Load TaskOptions from Lua "tasks" table. All keys in tasks.lua must be read
- * exactly once. */
+/** Runtime overrides from ROS parameters or AutonomyNode::Configure(). */
+struct RuntimeOptions {
+    bool enable_bt_tasks{true};
+    bool use_bt_navigation{true};
+    std::string config_directory;
+    std::string planner_id;
+    std::string controller_id;
+    std::string goal_checker_id;
+    std::string progress_checker_id;
+    std::string global_frame;
+    double goal_tolerance{0.15};
+};
+
+/** Load TaskOptions from the Lua `tasks` table (not the autonomy.lua root). */
+proto::TaskOptions LoadTaskOptions(
+    ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
+
+/** Load TaskOptions from a root dict that contains a `tasks` sub-table, or empty. */
 proto::TaskOptions LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
