@@ -4,8 +4,7 @@
 
 #include <cmath>
 
-#include "autonomy/tasks/behavior_tree/bt_plugin_common.hpp"
-#include "autonomy/tasks/utils/robot_utils.hpp"
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
@@ -33,8 +32,8 @@ public:
             return BT::NodeStatus::FAILURE;
         }
         commsgs::geometry_msgs::PoseStamped goal;
-        if (!getInput("goal", goal)) {
-            getInput(kBlackboardGoalKey, goal);
+        if (!GetInputOrBB(*this, "goal", kBlackboardGoalKey, goal)) {
+            return BT::NodeStatus::FAILURE;
         }
         double tol = 0.25;
         getInput("goal_reached_tol", tol);
@@ -42,15 +41,13 @@ public:
             config().blackboard->get(kBlackboardGoalReachedTolKey, tol);
         }
         commsgs::geometry_msgs::PoseStamped current;
-        if (!utils::getGlobalRobotPose(
-                current, ctx->tf_buffer, ctx->controller->GetOdomSmoother(),
-                ctx->options.global_frame(), ctx->options.robot_base_frame())) {
+        if (!GetGlobalStartPose(*ctx, current)) {
             return BT::NodeStatus::FAILURE;
         }
         const double dx = current.pose.position.x - goal.pose.position.x;
         const double dy = current.pose.position.y - goal.pose.position.y;
-        const double dist = std::hypot(dx, dy);
-        return dist <= tol ? BT::NodeStatus::SUCCESS : BT::NodeStatus::FAILURE;
+        return std::hypot(dx, dy) <= tol ? BT::NodeStatus::SUCCESS
+                                         : BT::NodeStatus::FAILURE;
     }
 };
 
@@ -58,8 +55,4 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::GoalReachedCondition>(
-        "GoalReached");
-}
+REGISTER_BEHAVIOR_TREE_NODE(GoalReachedCondition, "GoalReached")

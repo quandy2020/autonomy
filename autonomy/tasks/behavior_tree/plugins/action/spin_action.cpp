@@ -2,18 +2,18 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
-#include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
-#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
+#include "autonomy/tasks/behavior_tree/utils.hpp"
+#include "autonomy/tasks/behavior_tree/recovery_action_node.hpp"
 
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-class SpinAction : public BehaviorTreeActionNode
+class SpinAction : public RecoveryActionNode
 {
 public:
     SpinAction(const std::string& name, const BT::NodeConfiguration& conf)
-        : BehaviorTreeActionNode(name, conf) {}
+        : RecoveryActionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
         return {
@@ -25,8 +25,8 @@ public:
 
 protected:
     void onStart() override {
-        auto ctx = GetContext(config());
-        if (!ctx || !ctx->controller) {
+        auto ctx = Context();
+        if (!ctx) {
             return;
         }
         double spin_dist = 1.57;
@@ -43,46 +43,14 @@ protected:
         cmd.distance = spin_dist;
         cmd.speed = 0.5;
         cmd.time_allowance_sec = time_allowance;
-        started_ = ctx->controller->BeginRecoveryMotion(cmd);
+        BeginRecovery(cmd);
     }
 
-    BT::NodeStatus onRunning() override {
-        auto ctx = GetContext(config());
-        if (!ctx || !started_) {
-            return BT::NodeStatus::FAILURE;
-        }
-        const auto r =
-            ctx->controller->TickRecoveryMotion(ctx->CancelChecker());
-        switch (r) {
-            case control::ControllerServer::RecoveryTickResult::Running:
-                return BT::NodeStatus::RUNNING;
-            case control::ControllerServer::RecoveryTickResult::Succeeded:
-                return BT::NodeStatus::SUCCESS;
-            case control::ControllerServer::RecoveryTickResult::Cancelled:
-                return BT::NodeStatus::SUCCESS;
-            default:
-                return BT::NodeStatus::FAILURE;
-        }
-    }
-
-    void onHalted() override {
-        if (auto ctx = GetContext(config())) {
-            if (ctx->controller) {
-                ctx->controller->EndRecoveryMotion();
-            }
-        }
-        started_ = false;
-    }
-
-private:
-    bool started_{false};
+    BT::NodeStatus onRunning() override { return TickRecovery(); }
 };
 
 }  // namespace behavior_tree
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::SpinAction>("Spin");
-}
+REGISTER_BEHAVIOR_TREE_NODE(SpinAction, "Spin")

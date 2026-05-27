@@ -16,31 +16,104 @@ syntax = "proto3";
 
 package autonomy.tasks.proto;
 
-// Behavior-tree node errors (blackboard error_code_id, uint16).
-// Values 0-99: shared BT pipeline errors used by ComputePath / FollowPath / SmoothPath.
-enum BehaviorTreeErrorCode {
-  BT_NONE = 0;
-  BT_UNKNOWN = 1;
-  BT_TIMEOUT = 2;
-  BT_CONTROLLER_TIMED_OUT = 3;
-  BT_PLANNER_FAILED = 4;
-  BT_CONTROLLER_FAILED = 5;
-  BT_SMOOTHER_FAILED = 6;
-  BT_TF_ERROR = 7;
-  BT_INVALID_PATH = 8;
-  BT_GOAL_CHECKER_FAILED = 9;
-  BT_SERVICE_UNAVAILABLE = 10;
-  BT_SERVER_TIMEOUT = 11;
-  BT_PATH_INVALID = 12;
-  BT_COSTMAP_ERROR = 13;
-  BT_TRANSFORM_UNAVAILABLE = 14;
-  BT_CANCELED = 15;
-  BT_PREEMPTED = 16;
-  BT_NOT_INITIALIZED = 17;
-  BT_INVALID_GOAL = 18;
+// Outcome codes aligned with move_base_flex/mbf_msgs (GetPath / ExePath / Recovery / MoveBase).
+// BT nodes write GetPathErrorCode or ExePathErrorCode to blackboard error_code_id (uint16).
+// High-level autolink actions use NavigateToPose* / NavigateThroughPoses* (Nav2-compatible 9000+/9100+).
+
+// --- GetPath (mbf_msgs/action/GetPath.action), range 50-99 ---
+
+enum GetPathErrorCode {
+  GET_PATH_SUCCESS = 0;
+  // 1-9 reserved for plugin-specific non-error results
+
+  GET_PATH_FAILURE = 50;
+  GET_PATH_CANCELED = 51;
+  GET_PATH_INVALID_START = 52;
+  GET_PATH_INVALID_GOAL = 53;
+  GET_PATH_BLOCKED_START = 54;
+  GET_PATH_BLOCKED_GOAL = 55;
+  GET_PATH_NO_PATH_FOUND = 56;
+  GET_PATH_PAT_EXCEEDED = 57;
+  GET_PATH_EMPTY_PATH = 58;
+  GET_PATH_TF_ERROR = 59;
+  GET_PATH_NOT_INITIALIZED = 60;
+  GET_PATH_INVALID_PLUGIN = 61;
+  GET_PATH_INTERNAL_ERROR = 62;
+  GET_PATH_OUT_OF_MAP = 63;
+  GET_PATH_MAP_ERROR = 64;
+  GET_PATH_STOPPED = 65;
+  // 71-99 reserved for plugin-specific errors
 }
 
-// navigate_to_pose action result errors (Nav2-compatible 9000+).
+// --- ExePath (mbf_msgs/action/ExePath.action), range 100-149 ---
+
+enum ExePathErrorCode {
+  EXE_PATH_SUCCESS = 0;
+  // 1-9 reserved for plugin-specific non-error results
+
+  EXE_PATH_FAILURE = 100;
+  EXE_PATH_CANCELED = 101;
+  EXE_PATH_NO_VALID_CMD = 102;
+  EXE_PATH_PAT_EXCEEDED = 103;
+  EXE_PATH_COLLISION = 104;
+  EXE_PATH_OSCILLATION = 105;
+  EXE_PATH_ROBOT_STUCK = 106;
+  EXE_PATH_MISSED_GOAL = 107;
+  EXE_PATH_MISSED_PATH = 108;
+  EXE_PATH_BLOCKED_GOAL = 109;
+  EXE_PATH_BLOCKED_PATH = 110;
+  EXE_PATH_INVALID_PATH = 111;
+  EXE_PATH_TF_ERROR = 112;
+  EXE_PATH_NOT_INITIALIZED = 113;
+  EXE_PATH_INVALID_PLUGIN = 114;
+  EXE_PATH_INTERNAL_ERROR = 115;
+  EXE_PATH_OUT_OF_MAP = 116;
+  EXE_PATH_MAP_ERROR = 117;
+  EXE_PATH_STOPPED = 118;
+  // 121-149 reserved for plugin-specific errors
+}
+
+// --- Recovery (mbf_msgs/action/Recovery.action), range 150-199 ---
+
+enum RecoveryErrorCode {
+  RECOVERY_SUCCESS = 0;
+
+  RECOVERY_FAILURE = 150;
+  RECOVERY_CANCELED = 151;
+  RECOVERY_PAT_EXCEEDED = 152;
+  RECOVERY_TF_ERROR = 153;
+  RECOVERY_NOT_INITIALIZED = 154;
+  RECOVERY_INVALID_PLUGIN = 155;
+  RECOVERY_INTERNAL_ERROR = 156;
+  RECOVERY_STOPPED = 157;
+  RECOVERY_IMPASSABLE = 158;
+  // 171-199 reserved for plugin-specific errors
+}
+
+// --- MoveBase (mbf_msgs/action/MoveBase.action), general 10-49 + aggregated plan/ctrl ---
+
+enum MoveBaseErrorCode {
+  MOVE_BASE_SUCCESS = 0;
+
+  MOVE_BASE_FAILURE = 10;
+  MOVE_BASE_CANCELED = 11;
+  MOVE_BASE_COLLISION = 12;
+  MOVE_BASE_OSCILLATION = 13;
+  MOVE_BASE_START_BLOCKED = 14;
+  MOVE_BASE_GOAL_BLOCKED = 15;
+  MOVE_BASE_TF_ERROR = 16;
+  MOVE_BASE_INTERNAL_ERROR = 17;
+  // 21-49 reserved for future general errors
+
+  MOVE_BASE_PLAN_FAILURE = 50;
+  // 51-99 reserved for planner-specific (see GetPathErrorCode)
+
+  MOVE_BASE_CTRL_FAILURE = 100;
+  // 101-149 reserved for controller-specific (see ExePathErrorCode)
+}
+
+// --- Nav2-compatible high-level navigation actions ---
+
 enum NavigateToPoseErrorCode {
   NAV_TO_POSE_NONE = 0;
   NAV_TO_POSE_UNKNOWN = 9000;
@@ -59,7 +132,6 @@ enum NavigateToPoseErrorCode {
   NAV_TO_POSE_GOAL_CHECKER_FAILED = 9013;
 }
 
-// navigate_through_poses action result errors (Nav2-compatible 9100+).
 enum NavigateThroughPosesErrorCode {
   NAV_THROUGH_POSES_NONE = 0;
   NAV_THROUGH_POSES_UNKNOWN = 9100;

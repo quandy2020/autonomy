@@ -12,55 +12,123 @@ namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-/** BT blackboard error_code_id values (mirrors BehaviorTreeErrorCode in error_code.proto). */
-struct BtErrorCode {
-    static constexpr uint16_t NONE =
-        static_cast<uint16_t>(proto::BT_NONE);
-    static constexpr uint16_t UNKNOWN =
-        static_cast<uint16_t>(proto::BT_UNKNOWN);
-    static constexpr uint16_t TIMEOUT =
-        static_cast<uint16_t>(proto::BT_TIMEOUT);
-    static constexpr uint16_t CONTROLLER_TIMED_OUT =
-        static_cast<uint16_t>(proto::BT_CONTROLLER_TIMED_OUT);
-    static constexpr uint16_t PLANNER_FAILED =
-        static_cast<uint16_t>(proto::BT_PLANNER_FAILED);
-    static constexpr uint16_t CONTROLLER_FAILED =
-        static_cast<uint16_t>(proto::BT_CONTROLLER_FAILED);
-    static constexpr uint16_t SMOOTHER_FAILED =
-        static_cast<uint16_t>(proto::BT_SMOOTHER_FAILED);
-    static constexpr uint16_t TF_ERROR =
-        static_cast<uint16_t>(proto::BT_TF_ERROR);
-    static constexpr uint16_t INVALID_PATH =
-        static_cast<uint16_t>(proto::BT_INVALID_PATH);
-    static constexpr uint16_t GOAL_CHECKER_FAILED =
-        static_cast<uint16_t>(proto::BT_GOAL_CHECKER_FAILED);
-    static constexpr uint16_t SERVICE_UNAVAILABLE =
-        static_cast<uint16_t>(proto::BT_SERVICE_UNAVAILABLE);
-    static constexpr uint16_t SERVER_TIMEOUT =
-        static_cast<uint16_t>(proto::BT_SERVER_TIMEOUT);
-    static constexpr uint16_t PATH_INVALID =
-        static_cast<uint16_t>(proto::BT_PATH_INVALID);
-    static constexpr uint16_t COSTMAP_ERROR =
-        static_cast<uint16_t>(proto::BT_COSTMAP_ERROR);
-    static constexpr uint16_t TRANSFORM_UNAVAILABLE =
-        static_cast<uint16_t>(proto::BT_TRANSFORM_UNAVAILABLE);
+/** MBF GetPath outcome constants for BT blackboard error_code_id. */
+struct GetPathOutcome {
+    static constexpr uint16_t SUCCESS =
+        static_cast<uint16_t>(proto::GET_PATH_SUCCESS);
+    static constexpr uint16_t FAILURE =
+        static_cast<uint16_t>(proto::GET_PATH_FAILURE);
     static constexpr uint16_t CANCELED =
-        static_cast<uint16_t>(proto::BT_CANCELED);
-    static constexpr uint16_t PREEMPTED =
-        static_cast<uint16_t>(proto::BT_PREEMPTED);
-    static constexpr uint16_t NOT_INITIALIZED =
-        static_cast<uint16_t>(proto::BT_NOT_INITIALIZED);
+        static_cast<uint16_t>(proto::GET_PATH_CANCELED);
+    static constexpr uint16_t INVALID_START =
+        static_cast<uint16_t>(proto::GET_PATH_INVALID_START);
     static constexpr uint16_t INVALID_GOAL =
-        static_cast<uint16_t>(proto::BT_INVALID_GOAL);
+        static_cast<uint16_t>(proto::GET_PATH_INVALID_GOAL);
+    static constexpr uint16_t BLOCKED_START =
+        static_cast<uint16_t>(proto::GET_PATH_BLOCKED_START);
+    static constexpr uint16_t BLOCKED_GOAL =
+        static_cast<uint16_t>(proto::GET_PATH_BLOCKED_GOAL);
+    static constexpr uint16_t NO_PATH_FOUND =
+        static_cast<uint16_t>(proto::GET_PATH_NO_PATH_FOUND);
+    static constexpr uint16_t PAT_EXCEEDED =
+        static_cast<uint16_t>(proto::GET_PATH_PAT_EXCEEDED);
+    static constexpr uint16_t EMPTY_PATH =
+        static_cast<uint16_t>(proto::GET_PATH_EMPTY_PATH);
+    static constexpr uint16_t TF_ERROR =
+        static_cast<uint16_t>(proto::GET_PATH_TF_ERROR);
+    static constexpr uint16_t NOT_INITIALIZED =
+        static_cast<uint16_t>(proto::GET_PATH_NOT_INITIALIZED);
+    static constexpr uint16_t INVALID_PLUGIN =
+        static_cast<uint16_t>(proto::GET_PATH_INVALID_PLUGIN);
+    static constexpr uint16_t INTERNAL_ERROR =
+        static_cast<uint16_t>(proto::GET_PATH_INTERNAL_ERROR);
+    static constexpr uint16_t OUT_OF_MAP =
+        static_cast<uint16_t>(proto::GET_PATH_OUT_OF_MAP);
+    static constexpr uint16_t MAP_ERROR =
+        static_cast<uint16_t>(proto::GET_PATH_MAP_ERROR);
+    static constexpr uint16_t STOPPED =
+        static_cast<uint16_t>(proto::GET_PATH_STOPPED);
 };
 
-/** Map a BT pipeline error to navigate_to_pose action result code. */
-proto::NavigateToPoseErrorCode ToNavigateToPoseErrorCode(
-    proto::BehaviorTreeErrorCode bt_error);
+/** MBF ExePath outcome constants for BT blackboard error_code_id. */
+struct ExePathOutcome {
+    static constexpr uint16_t SUCCESS =
+        static_cast<uint16_t>(proto::EXE_PATH_SUCCESS);
+    static constexpr uint16_t FAILURE =
+        static_cast<uint16_t>(proto::EXE_PATH_FAILURE);
+    static constexpr uint16_t CANCELED =
+        static_cast<uint16_t>(proto::EXE_PATH_CANCELED);
+    static constexpr uint16_t NO_VALID_CMD =
+        static_cast<uint16_t>(proto::EXE_PATH_NO_VALID_CMD);
+    static constexpr uint16_t PAT_EXCEEDED =
+        static_cast<uint16_t>(proto::EXE_PATH_PAT_EXCEEDED);
+    static constexpr uint16_t COLLISION =
+        static_cast<uint16_t>(proto::EXE_PATH_COLLISION);
+    static constexpr uint16_t OSCILLATION =
+        static_cast<uint16_t>(proto::EXE_PATH_OSCILLATION);
+    static constexpr uint16_t ROBOT_STUCK =
+        static_cast<uint16_t>(proto::EXE_PATH_ROBOT_STUCK);
+    static constexpr uint16_t MISSED_GOAL =
+        static_cast<uint16_t>(proto::EXE_PATH_MISSED_GOAL);
+    static constexpr uint16_t MISSED_PATH =
+        static_cast<uint16_t>(proto::EXE_PATH_MISSED_PATH);
+    static constexpr uint16_t BLOCKED_GOAL =
+        static_cast<uint16_t>(proto::EXE_PATH_BLOCKED_GOAL);
+    static constexpr uint16_t BLOCKED_PATH =
+        static_cast<uint16_t>(proto::EXE_PATH_BLOCKED_PATH);
+    static constexpr uint16_t INVALID_PATH =
+        static_cast<uint16_t>(proto::EXE_PATH_INVALID_PATH);
+    static constexpr uint16_t TF_ERROR =
+        static_cast<uint16_t>(proto::EXE_PATH_TF_ERROR);
+    static constexpr uint16_t NOT_INITIALIZED =
+        static_cast<uint16_t>(proto::EXE_PATH_NOT_INITIALIZED);
+    static constexpr uint16_t INVALID_PLUGIN =
+        static_cast<uint16_t>(proto::EXE_PATH_INVALID_PLUGIN);
+    static constexpr uint16_t INTERNAL_ERROR =
+        static_cast<uint16_t>(proto::EXE_PATH_INTERNAL_ERROR);
+    static constexpr uint16_t OUT_OF_MAP =
+        static_cast<uint16_t>(proto::EXE_PATH_OUT_OF_MAP);
+    static constexpr uint16_t MAP_ERROR =
+        static_cast<uint16_t>(proto::EXE_PATH_MAP_ERROR);
+    static constexpr uint16_t STOPPED =
+        static_cast<uint16_t>(proto::EXE_PATH_STOPPED);
+};
 
-/** Map a BT pipeline error to navigate_through_poses action result code. */
+/** MBF Recovery outcome constants. */
+struct RecoveryOutcome {
+    static constexpr uint16_t SUCCESS =
+        static_cast<uint16_t>(proto::RECOVERY_SUCCESS);
+    static constexpr uint16_t FAILURE =
+        static_cast<uint16_t>(proto::RECOVERY_FAILURE);
+    static constexpr uint16_t CANCELED =
+        static_cast<uint16_t>(proto::RECOVERY_CANCELED);
+    static constexpr uint16_t TF_ERROR =
+        static_cast<uint16_t>(proto::RECOVERY_TF_ERROR);
+    static constexpr uint16_t IMPASSABLE =
+        static_cast<uint16_t>(proto::RECOVERY_IMPASSABLE);
+};
+
+proto::NavigateToPoseErrorCode ToNavigateToPoseErrorCode(
+    proto::GetPathErrorCode outcome);
+proto::NavigateToPoseErrorCode ToNavigateToPoseErrorCode(
+    proto::ExePathErrorCode outcome);
+proto::NavigateToPoseErrorCode ToNavigateToPoseErrorCode(
+    proto::RecoveryErrorCode outcome);
+proto::NavigateToPoseErrorCode ToNavigateToPoseErrorCode(
+    proto::MoveBaseErrorCode outcome);
+/** Map any MBF-style uint32 outcome (auto-detect by value range). */
+proto::NavigateToPoseErrorCode ToNavigateToPoseErrorCode(uint32_t outcome);
+
 proto::NavigateThroughPosesErrorCode ToNavigateThroughPosesErrorCode(
-    proto::BehaviorTreeErrorCode bt_error);
+    proto::GetPathErrorCode outcome);
+proto::NavigateThroughPosesErrorCode ToNavigateThroughPosesErrorCode(
+    proto::ExePathErrorCode outcome);
+proto::NavigateThroughPosesErrorCode ToNavigateThroughPosesErrorCode(
+    proto::RecoveryErrorCode outcome);
+proto::NavigateThroughPosesErrorCode ToNavigateThroughPosesErrorCode(
+    proto::MoveBaseErrorCode outcome);
+proto::NavigateThroughPosesErrorCode ToNavigateThroughPosesErrorCode(
+    uint32_t outcome);
 
 }  // namespace behavior_tree
 }  // namespace tasks

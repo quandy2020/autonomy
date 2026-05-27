@@ -11,40 +11,18 @@ namespace autonomy {
 namespace tasks {
 namespace {
 
-void LoadNavigateToPoseNavigator(
+void LoadNavigatorOptions(
     ::autonomy::common::LuaParameterDictionary* const dict,
-    proto::NavigateToPoseNavigator* navigator) {
+    proto::NavigatorOptions* navigator) {
     if (dict->HasKey("enable")) {
         navigator->set_enable(dict->GetBool("enable"));
     }
-    if (dict->HasKey("default_behavior_tree_file")) {
-        navigator->set_default_behavior_tree_file(
+    if (dict->HasKey("behavior_tree_file")) {
+        navigator->set_behavior_tree_file(
+            dict->GetString("behavior_tree_file"));
+    } else if (dict->HasKey("default_behavior_tree_file")) {
+        navigator->set_behavior_tree_file(
             dict->GetString("default_behavior_tree_file"));
-    }
-    if (dict->HasKey("goal_blackboard_key")) {
-        navigator->set_goal_blackboard_key(dict->GetString("goal_blackboard_key"));
-    }
-    if (dict->HasKey("path_blackboard_key")) {
-        navigator->set_path_blackboard_key(dict->GetString("path_blackboard_key"));
-    }
-}
-
-void LoadNavigateThroughPosesNavigator(
-    ::autonomy::common::LuaParameterDictionary* const dict,
-    proto::NavigateThroughPosesNavigator* navigator) {
-    if (dict->HasKey("enable")) {
-        navigator->set_enable(dict->GetBool("enable"));
-    }
-    if (dict->HasKey("default_behavior_tree_file")) {
-        navigator->set_default_behavior_tree_file(
-            dict->GetString("default_behavior_tree_file"));
-    }
-    if (dict->HasKey("goals_blackboard_key")) {
-        navigator->set_goals_blackboard_key(
-            dict->GetString("goals_blackboard_key"));
-    }
-    if (dict->HasKey("path_blackboard_key")) {
-        navigator->set_path_blackboard_key(dict->GetString("path_blackboard_key"));
     }
 }
 
@@ -62,16 +40,9 @@ proto::TaskOptions LoadTaskOptions(
         options.set_robot_base_frame(
             parameter_dictionary->GetString("robot_base_frame"));
     }
-    if (parameter_dictionary->HasKey("odom_topic")) {
-        options.set_odom_topic(parameter_dictionary->GetString("odom_topic"));
-    }
     if (parameter_dictionary->HasKey("bt_loop_duration")) {
         options.set_bt_loop_duration(
             parameter_dictionary->GetInt("bt_loop_duration"));
-    }
-    if (parameter_dictionary->HasKey("filter_duration")) {
-        options.set_filter_duration(
-            parameter_dictionary->GetDouble("filter_duration"));
     }
     if (parameter_dictionary->HasKey("default_server_timeout")) {
         options.set_default_server_timeout(
@@ -93,6 +64,10 @@ proto::TaskOptions LoadTaskOptions(
         options.set_default_goal_checker_id(
             parameter_dictionary->GetString("default_goal_checker_id"));
     }
+    if (parameter_dictionary->HasKey("default_smoother_id")) {
+        options.set_default_smoother_id(
+            parameter_dictionary->GetString("default_smoother_id"));
+    }
     if (parameter_dictionary->HasKey("goal_reached_tolerance")) {
         options.set_goal_reached_tolerance(
             parameter_dictionary->GetDouble("goal_reached_tolerance"));
@@ -109,25 +84,16 @@ proto::TaskOptions LoadTaskOptions(
             options.add_plugin_lib_names(name);
         }
     }
-    if (parameter_dictionary->HasKey("navigators")) {
-        auto navigators_dict =
-            parameter_dictionary->GetDictionary("navigators");
-        for (const auto& navigator :
-             navigators_dict->GetArrayValuesAsStrings()) {
-            options.add_navigators(navigator);
-        }
-    }
     if (parameter_dictionary->HasKey("navigate_to_pose")) {
-        LoadNavigateToPoseNavigator(
+        LoadNavigatorOptions(
             parameter_dictionary->GetDictionary("navigate_to_pose").get(),
             options.mutable_navigate_to_pose());
     }
     if (parameter_dictionary->HasKey("navigate_through_poses")) {
-        LoadNavigateThroughPosesNavigator(
+        LoadNavigatorOptions(
             parameter_dictionary->GetDictionary("navigate_through_poses").get(),
             options.mutable_navigate_through_poses());
     }
-
     if (parameter_dictionary->HasKey("enable_autolink_action_servers")) {
         options.set_enable_autolink_action_servers(
             parameter_dictionary->GetBool("enable_autolink_action_servers"));

@@ -4,17 +4,17 @@
 
 #include <chrono>
 
-#include "autonomy/tasks/behavior_tree/behavior_tree_action_node.hpp"
+#include "autonomy/tasks/behavior_tree/action_node.hpp"
 
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-class WaitAction : public BehaviorTreeActionNode
+class WaitAction : public ActionNode
 {
 public:
     WaitAction(const std::string& name, const BT::NodeConfiguration& conf)
-        : BehaviorTreeActionNode(name, conf) {}
+        : ActionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
         return {BT::InputPort<double>("wait_duration", 1.0, "Seconds")};
@@ -45,7 +45,6 @@ private:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::WaitAction>("Wait");
-}
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+
+REGISTER_BEHAVIOR_TREE_NODE(WaitAction, "Wait")

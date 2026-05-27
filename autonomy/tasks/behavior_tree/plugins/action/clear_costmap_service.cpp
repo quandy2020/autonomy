@@ -3,8 +3,8 @@
  */
 
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
-#include "autonomy/tasks/behavior_tree/behavior_tree_service_node.hpp"
-#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
+#include "autonomy/tasks/behavior_tree/service_node.hpp"
+#include "autonomy/tasks/behavior_tree/utils.hpp"
 
 namespace autonomy {
 namespace tasks {
@@ -28,12 +28,12 @@ map::costmap_2d::Costmap2DWrapper::SharedPtr ResolveCostmap(
 
 }  // namespace
 
-class ClearEntireCostmapService : public BehaviorTreeServiceNode
+class ClearEntireCostmapService : public ServiceNode
 {
 public:
     ClearEntireCostmapService(const std::string& name,
                               const BT::NodeConfiguration& conf)
-        : BehaviorTreeServiceNode(name, conf) {}
+        : ServiceNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
         return {BT::InputPort<std::string>("service_name", "", "Costmap id")};
@@ -59,9 +59,6 @@ protected:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::ClearEntireCostmapService>(
-        "ClearEntireCostmap");
-}
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+
+REGISTER_BEHAVIOR_TREE_NODE(ClearEntireCostmapService, "ClearEntireCostmap")

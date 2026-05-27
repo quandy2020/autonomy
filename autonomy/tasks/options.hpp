@@ -26,7 +26,7 @@ class LuaParameterDictionary;
 }
 namespace tasks {
 
-/** Runtime overrides from ROS parameters or AutonomyNode::Configure(). */
+/** Runtime overrides from ROS parameters or system::Autonomy::Configure(). */
 struct RuntimeOptions {
     bool enable_bt_tasks{true};
     bool use_bt_navigation{true};

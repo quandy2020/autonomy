@@ -24,8 +24,8 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/tasks/common/navigation_engine.hpp"
-#include "autonomy/tasks/common/task_interface.hpp"
+#include "autonomy/tasks/common/navigation.hpp"
+#include "autonomy/tasks/common/interface.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
 
 namespace autolink {
@@ -48,10 +48,10 @@ namespace tasks {
 /**
  * @brief Task manager: single-point / multi-waypoint navigation and lifecycle.
  *
- * Delegates BT execution to common::NavigationEngine (BtNavigator when available).
+ * Delegates BT execution to NavigationEngine (BehaviorTreeNavigationEngine when available).
  * Only one navigation session is active at a time.
  */
-class Task : public common::TaskInterface
+class Task : public TaskInterface
 {
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(Task)
@@ -59,8 +59,8 @@ public:
     Task();
     explicit Task(const proto::TaskOptions& options);
 
-    /** Inject or replace the navigation backend (e.g. BtNavigator wrapper). */
-    void SetNavigationEngine(common::NavigationEngine::SharedPtr engine);
+    /** Inject or replace the navigation backend (e.g. BehaviorTreeNavigationEngine). */
+    void SetNavigationEngine(NavigationEngine::SharedPtr engine);
 
     /**
      * @brief Wire planner / smoother / controller / TF and configure the engine.
@@ -113,7 +113,7 @@ public:
     bool PauseNavigation();
     bool ResumeNavigation();
 
-    common::NavigationMode GetNavigationMode() const;
+    NavigationMode GetNavigationMode() const;
     bool IsNavigating() const;
 
     /** True while the navigation engine BT/direct session is still running. */
@@ -122,29 +122,27 @@ public:
     /** After the engine finishes, whether the last session succeeded (BT only). */
     bool LastNavigationSucceeded() const;
 
-    /** Called by AutonomyNode when the engine reports completion. */
+    /** Called by system::Autonomy when the engine reports completion. */
     void FinalizeNavigation(bool succeeded);
 
     const proto::TaskOptions& GetOptions() const { return options_; }
 
-    // --- TaskInterface ---
+    // --- TaskInterface (used by system::Autonomy) ---
 
-    bool Resume() override;
     bool Cancel() override;
-    bool Stop() override;
     void Shutdown() override;
     TaskState GetState() const override;
-    std::string GetName() const override;
 
-protected:
-    bool StartImpl(std::vector<std::any>&& args) override;
+    bool Resume();
+    bool Stop();
+    std::string GetName() const;
 
 private:
-    std::string DefaultBtFileForMode(common::NavigationMode mode) const;
+    std::string DefaultBtFileForMode(NavigationMode mode) const;
 
     bool EnsureConfigured();
     bool EnsureIdleForStart();
-    void OnNavigationStarted(common::NavigationMode mode);
+    void OnNavigationStarted(NavigationMode mode);
     void OnNavigationCanceled();
 
     /** Caller must hold mutex_. */
@@ -156,7 +154,7 @@ private:
         const std::string& behavior_tree_file);
 
     proto::TaskOptions options_;
-    common::NavigationEngine::SharedPtr engine_;
+    NavigationEngine::SharedPtr engine_;
     std::shared_ptr<planning::PlannerServer> planner_;
     std::shared_ptr<planning::SmootherServer> smoother_;
     std::shared_ptr<control::ControllerServer> controller_;
@@ -164,8 +162,7 @@ private:
 
     mutable std::mutex mutex_;
     std::atomic<TaskState> state_{TaskState::IDLE};
-    std::atomic<common::NavigationMode> navigation_mode_{
-        common::NavigationMode::NONE};
+    std::atomic<NavigationMode> navigation_mode_{NavigationMode::NONE};
     bool configured_{false};
 };
 

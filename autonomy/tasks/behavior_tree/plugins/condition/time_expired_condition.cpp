@@ -4,7 +4,7 @@
 
 #include <chrono>
 
-#include "autonomy/tasks/behavior_tree/bt_plugin_common.hpp"
+#include "autonomy/tasks/behavior_tree/utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
@@ -24,10 +24,12 @@ public:
 
     BT::NodeStatus tick() override {
         if (!BT::isStatusActive(status())) {
-            getInput("seconds", period_sec_);
-            if (period_sec_ <= 0.0) {
-                config().blackboard->get(kBlackboardLocalSurvivalTimeoutKey,
-                                         period_sec_);
+            if (!getInput("seconds", period_sec_) || period_sec_ <= 0.0) {
+                if (!config().blackboard->get(kBlackboardLocalSurvivalTimeoutKey,
+                                               period_sec_) ||
+                    period_sec_ <= 0.0) {
+                    period_sec_ = 120.0;
+                }
             }
             auto ctx = GetContext(config());
             start_ = ctx ? ctx->navigation_start
@@ -51,8 +53,6 @@ private:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::TimeExpiredCondition>(
-        "TimeExpired");
-}
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+
+REGISTER_BEHAVIOR_TREE_NODE(TimeExpiredCondition, "TimeExpired")
