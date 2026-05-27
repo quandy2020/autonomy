@@ -3,7 +3,7 @@
  */
 
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
-#include "autonomy/tasks/behavior_tree/bt_plugin_common.hpp"
+#include "autonomy/tasks/behavior_tree/utils.hpp"
 #include "autonomy/tasks/constants.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
@@ -72,8 +72,6 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::IsPathValidCondition>(
-        "IsPathValid");
-}
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+
+REGISTER_BEHAVIOR_TREE_NODE(IsPathValidCondition, "IsPathValid")

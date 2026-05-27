@@ -16,38 +16,31 @@ syntax = "proto3";
 
 package autonomy.tasks.proto;
 
-// Lua: tasks.navigate_to_pose
-message NavigateToPoseNavigator {
+// Lua: tasks.navigate_to_pose / tasks.navigate_through_poses
+message NavigatorOptions {
   optional bool enable = 1;
-  string default_behavior_tree_file = 2;
-  string goal_blackboard_key = 3;
-  string path_blackboard_key = 4;
-}
-
-// Lua: tasks.navigate_through_poses
-message NavigateThroughPosesNavigator {
-  optional bool enable = 1;
-  string default_behavior_tree_file = 2;
-  string goals_blackboard_key = 3;
-  string path_blackboard_key = 4;
+  string behavior_tree_file = 2;
 }
 
 message TaskOptions {
   string global_frame = 1;
   string robot_base_frame = 2;
-  string odom_topic = 3;
-  uint32 bt_loop_duration = 4;
-  double filter_duration = 5;
-  uint32 default_server_timeout = 6;
-  double local_survival_timeout = 7;
-  repeated string navigators = 8;
-  NavigateToPoseNavigator navigate_to_pose = 9;
-  NavigateThroughPosesNavigator navigate_through_poses = 10;
-  repeated string plugin_lib_names = 11;
-  string plugin_lib_path = 12;
-  string default_planner_id = 13;
-  string default_controller_id = 14;
-  string default_goal_checker_id = 15;
-  double goal_reached_tolerance = 16;
-  optional bool enable_autolink_action_servers = 17;
+
+  uint32 bt_loop_duration = 3;
+  uint32 default_server_timeout = 4;
+  double local_survival_timeout = 5;
+
+  repeated string plugin_lib_names = 6;
+  string plugin_lib_path = 7;
+
+  string default_planner_id = 8;
+  string default_controller_id = 9;
+  string default_goal_checker_id = 10;
+  string default_smoother_id = 11;
+  double goal_reached_tolerance = 12;
+
+  NavigatorOptions navigate_to_pose = 13;
+  NavigatorOptions navigate_through_poses = 14;
+
+  optional bool enable_autolink_action_servers = 15;
 }

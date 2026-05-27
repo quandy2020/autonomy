@@ -4,10 +4,7 @@
 
 #include <vector>
 
-#include "autonomy/planning/common/planner_exceptions.hpp"
-#include "autonomy/tasks/behavior_tree/bt_plugin_common.hpp"
-#include "autonomy/tasks/behavior_tree/error_codes.hpp"
-#include "autonomy/tasks/utils/robot_utils.hpp"
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
@@ -32,41 +29,17 @@ public:
     }
 
     BT::NodeStatus tick() override {
-        auto ctx = GetContext(config());
-        if (!ctx || !ctx->planner) {
+        if (IsCancelRequested(config())) {
             return BT::NodeStatus::FAILURE;
         }
-        std::vector<commsgs::geometry_msgs::PoseStamped> goals;
-        if (!getInput("goals", goals)) {
-            getInput(kBlackboardGoalsKey, goals);
-        }
-        if (goals.empty()) {
-            setOutput("error_code_id", BtErrorCode::INVALID_GOAL);
-            return BT::NodeStatus::FAILURE;
-        }
-        std::string planner_id;
-        getInput("planner_id", planner_id);
-        if (planner_id.empty()) {
-            config().blackboard->get("selected_planner", planner_id);
-        }
-        commsgs::geometry_msgs::PoseStamped start;
-        if (!utils::getGlobalRobotPose(
-                start, ctx->tf_buffer, ctx->controller->GetOdomSmoother(),
-                ctx->options.global_frame(), ctx->options.robot_base_frame())) {
-            setOutput("error_code_id", BtErrorCode::TF_ERROR);
-            return BT::NodeStatus::FAILURE;
-        }
-        try {
-            auto path = ctx->planner->ComputePathThroughPoses(
-                start, goals, planner_id, ctx->CancelChecker());
-            setOutput("path", path);
-            setOutput(kBlackboardPathKey, path);
-            setOutput("error_code_id", BtErrorCode::NONE);
-            return BT::NodeStatus::SUCCESS;
-        } catch (const planning::common::PlannerException&) {
-            setOutput("error_code_id", BtErrorCode::PLANNER_FAILED);
-            return BT::NodeStatus::FAILURE;
-        }
+        return RunGetPath<ComputePathThroughPosesAction,
+                          std::vector<commsgs::geometry_msgs::PoseStamped>>(
+            *this, GetContext(config()), "goals", kBlackboardGoalsKey,
+            [](BehaviorTreeContext& ctx, const auto& start, const auto& goals,
+               const std::string& planner_id) {
+                return ctx.planner->ComputePathThroughPoses(
+                    start, goals, planner_id, ctx.CancelChecker());
+            });
     }
 };
 
@@ -74,9 +47,5 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::ComputePathThroughPosesAction>(
-        "ComputePathThroughPoses");
-}
+REGISTER_BEHAVIOR_TREE_NODE(ComputePathThroughPosesAction,
+                          "ComputePathThroughPoses")

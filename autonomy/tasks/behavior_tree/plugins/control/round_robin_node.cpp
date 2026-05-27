@@ -67,8 +67,6 @@ private:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::RoundRobinNode>(
-        "RoundRobin");
-}
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+
+REGISTER_BEHAVIOR_TREE_NODE(RoundRobinNode, "RoundRobin")

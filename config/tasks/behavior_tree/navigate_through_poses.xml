@@ -1,6 +1,6 @@
 <!--
   Multi-waypoint navigation: replan through {goals} at 10 Hz, smooth, follow.
-  Blackboard keys are seeded in bt_utils::PopulateBlackboardDefaults and
+  Blackboard keys are seeded in PopulateBlackboardDefaults and
   NavigateThroughPosesNavigator::OnGoalReceived.
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">

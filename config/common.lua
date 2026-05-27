@@ -16,9 +16,4 @@ AUTONOMY_COMMON = {
 
     -- Must match BT GoalReached (goal_reached_tol) and controller goal checker.
     goal_reached_tolerance = 0.25,
-
-    -- Single-process demo spawn (map frame); matches autonomy_tasks_main defaults.
-    demo_robot_spawn_x = 1.0,
-    demo_robot_spawn_y = 1.0,
-    demo_robot_spawn_yaw = 0.0,
 }

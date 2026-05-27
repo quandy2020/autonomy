@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/tasks/behavior_tree/navigator/bt_navigator.hpp"
+#include "autonomy/tasks/behavior_tree/navigator/behavior_tree_navigation_engine.hpp"
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/planning/smoother_server.hpp"
@@ -18,7 +18,7 @@ namespace autonomy {
 namespace tasks {
 namespace {
 
-using TaskState = common::TaskInterface::TaskState;
+using TaskState = TaskInterface::TaskState;
 
 template <typename NavigatorOptions>
 bool NavigatorEnabled(const NavigatorOptions& config) {
@@ -28,16 +28,16 @@ bool NavigatorEnabled(const NavigatorOptions& config) {
 
 }  // namespace
 
-Task::Task() : engine_(common::CreateBtNavigationEngine()) {}
+Task::Task() : engine_(CreateBehaviorTreeNavigationEngine()) {}
 
 Task::Task(const proto::TaskOptions& options)
-    : options_(options), engine_(common::CreateBtNavigationEngine()) {}
+    : options_(options), engine_(CreateBehaviorTreeNavigationEngine()) {}
 
-void Task::SetNavigationEngine(common::NavigationEngine::SharedPtr engine) {
+void Task::SetNavigationEngine(NavigationEngine::SharedPtr engine) {
     std::lock_guard<std::mutex> lock(mutex_);
     engine_ = std::move(engine);
     if (!engine_) {
-        engine_ = common::CreateBtNavigationEngine();
+        engine_ = CreateBehaviorTreeNavigationEngine();
     }
     configured_ = false;
 }
@@ -65,7 +65,7 @@ bool Task::Configure(
         return false;
     }
     if (!engine_) {
-        engine_ = common::CreateBtNavigationEngine();
+        engine_ = CreateBehaviorTreeNavigationEngine();
     }
     planner_ = std::move(planner);
     smoother_ = std::move(smoother);
@@ -118,20 +118,18 @@ bool Task::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) {
     return true;
 }
 
-std::string Task::DefaultBtFileForMode(const common::NavigationMode mode) const {
-    if (mode == common::NavigationMode::NAVIGATE_TO_POSE) {
+std::string Task::DefaultBtFileForMode(const NavigationMode mode) const {
+    if (mode == NavigationMode::NAVIGATE_TO_POSE) {
         if (options_.has_navigate_to_pose() &&
-            !options_.navigate_to_pose().default_behavior_tree_file().empty()) {
-            return options_.navigate_to_pose().default_behavior_tree_file();
+            !options_.navigate_to_pose().behavior_tree_file().empty()) {
+            return options_.navigate_to_pose().behavior_tree_file();
         }
         return "navigate_to_pose.xml";
     }
-    if (mode == common::NavigationMode::NAVIGATE_THROUGH_POSES) {
+    if (mode == NavigationMode::NAVIGATE_THROUGH_POSES) {
         if (options_.has_navigate_through_poses() &&
-            !options_.navigate_through_poses()
-                 .default_behavior_tree_file()
-                 .empty()) {
-            return options_.navigate_through_poses().default_behavior_tree_file();
+            !options_.navigate_through_poses().behavior_tree_file().empty()) {
+            return options_.navigate_through_poses().behavior_tree_file();
         }
         return "navigate_through_poses.xml";
     }
@@ -160,13 +158,13 @@ bool Task::EnsureIdleForStart() {
     return true;
 }
 
-void Task::OnNavigationStarted(const common::NavigationMode mode) {
+void Task::OnNavigationStarted(const NavigationMode mode) {
     navigation_mode_.store(mode);
     state_.store(TaskState::RUNNING);
 }
 
 void Task::OnNavigationCanceled() {
-    navigation_mode_.store(common::NavigationMode::NONE);
+    navigation_mode_.store(NavigationMode::NONE);
     state_.store(TaskState::CANCELED);
 }
 
@@ -183,12 +181,12 @@ bool Task::StartNavigateToPoseLocked(
     }
     std::string bt_file = behavior_tree_file;
     if (bt_file.empty()) {
-        bt_file = DefaultBtFileForMode(common::NavigationMode::NAVIGATE_TO_POSE);
+        bt_file = DefaultBtFileForMode(NavigationMode::NAVIGATE_TO_POSE);
     }
     if (!engine_->StartNavigateToPose(goal, bt_file)) {
         return false;
     }
-    OnNavigationStarted(common::NavigationMode::NAVIGATE_TO_POSE);
+    OnNavigationStarted(NavigationMode::NAVIGATE_TO_POSE);
     return true;
 }
 
@@ -201,7 +199,7 @@ bool Task::StartNavigateToPose(
 
 bool Task::CancelNavigateToPose() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (navigation_mode_.load() != common::NavigationMode::NAVIGATE_TO_POSE) {
+    if (navigation_mode_.load() != NavigationMode::NAVIGATE_TO_POSE) {
         return false;
     }
     if (!engine_->Cancel()) {
@@ -229,12 +227,12 @@ bool Task::StartNavigateThroughPosesLocked(
     std::string bt_file = behavior_tree_file;
     if (bt_file.empty()) {
         bt_file =
-            DefaultBtFileForMode(common::NavigationMode::NAVIGATE_THROUGH_POSES);
+            DefaultBtFileForMode(NavigationMode::NAVIGATE_THROUGH_POSES);
     }
     if (!engine_->StartNavigateThroughPoses(goals, bt_file)) {
         return false;
     }
-    OnNavigationStarted(common::NavigationMode::NAVIGATE_THROUGH_POSES);
+    OnNavigationStarted(NavigationMode::NAVIGATE_THROUGH_POSES);
     return true;
 }
 
@@ -248,7 +246,7 @@ bool Task::StartNavigateThroughPoses(
 bool Task::CancelNavigateThroughPoses() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (navigation_mode_.load() !=
-        common::NavigationMode::NAVIGATE_THROUGH_POSES) {
+        NavigationMode::NAVIGATE_THROUGH_POSES) {
         return false;
     }
     if (!engine_->Cancel()) {
@@ -288,7 +286,7 @@ bool Task::ResumeNavigation() {
     return true;
 }
 
-common::NavigationMode Task::GetNavigationMode() const {
+NavigationMode Task::GetNavigationMode() const {
     return navigation_mode_.load();
 }
 
@@ -303,17 +301,17 @@ bool Task::IsNavigationEngineActive() const {
 
 bool Task::LastNavigationSucceeded() const {
     const auto bt_engine =
-        std::dynamic_pointer_cast<behavior_tree::BtNavigator>(engine_);
+        std::dynamic_pointer_cast<behavior_tree::BehaviorTreeNavigationEngine>(engine_);
     if (!bt_engine) {
         return false;
     }
-    return bt_engine->GetLastBtStatus() ==
-           behavior_tree::BtStatus::SUCCEEDED;
+    return bt_engine->GetLastRunStatus() ==
+           behavior_tree::RunStatus::SUCCEEDED;
 }
 
 void Task::FinalizeNavigation(const bool succeeded) {
     std::lock_guard<std::mutex> lock(mutex_);
-    navigation_mode_.store(common::NavigationMode::NONE);
+    navigation_mode_.store(NavigationMode::NONE);
     state_.store(succeeded ? TaskState::COMPLETED : TaskState::FAILED);
 }
 
@@ -336,7 +334,7 @@ bool Task::Stop() {
     if (IsNavigating()) {
         engine_->Cancel();
     }
-    navigation_mode_.store(common::NavigationMode::NONE);
+    navigation_mode_.store(NavigationMode::NONE);
     state_.store(TaskState::STOPPED);
     return true;
 }
@@ -346,7 +344,7 @@ void Task::Shutdown() {
     if (IsNavigating()) {
         engine_->Cancel();
     }
-    navigation_mode_.store(common::NavigationMode::NONE);
+    navigation_mode_.store(NavigationMode::NONE);
     state_.store(TaskState::SHUTDOWN);
     configured_ = false;
 }
@@ -354,53 +352,6 @@ void Task::Shutdown() {
 TaskState Task::GetState() const { return state_.load(); }
 
 std::string Task::GetName() const { return kTaskNodeName; }
-
-bool Task::StartImpl(std::vector<std::any>&& args) {
-    if (args.empty()) {
-        AERROR << "Task::Start: expected NavigateToPose goal or "
-                  "NavigateThroughPoses goal list.";
-        return false;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    try {
-        if (args.size() == 1) {
-            if (args[0].type() ==
-                typeid(commsgs::geometry_msgs::PoseStamped)) {
-                return StartNavigateToPoseLocked(
-                    std::any_cast<commsgs::geometry_msgs::PoseStamped>(args[0]),
-                    "");
-            }
-            if (args[0].type() ==
-                typeid(std::vector<commsgs::geometry_msgs::PoseStamped>)) {
-                return StartNavigateThroughPosesLocked(
-                    std::any_cast<std::vector<commsgs::geometry_msgs::PoseStamped>>(
-                        args[0]),
-                    "");
-            }
-        }
-        if (args.size() == 2 &&
-            args[0].type() == typeid(commsgs::geometry_msgs::PoseStamped) &&
-            args[1].type() == typeid(std::string)) {
-            return StartNavigateToPoseLocked(
-                std::any_cast<commsgs::geometry_msgs::PoseStamped>(args[0]),
-                std::any_cast<std::string>(args[1]));
-        }
-        if (args.size() == 2 &&
-            args[0].type() ==
-                typeid(std::vector<commsgs::geometry_msgs::PoseStamped>) &&
-            args[1].type() == typeid(std::string)) {
-            return StartNavigateThroughPosesLocked(
-                std::any_cast<std::vector<commsgs::geometry_msgs::PoseStamped>>(
-                    args[0]),
-                std::any_cast<std::string>(args[1]));
-        }
-    } catch (const std::bad_any_cast&) {
-        AERROR << "Task::Start: unsupported argument types.";
-        return false;
-    }
-    AERROR << "Task::Start: unsupported argument types.";
-    return false;
-}
 
 }  // namespace tasks
 }  // namespace autonomy

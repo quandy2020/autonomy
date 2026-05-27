@@ -24,7 +24,7 @@
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/version.hpp"
 #include "autonomy/system/options.hpp"
-#include "autonomy/system/system.hpp"
+#include "autonomy/system/autonomy.hpp"
 #include "autonomy/tasks/options.hpp"
 
 namespace autonomy {
@@ -49,8 +49,8 @@ void Run() {
         autonomy::common::FLAGS_configuration_directory,
         autonomy::common::FLAGS_configuration_basename);
 
-    auto autonomy_node = autonomy::system::CreateAutonomy(options);
-    autonomy_node->Start();
+    auto autonomy = autonomy::system::CreateAutonomy(options);
+    autonomy->Start();
 
     tasks::RuntimeOptions runtime;
     runtime.config_directory = autonomy::common::FLAGS_configuration_directory;
@@ -74,17 +74,17 @@ void Run() {
             runtime.goal_tolerance = task_opts.goal_reached_tolerance();
         }
     }
-    autonomy_node->Configure(runtime);
+    autonomy->Configure(runtime);
 
     LOG(INFO) << "Autonomy system running (BT ready="
-              << (autonomy_node->IsSchedulerReady() ? "yes" : "no") << "). "
+              << (autonomy->IsReady() ? "yes" : "no") << "). "
               << "Press Ctrl+C to exit.";
 
     while (g_running.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
-    autonomy_node->Shutdown();
+    autonomy->Shutdown();
 }
 
 }  // namespace

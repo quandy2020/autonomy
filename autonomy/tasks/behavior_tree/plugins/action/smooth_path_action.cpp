@@ -2,9 +2,8 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
-#include "autonomy/tasks/behavior_tree/bt_plugin_common.hpp"
-#include "autonomy/tasks/behavior_tree/error_codes.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
@@ -33,15 +32,8 @@ public:
             return BT::NodeStatus::FAILURE;
         }
         commsgs::planning_msgs::Path path;
-        getInput("unsmoothed_path", path);
-        if (path.poses.empty()) {
-            getInput(kBlackboardPathKey, path);
-        }
-        std::string smoother_id;
-        getInput("smoother_id", smoother_id);
-        if (smoother_id.empty()) {
-            config().blackboard->get("selected_smoother", smoother_id);
-        }
+        GetInputOrBB(*this, "unsmoothed_path", kBlackboardPathKey, path);
+        const std::string smoother_id = ResolveSmootherId(*this, *ctx);
         double max_duration = 1.0;
         getInput("max_smoothing_duration", max_duration);
         bool check_collisions = false;
@@ -65,8 +57,4 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<autonomy::tasks::behavior_tree::SmoothPathAction>(
-        "SmoothPath");
-}
+REGISTER_BEHAVIOR_TREE_NODE(SmoothPathAction, "SmoothPath")

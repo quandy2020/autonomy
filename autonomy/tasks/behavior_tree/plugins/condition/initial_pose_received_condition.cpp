@@ -2,7 +2,7 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
-#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
+#include "autonomy/tasks/behavior_tree/utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
@@ -32,9 +32,6 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "behaviortree_cpp/bt_factory.h"
-BT_REGISTER_NODES(factory) {
-    factory.registerNodeType<
-        autonomy::tasks::behavior_tree::InitialPoseReceivedCondition>(
-        "InitialPoseReceived");
-}
+#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+
+REGISTER_BEHAVIOR_TREE_NODE(InitialPoseReceivedCondition, "InitialPoseReceived")
