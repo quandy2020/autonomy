@@ -17,40 +17,74 @@
 #include <glog/logging.h>
 #include <signal.h>
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/version.hpp"
 #include "autonomy/system/options.hpp"
 #include "autonomy/system/system.hpp"
+#include "autonomy/tasks/options.hpp"
 
 namespace autonomy {
 namespace system {
 namespace {
 
-void SigintHandler(int sig) {
+std::atomic<bool> g_running{true};
+
+void SigintHandler(int /*sig*/) {
     LOG(INFO) << "Shutdown autonomy system all tasks.";
-    exit(0);
+    g_running = false;
 }
 
 void Run() {
-    // 'Crtl + C' sign handler
     signal(SIGINT, SigintHandler);
     signal(SIGTERM, SigintHandler);
 
-    // Show autonomu app version
     autonomy::common::ShowVersion();
     LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
 
-    // Create options from lua
-    auto options = autonomy::system::CreateOptions(
+    const auto options = autonomy::system::CreateOptions(
         autonomy::common::FLAGS_configuration_directory,
         autonomy::common::FLAGS_configuration_basename);
 
-    // // Create autonomy node
-    // auto autonomy = autonomy::system::CreateAutonomy(options);
-    // autonomy->Start();
+    auto autonomy_node = autonomy::system::CreateAutonomy(options);
+    autonomy_node->Start();
 
-    // Shutdown autonomy node
-    autonomy->Shutdown();
+    tasks::RuntimeOptions runtime;
+    runtime.config_directory = autonomy::common::FLAGS_configuration_directory;
+    runtime.enable_bt_tasks = true;
+    runtime.use_bt_navigation = true;
+    if (options.has_task_options()) {
+        const auto& task_opts = options.task_options();
+        if (!task_opts.global_frame().empty()) {
+            runtime.global_frame = task_opts.global_frame();
+        }
+        if (!task_opts.default_planner_id().empty()) {
+            runtime.planner_id = task_opts.default_planner_id();
+        }
+        if (!task_opts.default_controller_id().empty()) {
+            runtime.controller_id = task_opts.default_controller_id();
+        }
+        if (!task_opts.default_goal_checker_id().empty()) {
+            runtime.goal_checker_id = task_opts.default_goal_checker_id();
+        }
+        if (task_opts.goal_reached_tolerance() > 0.0) {
+            runtime.goal_tolerance = task_opts.goal_reached_tolerance();
+        }
+    }
+    autonomy_node->Configure(runtime);
+
+    LOG(INFO) << "Autonomy system running (BT ready="
+              << (autonomy_node->IsSchedulerReady() ? "yes" : "no") << "). "
+              << "Press Ctrl+C to exit.";
+
+    while (g_running.load()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+
+    autonomy_node->Shutdown();
 }
 
 }  // namespace
@@ -68,10 +102,9 @@ int main(int argc, char** argv) {
 
     if (autonomy::common::FLAGS_verbose) {
         autonomy::common::ShowVersion();
-        exit(0);
+        return EXIT_SUCCESS;
     }
 
-    // Check if configuration directory and basename are set.
     if (autonomy::common::FLAGS_configuration_directory.empty() ||
         autonomy::common::FLAGS_configuration_basename.empty()) {
         AERROR << "Configuration directory or configuration basename is empty.";
