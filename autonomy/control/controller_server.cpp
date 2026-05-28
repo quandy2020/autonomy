@@ -403,22 +403,48 @@ bool ControllerServer::BeginFollowPath(
     return false;
   }
 
+  std::string resolved_controller;
   if (!ResolvePluginId(controller_id, default_ids_, controllers_,
-                       current_controller_)) {
+                       resolved_controller)) {
     AERROR << "BeginFollowPath: invalid controller_id '" << controller_id
            << "'. Available: " << controller_ids_concat_;
     return false;
   }
+  std::string resolved_goal_checker;
   if (!ResolvePluginId(goal_checker_id, default_goal_checker_ids_,
-                       goal_checkers_, current_goal_checker_)) {
+                       goal_checkers_, resolved_goal_checker)) {
     AERROR << "BeginFollowPath: invalid goal_checker_id.";
     return false;
   }
+  std::string resolved_progress_checker;
   if (!ResolvePluginId(progress_checker_id, default_progress_checker_ids_,
-                       progress_checkers_, current_progress_checker_)) {
+                       progress_checkers_, resolved_progress_checker)) {
     AERROR << "BeginFollowPath: invalid progress_checker_id.";
     return false;
   }
+
+  // If a follow task is already active with the same plugin selection,
+  // update the reference path in-place instead of resetting controller state.
+  // This keeps global re-planning and local tracking synchronized.
+  if (follow_path_active_ && resolved_controller == current_controller_ &&
+      resolved_goal_checker == current_goal_checker_ &&
+      resolved_progress_checker == current_progress_checker_) {
+    SetPlannerPath(path);
+    end_pose_ = path.poses.back();
+    if (end_pose_.header.frame_id.empty()) {
+      end_pose_.header.frame_id = path.header.frame_id.empty()
+                                      ? global_frame_
+                                      : path.header.frame_id;
+    }
+    if (end_pose_.header.stamp.sec == 0 && end_pose_.header.stamp.nanosec == 0) {
+      end_pose_.header.stamp = Time::Now();
+    }
+    return true;
+  }
+
+  current_controller_ = resolved_controller;
+  current_goal_checker_ = resolved_goal_checker;
+  current_progress_checker_ = resolved_progress_checker;
 
   if (auto* progress = GetProgressChecker(current_progress_checker_)) {
     progress->Reset();

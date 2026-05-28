@@ -179,6 +179,9 @@ BT::NodeStatus RunGetPath(Node& node, const std::shared_ptr<BehaviorTreeContext>
     }
     try {
         auto path = compute(*ctx, start, goal, planner_id);
+        if (ctx->on_path) {
+            ctx->on_path(path);
+        }
         PublishPath(node, path);
         return BT::NodeStatus::SUCCESS;
     } catch (const planning::common::PlannerException& ex) {

@@ -48,7 +48,7 @@ public:
     void halt() override {
         ControlNode::haltChildren();
         last_child_ticked_ = 0;
-        setStatus(BT::NodeStatus::IDLE);
+        resetStatus();
     }
 
 private:

@@ -29,12 +29,18 @@
               default_smoother="simple_smoother"
               topic_name="smoother_selector"/>
             <RateController hz="5.0">
-              <ComputePathToPose
-                goal="{goal}"
-                path="{path}"
-                planner_id="{selected_planner}"
-                error_code_id="{compute_path_error_code}"
-                error_msg="{compute_path_error_msg}"/>
+              <RecoveryNode name="ComputePathWithContextRecovery" number_of_retries="1">
+                <ComputePathToPose
+                  goal="{goal}"
+                  path="{path}"
+                  planner_id="{selected_planner}"
+                  error_code_id="{compute_path_error_code}"
+                  error_msg="{compute_path_error_msg}"/>
+                <Sequence>
+                  <ClearEntireCostmap service_name="global_costmap/clear_costmap"/>
+                  <Wait wait_duration="0.2"/>
+                </Sequence>
+              </RecoveryNode>
             </RateController>
             <SmoothPath
               unsmoothed_path="{path}"
@@ -43,11 +49,19 @@
               max_smoothing_duration="1.0"
               check_for_collisions="false"/>
             <IsPathValid path="{path}"/>
-            <FollowPath
-              path="{path}"
-              controller_id="{selected_controller}"
-              error_code_id="{follow_path_error_code}"
-              error_msg="{follow_path_error_msg}"/>
+            <RecoveryNode name="FollowPathWithContextRecovery" number_of_retries="1">
+              <RateController hz="30.0">
+                <FollowPath
+                  path="{path}"
+                  controller_id="{selected_controller}"
+                  error_code_id="{follow_path_error_code}"
+                  error_msg="{follow_path_error_msg}"/>
+              </RateController>
+              <Sequence>
+                <ClearEntireCostmap service_name="local_costmap/clear_costmap"/>
+                <Wait wait_duration="0.2"/>
+              </Sequence>
+            </RecoveryNode>
           </PipelineSequence>
         </Sequence>
 

@@ -20,20 +20,20 @@ AUTONOMY_PLANNER = {
     navfn_planner = {
         tolerance = 0.1,
         use_astar = false,
-        allow_unknown = true,
+        allow_unknown = false,
         use_final_approach_orientation = false,
     },
 
     dijkstra_planner = {
         tolerance = 0.1,
-        allow_unknown = true,
+        allow_unknown = false,
         use_final_approach_orientation = false,
     },
 
     -- Theta* any-angle grid planner
     theta_star_planner = {
         how_many_corners = 8,
-        allow_unknown = true,
+        allow_unknown = false,
         w_euc_cost = 2.0,
         w_traversal_cost = 1.0,
         w_heuristic_cost = 1.0,
@@ -96,7 +96,10 @@ AUTONOMY_PLANNER = {
     },
     cos_theta_smoother_path_bound = 0.5,
 
-    path_simplify_epsilon = 0.02,
+    -- Keep dense global path for controller tracking consistency.
+    -- Non-zero Douglas-Peucker simplification can collapse obstacle-following
+    -- trajectories into near-straight segments.
+    path_simplify_epsilon = 0.0,
     auto_smooth_after_plan = false,
     auto_smooth_duration = 1.0,
 
@@ -111,7 +114,9 @@ AUTONOMY_PLANNER = {
         robot_radius = 0.22,
         always_send_full_costmap = true,
         -- Global costmap: static map + laser obstacles (via autonomy_ros /scan bridge).
-        plugins = {"static_layer", "obstacle_layer", "denoise_layer", "inflation_layer"},
+        -- Keep static/inflation pipeline conservative in fake mode; denoise may
+        -- remove thin occupied structures and cause wall-crossing plans.
+        plugins = {"static_layer", "obstacle_layer", "inflation_layer"},
 
         obstacle_layer = {
             plugin = "libautonomy_map_layers_obstacle_layer.so",
@@ -148,7 +153,7 @@ AUTONOMY_PLANNER = {
             plugin = "libautonomy_map_layers_inflation_layer.so",
             enabled = true,
             cost_scaling_factor = 3.0,
-            inflation_radius = 0.55,
+            inflation_radius = 0.35,
             inflate_unknown = false,
             inflate_around_unknown = false,
         },

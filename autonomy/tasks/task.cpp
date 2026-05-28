@@ -299,6 +299,20 @@ bool Task::IsNavigationEngineActive() const {
     return engine_ && engine_->IsActive();
 }
 
+void Task::SetPathCallback(
+    std::function<void(const commsgs::planning_msgs::Path&)> callback) {
+    auto bt_engine =
+        std::dynamic_pointer_cast<behavior_tree::BehaviorTreeNavigationEngine>(
+            engine_);
+    if (!bt_engine) {
+        return;
+    }
+    auto ctx = bt_engine->GetContext();
+    if (ctx) {
+        ctx->on_path = std::move(callback);
+    }
+}
+
 bool Task::LastNavigationSucceeded() const {
     const auto bt_engine =
         std::dynamic_pointer_cast<behavior_tree::BehaviorTreeNavigationEngine>(engine_);

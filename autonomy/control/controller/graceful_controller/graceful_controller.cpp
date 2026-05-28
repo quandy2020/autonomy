@@ -79,13 +79,14 @@ void GracefulController::Configure(
     path_handler_ = std::make_unique<PathHandler>(transform_tolerance, tf_buffer_,
                                                   costmap_wrapper_);
 
-    // Initialize footprint collision checker
-    // TODO: Add params_ and collision detection support
-    // if (params_->use_collision_detection) {
-    //     collision_checker_ = std::make_unique<map::costmap_2d::
-    //         FootprintCollisionChecker<map::costmap_2d::Costmap2D
-    //         *>>(costmap_wrapper_->getCostmap());
-    // }
+    if (graceful_options_.use_collision_detection() && costmap_wrapper_) {
+        collision_checker_ = std::make_unique<
+            map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>(
+            costmap_wrapper_->getCostmap());
+        AINFO << "GracefulController collision checker enabled";
+    } else {
+        collision_checker_.reset();
+    }
 
     // Publishers - TODO: Need node parameter to create publishers
     // transformed_plan_pub_ =
@@ -373,9 +374,40 @@ bool GracefulController::IsGoalReached(double dist_tolerance,
 }
 
 void GracefulController::SetPlan(const commsgs::planning_msgs::Path& path) {
+    commsgs::geometry_msgs::PoseStamped previous_goal;
+    bool had_previous_goal = false;
+    if (path_handler_) {
+        const auto& previous_plan = path_handler_->GetPlan();
+        if (!previous_plan.poses.empty()) {
+            previous_goal = previous_plan.poses.back();
+            had_previous_goal = true;
+        }
+    }
+
     path_handler_->SetPlan(path);
-    goal_reached_ = false;
-    do_initial_rotation_ = true;
+    if (path.poses.empty()) {
+        goal_reached_ = false;
+        do_initial_rotation_ = true;
+        return;
+    }
+
+    // For replanning on the same navigation target, keep controller convergence
+    // state to avoid repeatedly re-entering initial rotation near the goal.
+    const auto& new_goal = path.poses.back();
+    if (!had_previous_goal) {
+        goal_reached_ = false;
+        do_initial_rotation_ = true;
+        return;
+    }
+
+    const double dx = new_goal.pose.position.x - previous_goal.pose.position.x;
+    const double dy = new_goal.pose.position.y - previous_goal.pose.position.y;
+    const double reset_threshold =
+        std::max(0.20, goal_dist_tolerance_ * 0.5);
+    if ((dx * dx + dy * dy) > (reset_threshold * reset_threshold)) {
+        goal_reached_ = false;
+        do_initial_rotation_ = true;
+    }
 }
 
 void GracefulController::SetSpeedLimit(const double& speed_limit,
@@ -525,6 +557,32 @@ bool GracefulController::SimulateTrajectory(
             if (trajectory.poses.empty() && control_law_) {
                 cmd_vel.twist = control_law_->CalculateRegularVelocity(
                     motion_target.pose, next_pose.pose, backward);
+                // Fallback: if smooth law yields near-zero yaw rate while the
+                // target is clearly off-axis, inject geometric steering to
+                // prevent "straight-line lock" and keep tracking the path.
+                const double current_yaw =
+                    transform::tf2::getYaw(next_pose.pose.orientation);
+                const double heading_to_target = std::atan2(
+                    motion_target.pose.position.y - next_pose.pose.position.y,
+                    motion_target.pose.position.x - next_pose.pose.position.x);
+                const double heading_error =
+                    autonomy::common::NormalizeAngleDifference(
+                        heading_to_target - current_yaw);
+                const double target_dist =
+                    std::hypot(motion_target.pose.position.x -
+                                   next_pose.pose.position.x,
+                               motion_target.pose.position.y -
+                                   next_pose.pose.position.y);
+                const double abs_w = std::abs(cmd_vel.twist.angular.z);
+                if (abs_w < 1e-3 && std::abs(heading_error) > 0.05 &&
+                    target_dist > 1e-3) {
+                    const double v = cmd_vel.twist.linear.x;
+                    const double pure_pursuit_w =
+                        2.0 * v * std::sin(heading_error) /
+                        std::max(target_dist, 0.05);
+                    cmd_vel.twist.angular.z = static_cast<float>(std::clamp(
+                        pure_pursuit_w, -g.v_angular_max(), g.v_angular_max()));
+                }
             }
 
             // Apply velocities to calculate next pose
@@ -623,14 +681,13 @@ bool GracefulController::InCollision(const double& x, const double& y,
 
     // Calculate the cost of the footprint at the robot's current position
     // depending on the shape of the footprint
-    // TODO: Add support for isTrackingUnknown and getUseRadius
+    // TODO: Add support for isTrackingUnknown from runtime options
     bool is_tracking_unknown = false;
-    bool consider_footprint = true;  // Default to footprint checking
+    const bool consider_footprint = !costmap_wrapper_->getUseRadius();
 
     double footprint_cost;
     if (consider_footprint) {
-        // TODO: Get robot footprint from costmap_wrapper_
-        std::vector<commsgs::geometry_msgs::Point> footprint;
+        const auto footprint = costmap_wrapper_->getRobotFootprint();
         footprint_cost =
             collision_checker_->footprintCostAtPose(x, y, theta, footprint);
     } else {

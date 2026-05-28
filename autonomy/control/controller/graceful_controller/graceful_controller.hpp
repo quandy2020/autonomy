@@ -195,12 +195,12 @@ protected:
         map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
         collision_checker_;
 
-    double goal_dist_tolerance_;
-    bool goal_reached_;
+    double goal_dist_tolerance_{0.25};
+    bool goal_reached_{false};
 
     // True from the time a new path arrives until we have completed an initial
     // rotation
-    bool do_initial_rotation_;
+    bool do_initial_rotation_{true};
     proto::GracefulControllerOptions graceful_options_;
     std::unique_ptr<PathHandler> path_handler_;
     std::unique_ptr<SmoothControlLaw> control_law_;

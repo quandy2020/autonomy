@@ -35,19 +35,32 @@ protected:
             return;
         }
         const std::string controller_id = ResolveControllerId(*this, *ctx);
+        controller_id_ = controller_id;
         std::string goal_checker = ctx->options.default_goal_checker_id();
         if (goal_checker.empty()) {
             goal_checker = "goal_checker";
         }
+        goal_checker_id_ = goal_checker;
+        progress_checker_id_ = "progress_checker";
         started_ = ctx->controller->BeginFollowPath(path, controller_id,
-                                                    goal_checker,
-                                                    "progress_checker");
+                                                    goal_checker_id_,
+                                                    progress_checker_id_);
     }
 
     BT::NodeStatus onRunning() override {
         auto ctx = Context();
         if (!ctx || !ctx->controller || !started_) {
             return BT::NodeStatus::FAILURE;
+        }
+        // Keep controller reference path in sync with freshly replanned global path.
+        // ControllerServer::BeginFollowPath handles in-place path updates when active.
+        commsgs::planning_msgs::Path path;
+        if (GetInputOrBB(*this, "path", kBlackboardPathKey, path)) {
+            if (!ctx->controller->BeginFollowPath(path, controller_id_,
+                                                  goal_checker_id_,
+                                                  progress_checker_id_)) {
+                return BT::NodeStatus::FAILURE;
+            }
         }
         return MapFollowPathTick(
             *this, ctx->controller->TickFollowPath(ctx->CancelChecker()));
@@ -64,6 +77,9 @@ protected:
 
 private:
     bool started_{false};
+    std::string controller_id_;
+    std::string goal_checker_id_;
+    std::string progress_checker_id_;
 };
 
 }  // namespace behavior_tree

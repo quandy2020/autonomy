@@ -199,6 +199,9 @@ public:
         return global_frame_;
     }
 
+    /** Align costmap TF frame with runtime overrides (e.g. ROS global_frame:=odom). */
+    void setGlobalFrameID(const std::string& global_frame);
+
     /**
      * @brief  Returns the local frame of the costmap
      * @return The local frame of the costmap
