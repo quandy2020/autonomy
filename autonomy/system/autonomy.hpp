@@ -134,6 +134,7 @@ private:
         const commsgs::map_msgs::OccupancyGrid::SharedPtr& map);
     void NotifyPath(const commsgs::planning_msgs::Path& path);
     void ApplyRuntimeToTaskOptions(const tasks::RuntimeOptions& runtime);
+    void SyncGlobalFrameToCostmap(const std::string& global_frame);
 
     proto::AutonomyOptions options_;
     tasks::RuntimeOptions runtime_;

@@ -23,6 +23,7 @@
 #include <string>
 
 #include "autonomy/control/controller_server.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/planning/planner_server.hpp"
 #include "autonomy/planning/smoother_server.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
@@ -44,6 +45,7 @@ struct BehaviorTreeContext {
     std::atomic<bool> cancel_requested{false};
     std::atomic<bool> pause_requested{false};
     std::atomic<bool> preempt_requested{false};
+    std::function<void(const commsgs::planning_msgs::Path&)> on_path;
 
     int number_recoveries{0};
 

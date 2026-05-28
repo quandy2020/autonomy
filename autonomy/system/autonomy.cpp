@@ -62,6 +62,16 @@ Autonomy::PluginIds Autonomy::ResolvePluginIds() const {
     };
 }
 
+void Autonomy::SyncGlobalFrameToCostmap(const std::string& global_frame) {
+    if (global_frame.empty() || !planner_) {
+        return;
+    }
+    auto costmap = planner_->GetCostmapWrapper();
+    if (costmap) {
+        costmap->setGlobalFrameID(global_frame);
+    }
+}
+
 void Autonomy::ApplyRuntimeToTaskOptions(
     const tasks::RuntimeOptions& runtime) {
     if (!runtime.global_frame.empty()) {
@@ -203,6 +213,7 @@ void Autonomy::Configure(const tasks::RuntimeOptions& runtime) {
     }
 
     ApplyRuntimeToTaskOptions(runtime);
+    SyncGlobalFrameToCostmap(runtime.global_frame);
 
     if (!planner_ || !smoother_ || !controller_ || !tf_buffer_ || !task_) {
         AERROR << "Autonomy::Configure: missing server dependencies.";
@@ -223,6 +234,8 @@ void Autonomy::Configure(const tasks::RuntimeOptions& runtime) {
         configured_ = false;
         return;
     }
+    task_->SetPathCallback(
+        [this](const commsgs::planning_msgs::Path& path) { NotifyPath(path); });
 
     configured_ = true;
     AINFO << "Autonomy: Task configured (BT navigation="

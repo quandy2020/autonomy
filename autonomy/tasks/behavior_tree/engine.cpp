@@ -4,6 +4,7 @@
 
 #include "autonomy/tasks/behavior_tree/engine.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 
 #include "autonomy/common/logging.hpp"
@@ -23,32 +24,42 @@ BehaviorTreeEngine::BehaviorTreeEngine(const proto::TaskOptions& options) {
 
 void BehaviorTreeEngine::RegisterPlugins(const proto::TaskOptions& options) {
     const auto search_dirs = ResolvePluginLibraryPaths(options);
+
+    std::string ld_library_path;
+    for (const auto& dir : search_dirs) {
+        if (!ld_library_path.empty()) {
+            ld_library_path += ":";
+        }
+        ld_library_path += dir;
+    }
+    if (const char* existing = std::getenv("LD_LIBRARY_PATH");
+        existing != nullptr && existing[0] != '\0') {
+        if (!ld_library_path.empty()) {
+            ld_library_path += ":";
+        }
+        ld_library_path += existing;
+    }
+    if (!ld_library_path.empty()) {
+        setenv("LD_LIBRARY_PATH", ld_library_path.c_str(), 1);
+    }
+
     BT::SharedLibrary loader;
 
     for (const auto& lib_name : options.plugin_lib_names()) {
         bool loaded = false;
         for (const auto& dir : search_dirs) {
             const std::string path = dir + "/lib" + lib_name + ".so";
-            if (!std::filesystem::exists(path)) {
-                const std::string alt = dir + "/" + lib_name + ".so";
-                if (!std::filesystem::exists(alt)) {
-                    continue;
-                }
-                try {
-                    factory_.registerFromPlugin(loader.getOSName(alt));
-                    loaded = true;
-                    break;
-                } catch (const std::exception& ex) {
-                    AWARN << "Failed to load BT plugin " << alt << ": " << ex.what();
-                }
-            } else {
-                try {
-                    factory_.registerFromPlugin(loader.getOSName(path));
-                    loaded = true;
-                    break;
-                } catch (const std::exception& ex) {
-                    AWARN << "Failed to load BT plugin " << path << ": " << ex.what();
-                }
+            const std::string alt = dir + "/" + lib_name + ".so";
+            if (!std::filesystem::exists(path) && !std::filesystem::exists(alt)) {
+                continue;
+            }
+            try {
+                factory_.registerFromPlugin(loader.getOSName(lib_name));
+                loaded = true;
+                break;
+            } catch (const std::exception& ex) {
+                AWARN << "Failed to load BT plugin " << lib_name << " from "
+                      << dir << ": " << ex.what();
             }
         }
         if (!loaded) {

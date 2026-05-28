@@ -21,9 +21,11 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/common/navigation.hpp"
 #include "autonomy/tasks/common/interface.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
@@ -118,6 +120,8 @@ public:
 
     /** True while the navigation engine BT/direct session is still running. */
     bool IsNavigationEngineActive() const;
+    void SetPathCallback(
+        std::function<void(const commsgs::planning_msgs::Path&)> callback);
 
     /** After the engine finishes, whether the last session succeeded (BT only). */
     bool LastNavigationSucceeded() const;

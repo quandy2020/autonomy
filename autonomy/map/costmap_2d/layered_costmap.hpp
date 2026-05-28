@@ -60,6 +60,12 @@ public:
         return global_frame_;
     }
 
+    void setGlobalFrameID(const std::string& global_frame) {
+        if (!global_frame.empty()) {
+            global_frame_ = global_frame;
+        }
+    }
+
     /**
      * @brief Resize the map to a new size, resolution, or origin
      */

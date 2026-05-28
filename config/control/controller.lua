@@ -16,7 +16,7 @@ if AUTONOMY_COMMON == nil then
 end
 
 AUTONOMY_CONTROLLER = {
-    controller_frequency = 20.0,
+    controller_frequency = 30.0,
     failure_tolerance = 0.0,
     publish_zero_velocity = false,
 
@@ -162,7 +162,8 @@ AUTONOMY_CONTROLLER = {
 
     graceful_controller = {
         transform_tolerance = AUTONOMY_COMMON.transform_tolerance,
-        max_lookahead = 1.0,
+        -- Reduce corner-cutting in narrow indoor maps.
+        max_lookahead = 0.55,
         min_lookahead = 0.25,
         v_linear_max = 0.5,
         v_linear_min = 0.05,
@@ -170,6 +171,8 @@ AUTONOMY_CONTROLLER = {
         slowdown_radius = 0.5,
         initial_rotation = true,
         allow_backward = false,
+        -- Enforce obstacle-aware tracking to avoid corner-cutting through walls.
+        use_collision_detection = true,
     },
 
     mppi_controller = {

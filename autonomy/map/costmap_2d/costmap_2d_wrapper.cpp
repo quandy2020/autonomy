@@ -39,6 +39,7 @@
 
 #include <memory>
 #include <sstream>
+#include <unordered_set>
 
 #include "autonomy/common/logging.hpp"
 
@@ -253,6 +254,7 @@ void Costmap2DWrapper::init() {
 
     // Parse plugins from options
     if (options_.plugins_size() > 0) {
+        std::unordered_set<std::string> seen_plugins;
         for (int i = 0; i < options_.plugins_size(); ++i) {
             std::string plugin_str = options_.plugins(i);
             // Special cases:
@@ -266,14 +268,23 @@ void Costmap2DWrapper::init() {
             }
             // Check if it's in format "name:type" or just "name"
             size_t colon_pos = plugin_str.find(':');
+            std::string plugin_name =
+                (colon_pos != std::string::npos)
+                    ? plugin_str.substr(0, colon_pos)
+                    : plugin_str;
+            if (!seen_plugins.insert(plugin_name).second) {
+                AWARN << "Duplicate costmap layer plugin ignored: "
+                      << plugin_name;
+                continue;
+            }
             if (colon_pos != std::string::npos) {
                 // Format: "name:type"
-                plugin_names_.push_back(plugin_str.substr(0, colon_pos));
+                plugin_names_.push_back(plugin_name);
                 plugin_types_.push_back(plugin_str.substr(colon_pos + 1));
             } else {
                 // Format: just "name", map to type
-                plugin_names_.push_back(plugin_str);
-                plugin_types_.push_back(GetPluginType(plugin_str));
+                plugin_names_.push_back(plugin_name);
+                plugin_types_.push_back(GetPluginType(plugin_name));
             }
         }
     } else {
@@ -611,6 +622,17 @@ void Costmap2DWrapper::getOrientedFootprint(
 
 void Costmap2DWrapper::mapUpdateLoop(double frequency) {}
 
+void Costmap2DWrapper::setGlobalFrameID(const std::string& global_frame) {
+    if (global_frame.empty() || global_frame == global_frame_) {
+        return;
+    }
+    global_frame_ = global_frame;
+    if (layered_costmap_) {
+        layered_costmap_->setGlobalFrameID(global_frame);
+    }
+    AINFO << "Costmap global frame set to " << global_frame_;
+}
+
 bool Costmap2DWrapper::getRobotPose(
     commsgs::geometry_msgs::PoseStamped& global_pose) {
     (void)global_pose;
@@ -827,16 +849,16 @@ bool Costmap2DWrapper::snapshotOccupancyGrid(
         int8_t occ_value;
         if (cost == NO_INFORMATION) {
             occ_value = utils::OCC_GRID_UNKNOWN;
-        } else if (cost == FREE_SPACE) {
-            occ_value = utils::OCC_GRID_FREE;
-        } else if (cost >= LETHAL_OBSTACLE) {
+        } else if (cost == LETHAL_OBSTACLE) {
             occ_value = utils::OCC_GRID_OCCUPIED;
+        } else if (cost == INSCRIBED_INFLATED_OBSTACLE) {
+            // Keep Nav2-compatible reserved value for inscribed inflated
+            // obstacles so RViz/Foxglove palettes look familiar.
+            occ_value = static_cast<int8_t>(99);
         } else {
-            const double normalized =
-                static_cast<double>(cost - FREE_SPACE) /
-                static_cast<double>(LETHAL_OBSTACLE - FREE_SPACE);
+            // Nav2-compatible compression for 0..252 -> 0..98.
             occ_value = static_cast<int8_t>(
-                std::round(normalized * (utils::OCC_GRID_OCCUPIED - 1) + 1));
+                std::lround(static_cast<double>(cost) * 98.0 / 252.0));
         }
         grid.data.push_back(occ_value);
     }
