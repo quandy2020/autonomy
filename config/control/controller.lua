@@ -17,13 +17,15 @@ end
 
 AUTONOMY_CONTROLLER = {
     controller_frequency = 30.0,
-    failure_tolerance = 0.0,
+    -- Allow short TF/control hiccups without tearing down FollowPath.
+    failure_tolerance = 0.6,
     publish_zero_velocity = false,
 
     -- Shared with tasks.lua / BT GoalReached (see config/common.lua).
     goal_checker = {
         xy_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
-        yaw_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
+        -- Keep heading convergence stricter than XY tolerance at goal.
+        yaw_goal_tolerance = 0.10,
         stateful = true,
     },
     progress_checker = {
@@ -40,6 +42,13 @@ AUTONOMY_CONTROLLER = {
         width = 3.0,
         height = 3.0,
         robot_radius = 0.22,
+        -- Rectangle footprint (x: forward, y: left), counter-clockwise.
+        footprint = {
+            {x = 0.18, y = 0.14},
+            {x = 0.18, y = -0.14},
+            {x = -0.18, y = -0.14},
+            {x = -0.18, y = 0.14},
+        },
         update_frequency = 30.0,
         rolling_window = true,
         publish_frequency = 30.0,

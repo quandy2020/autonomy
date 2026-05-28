@@ -196,6 +196,7 @@ protected:
         collision_checker_;
 
     double goal_dist_tolerance_{0.25};
+    double goal_yaw_tolerance_{0.25};
     bool goal_reached_{false};
 
     // True from the time a new path arrives until we have completed an initial

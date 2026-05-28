@@ -74,6 +74,12 @@ bool IsCostmapReady(map::costmap_2d::Costmap2DWrapper* wrapper) {
     return wrapper != nullptr && (wrapper->isReady() || wrapper->isCurrent());
 }
 
+int64_t SteadyNowMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+
 /** Empty frame_id is treated as the costmap global frame (see planning contract). */
 void NormalizePoseFrame(commsgs::geometry_msgs::PoseStamped& pose,
                         const std::string& global_frame) {
@@ -392,20 +398,36 @@ commsgs::planning_msgs::Path PlannerServer::GetPlan(
 }
 
 void PlannerServer::WaitForCostmap() {
+    constexpr int64_t kReadyCacheMs = 800;
+    const int64_t now_ms = SteadyNowMs();
+    const int64_t last_ready_ms =
+        last_costmap_ready_time_ms_.load(std::memory_order_acquire);
+    if (last_ready_ms > 0 && (now_ms - last_ready_ms) <= kReadyCacheMs) {
+        return;
+    }
+
     // 如果未配置超时时间，则一直等待直到 costmap 当前
     const double timeout_sec = options_.costmap_update_timeout();
     const bool use_timeout = timeout_sec > 0.0;
 
-    AINFO << "Waiting for global map (Costmap2D) to become ready"
-          << (use_timeout ? ::autonomy::common::StrCat(" (timeout = ", timeout_sec, " s)")
-                          : " (no timeout)");
+    bool waited = false;
 
     const auto start_time = std::chrono::steady_clock::now();
 
     while (true) {
         if (IsCostmapReady(costmap_wrapper_.get())) {
             costmap_received_.store(true, std::memory_order_release);
+            last_costmap_ready_time_ms_.store(
+                SteadyNowMs(), std::memory_order_release);
             break;
+        }
+
+        if (!waited) {
+            AINFO << "Waiting for global map (Costmap2D) to become ready"
+                  << (use_timeout ? ::autonomy::common::StrCat(
+                                        " (timeout = ", timeout_sec, " s)")
+                                  : " (no timeout)");
+            waited = true;
         }
 
         if (use_timeout) {
@@ -426,8 +448,6 @@ void PlannerServer::WaitForCostmap() {
         // 以较小频率轮询，避免忙等
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-
-    AINFO << "WaitForCostmap finished (either timeout or map assumed ready).";
 }
 
 bool PlannerServer::TransformPoseToGlobalFrame(

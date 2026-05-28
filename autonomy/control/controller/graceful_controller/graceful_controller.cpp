@@ -171,8 +171,14 @@ uint32 GracefulController::ComputeVelocityCommands(
     if (goal_checker &&
         goal_checker->GetTolerances(pose_tolerance, velocity_tolerance)) {
         goal_dist_tolerance_ = pose_tolerance.position.x;
+        // Respect goal checker's yaw tolerance and keep it in a sane range.
+        const double yaw_tol = std::abs(pose_tolerance.orientation.z);
+        if (yaw_tol > 1e-4 && yaw_tol <= M_PI) {
+            goal_yaw_tolerance_ = yaw_tol;
+        }
     } else {
         goal_dist_tolerance_ = goal_dist_tolerance;
+        goal_yaw_tolerance_ = initial_rotation_tolerance;
     }
 
     // Update the smooth control law with the new params
@@ -258,7 +264,9 @@ uint32 GracefulController::ComputeVelocityCommands(
         const double angle_error =
             ::autonomy::common::NormalizeAngleDifference(goal_yaw - robot_yaw);
 
-        if (std::abs(angle_error) < initial_rotation_tolerance) {
+        const double final_yaw_tolerance =
+            std::min(initial_rotation_tolerance, goal_yaw_tolerance_);
+        if (std::abs(angle_error) < final_yaw_tolerance) {
             cmd_vel.twist = commsgs::geometry_msgs::Twist{};
             message = "";
             return 0;

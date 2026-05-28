@@ -46,6 +46,19 @@ proto::Costmap2DOptions CreateCostmap2DOptions(
     options.set_update_frequency(
         parameter_dictionary->GetDouble("update_frequency"));
     options.set_robot_radius(parameter_dictionary->GetDouble("robot_radius"));
+    if (parameter_dictionary->HasKey("footprint")) {
+        auto footprint_dict = parameter_dictionary->GetDictionary("footprint");
+        const auto points = footprint_dict->GetArrayValuesAsDictionaries();
+        auto* footprint = options.mutable_footprint();
+        for (const auto& point_dict : points) {
+            if (!point_dict->HasKey("x") || !point_dict->HasKey("y")) {
+                continue;
+            }
+            auto* point = footprint->add_points();
+            point->set_x(point_dict->GetDouble("x"));
+            point->set_y(point_dict->GetDouble("y"));
+        }
+    }
     if (parameter_dictionary->HasKey("always_send_full_costmap")) {
         options.set_always_send_full_costmap(
             parameter_dictionary->GetBool("always_send_full_costmap"));
