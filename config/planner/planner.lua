@@ -112,6 +112,13 @@ AUTONOMY_PLANNER = {
         height = 20.0,
         update_frequency = 5.0,
         robot_radius = 0.22,
+        -- Rectangle footprint (x: forward, y: left), counter-clockwise.
+        footprint = {
+            {x = 0.18, y = 0.14},
+            {x = 0.18, y = -0.14},
+            {x = -0.18, y = -0.14},
+            {x = -0.18, y = 0.14},
+        },
         always_send_full_costmap = true,
         -- Global costmap: static map + laser obstacles (via autonomy_ros /scan bridge).
         -- Keep static/inflation pipeline conservative in fake mode; denoise may

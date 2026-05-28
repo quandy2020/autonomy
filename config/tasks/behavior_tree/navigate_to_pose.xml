@@ -28,7 +28,7 @@
               selected_smoother="{selected_smoother}"
               default_smoother="simple_smoother"
               topic_name="smoother_selector"/>
-            <RateController hz="5.0">
+            <RateController hz="3.0">
               <RecoveryNode name="ComputePathWithContextRecovery" number_of_retries="1">
                 <ComputePathToPose
                   goal="{goal}"

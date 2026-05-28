@@ -497,11 +497,37 @@ ControllerServer::FollowPathTickResult ControllerServer::TickFollowPath(
     EndFollowPath();
     return FollowPathTickResult::Failed;
   } catch (const common::ControllerTFError& ex) {
-    AERROR << ex.what();
+    AWARN << ex.what();
+    if (failure_tolerance_ > 0.0) {
+      const auto now = Time::Now();
+      const double now_sec =
+          static_cast<double>(now.sec) +
+          static_cast<double>(now.nanosec) * 1e-9;
+      const double last_valid_sec =
+          static_cast<double>(last_valid_cmd_time_.sec) +
+          static_cast<double>(last_valid_cmd_time_.nanosec) * 1e-9;
+      if ((now_sec - last_valid_sec) <= failure_tolerance_) {
+        // Keep follow task alive for transient TF glitches.
+        return FollowPathTickResult::Running;
+      }
+    }
     EndFollowPath();
     return FollowPathTickResult::Failed;
   } catch (const common::NoValidControl& ex) {
-    AERROR << ex.what();
+    AWARN << ex.what();
+    if (failure_tolerance_ > 0.0) {
+      const auto now = Time::Now();
+      const double now_sec =
+          static_cast<double>(now.sec) +
+          static_cast<double>(now.nanosec) * 1e-9;
+      const double last_valid_sec =
+          static_cast<double>(last_valid_cmd_time_.sec) +
+          static_cast<double>(last_valid_cmd_time_.nanosec) * 1e-9;
+      if ((now_sec - last_valid_sec) <= failure_tolerance_) {
+        // Keep follow task alive for short control dead-zones.
+        return FollowPathTickResult::Running;
+      }
+    }
     EndFollowPath();
     return FollowPathTickResult::Failed;
   }

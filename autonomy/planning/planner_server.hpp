@@ -203,6 +203,7 @@ protected:
     map::costmap_2d::Costmap2DWrapper::SharedPtr costmap_wrapper_{nullptr};
     map::costmap_2d::Costmap2D* costmap_{nullptr};
     std::atomic<bool> costmap_received_{false};
+    std::atomic<int64_t> last_costmap_ready_time_ms_{0};
     std::atomic<bool> shutdown_called_{false};
     std::mutex costmap_update_mutex_;
     std::weak_ptr<SmootherServer> smoother_server_;
