@@ -21,7 +21,7 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
 namespace autonomy {
@@ -52,7 +52,7 @@ public:
      * @brief Inject filter info (replaces subscription callback).
      */
     void handleFilterInfo(
-        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg);
+        const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg);
 
     /**
      * @brief Inject filter mask OccupancyGrid directly.
@@ -63,13 +63,13 @@ public:
      * @brief One-shot setup for offline / test pipelines (info then mask).
      */
     void applyConfiguration(
-        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+        const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
         const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask);
 
     /**
      * @brief Build default keepout filter info for a given mask topic.
      */
-    static commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+    static commsgs::map_msgs::CostmapFilterInfo::SharedPtr
     makeDefaultFilterInfo(const std::string& mask_topic);
 
     bool hasFilterMask();
@@ -91,7 +91,7 @@ public:
 
 private:
     void filterInfoCallback(
-        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg);
+        const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg);
 
     void maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg);
 

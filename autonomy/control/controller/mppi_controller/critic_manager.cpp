@@ -80,7 +80,6 @@ void CriticManager::loadCritics(
             continue;
         }
         critic->Configure(options, costmap_wrapper);
-        AINFO << "MPPI critic loaded: " << name;
         critics_.push_back(std::move(critic));
     }
 }

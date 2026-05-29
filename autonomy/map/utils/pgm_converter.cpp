@@ -180,11 +180,6 @@ map::costmap_2d::Costmap2D::SharedPtr PgmConverter::loadFromPgm(
         map::costmap_2d::loadMapFromFile(load_params, occupancy_grid);
         auto costmap =
             std::make_shared<map::costmap_2d::Costmap2D>(occupancy_grid);
-
-        AINFO << "Loaded PGM map: " << pgm_file_path << " -> "
-              << costmap->getSizeInCellsX() << "x" << costmap->getSizeInCellsY()
-              << " cells, resolution: " << costmap->getResolution()
-              << " m/pixel";
         return costmap;
     } catch (const std::exception& e) {
         AERROR << "Failed to load PGM map from " << pgm_file_path << ": "

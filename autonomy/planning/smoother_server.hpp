@@ -22,6 +22,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
@@ -97,6 +98,10 @@ public:
         return default_smoother_id_;
     }
 
+    using PathUpdateCallback =
+        std::function<void(const commsgs::planning_msgs::Path&)>;
+    void SetPathUpdateCallback(PathUpdateCallback callback);
+
     /**
      * @brief Smooth a path with the selected plugin.
      *
@@ -116,6 +121,9 @@ public:
         commsgs::planning_msgs::Path path, const std::string& smoother_id,
         const std::chrono::milliseconds& max_time, bool check_for_collisions,
         const std::function<bool()>& cancel_checker);
+
+    bool AttachAutolinkNode(std::shared_ptr<autolink::Node> node);
+    void DetachAutolinkNode();
 
 private:
     /**
@@ -141,8 +149,12 @@ private:
     /** Space-separated list of loaded ids (for error messages). */
     std::string smoother_ids_concat_;
     std::string default_smoother_id_;
+    PathUpdateCallback path_update_callback_;
     bool plugins_loaded_{false};
     std::atomic<bool> shutdown_called_{false};
+
+    struct AutolinkActionServers;
+    AutolinkActionServers* autolink_actions_{nullptr};
 };
 
 }  // namespace planning

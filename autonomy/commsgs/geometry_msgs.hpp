@@ -242,6 +242,13 @@ struct Pose2D {
     double theta;
 };
 
+struct Pose2DStamped {
+    AUTONOMY_SMART_PTR_DEFINITIONS(Pose2DStamped)
+
+    std_msgs::Header header;
+    Pose2D pose;
+};
+
 // A representation of pose in free space, composed of position and orientation.
 struct Pose {
     // Define SharedPtr type

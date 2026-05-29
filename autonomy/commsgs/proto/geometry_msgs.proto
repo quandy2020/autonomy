@@ -184,6 +184,19 @@ message Pose2D
     double theta = 3;
 }
 
+message Pose2DStamped
+{
+    std_msgs.Header header = 1;
+    Pose2D pose = 2;
+}
+
+message Twist2D
+{
+    float x = 1;
+    float y = 2;
+    float theta = 3;
+}
+
 // A representation of pose in free space, composed of position and orientation.
 message Pose
 {

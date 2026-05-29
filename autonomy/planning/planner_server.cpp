@@ -153,8 +153,6 @@ void AppendPathSegment(commsgs::planning_msgs::Path& merged,
 
 PlannerServer::PlannerServer(const proto::PlannerOptions& options)
     : options_{options} {
-
-    AINFO << "PlannerServer created";
     costmap_wrapper_ = std::make_shared<map::costmap_2d::Costmap2DWrapper>(
         options_.costmap(), kCostmapTopicName);
     if (!costmap_wrapper_) {
@@ -183,11 +181,6 @@ PlannerServer::PlannerServer(const proto::PlannerOptions& options)
                "overrun warning messages";
         max_planner_duration_ = 0.0;
     }
-    AINFO << "Planning server init successfully.";
-}
-
-PlannerServer::~PlannerServer() {
-    Shutdown();
 }
 
 void PlannerServer::LoadPlugins() {
@@ -243,12 +236,11 @@ void PlannerServer::LoadPlugins() {
         planner_ids_.push_back(spec.id);
         planner_types_.push_back(spec.type);
         if (!planner_ids_concat_.empty()) {
-            planner_ids_concat_ += " ";
+            planner_ids_concat_ += ", ";
         }
         planner_ids_concat_ += spec.id;
 
-        AINFO << "Created planner plugin: " << spec.id
-              << " of type: " << spec.type;
+        AINFO << "Created planner plugin: " << spec.id << " (type = " << spec.type << ")";
     }
 
     if (planners_.empty()) {
@@ -269,8 +261,6 @@ void PlannerServer::LoadPlugins() {
 }
 
 void PlannerServer::Start() {
-    AINFO << "Starting planner server...";
-
     if (!costmap_wrapper_) {
         AFATAL << "Costmap wrapper is null";
         return;
@@ -287,8 +277,6 @@ void PlannerServer::Start() {
     for (auto it = planners_.begin(); it != planners_.end(); ++it) {
         it->second->Activate();
     }
-
-    AINFO << "Planner server started successfully.";
 }
 
 void PlannerServer::Shutdown() {
@@ -304,8 +292,6 @@ void PlannerServer::Shutdown() {
     if (costmap_wrapper_) {
         costmap_wrapper_->Stop();
     }
-
-    AINFO << "Planner server shutdown successfully.";
 }
 
 void PlannerServer::ReconfigurePlugins() {
@@ -320,6 +306,10 @@ void PlannerServer::ReconfigurePlugins() {
 void PlannerServer::SetSmootherServer(
     const std::shared_ptr<SmootherServer>& smoother) {
     smoother_server_ = smoother;
+}
+
+void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
+    path_update_callback_ = std::move(callback);
 }
 
 bool PlannerServer::AllowUnknownForValidation(
@@ -510,6 +500,9 @@ bool PlannerServer::ValidatePath(
     AINFO << "Found valid path of size " << path.poses.size() << " to ("
           << curr_goal.pose.position.x << ", " << curr_goal.pose.position.y
           << ")";
+    if (path_update_callback_) {
+        path_update_callback_(path);
+    }
     return true;
 }
 

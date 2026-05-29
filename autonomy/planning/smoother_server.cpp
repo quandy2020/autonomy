@@ -42,10 +42,6 @@ SmootherServer::SmootherServer(
     LoadPlugins();
 }
 
-SmootherServer::~SmootherServer() {
-    Shutdown();
-}
-
 void SmootherServer::LoadPlugins() {
     if (plugins_loaded_) {
         return;
@@ -94,8 +90,7 @@ void SmootherServer::LoadPlugins() {
             smoother_ids_concat_ += " ";
         }
         smoother_ids_concat_ += spec.id;
-        AINFO << "Created smoother plugin: " << spec.id
-              << " of type: " << spec.type;
+        AINFO << "Created smoother: " << spec.id << ", type: " << spec.type;
     }
 
     if (smoothers_.empty()) {
@@ -165,6 +160,10 @@ bool SmootherServer::IsPathInCollision(
     return false;
 }
 
+void SmootherServer::SetPathUpdateCallback(PathUpdateCallback callback) {
+    path_update_callback_ = std::move(callback);
+}
+
 SmoothPathResult SmootherServer::SmoothPath(
     commsgs::planning_msgs::Path path, const std::string& smoother_id,
     const std::chrono::milliseconds& max_time, bool check_for_collisions,
@@ -199,6 +198,10 @@ SmoothPathResult SmootherServer::SmoothPath(
 
     if (!was_completed) {
         throw common::SmootherTimedOut("Smoother exceeded max duration");
+    }
+
+    if (path_update_callback_) {
+        path_update_callback_(path);
     }
 
     return SmoothPathResult{path, was_completed, duration_sec};

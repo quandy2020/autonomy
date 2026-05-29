@@ -2,8 +2,7 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
-#include "autonomy/tasks/behavior_tree/utils.hpp"
-#include "autonomy/transform/tf2/buffer_core.h"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
@@ -13,9 +12,8 @@ namespace behavior_tree {
 class TransformAvailableCondition : public BT::ConditionNode
 {
 public:
-    TransformAvailableCondition(const std::string& name,
-                                const BT::NodeConfiguration& conf)
-        : BT::ConditionNode(name, conf), was_found_(false) {}
+    TransformAvailableCondition(const std::string& name, const BT::NodeConfiguration& conf)
+        : BT::ConditionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
         return {
@@ -49,13 +47,11 @@ public:
     }
 
 private:
-    bool was_found_;
+    bool was_found_{false};
 };
 
 }  // namespace behavior_tree
 }  // namespace tasks
 }  // namespace autonomy
-
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
 
 REGISTER_BEHAVIOR_TREE_NODE(TransformAvailableCondition, "TransformAvailable")

@@ -202,6 +202,9 @@ public:
     /** Align costmap TF frame with runtime overrides (e.g. ROS global_frame:=odom). */
     void setGlobalFrameID(const std::string& global_frame);
 
+    /** Align robot base frame with runtime (e.g. base_footprint in simulation). */
+    void setRobotBaseFrameID(const std::string& robot_base_frame);
+
     /**
      * @brief  Returns the local frame of the costmap
      * @return The local frame of the costmap

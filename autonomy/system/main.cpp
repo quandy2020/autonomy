@@ -21,6 +21,7 @@
 #include <chrono>
 #include <thread>
 
+#include "autolink/autolink.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/version.hpp"
 #include "autonomy/system/options.hpp"
@@ -111,7 +112,14 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    if (!autolink::Init(argv[0])) {
+        AERROR << "autolink::Init failed.";
+        google::ShutdownGoogleLogging();
+        return EXIT_FAILURE;
+    }
+
     autonomy::system::Run();
+    autolink::Clear();
     google::ShutdownGoogleLogging();
     return EXIT_SUCCESS;
 }

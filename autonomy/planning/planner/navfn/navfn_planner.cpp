@@ -55,9 +55,6 @@ bool NavfnPlanner::Configure(
     const proto::PlannerOptions& options, const std::string& name,
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
     name_ = name;
-    AINFO << ::autonomy::common::StrCat("Configuring plugin ", name_,
-                          " of type NavfnPlanner");
-
     // Initialize parameters
     const auto& navfn_opts = options.navfn();
     tolerance_ = navfn_opts.tolerance();

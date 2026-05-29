@@ -2,17 +2,17 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-class SmootherSelectorNode : public BT::SyncActionNode
+class SmootherSelector : public BT::SyncActionNode
 {
 public:
-    SmootherSelectorNode(const std::string& name,
-                         const BT::NodeConfiguration& conf)
+    SmootherSelector(const std::string& name, const BT::NodeConfiguration& conf)
         : BT::SyncActionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
@@ -44,6 +44,4 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
-
-REGISTER_BEHAVIOR_TREE_NODE(SmootherSelectorNode, "SmootherSelector")
+REGISTER_BEHAVIOR_TREE_NODE(SmootherSelector, "SmootherSelector")

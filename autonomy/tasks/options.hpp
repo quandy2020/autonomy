@@ -36,6 +36,7 @@ struct RuntimeOptions {
     std::string goal_checker_id;
     std::string progress_checker_id;
     std::string global_frame;
+    std::string robot_base_frame;
     double goal_tolerance{0.15};
 };
 

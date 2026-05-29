@@ -83,7 +83,6 @@ void GracefulController::Configure(
         collision_checker_ = std::make_unique<
             map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>(
             costmap_wrapper_->getCostmap());
-        AINFO << "GracefulController collision checker enabled";
     } else {
         collision_checker_.reset();
     }
@@ -97,8 +96,6 @@ void GracefulController::Configure(
     // node->CreateWriter<commsgs::geometry_msgs::PoseStamped>("motion_target");
     // slowdown_pub_ =
     // node->CreateWriter<commsgs::visualization_msgs::Marker>("slowdown");
-
-    AINFO << "Configured Graceful Motion Controller: " << plugin_name_;
 }
 
 void GracefulController::Cleanup() {

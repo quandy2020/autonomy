@@ -108,6 +108,10 @@ public:
 
     void SetSmootherServer(const std::shared_ptr<SmootherServer>& smoother);
 
+    using PathUpdateCallback =
+        std::function<void(const commsgs::planning_msgs::Path&)>;
+    void SetPathUpdateCallback(PathUpdateCallback callback);
+
     const PlannerMetrics& GetMetrics() const {
         return metrics_;
     }
@@ -140,6 +144,9 @@ public:
         const commsgs::geometry_msgs::PoseStamped& start,
         const commsgs::geometry_msgs::PoseStamped& goal,
         const std::string& planner_id, std::function<bool()> cancel_checker);
+
+    bool AttachAutolinkNode(std::shared_ptr<autolink::Node> node);
+    void DetachAutolinkNode();
 
 protected:
     void LoadPlugins();
@@ -207,7 +214,11 @@ protected:
     std::atomic<bool> shutdown_called_{false};
     std::mutex costmap_update_mutex_;
     std::weak_ptr<SmootherServer> smoother_server_;
+    PathUpdateCallback path_update_callback_;
     PlannerMetrics metrics_;
+
+    struct AutolinkActionServers;
+    AutolinkActionServers* autolink_actions_{nullptr};
 };
 
 }  // namespace planning

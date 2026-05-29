@@ -2,16 +2,17 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/action_node.h"
 
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-class PlannerSelectorNode : public BT::SyncActionNode
+class PlannerSelector : public BT::SyncActionNode
 {
 public:
-    PlannerSelectorNode(const std::string& name, const BT::NodeConfiguration& conf)
+    PlannerSelector(const std::string& name, const BT::NodeConfiguration& conf)
         : BT::SyncActionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
@@ -43,6 +44,4 @@ public:
 }  // namespace tasks
 }  // namespace autonomy
 
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
-
-REGISTER_BEHAVIOR_TREE_NODE(PlannerSelectorNode, "PlannerSelector")
+REGISTER_BEHAVIOR_TREE_NODE(PlannerSelector, "PlannerSelector")

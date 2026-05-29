@@ -53,10 +53,10 @@ void SpeedFilter::initializeFilter(const std::string& filter_info_topic) {
           << " global_frame=" << global_frame_;
 }
 
-commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+commsgs::map_msgs::CostmapFilterInfo::SharedPtr
 SpeedFilter::makeDefaultFilterInfo(const std::string& mask_topic, bool percentage,
                                    float base, float multiplier) {
-    auto info = std::make_shared<commsgs::planning_msgs::CostmapFilterInfo>();
+    auto info = std::make_shared<commsgs::map_msgs::CostmapFilterInfo>();
     info->type = percentage ? SPEED_FILTER_PERCENT : SPEED_FILTER_ABSOLUTE;
     info->filter_mask_topic = mask_topic;
     info->base = base;
@@ -65,7 +65,7 @@ SpeedFilter::makeDefaultFilterInfo(const std::string& mask_topic, bool percentag
 }
 
 void SpeedFilter::applyConfiguration(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
     const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask) {
     if (info) {
         handleFilterInfo(info);
@@ -76,7 +76,7 @@ void SpeedFilter::applyConfiguration(
 }
 
 void SpeedFilter::handleFilterInfo(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg) {
+    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg) {
     filterInfoCallback(msg);
 }
 
@@ -131,7 +131,7 @@ bool SpeedFilter::validateFilterMask(
 }
 
 void SpeedFilter::filterInfoCallback(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg) {
+    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -242,9 +242,9 @@ double SpeedFilter::computeSpeedLimitFromMaskCell(int8_t speed_mask_data) const 
     return limit;
 }
 
-commsgs::planning_msgs::SpeedLimit::SharedPtr SpeedFilter::buildSpeedLimitMessage()
+commsgs::task_msgs::SpeedLimit::SharedPtr SpeedFilter::buildSpeedLimitMessage()
     const {
-    auto msg = std::make_shared<commsgs::planning_msgs::SpeedLimit>();
+    auto msg = std::make_shared<commsgs::task_msgs::SpeedLimit>();
     msg->header.frame_id = global_frame_;
     msg->header.stamp.sec = 0;
     msg->header.stamp.nanosec = 0;

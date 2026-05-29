@@ -141,6 +141,11 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
             time_remaining =
                 max_time.count() / 1000.0 -
                 duration_cast<duration<double>>(now - start).count();
+            if (time_remaining <= 0.0) {
+                AWARN << "No smoothing time remaining (" << time_remaining
+                      << " s); skipping remaining segments";
+                break;
+            }
             refinement_ctr_ = 0;
 
             // Attempt to smooth the segment
@@ -189,9 +194,9 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
         // Make sure still have time left to process
         steady_clock::time_point b = steady_clock::now();
         double elapsed_seconds = duration_cast<duration<double>>(b - a).count();
-        if (elapsed_seconds > max_time_seconds) {
-            AWARN << "Smoothing time exceeded allowed duration of "
-                  << max_time_seconds << " seconds";
+        if (max_time_seconds > 0.0 && elapsed_seconds > max_time_seconds) {
+            AWARN << "Smoothing time exceeded limit of " << max_time_seconds
+                  << " seconds (elapsed " << elapsed_seconds << " s)";
             path = last_path;
             map::costmap_2d::utils::updateApproximatePathOrientations(
                 path, reversing_segment);

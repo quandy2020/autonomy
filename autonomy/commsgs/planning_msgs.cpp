@@ -1,23 +1,34 @@
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
 namespace commsgs {
-namespace builtin_interfaces {}  // namespace builtin_interfaces
+namespace planning_msgs {
+
+proto::planning_msgs::Path ToProto(const Path& data) {
+    proto::planning_msgs::Path proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    for (const auto& pose : data.poses) {
+        *proto.add_poses() = geometry_msgs::ToProto(pose);
+    }
+    return proto;
+}
+
+Path FromProto(const proto::planning_msgs::Path& proto) {
+    Path data;
+    if (proto.has_header()) {
+        data.header = std_msgs::FromProto(proto.header());
+    }
+    data.poses.reserve(static_cast<size_t>(proto.poses_size()));
+    for (const auto& pose : proto.poses()) {
+        data.poses.push_back(geometry_msgs::FromProto(pose));
+    }
+    return data;
+}
+
+}  // namespace planning_msgs
 }  // namespace commsgs
 }  // namespace autonomy

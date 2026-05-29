@@ -56,9 +56,7 @@ void TdmpcController::Configure(
         tdmpc_options_, costmap_wrapper_.get());
 
     configured_ = true;
-    AINFO << "Loaded controller: " << plugin_name_
-          << " (TdmpcController / T-MPC++, topologies="
-          << tdmpc_options_.num_topology_candidates() << ")";
+    AINFO << "Loaded controller: " << plugin_name_;
 }
 
 void TdmpcController::Cleanup() {

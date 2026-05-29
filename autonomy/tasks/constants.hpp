@@ -24,7 +24,7 @@ namespace tasks {
 
 constexpr char kTaskNodeName[] = "task_manager";
 
-/** BT navigator ids implemented by BehaviorTreeNavigationEngine. */
+/** BT navigator ids implemented by BtNavigator. */
 constexpr char kNavigatorNavigateToPose[] = "navigate_to_pose";
 constexpr char kNavigatorNavigateThroughPoses[] = "navigate_through_poses";
 

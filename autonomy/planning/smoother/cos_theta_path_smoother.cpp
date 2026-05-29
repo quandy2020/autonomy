@@ -35,7 +35,6 @@ void CosThetaPathSmoother::Configure(
     if (!solver_) {
         solver_ = std::make_unique<math::CosThetaSmoother>(config_);
     }
-    AINFO << "Configured CosThetaPathSmoother plugin: " << name_;
 }
 
 void CosThetaPathSmoother::ApplyOptions(
