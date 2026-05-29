@@ -128,8 +128,6 @@ Costmap2DWrapper::Costmap2DWrapper(const proto::Costmap2DOptions& options,
 Costmap2DWrapper::~Costmap2DWrapper() {}
 
 void Costmap2DWrapper::init() {
-    AINFO << "Creating Costmap";
-
     // 从 options_ 初始化变量（proto3 中所有字段都是可选的，未设置时返回默认值）
     if (!options_.frame_id().empty()) {
         global_frame_ = options_.frame_id();
@@ -356,8 +354,8 @@ void Costmap2DWrapper::loadPlugins() {
 
         plugin->initialize(layered_costmap_.get(), plugin_name, &options_);
         layered_costmap_->addPlugin(plugin);
-        AINFO << "Loaded costmap layer: " << plugin_name
-              << " (type=" << plugin_type << ")";
+        AINFO << "Loaded layer plugin: " << plugin_name
+              << " (type = " << plugin_type << ")";
     }
 
     if (plugin_names_.empty()) {
@@ -630,13 +628,53 @@ void Costmap2DWrapper::setGlobalFrameID(const std::string& global_frame) {
     if (layered_costmap_) {
         layered_costmap_->setGlobalFrameID(global_frame);
     }
-    AINFO << "Costmap global frame set to " << global_frame_;
+}
+
+void Costmap2DWrapper::setRobotBaseFrameID(
+    const std::string& robot_base_frame) {
+    if (robot_base_frame.empty() || robot_base_frame == robot_base_frame_) {
+        return;
+    }
+    robot_base_frame_ = robot_base_frame;
 }
 
 bool Costmap2DWrapper::getRobotPose(
     commsgs::geometry_msgs::PoseStamped& global_pose) {
-    (void)global_pose;
-    // TF lookup is handled by ControllerServer / planners via transform::Buffer.
+    auto* tf_buffer = autonomy::transform::Buffer::Instance();
+    if (!tf_buffer) {
+        return false;
+    }
+    const float timeout =
+        transform_tolerance_ > 0.0
+            ? static_cast<float>(transform_tolerance_)
+            : 0.1f;
+    try {
+        std::string err;
+        if (!tf_buffer->canTransform(global_frame_, robot_base_frame_,
+                                     commsgs::builtin_interfaces::Time{},
+                                     timeout, &err)) {
+            AERROR << "getRobotPose: canTransform(" << global_frame_ << ", "
+                   << robot_base_frame_ << ") failed: " << err;
+            return false;
+        }
+        const geometry_msgs::TransformStamped gt =
+            static_cast<autonomy::transform::tf2::BufferCore&>(*tf_buffer)
+                .lookupTransform(global_frame_, robot_base_frame_, 0ULL);
+        global_pose.header.frame_id = global_frame_;
+        global_pose.header.stamp = commsgs::builtin_interfaces::Time::Now();
+        global_pose.pose.position.x = gt.transform.translation.x;
+        global_pose.pose.position.y = gt.transform.translation.y;
+        global_pose.pose.position.z = gt.transform.translation.z;
+        global_pose.pose.orientation.x = gt.transform.rotation.x;
+        global_pose.pose.orientation.y = gt.transform.rotation.y;
+        global_pose.pose.orientation.z = gt.transform.rotation.z;
+        global_pose.pose.orientation.w = gt.transform.rotation.w;
+        return true;
+    } catch (const autonomy::transform::tf2::TransformException& ex) {
+        AERROR << "getRobotPose: " << ex.what();
+    } catch (const std::exception& ex) {
+        AERROR << "getRobotPose: " << ex.what();
+    }
     return false;
 }
 
@@ -755,13 +793,6 @@ void Costmap2DWrapper::publishMap() {
     commsgs::map_msgs::OccupancyGrid snapshot;
     if (!snapshotOccupancyGrid(snapshot)) {
         return;
-    }
-
-    static int publish_count = 0;
-    if (++publish_count % 10 == 0) {
-        AINFO << "Costmap snapshot: " << snapshot.info.width << "x"
-              << snapshot.info.height << " resolution: "
-              << snapshot.info.resolution << " m/cell, frame: " << global_frame_;
     }
 }
 

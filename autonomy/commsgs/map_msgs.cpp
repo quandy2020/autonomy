@@ -105,6 +105,67 @@ OctomapWithPose FromProto(const proto::map_msgs::OctomapWithPose& proto) {
             FromProto(proto.octomap())};
 }
 
+proto::map_msgs::CostmapFilterInfo ToProto(const CostmapFilterInfo& data) {
+    proto::map_msgs::CostmapFilterInfo proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    proto.set_type(data.type);
+    proto.set_filter_mask_topic(data.filter_mask_topic);
+    proto.set_base(data.base);
+    proto.set_multiplier(data.multiplier);
+    return proto;
+}
+
+CostmapFilterInfo FromProto(const proto::map_msgs::CostmapFilterInfo& proto) {
+    CostmapFilterInfo data;
+    data.header = std_msgs::FromProto(proto.header());
+    data.type = proto.type();
+    data.filter_mask_topic = proto.filter_mask_topic();
+    data.base = proto.base();
+    data.multiplier = proto.multiplier();
+    return data;
+}
+
+proto::map_msgs::CostmapMetaData ToProto(const CostmapMetaData& data) {
+    proto::map_msgs::CostmapMetaData proto;
+    *proto.mutable_map_load_time() =
+        builtin_interfaces::ToProto(data.map_load_time);
+    *proto.mutable_update_time() = builtin_interfaces::ToProto(data.update_time);
+    proto.set_layer(data.layer);
+    proto.set_resolution(data.resolution);
+    proto.set_size_x(data.size_x);
+    proto.set_size_y(data.size_y);
+    *proto.mutable_origin() = geometry_msgs::ToProto(data.origin);
+    return proto;
+}
+
+CostmapMetaData FromProto(const proto::map_msgs::CostmapMetaData& proto) {
+    CostmapMetaData data;
+    data.map_load_time = builtin_interfaces::FromProto(proto.map_load_time());
+    data.update_time = builtin_interfaces::FromProto(proto.update_time());
+    data.layer = proto.layer();
+    data.resolution = proto.resolution();
+    data.size_x = proto.size_x();
+    data.size_y = proto.size_y();
+    data.origin = geometry_msgs::FromProto(proto.origin());
+    return data;
+}
+
+proto::map_msgs::Costmap ToProto(const Costmap& data) {
+    proto::map_msgs::Costmap proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    *proto.mutable_metadata() = ToProto(data.metadata);
+    proto.set_data(data.data.data(), data.data.size());
+    return proto;
+}
+
+Costmap FromProto(const proto::map_msgs::Costmap& proto) {
+    Costmap data;
+    data.header = std_msgs::FromProto(proto.header());
+    data.metadata = FromProto(proto.metadata());
+    data.data.assign(proto.data().begin(), proto.data().end());
+    return data;
+}
+
 }  // namespace map_msgs
 }  // namespace commsgs
 }  // namespace autonomy

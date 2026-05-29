@@ -116,8 +116,7 @@ bool MapServer::loadMapFromFile(const std::string& map_file_path) {
     }
 
     if (!costmap_2d::utils::validateMsg(*map_msg)) {
-        AERROR << "MapServer[" << node_name_
-               << "]: loaded map is malformed: " << map_file_path;
+        AERROR << node_name_ << ": loaded map is malformed: " << map_file_path;
         return false;
     }
 
@@ -283,8 +282,6 @@ void MapServer::Start() {
         AINFO << "MapServer[" << node_name_
               << "]: publish_frequency<=0, map published on Start() only";
     }
-
-    AINFO << "MapServer[" << node_name_ << "]: started";
 }
 
 void MapServer::Shutdown() {

@@ -25,7 +25,7 @@
 | `navigate_to_pose` / `navigate_through_poses` | 本文件 | `enable` + `behavior_tree_file` |
 | `enable_autolink_action_servers` | 本文件 | 是否挂载 autolink Action 服务 |
 
-路径 blackboard 固定为 `goal` / `goals` / `path`（见 `context.hpp`），不在 Lua 中配置。
+路径 blackboard 固定为 `goal` / `goals` / `path`（见 `bt_context.hpp`），不在 Lua 中配置。
 
 `odom_topic` 由 `common.lua` 供 controller 等模块使用，不属于 TaskOptions。
 

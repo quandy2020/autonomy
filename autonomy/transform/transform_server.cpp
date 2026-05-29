@@ -24,7 +24,6 @@ namespace transform {
 TransformServer::TransformServer(
     const autonomy::transform::proto::TransformOptions& options)
     : transform_options_(options) {
-    AINFO << "TransformServer created";
 }
 
 bool TransformServer::Initialize() {
@@ -37,7 +36,6 @@ bool TransformServer::Initialize() {
     static_transform_ = std::make_unique<StaticTransform>(transform_options_);
 
     initialized_ = true;
-    AINFO << "TransformServer initialized successfully";
     return true;
 }
 
@@ -53,7 +51,6 @@ void TransformServer::Start() {
     }
 
     running_ = true;
-    AINFO << "TransformServer started";
 }
 
 void TransformServer::Stop() {
@@ -62,7 +59,6 @@ void TransformServer::Stop() {
     }
 
     running_ = false;
-    AINFO << "TransformServer stopped";
 }
 
 }  // namespace transform

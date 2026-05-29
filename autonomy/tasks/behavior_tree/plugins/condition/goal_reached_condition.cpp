@@ -2,9 +2,7 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
-#include <cmath>
-
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
@@ -14,8 +12,7 @@ namespace behavior_tree {
 class GoalReachedCondition : public BT::ConditionNode
 {
 public:
-    GoalReachedCondition(const std::string& name,
-                         const BT::NodeConfiguration& conf)
+    GoalReachedCondition(const std::string& name, const BT::NodeConfiguration& conf)
         : BT::ConditionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
@@ -32,7 +29,7 @@ public:
             return BT::NodeStatus::FAILURE;
         }
         commsgs::geometry_msgs::PoseStamped goal;
-        if (!GetInputOrBB(*this, "goal", kBlackboardGoalKey, goal)) {
+        if (!GetInputOrBlackboard(*this, config(), "goal", kBlackboardGoalKey, goal)) {
             return BT::NodeStatus::FAILURE;
         }
         double tol = 0.25;
@@ -49,6 +46,9 @@ public:
         return std::hypot(dx, dy) <= tol ? BT::NodeStatus::SUCCESS
                                          : BT::NodeStatus::FAILURE;
     }
+
+private:
+    commsgs::geometry_msgs::PoseStamped goal_;
 };
 
 }  // namespace behavior_tree

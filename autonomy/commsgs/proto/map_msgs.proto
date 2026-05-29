@@ -154,4 +154,117 @@ message GridMap
     uint32 inner_start_index = 6;
 }
 
+// nav2_msgs/CostmapMetaData
+message CostmapMetaData {
+    builtin_interfaces.Time map_load_time = 1;
+    builtin_interfaces.Time update_time = 2;
+    string layer = 3;
+    float resolution = 4;
+    uint32 size_x = 5;
+    uint32 size_y = 6;
+    geometry_msgs.Pose origin = 7;
+}
 
+// nav2_msgs/Costmap
+message Costmap {
+    std_msgs.Header header = 1;
+    CostmapMetaData metadata = 2;
+    bytes data = 3;
+}
+
+// nav2_msgs/CostmapUpdate
+message CostmapUpdate {
+    std_msgs.Header header = 1;
+    uint32 x = 2;
+    uint32 y = 3;
+    uint32 size_x = 4;
+    uint32 size_y = 5;
+    bytes data = 6;
+}
+
+// nav2_msgs/CostmapFilterInfo
+message CostmapFilterInfo {
+    std_msgs.Header header = 1;
+    uint32 type = 2;
+    string filter_mask_topic = 3;
+    float base = 4;
+    float multiplier = 5;
+}
+
+// nav2_msgs/VoxelGrid
+message VoxelGrid {
+    std_msgs.Header header = 1;
+    repeated uint32 data = 2;
+    geometry_msgs.Point32 origin = 3;
+    geometry_msgs.Vector3 resolutions = 4;
+    uint32 size_x = 5;
+    uint32 size_y = 6;
+    uint32 size_z = 7;
+}
+
+// nav2_msgs/srv/GetCostmap
+message GetCostmap {
+    message Request {
+        CostmapMetaData specs = 1;
+    }
+
+    message Response {
+        Costmap map = 1;
+    }
+
+    Request request = 1;
+    Response response = 2;
+}
+
+// nav2_msgs/srv/ClearCostmapExceptRegion
+message ClearCostmapExceptRegion {
+    message Request {
+        float reset_distance = 1;
+    }
+
+    message Response {}
+
+    Request request = 1;
+    Response response = 2;
+}
+
+// nav2_msgs/srv/ClearCostmapAroundRobot
+message ClearCostmapAroundRobot {
+    message Request {
+        float reset_distance = 1;
+    }
+
+    message Response {}
+
+    Request request = 1;
+    Response response = 2;
+}
+
+// nav2_msgs/srv/LoadMap
+message LoadMap {
+    message Request {
+        string map_url = 1;
+    }
+
+    message Response {
+        OccupancyGrid map = 1;
+        uint32 result = 2;
+    }
+
+    Request request = 1;
+    Response response = 2;
+}
+
+// nav2_msgs/srv/SaveMap
+message SaveMap {
+    message Request {
+        string map_url = 1;
+    }
+
+    message Response {
+        uint32 result = 1;
+    }
+
+    Request request = 1;
+    Response response = 2;
+}

@@ -67,9 +67,9 @@ void KeepoutFilter::initializeFilter(const std::string& filter_info_topic) {
           << " occupancy_threshold=" << static_cast<int>(occupancy_threshold_);
 }
 
-commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+commsgs::map_msgs::CostmapFilterInfo::SharedPtr
 KeepoutFilter::makeDefaultFilterInfo(const std::string& mask_topic) {
-    auto info = std::make_shared<commsgs::planning_msgs::CostmapFilterInfo>();
+    auto info = std::make_shared<commsgs::map_msgs::CostmapFilterInfo>();
     info->type = KEEPOUT_FILTER;
     info->filter_mask_topic = mask_topic;
     info->base = static_cast<float>(BASE_DEFAULT);
@@ -78,7 +78,7 @@ KeepoutFilter::makeDefaultFilterInfo(const std::string& mask_topic) {
 }
 
 void KeepoutFilter::applyConfiguration(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
     const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask) {
     if (info) {
         handleFilterInfo(info);
@@ -125,7 +125,7 @@ std::string KeepoutFilter::resolveMaskFrame() const {
 }
 
 void KeepoutFilter::handleFilterInfo(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg) {
+    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg) {
     filterInfoCallback(msg);
 }
 
@@ -135,7 +135,7 @@ void KeepoutFilter::setFilterMask(
 }
 
 void KeepoutFilter::filterInfoCallback(
-    const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg) {
+    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {

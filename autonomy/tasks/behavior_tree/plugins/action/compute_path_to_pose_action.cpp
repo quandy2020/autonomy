@@ -2,42 +2,144 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
-#include "behaviortree_cpp/action_node.h"
+#include "autolink/action/types.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/tasks/behavior_tree/bt_action_node.hpp"
+#include "autonomy/tasks/navigators/action_type.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 
 namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-class ComputePathToPoseAction : public BT::SyncActionNode
+class ComputePathToPoseAction : public BtActionNode<ComputePathToPoseActionTraits>
 {
 public:
-    ComputePathToPoseAction(const std::string& name,
-                            const BT::NodeConfiguration& conf)
-        : BT::SyncActionNode(name, conf) {}
+    ComputePathToPoseAction(const std::string& name, const BT::NodeConfiguration& conf)
+        : BtActionNode(name, kComputePathToPoseActionName, conf) {}
 
     static BT::PortsList providedPorts() {
         BT::PortsList ports = {
             BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal"),
+            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("start"),
+            BT::InputPort<bool>("use_start", false, "Use port start pose"),
             BT::InputPort<std::string>("planner_id", "", "Planner id"),
             BT::OutputPort<commsgs::planning_msgs::Path>("path"),
         };
-        return AppendErrorOutcomePorts(ports);
+        return ProvidedBasicPorts(AppendErrorOutcomePorts(ports));
     }
 
-    BT::NodeStatus tick() override {
-        if (IsCancelRequested(config())) {
-            return BT::NodeStatus::FAILURE;
+    bool ExecuteInProcess(WrappedResult& result) override {
+        const auto ctx = GetBtContext(config().blackboard);
+        if (!ctx || !ctx->planner) {
+            return false;
         }
-        return RunGetPath<ComputePathToPoseAction,
-                          commsgs::geometry_msgs::PoseStamped>(
-            *this, GetContext(config()), "goal", kBlackboardGoalKey,
-            [](BehaviorTreeContext& ctx, const auto& start, const auto& goal,
-               const std::string& planner_id) {
-                return ctx.planner->ComputePathToPose(start, goal, planner_id,
-                                                      ctx.CancelChecker());
-            });
+        commsgs::geometry_msgs::PoseStamped goal_pose =
+            commsgs::geometry_msgs::FromProto(goal_.goal());
+        commsgs::geometry_msgs::PoseStamped start;
+        if (goal_.use_start() && goal_.has_start()) {
+            start = commsgs::geometry_msgs::FromProto(goal_.start());
+        } else {
+            const auto costmap = ctx->planner->GetCostmapWrapper();
+            if (!costmap ||
+                (!costmap->getRobotPose(start) &&
+                 !TryGetRobotPose(config().blackboard, start))) {
+                result.code = autolink::action::ResultCode::ABORTED;
+                result.result = std::make_shared<Result>();
+                result.result->set_error_code(
+                    task_proto::COMPUTE_PATH_TO_POSE_TF_ERROR);
+                return true;
+            }
+        }
+        try {
+            const auto path = ctx->planner->ComputePathToPose(
+                start, goal_pose, goal_.planner_id(), ctx->CancelChecker());
+            result.code = autolink::action::ResultCode::SUCCEEDED;
+            result.result = std::make_shared<Result>();
+            *result.result->mutable_path() =
+                commsgs::planning_msgs::ToProto(path);
+            result.result->set_error_code(task_proto::COMPUTE_PATH_TO_POSE_NONE);
+            NotifyGlobalPath(config().blackboard, path);
+            return true;
+        } catch (const std::exception& ex) {
+            result.code = autolink::action::ResultCode::ABORTED;
+            result.result = std::make_shared<Result>();
+            result.result->set_error_code(
+                task_proto::COMPUTE_PATH_TO_POSE_UNKNOWN);
+            result.result->set_error_msg(ex.what());
+            return true;
+        }
     }
+
+    void OnTick() override {
+        commsgs::geometry_msgs::PoseStamped goal_pose;
+        if (!GetInputOrBlackboard(*this, config(), "goal", kBlackboardGoalKey,
+                          goal_pose)) {
+            should_send_goal_ = false;
+            return;
+        }
+        *goal_.mutable_goal() = commsgs::geometry_msgs::ToProto(goal_pose);
+        getInput("planner_id", *goal_.mutable_planner_id());
+
+        bool use_start = false;
+        getInput("use_start", use_start);
+        goal_.set_use_start(false);
+        if (use_start) {
+            commsgs::geometry_msgs::PoseStamped start;
+            if (getInput("start", start)) {
+                *goal_.mutable_start() = commsgs::geometry_msgs::ToProto(start);
+                goal_.set_use_start(true);
+            }
+        } else if (getInput("start", *goal_.mutable_start())) {
+            goal_.set_use_start(true);
+        }
+    }
+
+    BT::NodeStatus OnSuccess() override {
+        if (result_.result && result_.result->has_path()) {
+            auto path = commsgs::planning_msgs::FromProto(result_.result->path());
+            setOutput("path", path);
+            setOutput(kBlackboardPathKey, path);
+            NotifyGlobalPath(config().blackboard, path);
+        }
+        setOutput("error_code_id",
+                  static_cast<uint16_t>(task_proto::COMPUTE_PATH_TO_POSE_NONE));
+        setOutput("error_msg", "");
+        return BT::NodeStatus::SUCCESS;
+    }
+
+    BT::NodeStatus OnAborted() override {
+        commsgs::planning_msgs::Path empty;
+        setOutput("path", empty);
+        if (result_.result) {
+            setOutput("error_code_id",
+                      static_cast<uint16_t>(result_.result->error_code()));
+            setOutput("error_msg", result_.result->error_msg());
+        }
+        return BT::NodeStatus::FAILURE;
+    }
+
+    BT::NodeStatus OnCancelled() override {
+        commsgs::planning_msgs::Path empty;
+        setOutput("path", empty);
+        setOutput("error_code_id",
+                  static_cast<uint16_t>(task_proto::COMPUTE_PATH_TO_POSE_NONE));
+        setOutput("error_msg", "");
+        return BT::NodeStatus::SUCCESS;
+    }
+
+    void OnTimeout() override {
+        setOutput("error_code_id",
+                  static_cast<uint16_t>(task_proto::COMPUTE_PATH_TO_POSE_TIMEOUT));
+        setOutput("error_msg", "Behavior tree action client timed out.");
+    }
+
+    void halt() override {
+        commsgs::planning_msgs::Path empty;
+        setOutput("path", empty);
+        BtActionNode::halt();
+    }
+
 };
 
 }  // namespace behavior_tree

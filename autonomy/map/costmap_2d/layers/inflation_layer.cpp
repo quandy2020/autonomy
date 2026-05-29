@@ -70,10 +70,6 @@ void InflationLayer::onInitialize() {
         inflate_around_unknown_ = false;
     }
 
-    AINFO << "Loaded costmap layer: "
-          << (name_.empty() ? "inflation_layer" : name_)
-          << " (type=autonomy::map::costmap_2d::InflationLayer)";
-
     current_ = true;
     seen_.clear();
     cached_distances_.clear();

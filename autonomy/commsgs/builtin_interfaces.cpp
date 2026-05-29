@@ -251,16 +251,23 @@ Duration Duration::FromNanoseconds(int64_t nanoseconds) {
 
 proto::builtin_interfaces::Duration ToProto(const Duration& data) {
     proto::builtin_interfaces::Duration proto;
-    // *proto.mutable_stamp() = ToProto(data.stamp);
-    // proto.set_frame_id(data.frame_id);
+    const int64_t total_ns = data.Nanoseconds();
+    int32_t sec = static_cast<int32_t>(total_ns / 1'000'000'000LL);
+    int64_t rem_ns = total_ns % 1'000'000'000LL;
+    if (rem_ns < 0) {
+        rem_ns += 1'000'000'000LL;
+        --sec;
+    }
+    proto.mutable_stamp()->set_sec(sec);
+    proto.mutable_stamp()->set_nanosec(static_cast<uint32_t>(rem_ns));
     return proto;
 }
 
 Duration FromProto(const proto::builtin_interfaces::Duration& proto) {
-    Duration data;
-    // data.stamp = FromProto(proto.stamp());
-    // data.frame_id = proto.frame_id();
-    return data;
+    if (!proto.has_stamp()) {
+        return Duration{};
+    }
+    return Duration(proto.stamp().sec(), proto.stamp().nanosec());
 }
 
 }  // namespace builtin_interfaces

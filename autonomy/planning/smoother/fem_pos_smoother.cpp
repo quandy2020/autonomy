@@ -35,7 +35,6 @@ void FemPosSmoother::Configure(
     if (!solver_) {
         solver_ = std::make_unique<math::FemPosDeviationSmoother>(config_);
     }
-    AINFO << "Configured FemPosSmoother plugin: " << name_;
 }
 
 void FemPosSmoother::ApplyOptions(

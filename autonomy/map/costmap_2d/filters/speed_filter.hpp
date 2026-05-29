@@ -22,7 +22,8 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/task_msgs.hpp"
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
 namespace autonomy {
@@ -38,7 +39,7 @@ class SpeedFilter : public CostmapFilter
 {
 public:
     using SpeedLimitCallback = std::function<void(
-        const commsgs::planning_msgs::SpeedLimit::SharedPtr&)>;
+        const commsgs::task_msgs::SpeedLimit::SharedPtr&)>;
 
     SpeedFilter();
 
@@ -53,15 +54,15 @@ public:
     bool isActive();
 
     void handleFilterInfo(
-        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& msg);
+        const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg);
 
     void setFilterMask(const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg);
 
     void applyConfiguration(
-        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr& info,
+        const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
         const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask);
 
-    static commsgs::planning_msgs::CostmapFilterInfo::SharedPtr
+    static commsgs::map_msgs::CostmapFilterInfo::SharedPtr
     makeDefaultFilterInfo(const std::string& mask_topic, bool percentage,
                           float base = 0.0f, float multiplier = 1.0f);
 
@@ -83,7 +84,7 @@ public:
 
 private:
     void filterInfoCallback(
-        const commsgs::planning_msgs::CostmapFilterInfo::SharedPtr msg);
+        const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg);
 
     void maskCallback(const commsgs::map_msgs::OccupancyGrid::SharedPtr msg);
 
@@ -96,7 +97,7 @@ private:
 
     void notifySpeedLimitIfChanged();
 
-    commsgs::planning_msgs::SpeedLimit::SharedPtr buildSpeedLimitMessage() const;
+    commsgs::task_msgs::SpeedLimit::SharedPtr buildSpeedLimitMessage() const;
 
     commsgs::map_msgs::OccupancyGrid::SharedPtr filter_mask_;
 

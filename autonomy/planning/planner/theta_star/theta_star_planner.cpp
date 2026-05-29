@@ -81,8 +81,6 @@ bool ThetaStarPlanner::Configure(
     terminal_checking_interval_ = cfg.terminal_checking_interval() > 0
                                       ? cfg.terminal_checking_interval()
                                       : 5000;
-
-    AINFO << "Configured ThetaStarPlanner plugin: " << name_;
     return true;
 }
 

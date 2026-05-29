@@ -35,6 +35,10 @@
 #include "autonomy/tasks/options.hpp"
 #include "autonomy/tasks/task.hpp"
 
+namespace autolink {
+class Node;
+}
+
 namespace autonomy {
 namespace control {
 class ControllerServer;
@@ -134,7 +138,8 @@ private:
         const commsgs::map_msgs::OccupancyGrid::SharedPtr& map);
     void NotifyPath(const commsgs::planning_msgs::Path& path);
     void ApplyRuntimeToTaskOptions(const tasks::RuntimeOptions& runtime);
-    void SyncGlobalFrameToCostmap(const std::string& global_frame);
+    void SyncNavigationFrames(const std::string& global_frame,
+                              const std::string& robot_base_frame);
 
     proto::AutonomyOptions options_;
     tasks::RuntimeOptions runtime_;
@@ -148,6 +153,7 @@ private:
     std::unique_ptr<transform::TransformServer> transform_server_;
     std::unique_ptr<tasks::Task> task_;
     std::unique_ptr<sensor::SensorCollator> sensor_collator_;
+    std::shared_ptr<autolink::Node> autolink_node_;
 
     std::vector<MapPublishListener> map_listeners_;
     std::vector<PathListener> path_listeners_;

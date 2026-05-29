@@ -21,7 +21,6 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
 
 namespace autonomy {
 namespace control {
@@ -29,8 +28,8 @@ namespace utils {
 
 // Twist Transformations
 commsgs::geometry_msgs::Twist twist2Dto3D(
-    const commsgs::planning_msgs::Twist2D& cmd_vel_2d);
-commsgs::planning_msgs::Twist2D twist3Dto2D(
+    const commsgs::geometry_msgs::Twist2D& cmd_vel_2d);
+commsgs::geometry_msgs::Twist2D twist3Dto2D(
     const commsgs::geometry_msgs::Twist& cmd_vel);
 
 }  // namespace utils

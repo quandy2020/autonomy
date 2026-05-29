@@ -6,6 +6,7 @@
 
 #include <thread>
 
+#include "autolink/autolink.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/map/map_server.hpp"
@@ -62,13 +63,20 @@ Autonomy::PluginIds Autonomy::ResolvePluginIds() const {
     };
 }
 
-void Autonomy::SyncGlobalFrameToCostmap(const std::string& global_frame) {
-    if (global_frame.empty() || !planner_) {
+void Autonomy::SyncNavigationFrames(const std::string& global_frame,
+                                    const std::string& robot_base_frame) {
+    if (!planner_) {
         return;
     }
     auto costmap = planner_->GetCostmapWrapper();
-    if (costmap) {
+    if (!costmap) {
+        return;
+    }
+    if (!global_frame.empty()) {
         costmap->setGlobalFrameID(global_frame);
+    }
+    if (!robot_base_frame.empty()) {
+        costmap->setRobotBaseFrameID(robot_base_frame);
     }
 }
 
@@ -85,6 +93,9 @@ void Autonomy::ApplyRuntimeToTaskOptions(
     }
     if (!runtime.goal_checker_id.empty()) {
         task_options_.set_default_goal_checker_id(runtime.goal_checker_id);
+    }
+    if (!runtime.robot_base_frame.empty()) {
+        task_options_.set_robot_base_frame(runtime.robot_base_frame);
     }
     if (runtime.goal_tolerance > 0.0) {
         task_options_.set_goal_reached_tolerance(runtime.goal_tolerance);
@@ -191,8 +202,7 @@ void Autonomy::Start() {
     };
     sensor_collator_ = std::make_unique<sensor::SensorCollator>(consumer);
 
-    task_ = std::make_unique<tasks::Task>();
-    AINFO << "Autonomy started (map/planner/controller/task skeleton).";
+    AINFO << "Autonomy started (map/planner/controller skeleton).";
 }
 
 void Autonomy::Configure(const tasks::RuntimeOptions& runtime) {
@@ -213,9 +223,9 @@ void Autonomy::Configure(const tasks::RuntimeOptions& runtime) {
     }
 
     ApplyRuntimeToTaskOptions(runtime);
-    SyncGlobalFrameToCostmap(runtime.global_frame);
+    SyncNavigationFrames(runtime.global_frame, runtime.robot_base_frame);
 
-    if (!planner_ || !smoother_ || !controller_ || !tf_buffer_ || !task_) {
+    if (!planner_ || !smoother_ || !controller_ || !tf_buffer_) {
         AERROR << "Autonomy::Configure: missing server dependencies.";
         configured_ = false;
         return;
@@ -228,18 +238,47 @@ void Autonomy::Configure(const tasks::RuntimeOptions& runtime) {
         return;
     }
 
-    if (!task_->Configure(task_options_, planner_, smoother_, controller_,
-                          tf_buffer_)) {
-        AERROR << "Autonomy::Configure: Task::Configure failed.";
+    const bool enable_autolink =
+        !task_options_.has_enable_autolink_action_servers() ||
+        task_options_.enable_autolink_action_servers();
+
+    if (enable_autolink && !autolink_node_) {
+        autolink_node_ = autolink::CreateNode(tasks::kTaskNodeName);
+        if (!autolink_node_) {
+            AWARN << "Autonomy::Configure: autolink::CreateNode failed "
+                     "(call autolink::Init first). Using in-process BT only.";
+        } else {
+            AINFO << "Autonomy: autolink node '" << tasks::kTaskNodeName
+                  << "' created.";
+        }
+    }
+
+    std::shared_ptr<autolink::Node> task_node;
+    if (enable_autolink && autolink_node_) {
+        task_node = autolink_node_;
+    }
+    task_ = std::make_unique<tasks::Task>(
+        task_options_, planner_, smoother_, controller_, tf_buffer_, task_node);
+    if (!task_->IsConfigured()) {
+        AERROR << "Autonomy::Configure: Task initialization failed.";
+        task_.reset();
         configured_ = false;
         return;
     }
-    task_->SetPathCallback(
-        [this](const commsgs::planning_msgs::Path& path) { NotifyPath(path); });
+    const auto publish_path =
+        [this](const commsgs::planning_msgs::Path& path) { NotifyPath(path); };
+    if (planner_) {
+        planner_->SetPathUpdateCallback(publish_path);
+    }
+    if (smoother_) {
+        smoother_->SetPathUpdateCallback(publish_path);
+    }
+    task_->SetPathCallback(publish_path);
 
     configured_ = true;
     AINFO << "Autonomy: Task configured (BT navigation="
-          << (use_bt_navigation_ ? "on" : "off") << ").";
+          << (use_bt_navigation_ ? "on" : "off")
+          << ", autolink=" << (autolink_node_ ? "on" : "off") << ").";
 }
 
 void Autonomy::Shutdown() {
@@ -268,6 +307,7 @@ void Autonomy::Shutdown() {
     smoother_.reset();
     controller_.reset();
     task_.reset();
+    autolink_node_.reset();
     sensor_collator_.reset();
     transform_server_.reset();
     AINFO << "Autonomy shut down.";
@@ -275,7 +315,7 @@ void Autonomy::Shutdown() {
 
 bool Autonomy::IsReady() const {
     return configured_.load() && task_ &&
-           task_->GetState() != tasks::TaskInterface::TaskState::SHUTDOWN;
+           task_->GetState() != tasks::TaskInterface::TaskState::kShutdown;
 }
 
 map::MapServer* Autonomy::GetMapServer() { return map_server_.get(); }
@@ -375,7 +415,7 @@ bool Autonomy::WaitForNavigation(
     const double timeout_sec) {
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::duration<double>(timeout_sec);
-    while (task_->IsNavigationEngineActive()) {
+    while (task_->IsNavigatorActive()) {
         if (cancel_checker && cancel_checker()) {
             task_->Cancel();
             return false;

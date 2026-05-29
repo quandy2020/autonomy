@@ -154,7 +154,6 @@ NavFn::~NavFn() {
 void NavFn::setGoal(int* g) {
     goal[0] = g[0];
     goal[1] = g[1];
-    AINFO << "[NavFn] Setting goal to " << goal[0] << ", " << goal[1];
 }
 
 void NavFn::setStart(int* g) {
@@ -170,8 +169,6 @@ void NavFn::setStart(int* g) {
 //
 
 void NavFn::setNavArr(int xs, int ys) {
-    AINFO << "Array is " << xs << " x " << ys;
-
     nx = xs;
     ny = ys;
     ns = nx * ny;

@@ -256,10 +256,6 @@ void ObstacleLayer::onInitialize() {
             if (clearing) {
                 clearing_buffers_.push_back(buffer);
             }
-
-            AINFO << "ObstacleLayer sensor '" << source_name << "' topic="
-                  << topic << " type=" << data_type
-                  << " marking=" << marking << " clearing=" << clearing;
         }
     }
 
@@ -271,9 +267,6 @@ void ObstacleLayer::onInitialize() {
     }
 
     matchSize();
-    AINFO << "ObstacleLayer initialized: enabled=" << enabled_
-          << " footprint_clearing=" << footprint_clearing_enabled_
-          << " buffers=" << observation_buffers_.size();
 }
 
 void ObstacleLayer::feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan) {

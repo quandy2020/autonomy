@@ -4,7 +4,7 @@
 
 #include <chrono>
 
-#include "autonomy/tasks/behavior_tree/utils.hpp"
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/condition_node.h"
 
 namespace autonomy {
@@ -14,9 +14,8 @@ namespace behavior_tree {
 class TimeExpiredCondition : public BT::ConditionNode
 {
 public:
-    TimeExpiredCondition(const std::string& name,
-                         const BT::NodeConfiguration& conf)
-        : BT::ConditionNode(name, conf), period_sec_(1.0) {}
+    TimeExpiredCondition(const std::string& name, const BT::NodeConfiguration& conf)
+        : BT::ConditionNode(name, conf) {}
 
     static BT::PortsList providedPorts() {
         return {BT::InputPort<double>("seconds", 1.0, "Period seconds")};
@@ -45,14 +44,12 @@ public:
     }
 
 private:
-    double period_sec_;
+    double period_sec_{120.0};
     std::chrono::steady_clock::time_point start_;
 };
 
 }  // namespace behavior_tree
 }  // namespace tasks
 }  // namespace autonomy
-
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
 
 REGISTER_BEHAVIOR_TREE_NODE(TimeExpiredCondition, "TimeExpired")

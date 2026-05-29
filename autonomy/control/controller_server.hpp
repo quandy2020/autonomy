@@ -29,8 +29,9 @@
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/task_msgs.hpp"
 #include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
@@ -39,6 +40,10 @@
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/robot_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
+
+namespace autolink {
+class Node;
+}
 
 namespace autonomy {
 namespace control {
@@ -146,7 +151,11 @@ public:
      * @brief Apply a dynamic speed limit to all loaded controller plugins.
      * @param msg speed_limit in m/s or percent per msg->percentage.
      */
-    void ApplySpeedLimit(const commsgs::planning_msgs::SpeedLimit& msg);
+    void ApplySpeedLimit(const commsgs::task_msgs::SpeedLimit& msg);
+
+    /** Expose autolink action servers for BT leaf nodes (follow_path, spin, …). */
+    bool AttachAutolinkNode(std::shared_ptr<autolink::Node> node);
+    void DetachAutolinkNode();
 
 protected:
     /**
@@ -344,13 +353,16 @@ protected:
 private:
     /**
      * @brief Callback for speed limiting messages
-     * @param msg Shared pointer to nav2_msgs::msg::SpeedLimit
+     * @param msg Shared pointer to task_msgs::SpeedLimit
      */
     void SpeedLimitCallback(
-        const commsgs::planning_msgs::SpeedLimit::SharedPtr msg);
+        const commsgs::task_msgs::SpeedLimit::SharedPtr msg);
 
     // controller options
     proto::ControllerOptions options_;
+
+    struct AutolinkActionServers;
+    AutolinkActionServers* autolink_actions_{nullptr};
 };
 
 }  // namespace control

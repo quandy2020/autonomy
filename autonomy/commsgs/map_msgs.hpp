@@ -21,6 +21,7 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/proto/map_msgs.pb.h"
 #include "autonomy/commsgs/std_msgs.hpp"
@@ -160,6 +161,98 @@ struct GridMap {
     uint32 inner_start_index;
 };
 
+struct CostmapMetaData {
+    AUTONOMY_SMART_PTR_DEFINITIONS(CostmapMetaData)
+
+    builtin_interfaces::Time map_load_time;
+    builtin_interfaces::Time update_time;
+    std::string layer;
+    float resolution{0.0F};
+    uint32_t size_x{0};
+    uint32_t size_y{0};
+    geometry_msgs::Pose origin;
+};
+
+struct Costmap {
+    AUTONOMY_SMART_PTR_DEFINITIONS(Costmap)
+
+    std_msgs::Header header;
+    CostmapMetaData metadata;
+    std::vector<uint8_t> data;
+};
+
+struct CostmapUpdate {
+    AUTONOMY_SMART_PTR_DEFINITIONS(CostmapUpdate)
+
+    std_msgs::Header header;
+    uint32_t x{0};
+    uint32_t y{0};
+    uint32_t size_x{0};
+    uint32_t size_y{0};
+    std::vector<uint8_t> data;
+};
+
+struct CostmapFilterInfo {
+    AUTONOMY_SMART_PTR_DEFINITIONS(CostmapFilterInfo)
+
+    std_msgs::Header header;
+    uint32_t type{0};
+    std::string filter_mask_topic;
+    float base{0.0F};
+    float multiplier{0.0F};
+};
+
+struct VoxelGrid {
+    AUTONOMY_SMART_PTR_DEFINITIONS(VoxelGrid)
+
+    std_msgs::Header header;
+    std::vector<uint32_t> data;
+    geometry_msgs::Point32 origin;
+    geometry_msgs::Vector3 resolutions;
+    uint32_t size_x{0};
+    uint32_t size_y{0};
+    uint32_t size_z{0};
+};
+
+struct GetCostmapRequest {
+    CostmapMetaData specs;
+};
+
+struct GetCostmapResponse {
+    Costmap map;
+};
+
+struct ClearCostmapExceptRegionRequest {
+    float reset_distance{3.0F};
+};
+
+struct ClearCostmapAroundRobotRequest {
+    float reset_distance{1.0F};
+};
+
+struct LoadMapRequest {
+    std::string map_url;
+};
+
+struct LoadMapResponse {
+    static constexpr uint8_t kResultSuccess = 0;
+    static constexpr uint8_t kResultMapDoesNotExist = 1;
+    static constexpr uint8_t kResultInvalidMapData = 2;
+    static constexpr uint8_t kResultInvalidMapMetadata = 3;
+    static constexpr uint8_t kResultUndefinedFailure = 255;
+
+    OccupancyGrid map;
+    uint8_t result{kResultUndefinedFailure};
+};
+
+struct SaveMapRequest {
+    std::string map_url;
+};
+
+struct SaveMapResponse {
+    uint8_t result{LoadMapResponse::kResultUndefinedFailure};
+};
+
 // Converts 'data' to a proto::GridCells.
 proto::map_msgs::GridCells ToProto(const GridCells& data);
 
@@ -189,6 +282,15 @@ proto::map_msgs::OctomapWithPose ToProto(const OctomapWithPose& data);
 
 // Converts 'proto' to OctomapWithPose.
 OctomapWithPose FromProto(const proto::map_msgs::OctomapWithPose& proto);
+
+proto::map_msgs::CostmapFilterInfo ToProto(const CostmapFilterInfo& data);
+CostmapFilterInfo FromProto(const proto::map_msgs::CostmapFilterInfo& proto);
+
+proto::map_msgs::CostmapMetaData ToProto(const CostmapMetaData& data);
+CostmapMetaData FromProto(const proto::map_msgs::CostmapMetaData& proto);
+
+proto::map_msgs::Costmap ToProto(const Costmap& data);
+Costmap FromProto(const proto::map_msgs::Costmap& proto);
 
 }  // namespace map_msgs
 }  // namespace commsgs

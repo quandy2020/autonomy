@@ -202,13 +202,6 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
       transform::Buffer::Instance(), [](transform::Buffer*) {});
 
   odom_smoother_ = std::make_shared<utils::OdomSmoother>();
-
-  AINFO << "Control server init successfully.";
-}
-
-ControllerServer::~ControllerServer() {
-  Shutdown();
-  AINFO << "Control server shutdown successfully.";
 }
 
 void ControllerServer::SetNavigationContext(
@@ -296,8 +289,7 @@ void ControllerServer::LoadPlugins() {
       continue;
     }
     controllers_.insert({controller_ids_[i], controller});
-    AINFO << "Created controller plugin: " << controller_ids_[i]
-          << " (type=" << type << ", factory_id=" << resolved << ")";
+    AINFO << "Created controller plugin: " << controller_ids_[i] << " (type = " << type << ")";
   }
 
   progress_checker_ids_concat_.clear();
@@ -322,10 +314,9 @@ void ControllerServer::LoadPlugins() {
     controller_ids_concat_ += id;
   }
 
-  AINFO << "Controller server plugins: controllers [" << controller_ids_concat_
-        << "], goal_checkers [" << goal_checker_ids_concat_
-        << "], progress_checkers [" << progress_checker_ids_concat_ << "]";
-
+  AINFO << "controllers: " << controller_ids_concat_;
+  AINFO << "goal_checkers: " << goal_checker_ids_concat_;
+  AINFO << "progress_checkers: " << progress_checker_ids_concat_;
   plugins_loaded_ = true;
 }
 
@@ -350,7 +341,6 @@ void ControllerServer::DeactivateControllers() {
 }
 
 void ControllerServer::Start() {
-  AINFO << "Starting controller server...";
   if (costmap_wrapper_ &&
       (!options_.has_costmap_2d_options() ||
        options_.costmap_2d_options().enabled())) {
@@ -369,7 +359,6 @@ void ControllerServer::Shutdown() {
   goal_checkers_.clear();
   progress_checkers_.clear();
   plugins_loaded_ = false;
-  AINFO << "Shutting down controller server...";
 }
 
 common::ControllerInterface* ControllerServer::GetController(
@@ -739,7 +728,7 @@ void ControllerServer::PublishVelocity(
   }
 
   last_cmd_vel_ = velocity;
-  AINFO << "cmd_vel [" << velocity.header.frame_id << "] linear=("
+  AINFO << "cmd_vel linear=("
         << velocity.twist.linear.x << ", " << velocity.twist.linear.y << ", "
         << velocity.twist.linear.z << ") angular=(" << velocity.twist.angular.x
         << ", " << velocity.twist.angular.y << ", "
@@ -844,7 +833,7 @@ bool ControllerServer::GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose) {
 }
 
 void ControllerServer::SpeedLimitCallback(
-    const commsgs::planning_msgs::SpeedLimit::SharedPtr msg) {
+    const commsgs::task_msgs::SpeedLimit::SharedPtr msg) {
   if (!msg) {
     return;
   }
@@ -854,9 +843,9 @@ void ControllerServer::SpeedLimitCallback(
 }
 
 void ControllerServer::ApplySpeedLimit(
-    const commsgs::planning_msgs::SpeedLimit& msg) {
+    const commsgs::task_msgs::SpeedLimit& msg) {
   SpeedLimitCallback(
-    std::make_shared<commsgs::planning_msgs::SpeedLimit>(msg));
+    std::make_shared<commsgs::task_msgs::SpeedLimit>(msg));
 }
 
 }  // namespace control

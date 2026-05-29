@@ -203,9 +203,9 @@ std::string expand_user_home_dir_if_needed(std::string yaml_filename,
     }
 
     if (home_variable_value.empty()) {
-        AINFO << "[map_io] Map yaml file name starts with '~/' but no HOME "
+        AINFO << "Map yaml file name starts with '~/' but no HOME "
                  "variable set.";
-        AINFO << "[map_io] User home dir will be not expanded.";
+        AINFO << "User home dir will be not expanded.";
         return yaml_filename;
     }
     const std::string prefix{home_variable_value};
@@ -258,15 +258,6 @@ LoadParameters loadMapYaml(const std::string& yaml_filename) {
         load_parameters.negate = yaml_get_value<bool>(doc, "negate");
     }
 
-    AINFO << "[map_io] resolution: " << load_parameters.resolution;
-    AINFO << "[map_io] origin[0]: " << load_parameters.origin[0];
-    AINFO << "[map_io] origin[1]: " << load_parameters.origin[1];
-    AINFO << "[map_io] origin[2]: " << load_parameters.origin[2];
-    AINFO << "[map_io] free_thresh: " << load_parameters.free_thresh;
-    AINFO << "[map_io] occupied_thresh: " << load_parameters.occupied_thresh;
-    AINFO << "[map_io] mode: " << map_mode_to_string(load_parameters.mode);
-    AINFO << "[map_io] negate: " << load_parameters.negate;
-
     return load_parameters;
 }
 
@@ -274,7 +265,7 @@ void loadMapFromFile(const LoadParameters& load_parameters,
                      commsgs::map_msgs::OccupancyGrid& map) {
     commsgs::map_msgs::OccupancyGrid msg;
 
-    AINFO << "[map_io] Loading image_file: " << load_parameters.image_file_name;
+    AINFO << "Loading image_file: " << load_parameters.image_file_name;
 
     auto assignMapCell = [&](double shade, bool has_transparency) -> int8_t {
         const double occ =
@@ -327,7 +318,6 @@ void loadMapFromFile(const LoadParameters& load_parameters,
 
     cv::Mat img;
     if (used_pgm_parser) {
-        AINFO << "[map_io] Loaded PGM using P5 parser (cv::imread skipped)";
         msg.info.width = static_cast<uint32_t>(pgm_width);
         msg.info.height = static_cast<uint32_t>(pgm_height);
     } else {
@@ -395,10 +385,9 @@ void loadMapFromFile(const LoadParameters& load_parameters,
         }
     }
 
-    AINFO << "[map_io] Read map " << load_parameters.image_file_name << ": "
+    AINFO << "Read map " << load_parameters.image_file_name << ": "
           << msg.info.width << " X " << msg.info.height << " map @ "
-          << msg.info.resolution << " m/cell, shade=[" << shade_min << ","
-          << shade_max << "] occ=" << occupied << " unknown=" << unknown;
+          << msg.info.resolution << " m/cell.";
 
     map = msg;
 }
@@ -406,28 +395,28 @@ void loadMapFromFile(const LoadParameters& load_parameters,
 LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file,
                                 commsgs::map_msgs::OccupancyGrid& map) {
     if (yaml_file.empty()) {
-        AERROR << "[map_io] YAML file name is empty, can't load!";
+        AERROR << "YAML file name is empty, can't load!";
         return MAP_DOES_NOT_EXIST;
     }
 
-    AINFO << "[map_io] Loading yaml file:" << yaml_file;
+    AINFO << "Loading yaml file: " << yaml_file;
     LoadParameters load_parameters;
     try {
         load_parameters = loadMapYaml(yaml_file);
     } catch (YAML::Exception& e) {
-        AERROR << "[map_io] Failed processing YAML file "
+        AERROR << "Failed processing YAML file "
                << " at position (" << e.mark.line << ":" << e.mark.column
                << ") for reason: " << e.what();
         return INVALID_MAP_METADATA;
     } catch (std::exception& e) {
-        AERROR << "[map_io] Failed to parse map YAML loaded from file "
+        AERROR << "Failed to parse map YAML loaded from file "
                << yaml_file << " for reason: " << e.what();
         return INVALID_MAP_METADATA;
     }
     try {
         loadMapFromFile(load_parameters, map);
     } catch (std::exception& e) {
-        AERROR << "[map_io] Failed to load image file "
+        AERROR << "Failed to load image file "
                << load_parameters.image_file_name
                << " for reason: " << e.what();
         return INVALID_MAP_DATA;
@@ -450,7 +439,7 @@ void checkSaveParameters(SaveParameters& save_parameters) {
         // rclcpp::Clock clock(RCL_SYSTEM_TIME);
         // save_parameters.map_file_name = "map_" +
         // std::to_string(static_cast<int>(clock.now().seconds()));
-        AWARN << "[map_io] Map file unspecified. Map will be saved to  "
+        AWARN << "Map file unspecified. Map will be saved to  "
               << save_parameters.map_file_name << " file";
     }
 
@@ -458,26 +447,26 @@ void checkSaveParameters(SaveParameters& save_parameters) {
     if (save_parameters.occupied_thresh == 0.0) {
         save_parameters.occupied_thresh = 0.65;
         AWARN
-            << "[map_io] Occupied threshold unspecified. Setting it to default "
+            << "Occupied threshold unspecified. Setting it to default "
                "value: "
             << save_parameters.occupied_thresh;
     }
     if (save_parameters.free_thresh == 0.0) {
         save_parameters.free_thresh = 0.25;
-        AWARN << "[map_io] Free threshold unspecified. Setting it to default "
+        AWARN << "Free threshold unspecified. Setting it to default "
                  "value: "
               << save_parameters.free_thresh;
     }
     if (1.0 < save_parameters.occupied_thresh) {
-        AERROR << "[map_io] Threshold_occupied must be 1.0 or less";
+        AERROR << "Threshold_occupied must be 1.0 or less";
         throw std::runtime_error("Incorrect thresholds");
     }
     if (save_parameters.free_thresh < 0.0) {
-        AERROR << "[map_io]  Free threshold must be 0.0 or greater";
+        AERROR << "Free threshold must be 0.0 or greater";
         throw std::runtime_error("Incorrect thresholds");
     }
     if (save_parameters.occupied_thresh <= save_parameters.free_thresh) {
-        AERROR << "[map_io] Threshold_free must be smaller than "
+        AERROR << "Threshold_free must be smaller than "
                   "threshold_occupied";
         throw std::runtime_error("Incorrect thresholds");
     }
@@ -486,7 +475,7 @@ void checkSaveParameters(SaveParameters& save_parameters) {
     if (save_parameters.image_format == "") {
         save_parameters.image_format =
             save_parameters.mode == MapMode::Scale ? "png" : "pgm";
-        AWARN << "[map_io] Image format unspecified. Setting it to: "
+        AWARN << "Image format unspecified. Setting it to: "
               << save_parameters.image_format;
     }
 
@@ -507,7 +496,7 @@ void checkSaveParameters(SaveParameters& save_parameters) {
             ss << "'" << format_name << "'";
             first = false;
         }
-        AWARN << "[map_io] Requested image format '"
+        AWARN << "Requested image format '"
               << save_parameters.image_format
               << "' is not one of the recommended formats: " << ss.str();
     }
@@ -517,7 +506,7 @@ void checkSaveParameters(SaveParameters& save_parameters) {
                                                     "jpeg"};
     if (std::find(WRITABLE_FORMATS.begin(), WRITABLE_FORMATS.end(),
                   save_parameters.image_format) == WRITABLE_FORMATS.end()) {
-        AWARN << "[map_io] Format '" << save_parameters.image_format
+        AWARN << "Format '" << save_parameters.image_format
               << "' may not be supported by OpenCV. Using '" << FALLBACK_FORMAT
               << "' instead";
         save_parameters.image_format = FALLBACK_FORMAT;
@@ -529,7 +518,7 @@ void checkSaveParameters(SaveParameters& save_parameters) {
          save_parameters.image_format == "jpg" ||
          save_parameters.image_format == "jpeg")) {
         AERROR
-            << "[map_io] Map mode 'scale' requires transparency, but format '"
+            << "Map mode 'scale' requires transparency, but format '"
             << save_parameters.image_format
             << "' does not support it. Consider switching image format to "
                "'png'.";
@@ -544,7 +533,7 @@ void checkSaveParameters(SaveParameters& save_parameters) {
  */
 void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
                        const SaveParameters& save_parameters) {
-    AINFO << "[map_io] Received a " << map.info.width << " X "
+    AINFO << "Received a " << map.info.width << " X "
           << map.info.height << " map @ " << map.info.resolution << " m/pix";
 
     std::string mapdatafile =
@@ -603,14 +592,14 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
                         break;
                     }
                     default:
-                        AERROR << "[map_io] Map mode should be Trinary, Scale "
+                        AERROR << "Map mode should be Trinary, Scale "
                                   "or Raw";
                         throw std::runtime_error("Invalid map mode");
                 }
             }
         }
 
-        AINFO << "[map_io] Writing map occupancy data to " << mapdatafile;
+        AINFO << "Writing map occupancy data to " << mapdatafile;
         if (!cv::imwrite(mapdatafile, image)) {
             throw std::runtime_error("OpenCV failed to write map image: " +
                                    mapdatafile);
@@ -648,14 +637,14 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
           << save_parameters.free_thresh;
 
         if (!e.good()) {
-            AERROR << "[map_io] YAML writer failed with an error "
+            AERROR << "YAML writer failed with an error "
                    << e.GetLastError() << ". The map metadata may be invalid.";
         }
 
-        AINFO << "[map_io] Writing map metadata to " << mapmetadatafile;
+        AINFO << "Writing map metadata to " << mapmetadatafile;
         std::ofstream(mapmetadatafile) << e.c_str();
     }
-    AINFO << "[map_io] Map saved";
+    AINFO << "Map saved";
 }
 
 bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
@@ -669,7 +658,7 @@ bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
         checkSaveParameters(save_parameters_loc);
         tryWriteMapToFile(map, save_parameters_loc);
     } catch (std::exception& e) {
-        AERROR << "[map_io] Failed to write map for reason: " << e.what();
+        AERROR << "Failed to write map for reason: " << e.what();
         return false;
     }
     return true;

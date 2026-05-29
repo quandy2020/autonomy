@@ -1,7 +1,9 @@
 /*
  * Copyright 2025 The Openbot Authors (duyongquan)
+ * Ported from nav2_behavior_tree RoundRobinNode.
  */
 
+#include "autonomy/tasks/behavior_tree/bt_utils.hpp"
 #include "behaviortree_cpp/control_node.h"
 
 namespace autonomy {
@@ -66,7 +68,5 @@ private:
 }  // namespace behavior_tree
 }  // namespace tasks
 }  // namespace autonomy
-
-#include "autonomy/tasks/behavior_tree/node_utils.hpp"
 
 REGISTER_BEHAVIOR_TREE_NODE(RoundRobinNode, "RoundRobin")

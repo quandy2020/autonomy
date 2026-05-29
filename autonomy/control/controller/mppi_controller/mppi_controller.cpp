@@ -45,10 +45,7 @@ void MppiController::Configure(
                            controller_frequency_);
 
     configured_ = true;
-    AINFO << "Loaded controller: " << plugin_name_
-          << " (MppiController, model=" << mppi_options_.motion_model()
-          << ", batch=" << mppi_options_.batch_size()
-          << ", steps=" << mppi_options_.time_steps() << ")";
+    AINFO << "Loaded controller: " << plugin_name_;
 }
 
 void MppiController::Cleanup() {

@@ -71,9 +71,7 @@ void NmpcController::Configure(
         horizon, dt, ref_v, slowdown);
 
     configured_ = true;
-    AINFO << "Loaded controller: " << plugin_name_
-          << " (NmpcController, kinematic=" << nmpc_options_.kinematic_model()
-          << ", horizon=" << horizon << ", dt=" << dt << ")";
+    AINFO << "Loaded controller: " << plugin_name_;
 }
 
 void NmpcController::Cleanup() {
