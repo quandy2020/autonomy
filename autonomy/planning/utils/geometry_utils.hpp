@@ -16,12 +16,15 @@
 
 #pragma once
 
-#include "autonomy/common/macros.hpp"
-#include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
 namespace autonomy {
 namespace planning {
-namespace utils {}  // namespace utils
+namespace utils {
+
+double EuclideanDistance(const commsgs::geometry_msgs::Point& a,
+                         const commsgs::geometry_msgs::Point& b);
+
+}  // namespace utils
 }  // namespace planning
 }  // namespace autonomy

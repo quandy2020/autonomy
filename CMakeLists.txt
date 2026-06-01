@@ -115,8 +115,14 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 
 # Offline planner/controller visualization binaries (not gtest).
 list(REMOVE_ITEM ALL_TESTS "autonomy/planning/tools/planning_test.cpp")
+list(REMOVE_ITEM ALL_TESTS "autonomy/planning/tools/planner_client_test.cpp")
 list(REMOVE_ITEM ALL_TESTS "autonomy/control/tools/controller_server_test.cpp")
 list(REMOVE_ITEM ALL_TESTS "autonomy/system/tools/nav_test.cpp")
+list(REMOVE_ITEM ALL_TESTS
+  "${PROJECT_SOURCE_DIR}/autonomy/planning/tools/planning_test.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/planning/tools/planner_client_test.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/control/tools/controller_server_test.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/system/tools/nav_test.cpp")
 
 # BT plugins are built as separate .so files (see cmake/plugin/behavior_tree_plugins.cmake).
 file(GLOB_RECURSE BEHAVIOR_TREE_PLUGIN_SRCS
@@ -335,7 +341,7 @@ endif()
 include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
 autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
-add_subdirectory(autonomy/planning/tools)
+add_subdirectory(autonomy/planning)
 add_subdirectory(autonomy/control/tools)
 add_subdirectory(autonomy/system/tools)
 

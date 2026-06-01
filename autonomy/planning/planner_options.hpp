@@ -47,5 +47,12 @@ namespace planning {
 proto::PlannerOptions LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
+/**
+ * Loads planner options from config/planner/planner.lua under
+ * configuration_directory.
+ */
+proto::PlannerOptions CreateOptions(
+    const std::string& configuration_directory);
+
 }  // namespace planning
 }  // namespace autonomy

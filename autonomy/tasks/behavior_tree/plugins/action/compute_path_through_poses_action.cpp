@@ -2,6 +2,8 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/bt_action_node.hpp"
 #include "autonomy/tasks/navigators/action_type.hpp"
 #include "autonomy/tasks/behavior_tree/bt_utils.hpp"
@@ -10,10 +12,12 @@ namespace autonomy {
 namespace tasks {
 namespace behavior_tree {
 
-class ComputePathThroughPosesAction : public BtActionNode<ComputePathThroughPosesActionTraits>
+class ComputePathThroughPosesAction
+    : public BtActionNode<ComputePathThroughPosesActionTraits>
 {
 public:
-    ComputePathThroughPosesAction(const std::string& name, const BT::NodeConfiguration& conf)
+    ComputePathThroughPosesAction(const std::string& name,
+                                  const BT::NodeConfiguration& conf)
         : BtActionNode(name, kComputePathThroughPosesActionName, conf) {}
 
     static BT::PortsList providedPorts() {
@@ -89,6 +93,17 @@ public:
         return BT::NodeStatus::SUCCESS;
     }
 
+    void OnTimeout() override {
+        setOutput("error_code_id",
+                  static_cast<uint16_t>(task_proto::COMPUTE_PATH_THROUGH_POSES_TIMEOUT));
+        setOutput("error_msg", "Behavior tree action client timed out.");
+    }
+
+    void halt() override {
+        commsgs::planning_msgs::Path empty;
+        setOutput("path", empty);
+        BtActionNode::halt();
+    }
 };
 
 }  // namespace behavior_tree

@@ -25,7 +25,7 @@
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/planning/planner_server.hpp"
-#include "autonomy/planning/smoother_server.hpp"
+#include "autonomy/planning/smoother/smoother_server.hpp"
 #include "autonomy/tasks/proto/task_options.pb.h"
 #include "autonomy/transform/buffer.hpp"
 

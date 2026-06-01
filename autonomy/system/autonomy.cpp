@@ -11,7 +11,7 @@
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
-#include "autonomy/planning/smoother_server.hpp"
+#include "autonomy/planning/smoother/smoother_server.hpp"
 #include "autonomy/sensor/internal/sensor_collator.hpp"
 #include "autonomy/tasks/constants.hpp"
 #include "autonomy/tasks/options.hpp"
@@ -115,13 +115,11 @@ void Autonomy::Start() {
     if (options_.has_planner_options()) {
         planner_ =
             std::make_shared<planning::PlannerServer>(options_.planner_options());
-        planner_->Start();
     }
 
     if (planner_) {
         smoother_ = std::make_shared<planning::SmootherServer>(
             options_.planner_options(), planner_->GetCostmapWrapper());
-        planner_->SetSmootherServer(smoother_);
     }
 
     if (options_.has_controller_options()) {
@@ -292,9 +290,6 @@ void Autonomy::Shutdown() {
     if (controller_) {
         controller_->Shutdown();
     }
-    if (planner_) {
-        planner_->Shutdown();
-    }
     if (map_server_) {
         map_server_->Shutdown();
     }
@@ -461,10 +456,10 @@ bool Autonomy::NavigateDirectToPose(
     const auto ids = ResolvePluginIds();
     commsgs::planning_msgs::Path path;
     try {
-        path = planner_->ComputePathToPose(start, goal_tf, ids.planner_id,
-                                           cancel_checker);
+        path = planner_->GetPlan(start, goal_tf, ids.planner_id,
+                                 cancel_checker);
     } catch (const std::exception& ex) {
-        AERROR << "ComputePathToPose failed: " << ex.what();
+        AERROR << "GetPlan failed: " << ex.what();
         return false;
     }
     if (path.poses.size() < tasks::kMinPathPoses) {
@@ -608,8 +603,7 @@ void Autonomy::ReplanToGoal(
     }
     const auto ids = ResolvePluginIds();
     try {
-        auto path = planner_->ComputePathToPose(start, goal_tf, ids.planner_id,
-                                               []() { return false; });
+        auto path = planner_->GetPlan(start, goal_tf, ids.planner_id);
         NotifyPath(path);
         controller_->BeginFollowPath(path, ids.controller_id, ids.goal_checker_id,
                                      "progress_checker");

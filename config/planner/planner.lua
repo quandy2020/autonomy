@@ -55,9 +55,6 @@ AUTONOMY_PLANNER = {
 
     smoother_plugins = {
         "simple_smoother",
-        "savitzky_golay_smoother",
-        -- "fem_pos_smoother",
-        -- "cos_theta_smoother",
     },
     default_smoother_id = "simple_smoother",
 
@@ -70,31 +67,6 @@ AUTONOMY_PLANNER = {
         refinement_num = 2,
         enforce_path_inversion = true,
     },
-
-    savitzky_golay_smoother = {
-        do_refinement = true,
-        refinement_num = 2,
-        enforce_path_inversion = true,
-        window_size = 7,
-        poly_order = 3,
-    },
-
-    -- Optional advanced smoothers (enable in smoother_plugins when needed)
-    fem_pos_smoother = {
-        weight_fem_pos_deviation = 1.0e5,
-        weight_ref_deviation = 1.0,
-        weight_path_length = 1.0,
-        max_iter = 500,
-        time_limit = 0.0,
-    },
-    fem_pos_smoother_path_bound = 0.5,
-
-    cos_theta_smoother = {
-        weight_cos_included_angle = 10000.0,
-        weight_anchor_points = 1.0,
-        weight_length = 1.0,
-    },
-    cos_theta_smoother_path_bound = 0.5,
 
     -- Keep dense global path for controller tracking consistency.
     -- Non-zero Douglas-Peucker simplification can collapse obstacle-following

@@ -16,8 +16,19 @@
 
 #include "autonomy/planning/utils/geometry_utils.hpp"
 
+#include <cmath>
+
 namespace autonomy {
 namespace planning {
-namespace utils {}  // namespace utils
+namespace utils {
+
+double EuclideanDistance(const commsgs::geometry_msgs::Point& a,
+                         const commsgs::geometry_msgs::Point& b) {
+    const double dx = a.x - b.x;
+    const double dy = a.y - b.y;
+    return std::hypot(dx, dy);
+}
+
+}  // namespace utils
 }  // namespace planning
 }  // namespace autonomy

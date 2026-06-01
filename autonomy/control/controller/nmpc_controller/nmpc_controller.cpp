@@ -71,7 +71,6 @@ void NmpcController::Configure(
         horizon, dt, ref_v, slowdown);
 
     configured_ = true;
-    AINFO << "Loaded controller: " << plugin_name_;
 }
 
 void NmpcController::Cleanup() {

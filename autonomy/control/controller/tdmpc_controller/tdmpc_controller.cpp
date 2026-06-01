@@ -56,7 +56,6 @@ void TdmpcController::Configure(
         tdmpc_options_, costmap_wrapper_.get());
 
     configured_ = true;
-    AINFO << "Loaded controller: " << plugin_name_;
 }
 
 void TdmpcController::Cleanup() {

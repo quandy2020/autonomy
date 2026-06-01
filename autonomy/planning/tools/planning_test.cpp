@@ -129,7 +129,6 @@ void LogOfflineCostmapMode(const proto::PlannerOptions& options) {
 }
 
 void FinalizeOfflineCostmap(PlannerServer& server) {
-    server.ReconfigurePlugins();
     auto wrapper = server.GetCostmapWrapper();
     if (wrapper == nullptr) {
         return;
@@ -290,8 +289,7 @@ PlannerRunResult RunPlanner(PlannerServer& server,
     PlannerRunResult result;
     result.planner_id = planner_id;
     try {
-        result.path =
-            server.ComputePathToPose(start, goal, planner_id, []() { return false; });
+        result.path = server.GetPlan(start, goal, planner_id);
         result.success = !result.path.poses.empty();
         if (!result.success) {
             result.error = "empty path";
@@ -353,7 +351,6 @@ int RunPlanningVisualization(int argc, char** argv) {
                   << "from " << map_yaml_path;
     }
 
-    server.Start();
     FinalizeOfflineCostmap(server);
 
     const std::string frame_id = options.costmap().frame_id().empty()

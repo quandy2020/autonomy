@@ -17,6 +17,13 @@ google_binary(autonomy_planning_test
     planning_test.cpp
 )
 
+google_binary(autonomy_planner_client_test
+  SRCS
+    planner_client_test.cpp
+)
+target_compile_options(autonomy_planner_client_test PRIVATE
+  -Wno-error=maybe-uninitialized)
+
 if(BUILD_TEST)
   add_test(
     NAME autonomy_planning_test_cli
@@ -27,5 +34,16 @@ if(BUILD_TEST)
     ENVIRONMENT
       "AUTONOMY_BUILD_DIR=${CMAKE_BINARY_DIR};AUTONOMY_CONFIG_DIR=${PROJECT_SOURCE_DIR}/config"
     DEPENDS autonomy_planning_test
+  )
+
+  add_test(
+    NAME autonomy_planner_client_test
+    COMMAND autonomy_planner_client_test
+      --configuration_directory=${PROJECT_SOURCE_DIR}/config
+      --use_synthetic_map=true
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  )
+  set_tests_properties(autonomy_planner_client_test PROPERTIES
+    DEPENDS autonomy_planner_client_test
   )
 endif()
