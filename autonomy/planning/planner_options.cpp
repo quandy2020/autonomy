@@ -94,64 +94,6 @@ proto::SimpleSmootherOptions LoadSimpleSmootherOptions(
     return options;
 }
 
-proto::SavitzkyGolaySmootherOptions LoadSavitzkyGolaySmootherOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::SavitzkyGolaySmootherOptions options;
-    options.set_do_refinement(parameter_dictionary->GetBool("do_refinement"));
-    options.set_refinement_num(static_cast<int32_t>(
-        parameter_dictionary->GetDouble("refinement_num")));
-    options.set_enforce_path_inversion(
-        parameter_dictionary->GetBool("enforce_path_inversion"));
-    options.set_window_size(
-        static_cast<int32_t>(parameter_dictionary->GetDouble("window_size")));
-    options.set_poly_order(
-        static_cast<int32_t>(parameter_dictionary->GetDouble("poly_order")));
-    return options;
-}
-
-proto::math::FemPosDeviationSmootherConfig LoadFemPosSmootherOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::math::FemPosDeviationSmootherConfig options;
-    if (parameter_dictionary->HasKey("weight_fem_pos_deviation")) {
-        options.set_weight_fem_pos_deviation(
-            parameter_dictionary->GetDouble("weight_fem_pos_deviation"));
-    }
-    if (parameter_dictionary->HasKey("weight_ref_deviation")) {
-        options.set_weight_ref_deviation(
-            parameter_dictionary->GetDouble("weight_ref_deviation"));
-    }
-    if (parameter_dictionary->HasKey("weight_path_length")) {
-        options.set_weight_path_length(
-            parameter_dictionary->GetDouble("weight_path_length"));
-    }
-    if (parameter_dictionary->HasKey("max_iter")) {
-        options.set_max_iter(static_cast<int32_t>(
-            parameter_dictionary->GetDouble("max_iter")));
-    }
-    if (parameter_dictionary->HasKey("time_limit")) {
-        options.set_time_limit(parameter_dictionary->GetDouble("time_limit"));
-    }
-    return options;
-}
-
-proto::math::CosThetaSmootherConfig LoadCosThetaSmootherOptions(
-    autonomy::common::LuaParameterDictionary* const parameter_dictionary) {
-    proto::math::CosThetaSmootherConfig options;
-    if (parameter_dictionary->HasKey("weight_cos_included_angle")) {
-        options.set_weight_cos_included_angle(
-            parameter_dictionary->GetDouble("weight_cos_included_angle"));
-    }
-    if (parameter_dictionary->HasKey("weight_anchor_points")) {
-        options.set_weight_anchor_points(
-            parameter_dictionary->GetDouble("weight_anchor_points"));
-    }
-    if (parameter_dictionary->HasKey("weight_length")) {
-        options.set_weight_length(
-            parameter_dictionary->GetDouble("weight_length"));
-    }
-    return options;
-}
-
 void LoadStringArray(
     autonomy::common::LuaParameterDictionary* dict,
     const std::function<void(const std::string&)>& add_fn) {
@@ -214,28 +156,6 @@ proto::PlannerOptions LoadOptions(
         *options.mutable_simple_smoother() = LoadSimpleSmootherOptions(
             parameter_dictionary->GetDictionary("simple_smoother").get());
     }
-    if (parameter_dictionary->HasKey("savitzky_golay_smoother")) {
-        *options.mutable_savitzky_golay_smoother() =
-            LoadSavitzkyGolaySmootherOptions(
-                parameter_dictionary->GetDictionary("savitzky_golay_smoother")
-                    .get());
-    }
-    if (parameter_dictionary->HasKey("fem_pos_smoother")) {
-        *options.mutable_fem_pos_smoother() = LoadFemPosSmootherOptions(
-            parameter_dictionary->GetDictionary("fem_pos_smoother").get());
-    }
-    if (parameter_dictionary->HasKey("fem_pos_smoother_path_bound")) {
-        options.set_fem_pos_smoother_path_bound(
-            parameter_dictionary->GetDouble("fem_pos_smoother_path_bound"));
-    }
-    if (parameter_dictionary->HasKey("cos_theta_smoother")) {
-        *options.mutable_cos_theta_smoother() = LoadCosThetaSmootherOptions(
-            parameter_dictionary->GetDictionary("cos_theta_smoother").get());
-    }
-    if (parameter_dictionary->HasKey("cos_theta_smoother_path_bound")) {
-        options.set_cos_theta_smoother_path_bound(
-            parameter_dictionary->GetDouble("cos_theta_smoother_path_bound"));
-    }
     if (parameter_dictionary->HasKey("path_simplify_epsilon")) {
         options.set_path_simplify_epsilon(
             parameter_dictionary->GetDouble("path_simplify_epsilon"));
@@ -250,6 +170,20 @@ proto::PlannerOptions LoadOptions(
     }
 
     return options;
+}
+
+proto::PlannerOptions CreateOptions(
+    const std::string& configuration_directory) {
+    const auto dirs =
+        ::autonomy::common::ConfigurationSearchDirectories(
+            configuration_directory);
+    auto file_resolver =
+        std::make_unique<::autonomy::common::ConfigurationFileResolver>(dirs);
+    const std::string code = ::autonomy::common::GetLuaScriptWithCommonOrDie(
+        *file_resolver, "planner/planner.lua");
+    ::autonomy::common::LuaParameterDictionary lua_dictionary(
+        code, std::move(file_resolver));
+    return LoadOptions(lua_dictionary.GetDictionary("AUTONOMY_PLANNER").get());
 }
 
 }  // namespace planning

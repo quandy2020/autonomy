@@ -2,8 +2,8 @@
  * Copyright 2025 The Openbot Authors (duyongquan)
  */
 
-#include "autolink/action/types.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/tasks/behavior_tree/bt_action_node.hpp"
 #include "autonomy/tasks/navigators/action_type.hpp"
 #include "autonomy/tasks/behavior_tree/bt_utils.hpp"
@@ -27,48 +27,6 @@ public:
             BT::OutputPort<commsgs::planning_msgs::Path>("path"),
         };
         return ProvidedBasicPorts(AppendErrorOutcomePorts(ports));
-    }
-
-    bool ExecuteInProcess(WrappedResult& result) override {
-        const auto ctx = GetBtContext(config().blackboard);
-        if (!ctx || !ctx->planner) {
-            return false;
-        }
-        commsgs::geometry_msgs::PoseStamped goal_pose =
-            commsgs::geometry_msgs::FromProto(goal_.goal());
-        commsgs::geometry_msgs::PoseStamped start;
-        if (goal_.use_start() && goal_.has_start()) {
-            start = commsgs::geometry_msgs::FromProto(goal_.start());
-        } else {
-            const auto costmap = ctx->planner->GetCostmapWrapper();
-            if (!costmap ||
-                (!costmap->getRobotPose(start) &&
-                 !TryGetRobotPose(config().blackboard, start))) {
-                result.code = autolink::action::ResultCode::ABORTED;
-                result.result = std::make_shared<Result>();
-                result.result->set_error_code(
-                    task_proto::COMPUTE_PATH_TO_POSE_TF_ERROR);
-                return true;
-            }
-        }
-        try {
-            const auto path = ctx->planner->ComputePathToPose(
-                start, goal_pose, goal_.planner_id(), ctx->CancelChecker());
-            result.code = autolink::action::ResultCode::SUCCEEDED;
-            result.result = std::make_shared<Result>();
-            *result.result->mutable_path() =
-                commsgs::planning_msgs::ToProto(path);
-            result.result->set_error_code(task_proto::COMPUTE_PATH_TO_POSE_NONE);
-            NotifyGlobalPath(config().blackboard, path);
-            return true;
-        } catch (const std::exception& ex) {
-            result.code = autolink::action::ResultCode::ABORTED;
-            result.result = std::make_shared<Result>();
-            result.result->set_error_code(
-                task_proto::COMPUTE_PATH_TO_POSE_UNKNOWN);
-            result.result->set_error_msg(ex.what());
-            return true;
-        }
     }
 
     void OnTick() override {

@@ -19,10 +19,14 @@
 namespace autonomy {
 namespace planning {
 
-constexpr char kMakePlanServiceName[] = "get_trajectory_states";
-constexpr char kMapNodeName[] = "/planner_server";
+constexpr char kPlannerServerNodeName[] = "planner_server";
 constexpr char kMapTopicName[] = "/map";
 constexpr char kCostmapTopicName[] = "/global_costmap";
+constexpr char kComputePathToPoseActionName[] = "compute_path_to_pose";
+constexpr char kComputePathThroughPosesActionName[] =
+    "compute_path_through_poses";
+constexpr char kIsPathValidServiceName[] = "is_path_valid";
+constexpr char kPlanTopicName[] = "plan";
 constexpr char kComputePathToPoseServiceName[] = "/compute_path_to_pose";
 constexpr char kComputePathThroughPosesServiceName[] =
     "/compute_path_through_poses";

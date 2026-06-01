@@ -209,7 +209,6 @@ bool PoseInsideMap(const map::costmap_2d::Costmap2D& costmap, double x,
 }
 
 void FinalizeOfflineCostmap(planning::PlannerServer& server) {
-    server.ReconfigurePlugins();
     auto wrapper = server.GetCostmapWrapper();
     if (wrapper == nullptr) {
         return;
@@ -752,8 +751,7 @@ PlannerRunResult PlanGlobalPath(
     const std::string& planner_id) {
     PlannerRunResult result;
     try {
-        result.path = planner.ComputePathToPose(start, goal, planner_id,
-                                                []() { return false; });
+        result.path = planner.GetPlan(start, goal, planner_id);
         result.success = result.path.poses.size() >= 2;
         if (!result.success) {
             result.error = "empty or too short path";
@@ -929,7 +927,6 @@ int RunControllerVisualization(int argc, char** argv) {
         return 1;
     }
 
-    planner.Start();
     FinalizeOfflineCostmap(planner);
 
     const std::string frame_id = planner_options.costmap().frame_id().empty()
@@ -1087,7 +1084,6 @@ int RunControllerVisualization(int argc, char** argv) {
     }
 
     controller.Shutdown();
-    planner.Shutdown();
 
     LOG(INFO) << "Finished: " << success_count << "/"
               << controller_ids.size()

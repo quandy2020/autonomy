@@ -43,7 +43,6 @@ BtNavigator::BtNavigator(
 
     if (node) {
         context_->autolink_node = node;
-        context_->planner->AttachAutolinkNode(node);
         context_->controller->AttachAutolinkNode(node);
         context_->smoother->AttachAutolinkNode(node);
     }

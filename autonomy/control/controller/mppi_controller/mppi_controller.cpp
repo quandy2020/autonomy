@@ -45,7 +45,6 @@ void MppiController::Configure(
                            controller_frequency_);
 
     configured_ = true;
-    AINFO << "Loaded controller: " << plugin_name_;
 }
 
 void MppiController::Cleanup() {

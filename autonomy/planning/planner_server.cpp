@@ -16,41 +16,29 @@
 
 #include "autonomy/planning/planner_server.hpp"
 
-#include "autonomy/common/string_util.hpp"
-#include <unistd.h>  // for getpid()
-
-#include <atomic>
+#include <algorithm>
 #include <chrono>
-#include <cmath>
-#include <condition_variable>
-#include <future>
-#include <iomanip>
-#include <iostream>
-#include <iterator>
 #include <limits>
-#include <memory>
-#include <mutex>
-#include <queue>
 #include <string>
+#include <thread>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "autonomy/common/config.hpp"
+#include "autolink/node/node.hpp"
+#include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/time.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
-#include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
-#include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
+#include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
 #include "autonomy/planning/common/planner_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
-#include "autonomy/planning/plugin_manager.hpp"
-#include "autonomy/planning/proto/planning_options.pb.h"
-#include "autonomy/planning/smoother_server.hpp"
-#include "autonomy/planning/utils/path_simplifier.hpp"
+#include "autonomy/planning/utils/geometry_utils.hpp"
+#include "autonomy/transform/tf2/utils.h"
 
 namespace autonomy {
 namespace planning {
@@ -59,30 +47,152 @@ using Time = commsgs::builtin_interfaces::Time;
 
 namespace {
 
-bool IsCellBlocked(unsigned char cost, bool allow_unknown) {
-    if (cost == map::costmap_2d::LETHAL_OBSTACLE ||
-        cost == map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
-        return true;
+using PluginPm = autolink::plugin_manager::PluginManager;
+
+struct PluginSpec {
+    std::string id;
+    std::string type;
+};
+
+const std::unordered_map<std::string, std::string>& PlannerClassAliases() {
+    static const std::unordered_map<std::string, std::string> kAliases = {
+        {"navfn_planner", "NavfnPlanner"},
+        {"dijkstra_planner", "DijkstraPlanner"},
+        {"theta_star_planner", "ThetaStarPlanner"},
+    };
+    return kAliases;
+}
+
+std::string ResolvePlannerClass(const std::string& plugin_id) {
+    const auto& aliases = PlannerClassAliases();
+    const auto it = aliases.find(plugin_id);
+    return it != aliases.end() ? it->second : plugin_id;
+}
+
+std::vector<PluginSpec> ParsePluginSpecs(
+    const std::vector<std::string>& entries) {
+    std::vector<PluginSpec> specs;
+    specs.reserve(entries.size());
+    for (const auto& entry_str : entries) {
+        if (entry_str.empty()) {
+            continue;
+        }
+        PluginSpec spec;
+        const size_t colon = entry_str.find(':');
+        if (colon != std::string::npos) {
+            spec.id = entry_str.substr(0, colon);
+            spec.type = entry_str.substr(colon + 1);
+        } else {
+            spec.id = entry_str;
+            spec.type = ResolvePlannerClass(entry_str);
+        }
+        if (!spec.id.empty() && !spec.type.empty()) {
+            specs.push_back(std::move(spec));
+        }
     }
-    if (!allow_unknown && cost == map::costmap_2d::NO_INFORMATION) {
-        return true;
+    return specs;
+}
+
+void LoadExternalPlugins(const proto::PlannerOptions& options) {
+    static bool loaded = false;
+    if (loaded) {
+        return;
     }
-    return false;
+    auto* pm = PluginPm::Instance();
+    pm->RegisterInProcessClass<common::GlobalPlanner>("NavfnPlanner");
+    pm->RegisterInProcessClass<common::GlobalPlanner>("DijkstraPlanner");
+    pm->RegisterInProcessClass<common::GlobalPlanner>("ThetaStarPlanner");
+    for (const auto& path : options.planner_plugin_libraries()) {
+        if (path.empty()) {
+            continue;
+        }
+        if (!pm->LoadPlugin(path)) {
+            AWARN << "Failed to load plugin description: " << path;
+        }
+    }
+    pm->LoadInstalledPlugins();
+    loaded = true;
 }
 
-bool IsCostmapReady(map::costmap_2d::Costmap2DWrapper* wrapper) {
-    return wrapper != nullptr && (wrapper->isReady() || wrapper->isCurrent());
+bool IsPlannerClassRegistered(const std::string& type) {
+    const std::string resolved = ResolvePlannerClass(type);
+    const auto names =
+        PluginPm::Instance()->GetDerivedClassNameByBaseClass<
+            common::GlobalPlanner>();
+    return std::find(names.begin(), names.end(), resolved) != names.end();
 }
 
-int64_t SteadyNowMs() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::steady_clock::now().time_since_epoch())
-        .count();
+common::GlobalPlanner::SharedPtr CreatePlannerInstance(
+    const std::string& type) {
+    auto instance = PluginPm::Instance()->CreateInstance<common::GlobalPlanner>(
+        ResolvePlannerClass(type));
+    return instance ? common::GlobalPlanner::SharedPtr(std::move(instance))
+                    : nullptr;
 }
 
-/** Empty frame_id is treated as the costmap global frame (see planning contract). */
+task_proto::ComputePathToPoseErrorCode MapToComputePathToPoseErrorCode(
+    const std::exception& ex) {
+    if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_INVALID_PLANNER;
+    }
+    if (dynamic_cast<const common::StartOccupied*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_START_OCCUPIED;
+    }
+    if (dynamic_cast<const common::GoalOccupied*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_GOAL_OCCUPIED;
+    }
+    if (dynamic_cast<const common::NoValidPathCouldBeFound*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_NO_VALID_PATH;
+    }
+    if (dynamic_cast<const common::PlannerTimedOut*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_TIMEOUT;
+    }
+    if (dynamic_cast<const common::StartOutsideMapBounds*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_START_OUTSIDE_MAP;
+    }
+    if (dynamic_cast<const common::GoalOutsideMapBounds*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_GOAL_OUTSIDE_MAP;
+    }
+    if (dynamic_cast<const common::PlannerTFError*>(&ex)) {
+        return task_proto::COMPUTE_PATH_TO_POSE_TF_ERROR;
+    }
+    return task_proto::COMPUTE_PATH_TO_POSE_UNKNOWN;
+}
+
+task_proto::ComputePathThroughPosesErrorCode
+MapToComputePathThroughPosesErrorCode(const std::exception& ex) {
+    if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_INVALID_PLANNER;
+    }
+    if (dynamic_cast<const common::StartOccupied*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_START_OCCUPIED;
+    }
+    if (dynamic_cast<const common::GoalOccupied*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_GOAL_OCCUPIED;
+    }
+    if (dynamic_cast<const common::NoValidPathCouldBeFound*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_NO_VALID_PATH;
+    }
+    if (dynamic_cast<const common::PlannerTimedOut*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_TIMEOUT;
+    }
+    if (dynamic_cast<const common::StartOutsideMapBounds*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_START_OUTSIDE_MAP;
+    }
+    if (dynamic_cast<const common::GoalOutsideMapBounds*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_GOAL_OUTSIDE_MAP;
+    }
+    if (dynamic_cast<const common::PlannerTFError*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_TF_ERROR;
+    }
+    if (dynamic_cast<const common::NoViapointsGiven*>(&ex)) {
+        return task_proto::COMPUTE_PATH_THROUGH_POSES_NO_WAYPOINTS;
+    }
+    return task_proto::COMPUTE_PATH_THROUGH_POSES_UNKNOWN;
+}
+
 void NormalizePoseFrame(commsgs::geometry_msgs::PoseStamped& pose,
-                        const std::string& global_frame) {
+                          const std::string& global_frame) {
     if (pose.header.frame_id.empty()) {
         AWARN << "Pose has empty frame_id; assuming costmap global frame '"
               << global_frame << "'";
@@ -124,31 +234,6 @@ void ThrowOnPlannerResultCode(uint32_t return_code,
     }
 }
 
-void AppendPathSegment(commsgs::planning_msgs::Path& merged,
-                       const commsgs::planning_msgs::Path& segment) {
-    if (segment.poses.empty()) {
-        return;
-    }
-    if (merged.poses.empty()) {
-        merged = segment;
-        return;
-    }
-
-    merged.header = segment.header;
-    size_t start_idx = 0;
-    const auto& last = merged.poses.back();
-    const auto& first = segment.poses.front();
-    const double dx = last.pose.position.x - first.pose.position.x;
-    const double dy = last.pose.position.y - first.pose.position.y;
-    if ((dx * dx + dy * dy) < 1e-8) {
-        start_idx = 1;
-    }
-    merged.poses.insert(merged.poses.end(),
-                        segment.poses.begin() +
-                            static_cast<std::ptrdiff_t>(start_idx),
-                        segment.poses.end());
-}
-
 }  // namespace
 
 PlannerServer::PlannerServer(const proto::PlannerOptions& options)
@@ -156,46 +241,104 @@ PlannerServer::PlannerServer(const proto::PlannerOptions& options)
     costmap_wrapper_ = std::make_shared<map::costmap_2d::Costmap2DWrapper>(
         options_.costmap(), kCostmapTopicName);
     if (!costmap_wrapper_) {
-        AFATAL << "Failed to configure costmap wrapper. costmap_wrapper is "
-                  "nullptr";
+        AFATAL << "Failed to configure costmap wrapper.";
         return;
     }
 
     costmap_ = costmap_wrapper_->getCostmap();
 
     default_planner_id_ = options_.default_planner_id().empty()
-                                ? "navfn_planner"
-                                : options_.default_planner_id();
+                              ? "navfn_planner"
+                              : options_.default_planner_id();
 
-    LoadPlugins();
+    LoadPlannerPlugins();
 
-    // 处理 expected_planner_frequency
-    double expected_planner_frequency = options_.expected_planner_frequency();
-    if (expected_planner_frequency > 0) {
-        max_planner_duration_ = 1 / expected_planner_frequency;
+    const double expected_planner_frequency = options_.expected_planner_frequency();
+    if (expected_planner_frequency > 0.0) {
+        max_planner_duration_ = 1.0 / expected_planner_frequency;
     } else {
-        AWARN
-            << "The expected planner frequency parameter is "
-            << expected_planner_frequency
-            << " Hz. The value should be greater than 0.0 to turn on duration "
-               "overrun warning messages";
+        AWARN << "expected_planner_frequency is " << expected_planner_frequency
+              << " Hz; must be > 0 to enable duration overrun warnings.";
         max_planner_duration_ = 0.0;
+    }
+
+    costmap_wrapper_->Start();
+
+    for (auto& entry : planners_) {
+        entry.second->Activate();
+    }
+
+    node_ = autolink::CreateNode(kPlannerServerNodeName);
+    if (!node_) {
+        AWARN << "PlannerServer: autolink node creation failed; "
+                 "action/service endpoints disabled.";
+        return;
+    }
+
+    PlannerServer* self = this;
+
+    to_pose_server_ =
+        std::make_shared<ToPoseServer>(
+            node_, kComputePathToPoseActionName,
+            [self]() { self->ComputePlan(); });
+
+    through_poses_server_ =
+        std::make_shared<ThroughPosesServer>(
+            node_, kComputePathThroughPosesActionName,
+            [self]() { self->ComputePlanThroughPoses(); });
+
+    path_valid_service_ =
+        node_->CreateService<PathValidRequest, PathValidResponse>(
+            kIsPathValidServiceName,
+            [self](const std::shared_ptr<PathValidRequest>& request,
+                   std::shared_ptr<PathValidResponse>& response) {
+                const auto path =
+                    commsgs::planning_msgs::FromProto(request->path());
+                const uint8_t max_cost = request->max_cost() > 0
+                                             ? static_cast<uint8_t>(request->max_cost())
+                                             : 253;
+                response->set_is_valid(self->IsPathValid(
+                    path, max_cost, request->consider_unknown_as_obstacle()));
+            });
+
+    AINFO << "PlannerServer autolink action/service endpoints started.";
+}
+
+PlannerServer::~PlannerServer() {
+    if (to_pose_server_) {
+        to_pose_server_->Deactivate();
+        to_pose_server_.reset();
+    }
+    if (through_poses_server_) {
+        through_poses_server_->Deactivate();
+        through_poses_server_.reset();
+    }
+    path_valid_service_.reset();
+    node_.reset();
+
+    for (auto& entry : planners_) {
+        entry.second->Deactivate();
+        entry.second->Cleanup();
+    }
+
+    if (costmap_wrapper_) {
+        costmap_wrapper_->Stop();
     }
 }
 
-void PlannerServer::LoadPlugins() {
+void PlannerServer::LoadPlannerPlugins() {
     if (plugins_loaded_) {
         return;
     }
 
     planner_ids_.clear();
-    planner_types_.clear();
     planners_.clear();
     planner_ids_concat_.clear();
 
     std::vector<std::string> plugin_entries;
     if (options_.planner_plugins_size() > 0) {
-        plugin_entries.reserve(static_cast<size_t>(options_.planner_plugins_size()));
+        plugin_entries.reserve(
+            static_cast<size_t>(options_.planner_plugins_size()));
         for (const auto& entry : options_.planner_plugins()) {
             plugin_entries.push_back(entry);
         }
@@ -203,27 +346,24 @@ void PlannerServer::LoadPlugins() {
         plugin_entries = {"navfn_planner", "dijkstra_planner"};
     }
 
-    auto& loader = PluginManager::Instance();
-    loader.Initialize(options_);
+    LoadExternalPlugins(options_);
 
-    const auto specs =
-        PluginManager::ParsePlannerPluginEntries(plugin_entries);
+    const auto specs = ParsePluginSpecs(plugin_entries);
 
     for (const auto& spec : specs) {
-        if (planners_.find(spec.id) != planners_.end()) {
+        if (planners_.count(spec.id) > 0) {
             AWARN << "Duplicate planner plugin id ignored: " << spec.id;
             continue;
         }
-        if (!loader.IsPlannerRegistered(spec.type)) {
+        if (!IsPlannerClassRegistered(spec.type)) {
             AFATAL << "Unknown planner plugin type: " << spec.type
                    << " for id: " << spec.id;
             return;
         }
 
-        auto planner_instance = loader.CreatePlanner(spec.type);
+        auto planner_instance = CreatePlannerInstance(spec.type);
         if (!planner_instance) {
-            AFATAL << "Failed to create planner plugin: " << spec.id
-                   << " type: " << spec.type;
+            AFATAL << "Failed to create planner plugin: " << spec.id;
             return;
         }
 
@@ -234,13 +374,12 @@ void PlannerServer::LoadPlugins() {
 
         planners_.insert({spec.id, planner_instance});
         planner_ids_.push_back(spec.id);
-        planner_types_.push_back(spec.type);
         if (!planner_ids_concat_.empty()) {
             planner_ids_concat_ += ", ";
         }
         planner_ids_concat_ += spec.id;
-
-        AINFO << "Created planner plugin: " << spec.id << " (type = " << spec.type << ")";
+        AINFO << "Created planner plugin: " << spec.id
+              << " (type = " << spec.type << ")";
     }
 
     if (planners_.empty()) {
@@ -254,98 +393,19 @@ void PlannerServer::LoadPlugins() {
     }
 
     plugins_loaded_ = true;
-
-    AINFO << "Planner Server has " << planners_.size()
+    AINFO << "PlannerServer has " << planners_.size()
           << " planners available: " << planner_ids_concat_
           << " (default: " << default_planner_id_ << ")";
-}
-
-void PlannerServer::Start() {
-    if (!costmap_wrapper_) {
-        AFATAL << "Costmap wrapper is null";
-        return;
-    }
-
-    if (shutdown_called_.exchange(false)) {
-        for (auto& entry : planners_) {
-            entry.second->Configure(options_, entry.first, costmap_wrapper_);
-        }
-    }
-
-    costmap_wrapper_->Start();
-
-    for (auto it = planners_.begin(); it != planners_.end(); ++it) {
-        it->second->Activate();
-    }
-}
-
-void PlannerServer::Shutdown() {
-    if (shutdown_called_.exchange(true)) {
-        return;
-    }
-
-    for (auto& entry : planners_) {
-        entry.second->Deactivate();
-        entry.second->Cleanup();
-    }
-
-    if (costmap_wrapper_) {
-        costmap_wrapper_->Stop();
-    }
-}
-
-void PlannerServer::ReconfigurePlugins() {
-    if (!costmap_wrapper_) {
-        return;
-    }
-    for (auto& entry : planners_) {
-        entry.second->Configure(options_, entry.first, costmap_wrapper_);
-    }
-}
-
-void PlannerServer::SetSmootherServer(
-    const std::shared_ptr<SmootherServer>& smoother) {
-    smoother_server_ = smoother;
 }
 
 void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
     path_update_callback_ = std::move(callback);
 }
 
-bool PlannerServer::AllowUnknownForValidation(
-    const std::string& planner_id) const {
-    const std::string resolved =
-        planner_id.empty() ? default_planner_id_ : planner_id;
-    if (resolved == "dijkstra_planner") {
-        return options_.dijkstra().allow_unknown();
+void PlannerServer::PublishPlan(const commsgs::planning_msgs::Path& path) {
+    if (path_update_callback_) {
+        path_update_callback_(path);
     }
-    if (resolved == "theta_star_planner") {
-        return options_.theta_star().allow_unknown();
-    }
-    return options_.navfn().allow_unknown();
-}
-
-commsgs::planning_msgs::Path PlannerServer::PostProcessPath(
-    commsgs::planning_msgs::Path path,
-    const std::function<bool()>& cancel_checker) {
-    if (options_.path_simplify_epsilon() > 0.0) {
-        path = utils::SimplifyPath(path, options_.path_simplify_epsilon());
-    }
-
-    if (options_.auto_smooth_after_plan()) {
-        if (auto smoother = smoother_server_.lock()) {
-            const double duration_sec = options_.auto_smooth_duration() > 0.0
-                                            ? options_.auto_smooth_duration()
-                                            : 1.0;
-            const auto max_time = std::chrono::milliseconds(
-                static_cast<int>(duration_sec * 1000.0));
-            path = smoother
-                       ->SmoothPath(path, smoother->GetDefaultSmootherId(),
-                                    max_time, false, cancel_checker)
-                       .path;
-        }
-    }
-    return path;
 }
 
 commsgs::planning_msgs::Path PlannerServer::GetPlan(
@@ -356,114 +416,52 @@ commsgs::planning_msgs::Path PlannerServer::GetPlan(
     AINFO << "Planning algorithm " << planner_id
           << " is trying to find a path from (" << start.pose.position.x << ", "
           << start.pose.position.y << ")"
-          << " to "
-          << "(" << goal.pose.position.x << "," << goal.pose.position.y << ")";
+          << " to (" << goal.pose.position.x << "," << goal.pose.position.y
+          << ")";
 
     uint32_t return_code = 0;
     std::string resolved_planner_id = planner_id;
     if (planners_.find(planner_id) != planners_.end()) {
         return_code = planners_[planner_id]->CreatePlan(start, goal, path,
                                                         cancel_checker);
+    } else if (planners_.size() == 1 && planner_id.empty()) {
+        resolved_planner_id = planners_.begin()->first;
+        AWARN << "No planner specified; using " << resolved_planner_id;
+        return_code = planners_[resolved_planner_id]->CreatePlan(
+            start, goal, path, cancel_checker);
     } else {
-        if (planners_.size() == 1 && planner_id.empty()) {
-            resolved_planner_id = planners_.begin()->first;
-            AWARN
-                << "No planners specified in action call. Server will use only "
-                   "plugin "
-                << planner_ids_concat_
-                << " in server. This warning will appear once.";
-            return_code = planners_[resolved_planner_id]->CreatePlan(
-                start, goal, path, cancel_checker);
-        } else {
-            AERROR << "planner " << planner_id << " is not a valid planner. "
-                   << "Planner names are: " << planner_ids_concat_;
-            throw common::InvalidPlanner("Planner id " + planner_id +
-                                         " is invalid");
-        }
+        throw common::InvalidPlanner("Planner id " + planner_id +
+                                     " is invalid. Available: " +
+                                     planner_ids_concat_);
     }
 
     ThrowOnPlannerResultCode(return_code, resolved_planner_id);
-
     return path;
 }
 
 void PlannerServer::WaitForCostmap() {
-    constexpr int64_t kReadyCacheMs = 800;
-    const int64_t now_ms = SteadyNowMs();
-    const int64_t last_ready_ms =
-        last_costmap_ready_time_ms_.load(std::memory_order_acquire);
-    if (last_ready_ms > 0 && (now_ms - last_ready_ms) <= kReadyCacheMs) {
-        return;
-    }
-
-    // 如果未配置超时时间，则一直等待直到 costmap 当前
     const double timeout_sec = options_.costmap_update_timeout();
-    const bool use_timeout = timeout_sec > 0.0;
+    const auto waiting_start = std::chrono::steady_clock::now();
 
-    bool waited = false;
-
-    const auto start_time = std::chrono::steady_clock::now();
-
-    while (true) {
-        if (IsCostmapReady(costmap_wrapper_.get())) {
-            costmap_received_.store(true, std::memory_order_release);
-            last_costmap_ready_time_ms_.store(
-                SteadyNowMs(), std::memory_order_release);
-            break;
-        }
-
-        if (!waited) {
-            AINFO << "Waiting for global map (Costmap2D) to become ready"
-                  << (use_timeout ? ::autonomy::common::StrCat(
-                                        " (timeout = ", timeout_sec, " s)")
-                                  : " (no timeout)");
-            waited = true;
-        }
-
-        if (use_timeout) {
-            const auto now = std::chrono::steady_clock::now();
-            const auto elapsed_duration =
-                std::chrono::duration_cast<std::chrono::duration<double>>(
-                    now - start_time);
-            const double elapsed = elapsed_duration.count();
+    while (costmap_wrapper_ && !costmap_wrapper_->isCurrent()) {
+        if (timeout_sec > 0.0) {
+            const auto elapsed =
+                std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                              waiting_start)
+                    .count();
             if (elapsed > timeout_sec) {
-                AWARN << "WaitForCostmap timeout: global map is still not "
-                         "confirmed "
-                         "ready after "
-                      << elapsed << " seconds.";
-                break;
+                throw common::PlannerTimedOut(
+                    "Costmap timed out waiting for update");
             }
         }
-
-        // 以较小频率轮询，避免忙等
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-}
-
-bool PlannerServer::TransformPoseToGlobalFrame(
-    commsgs::geometry_msgs::PoseStamped& pose) {
-    if (!costmap_wrapper_) {
-        AERROR << "Costmap wrapper is null, cannot transform pose";
-        return false;
-    }
-
-    NormalizePoseFrame(pose, costmap_wrapper_->getGlobalFrameID());
-
-    commsgs::geometry_msgs::PoseStamped transformed_pose;
-    if (!costmap_wrapper_->transformPoseToGlobalFrame(pose, transformed_pose)) {
-        AERROR << "Failed to transform pose to global frame";
-        return false;
-    }
-
-    pose = transformed_pose;
-    return true;
 }
 
 bool PlannerServer::TransformPosesToGlobalFrame(
     commsgs::geometry_msgs::PoseStamped& curr_start,
     commsgs::geometry_msgs::PoseStamped& curr_goal) {
     if (!costmap_wrapper_) {
-        AERROR << "Costmap wrapper is null, cannot transform poses";
         return false;
     }
 
@@ -472,12 +470,10 @@ bool PlannerServer::TransformPosesToGlobalFrame(
 
     commsgs::geometry_msgs::PoseStamped transformed_start;
     commsgs::geometry_msgs::PoseStamped transformed_goal;
-
     if (!costmap_wrapper_->transformPoseToGlobalFrame(curr_start,
                                                       transformed_start) ||
         !costmap_wrapper_->transformPoseToGlobalFrame(curr_goal,
                                                       transformed_goal)) {
-        AERROR << "Failed to transform poses to global frame";
         return false;
     }
 
@@ -500,82 +496,70 @@ bool PlannerServer::ValidatePath(
     AINFO << "Found valid path of size " << path.poses.size() << " to ("
           << curr_goal.pose.position.x << ", " << curr_goal.pose.position.y
           << ")";
-    if (path_update_callback_) {
-        path_update_callback_(path);
-    }
     return true;
 }
 
-void PlannerServer::ValidateStartGoalOnCostmap(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    const std::string& planner_id) {
-    if (!costmap_) {
-        throw common::PlannerException("Costmap is null");
+void PlannerServer::ComputePlan() {
+    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
+
+    auto& server = to_pose_server_;
+    if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
+        return;
     }
 
-    std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> lock(
-        *(costmap_->getMutex()));
-
-    unsigned int mx = 0;
-    unsigned int my = 0;
-    if (!costmap_->worldToMap(start.pose.position.x, start.pose.position.y, mx,
-                              my)) {
-        throw common::StartOutsideMapBounds("Start is outside map bounds");
+    auto goal = server->GetCurrentGoal();
+    if (!goal) {
+        return;
     }
-    const bool allow_unknown = AllowUnknownForValidation(planner_id);
-    const unsigned char start_cost = costmap_->getCost(mx, my);
-    if (IsCellBlocked(start_cost, allow_unknown)) {
-        throw common::StartOccupied("Start is occupied");
+    if (server->IsPreemptRequested()) {
+        goal = server->AcceptPendingGoal();
+    }
+    if (!goal || !server->IsServerActive()) {
+        return;
     }
 
-    if (!costmap_->worldToMap(goal.pose.position.x, goal.pose.position.y, mx,
-                              my)) {
-        throw common::GoalOutsideMapBounds("Goal is outside map bounds");
-    }
-    const unsigned char goal_cost = costmap_->getCost(mx, my);
-    if (IsCellBlocked(goal_cost, allow_unknown)) {
-        throw common::GoalOccupied("Goal is occupied");
-    }
-}
-
-commsgs::planning_msgs::Path PlannerServer::ComputePathToPose(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    const std::string& planner_id, std::function<bool()> cancel_checker) {
-    if (cancel_checker && cancel_checker()) {
-        throw common::PlannerCancelled("ComputePathToPose cancelled");
-    }
-
+    auto result = std::make_shared<task_proto::ComputePathToPoseAction_Result>();
     const auto start_time = Time::Now();
-
     metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
 
+    commsgs::geometry_msgs::PoseStamped start;
+    commsgs::geometry_msgs::PoseStamped goal_pose;
+
     try {
-        WaitForCostmap();
-        if (!IsCostmapReady(costmap_wrapper_.get())) {
-            throw common::PlannerTimedOut("Costmap timed out waiting for update");
+        if (server->IsCancelRequested()) {
+            return;
         }
 
-        commsgs::geometry_msgs::PoseStamped curr_start = start;
-        commsgs::geometry_msgs::PoseStamped curr_goal = goal;
+        WaitForCostmap();
 
-        if (!TransformPosesToGlobalFrame(curr_start, curr_goal)) {
+        if (goal->use_start() && goal->has_start()) {
+            start = commsgs::geometry_msgs::FromProto(goal->start());
+        } else if (!costmap_wrapper_ ||
+                   !costmap_wrapper_->getRobotPose(start)) {
+            throw common::PlannerTFError("Unable to get start pose");
+        }
+
+        goal_pose = commsgs::geometry_msgs::FromProto(goal->goal());
+        if (!TransformPosesToGlobalFrame(start, goal_pose)) {
             throw common::PlannerTFError(
                 "Unable to transform poses to global frame");
         }
 
-        ValidateStartGoalOnCostmap(curr_start, curr_goal, planner_id);
-
-        auto path = GetPlan(curr_start, curr_goal, planner_id, cancel_checker);
-
-        if (!ValidatePath(curr_goal, path, planner_id)) {
-            throw common::NoValidPathCouldBeFound(planner_id +
+        auto cancel_checker = [&]() { return server->IsCancelRequested(); };
+        const auto path =
+            GetPlan(start, goal_pose, goal->planner_id(), cancel_checker);
+        if (!ValidatePath(goal_pose, path, goal->planner_id())) {
+            throw common::NoValidPathCouldBeFound(goal->planner_id() +
                                                   " generated an empty path");
         }
 
-        path = PostProcessPath(std::move(path), cancel_checker);
+        PublishPlan(path);
         metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
+
+        *result->mutable_path() = commsgs::planning_msgs::ToProto(path);
+        *result->mutable_planning_time() =
+            commsgs::builtin_interfaces::ToProto(Time::Now() - start_time);
+        result->set_error_code(task_proto::COMPUTE_PATH_TO_POSE_NONE);
 
         const auto cycle_duration = Time::Now() - start_time;
         if (max_planner_duration_ > 0.0 &&
@@ -585,69 +569,114 @@ commsgs::planning_msgs::Path PlannerServer::ComputePathToPose(
                   << (1.0 / cycle_duration.Seconds()) << " Hz";
         }
 
-        return path;
-    } catch (...) {
+        server->SucceededCurrent(result);
+    } catch (const common::PlannerCancelled&) {
         metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
-        throw;
+        result->set_error_msg("Goal was canceled. Canceling planning action.");
+        server->TerminateAll(result);
+    } catch (const std::exception& ex) {
+        metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
+        result->set_error_code(MapToComputePathToPoseErrorCode(ex));
+        result->set_error_msg(ex.what());
+        server->TerminateCurrent(result);
     }
 }
 
-commsgs::planning_msgs::Path PlannerServer::ComputePathThroughPoses(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
-    const std::string& planner_id, std::function<bool()> cancel_checker) {
-    if (cancel_checker && cancel_checker()) {
-        throw common::PlannerCancelled("ComputePathThroughPoses cancelled");
-    }
-    if (goals.empty()) {
-        throw common::NoViapointsGiven("No viapoints given for planning");
+void PlannerServer::ComputePlanThroughPoses() {
+    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
+
+    auto& server = through_poses_server_;
+    if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
+        return;
     }
 
+    auto goal = server->GetCurrentGoal();
+    if (!goal) {
+        return;
+    }
+    if (server->IsPreemptRequested()) {
+        goal = server->AcceptPendingGoal();
+    }
+    if (!goal || !server->IsServerActive()) {
+        return;
+    }
+
+    auto result =
+        std::make_shared<task_proto::ComputePathThroughPosesAction_Result>();
+    const auto start_time = Time::Now();
     metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
 
+    commsgs::geometry_msgs::PoseStamped curr_start;
+    commsgs::geometry_msgs::PoseStamped curr_goal;
+
     try {
-        const auto planning_start_time = Time::Now();
+        if (server->IsCancelRequested()) {
+            return;
+        }
 
         WaitForCostmap();
-        if (!IsCostmapReady(costmap_wrapper_.get())) {
-            throw common::PlannerTimedOut("Costmap timed out waiting for update");
+
+        std::vector<commsgs::geometry_msgs::PoseStamped> goals;
+        if (goal->has_goals()) {
+            goals.reserve(static_cast<size_t>(goal->goals().goals_size()));
+            for (const auto& g : goal->goals().goals()) {
+                goals.push_back(commsgs::geometry_msgs::FromProto(g));
+            }
+        }
+        if (goals.empty()) {
+            throw common::NoViapointsGiven("No viapoints given");
         }
 
-        commsgs::geometry_msgs::PoseStamped curr_start = start;
-        if (!TransformPoseToGlobalFrame(curr_start)) {
-            throw common::PlannerTFError(
-                "Unable to transform start pose to global frame");
+        if (goal->use_start() && goal->has_start()) {
+            curr_start = commsgs::geometry_msgs::FromProto(goal->start());
+        } else if (!costmap_wrapper_ ||
+                   !costmap_wrapper_->getRobotPose(curr_start)) {
+            throw common::PlannerTFError("Unable to get start pose");
         }
+
+        auto cancel_checker = [&]() { return server->IsCancelRequested(); };
 
         commsgs::planning_msgs::Path merged_path;
-        for (const auto& goal : goals) {
-            if (cancel_checker && cancel_checker()) {
+        for (size_t i = 0; i < goals.size(); ++i) {
+            if (server->IsCancelRequested()) {
                 throw common::PlannerCancelled("ComputePathThroughPoses cancelled");
             }
 
-            commsgs::geometry_msgs::PoseStamped curr_goal = goal;
-            if (!TransformPoseToGlobalFrame(curr_goal)) {
+            commsgs::geometry_msgs::PoseStamped segment_start;
+            if (i == 0) {
+                segment_start = curr_start;
+            } else {
+                segment_start = merged_path.poses.back();
+                segment_start.header = merged_path.header;
+            }
+            curr_goal = goals[i];
+
+            if (!TransformPosesToGlobalFrame(segment_start, curr_goal)) {
                 throw common::PlannerTFError(
-                    "Unable to transform goal pose to global frame");
+                    "Unable to transform poses to global frame");
             }
 
-            ValidateStartGoalOnCostmap(curr_start, curr_goal, planner_id);
-
             auto segment =
-                GetPlan(curr_start, curr_goal, planner_id, cancel_checker);
-            if (!ValidatePath(curr_goal, segment, planner_id)) {
-                throw common::NoValidPathCouldBeFound(planner_id +
+                GetPlan(segment_start, curr_goal, goal->planner_id(), cancel_checker);
+            if (!ValidatePath(curr_goal, segment, goal->planner_id())) {
+                throw common::NoValidPathCouldBeFound(goal->planner_id() +
                                                       " generated an empty path");
             }
 
-            AppendPathSegment(merged_path, segment);
-            curr_start = curr_goal;
+            merged_path.poses.insert(merged_path.poses.end(),
+                                     segment.poses.begin(), segment.poses.end());
+            merged_path.header = segment.header;
         }
 
-        merged_path = PostProcessPath(std::move(merged_path), cancel_checker);
+        PublishPlan(merged_path);
         metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
 
-        const auto cycle_duration = Time::Now() - planning_start_time;
+        *result->mutable_path() = commsgs::planning_msgs::ToProto(merged_path);
+        *result->mutable_planning_time() =
+            commsgs::builtin_interfaces::ToProto(Time::Now() - start_time);
+        result->set_error_code(task_proto::COMPUTE_PATH_THROUGH_POSES_NONE);
+
+        const auto cycle_duration = Time::Now() - start_time;
         if (max_planner_duration_ > 0.0 &&
             cycle_duration.Seconds() > max_planner_duration_) {
             AWARN << "Planner loop missed its desired rate of "
@@ -655,11 +684,93 @@ commsgs::planning_msgs::Path PlannerServer::ComputePathThroughPoses(
                   << (1.0 / cycle_duration.Seconds()) << " Hz";
         }
 
-        return merged_path;
-    } catch (...) {
+        server->SucceededCurrent(result);
+    } catch (const common::PlannerCancelled&) {
         metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
-        throw;
+        result->set_error_msg("Goal was canceled. Canceling planning action.");
+        server->TerminateAll(result);
+    } catch (const std::exception& ex) {
+        metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
+        result->set_error_code(MapToComputePathThroughPosesErrorCode(ex));
+        result->set_error_msg(ex.what());
+        server->TerminateCurrent(result);
     }
+}
+
+bool PlannerServer::IsPathValid(const commsgs::planning_msgs::Path& path,
+                                uint8_t max_cost,
+                                bool consider_unknown_as_obstacle) const {
+    if (path.poses.empty()) {
+        return false;
+    }
+    if (!costmap_wrapper_ || !costmap_) {
+        return false;
+    }
+
+    commsgs::geometry_msgs::PoseStamped current_pose;
+    unsigned int closest_point_index = 0;
+    if (!costmap_wrapper_->getRobotPose(current_pose)) {
+        return true;
+    }
+
+    float closest_distance = std::numeric_limits<float>::max();
+    const auto& current_point = current_pose.pose.position;
+    for (size_t i = 0; i < path.poses.size(); ++i) {
+        const float distance = static_cast<float>(utils::EuclideanDistance(
+            current_point, path.poses[i].pose.position));
+        if (distance < closest_distance) {
+            closest_point_index = static_cast<unsigned int>(i);
+            closest_distance = distance;
+        }
+    }
+
+    std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> lock(
+        *(costmap_->getMutex()));
+
+    map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>
+        collision_checker(costmap_);
+    const bool use_radius = costmap_wrapper_->getUseRadius();
+    const auto footprint = costmap_wrapper_->getRobotFootprint();
+
+    unsigned int mx = 0;
+    unsigned int my = 0;
+    unsigned int cost = map::costmap_2d::FREE_SPACE;
+
+    for (size_t i = closest_point_index; i < path.poses.size(); ++i) {
+        const auto& position = path.poses[i].pose.position;
+        if (use_radius) {
+            if (costmap_->worldToMap(position.x, position.y, mx, my)) {
+                cost = costmap_->getCost(mx, my);
+            } else {
+                cost = map::costmap_2d::LETHAL_OBSTACLE;
+            }
+        } else {
+            const double theta =
+                transform::tf2::getYaw(path.poses[i].pose.orientation);
+            cost = static_cast<unsigned int>(collision_checker.footprintCostAtPose(
+                position.x, position.y, theta, footprint));
+        }
+
+        if (cost == map::costmap_2d::NO_INFORMATION &&
+            consider_unknown_as_obstacle) {
+            cost = map::costmap_2d::LETHAL_OBSTACLE;
+        } else if (cost == map::costmap_2d::NO_INFORMATION) {
+            cost = map::costmap_2d::FREE_SPACE;
+        }
+
+        if (use_radius &&
+            (cost >= max_cost ||
+             cost == map::costmap_2d::LETHAL_OBSTACLE ||
+             cost == map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE)) {
+            return false;
+        }
+        if (!use_radius &&
+            (cost == map::costmap_2d::LETHAL_OBSTACLE || cost >= max_cost)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 }  // namespace planning

@@ -14,22 +14,28 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef AUTONOMY_PLANNING_PLANNER_SERVER_HPP_
+#define AUTONOMY_PLANNING_PLANNER_SERVER_HPP_
 
 #include <atomic>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "autolink/action/simple_action_server.hpp"
 #include "autolink/autolink.hpp"
+#include "autolink/service/service.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/task_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
+#include "autonomy/tasks/navigators/action_type.hpp"
 
 namespace autonomy {
 namespace map {
@@ -43,86 +49,84 @@ class Costmap2DWrapper;
 namespace autonomy {
 namespace planning {
 
-class SmootherServer;
-
-struct PlannerMetrics {
-    std::atomic<uint64_t> plans_requested{0};
-    std::atomic<uint64_t> plans_succeeded{0};
-    std::atomic<uint64_t> plans_failed{0};
-};
+namespace task_proto = commsgs::proto::task_msgs;
 
 /**
- * Pose frame contract for ComputePath* / GetPlan:
- * - Prefer poses in the costmap global frame (frame_id == costmap.frame_id).
- * - Empty frame_id is normalized to the costmap global frame before TF.
- * - Other frames require a valid transform::Buffer.
+ * Global planner server aligned with nav2_planner.
+ *
+ * On construction: loads plugins, starts the global costmap, and registers
+ * autolink action servers (compute_path_to_pose, compute_path_through_poses)
+ * plus the is_path_valid service. On destruction: tears down endpoints and
+ * stops the costmap.
+ *
+ * Requires autolink::Init() before construction when action/service endpoints
+ * are needed.
  */
 class PlannerServer
 {
 public:
-    /**
-     * Define PlannerMap type
-     */
     using PlannerMap =
         std::unordered_map<std::string, common::GlobalPlanner::SharedPtr>;
 
-    /**
-     * Define TaskBridge::SharedPtr type
-     */
+    using PathValidRequest = task_proto::IsPathValid_Request;
+    using PathValidResponse = task_proto::IsPathValid_Response;
+    using ToPoseServer =
+        autolink::action::SimpleActionServer<
+            tasks::behavior_tree::ComputePathToPoseActionTraits>;
+    using ThroughPosesServer =
+        autolink::action::SimpleActionServer<
+            tasks::behavior_tree::ComputePathThroughPosesActionTraits>;
+
+    /** Counters updated by action-server planning callbacks. */
+    struct PlannerMetrics {
+        std::atomic<uint64_t> plans_requested{0};
+        std::atomic<uint64_t> plans_succeeded{0};
+        std::atomic<uint64_t> plans_failed{0};
+    };
+
+    using PathUpdateCallback =
+        std::function<void(const commsgs::planning_msgs::Path&)>;
+
     AUTONOMY_SMART_PTR_DEFINITIONS(PlannerServer)
 
     /**
-     * @brief A constructor for autonomy::planning::PlannerServer
-     * @param options Additional options to control creation of the node.
+     * @param options Planner, costmap, and plugin configuration.
+     * @pre options must describe at least one loadable planner plugin.
      */
     explicit PlannerServer(const proto::PlannerOptions& options);
-
-    /**
-     * @brief A Destructor for autonomy::planning::PlannerServer
-     */
     ~PlannerServer();
 
-    /**
-     * @brief Starts the planner server
-     */
-    void Start();
-
-    /**
-     * @brief Shuts down the planner server
-     */
-    void Shutdown();
-
-    /**
-     * @brief Re-run Configure() on all loaded planner plugins (e.g. after replacing
-     * the costmap grid offline).
-     */
-    void ReconfigurePlugins();
-
+    /** Shared global costmap used by all loaded planner plugins. */
     map::costmap_2d::Costmap2DWrapper::SharedPtr GetCostmapWrapper() const {
         return costmap_wrapper_;
     }
 
+    /** Default plugin id from configuration (falls back when unset). */
     const std::string& GetDefaultPlannerId() const {
         return default_planner_id_;
     }
 
-    void SetSmootherServer(const std::shared_ptr<SmootherServer>& smoother);
-
-    using PathUpdateCallback =
-        std::function<void(const commsgs::planning_msgs::Path&)>;
+    /**
+     * Registers a callback invoked after a successful plan (nav2 "plan" topic).
+     * @param callback Receives each newly computed path; may be empty to disable.
+     */
     void SetPathUpdateCallback(PathUpdateCallback callback);
 
+    /** Planning counters since server construction. */
     const PlannerMetrics& GetMetrics() const {
         return metrics_;
     }
 
     /**
-     * @brief Method to get plan from the desired plugin
-     * @param start starting pose
-     * @param goal goal request
-     * @param planner_id The planner to plan with
-     * @param cancel_checker A function to check if the action has been canceled
-     * @return Path
+     * Runs a single plugin planning request without action-server orchestration.
+     *
+     * @param start Start pose in any frame transformable to the costmap global frame.
+     * @param goal Goal pose in any frame transformable to the costmap global frame.
+     * @param planner_id Plugin id; empty selects the sole plugin when only one exists.
+     * @param cancel_checker Called during planning; return true to abort.
+     * @return Path in the costmap global frame.
+     * @throws common::PlannerException on plugin failure or invalid id.
+     * @pre Planner plugins are loaded and activated (true after construction).
      */
     commsgs::planning_msgs::Path GetPlan(
         const commsgs::geometry_msgs::PoseStamped& start,
@@ -130,96 +134,68 @@ public:
         const std::string& planner_id, std::function<bool()> cancel_checker);
 
     /**
-     * @brief Wait for costmap, validate poses, and plan through waypoints.
+     * Same as GetPlan(start, goal, planner_id, cancel_checker) with a no-op
+     * cancel checker.
      */
-    commsgs::planning_msgs::Path ComputePathThroughPoses(
-        const commsgs::geometry_msgs::PoseStamped& start,
-        const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
-        const std::string& planner_id, std::function<bool()> cancel_checker);
-
-    /**
-     * @brief Wait for costmap, validate poses, and plan a path.
-     */
-    commsgs::planning_msgs::Path ComputePathToPose(
+    commsgs::planning_msgs::Path GetPlan(
         const commsgs::geometry_msgs::PoseStamped& start,
         const commsgs::geometry_msgs::PoseStamped& goal,
-        const std::string& planner_id, std::function<bool()> cancel_checker);
-
-    bool AttachAutolinkNode(std::shared_ptr<autolink::Node> node);
-    void DetachAutolinkNode();
-
-protected:
-    void LoadPlugins();
+        const std::string& planner_id) {
+        return GetPlan(start, goal, planner_id, []() { return false; });
+    }
 
     /**
-     * @brief Wait for costmap to be valid with updated sensor data or
-     * repopulate after a clearing recovery. Uses isReady() or isCurrent().
+     * Checks whether the path ahead of the robot is collision-free on the costmap.
+     *
+     * @param path Path to validate in the costmap global frame.
+     * @param max_cost Maximum traversable cost (253 matches nav2 default).
+     * @param consider_unknown_as_obstacle Treat unknown cells as lethal when true.
+     * @return false if the path is empty, costmap is unavailable, or a collision
+     *         is found from the closest path index to the robot onward.
      */
+    bool IsPathValid(const commsgs::planning_msgs::Path& path,
+                     uint8_t max_cost = 253,
+                     bool consider_unknown_as_obstacle = false) const;
+
+private:
+    void ComputePlan();
+    void ComputePlanThroughPoses();
+
+    void LoadPlannerPlugins();
     void WaitForCostmap();
 
-    bool TransformPoseToGlobalFrame(
-        commsgs::geometry_msgs::PoseStamped& pose);
-
-    /**
-     * @brief Transform start and goal poses into the costmap
-     * global frame for path planning plugins to utilize
-     * @param start The starting pose to transform
-     * @param goal Goal pose to transform
-     * @return bool If successful in transforming poses
-     */
     bool TransformPosesToGlobalFrame(
         commsgs::geometry_msgs::PoseStamped& curr_start,
         commsgs::geometry_msgs::PoseStamped& curr_goal);
 
-    /**
-     * @brief Validate that the path contains a meaningful path
-     * @param action_server Action server to terminate if required
-     * @param goal Goal Current goal
-     * @param path Current path
-     * @param planner_id The planner ID used to generate the path
-     * @return bool If path is valid
-     */
     bool ValidatePath(const commsgs::geometry_msgs::PoseStamped& curr_goal,
                       const commsgs::planning_msgs::Path& path,
                       const std::string& planner_id);
 
-    void ValidateStartGoalOnCostmap(
-        const commsgs::geometry_msgs::PoseStamped& start,
-        const commsgs::geometry_msgs::PoseStamped& goal,
-        const std::string& planner_id);
+    void PublishPlan(const commsgs::planning_msgs::Path& path);
 
-    commsgs::planning_msgs::Path PostProcessPath(
-        commsgs::planning_msgs::Path path,
-        const std::function<bool()>& cancel_checker);
-
-    bool AllowUnknownForValidation(const std::string& planner_id) const;
-
-    // Options planners
     proto::PlannerOptions options_;
-
-    // All planners
     PlannerMap planners_;
     std::vector<std::string> planner_ids_;
-    std::vector<std::string> planner_types_;
-    double max_planner_duration_;
+    double max_planner_duration_{0.0};
     std::string planner_ids_concat_;
     std::string default_planner_id_;
     bool plugins_loaded_{false};
 
-    // Global Costmap
     map::costmap_2d::Costmap2DWrapper::SharedPtr costmap_wrapper_{nullptr};
     map::costmap_2d::Costmap2D* costmap_{nullptr};
-    std::atomic<bool> costmap_received_{false};
-    std::atomic<int64_t> last_costmap_ready_time_ms_{0};
-    std::atomic<bool> shutdown_called_{false};
-    std::mutex costmap_update_mutex_;
-    std::weak_ptr<SmootherServer> smoother_server_;
+    std::mutex dynamic_params_mutex_;
     PathUpdateCallback path_update_callback_;
     PlannerMetrics metrics_;
 
-    struct AutolinkActionServers;
-    AutolinkActionServers* autolink_actions_{nullptr};
+    std::shared_ptr<autolink::Node> node_;
+    std::shared_ptr<ToPoseServer> to_pose_server_;
+    std::shared_ptr<ThroughPosesServer> through_poses_server_;
+    std::shared_ptr<autolink::Service<PathValidRequest, PathValidResponse>>
+        path_valid_service_;
 };
 
 }  // namespace planning
 }  // namespace autonomy
+
+#endif  // AUTONOMY_PLANNING_PLANNER_SERVER_HPP_
