@@ -73,9 +73,8 @@ TEST(NavfnPlannerTest, DoesNotMutateGlobalCostmapWhenClearingStartCell) {
                      map::costmap_2d::LETHAL_OBSTACLE);
     const unsigned char cost_before = costmap->getCost(start_mx, start_my);
 
-    planner::navfn::NavfnPlanner planner;
-    ASSERT_TRUE(planner.Configure(CreatePlannerOptions(), "navfn_planner",
-                                  costmap_wrapper));
+    planner::navfn::NavfnPlanner planner(CreatePlannerOptions(), "navfn_planner",
+                                       costmap_wrapper);
 
     commsgs::planning_msgs::Path path;
     const auto start = MakePose(start_mx * 0.05, start_my * 0.05);
@@ -97,9 +96,8 @@ TEST(NavfnPlannerTest, ReturnsCanceledWhenCancelled) {
                              costmap->getSizeInCellsY(),
                              map::costmap_2d::FREE_SPACE);
 
-    planner::navfn::NavfnPlanner planner;
-    ASSERT_TRUE(planner.Configure(CreatePlannerOptions(), "navfn_planner",
-                                  costmap_wrapper));
+    planner::navfn::NavfnPlanner planner(CreatePlannerOptions(), "navfn_planner",
+                                       costmap_wrapper);
 
     commsgs::planning_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
@@ -124,8 +122,8 @@ TEST(DijkstraPlannerTest, ForcesDijkstraSearch) {
     options.mutable_dijkstra()->set_allow_unknown(true);
     options.mutable_dijkstra()->set_use_final_approach_orientation(true);
 
-    planner::dijkstra::DijkstraPlanner planner;
-    ASSERT_TRUE(planner.Configure(options, "dijkstra_planner", costmap_wrapper));
+    planner::dijkstra::DijkstraPlanner planner(options, "dijkstra_planner",
+                                             costmap_wrapper);
 
     commsgs::planning_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);
@@ -153,8 +151,8 @@ TEST(ThetaStarPlannerTest, FindsPathOnFreeMap) {
     options.mutable_theta_star()->set_w_traversal_cost(1.0);
     options.mutable_theta_star()->set_w_heuristic_cost(1.0);
 
-    planner::theta_star::ThetaStarPlanner planner;
-    ASSERT_TRUE(planner.Configure(options, "theta_star_planner", costmap_wrapper));
+    planner::theta_star::ThetaStarPlanner planner(options, "theta_star_planner",
+                                                costmap_wrapper);
 
     commsgs::planning_msgs::Path path;
     const auto start = MakePose(0.25, 0.25);

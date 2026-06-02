@@ -1,6 +1,6 @@
 -- Copyright 2025 The Openbot Authors(duyongquan)
 --
--- Shared navigation parameters referenced by planner, controller, and tasks.
+-- Shared navigation parameters referenced by planner, controller, and navigator.
 
 AUTONOMY_COMMON = {
     global_frame = "map",

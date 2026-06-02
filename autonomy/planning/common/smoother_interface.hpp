@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -42,36 +43,15 @@ namespace common {
 class Smoother
 {
 public:
-    /**
-     * Define Smoother::SharedPtr type
-     */
     AUTONOMY_SMART_PTR_DEFINITIONS(Smoother)
 
-    /**
-     * @brief Virtual destructor
-     */
-    virtual ~Smoother() {}
+    virtual ~Smoother() = default;
 
-    virtual void Configure(
-        std::string name, std::shared_ptr<void> /*costmap_sub*/,
-        std::shared_ptr<
-            map::costmap_2d::Costmap2DWrapper> /*costmap_wrapper*/) = 0;
+    const std::string& GetName() const { return name_; }
 
-    /**
-     * @brief Method to cleanup resources.
-     */
-    virtual void Cleanup() = 0;
-
-    /**
-     * @brief Method to activate smoother and any threads involved in execution.
-     */
-    virtual void Activate() = 0;
-
-    /**
-     * @brief Method to deactivate smoother and any threads involved in
-     * execution.
-     */
-    virtual void Deactivate() = 0;
+    map::costmap_2d::Costmap2DWrapper* GetCostmapWrapper() const {
+        return costmap_wrapper_.get();
+    }
 
     /**
      * @brief Method to smooth given path
@@ -83,6 +63,15 @@ public:
      */
     virtual bool Smooth(commsgs::planning_msgs::Path& path,
                         const std::chrono::milliseconds& max_time) = 0;
+
+protected:
+    Smoother() = default;
+
+    Smoother(std::string name,
+             std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
+
+    std::string name_;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
 };
 
 }  // namespace common

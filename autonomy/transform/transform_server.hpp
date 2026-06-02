@@ -27,75 +27,36 @@ namespace autonomy {
 namespace transform {
 
 /**
- * @brief Transform server that manages static TF transforms
- *
- * This server manages:
- * - Static transforms (published once with latched QoS)
+ * @class TransformServer
+ * @brief Manages static TF transforms loaded from configuration.
  */
 class TransformServer
 {
 public:
-    /**
-     * @brief Define TransformServer::SharedPtr type
-     */
     AUTONOMY_SMART_PTR_DEFINITIONS(TransformServer)
 
     /**
-     * @brief Constructor
-     * @param options The options for the transform server
+     * @brief Construct, load static transforms, and mark the server as running.
+     * @param options Transform configuration (e.g. extrinsic YAML path).
      */
-    TransformServer(const autonomy::transform::proto::TransformOptions& options);
+    explicit TransformServer(
+        const autonomy::transform::proto::TransformOptions& options);
 
-    /**
-     * @brief Destructor
-     */
-    ~TransformServer() = default;
+    ~TransformServer();
 
-    /**
-     * @brief Initialize the transform server
-     * @return True if initialization is successful, false otherwise
-     */
-    bool Initialize();
+    /** @return True after construction until destruction. */
+    bool IsRunning() const { return running_; }
 
-    /**
-     * @brief Start the transform server
-     */
-    void Start();
-
-    /**
-     * @brief Stop the transform server
-     */
-    void Stop();
-
-    /**
-     * @brief Check if the server is running
-     * @return True if running, false otherwise
-     */
-    bool IsRunning() const {
-        return running_;
-    }
-
-    /**
-     * @brief Get the transform stampeds
-     * @return The transform stampeds
-     */
+    /** @return Static transforms loaded at construction. */
     const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData()
         const {
         return static_transform_->GetTransformStampeds();
     }
 
 private:
-    // Static transform component
     std::unique_ptr<StaticTransform> static_transform_;
-
-    // Transform options
     autonomy::transform::proto::TransformOptions transform_options_;
-
-    // Running state
     bool running_{false};
-
-    // Initialized state
-    bool initialized_{false};
 };
 
 }  // namespace transform

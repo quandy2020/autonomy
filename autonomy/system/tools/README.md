@@ -18,7 +18,7 @@
 ## 功能概览
 
 1. 通过 `CreateOptions` + `CreateAutonomy` 加载 `config/autonomy.lua`（及子配置）。
-2. `Start()` 启动 MapServer、PlannerServer、ControllerServer、TransformServer、`tasks::Task`。
+2. `Start()` 启动 MapServer、PlannerServer、ControllerServer、TransformServer。
 3. `Configure()` 附着 BT 导航引擎（需 BT 插件 `.so`）。
 4. 设置初始位姿：向 `ControllerServer` 注入里程计，并向 `transform::Buffer` 发布 `global_frame → base_frame` TF。
 5. 后台线程按 `cmd_vel` 积分仿真位姿，持续刷新里程计 / TF。
@@ -134,7 +134,7 @@ autonomy_nav_test
 
 | 现象 | 可能原因 | 处理 |
 |------|----------|------|
-| `Autonomy not ready` | Task/BT 配置失败 | 检查 `AUTONOMY_BT_PLUGIN_PATH`；确认 `config/tasks/tasks.lua` 与 BT XML 存在 |
+| `Autonomy not ready` | Navigator/BT 配置失败 | 检查 `AUTONOMY_BT_PLUGIN_PATH`；确认 `config/navigator/navigator.lua` 与 BT XML 存在 |
 | BT 插件 load 失败 | `.so` 不在搜索路径 | `export AUTONOMY_BT_PLUGIN_PATH=<build或install>/lib` |
 | `NavigateDirectToPose: no robot pose` | 直驱模式无里程计 | 本工具已注入初始 odom；若仍失败，检查 Controller 是否 `Start()` |
 | 规划失败 / 路径过短 | 目标在障碍内或越界 | 调整起终点；参考 `autonomy_planning_test` 可视化 |
@@ -167,8 +167,8 @@ export GLOG_logtostderr=1
 | `nav_test.cpp` | 本工具实现 |
 | `../autonomy.hpp` / `../autonomy.cpp` | `system::Autonomy` 核心 |
 | `../../config/autonomy.lua` | 主配置入口 |
-| `../../config/tasks/README.md` | tasks 配置说明 |
-| `../../config/tasks/tasks.lua` | Task / BT 配置 |
-| `../../config/tasks/behavior_tree/*.xml` | 行为树定义 |
+| `../../config/navigator/README.md` | navigator 配置说明 |
+| `../../config/navigator/navigator.lua` | Navigator / BT 配置 |
+| `../../config/navigator/behavior_tree/*.xml` | 行为树定义 |
 | `../control/tools/README.md` | 控制器离线评测文档 |
 | `../planning/tools/README.md` | 规划离线可视化文档 |

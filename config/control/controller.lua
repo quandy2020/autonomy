@@ -16,16 +16,24 @@ if AUTONOMY_COMMON == nil then
 end
 
 AUTONOMY_CONTROLLER = {
-    controller_frequency = 30.0,
+    -- Must match 1/model_dt (0.05 -> 20 Hz) for MPPI control-sequence shifting.
+    controller_frequency = 20.0,
     -- Allow short TF/control hiccups without tearing down FollowPath.
-    failure_tolerance = 0.6,
+    -- Allow long MPPI laps in controller_test before FollowPath aborts.
+    failure_tolerance = 30.0,
     publish_zero_velocity = false,
 
-    -- Shared with tasks.lua / BT GoalReached (see config/common.lua).
+    controller_plugins = {
+        "graceful_controller:GracefulController",
+        "mppi_controller:MppiController",
+    },
+    controller_plugin_libraries = {},
+
+    -- Shared with navigator.lua / BT GoalReached (see config/common.lua).
     goal_checker = {
         xy_goal_tolerance = AUTONOMY_COMMON.goal_reached_tolerance,
         -- Keep heading convergence stricter than XY tolerance at goal.
-        yaw_goal_tolerance = 0.10,
+        yaw_goal_tolerance = 0.35,
         stateful = true,
     },
     progress_checker = {
@@ -103,72 +111,6 @@ AUTONOMY_CONTROLLER = {
         -- },
     },
 
-    -- Nonlinear MPC (Ipopt via autonomy/common/optimization)
-    nmpc_controller = {
-        -- "unicycle" | "differential_drive" | "quadruped"
-        kinematic_model = "unicycle",
-        track_width = 0.36,
-        -- quadruped only: "trotting" | "holonomic"
-        quadruped_gait = "trotting",
-        max_lateral_velocity = 0.25,
-        min_turn_radius = 0.15,
-        r_vy = 0.1,
-        transform_tolerance = AUTONOMY_COMMON.transform_tolerance,
-        max_robot_pose_search_dist = 3.0,
-        horizon = 15,
-        dt = 0.1,
-        q_x = 10.0,
-        q_y = 10.0,
-        q_yaw = 5.0,
-        r_v = 0.1,
-        r_omega = 0.1,
-        v_min = 0.0,
-        v_max = 0.5,
-        omega_min = -1.0,
-        omega_max = 1.0,
-        reference_velocity = 0.35,
-        max_iterations = 50,
-        cost_tolerance = 1e-3,
-        slowdown_radius = 0.6,
-        ipopt_max_cpu_time = 0.08,
-        use_fallback_on_failure = true,
-        yaw_rate_kp = 1.5,
-        allow_backward = false,
-        r_du = 0.05,
-    },
-
-    -- Topology-Driven MPC (T-MPC++, mpc_planner-style MPCC + parallel topologies)
-    tdmpc_controller = {
-        kinematic_model = "unicycle",
-        transform_tolerance = AUTONOMY_COMMON.transform_tolerance,
-        max_robot_pose_search_dist = 3.0,
-        horizon = 15,
-        dt = 0.1,
-        q_contour = 8.0,
-        q_lag = 12.0,
-        q_yaw = 5.0,
-        q_velocity = 2.0,
-        r_v = 0.1,
-        r_omega = 0.1,
-        r_du = 0.05,
-        v_min = 0.0,
-        v_max = 0.5,
-        omega_min = -1.0,
-        omega_max = 1.0,
-        reference_velocity = 0.35,
-        num_topology_candidates = 3,
-        topology_lateral_spacing = 0.35,
-        enable_baseline_topology = true,
-        q_obstacle = 80.0,
-        obstacle_cost_threshold = 180.0,
-        enable_costmap_constraints = true,
-        max_iterations = 50,
-        cost_tolerance = 1e-3,
-        ipopt_max_cpu_time = 0.08,
-        use_fallback_on_failure = true,
-        slowdown_radius = 0.6,
-    },
-
     graceful_controller = {
         transform_tolerance = AUTONOMY_COMMON.transform_tolerance,
         -- Reduce corner-cutting in narrow indoor maps.
@@ -214,7 +156,7 @@ AUTONOMY_CONTROLLER = {
         temperature = 0.3,
         gamma = 0.015,
         motion_model = "DiffDrive",
-        visualize = false,
+        visualize = true,
         TrajectoryVisualizer = {
             trajectory_step = 5,
             time_step = 3,
@@ -260,7 +202,8 @@ AUTONOMY_CONTROLLER = {
             cost_power = 1,
             cost_weight = 3.81,
             critical_cost = 300.0,
-            consider_footprint = true,
+            -- Synthetic / layer-less costmaps have no inflation; point cost only.
+            consider_footprint = false,
             collision_cost = 1000000.0,
             near_goal_distance = 1.0,
             trajectory_point_step = 2,

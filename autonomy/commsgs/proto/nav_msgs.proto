@@ -1,0 +1,299 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.commsgs.proto.nav_msgs;
+
+import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "autonomy/commsgs/proto/error_code.proto";
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/commsgs/proto/planning_msgs.proto";
+import "autonomy/commsgs/proto/std_msgs.proto";
+
+
+message IsPathValid {
+  message Request {
+    planning_msgs.Path path = 1;
+    uint32 max_cost = 2;
+    bool consider_unknown_as_obstacle = 3;
+  }
+
+  message Response {
+    bool is_valid = 1;
+    repeated int32 invalid_pose_indices = 2;
+  }
+
+  Request request = 1;
+  Response response = 2;
+}
+
+// Published by SpeedFilter when a costmap speed mask updates the limit.
+message SpeedLimit {
+  std_msgs.Header header = 1;
+  bool percentage = 2;
+  float speed_limit = 3;
+}
+
+message ClearEntireCostmap {
+  message Request {}
+
+  message Response {}
+
+  Request request = 1;
+  Response response = 2;
+}
+
+
+message NavigateToPoseAction {
+  message Goal {
+    geometry_msgs.PoseStamped pose = 1;
+    string behavior_tree = 2;
+  }
+
+  message Feedback {
+    geometry_msgs.PoseStamped current_pose = 1;
+    builtin_interfaces.Duration navigation_time = 2;
+    builtin_interfaces.Duration estimated_time_remaining = 3;
+    int32 number_of_recoveries = 4;
+    float distance_remaining = 5;
+  }
+
+  message Result {
+    error_code.ErrorCode error_code = 1;
+    string error_msg = 2;
+  }
+}
+
+message NavigateThroughPosesAction {
+  message Goal {
+    repeated geometry_msgs.PoseStamped poses = 1;
+    string behavior_tree = 2;
+  }
+
+  message Feedback {
+    geometry_msgs.PoseStamped current_pose = 1;
+    builtin_interfaces.Duration navigation_time = 2;
+    builtin_interfaces.Duration estimated_time_remaining = 3;
+    int32 number_of_recoveries = 4;
+    float distance_remaining = 5;
+    int32 number_of_poses_remaining = 6;
+  }
+
+  message Result {
+    error_code.ErrorCode error_code = 1;
+    string error_msg = 2;
+  }
+}
+
+message FollowPathAction {
+  message Goal {
+    planning_msgs.Path path = 1;
+    string controller_id = 2;
+    string goal_checker_id = 3;
+    string progress_checker_id = 4;
+  }
+
+  message Feedback {
+    float distance_to_goal = 1;
+    float speed = 2;
+  }
+
+  message Result {
+    error_code.ErrorCode error_code = 1;
+    string error_msg = 2;
+  }
+}
+
+message ComputePathToPoseAction {
+  message Goal {
+    geometry_msgs.PoseStamped goal = 1;
+    geometry_msgs.PoseStamped start = 2;
+    string planner_id = 3;
+    bool use_start = 4;
+  }
+
+  message Feedback {}
+
+  message Result {
+    planning_msgs.Path path = 1;
+    builtin_interfaces.Duration planning_time = 2;
+    error_code.ErrorCode error_code = 3;
+    string error_msg = 4;
+  }
+}
+
+message ComputePathThroughPosesAction {
+  message Goal {
+    planning_msgs.Goals goals = 1;
+    geometry_msgs.PoseStamped start = 2;
+    string planner_id = 3;
+    bool use_start = 4;
+  }
+
+  message Feedback {}
+
+  message Result {
+    planning_msgs.Path path = 1;
+    builtin_interfaces.Duration planning_time = 2;
+    error_code.ErrorCode error_code = 3;
+    string error_msg = 4;
+  }
+}
+
+message SmoothPathAction {
+  message Goal {
+    planning_msgs.Path path = 1;
+    string smoother_id = 2;
+    builtin_interfaces.Duration max_smoothing_duration = 3;
+    bool check_for_collisions = 4;
+  }
+
+  message Feedback {}
+
+  message Result {
+    planning_msgs.Path path = 1;
+    builtin_interfaces.Duration smoothing_duration = 2;
+    bool was_completed = 3;
+    error_code.ErrorCode error_code = 4;
+    string error_msg = 5;
+  }
+}
+
+
+message WaypointStatus {
+  uint32 waypoint_status = 1;
+  uint32 waypoint_index = 2;
+  geometry_msgs.PoseStamped waypoint_pose = 3;
+  error_code.ErrorCode error_code = 4;
+  string error_msg = 5;
+}
+
+message FollowWaypointsAction {
+  message Goal {
+    uint32 number_of_loops = 1;
+    uint32 goal_index = 2;
+    repeated geometry_msgs.PoseStamped poses = 3;
+  }
+
+  message Feedback {
+    uint32 current_waypoint = 1;
+  }
+
+  message Result {
+    repeated WaypointStatus missed_waypoints = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}
+
+message SpinAction {
+  message Goal {
+    float target_yaw = 1;
+    builtin_interfaces.Duration time_allowance = 2;
+    bool disable_collision_checks = 3;
+  }
+
+  message Feedback {
+    float angular_distance_traveled = 1;
+  }
+
+  message Result {
+    builtin_interfaces.Duration total_elapsed_time = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}
+
+message BackUpAction {
+  message Goal {
+    geometry_msgs.Point target = 1;
+    float speed = 2;
+    builtin_interfaces.Duration time_allowance = 3;
+    bool disable_collision_checks = 4;
+  }
+
+  message Feedback {
+    float distance_traveled = 1;
+  }
+
+  message Result {
+    builtin_interfaces.Duration total_elapsed_time = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}
+
+message DriveOnHeadingAction {
+  message Goal {
+    geometry_msgs.Point target = 1;
+    float speed = 2;
+    builtin_interfaces.Duration time_allowance = 3;
+    bool disable_collision_checks = 4;
+  }
+
+  message Feedback {
+    float distance_traveled = 1;
+  }
+
+  message Result {
+    builtin_interfaces.Duration total_elapsed_time = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}
+
+message WaitAction {
+  message Goal {
+    builtin_interfaces.Duration time = 1;
+  }
+
+  message Feedback {
+    builtin_interfaces.Duration time_left = 1;
+  }
+
+  message Result {
+    builtin_interfaces.Duration total_elapsed_time = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}
+
+message AssistedTeleopAction {
+  message Goal {
+    builtin_interfaces.Duration time_allowance = 1;
+  }
+
+  message Feedback {
+    builtin_interfaces.Duration current_teleop_duration = 1;
+  }
+
+  message Result {
+    builtin_interfaces.Duration total_elapsed_time = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}
+
+message DummyBehaviorAction {
+  message Goal {
+    string command = 1;
+  }
+
+  message Result {
+    builtin_interfaces.Duration total_elapsed_time = 1;
+    error_code.ErrorCode error_code = 2;
+    string error_msg = 3;
+  }
+}

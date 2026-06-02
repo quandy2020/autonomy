@@ -17,21 +17,17 @@
 #include "autonomy/planning/planner/dijkstra/dijkstra_planner.hpp"
 
 #include "autolink/plugin_manager/plugin_manager.hpp"
-#include "autonomy/common/logging.hpp"
 
 namespace autonomy {
 namespace planning {
 namespace planner {
 namespace dijkstra {
 
-bool DijkstraPlanner::Configure(
+DijkstraPlanner::DijkstraPlanner(
     const proto::PlannerOptions& options, const std::string& name,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
-    if (!NavfnPlanner::Configure(options, name, costmap)) {
-        return false;
-    }
-
-    const auto& dijkstra_opts = options.dijkstra();
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap)
+    : navfn::NavfnPlanner(options, name, std::move(costmap)) {
+    const auto& dijkstra_opts = options_.dijkstra();
     if (dijkstra_opts.tolerance() > 0.0) {
         SetTolerance(dijkstra_opts.tolerance());
     }
@@ -39,7 +35,6 @@ bool DijkstraPlanner::Configure(
     SetUseFinalApproachOrientation(
         dijkstra_opts.use_final_approach_orientation());
     SetUseAstar(false);
-    return true;
 }
 
 }  // namespace dijkstra

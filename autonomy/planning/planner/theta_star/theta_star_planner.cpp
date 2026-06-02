@@ -52,19 +52,20 @@ inline int ToIndex(unsigned int x, unsigned int y, unsigned int size_x) {
 
 }  // namespace
 
-ThetaStarPlanner::ThetaStarPlanner() = default;
-
 ThetaStarPlanner::~ThetaStarPlanner() {
-    Cleanup();
+    planning_costmap_copy_.clear();
+    costmap_.reset();
 }
 
-bool ThetaStarPlanner::Configure(
+ThetaStarPlanner::ThetaStarPlanner(
     const proto::PlannerOptions& options, const std::string& name,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
-    name_ = name;
-    costmap_ = costmap;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap)
+    : GlobalPlanner(options, name, std::move(costmap)) {
+    InitFromOptions();
+}
 
-    const auto& cfg = options.theta_star();
+void ThetaStarPlanner::InitFromOptions() {
+    const auto& cfg = options_.theta_star();
     how_many_corners_ = cfg.how_many_corners() > 0 ? cfg.how_many_corners() : 8;
     if (how_many_corners_ != 4 && how_many_corners_ != 8) {
         AWARN << "ThetaStarPlanner how_many_corners must be 4 or 8, using 8";
@@ -81,17 +82,7 @@ bool ThetaStarPlanner::Configure(
     terminal_checking_interval_ = cfg.terminal_checking_interval() > 0
                                       ? cfg.terminal_checking_interval()
                                       : 5000;
-    return true;
 }
-
-void ThetaStarPlanner::Cleanup() {
-    planning_costmap_copy_.clear();
-    costmap_.reset();
-}
-
-void ThetaStarPlanner::Activate() {}
-
-void ThetaStarPlanner::Deactivate() {}
 
 uint32 ThetaStarPlanner::CreatePlan(
     const commsgs::geometry_msgs::PoseStamped& start,

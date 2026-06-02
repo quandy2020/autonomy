@@ -21,7 +21,7 @@
 #include "autonomy/control/control_options.hpp"
 #include "autonomy/map/map_options.hpp"
 #include "autonomy/planning/planner_options.hpp"
-#include "autonomy/tasks/options.hpp"
+#include "autonomy/navigator/options.hpp"
 #include "autonomy/transform/common/transform_interface.hpp"
 
 namespace autonomy {
@@ -44,9 +44,9 @@ proto::AutonomyOptions LoadOptions(
         *options.mutable_planner_options() = planning::LoadOptions(
             parameter_dictionary->GetDictionary("planning").get());
     }
-    if (parameter_dictionary->HasKey("tasks")) {
-        *options.mutable_task_options() = tasks::LoadTaskOptions(
-            parameter_dictionary->GetDictionary("tasks").get());
+    if (parameter_dictionary->HasKey("navigator")) {
+        *options.mutable_navigator_options() =
+            navigator::LoadOptions(parameter_dictionary);
     }
     if (parameter_dictionary->HasKey("transform")) {
         *options.mutable_transform_options() =

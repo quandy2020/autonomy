@@ -44,43 +44,12 @@ public:
      */
     using Buffer = autonomy::transform::Buffer;
 
-    /**
-     * @brief constructor
-     */
-    NavfnPlanner();
+    NavfnPlanner() = default;
 
-    /**
-     * @brief destructor
-     */
-    ~NavfnPlanner();
+    NavfnPlanner(const proto::PlannerOptions& options, const std::string& name,
+                 std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
 
-    /**
-     * @brief Configure the planner
-     * @param options The options to configure the planner with
-     * @param name The name of the planner
-     * @param costmap Pointer to the costmap (optional, can be nullptr if set
-     * later)
-     * @return True if the planner was successfully configured, false otherwise
-     */
-    bool Configure(const proto::PlannerOptions& options,
-                   const std::string& name,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap =
-                       nullptr) override;
-
-    /**
-     * @brief Cleanup the planner
-     */
-    void Cleanup() override;
-
-    /**
-     * @brief Activate the planner
-     */
-    void Activate() override;
-
-    /**
-     * @brief Deactivate the planner
-     */
-    void Deactivate() override;
+    ~NavfnPlanner() override;
 
     /**
      * @brief Creating a plan from start and goal poses
@@ -210,14 +179,13 @@ protected:
      */
     bool isPlannerOutOfDate();
 
+    void InitFromOptions();
+
     // Planner based on ROS1 NavFn algorithm
     std::unique_ptr<NavFn> planner_{nullptr};
 
-    // Global Costmap
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_{nullptr};
-
     // The global frame of the costmap
-    std::string global_frame_, name_;
+    std::string global_frame_;
 
     // Whether or not the planner should be allowed to plan through unknown
     // space

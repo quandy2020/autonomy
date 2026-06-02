@@ -242,9 +242,9 @@ double SpeedFilter::computeSpeedLimitFromMaskCell(int8_t speed_mask_data) const 
     return limit;
 }
 
-commsgs::task_msgs::SpeedLimit::SharedPtr SpeedFilter::buildSpeedLimitMessage()
+commsgs::nav_msgs::SpeedLimit::SharedPtr SpeedFilter::buildSpeedLimitMessage()
     const {
-    auto msg = std::make_shared<commsgs::task_msgs::SpeedLimit>();
+    auto msg = std::make_shared<commsgs::nav_msgs::SpeedLimit>();
     msg->header.frame_id = global_frame_;
     msg->header.stamp.sec = 0;
     msg->header.stamp.nanosec = 0;

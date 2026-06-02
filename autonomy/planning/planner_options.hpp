@@ -42,7 +42,7 @@ namespace planning {
  *
  * @param parameter_dictionary Root dictionary for the planner config file.
  * @return Populated PlannerOptions proto used by PlannerServer and
- * SmootherServer.
+ * path smoother plugins (e.g. planning::utils::SimpleSmoother).
  */
 proto::PlannerOptions LoadOptions(
     ::autonomy::common::LuaParameterDictionary* const parameter_dictionary);

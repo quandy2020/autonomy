@@ -1,6 +1,6 @@
 # Build BehaviorTree.CPP plugins as separate shared libraries (one .so per node),
 # or as a single bundled library when AUTONOMY_BT_PLUGINS_BUNDLED=ON.
-# Names must match config/tasks/tasks.lua plugin_lib_names entries.
+# Names must match config/navigator/navigator.lua plugin_lib_names entries.
 
 option(AUTONOMY_BT_PLUGINS_BUNDLED
   "Build all BT plugins in one shared library (autonomy_behavior_tree_plugins)"
@@ -36,7 +36,7 @@ endfunction()
 
 function(autonomy_add_behavior_tree_plugins AUTONOMY_LIB)
   file(GLOB_RECURSE _bt_plugin_srcs
-    "${PROJECT_SOURCE_DIR}/autonomy/tasks/behavior_tree/plugins/*.cpp")
+    "${PROJECT_SOURCE_DIR}/autonomy/navigator/behavior_tree/plugins/*.cpp")
   set(_bt_plugin_targets "")
 
   if(AUTONOMY_BT_PLUGINS_BUNDLED)
