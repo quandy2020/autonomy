@@ -22,8 +22,7 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/task_msgs.hpp"
+#include "autonomy/commsgs/nav_msgs.hpp"
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
 namespace autonomy {
@@ -39,7 +38,7 @@ class SpeedFilter : public CostmapFilter
 {
 public:
     using SpeedLimitCallback = std::function<void(
-        const commsgs::task_msgs::SpeedLimit::SharedPtr&)>;
+        const commsgs::nav_msgs::SpeedLimit::SharedPtr&)>;
 
     SpeedFilter();
 
@@ -97,7 +96,7 @@ private:
 
     void notifySpeedLimitIfChanged();
 
-    commsgs::task_msgs::SpeedLimit::SharedPtr buildSpeedLimitMessage() const;
+    commsgs::nav_msgs::SpeedLimit::SharedPtr buildSpeedLimitMessage() const;
 
     commsgs::map_msgs::OccupancyGrid::SharedPtr filter_mask_;
 

@@ -68,7 +68,7 @@ python3 scripts/format.py autolink
 python3 scripts/format.py autonomy autolink
 
 # 格式化特定子目录
-python3 scripts/format.py autonomy/tasks
+python3 scripts/format.py autonomy/navigator
 ```
 
 ### 查看帮助
@@ -128,5 +128,5 @@ python3 scripts/format.py
 python3 scripts/format.py --check
 
 # 4. 只格式化特定模块
-python3 scripts/format.py autonomy/tasks
+python3 scripts/format.py autonomy/navigator
 ```

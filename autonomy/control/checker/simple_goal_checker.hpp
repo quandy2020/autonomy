@@ -46,6 +46,10 @@ public:
                         costmap_wraper) override;
 
     void Reset() override;
+
+    void SetTolerances(double xy_tolerance, double yaw_tolerance,
+                       bool stateful = true);
+
     bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
                        const commsgs::geometry_msgs::Pose& goal_pose,
                        const commsgs::geometry_msgs::Twist& velocity) override;

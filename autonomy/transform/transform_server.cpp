@@ -16,49 +16,18 @@
 
 #include "autonomy/transform/transform_server.hpp"
 
-#include "autonomy/common/logging.hpp"
-
 namespace autonomy {
 namespace transform {
 
 TransformServer::TransformServer(
     const autonomy::transform::proto::TransformOptions& options)
-    : transform_options_(options) {
-}
+    : transform_options_(options),
+      static_transform_(std::make_unique<StaticTransform>(transform_options_)),
+      running_(true) {}
 
-bool TransformServer::Initialize() {
-    if (initialized_) {
-        AWARN << "TransformServer already initialized";
-        return true;
-    }
-
-    // Create Static Transform component
-    static_transform_ = std::make_unique<StaticTransform>(transform_options_);
-
-    initialized_ = true;
-    return true;
-}
-
-void TransformServer::Start() {
-    if (!initialized_) {
-        AERROR << "TransformServer not initialized, call Initialize() first";
-        return;
-    }
-
-    if (running_) {
-        AWARN << "TransformServer already running";
-        return;
-    }
-
-    running_ = true;
-}
-
-void TransformServer::Stop() {
-    if (!running_) {
-        return;
-    }
-
+TransformServer::~TransformServer() {
     running_ = false;
+    static_transform_.reset();
 }
 
 }  // namespace transform

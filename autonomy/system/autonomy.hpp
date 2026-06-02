@@ -31,13 +31,8 @@
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
-#include "autonomy/tasks/constants.hpp"
-#include "autonomy/tasks/options.hpp"
-#include "autonomy/tasks/task.hpp"
-
-namespace autolink {
-class Node;
-}
+#include "autonomy/navigator/constants.hpp"
+#include "autonomy/navigator/options.hpp"
 
 namespace autonomy {
 namespace control {
@@ -48,7 +43,6 @@ class MapServer;
 }
 namespace planning {
 class PlannerServer;
-class SmootherServer;
 }
 namespace sensor {
 class SensorCollator;
@@ -59,7 +53,21 @@ class TransformServer;
 }
 namespace system {
 
-/** Top-level autonomy process: map / planner / controller / tasks::Task. */
+/** Runtime overrides from ROS parameters or Autonomy::Configure(). */
+struct RuntimeOptions {
+    bool enable_bt_tasks{true};
+    bool use_bt_navigation{true};
+    std::string config_directory;
+    std::string planner_id;
+    std::string controller_id;
+    std::string goal_checker_id;
+    std::string progress_checker_id;
+    std::string global_frame;
+    std::string robot_base_frame;
+    double goal_tolerance{0.15};
+};
+
+/** Top-level autonomy process: map / planner / controller / navigator. */
 class Autonomy
 {
 public:
@@ -77,7 +85,7 @@ public:
     Autonomy& operator=(const Autonomy&) = delete;
 
     void Start();
-    void Configure(const tasks::RuntimeOptions& runtime);
+    void Configure(const RuntimeOptions& runtime = {});
     void Shutdown();
 
     bool IsReady() const;
@@ -95,13 +103,13 @@ public:
         const commsgs::geometry_msgs::PoseStamped& goal,
         std::function<bool()> cancel_checker,
         std::function<bool()> keep_alive,
-        double timeout_sec = tasks::kDirectNavDefaultTimeoutSec);
+        double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
 
     bool NavigateThroughPoses(
         const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
         std::function<bool()> cancel_checker,
         std::function<bool()> keep_alive,
-        double timeout_sec = tasks::kDirectNavDefaultTimeoutSec);
+        double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
 
     void ReplanToGoal(const commsgs::geometry_msgs::PoseStamped& goal);
     std::optional<commsgs::planning_msgs::Path> GetLastPath();
@@ -111,11 +119,11 @@ public:
 
     commsgs::geometry_msgs::TwistStamped TickControl();
 
+    /** Latest velocity from direct follow or BT (for in-process simulators). */
+    commsgs::geometry_msgs::TwistStamped GetLastControlCommand() const;
+
     bool TransformPoseToGlobalFrame(
         commsgs::geometry_msgs::PoseStamped& pose);
-
-    tasks::Task* GetTask() { return task_.get(); }
-    const tasks::Task* GetTask() const { return task_.get(); }
 
 private:
     struct PluginIds {
@@ -126,9 +134,6 @@ private:
 
     bool EnsureStarted() const;
     PluginIds ResolvePluginIds() const;
-    bool WaitForNavigation(
-        std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
-        double timeout_sec);
     bool NavigateDirectToPose(
         const commsgs::geometry_msgs::PoseStamped& goal,
         std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
@@ -137,23 +142,20 @@ private:
     void ApplyMapToCostmap(
         const commsgs::map_msgs::OccupancyGrid::SharedPtr& map);
     void NotifyPath(const commsgs::planning_msgs::Path& path);
-    void ApplyRuntimeToTaskOptions(const tasks::RuntimeOptions& runtime);
+    void ApplyRuntimeToNavigatorOptions(const RuntimeOptions& runtime);
     void SyncNavigationFrames(const std::string& global_frame,
                               const std::string& robot_base_frame);
 
     proto::AutonomyOptions options_;
-    tasks::RuntimeOptions runtime_;
-    tasks::proto::TaskOptions task_options_;
+    RuntimeOptions runtime_;
+    navigator::proto::NavigatorOptions navigator_options_;
 
     std::shared_ptr<map::MapServer> map_server_;
     std::shared_ptr<planning::PlannerServer> planner_;
-    std::shared_ptr<planning::SmootherServer> smoother_;
     std::shared_ptr<control::ControllerServer> controller_;
     std::shared_ptr<transform::Buffer> tf_buffer_;
     std::unique_ptr<transform::TransformServer> transform_server_;
-    std::unique_ptr<tasks::Task> task_;
     std::unique_ptr<sensor::SensorCollator> sensor_collator_;
-    std::shared_ptr<autolink::Node> autolink_node_;
 
     std::vector<MapPublishListener> map_listeners_;
     std::vector<PathListener> path_listeners_;
@@ -163,8 +165,8 @@ private:
     std::atomic<bool> started_{false};
     std::atomic<bool> configured_{false};
     std::atomic<bool> controller_enabled_{true};
-    std::atomic<bool> use_bt_navigation_{true};
-    std::atomic<bool> direct_follow_active_{false};
+    std::atomic<bool> use_bt_navigation_{false};
+    commsgs::geometry_msgs::TwistStamped last_control_cmd_;
 };
 
 Autonomy::UniquePtr CreateAutonomy(

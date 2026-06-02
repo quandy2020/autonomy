@@ -26,7 +26,6 @@
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/system/autonomy.hpp"
 #include "autonomy/system/options.hpp"
-#include "autonomy/tasks/options.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 
@@ -115,7 +114,7 @@ int RunNavTest(int argc, char** argv) {
     auto autonomy = autonomy::system::CreateAutonomy(options);
     autonomy->Start();
 
-    autonomy::tasks::RuntimeOptions runtime;
+    autonomy::system::RuntimeOptions runtime;
     runtime.config_directory = autonomy::common::FLAGS_configuration_directory;
     runtime.enable_bt_tasks = true;
     runtime.use_bt_navigation = FLAGS_use_bt;
@@ -123,8 +122,8 @@ int RunNavTest(int argc, char** argv) {
     autonomy->Configure(runtime);
 
     if (!autonomy->IsReady()) {
-        LOG(ERROR) << "Autonomy not ready (Task/BT configure failed). "
-                      "Check AUTONOMY_BT_PLUGIN_PATH and config/tasks/tasks.lua.";
+        LOG(ERROR) << "Autonomy not ready (navigator/BT configure failed). "
+                      "Check AUTONOMY_BT_PLUGIN_PATH and config/navigator/navigator.lua.";
         return EXIT_FAILURE;
     }
 
@@ -152,7 +151,7 @@ int RunNavTest(int argc, char** argv) {
     std::thread sim([&]() {
         const auto period = std::chrono::duration<double>(FLAGS_sim_dt);
         while (!stop_sim.load()) {
-            const auto cmd = controller->GetLastCmdVel().twist;
+            const auto cmd = autonomy->GetLastControlCommand().twist;
             IntegrateDiffDrive(cmd, FLAGS_sim_dt, x, y, yaw);
             PublishSimState(controller, FLAGS_global_frame, FLAGS_base_frame, x,
                             y, yaw, cmd);

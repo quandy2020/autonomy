@@ -27,10 +27,11 @@ namespace dijkstra {
 class DijkstraPlanner : public navfn::NavfnPlanner
 {
 public:
-    bool Configure(const proto::PlannerOptions& options,
-                   const std::string& name,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap =
-                       nullptr) override;
+    DijkstraPlanner() = default;
+
+    DijkstraPlanner(const proto::PlannerOptions& options,
+                    const std::string& name,
+                    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
 };
 
 }  // namespace dijkstra

@@ -113,20 +113,9 @@ endif()
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_EXECUTABLES})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 
-# Offline planner/controller visualization binaries (not gtest).
-list(REMOVE_ITEM ALL_TESTS "autonomy/planning/tools/planning_test.cpp")
-list(REMOVE_ITEM ALL_TESTS "autonomy/planning/tools/planner_client_test.cpp")
-list(REMOVE_ITEM ALL_TESTS "autonomy/control/tools/controller_server_test.cpp")
-list(REMOVE_ITEM ALL_TESTS "autonomy/system/tools/nav_test.cpp")
-list(REMOVE_ITEM ALL_TESTS
-  "${PROJECT_SOURCE_DIR}/autonomy/planning/tools/planning_test.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/planning/tools/planner_client_test.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/control/tools/controller_server_test.cpp"
-  "${PROJECT_SOURCE_DIR}/autonomy/system/tools/nav_test.cpp")
-
 # BT plugins are built as separate .so files (see cmake/plugin/behavior_tree_plugins.cmake).
 file(GLOB_RECURSE BEHAVIOR_TREE_PLUGIN_SRCS
-  "autonomy/tasks/behavior_tree/plugins/*.cpp")
+  "autonomy/navigator/behavior_tree/plugins/*.cpp")
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${BEHAVIOR_TREE_PLUGIN_SRCS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
@@ -157,10 +146,6 @@ if (NOT ${BUILD_TOOLS})
   list(REMOVE_ITEM ALL_TESTS ${ALL_TOOLS})
   list(REMOVE_ITEM ALL_EXECUTABLES ${ALL_TOOLS})
 endif()
-
-set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
-file(GLOB_RECURSE INTERNAL_HDRS "autonomy/*/internal/*.h" "autonomy/*/internal/*.hpp")
-list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
 
 file(GLOB_RECURSE ALL_PROTOS "autonomy/*.proto")
 file(GLOB_RECURSE ALL_GRPC_SERVICES "autonomy/*_service.proto")
@@ -300,16 +285,17 @@ target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 # autolink (planning plugin_manager)
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
 
-# BehaviorTree.CPP (tasks module only; 4.7.x exports BT::behaviortree_cpp)
+# BehaviorTree.CPP
 if(TARGET BT::behaviortree_cpp)
-  target_link_libraries(${PROJECT_NAME} PUBLIC BT::behaviortree_cpp)
+  set(AUTONOMY_BT_CPP_TARGET BT::behaviortree_cpp)
 elseif(TARGET behaviortree_cpp::behaviortree_cpp)
-  target_link_libraries(${PROJECT_NAME} PUBLIC behaviortree_cpp::behaviortree_cpp)
-elseif(BUILD_TASKS)
-  message(FATAL_ERROR
-    "BUILD_TASKS is ON but behaviortree_cpp was not found. "
-    "Install BehaviorTree.CPP or run install_behaviortree_cpp.sh.")
+  set(AUTONOMY_BT_CPP_TARGET behaviortree_cpp::behaviortree_cpp)
+else()
+  message(FATAL_ERROR "behaviortree_cpp imported target not found after find_package")
 endif()
+target_link_libraries(${PROJECT_NAME} PUBLIC ${AUTONOMY_BT_CPP_TARGET})
+include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
+autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
 # prometheus (optional, for system/monitor and cartographer metrics/visualization)
 if(${BUILD_PROMETHEUS})
@@ -324,10 +310,6 @@ if(${BUILD_GRPC})
   target_link_libraries(${PROJECT_NAME} PUBLIC grpc++ grpc)
 endif()
 
-# ADOL-C (Automatic Differentiation Library)
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${ADOLC_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${ADOLC_LIBRARIES})
-
 # Ipopt (Interior Point Optimizer)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${IPOPT_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${IPOPT_LIBRARIES})
@@ -337,13 +319,6 @@ if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
   target_link_libraries(${PROJECT_NAME} PUBLIC ${OnnxRuntime_LIBRARIES})
 endif()
-
-include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
-autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
-
-add_subdirectory(autonomy/planning)
-add_subdirectory(autonomy/control/tools)
-add_subdirectory(autonomy/system/tools)
 
 ## Test unit
 if (${BUILD_TEST})
@@ -392,6 +367,10 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
+file(GLOB_RECURSE INTERNAL_HDRS "autonomy/*/internal/*.h" "autonomy/*/internal/*.hpp")
+list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
 
 foreach(HDR ${INSTALL_SOURCE_HDRS})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})

@@ -37,17 +37,13 @@ namespace theta_star {
 class ThetaStarPlanner : public common::GlobalPlanner
 {
 public:
-    ThetaStarPlanner();
+    ThetaStarPlanner() = default;
+
+    ThetaStarPlanner(const proto::PlannerOptions& options,
+                     const std::string& name,
+                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
+
     ~ThetaStarPlanner() override;
-
-    bool Configure(const proto::PlannerOptions& options,
-                   const std::string& name,
-                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap =
-                       nullptr) override;
-
-    void Cleanup() override;
-    void Activate() override;
-    void Deactivate() override;
 
     uint32 CreatePlan(const commsgs::geometry_msgs::PoseStamped& start,
                       const commsgs::geometry_msgs::PoseStamped& goal,
@@ -75,9 +71,9 @@ private:
     double heuristic(unsigned int x, unsigned int y, unsigned int goal_x,
                      unsigned int goal_y) const;
 
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_;
+    void InitFromOptions();
+
     std::vector<unsigned char> planning_costmap_copy_;
-    std::string name_;
     std::string global_frame_;
 
     unsigned int size_x_{0};

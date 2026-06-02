@@ -54,6 +54,18 @@ void SimpleGoalChecker::Reset() {
     check_xy_ = true;
 }
 
+void SimpleGoalChecker::SetTolerances(double xy_tolerance, double yaw_tolerance,
+                                      bool stateful) {
+    if (xy_tolerance > 0.0) {
+        xy_goal_tolerance_ = xy_tolerance;
+        xy_goal_tolerance_sq_ = xy_goal_tolerance_ * xy_goal_tolerance_;
+    }
+    if (yaw_tolerance > 0.0) {
+        yaw_goal_tolerance_ = yaw_tolerance;
+    }
+    stateful_ = stateful;
+}
+
 bool SimpleGoalChecker::IsGoalReached(
     const commsgs::geometry_msgs::Pose& query_pose,
     const commsgs::geometry_msgs::Pose& goal_pose,

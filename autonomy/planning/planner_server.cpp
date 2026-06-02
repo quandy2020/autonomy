@@ -37,6 +37,9 @@
 #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
 #include "autonomy/planning/common/planner_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
+#include "autonomy/planning/planner/dijkstra/dijkstra_planner.hpp"
+#include "autonomy/planning/planner/navfn/navfn_planner.hpp"
+#include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
 #include "autonomy/planning/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
@@ -123,72 +126,31 @@ bool IsPlannerClassRegistered(const std::string& type) {
 }
 
 common::GlobalPlanner::SharedPtr CreatePlannerInstance(
-    const std::string& type) {
+    const std::string& type, const proto::PlannerOptions& options,
+    const std::string& id,
+    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>& costmap) {
+    const std::string resolved = ResolvePlannerClass(type);
+    if (resolved == "NavfnPlanner") {
+        return std::make_shared<planner::navfn::NavfnPlanner>(options, id,
+                                                              costmap);
+    }
+    if (resolved == "DijkstraPlanner") {
+        return std::make_shared<planner::dijkstra::DijkstraPlanner>(
+            options, id, costmap);
+    }
+    if (resolved == "ThetaStarPlanner") {
+        return std::make_shared<planner::theta_star::ThetaStarPlanner>(
+            options, id, costmap);
+    }
     auto instance = PluginPm::Instance()->CreateInstance<common::GlobalPlanner>(
-        ResolvePlannerClass(type));
-    return instance ? common::GlobalPlanner::SharedPtr(std::move(instance))
-                    : nullptr;
-}
-
-task_proto::ComputePathToPoseErrorCode MapToComputePathToPoseErrorCode(
-    const std::exception& ex) {
-    if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_INVALID_PLANNER;
+        resolved);
+    if (!instance) {
+        return nullptr;
     }
-    if (dynamic_cast<const common::StartOccupied*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_START_OCCUPIED;
-    }
-    if (dynamic_cast<const common::GoalOccupied*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_GOAL_OCCUPIED;
-    }
-    if (dynamic_cast<const common::NoValidPathCouldBeFound*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_NO_VALID_PATH;
-    }
-    if (dynamic_cast<const common::PlannerTimedOut*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_TIMEOUT;
-    }
-    if (dynamic_cast<const common::StartOutsideMapBounds*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_START_OUTSIDE_MAP;
-    }
-    if (dynamic_cast<const common::GoalOutsideMapBounds*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_GOAL_OUTSIDE_MAP;
-    }
-    if (dynamic_cast<const common::PlannerTFError*>(&ex)) {
-        return task_proto::COMPUTE_PATH_TO_POSE_TF_ERROR;
-    }
-    return task_proto::COMPUTE_PATH_TO_POSE_UNKNOWN;
-}
-
-task_proto::ComputePathThroughPosesErrorCode
-MapToComputePathThroughPosesErrorCode(const std::exception& ex) {
-    if (dynamic_cast<const common::InvalidPlanner*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_INVALID_PLANNER;
-    }
-    if (dynamic_cast<const common::StartOccupied*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_START_OCCUPIED;
-    }
-    if (dynamic_cast<const common::GoalOccupied*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_GOAL_OCCUPIED;
-    }
-    if (dynamic_cast<const common::NoValidPathCouldBeFound*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_NO_VALID_PATH;
-    }
-    if (dynamic_cast<const common::PlannerTimedOut*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_TIMEOUT;
-    }
-    if (dynamic_cast<const common::StartOutsideMapBounds*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_START_OUTSIDE_MAP;
-    }
-    if (dynamic_cast<const common::GoalOutsideMapBounds*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_GOAL_OUTSIDE_MAP;
-    }
-    if (dynamic_cast<const common::PlannerTFError*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_TF_ERROR;
-    }
-    if (dynamic_cast<const common::NoViapointsGiven*>(&ex)) {
-        return task_proto::COMPUTE_PATH_THROUGH_POSES_NO_WAYPOINTS;
-    }
-    return task_proto::COMPUTE_PATH_THROUGH_POSES_UNKNOWN;
+    AWARN << "Planner plugin " << resolved
+          << " created via plugin manager without constructor options; "
+             "ensure it self-configures.";
+    return common::GlobalPlanner::SharedPtr(std::move(instance));
 }
 
 void NormalizePoseFrame(commsgs::geometry_msgs::PoseStamped& pose,
@@ -264,28 +226,14 @@ PlannerServer::PlannerServer(const proto::PlannerOptions& options)
 
     costmap_wrapper_->Start();
 
-    for (auto& entry : planners_) {
-        entry.second->Activate();
-    }
-
     node_ = autolink::CreateNode(kPlannerServerNodeName);
     if (!node_) {
         AWARN << "PlannerServer: autolink node creation failed; "
-                 "action/service endpoints disabled.";
+                 "service endpoints disabled.";
         return;
     }
 
     PlannerServer* self = this;
-
-    to_pose_server_ =
-        std::make_shared<ToPoseServer>(
-            node_, kComputePathToPoseActionName,
-            [self]() { self->ComputePlan(); });
-
-    through_poses_server_ =
-        std::make_shared<ThroughPosesServer>(
-            node_, kComputePathThroughPosesActionName,
-            [self]() { self->ComputePlanThroughPoses(); });
 
     path_valid_service_ =
         node_->CreateService<PathValidRequest, PathValidResponse>(
@@ -301,25 +249,14 @@ PlannerServer::PlannerServer(const proto::PlannerOptions& options)
                     path, max_cost, request->consider_unknown_as_obstacle()));
             });
 
-    AINFO << "PlannerServer autolink action/service endpoints started.";
+    AINFO << "PlannerServer autolink service endpoint started.";
 }
 
 PlannerServer::~PlannerServer() {
-    if (to_pose_server_) {
-        to_pose_server_->Deactivate();
-        to_pose_server_.reset();
-    }
-    if (through_poses_server_) {
-        through_poses_server_->Deactivate();
-        through_poses_server_.reset();
-    }
     path_valid_service_.reset();
     node_.reset();
 
-    for (auto& entry : planners_) {
-        entry.second->Deactivate();
-        entry.second->Cleanup();
-    }
+    planners_.clear();
 
     if (costmap_wrapper_) {
         costmap_wrapper_->Stop();
@@ -361,14 +298,10 @@ void PlannerServer::LoadPlannerPlugins() {
             return;
         }
 
-        auto planner_instance = CreatePlannerInstance(spec.type);
+        auto planner_instance =
+            CreatePlannerInstance(spec.type, options_, spec.id, costmap_wrapper_);
         if (!planner_instance) {
             AFATAL << "Failed to create planner plugin: " << spec.id;
-            return;
-        }
-
-        if (!planner_instance->Configure(options_, spec.id, costmap_wrapper_)) {
-            AFATAL << "Failed to configure planner plugin: " << spec.id;
             return;
         }
 
@@ -497,204 +430,6 @@ bool PlannerServer::ValidatePath(
           << curr_goal.pose.position.x << ", " << curr_goal.pose.position.y
           << ")";
     return true;
-}
-
-void PlannerServer::ComputePlan() {
-    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
-
-    auto& server = to_pose_server_;
-    if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
-        return;
-    }
-
-    auto goal = server->GetCurrentGoal();
-    if (!goal) {
-        return;
-    }
-    if (server->IsPreemptRequested()) {
-        goal = server->AcceptPendingGoal();
-    }
-    if (!goal || !server->IsServerActive()) {
-        return;
-    }
-
-    auto result = std::make_shared<task_proto::ComputePathToPoseAction_Result>();
-    const auto start_time = Time::Now();
-    metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
-
-    commsgs::geometry_msgs::PoseStamped start;
-    commsgs::geometry_msgs::PoseStamped goal_pose;
-
-    try {
-        if (server->IsCancelRequested()) {
-            return;
-        }
-
-        WaitForCostmap();
-
-        if (goal->use_start() && goal->has_start()) {
-            start = commsgs::geometry_msgs::FromProto(goal->start());
-        } else if (!costmap_wrapper_ ||
-                   !costmap_wrapper_->getRobotPose(start)) {
-            throw common::PlannerTFError("Unable to get start pose");
-        }
-
-        goal_pose = commsgs::geometry_msgs::FromProto(goal->goal());
-        if (!TransformPosesToGlobalFrame(start, goal_pose)) {
-            throw common::PlannerTFError(
-                "Unable to transform poses to global frame");
-        }
-
-        auto cancel_checker = [&]() { return server->IsCancelRequested(); };
-        const auto path =
-            GetPlan(start, goal_pose, goal->planner_id(), cancel_checker);
-        if (!ValidatePath(goal_pose, path, goal->planner_id())) {
-            throw common::NoValidPathCouldBeFound(goal->planner_id() +
-                                                  " generated an empty path");
-        }
-
-        PublishPlan(path);
-        metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
-
-        *result->mutable_path() = commsgs::planning_msgs::ToProto(path);
-        *result->mutable_planning_time() =
-            commsgs::builtin_interfaces::ToProto(Time::Now() - start_time);
-        result->set_error_code(task_proto::COMPUTE_PATH_TO_POSE_NONE);
-
-        const auto cycle_duration = Time::Now() - start_time;
-        if (max_planner_duration_ > 0.0 &&
-            cycle_duration.Seconds() > max_planner_duration_) {
-            AWARN << "Planner loop missed its desired rate of "
-                  << (1.0 / max_planner_duration_) << " Hz. Current loop rate is "
-                  << (1.0 / cycle_duration.Seconds()) << " Hz";
-        }
-
-        server->SucceededCurrent(result);
-    } catch (const common::PlannerCancelled&) {
-        metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
-        result->set_error_msg("Goal was canceled. Canceling planning action.");
-        server->TerminateAll(result);
-    } catch (const std::exception& ex) {
-        metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
-        result->set_error_code(MapToComputePathToPoseErrorCode(ex));
-        result->set_error_msg(ex.what());
-        server->TerminateCurrent(result);
-    }
-}
-
-void PlannerServer::ComputePlanThroughPoses() {
-    std::lock_guard<std::mutex> lock(dynamic_params_mutex_);
-
-    auto& server = through_poses_server_;
-    if (!server || !server->IsServerActive() || server->IsCancelRequested()) {
-        return;
-    }
-
-    auto goal = server->GetCurrentGoal();
-    if (!goal) {
-        return;
-    }
-    if (server->IsPreemptRequested()) {
-        goal = server->AcceptPendingGoal();
-    }
-    if (!goal || !server->IsServerActive()) {
-        return;
-    }
-
-    auto result =
-        std::make_shared<task_proto::ComputePathThroughPosesAction_Result>();
-    const auto start_time = Time::Now();
-    metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
-
-    commsgs::geometry_msgs::PoseStamped curr_start;
-    commsgs::geometry_msgs::PoseStamped curr_goal;
-
-    try {
-        if (server->IsCancelRequested()) {
-            return;
-        }
-
-        WaitForCostmap();
-
-        std::vector<commsgs::geometry_msgs::PoseStamped> goals;
-        if (goal->has_goals()) {
-            goals.reserve(static_cast<size_t>(goal->goals().goals_size()));
-            for (const auto& g : goal->goals().goals()) {
-                goals.push_back(commsgs::geometry_msgs::FromProto(g));
-            }
-        }
-        if (goals.empty()) {
-            throw common::NoViapointsGiven("No viapoints given");
-        }
-
-        if (goal->use_start() && goal->has_start()) {
-            curr_start = commsgs::geometry_msgs::FromProto(goal->start());
-        } else if (!costmap_wrapper_ ||
-                   !costmap_wrapper_->getRobotPose(curr_start)) {
-            throw common::PlannerTFError("Unable to get start pose");
-        }
-
-        auto cancel_checker = [&]() { return server->IsCancelRequested(); };
-
-        commsgs::planning_msgs::Path merged_path;
-        for (size_t i = 0; i < goals.size(); ++i) {
-            if (server->IsCancelRequested()) {
-                throw common::PlannerCancelled("ComputePathThroughPoses cancelled");
-            }
-
-            commsgs::geometry_msgs::PoseStamped segment_start;
-            if (i == 0) {
-                segment_start = curr_start;
-            } else {
-                segment_start = merged_path.poses.back();
-                segment_start.header = merged_path.header;
-            }
-            curr_goal = goals[i];
-
-            if (!TransformPosesToGlobalFrame(segment_start, curr_goal)) {
-                throw common::PlannerTFError(
-                    "Unable to transform poses to global frame");
-            }
-
-            auto segment =
-                GetPlan(segment_start, curr_goal, goal->planner_id(), cancel_checker);
-            if (!ValidatePath(curr_goal, segment, goal->planner_id())) {
-                throw common::NoValidPathCouldBeFound(goal->planner_id() +
-                                                      " generated an empty path");
-            }
-
-            merged_path.poses.insert(merged_path.poses.end(),
-                                     segment.poses.begin(), segment.poses.end());
-            merged_path.header = segment.header;
-        }
-
-        PublishPlan(merged_path);
-        metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
-
-        *result->mutable_path() = commsgs::planning_msgs::ToProto(merged_path);
-        *result->mutable_planning_time() =
-            commsgs::builtin_interfaces::ToProto(Time::Now() - start_time);
-        result->set_error_code(task_proto::COMPUTE_PATH_THROUGH_POSES_NONE);
-
-        const auto cycle_duration = Time::Now() - start_time;
-        if (max_planner_duration_ > 0.0 &&
-            cycle_duration.Seconds() > max_planner_duration_) {
-            AWARN << "Planner loop missed its desired rate of "
-                  << (1.0 / max_planner_duration_) << " Hz. Current loop rate is "
-                  << (1.0 / cycle_duration.Seconds()) << " Hz";
-        }
-
-        server->SucceededCurrent(result);
-    } catch (const common::PlannerCancelled&) {
-        metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
-        result->set_error_msg("Goal was canceled. Canceling planning action.");
-        server->TerminateAll(result);
-    } catch (const std::exception& ex) {
-        metrics_.plans_failed.fetch_add(1, std::memory_order_relaxed);
-        result->set_error_code(MapToComputePathThroughPosesErrorCode(ex));
-        result->set_error_msg(ex.what());
-        server->TerminateCurrent(result);
-    }
 }
 
 bool PlannerServer::IsPathValid(const commsgs::planning_msgs::Path& path,

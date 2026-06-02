@@ -25,17 +25,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "autolink/action/simple_action_server.hpp"
 #include "autolink/autolink.hpp"
 #include "autolink/service/service.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/task_msgs.hpp"
+#include "autonomy/commsgs/proto/nav_msgs.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
-#include "autonomy/tasks/navigators/action_type.hpp"
 
 namespace autonomy {
 namespace map {
@@ -49,7 +47,7 @@ class Costmap2DWrapper;
 namespace autonomy {
 namespace planning {
 
-namespace task_proto = commsgs::proto::task_msgs;
+namespace nav_proto = commsgs::proto::nav_msgs;
 
 /**
  * Global planner server aligned with nav2_planner.
@@ -68,16 +66,10 @@ public:
     using PlannerMap =
         std::unordered_map<std::string, common::GlobalPlanner::SharedPtr>;
 
-    using PathValidRequest = task_proto::IsPathValid_Request;
-    using PathValidResponse = task_proto::IsPathValid_Response;
-    using ToPoseServer =
-        autolink::action::SimpleActionServer<
-            tasks::behavior_tree::ComputePathToPoseActionTraits>;
-    using ThroughPosesServer =
-        autolink::action::SimpleActionServer<
-            tasks::behavior_tree::ComputePathThroughPosesActionTraits>;
+    using PathValidRequest = nav_proto::IsPathValid_Request;
+    using PathValidResponse = nav_proto::IsPathValid_Response;
 
-    /** Counters updated by action-server planning callbacks. */
+    /** Counters updated by planning callbacks. */
     struct PlannerMetrics {
         std::atomic<uint64_t> plans_requested{0};
         std::atomic<uint64_t> plans_succeeded{0};
@@ -112,11 +104,6 @@ public:
      */
     void SetPathUpdateCallback(PathUpdateCallback callback);
 
-    /** Planning counters since server construction. */
-    const PlannerMetrics& GetMetrics() const {
-        return metrics_;
-    }
-
     /**
      * Runs a single plugin planning request without action-server orchestration.
      *
@@ -134,17 +121,6 @@ public:
         const std::string& planner_id, std::function<bool()> cancel_checker);
 
     /**
-     * Same as GetPlan(start, goal, planner_id, cancel_checker) with a no-op
-     * cancel checker.
-     */
-    commsgs::planning_msgs::Path GetPlan(
-        const commsgs::geometry_msgs::PoseStamped& start,
-        const commsgs::geometry_msgs::PoseStamped& goal,
-        const std::string& planner_id) {
-        return GetPlan(start, goal, planner_id, []() { return false; });
-    }
-
-    /**
      * Checks whether the path ahead of the robot is collision-free on the costmap.
      *
      * @param path Path to validate in the costmap global frame.
@@ -158,9 +134,6 @@ public:
                      bool consider_unknown_as_obstacle = false) const;
 
 private:
-    void ComputePlan();
-    void ComputePlanThroughPoses();
-
     void LoadPlannerPlugins();
     void WaitForCostmap();
 
@@ -189,8 +162,6 @@ private:
     PlannerMetrics metrics_;
 
     std::shared_ptr<autolink::Node> node_;
-    std::shared_ptr<ToPoseServer> to_pose_server_;
-    std::shared_ptr<ThroughPosesServer> through_poses_server_;
     std::shared_ptr<autolink::Service<PathValidRequest, PathValidResponse>>
         path_valid_service_;
 };

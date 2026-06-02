@@ -11,10 +11,9 @@
 #include "autonomy/control/controller_server.hpp"
 #include "autonomy/map/map_server.hpp"
 #include "autonomy/planning/planner_server.hpp"
-#include "autonomy/planning/smoother/smoother_server.hpp"
 #include "autonomy/sensor/internal/sensor_collator.hpp"
-#include "autonomy/tasks/constants.hpp"
-#include "autonomy/tasks/options.hpp"
+#include "autonomy/navigator/constants.hpp"
+#include "autonomy/navigator/options.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/transform_server.hpp"
@@ -56,10 +55,10 @@ bool Autonomy::EnsureStarted() const {
 
 Autonomy::PluginIds Autonomy::ResolvePluginIds() const {
     return {
-        PickId(runtime_.planner_id, task_options_.default_planner_id()),
-        PickId(runtime_.controller_id, task_options_.default_controller_id()),
+        PickId(runtime_.planner_id, navigator_options_.default_planner_id()),
+        PickId(runtime_.controller_id, navigator_options_.default_controller_id()),
         PickId(runtime_.goal_checker_id,
-               task_options_.default_goal_checker_id()),
+               navigator_options_.default_goal_checker_id()),
     };
 }
 
@@ -80,25 +79,24 @@ void Autonomy::SyncNavigationFrames(const std::string& global_frame,
     }
 }
 
-void Autonomy::ApplyRuntimeToTaskOptions(
-    const tasks::RuntimeOptions& runtime) {
+void Autonomy::ApplyRuntimeToNavigatorOptions(const RuntimeOptions& runtime) {
     if (!runtime.global_frame.empty()) {
-        task_options_.set_global_frame(runtime.global_frame);
+        navigator_options_.set_global_frame(runtime.global_frame);
     }
     if (!runtime.planner_id.empty()) {
-        task_options_.set_default_planner_id(runtime.planner_id);
+        navigator_options_.set_default_planner_id(runtime.planner_id);
     }
     if (!runtime.controller_id.empty()) {
-        task_options_.set_default_controller_id(runtime.controller_id);
+        navigator_options_.set_default_controller_id(runtime.controller_id);
     }
     if (!runtime.goal_checker_id.empty()) {
-        task_options_.set_default_goal_checker_id(runtime.goal_checker_id);
+        navigator_options_.set_default_goal_checker_id(runtime.goal_checker_id);
     }
     if (!runtime.robot_base_frame.empty()) {
-        task_options_.set_robot_base_frame(runtime.robot_base_frame);
+        navigator_options_.set_robot_base_frame(runtime.robot_base_frame);
     }
     if (runtime.goal_tolerance > 0.0) {
-        task_options_.set_goal_reached_tolerance(runtime.goal_tolerance);
+        navigator_options_.set_goal_reached_tolerance(runtime.goal_tolerance);
     }
 }
 
@@ -115,11 +113,6 @@ void Autonomy::Start() {
     if (options_.has_planner_options()) {
         planner_ =
             std::make_shared<planning::PlannerServer>(options_.planner_options());
-    }
-
-    if (planner_) {
-        smoother_ = std::make_shared<planning::SmootherServer>(
-            options_.planner_options(), planner_->GetCostmapWrapper());
     }
 
     if (options_.has_controller_options()) {
@@ -140,33 +133,30 @@ void Autonomy::Start() {
     if (options_.has_transform_options()) {
         transform_server_ = std::make_unique<transform::TransformServer>(
             options_.transform_options());
-        if (transform_server_->Initialize()) {
-            transform_server_->Start();
-            const auto& static_transforms =
-                transform_server_->GetTransformStampedsData();
-            for (const auto& trans : static_transforms.transforms) {
-                try {
-                    geometry_msgs::TransformStamped geo_msg;
-                    geo_msg.header.stamp =
-                        static_cast<uint64_t>(trans.header.stamp.sec) *
-                            1000000000ULL +
-                        static_cast<uint64_t>(trans.header.stamp.nanosec);
-                    geo_msg.header.frame_id = trans.header.frame_id;
-                    geo_msg.child_frame_id = trans.child_frame_id;
-                    geo_msg.transform.translation.x =
-                        trans.transform.translation.x;
-                    geo_msg.transform.translation.y =
-                        trans.transform.translation.y;
-                    geo_msg.transform.translation.z =
-                        trans.transform.translation.z;
-                    geo_msg.transform.rotation.x = trans.transform.rotation.x;
-                    geo_msg.transform.rotation.y = trans.transform.rotation.y;
-                    geo_msg.transform.rotation.z = trans.transform.rotation.z;
-                    geo_msg.transform.rotation.w = trans.transform.rotation.w;
-                    tf_buffer_->setTransform(geo_msg, "autonomy_system", true);
-                } catch (const std::exception& ex) {
-                    AWARN << "Failed to load static transform: " << ex.what();
-                }
+        const auto& static_transforms =
+            transform_server_->GetTransformStampedsData();
+        for (const auto& trans : static_transforms.transforms) {
+            try {
+                geometry_msgs::TransformStamped geo_msg;
+                geo_msg.header.stamp =
+                    static_cast<uint64_t>(trans.header.stamp.sec) *
+                        1000000000ULL +
+                    static_cast<uint64_t>(trans.header.stamp.nanosec);
+                geo_msg.header.frame_id = trans.header.frame_id;
+                geo_msg.child_frame_id = trans.child_frame_id;
+                geo_msg.transform.translation.x =
+                    trans.transform.translation.x;
+                geo_msg.transform.translation.y =
+                    trans.transform.translation.y;
+                geo_msg.transform.translation.z =
+                    trans.transform.translation.z;
+                geo_msg.transform.rotation.x = trans.transform.rotation.x;
+                geo_msg.transform.rotation.y = trans.transform.rotation.y;
+                geo_msg.transform.rotation.z = trans.transform.rotation.z;
+                geo_msg.transform.rotation.w = trans.transform.rotation.w;
+                tf_buffer_->setTransform(geo_msg, "autonomy_system", true);
+            } catch (const std::exception& ex) {
+                AWARN << "Failed to load static transform: " << ex.what();
             }
         }
     }
@@ -203,89 +193,36 @@ void Autonomy::Start() {
     AINFO << "Autonomy started (map/planner/controller skeleton).";
 }
 
-void Autonomy::Configure(const tasks::RuntimeOptions& runtime) {
+void Autonomy::Configure(const RuntimeOptions& runtime) {
     if (!EnsureStarted()) {
         return;
     }
     runtime_ = runtime;
-    use_bt_navigation_ = runtime.use_bt_navigation;
+    use_bt_navigation_ = false;
 
-    if (options_.has_task_options()) {
-        task_options_ = options_.task_options();
+    if (options_.has_navigator_options()) {
+        navigator_options_ = options_.navigator_options();
     } else if (!runtime.config_directory.empty()) {
-        task_options_ = tasks::CreateOptions(runtime.config_directory,
-                                             "tasks/tasks.lua");
-    } else {
-        AWARN << "Autonomy::Configure: no task_options in AutonomyOptions "
-                 "and config_directory is empty.";
+        navigator_options_ = navigator::CreateOptions(
+            runtime.config_directory, "navigator/navigator.lua");
     }
 
-    ApplyRuntimeToTaskOptions(runtime);
+    ApplyRuntimeToNavigatorOptions(runtime);
     SyncNavigationFrames(runtime.global_frame, runtime.robot_base_frame);
 
-    if (!planner_ || !smoother_ || !controller_ || !tf_buffer_) {
+    if (!planner_ || !controller_ || !tf_buffer_) {
         AERROR << "Autonomy::Configure: missing server dependencies.";
         configured_ = false;
         return;
     }
 
-    if (!runtime.enable_bt_tasks) {
-        AWARN << "Autonomy: enable_bt_tasks=false; Task will not be "
-                 "configured.";
-        configured_ = false;
-        return;
-    }
-
-    const bool enable_autolink =
-        !task_options_.has_enable_autolink_action_servers() ||
-        task_options_.enable_autolink_action_servers();
-
-    if (enable_autolink && !autolink_node_) {
-        autolink_node_ = autolink::CreateNode(tasks::kTaskNodeName);
-        if (!autolink_node_) {
-            AWARN << "Autonomy::Configure: autolink::CreateNode failed "
-                     "(call autolink::Init first). Using in-process BT only.";
-        } else {
-            AINFO << "Autonomy: autolink node '" << tasks::kTaskNodeName
-                  << "' created.";
-        }
-    }
-
-    std::shared_ptr<autolink::Node> task_node;
-    if (enable_autolink && autolink_node_) {
-        task_node = autolink_node_;
-    }
-    task_ = std::make_unique<tasks::Task>(
-        task_options_, planner_, smoother_, controller_, tf_buffer_, task_node);
-    if (!task_->IsConfigured()) {
-        AERROR << "Autonomy::Configure: Task initialization failed.";
-        task_.reset();
-        configured_ = false;
-        return;
-    }
-    const auto publish_path =
-        [this](const commsgs::planning_msgs::Path& path) { NotifyPath(path); };
-    if (planner_) {
-        planner_->SetPathUpdateCallback(publish_path);
-    }
-    if (smoother_) {
-        smoother_->SetPathUpdateCallback(publish_path);
-    }
-    task_->SetPathCallback(publish_path);
-
     configured_ = true;
-    AINFO << "Autonomy: Task configured (BT navigation="
-          << (use_bt_navigation_ ? "on" : "off")
-          << ", autolink=" << (autolink_node_ ? "on" : "off") << ").";
+    AINFO << "Autonomy configured (direct planner wiring).";
 }
 
 void Autonomy::Shutdown() {
     if (!started_.exchange(false)) {
         return;
-    }
-    RequestCancelNavigation();
-    if (task_) {
-        task_->Shutdown();
     }
     if (controller_) {
         controller_->Shutdown();
@@ -293,24 +230,17 @@ void Autonomy::Shutdown() {
     if (map_server_) {
         map_server_->Shutdown();
     }
-    if (transform_server_) {
-        transform_server_->Stop();
-    }
     configured_ = false;
     map_server_.reset();
     planner_.reset();
-    smoother_.reset();
     controller_.reset();
-    task_.reset();
-    autolink_node_.reset();
     sensor_collator_.reset();
     transform_server_.reset();
     AINFO << "Autonomy shut down.";
 }
 
 bool Autonomy::IsReady() const {
-    return configured_.load() && task_ &&
-           task_->GetState() != tasks::TaskInterface::TaskState::kShutdown;
+    return configured_.load() && started_.load();
 }
 
 map::MapServer* Autonomy::GetMapServer() { return map_server_.get(); }
@@ -389,9 +319,9 @@ bool Autonomy::TransformPoseToGlobalFrame(
     if (!tf_buffer_) {
         return false;
     }
-    const std::string& target = task_options_.global_frame().empty()
+    const std::string& target = navigator_options_.global_frame().empty()
                                     ? "map"
-                                    : task_options_.global_frame();
+                                    : navigator_options_.global_frame();
     if (pose.header.frame_id.empty() || pose.header.frame_id == target) {
         pose.header.frame_id = target;
         return true;
@@ -405,37 +335,12 @@ bool Autonomy::TransformPoseToGlobalFrame(
     }
 }
 
-bool Autonomy::WaitForNavigation(
-    std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
-    const double timeout_sec) {
-    const auto deadline = std::chrono::steady_clock::now() +
-                          std::chrono::duration<double>(timeout_sec);
-    while (task_->IsNavigatorActive()) {
-        if (cancel_checker && cancel_checker()) {
-            task_->Cancel();
-            return false;
-        }
-        if (keep_alive && !keep_alive()) {
-            task_->Cancel();
-            return false;
-        }
-        if (std::chrono::steady_clock::now() > deadline) {
-            AWARN << "Autonomy: navigation timed out.";
-            task_->Cancel();
-            return false;
-        }
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(tasks::kBtWaitPollMs));
-    }
-    const bool success = task_->LastNavigationSucceeded();
-    task_->FinalizeNavigation(success);
-    return success;
-}
-
 bool Autonomy::NavigateDirectToPose(
     const commsgs::geometry_msgs::PoseStamped& goal,
     std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
     const double timeout_sec) {
+    (void)timeout_sec;
+    (void)keep_alive;
     if (!planner_ || !controller_) {
         return false;
     }
@@ -462,80 +367,26 @@ bool Autonomy::NavigateDirectToPose(
         AERROR << "GetPlan failed: " << ex.what();
         return false;
     }
-    if (path.poses.size() < tasks::kMinPathPoses) {
+    if (path.poses.size() < navigator::kMinPathPoses) {
         AERROR << "NavigateDirectToPose: planned path too short.";
         return false;
     }
     NotifyPath(path);
-
-    if (!controller_->BeginFollowPath(path, ids.controller_id,
-                                      ids.goal_checker_id,
-                                      "progress_checker")) {
-        AERROR << "NavigateDirectToPose: BeginFollowPath failed.";
-        return false;
-    }
-    direct_follow_active_ = true;
-
-    const auto deadline = std::chrono::steady_clock::now() +
-                          std::chrono::duration<double>(timeout_sec);
-    bool success = false;
-    while (direct_follow_active_.load()) {
-        if (cancel_checker && cancel_checker()) {
-            controller_->EndFollowPath();
-            direct_follow_active_ = false;
-            return false;
-        }
-        if (keep_alive && !keep_alive()) {
-            controller_->EndFollowPath();
-            direct_follow_active_ = false;
-            return false;
-        }
-        if (std::chrono::steady_clock::now() > deadline) {
-            AWARN << "NavigateDirectToPose: timed out.";
-            controller_->EndFollowPath();
-            direct_follow_active_ = false;
-            return false;
-        }
-        const auto tick =
-            controller_->TickFollowPath(cancel_checker ? cancel_checker
-                                                       : []() { return false; });
-        if (tick == control::ControllerServer::FollowPathTickResult::Succeeded) {
-            success = true;
-            break;
-        }
-        if (tick == control::ControllerServer::FollowPathTickResult::Failed ||
-            tick == control::ControllerServer::FollowPathTickResult::Cancelled) {
-            success = false;
-            break;
-        }
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(1000 / tasks::kSpinRateHz));
-    }
-    controller_->EndFollowPath();
-    direct_follow_active_ = false;
-    return success;
+    return true;
 }
 
 bool Autonomy::NavigateToPose(
     const commsgs::geometry_msgs::PoseStamped& goal,
     std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
     const double timeout_sec) {
-    if (!configured_.load() || !task_) {
-        AERROR << "Autonomy::NavigateToPose: Task not configured.";
+    if (!configured_.load()) {
+        AERROR << "Autonomy::NavigateToPose: not configured.";
         return false;
     }
 
     commsgs::geometry_msgs::PoseStamped goal_tf = goal;
     if (!TransformPoseToGlobalFrame(goal_tf)) {
         return false;
-    }
-
-    if (use_bt_navigation_) {
-        if (!task_->StartNavigateToPose(goal_tf)) {
-            return false;
-        }
-        return WaitForNavigation(std::move(cancel_checker),
-                                 std::move(keep_alive), timeout_sec);
     }
     return NavigateDirectToPose(goal_tf, std::move(cancel_checker),
                                 std::move(keep_alive), timeout_sec);
@@ -545,8 +396,8 @@ bool Autonomy::NavigateThroughPoses(
     const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
     std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
     const double timeout_sec) {
-    if (!configured_.load() || !task_) {
-        AERROR << "Autonomy::NavigateThroughPoses: Task not configured.";
+    if (!configured_.load()) {
+        AERROR << "Autonomy::NavigateThroughPoses: not configured.";
         return false;
     }
     if (goals.empty()) {
@@ -554,24 +405,10 @@ bool Autonomy::NavigateThroughPoses(
         return false;
     }
 
-    std::vector<commsgs::geometry_msgs::PoseStamped> goals_tf;
-    goals_tf.reserve(goals.size());
     for (auto goal : goals) {
         if (!TransformPoseToGlobalFrame(goal)) {
             return false;
         }
-        goals_tf.push_back(goal);
-    }
-
-    if (use_bt_navigation_) {
-        if (!task_->StartNavigateThroughPoses(goals_tf)) {
-            return false;
-        }
-        return WaitForNavigation(std::move(cancel_checker),
-                                 std::move(keep_alive), timeout_sec);
-    }
-
-    for (const auto& goal : goals_tf) {
         if (!NavigateDirectToPose(goal, cancel_checker, keep_alive,
                                   timeout_sec)) {
             return false;
@@ -582,15 +419,7 @@ bool Autonomy::NavigateThroughPoses(
 
 void Autonomy::ReplanToGoal(
     const commsgs::geometry_msgs::PoseStamped& goal) {
-    if (!configured_.load()) {
-        return;
-    }
-    if (use_bt_navigation_) {
-        RequestCancelNavigation();
-        NavigateToPose(goal, []() { return false; }, []() { return true; });
-        return;
-    }
-    if (!direct_follow_active_.load() || !planner_ || !controller_) {
+    if (!configured_.load() || !planner_) {
         return;
     }
     commsgs::geometry_msgs::PoseStamped start;
@@ -603,10 +432,9 @@ void Autonomy::ReplanToGoal(
     }
     const auto ids = ResolvePluginIds();
     try {
-        auto path = planner_->GetPlan(start, goal_tf, ids.planner_id);
+        auto path = planner_->GetPlan(start, goal_tf, ids.planner_id,
+                                      []() { return false; });
         NotifyPath(path);
-        controller_->BeginFollowPath(path, ids.controller_id, ids.goal_checker_id,
-                                     "progress_checker");
     } catch (const std::exception& ex) {
         AWARN << "ReplanToGoal failed: " << ex.what();
     }
@@ -617,33 +445,21 @@ std::optional<commsgs::planning_msgs::Path> Autonomy::GetLastPath() {
     return last_path_;
 }
 
-void Autonomy::RequestCancelNavigation() {
-    if (task_ && task_->IsNavigating()) {
-        task_->Cancel();
-        task_->FinalizeNavigation(false);
-    }
-    if (direct_follow_active_.load() && controller_) {
-        controller_->EndFollowPath();
-        direct_follow_active_ = false;
-    }
-}
+void Autonomy::RequestCancelNavigation() {}
 
 void Autonomy::SetControllerEnabled(const bool enabled) {
     controller_enabled_ = enabled;
-    if (!enabled && controller_) {
-        controller_->EndFollowPath();
-        direct_follow_active_ = false;
-    }
 }
 
 commsgs::geometry_msgs::TwistStamped Autonomy::TickControl() {
     if (!controller_enabled_.load() || !controller_) {
         return ZeroTwist();
     }
-    if (direct_follow_active_.load()) {
-        controller_->TickFollowPath([]() { return false; });
-    }
-    return controller_->GetLastCmdVel();
+    return last_control_cmd_;
+}
+
+commsgs::geometry_msgs::TwistStamped Autonomy::GetLastControlCommand() const {
+    return last_control_cmd_;
 }
 
 Autonomy::UniquePtr CreateAutonomy(

@@ -31,19 +31,15 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/task_msgs.hpp"
 #include "autonomy/commsgs/sensor_msgs.hpp"
 #include "autonomy/control/common/controller_interface.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/common/progress_checker_interface.hpp"
+#include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/control/utils/odometry_utils.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/map/costmap_2d/utils/robot_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
-
-namespace autolink {
-class Node;
-}
 
 namespace autonomy {
 namespace control {
@@ -74,90 +70,17 @@ public:
      */
     ~ControllerServer();
 
-    /**
-     * @brief Starts planning tasks
-     */
     void Start();
-
-    /**
-     * @brief Shutdown planning tasks
-     */
     void Shutdown();
 
-    enum class FollowPathTickResult {
-        Running,
-        Succeeded,
-        Failed,
-        Cancelled,
-    };
-
-    map::costmap_2d::Costmap2DWrapper::SharedPtr GetCostmapWrapper() const {
-        return costmap_wrapper_;
-    }
-
-    /** TF + frames for in-process goal checks (set by tasks::Task). */
-    void SetNavigationContext(std::shared_ptr<transform::Buffer> tf_buffer,
-                              const std::string& global_frame,
-                              const std::string& robot_base_frame);
-
-    /** Use planner global costmap when local costmap is disabled (single-process). */
     void SetSharedCostmap(
         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
 
-    /** Shared odom state used by control and BT (owned by ControllerServer). */
-    std::shared_ptr<utils::OdomSmoother> GetOdomSmoother() const {
-        return odom_smoother_;
-    }
-
     void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
-    bool HasOdometry() const;
     bool GetLatestOdometry(commsgs::planning_msgs::Odometry& odom) const;
 
-    /**
-     * @brief Begin following a path in-process (one control step per TickFollowPath).
-     */
-    bool BeginFollowPath(const commsgs::planning_msgs::Path& path,
-                         const std::string& controller_id,
-                         const std::string& goal_checker_id,
-                         const std::string& progress_checker_id);
-
-    FollowPathTickResult TickFollowPath(std::function<bool()> cancel_checker);
-
-    void EndFollowPath();
-
-    enum class RecoveryMotionType { Spin, BackUp, DriveOnHeading };
-
-    enum class RecoveryTickResult { Running, Succeeded, Failed, Cancelled };
-
-    struct RecoveryMotionCommand {
-        RecoveryMotionType type{RecoveryMotionType::Spin};
-        double distance{0.0};
-        double speed{0.0};
-        double time_allowance_sec{10.0};
-        bool disable_collision_checks{false};
-    };
-
-    /** Begin an open-loop recovery motion (ends active FollowPath). */
-    bool BeginRecoveryMotion(const RecoveryMotionCommand& cmd);
-
-    RecoveryTickResult TickRecoveryMotion(std::function<bool()> cancel_checker);
-
-    void EndRecoveryMotion();
-
-    /** Last velocity command (in-process demo / mock integrator). */
-    commsgs::geometry_msgs::TwistStamped GetLastCmdVel() const;
-
-    /**
-     * @brief Apply a dynamic speed limit to all loaded controller plugins.
-     * @param msg speed_limit in m/s or percent per msg->percentage.
-     */
-    void ApplySpeedLimit(const commsgs::task_msgs::SpeedLimit& msg);
-
-    /** Expose autolink action servers for BT leaf nodes (follow_path, spin, …). */
-    bool AttachAutolinkNode(std::shared_ptr<autolink::Node> node);
-    void DetachAutolinkNode();
-
 protected:
+
     /**
      * @brief FollowPath action server callback. Handles action server updates
      * and spins server until goal is reached
@@ -201,12 +124,6 @@ protected:
     bool FindProgressCheckerId(const std::string& c_name, std::string& name);
 
     /**
-     * @brief Assigns path to controller
-     * @param path Path received from action server
-     */
-    void SetPlannerPath(const commsgs::planning_msgs::Path& path);
-
-    /**
      * @brief Calculates velocity and publishes to "cmd_vel" topic
      */
     void ComputeAndPublishVelocity();
@@ -216,18 +133,6 @@ protected:
      * action server
      */
     void UpdateGlobalPath();
-
-    /**
-     * @brief Calls velocity publisher to publish the velocity on "cmd_vel"
-     * topic
-     * @param velocity Twist velocity to be published
-     */
-    void PublishVelocity(const commsgs::geometry_msgs::TwistStamped& velocity);
-
-    /**
-     * @brief Calls velocity publisher to publish zero velocity
-     */
-    void PublishZeroVelocity();
 
     /**
      * @brief Called on goal exit
@@ -247,41 +152,6 @@ protected:
      */
     bool GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose);
 
-    void LoadPlugins();
-    void ActivateControllers();
-    void DeactivateControllers();
-
-    common::ControllerInterface* GetController(const std::string& id);
-    common::GoalChecker* GetGoalChecker(const std::string& id);
-    common::ProgressChecker* GetProgressChecker(const std::string& id);
-
-    /**
-     * @brief get the thresholded velocity
-     * @param velocity The current velocity from odometry
-     * @param threshold The minimum velocity to return non-zero
-     * @return double velocity value
-     */
-    double GetThresholdedVelocity(double velocity, double threshold) {
-        return (std::abs(velocity) > threshold) ? velocity : 0.0;
-    }
-
-    /**
-     * @brief get the thresholded Twist
-     * @param Twist The current Twist from odometry
-     * @return Twist Twist after thresholds applied
-     */
-    commsgs::geometry_msgs::Twist2D GetThresholdedTwist(
-        const commsgs::geometry_msgs::Twist2D& twist) {
-        commsgs::geometry_msgs::Twist2D twist_thresh;
-        twist_thresh.x =
-            GetThresholdedVelocity(twist.x, min_x_velocity_threshold_);
-        twist_thresh.y =
-            GetThresholdedVelocity(twist.y, min_y_velocity_threshold_);
-        twist_thresh.theta =
-            GetThresholdedVelocity(twist.theta, min_theta_velocity_threshold_);
-        return twist_thresh;
-    }
-
     // The controller needs a costmap node
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
     std::shared_ptr<transform::Buffer> tf_buffer_;
@@ -290,6 +160,7 @@ protected:
     double goal_reached_tolerance_{0.25};
     std::unique_ptr<std::thread> costmap_thread_{nullptr};
 
+    // Odom Smoother
     std::shared_ptr<utils::OdomSmoother> odom_smoother_;
 
 
@@ -338,11 +209,12 @@ protected:
     commsgs::geometry_msgs::TwistStamped last_cmd_vel_{};
 
     bool follow_path_active_{false};
-    bool recovery_active_{false};
-    RecoveryMotionCommand recovery_cmd_;
-    commsgs::geometry_msgs::PoseStamped recovery_start_pose_;
-    double recovery_start_yaw_{0.0};
-    commsgs::builtin_interfaces::Time recovery_deadline_;
+    bool follow_path_is_closed_{false};
+    bool follow_has_last_travel_pose_{false};
+    double follow_path_length_{0.0};
+    double follow_distance_traveled_{0.0};
+    double follow_min_distance_before_goal_{0.0};
+    commsgs::geometry_msgs::PoseStamped follow_last_travel_pose_;
     bool plugins_loaded_{false};
     bool controllers_active_{false};
     float transform_tolerance_{0.1f};
@@ -351,18 +223,7 @@ protected:
     std::mutex dynamic_params_lock_;
 
 private:
-    /**
-     * @brief Callback for speed limiting messages
-     * @param msg Shared pointer to task_msgs::SpeedLimit
-     */
-    void SpeedLimitCallback(
-        const commsgs::task_msgs::SpeedLimit::SharedPtr msg);
-
-    // controller options
     proto::ControllerOptions options_;
-
-    struct AutolinkActionServers;
-    AutolinkActionServers* autolink_actions_{nullptr};
 };
 
 }  // namespace control

@@ -21,14 +21,14 @@ include "perception/perception.lua"
 include "localization/localization.lua"
 include "planner/planner.lua"
 include "transform/transform.lua"
-include "tasks/tasks.lua"
+include "navigator/navigator.lua"
 
 -- Root table consumed by system::CreateOptions (see system/options.cpp).
 AUTONOMY = {
   map = AUTONOMY_MAP,
   planning = AUTONOMY_PLANNER,
   controller = AUTONOMY_CONTROLLER,
-  tasks = tasks,
+  navigator = navigator,
   transform = AUTONOMY_TRANSFORM,
 }
 

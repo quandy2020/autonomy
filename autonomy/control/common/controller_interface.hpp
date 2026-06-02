@@ -16,11 +16,13 @@
 
 #pragma once
 
-#include "autonomy/common/configuration_file_resolver.hpp"
-#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include <memory>
+#include <string>
+
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 
@@ -39,47 +41,57 @@ namespace autonomy {
 namespace control {
 namespace common {
 
+/**
+ * @class ControllerInterface
+ * @brief Virtual base class for local controller plugins.
+ *
+ * Plugins are constructed with options, name, TF buffer, and costmap wrapper.
+ * Provide a default constructor for Autolink plugin registration; use the
+ * protected parameterized constructor for runtime instantiation.
+ */
 class ControllerInterface
 {
 public:
+    /**
+     * @brief Type definition for transform buffer.
+     */
     using TfBuffer = autonomy::transform::Buffer;
 
     /**
-     * Define ControllerInterface::SharedPtr type
+     * @brief Define ControllerInterface::SharedPtr type
      */
     AUTONOMY_SMART_PTR_DEFINITIONS(ControllerInterface)
 
     /**
-     * @brief A Destructor for autonomy::control::common::ControllerInterface
+     * @brief Destructor for ControllerInterface
      */
     virtual ~ControllerInterface() = default;
 
-    /**
-     * @param  parent pointer to user's node
-     * @param  options The options to configure the controller
-     * @param  name The name of the controller
-     * @param  tf_buffer The transform buffer
-     * @param  costmap_wrapper A pointer to the costmap wrapper
+    /** 
+     * @brief Controller options from configuration.
+     * @return Controller options
      */
-    virtual void Configure(
-        const proto::ControllerOptions& options, std::string name,
-        std::shared_ptr<TfBuffer>,
-        std::shared_ptr<map::costmap_2d::Costmap2DWrapper>) = 0;
+    const proto::ControllerOptions& GetOptions() const { return options_; }
 
     /**
-     * @brief Method to cleanup resources.
+     * @brief Plugin instance name (e.g. from controller_plugins).
+     * @return Plugin instance name
      */
-    virtual void Cleanup() = 0;
+    const std::string& GetName() const { return name_; }
 
-    /**
-     * @brief Method to active planner and any threads involved in execution.
+    /** 
+     * @brief Transform buffer used for pose lookups.
+     * @return Transform buffer pointer
      */
-    virtual void Activate() = 0;
+    TfBuffer* GetTfBuffer() const { return tf_buffer_.get(); }
 
-    /**
-     * @brief Method to deactive planner and any threads involved in execution.
+    /** 
+     * @brief Local costmap wrapper (may be null until set by server).
+     * @return Local costmap wrapper pointer
      */
-    virtual void Deactivate() = 0;
+    map::costmap_2d::Costmap2DWrapper* GetCostmap() const {
+        return costmap_wrapper_.get();
+    }
 
     /**
      * @brief Given the current position, orientation, and velocity of the
@@ -89,6 +101,7 @@ public:
      * @param cmd_vel Will be filled with the velocity command to be passed to
      * the robot base. The frame id will set to the robot frame id by default,
      * but can be added inside the implementation.
+     * @param goal_checker Goal checker used to evaluate terminal conditions
      * @param message Optional more detailed outcome as a string
      * @return Result code from ControllerResultCode enum (see
      * autonomy.control.proto.ControllerResultCode) Return values correspond to
@@ -133,10 +146,38 @@ public:
                                const bool& percentage) = 0;
 
     /**
-     * @brief Reset the state of the controller if necessary after task is
-     * exited
+     * @brief Reset controller state when navigation ends.
      */
     virtual void Reset() {}
+
+protected:
+    /** 
+     * @brief Default constructor for plugin registration only.
+     */
+    ControllerInterface() = default;
+
+    /**
+     * @brief Construct and initialize a controller plugin.
+     * @param options Controller options from configuration
+     * @param name Plugin instance name
+     * @param tf_buffer Transform buffer for pose lookups
+     * @param costmap_wrapper Local costmap wrapper
+     */
+    ControllerInterface(const proto::ControllerOptions& options,
+                        std::string name, std::shared_ptr<TfBuffer> tf_buffer,
+                        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
+
+    // Controller options from configuration.
+    proto::ControllerOptions options_;
+
+    // Plugin instance name.
+    std::string name_;
+
+    // Transform buffer used for pose lookups.
+    std::shared_ptr<TfBuffer> tf_buffer_;
+
+    // Local costmap wrapper (may be null until set by server).
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
 };
 
 }  // namespace common

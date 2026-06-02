@@ -44,32 +44,32 @@ namespace planning {
 namespace planner {
 namespace navfn {
 
-NavfnPlanner::NavfnPlanner() : name_("NavfnPlanner"), costmap_(nullptr) {}
+NavfnPlanner::NavfnPlanner(const proto::PlannerOptions& options,
+                           const std::string& name,
+                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
+                               costmap)
+    : GlobalPlanner(options, name, std::move(costmap)) {
+    InitFromOptions();
+}
 
 NavfnPlanner::~NavfnPlanner() {
     AINFO << ::autonomy::common::StrCat("Destroying plugin ", name_,
-                          " of type NavfnPlanner.");
+                                        " of type NavfnPlanner.");
+    planner_.reset();
+    costmap_.reset();
 }
 
-bool NavfnPlanner::Configure(
-    const proto::PlannerOptions& options, const std::string& name,
-    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
-    name_ = name;
-    // Initialize parameters
-    const auto& navfn_opts = options.navfn();
+void NavfnPlanner::InitFromOptions() {
+    const auto& navfn_opts = options_.navfn();
     tolerance_ = navfn_opts.tolerance();
     allow_unknown_ = navfn_opts.allow_unknown();
     use_astar_ = navfn_opts.use_astar();
     use_final_approach_orientation_ =
         navfn_opts.use_final_approach_orientation();
 
-    // Set costmap if provided
-    costmap_ = costmap;
-
     if (costmap_) {
         auto* costmap_ptr = costmap_->getCostmap();
         if (costmap_ptr) {
-            // Initialize planner with costmap dimensions
             planner_ = std::make_unique<NavFn>(
                 static_cast<int>(costmap_ptr->getSizeInCellsX()),
                 static_cast<int>(costmap_ptr->getSizeInCellsY()));
@@ -80,8 +80,6 @@ bool NavfnPlanner::Configure(
     } else {
         AINFO << "NavfnPlanner configured without costmap (will be set later)";
     }
-
-    return true;
 }
 
 uint32 NavfnPlanner::CreatePlan(
@@ -128,15 +126,6 @@ uint32 NavfnPlanner::CreatePlan(
     }
     return static_cast<uint32>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
 }
-
-void NavfnPlanner::Cleanup() {
-    planner_.reset();
-    costmap_.reset();
-}
-
-void NavfnPlanner::Activate() {}
-
-void NavfnPlanner::Deactivate() {}
 
 bool NavfnPlanner::isPlannerOutOfDate() {
     auto* costmap_ptr = costmap_->getCostmap();
