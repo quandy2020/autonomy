@@ -70,10 +70,14 @@ T NormalizeAngleDifference(T difference) {
     return difference;
 }
 
-// template <typename T>
-// T atan2(const Eigen::Matrix<T, 2, 1>& vector) {
-//   return ceres::atan2(vector.y(), vector.x());
-// }
+inline bool SmallerThanAbs(double i, double j) {
+    return std::fabs(i) < std::fabs(j);
+}
+
+template <typename V1, typename V2>
+inline double Cross2d(const V1& v1, const V2& v2) {
+    return v1.x() * v2.y() - v2.x() * v1.y();
+}
 
 template <typename T>
 inline void QuaternionProduct(const double* const z, const T* const w,
