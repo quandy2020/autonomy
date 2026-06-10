@@ -54,6 +54,7 @@ cmake  \
     -DWITH_QT=OFF \
     -DBUILD_TESTS=OFF \
     -DBUILD_PERF_TESTS=OFF \
+    -DBUILD_opencv_python=OFF \
     ..
 
 # build
