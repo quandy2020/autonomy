@@ -1,0 +1,4 @@
+[submodule "autolink"]
+	path = autolink
+	url = https://github.com/quandy2020/autolink.git
+	branch = feature/library
