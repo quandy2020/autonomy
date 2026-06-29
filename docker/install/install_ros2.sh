@@ -109,6 +109,15 @@ function update_apt_repositories() {
     info "Apt repositories updated."
 }
 
+function try_install_ros_package() {
+    local package="$1"
+    if apt-cache show "${package}" &>/dev/null; then
+        apt-get install -y "${package}"
+    else
+        warning "Package ${package} not found in apt repositories, skipping."
+    fi
+}
+
 function install_ros2_packages() {
     info "Installing ROS 2 ${ROS_DISTRO} packages..."
     
@@ -158,9 +167,9 @@ function install_ros2_packages() {
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler-ros
 
 
-    # Foxglove SDK
-    info "Installing Foxglove SDK..."
-    apt-get install -y ros-${ROS_DISTRO}-foxglove-sdk
+    # Foxglove bridge (optional; used for Foxglove Studio visualization)
+    info "Installing Foxglove bridge (optional)..."
+    try_install_ros_package "ros-${ROS_DISTRO}-foxglove-bridge"
 
     info "ROS 2 packages installed successfully."
 }
