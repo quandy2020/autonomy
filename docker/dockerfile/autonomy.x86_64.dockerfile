@@ -99,6 +99,7 @@ RUN mkdir /thirdparty
 RUN bash /tmp/install/install_gtest.sh
 RUN bash /tmp/install/install_glog.sh
 RUN bash /tmp/install/install_gflags.sh
+RUN bash /tmp/install/install_protobuf.sh
 RUN bash /tmp/install/install_grpc.sh
 RUN bash /tmp/install/install_gperftools.sh
 RUN bash /tmp/install/install_opencv.sh

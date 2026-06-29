@@ -17,19 +17,72 @@
 ###############################################################################
 
 # Fail on first error.
-set -e
+set -euo pipefail
 
-# ------------------------------------------------------------------------------
-# 安装 habitat-sim + habitat-lab v0.3.4（最新稳定版，版本需保持一致）
+# ROS nodes (habitat_node.py) use /opt/venv/bin/python3 — install into venv when present.
+if [ -x /opt/venv/bin/python3 ]; then
+  PY=/opt/venv/bin/python3
+else
+  PY=python3
+fi
+pip3() { "${PY}" -m pip "$@"; }
+
+# Isaac Lab 等运行时镜像通常没有 CUDA toolkit；install_ccache.sh 还可能把 nvcc 链到 ccache。
+detect_cuda_toolkit_root() {
+  local candidate nvcc_path
+  for candidate in "${CUDA_HOME:-}" "${CUDA_PATH:-}" /usr/local/cuda /usr/local/cuda-*; do
+    [ -n "${candidate}" ] || continue
+    [ -d "${candidate}/lib64" ] || continue
+    nvcc_path="${candidate}/bin/nvcc"
+    [ -x "${nvcc_path}" ] || continue
+    if readlink -f "${nvcc_path}" 2>/dev/null | grep -q '/ccache$'; then
+      continue
+    fi
+    if ! "${nvcc_path}" --version 2>&1 | grep -q 'Cuda compilation tools'; then
+      continue
+    fi
+    echo "${candidate}"
+    return 0
+  done
+  return 1
+}
+
+configure_habitat_cuda() {
+  local mode="${HABITAT_WITH_CUDA:-auto}"
+  local cuda_root=""
+
+  if [ "${mode}" = "auto" ]; then
+    if cuda_root="$(detect_cuda_toolkit_root)"; then
+      mode=ON
+    else
+      mode=OFF
+    fi
+  elif [ "${mode}" = "ON" ]; then
+    cuda_root="$(detect_cuda_toolkit_root)" || {
+      echo "[habitat] HABITAT_WITH_CUDA=ON but CUDA toolkit not found; using CPU build."
+      mode=OFF
+    }
+  fi
+
+  export HABITAT_WITH_CUDA="${mode}"
+  if [ "${mode}" = "ON" ]; then
+    export CUDA_HOME="${cuda_root}"
+    export CUDA_PATH="${cuda_root}"
+    export PATH="${cuda_root}/bin:${PATH}"
+    export LD_LIBRARY_PATH="${cuda_root}/lib64:${LD_LIBRARY_PATH:-}"
+    EXTRA_HABITAT_BUILD_ARGS="${EXTRA_HABITAT_BUILD_ARGS} --config-settings=cmake.define.CUDA_TOOLKIT_ROOT_DIR=${cuda_root}"
+    echo "[habitat] CUDA build enabled (toolkit: ${cuda_root})"
+  else
+    echo "[habitat] CPU-only build (HABITAT_WITH_CUDA=OFF)"
+  fi
+}
+# 安装 habitat-sim + habitat-lab v0.3.4（版本需保持一致）
 # habitat-sim：pip install 从源码编译，适用于 Docker / 服务器 headless 环境。
-# habitat-lab：pip install -e habitat-lab/（参见 habitat-lab/Dockerfile）
-# habitat-sim 构建选项通过环境变量控制，例如：
-#   HABITAT_WITH_CUDA=ON        启用 CUDA
-#   HABITAT_WITH_BULLET=OFF     禁用 Bullet 物理引擎（默认启用）
-#   HABITAT_WITH_AUDIO=ON       启用音频传感器（仅 Linux）
-# 额外 pip 参数可通过 EXTRA_HABITAT_BUILD_ARGS 传入，例如：
-#   --config-settings=cmake.define.CMAKE_BUILD_PARALLEL_LEVEL=1
-# 可选安装 habitat-baselines：INSTALL_HABITAT_BASELINES=1
+# habitat-lab：pip install -e habitat-lab/
+# 环境变量示例：
+#   HABITAT_WITH_CUDA=auto|ON|OFF  auto=检测到 toolkit 才启用 CUDA（默认）
+#   HABITAT_WITH_BULLET=OFF     禁用 Bullet 物理引擎
+#   INSTALL_HABITAT_BASELINES=1 可选安装 habitat-baselines
 # ------------------------------------------------------------------------------
 
 HABITAT_REPO_URL=${HABITAT_REPO_URL:-https://github.com/facebookresearch/habitat-sim.git}
@@ -38,13 +91,14 @@ HABITAT_LAB_REPO_URL=${HABITAT_LAB_REPO_URL:-https://github.com/facebookresearch
 HABITAT_LAB_VERSION=${HABITAT_LAB_VERSION:-v0.3.4}
 HABITAT_ROOT=/thirdparty
 
+echo "[habitat] Using Python: ${PY} ($("${PY}" --version))"
 echo "[habitat-sim] 使用仓库: ${HABITAT_REPO_URL}, 版本: ${HABITAT_VERSION}"
 
-# 获取源码
 mkdir -p "${HABITAT_ROOT}"
 cd "${HABITAT_ROOT}"
 
-if [ ! -d habitat-sim ]; then
+if [ ! -d habitat-sim/.git ]; then
+  rm -rf habitat-sim
   git clone --branch "${HABITAT_VERSION}" "${HABITAT_REPO_URL}" habitat-sim
 else
   cd habitat-sim
@@ -54,13 +108,9 @@ else
 fi
 
 cd habitat-sim
-
-# 初始化并更新子模块
-git submodule init
-git submodule update
+git submodule update --init --recursive
 
 # habitat-lab 固定 numpy==1.26.4；habitat-sim 元数据要求 numpy>=2.0 但运行时兼容 1.26.4
-# 统一使用 numpy 1.26.4，避免 habitat-lab 安装时降级引发冲突
 if [ -f requirements.txt ]; then
   echo "[habitat-sim] 调整 numpy 版本约束以兼容 habitat-lab..."
   sed -i 's/numpy>=2.0.0,<2.4/numpy==1.26.4/' requirements.txt
@@ -69,24 +119,23 @@ if [ -f pyproject.toml ]; then
   sed -i 's/"numpy>=2.0.0,<2.4"/"numpy==1.26.4"/' pyproject.toml
 fi
 
-# 安装 Python 依赖
+pip3 install --no-cache-dir "numpy==1.26.4"
+
 if [ -f requirements.txt ]; then
   echo "[habitat-sim] 安装 Python 依赖..."
-  pip3 install -r requirements.txt
+  pip3 install --no-cache-dir -r requirements.txt
 fi
 
-# habitat-sim v0.3.4+ 使用 scikit-build-core；--no-build-isolation 需预先安装构建后端
 echo "[habitat-sim] 安装构建依赖 (scikit-build-core, pybind11)..."
-pip3 install "scikit-build-core>=0.10" "pybind11>=2.10"
+pip3 install --no-cache-dir "scikit-build-core>=0.10" "pybind11>=2.10"
 
-# Docker/容器环境下的 Git 安全设置，避免权限问题
 git config --global --add safe.directory '*'
 
 echo "[habitat-sim] 开始 headless 模式安装（无图形界面）..."
-
-# v0.3.4 起使用 pip + 环境变量替代 setup.py --headless
 export HABITAT_BUILD_GUI_VIEWERS=${HABITAT_BUILD_GUI_VIEWERS:-OFF}
 EXTRA_HABITAT_BUILD_ARGS=${EXTRA_HABITAT_BUILD_ARGS:-}
+configure_habitat_cuda
+rm -rf build
 
 pip3 install . \
   --no-build-isolation \
@@ -102,7 +151,8 @@ echo "[habitat-lab] 使用仓库: ${HABITAT_LAB_REPO_URL}, 版本: ${HABITAT_LAB
 
 cd "${HABITAT_ROOT}"
 
-if [ ! -d habitat-lab ]; then
+if [ ! -d habitat-lab/.git ]; then
+  rm -rf habitat-lab
   git clone --branch "${HABITAT_LAB_VERSION}" "${HABITAT_LAB_REPO_URL}" habitat-lab
 else
   cd habitat-lab
@@ -117,21 +167,24 @@ echo "[habitat-lab] 安装核心包..."
 EXTRA_HABITAT_LAB_BUILD_ARGS=${EXTRA_HABITAT_LAB_BUILD_ARGS:-}
 pip3 install -e habitat-lab/ ${EXTRA_HABITAT_LAB_BUILD_ARGS}
 
-# 统一锁定 numpy，消除 habitat-sim 与 habitat-lab 之间的版本冲突
 echo "[habitat-lab] 锁定 numpy==1.26.4..."
-pip3 install "numpy==1.26.4"
+pip3 install --no-cache-dir "numpy==1.26.4"
 
-# Docker 镜像中 install_opencv.sh 编译的 OpenCV 5.x 可能污染 pip cv2 包，
-# 导致 habitat-lab 导入时 cv2.applyColorMap 失败；强制重装 opencv-python 4.x
+# Docker 镜像中 install_opencv.sh 编译的 OpenCV 5.x 可能污染 pip cv2 包
 echo "[habitat-lab] 修复 OpenCV 冲突..."
-PYTHON_SITE="$(python3 -c 'import site; print(site.getsitepackages()[0])')"
+PYTHON_SITE="$("${PY}" -c 'import site; print(site.getsitepackages()[0])')"
 pip3 uninstall -y opencv-python 2>/dev/null || true
 rm -rf "${PYTHON_SITE}/cv2" "${PYTHON_SITE}"/opencv_python*.dist-info
 pip3 install --no-cache-dir "opencv-python==4.11.0.86"
+
+echo "[habitat-lab] 安装 HuNav/ROS Python 依赖 (openai, rich)..."
+pip3 install --no-cache-dir openai rich
 
 if [ "${INSTALL_HABITAT_BASELINES:-0}" = "1" ]; then
   echo "[habitat-lab] 安装 habitat-baselines..."
   pip3 install -e habitat-baselines/ ${EXTRA_HABITAT_LAB_BUILD_ARGS}
 fi
 
+echo "[habitat-lab] 验证安装..."
+"${PY}" -c "import habitat_sim; import habitat; print('habitat-sim', habitat_sim.__version__)"
 echo "[habitat-lab] 安装完成。"

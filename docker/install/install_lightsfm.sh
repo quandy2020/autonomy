@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 ###############################################################################
 # Copyright 2024 The OpenRobotic Beginner Authors (duyongquan). All Rights Reserved.
@@ -16,21 +16,15 @@
 # limitations under the License.
 ###############################################################################
 
-INSTALLERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+set -euo pipefail
 
-function main() {
+LIGHTSFM_REPO="https://github.com/robotics-upo/lightsfm.git"
+INSTALL_PREFIX="${LIGHTSFM_INSTALL_PREFIX:-/usr/local}"
 
-    # bash ${INSTALLERS_DIR}/install_llvm_clang.sh
-    # bash ${INSTALLERS_DIR}/install_qa_tools.sh
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "${tmpdir}"' EXIT
 
-    # bash ${INSTALLERS_DIR}/install_gpu_support.sh
-    # bash ${INSTALLERS_DIR}/install_drivers_deps.sh
+git clone --depth 1 "${LIGHTSFM_REPO}" "${tmpdir}/lightsfm"
+make -C "${tmpdir}/lightsfm" install
 
-    bash ${INSTALLERS_DIR}/install_cyber.sh
-    bash ${INSTALLERS_DIR}/install_protobuf.sh
-    bash ${INSTALLERS_DIR}/install_grpc.sh
-    # bash ${INSTALLERS_DIR}/install_opencv.sh
-    bash ${INSTALLERS_DIR}/install_behaviortree_cpp.sh
-}
-
-main "$@"
+echo "[OK] lightsfm headers installed to ${INSTALL_PREFIX}/include/lightsfm"

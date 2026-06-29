@@ -16,8 +16,7 @@
 # limitations under the License.
 ###############################################################################
 
-wget https://github.com/NVIDIA/nvidia-docker/releases/download/v1.0.1/nvidia-docker_1.0.1-1_amd64.deb
-sudo dpkg -i nvidia-docker_1.0.1-1_amd64.deb
-sudo apt-get install -f
-rm nvidia-docker_1.0.1-1_amd64.deb
+set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${SCRIPT_DIR}/install_nvidia_container_toolkit.sh"

@@ -3,6 +3,7 @@
 ## 1) https://www.python.org/dev/peps/pep-0508/#environment-markers
 
 # 安装Sphinx
+numpy==1.26.4
 mathjax
 myst-parser
 recommonmark
