@@ -18,22 +18,35 @@
 
 # Fail on first error.
 set -e
+
+PROTOBUF_VERSION="v3.19.4"
+PROTOBUF_REPO="https://github.com/protocolbuffers/protobuf.git"
+
+mkdir -p /thirdparty
 cd /thirdparty
-git clone --single-branch --branch v3.19.4 https://gitee.com/quanduyong/protobuf.git
-cd protobuf && git submodule init && git submodule update
 
-# cyber
-mkdir build && cd build 
+if [[ -d protobuf/.git ]]; then
+  cd protobuf
+  git fetch --tags origin
+  git checkout "${PROTOBUF_VERSION}"
+else
+  rm -rf protobuf
+  git clone --single-branch --branch "${PROTOBUF_VERSION}" "${PROTOBUF_REPO}" protobuf
+  cd protobuf
+fi
+
+git submodule update --init --recursive
+
+mkdir -p build && cd build
 cmake \
-    -DCMAKE_INSTALL_PREFIX=/usr/local \
-    -DCMAKE_CXX_STANDARD=17           \
-    -DCMAKE_BUILD_TYPE=Release        \
-    -DBUILD_SHARED_LIBS=ON            \
-    ..  
+  -DCMAKE_INSTALL_PREFIX=/usr/local \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_SHARED_LIBS=ON \
+  ..
 
-
-make -j8
+make -j"$(nproc)"
 sudo make install
 
-# Clean up.
+# Clean up build dir only; keep source for potential rebuilds.
 cd .. && rm -rf build

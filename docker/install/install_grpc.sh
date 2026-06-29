@@ -30,6 +30,10 @@ cmake  \
   -DgRPC_INSTALL=ON                 \
   -DBUILD_SHARED_LIBS=ON            \
   -DgRPC_BUILD_TESTS=OFF            \
+  -DgRPC_PROTOBUF_PROVIDER=package  \
+  -DgRPC_ZLIB_PROVIDER=package      \
+  -DgRPC_CARES_PROVIDER=package     \
+  -DgRPC_SSL_PROVIDER=package       \
   ..  
 
 make -j8

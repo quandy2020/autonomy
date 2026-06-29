@@ -165,6 +165,7 @@ function install_ros2_packages() {
     apt-get install -y ros-${ROS_DISTRO}-xacro
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler-ros
+    apt-get install -y ros-${ROS_DISTRO}-derived-object-msgs
 
 
     # Foxglove bridge (optional; used for Foxglove Studio visualization)
@@ -172,6 +173,24 @@ function install_ros2_packages() {
     try_install_ros_package "ros-${ROS_DISTRO}-foxglove-bridge"
 
     info "ROS 2 packages installed successfully."
+}
+
+function install_ros_python_build_deps() {
+    info "Installing ROS message-generation Python dependencies..."
+
+    local packages=(
+      "empy==3.3.4"
+      "lark"
+      "catkin_pkg"
+      "numpy==1.26.4"
+      "openai"
+      "rich"
+    )
+    if [ -x /opt/venv/bin/python3 ]; then
+        /opt/venv/bin/python3 -m pip install --no-cache-dir "${packages[@]}"
+    else
+        python3 -m pip install --no-cache-dir "${packages[@]}"
+    fi
 }
 
 function cleanup() {
@@ -204,6 +223,7 @@ function main() {
     setup_ros2_repository
     update_apt_repositories
     install_ros2_packages
+    install_ros_python_build_deps
     cleanup
     print_usage_info
     

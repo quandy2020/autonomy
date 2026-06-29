@@ -18,6 +18,7 @@
 
 """Common utilities for Docker operations."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -29,6 +30,30 @@ except ImportError:
     def print_error(msg): print(f"ERROR: {msg}", file=sys.stderr)
     def print_warning(msg): print(f"WARNING: {msg}", file=sys.stderr)
     def print_info(msg): print(f"INFO: {msg}")
+
+
+def resolve_autonomy_env_dir(script_dir: Path) -> Path:
+    """Resolve host directory to mount at /workspace/autonomy in the container.
+
+    Priority:
+    1. AUTONOMY_ENV environment variable
+    2. Repo root containing src/autonomy/CMakeLists.txt
+    3. Standalone src/autonomy checkout (CMakeLists.txt + docker/ in same dir)
+    4. Current working directory
+    """
+    env_path = os.environ.get("AUTONOMY_ENV", "").strip()
+    if env_path:
+        return Path(env_path).resolve()
+
+    for parent in [script_dir, *script_dir.parents]:
+        if (parent / "src" / "autonomy" / "CMakeLists.txt").is_file():
+            return parent.resolve()
+
+    for parent in [script_dir, *script_dir.parents]:
+        if (parent / "CMakeLists.txt").is_file() and (parent / "docker").is_dir():
+            return parent.resolve()
+
+    return Path.cwd().resolve()
 
 
 def check_image_exists(image_name: str) -> bool:
@@ -85,8 +110,49 @@ def check_docker_available() -> bool:
 
 
 def check_nvidia_available() -> bool:
-    """Check if NVIDIA GPU is available."""
+    """Check if NVIDIA GPU driver is available on the host."""
     return shutil.which("nvidia-smi") is not None
+
+
+def check_docker_gpu_support() -> bool:
+    """Return True if Docker can pass NVIDIA GPUs into containers."""
+    if not check_nvidia_available():
+        return False
+
+    cdi_specs = (
+        Path("/etc/cdi/nvidia.yaml"),
+        Path("/var/run/cdi/nvidia.yaml"),
+    )
+    if any(path.is_file() for path in cdi_specs):
+        return True
+
+    try:
+        result = subprocess.run(
+            ["docker", "info", "--format", "{{json .Runtimes}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+        if result.returncode == 0 and "nvidia" in result.stdout:
+            return True
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    return False
+
+
+def is_gpu_docker_error(output: str) -> bool:
+    """Return True if docker output indicates a GPU/CDI configuration problem."""
+    lowered = output.lower()
+    markers = (
+        "cdi",
+        "gpu vendor",
+        "nvidia.com/gpu",
+        "could not select device driver",
+        "unknown or invalid runtime name: nvidia",
+    )
+    return any(marker in lowered for marker in markers)
 
 
 def normalize_path(path: str, base_dir: Path) -> Path:

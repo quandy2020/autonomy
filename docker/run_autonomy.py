@@ -62,7 +62,8 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 sys.path.insert(0, str(SCRIPT_DIR / "scripts"))
 from docker_utils import (
     check_image_exists, get_image_platform, check_docker_available, 
-    check_nvidia_available, normalize_path, run_command, 
+    check_nvidia_available, check_docker_gpu_support,
+    normalize_path, resolve_autonomy_env_dir, run_command, 
     print_error, print_info, print_warning
 )
 
@@ -112,8 +113,10 @@ class AutonomyRunner:
         self.use_nvidia = "auto"
         self.docker_args = []
         self.remaining_args = []
-        self.autonomy_dev_dir = os.environ.get("AUTONOMY_ENV", os.getcwd())
+        self.autonomy_dev_dir = str(resolve_autonomy_env_dir(SCRIPT_DIR))
         self.keep_isaac_entrypoint = False
+        self.use_gpu_in_container = False
+        self.gpu_docker_strategies = []
 
     @staticmethod
     def _user_specified_entrypoint(remaining_args):
@@ -313,26 +316,57 @@ class AutonomyRunner:
         if xdg and Path(xdg).exists():
             self.docker_args.extend(["-v", f"{xdg}:{xdg}:ro"])
 
+    def _configure_software_rendering(self):
+        """Configure software rendering when GPU passthrough is unavailable."""
+        print_info("Using software rendering (Mesa)")
+        if sys.platform == "linux" and Path("/dev/dri").exists():
+            self.docker_args.append("--device=/dev/dri")
+        self.docker_args.extend(["-e", "LIBGL_ALWAYS_SOFTWARE=1"])
+
     def configure_gpu(self):
         """Configure GPU support."""
-        nvidia_available = check_nvidia_available()
-        should_use_nvidia = (
+        nvidia_driver = check_nvidia_available()
+        docker_gpu = check_docker_gpu_support()
+        wants_gpu = (
             self.use_nvidia == "yes" or
-            (self.use_nvidia == "auto" and nvidia_available)
+            (self.use_nvidia == "auto" and nvidia_driver)
         )
 
-        if self.use_nvidia == "yes" and not nvidia_available:
-            print_warning("NVIDIA GPU forced but nvidia-smi not found. GPU support may not work.")
-
-        if should_use_nvidia:
+        if wants_gpu and docker_gpu:
             print_info("Enabling NVIDIA GPU support")
-            self.docker_args.extend(["--gpus", "all", "-e", "NVIDIA_VISIBLE_DEVICES=all", "-e", "NVIDIA_DRIVER_CAPABILITIES=all"])
-        else:
-            print_info("Using software rendering (Mesa)")
-            if sys.platform == "linux" and Path("/dev/dri").exists():
-                self.docker_args.append("--device=/dev/dri")
-            self.docker_args.append("-e")
-            self.docker_args.append("LIBGL_ALWAYS_SOFTWARE=1")
+            self.use_gpu_in_container = True
+            self.gpu_docker_strategies = [
+                (
+                    ["--gpus", "all", "-e", "NVIDIA_VISIBLE_DEVICES=all",
+                     "-e", "NVIDIA_DRIVER_CAPABILITIES=all"],
+                    "--gpus all",
+                ),
+                (
+                    ["--device", "nvidia.com/gpu=all", "-e", "NVIDIA_VISIBLE_DEVICES=all",
+                     "-e", "NVIDIA_DRIVER_CAPABILITIES=all"],
+                    "CDI device nvidia.com/gpu=all",
+                ),
+                (
+                    ["--runtime", "nvidia", "-e", "NVIDIA_VISIBLE_DEVICES=all",
+                     "-e", "NVIDIA_DRIVER_CAPABILITIES=all"],
+                    "nvidia container runtime",
+                ),
+            ]
+            return
+
+        if wants_gpu and nvidia_driver and not docker_gpu:
+            print_warning(
+                "NVIDIA driver is available, but Docker GPU/CDI is not configured."
+            )
+            print_warning(
+                "Configure it with: bash docker/install/install_nvidia_container_toolkit.sh"
+            )
+            print_warning("Starting container without GPU passthrough.")
+        elif wants_gpu and not nvidia_driver:
+            print_warning("NVIDIA GPU requested but nvidia-smi not found.")
+
+        self.use_gpu_in_container = False
+        self._configure_software_rendering()
 
     def configure_network(self):
         """Configure network settings."""
@@ -379,22 +413,38 @@ class AutonomyRunner:
         self.configure_network()
         self.configure_gpu()
 
+        print_info(f"Mounting host path as /workspace/autonomy: {self.autonomy_dev_dir}")
+
         print_info("Starting docker container: SpaceHero ...")
         self.container_exist()
         print_info(f"Running container: {self.base_name}")
 
-        # Check if image exists locally, if yes use --pull=never to avoid remote pull
+        try:
+            result = self._run_docker_container()
+            if result.returncode == 0:
+                print_info("Docker run completed")
+            else:
+                sys.exit(result.returncode)
+        except KeyboardInterrupt:
+            print_info("\nDocker run interrupted")
+            sys.exit(0)
+
+    def _build_docker_run_cmd(self, gpu_args=None):
+        """Build the docker run command."""
         use_local_only = check_image_exists(self.base_name)
         cmd = [
             "docker", "run", "-it" if sys.stdin.isatty() else "-i",
             "--name", "SpaceHero", "-p", "8765:8765",
             *self.docker_args,
+        ]
+        if gpu_args:
+            cmd.extend(gpu_args)
+        cmd.extend([
             "-v", f"{self.autonomy_dev_dir}:/workspace/autonomy",
             "-v", "/dev:/dev", "-v", "/etc/localtime:/etc/localtime:ro",
-            "--workdir", "/workspace/autonomy", 
+            "--workdir", "/workspace/autonomy",
             "--privileged",
-        ]
-        # Use local image only if it exists, avoid remote pull attempts
+        ])
         if use_local_only:
             cmd.append("--pull=never")
 
@@ -409,13 +459,47 @@ class AutonomyRunner:
         cmd.extend([*self.remaining_args, self.base_name])
         if not (use_plain_shell and not user_entrypoint):
             cmd.append("/bin/bash")
+        return cmd
 
-        try:
-            subprocess.run(cmd, check=False)
-            print_info("Docker run completed")
-        except KeyboardInterrupt:
-            print_info("\nDocker run interrupted")
-            sys.exit(0)
+    def _run_docker_container(self):
+        """Run the container, trying GPU strategies before falling back."""
+        strategies = self.gpu_docker_strategies if self.use_gpu_in_container else [(None, "no GPU")]
+        last_result = None
+
+        for gpu_args, label in strategies:
+            if gpu_args and label != "no GPU":
+                print_info(f"Trying Docker GPU mode: {label}")
+            cmd = self._build_docker_run_cmd(gpu_args)
+            result = subprocess.run(cmd, check=False, capture_output=not sys.stdin.isatty(), text=True)
+            last_result = result
+            if result.returncode == 0:
+                return result
+
+            if gpu_args:
+                output = f"{result.stderr or ''}\n{result.stdout or ''}"
+                detail = output.strip() or f"exit code {result.returncode}"
+                print_warning(f"Docker GPU mode failed ({label}): {detail}")
+                self.container_exist()
+                continue
+
+            print_error(f"Docker run failed with exit code {result.returncode}.")
+            if result.stderr:
+                print_error(result.stderr.strip())
+            return result
+
+        print_warning("All Docker GPU modes failed; retrying without GPU passthrough.")
+        self.container_exist()
+        self.use_gpu_in_container = False
+        fallback_cmd = self._build_docker_run_cmd()
+        fallback_cmd.extend(["-e", "LIBGL_ALWAYS_SOFTWARE=1"])
+        last_result = subprocess.run(
+            fallback_cmd, check=False, capture_output=not sys.stdin.isatty(), text=True
+        )
+        if last_result.returncode != 0:
+            print_error(f"Docker run failed with exit code {last_result.returncode}.")
+            if last_result.stderr:
+                print_error(last_result.stderr.strip())
+        return last_result
 
 
 def parse_arguments():

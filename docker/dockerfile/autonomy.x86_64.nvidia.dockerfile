@@ -113,6 +113,8 @@ RUN . /opt/venv/bin/activate && \
     python3 -m pip install --upgrade \
     # Deployment tools \
     wheel requests setuptools \
+    # ROS 2 Python message runtime (geometry_msgs, sensor_msgs, etc.) \
+    numpy==1.26.4 \
     # Testing \
     pytest pytest-rerunfailures \
     # Profiling \
@@ -157,6 +159,7 @@ RUN mkdir /thirdparty
 RUN bash /tmp/install/install_gtest.sh
 RUN bash /tmp/install/install_glog.sh
 RUN bash /tmp/install/install_gflags.sh
+RUN bash /tmp/install/install_protobuf.sh
 RUN bash /tmp/install/install_grpc.sh
 RUN bash /tmp/install/install_gperftools.sh
 RUN bash /tmp/install/install_opencv.sh
@@ -171,6 +174,8 @@ RUN bash /tmp/install/install_ogre.sh
 RUN bash /tmp/install/install_adolc.sh
 RUN bash /tmp/install/install_ipopt.sh
 RUN bash /tmp/install/install_python_modules.sh
+RUN chmod +x /tmp/install/install_habitat.sh && \
+    HABITAT_WITH_CUDA=auto bash /tmp/install/install_habitat.sh
 
 # autonomy workspace
 ENV AUTONOMY_WS=/workspace/autonomy

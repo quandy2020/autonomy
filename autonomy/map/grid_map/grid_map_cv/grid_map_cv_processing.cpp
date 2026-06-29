@@ -10,6 +10,10 @@
 
 #include <Eigen/Geometry>
 #include <opencv2/core/eigen.hpp>
+#include <opencv2/imgproc.hpp>
+#if CV_VERSION_MAJOR >= 5
+#include <opencv2/geometry.hpp>
+#endif
 
 #include "autonomy/map/grid_map/grid_map_cv/grid_map_cv_converter.hpp"
 
