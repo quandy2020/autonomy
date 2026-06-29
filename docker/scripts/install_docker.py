@@ -32,6 +32,7 @@ Examples:
 import argparse
 import os
 import platform
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -59,28 +60,41 @@ def run_sudo_command(cmd, check=True, shell=False):
     return run_command(sudo_cmd, check=check, shell=shell)
 
 
+def _parse_kernel_major_version(kernel_version: str) -> int:
+    """Parse the major kernel version from uname release (e.g. 6.17.0-1025-oem -> 6)."""
+    match = re.match(r'^(\d+)', kernel_version)
+    return int(match.group(1)) if match else 0
+
+
+def _overlay_supported(kernel_version: str) -> bool:
+    """Return True if the overlayfs module is available for this kernel."""
+    overlay_dir = Path(f'/lib/modules/{kernel_version}/kernel/fs/overlayfs')
+    if overlay_dir.is_dir() and any(overlay_dir.glob('overlay.ko*')):
+        return True
+    result = run_command(['modinfo', 'overlay'], check=False)
+    return result.returncode == 0
+
+
 def install_filesystem_support():
     """Install filesystem support for Docker (overlay or aufs)."""
-    # Get kernel version
     kernel_version = platform.release()
-    machine_version = kernel_version
-    
-    # Get main kernel version (first character)
-    main_kernel_version = int(kernel_version[0]) if kernel_version[0].isdigit() else 0
-    
-    overlay_module_path = Path(f'/lib/modules/{machine_version}/kernel/fs/overlayfs/overlay.ko')
-    
-    if main_kernel_version > 3 and overlay_module_path.exists():
-        print("the kernel version 4 or higher;")
-        print("it has support overlay2")
-        run_sudo_command(['modprobe', 'overlay'])
+    main_kernel_version = _parse_kernel_major_version(kernel_version)
+
+    if main_kernel_version >= 4:
+        if _overlay_supported(kernel_version):
+            print(f"Kernel {kernel_version} supports overlay2.")
+            run_sudo_command(['modprobe', 'overlay'], check=False)
+        else:
+            print(
+                f"Kernel {kernel_version} is 4+; overlay2 is expected. "
+                "Skipping legacy AUFS packages."
+            )
     else:
-        print("the kernel version is lower than 4")
-        print("try to install aufs")
+        print("Kernel version is lower than 4; trying to install aufs.")
         run_sudo_command(['apt-get', 'update'])
         run_sudo_command([
             'apt-get', 'install', '-y',
-            f'linux-image-extra-{machine_version}',
+            f'linux-image-extra-{kernel_version}',
             'linux-image-extra-virtual'
         ])
     

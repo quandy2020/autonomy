@@ -52,6 +52,8 @@ cmake  \
     -DOPENCV_EXTRA_MODULES_PATH=../../opencv_contrib/modules \
     -DWITH_GTK=ON \
     -DWITH_QT=OFF \
+    -DWITH_HDF5=OFF \
+    -DBUILD_opencv_hdf=OFF \
     -DBUILD_TESTS=OFF \
     -DBUILD_PERF_TESTS=OFF \
     -DBUILD_opencv_python=OFF \

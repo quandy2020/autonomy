@@ -58,10 +58,29 @@ function pip3_install()
     python3 -m pip install --timeout 30 --no-cache-dir $@
 }
 
+function apt_get_update() 
+{
+    local max_attempts="${APT_UPDATE_RETRIES:-3}"
+    local attempt=1
+    while [ "$attempt" -le "$max_attempts" ]; do
+        rm -rf /var/lib/apt/lists/*
+        if apt-get -y \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Pipeline-Depth=0 \
+            update "$@"; then
+            return 0
+        fi
+        warning "apt-get update failed (attempt ${attempt}/${max_attempts}), retrying..."
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+    error "apt-get update failed after ${max_attempts} attempts"
+    return 1
+}
+
 function apt_get_update_and_install() 
 {
-    # --fix-missing
-    apt-get -y update && \
+    apt_get_update && \
         apt-get -y install --no-install-recommends "$@"
 }
 
