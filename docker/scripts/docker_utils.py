@@ -75,6 +75,62 @@ def parse_volume_spec(spec: str) -> tuple[str, str, str]:
     )
 
 
+def data_dir_layout(volume_root: Path) -> list[Path]:
+    """Subdirs under volume_root used by autonomy_lerobot/data_paths.yaml."""
+    data = volume_root / "data"
+    return [
+        data,
+        data / "collection",
+        data / "lerobot",
+        data / "lerobot" / "collection",
+        data / "lerobot" / "habitat_nav2",
+    ]
+
+
+def _chown_path(path: Path, uid: int, gid: int) -> None:
+    os.chown(path, uid, gid)
+    if path.is_dir():
+        for child in path.iterdir():
+            if child.is_symlink():
+                continue
+            _chown_path(child, uid, gid)
+
+
+def prepare_host_data_volume(host: str, container: str) -> None:
+    """Create data subdirs on the host and set owner to the current user."""
+    host_path = Path(host).resolve()
+    container_path = (container or host).rstrip("/")
+
+    if container_path.endswith("/data"):
+        dirs = [
+            host_path,
+            host_path / "collection",
+            host_path / "lerobot",
+            host_path / "lerobot" / "collection",
+            host_path / "lerobot" / "habitat_nav2",
+        ]
+    else:
+        dirs = data_dir_layout(host_path)
+
+    uid, gid = os.getuid(), os.getgid()
+    user = os.environ.get("USER", str(uid))
+
+    for directory in dirs:
+        directory.mkdir(parents=True, exist_ok=True)
+
+    targets = sorted({d for d in dirs if d.is_dir()}, key=lambda p: len(p.parts))
+    for target in targets:
+        try:
+            _chown_path(target, uid, gid)
+        except PermissionError:
+            print_warning(
+                f"无法修改 {target} 属主（当前可能为 root/nobody）。请在宿主机执行：\n"
+                f"  sudo chown -R {user}:{user} {target}\n"
+                f"  sudo chmod -R u+rwX {target}"
+            )
+            break
+
+
 def resolve_data_volumes(cli_volumes: list[str] | None = None) -> list[tuple[str, str, str]]:
     """Resolve host data volumes to mount into the container.
 
