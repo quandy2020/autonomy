@@ -56,6 +56,66 @@ def resolve_autonomy_env_dir(script_dir: Path) -> Path:
     return Path.cwd().resolve()
 
 
+def parse_volume_spec(spec: str) -> tuple[str, str, str]:
+    """Parse a Docker volume spec: HOST, HOST:CONTAINER, or HOST:CONTAINER:MODE."""
+    spec = spec.strip()
+    if not spec:
+        raise ValueError("empty volume spec")
+
+    parts = spec.split(":")
+    if len(parts) == 1:
+        host = parts[0]
+        return host, host, "rw"
+    if len(parts) == 2:
+        return parts[0], parts[1], "rw"
+    if len(parts) == 3:
+        return parts[0], parts[1], parts[2]
+    raise ValueError(
+        f"invalid volume spec '{spec}': expected HOST, HOST:CONTAINER, or HOST:CONTAINER:MODE"
+    )
+
+
+def resolve_data_volumes(cli_volumes: list[str] | None = None) -> list[tuple[str, str, str]]:
+    """Resolve host data volumes to mount into the container.
+
+    Priority:
+    1. CLI ``--data-volume`` (when any value is passed)
+    2. ``AUTONOMY_DATA_VOLUMES`` environment variable (comma- or space-separated)
+    3. No data volumes
+    """
+    if cli_volumes is not None:
+        specs = cli_volumes
+    else:
+        env_value = os.environ.get("AUTONOMY_DATA_VOLUMES", "").strip()
+        if not env_value:
+            return []
+        specs = [part for part in env_value.replace(",", " ").split() if part.strip()]
+
+    volumes = []
+    for spec in specs:
+        volumes.append(parse_volume_spec(spec))
+    return volumes
+
+
+def resolve_container_name() -> str:
+    """Resolve Docker container name from ``AUTONOMY_CONTAINER_NAME``."""
+    name = os.environ.get("AUTONOMY_CONTAINER_NAME", "SpaceHero").strip()
+    return name or "SpaceHero"
+
+
+def resolve_publish_ports() -> list[str]:
+    """Resolve port mappings from ``AUTONOMY_PORTS`` (comma- or space-separated)."""
+    env_value = os.environ.get("AUTONOMY_PORTS", "8765:8765").strip()
+    if not env_value:
+        return []
+    return [part for part in env_value.replace(",", " ").split() if part.strip()]
+
+
+def resolve_network_mode() -> str:
+    """Resolve Docker network mode from ``AUTONOMY_NETWORK``."""
+    return os.environ.get("AUTONOMY_NETWORK", "host").strip() or "host"
+
+
 def check_image_exists(image_name: str) -> bool:
     """Check if a Docker image exists locally."""
     try:

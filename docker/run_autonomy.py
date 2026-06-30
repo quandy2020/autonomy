@@ -48,6 +48,13 @@ Examples:
 
     # 旧行为 — 环境变量（等价于 --keep-isaac-entrypoint）：
     AUTONOMY_KEEP_ISAAC_ENTRYPOINT=1 python3 run_autonomy.py -p x86_64 -n yes
+
+    # 挂载宿主机数据卷（环境变量，逗号或空格分隔多个路径）：
+    AUTONOMY_DATA_VOLUMES=/mnt/data4t python3 run_autonomy.py
+
+    # 挂载宿主机数据卷（CLI，可重复指定；指定后忽略环境变量）：
+    python3 run_autonomy.py --data-volume /mnt/data4t
+    python3 run_autonomy.py --data-volume /mnt/data4t:/mnt/data4t:rw
 """
 
 import argparse
@@ -63,7 +70,9 @@ sys.path.insert(0, str(SCRIPT_DIR / "scripts"))
 from docker_utils import (
     check_image_exists, get_image_platform, check_docker_available, 
     check_nvidia_available, check_docker_gpu_support,
-    normalize_path, resolve_autonomy_env_dir, run_command, 
+    normalize_path, resolve_autonomy_env_dir, resolve_data_volumes,
+    resolve_container_name, resolve_publish_ports, resolve_network_mode,
+    run_command, 
     print_error, print_info, print_warning
 )
 
@@ -114,6 +123,10 @@ class AutonomyRunner:
         self.docker_args = []
         self.remaining_args = []
         self.autonomy_dev_dir = str(resolve_autonomy_env_dir(SCRIPT_DIR))
+        self.data_volumes: list[tuple[str, str, str]] = []
+        self.container_name = resolve_container_name()
+        self.publish_ports = resolve_publish_ports()
+        self.network_mode = resolve_network_mode()
         self.keep_isaac_entrypoint = False
         self.use_gpu_in_container = False
         self.gpu_docker_strategies = []
@@ -368,6 +381,21 @@ class AutonomyRunner:
         self.use_gpu_in_container = False
         self._configure_software_rendering()
 
+    def configure_shared_volumes(self):
+        """Mount configured host data volumes into the container."""
+        if not self.data_volumes:
+            return
+
+        for host, container, mode in self.data_volumes:
+            host_path = Path(host)
+            if not host_path.is_dir():
+                print_warning(
+                    f"Host path {host} not found; skipping volume {host}:{container}:{mode}"
+                )
+                continue
+            self.docker_args.extend(["-v", f"{host}:{container}:{mode}"])
+            print_info(f"Mounting host data volume: {host} -> {container} ({mode})")
+
     def configure_network(self):
         """Configure network settings."""
         # Only specify platform if image doesn't exist locally or if we're on macOS
@@ -389,17 +417,17 @@ class AutonomyRunner:
                 # Image doesn't exist, will be pulled - specify platform
                 self.docker_args.extend(["--platform", "linux/arm64"])
         
-        if sys.platform != "darwin":
-            self.docker_args.append("--net=host")
+        if sys.platform != "darwin" and self.network_mode:
+            self.docker_args.append(f"--net={self.network_mode}")
 
     def container_exist(self):
-        """Check and remove existing SpaceHero container."""
+        """Check and remove existing container with configured name."""
         result = subprocess.run(["docker", "ps", "-a", "--format", "{{.Names}}"], capture_output=True, text=True, check=False)
-        if "SpaceHero" in result.stdout:
-            print_info("Container SpaceHero exists. Stopping and removing it...")
-            subprocess.run(["docker", "stop", "SpaceHero"], capture_output=True, check=False)
-            subprocess.run(["docker", "rm", "SpaceHero"], capture_output=True, check=False)
-            print_info("Container /SpaceHero has been stopped and removed.")
+        if self.container_name in result.stdout:
+            print_info(f"Container {self.container_name} exists. Stopping and removing it...")
+            subprocess.run(["docker", "stop", self.container_name], capture_output=True, check=False)
+            subprocess.run(["docker", "rm", self.container_name], capture_output=True, check=False)
+            print_info(f"Container {self.container_name} has been stopped and removed.")
 
     def run(self):
         """Main execution function."""
@@ -410,12 +438,13 @@ class AutonomyRunner:
         self.build_image_if_needed()
         self.configure_display()
         self.configure_environment()
+        self.configure_shared_volumes()
         self.configure_network()
         self.configure_gpu()
 
         print_info(f"Mounting host path as /workspace/autonomy: {self.autonomy_dev_dir}")
 
-        print_info("Starting docker container: SpaceHero ...")
+        print_info(f"Starting docker container: {self.container_name} ...")
         self.container_exist()
         print_info(f"Running container: {self.base_name}")
 
@@ -434,9 +463,11 @@ class AutonomyRunner:
         use_local_only = check_image_exists(self.base_name)
         cmd = [
             "docker", "run", "-it" if sys.stdin.isatty() else "-i",
-            "--name", "SpaceHero", "-p", "8765:8765",
+            "--name", self.container_name,
             *self.docker_args,
         ]
+        for port in self.publish_ports:
+            cmd.extend(["-p", port])
         if gpu_args:
             cmd.extend(gpu_args)
         cmd.extend([
@@ -543,6 +574,11 @@ Examples:
 
   \033[91m# NVIDIA 镜像：保留 Isaac-Lab 默认 ENTRYPOINT（可能自动启动 Kit/流式）\033[0m
   \033[92mpython3 %(prog)s -p x86_64 -n yes --keep-isaac-entrypoint\033[0m
+
+  \033[91m# 挂载宿主机数据卷\033[0m
+  \033[92mAUTONOMY_DATA_VOLUMES=/mnt/data4t python3 %(prog)s\033[0m
+  \033[92mpython3 %(prog)s --data-volume /mnt/data4t\033[0m
+  \033[92mpython3 %(prog)s --data-volume /mnt/data4t:/mnt/data4t:rw\033[0m
         """
     )
     parser.add_argument(
@@ -576,6 +612,16 @@ Examples:
             "也可设置环境变量 AUTONOMY_KEEP_ISAAC_ENTRYPOINT=1。"
         ),
     )
+    parser.add_argument(
+        "--data-volume",
+        action="append",
+        dest="data_volumes",
+        metavar="SPEC",
+        help=(
+            "宿主机数据卷，格式 HOST、HOST:CONTAINER 或 HOST:CONTAINER:MODE（可重复）。"
+            "指定后优先于环境变量 AUTONOMY_DATA_VOLUMES。"
+        ),
+    )
     return parser.parse_known_args()
 
 
@@ -603,6 +649,7 @@ def main():
         runner.use_nvidia = args.nvidia
 
     runner.keep_isaac_entrypoint = bool(args.keep_isaac_entrypoint)
+    runner.data_volumes = resolve_data_volumes(args.data_volumes)
 
     runner.remaining_args = remaining
     runner.run()

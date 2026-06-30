@@ -45,17 +45,26 @@ function ok()
     (>&2 echo -e "[${GREEN}${BOLD} OK ${NO_COLOR}] $*")
 }
 
+function python3_bin()
+{
+    if [ -x /opt/venv/bin/python3 ]; then
+        echo /opt/venv/bin/python3
+    else
+        echo python3
+    fi
+}
+
 function py3_version() 
 {
     local version
     # major.minor.rev (e.g. 3.6.9) expected
-    version="$(python3 --version | awk '{print $2}')"
+    version="$("$(python3_bin)" --version | awk '{print $2}')"
     echo "${version%.*}"
 }
 
 function pip3_install() 
 {
-    python3 -m pip install --timeout 30 --no-cache-dir $@
+    "$(python3_bin)" -m pip install --timeout 30 --no-cache-dir "$@"
 }
 
 function apt_get_update() 
