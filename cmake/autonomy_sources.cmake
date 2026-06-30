@@ -1,0 +1,38 @@
+# Collect autonomy sources and exclusion lists (gRPC, tests, tools, mains).
+set(_AUTONOMY_ROOT "${PROJECT_SOURCE_DIR}/autonomy")
+
+file(GLOB_RECURSE ALL_LIBRARY_HDRS "${_AUTONOMY_ROOT}/*.hpp")
+file(GLOB_RECURSE ALL_LIBRARY_SRCS "${_AUTONOMY_ROOT}/*.cpp")
+
+set(_AUTONOMY_GRPC_DIRS common/async_grpc bridge/plugins/grpc)
+foreach(_dir IN LISTS _AUTONOMY_GRPC_DIRS)
+  file(GLOB_RECURSE _grpc_hdrs "${_AUTONOMY_ROOT}/${_dir}/*.hpp")
+  file(GLOB_RECURSE _grpc_srcs "${_AUTONOMY_ROOT}/${_dir}/*.cpp")
+  file(GLOB_RECURSE _grpc_all "${_AUTONOMY_ROOT}/${_dir}/*")
+  list(APPEND ALL_GRPC_HDRS ${_grpc_hdrs})
+  list(APPEND ALL_GRPC_SRCS ${_grpc_srcs})
+  list(APPEND ALL_GRPC_FILES ${_grpc_all})
+endforeach()
+file(GLOB_RECURSE ALL_GRPC_BRIDGE_FILES "${_AUTONOMY_ROOT}/bridge/bridge_server.*")
+
+file(GLOB_RECURSE TEST_LIBRARY_HDRS
+  "${_AUTONOMY_ROOT}/fake_*.hpp"
+  "${_AUTONOMY_ROOT}/*test_helpers*.hpp"
+  "${_AUTONOMY_ROOT}/*test*.hpp"
+  "${_AUTONOMY_ROOT}/mock_*.hpp")
+file(GLOB_RECURSE TEST_LIBRARY_SRCS
+  "${_AUTONOMY_ROOT}/fake_*.cpp"
+  "${_AUTONOMY_ROOT}/*test_helpers*.cpp"
+  "${_AUTONOMY_ROOT}/*test*.cpp"
+  "${_AUTONOMY_ROOT}/mock_*.cpp")
+
+file(GLOB_RECURSE ALL_TOOLS "${_AUTONOMY_ROOT}/tools/*")
+file(GLOB_RECURSE ALL_EXECUTABLES "${_AUTONOMY_ROOT}/*main.cpp")
+file(GLOB_RECURSE ALL_TESTS "${_AUTONOMY_ROOT}/*_test.cpp")
+
+unset(_AUTONOMY_ROOT)
+unset(_AUTONOMY_GRPC_DIRS)
+unset(_dir)
+unset(_grpc_hdrs)
+unset(_grpc_srcs)
+unset(_grpc_all)

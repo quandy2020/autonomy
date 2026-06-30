@@ -43,5 +43,10 @@ find_package(behaviortree_cpp ${QUIET_OR_REQUIRED_OPTION})
 # autolink plugin_manager (INTERFACE dep of autonomy::autonomy)
 find_package(TinyXML2 REQUIRED)
 
+# atlas localization dependencies (PUBLIC link interface of autonomy::autonomy)
+find_package(FBow ${QUIET_OR_REQUIRED_OPTION})
+find_package(G2o ${QUIET_OR_REQUIRED_OPTION})
+find_package(SQLite3 ${QUIET_OR_REQUIRED_OPTION})
+
 # Include the exported targets
 include("${AUTONOMY_CMAKE_DIR}/AutonomyTargets.cmake")

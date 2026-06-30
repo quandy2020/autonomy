@@ -1,0 +1,72 @@
+# EuRoC monocular model
+
+Camera:
+  name: "EuRoC monocular"
+  setup: "monocular"
+  model: "perspective"
+
+  fx: 458.654
+  fy: 457.296
+  cx: 367.215
+  cy: 248.375
+
+  k1: -0.28340811
+  k2: 0.07395907
+  p1: 0.00019359
+  p2: 1.76187114e-05
+  k3: 0.0
+
+  fps: 20.0
+  cols: 752
+  rows: 480
+
+  color_order: "Gray"
+
+Preprocessing:
+  min_size: 800
+
+Feature:
+  name: "default ORB feature extraction setting"
+  scale_factor: 1.2
+  num_levels: 8
+  ini_fast_threshold: 20
+  min_fast_threshold: 7
+
+Mapping:
+  backend: "g2o"
+  baseline_dist_thr_ratio: 0.02
+  redundant_obs_ratio_thr: 0.9
+  num_covisibilities_for_landmark_generation: 20
+  num_covisibilities_for_landmark_fusion: 20
+  erase_temporal_keyframes: false
+  num_temporal_keyframes: 15
+
+Tracking:
+  backend: "g2o"
+  enable_temporal_keyframe_only_tracking: false
+
+KeyframeInserter:
+  wait_for_local_bundle_adjustment: false
+
+Relocalizer:
+  search_neighbor: true
+
+LoopDetector:
+  backend: "g2o"
+
+System:
+  map_format: "msgpack"
+  num_grid_cols: 47
+  num_grid_rows: 30
+
+PangolinViewer:
+  keyframe_size: 0.07
+  keyframe_line_width: 1
+  graph_line_width: 1
+  point_size: 2
+  camera_size: 0.08
+  camera_line_width: 3
+  viewpoint_x: 0
+  viewpoint_y: -0.65
+  viewpoint_z: -1.9
+  viewpoint_f: 400
