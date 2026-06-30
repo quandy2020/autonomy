@@ -1014,3 +1014,49 @@ Autolink 支持多种传输后端：
 选择建议：
 - 使用 **Service** 进行快速的请求/响应操作（如查询状态、计算、设置参数）
 - 使用 **Action** 进行长时间运行的任务（如导航到目标点、执行复杂任务），需要进度反馈和可取消性
+
+## 6. Docker 运行环境配置
+
+在宿主机通过 `run_autonomy.py` 启动开发容器时，可将常用参数写入 shell 配置文件（如 `~/.zshrc` 或 `~/.bashrc`），一次配置、长期生效：
+
+```bash
+# ~/.zshrc 示例
+export AUTONOMY_ENV=/home/quandy/workspace/github/autonomy
+export AUTONOMY_DATA_VOLUMES=/mnt/data4t
+export AUTONOMY_CONTAINER_NAME=SpaceHero
+export AUTONOMY_PORTS=8765:8765
+export AUTONOMY_NETWORK=host
+```
+
+使配置生效：
+
+```bash
+source ~/.zshrc   # 或 source ~/.bashrc
+```
+
+启动容器：
+
+```bash
+cd autonomy/docker
+python3 run_autonomy.py -p x86_64 -n yes
+```
+
+**环境变量说明**：
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `AUTONOMY_ENV` | 自动检测仓库根目录 | 宿主机项目路径，挂载为容器内 `/workspace/autonomy` |
+| `AUTONOMY_DATA_VOLUMES` | 无 | 数据卷列表，逗号或空格分隔，如 `/mnt/data4t` |
+| `AUTONOMY_CONTAINER_NAME` | `SpaceHero` | Docker 容器名称 |
+| `AUTONOMY_PORTS` | `8765:8765` | 端口映射，逗号或空格分隔多个，如 `8765:8765,8080:8080` |
+| `AUTONOMY_NETWORK` | `host` | Docker 网络模式（Linux 下生效，如 `host`、`bridge`） |
+| `AUTONOMY_KEEP_ISAAC_ENTRYPOINT` | 无 | 设为 `1` 时保留 NVIDIA 镜像默认 ENTRYPOINT |
+| `DISPLAY` | `:0` | X11 显示转发（GUI） |
+
+进入容器：
+
+```bash
+docker exec -it SpaceHero /bin/bash
+```
+
+若修改了 `AUTONOMY_CONTAINER_NAME`，将上述命令中的容器名替换为对应值即可。

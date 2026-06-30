@@ -176,6 +176,10 @@ RUN bash /tmp/install/install_ipopt.sh
 RUN bash /tmp/install/install_python_modules.sh
 RUN chmod +x /tmp/install/install_habitat.sh && \
     HABITAT_WITH_CUDA=auto bash /tmp/install/install_habitat.sh
+RUN chmod +x /tmp/install/setup_autonomy_python.sh && \
+    bash /tmp/install/setup_autonomy_python.sh
+RUN chmod +x /tmp/install/install_lerobot.sh && \
+    bash /tmp/install/install_lerobot.sh
 
 # autonomy workspace
 ENV AUTONOMY_WS=/workspace/autonomy
