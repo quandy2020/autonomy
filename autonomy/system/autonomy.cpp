@@ -252,7 +252,7 @@ map::costmap_2d::Costmap2DWrapper::SharedPtr Autonomy::GetGlobalCostmap() {
     return planner_->GetCostmapWrapper();
 }
 
-sensor::SensorCollator& Autonomy::GetSensorCollator() {
+sensor::CollatorInterface& Autonomy::GetSensorCollator() {
     return *sensor_collator_;
 }
 

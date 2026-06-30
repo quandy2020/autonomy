@@ -33,6 +33,7 @@
 #include "autonomy/system/proto/autonomy_options.pb.h"
 #include "autonomy/navigator/constants.hpp"
 #include "autonomy/navigator/options.hpp"
+#include "autonomy/sensor/collator_interface.hpp"
 
 namespace autonomy {
 namespace control {
@@ -93,7 +94,7 @@ public:
 
     map::MapServer* GetMapServer();
     map::costmap_2d::Costmap2DWrapper::SharedPtr GetGlobalCostmap();
-    sensor::SensorCollator& GetSensorCollator();
+    sensor::CollatorInterface& GetSensorCollator();
     control::ControllerServer* GetController();
 
     void AddMapPublishListener(MapPublishListener listener);

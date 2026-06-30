@@ -1,0 +1,67 @@
+# TUM VI monocular model
+# https://vision.in.tum.de/data/datasets/visual-inertial-dataset#geometric_calibration
+# pinhole (512x512)
+
+System:
+  num_grid_cols: 16
+  num_grid_rows: 16
+
+#==============#
+# Camera Model #
+#==============#
+
+Camera:
+  name: "TUM VI monocular"
+  setup: "monocular"
+  model: "fisheye"
+
+  fx: 190.97847715128717
+  fy: 190.9733070521226
+  cx: 254.93170605935475
+  cy: 256.8974428996504
+
+  k1: 0.0034823894022493434
+  k2: 0.0007150348452162257
+  k3: -0.0020532361418706202
+  k4: 0.00020293673591811182
+
+  fps: 20
+  cols: 512
+  rows: 512
+
+  color_order: "Gray"
+
+#=====================#
+# Tracking Parameters #
+#=====================#
+
+Preprocessing:
+  min_size: 800
+
+#================#
+# ORB Parameters #
+#================#
+
+Feature:
+  name: "default ORB feature extraction setting"
+  scale_factor: 1.2
+  num_levels: 8
+  ini_fast_threshold: 20
+  min_fast_threshold: 7
+
+#====================#
+# Mapping Parameters #
+#====================#
+
+Mapping:
+  baseline_dist_thr_ratio: 0.02
+  redundant_obs_ratio_thr: 0.9
+  num_covisibilities_for_landmark_generation: 20
+  num_covisibilities_for_landmark_fusion: 20
+
+#========================#
+# Initializer Parameters #
+#========================#
+
+Initializer:
+  scaling_factor: 2.0

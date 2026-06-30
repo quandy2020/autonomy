@@ -6,6 +6,16 @@ option(AUTONOMY_BT_PLUGINS_BUNDLED
   "Build all BT plugins in one shared library (autonomy_behavior_tree_plugins)"
   OFF)
 
+function(autonomy_link_behaviortree_cpp target visibility)
+  if(TARGET BT::behaviortree_cpp)
+    target_link_libraries(${target} ${visibility} BT::behaviortree_cpp)
+  elseif(TARGET behaviortree_cpp::behaviortree_cpp)
+    target_link_libraries(${target} ${visibility} behaviortree_cpp::behaviortree_cpp)
+  else()
+    message(FATAL_ERROR "behaviortree_cpp imported target not found after find_package")
+  endif()
+endfunction()
+
 function(_autonomy_bt_plugin_target_name SRC_FILE OUT_VAR)
   get_filename_component(_stem "${SRC_FILE}" NAME_WE)
   get_filename_component(_parent "${SRC_FILE}" DIRECTORY)
@@ -17,11 +27,7 @@ function(_autonomy_configure_bt_plugin_target _target AUTONOMY_LIB)
   add_dependencies(${_target} ${AUTONOMY_LIB})
   target_compile_definitions(${_target} PRIVATE BT_PLUGIN_EXPORT)
   target_link_libraries(${_target} PRIVATE ${AUTONOMY_LIB})
-  if(TARGET BT::behaviortree_cpp)
-    target_link_libraries(${_target} PRIVATE BT::behaviortree_cpp)
-  elseif(TARGET behaviortree_cpp::behaviortree_cpp)
-    target_link_libraries(${_target} PRIVATE behaviortree_cpp::behaviortree_cpp)
-  endif()
+  autonomy_link_behaviortree_cpp(${_target} PRIVATE)
   set_target_properties(${_target} PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON

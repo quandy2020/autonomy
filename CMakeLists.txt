@@ -14,6 +14,10 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+if(POLICY CMP0177)
+  cmake_policy(SET CMP0177 NEW)
+endif()
+
 project(autonomy)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -54,6 +58,9 @@ find_package(Threads REQUIRED)
 find_package(behaviortree_cpp REQUIRED)
 find_package(Adolc REQUIRED)
 find_package(Ipopt QUIET)
+find_package(FBow REQUIRED)
+find_package(G2o REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 option(BUILD_ONNXRUNTIME "Build ONNX Runtime support" true)
 find_package(OnnxRuntime QUIET)
@@ -87,17 +94,7 @@ set(CARTOGRAPHER_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/aut
 install(DIRECTORY config DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 
-file(GLOB_RECURSE ALL_LIBRARY_HDRS "autonomy/*.hpp")
-file(GLOB_RECURSE ALL_LIBRARY_SRCS "autonomy/*.cpp")
-file(GLOB_RECURSE ALL_GRPC_HDRS "autonomy/common/async_grpc/*.hpp" "autonomy/bridge/plugins/grpc/*.hpp")
-file(GLOB_RECURSE ALL_GRPC_SRCS "autonomy/common/async_grpc/*.cpp" "autonomy/bridge/plugins/grpc/*.cpp")
-file(GLOB_RECURSE ALL_GRPC_FILES "autonomy/common/async_grpc/*" "autonomy/bridge/plugins/grpc/*")
-file(GLOB_RECURSE ALL_GRPC_BRIDGE_FILES "autonomy/bridge/bridge_server.*")
-file(GLOB_RECURSE TEST_LIBRARY_HDRS "autonomy/fake_*.hpp" "autonomy/*test_helpers*.hpp" "autonomy/*test*.hpp" "autonomy/mock_*.hpp")
-file(GLOB_RECURSE TEST_LIBRARY_SRCS "autonomy/fake_*.cpp" "autonomy/*test_helpers*.cpp" "autonomy/*test*.cpp" "autonomy/mock_*.cpp")
-file(GLOB_RECURSE ALL_TOOLS "autonomy/tools/*")
-file(GLOB_RECURSE ALL_EXECUTABLES "autonomy/*main.cpp")
-file(GLOB_RECURSE ALL_TESTS "autonomy/*_test.cpp")
+include("${PROJECT_SOURCE_DIR}/cmake/autonomy_sources.cmake")
 
 # Remove dotfiles/-folders that could potentially pollute the build.
 file(GLOB_RECURSE ALL_DOTFILES ".*/*")
@@ -268,7 +265,6 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${OpenCV_INCLUDE_DIRS}
 target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS})
 
 # Yaml-cpp
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${YAML_CPP_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC yaml-cpp)
 
 # OSQP
@@ -279,28 +275,38 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ${OSQP_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} PUBLIC glog)
 target_link_libraries(${PROJECT_NAME} PUBLIC gflags)
 
+# FBow
+target_link_libraries(${PROJECT_NAME} PUBLIC FBow::fbow)
+
+# g2o (atlas optimization)
+target_link_libraries(
+  ${PROJECT_NAME}
+  PUBLIC
+    g2o::core
+    g2o::stuff
+    g2o::types_sba
+    g2o::types_sim3
+    g2o::solver_dense
+    g2o::solver_eigen
+    g2o::solver_csparse
+    g2o::csparse_extension
+)
+
+# SQLite3 (atlas map database)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${SQLite3_LIBRARIES})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${SQLite3_INCLUDE_DIRS})
+
 # autolink (planning plugin_manager)
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
 
-# BehaviorTree.CPP
-if(TARGET BT::behaviortree_cpp)
-  set(AUTONOMY_BT_CPP_TARGET BT::behaviortree_cpp)
-elseif(TARGET behaviortree_cpp::behaviortree_cpp)
-  set(AUTONOMY_BT_CPP_TARGET behaviortree_cpp::behaviortree_cpp)
-else()
-  message(FATAL_ERROR "behaviortree_cpp imported target not found after find_package")
-endif()
-target_link_libraries(${PROJECT_NAME} PUBLIC ${AUTONOMY_BT_CPP_TARGET})
 include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
+autonomy_link_behaviortree_cpp(${PROJECT_NAME} PUBLIC)
 autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
-# prometheus (optional, for system/monitor and cartographer metrics/visualization)
-if(${BUILD_PROMETHEUS})
+if(BUILD_PROMETHEUS)
+  find_package(prometheus-cpp CONFIG REQUIRED)
   target_compile_definitions(${PROJECT_NAME} PRIVATE USE_PROMETHEUS=1)
-  find_package(prometheus-cpp CONFIG QUIET)
-  if(prometheus-cpp_FOUND OR TARGET prometheus-cpp-core)
-    target_link_libraries(${PROJECT_NAME} PRIVATE prometheus-cpp-core prometheus-cpp-pull)
-  endif()
+  target_link_libraries(${PROJECT_NAME} PRIVATE prometheus-cpp-core prometheus-cpp-pull)
 endif()
 
 if(${BUILD_GRPC})
@@ -365,9 +371,17 @@ install(
   RUNTIME DESTINATION bin
 )
 
-set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS})
 file(GLOB_RECURSE INTERNAL_HDRS "autonomy/*/internal/*.h" "autonomy/*/internal/*.hpp")
+file(GLOB_RECURSE INSTALL_LEGACY_HDRS "autonomy/*.h")
+
+set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS} ${INSTALL_LEGACY_HDRS})
 list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
+if(ALL_DOTFILES)
+  list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${ALL_DOTFILES})
+endif()
+if(NOT ${BUILD_GRPC})
+  list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${ALL_GRPC_HDRS})
+endif()
 
 foreach(HDR ${INSTALL_SOURCE_HDRS})
   file(RELATIVE_PATH REL_FIL ${PROJECT_SOURCE_DIR} ${HDR})
