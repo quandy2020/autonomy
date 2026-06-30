@@ -71,6 +71,7 @@ from docker_utils import (
     check_image_exists, get_image_platform, check_docker_available, 
     check_nvidia_available, check_docker_gpu_support,
     normalize_path, resolve_autonomy_env_dir, resolve_data_volumes,
+    prepare_host_data_volume,
     resolve_container_name, resolve_publish_ports, resolve_network_mode,
     run_command, 
     print_error, print_info, print_warning
@@ -130,6 +131,10 @@ class AutonomyRunner:
         self.keep_isaac_entrypoint = False
         self.use_gpu_in_container = False
         self.gpu_docker_strategies = []
+        self.run_as_host_user = os.environ.get("AUTONOMY_RUN_AS_ROOT", "").strip().lower() not in (
+            "1", "true", "yes",
+        )
+        self.host_uid = os.getuid()
 
     @staticmethod
     def _user_specified_entrypoint(remaining_args):
@@ -151,7 +156,12 @@ class AutonomyRunner:
     def setup_x11(self):
         """Configure X11 server permissions."""
         if sys.platform == "linux" and shutil.which("xhost"):
-            for cmd in [["xhost", "+local:root"], ["xhost", "+local:docker"], ["xhost", "+"]]:
+            uid = os.getuid()
+            for cmd in [
+                ["xhost", f"+local:{uid}"],
+                ["xhost", "+local:docker"],
+                ["xhost", "+local:root"],
+            ]:
                 subprocess.run(cmd, check=False, capture_output=True)
 
     def select_x86_64_image(self):
@@ -316,7 +326,11 @@ class AutonomyRunner:
         self.docker_args.extend(["-v", "/tmp/.X11-unix:/tmp/.X11-unix:rw", "-e", f"DISPLAY={display}"])
         xauth = Path.home() / ".Xauthority"
         if xauth.exists():
-            self.docker_args.extend(["-v", f"{xauth}:/root/.Xauthority:rw", "-e", "XAUTHORITY=/root/.Xauthority"])
+            container_xauth = f"/tmp/.Xauthority-{self.host_uid}"
+            self.docker_args.extend([
+                "-v", f"{xauth}:{container_xauth}:rw",
+                "-e", f"XAUTHORITY={container_xauth}",
+            ])
 
     def configure_environment(self):
         """Configure environment variables."""
@@ -324,10 +338,22 @@ class AutonomyRunner:
         if self.platform_arch == "x86_64":
             self.docker_args.extend(["-e", "ACCEPT_EULA=Y"])
             print_info("NVIDIA Isaac Sim EULA accepted (force enabled on x86_64)")
+        runtime_dir = f"/tmp/runtime-{self.host_uid}"
+        self.docker_args.extend(["-e", f"XDG_RUNTIME_DIR={runtime_dir}"])
         xdg = os.environ.get("XDG_RUNTIME_DIR")
-        self.docker_args.extend(["-e", "XDG_RUNTIME_DIR=/tmp/runtime-root"])
         if xdg and Path(xdg).exists():
             self.docker_args.extend(["-v", f"{xdg}:{xdg}:ro"])
+
+    def configure_container_user(self):
+        """Run container processes as the host user so bind mounts stay writable."""
+        if not self.run_as_host_user:
+            print_info("AUTONOMY_RUN_AS_ROOT=1: container runs as root")
+            return
+        uid, gid = os.getuid(), os.getgid()
+        user = os.environ.get("USER", "user")
+        self.docker_args.extend(["-u", f"{uid}:{gid}"])
+        self.docker_args.extend(["-e", f"USER={user}", "-e", f"HOME=/tmp/home-{uid}"])
+        print_info(f"Container runs as host user {user} ({uid}:{gid}) for data volume permissions")
 
     def _configure_software_rendering(self):
         """Configure software rendering when GPU passthrough is unavailable."""
@@ -393,6 +419,7 @@ class AutonomyRunner:
                     f"Host path {host} not found; skipping volume {host}:{container}:{mode}"
                 )
                 continue
+            prepare_host_data_volume(host, container)
             self.docker_args.extend(["-v", f"{host}:{container}:{mode}"])
             print_info(f"Mounting host data volume: {host} -> {container} ({mode})")
 
@@ -438,6 +465,7 @@ class AutonomyRunner:
         self.build_image_if_needed()
         self.configure_display()
         self.configure_environment()
+        self.configure_container_user()
         self.configure_shared_volumes()
         self.configure_network()
         self.configure_gpu()
