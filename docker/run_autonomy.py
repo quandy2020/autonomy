@@ -49,6 +49,10 @@ Examples:
     # 旧行为 — 环境变量（等价于 --keep-isaac-entrypoint）：
     AUTONOMY_KEEP_ISAAC_ENTRYPOINT=1 python3 run_autonomy.py -p x86_64 -n yes
 
+    # 以宿主机 uid:gid 进入（bind mount 文件属主与宿主机一致，但 /thirdparty、colcon 可能遇权限问题）：
+    python3 run_autonomy.py --as-host-user
+    AUTONOMY_RUN_AS_HOST_USER=1 python3 run_autonomy.py
+
     # 挂载宿主机数据卷（环境变量，逗号或空格分隔多个路径）：
     AUTONOMY_DATA_VOLUMES=/mnt/data4t python3 run_autonomy.py
 
@@ -131,9 +135,7 @@ class AutonomyRunner:
         self.keep_isaac_entrypoint = False
         self.use_gpu_in_container = False
         self.gpu_docker_strategies = []
-        self.run_as_host_user = os.environ.get("AUTONOMY_RUN_AS_ROOT", "").strip().lower() not in (
-            "1", "true", "yes",
-        )
+        self.run_as_host_user = False
         self.host_uid = os.getuid()
 
     @staticmethod
@@ -345,15 +347,15 @@ class AutonomyRunner:
             self.docker_args.extend(["-v", f"{xdg}:{xdg}:ro"])
 
     def configure_container_user(self):
-        """Run container processes as the host user so bind mounts stay writable."""
+        """Run as root by default; optional host uid:gid for bind-mount ownership."""
         if not self.run_as_host_user:
-            print_info("AUTONOMY_RUN_AS_ROOT=1: container runs as root")
+            print_info("Container runs as root")
             return
         uid, gid = os.getuid(), os.getgid()
         user = os.environ.get("USER", "user")
         self.docker_args.extend(["-u", f"{uid}:{gid}"])
         self.docker_args.extend(["-e", f"USER={user}", "-e", f"HOME=/tmp/home-{uid}"])
-        print_info(f"Container runs as host user {user} ({uid}:{gid}) for data volume permissions")
+        print_info(f"Container runs as host user {user} ({uid}:{gid})")
 
     def _configure_software_rendering(self):
         """Configure software rendering when GPU passthrough is unavailable."""
@@ -603,6 +605,10 @@ Examples:
   \033[91m# NVIDIA 镜像：保留 Isaac-Lab 默认 ENTRYPOINT（可能自动启动 Kit/流式）\033[0m
   \033[92mpython3 %(prog)s -p x86_64 -n yes --keep-isaac-entrypoint\033[0m
 
+  \033[91m# 以宿主机用户进入（bind mount 属主一致；colcon/第三方库安装可能需额外处理权限）\033[0m
+  \033[92mpython3 %(prog)s --as-host-user\033[0m
+  \033[92mAUTONOMY_RUN_AS_HOST_USER=1 python3 %(prog)s\033[0m
+
   \033[91m# 挂载宿主机数据卷\033[0m
   \033[92mAUTONOMY_DATA_VOLUMES=/mnt/data4t python3 %(prog)s\033[0m
   \033[92mpython3 %(prog)s --data-volume /mnt/data4t\033[0m
@@ -632,6 +638,16 @@ Examples:
              "  \033[91mno:   Force use standard image\033[0m"
     )
     parser.add_argument(
+        "--as-host-user",
+        action="store_true",
+        help=(
+            "以宿主机 uid:gid 进入容器（默认 root）。"
+            "适用于希望 workspace 内新建文件在宿主机上属主为自己；"
+            "colcon build、install_*.sh 等可能需要 root 或额外权限处理。"
+            "等价环境变量：AUTONOMY_RUN_AS_HOST_USER=1。"
+        ),
+    )
+    parser.add_argument(
         "--keep-isaac-entrypoint",
         action="store_true",
         help=(
@@ -651,6 +667,15 @@ Examples:
         ),
     )
     return parser.parse_known_args()
+
+
+def resolve_run_as_host_user(cli_as_host_user: bool) -> bool:
+    """Default root; opt in to host uid:gid via CLI or AUTONOMY_RUN_AS_HOST_USER."""
+    if cli_as_host_user:
+        return True
+    return os.environ.get("AUTONOMY_RUN_AS_HOST_USER", "").strip().lower() in (
+        "1", "true", "yes",
+    )
 
 
 def main():
@@ -678,6 +703,7 @@ def main():
 
     runner.keep_isaac_entrypoint = bool(args.keep_isaac_entrypoint)
     runner.data_volumes = resolve_data_volumes(args.data_volumes)
+    runner.run_as_host_user = resolve_run_as_host_user(bool(args.as_host_user))
 
     runner.remaining_args = remaining
     runner.run()

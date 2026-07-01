@@ -94,8 +94,8 @@ RUN touch /root/.bashrc && \
     echo 'export GLOG_colorlogtostderr=1' >> /root/.bashrc && \
     echo 'export GLOG_minloglevel=0' >> /root/.bashrc
 
-# thirdparty
-RUN mkdir /thirdparty
+# thirdparty (world-writable so non-root dev containers can run install_*.sh)
+RUN mkdir -p /thirdparty && chmod 1777 /thirdparty
 RUN bash /tmp/install/install_gtest.sh
 RUN bash /tmp/install/install_glog.sh
 RUN bash /tmp/install/install_gflags.sh
