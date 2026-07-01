@@ -323,6 +323,34 @@ if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   target_link_libraries(${PROJECT_NAME} PUBLIC ${OnnxRuntime_LIBRARIES})
 endif()
 
+# fbow/g2o are often installed under /usr/local/lib; embed their paths so
+# libautonomy.so resolves NEEDED libs at runtime without LD_LIBRARY_PATH.
+function(_autonomy_append_rpath_from_target _rpath_var _target)
+  if(NOT TARGET ${_target})
+    return()
+  endif()
+  get_target_property(_loc ${_target} IMPORTED_LOCATION)
+  if(NOT _loc)
+    get_target_property(_loc ${_target} IMPORTED_LOCATION_RELEASE)
+  endif()
+  if(_loc)
+    get_filename_component(_dir "${_loc}" DIRECTORY)
+    list(APPEND ${_rpath_var} "${_dir}")
+    set(${_rpath_var} "${${_rpath_var}}" PARENT_SCOPE)
+  endif()
+endfunction()
+
+set(_autonomy_install_rpath "")
+_autonomy_append_rpath_from_target(_autonomy_install_rpath FBow::fbow)
+_autonomy_append_rpath_from_target(_autonomy_install_rpath g2o::core)
+list(REMOVE_DUPLICATES _autonomy_install_rpath)
+if(_autonomy_install_rpath)
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+    BUILD_RPATH "${_autonomy_install_rpath}"
+    INSTALL_RPATH "${_autonomy_install_rpath}"
+    INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
+
 ## Test unit
 if (${BUILD_TEST})
   set(TEST_LIB autonomy_test_library)
