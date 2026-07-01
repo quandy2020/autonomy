@@ -154,8 +154,8 @@ RUN chmod -R a+rw /opt/venv
 
 # Install autonomy dependencies
 
-# thirdparty
-RUN mkdir /thirdparty
+# thirdparty (world-writable so non-root dev containers can run install_*.sh)
+RUN mkdir -p /thirdparty && chmod 1777 /thirdparty
 RUN bash /tmp/install/install_gtest.sh
 RUN bash /tmp/install/install_glog.sh
 RUN bash /tmp/install/install_gflags.sh

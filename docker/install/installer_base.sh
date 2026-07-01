@@ -150,6 +150,61 @@ function create_so_symlink()
     done
 }
 
+# Writable build tree for manual installs inside dev containers (non-root users).
+function autonomy_thirdparty_dir()
+{
+    local candidate
+    for candidate in \
+        "${AUTONOMY_THIRDPARTY:-}" \
+        "/thirdparty" \
+        "${HOME}/.cache/autonomy/thirdparty" \
+        "/tmp/autonomy-thirdparty-${UID:-0}"; do
+        [[ -n "${candidate}" ]] || continue
+        mkdir -p "${candidate}" 2>/dev/null || continue
+        if [[ -w "${candidate}" ]]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+    error "No writable thirdparty directory (tried /thirdparty and ${HOME}/.cache/autonomy/thirdparty)"
+    return 1
+}
+
+# System prefix during image build; user prefix when running as non-root in a container.
+function autonomy_cmake_install_prefix()
+{
+    local candidate
+    for candidate in \
+        "${AUTONOMY_INSTALL_PREFIX:-}" \
+        "/usr/local" \
+        "${HOME}/.local"; do
+        [[ -n "${candidate}" ]] || continue
+        mkdir -p "${candidate}" 2>/dev/null || continue
+        if [[ -w "${candidate}" ]]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+    error "No writable CMAKE_INSTALL_PREFIX (tried /usr/local and ${HOME}/.local)"
+    return 1
+}
+
+# Re-exec as root when passwordless sudo is available (typical in docker exec -u root).
+function autonomy_maybe_reexec_as_root()
+{
+    if [[ "$(id -u)" -eq 0 ]]; then
+        return 0
+    fi
+    if [[ -w /thirdparty && -w /usr/local ]]; then
+        return 0
+    fi
+    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        info "Elevating to root for system install under /thirdparty and /usr/local..."
+        exec sudo -E bash "$@"
+    fi
+    return 0
+}
+
 function _local_http_cached() 
 {
     if /usr/bin/curl -sfI "${LOCAL_HTTP_ADDR}/$1"; then
