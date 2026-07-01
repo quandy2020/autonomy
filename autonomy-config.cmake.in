@@ -41,7 +41,12 @@ find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
 find_package(behaviortree_cpp ${QUIET_OR_REQUIRED_OPTION})
 
 # autolink plugin_manager (INTERFACE dep of autonomy::autonomy)
-find_package(TinyXML2 REQUIRED)
+if(NOT TARGET TinyXML2::TinyXML2)
+  include("${AUTONOMY_CMAKE_DIR}/modules/FindTinyXML2.cmake")
+endif()
+if(NOT TARGET TinyXML2::TinyXML2)
+  message(FATAL_ERROR "autonomy: failed to import TinyXML2::TinyXML2")
+endif()
 
 # atlas localization dependencies (PUBLIC link interface of autonomy::autonomy)
 find_package(FBow ${QUIET_OR_REQUIRED_OPTION})
