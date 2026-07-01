@@ -70,6 +70,11 @@ public:
      */
     cv::Mat draw_frame();
 
+    /**
+     * Side-by-side previous/current frame with matched feature lines.
+     */
+    cv::Mat draw_frame_matches();
+
     std::string get_tracking_state();
 
     std::vector<cv::KeyPoint> get_keypoints();
@@ -94,10 +99,19 @@ protected:
 
     void draw_markers2d(cv::Mat& img, const std::vector<data::marker2d>& mkrs2d, const float mag = 1.0);
 
+    void draw_match_lines(cv::Mat& canvas, int prev_panel_width,
+                          const std::vector<cv::KeyPoint>& prev_keypts,
+                          const std::vector<std::shared_ptr<data::landmark>>& prev_lms,
+                          const std::vector<cv::KeyPoint>& curr_keypts,
+                          const std::vector<std::shared_ptr<data::landmark>>& curr_lms,
+                          float mag) const;
+
     // colors (BGR)
     const cv::Scalar mapping_color_{0, 255, 255};
     const cv::Scalar localization_color_{255, 255, 0};
     const cv::Scalar marker_color_{255, 0, 255};
+    const cv::Scalar match_line_color_{0, 255, 0};
+    const cv::Scalar match_point_color_{0, 200, 255};
 
     //! config
     std::shared_ptr<config> cfg_;
@@ -130,6 +144,11 @@ protected:
     bool mapping_is_enabled_;
 
     std::vector<std::shared_ptr<data::landmark>> curr_lms_;
+
+    bool has_prev_frame_ = false;
+    cv::Mat prev_img_;
+    std::vector<cv::KeyPoint> prev_keypts_;
+    std::vector<std::shared_ptr<data::landmark>> prev_lms_;
 };
 
 } // namespace publish

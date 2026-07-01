@@ -4,6 +4,7 @@
 
 #include <iomanip>
 #include <algorithm>
+#include <map>
 
 #include <opencv2/imgproc.hpp>
 #include "autolink/common/log.hpp"
@@ -90,6 +91,67 @@ cv::Mat frame_publisher::draw_frame() {
     ADEBUG << "num_tracked: " << num_tracked;
 
     return img;
+}
+
+cv::Mat frame_publisher::draw_frame_matches() {
+    cv::Mat prev_img;
+    cv::Mat curr_img;
+    std::vector<cv::KeyPoint> prev_keypts;
+    std::vector<cv::KeyPoint> curr_keypts;
+    std::vector<std::shared_ptr<data::landmark>> prev_lms;
+    std::vector<std::shared_ptr<data::landmark>> curr_lms;
+    bool has_prev = false;
+
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        if (!has_prev_frame_ || prev_img_.empty() || img_.empty()) {
+            return cv::Mat();
+        }
+        prev_img_.copyTo(prev_img);
+        img_.copyTo(curr_img);
+        prev_keypts = prev_keypts_;
+        curr_keypts = curr_keypts_;
+        prev_lms = prev_lms_;
+        curr_lms = curr_lms_;
+        has_prev = true;
+    }
+
+    if (!has_prev) {
+        return cv::Mat();
+    }
+
+    const float mag = (img_width_ < prev_img.cols * 2)
+                          ? static_cast<float>(img_width_) / static_cast<float>(prev_img.cols * 2)
+                          : 1.0f;
+    if (mag != 1.0f) {
+        cv::resize(prev_img, prev_img, cv::Size(), mag, mag, cv::INTER_NEAREST);
+        cv::resize(curr_img, curr_img, cv::Size(), mag, mag, cv::INTER_NEAREST);
+    }
+
+    if (prev_img.channels() < 3) {
+        cv::cvtColor(prev_img, prev_img, cv::COLOR_GRAY2BGR);
+    }
+    if (curr_img.channels() < 3) {
+        cv::cvtColor(curr_img, curr_img, cv::COLOR_GRAY2BGR);
+    }
+
+    const int panel_h = std::max(prev_img.rows, curr_img.rows);
+    const int panel_w = std::max(prev_img.cols, curr_img.cols);
+    cv::Mat prev_panel = cv::Mat::zeros(panel_h, panel_w, CV_8UC3);
+    cv::Mat curr_panel = cv::Mat::zeros(panel_h, panel_w, CV_8UC3);
+    prev_img.copyTo(prev_panel(cv::Rect(0, 0, prev_img.cols, prev_img.rows)));
+    curr_img.copyTo(curr_panel(cv::Rect(0, 0, curr_img.cols, curr_img.rows)));
+
+    cv::Mat canvas(panel_h, panel_w * 2, CV_8UC3, cv::Scalar(0, 0, 0));
+    prev_panel.copyTo(canvas(cv::Rect(0, 0, panel_w, panel_h)));
+    curr_panel.copyTo(canvas(cv::Rect(panel_w, 0, panel_w, panel_h)));
+
+    cv::putText(canvas, "prev", {10, 24}, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(220, 220, 220), 2);
+    cv::putText(canvas, "curr", {panel_w + 10, 24}, cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(220, 220, 220), 2);
+
+    draw_match_lines(canvas, panel_w, prev_keypts, prev_lms, curr_keypts, curr_lms, mag);
+
+    return canvas;
 }
 
 std::string frame_publisher::get_tracking_state() {
@@ -199,6 +261,40 @@ void frame_publisher::draw_markers2d(cv::Mat& img, const std::vector<data::marke
     }
 }
 
+void frame_publisher::draw_match_lines(cv::Mat& canvas, int prev_panel_width,
+                                       const std::vector<cv::KeyPoint>& prev_keypts,
+                                       const std::vector<std::shared_ptr<data::landmark>>& prev_lms,
+                                       const std::vector<cv::KeyPoint>& curr_keypts,
+                                       const std::vector<std::shared_ptr<data::landmark>>& curr_lms,
+                                       float mag) const {
+    std::map<unsigned int, cv::Point2f> prev_lm_pts;
+    const auto prev_size = std::min(prev_keypts.size(), prev_lms.size());
+    for (std::size_t i = 0; i < prev_size; ++i) {
+        const auto& lm = prev_lms.at(i);
+        if (!lm || lm->will_be_erased()) {
+            continue;
+        }
+        prev_lm_pts[lm->id_] = prev_keypts.at(i).pt * mag;
+    }
+
+    const auto curr_size = std::min(curr_keypts.size(), curr_lms.size());
+    for (std::size_t i = 0; i < curr_size; ++i) {
+        const auto& lm = curr_lms.at(i);
+        if (!lm || lm->will_be_erased()) {
+            continue;
+        }
+        const auto it = prev_lm_pts.find(lm->id_);
+        if (it == prev_lm_pts.end()) {
+            continue;
+        }
+        const cv::Point2f pt_prev = it->second;
+        const cv::Point2f pt_curr = curr_keypts.at(i).pt * mag + cv::Point2f(static_cast<float>(prev_panel_width), 0.0f);
+        cv::line(canvas, pt_prev, pt_curr, match_line_color_, 1, cv::LINE_AA);
+        cv::circle(canvas, pt_prev, 2, match_point_color_, -1, cv::LINE_AA);
+        cv::circle(canvas, pt_curr, 2, match_point_color_, -1, cv::LINE_AA);
+    }
+}
+
 void frame_publisher::update(const std::vector<std::shared_ptr<data::landmark>>& curr_lms,
                              bool mapping_is_enabled,
                              tracker_state_t tracking_state,
@@ -208,6 +304,13 @@ void frame_publisher::update(const std::vector<std::shared_ptr<data::landmark>>&
                              double tracking_time_elapsed_ms,
                              double extraction_time_elapsed_ms) {
     std::lock_guard<std::mutex> lock(mtx_);
+
+    if (!img_.empty()) {
+        img_.copyTo(prev_img_);
+        prev_keypts_ = curr_keypts_;
+        prev_lms_ = curr_lms_;
+        has_prev_frame_ = true;
+    }
 
     img.copyTo(img_);
 
