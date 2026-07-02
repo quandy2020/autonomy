@@ -1,0 +1,401 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. 传感器数据管线 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. 视觉检测与 ONNX 推理" href="07_vision_detection.html" />
+    <link rel="prev" title="5. Perception 模块架构设计" href="05_architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">10 Perception</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 传感器数据管线</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">6.1 传感器类型与消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">6.2 数据流总览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">6.3 驱动层配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#observationbuffer">6.4 观测缓冲（ObservationBuffer）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">6.5 坐标变换</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">6.6 时间同步策略</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">6.7 激光数据管线（当前可用）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">6.8 相机数据管线（规划）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">6.9 点云数据管线（规划）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">6.10 与仿真器的对接</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_vision_detection.html">7 视觉检测与 ONNX 推理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_obstacle_perception.html">8 障碍感知与代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 感知算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Perception 感知</a></li>
+      <li class="breadcrumb-item active">6. 传感器数据管线</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/10_Perception/06_sensor_pipeline.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>6. 传感器数据管线<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本文描述 Autonomy 感知子系统中传感器数据的采集、同步、坐标变换与分发机制。</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>6.1 传感器类型与消息<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>传感器</p></th>
+<th class="head"><p>消息类型</p></th>
+<th class="head"><p>命名空间</p></th>
+<th class="head"><p>典型频率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>2D 激光雷达</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LaserScan</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p>10–40 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>3D 激光/深度相机</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PointCloud2</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p>10–20 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>RGB 相机</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Image</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p>15–30 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>深度图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Image</span></code> (encoding=16UC1/32FC1)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p>15–30 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>IMU</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Imu</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p>100–200 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>里程计</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Odometry</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">planning_msgs</span></code></p></td>
+<td><p>20–50 Hz</p></td>
+</tr>
+</tbody>
+</table>
+<p>消息定义位于 <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/sensor_msgs.hpp</span></code>。</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>6.2 数据流总览<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────┐     ┌──────────────┐     ┌─────────────────┐
+│ Driver/Sim  │────→│ Sensor Buffer │────→│ Transform (TF)  │
+│ (硬件/仿真)  │     │ (时间戳队列)   │     │ frame 对齐       │
+└─────────────┘     └──────────────┘     └────────┬────────┘
+                                                   │
+                    ┌──────────────────────────────┼──────────────────┐
+                    ▼                              ▼                  ▼
+            ObstacleLayer                   PerceptionServer      Localization
+            (costmap)                       (检测/聚类)            (定位)
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>6.3 驱动层配置<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">config/driver/driver.lua</span></code> 定义传感器 topic 与转发目标：</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- 规划示例</span>
+<span class="nv">laser</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/scan&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;laser_link&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="nv">front_camera</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/camera/front/image_raw&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;camera_front_link&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">forward_targets</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s2">&quot;perception&quot;</span><span class="p">},</span><span class="w">  </span><span class="c1">-- 预留</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="observationbuffer">
+<h2>6.4 观测缓冲（ObservationBuffer）<a class="headerlink" href="#observationbuffer" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">map/costmap_2d/observation_buffer.hpp</span></code> 实现传感器观测的时间缓冲：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>功能</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>入队</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bufferObservation(obs)</span></code> 按时间戳入队</p></td>
+</tr>
+<tr class="row-odd"><td><p>出队</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">getObservations(observations)</span></code> 获取有效窗口内观测</p></td>
+</tr>
+<tr class="row-even"><td><p>过期清理</p></td>
+<td><p>超过 <code class="docutils literal notranslate"><span class="pre">observation_keep_time</span></code> 的观测自动丢弃</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>用途</strong>：costmap 更新时聚合多帧激光观测，提高鲁棒性。</p>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>6.5 坐标变换<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p>所有感知算法需将传感器数据变换到统一参考系（通常为 <code class="docutils literal notranslate"><span class="pre">map</span></code> 或 <code class="docutils literal notranslate"><span class="pre">odom</span></code>）：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 查询 TF</span>
+<span class="n">geometry_msgs</span><span class="o">::</span><span class="n">TransformStamped</span><span class="w"> </span><span class="n">tf</span><span class="p">;</span>
+<span class="n">transform</span><span class="o">::</span><span class="n">Buffer</span><span class="o">::</span><span class="n">Instance</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">lookupTransform</span><span class="p">(</span>
+<span class="w">  </span><span class="n">target_frame</span><span class="p">,</span><span class="w"> </span><span class="n">source_frame</span><span class="p">,</span><span class="w"> </span><span class="n">time</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">tf</span><span class="p">);</span>
+
+<span class="c1">// 点变换</span>
+<span class="n">p_world</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">R</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">p_sensor</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">t</span><span class="p">;</span>
+</pre></div>
+</div>
+<p><strong>数学</strong>：见 <a class="reference internal" href="03_math.html#id2"><span class="std std-ref">03_math.md §3.1</span></a>。</p>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>6.6 时间同步策略<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>策略</p></th>
+<th class="head"><p>适用场景</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>最近邻</strong></p></td>
+<td><p>低频融合</p></td>
+<td><p>取时间戳最接近的传感器帧</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>插值</strong></p></td>
+<td><p>高频 IMU + 低频相机</p></td>
+<td><p>对位姿做 SLERP 插值</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>消息过滤器</strong></p></td>
+<td><p>ROS 风格</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">message_filters::ApproximateTime</span></code> 近似同步</p></td>
+</tr>
+</tbody>
+</table>
+<p>PerceptionServer 实现后，建议在 <code class="docutils literal notranslate"><span class="pre">&#64;frequency</span></code> 循环中：</p>
+<ol class="arabic simple">
+<li><p>收集各传感器最新帧（或同步帧组）</p></li>
+<li><p>统一变换到 <code class="docutils literal notranslate"><span class="pre">global_frame</span></code></p></li>
+<li><p>分发给各 PerceptionInterface 插件</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>6.7 激光数据管线（当前可用）<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>LaserScan (/scan)
+    │
+    ▼
+ObstacleLayer::laserScanCallback()
+    │
+    ├─ TF: laser_link → global_frame
+    ├─ 射线追踪标记自由/障碍栅格
+    └─ costmap 更新 → Planning / Control
+</pre></div>
+</div>
+<p><strong>关键参数</strong>（<code class="docutils literal notranslate"><span class="pre">costmap.lua</span></code>）：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">obstacle_range</span></code></p></td>
+<td><p>标记障碍的最大距离 (m)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">raytrace_range</span></code></p></td>
+<td><p>射线清除自由空间的最大距离 (m)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_obstacle_height</span></code></p></td>
+<td><p>障碍高度上限 (m)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>6.8 相机数据管线（规划）<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Image (/camera/...)
+    │
+    ▼
+PerceptionServer::OnImage()
+    │
+    ├─ 图像解码 (RGB/BGR)
+    ├─ 预处理 (resize, normalize)  ← common/network
+    ├─ ONNX 推理
+    ├─ 后处理 (decode + NMS)
+    └─ Detection2DArray 发布
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>6.9 点云数据管线（规划）<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>PointCloud2
+    │
+    ▼
+PerceptionServer::OnPointCloud()
+    │
+    ├─ TF 变换到 map 系
+    ├─ 体素下采样
+    ├─ 地面分割 (RANSAC)
+    ├─ 欧氏聚类
+    └─ ObstacleArray / 写入 VoxelLayer
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">VoxelLayer</span></code>（<code class="docutils literal notranslate"><span class="pre">map/costmap_2d/layers/voxel_layer.*</span></code>）支持 3D 点云体素化后投影到 2D costmap。</p>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>6.10 与仿真器的对接<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>仿真方式</p></th>
+<th class="head"><p>传感器来源</p></th>
+<th class="head"><p>配置</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy_nav_test</span></code></p></td>
+<td><p>无真实传感器，静态地图</p></td>
+<td><p>costmap 静态层</p></td>
+</tr>
+<tr class="row-odd"><td><p>Gazebo（<code class="docutils literal notranslate"><span class="pre">autonomy_gazebo</span></code>）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/scan</span></code>, <code class="docutils literal notranslate"><span class="pre">/camera</span></code>, <code class="docutils literal notranslate"><span class="pre">/odom</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autonomy_ros</span></code> bridge</p></td>
+</tr>
+<tr class="row-even"><td><p>Stage（规划）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cave.world</span></code> 中 hokuyolaser + camera</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">simulation.lua</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>详见 <a class="reference internal" href="../12_Simulation/index.html"><span class="std std-doc">12 Simulation</span></a>。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_architecture.html" class="btn btn-neutral float-left" title="5. Perception 模块架构设计" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_vision_detection.html" class="btn btn-neutral float-right" title="7. 视觉检测与 ONNX 推理" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

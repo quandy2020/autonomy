@@ -1,0 +1,522 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3. 数学原理 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="4. 使用指南" href="04_usage.html" />
+    <link rel="prev" title="2. 快速开始" href="02_quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">07 Mapping</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">3 数学原理</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">3.1 环境地图的形式化</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#costmap2d">3.2 Costmap2D 坐标变换</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#occupancygrid-costmap2d">3.3 OccupancyGrid 与 Costmap2D 的数值映射</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">3.4 代价值语义</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gridmap">3.5 GridMap 坐标变换</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inflationlayer">3.6 膨胀层（InflationLayer）数学</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#footprint">3.7 Footprint 与内切半径</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bresenham">3.8 障碍层射线清除（Bresenham）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rolling-window-costmap2d">3.9 Rolling Window（Costmap2D）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gridmap-move">3.10 GridMap 滑动窗口（move）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">3.11 GridMap 插值</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">3.12 图层合并策略</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">3.13 公式速查</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_costmap2d.html">6 Costmap2D 代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_grid_map.html">7 GridMap 2.5D 栅格地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 地图表示综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Map 地图模块</a></li>
+      <li class="breadcrumb-item active">3. 数学原理</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/07_Map/03_math.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="map-math">
+<span id="id1"></span><h1>3. 数学原理<a class="headerlink" href="#map-math" title="Link to this heading"></a></h1>
+<blockquote>
+<div><p>完整算法对比与工程背景见 <a class="reference internal" href="08_survey.html"><span class="std std-doc">08_survey.md</span></a>；Costmap2D / GridMap 实现细节见 <a class="reference internal" href="06_costmap2d.html"><span class="std std-doc">06_costmap2d.md</span></a>、<a class="reference internal" href="07_grid_map.html"><span class="std std-doc">07_grid_map.md</span></a>。</p>
+</div></blockquote>
+<section id="id2">
+<h2>3.1 环境地图的形式化<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>移动机器人在平面环境 <span class="math notranslate nohighlight">\(\mathcal{W} \subset \mathbb{R}^2\)</span> 中导航。环境被离散为栅格集合 <span class="math notranslate nohighlight">\(\mathcal{M}\)</span>，每个栅格 <span class="math notranslate nohighlight">\(c_{ij}\)</span> 携带环境属性（占据概率、通行代价、高程等）：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathcal{M} = \{ c_{ij} \mid i \in [0, N_x), \; j \in [0, N_y) \}
+\]</div>
+<p>分辨率 <span class="math notranslate nohighlight">\(\Delta\)</span>（m/cell）将连续坐标 <span class="math notranslate nohighlight">\(\mathbf{p} = (x, y)^\top\)</span> 映射到离散索引 <span class="math notranslate nohighlight">\((m_x, m_y)\)</span>。Autonomy 提供两套坐标约定，见 §3.2 与 §3.5。</p>
+</section>
+<section id="costmap2d">
+<h2>3.2 Costmap2D 坐标变换<a class="headerlink" href="#costmap2d" title="Link to this heading"></a></h2>
+<p>Costmap2D 采用 <strong>左下角原点</strong>（与 Nav2 / ROS <code class="docutils literal notranslate"><span class="pre">OccupancyGrid</span></code> 一致）。</p>
+<p><strong>世界坐标 → 栅格索引</strong>（<code class="docutils literal notranslate"><span class="pre">worldToMap</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+m_x = \left\lfloor \frac{x - x_0}{\Delta} \right\rfloor, \quad
+m_y = \left\lfloor \frac{y - y_0}{\Delta} \right\rfloor
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\((x_0, y_0)\)</span> 为地图左下角世界坐标（<code class="docutils literal notranslate"><span class="pre">origin_x_</span></code>, <code class="docutils literal notranslate"><span class="pre">origin_y_</span></code>）。</p>
+<p><strong>栅格索引 → 世界坐标</strong>（cell 中心，<code class="docutils literal notranslate"><span class="pre">mapToWorld</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+x = x_0 + \left(m_x + \frac{1}{2}\right) \Delta, \quad
+y = y_0 + \left(m_y + \frac{1}{2}\right) \Delta
+\]</div>
+<p><strong>线性存储索引</strong>（行优先）：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{idx} = m_y \cdot N_x + m_x
+\]</div>
+<p><strong>世界距离 → 栅格数</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+d_{\text{cell}} = \left\lceil \frac{d_{\text{m}}}{\Delta} \right\rceil, \quad d_{\text{cell}} \geq 0
+\]</div>
+</section>
+<section id="occupancygrid-costmap2d">
+<h2>3.3 OccupancyGrid 与 Costmap2D 的数值映射<a class="headerlink" href="#occupancygrid-costmap2d" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">OccupancyGrid</span></code> 使用 <span class="math notranslate nohighlight">\(o \in \{-1, 0, \ldots, 100\}\)</span>（未知 / 自由 / 占据），Costmap2D 使用 <span class="math notranslate nohighlight">\(c \in [0, 255]\)</span>。</p>
+<p><strong>正向映射</strong>（<code class="docutils literal notranslate"><span class="pre">OccupancyGrid</span></code> → <code class="docutils literal notranslate"><span class="pre">Costmap2D</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+c = \mathrm{round}\!\left( \frac{o \cdot (C_{\mathrm{L}} - C_{\mathrm{F}})}{O_{\mathrm{occ}} - O_{\mathrm{free}}} \right)
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(C_{\mathrm{F}}=0\)</span>（<code class="docutils literal notranslate"><span class="pre">FREE</span></code>）、<span class="math notranslate nohighlight">\(C_{\mathrm{L}}=254\)</span>（<code class="docutils literal notranslate"><span class="pre">LETHAL</span></code>）、<span class="math notranslate nohighlight">\(O_{\mathrm{free}}=0\)</span>、<span class="math notranslate nohighlight">\(O_{\mathrm{occ}}=100\)</span>。未知格 <span class="math notranslate nohighlight">\(o=-1\)</span> 映射为 <span class="math notranslate nohighlight">\(C_{\mathrm{NI}}=255\)</span>（<code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code>）。</p>
+<p><strong>反向映射</strong>（<code class="docutils literal notranslate"><span class="pre">snapshotOccupancyGrid</span></code>）：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Costmap 值</p></th>
+<th class="head"><p>OccupancyGrid</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code> (255)</p></td>
+<td><p>-1</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code> (254)</p></td>
+<td><p>100</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span></code> (253)</p></td>
+<td><p>99</p></td>
+</tr>
+<tr class="row-odd"><td><p>其他 <span class="math notranslate nohighlight">\(c \in [0, 252]\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{round}(c \cdot 98 / 252)\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>3.4 代价值语义<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>常量</p></th>
+<th class="head"><p>值</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code></p></td>
+<td><p>0</p></td>
+<td><p>完全自由</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">…</span> <span class="pre">MAX_NON_OBSTACLE</span></code></p></td>
+<td><p>1–252</p></td>
+<td><p>距障碍越近代价越高</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span></code></p></td>
+<td><p>253</p></td>
+<td><p>内切膨胀区（机器人中心不可进入）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code></p></td>
+<td><p>254</p></td>
+<td><p>致命障碍</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code></p></td>
+<td><p>255</p></td>
+<td><p>未知</p></td>
+</tr>
+</tbody>
+</table>
+<p>规划器将 <span class="math notranslate nohighlight">\(c \geq 253\)</span> 视为不可通行（Theta* 等），NavFn 通过内部映射 <span class="math notranslate nohighlight">\(F_{ij} = 50 + 0.8 \cdot c_{ij}\)</span> 转化为势场代价。</p>
+</section>
+<section id="gridmap">
+<h2>3.5 GridMap 坐标变换<a class="headerlink" href="#gridmap" title="Link to this heading"></a></h2>
+<p>GridMap 采用 <strong>中心坐标系</strong> + <strong>循环 buffer</strong>，与 Costmap2D 约定不同。</p>
+<p><strong>地图尺寸与栅格数</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+N_i = \mathrm{round}\!\left(\frac{L_i}{\Delta}\right), \quad
+L_i^{\text{actual}} = N_i \cdot \Delta
+\]</div>
+<p><strong>中心到数据原点的向量</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\vec{v}_{\text{origin}} = \frac{1}{2} \mathbf{L}
+\]</div>
+<p><strong>中心到首格中心的向量</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\vec{v}_{\text{first}} = \vec{v}_{\text{origin}} - \frac{1}{2}\Delta \cdot \mathbf{1}
+\]</div>
+<p><strong>位置 → 索引</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\vec{i}_{\text{vec}} = \frac{\mathbf{p} - \vec{v}_{\text{origin}} - \mathbf{p}_{\text{map}}}{\Delta}
+\]</div>
+<p>再经 buffer 变换 <span class="math notranslate nohighlight">\(T_{\text{buf}} = -\mathbf{I}_2\)</span>（<code class="docutils literal notranslate"><span class="pre">transformMapFrameToBufferOrder</span></code>）得到 buffer 索引。</p>
+<p><strong>索引 → 位置</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{p} = \mathbf{p}_{\text{map}} + \vec{v}_{\text{first}} + \Delta \cdot T_{\text{buf}}^{-1}(\mathbf{i}_{\text{unwrapped}})
+\]</div>
+<p><strong>循环 buffer 索引换算</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{i}_{\text{unwrapped}} = \mathrm{wrap}(\mathbf{i}_{\text{buffer}} - \mathbf{s}_{\text{start}})
+\]</div>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{i}_{\text{buffer}} = \mathrm{wrap}(\mathbf{i} + \mathbf{s}_{\text{start}})
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\mathrm{wrap}\)</span> 为模运算，保证索引落在 <span class="math notranslate nohighlight">\([0, N_i)\)</span>。</p>
+</section>
+<section id="inflationlayer">
+<h2>3.6 膨胀层（InflationLayer）数学<a class="headerlink" href="#inflationlayer" title="Link to this heading"></a></h2>
+<p>膨胀将致命障碍 <span class="math notranslate nohighlight">\(c=254\)</span> 向外传播，形成代价梯度，使规划器在靠近障碍时自动绕行。</p>
+<p>设 <span class="math notranslate nohighlight">\(d\)</span> 为<strong>栅格单位</strong>的欧氏距离（到最近障碍种子），<span class="math notranslate nohighlight">\(r_i\)</span> 为机器人 footprint <strong>内切圆半径</strong>（<code class="docutils literal notranslate"><span class="pre">inscribed_radius_</span></code>），<span class="math notranslate nohighlight">\(\lambda\)</span> 为 <code class="docutils literal notranslate"><span class="pre">cost_scaling_factor_</span></code>（默认 10.0），<span class="math notranslate nohighlight">\(R\)</span> 为 <code class="docutils literal notranslate"><span class="pre">inflation_radius_</span></code>（默认 0.55 m）。</p>
+<p><strong>代价函数</strong> <code class="docutils literal notranslate"><span class="pre">computeCost(d)</span></code>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+c(d) =
+\begin{cases}
+254 &amp; d = 0 \\[6pt]
+253 &amp; d \cdot \Delta \leq r_i \\[6pt]
+\left\lfloor 252 \cdot e^{-\lambda (d \cdot \Delta - r_i)} \right\rfloor &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(254\)</span>、<code class="docutils literal notranslate"><span class="pre">253</span></code> 分别对应 <code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code>、<code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span></code>。</p>
+<p><strong>物理解释</strong>：</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(d \cdot \Delta \leq r_i\)</span>：机器人中心进入此区域将与障碍碰撞（内切圆模型）</p></li>
+<li><p>指数衰减：距障碍越远代价越低，<span class="math notranslate nohighlight">\(\lambda\)</span> 越大衰减越快</p></li>
+<li><p>膨胀半径 <span class="math notranslate nohighlight">\(R\)</span> 决定传播范围：<span class="math notranslate nohighlight">\(d_{\text{cell}} = \lceil R / \Delta \rceil\)</span></p></li>
+</ul>
+<p><strong>预计算缓存</strong>（避免实时 <code class="docutils literal notranslate"><span class="pre">exp</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+D_{ij} = \sqrt{i^2 + j^2}, \quad C_{ij} = c(D_{ij})
+\]</div>
+<p><strong>传播算法</strong>：从所有 lethal（及可选 unknown）种子出发，按整数距离等级 BFS 扩展 4-邻域；<code class="docutils literal notranslate"><span class="pre">updateBounds</span></code> 向外扩展 <span class="math notranslate nohighlight">\(R\)</span> 以保证边界格也被正确膨胀。</p>
+</section>
+<section id="footprint">
+<h2>3.7 Footprint 与内切半径<a class="headerlink" href="#footprint" title="Link to this heading"></a></h2>
+<p>机器人 footprint 为凸多边形 <span class="math notranslate nohighlight">\(\mathcal{F} = \{ \mathbf{v}_0, \ldots, \mathbf{v}_{n-1} \}\)</span>（机器人坐标系）。</p>
+<p><strong>旋转变换到世界系</strong>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{bmatrix} x' \\ y' \end{bmatrix} =
+\begin{bmatrix} \cos\theta &amp; -\sin\theta \\ \sin\theta &amp; \cos\theta \end{bmatrix}
+\begin{bmatrix} x \\ y \end{bmatrix} +
+\begin{bmatrix} x_{\text{robot}} \\ y_{\text{robot}} \end{bmatrix}
+\end{split}\]</div>
+<p><strong>内切半径</strong> <span class="math notranslate nohighlight">\(r_i\)</span>（<code class="docutils literal notranslate"><span class="pre">calculateMinAndMaxDistances</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+r_i = \min_{k} \Big\{ \|\mathbf{v}_k\|_2, \; d(\mathbf{0}, \overline{\mathbf{v}_k \mathbf{v}_{k+1}}) \Big\}
+\]</div>
+<p><strong>外接半径</strong> <span class="math notranslate nohighlight">\(r_c = \max_k \|\mathbf{v}_k\|_2\)</span>。</p>
+<p><strong>点到线段距离</strong>（<code class="docutils literal notranslate"><span class="pre">distanceToLine</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+d(\mathbf{p}, \overline{\mathbf{a}\mathbf{b}}) =
+\begin{cases}
+\|\mathbf{p} - \mathbf{a}\| &amp; t &lt; 0 \\
+\|\mathbf{p} - \mathbf{b}\| &amp; t &gt; 1 \\
+\frac{|(\mathbf{b}-\mathbf{a}) \times (\mathbf{a}-\mathbf{p})|}{\|\mathbf{b}-\mathbf{a}\|} &amp; 0 \leq t \leq 1
+\end{cases}
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(t = \frac{(\mathbf{p}-\mathbf{a}) \cdot (\mathbf{b}-\mathbf{a})}{\|\mathbf{b}-\mathbf{a}\|^2}\)</span>。</p>
+</section>
+<section id="bresenham">
+<h2>3.8 障碍层射线清除（Bresenham）<a class="headerlink" href="#bresenham" title="Link to this heading"></a></h2>
+<p>激光 <strong>clearing</strong> 从传感器原点 <span class="math notranslate nohighlight">\(\mathbf{o}\)</span> 到障碍点 <span class="math notranslate nohighlight">\(\mathbf{p}\)</span> 沿射线将沿途栅格设为 <code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code>。</p>
+<p>Bresenham 整数算法：设 <span class="math notranslate nohighlight">\(\Delta x = |p_x - o_x|\)</span>，<span class="math notranslate nohighlight">\(\Delta y = |p_y - o_y|\)</span>，<span class="math notranslate nohighlight">\(s_x = \mathrm{sign}(p_x - o_x)\)</span>，<span class="math notranslate nohighlight">\(s_y = \mathrm{sign}(p_y - o_y)\)</span>，从 <span class="math notranslate nohighlight">\((o_x, o_y)\)</span> 逐步走向 <span class="math notranslate nohighlight">\((p_x, p_y)\)</span>，每步更新误差项：</p>
+<div class="math notranslate nohighlight">
+\[
+\epsilon = 2 \cdot \Delta y - \Delta x
+\]</div>
+<p>若 <span class="math notranslate nohighlight">\(\epsilon &gt; 0\)</span>：<span class="math notranslate nohighlight">\(y \leftarrow y + s_y\)</span>，<span class="math notranslate nohighlight">\(\epsilon \leftarrow \epsilon - 2\Delta x\)</span>；否则 <span class="math notranslate nohighlight">\(x \leftarrow x + s_x\)</span>，<span class="math notranslate nohighlight">\(\epsilon \leftarrow \epsilon + 2\Delta y\)</span>。</p>
+<p><strong>Marking</strong>：障碍点投影到 2D 后设为 <code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code>。</p>
+</section>
+<section id="rolling-window-costmap2d">
+<h2>3.9 Rolling Window（Costmap2D）<a class="headerlink" href="#rolling-window-costmap2d" title="Link to this heading"></a></h2>
+<p>局部代价地图以机器人为中心滑动。新原点：</p>
+<div class="math notranslate nohighlight">
+\[
+x_0^{\text{new}} = x_{\text{robot}} - \frac{W}{2}, \quad
+y_0^{\text{new}} = y_{\text{robot}} - \frac{H}{2}
+\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">updateOrigin</span></code> 步骤：</p>
+<ol class="arabic simple">
+<li><p>计算栅格偏移 <span class="math notranslate nohighlight">\(\delta_x = \lfloor (x_0^{\text{new}} - x_0) / \Delta \rfloor\)</span>（对齐到栅格）</p></li>
+<li><p>求新旧窗口重叠区域，copy 到临时 buffer</p></li>
+<li><p>全图 reset 为 <code class="docutils literal notranslate"><span class="pre">default_value_</span></code>，更新 origin</p></li>
+<li><p>重叠数据写回新位置；非重叠区域为未知/自由</p></li>
+</ol>
+</section>
+<section id="gridmap-move">
+<h2>3.10 GridMap 滑动窗口（move）<a class="headerlink" href="#gridmap-move" title="Link to this heading"></a></h2>
+<p>GridMap 的 <code class="docutils literal notranslate"><span class="pre">move(position)</span></code> 使用<strong>循环 buffer</strong>，数据在 map frame 中保持 stationary：</p>
+<div class="math notranslate nohighlight">
+\[
+\Delta \mathbf{p} = \mathbf{p}_{\text{new}} - \mathbf{p}_{\text{map}}, \quad
+\Delta \mathbf{i} = \mathrm{round}(\Delta \mathbf{p} / \Delta)
+\]</div>
+<p>对齐后 <span class="math notranslate nohighlight">\(\Delta \mathbf{p}_{\text{aligned}} = \Delta \mathbf{i} \cdot \Delta\)</span>，移出 buffer 的行/列设为 <code class="docutils literal notranslate"><span class="pre">NaN</span></code>，更新 <code class="docutils literal notranslate"><span class="pre">startIndex_</span></code> 与 <code class="docutils literal notranslate"><span class="pre">position_</span></code>。</p>
+</section>
+<section id="id4">
+<h2>3.11 GridMap 插值<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">atPosition(layer,</span> <span class="pre">pos,</span> <span class="pre">value,</span> <span class="pre">method)</span></code> 支持四种模式：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>方法</p></th>
+<th class="head"><p>精度</p></th>
+<th class="head"><p>计算量</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">INTER_NEAREST</span></code></p></td>
+<td><p>最近邻</p></td>
+<td><p>低</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(1)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">INTER_LINEAR</span></code></p></td>
+<td><p>双线性（2×2）</p></td>
+<td><p>中</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(1)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">INTER_CUBIC_CONVOLUTION</span></code></p></td>
+<td><p>Keys 1981 双三次卷积</p></td>
+<td><p>高</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(1)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">INTER_CUBIC</span></code></p></td>
+<td><p>标准双三次（含导数）</p></td>
+<td><p>最高</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(1)\)</span></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>双线性插值</strong>：设查询点落在 unit square <span class="math notranslate nohighlight">\([0,1]^2\)</span>，四角值为 <span class="math notranslate nohighlight">\(f_{00}, f_{10}, f_{01}, f_{11}\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+f(x,y) = (1-x)(1-y)f_{00} + x(1-y)f_{10} + (1-x)y f_{01} + xy f_{11}
+\]</div>
+<p><strong>Keys 双三次卷积 1D</strong>（<code class="docutils literal notranslate"><span class="pre">convolve1D</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+y = \frac{1}{2} [1,\; t,\; t^2,\; t^3] \cdot M_{\text{conv}} \cdot \mathbf{f}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(M_{\text{conv}}\)</span> 为 4×4 Keys 矩阵：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+M_{\text{conv}} = \begin{bmatrix}
+0 &amp; 2 &amp; 0 &amp; 0 \\
+-1 &amp; 0 &amp; 1 &amp; 0 \\
+2 &amp; -5 &amp; 4 &amp; -1 \\
+-1 &amp; 3 &amp; -3 &amp; 1
+\end{bmatrix}
+\end{split}\]</div>
+<p><strong>标准双三次</strong>：在 unit square 四角取函数值及偏导 <span class="math notranslate nohighlight">\(\partial_x f\)</span>, <span class="math notranslate nohighlight">\(\partial_y f\)</span>, <span class="math notranslate nohighlight">\(\partial_{xy} f\)</span>（中心差分）：</p>
+<div class="math notranslate nohighlight">
+\[
+\frac{\partial f}{\partial x}\bigg|_{i,j} \approx \frac{f_{i+1,j} - f_{i-1,j}}{2\Delta}
+\]</div>
+<p>组装 4×4 <code class="docutils literal notranslate"><span class="pre">FunctionValueMatrix</span></code>，经 <span class="math notranslate nohighlight">\(M_{\text{bicubic}}\)</span> 求多项式系数后求值。</p>
+</section>
+<section id="id5">
+<h2>3.12 图层合并策略<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">CostmapLayer</span></code> 写入 master grid 时的合并模式：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>规则</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">updateWithMax</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(c_{\text{master}} = \max(c_{\text{master}}, c_{\text{layer}})\)</span>；master 为 <code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code> 时被覆盖</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">updateWithMaxWithoutUnknownOverwrite</span></code></p></td>
+<td><p>未知格不被覆盖</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">updateWithOverwrite</span></code></p></td>
+<td><p>跳过 layer 中的 <code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">updateWithTrueOverwrite</span></code></p></td>
+<td><p>全部覆盖</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">updateWithAddition</span></code></p></td>
+<td><p>相加，上限 <code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span> <span class="pre">-</span> <span class="pre">1</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h2>3.13 公式速查<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>主题</p></th>
+<th class="head"><p>核心公式</p></th>
+<th class="head"><p>详见</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Costmap 坐标</p></td>
+<td><p><span class="math notranslate nohighlight">\(m_x = \lfloor(x-x_0)/\Delta\rfloor\)</span></p></td>
+<td><p><a class="reference internal" href="06_costmap2d.html"><span class="std std-doc">06_costmap2d.md §6.5</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>膨胀代价</p></td>
+<td><p><span class="math notranslate nohighlight">\(c = \lfloor 252 \cdot e^{-\lambda(d\Delta - r_i)} \rfloor\)</span></p></td>
+<td><p><a class="reference internal" href="06_costmap2d.html"><span class="std std-doc">06_costmap2d.md §6.8</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>GridMap 坐标</p></td>
+<td><p><span class="math notranslate nohighlight">\(\vec{i} = (\mathbf{p} - \vec{v}_o - \mathbf{p}_m)/\Delta\)</span></p></td>
+<td><p><a class="reference internal" href="07_grid_map.html"><span class="std std-doc">07_grid_map.md §7.6</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>双三次卷积</p></td>
+<td><p>Keys <span class="math notranslate nohighlight">\(M_{\text{conv}}\)</span> 矩阵</p></td>
+<td><p><a class="reference internal" href="07_grid_map.html"><span class="std std-doc">07_grid_map.md §7.8</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>占据映射</p></td>
+<td><p><span class="math notranslate nohighlight">\(c = \mathrm{round}(o \cdot 254 / 100)\)</span></p></td>
+<td><p>§3.3</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02_quickstart.html" class="btn btn-neutral float-left" title="2. 快速开始" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="04_usage.html" class="btn btn-neutral float-right" title="4. 使用指南" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

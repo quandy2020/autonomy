@@ -1,0 +1,358 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. Gazebo 与 ROS 集成 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 车辆抽象与 Stage" href="08_vehicle_stage.html" />
+    <link rel="prev" title="6. 进程内离线仿真（nav_test）" href="06_nav_test.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">12 Simulation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_nav_test.html">6 进程内离线仿真</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 Gazebo 与 ROS 集成</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">7.1 架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">7.2 环境准备</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">7.3 启动命令</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#launch">7.4 Launch 参数</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#topic">7.5 Topic 与数据流</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#costmap">7.6 costmap 与仿真对齐</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nav-test">7.7 与 nav_test 的对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">7.8 故障排查</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">7.9 延伸阅读</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_vehicle_stage.html">8 车辆抽象与 Stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 仿真技术综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Simulation 仿真</a></li>
+      <li class="breadcrumb-item active">7. Gazebo 与 ROS 集成</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/12_Simulation/07_gazebo_ros.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="gazebo-ros">
+<h1>7. Gazebo 与 ROS 集成<a class="headerlink" href="#gazebo-ros" title="Link to this heading"></a></h1>
+<p>本文描述通过外部包 <code class="docutils literal notranslate"><span class="pre">autonomy_ros</span></code> 与 <code class="docutils literal notranslate"><span class="pre">autonomy_gazebo</span></code> 进行物理仿真与传感器仿真的集成方式。</p>
+<blockquote>
+<div><p>这些包<strong>不在</strong>本 <code class="docutils literal notranslate"><span class="pre">autonomy</span></code> 仓库内，但为官方推荐的完整仿真路径。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id1">
+<h2>7.1 架构<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Gazebo    │────→│ autonomy_ros │────→│  Autonomy   │
+│  (physics)  │←────│   (bridge)   │←────│  (C++ 栈)   │
+└─────────────┘     └──────────────┘     └─────────────┘
+     │                      │
+  /scan, /odom          cmd_vel, TF
+  /camera, /clock
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>7.2 环境准备<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">GLOG_logtostderr</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTOLINK_PATH</span><span class="o">=</span>/workspace/autonomy/src/autonomy/autolink/autolink
+<span class="nb">export</span><span class="w"> </span><span class="nv">AUTONOMY_MODEL</span><span class="o">=</span>waffle
+
+<span class="nb">source</span><span class="w"> </span>/opt/ros/humble/setup.bash
+<span class="nb">source</span><span class="w"> </span>/workspace/autonomy/install/setup.bash
+</pre></div>
+</div>
+<p>Docker 安装 Gazebo ROS 包见 <code class="docutils literal notranslate"><span class="pre">docker/install/install_ros2.sh</span></code>（<code class="docutils literal notranslate"><span class="pre">gazebo-ros</span></code>, <code class="docutils literal notranslate"><span class="pre">turtlebot3-gazebo</span></code> 等）。</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>7.3 启动命令<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>7.3.1 一体化启动<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ros2<span class="w"> </span>launch<span class="w"> </span>autonomy_ros<span class="w"> </span>autonomy.launch.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>use_gazebo:<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>world_type:<span class="o">=</span>house<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>use_sim_time:<span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+</section>
+<section id="gazebo">
+<h3>7.3.2 独立 Gazebo<a class="headerlink" href="#gazebo" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ros2<span class="w"> </span>launch<span class="w"> </span>autonomy_gazebo<span class="w"> </span>empty_world.launch.py<span class="w"> </span>gui:<span class="o">=</span><span class="nb">true</span><span class="w"> </span>spawn_robot:<span class="o">=</span><span class="nb">true</span>
+ros2<span class="w"> </span>launch<span class="w"> </span>autonomy_gazebo<span class="w"> </span>autonomy_house.launch.py<span class="w"> </span>gui:<span class="o">=</span><span class="nb">true</span><span class="w"> </span>spawn_robot:<span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="launch">
+<h2>7.4 Launch 参数<a class="headerlink" href="#launch" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">use_sim_time</span></code></p></td>
+<td><p>true</p></td>
+<td><p>订阅 <code class="docutils literal notranslate"><span class="pre">/clock</span></code>，与 Gazebo 同步</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">use_gazebo</span></code></p></td>
+<td><p>false</p></td>
+<td><p>是否 spawn Gazebo 世界</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">world_type</span></code></p></td>
+<td><p>house</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">house</span></code> / <code class="docutils literal notranslate"><span class="pre">world</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">x_pose</span></code>, <code class="docutils literal notranslate"><span class="pre">y_pose</span></code></p></td>
+<td><p>-2.0, -0.5</p></td>
+<td><p>机器人初始位姿</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gui</span></code></p></td>
+<td><p>true</p></td>
+<td><p>Gazebo GUI</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">spawn_robot</span></code></p></td>
+<td><p>true</p></td>
+<td><p>是否生成机器人模型</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="topic">
+<h2>7.5 Topic 与数据流<a class="headerlink" href="#topic" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Topic</p></th>
+<th class="head"><p>方向</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/cmd_vel</span></code></p></td>
+<td><p>Autonomy → Gazebo</p></td>
+<td><p>速度控制</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/odom</span></code></p></td>
+<td><p>Gazebo → Autonomy</p></td>
+<td><p>里程计</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">/scan</span></code></p></td>
+<td><p>Gazebo → Autonomy</p></td>
+<td><p>激光，注入 costmap</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/clock</span></code></p></td>
+<td><p>Gazebo → ROS</p></td>
+<td><p>仿真时间</p></td>
+</tr>
+<tr class="row-even"><td><p>TF <code class="docutils literal notranslate"><span class="pre">map→odom→base_link</span></code></p></td>
+<td><p>双向</p></td>
+<td><p>位姿变换</p></td>
+</tr>
+</tbody>
+</table>
+<p><code class="docutils literal notranslate"><span class="pre">config/planner/planner.lua</span></code> 注释：激光经 <code class="docutils literal notranslate"><span class="pre">autonomy_ros</span> <span class="pre">/scan</span></code> bridge 注入 obstacle_layer。</p>
+</section>
+<hr class="docutils" />
+<section id="costmap">
+<h2>7.6 costmap 与仿真对齐<a class="headerlink" href="#costmap" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">base_footprint</span></code> / <code class="docutils literal notranslate"><span class="pre">base_link</span></code> 与 Gazebo 机器人 URDF 一致</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">global_frame</span></code> 通常为 <code class="docutils literal notranslate"><span class="pre">map</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">use_sim_time:=true</span></code> 时，所有节点使用仿真时钟</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="nav-test">
+<h2>7.7 与 nav_test 的对比<a class="headerlink" href="#nav-test" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>nav_test</p></th>
+<th class="head"><p>Gazebo + ROS</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>依赖</p></td>
+<td><p>无 ROS</p></td>
+<td><p>ROS2 + Gazebo</p></td>
+</tr>
+<tr class="row-odd"><td><p>物理</p></td>
+<td><p>运动学积分</p></td>
+<td><p>物理引擎</p></td>
+</tr>
+<tr class="row-even"><td><p>传感器</p></td>
+<td><p>无</p></td>
+<td><p>激光、相机、IMU</p></td>
+</tr>
+<tr class="row-odd"><td><p>动态障碍</p></td>
+<td><p>无</p></td>
+<td><p>可扩展</p></td>
+</tr>
+<tr class="row-even"><td><p>CI 友好</p></td>
+<td><p>✅</p></td>
+<td><p>较重</p></td>
+</tr>
+<tr class="row-odd"><td><p>调试可视化</p></td>
+<td><p>日志</p></td>
+<td><p>RViz + Gazebo GUI</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>7.8 故障排查<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>现象</p></th>
+<th class="head"><p>处理</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>机器人不动</p></td>
+<td><p>检查 <code class="docutils literal notranslate"><span class="pre">/cmd_vel</span></code> 是否发布；Gazebo 插件是否加载</p></td>
+</tr>
+<tr class="row-odd"><td><p>无激光</p></td>
+<td><p>确认 <code class="docutils literal notranslate"><span class="pre">/scan</span></code> topic；bridge 配置</p></td>
+</tr>
+<tr class="row-even"><td><p>TF 断裂</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ros2</span> <span class="pre">run</span> <span class="pre">tf2_tools</span> <span class="pre">view_frames</span></code> 检查树</p></td>
+</tr>
+<tr class="row-odd"><td><p>时间不同步</p></td>
+<td><p>确保 <code class="docutils literal notranslate"><span class="pre">use_sim_time:=true</span></code> 且 <code class="docutils literal notranslate"><span class="pre">/clock</span></code> 发布</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>7.9 延伸阅读<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../04_Running/06_ros2_integration.html"><span class="std std-doc">04 Running · ROS 2 集成</span></a></p></li>
+<li><p><a class="reference internal" href="../10_Perception/06_sensor_pipeline.html"><span class="std std-doc">10 Perception · 传感器管线</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_nav_test.html" class="btn btn-neutral float-left" title="6. 进程内离线仿真（nav_test）" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_vehicle_stage.html" class="btn btn-neutral float-right" title="8. 车辆抽象与 Stage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

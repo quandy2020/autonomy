@@ -1,0 +1,573 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. gRPC 桥接插件 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. MQTT 桥接插件" href="07_mqtt.html" />
+    <link rel="prev" title="5. Bridge 模块架构设计" href="05_architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">15 Bridge</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 gRPC 桥接插件</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">6.1 组件概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">6.2 服务器构建</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#async-grpc">6.3 async_grpc 框架</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autonomyservice">6.4 AutonomyService 接口</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#handler">6.5 自定义 Handler</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">6.6 后台任务线程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">6.7 gRPC 状态码约定</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">6.8 性能调优</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#navigator">6.9 与 Navigator 对接（规划）</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_mqtt.html">7 MQTT 桥接插件</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 通信协议综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Bridge 通信桥接</a></li>
+      <li class="breadcrumb-item active">6. gRPC 桥接插件</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/15_Bridge/06_grpc.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="grpc">
+<h1>6. gRPC 桥接插件<a class="headerlink" href="#grpc" title="Link to this heading"></a></h1>
+<p>gRPC 插件是 Bridge 模块当前<strong>唯一可用</strong>的传输实现，位于 <code class="docutils literal notranslate"><span class="pre">autonomy/bridge/plugins/grpc/</span></code>。基于 Cartographer 衍生的 <code class="docutils literal notranslate"><span class="pre">async_grpc</span></code> 框架，提供异步、流式 RPC 服务。</p>
+<blockquote>
+<div><p>协议数学模型见 <a class="reference internal" href="03_math.html"><span class="std std-doc">03_math.md</span></a>；架构关系见 <a class="reference internal" href="05_architecture.html"><span class="std std-doc">05_architecture.md</span></a>。</p>
+</div></blockquote>
+<section id="id1">
+<h2>6.1 组件概述<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>文件</p></th>
+<th class="head"><p>类</p></th>
+<th class="head"><p>职责</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grpc_bridge.hpp/cpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GrpcBridgeServer</span></code></p></td>
+<td><p>服务器生命周期、Handler 注册</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grpc_bridge_server_interface.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GrpcBridgeServerInterface</span></code></p></td>
+<td><p>虚接口，便于测试替换</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grpc_bridge_context.hpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GrpcBridgeContextInterface</span></code></p></td>
+<td><p>RPC 执行上下文（待扩展）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">handlers/navigation_handler.*</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SendNavigationHandler</span></code></p></td>
+<td><p>导航指令 RPC</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">handlers/exploration_handler.*</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SendExplorationHandler</span></code></p></td>
+<td><p>探索指令 RPC</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">clients/navigator_stub.*</span></code></p></td>
+<td><p>—</p></td>
+<td><p>Navigator 客户端（待实现）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id2">
+<h2>6.2 服务器构建<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">GrpcBridgeServer</span></code> 构造函数使用 Builder 模式：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">autonomy</span><span class="o">::</span><span class="n">common</span><span class="o">::</span><span class="n">async_grpc</span><span class="o">::</span><span class="n">Server</span><span class="o">::</span><span class="n">Builder</span><span class="w"> </span><span class="n">server_builder</span><span class="p">;</span>
+<span class="n">server_builder</span><span class="p">.</span><span class="n">SetServerAddress</span><span class="p">(</span><span class="s">&quot;127.0.0.1&quot;</span><span class="p">);</span>
+<span class="n">server_builder</span><span class="p">.</span><span class="n">SetNumGrpcThreads</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
+<span class="n">server_builder</span><span class="p">.</span><span class="n">SetNumEventThreads</span><span class="p">(</span><span class="mi">4</span><span class="p">);</span>
+<span class="n">server_builder</span><span class="p">.</span><span class="n">SetMaxSendMessageSize</span><span class="p">(</span><span class="n">kMaxMessageSize</span><span class="p">);</span><span class="w">  </span><span class="c1">// 100 MB</span>
+
+<span class="n">server_builder</span><span class="p">.</span><span class="n">RegisterHandler</span><span class="o">&lt;</span><span class="n">handlers</span><span class="o">::</span><span class="n">SendNavigationHandler</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">server_builder</span><span class="p">.</span><span class="n">RegisterHandler</span><span class="o">&lt;</span><span class="n">handlers</span><span class="o">::</span><span class="n">SendExplorationHandler</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">grpc_server_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">server_builder</span><span class="p">.</span><span class="n">Build</span><span class="p">();</span>
+</pre></div>
+</div>
+<section id="builder">
+<h3>6.2.1 Builder 参数对照<a class="headerlink" href="#builder" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Builder 方法</p></th>
+<th class="head"><p>Proto 字段</p></th>
+<th class="head"><p>当前状态</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SetServerAddress</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">grpc.host</span></code> + <code class="docutils literal notranslate"><span class="pre">grpc.port</span></code></p></td>
+<td><p>硬编码</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SetNumGrpcThreads</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">grpc.num_grpc_threads</span></code></p></td>
+<td><p>硬编码 4</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SetNumEventThreads</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">grpc.num_event_threads</span></code></p></td>
+<td><p>硬编码 4</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SetMaxSendMessageSize</span></code></p></td>
+<td><p>—</p></td>
+<td><p>100 MB</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SetMaxReceiveMessageSize</span></code></p></td>
+<td><p>—</p></td>
+<td><p>默认 10 MB</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h3>6.2.2 生命周期<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>构造 → Build() → Start() → [运行中] → Shutdown() → WaitForShutdown()
+                      ↑                      │
+                      └── task_thread_ ──────┘
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Start()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shutting_down_=false</span></code>，启动 <code class="docutils literal notranslate"><span class="pre">task_thread_</span></code>，<code class="docutils literal notranslate"><span class="pre">grpc_server_-&gt;Start()</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Shutdown()</span></code></p></td>
+<td><p>置 <code class="docutils literal notranslate"><span class="pre">shutting_down_=true</span></code>，关闭 gRPC，join 后台线程</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WaitForShutdown()</span></code></p></td>
+<td><p>阻塞至 gRPC 完全退出</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">WaitUntilIdle()</span></code></p></td>
+<td><p>测试用，当前为空实现</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="async-grpc">
+<h2>6.3 async_grpc 框架<a class="headerlink" href="#async-grpc" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">async_grpc</span></code> 采用 <strong>Completion Queue（CQ）驱动</strong>的异步模型：</p>
+<ol class="arabic simple">
+<li><p>Server 在 CQ 上注册 RPC 请求</p></li>
+<li><p>事件到达时，Event 线程调度对应 <code class="docutils literal notranslate"><span class="pre">RpcHandler</span></code></p></li>
+<li><p>Handler 通过 <code class="docutils literal notranslate"><span class="pre">Send()</span></code> / <code class="docutils literal notranslate"><span class="pre">Finish()</span></code> 完成响应</p></li>
+</ol>
+<p>Handler 基类关键接口：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">Signature</span><span class="o">&gt;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RpcHandler</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">OnRequest</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">IncomingType</span><span class="o">&amp;</span><span class="w"> </span><span class="n">request</span><span class="p">);</span>
+<span class="w">    </span><span class="k">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">OnReadsDone</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">Send</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">OutgoingType</span><span class="o">&gt;</span><span class="w"> </span><span class="n">message</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">Finish</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="o">::</span><span class="n">grpc</span><span class="o">::</span><span class="n">Status</span><span class="o">&amp;</span><span class="w"> </span><span class="n">status</span><span class="p">);</span>
+<span class="w">    </span><span class="n">ExecutionContext</span><span class="o">*</span><span class="w"> </span><span class="nf">GetContext</span><span class="p">();</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<section id="id4">
+<h3>6.3.1 线程安全<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">GetContext()</span></code>：同步上下文，Handler 回调内安全访问</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GetUnsynchronizedContext()</span></code>：仅在同一线程内使用</p></li>
+<li><p>跨 Handler 共享状态应通过 <code class="docutils literal notranslate"><span class="pre">GrpcBridgeContextInterface</span></code> 注入</p></li>
+</ul>
+</section>
+</section>
+<section id="autonomyservice">
+<h2>6.4 AutonomyService 接口<a class="headerlink" href="#autonomyservice" title="Link to this heading"></a></h2>
+<p>完整定义见 <code class="docutils literal notranslate"><span class="pre">external_command_service.proto</span></code>。</p>
+<section id="sendnavigationcommand">
+<h3>6.4.1 SendNavigationCommand<a class="headerlink" href="#sendnavigationcommand" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rpc</span> <span class="n">SendNavigationCommand</span> <span class="p">(</span><span class="n">NavigationCommandRequest</span><span class="p">)</span>
+    <span class="n">returns</span> <span class="p">(</span><span class="n">stream</span> <span class="n">NavigationCommandResponse</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>请求字段</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Time</span></code></p></td>
+<td><p>客户端时间戳</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">command</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigationCommand</span></code></p></td>
+<td><p>指令枚举</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">poses</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PoseArray</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NAV_CMD_START</span></code> 时的目标点序列</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>响应字段</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">success</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p>本条响应是否表示成功</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">string</span></code></p></td>
+<td><p>人类可读信息</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>预期处理逻辑</strong>（待实现）：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="w"> </span><span class="nf">SendNavigationHandler::OnRequest</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">proto</span><span class="o">::</span><span class="n">NavigationCommandRequest</span><span class="o">&amp;</span><span class="w"> </span><span class="n">request</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">command</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="no">proto</span><span class="o">::</span><span class="no">NAV_CMD_START</span><span class="p">:</span>
+<span class="w">            </span><span class="c1">// 1. TF 变换 poses</span>
+<span class="w">            </span><span class="c1">// 2. 调用 Navigator</span>
+<span class="w">            </span><span class="c1">// 3. Send(response) 推送接受确认</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="no">proto</span><span class="o">::</span><span class="no">NAV_CMD_STOP</span><span class="p">:</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="no">proto</span><span class="o">::</span><span class="no">NAV_CMD_CANCEL</span><span class="p">:</span>
+<span class="w">            </span><span class="c1">// 取消 Navigator Action</span>
+<span class="w">            </span><span class="k">break</span><span class="p">;</span>
+<span class="w">        </span><span class="c1">// ...</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="sendexplorationcommand">
+<h3>6.4.2 SendExplorationCommand<a class="headerlink" href="#sendexplorationcommand" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rpc</span> <span class="n">SendExplorationCommand</span> <span class="p">(</span><span class="n">ExplorationCommandRequest</span><span class="p">)</span>
+    <span class="n">returns</span> <span class="p">(</span><span class="n">stream</span> <span class="n">ExplorationCommandResponse</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>oneof params</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指令</p></th>
+<th class="head"><p>参数</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EXPLORATION_CMD_SET_AREA</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geometry_msgs.Polygon</span> <span class="pre">area</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">EXPLORATION_CMD_SAVE_MAP</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">string</span> <span class="pre">map_name</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>响应额外字段</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">status</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ExplorationStatus</span></code></p></td>
+<td><p>当前探索状态</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="receivebotstates-receivebotevents">
+<h3>6.4.3 ReceiveBotStates / ReceiveBotEvents<a class="headerlink" href="#receivebotstates-receivebotevents" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">rpc</span> <span class="n">ReceiveBotStates</span><span class="p">(</span><span class="n">google</span><span class="o">.</span><span class="n">protobuf</span><span class="o">.</span><span class="n">Empty</span><span class="p">)</span>
+    <span class="n">returns</span> <span class="p">(</span><span class="n">stream</span> <span class="n">commsgs</span><span class="o">.</span><span class="n">proto</span><span class="o">.</span><span class="n">vehicle_msgs</span><span class="o">.</span><span class="n">RobotState</span><span class="p">);</span>
+
+<span class="n">rpc</span> <span class="n">ReceiveBotEvents</span><span class="p">(</span><span class="n">google</span><span class="o">.</span><span class="n">protobuf</span><span class="o">.</span><span class="n">Empty</span><span class="p">)</span>
+    <span class="n">returns</span> <span class="p">(</span><span class="n">stream</span> <span class="n">commsgs</span><span class="o">.</span><span class="n">proto</span><span class="o">.</span><span class="n">vehicle_msgs</span><span class="o">.</span><span class="n">RobotEvent</span><span class="p">);</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">RobotState</span></code> / <code class="docutils literal notranslate"><span class="pre">RobotEvent</span></code> 消息体当前为空，需在 <code class="docutils literal notranslate"><span class="pre">vehicle_msgs.proto</span></code> 中补充字段后实现 Handler。</p>
+</div></blockquote>
+</section>
+</section>
+<section id="handler">
+<h2>6.5 自定义 Handler<a class="headerlink" href="#handler" title="Link to this heading"></a></h2>
+<p>添加新 RPC 的标准流程：</p>
+<p><strong>Step 1</strong> — 在 proto 中声明：</p>
+<div class="highlight-protobuf notranslate"><div class="highlight"><pre><span></span><span class="k">rpc</span><span class="w"> </span><span class="n">MyCustomCommand</span><span class="p">(</span><span class="n">MyRequest</span><span class="p">)</span><span class="w"> </span><span class="k">returns</span><span class="w"> </span><span class="p">(</span><span class="n">stream</span><span class="w"> </span><span class="n">MyResponse</span><span class="p">);</span>
+</pre></div>
+</div>
+<p><strong>Step 2</strong> — 定义 Handler：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">DEFINE_HANDLER_SIGNATURE</span><span class="p">(</span>
+<span class="w">    </span><span class="n">MyCustomSignature</span><span class="p">,</span><span class="w"> </span><span class="n">proto</span><span class="o">::</span><span class="n">MyRequest</span><span class="p">,</span>
+<span class="w">    </span><span class="n">async_grpc</span><span class="o">::</span><span class="n">Stream</span><span class="o">&lt;</span><span class="n">proto</span><span class="o">::</span><span class="n">MyResponse</span><span class="o">&gt;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/autonomy.bridge.proto.AutonomyService/MyCustomCommand&quot;</span><span class="p">)</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyCustomHandler</span>
+<span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">async_grpc</span><span class="o">::</span><span class="n">RpcHandler</span><span class="o">&lt;</span><span class="n">MyCustomSignature</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="n">OnRequest</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">proto</span><span class="o">::</span><span class="n">MyRequest</span><span class="o">&amp;</span><span class="w"> </span><span class="n">request</span><span class="p">)</span><span class="w"> </span><span class="k">override</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">proto</span><span class="o">::</span><span class="n">MyResponse</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="n">resp</span><span class="o">-&gt;</span><span class="n">set_success</span><span class="p">(</span><span class="nb">true</span><span class="p">);</span>
+<span class="w">        </span><span class="n">Send</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">resp</span><span class="p">));</span>
+<span class="w">        </span><span class="n">Finish</span><span class="p">(</span><span class="o">::</span><span class="n">grpc</span><span class="o">::</span><span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>Step 3</strong> — 注册：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">server_builder</span><span class="p">.</span><span class="n">RegisterHandler</span><span class="o">&lt;</span><span class="n">MyCustomHandler</span><span class="o">&gt;</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h2>6.6 后台任务线程<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ProcessSensorDataQueue()</span></code> 当前为占位实现：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">shutting_down_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 预留给传感器数据上行队列消费</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">seconds</span><span class="p">(</span><span class="mi">5</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>规划用途：</p>
+<ul class="simple">
+<li><p>批量聚合 <code class="docutils literal notranslate"><span class="pre">RobotState</span></code> 推送至 <code class="docutils literal notranslate"><span class="pre">uplink_server_address</span></code></p></li>
+<li><p>异步处理大载荷（点云、地图切片）避免阻塞 gRPC 线程</p></li>
+</ul>
+<p>队列弹出超时常量：<code class="docutils literal notranslate"><span class="pre">kPopTimeout</span> <span class="pre">=</span> <span class="pre">100</span> <span class="pre">ms</span></code>。</p>
+</section>
+<section id="id6">
+<h2>6.7 gRPC 状态码约定<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>gRPC Status</p></th>
+<th class="head"><p>场景</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">OK</span></code></p></td>
+<td><p>指令正常处理完毕</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">INVALID_ARGUMENT</span></code></p></td>
+<td><p>枚举非法、poses 为空、多边形退化</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NOT_FOUND</span></code></p></td>
+<td><p>引用的轨迹/地图 ID 不存在</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">FAILED_PRECONDITION</span></code></p></td>
+<td><p>FSM 状态不允许该指令</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UNAVAILABLE</span></code></p></td>
+<td><p>Navigator 未就绪</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DEADLINE_EXCEEDED</span></code></p></td>
+<td><p>客户端超时</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h2>6.8 性能调优<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>建议</p></th>
+<th class="head"><p>理由</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">num_grpc_threads</span></code></p></td>
+<td><p>CPU 核数 / 2</p></td>
+<td><p>I/O 密集</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">num_event_threads</span></code></p></td>
+<td><p>≥ <code class="docutils literal notranslate"><span class="pre">num_grpc_threads</span></code></p></td>
+<td><p>Handler 可能阻塞</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_send_message_size</span></code></p></td>
+<td><p>按需，默认 100 MB</p></td>
+<td><p>大地图/路径序列</p></td>
+</tr>
+<tr class="row-odd"><td><p>HTTP/2 keepalive</p></td>
+<td><p>启用</p></td>
+<td><p>长连接 Stream 保活</p></td>
+</tr>
+</tbody>
+</table>
+<p>并发 RPC 数近似：</p>
+<div class="math notranslate nohighlight">
+\[
+N_{\text{active}} \leq N_{\text{grpc}} \times \eta, \quad \eta \approx 2\text{-}4
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\eta\)</span> 为每线程可重叠的 CQ 事件数。</p>
+</section>
+<section id="navigator">
+<h2>6.9 与 Navigator 对接（规划）<a class="headerlink" href="#navigator" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">NavigatorStub</span></code> 将封装对 Navigator Action 的 gRPC/进程内调用：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>SendNavigationHandler
+        │
+        ▼
+NavigatorStub::SendGoal(poses)
+        │
+        ▼
+Navigator BT → compute_path_to_pose
+        │
+        ▼
+回调 → Handler::Send(progress_response)
+</pre></div>
+</div>
+<p>关键映射：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Bridge 命令</p></th>
+<th class="head"><p>Navigator 动作</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NAV_CMD_START</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigateToPose</span></code> / 多点巡航</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NAV_CMD_PAUSE</span></code></p></td>
+<td><p>BT 暂停节点</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NAV_CMD_RESUME</span></code></p></td>
+<td><p>BT 恢复节点</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NAV_CMD_CANCEL</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cancel_goal</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_architecture.html" class="btn btn-neutral float-left" title="5. Bridge 模块架构设计" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_mqtt.html" class="btn btn-neutral float-right" title="7. MQTT 桥接插件" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

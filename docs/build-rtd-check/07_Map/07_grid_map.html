@@ -1,0 +1,1265 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. GridMap 2.5D 栅格地图 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+      <script type="module">
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    fontSize: '14px',
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+    primaryColor: '#e0f2f2',
+    primaryTextColor: '#1a4d6e',
+    primaryBorderColor: '#2d9294',
+    lineColor: '#5a7289',
+    secondaryColor: '#eef1f4',
+    tertiaryColor: '#ffffff'
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 20,
+    nodeSpacing: 45,
+    rankSpacing: 55
+  },
+  timeline: {
+    disableMulticolor: false
+  }
+});
+</script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+      <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 地图表示综述（Survey）" href="08_survey.html" />
+    <link rel="prev" title="6. Costmap2D 代价地图" href="06_costmap2d.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">07 Mapping</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_costmap2d.html">6 Costmap2D 代价地图</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 GridMap 2.5D 栅格地图</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#gridmap">7.1 何时使用 GridMap</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d">7.2 架构：2.5D 心智模型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">7.3 详细使用指南</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">7.4 2.5D 概念与典型层</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">7.5 核心数据结构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">7.6 坐标变换</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#buffer-move">7.7 循环 Buffer 与 move()</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">7.8 插值方法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id18">7.9 子模块</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gridmapwrapper">7.10 GridMapWrapper</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id20">7.11 与 Costmap2D 的关系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">7.12 典型应用场景</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">7.13 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 地图表示综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Map 地图模块</a></li>
+      <li class="breadcrumb-item active">7. GridMap 2.5D 栅格地图</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/07_Map/07_grid_map.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="gridmap-2-5d">
+<h1>7. GridMap 2.5D 栅格地图<a class="headerlink" href="#gridmap-2-5d" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">GridMap</span></code> 是 Autonomy 的<strong>多层浮点栅格地图</strong>实现，源自 ETH Zurich <code class="docutils literal notranslate"><span class="pre">grid_map</span></code>。它在 XY 平面上维护多个命名数据层，通过层值编码高程等地形信息，故称 <strong>2.5D</strong>。</p>
+<blockquote>
+<div><p>模块级架构见 <a class="reference internal" href="05_architecture.html#gridmap-2-5d"><span class="std std-ref">05_architecture.md §5.4</span></a>；数学公式见 <a class="reference internal" href="03_math.html#gridmap"><span class="std std-ref">§3.5 GridMap 坐标</span></a>。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="gridmap">
+<h2>7.1 何时使用 GridMap<a class="headerlink" href="#gridmap" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>是否适用</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>地形高程建模</p></td>
+<td><p>✅</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elevation</span></code> 层</p></td>
+</tr>
+<tr class="row-odd"><td><p>坡度/台阶检测</p></td>
+<td><p>✅</p></td>
+<td><p>由高程差分计算 <code class="docutils literal notranslate"><span class="pre">slope</span></code> 层</p></td>
+</tr>
+<tr class="row-even"><td><p>路径规划避障</p></td>
+<td><p>❌ 直接用</p></td>
+<td><p>用 <a class="reference internal" href="06_costmap2d.html"><span class="std std-doc">Costmap2D</span></a>；或自行桥接</p></td>
+</tr>
+<tr class="row-odd"><td><p>激光 2D 障碍</p></td>
+<td><p>❌</p></td>
+<td><p>Costmap2D 更合适</p></td>
+</tr>
+<tr class="row-even"><td><p>多模态感知融合</p></td>
+<td><p>✅</p></td>
+<td><p>每层独立写入（语义、颜色、方差等）</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>重要</strong>：GridMap 当前是<strong>数据容器 + 几何/插值工具</strong>，没有 Costmap2D 那样的自动传感器流水线。</p>
+</section>
+<hr class="docutils" />
+<section id="d">
+<h2>7.2 架构：2.5D 心智模型<a class="headerlink" href="#d" title="Link to this heading"></a></h2>
+<section id="d-3d">
+<h3>7.2.1 与 2D / 3D 的区别<a class="headerlink" href="#d-3d" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2D OccupancyGrid          2.5D GridMap                3D OctoMap
+┌───┬───┐                 ┌───┬───┐                   体素树
+│ 0 │100│  每格一个值       │ele│ele│  每格多层 float      稀疏 3D
+├───┼───┤                 │var│slp│  elevation          占据概率
+│ 0 │ 0 │                 ├───┼───┤  variance           内存大
+└───┴───┘                 │...│...│  slope ...
+                          └───┴───┘
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h3>7.2.2 对象层级<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>你的代码
+  │
+  ▼
+GridMapWrapper              ← MapInterface 生命周期
+  │
+  └── grid_map::GridMap     ← 核心：多层 Eigen::MatrixXf
+        ├── data_[&quot;elevation&quot;]   → Matrix (rows × cols)
+        ├── data_[&quot;variance&quot;]    → Matrix
+        ├── position_            → 地图中心 (x, y) [m]
+        ├── length_              → 物理尺寸 (Lx, Ly) [m]
+        ├── resolution_          → [m/cell]
+        └── startIndex_          → 循环 buffer 起点（move 时用）
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>7.2.3 坐标系示意（俯视图）<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                    +Y (map frame)
+                     ↑
+         ┌───────────────────────┐
+         │                       │
+         │    ● position_        │  ← 地图中心（非左下角！）
+         │      (地图中心)        │
+         │                       │
+         └───────────────────────┘
+       ← length_x →
+    -X ────────────── +X
+
+    cell (0,0) 在 buffer 中，经 T_buf=-I 翻转后与 map frame 对齐
+    无效数据 = NaN（不是 Costmap 的 255）
+</pre></div>
+</div>
+</section>
+<section id="costmap2d">
+<h3>7.2.4 与 Costmap2D 对比（必读）<a class="headerlink" href="#costmap2d" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>Costmap2D</p></th>
+<th class="head"><p>GridMap</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>定位</strong></p></td>
+<td><p>规划/避障的标准输入</p></td>
+<td><p>地形/感知的浮点容器</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>数值</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">uint8</span></code> 0–255 离散代价</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code> 连续值</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>原点</strong></p></td>
+<td><p>左下角 <span class="math notranslate nohighlight">\((x_0, y_0)\)</span></p></td>
+<td><p>中心 <span class="math notranslate nohighlight">\(\mathbf{p}_{\text{map}}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>更新</strong></p></td>
+<td><p>后台线程 + 插件自动融合</p></td>
+<td><p><strong>应用层手动写层</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>传感器</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">feedLaserScan</span></code> 等内置</p></td>
+<td><p>无内置 feed</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Planning</strong></p></td>
+<td><p>✅ 已集成</p></td>
+<td><p>❌ 需自行桥接</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>滑动窗口</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">updateOrigin</span></code> 平移 copy</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">move()</span></code> 旋转 buffer 索引</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>7.3 详细使用指南<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>7.3.1 最小完整流程<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/grid_map/grid_map_wrapper.hpp&quot;</span>
+
+<span class="c1">// 1. 配置（或手动构造 GridMapOptions）</span>
+<span class="n">proto</span><span class="o">::</span><span class="n">GridMapOptions</span><span class="w"> </span><span class="n">opts</span><span class="p">;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">set_resolution</span><span class="p">(</span><span class="mf">0.1</span><span class="p">);</span><span class="w">       </span><span class="c1">// 10 cm/cell</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">set_length_x</span><span class="p">(</span><span class="mf">10.0</span><span class="p">);</span><span class="w">       </span><span class="c1">// 10 m</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">set_length_y</span><span class="p">(</span><span class="mf">10.0</span><span class="p">);</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">set_position_x</span><span class="p">(</span><span class="mf">0.0</span><span class="p">);</span><span class="w">      </span><span class="c1">// 地图中心世界坐标</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">set_position_y</span><span class="p">(</span><span class="mf">0.0</span><span class="p">);</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">add_layers</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">);</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">add_layers</span><span class="p">(</span><span class="s">&quot;variance&quot;</span><span class="p">);</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">set_frame_id</span><span class="p">(</span><span class="s">&quot;map&quot;</span><span class="p">);</span>
+
+<span class="c1">// 2. 构造 + 启动</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">wrapper</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">grid_map</span><span class="o">::</span><span class="n">GridMapWrapper</span><span class="o">&gt;</span><span class="p">(</span><span class="n">opts</span><span class="p">);</span>
+<span class="n">wrapper</span><span class="o">-&gt;</span><span class="n">Start</span><span class="p">();</span>
+
+<span class="c1">// 3. 获取核心对象</span>
+<span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">gm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">wrapper</span><span class="o">-&gt;</span><span class="n">getGridMap</span><span class="p">();</span>
+
+<span class="c1">// 4. 写入数据（应用层负责：点云投影、滤波等）</span>
+<span class="n">grid_map</span><span class="o">::</span><span class="n">Index</span><span class="w"> </span><span class="n">idx</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">gm</span><span class="p">.</span><span class="n">getIndex</span><span class="p">(</span><span class="n">grid_map</span><span class="o">::</span><span class="n">Position</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">),</span><span class="w"> </span><span class="n">idx</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.35f</span><span class="p">;</span><span class="w">   </span><span class="c1">// 35 cm 高程</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="s">&quot;variance&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.01f</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c1">// 5. 连续查询（插值）</span>
+<span class="n">grid_map</span><span class="o">::</span><span class="n">Position</span><span class="w"> </span><span class="n">query</span><span class="p">(</span><span class="mf">1.05</span><span class="p">,</span><span class="w"> </span><span class="mf">2.03</span><span class="p">);</span>
+<span class="kt">double</span><span class="w"> </span><span class="n">elev</span><span class="p">;</span>
+<span class="n">gm</span><span class="p">.</span><span class="n">atPosition</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="n">elev</span><span class="p">,</span>
+<span class="w">              </span><span class="n">grid_map</span><span class="o">::</span><span class="n">InterpolationMethods</span><span class="o">::</span><span class="n">INTER_LINEAR</span><span class="p">);</span>
+
+<span class="c1">// 6. 机器人移动时滑动窗口</span>
+<span class="n">gm</span><span class="p">.</span><span class="n">move</span><span class="p">(</span><span class="n">grid_map</span><span class="o">::</span><span class="n">Position</span><span class="p">(</span><span class="n">robot_x</span><span class="p">,</span><span class="w"> </span><span class="n">robot_y</span><span class="p">));</span>
+
+<span class="c1">// 7. 停止</span>
+<span class="n">wrapper</span><span class="o">-&gt;</span><span class="n">Stop</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h3>7.3.2 典型工作流：点云 → 高程层<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<pre  class="mermaid">
+        flowchart LR
+    A[&quot;PointCloud2&quot;] --&gt; B[&quot;坐标变换到 map frame&quot;]
+    B --&gt; C[&quot;按 XY 分桶&lt;br/&gt;取 Z 最大/平均&quot;]
+    C --&gt; D[&quot;写入 elevation 层&lt;br/&gt;at() / addDataFrom&quot;]
+    D --&gt; E[&quot;可选: 高斯平滑&lt;br/&gt;grid_map_cv&quot;]
+    E --&gt; F[&quot;计算 slope 层&lt;br/&gt;梯度或邻域差分&quot;]
+    F --&gt; G[&quot;atPosition 查询可通行性&quot;]
+    </pre><p>GridMap <strong>不包含</strong>步骤 B–F 的现成实现，需在应用层或 <code class="docutils literal notranslate"><span class="pre">grid_map_cv</span></code> 中完成。</p>
+</section>
+<section id="api">
+<h3>7.3.3 常用 API 速查<a class="headerlink" href="#api" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>API</p></th>
+<th class="head"><p>作用</p></th>
+<th class="head"><p>备注</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">setGeometry(length,</span> <span class="pre">res,</span> <span class="pre">position)</span></code></p></td>
+<td><p>初始化/重置尺寸</p></td>
+<td><p>清空所有层数据</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">add(&quot;layer_name&quot;)</span></code></p></td>
+<td><p>新增一层</p></td>
+<td><p>初始为 NaN</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">at(&quot;layer&quot;,</span> <span class="pre">index)</span></code></p></td>
+<td><p>按索引读写</p></td>
+<td><p>直接访问 Matrix</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">atPosition(&quot;layer&quot;,</span> <span class="pre">pos,</span> <span class="pre">value)</span></code></p></td>
+<td><p>连续插值查询</p></td>
+<td><p>支持 4 种插值模式</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">getIndex(Position,</span> <span class="pre">Index&amp;)</span></code></p></td>
+<td><p>世界坐标 → 索引</p></td>
+<td><p>越界返回 false</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">getPosition(Index,</span> <span class="pre">Position&amp;)</span></code></p></td>
+<td><p>索引 → 世界坐标</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">move(Position)</span></code></p></td>
+<td><p>滑动窗口</p></td>
+<td><p>移出区域置 NaN</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">addDataFrom(other,</span> <span class="pre">...)</span></code></p></td>
+<td><p>融合另一张 GridMap</p></td>
+<td><p>多传感器累积</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">isInside(Position)</span></code></p></td>
+<td><p>是否在地图内</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h3>7.3.4 添加自定义层<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 由高程计算坡度层</span>
+<span class="n">gm</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;slope&quot;</span><span class="p">);</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">grid_map</span><span class="o">::</span><span class="n">GridMapIterator</span><span class="w"> </span><span class="n">it</span><span class="p">(</span><span class="n">gm</span><span class="p">);</span><span class="w"> </span><span class="o">!</span><span class="n">it</span><span class="p">.</span><span class="n">isPastEnd</span><span class="p">();</span><span class="w"> </span><span class="o">++</span><span class="n">it</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">grid_map</span><span class="o">::</span><span class="n">Index</span><span class="w"> </span><span class="n">idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">*</span><span class="n">it</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">isnan</span><span class="p">(</span><span class="n">gm</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">idx</span><span class="p">)))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">grid_map</span><span class="o">::</span><span class="n">Position</span><span class="w"> </span><span class="n">pos</span><span class="p">;</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">getPosition</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span><span class="w"> </span><span class="n">pos</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">dz_dx</span><span class="p">,</span><span class="w"> </span><span class="n">dz_dy</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// 中心差分求梯度 ...</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="s">&quot;slope&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">idx</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">atan</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">hypot</span><span class="p">(</span><span class="n">dz_dx</span><span class="p">,</span><span class="w"> </span><span class="n">dz_dy</span><span class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h3>7.3.5 配置参考<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// proto::GridMapOptions 字段</span>
+<span class="n">resolution</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="mf">0.1</span><span class="p">;</span><span class="w">      </span><span class="c1">// m/cell</span>
+<span class="n">length_x</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="mf">10.0</span><span class="p">;</span><span class="w">     </span><span class="c1">// m</span>
+<span class="n">length_y</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="mf">10.0</span><span class="p">;</span>
+<span class="n">position_x</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span><span class="w">      </span><span class="c1">// 地图中心</span>
+<span class="n">position_y</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="n">frame_id</span><span class="w">     </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;map&quot;</span><span class="p">;</span>
+<span class="n">layers</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;elevation&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;variance&quot;</span><span class="p">];</span>
+<span class="n">basic_layers</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;elevation&quot;</span><span class="p">];</span><span class="w">  </span><span class="c1">// 判定有效：elevation 为 NaN 则该 cell 无效</span>
+</pre></div>
+</div>
+<p>Lua 加载：<code class="docutils literal notranslate"><span class="pre">CreateGridMapOptions(parameter_dictionary)</span></code>（<code class="docutils literal notranslate"><span class="pre">layers</span></code> 列表解析部分待完善）。</p>
+</section>
+<section id="id8">
+<h3>7.3.6 当前限制（务必知晓）<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>功能</p></th>
+<th class="head"><p>状态</p></th>
+<th class="head"><p>替代方案</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>后台自动更新</p></td>
+<td><p>❌ 无线程</p></td>
+<td><p>应用层定时写层</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">feedLaserScan</span></code> 等</p></td>
+<td><p>❌</p></td>
+<td><p>自行投影点云到 elevation</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">publishMap()</span></code></p></td>
+<td><p>❌ TODO</p></td>
+<td><p>自行序列化 <code class="docutils literal notranslate"><span class="pre">grid_map_msgs</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">loadMap()</span></code></p></td>
+<td><p>❌ TODO</p></td>
+<td><p>手动读文件 + <code class="docutils literal notranslate"><span class="pre">setGeometry</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Costmap 桥接</p></td>
+<td><p>❌</p></td>
+<td><p>应用层将 slope/elevation 映射为 cost</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id9">
+<h3>7.3.7 与 Costmap2D 联合使用（应用层桥接）<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<p>若需将地形信息纳入规划，可在应用层实现：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 伪代码：将坡度映射为 Costmap 代价</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">each</span><span class="w"> </span><span class="n">cell</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="n">costmap</span><span class="w"> </span><span class="n">window</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">slope</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">grid_map</span><span class="p">.</span><span class="n">atPosition</span><span class="p">(</span><span class="s">&quot;slope&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">world_pos</span><span class="p">,</span><span class="w"> </span><span class="n">slope</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">slope</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0.3</span><span class="p">)</span><span class="w">  </span><span class="c1">// ~17°</span>
+<span class="w">            </span><span class="n">costmap</span><span class="p">.</span><span class="n">setCost</span><span class="p">(</span><span class="n">mx</span><span class="p">,</span><span class="w"> </span><span class="n">my</span><span class="p">,</span><span class="w"> </span><span class="n">LETHAL_OBSTACLE</span><span class="p">);</span>
+<span class="w">        </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">slope</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mf">0.15</span><span class="p">)</span>
+<span class="w">            </span><span class="n">costmap</span><span class="p">.</span><span class="n">setCost</span><span class="p">(</span><span class="n">mx</span><span class="p">,</span><span class="w"> </span><span class="n">my</span><span class="p">,</span><span class="w"> </span><span class="mi">128</span><span class="p">);</span><span class="w">  </span><span class="c1">// 中等代价</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>官方 <code class="docutils literal notranslate"><span class="pre">grid_map_costmap_2d/</span></code> 桥接模块代码已注释，尚未启用。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>7.4 2.5D 概念与典型层<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<p>传统 2D 栅格每个 cell 只有一个值（占据/代价）。GridMap 每个 cell 可携带<strong>多个浮点属性</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>典型层名</p></th>
+<th class="head"><p>含义</p></th>
+<th class="head"><p>单位</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">elevation</span></code></p></td>
+<td><p>地面/表面高程</p></td>
+<td><p>m</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">variance</span></code></p></td>
+<td><p>高程不确定性</p></td>
+<td><p>m²</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">color</span></code></p></td>
+<td><p>RGB 编码颜色</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">surface_normal_x/y/z</span></code></p></td>
+<td><p>表面法向量分量</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">traversability</span></code></p></td>
+<td><p>可通行性评分</p></td>
+<td><p>0–1</p></td>
+</tr>
+</tbody>
+</table>
+<p>查询 <span class="math notranslate nohighlight">\((x, y)\)</span> 时通过插值得到连续值；查询 3D 位置时使用 <code class="docutils literal notranslate"><span class="pre">getPosition3</span></code> 返回 <span class="math notranslate nohighlight">\((x, y, z=z_{\mathrm{elev}})\)</span>，其中 <span class="math notranslate nohighlight">\(z_{\mathrm{elev}}\)</span> 为 <code class="docutils literal notranslate"><span class="pre">elevation</span></code> 层值。</p>
+</section>
+<section id="id11">
+<h2>7.5 核心数据结构<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">autonomy/map/grid_map/grid_map_core/grid_map.hpp</span></code></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>成员</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">data_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unordered_map&lt;string,</span> <span class="pre">Matrix&gt;</span></code></p></td>
+<td><p>层名 → <code class="docutils literal notranslate"><span class="pre">Eigen::MatrixXf</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">layers_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vector&lt;string&gt;</span></code></p></td>
+<td><p>层名列表（有序）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">basicLayers_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vector&lt;string&gt;</span></code></p></td>
+<td><p>有效性判定层（含 NaN 则无效）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">length_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Length</span> <span class="pre">(Vector2d)</span></code></p></td>
+<td><p>地图物理尺寸 [m]</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">resolution_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">double</span></code></p></td>
+<td><p>分辨率 [m/cell]</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">position_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Position</span> <span class="pre">(Vector2d)</span></code></p></td>
+<td><p>地图中心在世界系中的位置</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">size_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Size</span> <span class="pre">(Vector2i)</span></code></p></td>
+<td><p>buffer 行列数</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">startIndex_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Index</span> <span class="pre">(Vector2i)</span></code></p></td>
+<td><p>循环 buffer 起始索引</p></td>
+</tr>
+</tbody>
+</table>
+<p>类型定义（<code class="docutils literal notranslate"><span class="pre">type_defs.hpp</span></code>）：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="n">Matrix</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXf</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Position</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Vector2d</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Length</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Vector2d</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">Index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">Array2i</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h2>7.6 坐标变换<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<p>GridMap 使用<strong>中心坐标系</strong>，与 Costmap2D 的左下角原点不同。</p>
+<section id="id13">
+<h3>7.6.1 几何初始化<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+N_i = \mathrm{round}\!\left(\frac{L_i}{\Delta}\right), \quad
+L_i^{\text{actual}} = N_i \cdot \Delta
+\]</div>
+</section>
+<section id="id14">
+<h3>7.6.2 中心 → 首格中心<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+\vec{v}_{\text{origin}} = \frac{1}{2}\mathbf{L}, \quad
+\vec{v}_{\text{first}} = \vec{v}_{\text{origin}} - \frac{1}{2}\Delta \cdot \mathbf{1}
+\]</div>
+</section>
+<section id="position-index">
+<h3>7.6.3 Position ↔ Index<a class="headerlink" href="#position-index" title="Link to this heading"></a></h3>
+<p><strong>位置 → 索引</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\vec{i}_{\text{vec}} = \frac{\mathbf{p} - \vec{v}_{\text{origin}} - \mathbf{p}_{\text{map}}}{\Delta}
+\]</div>
+<p>经 buffer 变换 <span class="math notranslate nohighlight">\(T_{\text{buf}} = -\mathbf{I}_2\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{i}_{\text{buffer}} = \mathrm{wrap}\!\left(T_{\text{buf}}(\vec{i}_{\text{vec}}) + \mathbf{s}_{\text{start}}\right)
+\]</div>
+<p><strong>索引 → 位置</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{p} = \mathbf{p}_{\text{map}} + \vec{v}_{\text{first}} + \Delta \cdot T_{\text{buf}}^{-1}(\mathbf{i}_{\text{unwrapped}})
+\]</div>
+</section>
+<section id="id15">
+<h3>7.6.4 与 Costmap2D 坐标对比<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>属性</p></th>
+<th class="head"><p>Costmap2D</p></th>
+<th class="head"><p>GridMap</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>原点</p></td>
+<td><p>左下角 <span class="math notranslate nohighlight">\((x_0, y_0)\)</span></p></td>
+<td><p>中心 <span class="math notranslate nohighlight">\(\mathbf{p}_{\text{map}}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>索引方向</p></td>
+<td><p><span class="math notranslate nohighlight">\(idx = m_y \cdot N_x + m_x\)</span></p></td>
+<td><p>Eigen 列主序 + <span class="math notranslate nohighlight">\(T_{\text{buf}} = -I\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>无效值</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code> (255)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NaN</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="buffer-move">
+<h2>7.7 循环 Buffer 与 move()<a class="headerlink" href="#buffer-move" title="Link to this heading"></a></h2>
+<p>GridMap 使用<strong>循环 buffer</strong> 实现高效滑动窗口，数据在 map frame 中保持 stationary。</p>
+<section id="move">
+<h3>7.7.1 move 算法<a class="headerlink" href="#move" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">grid_map</span><span class="p">.</span><span class="n">move</span><span class="p">(</span><span class="n">new_position</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>步骤：</p>
+<ol class="arabic simple">
+<li><p><span class="math notranslate nohighlight">\(\Delta \mathbf{p} = \mathbf{p}_{\text{new}} - \mathbf{p}_{\text{map}}\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\Delta \mathbf{i} = \mathrm{round}(\Delta \mathbf{p} / \Delta)\)</span>（带符号舍入）</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Delta \mathbf{p}_{\text{aligned}} = \Delta \mathbf{i} \cdot \Delta\)</span></p></li>
+<li><p>移出 buffer 的行/列 <code class="docutils literal notranslate"><span class="pre">clearRows</span></code> / <code class="docutils literal notranslate"><span class="pre">clearCols</span></code>（设为 <code class="docutils literal notranslate"><span class="pre">NaN</span></code>）</p></li>
+<li><p>更新 <code class="docutils literal notranslate"><span class="pre">startIndex_</span></code> 和 <code class="docutils literal notranslate"><span class="pre">position_</span></code></p></li>
+</ol>
+</section>
+<section id="costmap-rolling-window">
+<h3>7.7.2 与 Costmap Rolling Window 对比<a class="headerlink" href="#costmap-rolling-window" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>Costmap2D <code class="docutils literal notranslate"><span class="pre">updateOrigin</span></code></p></th>
+<th class="head"><p>GridMap <code class="docutils literal notranslate"><span class="pre">move</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>数据结构</p></td>
+<td><p>线性数组平移 copy</p></td>
+<td><p>循环 buffer 索引旋转</p></td>
+</tr>
+<tr class="row-odd"><td><p>无效区域</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">default_value_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NaN</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>原点更新</p></td>
+<td><p>左下角平移</p></td>
+<td><p>中心平移</p></td>
+</tr>
+<tr class="row-odd"><td><p>重叠保留</p></td>
+<td><p>显式 copy 重叠区</p></td>
+<td><p>buffer 自然保留</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="id16">
+<h2>7.8 插值方法<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">atPosition(layer,</span> <span class="pre">position,</span> <span class="pre">value,</span> <span class="pre">method)</span></code> 支持四种模式：</p>
+<section id="inter-nearest">
+<h3>7.8.1 最近邻（INTER_NEAREST）<a class="headerlink" href="#inter-nearest" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+f(\mathbf{p}) = f(\mathbf{i}_{\text{nearest}})
+\]</div>
+</section>
+<section id="inter-linear">
+<h3>7.8.2 双线性（INTER_LINEAR）<a class="headerlink" href="#inter-linear" title="Link to this heading"></a></h3>
+<p>设查询点落在 unit square，参数 <span class="math notranslate nohighlight">\((s, t) \in [0,1]^2\)</span>，四角值 <span class="math notranslate nohighlight">\(f_{00}, f_{10}, f_{01}, f_{11}\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+f(s,t) = (1-s)(1-t)f_{00} + s(1-t)f_{10} + (1-s)t f_{01} + st f_{11}
+\]</div>
+</section>
+<section id="keys-inter-cubic-convolution">
+<h3>7.8.3 Keys 双三次卷积（INTER_CUBIC_CONVOLUTION）<a class="headerlink" href="#keys-inter-cubic-convolution" title="Link to this heading"></a></h3>
+<p>1D 卷积（<code class="docutils literal notranslate"><span class="pre">convolve1D</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+y = \frac{1}{2} [1,\; t,\; t^2,\; t^3] \cdot M_{\text{conv}} \cdot \mathbf{f}
+\]</div>
+<p>Keys 矩阵：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+M_{\text{conv}} = \begin{bmatrix}
+0 &amp; 2 &amp; 0 &amp; 0 \\
+-1 &amp; 0 &amp; 1 &amp; 0 \\
+2 &amp; -5 &amp; 4 &amp; -1 \\
+-1 &amp; 3 &amp; -3 &amp; 1
+\end{bmatrix}
+\end{split}\]</div>
+<p>2D 情况：先对行做 1D 卷积，再对列做 1D 卷积（可分离）。</p>
+</section>
+<section id="inter-cubic">
+<h3>7.8.4 标准双三次（INTER_CUBIC）<a class="headerlink" href="#inter-cubic" title="Link to this heading"></a></h3>
+<p>在 unit square 四角取函数值及偏导，组装 <code class="docutils literal notranslate"><span class="pre">FunctionValueMatrix</span></code>：</p>
+<div class="math notranslate nohighlight">
+\[
+\frac{\partial f}{\partial x}\bigg|_{i,j} \approx \frac{f_{i+1,j} - f_{i-1,j}}{2\Delta}, \quad
+\frac{\partial f}{\partial y}\bigg|_{i,j} \approx \frac{f_{i,j+1} - f_{i,j-1}}{2\Delta}
+\]</div>
+<div class="math notranslate nohighlight">
+\[
+\frac{\partial^2 f}{\partial x \partial y}\bigg|_{i,j} \approx \frac{f_{i+1,j+1} - f_{i-1,j+1} - f_{i+1,j-1} + f_{i-1,j-1}}{4\Delta^2}
+\]</div>
+<p>经双三次基函数求值，精度最高但计算量略大。</p>
+</section>
+<section id="id17">
+<h3>7.8.5 选型建议<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>推荐方法</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>实时控制 / 高频查询</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INTER_NEAREST</span></code> 或 <code class="docutils literal notranslate"><span class="pre">INTER_LINEAR</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>可视化 / 离线分析</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INTER_CUBIC_CONVOLUTION</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>需要导数连续</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INTER_CUBIC</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="id18">
+<h2>7.9 子模块<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>路径</p></th>
+<th class="head"><p>功能</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_core/iterators/</span></code></p></td>
+<td><p>全图、线、圆、椭圆、多边形、螺旋、滑动窗口、子图迭代器</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_core/polygon.*</span></code></p></td>
+<td><p>多边形运算</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_core/GridMapMath.*</span></code></p></td>
+<td><p>坐标变换、submap 提取</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_core/cubic_interpolation.*</span></code></p></td>
+<td><p>双三次插值实现</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_cv/</span></code></p></td>
+<td><p>OpenCV 图像转换、inpaint 修复</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_loader/</span></code></p></td>
+<td><p>从文件加载 GridMap</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_msgs/</span></code></p></td>
+<td><p>GridMap 消息序列化</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grid_map_costmap_2d/</span></code></p></td>
+<td><p>Costmap ↔ GridMap 桥接（<strong>当前未实现</strong>）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="gridmapwrapper">
+<h2>7.10 GridMapWrapper<a class="headerlink" href="#gridmapwrapper" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">grid_map_wrapper.hpp</span></code> / <code class="docutils literal notranslate"><span class="pre">grid_map_wrapper.cpp</span></code></p>
+<ul class="simple">
+<li><p>实现 <code class="docutils literal notranslate"><span class="pre">MapInterface</span></code> 生命周期</p></li>
+<li><p>从 <code class="docutils literal notranslate"><span class="pre">GridMapOptions</span></code> proto 构造 <code class="docutils literal notranslate"><span class="pre">grid_map::GridMap</span></code></p></li>
+<li><p>默认层：<code class="docutils literal notranslate"><span class="pre">{&quot;elevation&quot;}</span></code>（未配置时）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Start()</span></code> / <code class="docutils literal notranslate"><span class="pre">Stop()</span></code> 主要为状态管理；<strong>无与 Costmap 自动同步</strong></p></li>
+</ul>
+<section id="id19">
+<h3>7.7.1 基本用法<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">wrapper</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">GridMapWrapper</span><span class="o">&gt;</span><span class="p">(</span><span class="n">grid_opts</span><span class="p">);</span>
+<span class="n">wrapper</span><span class="o">-&gt;</span><span class="n">Start</span><span class="p">();</span>
+
+<span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">gm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wrapper</span><span class="o">-&gt;</span><span class="n">getGridMap</span><span class="p">();</span>
+<span class="n">gm</span><span class="p">.</span><span class="n">setGeometry</span><span class="p">(</span><span class="n">grid_map</span><span class="o">::</span><span class="n">Length</span><span class="p">(</span><span class="mf">4.0</span><span class="p">,</span><span class="w"> </span><span class="mf">4.0</span><span class="p">),</span><span class="w"> </span><span class="mf">0.1</span><span class="p">);</span><span class="w">  </span><span class="c1">// 4m×4m, 10cm</span>
+<span class="n">gm</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">);</span>
+
+<span class="n">grid_map</span><span class="o">::</span><span class="n">Position</span><span class="w"> </span><span class="nf">pos</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">);</span>
+<span class="kt">double</span><span class="w"> </span><span class="n">elev</span><span class="p">;</span>
+<span class="n">gm</span><span class="p">.</span><span class="n">atPosition</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">pos</span><span class="p">,</span><span class="w"> </span><span class="n">elev</span><span class="p">,</span><span class="w"> </span><span class="n">grid_map</span><span class="o">::</span><span class="n">InterpolationMethods</span><span class="o">::</span><span class="n">INTER_LINEAR</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id20">
+<h2>7.11 与 Costmap2D 的关系<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌──────────────────┐          ┌──────────────────┐
+│   Costmap2D      │          │    GridMap       │
+│   uint8 代价      │   ???    │   float 多层      │
+│   规划 / 避障      │ ◄──────► │   地形 / 高程     │
+└──────────────────┘          └──────────────────┘
+         grid_map_costmap_2d/（已注释，未实现）
+</pre></div>
+</div>
+<p><strong>潜在桥接方案</strong>（<code class="docutils literal notranslate"><span class="pre">costmap_2d_converter.hpp</span></code> 中已注释的逻辑）：</p>
+<ul class="simple">
+<li><p>将 <code class="docutils literal notranslate"><span class="pre">elevation</span></code> 或 <code class="docutils literal notranslate"><span class="pre">traversability</span></code> 层线性映射到 <span class="math notranslate nohighlight">\([0, 252]\)</span> 代价值</p></li>
+<li><p>处理 Y 轴反向与原点偏移</p></li>
+<li><p>合并到 Costmap2D 的 obstacle 或独立图层</p></li>
+</ul>
+<p>当前需应用层自行实现互转。</p>
+</section>
+<section id="id21">
+<h2>7.12 典型应用场景<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>使用层</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>越野/台阶检测</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elevation</span></code> + <code class="docutils literal notranslate"><span class="pre">slope</span></code></p></td>
+<td><p>基于高程差计算坡度</p></td>
+</tr>
+<tr class="row-odd"><td><p>不确定性融合</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">variance</span></code></p></td>
+<td><p>过滤低置信度区域</p></td>
+</tr>
+<tr class="row-even"><td><p>语义分割融合</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">semantic</span></code></p></td>
+<td><p>多类别标签编码</p></td>
+</tr>
+<tr class="row-odd"><td><p>点云累积</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">elevation</span></code></p></td>
+<td><p>多帧激光/深度相机融合</p></td>
+</tr>
+<tr class="row-even"><td><p>可通行性评估</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">traversability</span></code></p></td>
+<td><p>映射到规划代价（需桥接）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id22">
+<h2>7.13 相关文档<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="03_math.html"><span class="std std-doc">数学原理 · GridMap 坐标与插值</span></a></p></li>
+<li><p><a class="reference internal" href="05_architecture.html"><span class="std std-doc">模块架构设计</span></a></p></li>
+<li><p><a class="reference internal" href="08_survey.html"><span class="std std-doc">地图表示综述</span></a></p></li>
+<li><p><a class="reference internal" href="06_costmap2d.html"><span class="std std-doc">Costmap2D 代价地图</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_costmap2d.html" class="btn btn-neutral float-left" title="6. Costmap2D 代价地图" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_survey.html" class="btn btn-neutral float-right" title="8. 地图表示综述（Survey）" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

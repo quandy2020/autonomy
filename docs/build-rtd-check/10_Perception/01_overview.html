@@ -1,0 +1,320 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. 模块概览 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="2. 快速开始" href="02_quickstart.html" />
+    <link rel="prev" title="Perception 感知指南" href="00_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">10 Perception</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">1 模块概览</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">1.1 定位</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">1.2 核心能力</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">1.3 源码结构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">1.4 导航栈数据流</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">1.5 相关模块</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">1.6 与业界方案对照</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_sensor_pipeline.html">6 传感器数据管线</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_vision_detection.html">7 视觉检测与 ONNX 推理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_obstacle_perception.html">8 障碍感知与代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 感知算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Perception 感知</a></li>
+      <li class="breadcrumb-item active">1. 模块概览</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/10_Perception/01_overview.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="perception-overview">
+<span id="id1"></span><h1>1. 模块概览<a class="headerlink" href="#perception-overview" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>1.1 定位<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>感知层级</p></td>
+<td><p>传感器融合 → 特征提取 → 语义/几何理解</p></td>
+</tr>
+<tr class="row-odd"><td><p>输入</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code>（激光 <code class="docutils literal notranslate"><span class="pre">LaserScan</span></code>、点云 <code class="docutils literal notranslate"><span class="pre">PointCloud2</span></code>、图像 <code class="docutils literal notranslate"><span class="pre">Image</span></code>、深度 <code class="docutils literal notranslate"><span class="pre">Depth</span></code> 等）</p></td>
+</tr>
+<tr class="row-even"><td><p>输出</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vision_msgs</span></code>（2D/3D 检测框、分类）、障碍列表、语义分割图（规划）</p></td>
+</tr>
+<tr class="row-odd"><td><p>上游</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">driver</span></code> / <code class="docutils literal notranslate"><span class="pre">sensor</span></code>、仿真器（Gazebo / nav_test）</p></td>
+</tr>
+<tr class="row-even"><td><p>下游</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">prediction</span></code>（动态障碍轨迹）、<code class="docutils literal notranslate"><span class="pre">map</span></code>（costmap 更新）、<code class="docutils literal notranslate"><span class="pre">planning</span></code>（避障）</p></td>
+</tr>
+<tr class="row-odd"><td><p>对标</p></td>
+<td><p>Apollo Perception、ROS 2 <code class="docutils literal notranslate"><span class="pre">vision_msgs</span></code>、Nav2 costmap obstacle layer</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>1.2 核心能力<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>能力</p></th>
+<th class="head"><p>状态</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PerceptionServer</span></code> 服务骨架</p></td>
+<td><p>⏳ 占位</p></td>
+<td><p>类已声明，构造/析构与业务逻辑待实现</p></td>
+</tr>
+<tr class="row-odd"><td><p>插件化感知接口</p></td>
+<td><p>⏳ 待完成</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PerceptionInterface</span></code> 仅含 <code class="docutils literal notranslate"><span class="pre">LoadOptions()</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Lua → Proto 配置管线</p></td>
+<td><p>⏳ 空壳</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PerceptionOptions</span></code> proto 无字段</p></td>
+</tr>
+<tr class="row-odd"><td><p>ONNX 视觉推理基础设施</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autonomy/common/network/</span></code>（预处理、NMS、YOLO 解码）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">vision_msgs</span></code> 消息类型</p></td>
+<td><p>✅ 部分</p></td>
+<td><p>2D/3D 检测框、分类消息已定义</p></td>
+</tr>
+<tr class="row-odd"><td><p>激光/点云障碍写入 costmap</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map/costmap_2d</span></code> 的 <code class="docutils literal notranslate"><span class="pre">ObstacleLayer</span></code> / <code class="docutils literal notranslate"><span class="pre">VoxelLayer</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>系统启动集成</p></td>
+<td><p>❌ 未接入</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Autonomy::Start()</span></code> 未构造 <code class="docutils literal notranslate"><span class="pre">PerceptionServer</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<div><p><strong>当前阶段</strong>：Perception 模块处于<strong>扩展占位</strong>阶段；实际导航栈中的障碍感知由 <code class="docutils literal notranslate"><span class="pre">map/costmap_2d</span></code> 承担，视觉推理基础设施在 <code class="docutils literal notranslate"><span class="pre">common/network</span></code> 中已就绪，等待 Perception 模块接线。</p>
+</div></blockquote>
+</section>
+<section id="id4">
+<h2>1.3 源码结构<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>autonomy/perception/
+├── perception_server.*           # 感知服务入口（占位）
+├── common/
+│   └── perception_interface.*    # LoadOptions + 未来插件接口
+└── proto/
+    └── perception_options.proto  # 空 PerceptionOptions
+
+# 相关基础设施（非 perception 包内）
+autonomy/common/network/          # ONNX / TensorRT 推理管线
+autonomy/commsgs/vision_msgs.*    # 感知输出消息
+autonomy/map/costmap_2d/layers/   # ObstacleLayer, VoxelLayer
+config/perception/perception.lua  # 空配置表
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h2>1.4 导航栈数据流<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>传感器 ──→ PerceptionServer ──→ vision_msgs / 障碍列表 ──→ Prediction
+   │              │                                              │
+   │              └──────────────→ map/costmap_2d ──────────────┘
+   │                                      │
+   └──────────────────────────────────────┴──→ Planning → Control
+</pre></div>
+</div>
+<p><strong>当前实际数据流</strong>（Perception 未启动时）：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>激光/点云 ──→ ObstacleLayer ──→ local/global costmap ──→ Planning → Control
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h2>1.5 相关模块<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模块</p></th>
+<th class="head"><p>关系</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/common/network</span></code></p></td>
+<td><p>ONNX 推理、图像预处理、检测后处理（NMS）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/vision_msgs</span></code></p></td>
+<td><p>感知输出消息定义</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/map/costmap_2d</span></code></p></td>
+<td><p>激光/点云障碍层，当前承担主要障碍感知</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/prediction</span></code></p></td>
+<td><p>消费动态障碍，预测未来轨迹</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/driver</span></code></p></td>
+<td><p>相机 <code class="docutils literal notranslate"><span class="pre">forward_targets</span></code> 预留转发至 perception</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/system</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AutonomyOptions.perception_options</span></code> 字段已预留</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h2>1.6 与业界方案对照<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>业界组件</p></th>
+<th class="head"><p>Autonomy 对应</p></th>
+<th class="head"><p>备注</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Apollo <code class="docutils literal notranslate"><span class="pre">PerceptionComponent</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PerceptionServer</span></code></p></td>
+<td><p>骨架阶段</p></td>
+</tr>
+<tr class="row-odd"><td><p>ROS 2 <code class="docutils literal notranslate"><span class="pre">vision_msgs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">commsgs::vision_msgs</span></code></p></td>
+<td><p>消息已对齐</p></td>
+</tr>
+<tr class="row-even"><td><p>Nav2 <code class="docutils literal notranslate"><span class="pre">ObstacleLayer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map/costmap_2d/ObstacleLayer</span></code></p></td>
+<td><p>已实现</p></td>
+</tr>
+<tr class="row-odd"><td><p>YOLO / ONNX Runtime</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">common/network</span></code></p></td>
+<td><p>推理管线就绪</p></td>
+</tr>
+<tr class="row-even"><td><p>OpenPCDet / PointPillars</p></td>
+<td><p>—</p></td>
+<td><p>待引入</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="00_guide.html" class="btn btn-neutral float-left" title="Perception 感知指南" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02_quickstart.html" class="btn btn-neutral float-right" title="2. 快速开始" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

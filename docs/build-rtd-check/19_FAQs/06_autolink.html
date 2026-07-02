@@ -1,0 +1,198 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. Autolink 问题 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. 导航与 BT" href="07_navigation.html" />
+    <link rel="prev" title="5. Docker 问题" href="05_docker.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">19 FAQ</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 FAQ 概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_installation.html">2 安装问题</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_build.html">3 编译问题</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_running.html">4 运行问题</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_docker.html">5 Docker 问题</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 Autolink 问题</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#q-no-module-named-cyber-autolink-python">Q: <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'cyber'</span></code> 或找不到 Autolink Python 模块？</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-no-module-named-google-protobuf">Q: <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'google'</span></code>（protobuf）？</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-cannot-allocate-memory-in-static-tls-block-libtcmalloc">Q: <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span> <span class="pre">in</span> <span class="pre">static</span> <span class="pre">TLS</span> <span class="pre">block</span></code>（libtcmalloc）？</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q-autolink-cli">Q: Autolink CLI 工具找不到？</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#q">Q: 通道无数据 / 节点列表为空？</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_navigation.html">7 导航与 BT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 FAQ 索引</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">FAQs 常见问题</a></li>
+      <li class="breadcrumb-item active">6. Autolink 问题</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/19_FAQs/06_autolink.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="autolink">
+<h1>6. Autolink 问题<a class="headerlink" href="#autolink" title="Link to this heading"></a></h1>
+<blockquote>
+<div><p>历史文档中常见 <strong>Cyber RT</strong> 相关问题。Autonomy 当前使用 <strong>Autolink</strong> 作为通信中间件，排错思路类似。</p>
+</div></blockquote>
+<section id="q-no-module-named-cyber-autolink-python">
+<h2>Q: <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'cyber'</span></code> 或找不到 Autolink Python 模块？<a class="headerlink" href="#q-no-module-named-cyber-autolink-python" title="Link to this heading"></a></h2>
+<p>确保已 source 安装路径下的环境脚本：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span><span class="w"> </span>/usr/local/setup.bash
+<span class="c1"># 或项目 build 目录下的 setup 脚本（若已安装）</span>
+</pre></div>
+</div>
+<p>若使用独立 Autolink 构建，参考 <code class="docutils literal notranslate"><span class="pre">autolink/README.md</span></code> 中的 Python 绑定说明。</p>
+</section>
+<section id="q-no-module-named-google-protobuf">
+<h2>Q: <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'google'</span></code>（protobuf）？<a class="headerlink" href="#q-no-module-named-google-protobuf" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ModuleNotFoundError: No module named &#39;google&#39;
+</pre></div>
+</div>
+<p>安装 Protobuf Python 包：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">protobuf</span><span class="o">==</span><span class="m">3</span>.14.0<span class="w"> </span>--break-system-packages
+<span class="c1"># Ubuntu 亦可：sudo apt install python3-protobuf</span>
+</pre></div>
+</div>
+<p>版本需与系统 Protobuf C++ 库兼容。</p>
+</section>
+<section id="q-cannot-allocate-memory-in-static-tls-block-libtcmalloc">
+<h2>Q: <code class="docutils literal notranslate"><span class="pre">cannot</span> <span class="pre">allocate</span> <span class="pre">memory</span> <span class="pre">in</span> <span class="pre">static</span> <span class="pre">TLS</span> <span class="pre">block</span></code>（libtcmalloc）？<a class="headerlink" href="#q-cannot-allocate-memory-in-static-tls-block-libtcmalloc" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ImportError: /usr/local/lib/libtcmalloc.so.4: cannot allocate memory in static TLS block
+</pre></div>
+</div>
+<p>在运行前预加载 tcmalloc：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">LD_PRELOAD</span><span class="o">=</span>/usr/local/lib/libtcmalloc.so.4
+</pre></div>
+</div>
+<p>或将上述行加入 <code class="docutils literal notranslate"><span class="pre">~/.bashrc</span></code>（gperftools 与 Python 扩展混用时常见）。</p>
+</section>
+<section id="q-autolink-cli">
+<h2>Q: Autolink CLI 工具找不到？<a class="headerlink" href="#q-autolink-cli" title="Link to this heading"></a></h2>
+<p>嵌入 Autonomy 构建时默认 <code class="docutils literal notranslate"><span class="pre">AUTOLINK_BUILD_TOOLS=OFF</span></code>。需独立构建 Autolink 并启用 <code class="docutils literal notranslate"><span class="pre">-DAUTOLINK_BUILD_TOOLS=ON</span></code>，见 <a class="reference internal" href="../18_Tools/06_autolink_tools.html"><span class="std std-doc">18 Tools · Autolink 工具</span></a>。</p>
+</section>
+<section id="q">
+<h2>Q: 通道无数据 / 节点列表为空？<a class="headerlink" href="#q" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>确认 <code class="docutils literal notranslate"><span class="pre">autolink::Init()</span></code> 已调用</p></li>
+<li><p>检查 Writer/Reader 话题名是否一致</p></li>
+<li><p>使用 <code class="docutils literal notranslate"><span class="pre">autolink_channel</span> <span class="pre">list</span></code>（若已构建 CLI）</p></li>
+</ol>
+<p>详见 <a class="reference internal" href="../03_Communication/index.html"><span class="std std-doc">03 Communication</span></a>。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_docker.html" class="btn btn-neutral float-left" title="5. Docker 问题" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_navigation.html" class="btn btn-neutral float-right" title="7. 导航与 BT" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

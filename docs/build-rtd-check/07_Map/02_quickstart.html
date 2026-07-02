@@ -1,0 +1,268 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. 快速开始 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="3. 数学原理" href="03_math.html" />
+    <link rel="prev" title="1. 模块概览" href="01_overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">07 Mapping</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">2 快速开始</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#costmap2d">2.1 三步启用 Costmap2D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#costmap">2.2 最小 Costmap 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#c-costmap2dwrapper">2.3 C++ 直接使用 Costmap2DWrapper</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mapserver">2.4 加载静态地图（MapServer）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gridmap-2-5d">2.5 创建 GridMap（2.5D）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">2.6 验证地图是否正常</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_costmap2d.html">6 Costmap2D 代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_grid_map.html">7 GridMap 2.5D 栅格地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 地图表示综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Map 地图模块</a></li>
+      <li class="breadcrumb-item active">2. 快速开始</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/07_Map/02_quickstart.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>2. 快速开始<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="costmap2d">
+<h2>2.1 三步启用 Costmap2D<a class="headerlink" href="#costmap2d" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>在 <code class="docutils literal notranslate"><span class="pre">config/planner/planner.lua</span></code> 中配置 <code class="docutils literal notranslate"><span class="pre">costmap</span></code> 块（图层、分辨率、footprint）</p></li>
+<li><p>在 <code class="docutils literal notranslate"><span class="pre">config/autonomy.lua</span></code> 中启用 <code class="docutils literal notranslate"><span class="pre">planning</span> <span class="pre">=</span> <span class="pre">AUTONOMY_PLANNER</span></code>（<code class="docutils literal notranslate"><span class="pre">PlannerServer</span></code> 自动构造 <code class="docutils literal notranslate"><span class="pre">Costmap2DWrapper</span></code>）</p></li>
+<li><p>确保 <code class="docutils literal notranslate"><span class="pre">MapServer</span></code> 发布静态地图，或 <code class="docutils literal notranslate"><span class="pre">static_layer</span></code> 订阅 <code class="docutils literal notranslate"><span class="pre">/map</span></code> 话题</p></li>
+</ol>
+</section>
+<section id="costmap">
+<h2>2.2 最小 Costmap 配置<a class="headerlink" href="#costmap" title="Link to this heading"></a></h2>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- config/planner/planner.lua</span>
+<span class="nv">costmap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;global_map&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;map&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">resolution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">update_frequency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">robot_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.22</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s2">&quot;static_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obstacle_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;inflation_layer&quot;</span><span class="p">},</span>
+
+<span class="w">    </span><span class="nv">static_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">map_topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;map&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nv">obstacle_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">sensor_sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nv">scan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;scan&quot;</span><span class="p">,</span><span class="w"> </span><span class="nv">data_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;LaserScan&quot;</span><span class="p">,</span><span class="w"> </span><span class="nv">marking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nv">clearing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nv">inflation_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">inflation_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.35</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">cost_scaling_factor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="c-costmap2dwrapper">
+<h2>2.3 C++ 直接使用 Costmap2DWrapper<a class="headerlink" href="#c-costmap2dwrapper" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/map_options.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/costmap_2d/costmap_2d_wrapper.hpp&quot;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">costmap_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">CreateCostmap2DOptions</span><span class="p">(</span><span class="s">&quot;config&quot;</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">costmap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">costmap_2d</span><span class="o">::</span><span class="n">Costmap2DWrapper</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="n">costmap_opts</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;global_costmap&quot;</span><span class="p">);</span>
+
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">Start</span><span class="p">();</span><span class="w">  </span><span class="c1">// 启动后台更新线程</span>
+
+<span class="c1">// 注入机器人位姿</span>
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">updateRobotPose</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">yaw</span><span class="p">);</span>
+
+<span class="c1">// 读取代价值</span>
+<span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">costmap</span><span class="o">-&gt;</span><span class="n">getCostmap</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">getCost</span><span class="p">(</span><span class="n">mx</span><span class="p">,</span><span class="w"> </span><span class="n">my</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="mapserver">
+<h2>2.4 加载静态地图（MapServer）<a class="headerlink" href="#mapserver" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/map_server.hpp&quot;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">map_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">LoadOptions</span><span class="p">(</span><span class="s">&quot;config&quot;</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">MapServer</span><span class="o">&gt;</span><span class="p">(</span><span class="n">map_opts</span><span class="p">.</span><span class="n">map_server</span><span class="p">());</span>
+
+<span class="n">server</span><span class="o">-&gt;</span><span class="n">SetMapPublishCallback</span><span class="p">([](</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">grid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 将 OccupancyGrid 转发给 Costmap static_layer</span>
+<span class="p">});</span>
+<span class="n">server</span><span class="o">-&gt;</span><span class="n">Start</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="gridmap-2-5d">
+<h2>2.5 创建 GridMap（2.5D）<a class="headerlink" href="#gridmap-2-5d" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/grid_map/grid_map_wrapper.hpp&quot;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">grid_opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">CreateGridMapOptions</span><span class="p">(</span><span class="s">&quot;config&quot;</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">grid_map</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">grid_map</span><span class="o">::</span><span class="n">GridMapWrapper</span><span class="o">&gt;</span><span class="p">(</span><span class="n">grid_opts</span><span class="p">);</span>
+
+<span class="n">grid_map</span><span class="o">-&gt;</span><span class="n">Start</span><span class="p">();</span>
+
+<span class="c1">// 查询高程（需先写入 elevation 层）</span>
+<span class="n">grid_map</span><span class="o">::</span><span class="n">Position</span><span class="w"> </span><span class="nf">pos</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">);</span>
+<span class="kt">double</span><span class="w"> </span><span class="n">elevation</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">grid_map</span><span class="o">-&gt;</span><span class="n">getGridMap</span><span class="p">().</span><span class="n">atPosition</span><span class="p">(</span><span class="s">&quot;elevation&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">pos</span><span class="p">,</span><span class="w"> </span><span class="n">elevation</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 使用高程值</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h2>2.6 验证地图是否正常<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>检查项</p></th>
+<th class="head"><p>方法</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>静态地图已加载</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MapServer::HasStaticMap()</span></code> 为 true</p></td>
+</tr>
+<tr class="row-odd"><td><p>Costmap 在更新</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">costmap-&gt;isCurrent()</span></code> 为 true</p></td>
+</tr>
+<tr class="row-even"><td><p>代价值合理</p></td>
+<td><p>自由区 ≈ 0，障碍 ≈ 254，膨胀区 1–252</p></td>
+</tr>
+<tr class="row-odd"><td><p>坐标变换正确</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">worldToMap</span></code> / <code class="docutils literal notranslate"><span class="pre">mapToWorld</span></code> 往返一致</p></td>
+</tr>
+</tbody>
+</table>
+<p>更多配置与排错见 <a class="reference internal" href="04_usage.html"><span class="std std-doc">§4 使用指南</span></a>。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01_overview.html" class="btn btn-neutral float-left" title="1. 模块概览" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="03_math.html" class="btn btn-neutral float-right" title="3. 数学原理" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

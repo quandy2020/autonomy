@@ -1,0 +1,318 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. 模块概览 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="2. 快速开始" href="02_quickstart.html" />
+    <link rel="prev" title="Simulation 仿真指南" href="00_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">12 Simulation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">1 模块概览</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">1.1 定位</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">1.2 核心能力</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">1.3 相关目录结构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">1.4 仿真方式对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nav-test">1.5 导航栈数据流（nav_test）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">1.6 相关模块</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_nav_test.html">6 进程内离线仿真</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_gazebo_ros.html">7 Gazebo 与 ROS 集成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_vehicle_stage.html">8 车辆抽象与 Stage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 仿真技术综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Simulation 仿真</a></li>
+      <li class="breadcrumb-item active">1. 模块概览</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/12_Simulation/01_overview.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="simulation-overview">
+<span id="id1"></span><h1>1. 模块概览<a class="headerlink" href="#simulation-overview" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>1.1 定位<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>仿真层级</p></td>
+<td><p>运动学仿真、物理仿真、传感器仿真、通信仿真</p></td>
+</tr>
+<tr class="row-odd"><td><p>输入</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cmd_vel</span></code>、仿真世界配置、初始位姿</p></td>
+</tr>
+<tr class="row-even"><td><p>输出</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">odom</span></code>、TF、<code class="docutils literal notranslate"><span class="pre">/scan</span></code>、相机图像（视仿真后端）</p></td>
+</tr>
+<tr class="row-odd"><td><p>用途</p></td>
+<td><p>无硬件验证 Map → Planning → Control → Navigator 全栈</p></td>
+</tr>
+<tr class="row-even"><td><p>对标</p></td>
+<td><p>Gazebo、Stage、Webots、Isaac Sim</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>1.2 核心能力<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>能力</p></th>
+<th class="head"><p>状态</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy_nav_test</span></code> 进程内仿真</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p>差速模型积分 odom + TF，跑通完整导航栈</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vehicle::Vehicle</span></code> 抽象</p></td>
+<td><p>✅ 部分</p></td>
+<td><p>接口就绪，<code class="docutils literal notranslate"><span class="pre">ApplyCommand</span></code> 待接硬件/仿真</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">KinematicsControl</span></code> 限幅</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p>速度/加速度约束</p></td>
+</tr>
+<tr class="row-odd"><td><p>Gazebo 集成</p></td>
+<td><p>✅ 外部包</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autonomy_gazebo</span></code> + <code class="docutils literal notranslate"><span class="pre">autonomy_ros</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Stage 配置占位</p></td>
+<td><p>⏳ 配置</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">config/simulation/simulation.lua</span></code> + <code class="docutils literal notranslate"><span class="pre">cave.world</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Autolink 仿真模式</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MODE_SIMULATION</span></code> mock 时间</p></td>
+</tr>
+<tr class="row-even"><td><p>独立 <code class="docutils literal notranslate"><span class="pre">autonomy/simulation/</span></code> 模块</p></td>
+<td><p>❌ 未实现</p></td>
+<td><p>无专用源码目录</p></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<div><p><strong>当前阶段</strong>：仿真能力<strong>分散</strong>于 <code class="docutils literal notranslate"><span class="pre">system/tools/nav_test</span></code>、外部 ROS 包与 <code class="docutils literal notranslate"><span class="pre">vehicle</span></code> 抽象；无统一 SimulationServer。</p>
+</div></blockquote>
+</section>
+<section id="id4">
+<h2>1.3 相关目录结构<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># 进程内仿真
+autonomy/system/tools/
+├── nav_test.cpp              # 离线导航 + 差速仿真
+└── README.md
+
+# 车辆抽象（仿真扩展点）
+autonomy/vehicle/
+├── vehicle.hpp               # VehicleInterface 默认实现
+├── vehicle_server.hpp
+├── motion/kinematics_control.*
+└── common/vehicle_inteface.hpp
+
+# 配置占位
+config/simulation/
+├── simulation.lua            # Stage / Pedsim 配置
+├── world/cave.world          # Stage 2D 世界
+└── maps/cave.png
+
+# 外部（不在本仓库）
+autonomy_ros / autonomy_gazebo  # ROS2 + Gazebo
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h2>1.4 仿真方式对比<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方式</p></th>
+<th class="head"><p>依赖</p></th>
+<th class="head"><p>传感器</p></th>
+<th class="head"><p>适用场景</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>nav_test</strong></p></td>
+<td><p>无 ROS</p></td>
+<td><p>无（静态地图）</p></td>
+<td><p>CI、算法快速验证</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Gazebo</strong></p></td>
+<td><p>ROS2、Gazebo</p></td>
+<td><p>激光、相机、odom</p></td>
+<td><p>完整物理+传感器</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Stage</strong></p></td>
+<td><p>Player/Stage</p></td>
+<td><p>2D 激光、相机（规划）</p></td>
+<td><p>轻量 2D 仿真</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Autolink MODE_SIMULATION</strong></p></td>
+<td><p>Autolink</p></td>
+<td><p>无</p></td>
+<td><p>回放、单元测试</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="nav-test">
+<h2>1.5 导航栈数据流（nav_test）<a class="headerlink" href="#nav-test" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>autonomy_nav_test
+  ├─ cmd_vel ← ControllerServer
+  ├─ IntegrateDiffDrive → odom + TF
+  └─ NavigateToPose → Map / Planner / Controller / BT
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h2>1.6 相关模块<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模块</p></th>
+<th class="head"><p>关系</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/system</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Autonomy::GetLastControlCommand()</span></code> 供仿真读取</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/control</span></code></p></td>
+<td><p>输出 <code class="docutils literal notranslate"><span class="pre">cmd_vel</span></code>，接收 <code class="docutils literal notranslate"><span class="pre">UpdateOdometry</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/transform</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Buffer::setTransform</span></code> 发布 TF</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/bridge</span></code></p></td>
+<td><p>ROS 侧桥接 Gazebo topic</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink</span></code></p></td>
+<td><p>仿真时钟与运行模式</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="00_guide.html" class="btn btn-neutral float-left" title="Simulation 仿真指南" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02_quickstart.html" class="btn btn-neutral float-right" title="2. 快速开始" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

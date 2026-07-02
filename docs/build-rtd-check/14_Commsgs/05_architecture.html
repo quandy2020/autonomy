@@ -1,0 +1,473 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5. Commsgs 模块架构设计 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="6. 核心消息类型" href="06_core_msgs.html" />
+    <link rel="prev" title="4. 使用指南" href="04_usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">14 Commsgs</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html">3 消息模型与 Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">5 模块架构设计</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">5.1 设计目标</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">5.2 实现状态</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">5.3 分层架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">5.4 文件组织模式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">5.5 构建集成</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">5.6 运行时数据流</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">5.7 消费模块矩阵</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">5.8 扩展点</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ros-2">5.9 与 ROS 2 架构对比</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html">6 核心消息类型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html">7 传感器与地图消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html">8 导航与规划消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 消息体系综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Commsgs 通信消息</a></li>
+      <li class="breadcrumb-item active">5. Commsgs 模块架构设计</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/14_Commsgs/05_architecture.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="commsgs">
+<h1>5. Commsgs 模块架构设计<a class="headerlink" href="#commsgs" title="Link to this heading"></a></h1>
+<p>本文描述 <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs</span></code> 的逻辑架构、双层消息模型与全栈集成关系。</p>
+<section id="id1">
+<h2>5.1 设计目标<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>commsgs 模块遵循以下设计原则：</p>
+<ol class="arabic simple">
+<li><p><strong>ROS 语义兼容</strong>：字段命名、坐标系约定、Stamped/WithCovariance 模式与 ROS 2 <code class="docutils literal notranslate"><span class="pre">common_msgs</span></code> 保持一致</p></li>
+<li><p><strong>双层分离</strong>：C++ struct 供算法零开销使用，proto 供序列化与跨进程通信</p></li>
+<li><p><strong>显式边界转换</strong>：<code class="docutils literal notranslate"><span class="pre">ToProto</span></code>/<code class="docutils literal notranslate"><span class="pre">FromProto</span></code> 在模块边界集中调用，便于测试与审计</p></li>
+<li><p><strong>无 ROS 运行时依赖</strong>：不使用 <code class="docutils literal notranslate"><span class="pre">rosidl</span></code>/<code class="docutils literal notranslate"><span class="pre">rclcpp</span></code>，Autonomy 自研通信栈</p></li>
+<li><p><strong>可扩展</strong>：新增消息包遵循 proto → hpp → cpp 三层模式</p></li>
+</ol>
+</section>
+<section id="id2">
+<h2>5.2 实现状态<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>组件</p></th>
+<th class="head"><p>实现度</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>16 个 proto 包</p></td>
+<td><p>✅</p></td>
+<td><p>schema 已定义</p></td>
+</tr>
+<tr class="row-odd"><td><p>C++ struct 定义</p></td>
+<td><p>✅</p></td>
+<td><p>主要消息类型已覆盖</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ToProto</span></code>/<code class="docutils literal notranslate"><span class="pre">FromProto</span></code></p></td>
+<td><p>⏳</p></td>
+<td><p>核心包完整，部分 stub</p></td>
+</tr>
+<tr class="row-odd"><td><p>PointCloud2 工具</p></td>
+<td><p>✅</p></td>
+<td><p>迭代器 + 字段转换</p></td>
+</tr>
+<tr class="row-even"><td><p>Nav2 Action/Service</p></td>
+<td><p>✅ proto</p></td>
+<td><p>C++ 层仅 <code class="docutils literal notranslate"><span class="pre">SpeedLimit</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>错误码体系</p></td>
+<td><p>✅ proto</p></td>
+<td><p>含 Nav2 遗留别名</p></td>
+</tr>
+<tr class="row-even"><td><p>独立 CMake 目标</p></td>
+<td><p>❌</p></td>
+<td><p>随 <code class="docutils literal notranslate"><span class="pre">libautonomy</span></code> glob 编译</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>5.3 分层架构<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="plan-arch-diagram">
+  <div class="plan-arch-layer plan-arch-app">
+    <div class="plan-arch-header">
+      <span class="plan-arch-badge">应用层</span>
+      <span class="plan-arch-title">Planning / Map / Control / Localization</span>
+      <span class="plan-arch-sub">算法模块，使用 C++ commsgs struct</span>
+    </div>
+    <div class="plan-arch-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">典型消息</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">Path</span>
+          <span class="nav-chip">PoseStamped</span>
+          <span class="nav-chip">OccupancyGrid</span>
+          <span class="nav-chip">Twist</span>
+          <span class="nav-chip">Imu</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="plan-arch-pipe"><span>内存中直接传递 struct / shared_ptr</span></div>
+  <div class="plan-arch-layer plan-arch-server">
+    <div class="plan-arch-header">
+      <span class="plan-arch-badge">消息层</span>
+      <span class="plan-arch-title">autonomy::commsgs</span>
+      <span class="plan-arch-sub">C++ struct + ToProto/FromProto 转换</span>
+    </div>
+    <div class="plan-arch-body plan-arch-body-cols">
+      <div class="nav-body-block">
+        <div class="nav-body-label">核心包</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">builtin_interfaces</span>
+          <span class="nav-chip">std_msgs</span>
+          <span class="nav-chip">geometry_msgs</span>
+          <span class="nav-chip">sensor_msgs</span>
+          <span class="nav-chip">map_msgs</span>
+        </div>
+      </div>
+      <div class="nav-body-block">
+        <div class="nav-body-label">工具</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">PointCloud2Iterator</span>
+          <span class="nav-chip">PointCloud2Modifier</span>
+          <span class="nav-chip">point_field_conversion</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="plan-arch-pipe"><span>ToProto() / FromProto()</span></div>
+  <div class="plan-arch-layer plan-arch-plugin">
+    <div class="plan-arch-header">
+      <span class="plan-arch-badge">序列化层</span>
+      <span class="plan-arch-title">commsgs::proto</span>
+      <span class="plan-arch-sub">protoc 生成的 google::protobuf::Message</span>
+    </div>
+    <div class="plan-arch-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">生成物</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">*.pb.h</span>
+          <span class="nav-chip">*.pb.cc</span>
+          <span class="nav-chip">SerializeToString</span>
+          <span class="nav-chip">ParseFromString</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="plan-arch-pipe"><span>Autolink wire format</span></div>
+  <div class="plan-arch-layer plan-arch-map">
+    <div class="plan-arch-header">
+      <span class="plan-arch-badge">传输层</span>
+      <span class="plan-arch-title">Autolink</span>
+      <span class="plan-arch-sub">Writer / Reader / Service / Action</span>
+    </div>
+    <div class="plan-arch-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">通信原语</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">CreateWriter&lt;T&gt;</span>
+          <span class="nav-chip">CreateReader&lt;T&gt;</span>
+          <span class="nav-chip">CreateService&lt;Req,Resp&gt;</span>
+          <span class="nav-chip">CreateActionClient&lt;ActionT&gt;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+<section id="id4">
+<h2>5.4 文件组织模式<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<p>每个消息包遵循固定三文件模式：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>proto/&lt;pkg&gt;.proto          ← schema 定义（单一事实来源）
+&lt;pkg&gt;_msgs.hpp             ← C++ struct + ToProto/FromProto 声明
+&lt;pkg&gt;_msgs.cpp             ← 转换函数实现
+</pre></div>
+</div>
+<p><strong>依赖方向</strong>（仅向下）：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>geometry_msgs.hpp → std_msgs.hpp → builtin_interfaces.hpp
+sensor_msgs.hpp   → geometry_msgs.hpp, std_msgs.hpp
+map_msgs.hpp      → geometry_msgs.hpp, std_msgs.hpp
+planning_msgs.hpp → geometry_msgs.hpp, std_msgs.hpp
+nav_msgs.proto    → planning_msgs.proto, geometry_msgs.proto, error_code.proto
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h2>5.5 构建集成<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p>commsgs 无独立 CMake 目标，通过根工程统一构建：</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># cmake/autonomy_sources.cmake
+file(GLOB_RECURSE AUTONOMY_SOURCES &quot;autonomy/*.cpp&quot;)
+file(GLOB_RECURSE ALL_PROTOS &quot;autonomy/*.proto&quot;)
+
+# 根 CMakeLists.txt
+protoc --cpp_out=${PROJECT_BINARY_DIR} ...
+add_library(autonomy SHARED ${AUTONOMY_SOURCES} ${GENERATED_PROTO_SRCS})
+target_link_libraries(autonomy protobuf autolink ...)
+</pre></div>
+</div>
+<p>安装时同步安装源 hpp 与生成 <code class="docutils literal notranslate"><span class="pre">*.pb.h</span></code> 到 <code class="docutils literal notranslate"><span class="pre">include/autonomy/commsgs/</span></code>。</p>
+</section>
+<section id="id6">
+<h2>5.6 运行时数据流<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="pub-sub">
+<h3>5.6.1 进程内 Pub/Sub<a class="headerlink" href="#pub-sub" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>模块 A                    Autolink                    模块 B
+  │                         │                          │
+  │  Write(Imu struct)      │                          │
+  ├────────────────────────►│                          │
+  │                    [序列化]                         │
+  │                         ├─────────────────────────►│
+  │                         │              callback(shared_ptr&lt;Imu&gt;)
+</pre></div>
+</div>
+<p>Autolink 在 Writer/Reader 边界自动处理序列化，应用代码始终操作 C++ struct。</p>
+</section>
+<section id="service-action">
+<h3>5.6.2 Service / Action<a class="headerlink" href="#service-action" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Client (proto)  ──request──►  Service (proto)
+                                    │
+                              FromProto()
+                                    │
+                              C++ struct 业务逻辑
+                                    │
+                              ToProto()
+                                    │
+Client (proto)  ◄─response──  Service (proto)
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h3>5.6.3 跨模块传递（无网络）<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p>同一进程内模块间可直接传递 C++ struct 引用或 <code class="docutils literal notranslate"><span class="pre">shared_ptr</span></code>，无需 proto 转换：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// system::Autonomy 内部</span>
+<span class="n">controller_</span><span class="o">-&gt;</span><span class="n">SetPlan</span><span class="p">(</span><span class="n">path</span><span class="p">);</span><span class="w">  </span><span class="c1">// planning_msgs::Path，无序列化</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id8">
+<h2>5.7 消费模块矩阵<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模块</p></th>
+<th class="head"><p>使用的 commsgs 包</p></th>
+<th class="head"><p>典型消息</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">planning</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geometry_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">planning_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">proto::nav_msgs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Path</span></code>, <code class="docutils literal notranslate"><span class="pre">IsPathValid</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">map/costmap_2d</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geometry_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">map_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OccupancyGrid</span></code>, <code class="docutils literal notranslate"><span class="pre">PointCloud2</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">control</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geometry_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">planning_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">builtin_interfaces</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Twist</span></code>, <code class="docutils literal notranslate"><span class="pre">Path</span></code>, <code class="docutils literal notranslate"><span class="pre">Pose</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">transform</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geometry_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">builtin_interfaces</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TransformStamped</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">localization</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">geometry_msgs</span></code>, <code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PoseWithCovariance</span></code>, <code class="docutils literal notranslate"><span class="pre">Imu</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">visualization</span></code></p></td>
+<td><p>多种 commsgs</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Marker</span></code>, <code class="docutils literal notranslate"><span class="pre">Path</span></code>, <code class="docutils literal notranslate"><span class="pre">OccupancyGrid</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">sensor</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">sensor_msgs</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Imu</span></code>, <code class="docutils literal notranslate"><span class="pre">LaserScan</span></code>, <code class="docutils literal notranslate"><span class="pre">Image</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bridge</span></code></p></td>
+<td><p>全部</p></td>
+<td><p>ROS ↔ Autonomy 转换</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id9">
+<h2>5.8 扩展点<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>扩展场景</p></th>
+<th class="head"><p>步骤</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>新增消息类型</p></td>
+<td><p>proto → hpp struct → cpp 转换 → 重编译</p></td>
+</tr>
+<tr class="row-odd"><td><p>新增消息包</p></td>
+<td><p>新建三文件 + 在消费模块 include</p></td>
+</tr>
+<tr class="row-even"><td><p>新增 Action</p></td>
+<td><p>在 <code class="docutils literal notranslate"><span class="pre">nav_msgs.proto</span></code> 添加 Goal/Feedback/Result</p></td>
+</tr>
+<tr class="row-odd"><td><p>新增错误码</p></td>
+<td><p>在 <code class="docutils literal notranslate"><span class="pre">error_code.proto</span></code> 对应模块段添加枚举值</p></td>
+</tr>
+<tr class="row-even"><td><p>ROS 桥接</p></td>
+<td><p>在 <code class="docutils literal notranslate"><span class="pre">bridge</span></code> 模块实现 ROS msg ↔ commsgs 转换</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="ros-2">
+<h2>5.9 与 ROS 2 架构对比<a class="headerlink" href="#ros-2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>ROS 2</p></th>
+<th class="head"><p>Autonomy commsgs</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>消息定义</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.msg</span></code> / <code class="docutils literal notranslate"><span class="pre">.idl</span></code> → rosidl 生成</p></td>
+<td><p>手写 hpp + proto</p></td>
+</tr>
+<tr class="row-odd"><td><p>序列化</p></td>
+<td><p>CDR / Fast-DDS</p></td>
+<td><p>Protocol Buffers</p></td>
+</tr>
+<tr class="row-even"><td><p>运行时</p></td>
+<td><p>rclcpp</p></td>
+<td><p>Autolink</p></td>
+</tr>
+<tr class="row-odd"><td><p>类型系统</p></td>
+<td><p>单一生成类型</p></td>
+<td><p>C++ struct + proto 双层</p></td>
+</tr>
+<tr class="row-even"><td><p>扩展</p></td>
+<td><p>新 .msg 文件</p></td>
+<td><p>proto + hpp + cpp 三文件</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="04_usage.html" class="btn btn-neutral float-left" title="4. 使用指南" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="06_core_msgs.html" class="btn btn-neutral float-right" title="6. 核心消息类型" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

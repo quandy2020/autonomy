@@ -1,0 +1,302 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. 项目概览 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="2. 快速上手" href="02_quickstart.html" />
+    <link rel="prev" title="Autonomy 入门指南" href="00_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">01 Instructions</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">1 项目概览</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">1.1 是什么</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">1.2 设计原则</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ros-2">1.3 与 ROS 2 的关系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">1.4 核心能力一览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">1.5 适用场景</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">1.6 相关链接</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速上手</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_system_architecture.html">3 系统架构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_navigation_stack.html">4 导航栈全景</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_project_layout.html">5 工程结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_ecosystem.html">6 生态集成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_documentation_guide.html">7 文档导读</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_roadmap.html">8 版本与路线</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">入门指南</a></li>
+      <li class="breadcrumb-item active">1. 项目概览</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/01_Instructions/01_overview.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="instructions-overview">
+<span id="id1"></span><h1>1. 项目概览<a class="headerlink" href="#instructions-overview" title="Link to this heading"></a></h1>
+<p><img alt="Autonomy 系统分层架构" src="../_images/autonomy_architecture.png" /></p>
+<section id="id2">
+<h2>1.1 是什么<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p><strong>Autonomy</strong>（<code class="docutils literal notranslate"><span class="pre">libautonomy</span></code>）是一套<strong>自主移动机器人软件框架</strong>，核心用 <strong>CMake + C++17</strong> 构建，提供：</p>
+<ul class="simple">
+<li><p>2D 导航栈：代价地图、全局规划、局部控制、行为树编排</p></li>
+<li><p>定位与建图：视觉 SLAM（Atlas）、地图服务</p></li>
+<li><p>通信运行时：Autolink（Node / Channel / Service / Action）</p></li>
+<li><p>可选桥接：gRPC、ROS 2 兼容消息（<code class="docutils literal notranslate"><span class="pre">commsgs</span></code>）</p></li>
+</ul>
+<p>设计目标：<strong>可独立运行</strong>（不强制依赖 ROS 2），同时保持与 Navigation2 等生态的语义对齐，降低迁移与集成成本。</p>
+</section>
+<section id="id3">
+<h2>1.2 设计原则<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>原则</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>模块化</p></td>
+<td><p>各子系统以独立库形式组织，通过接口与配置解耦</p></td>
+</tr>
+<tr class="row-odd"><td><p>插件化</p></td>
+<td><p>规划器、控制器、BT 节点等以插件动态加载</p></td>
+</tr>
+<tr class="row-even"><td><p>配置驱动</p></td>
+<td><p>Lua → Protobuf 统一配置管线</p></td>
+</tr>
+<tr class="row-odd"><td><p>Nav2 对齐</p></td>
+<td><p>接口语义、BT 结构、代价地图用法对标 Navigation2</p></td>
+</tr>
+<tr class="row-even"><td><p>跨平台</p></td>
+<td><p>x86-64 / ARM64；推荐 Ubuntu 22.04</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="ros-2">
+<h2>1.3 与 ROS 2 的关系<a class="headerlink" href="#ros-2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>Autonomy</p></th>
+<th class="head"><p>ROS 2</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>运行时</p></td>
+<td><p>Autolink（可进程内/共享内存/RTPS）</p></td>
+<td><p>rclcpp / DDS</p></td>
+</tr>
+<tr class="row-odd"><td><p>是否必须 ROS</p></td>
+<td><p><strong>否</strong>，核心可独立运行</p></td>
+<td><p>是</p></td>
+</tr>
+<tr class="row-even"><td><p>消息类型</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">commsgs</span></code>（与 ROS 消息结构兼容）</p></td>
+<td><p>标准 <code class="docutils literal notranslate"><span class="pre">*_msgs</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>导航栈对标</p></td>
+<td><p>planning / control / navigator</p></td>
+<td><p>nav2_*</p></td>
+</tr>
+<tr class="row-even"><td><p>可视化</p></td>
+<td><p>Bridge / 外部工具</p></td>
+<td><p>RViz2、Foxglove 等</p></td>
+</tr>
+</tbody>
+</table>
+<p>Autonomy <strong>不是 ROS 2 的替代品</strong>，而是可独立部署、并按需与 ROS 2 工具链互操作的框架。详见 <a class="reference internal" href="06_ecosystem.html"><span class="std std-doc">§6 生态集成</span></a>。</p>
+</section>
+<section id="id4">
+<h2>1.4 核心能力一览<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>领域</p></th>
+<th class="head"><p>模块</p></th>
+<th class="head"><p>状态</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>通信</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autolink</span></code></p></td>
+<td><p>✅ 运行时完整</p></td>
+</tr>
+<tr class="row-odd"><td><p>定位</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">localization</span></code>（Atlas VSLAM）</p></td>
+<td><p>✅ Atlas 已实现</p></td>
+</tr>
+<tr class="row-even"><td><p>地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map</span></code>（costmap_2d / grid_map）</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>规划</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">planning</span></code>（NavFn / Dijkstra / Theta*）</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>控制</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">control</span></code></p></td>
+<td><p>⏳ 骨架 + Checker，主循环待完成</p></td>
+</tr>
+<tr class="row-odd"><td><p>编排</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navigator</span></code>（行为树）</p></td>
+<td><p>⏳ 配置/XML 就绪，BT 栈待恢复</p></td>
+</tr>
+<tr class="row-even"><td><p>桥接</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bridge</span></code>（gRPC）</p></td>
+<td><p>⏳ 部分实现</p></td>
+</tr>
+<tr class="row-odd"><td><p>系统</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">system::Autonomy</span></code></p></td>
+<td><p>✅ 统一入口</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h2>1.5 适用场景<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>室内/结构化环境的移动机器人导航研发</p></li>
+<li><p>需要脱离 ROS 2 运行时的嵌入式或车载部署</p></li>
+<li><p>基于 Navigation2 经验、希望迁移到统一 C++ 框架的团队</p></li>
+<li><p>视觉 SLAM + 2D 导航的复合系统原型</p></li>
+</ul>
+</section>
+<section id="id6">
+<h2>1.6 相关链接<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>资源</p></th>
+<th class="head"><p>地址</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>GitHub</p></td>
+<td><p>https://github.com/quandy2020/autonomy</p></td>
+</tr>
+<tr class="row-odd"><td><p>Gitee</p></td>
+<td><p>https://gitee.com/quanduyong/autonomy</p></td>
+</tr>
+<tr class="row-even"><td><p>在线文档</p></td>
+<td><p>https://autonomy.readthedocs.io</p></td>
+</tr>
+<tr class="row-odd"><td><p>许可证</p></td>
+<td><p>Apache 2.0</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="00_guide.html" class="btn btn-neutral float-left" title="Autonomy 入门指南" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02_quickstart.html" class="btn btn-neutral float-right" title="2. 快速上手" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

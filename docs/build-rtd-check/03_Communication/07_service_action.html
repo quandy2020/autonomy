@@ -1,0 +1,802 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. Service 与 Action &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+      <script type="module">
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    fontSize: '14px',
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+    primaryColor: '#e0f2f2',
+    primaryTextColor: '#1a4d6e',
+    primaryBorderColor: '#2d9294',
+    lineColor: '#5a7289',
+    secondaryColor: '#eef1f4',
+    tertiaryColor: '#ffffff'
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 20,
+    nodeSpacing: 45,
+    rankSpacing: 55
+  },
+  timeline: {
+    disableMulticolor: false
+  }
+});
+</script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+      <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 调度与传输" href="08_scheduler_transport.html" />
+    <link rel="prev" title="6. Node 与 Channel" href="06_node_channel.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">03 Communication</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_concepts.html">3 通信概念与模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_node_channel.html">6 Node 与 Channel</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 Service 与 Action</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#service-client">7.1 Service / Client 架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#service-api">7.2 Service API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client-api">7.3 Client API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">7.4 Service 与 Action 选型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#action">7.5 Action 状态机</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">7.6 Action 在导航栈中的应用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameter">7.7 Parameter 服务</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#simpleactionserver">7.8 SimpleActionServer 辅助类</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">7.9 错误处理建议</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">7.10 示例索引</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_scheduler_transport.html">8 调度与传输</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 通信框架综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Communication 通信框架</a></li>
+      <li class="breadcrumb-item active">7. Service 与 Action</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/03_Communication/07_service_action.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="service-action">
+<h1>7. Service 与 Action<a class="headerlink" href="#service-action" title="Link to this heading"></a></h1>
+<p>本章覆盖 RPC 式 Service/Client、长任务 Action，以及 Parameter 参数服务。</p>
+<section id="service-client">
+<h2>7.1 Service / Client 架构<a class="headerlink" href="#service-client" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────┐    request     ┌─────────────┐
+│   Client    │ ─────────────▶ │   Service   │
+│  (Node 内)  │ ◀───────────── │  (Node 内)  │
+└─────────────┘    response    └─────────────┘
+        │                              │
+        └──────── ServiceManager ──────┘
+                    (服务发现)
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>基于 <strong>Channel 之上的请求-响应协议</strong> 实现</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ServiceManager</span></code> 维护 <code class="docutils literal notranslate"><span class="pre">service_name</span></code> → Service 实例映射</p></li>
+<li><p>Client 通过 <code class="docutils literal notranslate"><span class="pre">WaitForService()</span></code> 等待 Server 注册完成</p></li>
+</ul>
+</section>
+<section id="service-api">
+<h2>7.2 Service API<a class="headerlink" href="#service-api" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">typename</span><span class="w"> </span><span class="nc">Request</span><span class="p">,</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">Response</span><span class="o">&gt;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">Node</span><span class="o">::</span><span class="n">CreateService</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span class="w"> </span><span class="n">service_name</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">ServiceCallback</span><span class="o">&lt;</span><span class="n">Request</span><span class="p">,</span><span class="w"> </span><span class="n">Response</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">service_callback</span><span class="p">)</span>
+<span class="w">    </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Service</span><span class="o">&lt;</span><span class="n">Request</span><span class="p">,</span><span class="w"> </span><span class="n">Response</span><span class="o">&gt;&gt;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p><strong>回调签名</strong>：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">void</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Request</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">request</span><span class="p">,</span>
+<span class="w">     </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Response</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">response</span><span class="p">);</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">response</span></code> 由回调分配并填充</p></li>
+<li><p>回调在 Service 线程执行，应保持简短</p></li>
+</ul>
+</section>
+<section id="client-api">
+<h2>7.3 Client API<a class="headerlink" href="#client-api" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SendRequest(req,</span> <span class="pre">timeout)</span></code></p></td>
+<td><p>同步，阻塞至响应或超时</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">AsyncSendRequest(req)</span></code></p></td>
+<td><p>返回 <code class="docutils literal notranslate"><span class="pre">std::shared_future&lt;shared_ptr&lt;Response&gt;&gt;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WaitForService(timeout)</span></code></p></td>
+<td><p>阻塞等待 Server 上线</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ServiceIsReady()</span></code></p></td>
+<td><p>非阻塞检查</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>超时处理</strong>：同步调用超时返回 <code class="docutils literal notranslate"><span class="pre">nullptr</span></code>，应检查返回值。</p>
+</section>
+<section id="id1">
+<h2>7.4 Service 与 Action 选型<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>Service</p></th>
+<th class="head"><p>Action</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>持续时间</p></td>
+<td><p>毫秒级</p></td>
+<td><p>秒～分钟级</p></td>
+</tr>
+<tr class="row-odd"><td><p>反馈</p></td>
+<td><p>无</p></td>
+<td><p>Feedback 流</p></td>
+</tr>
+<tr class="row-even"><td><p>取消</p></td>
+<td><p>不支持</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CancelGoal</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>并发</p></td>
+<td><p>多请求可排队</p></td>
+<td><p>多 Goal 并行（按 Server 策略）</p></td>
+</tr>
+<tr class="row-even"><td><p>典型用例</p></td>
+<td><p>查询代价、计算路径片段</p></td>
+<td><p>FollowPath、NavigateToPose</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="action">
+<h2>7.5 Action 状态机<a class="headerlink" href="#action" title="Link to this heading"></a></h2>
+<section id="goal">
+<h3>7.5.1 Goal 生命周期<a class="headerlink" href="#goal" title="Link to this heading"></a></h3>
+<pre  class="mermaid">
+        stateDiagram-v2
+    [*] --&gt; UNKNOWN
+    UNKNOWN --&gt; ACCEPTED: Goal accepted
+    ACCEPTED --&gt; EXECUTING: Execute()
+    EXECUTING --&gt; SUCCEEDED: Succeed()
+    EXECUTING --&gt; CANCELED: Canceled()
+    EXECUTING --&gt; ABORTED: Abort()
+    ACCEPTED --&gt; CANCELED: cancel before execute
+    CANCELING --&gt; CANCELED: Canceled()
+    </pre></section>
+<section id="server">
+<h3>7.5.2 Server 三回调<a class="headerlink" href="#server" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>回调</p></th>
+<th class="head"><p>职责</p></th>
+<th class="head"><p>注意</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">handle_goal</span></code></p></td>
+<td><p>接受 / 拒绝 / 延迟</p></td>
+<td><p>同步，快速决策</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">handle_cancel</span></code></p></td>
+<td><p>是否允许取消</p></td>
+<td><p>同步</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">handle_accepted</span></code></p></td>
+<td><p>启动执行逻辑</p></td>
+<td><p><strong>必须</strong>另起线程，内部调用 <code class="docutils literal notranslate"><span class="pre">Execute()</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="servergoalhandle">
+<h3>7.5.3 ServerGoalHandle<a class="headerlink" href="#servergoalhandle" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">gh</span><span class="o">-&gt;</span><span class="n">GetGoal</span><span class="p">();</span><span class="w">           </span><span class="c1">// 只读目标</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">GetGoalId</span><span class="p">();</span><span class="w">         </span><span class="c1">// UUID</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">Execute</span><span class="p">();</span><span class="w">           </span><span class="c1">// ACCEPTED → EXECUTING</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">PublishFeedback</span><span class="p">(</span><span class="n">fb</span><span class="p">);</span><span class="w"> </span><span class="c1">// 执行中多次</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">Succeed</span><span class="p">(</span><span class="n">result</span><span class="p">);</span><span class="w">     </span><span class="c1">// 终态</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">Canceled</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">Abort</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">IsCanceling</span><span class="p">();</span>
+<span class="n">gh</span><span class="o">-&gt;</span><span class="n">IsActive</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="client">
+<h3>7.5.4 Client 异步流程<a class="headerlink" href="#client" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">CreateClient</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">);</span>
+
+<span class="n">SendGoalOptions</span><span class="w"> </span><span class="n">opts</span><span class="p">;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">goal_response_callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">feedback_callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">result_callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">...;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">gh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="o">-&gt;</span><span class="n">AsyncSendGoal</span><span class="p">(</span><span class="n">goal</span><span class="p">,</span><span class="w"> </span><span class="n">opts</span><span class="p">).</span><span class="n">get</span><span class="p">();</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">wrapped</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="o">-&gt;</span><span class="n">AsyncGetResult</span><span class="p">(</span><span class="n">gh</span><span class="p">).</span><span class="n">get</span><span class="p">();</span>
+<span class="c1">// wrapped.code: SUCCEEDED | CANCELED | ABORTED</span>
+</pre></div>
+</div>
+<p>也可在 <code class="docutils literal notranslate"><span class="pre">result_callback</span></code> 中处理终态，无需阻塞 <code class="docutils literal notranslate"><span class="pre">get()</span></code>。</p>
+</section>
+</section>
+<section id="id2">
+<h2>7.6 Action 在导航栈中的应用<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Navigator (BT)
+    │
+    ▼ AsyncSendGoal
+autolink::action::Client&lt;FollowPathAction&gt;
+    │
+    ▼
+ControllerServer (Action Server)
+    │
+    ├─▶ Feedback: 剩余距离、当前速度
+    └─▶ Result: 成功 / 超时 / 碰撞
+</pre></div>
+</div>
+<p>Action 类型定义在 <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs</span></code> 或各模块 <code class="docutils literal notranslate"><span class="pre">proto/</span></code> 下，须符合 <a class="reference internal" href="03_concepts.html#action-proto3"><span class="std std-ref">§3.9</span></a> 规范。</p>
+</section>
+<section id="parameter">
+<h2>7.7 Parameter 服务<a class="headerlink" href="#parameter" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>7.7.1 模型<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>全局 <code class="docutils literal notranslate"><span class="pre">ParameterServer</span></code> 节点提供键值存储，任意 <code class="docutils literal notranslate"><span class="pre">ParameterClient</span></code> 可读写：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">autolink</span><span class="o">::</span><span class="n">Parameter</span><span class="w"> </span><span class="n">param</span><span class="p">(</span><span class="s">&quot;robot_radius&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.35</span><span class="p">);</span>
+<span class="n">param_client</span><span class="p">.</span><span class="n">SetParameter</span><span class="p">(</span><span class="n">param</span><span class="p">);</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">autolink</span><span class="o">::</span><span class="n">Parameter</span><span class="o">&gt;</span><span class="w"> </span><span class="n">all</span><span class="p">;</span>
+<span class="n">param_client</span><span class="p">.</span><span class="n">ListParameters</span><span class="p">(</span><span class="o">&amp;</span><span class="n">all</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>7.7.2 类型<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>Parameter 支持 <code class="docutils literal notranslate"><span class="pre">int64</span></code>、<code class="docutils literal notranslate"><span class="pre">double</span></code>、<code class="docutils literal notranslate"><span class="pre">string</span></code>、<code class="docutils literal notranslate"><span class="pre">bool</span></code>、<code class="docutils literal notranslate"><span class="pre">protobuf</span></code> 等，内部 proto 序列化。</p>
+</section>
+<section id="lua">
+<h3>7.7.3 与 Lua 配置关系<a class="headerlink" href="#lua" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>配置方式</p></th>
+<th class="head"><p>时机</p></th>
+<th class="head"><p>适用</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Lua → Server Options</p></td>
+<td><p>启动时</p></td>
+<td><p>算法参数、插件列表</p></td>
+</tr>
+<tr class="row-odd"><td><p>Parameter 服务</p></td>
+<td><p>运行时</p></td>
+<td><p>动态调参、可视化工具</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="simpleactionserver">
+<h2>7.8 SimpleActionServer 辅助类<a class="headerlink" href="#simpleactionserver" title="Link to this heading"></a></h2>
+<p>对仅需单 Goal 顺序执行的 Server，可使用 <code class="docutils literal notranslate"><span class="pre">simple_action_server.hpp</span></code> 简化线程与状态管理（内部封装 <code class="docutils literal notranslate"><span class="pre">Execute</span></code> 循环与取消检查）。</p>
+</section>
+<section id="id5">
+<h2>7.9 错误处理建议<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Service</strong>：response 中携带 <code class="docutils literal notranslate"><span class="pre">error_code</span></code> / <code class="docutils literal notranslate"><span class="pre">error_msg</span></code> 字段</p></li>
+<li><p><strong>Action Result</strong>：使用专用 <code class="docutils literal notranslate"><span class="pre">XxxActionErrorCode</span></code> 枚举</p></li>
+<li><p><strong>Client</strong>：始终检查 <code class="docutils literal notranslate"><span class="pre">nullptr</span></code> / <code class="docutils literal notranslate"><span class="pre">WrappedResult.code</span></code></p></li>
+<li><p><strong>取消</strong>：Server 在循环中轮询 <code class="docutils literal notranslate"><span class="pre">IsCanceling()</span></code>，及时退出</p></li>
+</ol>
+</section>
+<section id="id6">
+<h2>7.10 示例索引<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>示例路径</p></th>
+<th class="head"><p>内容</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/examples/cpp/action_talker*.cpp</span></code></p></td>
+<td><p>Action 发布</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/examples/python/py_action_client.py</span></code></p></td>
+<td><p>Python Action</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">docs/.../04_usage.md</span></code> §4.6</p></td>
+<td><p>完整代码片段</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_node_channel.html" class="btn btn-neutral float-left" title="6. Node 与 Channel" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_scheduler_transport.html" class="btn btn-neutral float-right" title="8. 调度与传输" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

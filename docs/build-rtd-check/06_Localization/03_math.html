@@ -1,0 +1,592 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3. 数学原理 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="4. 使用指南" href="04_usage.html" />
+    <link rel="prev" title="2. 快速开始" href="02_quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">06 Localization</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">3 数学原理</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">3.1 问题形式化</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">3.2 相机投影模型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#orb">3.3 ORB 特征与金字塔</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">3.4 两视图几何</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pnp">3.5 PnP 位姿估计</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#g2o">3.6 位姿图优化（g2o）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sim3">3.7 回环检测与 Sim3 校正</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id13">3.8 运动模型与跟踪状态机</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rgb-d">3.9 立体与 RGB-D 深度</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#amcl">3.10 AMCL 粒子滤波</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">3.11 算法流水线总览</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_atlas.html">6 Atlas 视觉 SLAM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_amcl.html">7 AMCL 粒子滤波定位</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">8 定位算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Localization 定位模块</a></li>
+      <li class="breadcrumb-item active">3. 数学原理</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/06_Localization/03_math.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="localization-math">
+<span id="id1"></span><h1>3. 数学原理<a class="headerlink" href="#localization-math" title="Link to this heading"></a></h1>
+<blockquote>
+<div><p>完整算法对比与工程背景见 <a class="reference internal" href="09_survey.html"><span class="std std-doc">09_survey.md</span></a>；Atlas 实现细节见 <a class="reference internal" href="06_atlas.html"><span class="std std-doc">06_atlas.md</span></a>、<a class="reference internal" href="05_architecture.html"><span class="std std-doc">05_architecture.md</span></a>。</p>
+</div></blockquote>
+<section id="id2">
+<h2>3.1 问题形式化<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>机器人在世界坐标系 <span class="math notranslate nohighlight">\(\mathcal{W}\)</span> 中的位姿为 <span class="math notranslate nohighlight">\(T_{wb} \in SE(3)\)</span>（或 2D 情况下 <span class="math notranslate nohighlight">\(T_{wb} \in SE(2)\)</span>）。定位即估计：</p>
+<div class="math notranslate nohighlight">
+\[
+\hat{T}_{wb}(t) = \arg\max_{T} \; p(T \mid z_{1:t}, u_{1:t})
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(z_t\)</span> 为传感器观测（图像特征、激光扫描等），<span class="math notranslate nohighlight">\(u_t\)</span> 为控制/里程计输入。</p>
+<p><strong>Atlas（视觉 SLAM）</strong> 同时维护：</p>
+<ul class="simple">
+<li><p>相机位姿序列 <span class="math notranslate nohighlight">\(\{T_{cw}^{(i)}\}\)</span>（关键帧）</p></li>
+<li><p>稀疏 3D 路标集 <span class="math notranslate nohighlight">\(\mathcal{L} = \{\mathbf{X}_j \in \mathbb{R}^3\}\)</span></p></li>
+<li><p>共视图 <span class="math notranslate nohighlight">\(\mathcal{G} = (\mathcal{K}, \mathcal{E})\)</span>（关键帧为节点，共视边为边）</p></li>
+</ul>
+<p><strong>AMCL（粒子滤波）</strong> 用粒子集 <span class="math notranslate nohighlight">\(\{(\mathbf{x}^{(m)}, w^{(m)})\}_{m=1}^M\)</span> 近似后验，详见 <a class="reference internal" href="#amcl">§3.10</a>。</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>3.2 相机投影模型<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>3.2.1 针孔模型<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>3D 点 <span class="math notranslate nohighlight">\(\mathbf{P}_c = (X, Y, Z)^\top\)</span>（相机系）投影到像素 <span class="math notranslate nohighlight">\((u, v)\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
+= \frac{1}{Z}
+\begin{bmatrix} f_x &amp; 0 &amp; c_x \\ 0 &amp; f_y &amp; c_y \\ 0 &amp; 0 &amp; 1 \end{bmatrix}
+\begin{bmatrix} X \\ Y \\ Z \end{bmatrix}
+= \frac{1}{Z} \mathbf{K} \mathbf{P}_c
+\end{split}\]</div>
+<p>内参矩阵（<code class="docutils literal notranslate"><span class="pre">camera::perspective</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathbf{K} =
+\begin{bmatrix} f_x &amp; 0 &amp; c_x \\ 0 &amp; f_y &amp; c_y \\ 0 &amp; 0 &amp; 1 \end{bmatrix}
+\end{split}\]</div>
+</section>
+<section id="brown-conrady">
+<h3>3.2.2 畸变模型（Brown-Conrady）<a class="headerlink" href="#brown-conrady" title="Link to this heading"></a></h3>
+<p>归一化平面坐标 <span class="math notranslate nohighlight">\((x, y) = (X/Z, Y/Z)\)</span>，径向 + 切向畸变：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{aligned}
+r^2 &amp;= x^2 + y^2 \\
+x_d &amp;= x(1 + k_1 r^2 + k_2 r^4 + k_3 r^6) + 2 p_1 xy + p_2(r^2 + 2x^2) \\
+y_d &amp;= y(1 + k_1 r^2 + k_2 r^4 + k_3 r^6) + p_1(r^2 + 2y^2) + 2 p_2 xy
+\end{aligned}
+\end{split}\]</div>
+<p>像素坐标：<span class="math notranslate nohighlight">\(u = f_x x_d + c_x\)</span>，<span class="math notranslate nohighlight">\(v = f_y y_d + c_y\)</span>。</p>
+</section>
+<section id="bearing-vector-atlas">
+<h3>3.2.3 Bearing Vector（Atlas 内部表示）<a class="headerlink" href="#bearing-vector-atlas" title="Link to this heading"></a></h3>
+<p>Atlas 将特征点转为<strong>单位 bearing vector</strong> <span class="math notranslate nohighlight">\(\mathbf{b} \in S^2\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{b} = \frac{\mathbf{K}^{-1} \tilde{\mathbf{p}}}{\|\mathbf{K}^{-1} \tilde{\mathbf{p}}\|}, \quad \tilde{\mathbf{p}} = (u, v, 1)^\top
+\]</div>
+<p>重投影误差在 bearing 空间计算，对尺度变化更鲁棒。</p>
+</section>
+<section id="id5">
+<h3>3.2.4 世界坐标变换<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>路标 <span class="math notranslate nohighlight">\(\mathbf{X}_w\)</span> 在相机系下：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathbf{P}_c = \mathbf{R}_{cw} \mathbf{X}_w + \mathbf{t}_{cw}
+= \mathbf{T}_{cw} \begin{bmatrix} \mathbf{X}_w \\ 1 \end{bmatrix}
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\mathbf{T}_{cw} = \begin{bmatrix} \mathbf{R}_{cw} &amp; \mathbf{t}_{cw} \\ \mathbf{0}^\top &amp; 1 \end{bmatrix}\)</span> 为 Atlas 存储的 <code class="docutils literal notranslate"><span class="pre">pose_cw</span></code>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="orb">
+<h2>3.3 ORB 特征与金字塔<a class="headerlink" href="#orb" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>3.3.1 图像金字塔<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>尺度因子 <span class="math notranslate nohighlight">\(s = 1.2\)</span>（<code class="docutils literal notranslate"><span class="pre">scale_factor_</span></code>），第 <span class="math notranslate nohighlight">\(\ell\)</span> 层尺度：</p>
+<div class="math notranslate nohighlight">
+\[
+\sigma_\ell = s^\ell, \quad \ell = 0, 1, \ldots, L-1
+\]</div>
+<p>第 <span class="math notranslate nohighlight">\(\ell\)</span> 层图像尺寸约为原图的 <span class="math notranslate nohighlight">\(s^{-\ell}\)</span>。<code class="docutils literal notranslate"><span class="pre">orb_params</span></code> 预计算：</p>
+<div class="math notranslate nohighlight">
+\[
+\sigma[\ell] = s^\ell, \quad \sigma^{-1}[\ell] = s^{-\ell}
+\]</div>
+<p>对应实现中的 <code class="docutils literal notranslate"><span class="pre">scale_factors</span></code>、<code class="docutils literal notranslate"><span class="pre">inv_scale_factors</span></code> 数组。</p>
+</section>
+<section id="fast-brief">
+<h3>3.3.2 FAST 角点 + BRIEF 描述子<a class="headerlink" href="#fast-brief" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>FAST-9</strong> 检测角点，阈值 <code class="docutils literal notranslate"><span class="pre">ini_fast_threshold</span></code>（初始化）/ <code class="docutils literal notranslate"><span class="pre">min_fast_threshold</span></code>（跟踪）</p></li>
+<li><p><strong>Orientation</strong>：强度质心法计算主方向 <span class="math notranslate nohighlight">\(\theta\)</span></p></li>
+<li><p><strong>rBRIEF</strong>：旋转 BRIEF 描述子，256 bit 二进制向量 <span class="math notranslate nohighlight">\(\mathbf{d} \in \{0,1\}^{256}\)</span></p></li>
+</ol>
+</section>
+<section id="hamming">
+<h3>3.3.3 Hamming 距离<a class="headerlink" href="#hamming" title="Link to this heading"></a></h3>
+<p>两描述子 <span class="math notranslate nohighlight">\(\mathbf{d}_1, \mathbf{d}_2\)</span> 的匹配代价：</p>
+<div class="math notranslate nohighlight">
+\[
+d_H(\mathbf{d}_1, \mathbf{d}_2) = \operatorname{popcount}(\mathbf{d}_1 \oplus \mathbf{d}_2)
+\]</div>
+<p>ORB 匹配采用 <strong>ratio test</strong>（Lowe）：</p>
+<div class="math notranslate nohighlight">
+\[
+\frac{d_H(\mathbf{d}_q, \mathbf{d}_n)}{d_H(\mathbf{d}_q, \mathbf{d}_b)} &lt; \rho, \quad \rho \approx 0.8
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\mathbf{d}_n\)</span> 为最近邻，<span class="math notranslate nohighlight">\(\mathbf{d}_b\)</span> 为次近邻。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>3.4 两视图几何<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>3.2.1 对极约束与本质矩阵<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p>两帧 bearing <span class="math notranslate nohighlight">\(\mathbf{b}_1, \mathbf{b}_2\)</span> 对应同一 3D 点，满足：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{b}_2^\top \mathbf{E}_{21} \mathbf{b}_1 = 0
+\]</div>
+<p>本质矩阵 <span class="math notranslate nohighlight">\(\mathbf{E}_{21} = [\mathbf{t}_{21}]_\times \mathbf{R}_{21}\)</span>，其中 <span class="math notranslate nohighlight">\([\mathbf{v}]_\times\)</span> 为反对称矩阵：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+[\mathbf{v}]_\times =
+\begin{bmatrix} 0 &amp; -v_z &amp; v_y \\ v_z &amp; 0 &amp; -v_x \\ -v_y &amp; v_x &amp; 0 \end{bmatrix}
+\end{split}\]</div>
+<p><strong>5 点法</strong>（<code class="docutils literal notranslate"><span class="pre">essential_5pt</span></code>）：5 对匹配 → 最多 10 个 <span class="math notranslate nohighlight">\(\mathbf{E}\)</span> 候选，RANSAC 选最优。</p>
+<p><strong>8 点法</strong>（<code class="docutils literal notranslate"><span class="pre">compute_E_21_nonminimal</span></code>）：SVD 分解求解，RANSAC 后精化。</p>
+</section>
+<section id="id9">
+<h3>3.4.2 单应矩阵（平面场景）<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<p>共面场景用单应 <span class="math notranslate nohighlight">\(\mathbf{H}_{21}\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{b}_2 \sim \mathbf{H}_{21} \mathbf{b}_1
+\]</div>
+<p>初始化时同时估计 <span class="math notranslate nohighlight">\(\mathbf{E}\)</span> 与 <span class="math notranslate nohighlight">\(\mathbf{H}\)</span>，选内点更多、视差更大者（<code class="docutils literal notranslate"><span class="pre">initialize::perspective</span></code>）。</p>
+</section>
+<section id="mathbf-e-r-t">
+<h3>3.4.3 从 <span class="math notranslate nohighlight">\(\mathbf{E}\)</span> 恢复 <span class="math notranslate nohighlight">\(R, t\)</span><a class="headerlink" href="#mathbf-e-r-t" title="Link to this heading"></a></h3>
+<p>SVD：<span class="math notranslate nohighlight">\(\mathbf{E} = \mathbf{U} \mathbf{\Sigma} \mathbf{V}^\top\)</span>，得到 4 组 <span class="math notranslate nohighlight">\((\mathbf{R}, \mathbf{t})\)</span> 候选，通过 <strong>cheirality check</strong>（3D 点在两相机前方）确定唯一解。</p>
+</section>
+<section id="id10">
+<h3>3.4.4 三角化<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p>两帧位姿 <span class="math notranslate nohighlight">\(\mathbf{T}_{c1w}, \mathbf{T}_{c2w}\)</span>，匹配 bearing <span class="math notranslate nohighlight">\(\mathbf{b}_1, \mathbf{b}_2\)</span>，线性三角化（DLT）：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathbf{A} \mathbf{X}_w = \mathbf{0}, \quad
+\mathbf{A} =
+\begin{bmatrix}
+\mathbf{b}_1^\top \mathbf{P}_1 \\
+\mathbf{b}_2^\top \mathbf{P}_2
+\end{bmatrix}
+\end{split}\]</div>
+<p><span class="math notranslate nohighlight">\(\mathbf{P}_i = \mathbf{K}_i [\mathbf{R}_{ciw} \mid \mathbf{t}_{ciw}]\)</span> 为投影矩阵。SVD 取 <span class="math notranslate nohighlight">\(\mathbf{A}\)</span> 最小奇异值对应向量，归一化得 <span class="math notranslate nohighlight">\(\mathbf{X}_w\)</span>。</p>
+<p><strong>深度比检验</strong>（<code class="docutils literal notranslate"><span class="pre">mapping_module::create_new_landmarks</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+\frac{\|\mathbf{t}_1 - \mathbf{X}_w\|}{\|\mathbf{t}_2 - \mathbf{X}_w\|} \in [\rho_{\min}, \rho_{\max}]
+\]</div>
+<p>基线距离阈值：</p>
+<div class="math notranslate nohighlight">
+\[
+\|\mathbf{t}_1 - \mathbf{t}_2\| &gt; \max\left\{ \tau_b, \; \eta \cdot d_{\mathrm{med}} \right\}
+\]</div>
+<p>默认 <span class="math notranslate nohighlight">\(\eta = 0.02\)</span>（<code class="docutils literal notranslate"><span class="pre">baseline_dist_thr_ratio_</span></code>）。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="pnp">
+<h2>3.5 PnP 位姿估计<a class="headerlink" href="#pnp" title="Link to this heading"></a></h2>
+<p>已知 3D–2D 对应 <span class="math notranslate nohighlight">\(\{(\mathbf{X}_w^{(j)}, \mathbf{b}^{(j)})\}\)</span>，求 <span class="math notranslate nohighlight">\(\mathbf{T}_{cw}\)</span>。</p>
+<section id="epnp-ransac">
+<h3>3.5.1 EPnP + RANSAC<a class="headerlink" href="#epnp-ransac" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">pnp_solver::find_via_ransac</span></code> 流程：</p>
+<ol class="arabic simple">
+<li><p>随机采样最小集（4 点）</p></li>
+<li><p>EPnP 求解候选位姿</p></li>
+<li><p>重投影检验内点，Huber 加权代价</p></li>
+<li><p>迭代至收敛，Gauss-Newton 精化（<code class="docutils literal notranslate"><span class="pre">gauss_newton_num_iter</span> <span class="pre">=</span> <span class="pre">10</span></code>）</p></li>
+</ol>
+</section>
+<section id="bearing">
+<h3>3.5.2 重投影误差（bearing 空间）<a class="headerlink" href="#bearing" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+e_j = \arccos\left( \mathbf{b}_j^\top \hat{\mathbf{b}}_j \right)
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\hat{\mathbf{b}}_j\)</span> 为将 <span class="math notranslate nohighlight">\(\mathbf{X}_w^{(j)}\)</span> 用当前 <span class="math notranslate nohighlight">\(\mathbf{T}_{cw}\)</span> 投影后的 bearing。内点判定：<span class="math notranslate nohighlight">\(e_j &lt; \tau_{\text{rad}}\)</span>（默认 0.2°）。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="g2o">
+<h2>3.6 位姿图优化（g2o）<a class="headerlink" href="#g2o" title="Link to this heading"></a></h2>
+<p>Atlas 后端统一使用 <strong>g2o</strong>，优化目标为 <strong>非线性最小二乘</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{T}^*, \mathbf{X}^* = \arg\min_{\mathbf{T}, \mathbf{X}} \sum_k \rho\left( \| \mathbf{r}_k(\mathbf{T}, \mathbf{X}) \|_{\mathbf{\Omega}_k}^2 \right)
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\rho\)</span> 为鲁棒核（Huber / Tukey），<span class="math notranslate nohighlight">\(\mathbf{\Omega}_k\)</span> 为信息矩阵。</p>
+<section id="se3">
+<h3>3.6.1 重投影边（SE3）<a class="headerlink" href="#se3" title="Link to this heading"></a></h3>
+<p>对观测 <span class="math notranslate nohighlight">\((\mathbf{b}_{obs}, \mathbf{X}_w, \mathbf{T}_{cw})\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{r}_{\text{reproj}} = \mathbf{b}_{obs} - \pi(\mathbf{T}_{cw}, \mathbf{X}_w)
+\]</div>
+<p>信息矩阵与特征金字塔层相关：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{\Omega} = \frac{1}{\sigma_\ell^2} \mathbf{I}_2, \quad \sigma_\ell = s^\ell
+\]</div>
+</section>
+<section id="tracking">
+<h3>3.6.2 位姿优化（Tracking 每帧）<a class="headerlink" href="#tracking" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">pose_optimizer::optimize</span></code> 仅优化当前帧 <span class="math notranslate nohighlight">\(\mathbf{T}_{cw}\)</span>，路标固定：</p>
+<div class="math notranslate nohighlight">
+\[
+\min_{\mathbf{T}_{cw}} \sum_{j \in \mathcal{O}} \rho\left( \|\mathbf{r}_j\|^2 \right)
+\]</div>
+<p>Levenberg-Marquardt 迭代，外点剔除后重优化。</p>
+</section>
+<section id="bundle-adjustment-lba">
+<h3>3.6.3 局部 Bundle Adjustment（LBA）<a class="headerlink" href="#bundle-adjustment-lba" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">local_bundle_adjuster::optimize</span></code> 优化局部窗口 <span class="math notranslate nohighlight">\(\mathcal{W}\)</span> 内关键帧位姿与路标：</p>
+<div class="math notranslate nohighlight">
+\[
+\min_{\{\mathbf{T}_i\}, \{\mathbf{X}_j\}} \sum_{(i,j) \in \mathcal{E}} \rho\left( \|\mathbf{r}_{ij}\|_{\mathbf{\Omega}_{ij}}^2 \right)
+\]</div>
+<p>局部窗口：当前关键帧 + 共视关键帧（默认最多 60 帧 <code class="docutils literal notranslate"><span class="pre">max_num_local_keyfrms_</span></code>）。</p>
+</section>
+<section id="bundle-adjustment-loop-ba">
+<h3>3.6.4 全局 Bundle Adjustment（Loop BA）<a class="headerlink" href="#bundle-adjustment-loop-ba" title="Link to this heading"></a></h3>
+<p>回环闭合后在独立线程执行 GBA，优化全部（或子集）关键帧与路标，消除累积漂移。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="sim3">
+<h2>3.7 回环检测与 Sim3 校正<a class="headerlink" href="#sim3" title="Link to this heading"></a></h2>
+<section id="bag-of-words-bow">
+<h3>3.7.1 Bag-of-Words（BoW）<a class="headerlink" href="#bag-of-words-bow" title="Link to this heading"></a></h3>
+<p>ORB 描述子量化到视觉词袋，关键帧 <span class="math notranslate nohighlight">\(i\)</span> 的 BoW 向量：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{v}_i = (w_1, w_2, \ldots, w_V)^\top, \quad w_k = \mathrm{tfidf}(k)
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\mathrm{tfidf}(k)\)</span> 为词 <span class="math notranslate nohighlight">\(k\)</span> 的 TF-IDF 权重。
+<code class="docutils literal notranslate"><span class="pre">loop_detector::detect_loop_candidates</span></code> 用 BoW 数据库检索相似关键帧，再几何验证。</p>
+</section>
+<section id="id11">
+<h3>3.7.2 Sim3 变换（单目回环）<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<p>单目 SLAM 存在尺度漂移，回环估计 <strong>Sim(3)</strong>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathbf{S} =
+\begin{bmatrix} s \mathbf{R} &amp; \mathbf{t} \\ \mathbf{0}^\top &amp; 1 \end{bmatrix}, \quad s &gt; 0
+\end{split}\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">transform_optimizer</span></code> 优化 Sim3 使当前关键帧与候选关键帧的 3D–3D 匹配对齐。</p>
+</section>
+<section id="id12">
+<h3>3.7.3 回环校正<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p>检测到回环后（<code class="docutils literal notranslate"><span class="pre">global_optimization_module::correct_loop</span></code>）：</p>
+<ol class="arabic simple">
+<li><p>计算校正前/后 Sim3：<span class="math notranslate nohighlight">\(\mathbf{S}_{nw}^{\text{before}}, \mathbf{S}_{nw}^{\text{after}}\)</span></p></li>
+<li><p>传播校正到共视关键帧与路标</p></li>
+<li><p>融合重复路标，更新共视图</p></li>
+<li><p>异步启动 Loop BA</p></li>
+</ol>
+<p>共视关键帧 <span class="math notranslate nohighlight">\(n\)</span> 的路标校正：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{X}_w' = s \mathbf{R}_{\Delta} \mathbf{X}_w + \mathbf{t}_{\Delta}
+\]</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>3.8 运动模型与跟踪状态机<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>3.8.1 恒速运动模型<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p>相邻帧位姿增量（<code class="docutils literal notranslate"><span class="pre">twist_</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{T}_{c_{k}w} = \Delta \mathbf{T} \cdot \mathbf{T}_{c_{k-1}w}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\Delta \mathbf{T} = \mathbf{T}_{c_{k-1}w} \mathbf{T}_{c_{k-2}w}^{-1}\)</span>（<code class="docutils literal notranslate"><span class="pre">update_motion_model</span></code>）。</p>
+</section>
+<section id="id15">
+<h3>3.8.2 跟踪状态<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>状态</p></th>
+<th class="head"><p>条件</p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Initializing</span></code></p></td>
+<td><p>地图未建立</p></td>
+<td><p>两帧初始化 / 5 点法</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Tracking</span></code></p></td>
+<td><p>足够内点</p></td>
+<td><p>正常跟踪 + 局部地图优化</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Lost</span></code></p></td>
+<td><p>内点不足</p></td>
+<td><p>BoW 重定位 / 用户 <code class="docutils literal notranslate"><span class="pre">relocalize_by_pose</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>丢失判定：跟踪路标数 <span class="math notranslate nohighlight">\(N_{\text{track}} &lt; N_{\min}\)</span> 且重定位失败。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="rgb-d">
+<h2>3.9 立体与 RGB-D 深度<a class="headerlink" href="#rgb-d" title="Link to this heading"></a></h2>
+<section id="id16">
+<h3>3.9.1 立体视差<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<p>校正后对应点 <span class="math notranslate nohighlight">\((u_L, v)\)</span> 与 <span class="math notranslate nohighlight">\((u_R, v)\)</span>，视差 <span class="math notranslate nohighlight">\(d = u_L - u_R\)</span>，深度：</p>
+<div class="math notranslate nohighlight">
+\[
+Z = \frac{f_x \cdot b}{d}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(b\)</span> 为基线，<code class="docutils literal notranslate"><span class="pre">focal_x_baseline_</span> <span class="pre">=</span> <span class="pre">f_x</span> <span class="pre">\cdot</span> <span class="pre">b</span></code>（EuRoC 配置 <code class="docutils literal notranslate"><span class="pre">47.91</span></code>）。</p>
+</section>
+<section id="id17">
+<h3>3.9.2 RGB-D<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<p>深度图值 <span class="math notranslate nohighlight">\(d_{\text{pix}}\)</span> 转真实深度：</p>
+<div class="math notranslate nohighlight">
+\[
+Z = \frac{d_{\text{pix}}}{f_{\mathrm{dmap}}}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(f_{\mathrm{dmap}}\)</span> 为 <code class="docutils literal notranslate"><span class="pre">depthmap_factor_</span></code>。</p>
+<p>TUM RGB-D 典型 <code class="docutils literal notranslate"><span class="pre">depthmap_factor_</span> <span class="pre">=</span> <span class="pre">5000</span></code>（mm → m）。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="amcl">
+<h2>3.10 AMCL 粒子滤波<a class="headerlink" href="#amcl" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p>AMCL 配置见 <code class="docutils literal notranslate"><span class="pre">config/localization/amcl/amcl.lua</span></code>，算法实现待集成。以下为 nav2_amcl 对齐的数学模型。</p>
+</div></blockquote>
+<section id="id18">
+<h3>3.10.1 贝叶斯滤波<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+p(\mathbf{x}_t \mid z_{1:t}, u_{1:t}) \propto p(z_t \mid \mathbf{x}_t) \int p(\mathbf{x}_t \mid u_t, \mathbf{x}_{t-1}) p(\mathbf{x}_{t-1} \mid z_{1:t-1}, u_{1:t-1}) \, d\mathbf{x}_{t-1}
+\]</div>
+</section>
+<section id="id19">
+<h3>3.10.2 运动模型（差速驱动）<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<p>里程计增量 <span class="math notranslate nohighlight">\((\delta_{\text{rot1}}, \delta_{\text{trans}}, \delta_{\text{rot2}})\)</span>，噪声参数 <span class="math notranslate nohighlight">\(\alpha_1 \ldots \alpha_4\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{aligned}
+\delta_{\text{rot1}}' &amp;\sim \mathcal{N}(\delta_{\text{rot1}}, \alpha_1 |\delta_{\text{rot1}}| + \alpha_2 \|\delta_{\text{trans}}\|) \\
+\delta_{\text{trans}}' &amp;\sim \mathcal{N}(\delta_{\text{trans}}, \alpha_3 \|\delta_{\text{trans}}\| + \alpha_4(|\delta_{\text{rot1}}| + |\delta_{\text{rot2}}|)) \\
+\delta_{\text{rot2}}' &amp;\sim \mathcal{N}(\delta_{\text{rot2}}, \alpha_1 |\delta_{\text{rot2}}| + \alpha_2 \|\delta_{\text{trans}}\|)
+\end{aligned}
+\end{split}\]</div>
+</section>
+<section id="likelihood-field">
+<h3>3.10.3 激光观测模型（Likelihood Field）<a class="headerlink" href="#likelihood-field" title="Link to this heading"></a></h3>
+<p>预计算距离场 <span class="math notranslate nohighlight">\(\mathrm{dist}(x, y)\)</span>（到最近占据栅格），光束端点 <span class="math notranslate nohighlight">\((x_e, y_e)\)</span> 似然：</p>
+<div class="math notranslate nohighlight">
+\[
+p(z_t \mid \mathbf{x}_t) \propto \sum_i \left( w_{\text{hit}} \mathcal{N}(d_i; 0, \sigma_{\text{hit}}^2) + w_{\text{rand}} \frac{1}{r_{\max}} \right)
+\]</div>
+<p>默认 <code class="docutils literal notranslate"><span class="pre">z_hit=0.95</span></code>, <code class="docutils literal notranslate"><span class="pre">z_rand=0.05</span></code>, <code class="docutils literal notranslate"><span class="pre">sigma_hit=0.2</span></code>。</p>
+</section>
+<section id="id20">
+<h3>3.10.4 粒子更新<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>预测</strong>：按运动模型采样 <span class="math notranslate nohighlight">\(M\)</span> 个粒子</p></li>
+<li><p><strong>更新</strong>：激光似然加权 <span class="math notranslate nohighlight">\(w^{(m)} \leftarrow w^{(m)} \cdot p(z_t \mid \mathbf{x}^{(m)})\)</span></p></li>
+<li><p><strong>重采样</strong>：<span class="math notranslate nohighlight">\(N_{\text{eff}} = 1 / \sum (w^{(m)})^2 &lt; N_{\text{th}}\)</span> 时系统重采样</p></li>
+<li><p><strong>输出</strong>：加权均值或 MAP 粒子作为 <span class="math notranslate nohighlight">\(\hat{\mathbf{x}}_t\)</span>，广播 <code class="docutils literal notranslate"><span class="pre">map→odom</span></code> TF</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h2>3.11 算法流水线总览<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{Image}
+\xrightarrow{\mathrm{ORB}}
+\mathrm{Features}
+\xrightarrow{\mathrm{Matching}}
+\mathrm{Match}_{2\mathrm{D}/3\mathrm{D}}
+\xrightarrow{\mathrm{PnP/BA}}
+\hat{\mathbf{T}}_{cw}
+\xrightarrow{\mathrm{Keyframe}}
+\mathrm{LBA}
+\xrightarrow{\mathrm{BoW}}
+\mathrm{Loop\ Closure}
+\xrightarrow{\mathrm{Sim3+GBA}}
+\mathrm{Globally\ Consistent\ Map}
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>阶段</p></th>
+<th class="head"><p>核心公式</p></th>
+<th class="head"><p>Atlas 模块</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>特征</p></td>
+<td><p>FAST + rBRIEF</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">feature/orb_extractor</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>初始化</p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathbf{E}, \mathbf{H}\)</span> + 三角化</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">initialize/</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>跟踪</p></td>
+<td><p>PnP + 位姿优化</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tracking_module</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>建图</p></td>
+<td><p>三角化 + LBA</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">mapping_module</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>回环</p></td>
+<td><p>BoW + Sim3 + GBA</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">global_optimization_module</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02_quickstart.html" class="btn btn-neutral float-left" title="2. 快速开始" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="04_usage.html" class="btn btn-neutral float-right" title="4. 使用指南" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,407 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4. 使用指南 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="5. Commsgs 模块架构设计" href="05_architecture.html" />
+    <link rel="prev" title="3. 消息模型与 Schema 设计" href="03_schema.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">14 Commsgs</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html">3 消息模型与 Schema</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">4 使用指南</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">4.1 包含头文件</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#header">4.2 构造 Header</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">4.3 构造几何消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">4.4 构造规划消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">4.5 构造地图消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">4.6 扩展自定义消息</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">4.7 模块集成模式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">4.8 故障排查</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">4.9 测试转换往返</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html">6 核心消息类型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html">7 传感器与地图消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html">8 导航与规划消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 消息体系综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Commsgs 通信消息</a></li>
+      <li class="breadcrumb-item active">4. 使用指南</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/14_Commsgs/04_usage.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="commsgs-usage">
+<span id="id1"></span><h1>4. 使用指南<a class="headerlink" href="#commsgs-usage" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>4.1 包含头文件<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>按消息包粒度包含，避免全量引入：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/geometry_msgs.hpp&quot;</span><span class="c1">    // 位姿、速度</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/planning_msgs.hpp&quot;</span><span class="c1">    // Path、Odometry</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/map_msgs.hpp&quot;</span><span class="c1">         // OccupancyGrid、Costmap</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/sensor_msgs.hpp&quot;</span><span class="c1">      // Imu、LaserScan、PointCloud2</span>
+</pre></div>
+</div>
+<p>Proto 生成头文件仅在 Autolink 服务/Action 边界需要：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/proto/nav_msgs.pb.h&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/proto/error_code.pb.h&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="header">
+<h2>4.2 构造 Header<a class="headerlink" href="#header" title="Link to this heading"></a></h2>
+<p>所有 Stamped 消息的基础：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">Header</span><span class="w"> </span><span class="n">header</span><span class="p">;</span>
+<span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">builtin_interfaces</span><span class="o">::</span><span class="n">Time</span><span class="o">::</span><span class="n">Now</span><span class="p">();</span>
+<span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;base_link&quot;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p><strong>frame_id 约定</strong>（与 ROS REP 一致）：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>frame_id</p></th>
+<th class="head"><p>典型场景</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;map&quot;</span></code></p></td>
+<td><p>全局地图坐标系</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;odom&quot;</span></code></p></td>
+<td><p>里程计坐标系</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;base_link&quot;</span></code></p></td>
+<td><p>机器人本体</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;laser&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;camera_optical_frame&quot;</span></code></p></td>
+<td><p>传感器外参</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>4.3 构造几何消息<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="pose-posestamped">
+<h3>Pose / PoseStamped<a class="headerlink" href="#pose-posestamped" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">Pose</span><span class="w"> </span><span class="n">pose</span><span class="p">;</span>
+<span class="n">pose</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+<span class="n">pose</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span>
+<span class="n">pose</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="n">pose</span><span class="p">.</span><span class="n">orientation</span><span class="p">.</span><span class="n">w</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span><span class="w">  </span><span class="c1">// 无旋转时 w=1</span>
+
+<span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">PoseStamped</span><span class="w"> </span><span class="n">pose_stamped</span><span class="p">;</span>
+<span class="n">pose_stamped</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">builtin_interfaces</span><span class="o">::</span><span class="n">Time</span><span class="o">::</span><span class="n">Now</span><span class="p">();</span>
+<span class="n">pose_stamped</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;map&quot;</span><span class="p">;</span>
+<span class="n">pose_stamped</span><span class="p">.</span><span class="n">pose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pose</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+<section id="twist">
+<h3>Twist（速度命令）<a class="headerlink" href="#twist" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">Twist</span><span class="w"> </span><span class="n">cmd_vel</span><span class="p">;</span>
+<span class="n">cmd_vel</span><span class="p">.</span><span class="n">linear</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.5</span><span class="p">;</span><span class="w">   </span><span class="c1">// 前进 m/s</span>
+<span class="n">cmd_vel</span><span class="p">.</span><span class="n">angular</span><span class="p">.</span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.2</span><span class="p">;</span><span class="w">  </span><span class="c1">// 旋转 rad/s</span>
+</pre></div>
+</div>
+</section>
+<section id="transformstamped-tf">
+<h3>TransformStamped（TF）<a class="headerlink" href="#transformstamped-tf" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">TransformStamped</span><span class="w"> </span><span class="n">tf</span><span class="p">;</span>
+<span class="n">tf</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">builtin_interfaces</span><span class="o">::</span><span class="n">Time</span><span class="o">::</span><span class="n">Now</span><span class="p">();</span>
+<span class="n">tf</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;map&quot;</span><span class="p">;</span><span class="w">        </span><span class="c1">// 父坐标系</span>
+<span class="n">tf</span><span class="p">.</span><span class="n">child_frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;base_link&quot;</span><span class="p">;</span><span class="w">   </span><span class="c1">// 子坐标系</span>
+<span class="n">tf</span><span class="p">.</span><span class="n">transform</span><span class="p">.</span><span class="n">translation</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+<span class="n">tf</span><span class="p">.</span><span class="n">transform</span><span class="p">.</span><span class="n">rotation</span><span class="p">.</span><span class="n">w</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id4">
+<h2>4.4 构造规划消息<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">planning_msgs</span><span class="o">::</span><span class="n">Path</span><span class="w"> </span><span class="n">path</span><span class="p">;</span>
+<span class="n">path</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">builtin_interfaces</span><span class="o">::</span><span class="n">Time</span><span class="o">::</span><span class="n">Now</span><span class="p">();</span>
+<span class="n">path</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;map&quot;</span><span class="p">;</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">waypoint</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">waypoints</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">PoseStamped</span><span class="w"> </span><span class="n">ps</span><span class="p">;</span>
+<span class="w">    </span><span class="n">ps</span><span class="p">.</span><span class="n">header</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">path</span><span class="p">.</span><span class="n">header</span><span class="p">;</span>
+<span class="w">    </span><span class="n">ps</span><span class="p">.</span><span class="n">pose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">waypoint</span><span class="p">;</span>
+<span class="w">    </span><span class="n">path</span><span class="p">.</span><span class="n">poses</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">ps</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">planning_msgs</span><span class="o">::</span><span class="n">Odometry</span><span class="w"> </span><span class="n">odom</span><span class="p">;</span>
+<span class="n">odom</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">builtin_interfaces</span><span class="o">::</span><span class="n">Time</span><span class="o">::</span><span class="n">Now</span><span class="p">();</span>
+<span class="n">odom</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;odom&quot;</span><span class="p">;</span>
+<span class="n">odom</span><span class="p">.</span><span class="n">child_frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;base_link&quot;</span><span class="p">;</span>
+<span class="n">odom</span><span class="p">.</span><span class="n">pose</span><span class="p">.</span><span class="n">pose</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.1</span><span class="p">;</span>
+<span class="n">odom</span><span class="p">.</span><span class="n">twist</span><span class="p">.</span><span class="n">twist</span><span class="p">.</span><span class="n">linear</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.5</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h2>4.5 构造地图消息<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">commsgs</span><span class="o">::</span><span class="n">map_msgs</span><span class="o">::</span><span class="n">OccupancyGrid</span><span class="w"> </span><span class="n">grid</span><span class="p">;</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;map&quot;</span><span class="p">;</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">info</span><span class="p">.</span><span class="n">resolution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">;</span><span class="w">   </span><span class="c1">// m/cell</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">info</span><span class="p">.</span><span class="n">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">info</span><span class="p">.</span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">info</span><span class="p">.</span><span class="n">origin</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">-2.5</span><span class="p">;</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">info</span><span class="p">.</span><span class="n">origin</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">-2.5</span><span class="p">;</span>
+<span class="n">grid</span><span class="p">.</span><span class="n">data</span><span class="p">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">100</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span><span class="w">  </span><span class="c1">// 0=自由, 100=占据, -1=未知</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h2>4.6 扩展自定义消息<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<p>新增消息需同时维护三层：</p>
+<ol class="arabic simple">
+<li><p><strong>Proto 定义</strong> — <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/proto/my_msgs.proto</span></code></p></li>
+<li><p><strong>C++ struct</strong> — <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/my_msgs.hpp</span></code></p></li>
+<li><p><strong>转换函数</strong> — <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/my_msgs.cpp</span></code> 中实现 <code class="docutils literal notranslate"><span class="pre">ToProto</span></code>/<code class="docutils literal notranslate"><span class="pre">FromProto</span></code></p></li>
+</ol>
+<div class="highlight-protobuf notranslate"><div class="highlight"><pre><span></span><span class="c1">// my_msgs.proto</span>
+<span class="k">syntax</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;proto3&quot;</span><span class="p">;</span>
+<span class="kn">package</span><span class="w"> </span><span class="nn">autonomy</span><span class="o">.</span><span class="n">commsgs.proto.my_msgs</span><span class="p">;</span>
+<span class="k">import</span><span class="w"> </span><span class="s">&quot;autonomy/commsgs/proto/std_msgs.proto&quot;</span><span class="p">;</span>
+
+<span class="kd">message</span><span class="w"> </span><span class="nc">MyData</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">std_msgs.Header</span><span class="w"> </span><span class="na">header</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">  </span><span class="kt">float</span><span class="w"> </span><span class="na">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// my_msgs.hpp</span>
+<span class="k">namespace</span><span class="w"> </span><span class="nn">autonomy</span><span class="o">::</span><span class="nn">commsgs</span><span class="o">::</span><span class="nn">my_msgs</span><span class="w"> </span><span class="p">{</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">MyData</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">AUTONOMY_SMART_PTR_DEFINITIONS</span><span class="p">(</span><span class="n">MyData</span><span class="p">)</span>
+<span class="w">    </span><span class="n">std_msgs</span><span class="o">::</span><span class="n">Header</span><span class="w"> </span><span class="n">header</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">float</span><span class="w"> </span><span class="n">value</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="n">proto</span><span class="o">::</span><span class="n">my_msgs</span><span class="o">::</span><span class="n">MyData</span><span class="w"> </span><span class="nf">ToProto</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">MyData</span><span class="o">&amp;</span><span class="w"> </span><span class="n">data</span><span class="p">);</span>
+<span class="n">MyData</span><span class="w"> </span><span class="nf">FromProto</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">proto</span><span class="o">::</span><span class="n">my_msgs</span><span class="o">::</span><span class="n">MyData</span><span class="o">&amp;</span><span class="w"> </span><span class="n">proto</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>重新编译后 <code class="docutils literal notranslate"><span class="pre">protoc</span></code> 自动生成 <code class="docutils literal notranslate"><span class="pre">my_msgs.pb.h</span></code>。</p>
+</section>
+<section id="id7">
+<h2>4.7 模块集成模式<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>使用类型</p></th>
+<th class="head"><p>转换时机</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>算法内部</p></td>
+<td><p>C++ struct</p></td>
+<td><p>无</p></td>
+</tr>
+<tr class="row-odd"><td><p>Autolink Writer/Reader</p></td>
+<td><p>C++ struct</p></td>
+<td><p>框架内部</p></td>
+</tr>
+<tr class="row-even"><td><p>Autolink Service/Action</p></td>
+<td><p>proto 类型</p></td>
+<td><p>回调入口 <code class="docutils literal notranslate"><span class="pre">FromProto</span></code>，出口 <code class="docutils literal notranslate"><span class="pre">ToProto</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>持久化 / 日志</p></td>
+<td><p>proto 字节流</p></td>
+<td><p>手动 <code class="docutils literal notranslate"><span class="pre">SerializeToString</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>PlannerServer 示例</strong>：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 声明：服务使用 proto 类型</span>
+<span class="k">using</span><span class="w"> </span><span class="n">PathValidRequest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">proto</span><span class="o">::</span><span class="n">nav_msgs</span><span class="o">::</span><span class="n">IsPathValid_Request</span><span class="p">;</span>
+<span class="k">using</span><span class="w"> </span><span class="n">PathValidResponse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">proto</span><span class="o">::</span><span class="n">nav_msgs</span><span class="o">::</span><span class="n">IsPathValid_Response</span><span class="p">;</span>
+
+<span class="c1">// 回调：proto → C++ → 业务逻辑 → proto</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">planning_msgs</span><span class="o">::</span><span class="n">FromProto</span><span class="p">(</span><span class="n">request</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">());</span>
+<span class="n">response</span><span class="o">-&gt;</span><span class="n">set_is_valid</span><span class="p">(</span><span class="n">server</span><span class="o">-&gt;</span><span class="n">IsPathValid</span><span class="p">(</span><span class="n">path</span><span class="p">));</span>
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h2>4.8 故障排查<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>现象</p></th>
+<th class="head"><p>可能原因</p></th>
+<th class="head"><p>处理</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>订阅收不到数据</p></td>
+<td><p>topic 类型不匹配</p></td>
+<td><p>确认 Writer/Reader 模板参数一致</p></td>
+</tr>
+<tr class="row-odd"><td><p>字段全为零</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ToProto</span></code> stub 未实现</p></td>
+<td><p>检查对应 <code class="docutils literal notranslate"><span class="pre">.cpp</span></code> 转换函数</p></td>
+</tr>
+<tr class="row-even"><td><p>TF 变换错误</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">frame_id</span></code> / <code class="docutils literal notranslate"><span class="pre">child_frame_id</span></code> 填反</p></td>
+<td><p>对照 <a class="reference internal" href="03_schema.html#stamped"><span class="std std-ref">§3.3</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>协方差无效</p></td>
+<td><p>矩阵长度不对</p></td>
+<td><p>Pose/Twist 需 36 个元素（6×6）</p></td>
+</tr>
+<tr class="row-even"><td><p>proto 编译失败</p></td>
+<td><p>import 路径错误</p></td>
+<td><p>使用 <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/proto/xxx.proto</span></code> 全路径</p></td>
+</tr>
+<tr class="row-odd"><td><p>PointCloud2 迭代越界</p></td>
+<td><p>未先 <code class="docutils literal notranslate"><span class="pre">resize</span></code></p></td>
+<td><p>先用 <code class="docutils literal notranslate"><span class="pre">PointCloud2Modifier::resize()</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>时间戳比较异常</p></td>
+<td><p>混用不同时钟源</p></td>
+<td><p>统一使用 <code class="docutils literal notranslate"><span class="pre">Time::Now()</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id9">
+<h2>4.9 测试转换往返<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;gtest/gtest.h&gt;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/geometry_msgs.hpp&quot;</span>
+
+<span class="n">TEST</span><span class="p">(</span><span class="n">CommsgsTest</span><span class="p">,</span><span class="w"> </span><span class="n">PoseStampedRoundTrip</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">PoseStamped</span><span class="w"> </span><span class="n">original</span><span class="p">;</span>
+<span class="w">    </span><span class="n">original</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">builtin_interfaces</span><span class="o">::</span><span class="n">Time</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span><span class="w"> </span><span class="mi">500</span><span class="p">);</span>
+<span class="w">    </span><span class="n">original</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">original</span><span class="p">.</span><span class="n">pose</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.14</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">proto</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">ToProto</span><span class="p">(</span><span class="n">original</span><span class="p">);</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">restored</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">FromProto</span><span class="p">(</span><span class="n">proto</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">EXPECT_EQ</span><span class="p">(</span><span class="n">restored</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">frame_id</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;test&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">EXPECT_FLOAT_EQ</span><span class="p">(</span><span class="n">restored</span><span class="p">.</span><span class="n">pose</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="mf">3.14f</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="03_schema.html" class="btn btn-neutral float-left" title="3. 消息模型与 Schema 设计" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="05_architecture.html" class="btn btn-neutral float-right" title="5. Commsgs 模块架构设计" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

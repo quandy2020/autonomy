@@ -1,0 +1,570 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. AMCL 粒子滤波定位 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 定位算法综述（Survey）" href="09_survey.html" />
+    <link rel="prev" title="6. Atlas 视觉 SLAM" href="06_atlas.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">06 Localization</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_atlas.html">6 Atlas 视觉 SLAM</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 AMCL 粒子滤波定位</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">7.1 算法概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">7.2 配置参数详解</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">7.3 预期集成架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">7.4 使用场景</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">7.5 调参建议</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#atlas">7.6 与 Atlas 的关系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">7.7 启用配置（集成后）</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">8 定位算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Localization 定位模块</a></li>
+      <li class="breadcrumb-item active">7. AMCL 粒子滤波定位</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/06_Localization/07_amcl.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="amcl">
+<h1>7. AMCL 粒子滤波定位<a class="headerlink" href="#amcl" title="Link to this heading"></a></h1>
+<p><strong>Adaptive Monte Carlo Localization (AMCL)</strong> 是 ROS 导航栈中最常用的 <strong>2D 激光定位</strong> 算法，Autonomy 在 <code class="docutils literal notranslate"><span class="pre">config/localization/amcl/amcl.lua</span></code> 中预留了与 <strong>nav2_amcl</strong> 对齐的配置项。</p>
+<blockquote>
+<div><p><strong>当前状态</strong>：配置与 Proto 定义已就绪，C++ 实现尚未合入 <code class="docutils literal notranslate"><span class="pre">autonomy/localization</span></code>。本章描述算法原理、配置语义与预期集成方式。数学细节见 <a class="reference internal" href="03_math.html#amcl"><span class="std std-ref">§3.10 AMCL 粒子滤波</span></a>。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id1">
+<h2>7.1 算法概述<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>AMCL 用粒子滤波估计机器人在<strong>已知 2D 占据栅格地图</strong>中的位姿 <span class="math notranslate nohighlight">\((x, y, \theta)\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+p(\mathbf{x}_t \mid z_{1:t}, u_{1:t}) \approx \sum_{m=1}^{M} w_t^{(m)} \delta(\mathbf{x}_t - \mathbf{x}_t^{(m)})
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>步骤</p></th>
+<th class="head"><p>操作</p></th>
+<th class="head"><p>输入</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>预测</p></td>
+<td><p>运动模型传播粒子</p></td>
+<td><p>里程计 <span class="math notranslate nohighlight">\(u_t\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>更新</p></td>
+<td><p>激光似然加权</p></td>
+<td><p>LaserScan <span class="math notranslate nohighlight">\(z_t\)</span> + 占据栅格</p></td>
+</tr>
+<tr class="row-even"><td><p>重采样</p></td>
+<td><p>KLD 自适应粒子数</p></td>
+<td><p><span class="math notranslate nohighlight">\(N_{\text{eff}}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>输出</p></td>
+<td><p>加权位姿 + TF</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map→odom</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>7.2 配置参数详解<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>配置文件：<code class="docutils literal notranslate"><span class="pre">config/localization/amcl/amcl.lua</span></code></p>
+<section id="id3">
+<h3>7.2.1 运动模型<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">alpha1</span></code></p></td>
+<td><p>0.2</p></td>
+<td><p>旋转→旋转噪声系数</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">alpha2</span></code></p></td>
+<td><p>0.2</p></td>
+<td><p>平移→旋转噪声系数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">alpha3</span></code></p></td>
+<td><p>0.2</p></td>
+<td><p>平移→平移噪声系数</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">alpha4</span></code></p></td>
+<td><p>0.2</p></td>
+<td><p>旋转→平移噪声系数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">alpha5</span></code></p></td>
+<td><p>0.2</p></td>
+<td><p>全向机器人平移噪声</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">robot_model_type</span></code></p></td>
+<td><p>2</p></td>
+<td><p>0=差速, 1=全向, 2=nav2 DifferentialMotionModel</p></td>
+</tr>
+</tbody>
+</table>
+<p>差速驱动运动分解（sample_motion_odometry）：</p>
+<div class="math notranslate nohighlight">
+\[
+\delta_{\text{rot1}} = \mathrm{angle}(\delta, q_{\mathrm{last}}), \quad
+\delta_{\text{trans}} = \|\delta\|, \quad
+\delta_{\text{rot2}} = \theta_{\text{new}} - \theta_{\text{old}} - \delta_{\text{rot1}}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(q_{\mathrm{last}}\)</span> 为 <code class="docutils literal notranslate"><span class="pre">last_pose</span></code>。</p>
+</section>
+<section id="id4">
+<h3>7.2.2 粒子滤波<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">min_particles</span></code></p></td>
+<td><p>500</p></td>
+<td><p>最少粒子数</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_particles</span></code></p></td>
+<td><p>2000</p></td>
+<td><p>最多粒子数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pf_err</span></code></p></td>
+<td><p>0.01</p></td>
+<td><p>KLD 采样误差界</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pf_z</span></code></p></td>
+<td><p>0.99</p></td>
+<td><p>KLD 置信度</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">recovery_alpha_fast</span></code></p></td>
+<td><p>0.0</p></td>
+<td><p>快速恢复（ kidnapping）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">recovery_alpha_slow</span></code></p></td>
+<td><p>0.0</p></td>
+<td><p>慢速恢复</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">resample_interval</span></code></p></td>
+<td><p>1</p></td>
+<td><p>重采样间隔（帧）</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>KLD 自适应采样</strong>：根据粒子占据的网格数动态调整 <span class="math notranslate nohighlight">\(M\)</span>，在精度与算力间平衡。</p>
+</section>
+<section id="id5">
+<h3>7.2.3 激光模型<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">laser_model_type</span></code></p></td>
+<td><p>2</p></td>
+<td><p>0=Beam, 1=LikelihoodField, 2=LikelihoodFieldProb</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_beams</span></code></p></td>
+<td><p>60</p></td>
+<td><p>每次更新使用的光束数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">laser_likelihood_max_dist</span></code></p></td>
+<td><p>2.0 m</p></td>
+<td><p>距离场有效范围</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">z_hit</span></code></p></td>
+<td><p>0.95</p></td>
+<td><p>命中权重</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">z_rand</span></code></p></td>
+<td><p>0.05</p></td>
+<td><p>随机测量权重</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">z_max</span></code></p></td>
+<td><p>0.05</p></td>
+<td><p>最大量程权重</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">z_short</span></code></p></td>
+<td><p>0.1</p></td>
+<td><p>短距权重</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">sigma_hit</span></code></p></td>
+<td><p>0.2 m</p></td>
+<td><p>命中高斯标准差</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lambda_short</span></code></p></td>
+<td><p>0.1</p></td>
+<td><p>短距指数衰减</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Likelihood Field Prob</strong> 模型（<code class="docutils literal notranslate"><span class="pre">laser_model_type</span> <span class="pre">=</span> <span class="pre">2</span></code>）在 Likelihood Field 基础上增加 beam skipping，对动态障碍更鲁棒。</p>
+</section>
+<section id="id6">
+<h3>7.2.4 坐标系与话题<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">global_frame_id</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;map&quot;</span></code></p></td>
+<td><p>全局坐标系</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">odom_frame_id</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;odom&quot;</span></code></p></td>
+<td><p>里程计坐标系</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">base_frame_id</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;base_link&quot;</span></code></p></td>
+<td><p>机器人基座</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scan_topic</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;/scan&quot;</span></code></p></td>
+<td><p>激光话题</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">map_topic</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;/map&quot;</span></code></p></td>
+<td><p>静态地图话题</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tf_broadcast</span></code></p></td>
+<td><p>true</p></td>
+<td><p>发布 map→odom</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">transform_tolerance</span></code></p></td>
+<td><p>1.0 s</p></td>
+<td><p>TF 容差</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h3>7.2.5 更新阈值<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">update_min_a</span></code></p></td>
+<td><p>0.2 rad</p></td>
+<td><p>最小角度变化触发更新</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">update_min_d</span></code></p></td>
+<td><p>0.25 m</p></td>
+<td><p>最小平移变化触发更新</p></td>
+</tr>
+</tbody>
+</table>
+<p>避免机器人静止时无效更新，降低 CPU 占用。</p>
+</section>
+<section id="id8">
+<h3>7.2.6 初始位姿<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">set_initial_pose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="nv">initial_pose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nv">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="nv">yaw</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="w"> </span><span class="p">},</span>
+<span class="nv">always_reset_initial_pose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>或通过 RViz「2D Pose Estimate」注入高斯先验粒子群。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>7.3 预期集成架构<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌──────────────┐     ┌─────────────┐     ┌──────────────┐
+│  MapServer   │────►│    AMCL     │◄────│   /scan      │
+│  /map        │     │  (待实现)    │◄────│   /odom      │
+└──────────────┘     └──────┬──────┘     └──────────────┘
+                            │
+                            ▼ TF map→odom
+                     ┌──────────────┐
+                     │  Planning    │
+                     │  Control     │
+                     └──────────────┘
+</pre></div>
+</div>
+<section id="nav2-amcl">
+<h3>7.3.1 与 nav2_amcl 对齐项<a class="headerlink" href="#nav2-amcl" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>能力</p></th>
+<th class="head"><p>nav2_amcl</p></th>
+<th class="head"><p>Autonomy 规划</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>差速/全向运动模型</p></td>
+<td><p>✓</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">robot_model_type</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Likelihood Field Prob</p></td>
+<td><p>✓</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">laser_model_type</span> <span class="pre">=</span> <span class="pre">2</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>KLD 自适应粒子</p></td>
+<td><p>✓</p></td>
+<td><p>min/max_particles</p></td>
+</tr>
+<tr class="row-odd"><td><p>Beam skipping</p></td>
+<td><p>✓</p></td>
+<td><p>do_beamskip</p></td>
+</tr>
+<tr class="row-even"><td><p>初始位姿</p></td>
+<td><p>✓</p></td>
+<td><p>set_initial_pose</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>7.4 使用场景<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>适用性</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>已知 2D 地图室内导航</p></td>
+<td><p>★★★★★</p></td>
+<td><p>标准用法</p></td>
+</tr>
+<tr class="row-odd"><td><p>动态环境</p></td>
+<td><p>★★★☆☆</p></td>
+<td><p>LikelihoodFieldProb + beam skipping</p></td>
+</tr>
+<tr class="row-even"><td><p>大场景</p></td>
+<td><p>★★★☆☆</p></td>
+<td><p>增大 max_particles</p></td>
+</tr>
+<tr class="row-odd"><td><p>无激光 / 纯视觉</p></td>
+<td><p>✗</p></td>
+<td><p>使用 Atlas</p></td>
+</tr>
+<tr class="row-even"><td><p>3D 地形</p></td>
+<td><p>✗</p></td>
+<td><p>使用 Cartographer 3D</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>7.5 调参建议<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>问题</p></th>
+<th class="head"><p>调整</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>定位发散</p></td>
+<td><p>增大 <code class="docutils literal notranslate"><span class="pre">min_particles</span></code>；检查地图与激光对齐</p></td>
+</tr>
+<tr class="row-odd"><td><p>CPU 过高</p></td>
+<td><p>减小 <code class="docutils literal notranslate"><span class="pre">max_beams</span></code>；增大 <code class="docutils literal notranslate"><span class="pre">update_min_d/a</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>kidnapped</p></td>
+<td><p>设置 <code class="docutils literal notranslate"><span class="pre">recovery_alpha_fast/slow</span></code> &gt; 0</p></td>
+</tr>
+<tr class="row-odd"><td><p>旋转漂移</p></td>
+<td><p>增大 <code class="docutils literal notranslate"><span class="pre">alpha1/alpha4</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>平移漂移</p></td>
+<td><p>增大 <code class="docutils literal notranslate"><span class="pre">alpha3</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>激光噪点</p></td>
+<td><p>减小 <code class="docutils literal notranslate"><span class="pre">z_rand</span></code>；增大 <code class="docutils literal notranslate"><span class="pre">sigma_hit</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="atlas">
+<h2>7.6 与 Atlas 的关系<a class="headerlink" href="#atlas" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>AMCL</p></th>
+<th class="head"><p>Atlas</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>地图类型</p></td>
+<td><p>2D 占据栅格</p></td>
+<td><p>稀疏 3D 路标</p></td>
+</tr>
+<tr class="row-odd"><td><p>传感器</p></td>
+<td><p>2D 激光</p></td>
+<td><p>相机</p></td>
+</tr>
+<tr class="row-even"><td><p>输出维度</p></td>
+<td><p>SE(2)</p></td>
+<td><p>SE(3)</p></td>
+</tr>
+<tr class="row-odd"><td><p>先验地图</p></td>
+<td><p>必须</p></td>
+<td><p>可选（可 SLAM 建图）</p></td>
+</tr>
+</tbody>
+</table>
+<p>二者可互补：Atlas 建图 → 导出 2D 占据栅格 → MapServer → AMCL 定位。</p>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>7.7 启用配置（集成后）<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- config/localization/localization.lua</span>
+<span class="nv">AUTONOMY_LOCALIZATION</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">default_algorithm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;amcl&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">amcl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">AMCL_OPTIONS</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- config/autonomy.lua</span>
+<span class="nv">include</span><span class="w"> </span><span class="s2">&quot;localization/localization.lua&quot;</span>
+<span class="nv">AUTONOMY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">localization</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">AUTONOMY_LOCALIZATION</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+<p>集成完成前，请使用 <a class="reference internal" href="06_atlas.html"><span class="std std-doc">Atlas</span></a> 作为定位方案。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_atlas.html" class="btn btn-neutral float-left" title="6. Atlas 视觉 SLAM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="09_survey.html" class="btn btn-neutral float-right" title="8. 定位算法综述（Survey）" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

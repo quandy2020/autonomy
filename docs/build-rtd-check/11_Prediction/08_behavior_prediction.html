@@ -1,0 +1,341 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>8. 行为与交互预测 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="9. 预测算法综述（Survey）" href="09_survey.html" />
+    <link rel="prev" title="7. 轨迹预测算法" href="07_trajectory_prediction.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">11 Prediction</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_motion_models.html">6 运动模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_trajectory_prediction.html">7 轨迹预测算法</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">8 行为与交互预测</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vs">8.1 行为预测 vs 轨迹预测</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">8.2 规则型行为预测</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">8.3 交互式预测</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">8.4 学习型行为预测</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ttc">8.5 碰撞风险与 TTC</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autonomy">8.6 Autonomy 扩展建议</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#control-teb">8.7 与 Control 的 TEB 调研</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 预测算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Prediction 轨迹预测</a></li>
+      <li class="breadcrumb-item active">8. 行为与交互预测</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/11_Prediction/08_behavior_prediction.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>8. 行为与交互预测<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本文描述考虑<strong>自车动作</strong>与<strong>障碍交互</strong>的高阶预测方法，供未来 Prediction 模块扩展参考。</p>
+<hr class="docutils" />
+<section id="vs">
+<h2>8.1 行为预测 vs 轨迹预测<a class="headerlink" href="#vs" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>轨迹预测</p></th>
+<th class="head"><p>行为预测</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>输出</p></td>
+<td><p>位置序列 <span class="math notranslate nohighlight">\(\hat{\mathbf{x}}(t)\)</span></p></td>
+<td><p>意图/机动标签 + 轨迹</p></td>
+</tr>
+<tr class="row-odd"><td><p>方法</p></td>
+<td><p>CV/CTRV/卡尔曼</p></td>
+<td><p>规则、学习、博弈</p></td>
+</tr>
+<tr class="row-even"><td><p>不确定性</p></td>
+<td><p>高斯椭圆</p></td>
+<td><p>离散意图 + 连续轨迹</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>8.2 规则型行为预测<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>8.2.1 车道约束<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>若地图提供车道线，障碍轨迹投影到车道中心线：</p>
+<div class="math notranslate nohighlight">
+\[
+\hat{\mathbf{p}}(\tau) = \mathrm{ProjectOnLane}\big(\mathbf{p}_0 + \mathbf{v} \tau, \mathcal{L}\big)
+\]</div>
+</section>
+<section id="id4">
+<h3>8.2.2 交叉口意图<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>观测</p></th>
+<th class="head"><p>推断意图</p></th>
+<th class="head"><p>轨迹模式</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>接近交叉口 + 转向灯左</p></td>
+<td><p>左转</p></td>
+<td><p>CTRV <span class="math notranslate nohighlight">\(\omega &gt; 0\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>直行车道 + 匀速</p></td>
+<td><p>直行</p></td>
+<td><p>CV</p></td>
+</tr>
+<tr class="row-even"><td><p>接近停车线 + 减速</p></td>
+<td><p>停车</p></td>
+<td><p>CA <span class="math notranslate nohighlight">\(a &lt; 0\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>8.3 交互式预测<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>8.3.1 问题形式化<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>自车策略 <span class="math notranslate nohighlight">\(\pi_{ego}\)</span>，障碍 <span class="math notranslate nohighlight">\(i\)</span> 策略 <span class="math notranslate nohighlight">\(\pi_i\)</span>，联合预测：</p>
+<div class="math notranslate nohighlight">
+\[
+\hat{\mathcal{T}}_i = f\big(\mathbf{x}_i, \pi_{ego}, \pi_i, \mathcal{M}\big)
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\mathcal{M}\)</span> 为地图/场景上下文。</p>
+</section>
+<section id="id7">
+<h3>8.3.2 反应式模型<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p>障碍对自车动作的响应（简化）：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{v}_i^{react} = \mathbf{v}_i^{nom} + K_{react} \cdot \mathrm{repulse}(\mathbf{p}_{ego}, \mathbf{p}_i)
+\]</div>
+</section>
+<section id="id8">
+<h3>8.3.3 博弈论方法<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p>Stackelberg 博弈：自车为 leader，障碍为 follower，求均衡轨迹。</p>
+<p><strong>工程简化</strong>：枚举自车候选路径 <span class="math notranslate nohighlight">\(\{\mathcal{P}_{ego}^{(m)}\}\)</span>，对每条路径预测障碍响应轨迹。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>8.4 学习型行为预测<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>8.4.1 代表方法<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>特点</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Social LSTM</p></td>
+<td><p>社交池化，行人轨迹</p></td>
+</tr>
+<tr class="row-odd"><td><p>VectorNet</p></td>
+<td><p>矢量化地图 + 轨迹，Waymo 开源</p></td>
+</tr>
+<tr class="row-even"><td><p>LaneGCN</p></td>
+<td><p>图卷积车道拓扑</p></td>
+</tr>
+<tr class="row-odd"><td><p>MTR</p></td>
+<td><p>Transformer 多模态</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id11">
+<h3>8.4.2 输入特征<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>障碍历史轨迹（<span class="math notranslate nohighlight">\(T_h\)</span> 秒）</p></li>
+<li><p>地图：车道、交叉口、人行横道</p></li>
+<li><p>自车状态与规划路径</p></li>
+<li><p>其他障碍状态（社交）</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>8.4.3 输出<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p><span class="math notranslate nohighlight">\(K\)</span> 条轨迹 + 概率 <span class="math notranslate nohighlight">\(\{\hat{\mathcal{T}}^{(k)}, \pi_k\}_{k=1}^K\)</span>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="ttc">
+<h2>8.5 碰撞风险与 TTC<a class="headerlink" href="#ttc" title="Link to this heading"></a></h2>
+<section id="time-to-collision">
+<h3>8.5.1 Time To Collision<a class="headerlink" href="#time-to-collision" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{TTC} = \min_{\tau &gt; 0} \left\{ \tau : \|\mathbf{p}_{ego}(\tau) - \mathbf{p}_i(\tau)\| &lt; r_{safe} \right\}
+\]</div>
+</section>
+<section id="id13">
+<h3>8.5.2 风险评分<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{risk}_i = \frac{1}{\mathrm{TTC}_i + \epsilon} \cdot \mathbf{1}_{\{\mathrm{TTC}_i &lt; T_{\mathrm{thresh}}\}}
+\]</div>
+<p>供 Planning 做速度调整或换道决策。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="autonomy">
+<h2>8.6 Autonomy 扩展建议<a class="headerlink" href="#autonomy" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>阶段</p></th>
+<th class="head"><p>能力</p></th>
+<th class="head"><p>实现路径</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>近期</p></td>
+<td><p>CV/CTRV 轨迹</p></td>
+<td><p>motion_model + 卡尔曼</p></td>
+</tr>
+<tr class="row-odd"><td><p>中期</p></td>
+<td><p>车道约束规则</p></td>
+<td><p>依赖高精地图</p></td>
+</tr>
+<tr class="row-even"><td><p>远期</p></td>
+<td><p>VectorNet ONNX</p></td>
+<td><p>common/network 推理</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="control-teb">
+<h2>8.7 与 Control 的 TEB 调研<a class="headerlink" href="#control-teb" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">docs/source/09_Control/09_survey.md</span></code> 提及 TEB（Timed Elastic Band）可结合 prediction 做动态避障。TEB 在代价函数中加入动态障碍项：</p>
+<div class="math notranslate nohighlight">
+\[
+J_{dyn} = \sum_k \sum_i w_i \cdot \mathrm{penalty}\big(\mathbf{p}_k, \hat{\mathbf{p}}_i(t_k)\big)
+\]</div>
+<p>此为规划/控制层消费预测的典型方式。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="07_trajectory_prediction.html" class="btn btn-neutral float-left" title="7. 轨迹预测算法" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="09_survey.html" class="btn btn-neutral float-right" title="9. 预测算法综述（Survey）" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

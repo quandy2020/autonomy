@@ -1,0 +1,1351 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. 行为树引擎 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+      <script type="module">
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    fontSize: '14px',
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+    primaryColor: '#e0f2f2',
+    primaryTextColor: '#1a4d6e',
+    primaryBorderColor: '#2d9294',
+    lineColor: '#5a7289',
+    secondaryColor: '#eef1f4',
+    tertiaryColor: '#ffffff'
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 20,
+    nodeSpacing: 45,
+    rankSpacing: 55
+  },
+  timeline: {
+    disableMulticolor: false
+  }
+});
+</script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+      <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. 单点导航行为树" href="07_navigate_to_pose.html" />
+    <link rel="prev" title="5. Navigator 模块架构设计" href="05_architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">16 Navigator</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 行为树引擎</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">6.1 组件概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#btengine">6.2 BtEngine</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#btactionserver">6.3 BtActionServer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#btcontext">6.4 BtContext</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tick">6.5 Tick 循环</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">6.6 节点状态转移</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">6.7 控制节点语义</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#decorator">6.8 Decorator 节点</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">6.9 黑板键</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#behaviortreenavigator">6.10 BehaviorTreeNavigator 生命周期</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id17">6.11 插件加载与注册</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">6.12 与 Nav2 对照</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tick-action">6.13 tick 与子 Action 交互</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id23">6.14 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_navigate_to_pose.html">7 单点导航 BT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_bt_plugins.html">8 BT 插件节点</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 导航编排综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Navigator 导航编排</a></li>
+      <li class="breadcrumb-item active">6. 行为树引擎</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/16_Navigator/06_bt_engine.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>6. 行为树引擎<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本文描述 <code class="docutils literal notranslate"><span class="pre">autonomy/navigator/behavior_tree/</span></code> 下的 BT 运行时引擎：工厂加载、Action 桥接、tick 循环与节点语义。当前实现待从历史 <code class="docutils literal notranslate"><span class="pre">tasks</span></code> 模块迁回，本文基于头文件引用、CHANGELOG 与 nav2 对齐设计编写。</p>
+<section id="id2">
+<h2>6.1 组件概览<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>组件</p></th>
+<th class="head"><p>文件</p></th>
+<th class="head"><p>职责</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BtEngine</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bt_engine.hpp/.cpp</span></code></p></td>
+<td><p>插件加载、XML 解析、<code class="docutils literal notranslate"><span class="pre">BehaviorTreeFactory</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BtActionServer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bt_action_server.hpp</span></code></p></td>
+<td><p>Action ↔ BT 桥接、tick 主循环</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BtContext</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bt_context.hpp</span></code></p></td>
+<td><p>共享 planner/controller/TF/options</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BehaviorTreeNavigator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">common/behavior_tree_navigator.hpp</span></code></p></td>
+<td><p>Navigator 模板基类</p></td>
+</tr>
+<tr class="row-even"><td><p>BT 插件</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">plugins/{action,condition,control,decorator}/</span></code></p></td>
+<td><p>52 个节点 <code class="docutils literal notranslate"><span class="pre">.so</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>BtNavigator
+  ├── BtEngine (factory + plugins)
+  ├── BtContext (shared deps)
+  └── BehaviorTreeNavigator&lt;ActionT&gt;
+        └── BtActionServer&lt;ActionT&gt;
+              ├── Tree (from XML)
+              ├── Blackboard
+              └── tick loop (10 ms)
+</pre></div>
+</div>
+</section>
+<section id="btengine">
+<h2>6.2 BtEngine<a class="headerlink" href="#btengine" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>6.2.1 职责<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>从 <code class="docutils literal notranslate"><span class="pre">NavigatorOptions.plugin_lib_names</span></code> 加载动态库</p></li>
+<li><p>调用各库 <code class="docutils literal notranslate"><span class="pre">BT_REGISTER_NODES</span></code> 注册节点类型</p></li>
+<li><p>解析 BT XML 文件为 <code class="docutils literal notranslate"><span class="pre">BT::Tree</span></code></p></li>
+<li><p>提供 <code class="docutils literal notranslate"><span class="pre">createTree(xml,</span> <span class="pre">blackboard)</span></code> 工厂方法</p></li>
+</ol>
+</section>
+<section id="id4">
+<h3>6.2.2 插件加载流程<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>navigator.lua (plugin_lib_names[52])
+        │
+        ▼
+BtEngine::LoadPlugins(path, names)
+        │
+        ├── path = plugin_lib_path || AUTONOMY_BT_PLUGIN_PATH
+        │
+        ▼
+for each name in names:
+    dlopen(name + &quot;.so&quot;)
+    BT_REGISTER_NODES(factory)  // 静态注册
+        │
+        ▼
+BehaviorTreeFactory 就绪
+</pre></div>
+</div>
+<p><strong>环境变量</strong>：<code class="docutils literal notranslate"><span class="pre">AUTONOMY_BT_PLUGIN_PATH</span></code> 指定 <code class="docutils literal notranslate"><span class="pre">.so</span></code> 搜索目录（<code class="docutils literal notranslate"><span class="pre">plugin_lib_path</span></code> 为空时使用）。</p>
+<p><strong>Groot 模型</strong>：<code class="docutils literal notranslate"><span class="pre">config/navigator/behavior_tree/autonomy_tree_nodes.xml</span></code> 定义全部节点端口，供 Groot2 可视化编辑。</p>
+</section>
+<section id="xml">
+<h3>6.2.3 XML 解析<a class="headerlink" href="#xml" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 伪代码</span>
+<span class="n">BT</span><span class="o">::</span><span class="n">Tree</span><span class="w"> </span><span class="n">tree</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factory</span><span class="p">.</span><span class="n">createTreeFromFile</span><span class="p">(</span><span class="n">xml_path</span><span class="p">,</span><span class="w"> </span><span class="n">blackboard</span><span class="p">);</span>
+<span class="c1">// 或运行时字符串</span>
+<span class="n">BT</span><span class="o">::</span><span class="n">Tree</span><span class="w"> </span><span class="n">tree</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">factory</span><span class="p">.</span><span class="n">createTreeFromText</span><span class="p">(</span><span class="n">xml_string</span><span class="p">,</span><span class="w"> </span><span class="n">blackboard</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>解析失败 → <code class="docutils literal notranslate"><span class="pre">NAV_TO_POSE_FAILED_TO_LOAD_BEHAVIOR_TREE</span></code>（9005）。</p>
+</section>
+</section>
+<section id="btactionserver">
+<h2>6.3 BtActionServer<a class="headerlink" href="#btactionserver" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>6.3.1 设计定位<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>对标 <code class="docutils literal notranslate"><span class="pre">nav2_behavior_tree::BtActionServer</span></code>，但采用 <strong>进程内</strong> 实现（CHANGELOG 0.1.1）：</p>
+<ul class="simple">
+<li><p>替换 ROS/Autolink <code class="docutils literal notranslate"><span class="pre">SimpleActionServer</span></code></p></li>
+<li><p>Goal / Preempt / Cancel 通过内存回调传递</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Run()</span></code> / <code class="docutils literal notranslate"><span class="pre">RunWithGoal()</span></code> 驱动 tick 循环</p></li>
+</ul>
+</section>
+<section id="id6">
+<h3>6.3.2 生命周期<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>阶段</p></th>
+<th class="head"><p>方法</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>配置</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OnConfigure()</span></code></p></td>
+<td><p>加载默认 XML、创建黑板</p></td>
+</tr>
+<tr class="row-odd"><td><p>激活</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OnActivate(node)</span></code></p></td>
+<td><p>绑定 autolink 节点</p></td>
+</tr>
+<tr class="row-even"><td><p>运行</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RunWithGoal(goal,</span> <span class="pre">xml)</span></code></p></td>
+<td><p>阻塞直到 SUCCESS/FAILURE/CANCEL</p></td>
+</tr>
+<tr class="row-odd"><td><p>取消</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Cancel()</span></code></p></td>
+<td><p>中止子 Action、HALT 树</p></td>
+</tr>
+<tr class="row-even"><td><p>停用</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OnDeactivate()</span></code></p></td>
+<td><p>释放资源</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h3>6.3.3 回调链<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">BehaviorTreeNavigator</span></code> 构造时注入：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">action_server_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">BtActionServer</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="n">engine_</span><span class="p">,</span><span class="w"> </span><span class="n">context_</span><span class="p">,</span><span class="w"> </span><span class="n">name_</span><span class="p">,</span><span class="w"> </span><span class="n">default_tree_xml_</span><span class="p">,</span>
+<span class="w">    </span><span class="p">[</span><span class="k">this</span><span class="p">](</span><span class="n">GoalPtr</span><span class="w"> </span><span class="n">goal</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">HandleGoalReceived</span><span class="p">(</span><span class="n">goal</span><span class="p">);</span><span class="w"> </span><span class="p">},</span><span class="w">  </span><span class="c1">// Goal</span>
+<span class="w">    </span><span class="p">[</span><span class="k">this</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">OnLoop</span><span class="p">();</span><span class="w"> </span><span class="p">},</span><span class="w">                                       </span><span class="c1">// Loop</span>
+<span class="w">    </span><span class="p">[</span><span class="k">this</span><span class="p">](</span><span class="n">GoalPtr</span><span class="w"> </span><span class="n">goal</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">OnPreempt</span><span class="p">(</span><span class="n">goal</span><span class="p">);</span><span class="w"> </span><span class="p">},</span><span class="w">                    </span><span class="c1">// Preempt</span>
+<span class="w">    </span><span class="p">[</span><span class="k">this</span><span class="p">](</span><span class="n">ResultPtr</span><span class="w"> </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="n">RunStatus</span><span class="w"> </span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">                 </span><span class="c1">// Completed</span>
+<span class="w">        </span><span class="n">HandleCompleted</span><span class="p">(</span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">);</span>
+<span class="w">    </span><span class="p">});</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>回调</p></th>
+<th class="head"><p>触发时机</p></th>
+<th class="head"><p>典型操作</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Goal</p></td>
+<td><p>新 Goal 到达</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OnGoalReceived</span></code> → 写黑板 <code class="docutils literal notranslate"><span class="pre">goal</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Loop</p></td>
+<td><p>每 tick 前</p></td>
+<td><p>更新 <code class="docutils literal notranslate"><span class="pre">current_pose</span></code> → Feedback</p></td>
+</tr>
+<tr class="row-even"><td><p>Preempt</p></td>
+<td><p>新 Goal 抢占</p></td>
+<td><p>更新黑板、重置子 Action</p></td>
+</tr>
+<tr class="row-odd"><td><p>Completed</p></td>
+<td><p>树终止</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OnCompleted</span></code> → Result 错误码</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="goal-muxer">
+<h3>6.3.4 Goal 接收与 Muxer<a class="headerlink" href="#goal-muxer" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span><span class="w"> </span><span class="nf">HandleGoalReceived</span><span class="p">(</span><span class="n">GoalPtr</span><span class="w"> </span><span class="n">goal</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">muxer_</span><span class="o">-&gt;</span><span class="n">IsNavigating</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span><span class="w">  </span><span class="c1">// 拒绝并发</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">OnGoalReceived</span><span class="p">(</span><span class="n">goal</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<span class="w">    </span><span class="n">muxer_</span><span class="o">-&gt;</span><span class="n">StartNavigating</span><span class="p">(</span><span class="n">name_</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="btcontext">
+<h2>6.4 BtContext<a class="headerlink" href="#btcontext" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>6.4.1 共享依赖<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">BtContext</span></code> 持有 BT 插件访问子系统所需的指针（进程内直接调用，无需 autolink Client）：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">planner</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PlannerServer*</span></code></p></td>
+<td><p>ComputePath*</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">controller</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ControllerServer*</span></code></p></td>
+<td><p>FollowPath / 恢复原语</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tf_buffer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">transform::Buffer*</span></code></p></td>
+<td><p>TransformAvailable</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">navigator_options</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p>帧、容差、超时</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink_node</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autolink::Node*</span></code></p></td>
+<td><p>分布式 Action Client（可选）</p></td>
+</tr>
+</tbody>
+</table>
+<p>插件通过 <code class="docutils literal notranslate"><span class="pre">config()</span></code> 或黑板 <code class="docutils literal notranslate"><span class="pre">autolink_node</span></code> 键获取上下文。</p>
+</section>
+<section id="nav2">
+<h3>6.4.2 与 nav2 差异<a class="headerlink" href="#nav2" title="Link to this heading"></a></h3>
+<p>nav2 BT 插件通过 autolink <code class="docutils literal notranslate"><span class="pre">Node</span></code> + Action Client 调用子服务器；Autonomy 0.1.1 起 <strong>剥离 autolink 依赖</strong>，插件直接读 <code class="docutils literal notranslate"><span class="pre">BtContext</span></code> 指针（CHANGELOG）。</p>
+</section>
+</section>
+<section id="tick">
+<h2>6.5 Tick 循环<a class="headerlink" href="#tick" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>6.5.1 主循环<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// BtActionServer::Run() 伪代码</span>
+<span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">loop_duration</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="n">options</span><span class="p">.</span><span class="n">bt_loop_duration</span><span class="p">());</span><span class="w"> </span><span class="c1">// 10 ms</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">ok</span><span class="p">()</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">cancel_requested_</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">tree</span><span class="p">.</span><span class="n">tickRoot</span><span class="p">();</span><span class="w">           </span><span class="c1">// BehaviorTree.CPP</span>
+<span class="w">    </span><span class="n">on_loop_callback_</span><span class="p">();</span><span class="w">       </span><span class="c1">// Feedback 更新</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">tree</span><span class="p">.</span><span class="n">rootNode</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">status</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">RUNNING</span><span class="p">)</span><span class="w"> </span><span class="k">break</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">loop_duration</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">return</span><span class="w"> </span><span class="n">MapStatusToRunStatus</span><span class="p">(</span><span class="n">tree</span><span class="p">.</span><span class="n">rootNode</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">status</span><span class="p">());</span>
+</pre></div>
+</div>
+<p><strong>默认参数</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>值</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">bt_loop_duration</span></code></p></td>
+<td><p>10 ms</p></td>
+<td><p>tick 周期</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">f_tick</span></code></p></td>
+<td><p>100 Hz</p></td>
+<td><p>主循环频率</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_server_timeout</span></code></p></td>
+<td><p>20000 ms</p></td>
+<td><p>子 Action 超时</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="runstatus">
+<h3>6.5.2 RunStatus 映射<a class="headerlink" href="#runstatus" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>BT 根状态</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">RunStatus</span></code></p></th>
+<th class="head"><p>Navigator 状态</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SUCCESS</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUCCEEDED</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">kCompleted</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>FAILURE</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FAILED</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">kFailed</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>RUNNING</p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">kRunning</span></code>（继续 tick）</p></td>
+</tr>
+<tr class="row-odd"><td><p>Cancel</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CANCELED</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">kCanceled</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="id10">
+<h2>6.6 节点状态转移<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<p>BehaviorTree.CPP 节点状态：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathcal{S} = \{ \mathrm{IDLE}, \mathrm{RUNNING}, \mathrm{SUCCESS}, \mathrm{FAILURE} \}
+\]</div>
+<section id="action">
+<h3>6.6.1 Action 节点<a class="headerlink" href="#action" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>IDLE ──tick()──→ RUNNING ──完成──→ SUCCESS
+                      │
+                      └──失败──→ FAILURE
+</pre></div>
+</div>
+<p>Action 节点（如 <code class="docutils literal notranslate"><span class="pre">FollowPath</span></code>）在 RUNNING 期间每 tick 调用子 Action 并检查状态；子 Action 完成 → SUCCESS/FAILURE。</p>
+</section>
+<section id="condition">
+<h3>6.6.2 Condition 节点<a class="headerlink" href="#condition" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>每次 tick：瞬时判定 → SUCCESS 或 FAILURE（无 RUNNING）
+</pre></div>
+</div>
+</section>
+<section id="followpath">
+<h3>6.6.3 状态转移图（FollowPath 示例）<a class="headerlink" href="#followpath" title="Link to this heading"></a></h3>
+<pre  class="mermaid">
+        stateDiagram-v2
+    [*] --&gt; IDLE
+    IDLE --&gt; RUNNING : tick() / send FollowPath goal
+    RUNNING --&gt; SUCCESS : controller goal reached
+    RUNNING --&gt; FAILURE : controller error / timeout
+    RUNNING --&gt; RUNNING : still tracking
+    SUCCESS --&gt; IDLE : parent reset
+    FAILURE --&gt; IDLE : parent reset
+    </pre></section>
+</section>
+<section id="id11">
+<h2>6.7 控制节点语义<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>节点</p></th>
+<th class="head"><p>代数语义</p></th>
+<th class="head"><p>tick 行为</p></th>
+<th class="head"><p>Autonomy 用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Sequence</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(N_1 \land N_2 \land \cdots\)</span></p></td>
+<td><p>顺序执行，一个 FAILURE 则 FAILURE</p></td>
+<td><p>恢复链</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Fallback</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(N_1 \lor N_2 \lor \cdots\)</span></p></td>
+<td><p>一个 SUCCESS 则 SUCCESS</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ReactiveFallback</span></code></p></td>
+<td><p>每 tick 重求 <span class="math notranslate nohighlight">\(N_1 \lor N_2 \lor \cdots\)</span></p></td>
+<td><p>从第一个子节点重新检验</p></td>
+<td><p>AdaptiveNavigation</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PipelineSequence</span></code></p></td>
+<td><p>流水线激活</p></td>
+<td><p>已完成子节点保持 SUCCESS，不再 tick</p></td>
+<td><p>GlobalNavigatePipeline</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RecoveryNode</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(\mathrm{retry}(M, R, K)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(M\)</span> 失败执行 <span class="math notranslate nohighlight">\(R\)</span>，最多 <span class="math notranslate nohighlight">\(K\)</span> 次</p></td>
+<td><p>SafeNavigate</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RoundRobin</span></code></p></td>
+<td><p>轮询</p></td>
+<td><p>依次 tick 子节点，ForceFailure 跳过</p></td>
+<td><p>局部运动循环</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ReactiveSequence</span></code></p></td>
+<td><p>每 tick 重检</p></td>
+<td><p>从第一个 RUNNING 子节点继续</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+<section id="pipelinesequence-vs-sequence">
+<h3>PipelineSequence vs Sequence<a class="headerlink" href="#pipelinesequence-vs-sequence" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>特性</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">Sequence</span></code></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">PipelineSequence</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>已完成子节点</p></td>
+<td><p>不再 tick</p></td>
+<td><p>SUCCESS 保持，不再 tick</p></td>
+</tr>
+<tr class="row-odd"><td><p>FAILURE 传播</p></td>
+<td><p>立即 FAILURE</p></td>
+<td><p>立即 FAILURE</p></td>
+</tr>
+<tr class="row-even"><td><p>典型场景</p></td>
+<td><p>NavigationRecovery</p></td>
+<td><p>Plan → Smooth → Follow</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="recoverynode">
+<h3>RecoveryNode 形式化<a class="headerlink" href="#recoverynode" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathrm{RecoveryNode}(M, R, K):
+\begin{cases}
+\mathrm{SUCCESS}, &amp; \mathrm{status}(M) = \mathrm{SUCCESS} \\
+\mathrm{FAILURE}, &amp; \mathrm{status}(M) = \mathrm{FAILURE} \land \mathrm{retries} \geq K \\
+\mathrm{execute}(R);\; \mathrm{retries}{+}{+};\; \mathrm{retry}(M), &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+</section>
+</section>
+<section id="decorator">
+<h2>6.8 Decorator 节点<a class="headerlink" href="#decorator" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Decorator</p></th>
+<th class="head"><p>行为</p></th>
+<th class="head"><p>参数</p></th>
+<th class="head"><p>典型用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RateController</span></code></p></td>
+<td><p>限制子节点最大频率</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">hz</span></code></p></td>
+<td><p>ComputePath 5 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DistanceController</span></code></p></td>
+<td><p>移动超过距离后 re-tick</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">distance</span></code></p></td>
+<td><p>降低重规划频率</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SpeedController</span></code></p></td>
+<td><p>根据速度限制 tick</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">max_speed</span></code></p></td>
+<td><p>高速时少规划</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GoalUpdater</span></code></p></td>
+<td><p>监听 goal 更新</p></td>
+<td><p>topic</p></td>
+<td><p>动态目标</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GoalUpdatedController</span></code></p></td>
+<td><p>goal 更新时重置子节点</p></td>
+<td><p>—</p></td>
+<td><p>目标变更重规划</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PathLongerOnApproach</span></code></p></td>
+<td><p>接近时路径变长 → FAILURE</p></td>
+<td><p>—</p></td>
+<td><p>异常检测</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SingleTrigger</span></code></p></td>
+<td><p>子节点仅执行一次</p></td>
+<td><p>—</p></td>
+<td><p>初始化步骤</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Inverter</span></code></p></td>
+<td><p>反转 SUCCESS/FAILURE</p></td>
+<td><p>—</p></td>
+<td><p>TimeExpired 取反</p></td>
+</tr>
+</tbody>
+</table>
+<section id="ratecontroller">
+<h3>RateController 数学<a class="headerlink" href="#ratecontroller" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+T_{\min} = \frac{1}{f_{\max}}, \quad f_{\max} = \mathrm{hz}
+\]</div>
+<p>第 <span class="math notranslate nohighlight">\(k\)</span> 次 tick：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{execute}(child) \iff t_k - t_{\text{last}} \geq T_{\min}
+\]</div>
+<p>否则返回子节点<strong>上次状态</strong>（不重新 tick）。</p>
+</section>
+</section>
+<section id="id12">
+<h2>6.9 黑板键<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="id13">
+<h3>6.9.1 系统常量<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">constexpr</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">kBlackboardAutolinkNodeKey</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;autolink_node&quot;</span><span class="p">;</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">BehaviorTreeNavigator</span></code> 构造时写入：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">bb</span><span class="o">-&gt;</span><span class="n">set</span><span class="p">(</span><span class="n">kBlackboardAutolinkNodeKey</span><span class="p">,</span><span class="w"> </span><span class="n">node</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="populateblackboarddefaults">
+<h3>6.9.2 配置注入（PopulateBlackboardDefaults）<a class="headerlink" href="#populateblackboarddefaults" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>键</p></th>
+<th class="head"><p>来源</p></th>
+<th class="head"><p>默认值</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">global_frame</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">robot_base_frame</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">base_link</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_planner_id</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn_planner</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">default_controller_id</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FollowPath</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_goal_checker_id</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">goal_checker</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">goal_reached_tol</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.25</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">local_survival_timeout</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">120.0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">initial_pose_received</span></code></p></td>
+<td><p>运行时</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id14">
+<h3>6.9.3 运行时键<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>键</p></th>
+<th class="head"><p>写入者</p></th>
+<th class="head"><p>读取者</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">goal</span></code> / <code class="docutils literal notranslate"><span class="pre">goals</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OnGoalReceived</span></code></p></td>
+<td><p>ComputePath*, GoalReached</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
+<td><p>ComputePath*, SmoothPath</p></td>
+<td><p>IsPathValid, FollowPath</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">selected_planner</span></code></p></td>
+<td><p>PlannerSelector</p></td>
+<td><p>ComputePath*</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">selected_controller</span></code></p></td>
+<td><p>ControllerSelector</p></td>
+<td><p>FollowPath</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">selected_smoother</span></code></p></td>
+<td><p>SmootherSelector</p></td>
+<td><p>SmoothPath</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">compute_path_error_code</span></code></p></td>
+<td><p>ComputePathToPose</p></td>
+<td><p>恢复决策</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">follow_path_error_code</span></code></p></td>
+<td><p>FollowPath</p></td>
+<td><p>恢复决策</p></td>
+</tr>
+</tbody>
+</table>
+<p>XML 端口引用：<code class="docutils literal notranslate"><span class="pre">{goal}</span></code>、<code class="docutils literal notranslate"><span class="pre">{path}</span></code> 等，由 BehaviorTree.CPP 黑板解析。</p>
+</section>
+</section>
+<section id="behaviortreenavigator">
+<h2>6.10 BehaviorTreeNavigator 生命周期<a class="headerlink" href="#behaviortreenavigator" title="Link to this heading"></a></h2>
+<pre  class="mermaid">
+        sequenceDiagram
+    participant Client
+    participant BTN as BehaviorTreeNavigator
+    participant BAS as BtActionServer
+    participant Tree as BT Tree
+
+    Client-&gt;&gt;BTN: StartWithGoal(goal)
+    BTN-&gt;&gt;BAS: RunWithGoal(goal, xml)
+    BAS-&gt;&gt;BAS: HandleGoalReceived → muxer.Start
+    BAS-&gt;&gt;BAS: OnGoalReceived → blackboard[&quot;goal&quot;]
+    loop tick (10 ms)
+        BAS-&gt;&gt;Tree: tickRoot()
+        BAS-&gt;&gt;BTN: OnLoop() → Feedback
+    end
+    Tree--&gt;&gt;BAS: SUCCESS / FAILURE
+    BAS-&gt;&gt;BTN: HandleCompleted → muxer.Stop
+    BTN-&gt;&gt;BTN: OnCompleted → Result
+    BTN--&gt;&gt;Client: done
+    </pre><section id="id15">
+<h3>构造流程<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>接收 <code class="docutils literal notranslate"><span class="pre">name</span></code>、<code class="docutils literal notranslate"><span class="pre">node</span></code>、<code class="docutils literal notranslate"><span class="pre">engine</span></code>、<code class="docutils literal notranslate"><span class="pre">context</span></code>、<code class="docutils literal notranslate"><span class="pre">muxer</span></code>、<code class="docutils literal notranslate"><span class="pre">default_tree_xml</span></code></p></li>
+<li><p>创建 <code class="docutils literal notranslate"><span class="pre">BtActionServer</span></code>，注册四个回调</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OnConfigure()</span></code> — 加载默认树</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OnActivate(node)</span></code> — 绑定 autolink，写黑板 <code class="docutils literal notranslate"><span class="pre">autolink_node</span></code></p></li>
+<li><p>失败则 <code class="docutils literal notranslate"><span class="pre">action_server_.reset()</span></code>，<code class="docutils literal notranslate"><span class="pre">IsInitialized()</span> <span class="pre">==</span> <span class="pre">false</span></code></p></li>
+</ol>
+</section>
+<section id="id16">
+<h3>取消流程<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Cancel() → BtActionServer::Cancel()
+  → 取消进行中的 FollowPath / Spin / …
+  → tree.halt()
+  → muxer.StopNavigating()
+  → RunStatus::CANCELED
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id17">
+<h2>6.11 插件加载与注册<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h3>6.11.1 命名规则<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">autonomy_behavior_tree_</span><span class="p">{</span><span class="n">category</span><span class="p">}</span><span class="n">_</span><span class="p">{</span><span class="n">stem</span><span class="p">}</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>category</p></th>
+<th class="head"><p>数量</p></th>
+<th class="head"><p>示例</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">action</span></code></p></td>
+<td><p>24</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">..._compute_path_to_pose_action</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">condition</span></code></p></td>
+<td><p>16</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">..._goal_reached_condition</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">control</span></code></p></td>
+<td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">..._pipeline_sequence</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">decorator</span></code></p></td>
+<td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">..._rate_controller</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id19">
+<h3>6.11.2 注册宏<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// plugins/action/compute_path_to_pose_action.cpp</span>
+<span class="n">BT_REGISTER_NODES</span><span class="p">(</span><span class="n">factory</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">factory</span><span class="p">.</span><span class="n">registerNodeType</span><span class="o">&lt;</span><span class="n">ComputePathToPoseAction</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;ComputePathToPose&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id20">
+<h3>6.11.3 插件基类<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>基类</p></th>
+<th class="head"><p>节点类型</p></th>
+<th class="head"><p>接口</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BtActionNode</span></code></p></td>
+<td><p>Action</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">on_tick()</span></code> → RUNNING/SUCCESS/FAILURE</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BtConditionNode</span></code></p></td>
+<td><p>Condition</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tick()</span></code> → SUCCESS/FAILURE</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BtControlNode</span></code></p></td>
+<td><p>Control</p></td>
+<td><p>子节点调度</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BtDecoratorNode</span></code></p></td>
+<td><p>Decorator</p></td>
+<td><p>包装单个子节点</p></td>
+</tr>
+</tbody>
+</table>
+<p>插件通过 <code class="docutils literal notranslate"><span class="pre">GetInputOrBlackboard&lt;T&gt;(&quot;port&quot;)</span></code> 读端口，通过 <code class="docutils literal notranslate"><span class="pre">setOutput()</span></code> 写端口。</p>
+</section>
+</section>
+<section id="id21">
+<h2>6.12 与 Nav2 对照<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Nav2 组件</p></th>
+<th class="head"><p>Autonomy 组件</p></th>
+<th class="head"><p>差异</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">nav2_behavior_tree::BtActionServer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BtActionServer</span></code></p></td>
+<td><p>进程内，无 ROS Action Server</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">nav2_behavior_tree::BtNavigator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BtEngine</span></code> + 插件加载</p></td>
+<td><p>相同工厂模式</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">nav2_core::BehaviorTreeNavigator</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BehaviorTreeNavigator&lt;ActionT&gt;</span></code></p></td>
+<td><p>模板化，相同回调</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">nav2_core::NavigatorMuxer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavigatorMuxer</span></code></p></td>
+<td><p>相同互斥语义</p></td>
+</tr>
+<tr class="row-even"><td><p>BT 插件 autolink Client</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BtContext</span></code> 直接指针</p></td>
+<td><p>剥离 autolink 依赖</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">plugin_lib_names</span></code></p></td>
+<td><p>52 个，与 nav2 对齐</p></td>
+<td><p>同名节点端口</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">navigate_to_pose.xml</span></code></p></td>
+<td><p>增强：局部生存模式</p></td>
+<td><p>nav2 无 TF 丢失分支</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bt_loop_duration</span></code></p></td>
+<td><p>10 ms</p></td>
+<td><p>nav2 默认 10 ms</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">goal_checker</span></code></p></td>
+<td><p>SimpleGoalChecker stateful</p></td>
+<td><p>相同</p></td>
+</tr>
+</tbody>
+</table>
+<section id="id22">
+<h3>6.12.1 迁移注意事项<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Autonomy BT 插件 <strong>不持有</strong> autolink <code class="docutils literal notranslate"><span class="pre">Node</span></code> 指针（除黑板可选注入）</p></li>
+<li><p>Selector 节点简化：无 topic 订阅，进程内直接读配置默认</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BtNavigator</span></code> 接收 <code class="docutils literal notranslate"><span class="pre">NavigatorOptions</span></code>（非 nav2 的 ROS 参数服务器）</p></li>
+<li><p>错误码使用 <code class="docutils literal notranslate"><span class="pre">commsgs::proto::ErrorCode</span></code> 统一枚举</p></li>
+</ol>
+</section>
+</section>
+<section id="tick-action">
+<h2>6.13 tick 与子 Action 交互<a class="headerlink" href="#tick-action" title="Link to this heading"></a></h2>
+<pre  class="mermaid">
+        flowchart TB
+    subgraph TickLoop[&quot;BtActionServer tick (100 Hz)&quot;]
+        T[tickRoot]
+        L[OnLoop → Feedback]
+        S{root status?}
+    end
+
+    subgraph Actions[&quot;Action 节点 (异步)&quot;]
+        CP[ComputePathToPose]
+        FP[FollowPath]
+        SP[Spin / BackUp]
+    end
+
+    subgraph Servers[&quot;子系统&quot;]
+        PS[PlannerServer]
+        CS[ControllerServer]
+    end
+
+    T --&gt; CP
+    T --&gt; FP
+    T --&gt; SP
+    CP --&gt; PS
+    FP --&gt; CS
+    SP --&gt; CS
+    T --&gt; L --&gt; S
+    S --&gt;|RUNNING| T
+    S --&gt;|SUCCESS/FAILURE| Done[Completed callback]
+    </pre><p><strong>子 Action 超时</strong>：单次调用超过 <code class="docutils literal notranslate"><span class="pre">default_server_timeout</span></code>（20 s）→ 节点 FAILURE → 触发 RecoveryNode。</p>
+</section>
+<section id="id23">
+<h2>6.14 相关文档<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="03_math.html#bt-tick"><span class="std std-ref">数学原理 · Tick 时序</span></a></p></li>
+<li><p><a class="reference internal" href="08_bt_plugins.html"><span class="std std-doc">BT 插件节点</span></a></p></li>
+<li><p><a class="reference internal" href="07_navigate_to_pose.html"><span class="std std-doc">单点导航 BT</span></a></p></li>
+<li><p><a class="reference internal" href="05_architecture.html"><span class="std std-doc">模块架构</span></a></p></li>
+<li><p><a class="reference internal" href="04_usage.html#bt"><span class="std std-ref">使用指南 · BT 插件环境</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_architecture.html" class="btn btn-neutral float-left" title="5. Navigator 模块架构设计" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_navigate_to_pose.html" class="btn btn-neutral float-right" title="7. 单点导航行为树" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

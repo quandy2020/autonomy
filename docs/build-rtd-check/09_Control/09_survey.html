@@ -1,0 +1,956 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9. 运动控制算法综述（Survey） &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Perception 感知" href="../10_Perception/index.html" />
+    <link rel="prev" title="8. 局部控制器算法" href="08_controller_algorithms.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">09 Control</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html">6 目标与进度检查器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html">7 速度平滑器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html">8 局部控制器算法</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">9 运动控制算法综述</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">9.1 概述：运动控制在导航栈中的位置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">9.2 问题形式化</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">9.3 发展时间轴</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">9.4 算法分类体系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">9.5 核心算法详解</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">9.6 辅助组件</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autonomy-control">9.7 Autonomy control 模块定位</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">9.8 影响因素</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id17">9.9 算法复杂度对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id18">9.10 与其他模块的耦合</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id19">9.11 未来趋势</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id20">9.12 参考文献</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">9.13 术语表</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">9.14 工程选型矩阵</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Control 运动控制</a></li>
+      <li class="breadcrumb-item active">9. 运动控制算法综述（Survey）</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/09_Control/09_survey.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="survey">
+<h1>9. 运动控制算法综述（Survey）<a class="headerlink" href="#survey" title="Link to this heading"></a></h1>
+<p>本文从<strong>学术发展史、算法体系、工程实践、影响因素</strong>四个维度，系统综述移动机器人局部运动控制（Local Control / Trajectory Tracking）领域，并明确 Autonomy <code class="docutils literal notranslate"><span class="pre">control</span></code> 模块在其中的定位、能力边界与选型依据。</p>
+<blockquote>
+<div><p>公式推导见 <a class="reference internal" href="03_math.html"><span class="std std-doc">Control 指南 · 数学原理</span></a>；实现细节见 <a class="reference internal" href="05_architecture.html"><span class="std std-doc">架构设计</span></a> 与各子文档。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id1">
+<h2>9.1 概述：运动控制在导航栈中的位置<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>移动机器人导航（Navigation）通常分解为四个耦合子问题：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>子问题</p></th>
+<th class="head"><p>英文</p></th>
+<th class="head"><p>典型模块</p></th>
+<th class="head"><p>频率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>定位</p></td>
+<td><p>Localization</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">localization</span></code></p></td>
+<td><p>10–50 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>建图</p></td>
+<td><p>Mapping</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map</span></code></p></td>
+<td><p>1–10 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>路径规划</p></td>
+<td><p>Planning</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">planning</span></code></p></td>
+<td><p>1–5 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>运动控制</strong></p></td>
+<td><p><strong>Control</strong></p></td>
+<td><p><strong><code class="docutils literal notranslate"><span class="pre">control</span></code></strong></p></td>
+<td><p><strong>10–50 Hz</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>局部运动控制</strong>（Local Control）接收全局路径，以固定频率输出速度命令 <span class="math notranslate nohighlight">\(u = (v_x, v_y, \omega_z)\)</span>，使机器人沿路径运动并到达目标。Autonomy <code class="docutils literal notranslate"><span class="pre">control</span></code> 模块专注此层，对齐 Nav2 <code class="docutils literal notranslate"><span class="pre">nav2_controller</span></code>。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Planning.Path ──→ Local Controller ──→ VelocitySmoother ──→ cmd_vel ──→ 底盘
+                       ↑                      ↑
+                  local costmap            odom 反馈
+                  (障碍/膨胀)            (CLOSED_LOOP)
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>9.2 问题形式化<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>9.2.1 状态与控制<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>机器人在 <span class="math notranslate nohighlight">\(SE(2)\)</span> 或 <span class="math notranslate nohighlight">\(SE(2) \times \mathbb{R}^n\)</span> 上运动：</p>
+<div class="math notranslate nohighlight">
+\[
+x = (x, y, \theta, v_x, v_y, \omega_z)^\top, \quad
+u = (v_x^{cmd}, v_y^{cmd}, \omega_z^{cmd})^\top
+\]</div>
+<p>给定参考路径 <span class="math notranslate nohighlight">\(\mathcal{P} = \{p_0, \ldots, p_N\}\)</span>，<span class="math notranslate nohighlight">\(p_i \in SE(2)\)</span>，求控制律 <span class="math notranslate nohighlight">\(u = \pi(x, \mathcal{P}, t)\)</span> 使：</p>
+<div class="math notranslate nohighlight">
+\[
+\min_{\pi} \int_0^T \Big( \|e_p\|_Q^2 + e_\theta^2 + u^\top R u \Big) dt
+\]</div>
+<p>约束 <span class="math notranslate nohighlight">\((x,y) \in \mathcal{C}_{free}\)</span>，<span class="math notranslate nohighlight">\(|v| \leq v_{max}\)</span>，<span class="math notranslate nohighlight">\(|a| \leq a_{max}\)</span>。</p>
+</section>
+<section id="id4">
+<h3>9.2.2 误差定义<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p><strong>全局误差</strong>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+e_p = \begin{bmatrix} x - x_g \\ y - y_g \end{bmatrix}, \quad
+e_\theta = \mathrm{AngleDiff}(\theta, \theta_g)
+\end{split}\]</div>
+<p><strong>Frenet 误差</strong>（沿路径投影）：</p>
+<div class="math notranslate nohighlight">
+\[
+e_y = d_{\mathrm{signed}}(q, \mathcal{P}), \quad e_s = s - s_{\mathrm{ref}}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(e_y\)</span> 为点到路径的有符号距离，<span class="math notranslate nohighlight">\(e_s\)</span> 为弧长误差。</p>
+</section>
+<section id="id5">
+<h3>9.2.3 约束类型<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>约束</p></th>
+<th class="head"><p>说明</p></th>
+<th class="head"><p>控制器是否考虑</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>几何约束</p></td>
+<td><p>不碰撞</p></td>
+<td><p>✅ 所有控制器</p></td>
+</tr>
+<tr class="row-odd"><td><p>非完整约束</p></td>
+<td><p><span class="math notranslate nohighlight">\(v_y = 0\)</span>（DiffDrive）</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>运动学约束</p></td>
+<td><p>最小转弯半径</p></td>
+<td><p>✅ RPP / MPPI</p></td>
+</tr>
+<tr class="row-odd"><td><p>动力学约束</p></td>
+<td><p>加速度限制</p></td>
+<td><p>✅ VelocitySmoother</p></td>
+</tr>
+<tr class="row-even"><td><p>实时约束</p></td>
+<td><p>计算时间 &lt; 控制周期</p></td>
+<td><p>✅ 采样类</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>9.3 发展时间轴<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<div class="planning-timeline-v2">
+<div class="timeline-era-block era-foundation">
+  <div class="timeline-era-header">奠基期 · 1980s–1990s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1985</div>
+      <div class="timeline-milestone-title">Pure Pursuit</div>
+      <div class="timeline-milestone-desc">几何路径跟踪，lookahead 思想</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1995</div>
+      <div class="timeline-milestone-title">Dynamic Window</div>
+      <div class="timeline-milestone-desc">Fox et al. 速度空间采样避障</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1995</div>
+      <div class="timeline-milestone-title">Stanley</div>
+      <div class="timeline-milestone-desc">DARPA 自动驾驶横向控制</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-classical">
+  <div class="timeline-era-header">经典期 · 2000s–2010s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2009</div>
+      <div class="timeline-milestone-title">TEB</div>
+      <div class="timeline-milestone-desc">Timed Elastic Band 时空优化</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2010</div>
+      <div class="timeline-milestone-title">DWA → DWB</div>
+      <div class="timeline-milestone-desc">ROS navigation 标准化</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2018</div>
+      <div class="timeline-milestone-title">Regulated PP</div>
+      <div class="timeline-milestone-desc">Nav2 默认控制器</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-modern">
+  <div class="timeline-era-header">现代期 · 2020s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2022</div>
+      <div class="timeline-milestone-title">MPPI</div>
+      <div class="timeline-milestone-desc">Nav2 集成随机 MPC 控制器</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2023</div>
+      <div class="timeline-milestone-title">Graceful Controller</div>
+      <div class="timeline-milestone-desc">Nav2 平滑跟踪控制器</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2024</div>
+      <div class="timeline-milestone-title">Autonomy control</div>
+      <div class="timeline-milestone-desc">Nav2 架构移植，骨架 + Checker/Smoother</div>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>9.4 算法分类体系<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>9.4.1 按方法类型<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>类别</p></th>
+<th class="head"><p>代表算法</p></th>
+<th class="head"><p>核心思想</p></th>
+<th class="head"><p>计算复杂度</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>几何跟踪</strong></p></td>
+<td><p>Pure Pursuit, Stanley, Graceful</p></td>
+<td><p>几何关系直接映射到 <span class="math notranslate nohighlight">\((v, \omega)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>速度空间采样</strong></p></td>
+<td><p>DWA, DWB</p></td>
+<td><p>在 <span class="math notranslate nohighlight">\((v, \omega)\)</span> 空间采样评分</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n \cdot m)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>随机 MPC</strong></p></td>
+<td><p>MPPI</p></td>
+<td><p>大量采样控制序列 + softmax</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(K \cdot H)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>优化方法</strong></p></td>
+<td><p>TEB, CHOMP</p></td>
+<td><p>非线性优化轨迹</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n^2 \sim n^3)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>反馈线性化</strong></p></td>
+<td><p>Backstepping, FL</p></td>
+<td><p>非线性系统线性化控制</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(1)\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Learning-based</strong></p></td>
+<td><p>End-to-end, RL</p></td>
+<td><p>数据驱动策略</p></td>
+<td><p>推理 <span class="math notranslate nohighlight">\(O(1)\)</span></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id9">
+<h3>9.4.2 按感知依赖<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>类型</p></th>
+<th class="head"><p>需要 costmap</p></th>
+<th class="head"><p>需要 odom</p></th>
+<th class="head"><p>代表</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>纯跟踪</p></td>
+<td><p>❌</p></td>
+<td><p>✅</p></td>
+<td><p>Pure Pursuit</p></td>
+</tr>
+<tr class="row-odd"><td><p>障碍感知</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+<td><p>DWB, MPPI</p></td>
+</tr>
+<tr class="row-even"><td><p>预测性</p></td>
+<td><p>✅ + 预测</p></td>
+<td><p>✅</p></td>
+<td><p>TEB + prediction</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>9.5 核心算法详解<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="pure-pursuit">
+<h3>9.5.1 Pure Pursuit<a class="headerlink" href="#pure-pursuit" title="Link to this heading"></a></h3>
+<p><strong>思想</strong>：在路径上选取距机器人 <span class="math notranslate nohighlight">\(L_d\)</span> 处的 lookahead 点，计算使机器人朝向该点的曲率。</p>
+<div class="math notranslate nohighlight">
+\[
+\kappa = \frac{2 y^*}{L_d^2}, \quad \omega = \kappa v
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>优点</p></th>
+<th class="head"><p>缺点</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>极简、低延迟</p></td>
+<td><p>不避障</p></td>
+</tr>
+<tr class="row-odd"><td><p>参数少（仅 <span class="math notranslate nohighlight">\(L_d\)</span>）</p></td>
+<td><p>急转弯切弯</p></td>
+</tr>
+<tr class="row-even"><td><p>工业验证充分</p></td>
+<td><p>无速度调节</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="regulated-pure-pursuit">
+<h3>9.5.2 Regulated Pure Pursuit<a class="headerlink" href="#regulated-pure-pursuit" title="Link to this heading"></a></h3>
+<p>Nav2 在 PP 基础上增加<strong>曲率/障碍/目标</strong>三项速度调节。Autonomy 工具函数已支持 PP 几何核心。</p>
+</section>
+<section id="stanley-controller">
+<h3>9.5.3 Stanley Controller<a class="headerlink" href="#stanley-controller" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+\delta = e_\theta + \arctan\!\left(\frac{k_e e_y}{v + \varepsilon}\right)
+\]</div>
+<p>横向误差 <span class="math notranslate nohighlight">\(e_y\)</span> 与航向误差 <span class="math notranslate nohighlight">\(e_\theta\)</span> 联合控制。适合高速场景（自动驾驶），室内 AGV 较少使用。</p>
+</section>
+<section id="dwb">
+<h3>9.5.4 DWB<a class="headerlink" href="#dwb" title="Link to this heading"></a></h3>
+<p>在动态窗口 <span class="math notranslate nohighlight">\(\mathcal{V}_d\)</span> 内均匀采样 <span class="math notranslate nohighlight">\((v, \omega)\)</span>，前向仿真短轨迹，多 critic 加权评分选最优。</p>
+<div class="math notranslate nohighlight">
+\[
+G(v, \omega) = \sum_i w_i \mathcal{S}_i(v, \omega)
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>优点</p></th>
+<th class="head"><p>缺点</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>成熟、可_recritic 可组合</p></td>
+<td><p>采样密度与分辨率权衡</p></td>
+</tr>
+<tr class="row-odd"><td><p>实时避障</p></td>
+<td><p>高维速度空间扩展困难</p></td>
+</tr>
+<tr class="row-even"><td><p>Nav2 生态完善</p></td>
+<td><p>参数调优复杂</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="mppi">
+<h3>9.5.5 MPPI<a class="headerlink" href="#mppi" title="Link to this heading"></a></h3>
+<p><strong>Model Predictive Path Integral Control</strong> 基于信息论优化：</p>
+<div class="math notranslate nohighlight">
+\[
+u^* = \frac{\int u \cdot \exp(-S(u)/\lambda) \, du}{\int \exp(-S(u)/\lambda) \, du}
+ \approx \sum_k w_k u^{(k)}
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>优点</p></th>
+<th class="head"><p>缺点</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>天然处理非线性/约束</p></td>
+<td><p>计算量大（batch_size × time_steps）</p></td>
+</tr>
+<tr class="row-odd"><td><p>多 critic 灵活组合</p></td>
+<td><p>需 GPU/多核才能高频率</p></td>
+</tr>
+<tr class="row-even"><td><p>支持全向/Ackermann</p></td>
+<td><p>参数敏感（temperature, gamma）</p></td>
+</tr>
+</tbody>
+</table>
+<p>Autonomy <code class="docutils literal notranslate"><span class="pre">controller.lua</span></code> 已配置完整 MPPI 参数（56 步 × 2000 采样）。</p>
+</section>
+<section id="teb">
+<h3>9.5.6 TEB<a class="headerlink" href="#teb" title="Link to this heading"></a></h3>
+<p>将路径建模为<strong>弹性带</strong>（一系列 pose + 时间间隔），优化目标：</p>
+<div class="math notranslate nohighlight">
+\[
+\min \sum_i \Big( w_t \Delta t_i^2 + w_o d_{obs,i}^2 + w_v (v_i - v_{pref})^2 \Big)
+\]</div>
+<p>适合动态环境，但计算量较大，Autonomy 暂未集成。</p>
+</section>
+<section id="graceful-controller">
+<h3>9.5.7 Graceful Controller<a class="headerlink" href="#graceful-controller" title="Link to this heading"></a></h3>
+<p>Nav2 2023 引入，强调<strong>平滑性</strong>：</p>
+<ul class="simple">
+<li><p>初始旋转对齐</p></li>
+<li><p>减速区（slowdown_radius）</p></li>
+<li><p>可选碰撞检测</p></li>
+<li><p>不允许后退（可配置）</p></li>
+</ul>
+<p>Autonomy 配置已就绪，适合室内差速机器人。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>9.6 辅助组件<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="goal-checker">
+<h3>9.6.1 Goal Checker<a class="headerlink" href="#goal-checker" title="Link to this heading"></a></h3>
+<p>判定导航是否完成。Autonomy 已实现三种（Simple / Position / Stopped），详见 <a class="reference internal" href="06_checkers.html"><span class="std std-doc">06_checkers.md</span></a>。</p>
+</section>
+<section id="progress-checker">
+<h3>9.6.2 Progress Checker<a class="headerlink" href="#progress-checker" title="Link to this heading"></a></h3>
+<p>检测机器人是否”卡住”。Simple 版仅看位移；Pose 版还看转角变化。</p>
+</section>
+<section id="velocitysmoother">
+<h3>9.6.3 VelocitySmoother<a class="headerlink" href="#velocitysmoother" title="Link to this heading"></a></h3>
+<p>Nav2 独立节点，Autonomy 算法已移植。加速度约束 + deadband + 开/闭环反馈。详见 <a class="reference internal" href="07_velocity_smoother.html"><span class="std std-doc">07_velocity_smoother.md</span></a>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="autonomy-control">
+<h2>9.7 Autonomy control 模块定位<a class="headerlink" href="#autonomy-control" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>9.7.1 已实现<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>组件</p></th>
+<th class="head"><p>完成度</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ControllerInterface 插件接口</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>Goal Checker ×3</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>Progress Checker ×2</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>VelocitySmoother 算法</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>OdomSmoother 滑动平均</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>几何工具（lookahead、圆-线段交点）</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>Lua → ControllerOptions</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>ControllerServer 骨架</p></td>
+<td><p>✅ 部分</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id13">
+<h3>9.7.2 待实现<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>组件</p></th>
+<th class="head"><p>优先级</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>FollowPath 控制循环</p></td>
+<td><p>P0</p></td>
+</tr>
+<tr class="row-odd"><td><p>插件加载（Autolink）</p></td>
+<td><p>P0</p></td>
+</tr>
+<tr class="row-even"><td><p>首个控制器插件（RPP/Graceful）</p></td>
+<td><p>P1</p></td>
+</tr>
+<tr class="row-odd"><td><p>CheckerOptions Lua 接线</p></td>
+<td><p>P1</p></td>
+</tr>
+<tr class="row-even"><td><p>MPPI 插件</p></td>
+<td><p>P2</p></td>
+</tr>
+<tr class="row-odd"><td><p>VelocitySmoother 节点接线</p></td>
+<td><p>P2</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="nav2">
+<h3>9.7.3 与 Nav2 能力矩阵<a class="headerlink" href="#nav2" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>能力</p></th>
+<th class="head"><p>Nav2</p></th>
+<th class="head"><p>Autonomy</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>FollowPath Action</p></td>
+<td><p>✅</p></td>
+<td><p>⏳</p></td>
+</tr>
+<tr class="row-odd"><td><p>Regulated PP</p></td>
+<td><p>✅</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p>DWB</p></td>
+<td><p>✅</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>MPPI</p></td>
+<td><p>✅</p></td>
+<td><p>⏳ 配置</p></td>
+</tr>
+<tr class="row-even"><td><p>Graceful</p></td>
+<td><p>✅</p></td>
+<td><p>⏳ 配置</p></td>
+</tr>
+<tr class="row-odd"><td><p>Goal Checker</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>Progress Checker</p></td>
+<td><p>✅</p></td>
+<td><p>✅（缺时间窗口）</p></td>
+</tr>
+<tr class="row-odd"><td><p>Velocity Smoother</p></td>
+<td><p>✅</p></td>
+<td><p>✅（未接线）</p></td>
+</tr>
+<tr class="row-even"><td><p>插件动态加载</p></td>
+<td><p>✅</p></td>
+<td><p>⏳</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h2>9.8 影响因素<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>9.8.1 控制频率<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>频率</p></th>
+<th class="head"><p>适用</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>10 Hz</p></td>
+<td><p>低算力 / 慢速</p></td>
+<td><p>延迟较大</p></td>
+</tr>
+<tr class="row-odd"><td><p>20 Hz</p></td>
+<td><p><strong>推荐默认</strong></p></td>
+<td><p>与 MPPI dt=0.05 对齐</p></td>
+</tr>
+<tr class="row-even"><td><p>50 Hz</p></td>
+<td><p>高速 / 全向</p></td>
+<td><p>需更强算力</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="lookahead">
+<h3>9.8.2 Lookahead 距离<a class="headerlink" href="#lookahead" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><span class="math notranslate nohighlight">\(L_d\)</span></p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>小 (0.2–0.4 m)</p></td>
+<td><p>跟踪精确、易振荡</p></td>
+</tr>
+<tr class="row-odd"><td><p>中 (0.4–0.8 m)</p></td>
+<td><p>平衡</p></td>
+</tr>
+<tr class="row-even"><td><p>大 (0.8–2.0 m)</p></td>
+<td><p>平滑、切弯</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id16">
+<h3>9.8.3 容差与精度<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>典型值</p></th>
+<th class="head"><p>影响</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">xy_goal_tolerance</span></code></p></td>
+<td><p>0.05–0.5 m</p></td>
+<td><p>到达判定精度</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">yaw_goal_tolerance</span></code></p></td>
+<td><p>0.1–0.5 rad</p></td>
+<td><p>最终朝向精度</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">required_movement_radius</span></code></p></td>
+<td><p>0.1–1.0 m</p></td>
+<td><p>卡住检测灵敏度</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="costmap">
+<h3>9.8.4 Costmap 分辨率<a class="headerlink" href="#costmap" title="Link to this heading"></a></h3>
+<p>局部 costmap 默认 0.05 m，rolling window 3×3 m。MPPI CostCritic 沿轨迹采样，分辨率影响碰撞检测精度。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id17">
+<h2>9.9 算法复杂度对比<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>算法</p></th>
+<th class="head"><p>时间复杂度</p></th>
+<th class="head"><p>典型耗时 (20Hz)</p></th>
+<th class="head"><p>内存</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Pure Pursuit</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n)\)</span></p></td>
+<td><p>&lt; 0.1 ms</p></td>
+<td><p>低</p></td>
+</tr>
+<tr class="row-odd"><td><p>Regulated PP</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n)\)</span></p></td>
+<td><p>&lt; 0.5 ms</p></td>
+<td><p>低</p></td>
+</tr>
+<tr class="row-even"><td><p>DWB</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n_{traj} \cdot n_{sample})\)</span></p></td>
+<td><p>1–5 ms</p></td>
+<td><p>中</p></td>
+</tr>
+<tr class="row-odd"><td><p>MPPI (2000×56)</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(K \cdot H)\)</span></p></td>
+<td><p>5–20 ms</p></td>
+<td><p>高</p></td>
+</tr>
+<tr class="row-even"><td><p>TEB</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n^2)\)</span></p></td>
+<td><p>10–50 ms</p></td>
+<td><p>中</p></td>
+</tr>
+<tr class="row-odd"><td><p>Graceful</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n)\)</span></p></td>
+<td><p>&lt; 1 ms</p></td>
+<td><p>低</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>9.10 与其他模块的耦合<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────┐     Path      ┌──────────────────┐
+│  planning   │──────────────→│    control       │
+└─────────────┘               │                  │
+                              │  ControllerServer│
+┌─────────────┐   costmap     │       ↓          │
+│
+│    map      │──────────────→│  ControllerPlugin│
+└─────────────┘               │       ↓          │
+                              │  cmd_vel         │
+┌─────────────┐     odom      └────────┬─────────┘
+│ localization│←───────────────────────│
+└─────────────┘                        ↓
+                              ┌──────────────────┐
+                              │  VelocitySmoother│
+                              └────────┬─────────┘
+                                       ↓
+                                    底盘 / 仿真
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id19">
+<h2>9.11 未来趋势<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方向</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Learning-based Control</strong></p></td>
+<td><p>RL / imitation learning 替代手工 critic</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>GPU-accelerated MPPI</strong></p></td>
+<td><p>CUDA 并行采样，10000+ batch</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Unified Planning-Control</strong></p></td>
+<td><p>规划与控制联合优化（如 MPC with full trajectory）</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Semantic-aware Control</strong></p></td>
+<td><p>利用语义地图调整行为（人行道减速等）</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Multi-robot Coordination</strong></p></td>
+<td><p>分布式控制与冲突消解</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>9.12 参考文献<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Coulter, R. (1992). <em>Implementation of the Pure Pursuit Path Tracking Algorithm</em>. CMU-RI-TR-92-01.</p></li>
+<li><p>Fox, D., Burgard, W., &amp; Thrun, S. (1997). <em>The Dynamic Window Approach to Collision Avoidance</em>. IEEE RAM.</p></li>
+<li><p>Thrun, S., et al. (2006). <em>Stanley: The Robot that Won the DARPA Grand Challenge</em>. JFR.</p></li>
+<li><p>Rösmann, C., et al. (2017). <em>Integrated online trajectory optimization</em>. IEEE RAM (TEB).</p></li>
+<li><p>Williams, G., et al. (2017). <em>Information Theoretic MPC for Model-Based Reinforcement Learning</em>. ICRA (MPPI).</p></li>
+<li><p>Macenski, S., et al. (2022). <em>Robot Operating System 2: Nav2</em>. Science Robotics.</p></li>
+<li><p>Navigation2 Documentation: https://docs.nav2.org/</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h2>9.13 术语表<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>术语</p></th>
+<th class="head"><p>英文</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>局部规划</p></td>
+<td><p>Local Planning</p></td>
+<td><p>与 Control 同义，输出速度命令</p></td>
+</tr>
+<tr class="row-odd"><td><p>轨迹跟踪</p></td>
+<td><p>Trajectory Tracking</p></td>
+<td><p>沿参考路径运动</p></td>
+</tr>
+<tr class="row-even"><td><p>Lookahead</p></td>
+<td><p>Look-ahead Distance</p></td>
+<td><p>前瞻距离 <span class="math notranslate nohighlight">\(L_d\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>动态窗口</p></td>
+<td><p>Dynamic Window</p></td>
+<td><p>可达速度集合 <span class="math notranslate nohighlight">\(\mathcal{V}_d\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Critic</p></td>
+<td><p>Critic Function</p></td>
+<td><p>轨迹评分项</p></td>
+</tr>
+<tr class="row-odd"><td><p>非完整约束</p></td>
+<td><p>Nonholonomic Constraint</p></td>
+<td><p>如 DiffDrive <span class="math notranslate nohighlight">\(v_y = 0\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>Stateful Checker</p></td>
+<td><p>—</p></td>
+<td><p>XY 达标后锁定，只检航向</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>9.14 工程选型矩阵<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>推荐控制器</p></th>
+<th class="head"><p>Goal Checker</p></th>
+<th class="head"><p>关键参数</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>室内差速通用</p></td>
+<td><p>Graceful / RPP</p></td>
+<td><p>SimpleGoalChecker</p></td>
+<td><p>lookahead 0.4–0.6 m</p></td>
+</tr>
+<tr class="row-odd"><td><p>动态避障</p></td>
+<td><p>MPPI</p></td>
+<td><p>SimpleGoalChecker</p></td>
+<td><p>batch_size 2000</p></td>
+</tr>
+<tr class="row-even"><td><p>窄通道</p></td>
+<td><p>Graceful + collision</p></td>
+<td><p>SimpleGoalChecker</p></td>
+<td><p>use_collision_detection</p></td>
+</tr>
+<tr class="row-odd"><td><p>充电对接</p></td>
+<td><p>RPP / Graceful</p></td>
+<td><p>StoppedGoalChecker</p></td>
+<td><p>tolerance 0.05 m</p></td>
+</tr>
+<tr class="row-even"><td><p>只到位置</p></td>
+<td><p>任意</p></td>
+<td><p>PositionGoalChecker</p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-odd"><td><p>低算力嵌入式</p></td>
+<td><p>Pure Pursuit</p></td>
+<td><p>SimpleGoalChecker</p></td>
+<td><p>10 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>全向机器人</p></td>
+<td><p>MPPI (Omni)</p></td>
+<td><p>SimpleGoalChecker</p></td>
+<td><p>vy_std &gt; 0</p></td>
+</tr>
+<tr class="row-odd"><td><p>仿真调试</p></td>
+<td><p>Pure Pursuit</p></td>
+<td><p>SimpleGoalChecker</p></td>
+<td><p>OPEN_LOOP smoother</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Autonomy 当前建议</strong>：在控制器插件实现之前，可独立使用 Checker + VelocitySmoother 进行单元测试；FollowPath 循环完成后，优先集成 Graceful Controller 或 Regulated Pure Pursuit 作为首个可用插件。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="08_controller_algorithms.html" class="btn btn-neutral float-left" title="8. 局部控制器算法" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../10_Perception/index.html" class="btn btn-neutral float-right" title="Perception 感知" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

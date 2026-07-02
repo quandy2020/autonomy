@@ -1,0 +1,305 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>8. 可视化综述 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Commsgs 通信消息" href="../14_Commsgs/index.html" />
+    <link rel="prev" title="7. RViz2 与 ROS 2" href="07_rviz2_ros2.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">13 Visualization</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 可视化概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_data_types.html">3 数据类型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_configuration.html">4 配置说明</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_foxglove.html">6 Foxglove</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_rviz2_ros2.html">7 RViz2 与 ROS 2</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">8 可视化综述</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">8.1 工具选型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#bridge-foxglove">8.2 Bridge 与 Foxglove 对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">8.3 实现缺口与路线图</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">8.4 文档与资源索引</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">8.5 外部链接</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">8.6 源码与配置索引</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Visualization 可视化</a></li>
+      <li class="breadcrumb-item active">8. 可视化综述</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/13_Visualization/08_survey.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>8. 可视化综述<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>8.1 工具选型<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>工具</p></th>
+<th class="head"><p>优势</p></th>
+<th class="head"><p>适用场景</p></th>
+<th class="head"><p>Autonomy 接入</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>RViz2</strong></p></td>
+<td><p>ROS 生态标准、TF/插件丰富</p></td>
+<td><p>本地 ROS 2 开发</p></td>
+<td><p>autonomy_ros → rviz2</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Foxglove</strong></p></td>
+<td><p>多模态、Web/远程、MCAP</p></td>
+<td><p>团队协作、远程调试</p></td>
+<td><p>foxglove_bridge</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>ros2 topic echo</strong></p></td>
+<td><p>零配置</p></td>
+<td><p>快速排错</p></td>
+<td><p>直接</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>glog</strong></p></td>
+<td><p>无依赖</p></td>
+<td><p>纯 C++ CI</p></td>
+<td><p>autonomy_nav_test</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>PlotJuggler</strong></p></td>
+<td><p>时序曲线强</p></td>
+<td><p>控制调参</p></td>
+<td><p>ROS 2 bag / 实时</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="bridge-foxglove">
+<h2>8.2 Bridge 与 Foxglove 对比<a class="headerlink" href="#bridge-foxglove" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">autonomy/bridge</span></code></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">foxglove_bridge</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>协议</p></td>
+<td><p>gRPC / MQTT</p></td>
+<td><p>WebSocket</p></td>
+</tr>
+<tr class="row-odd"><td><p>主要用途</p></td>
+<td><p>远程导航 API</p></td>
+<td><p>可视化</p></td>
+</tr>
+<tr class="row-even"><td><p>仓库内实现</p></td>
+<td><p>✅（gRPC stub 演进中）</p></td>
+<td><p>❌（ROS 包）</p></td>
+</tr>
+<tr class="row-odd"><td><p>与 Studio 直连</p></td>
+<td><p>❌</p></td>
+<td><p>✅</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>8.3 实现缺口与路线图<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>阶段</p></th>
+<th class="head"><p>目标</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>当前</strong></p></td>
+<td><p>ROS 2 + foxglove_bridge 可视化；纯 C++ 日志验证</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>近期</strong></p></td>
+<td><p>实现 <code class="docutils literal notranslate"><span class="pre">VisualizationServer</span></code> + 接入 <code class="docutils literal notranslate"><span class="pre">autonomy.lua</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>中期</strong></p></td>
+<td><p>Autolink Writer 发布 map/path/odom；补全 <code class="docutils literal notranslate"><span class="pre">visualization_msgs</span></code> 转换</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>远期</strong></p></td>
+<td><p>内置 MCAP 录制；Foxglove 自定义面板</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id4">
+<h2>8.4 文档与资源索引<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>主题</p></th>
+<th class="head"><p>章节</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>运行验证</p></td>
+<td><p><a class="reference internal" href="../04_Running/07_verification.html"><span class="std std-doc">04 Running · §7</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>ROS 2 集成</p></td>
+<td><p><a class="reference internal" href="../04_Running/06_ros2_integration.html"><span class="std std-doc">04 Running · §6</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>commsgs</p></td>
+<td><p><a class="reference internal" href="../14_Commsgs/index.html"><span class="std std-doc">14 Commsgs</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>Bridge</p></td>
+<td><p><a class="reference internal" href="../15_Bridge/index.html"><span class="std std-doc">15 Bridge</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>地图 costmap</p></td>
+<td><p><a class="reference internal" href="../07_Map/index.html"><span class="std std-doc">07 Map</span></a></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h2>8.5 外部链接<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://foxglove.dev/">Foxglove 官网</a></p></li>
+<li><p><a class="reference external" href="https://github.com/ros2/rviz">RViz2 文档</a></p></li>
+<li><p><a class="reference external" href="https://github.com/foxglove/ros-foxglove-bridge">foxglove_bridge</a></p></li>
+</ul>
+</section>
+<section id="id6">
+<h2>8.6 源码与配置索引<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>路径</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">config/visualization/visualization.lua</span></code></p></td>
+<td><p>可视化配置（未接入）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/commsgs/visualization_msgs.*</span></code></p></td>
+<td><p>Marker 消息定义</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy/map/costmap_2d/costmap_2d_wrapper.cpp</span></code></p></td>
+<td><p>RViz 兼容栅格</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">docker/install/install_ros2.sh</span></code></p></td>
+<td><p>foxglove-bridge 可选安装</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">docker/scripts/docker_utils.py</span></code></p></td>
+<td><p>8765 端口映射</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="07_rviz2_ros2.html" class="btn btn-neutral float-left" title="7. RViz2 与 ROS 2" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../14_Commsgs/index.html" class="btn btn-neutral float-right" title="Commsgs 通信消息" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

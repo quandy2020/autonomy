@@ -1,0 +1,366 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. 轨迹预测算法 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 行为与交互预测" href="08_behavior_prediction.html" />
+    <link rel="prev" title="6. 运动模型" href="06_motion_models.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">11 Prediction</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_motion_models.html">6 运动模型</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 轨迹预测算法</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">7.1 预测流水线</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">7.2 跟踪与关联</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cv-predictor">7.3 恒速预测器（CV Predictor）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ctrv">7.4 CTRV 预测器</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">7.5 多模态预测</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">7.6 预测时域与步长</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">7.7 不确定性传播</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#planning">7.8 与 Planning 的对接</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">7.9 实现优先级</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_behavior_prediction.html">8 行为与交互预测</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 预测算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Prediction 轨迹预测</a></li>
+      <li class="breadcrumb-item active">7. 轨迹预测算法</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/11_Prediction/07_trajectory_prediction.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>7. 轨迹预测算法<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本文描述 Prediction 模块规划中的轨迹预测算法：从卡尔曼跟踪到多步前向传播。</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>7.1 预测流水线<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>检测输入 z_k
+    │
+    ▼
+数据关联（匈牙利 + 门控）
+    │
+    ▼
+卡尔曼更新 → 状态估计 x̂_k|k
+    │
+    ▼
+运动模型多步 predict → {x̂_{k+1|k}, ..., x̂_{k+K|k}}
+    │
+    ▼
+PredictedTrajectory 输出
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>7.2 跟踪与关联<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>7.2.1 轨迹管理<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>每个动态障碍维护一条轨迹：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">id</span></code></p></td>
+<td><p>唯一标识</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">state</span></code></p></td>
+<td><p>卡尔曼状态 <span class="math notranslate nohighlight">\(\hat{\mathbf{x}}\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">covariance</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(P\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">age</span></code></p></td>
+<td><p>存活帧数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">coast_count</span></code></p></td>
+<td><p>连续无观测帧数</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>7.2.2 关联算法<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>构造代价矩阵 <span class="math notranslate nohighlight">\(C_{ij}\)</span>（IoU 或马氏距离）</p></li>
+<li><p>匈牙利算法求最优匹配</p></li>
+<li><p>未匹配检测 → 新轨迹；未匹配轨迹 → <code class="docutils literal notranslate"><span class="pre">coast_count++</span></code>，超阈值删除</p></li>
+</ol>
+</section>
+<section id="id6">
+<h3>7.2.3 门控<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>马氏距离：</p>
+<div class="math notranslate nohighlight">
+\[
+d_M^2 = (\mathbf{z} - H\hat{\mathbf{x}})^\top S^{-1} (\mathbf{z} - H\hat{\mathbf{x}}) &lt; \chi^2_{0.95, 2} \approx 5.99
+\]</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="cv-predictor">
+<h2>7.3 恒速预测器（CV Predictor）<a class="headerlink" href="#cv-predictor" title="Link to this heading"></a></h2>
+<p><strong>算法</strong>：</p>
+<ol class="arabic simple">
+<li><p>用 CV 运动模型 + 卡尔曼滤波估计 <span class="math notranslate nohighlight">\([x, y, v_x, v_y]\)</span></p></li>
+<li><p>对 <span class="math notranslate nohighlight">\(k = 1, \ldots, K\)</span>，<span class="math notranslate nohighlight">\(\hat{\mathbf{x}}_{k+j|k} = F^j \hat{\mathbf{x}}_{k|k}\)</span></p></li>
+</ol>
+<p><strong>输出</strong>：直线轨迹，不确定性椭圆随 <span class="math notranslate nohighlight">\(j\)</span> 增大。</p>
+<p><strong>公式</strong>：见 <a class="reference internal" href="03_math.html#constant-velocity-cv"><span class="std std-ref">03_math.md §3.2</span></a>。</p>
+</section>
+<hr class="docutils" />
+<section id="ctrv">
+<h2>7.4 CTRV 预测器<a class="headerlink" href="#ctrv" title="Link to this heading"></a></h2>
+<p><strong>算法</strong>：</p>
+<ol class="arabic simple">
+<li><p>状态 <span class="math notranslate nohighlight">\([x, y, v, \theta, \omega]\)</span></p></li>
+<li><p>解析积分（<span class="math notranslate nohighlight">\(\omega \neq 0\)</span>）或 CV 退化（<span class="math notranslate nohighlight">\(\omega \approx 0\)</span>）</p></li>
+</ol>
+<p><strong>输出</strong>：圆弧或直线轨迹，适合车辆。</p>
+<p><strong>公式</strong>：见 <a class="reference internal" href="03_math.html#ctrv"><span class="std std-ref">03_math.md §3.3</span></a>。</p>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>7.5 多模态预测<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<p>对意图不确定的障碍，输出 <span class="math notranslate nohighlight">\(L\)</span> 条轨迹：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>概率</p></th>
+<th class="head"><p>运动</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>直行</p></td>
+<td><p><span class="math notranslate nohighlight">\(\pi_1\)</span></p></td>
+<td><p>CV 沿当前方向</p></td>
+</tr>
+<tr class="row-odd"><td><p>左转</p></td>
+<td><p><span class="math notranslate nohighlight">\(\pi_2\)</span></p></td>
+<td><p>CTRV <span class="math notranslate nohighlight">\(\omega &gt; 0\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>右转</p></td>
+<td><p><span class="math notranslate nohighlight">\(\pi_3\)</span></p></td>
+<td><p>CTRV <span class="math notranslate nohighlight">\(\omega &lt; 0\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>停车</p></td>
+<td><p><span class="math notranslate nohighlight">\(\pi_4\)</span></p></td>
+<td><p>Stationary</p></td>
+</tr>
+</tbody>
+</table>
+<p>约束：<span class="math notranslate nohighlight">\(\sum_l \pi_l = 1\)</span>。</p>
+<p>规划器可取 <span class="math notranslate nohighlight">\(\arg\max_l \pi_l\)</span> 或鲁棒优化（考虑所有模式）。</p>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>7.6 预测时域与步长<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>典型值</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(T_p\)</span></p></td>
+<td><p>3–8 s</p></td>
+<td><p>预测时域</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\Delta t\)</span></p></td>
+<td><p>0.1 s</p></td>
+<td><p>离散步长</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(K = T_p / \Delta t\)</span></p></td>
+<td><p>30–80</p></td>
+<td><p>轨迹点数</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>实时性</strong>：<span class="math notranslate nohighlight">\(K\)</span> 不宜过大；10 Hz 预测频率下，单障碍 CV 预测 <span class="math notranslate nohighlight">\(&lt; 1\)</span> ms。</p>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>7.7 不确定性传播<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<p>协方差传播：</p>
+<div class="math notranslate nohighlight">
+\[
+P_{k+j|k} = F^j P_{k|k} (F^j)^\top + \sum_{i=0}^{j-1} F^i Q (F^i)^\top
+\]</div>
+<p>2D 位置不确定性椭圆供规划器做 chance-constraint 避障。</p>
+</section>
+<hr class="docutils" />
+<section id="planning">
+<h2>7.8 与 Planning 的对接<a class="headerlink" href="#planning" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">PredictedTrajectory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">id</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">probability</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Pose2D</span><span class="o">&gt;</span><span class="w"> </span><span class="n">poses</span><span class="p">;</span><span class="w">      </span><span class="c1">// t, x, y, theta</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Eigen</span><span class="o">::</span><span class="n">Matrix2d</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cov_xy</span><span class="p">;</span><span class="w">  </span><span class="c1">// 可选</span>
+<span class="p">};</span>
+
+<span class="c1">// Planning 查询 t 时刻障碍占用</span>
+<span class="kt">bool</span><span class="w"> </span><span class="n">occupied</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">traj</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">trajectories</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">pose</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Interpolate</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">Distance</span><span class="p">(</span><span class="n">ego_pose</span><span class="p">,</span><span class="w"> </span><span class="n">pose</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">r_safe</span><span class="p">)</span><span class="w"> </span><span class="n">occupied</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>7.9 实现优先级<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>优先级</p></th>
+<th class="head"><p>算法</p></th>
+<th class="head"><p>依赖</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>P0</p></td>
+<td><p>CV + 卡尔曼</p></td>
+<td><p>motion_model ✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>P1</p></td>
+<td><p>CTRV</p></td>
+<td><p>需新增 CTRV 类</p></td>
+</tr>
+<tr class="row-even"><td><p>P2</p></td>
+<td><p>多模态（规则）</p></td>
+<td><p>地图/车道</p></td>
+</tr>
+<tr class="row-odd"><td><p>P3</p></td>
+<td><p>学习型（VectorNet）</p></td>
+<td><p>训练数据、ONNX</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_motion_models.html" class="btn btn-neutral float-left" title="6. 运动模型" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_behavior_prediction.html" class="btn btn-neutral float-right" title="8. 行为与交互预测" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

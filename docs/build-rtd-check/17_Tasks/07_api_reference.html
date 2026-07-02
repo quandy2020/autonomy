@@ -1,0 +1,217 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. API 参考 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 任务综述" href="08_survey.html" />
+    <link rel="prev" title="6. 执行模式" href="06_execution_modes.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">17 Tasks</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 任务概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_task_types.html">3 任务类型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_configuration.html">4 任务配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 任务架构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_execution_modes.html">6 执行模式</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 API 参考</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#system-autonomy">7.1 system::Autonomy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#runtimeoptions">7.2 RuntimeOptions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#navigatorinterface">7.3 NavigatorInterface</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">7.4 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 任务综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Tasks 导航任务</a></li>
+      <li class="breadcrumb-item active">7. API 参考</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/17_Tasks/07_api_reference.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="api">
+<h1>7. API 参考<a class="headerlink" href="#api" title="Link to this heading"></a></h1>
+<section id="system-autonomy">
+<h2>7.1 system::Autonomy<a class="headerlink" href="#system-autonomy" title="Link to this heading"></a></h2>
+<p>头文件：<code class="docutils literal notranslate"><span class="pre">autonomy/system/autonomy.hpp</span></code></p>
+<section id="id1">
+<h3>工厂与生命周期<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Autonomy</span><span class="o">&gt;</span><span class="w"> </span><span class="n">CreateAutonomy</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">proto</span><span class="o">::</span><span class="n">AutonomyOptions</span><span class="o">&amp;</span><span class="w"> </span><span class="n">options</span><span class="p">);</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">Start</span><span class="p">();</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">Configure</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">RuntimeOptions</span><span class="o">&amp;</span><span class="w"> </span><span class="n">runtime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">Shutdown</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>导航任务<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="kt">bool</span><span class="w"> </span><span class="nf">NavigateToPose</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">PoseStamped</span><span class="o">&amp;</span><span class="w"> </span><span class="n">goal</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">bool</span><span class="p">()</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">cancel_checker</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">keep_alive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">timeout_sec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">);</span>
+
+<span class="kt">bool</span><span class="w"> </span><span class="nf">NavigateThroughPoses</span><span class="p">(</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">PoseStamped</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">goals</span><span class="p">,</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">bool</span><span class="p">()</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">cancel_checker</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">keep_alive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">timeout_sec</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">);</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">ReplanToGoal</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">commsgs</span><span class="o">::</span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">PoseStamped</span><span class="o">&amp;</span><span class="w"> </span><span class="n">goal</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="server">
+<h3>Server 访问<a class="headerlink" href="#server" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">map</span><span class="o">::</span><span class="n">MapServer</span><span class="o">*</span><span class="w"> </span><span class="nf">GetMapServer</span><span class="p">();</span>
+<span class="n">planning</span><span class="o">::</span><span class="n">PlannerServer</span><span class="o">*</span><span class="w"> </span><span class="nf">GetPlanner</span><span class="p">();</span>
+<span class="n">control</span><span class="o">::</span><span class="n">ControllerServer</span><span class="o">*</span><span class="w"> </span><span class="nf">GetController</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="runtimeoptions">
+<h2>7.2 RuntimeOptions<a class="headerlink" href="#runtimeoptions" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">struct</span><span class="w"> </span><span class="nc">RuntimeOptions</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">enable_bt_tasks</span><span class="p">{</span><span class="nb">true</span><span class="p">};</span><span class="w">      </span><span class="c1">// 已定义，当前未读取</span>
+<span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">use_bt_navigation</span><span class="p">{</span><span class="nb">true</span><span class="p">};</span><span class="w">    </span><span class="c1">// Configure 中当前强制 false</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">config_directory</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">planner_id</span><span class="p">;</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">controller_id</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="navigatorinterface">
+<h2>7.3 NavigatorInterface<a class="headerlink" href="#navigatorinterface" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">enum</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">NavigatorStatus</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Idle</span><span class="p">,</span><span class="w"> </span><span class="n">Running</span><span class="p">,</span><span class="w"> </span><span class="n">Completed</span><span class="p">,</span><span class="w"> </span><span class="n">Failed</span><span class="p">,</span><span class="w"> </span><span class="n">Canceled</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h2>7.4 相关文档<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../05_Framework/02_quickstart.html"><span class="std std-doc">05 Framework · Autonomy API</span></a></p></li>
+<li><p><a class="reference internal" href="../14_Commsgs/08_nav_planning_msgs.html"><span class="std std-doc">14 Commsgs · nav_msgs</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_execution_modes.html" class="btn btn-neutral float-left" title="6. 执行模式" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_survey.html" class="btn btn-neutral float-right" title="8. 任务综述" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
