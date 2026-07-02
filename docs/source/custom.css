@@ -299,6 +299,57 @@
     margin: 1.25rem 0;
 }
 
+/* TEB 论文插图：居中 + caption；宽度由 Markdown {width=} 控制，此处做上限兜底 */
+.rst-content img[src*="iros2017_fig1"],
+.rst-content img[src*="definition_timed_elastic_band"],
+.rst-content img[src*="ecmr2013_fig2"],
+.rst-content img[src*="ecmr2013_fig3"],
+.rst-content img[src*="ecmr2013_fig4"] {
+    display: block;
+    width: auto;
+    height: auto;
+    margin: 1.25rem auto 0.5rem;
+    object-fit: contain;
+}
+
+/* 宽幅示意图（≈2:1 及以上） */
+.rst-content img[src*="iros2017_fig1"] {
+    max-width: min(76%, 920px);
+}
+
+.rst-content img[src*="definition_timed_elastic_band"] {
+    max-width: min(72%, 840px);
+}
+
+.rst-content img[src*="ecmr2013_fig2"] {
+    max-width: min(68%, 800px);
+}
+
+.rst-content img[src*="ecmr2013_fig4_system_matrix"] {
+    max-width: min(74%, 780px);
+}
+
+/* 竖版控制流图（990×1286）：限宽 + 限高，避免占满整页 */
+.rst-content img[src*="ecmr2013_fig3_control_flow"] {
+    max-width: min(420px, 46%);
+    max-height: 540px;
+}
+
+.rst-content p:has(> img[src*="iros2017_fig1"]) + p em,
+.rst-content p:has(> img[src*="definition_timed_elastic_band"]) + p em,
+.rst-content p:has(> img[src*="ecmr2013_fig2"]) + p em,
+.rst-content p:has(> img[src*="ecmr2013_fig3"]) + p em,
+.rst-content p:has(> img[src*="ecmr2013_fig4"]) + p em {
+    display: block;
+    max-width: 88%;
+    margin: 0 auto 1.5rem;
+    padding: 0 0.5rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
 .rst-content blockquote {
     margin: 1.25rem 0;
     padding: 0.75rem 1.25rem;
@@ -1399,6 +1450,11 @@
     font-size: 1.08em;
 }
 
+.rst-content .algorithm-box-body mjx-mtext {
+    font-family: inherit;
+    font-size: 0.92em;
+}
+
 .rst-content .algorithm-box-subroutine .algorithm-box-body {
     background: rgba(255, 255, 255, 0.85);
 }
@@ -1443,6 +1499,35 @@
 .rst-content .plan-arch-diagram mjx-container {
     display: inline !important;
     margin: 0 0.1em !important;
+}
+
+/* TEB §2.11.7：紧约束 NLP 对照 — 算法框内块级公式 */
+.rst-content .teb-nlp-compare .algorithm-box-body mjx-container[display="true"] {
+    display: block !important;
+    overflow-x: auto;
+    margin: 0.65rem 0 0.85rem !important;
+    text-align: left !important;
+    max-width: 100%;
+}
+
+.rst-content .teb-nlp-compare .algorithm-box-body p {
+    margin: 0.5rem 0 0.35rem;
+}
+
+.rst-content .teb-nlp-compare .algorithm-box-body strong {
+    display: block;
+    margin-top: 0.85rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.92em;
+    color: #37474f;
+}
+
+.rst-content .teb-nlp-compare .algorithm-box-body strong:first-child {
+    margin-top: 0;
+}
+
+.rst-content .teb-nlp-compare .nav-chip-list {
+    gap: 0.45rem 0.5rem;
 }
 
 /* ----------------------------------------------------------------------------
