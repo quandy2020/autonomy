@@ -16,7 +16,7 @@
 Autonomy
 ============
 
-Autonomy 是一套面向移动机器人的 C++ 导航与自主系统框架，涵盖通信、定位、建图、规划、控制、感知与仿真等模块。
+Autonomy 是一套面向移动机器人的 C++ 导航与自主系统框架，涵盖通信、定位、建图、规划、控制、感知与仿真等模块。`源码跳转 <https://github.com/quandy2020/autonomy>`_
 
 .. figure:: ../assets/autonomy_architecture.png
    :align: center
