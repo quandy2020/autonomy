@@ -30,6 +30,8 @@ virtual void Reset() = 0;
 
 ## 6.2 SimpleGoalChecker
 
+实现细节、逐步判定与源码索引见 **[§15 SimpleGoalChecker](checker/15_simple_goal_checker.md)**。
+
 **文件**：`checker/simple_goal_checker.*`
 
 **默认参数**：
@@ -86,6 +88,8 @@ checker->Reset();  // 重置 check_xy_ = true
 
 ## 6.3 PositionGoalChecker
 
+实现细节见 **[§16 PositionGoalChecker](checker/16_position_goal_checker.md)**。
+
 **文件**：`checker/position_goal_checker.*`
 
 仅检测 XY 位置，**完全忽略航向**。
@@ -100,6 +104,8 @@ $$
 | 适用场景 | 只关心到达位置、不关心最终朝向的任务 |
 
 ## 6.4 StoppedGoalChecker
+
+实现细节见 **[§17 StoppedGoalChecker](checker/17_stopped_goal_checker.md)**。
 
 **文件**：`checker/stopped_goal_checker.*`
 
@@ -118,6 +124,8 @@ $$
 **适用场景**：需要机器人完全静止后才算到达（充电对接、精密操作）。
 
 ## 6.5 SimpleProgressChecker
+
+实现细节见 **[§18 SimpleProgressChecker](checker/18_simple_progress_checker.md)**。
 
 **文件**：`checker/simple_progress_checker.*`
 
@@ -146,6 +154,8 @@ $$
 
 ## 6.6 PoseProgressChecker
 
+实现细节见 **[§19 PoseProgressChecker](checker/19_pose_progress_checker.md)**。
+
 **文件**：`checker/pose_progress_checker.*`
 
 继承 `SimpleProgressChecker`，扩展判定条件：
@@ -165,14 +175,13 @@ $$
 
 ## 6.7 Checker 对比
 
-| Checker | 检测维度 | Stateful | 速度检测 | 典型用途 |
-|---------|----------|----------|----------|----------|
-| SimpleGoalChecker | XY + Yaw | ✅ | ❌ | 通用导航 |
-| PositionGoalChecker | XY only | ✅ | ❌ | 只关心位置 |
-| StoppedGoalChecker | XY + Yaw + Vel | ✅
- | ✅ | 精确停车 |
-| SimpleProgressChecker | XY 位移 | — | ❌ | 防卡住 |
-| PoseProgressChecker | XY + Yaw 变化 | — | ❌ | 含旋转进度 |
+| Checker | 检测维度 | Stateful | 速度检测 | 专题 | 典型用途 |
+|---------|----------|----------|----------|------|----------|
+| SimpleGoalChecker | XY + Yaw | ✅ | ❌ | [§15](checker/15_simple_goal_checker.md) | 通用导航 |
+| PositionGoalChecker | XY only | ✅ | ❌ | [§16](checker/16_position_goal_checker.md) | 只关心位置 |
+| StoppedGoalChecker | XY + Yaw + Vel | ✅ | ✅ | [§17](checker/17_stopped_goal_checker.md) | 精确停车 |
+| SimpleProgressChecker | XY 位移 | — | ❌ | [§18](checker/18_simple_progress_checker.md) | 防卡住 |
+| PoseProgressChecker | XY + Yaw 变化 | — | ❌ | [§19](checker/19_pose_progress_checker.md) | 含旋转进度 |
 
 ## 6.8 配置与集成
 

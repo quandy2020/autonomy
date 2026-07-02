@@ -16,7 +16,7 @@
 | 06 定位 | `06_Localization/` | Atlas VSLAM、AMCL |
 | 07 地图 | `07_Map/` | Costmap2D、GridMap |
 | 08 规划 | `08_Planning/` | NavFn / Dijkstra / Theta\* |
-| 09 控制 | `09_Control/` | FollowPath、Checker、Smoother |
+| 09 控制 | `09_Control/` | FollowPath、Checker、Smoother；§0–§9 主干 + §10–§20 专题 |
 | 10–13 | Perception / Prediction / Simulation / Visualization | 扩展模块 |
 | 14 消息 | `14_Commsgs/` | 消息类型与 Schema |
 | 15 桥接 | `15_Bridge/` | gRPC Bridge |
@@ -35,7 +35,7 @@
 | §3 | `03_math.md` | 数学原理（算法模块） |
 | §4 | `04_usage.md` | 使用指南与排错 |
 | §5 | `05_architecture.md` | 架构设计 |
-| §6–§8 | 子专题 | 算法/组件详解 |
+| §6–§8 | 子专题 | 算法/组件详解（Control 另含 §10–§20 专题深读） |
 | §9 | `09_survey.md` | 综述与选型 |
 
 入口为各目录的 `index.rst` 或 `00_guide.md`。
