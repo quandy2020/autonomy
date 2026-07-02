@@ -393,13 +393,13 @@ Nav2 独立节点，Autonomy 算法已移植。加速度约束 + deadband + 开/
 
 ## 9.12 参考文献
 
-1. Coulter, R. (1992). *Implementation of the Pure Pursuit Path Tracking Algorithm*. CMU-RI-TR-92-01.
-2. Fox, D., Burgard, W., & Thrun, S. (1997). *The Dynamic Window Approach to Collision Avoidance*. IEEE RAM.
-3. Thrun, S., et al. (2006). *Stanley: The Robot that Won the DARPA Grand Challenge*. JFR.
-4. Rösmann, C., et al. (2017). *Integrated online trajectory optimization*. IEEE RAM (TEB).
-5. Williams, G., et al. (2017). *Information Theoretic MPC for Model-Based Reinforcement Learning*. ICRA (MPPI).
-6. Macenski, S., et al. (2022). *Robot Operating System 2: Nav2*. Science Robotics.
-7. Navigation2 Documentation: https://docs.nav2.org/
+1. [Coulter, R. (1992). *Implementation of the Pure Pursuit Path Tracking Algorithm*. CMU-RI-TR-92-01.](https://www.ri.cmu.edu/publications/implementation-of-the-pure-pursuit-path-tracking-algorithm/)
+2. [Fox, D., Burgard, W., & Thrun, S. (1997). *The Dynamic Window Approach to Collision Avoidance*. IEEE RAM.](https://doi.org/10.1109/100.580977)
+3. [Thrun, S., et al. (2006). *Stanley: The Robot that Won the DARPA Grand Challenge*. JFR.](https://doi.org/10.1002/rob.20147)
+4. [Rösmann, C., et al. (2017). *Integrated online trajectory optimization using elastic bands*. IEEE RAM.](https://doi.org/10.1109/MRA.2016.2582927)
+5. [Williams, G., et al. (2017). *Information Theoretic MPC for Model-Based Reinforcement Learning*. ICRA.](https://ieeexplore.ieee.org/document/7989202)
+6. [Macenski, S., et al. (2022). *Robot Operating System 2: Nav2*. Science Robotics.](https://www.science.org/doi/10.1126/scirobotics.abm6074)
+7. [Navigation2 Documentation](https://docs.nav2.org/)
 
 ---
 

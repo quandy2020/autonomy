@@ -27,5 +27,5 @@
 
 ### 8.4 外部支持
 
-- GitHub Issues: https://github.com/quandy2020/autonomy/issues
-- 在线文档: https://autonomy.readthedocs.io
+- GitHub Issues: [quandy2020/autonomy/issues](https://github.com/quandy2020/autonomy/issues)
+- 在线文档: [autonomy.readthedocs.io](https://autonomy.readthedocs.io)

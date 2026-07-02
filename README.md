@@ -6,14 +6,6 @@
 
 **autonomy** is an autonomous robot software framework. The core library **`libautonomy`** is built with **CMake + C++17** and does not require ROS/ROS2 or the former Autolink middleware at link time (it can still interoperate with ROS-style messages and tooling where supported).
 
-Design goals: modular libraries, behavior-tree task orchestration, 2D navigation stack (costmap, planning, control), and optional bridge layers (gRPC, etc.) for integration.
-
-| Item | Link |
-|------|------|
-| Documentation | [Read the Docs](https://autonomy.readthedocs.io/en/latest/index.html) |
-| Gitee | https://gitee.com/quanduyong/autonomy.git |
-| GitHub | https://github.com/quandy2020/autonomy.git |
-
 ## System overview
 
 - **Build**
@@ -99,7 +91,7 @@ ninja
 ## CMake options
 
 | Option | Default | Description |
-|--------|---------|-------------|
+| ------ | ------- | ----------- |
 | `BUILD_GRPC` | ON | gRPC bridge support |
 | `BUILD_TEST` | ON | Unit tests |
 | `BUILD_DOCS` | ON | Sphinx docs (if found) |

@@ -173,8 +173,8 @@ Autonomy 当前通过 `ObstacleLayer` 实现射线级障碍，无显式聚类。
 
 | 主题 | 参考 |
 |------|------|
-| YOLO | Redmon et al., "You Only Look Once" |
-| PointPillars | Lang et al., CVPR 2019 |
-| Apollo Perception | Baidu Apollo 开源文档 |
+| YOLO | [Redmon et al., "You Only Look Once: Unified, Real-Time Object Detection"](https://arxiv.org/abs/1506.02640) |
+| PointPillars | [Lang et al., "PointPillars: Fast Encoders for Object Detection from Point Clouds"](https://openaccess.thecvf.com/content_CVPR_2019/html/Lang_PointPillars_Fast_Encoders_for_Object_Detection_From_Point_Clouds_CVPR_2019_paper.html) |
+| Apollo Perception | [Baidu Apollo Perception 开源文档](https://apollo.baidu.com/docs/apollo/latest/md_modules_2perception_2README.html) |
 | Nav2 Costmap | [Nav2 Costmap 2D](https://docs.nav2.org/) |
-| vision_msgs | ROS 2 `vision_msgs` 包 |
+| vision_msgs | [ROS 2 `vision_msgs` 包](https://github.com/ros-perception/vision_msgs) |

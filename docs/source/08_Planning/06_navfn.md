@@ -180,6 +180,6 @@ DijkstraPlanner                 →  强制 use_astar=false
 
 ## 6.8 参考文献
 
-- Eriksson & Borenstein, "GURVEY", IEEE AES Magazine, 1990
+- [Eriksson & Borenstein, "The GURVEY: An Autonomous Navigation Algorithm Developed for a Hospital Guidance Robot", IEEE AES Magazine, 1990](https://ieeexplore.ieee.org/document/67314)
 - [nav2_navfn_planner](https://github.com/ros-navigation/navigation2/tree/main/nav2_navfn_planner)
 - [Planning 指南 · 数学公式](03_math.md)

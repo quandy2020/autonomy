@@ -232,13 +232,13 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 
 ## 8.10 参考文献
 
-1. Mur-Artal, R. et al. **ORB-SLAM2/3**. IEEE TRO, 2015/2021.
-2. Engel, J. et al. **DSO: Direct Sparse Odometry**. ECCV, 2016.
-3. Hess, W. et al. **Cartographer**. ICRA, 2016.
-4. Fox, D. et al. **Monte Carlo Localization (MCL)**. AAAI, 1999.
-5. Grisetti, G. et al. **g2o: A General Framework for Graph Optimization**. ICRA, 2011.
-6. stella_vslam / stb_vslam 开源实现文档.
-7. Navigation2 **nav2_amcl** 官方文档.
+1. [Mur-Artal, R. et al. **ORB-SLAM2**. IEEE TRO, 2017.](https://doi.org/10.1109/TRO.2017.2705103) / [Campos, C. et al. **ORB-SLAM3**. IEEE TRO, 2021.](https://doi.org/10.1109/TRO.2021.3075644)
+2. [Engel, J. et al. **DSO: Direct Sparse Odometry**. ECCV, 2016.](https://doi.org/10.1007/978-3-319-46493-0_35)
+3. [Hess, W. et al. **Real-Time Loop Closure in 2D LIDAR SLAM**. ICRA, 2016.](https://research.google/pubs/real-time-loop-closure-in-2d-lidar-slam/)
+4. [Fox, D. et al. **Monte Carlo Localization: Efficient Position Estimation for Mobile Robots**. AAAI, 1999.](https://cdn.aaai.org/AAAI/1999/AAAI99-050.pdf)
+5. [Kümmerle, R. et al. **g2o: A General Framework for Graph Optimization**. ICRA, 2011.](https://doi.org/10.1109/ICRA.2011.5979949)
+6. [stella_vslam / stb_vslam 开源实现文档](https://stella-cv.readthedocs.io/)
+7. [Navigation2 **nav2_amcl** 官方文档](https://docs.nav2.org/configuration/packages/configuring-amcl.html)
 
 ---
 
