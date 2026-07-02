@@ -896,24 +896,24 @@ static_layer → obstacle_layer → inflation_layer
 
 ### 9.19.1 教材
 
-1. LaValle, S.M. *Planning Algorithms.* Cambridge, 2006.
-2. Choset, H. et al. *Principles of Robot Motion.* MIT Press, 2005.
-3. Siegwart, R. et al. *Autonomous Mobile Robots.* MIT Press, 2011.
+1. [LaValle, S.M. *Planning Algorithms.* Cambridge, 2006.](https://lavalle.pl/planning/)
+2. [Choset, H. et al. *Principles of Robot Motion.* MIT Press, 2005.](https://mitpress.mit.edu/9780262033275/principles-of-robot-motion/)
+3. [Siegwart, R. et al. *Autonomous Mobile Robots.* MIT Press, 2011.](https://mitpress.mit.edu/9780262015356/autonomous-mobile-robots/)
 
 ### 9.19.2 里程碑论文
 
 | 年份 | 论文 | 贡献 |
 |------|------|------|
-| 1959 | Dijkstra | 最短路径 |
-| 1968 | Hart et al. | A* |
-| 1985 | Khatib | 人工势场 |
-| 1990 | Eriksson & Borenstein | GURVEY/NavFn 前身 |
-| 1998 | Kavraki et al. | PRM |
-| 1998 | LaValle | RRT |
-| 2005 | Ferguson & Stentz | Field D* |
-| 2007 | Nash et al. | Theta* |
-| 2008 | Dolgov et al. | Hybrid A* |
-| 2011 | Karaman & Frazzoli | RRT* |
+| 1959 | [Dijkstra, "A note on two problems in connexion with graphs"](https://doi.org/10.1007/BF01386390) | 最短路径 |
+| 1968 | [Hart et al., "A Formal Basis for the Heuristic Determination of Minimum Cost Paths"](https://doi.org/10.1109/TSSC.1968.300136) | A* |
+| 1985 | [Khatib, "Real-Time Obstacle Avoidance for Manipulators and Mobile Robots"](https://doi.org/10.1177/027836498600500106) | 人工势场 |
+| 1990 | [Eriksson & Borenstein, "The GURVEY: An Autonomous Navigation Algorithm Developed for a Hospital Guidance Robot"](https://ieeexplore.ieee.org/document/67314) | GURVEY/NavFn 前身 |
+| 1998 | [Kavraki et al., "Probabilistic Roadmaps for Path Planning in High-Dimensional Configuration Spaces"](https://doi.org/10.1109/70.508439) | PRM |
+| 1998 | [LaValle, "Rapidly-Exploring Random Trees: A New Tool for Path Planning"](https://lavalle.pl/rrtpubs.html) | RRT |
+| 2005 | [Ferguson & Stentz, "The Field D* Algorithm for Improved Path Planning and Replanning in Uniform and Non-Uniform Cost Environments"](https://www.ri.cmu.edu/publications/the-field-d-algorithm-for-improved-path-planning-and-replanning-in-uniform-and-non-uniform-cost-environments/) | Field D* |
+| 2007 | [Nash et al., "Theta*: Any-Angle Path Planning on Grids"](https://cdn.aaai.org/AAAI/2007/AAAI07-187.pdf) | Theta* |
+| 2008 | [Dolgov et al., "Practical Search Techniques in Path Planning for Autonomous Driving"](https://ai.stanford.edu/~ddolgov/papers/dolgov_gpp_stair08.pdf) | Hybrid A* |
+| 2011 | [Karaman & Frazzoli, "Sampling-based Algorithms for Optimal Motion Planning"](https://doi.org/10.1177/0278364911406761) | RRT* |
 
 ### 9.19.3 工程文档
 

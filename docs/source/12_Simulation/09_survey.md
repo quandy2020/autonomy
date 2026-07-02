@@ -138,7 +138,7 @@ Gazebo 插件提供标准 ROS topic；nav_test 仅仿真 odom。
 
 | 主题 | 参考 |
 |------|------|
-| Gazebo | gazebosim.org 文档 |
-| Stage | Player/Stage 项目 |
-| ROS 2 Gazebo | ros_gz 文档 |
-| Habitat-Sim | aihabitat.org |
+| Gazebo | [Gazebo 官方文档](https://gazebosim.org/docs) |
+| Stage | [Player/Stage 项目](http://playerstage.sourceforge.net/) |
+| ROS 2 Gazebo | [ros_gz 文档](https://gazebosim.org/docs/latest/ros2_integration/) |
+| Habitat-Sim | [Habitat-Sim 官方文档](https://aihabitat.org/docs/habitat-sim/) |

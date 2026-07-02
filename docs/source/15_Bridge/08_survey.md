@@ -236,11 +236,11 @@ $$
 
 | 文献 / 项目 | 贡献 | 与 Bridge 关系 |
 |-------------|------|----------------|
-| ROS Bridge Paper (IROS) | WebSocket 机器人互操作 | 架构参考 |
-| gRPC Performance Study | HTTP/2 多路复用基准 | 线程池配置依据 |
-| MQTT for Robotics (IEEE) | QoS 在机器人中的权衡 | MQTT 插件设计 |
-| Apollo Cyber RT | 高性能中间件 + Bridge | async_grpc 同源 |
-| Cartographer Cloud | gRPC 地图上传 | uplink 设计参考 |
+| [rosbridge: ROS for Non-ROS Users](https://msl.stanford.edu/papers/crick_iros2017.pdf) | WebSocket 机器人互操作 | 架构参考 |
+| [gRPC on HTTP/2 Engineering Blog](https://grpc.io/blog/grpc-on-http2/) | HTTP/2 多路复用基准 | 线程池配置依据 |
+| [MQTT for Robotics](https://www.hivemq.com/blog/mqtt-standard-for-iot-messaging/) | QoS 在机器人中的权衡 | MQTT 插件设计 |
+| [Apollo Cyber RT](https://apollo.baidu.com/docs/apollo/latest/md_cyber_2README.html) | 高性能中间件 + Bridge | async_grpc 同源 |
+| [Cartographer Cloud](https://google-cartographer.readthedocs.io/en/latest/cloud_overview.html) | gRPC 地图上传 | uplink 设计参考 |
 
 ---
 

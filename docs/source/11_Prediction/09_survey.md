@@ -153,7 +153,7 @@ Perception → Prediction → Planning → Control
 
 | 主题 | 参考 |
 |------|------|
-| CTRV | Werling et al., "Optimal Trajectory Generation" |
-| Social LSTM | Alahi et al., CVPR 2016 |
-| VectorNet | Gao et al., CVPR 2020 |
-| Apollo Prediction | Baidu Apollo 文档 |
+| CTRV | [Werling et al., "Optimal Trajectory Generation for Dynamic Street Scenarios in a Frenet Frame"](https://doi.org/10.1109/ROBOT.2010.5509799) |
+| Social LSTM | [Alahi et al., "Social LSTM: Human Trajectory Prediction in Crowded Spaces"](https://openaccess.thecvf.com/content_cvpr_2016/html/Alahi_Social_LSTM_Human_CVPR_2016_paper.html) |
+| VectorNet | [Gao et al., "VectorNet: Encoding HD Maps and Agent Dynamics From Vectorized Representation"](https://openaccess.thecvf.com/content_CVPR_2020/html/Gao_VectorNet_Encoding_HD_Maps_and_Agent_Dynamics_From_Vectorized_Representation_CVPR_2020_paper.html) |
+| Apollo Prediction | [Baidu Apollo Prediction 文档](https://apollo.baidu.com/docs/apollo/latest/md_modules_2prediction_2README.html) |

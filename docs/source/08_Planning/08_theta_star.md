@@ -172,6 +172,6 @@ theta_star_planner = {
 
 ## 8.9 参考文献
 
-- Nash et al., "Theta*: Any-Angle Path Planning on Grids", AAAI 2007
+- [Nash et al., "Theta*: Any-Angle Path Planning on Grids", AAAI 2007](https://cdn.aaai.org/AAAI/2007/AAAI07-187.pdf)
 - [nav2_theta_star_planner](https://github.com/ros-navigation/navigation2/tree/main/nav2_theta_star_planner)
 - [Planning 指南 · 数学公式](03_math.md)
