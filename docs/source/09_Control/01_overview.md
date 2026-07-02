@@ -55,6 +55,15 @@ autonomy/control/
     └── smoother_options.proto
 ```
 
+### 1.5 文档结构
+
+本模块文档：**§0–§5** 入门主干；**§6–§8** 按组件分组（侧栏可展开子目录专题）；**§9** 综述。入口见 [00_guide.md](00_guide.md)。
+
+| 范围 | 内容 |
+|------|------|
+| §0–§9 | 概览、数学、架构、Checker/Smoother/控制器总览、综述 |
+| §6–§8 | 组件分组（`checker/`、`smoother/`、`controller/` 各含总览 + 专题，侧栏可展开） |
+
 ### 1.4 导航栈数据流
 
 ```
@@ -65,7 +74,7 @@ Planning.Path ──→ ControllerServer ──→ cmd_vel ──→ 底盘
    map 模块         传感器 / 障碍层
 ```
 
-### 1.5 相关模块
+### 1.6 相关模块
 
 | 模块 | 关系 |
 |------|------|
@@ -75,7 +84,7 @@ Planning.Path ──→ ControllerServer ──→ cmd_vel ──→ 底盘
 | `autonomy/transform` | TF 位姿变换 |
 | `autonomy/system` | `Autonomy` 统一构造 ControllerServer |
 
-### 1.6 与 Nav2 对照
+### 1.7 与 Nav2 对照
 
 | Nav2 组件 | Autonomy 对应 | 备注 |
 |-----------|---------------|------|

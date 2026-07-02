@@ -1,6 +1,6 @@
 # 7. 速度平滑器（VelocitySmoother）
 
-`VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`，在控制器输出与底盘之间施加**运动学约束**，防止加速度突变、消除 deadband 以下的抖动。
+`VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`。源码级说明见 **[§20 VelocitySmoother 实现](smoother/20_velocity_smoother_impl.md)**。
 
 ## 7.1 定位
 

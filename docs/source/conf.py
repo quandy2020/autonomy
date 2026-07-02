@@ -70,7 +70,7 @@ html_theme_options = {
     'style_nav_header_background': '#7aa88d',
     'collapse_navigation': True,
     'sticky_navigation': True,
-    'navigation_depth': 3,
+    'navigation_depth': 4,
     'includehidden': True,
     'titles_only': False,
 }
@@ -101,7 +101,7 @@ myst_math_delimiters = [
 
 # 将 Markdown 中的 ```mermaid 代码块映射为 sphinxcontrib-mermaid 指令
 # 与 GitHub / 编辑器预览语法保持一致，无需改为 ```{mermaid}
-myst_fence_as_directive = ["mermaid"]
+myst_fence_as_directive = ["mermaid", "toctree"]
 
 # 为标题生成锚点（含 #### 小节），与文档内 #410-xxx 链接格式一致
 myst_heading_anchors = 6

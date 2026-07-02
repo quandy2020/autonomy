@@ -1307,6 +1307,145 @@
 }
 
 /* ----------------------------------------------------------------------------
+   算法框（控制器 LaTeX 算法描述）
+   ---------------------------------------------------------------------------- */
+
+.rst-content .algorithm-box-diagram {
+    margin: 1.25rem 0 1.75rem;
+    padding: 1.25rem 1.4rem;
+    background: #f8f9fb;
+    border: 1px solid #e1e4e8;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.rst-content .algorithm-box {
+    border-radius: 10px;
+    border: 1px solid;
+    padding: 1rem 1.25rem 1.15rem;
+    background: #fff;
+    overflow-x: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.rst-content .algorithm-box-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.rst-content .algorithm-box-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.rst-content .algorithm-box-title {
+    font-size: 0.98rem;
+    font-weight: 600;
+    color: #263238;
+}
+
+.rst-content .algorithm-box-sub {
+    font-size: 0.84rem;
+    color: #607d8b;
+    margin-bottom: 0.55rem;
+}
+
+.rst-content .algorithm-box-io {
+    margin-bottom: 0.65rem;
+}
+
+.rst-content .algorithm-box-io table {
+    margin: 0 !important;
+    font-size: 0.88em;
+    width: 100%;
+}
+
+.rst-content .algorithm-box-body {
+    padding: 1rem 1.35rem;
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rst-content .algorithm-box-body .math {
+    overflow-x: auto;
+    text-align: left;
+    width: 100%;
+    margin: 0;
+}
+
+.rst-content .algorithm-box-body mjx-container[display="true"] {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    text-align: left !important;
+    font-size: 1.08em;
+}
+
+.rst-content .algorithm-box-subroutine .algorithm-box-body {
+    background: rgba(255, 255, 255, 0.85);
+}
+
+.rst-content .algorithm-box-footer {
+    padding: 0.65rem 0.85rem;
+    background: #fff;
+    border: 1px dashed #cfd8dc;
+    border-radius: 8px;
+    font-size: 0.9em;
+    color: #455a64;
+}
+
+.rst-content .algorithm-box-phase-a {
+    border-color: #9dd4d5;
+    background: var(--color-app-bg, #f0fafb);
+}
+.rst-content .algorithm-box-phase-a .algorithm-box-badge {
+    background: var(--color-app, #26a69a);
+}
+
+.rst-content .algorithm-box-phase-b {
+    border-color: #b8c4d0;
+    background: var(--color-core-bg, #f5f7fa);
+}
+.rst-content .algorithm-box-phase-b .algorithm-box-badge {
+    background: var(--color-core, #5c6bc0);
+}
+
+.rst-content .algorithm-box-phase-c {
+    border-color: #c5b3d4;
+    background: #faf8fc;
+}
+.rst-content .algorithm-box-phase-c .algorithm-box-badge {
+    background: #7e57c2;
+}
+
+.rst-content .plan-arch-diagram .math {
+    font-size: 0.95em;
+}
+
+.rst-content .plan-arch-diagram mjx-container {
+    display: inline !important;
+    margin: 0 0.1em !important;
+}
+
+/* ----------------------------------------------------------------------------
    响应式优化
    ---------------------------------------------------------------------------- */
 
