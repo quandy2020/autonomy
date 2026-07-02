@@ -1,8 +1,17 @@
 # Configuration file for the Sphinx documentation builder.
 
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# section_heading_slug registered via import path in myst_heading_slug_func
+
 # -- Project information -----------------------------------------------------
 
 project = "Autonomy"
+html_title = "Autonomy 文档"
+html_short_title = "Autonomy"
 copyright = "2026 OpenRobotics Team"
 author = "OpenRobotics Team"
 
@@ -18,7 +27,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",  # 支持数学公式
     "sphinx_copybutton",  # 代码块一键复制功能
-    'myst_parser',
+    "myst_parser",
+    "sphinxcontrib.mermaid",  # Mermaid 图表渲染
 ]
 
 intersphinx_mapping = {
@@ -42,7 +52,7 @@ epub_show_urls = "footnote"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**/guide.md"]
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -51,20 +61,18 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 #
 html_theme = "sphinx_rtd_theme"
 
-# 主题选项 - 改善视觉效果
+# 主题选项 — 简约清晰风格
 html_theme_options = {
     'logo_only': False,
-    'display_version': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': True,
     'vcs_pageview_mode': '',
-    'style_nav_header_background': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    # 侧边栏选项
+    'style_nav_header_background': '#7aa88d',
     'collapse_navigation': True,
     'sticky_navigation': True,
-    'navigation_depth': 4,
+    'navigation_depth': 3,
     'includehidden': True,
-    'titles_only': False
+    'titles_only': False,
 }
 
 # Add custom CSS to increase page width and improve appearance
@@ -72,9 +80,8 @@ html_theme_options = {
 html_static_path = ["."]
 html_css_files = ["custom.css"]
 
-# 代码高亮主题 - 使用 monokai 暗色主题（与 CSS 代码块暗色背景匹配）
-# 可选主题: default, tango, friendly, colorful, autumn, murphy, manni, monokai, perldoc, pastie, borland, trac, native, fruity, bw, emacs, vim, vs, rrt, xcode, igor, paraiso-light, paraiso-dark, lovelace, algol, algol_nu, arduino, rainbow_dash, abap, solarized-dark, solarized-light, sas, stata, stata-light, stata-dark, inkpot
-pygments_style = 'monokai'
+# 代码高亮 — 浅色主题，与正文风格一致
+pygments_style = 'friendly'
 
 # -- MathJax configuration for math formulas ---------------------------------
 # MathJax 配置 - 支持 LaTeX 数学公式
@@ -91,6 +98,50 @@ myst_math_delimiters = [
     ("$$", "$$"),
     ("\\[", "\\]"),
 ]
+
+# 将 Markdown 中的 ```mermaid 代码块映射为 sphinxcontrib-mermaid 指令
+# 与 GitHub / 编辑器预览语法保持一致，无需改为 ```{mermaid}
+myst_fence_as_directive = ["mermaid"]
+
+# 为标题生成锚点（含 #### 小节），与文档内 #410-xxx 链接格式一致
+myst_heading_anchors = 6
+myst_heading_slug_func = "sphinx_ext.heading_slugs.section_heading_slug"
+
+# §N 章节使用「# 1. 标题」+「### N.M 小节」；跳过 H1→H3 跳级告警
+suppress_warnings = ["myst.header"]
+
+# -- Mermaid configuration -----------------------------------------------------
+# 使用 jsDelivr CDN 加载 Mermaid（支持 timeline、flowchart 等）
+mermaid_version = "10.9.1"
+
+# 全局初始化：禁用 useMaxWidth 避免图表被压缩过小，统一字号
+mermaid_init_js = """
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    fontSize: '14px',
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+    primaryColor: '#e0f2f2',
+    primaryTextColor: '#1a4d6e',
+    primaryBorderColor: '#2d9294',
+    lineColor: '#5a7289',
+    secondaryColor: '#eef1f4',
+    tertiaryColor: '#ffffff'
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 20,
+    nodeSpacing: 45,
+    rankSpacing: 55
+  },
+  timeline: {
+    disableMulticolor: false
+  }
+});
+"""
 
 # -- Copy button configuration for code blocks --------------------------------
 # 代码块复制按钮配置

@@ -9,4 +9,5 @@ sphinxcontrib-htmlhelp
 sphinxcontrib-jsmath 
 sphinxcontrib-qthelp
 sphinxcontrib-serializinghtml
-sphinx-copybutton 
+sphinx-copybutton
+sphinxcontrib-mermaid

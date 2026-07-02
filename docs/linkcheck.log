@@ -1,0 +1,262 @@
+Running Sphinx v7.4.7
+loading translations [en]... done
+/Users/quandy/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+loading pickled environment... done
+/Users/quandy/Library/Python/3.9/lib/python/site-packages/sphinx/builders/linkcheck.py:86: RemovedInSphinx80Warning: The default value for 'linkcheck_report_timeouts_as_broken' will change to False in Sphinx 8, meaning that request timeouts will be reported with a new 'timeout' status, instead of as 'broken'. This is intended to provide more detail as to the failure mode. See https://github.com/sphinx-doc/sphinx/issues/11868 for details.
+  warnings.warn(deprecation_msg, RemovedInSphinx80Warning, stacklevel=1)
+[autosummary] generating autosummary for: 01_Instructions/00_guide.md, 01_Instructions/01_overview.md, 01_Instructions/02_quickstart.md, 01_Instructions/03_system_architecture.md, 01_Instructions/04_navigation_stack.md, 01_Instructions/05_project_layout.md, 01_Instructions/06_ecosystem.md, 01_Instructions/07_documentation_guide.md, 01_Instructions/08_roadmap.md, 01_Instructions/index.rst, ..., 20_Other/01_overview.md, 20_Other/02_code_style.md, 20_Other/03_contributing.md, 20_Other/04_glossary.md, 20_Other/05_changelog.md, 20_Other/06_resources.md, 20_Other/07_links.md, 20_Other/08_survey.md, 20_Other/index.rst, index.rst
+myst v3.0.1: MdParserConfig(commonmark_only=False, gfm_only=False, enable_extensions={'amsmath', 'colon_fence', 'dollarmath'}, disable_syntax=[], all_links_external=False, links_external_new_tab=False, url_schemes=('http', 'https', 'mailto', 'ftp'), ref_domains=None, fence_as_directive={'mermaid'}, number_code_blocks=[], title_to_header=False, heading_anchors=6, heading_slug_func=<function section_heading_slug at 0x10d6ab5e0>, html_meta={}, footnote_transition=True, words_per_minute=200, substitutions={}, linkify_fuzzy_links=True, dmath_allow_labels=True, dmath_allow_space=True, dmath_allow_digits=True, dmath_double_inline=False, update_mathjax=True, mathjax_classes='tex2jax_process|mathjax_process|math|output_area', enable_checkboxes=False, suppress_warnings=[], highlight_code_blocks=True)
+building [mo]: targets for 0 po files that are out of date
+writing output... 
+building [linkcheck]: targets for 209 source files that are out of date
+updating environment: 0 added, 1 changed, 0 removed
+reading sources... [100%] 03_Communication/00_guide
+
+looking for now-outdated files... none found
+pickling environment... done
+checking consistency... done
+preparing documents... done
+copying assets... 
+copying assets: done
+writing output... [  0%] 01_Instructions/00_guide
+writing output... [  1%] 01_Instructions/01_overview
+writing output... [  1%] 01_Instructions/02_quickstart
+writing output... [  2%] 01_Instructions/03_system_architecture
+writing output... [  2%] 01_Instructions/04_navigation_stack
+writing output... [  3%] 01_Instructions/05_project_layout
+writing output... [  3%] 01_Instructions/06_ecosystem
+writing output... [  4%] 01_Instructions/07_documentation_guide
+writing output... [  4%] 01_Instructions/08_roadmap
+writing output... [  5%] 01_Instructions/index
+writing output... [  5%] 02_Installation/00_guide
+writing output... [  6%] 02_Installation/01_overview
+writing output... [  6%] 02_Installation/02_quickstart
+writing output... [  7%] 02_Installation/03_system_requirements
+writing output... [  7%] 02_Installation/04_dependencies
+writing output... [  8%] 02_Installation/05_docker
+writing output... [  8%] 02_Installation/06_build
+writing output... [  9%] 02_Installation/07_environment
+writing output... [  9%] 02_Installation/08_troubleshooting
+writing output... [ 10%] 02_Installation/index
+writing output... [ 10%] 03_Communication/00_guide
+writing output... [ 11%] 03_Communication/01_overview
+writing output... [ 11%] 03_Communication/02_quickstart
+writing output... [ 11%] 03_Communication/03_concepts
+writing output... [ 12%] 03_Communication/04_usage
+writing output... [ 12%] 03_Communication/05_architecture
+writing output... [ 13%] 03_Communication/06_node_channel
+writing output... [ 13%] 03_Communication/07_service_action
+writing output... [ 14%] 03_Communication/08_scheduler_transport
+writing output... [ 14%] 03_Communication/09_survey
+writing output... [ 15%] 03_Communication/index
+writing output... [ 15%] 04_Running/00_guide
+writing output... [ 16%] 04_Running/01_overview
+writing output... [ 16%] 04_Running/02_quickstart
+writing output... [ 17%] 04_Running/03_autonomy_process
+writing output... [ 17%] 04_Running/04_nav_test
+writing output... [ 18%] 04_Running/05_docker_runtime
+writing output... [ 18%] 04_Running/06_ros2_integration
+writing output... [ 19%] 04_Running/07_verification
+writing output... [ 19%] 04_Running/08_troubleshooting
+writing output... [ 20%] 04_Running/index
+writing output... [ 20%] 05_Framework/00_guide
+writing output... [ 21%] 05_Framework/01_overview
+writing output... [ 21%] 05_Framework/02_quickstart
+writing output... [ 22%] 05_Framework/03_architecture
+writing output... [ 22%] 05_Framework/04_configuration
+writing output... [ 22%] 05_Framework/05_module_servers
+writing output... [ 23%] 05_Framework/06_plugin_system
+writing output... [ 23%] 05_Framework/07_commsgs_integration
+writing output... [ 24%] 05_Framework/08_survey
+writing output... [ 24%] 05_Framework/index
+writing output... [ 25%] 06_Localization/00_guide
+writing output... [ 25%] 06_Localization/01_overview
+writing output... [ 26%] 06_Localization/02_quickstart
+writing output... [ 26%] 06_Localization/03_math
+writing output... [ 27%] 06_Localization/04_usage
+writing output... [ 27%] 06_Localization/05_architecture
+writing output... [ 28%] 06_Localization/06_atlas
+writing output... [ 28%] 06_Localization/07_amcl
+writing output... [ 29%] 06_Localization/09_survey
+writing output... [ 29%] 06_Localization/index
+writing output... [ 30%] 07_Map/00_guide
+writing output... [ 30%] 07_Map/01_overview
+writing output... [ 31%] 07_Map/02_quickstart
+writing output... [ 31%] 07_Map/03_math
+writing output... [ 32%] 07_Map/04_usage
+writing output... [ 32%] 07_Map/05_architecture
+writing output... [ 33%] 07_Map/06_costmap2d
+writing output... [ 33%] 07_Map/07_grid_map
+writing output... [ 33%] 07_Map/08_survey
+writing output... [ 34%] 07_Map/index
+writing output... [ 34%] 08_Planning/00_guide
+writing output... [ 35%] 08_Planning/01_overview
+writing output... [ 35%] 08_Planning/02_quickstart
+writing output... [ 36%] 08_Planning/03_math
+writing output... [ 36%] 08_Planning/04_usage
+writing output... [ 37%] 08_Planning/05_architecture
+writing output... [ 37%] 08_Planning/06_navfn
+writing output... [ 38%] 08_Planning/07_dijkstra
+writing output... [ 38%] 08_Planning/08_theta_star
+writing output... [ 39%] 08_Planning/09_survey
+writing output... [ 39%] 08_Planning/index
+writing output... [ 40%] 09_Control/00_guide
+writing output... [ 40%] 09_Control/01_overview
+writing output... [ 41%] 09_Control/02_quickstart
+writing output... [ 41%] 09_Control/03_math
+writing output... [ 42%] 09_Control/04_usage
+writing output... [ 42%] 09_Control/05_architecture
+writing output... [ 43%] 09_Control/06_checkers
+writing output... [ 43%] 09_Control/07_velocity_smoother
+writing output... [ 44%] 09_Control/08_controller_algorithms
+writing output... [ 44%] 09_Control/09_survey
+writing output... [ 44%] 09_Control/index
+writing output... [ 45%] 10_Perception/00_guide
+writing output... [ 45%] 10_Perception/01_overview
+writing output... [ 46%] 10_Perception/02_quickstart
+writing output... [ 46%] 10_Perception/03_math
+writing output... [ 47%] 10_Perception/04_usage
+writing output... [ 47%] 10_Perception/05_architecture
+writing output... [ 48%] 10_Perception/06_sensor_pipeline
+writing output... [ 48%] 10_Perception/07_vision_detection
+writing output... [ 49%] 10_Perception/08_obstacle_perception
+writing output... [ 49%] 10_Perception/09_survey
+writing output... [ 50%] 10_Perception/index
+writing output... [ 50%] 11_Prediction/00_guide
+writing output... [ 51%] 11_Prediction/01_overview
+writing output... [ 51%] 11_Prediction/02_quickstart
+writing output... [ 52%] 11_Prediction/03_math
+writing output... [ 52%] 11_Prediction/04_usage
+writing output... [ 53%] 11_Prediction/05_architecture
+writing output... [ 53%] 11_Prediction/06_motion_models
+writing output... [ 54%] 11_Prediction/07_trajectory_prediction
+writing output... [ 54%] 11_Prediction/08_behavior_prediction
+writing output... [ 55%] 11_Prediction/09_survey
+writing output... [ 55%] 11_Prediction/index
+writing output... [ 56%] 12_Simulation/00_guide
+writing output... [ 56%] 12_Simulation/01_overview
+writing output... [ 56%] 12_Simulation/02_quickstart
+writing output... [ 57%] 12_Simulation/03_math
+writing output... [ 57%] 12_Simulation/04_usage
+writing output... [ 58%] 12_Simulation/05_architecture
+writing output... [ 58%] 12_Simulation/06_nav_test
+writing output... [ 59%] 12_Simulation/07_gazebo_ros
+writing output... [ 59%] 12_Simulation/08_vehicle_stage
+writing output... [ 60%] 12_Simulation/09_survey
+writing output... [ 60%] 12_Simulation/index
+writing output... [ 61%] 13_Visualization/00_guide
+writing output... [ 61%] 13_Visualization/01_overview
+writing output... [ 62%] 13_Visualization/02_quickstart
+writing output... [ 62%] 13_Visualization/03_data_types
+writing output... [ 63%] 13_Visualization/04_configuration
+writing output... [ 63%] 13_Visualization/05_architecture
+writing output... [ 64%] 13_Visualization/06_foxglove
+writing output... [ 64%] 13_Visualization/07_rviz2_ros2
+writing output... [ 65%] 13_Visualization/08_survey
+writing output... [ 65%] 13_Visualization/index
+writing output... [ 66%] 14_Commsgs/00_guide
+writing output... [ 66%] 14_Commsgs/01_overview
+writing output... [ 67%] 14_Commsgs/02_quickstart
+writing output... [ 67%] 14_Commsgs/03_schema
+writing output... [ 67%] 14_Commsgs/04_usage
+writing output... [ 68%] 14_Commsgs/05_architecture
+writing output... [ 68%] 14_Commsgs/06_core_msgs
+writing output... [ 69%] 14_Commsgs/07_sensor_map_msgs
+writing output... [ 69%] 14_Commsgs/08_nav_planning_msgs
+writing output... [ 70%] 14_Commsgs/09_survey
+writing output... [ 70%] 14_Commsgs/index
+writing output... [ 71%] 15_Bridge/00_guide
+writing output... [ 71%] 15_Bridge/01_overview
+writing output... [ 72%] 15_Bridge/02_quickstart
+writing output... [ 72%] 15_Bridge/03_math
+writing output... [ 73%] 15_Bridge/04_usage
+writing output... [ 73%] 15_Bridge/05_architecture
+writing output... [ 74%] 15_Bridge/06_grpc
+writing output... [ 74%] 15_Bridge/07_mqtt
+writing output... [ 75%] 15_Bridge/08_survey
+writing output... [ 75%] 15_Bridge/index
+writing output... [ 76%] 16_Navigator/00_guide
+writing output... [ 76%] 16_Navigator/01_overview
+writing output... [ 77%] 16_Navigator/02_quickstart
+writing output... [ 77%] 16_Navigator/03_math
+writing output... [ 78%] 16_Navigator/04_usage
+writing output... [ 78%] 16_Navigator/05_architecture
+writing output... [ 78%] 16_Navigator/06_bt_engine
+writing output... [ 79%] 16_Navigator/07_navigate_to_pose
+writing output... [ 79%] 16_Navigator/08_bt_plugins
+writing output... [ 80%] 16_Navigator/09_survey
+writing output... [ 80%] 16_Navigator/index
+writing output... [ 81%] 17_Tasks/00_guide
+writing output... [ 81%] 17_Tasks/01_overview
+writing output... [ 82%] 17_Tasks/02_quickstart
+writing output... [ 82%] 17_Tasks/03_task_types
+writing output... [ 83%] 17_Tasks/04_configuration
+writing output... [ 83%] 17_Tasks/05_architecture
+writing output... [ 84%] 17_Tasks/06_execution_modes
+writing output... [ 84%] 17_Tasks/07_api_reference
+writing output... [ 85%] 17_Tasks/08_survey
+writing output... [ 85%] 17_Tasks/index
+writing output... [ 86%] 18_Tools/00_guide
+writing output... [ 86%] 18_Tools/01_overview
+writing output... [ 87%] 18_Tools/02_quickstart
+writing output... [ 87%] 18_Tools/03_dev_scripts
+writing output... [ 88%] 18_Tools/04_nav_test
+writing output... [ 88%] 18_Tools/05_monitor
+writing output... [ 89%] 18_Tools/06_autolink_tools
+writing output... [ 89%] 18_Tools/07_docker_scripts
+writing output... [ 89%] 18_Tools/08_survey
+writing output... [ 90%] 18_Tools/index
+writing output... [ 90%] 19_FAQs/00_guide
+writing output... [ 91%] 19_FAQs/01_overview
+writing output... [ 91%] 19_FAQs/02_installation
+writing output... [ 92%] 19_FAQs/03_build
+writing output... [ 92%] 19_FAQs/04_running
+writing output... [ 93%] 19_FAQs/05_docker
+writing output... [ 93%] 19_FAQs/06_autolink
+writing output... [ 94%] 19_FAQs/07_navigation
+writing output... [ 94%] 19_FAQs/08_survey
+writing output... [ 95%] 19_FAQs/index
+writing output... [ 95%] 20_Other/00_guide
+writing output... [ 96%] 20_Other/01_overview
+writing output... [ 96%] 20_Other/02_code_style
+writing output... [ 97%] 20_Other/03_contributing
+writing output... [ 97%] 20_Other/04_glossary
+writing output... [ 98%] 20_Other/05_changelog
+writing output... [ 98%] 20_Other/06_resources
+writing output... [ 99%] 20_Other/07_links
+writing output... [ 99%] 20_Other/08_survey
+writing output... [100%] 20_Other/index
+writing output... [100%] index
+
+
+(13_Visualization/02_quickstart: line   30) ok        https://foxglove.dev/download
+(13_Visualization/06_foxglove: line    3) ok        https://foxglove.dev/
+(08_Planning/09_survey: line  918) ok        https://docs.nav2.org/configuration/packages/configuring-planner-server.html
+(10_Perception/09_survey: line  179) ok        https://docs.nav2.org/
+(01_Instructions/08_roadmap: line   42) ok        https://github.com/BehaviorTree/BehaviorTree.CPP
+(01_Instructions/07_documentation_guide: line   81) ok        https://autonomy.readthedocs.io/en/latest/index.html
+(01_Instructions/08_roadmap: line   44) ok        https://github.com/autowarefoundation/autoware_universe
+(01_Instructions/08_roadmap: line   43) ok        https://github.com/cartographer-project/cartographer
+(20_Other/06_resources: line   17) ok        https://github.com/ApolloAuto/apollo/tree/master/cyber
+(20_Other/03_contributing: line   50) ok        https://github.com/quandy2020/autonomy/blob/main/LICENSE
+(13_Visualization/08_survey: line   45) ok        https://github.com/foxglove/ros-foxglove-bridge
+(01_Instructions/08_roadmap: line   35) ok        https://github.com/quandy2020/autonomy/blob/main/CHANGELOG.rst
+(20_Other/03_contributing: line    5) ok        https://github.com/quandy2020/autonomy
+(16_Navigator/08_bt_plugins: line   28) ok        https://github.com/BehaviorTree/Groot2
+(19_FAQs/01_overview: line   25) ok        https://github.com/quandy2020/autonomy/issues
+(14_Commsgs/09_survey: line  143) ok        https://github.com/ros-navigation/navigation2/tree/main/nav2_msgs
+(01_Instructions/08_roadmap: line   41) ok        https://github.com/ros-navigation/navigation2
+(08_Planning/06_navfn: line  184) ok        https://github.com/ros-navigation/navigation2/tree/main/nav2_navfn_planner
+(08_Planning/08_theta_star: line  174) ok        https://github.com/ros-navigation/navigation2/tree/main/nav2_theta_star_planner
+(13_Visualization/08_survey: line   44) ok        https://github.com/ros2/rviz
+(01_Instructions/08_roadmap: line   45) ok        https://github.com/ros2
+(14_Commsgs/09_survey: line  142) ok        https://github.com/ros2/common_interfaces
+(14_Commsgs/09_survey: line  144) ok        https://github.com/ros-perception/vision_msgs
+(20_Other/06_resources: line   16) ok        https://www.behaviortree.dev/
+
+====================== slowest reading durations =======================
+0.009 03_Communication/00_guide
+build succeeded.
+
+Look for any errors in the above output or in build/linkcheck/output.txt
