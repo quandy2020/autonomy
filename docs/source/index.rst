@@ -38,12 +38,24 @@ Contents
 ----------------
 
 .. toctree::
-  :maxdepth: 1
+  :maxdepth: 3
 
   01 Instructions <01_Instructions/what_openbot_ros>
   02 Installation <02_Installation/prerequisite_software_installation_guide>
   03 Running <03_Running/how_to_running_openbot_ros>
   04 Framework <04_Framework/autonomy_framework_and_communication>
-  05 Localization <05_Localization/math_and_code_example>
-
+  05 Localization <05_Localization/guide>
+  06 Mapping <06_Map/guide>
+  07 Planning <07_Planning/guide>
+  08 Control <08_Control/guide>
+  09 Perception <09_Perception/guide>
+  10 Prediction <10_Prediction/guide>
+  11 Simulation <11_Simulation/guide>
+  12 Visualization <12_Visualization/guide>
+  13 Commsgs <13_Commsgs/guide>
+  14 Bridge <14_Bridge/guide>
+  15 Tasks <15_Tasks/guide>
+  16 Tools <16_Tools/guide>
+  17 FAQ <17_FAQs/guide>
+  18 Others <18_Other/guide>
 
