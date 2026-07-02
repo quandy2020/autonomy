@@ -1,0 +1,636 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>8. 地图表示综述（Survey） &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Planning 路径规划" href="../08_Planning/index.html" />
+    <link rel="prev" title="7. GridMap 2.5D 栅格地图" href="07_grid_map.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">07 Mapping</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_costmap2d.html">6 Costmap2D 代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_grid_map.html">7 GridMap 2.5D 栅格地图</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">8 地图表示综述</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">8.1 概述：地图在导航栈中的位置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">8.2 地图表示的形式化</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">8.3 发展时间轴</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">8.4 地图表示对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#costmap2d">8.5 Costmap2D 图层体系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">8.6 膨胀算法的物理意义</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gridmap-2-5d">8.7 GridMap 2.5D 的设计哲学</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autonomy-map">8.8 Autonomy map 模块定位</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#planning">8.9 与 Planning 的耦合</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">8.10 影响因素与调参</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">8.11 未来方向</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">8.12 相关文档</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Map 地图模块</a></li>
+      <li class="breadcrumb-item active">8. 地图表示综述（Survey）</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/07_Map/08_survey.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="survey">
+<h1>8. 地图表示综述（Survey）<a class="headerlink" href="#survey" title="Link to this heading"></a></h1>
+<p>本文从<strong>学术发展史、地图表示体系、工程实践、Autonomy 定位</strong>四个维度，系统综述移动机器人环境地图（Environmental Mapping）领域，并明确 <code class="docutils literal notranslate"><span class="pre">autonomy/map</span></code> 模块的能力边界与选型依据。</p>
+<blockquote>
+<div><p>公式推导见 <a class="reference internal" href="03_math.html"><span class="std std-doc">Map 指南 · 数学原理</span></a>；实现细节见 <a class="reference internal" href="05_architecture.html"><span class="std std-doc">架构设计</span></a> 与各子文档。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id1">
+<h2>8.1 概述：地图在导航栈中的位置<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>移动机器人导航通常依赖<strong>环境地图</strong>作为规划与感知的空间基准：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>子问题</p></th>
+<th class="head"><p>典型地图类型</p></th>
+<th class="head"><p>Autonomy 模块</p></th>
+<th class="head"><p>频率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>全局定位</p></td>
+<td><p>静态占据栅格</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MapServer</span></code></p></td>
+<td><p>一次性 / 低频</p></td>
+</tr>
+<tr class="row-odd"><td><p>路径规划</p></td>
+<td><p>2D 代价地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Costmap2D</span></code></p></td>
+<td><p>1–10 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>局部避障</p></td>
+<td><p>滚动代价地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Costmap2D</span></code> (rolling)</p></td>
+<td><p>5–20 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>地形感知</p></td>
+<td><p>2.5D 多层栅格</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GridMap</span></code></p></td>
+<td><p>1–10 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>SLAM 建图</p></td>
+<td><p>点云 / 子图</p></td>
+<td><p>外部模块 → 注入</p></td>
+<td><p>变化</p></td>
+</tr>
+</tbody>
+</table>
+<div class="nav-costmap-banner">
+  <strong>Autonomy 地图管线</strong>
+  <span class="nav-costmap-detail">SLAM → MapServer → static_layer → obstacle_layer → inflation_layer → Planning</span>
+  <span class="nav-costmap-arrow">GridMap 并行独立 →</span>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>SLAM / 文件 ──→ MapServer ──→ OccupancyGrid ──→ static_layer ──┐
+激光 / 点云 ────────────────────────────────→ obstacle_layer ──┼──→ Costmap2D ──→ Planning
+                                                              │
+                                              inflation_layer ─┘
+
+深度 / 点云 ──→ GridMap (elevation / slope / ...) ──→ [未来桥接]
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>8.2 地图表示的形式化<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="occupancy-grid">
+<h3>8.2.1 占据栅格（Occupancy Grid）<a class="headerlink" href="#occupancy-grid" title="Link to this heading"></a></h3>
+<p>环境 <span class="math notranslate nohighlight">\(\mathcal{W} \subset \mathbb{R}^2\)</span> 离散为 <span class="math notranslate nohighlight">\(N_x \times N_y\)</span> 栅格，每格存储占据概率或标签：</p>
+<div class="math notranslate nohighlight">
+\[
+p(m_{ij} = \mathrm{occupied} \mid z_{1:t})
+\]</div>
+<p>典型输出：<span class="math notranslate nohighlight">\(o_{ij} \in \{-1, 0, \ldots, 100\}\)</span>（未知 / 自由 / 占据百分比）。</p>
+<p><strong>Autonomy 实现</strong>：<code class="docutils literal notranslate"><span class="pre">MapServer</span></code> 加载 YAML+PGM，<code class="docutils literal notranslate"><span class="pre">StaticLayer</span></code> 消费 <code class="docutils literal notranslate"><span class="pre">OccupancyGrid</span></code>。</p>
+</section>
+<section id="costmap">
+<h3>8.2.2 代价地图（Costmap）<a class="headerlink" href="#costmap" title="Link to this heading"></a></h3>
+<p>在占据栅格基础上引入<strong>通行代价</strong> <span class="math notranslate nohighlight">\(c_{ij} \in [0, 255]\)</span>，使规划器不仅避开障碍，还能<strong>远离障碍</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+c_{ij} = f(d_{ij}^{\text{obs}}, r_i, \lambda)
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(d_{ij}^{\text{obs}}\)</span> 为到最近障碍的距离，<span class="math notranslate nohighlight">\(r_i\)</span> 为机器人内切半径，<span class="math notranslate nohighlight">\(\lambda\)</span> 为衰减系数。</p>
+<p><strong>Autonomy 实现</strong>：<code class="docutils literal notranslate"><span class="pre">Costmap2D</span></code> + <code class="docutils literal notranslate"><span class="pre">InflationLayer</span></code>，指数衰减公式见 <a class="reference internal" href="03_math.html#inflationlayer"><span class="std std-ref">§3.6</span></a>。</p>
+</section>
+<section id="d-grid-map">
+<h3>8.2.3 2.5D 多层栅格（Grid Map）<a class="headerlink" href="#d-grid-map" title="Link to this heading"></a></h3>
+<p>在 XY 平面维护多层浮点属性 <span class="math notranslate nohighlight">\(\{L_k\}\)</span>，第三维信息编码在层值中：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathcal{M}_{2.5D} = \{ L_k(i,j) \mid k = 1,\ldots,K \}
+\]</div>
+<p>典型层：高程 <span class="math notranslate nohighlight">\(z\)</span>、方差 <span class="math notranslate nohighlight">\(\sigma_z^2\)</span>、坡度、法向量、可通行性。</p>
+<p><strong>Autonomy 实现</strong>：<code class="docutils literal notranslate"><span class="pre">grid_map::GridMap</span></code>，ETH <code class="docutils literal notranslate"><span class="pre">grid_map</span></code> 架构。</p>
+</section>
+<section id="autonomy">
+<h3>8.2.4 其他表示（Autonomy 未内置）<a class="headerlink" href="#autonomy" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>表示</p></th>
+<th class="head"><p>特点</p></th>
+<th class="head"><p>典型应用</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>点云地图</p></td>
+<td><p>精确 3D，数据量大</p></td>
+<td><p>LOAM、LIO-SAM</p></td>
+</tr>
+<tr class="row-odd"><td><p>八叉树 (OctoMap)</p></td>
+<td><p>稀疏 3D 占据</p></td>
+<td><p>无人机、机械臂</p></td>
+</tr>
+<tr class="row-even"><td><p>拓扑地图</p></td>
+<td><p>节点+边，语义丰富</p></td>
+<td><p>多楼层导航</p></td>
+</tr>
+<tr class="row-odd"><td><p>符号地图</p></td>
+<td><p>物体级语义</p></td>
+<td><p>人机交互</p></td>
+</tr>
+<tr class="row-even"><td><p>ESDF / TSDF</p></td>
+<td><p>有符号距离场</p></td>
+<td><p>实时避障、Voxblox</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>8.3 发展时间轴<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="planning-timeline-v2">
+<div class="timeline-era-block era-foundation">
+  <div class="timeline-era-header">奠基期 · 1980s–1990s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1985</div>
+      <div class="timeline-milestone-title">Occupancy Grid</div>
+      <div class="timeline-milestone-desc">Moravec & Elfes，概率占据栅格</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1986</div>
+      <div class="timeline-milestone-title">Configuration Space</div>
+      <div class="timeline-milestone-desc">Lozano-Pérez，构型空间障碍映射</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1990s</div>
+      <div class="timeline-milestone-title">SLAM</div>
+      <div class="timeline-milestone-desc">同时定位与建图，地图在线更新</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-reactive">
+  <div class="timeline-era-header">ROS 时代 · 2000s–2010s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2008</div>
+      <div class="timeline-milestone-title">costmap_2d</div>
+      <div class="timeline-milestone-desc">Willow Garage，多层代价地图</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2013</div>
+      <div class="timeline-milestone-title">grid_map</div>
+      <div class="timeline-milestone-desc">ETH，2.5D 多层浮点栅格</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2014</div>
+      <div class="timeline-milestone-title">OctoMap</div>
+      <div class="timeline-milestone-desc">3D 概率八叉树地图</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2018</div>
+      <div class="timeline-milestone-title">Nav2</div>
+      <div class="timeline-milestone-desc">ROS 2 导航栈，costmap 插件化</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-modern">
+  <div class="timeline-era-header">现代 · 2020s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2020s</div>
+      <div class="timeline-milestone-title">语义地图</div>
+      <div class="timeline-milestone-desc">物体级、场景图、LLM 导航</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2024</div>
+      <div class="timeline-milestone-title">Autonomy map</div>
+      <div class="timeline-milestone-desc">Nav2 costmap + ETH grid_map 融合</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2020s</div>
+      <div class="timeline-milestone-title">NeRF / 3DGS</div>
+      <div class="timeline-milestone-desc">神经辐射场，隐式场景表示</div>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>8.4 地图表示对比<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>OccupancyGrid</p></th>
+<th class="head"><p>Costmap2D</p></th>
+<th class="head"><p>GridMap 2.5D</p></th>
+<th class="head"><p>OctoMap</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>维度</p></td>
+<td><p>2D</p></td>
+<td><p>2D</p></td>
+<td><p>2.5D</p></td>
+<td><p>3D</p></td>
+</tr>
+<tr class="row-odd"><td><p>数值类型</p></td>
+<td><p>int8 (-1/0/100)</p></td>
+<td><p>uint8 (0–255)</p></td>
+<td><p>float 多层</p></td>
+<td><p>float 概率</p></td>
+</tr>
+<tr class="row-even"><td><p>更新方式</p></td>
+<td><p>静态 / SLAM</p></td>
+<td><p>多层插件融合</p></td>
+<td><p>循环 buffer</p></td>
+<td><p>概率更新</p></td>
+</tr>
+<tr class="row-odd"><td><p>规划用途</p></td>
+<td><p>静态障碍</p></td>
+<td><p>全局/局部规划</p></td>
+<td><p>地形/坡度</p></td>
+<td><p>3D 避障</p></td>
+</tr>
+<tr class="row-even"><td><p>内存</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(N_x N_y)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(O(N_x N_y)\)</span></p></td>
+<td><p><span class="math notranslate nohighlight">\(O(K \cdot N_x N_y)\)</span></p></td>
+<td><p>稀疏</p></td>
+</tr>
+<tr class="row-odd"><td><p>Autonomy</p></td>
+<td><p>✅ MapServer</p></td>
+<td><p>✅ Costmap2D</p></td>
+<td><p>✅ GridMap</p></td>
+<td><p>❌</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="costmap2d">
+<h2>8.5 Costmap2D 图层体系<a class="headerlink" href="#costmap2d" title="Link to this heading"></a></h2>
+<p>Autonomy 采用 Nav2 风格的<strong>插件化图层</strong>架构：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>图层</p></th>
+<th class="head"><p>输入</p></th>
+<th class="head"><p>输出</p></th>
+<th class="head"><p>合并模式</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">static_layer</span></code></p></td>
+<td><p>OccupancyGrid</p></td>
+<td><p>LETHAL / FREE</p></td>
+<td><p>Max</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">obstacle_layer</span></code></p></td>
+<td><p>LaserScan / PointCloud2</p></td>
+<td><p>LETHAL / FREE</p></td>
+<td><p>Max</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">inflation_layer</span></code></p></td>
+<td><p>下层 lethal 种子</p></td>
+<td><p>1–253 梯度</p></td>
+<td><p>Max</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">voxel_layer</span></code></p></td>
+<td><p>3D 点云</p></td>
+<td><p>2D 投影</p></td>
+<td><p>Max</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">denoise_layer</span></code></p></td>
+<td><p>连通域过滤</p></td>
+<td><p>去除小簇</p></td>
+<td><p>Overwrite</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">keepout_filter</span></code></p></td>
+<td><p>Filter mask</p></td>
+<td><p>禁行区</p></td>
+<td><p>Filter</p></td>
+</tr>
+</tbody>
+</table>
+<p>更新流程：各层 <code class="docutils literal notranslate"><span class="pre">updateBounds</span></code> 累加矩形 → <code class="docutils literal notranslate"><span class="pre">resetMap</span></code> → 按序 <code class="docutils literal notranslate"><span class="pre">updateCosts</span></code> → filter 后处理。</p>
+<p>详见 <a class="reference internal" href="06_costmap2d.html#id16"><span class="std std-ref">Costmap2D 文档</span></a>。</p>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>8.6 膨胀算法的物理意义<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p>膨胀层将离散障碍转化为<strong>连续代价场</strong>，使规划器自然产生安全裕度：</p>
+<div class="math notranslate nohighlight">
+\[
+c(d) = \lfloor 252 \cdot e^{-\lambda (d \cdot \Delta - r_i)} \rfloor
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>物理含义</p></th>
+<th class="head"><p>调大效果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(r_i\)</span> (inscribed_radius)</p></td>
+<td><p>机器人内切圆</p></td>
+<td><p>更大不可进入区</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(R\)</span> (inflation_radius)</p></td>
+<td><p>膨胀传播范围</p></td>
+<td><p>更远仍保持高代价</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\lambda\)</span> (cost_scaling_factor)</p></td>
+<td><p>衰减速度</p></td>
+<td><p>更快恢复自由</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>与 ESDF 的关系</strong>：膨胀代价是 ESDF 的指数近似，计算复杂度 <span class="math notranslate nohighlight">\(O(N \cdot R_{\text{cell}})\)</span> vs ESDF 的 <span class="math notranslate nohighlight">\(O(N)\)</span>，但实现简单、与 Nav2 生态兼容。</p>
+</section>
+<hr class="docutils" />
+<section id="gridmap-2-5d">
+<h2>8.7 GridMap 2.5D 的设计哲学<a class="headerlink" href="#gridmap-2-5d" title="Link to this heading"></a></h2>
+<p>ETH <code class="docutils literal notranslate"><span class="pre">grid_map</span></code> 的设计目标：</p>
+<ol class="arabic simple">
+<li><p><strong>多层解耦</strong>：不同传感器/算法写入不同层，互不干扰</p></li>
+<li><p><strong>循环 buffer</strong>：<span class="math notranslate nohighlight">\(O(1)\)</span> 滑动窗口，无需全图 copy</p></li>
+<li><p><strong>连续插值</strong>：支持 sub-cell 精度查询</p></li>
+<li><p><strong>Eigen 集成</strong>：矩阵运算、滤波器无缝对接</p></li>
+</ol>
+<p><strong>2.5D vs 3D</strong>：不维护完整 3D 体素，而是用层值编码高度信息，在计算效率与表达能力间折中。</p>
+</section>
+<hr class="docutils" />
+<section id="autonomy-map">
+<h2>8.8 Autonomy map 模块定位<a class="headerlink" href="#autonomy-map" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>能力</p></th>
+<th class="head"><p>状态</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>静态地图服务</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MapServer</span></code>，YAML+PGM</p></td>
+</tr>
+<tr class="row-odd"><td><p>2D 代价地图</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p>Nav2 兼容，插件化图层</p></td>
+</tr>
+<tr class="row-even"><td><p>2.5D GridMap</p></td>
+<td><p>✅ 已实现</p></td>
+<td><p>ETH grid_map 封装</p></td>
+</tr>
+<tr class="row-odd"><td><p>Costmap ↔ GridMap 桥接</p></td>
+<td><p>❌ 未实现</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">grid_map_costmap_2d/</span></code> 已注释</p></td>
+</tr>
+<tr class="row-even"><td><p>3D 体素地图</p></td>
+<td><p>部分</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">VoxelLayer</span></code> 投影到 2D</p></td>
+</tr>
+<tr class="row-odd"><td><p>语义地图</p></td>
+<td><p>❌</p></td>
+<td><p>需外部模块</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>推荐选型</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>推荐组件</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>室内平面导航</p></td>
+<td><p>Costmap2D（static + obstacle + inflation）</p></td>
+</tr>
+<tr class="row-odd"><td><p>已知静态环境</p></td>
+<td><p>MapServer + static_layer</p></td>
+</tr>
+<tr class="row-even"><td><p>动态障碍环境</p></td>
+<td><p>+ obstacle_layer + 激光</p></td>
+</tr>
+<tr class="row-odd"><td><p>越野 / 台阶</p></td>
+<td><p>GridMap（elevation + slope）</p></td>
+</tr>
+<tr class="row-even"><td><p>窄通道 / 精确定位</p></td>
+<td><p>减小 inflation_radius，禁用 denoise</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="planning">
+<h2>8.9 与 Planning 的耦合<a class="headerlink" href="#planning" title="Link to this heading"></a></h2>
+<p>Costmap2D 是 Planning 模块的<strong>核心输入</strong>：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Costmap2D (char map)
+    │
+    ├── NavFn: F_ij = 50 + 0.8 · c_ij → 导航势场
+    ├── Dijkstra: 同上，强制 Dijkstra 传播
+    └── Theta*: c ≥ 253 阻塞，LOS 检测
+</pre></div>
+</div>
+<p>规划时复制 costmap 快照，避免与地图更新线程竞争。详见 <a class="reference internal" href="../08_Planning/05_architecture.html"><span class="std std-doc">Planning 架构</span></a>。</p>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>8.10 影响因素与调参<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>因素</p></th>
+<th class="head"><p>影响</p></th>
+<th class="head"><p>调参方向</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>分辨率 <span class="math notranslate nohighlight">\(\Delta\)</span></p></td>
+<td><p>精度 vs 内存/速度</p></td>
+<td><p>室内 0.05 m，室外 0.1–0.2 m</p></td>
+</tr>
+<tr class="row-odd"><td><p>膨胀半径 <span class="math notranslate nohighlight">\(R\)</span></p></td>
+<td><p>安全裕度 vs 窄通道</p></td>
+<td><p>0.35–0.55 m</p></td>
+</tr>
+<tr class="row-even"><td><p>更新频率</p></td>
+<td><p>动态响应 vs CPU</p></td>
+<td><p>5 Hz 通常足够</p></td>
+</tr>
+<tr class="row-odd"><td><p>Rolling window</p></td>
+<td><p>大地图内存</p></td>
+<td><p>局部规划启用</p></td>
+</tr>
+<tr class="row-even"><td><p>denoise</p></td>
+<td><p>噪声过滤 vs 薄墙保留</p></td>
+<td><p>谨慎启用</p></td>
+</tr>
+<tr class="row-odd"><td><p>footprint</p></td>
+<td><p>碰撞模型精度</p></td>
+<td><p>多边形优于圆形</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>8.11 未来方向<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>恢复 <code class="docutils literal notranslate"><span class="pre">grid_map_costmap_2d</span></code> 桥接</strong>：elevation / traversability → costmap 代价</p></li>
+<li><p><strong>ESDF 图层</strong>：更精确的距离场，支持梯度优化规划</p></li>
+<li><p><strong>语义层融合</strong>：GridMap 语义层 → 规划代价加权</p></li>
+<li><p><strong>动态地图版本管理</strong>：配置与地图文件协同版本化</p></li>
+<li><p><strong>GPU 加速</strong>：大规模 costmap 更新与 GridMap 插值</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>8.12 相关文档<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="00_guide.html"><span class="std std-doc">Map 地图模块指南</span></a></p></li>
+<li><p><a class="reference internal" href="03_math.html"><span class="std std-doc">数学原理</span></a></p></li>
+<li><p><a class="reference internal" href="06_costmap2d.html"><span class="std std-doc">Costmap2D 代价地图</span></a></p></li>
+<li><p><a class="reference internal" href="07_grid_map.html"><span class="std std-doc">GridMap 2.5D 栅格地图</span></a></p></li>
+<li><p><a class="reference internal" href="05_architecture.html"><span class="std std-doc">模块架构设计</span></a></p></li>
+<li><p><a class="reference internal" href="../08_Planning/09_survey.html"><span class="std std-doc">Planning 路径规划综述</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="07_grid_map.html" class="btn btn-neutral float-left" title="7. GridMap 2.5D 栅格地图" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../08_Planning/index.html" class="btn btn-neutral float-right" title="Planning 路径规划" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

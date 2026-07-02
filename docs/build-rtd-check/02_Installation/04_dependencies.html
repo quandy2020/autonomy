@@ -1,0 +1,336 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4. 依赖安装 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="5. Docker 环境" href="05_docker.html" />
+    <link rel="prev" title="3. 系统要求" href="03_system_requirements.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">02 Installation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 安装概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_system_requirements.html">3 系统要求</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">4 依赖安装</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">4.1 脚本用法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#apt">4.2 APT 包分类</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">4.3 第三方安装脚本</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">4.4 安装路径约定</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">4.5 可选依赖</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">4.6 验证依赖</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">4.7 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="05_docker.html">5 Docker 环境</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_build.html">6 编译构建</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_environment.html">7 环境配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_troubleshooting.html">8 故障排查</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">安装与构建</a></li>
+      <li class="breadcrumb-item active">4. 依赖安装</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/02_Installation/04_dependencies.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>4. 依赖安装<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>Autonomy 依赖通过 <strong><code class="docutils literal notranslate"><span class="pre">scripts/install_dependency.py</span></code></strong> 统一安装，与 <code class="docutils literal notranslate"><span class="pre">docker/dockerfile/autonomy.x86_64.dockerfile</span></code> 保持同步。</p>
+<section id="id2">
+<h2>4.1 脚本用法<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 完整安装（APT + 第三方）</span>
+python3<span class="w"> </span>scripts/install_dependency.py
+
+<span class="c1"># 仅 APT</span>
+python3<span class="w"> </span>scripts/install_dependency.py<span class="w"> </span>--apt-only
+
+<span class="c1"># 仅第三方（需已装 APT）</span>
+python3<span class="w"> </span>scripts/install_dependency.py<span class="w"> </span>--thirdparty-only
+
+<span class="c1"># 列出 APT 包名</span>
+python3<span class="w"> </span>scripts/install_dependency.py<span class="w"> </span>--list-apt
+
+<span class="c1"># 从某脚本续装（中断后恢复）</span>
+python3<span class="w"> </span>scripts/install_dependency.py<span class="w"> </span>--resume-from<span class="w"> </span>install_opencv.sh
+
+<span class="c1"># 跳过已检测到的库</span>
+python3<span class="w"> </span>scripts/install_dependency.py<span class="w"> </span>--skip-installed
+
+<span class="c1"># 预览命令不执行</span>
+python3<span class="w"> </span>scripts/install_dependency.py<span class="w"> </span>--dry-run
+</pre></div>
+</div>
+</section>
+<section id="apt">
+<h2>4.2 APT 包分类<a class="headerlink" href="#apt" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>类别</p></th>
+<th class="head"><p>示例包</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>构建工具</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cmake</span></code>, <code class="docutils literal notranslate"><span class="pre">ninja-build</span></code>, <code class="docutils literal notranslate"><span class="pre">git</span></code>, <code class="docutils literal notranslate"><span class="pre">pkg-config</span></code></p></td>
+<td><p>编译基础设施</p></td>
+</tr>
+<tr class="row-odd"><td><p>Python</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python3-pip</span></code>, <code class="docutils literal notranslate"><span class="pre">python3-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">sphinx</span></code></p></td>
+<td><p>脚本与文档</p></td>
+</tr>
+<tr class="row-even"><td><p>CMake 库</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">libeigen3-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">liblua5.3-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">libprotobuf-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">libyaml-cpp-dev</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">find_package</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>数值/稀疏</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">libsuitesparse-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">libblas-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">liblapack-dev</span></code></p></td>
+<td><p>Ceres 等</p></td>
+</tr>
+<tr class="row-even"><td><p>测试</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">libgtest-dev</span></code>, <code class="docutils literal notranslate"><span class="pre">libgmock-dev</span></code></p></td>
+<td><p>单元测试</p></td>
+</tr>
+<tr class="row-odd"><td><p>多媒体/GUI</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">libopencv</span></code> 相关 dev 包（部分由脚本编译）</p></td>
+<td><p>视觉 / 仿真</p></td>
+</tr>
+</tbody>
+</table>
+<p>完整列表以脚本内 <code class="docutils literal notranslate"><span class="pre">APT_PACKAGES</span></code> 为准（约 50+ 项）。</p>
+</section>
+<section id="id3">
+<h2>4.3 第三方安装脚本<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<p>按顺序执行 <code class="docutils literal notranslate"><span class="pre">docker/install/</span></code> 下脚本，默认安装到 <strong><code class="docutils literal notranslate"><span class="pre">/usr/local</span></code></strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>顺序</p></th>
+<th class="head"><p>脚本</p></th>
+<th class="head"><p>库</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_gtest.sh</span></code></p></td>
+<td><p>Google Test</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_glog.sh</span></code></p></td>
+<td><p>glog</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_gflags.sh</span></code></p></td>
+<td><p>gflags</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_grpc.sh</span></code></p></td>
+<td><p>gRPC</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_gperftools.sh</span></code></p></td>
+<td><p>tcmalloc</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_opencv.sh</span></code></p></td>
+<td><p>OpenCV</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_ceres_solver.sh</span></code></p></td>
+<td><p>Ceres</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_nlohmann.sh</span></code></p></td>
+<td><p>nlohmann/json</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_osqp.sh</span></code></p></td>
+<td><p>OSQP</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_behaviortree_cpp.sh</span></code></p></td>
+<td><p><strong>BehaviorTree.CPP 4.x</strong>（Navigator 必需）</p></td>
+</tr>
+<tr class="row-even"><td><p>11+</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_python_modules.sh</span></code>, <code class="docutils literal notranslate"><span class="pre">install_assimp.sh</span></code>, <code class="docutils literal notranslate"><span class="pre">install_ogre.sh</span></code>, <code class="docutils literal notranslate"><span class="pre">install_adolc.sh</span></code>, <code class="docutils literal notranslate"><span class="pre">install_ipopt.sh</span></code></p></td>
+<td><p>可选组件依赖</p></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<div><p><strong>注意</strong>：BehaviorTree.CPP 为行为树导航所必需；若跳过，Navigator BT 模式将无法加载插件。</p>
+</div></blockquote>
+</section>
+<section id="id4">
+<h2>4.4 安装路径约定<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>/usr/local/
+├── include/     # 头文件
+├── lib/         # .so / .a
+└── bin/         # 可执行工具
+</pre></div>
+</div>
+<p>CMake 通过 <code class="docutils literal notranslate"><span class="pre">CMAKE_PREFIX_PATH</span></code> 或默认搜索路径找到上述库。</p>
+</section>
+<section id="id5">
+<h2>4.5 可选依赖<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>组件</p></th>
+<th class="head"><p>安装方式</p></th>
+<th class="head"><p>CMake 选项</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>gRPC Bridge</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_grpc.sh</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUILD_GRPC=ON</span></code>（默认）</p></td>
+</tr>
+<tr class="row-odd"><td><p>ONNX Runtime</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_onnixruntime.sh</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUILD_ONNXRUNTIME=ON</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Habitat 仿真</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_habitat.sh</span></code></p></td>
+<td><p>仿真模块</p></td>
+</tr>
+<tr class="row-odd"><td><p>ROS 2 Humble</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">install_ros2.sh</span></code></p></td>
+<td><p>Docker 镜像内可选</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h2>4.6 验证依赖<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Ceres</span>
+ls<span class="w"> </span>/usr/local/lib/libceres.so<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="o">||</span><span class="w"> </span>ls<span class="w"> </span>/usr/lib/x86_64-linux-gnu/libceres.so
+
+<span class="c1"># BehaviorTree.CPP</span>
+ls<span class="w"> </span>/usr/local/lib/libbehaviortree_cpp.so
+
+<span class="c1"># Protobuf</span>
+protoc<span class="w"> </span>--version
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h2>4.7 相关文档<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="06_build.html"><span class="std std-doc">§6 编译构建</span></a></p></li>
+<li><p><a class="reference internal" href="08_troubleshooting.html"><span class="std std-doc">§8 故障排查 · 依赖</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="03_system_requirements.html" class="btn btn-neutral float-left" title="3. 系统要求" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="05_docker.html" class="btn btn-neutral float-right" title="5. Docker 环境" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

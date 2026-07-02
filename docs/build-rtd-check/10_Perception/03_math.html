@@ -1,0 +1,423 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3. 数学原理 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="4. 使用指南" href="04_usage.html" />
+    <link rel="prev" title="2. 快速开始" href="02_quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">10 Perception</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">3 数学原理</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">3.1 坐标系与传感器模型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">3.2 点云处理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-yolo">3.3 2D 目标检测（YOLO 系列）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-bev">3.4 3D 检测与 BEV 表示</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">3.5 卡尔曼滤波跟踪（多目标）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">3.6 代价地图障碍标记</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">3.7 符号表</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_sensor_pipeline.html">6 传感器数据管线</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_vision_detection.html">7 视觉检测与 ONNX 推理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_obstacle_perception.html">8 障碍感知与代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 感知算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Perception 感知</a></li>
+      <li class="breadcrumb-item active">3. 数学原理</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/10_Perception/03_math.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="perception-math">
+<span id="id1"></span><h1>3. 数学原理<a class="headerlink" href="#perception-math" title="Link to this heading"></a></h1>
+<blockquote>
+<div><p>本文以 <strong>Step-by-Step</strong> 方式推导 Perception 模块涉及的核心公式。实现对照见 <a class="reference internal" href="07_vision_detection.html"><span class="std std-doc">07_vision_detection.md</span></a>、<a class="reference internal" href="08_obstacle_perception.html"><span class="std std-doc">08_obstacle_perception.md</span></a>；算法综述见 <a class="reference internal" href="09_survey.html"><span class="std std-doc">09_survey.md</span></a>。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id2">
+<h2>3.1 坐标系与传感器模型<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="step-1">
+<h3>Step 1：齐次变换<a class="headerlink" href="#step-1" title="Link to this heading"></a></h3>
+<p>传感器坐标系 <span class="math notranslate nohighlight">\(S\)</span> 到世界坐标系 <span class="math notranslate nohighlight">\(W\)</span> 的刚体变换：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+T_W^S = \begin{bmatrix} R_W^S &amp; t_W^S \\ 0 &amp; 1 \end{bmatrix}, \quad
+p_W = R_W^S \, p_S + t_W^S
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(R_W^S \in SO(3)\)</span>，<span class="math notranslate nohighlight">\(t_W^S \in \mathbb{R}^3\)</span>。Autonomy 通过 <code class="docutils literal notranslate"><span class="pre">transform::Buffer</span></code> 查询 <span class="math notranslate nohighlight">\(T_W^S\)</span>。</p>
+</section>
+<section id="step-2">
+<h3>Step 2：针孔相机投影<a class="headerlink" href="#step-2" title="Link to this heading"></a></h3>
+<p>相机内参矩阵 <span class="math notranslate nohighlight">\(K\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+K = \begin{bmatrix} f_x &amp; 0 &amp; c_x \\ 0 &amp; f_y &amp; c_y \\ 0 &amp; 0 &amp; 1 \end{bmatrix}
+\end{split}\]</div>
+<p>三维点 <span class="math notranslate nohighlight">\(P_C = (X, Y, Z)^\top\)</span>（相机坐标系）投影到像素 <span class="math notranslate nohighlight">\((u, v)\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\lambda \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
+= K \begin{bmatrix} X \\ Y \\ Z \end{bmatrix}
+\quad \Rightarrow \quad
+u = f_x \frac{X}{Z} + c_x, \; v = f_y \frac{Y}{Z} + c_y
+\end{split}\]</div>
+</section>
+<section id="step-3">
+<h3>Step 3：深度反投影<a class="headerlink" href="#step-3" title="Link to this heading"></a></h3>
+<p>给定像素 <span class="math notranslate nohighlight">\((u, v)\)</span> 与深度 <span class="math notranslate nohighlight">\(d\)</span>（米），恢复相机坐标系三维点：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{bmatrix} X \\ Y \\ Z \end{bmatrix}
+= d \cdot K^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix}
+\end{split}\]</div>
+</section>
+<section id="step-4">
+<h3>Step 4：激光雷达极坐标模型<a class="headerlink" href="#step-4" title="Link to this heading"></a></h3>
+<p>2D 激光第 <span class="math notranslate nohighlight">\(i\)</span> 束测量 <span class="math notranslate nohighlight">\((r_i, \phi_i)\)</span>，传感器坐标系下点：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+p_i^S = \begin{bmatrix} r_i \cos\phi_i \\ r_i \sin\phi_i \\ 0 \end{bmatrix}
+\end{split}\]</div>
+<p>变换到世界坐标：<span class="math notranslate nohighlight">\(p_i^W = R_W^S p_i^S + t_W^S\)</span>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>3.2 点云处理<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="voxel-grid-filter">
+<h3>3.2.1 体素下采样（Voxel Grid Filter）<a class="headerlink" href="#voxel-grid-filter" title="Link to this heading"></a></h3>
+<p><strong>Step 1</strong>：将空间划分为边长 <span class="math notranslate nohighlight">\(v\)</span> 的体素网格，体素索引：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{idx}(p) = \left\lfloor \frac{p - p_{min}}{v} \right\rfloor
+\]</div>
+<p><strong>Step 2</strong>：每个非空体素保留<strong>质心</strong>（或第一个点）：</p>
+<div class="math notranslate nohighlight">
+\[
+\bar{p}_v = \frac{1}{|V|} \sum_{p \in V} p
+\]</div>
+<p>复杂度从 <span class="math notranslate nohighlight">\(O(N)\)</span> 降至 <span class="math notranslate nohighlight">\(O(N/v^3)\)</span> 量级（稀疏体素）。</p>
+</section>
+<section id="ransac">
+<h3>3.2.2 地面分割（RANSAC 平面拟合）<a class="headerlink" href="#ransac" title="Link to this heading"></a></h3>
+<p><strong>Step 1</strong>：随机采样 3 点确定平面 <span class="math notranslate nohighlight">\(\pi: \mathbf{n}^\top p + d = 0\)</span>，法向量 <span class="math notranslate nohighlight">\(\mathbf{n} = (p_2 - p_1) \times (p_3 - p_1)\)</span>，归一化后 <span class="math notranslate nohighlight">\(d = -\mathbf{n}^\top p_1\)</span>。</p>
+<p><strong>Step 2</strong>：内点判定（距离阈值 <span class="math notranslate nohighlight">\(\tau\)</span>）：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{inlier}(p) \Leftrightarrow |\mathbf{n}^\top p + d| &lt; \tau
+\]</div>
+<p><strong>Step 3</strong>：迭代 <span class="math notranslate nohighlight">\(K\)</span> 次，取内点数最多的平面为地面；点 <span class="math notranslate nohighlight">\(p\)</span> 满足 <span class="math notranslate nohighlight">\(|\mathbf{n}^\top p + d| &lt; \tau_{ground}\)</span> 标记为地面点。</p>
+</section>
+<section id="euclidean-clustering">
+<h3>3.2.3 欧氏聚类（Euclidean Clustering）<a class="headerlink" href="#euclidean-clustering" title="Link to this heading"></a></h3>
+<p><strong>Step 1</strong>：对非地面点构建 KD-Tree。</p>
+<p><strong>Step 2</strong>：BFS/DFS 扩展：若 <span class="math notranslate nohighlight">\(\|p_i - p_j\|_2 &lt; r_{cluster}\)</span>，则 <span class="math notranslate nohighlight">\(p_i, p_j\)</span> 同属一簇。</p>
+<p><strong>Step 3</strong>：过滤点数 <span class="math notranslate nohighlight">\(&lt; N_{min}\)</span> 的噪声簇，输出障碍聚类 <span class="math notranslate nohighlight">\(\{C_1, \ldots, C_M\}\)</span>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="d-yolo">
+<h2>3.3 2D 目标检测（YOLO 系列）<a class="headerlink" href="#d-yolo" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>3.3.1 网格预测解码<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>YOLO 在特征图网格 <span class="math notranslate nohighlight">\((i, j)\)</span> 上预测边界框，设网格数为 <span class="math notranslate nohighlight">\(S \times S\)</span>，锚框 <span class="math notranslate nohighlight">\(A\)</span> 个。</p>
+<p><strong>Step 1</strong>：网络输出 <span class="math notranslate nohighlight">\((t_x, t_y, t_w, t_h, p_{obj}, p_{c_1}, \ldots, p_{c_K})\)</span>。</p>
+<p><strong>Step 2</strong>：解码中心与尺寸（YOLOv5/v8 风格）：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{aligned}
+b_x &amp;= \sigma(t_x) + j \\
+b_y &amp;= \sigma(t_y) + i \\
+b_w &amp;= p_w \cdot e^{t_w} \\
+b_h &amp;= p_h \cdot e^{t_h}
+\end{aligned}
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\((p_w, p_h)\)</span> 为锚框先验尺寸，<span class="math notranslate nohighlight">\(\sigma\)</span> 为 Sigmoid。</p>
+<p><strong>Step 3</strong>：类别置信度：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{score}_k = p_{obj} \cdot p_{c_k}
+\]</div>
+<p>保留 <span class="math notranslate nohighlight">\(\mathrm{score}_k &gt; \tau_{conf}\)</span> 的检测框。</p>
+</section>
+<section id="nms">
+<h3>3.3.2 非极大值抑制（NMS）<a class="headerlink" href="#nms" title="Link to this heading"></a></h3>
+<p><strong>Step 1</strong>：按置信度降序排列检测框 <span class="math notranslate nohighlight">\(\{B_1, \ldots, B_N\}\)</span>。</p>
+<p><strong>Step 2</strong>：取最高分框 <span class="math notranslate nohighlight">\(B_i\)</span>，抑制与其 IoU 超过阈值 <span class="math notranslate nohighlight">\(\tau_{nms}\)</span> 的框：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{IoU}(B_i, B_j) = \frac{|B_i \cap B_j|}{|B_i \cup B_j|}
+\]</div>
+<p><strong>Step 3</strong>：重复直至无剩余框。Autonomy 实现在 <code class="docutils literal notranslate"><span class="pre">common/network/detail/postprocess/nms.cpp</span></code>。</p>
+</section>
+<section id="iou">
+<h3>3.3.3 IoU 计算（轴对齐框）<a class="headerlink" href="#iou" title="Link to this heading"></a></h3>
+<p>框 <span class="math notranslate nohighlight">\(B = (x_1, y_1, x_2, y_2)\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{aligned}
+x_1^{int} &amp;= \max(x_1^A, x_1^B), \quad y_1^{int} = \max(y_1^A, y_1^B) \\
+x_2^{int} &amp;= \min(x_2^A, x_2^B), \quad y_2^{int} = \min(y_2^A, y_2^B) \\
+A_{int} &amp;= \max(0, x_2^{int} - x_1^{int}) \cdot \max(0, y_2^{int} - y_1^{int}) \\
+\mathrm{IoU} &amp;= \frac{A_{int}}{A_A + A_B - A_{int}}
+\end{aligned}
+\end{split}\]</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="d-bev">
+<h2>3.4 3D 检测与 BEV 表示<a class="headerlink" href="#d-bev" title="Link to this heading"></a></h2>
+<section id="bird-s-eye-view">
+<h3>3.4.1 鸟瞰图（Bird’s Eye View）投影<a class="headerlink" href="#bird-s-eye-view" title="Link to this heading"></a></h3>
+<p>点云 <span class="math notranslate nohighlight">\(p = (x, y, z)\)</span> 投影到 BEV 栅格 <span class="math notranslate nohighlight">\((i, j)\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+i = \left\lfloor \frac{x - x_{min}}{\Delta x} \right\rfloor, \quad
+j = \left\lfloor \frac{y - y_{min}}{\Delta y} \right\rfloor
+\]</div>
+<p>栅格特征可取最大高度 <span class="math notranslate nohighlight">\(z_{max}\)</span>、点密度或占用概率。</p>
+</section>
+<section id="d">
+<h3>3.4.2 3D 边界框参数化<a class="headerlink" href="#d" title="Link to this heading"></a></h3>
+<p>中心 <span class="math notranslate nohighlight">\((x, y, z)\)</span>，尺寸 <span class="math notranslate nohighlight">\((l, w, h)\)</span>，航向 <span class="math notranslate nohighlight">\(\theta\)</span>（绕 <span class="math notranslate nohighlight">\(z\)</span> 轴）：</p>
+<div class="math notranslate nohighlight">
+\[
+B_{3D} = \{(x, y, z, l, w, h, \theta)\}
+\]</div>
+<p>8 个角点由旋转矩阵 <span class="math notranslate nohighlight">\(R_z(\theta)\)</span> 与半尺寸偏移计算：</p>
+<div class="math notranslate nohighlight">
+\[
+c_k = (x, y, z)^\top + R_z(\theta) \cdot (\pm l/2, \pm w/2, \pm h/2)^\top
+\]</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>3.5 卡尔曼滤波跟踪（多目标）<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="step-1-cv">
+<h3>Step 1：状态向量（恒速模型 CV）<a class="headerlink" href="#step-1-cv" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{x}_k = [x, y, v_x, v_y]^\top
+\]</div>
+</section>
+<section id="id6">
+<h3>Step 2：状态转移<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathbf{x}_{k+1} = F \mathbf{x}_k + \mathbf{w}_k, \quad
+F = \begin{bmatrix}
+1 &amp; 0 &amp; \Delta t &amp; 0 \\
+0 &amp; 1 &amp; 0 &amp; \Delta t \\
+0 &amp; 0 &amp; 1 &amp; 0 \\
+0 &amp; 0 &amp; 0 &amp; 1
+\end{bmatrix}
+\end{split}\]</div>
+</section>
+<section id="id7">
+<h3>Step 3：观测模型（检测框中心）<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\mathbf{z}_k = H \mathbf{x}_k + \mathbf{v}_k, \quad
+H = \begin{bmatrix} 1 &amp; 0 &amp; 0 &amp; 0 \\ 0 &amp; 1 &amp; 0 &amp; 0 \end{bmatrix}
+\end{split}\]</div>
+</section>
+<section id="id8">
+<h3>Step 4：预测与更新<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\begin{aligned}
+\hat{\mathbf{x}}_{k|k-1} &amp;= F \hat{\mathbf{x}}_{k-1|k-1} \\
+P_{k|k-1} &amp;= F P_{k-1|k-1} F^\top + Q \\
+K_k &amp;= P_{k|k-1} H^\top (H P_{k|k-1} H^\top + R)^{-1} \\
+\hat{\mathbf{x}}_{k|k} &amp;= \hat{\mathbf{x}}_{k|k-1} + K_k (\mathbf{z}_k - H \hat{\mathbf{x}}_{k|k-1})
+\end{aligned}
+\end{split}\]</div>
+</section>
+<section id="step-5">
+<h3>Step 5：数据关联（匈牙利算法）<a class="headerlink" href="#step-5" title="Link to this heading"></a></h3>
+<p>检测 <span class="math notranslate nohighlight">\(\{D_j\}\)</span> 与轨迹 <span class="math notranslate nohighlight">\(\{T_i\}\)</span> 的代价矩阵 <span class="math notranslate nohighlight">\(C_{ij} = 1 - \mathrm{IoU}(D_j, T_i)\)</span>，求最小代价匹配。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>3.6 代价地图障碍标记<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="step-1-bresenham-dda">
+<h3>Step 1：射线追踪（Bresenham / 栅格 DDA）<a class="headerlink" href="#step-1-bresenham-dda" title="Link to this heading"></a></h3>
+<p>从传感器原点 <span class="math notranslate nohighlight">\(o\)</span> 到障碍点 <span class="math notranslate nohighlight">\(p\)</span>，沿射线标记<strong>自由空间</strong>（cost = 0）；终点标记<strong>障碍</strong>（cost = lethal）。</p>
+</section>
+<section id="id10">
+<h3>Step 2：膨胀层<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p>对障碍栅格做形态学膨胀，膨胀半径 <span class="math notranslate nohighlight">\(r_{infl}\)</span>（米）：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{cost}(q) = \max_{p \in \mathcal{O}, \|q - p\| \leq r_{\mathrm{infl}}} \mathrm{inflationCost}(\|q - p\|)
+\]</div>
+<p>常用指数衰减：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{cost}(d) = \mathrm{INSCRIBED} \cdot e^{-\lambda (d - r_{robot})}
+\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(d\)</span> 为到最近障碍的距离，<span class="math notranslate nohighlight">\(r_{robot}\)</span> 为机器人内切圆半径。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>3.7 符号表<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>符号</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(K\)</span></p></td>
+<td><p>相机内参矩阵</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(T_W^S\)</span></p></td>
+<td><p>传感器到世界的齐次变换</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(\tau_{conf}\)</span></p></td>
+<td><p>检测置信度阈值</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\tau_{nms}\)</span></p></td>
+<td><p>NMS IoU 阈值</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(v\)</span></p></td>
+<td><p>体素边长</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\tau\)</span></p></td>
+<td><p>RANSAC 内点距离阈值</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(r_{cluster}\)</span></p></td>
+<td><p>欧氏聚类距离阈值</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(Q, R\)</span></p></td>
+<td><p>卡尔曼过程/观测噪声协方差</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02_quickstart.html" class="btn btn-neutral float-left" title="2. 快速开始" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="04_usage.html" class="btn btn-neutral float-right" title="4. 使用指南" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,249 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commsgs 通信消息 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Commsgs 通信消息指南" href="00_guide.html" />
+    <link rel="prev" title="8. 可视化综述" href="../13_Visualization/08_survey.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">14 Commsgs</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html">3 消息模型与 Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html">6 核心消息类型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html">7 传感器与地图消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html">8 导航与规划消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 消息体系综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Commsgs 通信消息</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/14_Commsgs/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="commsgs">
+<h1>Commsgs 通信消息<a class="headerlink" href="#commsgs" title="Link to this heading"></a></h1>
+<p><cite>autonomy/commsgs</cite> 是 Autonomy 的**通信消息**子系统，在 ROS 2 <cite>common_msgs</cite> 语义基础上提供 C++ 原生 struct 与 Protocol Buffers 双层消息定义。文档按 <strong>§1–§9</strong> 编号排列。</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="01_overview.html">1 模块概览</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id2">1.1 定位</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id3">1.2 核心能力</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id4">1.3 源码结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id5">1.4 导航栈数据流</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id6">1.5 消息包一览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id7">1.6 相关模块</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#ros-2">1.7 与 ROS 2 对照</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="02_quickstart.html">2 快速开始</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id2">2.1 三步使用</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id3">2.2 构造并填充消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#autolink-writer">2.3 Autolink 发布（Writer）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#autolink-reader">2.4 Autolink 订阅（Reader）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#service">2.5 Service 边界转换</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#proto">2.6 手动 Proto 序列化</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#pointcloud2">2.7 PointCloud2 快速示例</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id4">2.8 头文件速查</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id5">2.9 下一步</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="03_schema.html">3 消息模型与 Schema</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#id1">3.1 双层架构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#id2">3.2 命名空间镜像</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#stamped">3.3 Stamped 消息模式</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#withcovariance">3.4 WithCovariance 模式</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#id3">3.5 时间与时长</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#smart-pointer">3.6 Smart Pointer 宏</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#proto">3.7 Proto 编译与安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#action-service-schema">3.8 Action / Service Schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#id4">3.9 错误码分段</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#id5">3.10 字段类型映射</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_schema.html#id6">3.11 已知 Schema 不一致</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="04_usage.html">4 使用指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id2">4.1 包含头文件</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#header">4.2 构造 Header</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id3">4.3 构造几何消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id4">4.4 构造规划消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id5">4.5 构造地图消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id6">4.6 扩展自定义消息</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id7">4.7 模块集成模式</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id8">4.8 故障排查</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id9">4.9 测试转换往返</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id1">5.1 设计目标</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id2">5.2 实现状态</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id3">5.3 分层架构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id4">5.4 文件组织模式</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id5">5.5 构建集成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id6">5.6 运行时数据流</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id8">5.7 消费模块矩阵</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id9">5.8 扩展点</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#ros-2">5.9 与 ROS 2 架构对比</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="06_core_msgs.html">6 核心消息类型</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html#builtin-interfaces">6.1 builtin_interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html#std-msgs">6.2 std_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html#geometry-msgs">6.3 geometry_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html#id10">6.4 使用频率排序</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_core_msgs.html#id11">6.5 代码示例：完整位姿链路</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="07_sensor_map_msgs.html">7 传感器与地图消息</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html#sensor-msgs">7.1 sensor_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html#id8">7.2 PointCloud2 工具链</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html#map-msgs">7.3 map_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html#id12">7.4 数据流：传感器 → 代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html#stereo-msgs">7.5 stereo_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_sensor_map_msgs.html#id13">7.6 使用建议</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="08_nav_planning_msgs.html">8 导航与规划消息</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#planning-msgs">8.1 planning_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#nav-msgs">8.2 nav_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#error-code">8.3 error_code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#vision-msgs">8.4 vision_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#visualization-msgs">8.5 visualization_msgs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#id8">8.6 其他消息包</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#id9">8.7 导航栈消息依赖图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#action-autolink">8.8 Action 使用模式（Autolink）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_nav_planning_msgs.html#id10">8.9 消息选择指南</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="09_survey.html">9 消息体系综述</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id2">9.1 设计定位</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id3">9.2 实现完整度矩阵</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#ros-2">9.3 ROS 2 消息对照表</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id7">9.4 消息设计模式总结</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id8">9.5 与其他中间件对比</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id9">9.6 演进路线</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id10">9.7 选型建议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id11">9.8 参考资源</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../13_Visualization/08_survey.html" class="btn btn-neutral float-left" title="8. 可视化综述" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="00_guide.html" class="btn btn-neutral float-right" title="Commsgs 通信消息指南" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

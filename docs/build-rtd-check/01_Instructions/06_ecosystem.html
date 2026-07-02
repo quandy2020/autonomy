@@ -1,0 +1,303 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. 生态集成 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. 文档导读" href="07_documentation_guide.html" />
+    <link rel="prev" title="5. 工程结构" href="05_project_layout.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">01 Instructions</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 项目概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速上手</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_system_architecture.html">3 系统架构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_navigation_stack.html">4 导航栈全景</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_project_layout.html">5 工程结构</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 生态集成</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">6.1 集成方式总览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#commsgs">6.2 commsgs 消息层</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autolink">6.3 Autolink 通信</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#grpc-bridge">6.4 gRPC Bridge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ros-2">6.5 ROS 2 互操作说明</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">6.6 可视化</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">6.7 仿真</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">6.8 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_documentation_guide.html">7 文档导读</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_roadmap.html">8 版本与路线</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">入门指南</a></li>
+      <li class="breadcrumb-item active">6. 生态集成</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/01_Instructions/06_ecosystem.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>6. 生态集成<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>Autonomy 以独立 C++ 框架为核心，通过消息兼容层与桥接模块与外部生态互操作。</p>
+<section id="id2">
+<h2>6.1 集成方式总览<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方式</p></th>
+<th class="head"><p>组件</p></th>
+<th class="head"><p>用途</p></th>
+<th class="head"><p>状态</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>进程内 API</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">system::Autonomy</span></code></p></td>
+<td><p>嵌入式 / 单机部署</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>Autolink 通信</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autolink</span></code></p></td>
+<td><p>模块间 DDS 通信</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>ROS 2 消息兼容</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">commsgs</span></code></p></td>
+<td><p>与 ROS 消息结构对齐</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>gRPC Bridge</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bridge</span></code></p></td>
+<td><p>云端 / 远程调度</p></td>
+<td><p>⏳</p></td>
+</tr>
+<tr class="row-even"><td><p>ROS 2 节点包装</p></td>
+<td><p>外部 <code class="docutils literal notranslate"><span class="pre">autonomy_ros</span></code>（可选）</p></td>
+<td><p>RViz2 / ros2 CLI</p></td>
+<td><p>视部署而定</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="commsgs">
+<h2>6.2 commsgs 消息层<a class="headerlink" href="#commsgs" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">autonomy/commsgs</span></code> 提供与 ROS 2 对齐的消息类型（<code class="docutils literal notranslate"><span class="pre">geometry_msgs</span></code>、<code class="docutils literal notranslate"><span class="pre">nav_msgs</span></code>、<code class="docutils literal notranslate"><span class="pre">planning_msgs</span></code> 等），算法模块使用 C++ struct，跨进程时经 Protobuf 序列化。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>算法模块 (C++ struct)
+      │ commsgs::ToProto / FromProto
+      ▼
+autolink Writer/Reader
+      │ DDS / 共享内存 / 进程内
+      ▼
+其他模块 / 桥接层
+</pre></div>
+</div>
+<p>详见 <a class="reference internal" href="../14_Commsgs/00_guide.html"><span class="std std-doc">14 Commsgs</span></a>。</p>
+</section>
+<section id="autolink">
+<h2>6.3 Autolink 通信<a class="headerlink" href="#autolink" title="Link to this heading"></a></h2>
+<p>Autolink 是 Autonomy 的分布式通信运行时，提供：</p>
+<ul class="simple">
+<li><p><strong>Channel</strong>（Topic）：发布/订阅</p></li>
+<li><p><strong>Service/Client</strong>：请求/响应 RPC</p></li>
+<li><p><strong>Action</strong>：长时间任务（Goal / Feedback / Result）</p></li>
+</ul>
+<p>对标 Cyber RT / ROS 2 rclcpp。详见 <a class="reference internal" href="../03_Communication/00_guide.html"><span class="std std-doc">03 Communication</span></a>。</p>
+</section>
+<section id="grpc-bridge">
+<h2>6.4 gRPC Bridge<a class="headerlink" href="#grpc-bridge" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">autonomy/bridge</span></code> 在启用 <code class="docutils literal notranslate"><span class="pre">BUILD_GRPC=ON</span></code> 时提供 gRPC 服务，支持远程下发导航指令、查询状态等。</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>客户端</p></th>
+<th class="head"><p>状态</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Map / Planning / Control stub</p></td>
+<td><p>部分实现</p></td>
+</tr>
+<tr class="row-odd"><td><p>Navigator stub</p></td>
+<td><p>待实现</p></td>
+</tr>
+</tbody>
+</table>
+<p>详见 <a class="reference internal" href="../15_Bridge/00_guide.html"><span class="std std-doc">15 Bridge</span></a>。</p>
+</section>
+<section id="ros-2">
+<h2>6.5 ROS 2 互操作说明<a class="headerlink" href="#ros-2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>6.5.1 设计定位<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Autonomy <strong>核心不依赖</strong> ROS 2 运行时即可编译链接</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">commsgs</span></code> 消息字段与 ROS 2 对应类型语义一致，便于转换</p></li>
+<li><p>可选 ROS 2 包装层用于：RViz2 可视化、<code class="docutils literal notranslate"><span class="pre">ros2</span> <span class="pre">bag</span></code> 录放、与现有 ROS 2 栈共存</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>6.5.2 典型集成模式<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>描述</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>纯 Autonomy</p></td>
+<td><p>单进程 <code class="docutils literal notranslate"><span class="pre">Autonomy</span></code>，无 ROS 2</p></td>
+</tr>
+<tr class="row-odd"><td><p>混合部署</p></td>
+<td><p>Autonomy 核心 + ROS 2 桥接节点转发 Topic</p></td>
+</tr>
+<tr class="row-even"><td><p>开发调试</p></td>
+<td><p>Docker 内 ROS 2 Humble + Autonomy 同容器编译</p></td>
+</tr>
+</tbody>
+</table>
+<p>ROS 2 环境变量与运行示例见 <a class="reference internal" href="../04_Running/06_ros2_integration.html"><span class="std std-doc">04 Running §6</span></a>。</p>
+</section>
+</section>
+<section id="id5">
+<h2>6.6 可视化<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>工具</p></th>
+<th class="head"><p>接入方式</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>内置可视化模块</p></td>
+<td><p><a class="reference internal" href="../13_Visualization/index.html"><span class="std std-doc">13 Visualization</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>RViz2</p></td>
+<td><p>经 ROS 2 桥接 / Topic 转发</p></td>
+</tr>
+<tr class="row-even"><td><p>Foxglove</p></td>
+<td><p>经 ROS 2 / 自定义桥接</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h2>6.7 仿真<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<p>仿真集成见 <a class="reference internal" href="../12_Simulation/index.html"><span class="std std-doc">12 Simulation</span></a>。</p>
+</section>
+<section id="id7">
+<h2>6.8 相关文档<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../03_Communication/00_guide.html"><span class="std std-doc">03 Communication</span></a></p></li>
+<li><p><a class="reference internal" href="../15_Bridge/00_guide.html"><span class="std std-doc">15 Bridge</span></a></p></li>
+<li><p><a class="reference internal" href="../05_Framework/index.html"><span class="std std-doc">05 Framework</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_project_layout.html" class="btn btn-neutral float-left" title="5. 工程结构" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_documentation_guide.html" class="btn btn-neutral float-right" title="7. 文档导读" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

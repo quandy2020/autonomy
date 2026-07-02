@@ -1,0 +1,406 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. 视觉检测与 ONNX 推理 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 障碍感知与代价地图" href="08_obstacle_perception.html" />
+    <link rel="prev" title="6. 传感器数据管线" href="06_sensor_pipeline.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">10 Perception</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_sensor_pipeline.html">6 传感器数据管线</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 视觉检测与 ONNX 推理</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">7.1 模块定位</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">7.2 推理流程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api">7.3 核心 API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">7.4 预处理细节</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yolo">7.5 YOLO 后处理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#onnx-runtime">7.6 ONNX Runtime 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">7.7 线程安全与性能</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#perception">7.8 与 Perception 插件的集成（规划）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">7.9 构建依赖</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_obstacle_perception.html">8 障碍感知与代价地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 感知算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Perception 感知</a></li>
+      <li class="breadcrumb-item active">7. 视觉检测与 ONNX 推理</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/10_Perception/07_vision_detection.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="onnx">
+<h1>7. 视觉检测与 ONNX 推理<a class="headerlink" href="#onnx" title="Link to this heading"></a></h1>
+<p>本文描述 Autonomy 视觉感知基础设施 <code class="docutils literal notranslate"><span class="pre">autonomy/common/network</span></code> 的架构、API 与 YOLO 检测管线。</p>
+<hr class="docutils" />
+<section id="id1">
+<h2>7.1 模块定位<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">common/network</span></code> 提供<strong>与业务无关</strong>的深度学习推理框架，供 Perception 插件（如 <code class="docutils literal notranslate"><span class="pre">YoloDetector</span></code>）调用。命名空间：<code class="docutils literal notranslate"><span class="pre">autonomy::common::network</span></code>。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>network/
+├── network.hpp              # 推荐入口
+├── common/                  # Tensor, InferenceOptions
+├── backend/                 # Backend, BackendFactory, Engine
+│   ├── onnx/                # ONNX Runtime
+│   └── tensorrt/            # TensorRT（可选）
+├── pipeline/                # RunPipeline
+└── detail/
+    ├── preprocess/          # 图像 resize, normalize, layout
+    └── postprocess/           # YOLO decode, NMS, 分类
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>7.2 推理流程<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>输入图像 (uint8/float)
+    │
+    ▼
+预处理 (detail/preprocess/)
+    ├─ Resize → 模型输入尺寸 (H×W)
+    ├─ Normalize → [0,1] 或 ImageNet mean/std
+    └─ Layout → NCHW / NHWC
+    │
+    ▼
+Engine::Run(TensorMap)
+    ├─ ONNX Runtime / TensorRT
+    └─ 输出 TensorMap (float)
+    │
+    ▼
+后处理 (detail/postprocess/)
+    ├─ Decode → 网格预测 → 边界框
+    ├─ NMS → 去重
+    └─ Detection2D / BoundingBox2D
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="api">
+<h2>7.3 核心 API<a class="headerlink" href="#api" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>7.3.1 创建引擎<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/common/network/network.hpp&quot;</span>
+
+<span class="n">InferenceOptions</span><span class="w"> </span><span class="n">opts</span><span class="p">;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">model_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;models/yolov8n.onnx&quot;</span><span class="p">;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">onnx</span><span class="p">.</span><span class="n">execution_provider</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;cpu&quot;</span><span class="p">;</span><span class="w">       </span><span class="c1">// 或 &quot;cuda&quot;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">onnx</span><span class="p">.</span><span class="n">intra_op_num_threads</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">engine</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BackendFactory</span><span class="o">::</span><span class="n">Create</span><span class="p">(</span><span class="n">opts</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">engine</span><span class="o">-&gt;</span><span class="n">Warmup</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 动态 shape 模型 Warmup 为 no-op</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>7.3.2 执行推理<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">FloatTensorMap</span><span class="w"> </span><span class="n">inputs</span><span class="p">;</span>
+<span class="n">inputs</span><span class="p">[</span><span class="s">&quot;images&quot;</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input_tensor</span><span class="p">;</span><span class="w">  </span><span class="c1">// shape: [1, 3, H, W]</span>
+
+<span class="n">FloatTensorMap</span><span class="w"> </span><span class="n">outputs</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="o">-&gt;</span><span class="n">Run</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">outputs</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h3>7.3.3 一体化管线<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">Sample</span><span class="w"> </span><span class="n">sample</span><span class="p">;</span>
+<span class="n">sample</span><span class="p">.</span><span class="n">image</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cv_image</span><span class="p">;</span>
+<span class="n">sample</span><span class="p">.</span><span class="n">named_tensors</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span><span class="w">  </span><span class="c1">// 可选：直接提供量化张量</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RunPipeline</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span><span class="w"> </span><span class="n">opts</span><span class="p">);</span>
+<span class="c1">// result.detections → BoundingBox2D 列表</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>7.4 预处理细节<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>步骤</p></th>
+<th class="head"><p>文件</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Resize</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">detail/preprocess/resize.cpp</span></code></p></td>
+<td><p>双线性插值至模型输入尺寸</p></td>
+</tr>
+<tr class="row-odd"><td><p>Normalize</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">detail/preprocess/norm.cpp</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(pixel</span> <span class="pre">-</span> <span class="pre">mean)</span> <span class="pre">/</span> <span class="pre">std</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Layout</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">detail/preprocess/layout.cpp</span></code></p></td>
+<td><p>HWC → CHW 转换</p></td>
+</tr>
+<tr class="row-odd"><td><p>Dims</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">detail/preprocess/dims.cpp</span></code></p></td>
+<td><p>解析输入 spatial size</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>GetSpatialSize</strong>：从模型 metadata 读取 <span class="math notranslate nohighlight">\(H \times W\)</span>。</p>
+</section>
+<hr class="docutils" />
+<section id="yolo">
+<h2>7.5 YOLO 后处理<a class="headerlink" href="#yolo" title="Link to this heading"></a></h2>
+<section id="id7">
+<h3>7.5.1 网格解码<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">detail/postprocess/boxes.cpp</span></code> 实现 grid-style YOLO head 解码：</p>
+<div class="math notranslate nohighlight">
+\[
+b_x = \sigma(t_x) + j, \quad b_y = \sigma(t_y) + i
+\]</div>
+<p>详见 <a class="reference internal" href="03_math.html#d-yolo"><span class="std std-ref">03_math.md §3.3</span></a>。</p>
+</section>
+<section id="nms">
+<h3>7.5.2 NMS<a class="headerlink" href="#nms" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">detail/postprocess/nms.cpp</span></code>：</p>
+<ol class="arabic simple">
+<li><p>按 <code class="docutils literal notranslate"><span class="pre">score</span></code> 降序排列</p></li>
+<li><p>贪心抑制 IoU <span class="math notranslate nohighlight">\(&gt; \tau_{nms}\)</span> 的框</p></li>
+<li><p>返回保留框索引</p></li>
+</ol>
+</section>
+<section id="id8">
+<h3>7.5.3 输出转换<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p>解码结果映射到 <code class="docutils literal notranslate"><span class="pre">commsgs::vision_msgs::BoundingBox2D</span></code>：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">BoundingBox2D</span><span class="w"> </span><span class="n">box</span><span class="p">;</span>
+<span class="n">box</span><span class="p">.</span><span class="n">center</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cx</span><span class="p">;</span><span class="w">   </span><span class="c1">// 像素</span>
+<span class="n">box</span><span class="p">.</span><span class="n">center</span><span class="p">.</span><span class="n">position</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cy</span><span class="p">;</span>
+<span class="n">box</span><span class="p">.</span><span class="n">center</span><span class="p">.</span><span class="n">theta</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+<span class="n">box</span><span class="p">.</span><span class="n">size_x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">width</span><span class="p">;</span>
+<span class="n">box</span><span class="p">.</span><span class="n">size_y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">height</span><span class="p">;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="onnx-runtime">
+<h2>7.6 ONNX Runtime 配置<a class="headerlink" href="#onnx-runtime" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>说明</p></th>
+<th class="head"><p>默认</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">execution_provider</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code></p></td>
+<td><p>CPU</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">device_id</span></code></p></td>
+<td><p>CUDA 设备索引</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">use_io_binding</span></code></p></td>
+<td><p>静态 shape 时跳过 output memcpy</p></td>
+<td><p>false</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">intra_op_num_threads</span></code></p></td>
+<td><p>算子内并行线程</p></td>
+<td><p>0（ORT 默认）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">graph_optimization_level</span></code></p></td>
+<td><p>图优化级别 0–3</p></td>
+<td><p>-1（默认）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>7.7 线程安全与性能<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>约束</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>线程安全</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Engine</span></code> <strong>非</strong>线程安全；每线程一个实例或外部 mutex</p></td>
+</tr>
+<tr class="row-odd"><td><p>动态 shape</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Warmup()</span></code> 对非静态 shape 为 no-op</p></td>
+</tr>
+<tr class="row-even"><td><p>IoBinding</p></td>
+<td><p>仅当所有输出 shape 完全静态时启用</p></td>
+</tr>
+<tr class="row-odd"><td><p>INT8 量化</p></td>
+<td><p>通过 <code class="docutils literal notranslate"><span class="pre">Sample::named_tensors</span></code> 直接提供校准张量</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="perception">
+<h2>7.8 与 Perception 插件的集成（规划）<a class="headerlink" href="#perception" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">YoloDetector</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">PerceptionInterface</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">network</span><span class="o">::</span><span class="n">Engine</span><span class="o">&gt;</span><span class="w"> </span><span class="n">engine_</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">Process</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">Image</span><span class="o">&amp;</span><span class="w"> </span><span class="n">img</span><span class="p">)</span><span class="w"> </span><span class="k">override</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">Sample</span><span class="w"> </span><span class="n">sample</span><span class="p">{</span><span class="w"> </span><span class="p">.</span><span class="n">image</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ToCvMat</span><span class="p">(</span><span class="n">img</span><span class="p">)</span><span class="w"> </span><span class="p">};</span>
+<span class="w">        </span><span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RunPipeline</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span><span class="w"> </span><span class="n">opts_</span><span class="p">);</span>
+<span class="w">        </span><span class="n">detections_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ToVisionMsgs</span><span class="p">(</span><span class="n">result</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>7.9 构建依赖<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>依赖</p></th>
+<th class="head"><p>CMake 选项</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ONNX Runtime</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">USE_ONNX</span></code></p></td>
+<td><p>默认推理后端</p></td>
+</tr>
+<tr class="row-odd"><td><p>TensorRT</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">USE_TENSORRT</span></code></p></td>
+<td><p>NVIDIA GPU 加速</p></td>
+</tr>
+<tr class="row-even"><td><p>OpenCV</p></td>
+<td><p>默认</p></td>
+<td><p>图像读写与 resize</p></td>
+</tr>
+</tbody>
+</table>
+<p>源码列表见根 <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> 中 <code class="docutils literal notranslate"><span class="pre">NETWORK_CXX17_SRCS</span></code>。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_sensor_pipeline.html" class="btn btn-neutral float-left" title="6. 传感器数据管线" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_obstacle_perception.html" class="btn btn-neutral float-right" title="8. 障碍感知与代价地图" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

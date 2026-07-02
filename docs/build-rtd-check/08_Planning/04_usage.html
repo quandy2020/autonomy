@@ -1,0 +1,403 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4. 使用指南 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="5. Planning 模块架构设计" href="05_architecture.html" />
+    <link rel="prev" title="3. 数学原理" href="03_math.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">08 Planning</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">4 使用指南</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">4.1 配置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#plannerserver-api">4.2 PlannerServer API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">4.3 系统集成</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">4.4 通信接口</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">4.5 路径后处理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">4.6 自定义插件</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">4.7 规划器选型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">4.8 故障排查</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">4.9 性能建议</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_navfn.html">6 NavFn 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_dijkstra.html">7 Dijkstra 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_theta_star.html">8 Theta* 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 路径规划算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Planning 路径规划</a></li>
+      <li class="breadcrumb-item active">4. 使用指南</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/08_Planning/04_usage.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="planning-usage">
+<span id="id1"></span><h1>4. 使用指南<a class="headerlink" href="#planning-usage" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>4.1 配置<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p><strong>入口文件</strong>：<code class="docutils literal notranslate"><span class="pre">config/planner/planner.lua</span></code> → <code class="docutils literal notranslate"><span class="pre">config/autonomy.lua</span></code></p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">AUTONOMY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">planning</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">AUTONOMY_PLANNER</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>关键字段</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>说明</p></th>
+<th class="head"><p>默认建议</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_planner_id</span></code></p></td>
+<td><p>默认规划器</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn_planner</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">planner_plugins</span></code></p></td>
+<td><p>启用的插件列表</p></td>
+<td><p>三个全启</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">path_simplify_epsilon</span></code></p></td>
+<td><p>DP 简化阈值，0=禁用</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">auto_smooth_after_plan</span></code></p></td>
+<td><p>规划后自动平滑</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">costmap</span></code></p></td>
+<td><p>全局代价地图</p></td>
+<td><p>见 <code class="docutils literal notranslate"><span class="pre">planner.lua</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>完整配置示例见 <code class="docutils literal notranslate"><span class="pre">config/planner/planner.lua</span></code>。C++ 加载：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">options</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autonomy</span><span class="o">::</span><span class="n">planning</span><span class="o">::</span><span class="n">CreateOptions</span><span class="p">(</span><span class="s">&quot;config&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="plannerserver-api">
+<h2>4.2 PlannerServer API<a class="headerlink" href="#plannerserver-api" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>API</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GetPlan(start,</span> <span class="pre">goal,</span> <span class="pre">id,</span> <span class="pre">cancel)</span></code></p></td>
+<td><p>单次规划，返回 <code class="docutils literal notranslate"><span class="pre">Path</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">IsPathValid(path,</span> <span class="pre">max_cost,</span> <span class="pre">unknown)</span></code></p></td>
+<td><p>路径碰撞检测</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SetPathUpdateCallback(fn)</span></code></p></td>
+<td><p>规划成功后的回调</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GetCostmapWrapper()</span></code></p></td>
+<td><p>获取共享 costmap</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>选择规划器</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>调用</p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">GetPlan(...,</span> <span class="pre">&quot;navfn_planner&quot;,</span> <span class="pre">...)</span></code></p></td>
+<td><p>指定插件</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">GetPlan(...,</span> <span class="pre">&quot;&quot;,</span> <span class="pre">...)</span></code></p></td>
+<td><p>仅 1 个插件时自动选择</p></td>
+</tr>
+<tr class="row-even"><td><p>多插件且 id 无效</p></td>
+<td><p>抛出 <code class="docutils literal notranslate"><span class="pre">InvalidPlanner</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>异常处理</strong>：<code class="docutils literal notranslate"><span class="pre">NoValidPathCouldBeFound</span></code>、<code class="docutils literal notranslate"><span class="pre">PlannerTimedOut</span></code>、<code class="docutils literal notranslate"><span class="pre">PlannerTFError</span></code> 等，见 <a class="reference internal" href="#id8">§4.8</a>。</p>
+</section>
+<section id="id3">
+<h2>4.3 系统集成<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// system::Autonomy 自动创建</span>
+<span class="n">planner_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">planning</span><span class="o">::</span><span class="n">PlannerServer</span><span class="o">&gt;</span><span class="p">(</span><span class="n">options_</span><span class="p">.</span><span class="n">planner_options</span><span class="p">());</span>
+</pre></div>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>用户目标 → Navigator BT → GetPlan() → Path → Controller
+                              ↓
+                        IsPathValid() → 失效则重规划
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h2>4.4 通信接口<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>类型</p></th>
+<th class="head"><p>名称</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>节点</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">planner_server</span></code></p></td>
+<td><p>autolink 节点</p></td>
+</tr>
+<tr class="row-odd"><td><p>代价地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/global_costmap</span></code></p></td>
+<td><p>全局地图话题</p></td>
+</tr>
+<tr class="row-even"><td><p>服务</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">is_path_valid</span></code></p></td>
+<td><p>路径有效性</p></td>
+</tr>
+<tr class="row-odd"><td><p>Action</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">compute_path_to_pose</span></code></p></td>
+<td><p>Navigator 封装</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h2>4.5 路径后处理<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">simplified</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">planning</span><span class="o">::</span><span class="n">utils</span><span class="o">::</span><span class="n">SimplifyPath</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">epsilon</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">smoother</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">planning</span><span class="o">::</span><span class="n">utils</span><span class="o">::</span><span class="n">SimpleSmoother</span><span class="o">&gt;</span><span class="p">(...);</span>
+<span class="n">smoother</span><span class="o">-&gt;</span><span class="n">Smooth</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">1000</span><span class="p">));</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><code class="docutils literal notranslate"><span class="pre">path_simplify_epsilon</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> 可能使绕障路径坍缩为直线，默认保持 <code class="docutils literal notranslate"><span class="pre">0.0</span></code>。</p>
+</div></blockquote>
+</section>
+<section id="id6">
+<h2>4.6 自定义插件<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>继承 <code class="docutils literal notranslate"><span class="pre">common::GlobalPlanner</span></code>，实现 <code class="docutils literal notranslate"><span class="pre">CreatePlan()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AUTOLINK_PLUGIN_MANAGER_REGISTER_PLUGIN(MyPlanner,</span> <span class="pre">GlobalPlanner)</span></code></p></li>
+<li><p>编写 XML 插件描述，在 <code class="docutils literal notranslate"><span class="pre">planner.lua</span></code> 中注册</p></li>
+</ol>
+<p>详见 <a class="reference internal" href="05_architecture.html"><span class="std std-doc">05_architecture.md §5.9</span></a>。</p>
+</section>
+<section id="id7">
+<h2>4.7 规划器选型<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>推荐</p></th>
+<th class="head"><p>关键配置</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>通用室内</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn_planner</span></code></p></td>
+<td><p>默认</p></td>
+</tr>
+<tr class="row-odd"><td><p>确定性调试</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dijkstra_planner</span></code></p></td>
+<td><p>—</p></td>
+</tr>
+<tr class="row-even"><td><p>短路径/开阔</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">theta_star_planner</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">how_many_corners=8</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>窄通道</p></td>
+<td><p>NavFn 或 Theta*</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">how_many_corners=4</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>大地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn_planner</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">use_astar=true</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>未知区域</p></td>
+<td><p>任意</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">allow_unknown=true</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>更多场景见 <a class="reference internal" href="09_survey.html"><span class="std std-doc">09_survey.md §9.14</span></a>。</p>
+</section>
+<section id="id8">
+<h2>4.8 故障排查<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>异常</p></th>
+<th class="head"><p>常见原因</p></th>
+<th class="head"><p>处理</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NoValidPathCouldBeFound</span></code></p></td>
+<td><p>起终点不连通</p></td>
+<td><p>检查 costmap，增大 <code class="docutils literal notranslate"><span class="pre">tolerance</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">StartOccupied</span></code> / <code class="docutils literal notranslate"><span class="pre">GoalOccupied</span></code></p></td>
+<td><p>起终点在障碍上</p></td>
+<td><p>调整位姿或膨胀参数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InvalidPlanner</span></code></p></td>
+<td><p>插件 id 错误</p></td>
+<td><p>检查 <code class="docutils literal notranslate"><span class="pre">planner_plugins</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PlannerTimedOut</span></code></p></td>
+<td><p>costmap 未更新</p></td>
+<td><p>增大 <code class="docutils literal notranslate"><span class="pre">costmap_update_timeout</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PlannerTFError</span></code></p></td>
+<td><p>坐标系错误</p></td>
+<td><p>检查 TF 与 <code class="docutils literal notranslate"><span class="pre">frame_id</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>检查清单</strong>：<code class="docutils literal notranslate"><span class="pre">costmap-&gt;isCurrent()</span></code> · <code class="docutils literal notranslate"><span class="pre">worldToMap</span></code> 边界 · 障碍/膨胀层 · 启动日志 <code class="docutils literal notranslate"><span class="pre">PlannerServer</span> <span class="pre">has</span> <span class="pre">N</span> <span class="pre">planners</span></code>。</p>
+</section>
+<section id="id9">
+<h2>4.9 性能建议<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>建议</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>地图 ≤ 2048²</p></td>
+<td><p>控制全局 costmap 规模</p></td>
+</tr>
+<tr class="row-odd"><td><p>更新 5 Hz</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">update_frequency</span></code> 通常足够</p></td>
+</tr>
+<tr class="row-even"><td><p>按需重规划</p></td>
+<td><p>依赖 <code class="docutils literal notranslate"><span class="pre">IsPathValid</span></code>，避免全图重算</p></td>
+</tr>
+<tr class="row-odd"><td><p>禁用 DP 简化</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">path_simplify_epsilon</span> <span class="pre">=</span> <span class="pre">0</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>大地图用 A*</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">use_astar</span> <span class="pre">=</span> <span class="pre">true</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="03_math.html" class="btn btn-neutral float-left" title="3. 数学原理" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="05_architecture.html" class="btn btn-neutral float-right" title="5. Planning 模块架构设计" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

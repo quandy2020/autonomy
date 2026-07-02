@@ -1,0 +1,520 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4. 使用指南 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="5. Autolink 模块架构设计" href="05_architecture.html" />
+    <link rel="prev" title="3. 通信概念与模型" href="03_concepts.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">03 Communication</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_concepts.html">3 通信概念与模型</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">4 使用指南</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">4.1 初始化与关闭</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#node">4.2 创建 Node</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#writer">4.3 Writer（发布）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reader">4.4 Reader（订阅）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#service-client">4.5 Service / Client</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#action-server-client">4.6 Action Server / Client</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#parameter">4.7 Parameter</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">4.8 日志</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#action">4.9 Action 类型定义</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">4.10 录制与回放</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#commsgs">4.11 与 commsgs 联用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">4.12 配置文件</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">4.13 注意事项清单</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">4.14 故障排查</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#python">4.15 Python 快速用法</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_node_channel.html">6 Node 与 Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_service_action.html">7 Service 与 Action</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_scheduler_transport.html">8 调度与传输</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 通信框架综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Communication 通信框架</a></li>
+      <li class="breadcrumb-item active">4. 使用指南</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/03_Communication/04_usage.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>4. 使用指南<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本章给出 autolink 日常开发中的 API 用法、配置与排错要点。</p>
+<section id="id2">
+<h2>4.1 初始化与关闭<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autolink/common/init.hpp&quot;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">argv</span><span class="p">[])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 必须在一切 API 之前调用</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">autolink</span><span class="o">::</span><span class="n">Init</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// ... 业务逻辑 ...</span>
+
+<span class="w">    </span><span class="n">autolink</span><span class="o">::</span><span class="n">WaitForShutdown</span><span class="p">();</span><span class="w">  </span><span class="c1">// 阻塞至 SIGINT</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>API</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Init(binary_name,</span> <span class="pre">dag_info)</span></code></p></td>
+<td><p>初始化框架；<code class="docutils literal notranslate"><span class="pre">dag_info</span></code> 可选，供日志标识</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">OK()</span></code></p></td>
+<td><p>是否仍在运行（未收到 shutdown 信号）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">WaitForShutdown()</span></code></p></td>
+<td><p>等待退出信号</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Clear()</span></code></p></td>
+<td><p>主动清理（通常析构时自动调用）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="node">
+<h2>4.2 创建 Node<a class="headerlink" href="#node" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">CreateNode</span><span class="p">(</span><span class="s">&quot;localization_server&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">node</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">AERROR</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;CreateNode failed: Init not called?&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">return</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">node_name</span></code></p></td>
+<td><p>全局唯一节点名</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">name_space</span></code></p></td>
+<td><p>可选命名空间，完整名为 <code class="docutils literal notranslate"><span class="pre">/namespace/node_name</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="writer">
+<h2>4.3 Writer（发布）<a class="headerlink" href="#writer" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 简单方式</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">writer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">CreateWriter</span><span class="o">&lt;</span><span class="n">MsgT</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;/channel/name&quot;</span><span class="p">);</span>
+
+<span class="c1">// 带 RoleAttributes（QoS、类型名等）</span>
+<span class="n">autolink</span><span class="o">::</span><span class="n">proto</span><span class="o">::</span><span class="n">RoleAttributes</span><span class="w"> </span><span class="n">attr</span><span class="p">;</span>
+<span class="n">attr</span><span class="p">.</span><span class="n">set_channel_name</span><span class="p">(</span><span class="s">&quot;/channel/name&quot;</span><span class="p">);</span>
+<span class="n">attr</span><span class="p">.</span><span class="n">mutable_qos_profile</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">set_depth</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">writer2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">CreateWriter</span><span class="o">&lt;</span><span class="n">MsgT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">attr</span><span class="p">);</span>
+
+<span class="c1">// 发布</span>
+<span class="n">writer</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">msg</span><span class="p">);</span><span class="w">                    </span><span class="c1">// 值或 shared_ptr</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">writer</span><span class="o">-&gt;</span><span class="n">HasReader</span><span class="p">())</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="reader">
+<h2>4.4 Reader（订阅）<a class="headerlink" href="#reader" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// 回调方式（推荐）</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">CreateReader</span><span class="o">&lt;</span><span class="n">MsgT</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;/channel/name&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">MsgT</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">msg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* handle */</span><span class="w"> </span><span class="p">});</span>
+
+<span class="c1">// ReaderConfig</span>
+<span class="n">autolink</span><span class="o">::</span><span class="n">ReaderConfig</span><span class="w"> </span><span class="n">cfg</span><span class="p">;</span>
+<span class="n">cfg</span><span class="p">.</span><span class="n">channel_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;/channel/name&quot;</span><span class="p">;</span>
+<span class="n">cfg</span><span class="p">.</span><span class="n">pending_queue_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">reader2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">CreateReader</span><span class="o">&lt;</span><span class="n">MsgT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">cfg</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+
+<span class="c1">// 无回调时可用 Observe 轮询（Component 内部机制）</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">pending_queue_size</span></code></p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1（默认）</p></td>
+<td><p>新消息覆盖未处理消息</p></td>
+</tr>
+<tr class="row-odd"><td><p>N &gt; 1</p></td>
+<td><p>缓存 N 条，满则丢弃最旧</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="service-client">
+<h2>4.5 Service / Client<a class="headerlink" href="#service-client" title="Link to this heading"></a></h2>
+<p><strong>Service</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">service</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">CreateService</span><span class="o">&lt;</span><span class="n">Request</span><span class="p">,</span><span class="w"> </span><span class="n">Response</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;/calc&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Request</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">req</span><span class="p">,</span>
+<span class="w">       </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">Response</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">resp</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Response</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="n">resp</span><span class="o">-&gt;</span><span class="n">set_value</span><span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">a</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">req</span><span class="o">-&gt;</span><span class="n">b</span><span class="p">());</span>
+<span class="w">    </span><span class="p">});</span>
+</pre></div>
+</div>
+<p><strong>Client</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">CreateClient</span><span class="o">&lt;</span><span class="n">Request</span><span class="p">,</span><span class="w"> </span><span class="n">Response</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;/calc&quot;</span><span class="p">);</span>
+<span class="n">client</span><span class="o">-&gt;</span><span class="n">WaitForService</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">seconds</span><span class="p">(</span><span class="mi">5</span><span class="p">));</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">req</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">Request</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">resp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="o">-&gt;</span><span class="n">SendRequest</span><span class="p">(</span><span class="n">req</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">seconds</span><span class="p">(</span><span class="mi">3</span><span class="p">));</span>
+
+<span class="c1">// 异步</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">fut</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="o">-&gt;</span><span class="n">AsyncSendRequest</span><span class="p">(</span><span class="n">req</span><span class="p">);</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">resp2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fut</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="action-server-client">
+<h2>4.6 Action Server / Client<a class="headerlink" href="#action-server-client" title="Link to this heading"></a></h2>
+<p><strong>Server</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autolink/action/action.hpp&quot;</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">CreateServer</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/follow_path&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="c1">// handle_goal</span>
+<span class="w">    </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">GoalUUID</span><span class="o">&amp;</span><span class="w"> </span><span class="n">id</span><span class="p">,</span>
+<span class="w">       </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="k">typename</span><span class="w"> </span><span class="nc">ActionT</span><span class="o">::</span><span class="n">Goal</span><span class="o">&gt;</span><span class="w"> </span><span class="n">goal</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">GoalResponse</span><span class="o">::</span><span class="n">ACCEPT_AND_EXECUTE</span><span class="p">;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="c1">// handle_cancel</span>
+<span class="w">    </span><span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">ServerGoalHandle</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">gh</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">CancelResponse</span><span class="o">::</span><span class="n">ACCEPT</span><span class="p">;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="c1">// handle_accepted — 应在新线程中 Execute</span>
+<span class="w">    </span><span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">ServerGoalHandle</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">gh</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="p">([</span><span class="n">gh</span><span class="p">]()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">gh</span><span class="o">-&gt;</span><span class="n">Execute</span><span class="p">();</span>
+<span class="w">            </span><span class="c1">// gh-&gt;PublishFeedback(...);</span>
+<span class="w">            </span><span class="c1">// gh-&gt;Succeed(result);</span>
+<span class="w">        </span><span class="p">}).</span><span class="n">detach</span><span class="p">();</span>
+<span class="w">    </span><span class="p">});</span>
+</pre></div>
+</div>
+<p><strong>Client</strong></p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">auto</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">CreateClient</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;</span><span class="p">(</span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/follow_path&quot;</span><span class="p">);</span>
+
+<span class="n">autolink</span><span class="o">::</span><span class="n">action</span><span class="o">::</span><span class="n">Client</span><span class="o">&lt;</span><span class="n">ActionT</span><span class="o">&gt;::</span><span class="n">SendGoalOptions</span><span class="w"> </span><span class="n">opts</span><span class="p">;</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">feedback_callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="k">auto</span><span class="p">,</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">fb</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">};</span>
+<span class="n">opts</span><span class="p">.</span><span class="n">result_callback</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[](</span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">wrapped</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">};</span>
+
+<span class="k">auto</span><span class="w"> </span><span class="n">gh</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="o">-&gt;</span><span class="n">AsyncSendGoal</span><span class="p">(</span><span class="n">goal</span><span class="p">,</span><span class="w"> </span><span class="n">opts</span><span class="p">).</span><span class="n">get</span><span class="p">();</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client</span><span class="o">-&gt;</span><span class="n">AsyncGetResult</span><span class="p">(</span><span class="n">gh</span><span class="p">).</span><span class="n">get</span><span class="p">();</span>
+</pre></div>
+</div>
+<p><strong>ServerGoalHandle 终态方法</strong>：<code class="docutils literal notranslate"><span class="pre">Succeed()</span></code> / <code class="docutils literal notranslate"><span class="pre">Canceled()</span></code> / <code class="docutils literal notranslate"><span class="pre">Abort()</span></code></p>
+</section>
+<section id="parameter">
+<h2>4.7 Parameter<a class="headerlink" href="#parameter" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autolink/parameter/parameter_client.hpp&quot;</span>
+
+<span class="n">autolink</span><span class="o">::</span><span class="n">ParameterClient</span><span class="w"> </span><span class="n">param_client</span><span class="p">(</span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;global_param_server&quot;</span><span class="p">);</span>
+
+<span class="n">autolink</span><span class="o">::</span><span class="n">Parameter</span><span class="w"> </span><span class="n">param</span><span class="p">(</span><span class="s">&quot;max_speed&quot;</span><span class="p">,</span><span class="w"> </span><span class="mf">1.5</span><span class="p">);</span>
+<span class="n">param_client</span><span class="p">.</span><span class="n">SetParameter</span><span class="p">(</span><span class="n">param</span><span class="p">);</span>
+
+<span class="n">autolink</span><span class="o">::</span><span class="n">Parameter</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="n">param_client</span><span class="p">.</span><span class="n">GetParameter</span><span class="p">(</span><span class="s">&quot;max_speed&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">result</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h2>4.8 日志<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autolink/common/log.hpp&quot;</span>
+
+<span class="n">AINFO</span><span class="w">  </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;info&quot;</span><span class="p">;</span>
+<span class="n">AWARN</span><span class="w">  </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;warn&quot;</span><span class="p">;</span>
+<span class="n">AERROR</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;error&quot;</span><span class="p">;</span>
+<span class="n">ADEBUG</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="s">&quot;debug&quot;</span><span class="p">;</span><span class="w">  </span><span class="c1">// 需开启 DEBUG 级别</span>
+</pre></div>
+</div>
+<p>日志异步写入，调度配置中可为 <code class="docutils literal notranslate"><span class="pre">async_log</span></code> 线程单独绑核。</p>
+</section>
+<section id="action">
+<h2>4.9 Action 类型定义<a class="headerlink" href="#action" title="Link to this heading"></a></h2>
+<p>Action proto 须满足：</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">syntax</span> <span class="pre">=</span> <span class="pre">&quot;proto3&quot;</span></code></p></li>
+<li><p>嵌套 <code class="docutils literal notranslate"><span class="pre">Goal</span></code>、<code class="docutils literal notranslate"><span class="pre">Feedback</span></code>、<code class="docutils literal notranslate"><span class="pre">Result</span></code></p></li>
+<li><p>顶层字段 <code class="docutils literal notranslate"><span class="pre">goal</span> <span class="pre">=</span> <span class="pre">1;</span> <span class="pre">feedback</span> <span class="pre">=</span> <span class="pre">2;</span> <span class="pre">result</span> <span class="pre">=</span> <span class="pre">3;</span></code></p></li>
+<li><p>推荐独立 <code class="docutils literal notranslate"><span class="pre">XxxActionErrorCode</span></code> 枚举</p></li>
+</ol>
+<p>详见 <a class="reference internal" href="03_concepts.html#action-proto3"><span class="std std-ref">§3.9</span></a> 与 Framework 文档中的完整 NavigateToPose 示例。</p>
+</section>
+<section id="id4">
+<h2>4.10 录制与回放<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 录制</span>
+autolink_recorder<span class="w"> </span>record<span class="w"> </span>-a<span class="w"> </span>-o<span class="w"> </span>/tmp/demo.record
+
+<span class="c1"># 查看信息</span>
+autolink_recorder<span class="w"> </span>info<span class="w"> </span>/tmp/demo.record
+
+<span class="c1"># 回放</span>
+autolink_recorder<span class="w"> </span>play<span class="w"> </span>-f<span class="w"> </span>/tmp/demo.record
+</pre></div>
+</div>
+<p>C++ API：<code class="docutils literal notranslate"><span class="pre">RecordWriter</span></code> / <code class="docutils literal notranslate"><span class="pre">RecordReader</span></code> / <code class="docutils literal notranslate"><span class="pre">RecordViewer</span></code>。</p>
+</section>
+<section id="commsgs">
+<h2>4.11 与 commsgs 联用<a class="headerlink" href="#commsgs" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/sensor_msgs.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/commsgs/proto/sensor_msgs.pb.h&quot;</span>
+
+<span class="c1">// 算法内使用 struct</span>
+<span class="n">autonomy</span><span class="o">::</span><span class="n">commsgs</span><span class="o">::</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">Imu</span><span class="w"> </span><span class="n">imu</span><span class="p">;</span>
+<span class="n">imu</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autolink</span><span class="o">::</span><span class="n">Time</span><span class="o">::</span><span class="n">Now</span><span class="p">();</span>
+
+<span class="c1">// 若 Writer 模板为 proto 类型</span>
+<span class="n">autonomy</span><span class="o">::</span><span class="n">commsgs</span><span class="o">::</span><span class="n">proto</span><span class="o">::</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">Imu</span><span class="w"> </span><span class="n">proto</span><span class="p">;</span>
+<span class="n">autonomy</span><span class="o">::</span><span class="n">commsgs</span><span class="o">::</span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">ToProto</span><span class="p">(</span><span class="n">imu</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">proto</span><span class="p">);</span>
+<span class="n">writer</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">proto</span><span class="p">);</span>
+
+<span class="c1">// 若 Writer 模板为 struct（项目内扩展）</span>
+<span class="n">writer</span><span class="o">-&gt;</span><span class="n">Write</span><span class="p">(</span><span class="n">imu</span><span class="p">);</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p>具体模板参数以各模块 CMake 目标与 traits 注册为准；推荐边界显式 ToProto。</p>
+</div></blockquote>
+</section>
+<section id="id5">
+<h2>4.12 配置文件<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>文件</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/conf/*.conf</span></code></p></td>
+<td><p>调度策略（classic / choreography）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">*.dag</span></code></p></td>
+<td><p>组件拓扑、channel 读写配置</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">*.launch</span></code></p></td>
+<td><p>多 DAG 一键启动</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">transport_conf.pb.txt</span></code></p></td>
+<td><p>传输后端参数</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id6">
+<h2>4.13 注意事项清单<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Init 顺序</strong>：任何 <code class="docutils literal notranslate"><span class="pre">CreateNode</span></code> 之前必须 <code class="docutils literal notranslate"><span class="pre">Init</span></code></p></li>
+<li><p><strong>名称唯一</strong>：node / channel 角色名在拓扑内不可冲突</p></li>
+<li><p><strong>类型匹配</strong>：Writer 与 Reader 的 <code class="docutils literal notranslate"><span class="pre">MessageT</span></code> 必须一致</p></li>
+<li><p><strong>Action 非阻塞</strong>：<code class="docutils literal notranslate"><span class="pre">handle_accepted</span></code> 中执行长任务务必开新线程</p></li>
+<li><p><strong>线程安全</strong>：API 多数线程安全，同一 Writer 并发 Write 需注意消息内容</p></li>
+<li><p><strong>智能指针</strong>：Node / Writer / Reader 均为 <code class="docutils literal notranslate"><span class="pre">shared_ptr</span></code>，无需手动释放</p></li>
+</ol>
+</section>
+<section id="id7">
+<h2>4.14 故障排查<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>现象</p></th>
+<th class="head"><p>可能原因</p></th>
+<th class="head"><p>处理</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CreateNode</span></code> 返回 null</p></td>
+<td><p>未 <code class="docutils literal notranslate"><span class="pre">Init</span></code></p></td>
+<td><p>检查 <code class="docutils literal notranslate"><span class="pre">main</span></code> 入口</p></td>
+</tr>
+<tr class="row-odd"><td><p>Reader 无回调</p></td>
+<td><p>channel 名或类型不匹配</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">autolink_channel</span></code> 查看拓扑</p></td>
+</tr>
+<tr class="row-even"><td><p>跨进程不通</p></td>
+<td><p>SHM 权限 / 发现失败</p></td>
+<td><p>检查 UDP 端口、防火墙</p></td>
+</tr>
+<tr class="row-odd"><td><p>Action 无反馈</p></td>
+<td><p>未调用 <code class="docutils literal notranslate"><span class="pre">Execute()</span></code></p></td>
+<td><p>Server 端检查状态机</p></td>
+</tr>
+<tr class="row-even"><td><p>消息延迟大</p></td>
+<td><p>调度 / 绑核不当</p></td>
+<td><p>调整 <a class="reference internal" href="08_scheduler_transport.html"><span class="std std-doc">§8 调度</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p>回放不一致</p></td>
+<td><p>仿真时钟未同步</p></td>
+<td><p>使用 <code class="docutils literal notranslate"><span class="pre">Clock</span></code> 模式回放</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>调试工具</strong></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>工具</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink_monitor</span></code></p></td>
+<td><p>实时查看 channel 消息</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autolink_channel</span></code></p></td>
+<td><p>列出 channel 与类型</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink_recorder</span></code></p></td>
+<td><p>录制复现</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="python">
+<h2>4.15 Python 快速用法<a class="headerlink" href="#python" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">autolink</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">autolink</span><span class="w"> </span><span class="kn">import</span> <span class="n">Node</span>
+
+<span class="n">autolink</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="s2">&quot;py_talker&quot;</span><span class="p">)</span>
+<span class="n">node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="s2">&quot;py_talker&quot;</span><span class="p">)</span>
+<span class="n">writer</span> <span class="o">=</span> <span class="n">node</span><span class="o">.</span><span class="n">create_writer</span><span class="p">(</span><span class="s2">&quot;/chatter&quot;</span><span class="p">,</span> <span class="n">Chatter</span><span class="p">)</span>
+
+<span class="k">while</span> <span class="n">autolink</span><span class="o">.</span><span class="n">ok</span><span class="p">():</span>
+    <span class="n">msg</span> <span class="o">=</span> <span class="n">Chatter</span><span class="p">()</span>
+    <span class="n">msg</span><span class="o">.</span><span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;hello&quot;</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>完整 API 见 <code class="docutils literal notranslate"><span class="pre">autolink/docs/source/autolink_python_api_cn.md</span></code>。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="03_concepts.html" class="btn btn-neutral float-left" title="3. 通信概念与模型" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="05_architecture.html" class="btn btn-neutral float-right" title="5. Autolink 模块架构设计" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

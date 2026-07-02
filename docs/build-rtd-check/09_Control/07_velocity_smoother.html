@@ -1,0 +1,448 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>7. 速度平滑器（VelocitySmoother） &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="8. 局部控制器算法" href="08_controller_algorithms.html" />
+    <link rel="prev" title="6. 目标与进度检查器" href="06_checkers.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">09 Control</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html">6 目标与进度检查器</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">7 速度平滑器</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">7.1 定位</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">7.2 向量约定</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">7.3 算法流程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">7.4 约束增量计算</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scale-velocities">7.5 同步缩放（scale_velocities）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#deadband">7.6 Deadband 过滤</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">7.7 超时保护</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">7.8 反馈模式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">7.9 配置参数</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#controllerserver">7.10 与 ControllerServer 的关系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">7.11 调参建议</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html">8 局部控制器算法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 运动控制算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Control 运动控制</a></li>
+      <li class="breadcrumb-item active">7. 速度平滑器（VelocitySmoother）</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/09_Control/07_velocity_smoother.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="velocitysmoother">
+<h1>7. 速度平滑器（VelocitySmoother）<a class="headerlink" href="#velocitysmoother" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">VelocitySmoother</span></code> 移植自 Nav2 <code class="docutils literal notranslate"><span class="pre">nav2_velocity_smoother</span></code>，在控制器输出与底盘之间施加<strong>运动学约束</strong>，防止加速度突变、消除 deadband 以下的抖动。</p>
+<section id="id1">
+<h2>7.1 定位<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>输入</p></td>
+<td><p>原始 <code class="docutils literal notranslate"><span class="pre">cmd_vel</span></code> 命令</p></td>
+</tr>
+<tr class="row-odd"><td><p>输出</p></td>
+<td><p>平滑后的 <code class="docutils literal notranslate"><span class="pre">cmd_vel</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>约束</p></td>
+<td><p>最大/最小速度、最大加速度/减速度</p></td>
+</tr>
+<tr class="row-odd"><td><p>反馈</p></td>
+<td><p>OPEN_LOOP（用上次输出）或 CLOSED_LOOP（用 OdomSmoother）</p></td>
+</tr>
+<tr class="row-even"><td><p>状态</p></td>
+<td><p>算法已实现；pub/sub 定时器待接线</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id2">
+<h2>7.2 向量约定<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>三轴向量索引 <span class="math notranslate nohighlight">\((v_x, v_y, \omega_z)\)</span> 对应 <code class="docutils literal notranslate"><span class="pre">[0],</span> <span class="pre">[1],</span> <span class="pre">[2]</span></code>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>索引</p></th>
+<th class="head"><p>分量</p></th>
+<th class="head"><p>差速机器人典型值</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p><span class="math notranslate nohighlight">\(v_x\)</span></p></td>
+<td><p>max 0.50, min -0.50 m/s</p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p><span class="math notranslate nohighlight">\(v_y\)</span></p></td>
+<td><p>0（非完整约束）</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p><span class="math notranslate nohighlight">\(\omega_z\)</span></p></td>
+<td><p>max 2.5, min -2.5 rad/s</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>7.3 算法流程<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>inputCommandCallback(cmd_vel_raw)
+    │
+    ▼
+smootherTimer()  @ smoothing_frequency
+    │
+    ├─ 1. 超时检测 → 无新命令超过 velocity_timeout → 发零速
+    │
+    ├─ 2. 获取当前速度 v_curr
+    │      OPEN_LOOP: 上次输出 last_cmd_
+    │      CLOSED_LOOP: OdomSmoother.getTwistStamped()
+    │
+    ├─ 3. Clamp 命令到 [min_velocity, max_velocity]
+    │
+    ├─ 4. 计算同步缩放因子 η（若 scale_velocities=true）
+    │
+    ├─ 5. 逐轴 applyConstraints → v_out
+    │
+    ├─ 6. Deadband 过滤
+    │
+    └─ 7. 保存 last_cmd_，发布 v_out
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h2>7.4 约束增量计算<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<p>对单个分量，设当前速度 <span class="math notranslate nohighlight">\(v_{curr}\)</span>、目标命令 <span class="math notranslate nohighlight">\(v_{cmd}\)</span>、控制频率 <span class="math notranslate nohighlight">\(f\)</span>、加速度 <span class="math notranslate nohighlight">\(a &gt; 0\)</span>、减速度 <span class="math notranslate nohighlight">\(d &lt; 0\)</span>：</p>
+<p><strong>判定加速还是减速</strong>（加速 <span class="math notranslate nohighlight">\(\Leftrightarrow |v_{cmd}| \geq |v_{curr}| \land v_{curr} \cdot v_{cmd} \geq 0\)</span>）：</p>
+<p><strong>加速模式</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\Delta v_{\max} = \frac{a}{f}, \quad \Delta v_{\min} = -\frac{a}{f}
+\]</div>
+<p><strong>减速/反向模式</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\Delta v_{\max} = -\frac{d}{f}, \quad \Delta v_{\min} = \frac{d}{f}
+\]</div>
+<blockquote>
+<div><p>减速度 <span class="math notranslate nohighlight">\(d\)</span> 必须为<strong>负数</strong>（如 -2.5），加速度 <span class="math notranslate nohighlight">\(a\)</span> 必须为<strong>正数</strong>（如 2.5）。构造函数会校验符号。</p>
+</div></blockquote>
+</section>
+<section id="scale-velocities">
+<h2>7.5 同步缩放（scale_velocities）<a class="headerlink" href="#scale-velocities" title="Link to this heading"></a></h2>
+<p>当 <code class="docutils literal notranslate"><span class="pre">scale_velocities</span> <span class="pre">=</span> <span class="pre">true</span></code> 时，三轴共用同一缩放因子 <span class="math notranslate nohighlight">\(\eta\)</span>，保证 <span class="math notranslate nohighlight">\((v_x, v_y, \omega_z)\)</span> 同步变化，避免轨迹扭曲。</p>
+<p><strong>单轴 eta 计算</strong>（<code class="docutils literal notranslate"><span class="pre">findEtaConstraint</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+\Delta v = v_{cmd} - v_{curr}
+\]</div>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\eta_i = \begin{cases}
+\Delta v_{\max} / \Delta v &amp; \mathrm{if}\ \Delta v &gt; \Delta v_{\max} \\
+\Delta v_{\min} / \Delta v &amp; \mathrm{if}\ \Delta v &lt; \Delta v_{\min} \\
+-1 &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">otherwise</span></code> 表示该轴无需缩放。</p>
+<p><strong>全局 eta</strong>：取所有 <span class="math notranslate nohighlight">\(\eta_i &gt; 0\)</span> 中使 <span class="math notranslate nohighlight">\(|1 - \eta_i|\)</span> 最小的值；若无则 <span class="math notranslate nohighlight">\(\eta = 1.0\)</span>。</p>
+<p><strong>应用约束</strong>（<code class="docutils literal notranslate"><span class="pre">applyConstraints</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+v_{out} = v_{curr} + \operatorname{clamp}(\eta \cdot \Delta v,\; \Delta v_{\min},\; \Delta v_{\max})
+\]</div>
+<section id="id5">
+<h3>数值示例<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>设 <span class="math notranslate nohighlight">\(f = 20\)</span> Hz，<span class="math notranslate nohighlight">\(a = 2.5\)</span> m/s²，<span class="math notranslate nohighlight">\(v_{curr} = 0\)</span>，<span class="math notranslate nohighlight">\(v_{cmd} = 1.0\)</span> m/s：</p>
+<div class="math notranslate nohighlight">
+\[
+\Delta v_{\max} = 2.5 / 20 = 0.125\,\mathrm{m/s}
+\]</div>
+<p>每周期最多增加 0.125 m/s，从 0 到 1.0 m/s 需约 8 个周期（0.4 s）。</p>
+</section>
+</section>
+<section id="deadband">
+<h2>7.6 Deadband 过滤<a class="headerlink" href="#deadband" title="Link to this heading"></a></h2>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+v_{out} = \begin{cases}
+0 &amp; |v_{out}| &lt; v_{\mathrm{deadband}} \\
+v_{out} &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+<p>默认 deadband 为 <span class="math notranslate nohighlight">\((0, 0, 0)\)</span>，即不过滤。可设 <span class="math notranslate nohighlight">\((0.01, 0, 0.01)\)</span> 消除微小抖动。</p>
+</section>
+<section id="id6">
+<h2>7.7 超时保护<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<p>若距上次命令时间超过 <code class="docutils literal notranslate"><span class="pre">velocity_timeout</span></code>（默认 1.0 s）：</p>
+<ol class="arabic simple">
+<li><p>第一次超时：将命令置零，继续平滑减速</p></li>
+<li><p>已停止（<code class="docutils literal notranslate"><span class="pre">stopped_</span> <span class="pre">=</span> <span class="pre">true</span></code>）：不再发布</p></li>
+</ol>
+<p>防止控制器崩溃后机器人持续执行旧命令。</p>
+</section>
+<section id="id7">
+<h2>7.8 反馈模式<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">open_loop_</span></code></p></th>
+<th class="head"><p>当前速度来源</p></th>
+<th class="head"><p>适用</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>OPEN_LOOP</p></td>
+<td><p>true</p></td>
+<td><p>上次平滑输出 <code class="docutils literal notranslate"><span class="pre">last_cmd_</span></code></p></td>
+<td><p>低延迟、无 odom</p></td>
+</tr>
+<tr class="row-odd"><td><p>CLOSED_LOOP</p></td>
+<td><p>false</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OdomSmoother</span></code> 滑动平均</p></td>
+<td><p>精确跟踪实际速度</p></td>
+</tr>
+</tbody>
+</table>
+<p>CLOSED_LOOP 模式下，<code class="docutils literal notranslate"><span class="pre">OdomSmoother</span></code> 对 <code class="docutils literal notranslate"><span class="pre">odom_duration</span></code>（默认 0.1 s）窗口内的里程计做算术平均：</p>
+<div class="math notranslate nohighlight">
+\[
+\bar{v}_x = \frac{1}{N}\sum_{i=1}^{N} v_{x,i}
+\]</div>
+</section>
+<section id="id8">
+<h2>7.9 配置参数<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<p><strong>Proto</strong>（<code class="docutils literal notranslate"><span class="pre">smoother_options.proto</span></code>）：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">smoothing_frequency</span></code></p></td>
+<td><p>20.0 Hz</p></td>
+<td><p>平滑定时器频率</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">feedback</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;OPEN_LOOP&quot;</span></code></p></td>
+<td><p>或 <code class="docutils literal notranslate"><span class="pre">&quot;CLOSED_LOOP&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale_velocities</span></code></p></td>
+<td><p>false</p></td>
+<td><p>三轴同步缩放</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_velocity</span></code></p></td>
+<td><p>[0.50, 0.0, 2.5]</p></td>
+<td><p>速度上界</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">min_velocity</span></code></p></td>
+<td><p>[-0.50, 0.0, -2.5]</p></td>
+<td><p>速度下界</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_accel</span></code></p></td>
+<td><p>[2.5, 0.0, 3.2]</p></td>
+<td><p>加速度上界</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_decel</span></code></p></td>
+<td><p>[-2.5, 0.0, -3.2]</p></td>
+<td><p>减速度（负值）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">deadband_velocity</span></code></p></td>
+<td><p>[0, 0, 0]</p></td>
+<td><p>Deadband</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">velocity_timeout</span></code></p></td>
+<td><p>1.0 s</p></td>
+<td><p>命令超时</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">odom_topic</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;odom&quot;</span></code></p></td>
+<td><p>闭环反馈话题</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">odom_duration</span></code></p></td>
+<td><p>0.1 s</p></td>
+<td><p>里程计平滑窗口</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="controllerserver">
+<h2>7.10 与 ControllerServer 的关系<a class="headerlink" href="#controllerserver" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ControllerServer                    VelocitySmoother
+     │                                    │
+     │ ComputeVelocityCommands()          │
+     │──────── raw cmd_vel ──────────────→│ inputCommandCallback()
+     │                                    │ smootherTimer()
+     │                                    │──────── smooth cmd_vel ──→ 底盘
+</pre></div>
+</div>
+<p>VelocitySmoother 可部署为：</p>
+<ol class="arabic simple">
+<li><p><strong>ControllerServer 内部组件</strong>：在 <code class="docutils literal notranslate"><span class="pre">ComputeAndPublishVelocity()</span></code> 中调用</p></li>
+<li><p><strong>独立节点</strong>：订阅 <code class="docutils literal notranslate"><span class="pre">cmd_vel_raw</span></code>，发布 <code class="docutils literal notranslate"><span class="pre">cmd_vel</span></code>（Nav2 默认方式）</p></li>
+</ol>
+<p>当前 Autonomy 两种方式的 pub/sub 均未接线。</p>
+</section>
+<section id="id9">
+<h2>7.11 调参建议<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>max_accel</p></th>
+<th class="head"><p>scale_velocities</p></th>
+<th class="head"><p>feedback</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>室内慢速</p></td>
+<td><p>[1.0, 0, 2.0]</p></td>
+<td><p>true</p></td>
+<td><p>CLOSED_LOOP</p></td>
+</tr>
+<tr class="row-odd"><td><p>高速 AGV</p></td>
+<td><p>[3.0, 0, 4.0]</p></td>
+<td><p>true</p></td>
+<td><p>CLOSED_LOOP</p></td>
+</tr>
+<tr class="row-even"><td><p>仿真调试</p></td>
+<td><p>[5.0, 0, 5.0]</p></td>
+<td><p>false</p></td>
+<td><p>OPEN_LOOP</p></td>
+</tr>
+<tr class="row-odd"><td><p>消除抖动</p></td>
+<td><p>deadband [0.01, 0, 0.02]</p></td>
+<td><p>—</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>原则</strong>：<code class="docutils literal notranslate"><span class="pre">smoothing_frequency</span></code> 应 ≥ <code class="docutils literal notranslate"><span class="pre">controller_frequency</span></code>；加速度限制应匹配机器人硬件规格。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="06_checkers.html" class="btn btn-neutral float-left" title="6. 目标与进度检查器" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="08_controller_algorithms.html" class="btn btn-neutral float-right" title="8. 局部控制器算法" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

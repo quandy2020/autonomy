@@ -1,0 +1,1257 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. Costmap2D 代价地图 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs"></script>
+      <script type="module" src="https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2.0/dist/mermaid-layout-elk.esm.min.mjs"></script>
+      <script type="module">
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  themeVariables: {
+    fontSize: '14px',
+    fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif',
+    primaryColor: '#e0f2f2',
+    primaryTextColor: '#1a4d6e',
+    primaryBorderColor: '#2d9294',
+    lineColor: '#5a7289',
+    secondaryColor: '#eef1f4',
+    tertiaryColor: '#ffffff'
+  },
+  flowchart: {
+    useMaxWidth: false,
+    htmlLabels: true,
+    curve: 'basis',
+    padding: 20,
+    nodeSpacing: 45,
+    rankSpacing: 55
+  },
+  timeline: {
+    disableMulticolor: false
+  }
+});
+</script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+      <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+
+const defaultStyle = document.createElement('style');
+defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+`;
+document.head.appendChild(defaultStyle);
+
+const fullscreenStyle = document.createElement('style');
+fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+document.head.appendChild(fullscreenStyle);
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 128;
+    }
+    return false;
+};
+
+const load = async () => {
+    await mermaid.run();
+
+    const all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(load, 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(load, 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(load, 200);
+        return;
+    }
+
+    const darkTheme = isDarkTheme();
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    const modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    const modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    let previousScrollOffset = [window.scrollX, window.scrollY];
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    const allButtons = [];
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+
+        container.appendChild(fullscreenBtn);
+        allButtons.push(fullscreenBtn);
+    });
+
+    // Update theme classes when theme changes
+    const updateTheme = () => {
+        const dark = isDarkTheme();
+        allButtons.forEach(btn => {
+            if (dark) {
+                btn.classList.add('dark-theme');
+            } else {
+                btn.classList.remove('dark-theme');
+            }
+        });
+        if (dark) {
+            modal.classList.add('dark-theme');
+            modalContent.classList.add('dark-theme');
+            closeBtn.classList.add('dark-theme');
+        } else {
+            modal.classList.remove('dark-theme');
+            modalContent.classList.remove('dark-theme');
+            closeBtn.classList.remove('dark-theme');
+        }
+    };
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+    });
+};
+
+window.addEventListener("load", load);
+</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. GridMap 2.5D 栅格地图" href="07_grid_map.html" />
+    <link rel="prev" title="5. Map 模块架构设计" href="05_architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">07 Mapping</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 Costmap2D 代价地图</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">6.1 何时使用 Costmap2D</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wrapper">6.2 架构：从 Wrapper 到栅格</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">6.3 详细使用指南</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">6.4 核心数据结构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">6.5 坐标变换</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">6.6 代价值体系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#layeredcostmap">6.7 LayeredCostmap 多层架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inflationlayer">6.8 InflationLayer 详解</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">6.9 图层详解</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#rolling-window">6.10 Rolling Window</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#footprint">6.11 Footprint</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#costmap2dwrapper">6.12 Costmap2DWrapper 运行时</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id17">6.13 配置参考</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id18">6.14 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_grid_map.html">7 GridMap 2.5D 栅格地图</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_survey.html">8 地图表示综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Map 地图模块</a></li>
+      <li class="breadcrumb-item active">6. Costmap2D 代价地图</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/07_Map/06_costmap2d.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="costmap2d">
+<h1>6. Costmap2D 代价地图<a class="headerlink" href="#costmap2d" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">Costmap2D</span></code> 是 Autonomy 的<strong>二维代价栅格地图</strong>实现，源自 Nav2 <code class="docutils literal notranslate"><span class="pre">nav2_costmap_2d</span></code>。它将静态地图、动态障碍与安全膨胀融合为一张 <code class="docutils literal notranslate"><span class="pre">uint8</span></code> 栅格，是<strong>路径规划与碰撞检测的标准输入</strong>。</p>
+<blockquote>
+<div><p>模块级架构见 <a class="reference internal" href="05_architecture.html#costmap2d"><span class="std std-ref">05_architecture.md §5.3</span></a>；数学公式见 <a class="reference internal" href="03_math.html#inflationlayer"><span class="std std-ref">§3 数学原理</span></a>。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id1">
+<h2>6.1 何时使用 Costmap2D<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>是否适用</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>全局/局部路径规划</p></td>
+<td><p>✅</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PlannerServer</span></code> 已集成</p></td>
+</tr>
+<tr class="row-odd"><td><p>激光动态避障</p></td>
+<td><p>✅</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">obstacle_layer</span></code> + <code class="docutils literal notranslate"><span class="pre">feedLaserScan</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>静态 SLAM 地图融合</p></td>
+<td><p>✅</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">static_layer</span></code> + <code class="docutils literal notranslate"><span class="pre">applyOccupancyGrid</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>地形高程/坡度</p></td>
+<td><p>❌</p></td>
+<td><p>用 <a class="reference internal" href="07_grid_map.html"><span class="std std-doc">GridMap</span></a></p></td>
+</tr>
+<tr class="row-even"><td><p>3D 体素占据</p></td>
+<td><p>部分</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">voxel_layer</span></code> 投影到 2D</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="wrapper">
+<h2>6.2 架构：从 Wrapper 到栅格<a class="headerlink" href="#wrapper" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>6.2.1 对象层级<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>你的代码
+  │
+  ▼
+Costmap2DWrapper          ← 持有、Start/Stop、feed 传感器
+  │
+  ├── LayeredCostmap     ← 插件调度、双缓冲
+  │     ├── plugins_[0] StaticLayer
+  │     ├── plugins_[1] ObstacleLayer
+  │     ├── plugins_[2] InflationLayer
+  │     └── combined_costmap_ (Costmap2D)  ← getCostmap() 返回此对象
+  │
+  ├── TF Buffer          ← getRobotPose()
+  └── 后台线程            ← Start() 后周期性 updateMap()
+</pre></div>
+</div>
+<p><strong>不要直接 new <code class="docutils literal notranslate"><span class="pre">Costmap2D</span></code></strong>：生产环境始终通过 <code class="docutils literal notranslate"><span class="pre">Costmap2DWrapper</span></code> 使用，由它负责插件加载、线程与 TF。</p>
+</section>
+<section id="id3">
+<h3>6.2.2 一张图看懂数据流<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<pre  class="mermaid">
+        flowchart TB
+    subgraph 输入
+        M[&quot;MapServer / PGM&lt;br/&gt;OccupancyGrid&quot;]
+        L[&quot;/scan 激光&quot;]
+        P[&quot;点云 PointCloud2&quot;]
+        TF[&quot;TF: base_link→map&quot;]
+    end
+
+    subgraph Costmap2DWrapper
+        direction TB
+        A[&quot;applyOccupancyGrid / loadMap&quot;] --&gt; SL[&quot;static_layer&quot;]
+        B[&quot;feedLaserScan / feedPointCloud2&quot;] --&gt; OL[&quot;obstacle_layer&lt;br/&gt;ObservationBuffer&quot;]
+        C[&quot;getRobotPose&quot;] --&gt; UPD[&quot;updateMap()&quot;]
+        UPD --&gt; LC[&quot;LayeredCostmap&quot;]
+        SL --&gt; LC
+        OL --&gt; LC
+        LC --&gt; IL[&quot;inflation_layer&quot;]
+        IL --&gt; OUT[&quot;combined_costmap&lt;br/&gt;uint8[Nx×Ny]&quot;]
+    end
+
+    subgraph 输出
+        OUT --&gt; PL[&quot;PlannerServer 复制 char map&quot;]
+        OUT --&gt; VIS[&quot;snapshotOccupancyGrid 可视化&quot;]
+    end
+
+    M --&gt; A
+    L --&gt; B
+    P --&gt; B
+    TF --&gt; C
+    </pre></section>
+<section id="id4">
+<h3>6.2.3 双缓冲机制<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>无 filter（常见）</p></td>
+<td><p>插件直接写入 <code class="docutils literal notranslate"><span class="pre">combined_costmap_</span></code>，<code class="docutils literal notranslate"><span class="pre">getCostmap()</span></code> 即最终结果</p></td>
+</tr>
+<tr class="row-odd"><td><p>有 filter</p></td>
+<td><p>插件 → <code class="docutils literal notranslate"><span class="pre">primary_costmap_</span></code> → <code class="docutils literal notranslate"><span class="pre">copyWindow</span></code> → <code class="docutils literal notranslate"><span class="pre">combined_costmap_</span></code> → filter 修改</p></td>
+</tr>
+</tbody>
+</table>
+<p>每次 <code class="docutils literal notranslate"><span class="pre">updateMap</span></code> 在更新窗口 <span class="math notranslate nohighlight">\((x_0,y_0)…(x_n,y_n)\)</span> 内先 <code class="docutils literal notranslate"><span class="pre">resetMap</span></code>（置 <code class="docutils literal notranslate"><span class="pre">default_value_</span></code>），再按插件顺序写入，<strong>不是增量叠加到旧值上</strong>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>6.3 详细使用指南<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="a-plannerserver">
+<h3>6.3.1 方式 A：通过 PlannerServer（推荐）<a class="headerlink" href="#a-plannerserver" title="Link to this heading"></a></h3>
+<p>最常见路径——无需直接操作 costmap：</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- config/autonomy.lua</span>
+<span class="nv">AUTONOMY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nv">planning</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">AUTONOMY_PLANNER</span><span class="w"> </span><span class="p">}</span>
+
+<span class="c1">-- config/planner/planner.lua 内已含 costmap 块</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">PlannerServer</span></code> 构造时自动创建 <code class="docutils literal notranslate"><span class="pre">Costmap2DWrapper</span></code> 并 <code class="docutils literal notranslate"><span class="pre">Start()</span></code>。你只需：</p>
+<ol class="arabic simple">
+<li><p>确保 <code class="docutils literal notranslate"><span class="pre">MapServer</span></code> 发布 <code class="docutils literal notranslate"><span class="pre">/map</span></code> 或调用 <code class="docutils literal notranslate"><span class="pre">applyOccupancyGrid</span></code></p></li>
+<li><p>确保激光数据通过 ROS bridge 调用 <code class="docutils literal notranslate"><span class="pre">feedLaserScan</span></code></p></li>
+<li><p>TF 树中 <code class="docutils literal notranslate"><span class="pre">map</span></code> ↔ <code class="docutils literal notranslate"><span class="pre">base_link</span></code> 可用</p></li>
+</ol>
+</section>
+<section id="b-costmap2dwrapper">
+<h3>6.3.2 方式 B：独立使用 Costmap2DWrapper<a class="headerlink" href="#b-costmap2dwrapper" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/map_options.hpp&quot;</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;autonomy/map/costmap_2d/costmap_2d_wrapper.hpp&quot;</span>
+
+<span class="c1">// 1. 加载配置</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">opts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">CreateCostmap2DOptions</span><span class="p">(</span><span class="s">&quot;config&quot;</span><span class="p">);</span>
+
+<span class="c1">// 2. 构造（此时 init() 已执行：创建 LayeredCostmap、加载插件）</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">costmap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">autonomy</span><span class="o">::</span><span class="n">map</span><span class="o">::</span><span class="n">costmap_2d</span><span class="o">::</span><span class="n">Costmap2DWrapper</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="n">opts</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;global_costmap&quot;</span><span class="p">);</span>
+
+<span class="c1">// 3. 注入静态地图（二选一）</span>
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">loadMap</span><span class="p">(</span><span class="s">&quot;config/map/warehouse.yaml&quot;</span><span class="p">);</span><span class="w">           </span><span class="c1">// 从 YAML+PGM</span>
+<span class="c1">// 或</span>
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">applyOccupancyGrid</span><span class="p">(</span><span class="o">*</span><span class="n">map_server</span><span class="o">-&gt;</span><span class="n">GetStaticMapShared</span><span class="p">());</span>
+
+<span class="c1">// 4. 启动后台更新线程</span>
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">Start</span><span class="p">();</span>
+
+<span class="c1">// 5. 传感器回调中喂数据</span>
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">feedLaserScan</span><span class="p">(</span><span class="n">laser_scan_msg</span><span class="p">);</span>
+
+<span class="c1">// 6. 读取（规划前加锁复制）</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="w"> </span><span class="nf">lock</span><span class="p">(</span><span class="o">*</span><span class="n">costmap</span><span class="o">-&gt;</span><span class="n">getCostmap</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">getMutex</span><span class="p">());</span>
+<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">costmap</span><span class="o">-&gt;</span><span class="n">getCostmap</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">getCharMap</span><span class="p">();</span>
+<span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">mx</span><span class="p">,</span><span class="w"> </span><span class="n">my</span><span class="p">;</span>
+<span class="w">    </span><span class="n">costmap</span><span class="o">-&gt;</span><span class="n">getCostmap</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">worldToMap</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">mx</span><span class="p">,</span><span class="w"> </span><span class="n">my</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">unsigned</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">c</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="n">my</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">size_x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">mx</span><span class="p">];</span>
+<span class="p">}</span>
+
+<span class="c1">// 7. 停止</span>
+<span class="n">costmap</span><span class="o">-&gt;</span><span class="n">Stop</span><span class="p">();</span>
+</pre></div>
+</div>
+</section>
+<section id="api">
+<h3>6.3.3 关键 API 速查<a class="headerlink" href="#api" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>API</p></th>
+<th class="head"><p>调用时机</p></th>
+<th class="head"><p>作用</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Start()</span></code></p></td>
+<td><p>一切就绪后</p></td>
+<td><p>启动后台线程：<code class="docutils literal notranslate"><span class="pre">updateMap</span></code> + <code class="docutils literal notranslate"><span class="pre">publishMap</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Stop()</span></code></p></td>
+<td><p>退出前</p></td>
+<td><p>停止线程、deactivate 插件</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">applyOccupancyGrid(grid)</span></code></p></td>
+<td><p>静态地图到达时</p></td>
+<td><p>写入 <code class="docutils literal notranslate"><span class="pre">StaticLayer</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">feedLaserScan(scan)</span></code></p></td>
+<td><p>每次激光回调</p></td>
+<td><p>缓存到 <code class="docutils literal notranslate"><span class="pre">ObstacleLayer</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">getCostmap()</span></code></p></td>
+<td><p>读取代价值</p></td>
+<td><p>返回 <code class="docutils literal notranslate"><span class="pre">combined_costmap_</span></code> 指针</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">getMutex()</span></code></p></td>
+<td><p>读取/规划前</p></td>
+<td><p>线程安全锁</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">isReady()</span></code></p></td>
+<td><p>规划前检查</p></td>
+<td><p>是否至少更新过一次</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">isCurrent()</span></code></p></td>
+<td><p>规划前检查</p></td>
+<td><p>图层是否在超时内更新</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">snapshotOccupancyGrid(out)</span></code></p></td>
+<td><p>可视化</p></td>
+<td><p>cost → OccupancyGrid 反向映射</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="vs">
+<h3>6.3.4 全局图 vs 局部滚动图<a class="headerlink" href="#vs" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>配置</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">rolling_window</span></code></p></th>
+<th class="head"><p>地图尺寸</p></th>
+<th class="head"><p>适用</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>全局代价地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">false</span></code></p></td>
+<td><p>覆盖整个环境（或由 static_layer resize）</p></td>
+<td><p>室内导航、已知地图</p></td>
+</tr>
+<tr class="row-odd"><td><p>局部代价地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+<td><p>固定 <span class="math notranslate nohighlight">\(W \times H\)</span>（如 20m×20m），随机器人平移</p></td>
+<td><p>大地图、动态环境</p></td>
+</tr>
+</tbody>
+</table>
+<p>局部模式下 <code class="docutils literal notranslate"><span class="pre">updateMap</span></code> 每帧将 origin 设为 <span class="math notranslate nohighlight">\((x_{\text{robot}} - W/2,\; y_{\text{robot}} - H/2)\)</span>，重叠区域数据保留，移出窗口的格重置。</p>
+</section>
+<section id="id6">
+<h3>6.3.5 完整配置示例<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">costmap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;global_map&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">frame_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;map&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">resolution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span><span class="w">          </span><span class="c1">-- 5 cm/cell</span>
+<span class="w">    </span><span class="nv">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span><span class="w">                 </span><span class="c1">-- 物理宽度 [m]</span>
+<span class="w">    </span><span class="nv">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">update_frequency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span><span class="w">       </span><span class="c1">-- 后台 updateMap 频率</span>
+<span class="w">    </span><span class="nv">rolling_window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">robot_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.22</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">footprint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.14</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.14</span><span class="p">},</span>
+<span class="w">        </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.14</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.14</span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nv">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s2">&quot;static_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obstacle_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;inflation_layer&quot;</span><span class="p">},</span>
+
+<span class="w">    </span><span class="nv">static_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">map_topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;map&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">subscribe_to_updates</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nv">obstacle_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">footprint_clearing_enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">sensor_sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nv">scan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nv">topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;scan&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nv">data_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;LaserScan&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="nv">marking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">                </span><span class="nv">clearing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">                </span><span class="nv">obstacle_max_range</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span>
+<span class="w">                </span><span class="nv">raytrace_max_range</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.5</span><span class="p">,</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nv">inflation_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">inflation_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.35</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">cost_scaling_factor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h3>6.3.6 启动检查清单<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>步骤</p></th>
+<th class="head"><p>检查</p></th>
+<th class="head"><p>期望</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>日志 <code class="docutils literal notranslate"><span class="pre">Costmap2D</span> <span class="pre">update</span> <span class="pre">thread</span> <span class="pre">started</span></code></p></td>
+<td><p>线程已启动</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">costmap-&gt;isReady()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">costmap-&gt;isCurrent()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code>（TF 正常时）</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>可视化快照</p></td>
+<td><p>墙壁=深色，自由区=浅色，膨胀=渐变</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>机器人脚下格</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code> 或低代价（footprint clearing 生效）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>6.4 核心数据结构<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">autonomy/map/costmap_2d/costmap_2d.hpp</span></code></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>成员</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">size_x_</span></code>, <code class="docutils literal notranslate"><span class="pre">size_y_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span></code></p></td>
+<td><p>栅格尺寸（cell）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">resolution_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">double</span></code></p></td>
+<td><p>分辨率 [m/cell]</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">origin_x_</span></code>, <code class="docutils literal notranslate"><span class="pre">origin_y_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">double</span></code></p></td>
+<td><p>地图左下角世界坐标</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">costmap_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">char[]</span></code></p></td>
+<td><p>一维代价值数组</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">default_value_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">char</span></code></p></td>
+<td><p>重置默认值</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">access_</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">recursive_mutex</span></code></p></td>
+<td><p>线程锁</p></td>
+</tr>
+</tbody>
+</table>
+<p>辅助结构：<code class="docutils literal notranslate"><span class="pre">MapLocation</span> <span class="pre">{</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">x,</span> <span class="pre">y</span> <span class="pre">}</span></code></p>
+</section>
+<section id="id9">
+<h2>6.5 坐标变换<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="map-world">
+<h3>6.5.1 Map ↔ World<a class="headerlink" href="#map-world" title="Link to this heading"></a></h3>
+<p><strong>世界 → 栅格</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+m_x = \left\lfloor \frac{x - x_0}{\Delta} \right\rfloor, \quad
+m_y = \left\lfloor \frac{y - y_0}{\Delta} \right\rfloor
+\]</div>
+<p><strong>栅格 → 世界</strong>（cell 中心）：</p>
+<div class="math notranslate nohighlight">
+\[
+x = x_0 + \left(m_x + \frac{1}{2}\right) \Delta, \quad
+y = y_0 + \left(m_y + \frac{1}{2}\right) \Delta
+\]</div>
+<p><strong>线性索引</strong>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{idx} = m_y \cdot N_x + m_x
+\]</div>
+</section>
+<section id="id10">
+<h3>6.5.2 边界与有效性<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">worldToMap</span></code>：坐标在地图外返回 <code class="docutils literal notranslate"><span class="pre">false</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">worldToMapEnforceBounds</span></code>：裁剪到边界</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">worldToMapNoBounds</span></code>：不检查边界（内部算法用）</p></li>
+</ul>
+</section>
+</section>
+<section id="id11">
+<h2>6.6 代价值体系<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">autonomy/map/costmap_2d/cost_values.hpp</span></code></p>
+<div class="nav-stack-pipeline">
+<div class="nav-layer-row" style="border-color: #c8e6c9; background: linear-gradient(135deg, #f1f8e9 0%, #ffffff 100%);">
+  <div class="nav-layer-meta">
+    <span class="nav-layer-badge" style="background: #e8f5e9; color: #2e7d32;">FREE</span>
+    <div class="nav-layer-title">自由空间</div>
+    <div class="nav-layer-sub">0</div>
+  </div>
+  <div class="nav-layer-body">
+    <div class="nav-body-block">
+      <div class="nav-body-label">语义</div>
+      完全可通行，规划器无额外代价
+    </div>
+  </div>
+  <div class="nav-layer-meta">
+    <span class="nav-layer-badge" style="background: #fff3e0; color: #e65100;">GRADIENT</span>
+    <div class="nav-layer-title">膨胀梯度</div>
+    <div class="nav-layer-sub">1 – 252</div>
+  </div>
+</div>
+<div class="nav-layer-row" style="border-color: #ffccbc; background: linear-gradient(135deg, #fbe9e7 0%, #ffffff 100%);">
+  <div class="nav-layer-meta">
+    <span class="nav-layer-badge" style="background: #ffebee; color: #c62828;">LETHAL</span>
+    <div class="nav-layer-title">致命障碍</div>
+    <div class="nav-layer-sub">254</div>
+  </div>
+  <div class="nav-layer-body">
+    <div class="nav-body-block">
+      <div class="nav-body-label">语义</div>
+      不可通行；膨胀种子点
+    </div>
+  </div>
+  <div class="nav-layer-meta">
+    <span class="nav-layer-badge" style="background: #eceff1; color: #546e7a;">UNKNOWN</span>
+    <div class="nav-layer-title">未知</div>
+    <div class="nav-layer-sub">255</div>
+  </div>
+</div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>常量</p></th>
+<th class="head"><p>值</p></th>
+<th class="head"><p>规划行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code></p></td>
+<td><p>0</p></td>
+<td><p>自由通行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">…</span> <span class="pre">252</span></code></p></td>
+<td><p>梯度</p></td>
+<td><p>距障碍越近代价越高</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span></code></p></td>
+<td><p>253</p></td>
+<td><p>内切区，机器人中心不可进入</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code></p></td>
+<td><p>254</p></td>
+<td><p>阻塞</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code></p></td>
+<td><p>255</p></td>
+<td><p>由 <code class="docutils literal notranslate"><span class="pre">allow_unknown</span></code> 决定</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="layeredcostmap">
+<h2>6.7 LayeredCostmap 多层架构<a class="headerlink" href="#layeredcostmap" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">layered_costmap.hpp</span></code> / <code class="docutils literal notranslate"><span class="pre">layered_costmap.cpp</span></code></p>
+<section id="id12">
+<h3>6.7.1 双缓冲<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>缓冲区</p></th>
+<th class="head"><p>写入者</p></th>
+<th class="head"><p>读取者</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">primary_costmap_</span></code></p></td>
+<td><p>插件（static / obstacle / inflation）</p></td>
+<td><p>filter 输入</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">combined_costmap_</span></code></p></td>
+<td><p>filter 输出</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">getCostmap()</span></code> 对外</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="updatemap">
+<h3>6.7.2 updateMap 主循环<a class="headerlink" href="#updatemap" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>updateMap(robot_x, robot_y, robot_yaw)
+  │
+  ├─ [rolling] updateOrigin(new_origin)
+  │
+  ├─ foreach plugin: updateBounds(min_x, min_y, max_x, max_y)
+  │
+  ├─ world bounds → cell bounds (x0, y0, xn, yn)
+  │
+  ├─ resetMap(x0, y0, xn, yn)
+  │
+  ├─ foreach plugin: updateCosts(master, x0, y0, xn, yn)
+  │
+  └─ [filters] copy primary → combined → filter updateCosts
+</pre></div>
+</div>
+</section>
+</section>
+<section id="inflationlayer">
+<h2>6.8 InflationLayer 详解<a class="headerlink" href="#inflationlayer" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">layers/inflation_layer.hpp</span></code> / <code class="docutils literal notranslate"><span class="pre">.cpp</span></code></p>
+<section id="id13">
+<h3>6.8.1 代价函数<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+c(d) =
+\begin{cases}
+254 &amp; d = 0 \\
+253 &amp; d \cdot \Delta \leq r_i \\
+\left\lfloor 252 \cdot e^{-\lambda (d \cdot \Delta - r_i)} \right\rfloor &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+<p>默认参数：<code class="docutils literal notranslate"><span class="pre">inflation_radius_</span> <span class="pre">=</span> <span class="pre">0.55</span></code> m，<code class="docutils literal notranslate"><span class="pre">cost_scaling_factor_</span> <span class="pre">=</span> <span class="pre">10.0</span></code>，<span class="math notranslate nohighlight">\(r_i\)</span> 由 footprint 自动计算。</p>
+</section>
+<section id="id14">
+<h3>6.8.2 传播算法<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>扫描更新区域内所有格，将 <code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code>（及可选 <code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code>）作为种子</p></li>
+<li><p>按整数距离矩阵 <span class="math notranslate nohighlight">\(D_{ij} = \sqrt{i^2+j^2}\)</span> 排序的等级 BFS</p></li>
+<li><p>4-邻域扩展，取 <span class="math notranslate nohighlight">\(\max(c_{\text{current}}, c_{\text{neighbor}})\)</span> 写入</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">updateBounds</span></code> 向外扩展 <span class="math notranslate nohighlight">\(R\)</span> 保证边界正确</p></li>
+</ol>
+</section>
+<section id="id15">
+<h3>6.8.3 参数调优<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>增大效果</p></th>
+<th class="head"><p>减小效果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">inflation_radius</span></code></p></td>
+<td><p>更大安全裕度，窄通道难通过</p></td>
+<td><p>路径更贴近障碍</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cost_scaling_factor</span></code></p></td>
+<td><p>代价衰减更快，远离障碍迅速变自由</p></td>
+<td><p>更大范围保持高代价</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="id16">
+<h2>6.9 图层详解<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="staticlayer">
+<h3>6.9.1 StaticLayer<a class="headerlink" href="#staticlayer" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>规则</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Trinary（默认）</p></td>
+<td><p><span class="math notranslate nohighlight">\(o \geq \tau_{\mathrm{lethal}} \Rightarrow \mathrm{LETHAL}\)</span>，否则 <span class="math notranslate nohighlight">\(\mathrm{FREE}\)</span></p></td>
+</tr>
+<tr class="row-odd"><td><p>Scale</p></td>
+<td><p><span class="math notranslate nohighlight">\(c = (o / \tau_{\mathrm{th}}) \cdot 254\)</span></p></td>
+</tr>
+</tbody>
+</table>
+<p>非 rolling 模式下可 resize 整个 layered costmap 以匹配静态地图。</p>
+</section>
+<section id="obstaclelayer">
+<h3>6.9.2 ObstacleLayer<a class="headerlink" href="#obstaclelayer" title="Link to this heading"></a></h3>
+<p><strong>Marking</strong>：障碍点 → <code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code></p>
+<p><strong>Clearing</strong>：传感器原点 → 障碍点 Bresenham 射线 → <code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code></p>
+<p><strong>ObservationBuffer</strong>：多传感器观测缓存，按时间戳与范围过滤。</p>
+<p><strong>Footprint clearing</strong>：机器人 footprint 多边形区域清除障碍。</p>
+</section>
+<section id="voxellayer">
+<h3>6.9.3 VoxelLayer<a class="headerlink" href="#voxellayer" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">VoxelGrid</span></code>：每 XY cell 一个 <code class="docutils literal notranslate"><span class="pre">uint32</span></code>，最多 16 个 Z slice</p></li>
+<li><p>3D 点云标记体素后投影到 2D costmap</p></li>
+<li><p>配置：<code class="docutils literal notranslate"><span class="pre">z_voxels</span></code>, <code class="docutils literal notranslate"><span class="pre">z_resolution</span></code>, <code class="docutils literal notranslate"><span class="pre">origin_z</span></code>, <code class="docutils literal notranslate"><span class="pre">unknown_threshold</span></code>, <code class="docutils literal notranslate"><span class="pre">mark_threshold</span></code></p></li>
+</ul>
+</section>
+<section id="denoiselayer">
+<h3>6.9.4 DenoiseLayer<a class="headerlink" href="#denoiselayer" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>连通域分析（4/8 连通）</p></li>
+<li><p>过滤小于 <code class="docutils literal notranslate"><span class="pre">denoise_radius</span></code>（minimal_group_size）的孤立障碍簇</p></li>
+<li><p>注意：过强去噪可能移除窄墙，导致穿墙规划</p></li>
+</ul>
+</section>
+<section id="filters">
+<h3>6.9.5 Filters<a class="headerlink" href="#filters" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Filter</p></th>
+<th class="head"><p>功能</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">KeepoutFilter</span></code></p></td>
+<td><p>禁行区（来自 filter mask）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SpeedFilter</span></code></p></td>
+<td><p>速度限制区</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BinaryFilter</span></code></p></td>
+<td><p>二值化过滤</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="rolling-window">
+<h2>6.10 Rolling Window<a class="headerlink" href="#rolling-window" title="Link to this heading"></a></h2>
+<p>局部代价地图以机器人为中心滑动：</p>
+<div class="math notranslate nohighlight">
+\[
+x_0^{\text{new}} = x_{\text{robot}} - \frac{W}{2}, \quad
+y_0^{\text{new}} = y_{\text{robot}} - \frac{H}{2}
+\]</div>
+<p><code class="docutils literal notranslate"><span class="pre">updateOrigin</span></code> 算法：</p>
+<ol class="arabic simple">
+<li><p>栅格对齐偏移 <span class="math notranslate nohighlight">\(\delta = \lfloor (x_0^{\text{new}} - x_0) / \Delta \rfloor\)</span></p></li>
+<li><p>计算重叠区域，copy 到临时 buffer</p></li>
+<li><p>全图 reset → 更新 origin → 重叠数据写回</p></li>
+<li><p>非重叠区域 = <code class="docutils literal notranslate"><span class="pre">default_value_</span></code></p></li>
+</ol>
+</section>
+<section id="footprint">
+<h2>6.11 Footprint<a class="headerlink" href="#footprint" title="Link to this heading"></a></h2>
+<p>路径：<code class="docutils literal notranslate"><span class="pre">footprint.hpp</span></code> / <code class="docutils literal notranslate"><span class="pre">footprint.cpp</span></code></p>
+<ul class="simple">
+<li><p>支持多边形 footprint 或 <code class="docutils literal notranslate"><span class="pre">robot_radius</span></code> 圆形近似</p></li>
+<li><p>内切半径 <span class="math notranslate nohighlight">\(r_i\)</span> 决定 <code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span></code> 边界</p></li>
+<li><p>外接半径 <span class="math notranslate nohighlight">\(r_c\)</span> 用于碰撞检测</p></li>
+</ul>
+<p>配置示例（<code class="docutils literal notranslate"><span class="pre">planner.lua</span></code>）：</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">footprint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.14</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.14</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.14</span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="nv">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">-</span><span class="mf">0.18</span><span class="p">,</span><span class="w"> </span><span class="nv">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.14</span><span class="p">},</span>
+<span class="p">},</span>
+<span class="nv">robot_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.22</span><span class="p">,</span>
+</pre></div>
+</div>
+</section>
+<section id="costmap2dwrapper">
+<h2>6.12 Costmap2DWrapper 运行时<a class="headerlink" href="#costmap2dwrapper" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>功能</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mapUpdateLoop</span></code></p></td>
+<td><p>后台线程，按 <code class="docutils literal notranslate"><span class="pre">update_frequency</span></code> 调用 <code class="docutils literal notranslate"><span class="pre">updateMap</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">feedLaserScan</span></code></p></td>
+<td><p>激光 → <code class="docutils literal notranslate"><span class="pre">ObservationBuffer</span></code> → ObstacleLayer</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">applyOccupancyGrid</span></code></p></td>
+<td><p>静态地图 → StaticLayer</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">snapshotOccupancyGrid</span></code></p></td>
+<td><p>导出可视化用 OccupancyGrid</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id17">
+<h2>6.13 配置参考<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<p>完整示例见 <code class="docutils literal notranslate"><span class="pre">config/planner/planner.lua</span></code> 的 <code class="docutils literal notranslate"><span class="pre">costmap</span></code> 块。关键字段：</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">costmap</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">resolution</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">update_frequency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">rolling_window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">  </span><span class="c1">-- 全局图</span>
+<span class="w">    </span><span class="nv">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="s2">&quot;static_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obstacle_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;inflation_layer&quot;</span><span class="p">},</span>
+<span class="w">    </span><span class="c1">-- 各图层参数块 ...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id18">
+<h2>6.14 相关文档<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="03_math.html"><span class="std std-doc">数学原理 · 膨胀与坐标</span></a></p></li>
+<li><p><a class="reference internal" href="05_architecture.html"><span class="std std-doc">模块架构设计</span></a></p></li>
+<li><p><a class="reference internal" href="04_usage.html"><span class="std std-doc">使用指南</span></a></p></li>
+<li><p><a class="reference internal" href="../08_Planning/05_architecture.html#costmap2dwrapper"><span class="std std-ref">Planning · Costmap 消费</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_architecture.html" class="btn btn-neutral float-left" title="5. Map 模块架构设计" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_grid_map.html" class="btn btn-neutral float-right" title="7. GridMap 2.5D 栅格地图" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

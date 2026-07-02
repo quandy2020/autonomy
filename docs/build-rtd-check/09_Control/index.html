@@ -1,0 +1,267 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control 运动控制 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Control 运动控制指南" href="00_guide.html" />
+    <link rel="prev" title="9. 路径规划算法综述（Survey）" href="../08_Planning/09_survey.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">09 Control</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html">6 目标与进度检查器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html">7 速度平滑器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html">8 局部控制器算法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 运动控制算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Control 运动控制</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/09_Control/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="control">
+<h1>Control 运动控制<a class="headerlink" href="#control" title="Link to this heading"></a></h1>
+<p><cite>autonomy/control</cite> 是 Autonomy 的**局部运动控制**子系统，对齐 ROS 2 Navigation2 <cite>nav2_controller</cite>。文档按 <strong>§1–§9</strong> 编号排列。</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l1"><a class="reference internal" href="01_overview.html">1 模块概览</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id2">1.1 定位</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id3">1.2 核心能力</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id4">1.3 源码结构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id5">1.4 导航栈数据流</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#id6">1.5 相关模块</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html#nav2">1.6 与 Nav2 对照</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="02_quickstart.html">2 快速开始</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id2">2.1 三步启用</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id3">2.2 最小配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#c">2.3 C++ 直接使用</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#checker">2.4 独立使用 Checker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#velocitysmoother">2.5 独立使用 VelocitySmoother</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html#id4">2.6 当前限制</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="03_math.html">3 数学原理</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#id2">3.1 问题形式化</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#id3">3.2 运动学模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#lookahead-getlookaheadpoint">3.3 Lookahead 点选取（<code class="docutils literal notranslate"><span class="pre">GetLookAheadPoint</span></code>）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#pure-pursuit">3.4 Pure Pursuit 曲率推导</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#circlesegmentintersection">3.5 圆-线段交点推导（<code class="docutils literal notranslate"><span class="pre">CircleSegmentIntersection</span></code>）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#stanley">3.6 Stanley 控制器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#dwb-dynamic-window-approach">3.7 DWB（Dynamic Window Approach）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#mppi-model-predictive-path-integral">3.8 MPPI（Model Predictive Path Integral）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#goal-checker">3.9 Goal Checker 判定</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#progress-checker">3.10 Progress Checker 判定</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#velocitysmoother">3.11 VelocitySmoother 逐步推导</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#odomsmoother">3.12 OdomSmoother 滑动平均</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#id35">3.13 控制流水线</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html#id36">3.14 算法一览</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="04_usage.html">4 使用指南</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id2">4.1 配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#controllerserver-api">4.2 ControllerServer API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#controllerinterface-api">4.3 ControllerInterface 插件 API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id3">4.4 系统集成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id4">4.5 通信接口（设计意图）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id5">4.6 自定义控制器插件</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id6">4.7 控制器选型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id7">4.8 故障排查</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html#id8">4.9 性能建议</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id1">5.1 设计目标</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id2">5.2 实现状态</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id3">5.3 分层架构</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#followpath">5.4 FollowPath 控制循环（设计）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id4">5.5 类关系</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id5">5.6 数据流时序</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id6">5.7 配置管线</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id7">5.8 异常体系</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id8">5.9 插件加载设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#nav2">5.10 与 Nav2 架构映射</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html#id9">5.11 后续开发路线</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="06_checkers.html">6 目标与进度检查器</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#id2">6.1 接口设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#simplegoalchecker">6.2 SimpleGoalChecker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#positiongoalchecker">6.3 PositionGoalChecker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#stoppedgoalchecker">6.4 StoppedGoalChecker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#simpleprogresschecker">6.5 SimpleProgressChecker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#poseprogresschecker">6.6 PoseProgressChecker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#checker">6.7 Checker 对比</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#id3">6.8 配置与集成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#followpath">6.9 在 FollowPath 中的调用时序</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_checkers.html#id4">6.10 调参建议</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="07_velocity_smoother.html">7 速度平滑器</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id1">7.1 定位</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id2">7.2 向量约定</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id3">7.3 算法流程</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id4">7.4 约束增量计算</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#scale-velocities">7.5 同步缩放（scale_velocities）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#deadband">7.6 Deadband 过滤</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id6">7.7 超时保护</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id7">7.8 反馈模式</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id8">7.9 配置参数</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#controllerserver">7.10 与 ControllerServer 的关系</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_velocity_smoother.html#id9">7.11 调参建议</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="08_controller_algorithms.html">8 局部控制器算法</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#id2">8.1 算法总览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#graceful-controller">8.2 Graceful Controller</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#mppi-controller">8.3 MPPI Controller</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#regulated-pure-pursuit-rpp">8.4 Regulated Pure Pursuit（RPP）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#dwb-dynamic-window-benchmark">8.5 DWB（Dynamic Window Benchmark）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#id16">8.6 控制器对比</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#id17">8.7 实现路线建议</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_controller_algorithms.html#id18">8.8 自定义控制器开发清单</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="09_survey.html">9 运动控制算法综述</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id1">9.1 概述：运动控制在导航栈中的位置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id2">9.2 问题形式化</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id6">9.3 发展时间轴</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id7">9.4 算法分类体系</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id10">9.5 核心算法详解</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id11">9.6 辅助组件</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#autonomy-control">9.7 Autonomy control 模块定位</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id14">9.8 影响因素</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id17">9.9 算法复杂度对比</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id18">9.10 与其他模块的耦合</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id19">9.11 未来趋势</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id20">9.12 参考文献</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id21">9.13 术语表</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html#id22">9.14 工程选型矩阵</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../08_Planning/09_survey.html" class="btn btn-neutral float-left" title="9. 路径规划算法综述（Survey）" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="00_guide.html" class="btn btn-neutral float-right" title="Control 运动控制指南" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

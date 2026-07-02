@@ -1,0 +1,460 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>8. 调度与传输 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="9. 通信框架综述" href="09_survey.html" />
+    <link rel="prev" title="7. Service 与 Action" href="07_service_action.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">03 Communication</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_concepts.html">3 通信概念与模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_node_channel.html">6 Node 与 Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_service_action.html">7 Service 与 Action</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">8 调度与传输</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">8.1 调度系统概览</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#croutine">8.2 CRoutine（协程）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#classic">8.3 Classic 策略</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#choreography">8.4 Choreography 策略</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">8.5 传输层架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#qos">8.6 QoS 与传输协同</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">8.7 服务发现与传输</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#record">8.8 Record 子系统（简要）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mainboard">8.9 mainboard 与调度</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">8.10 调优检查清单</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">8.11 参考配置路径</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 通信框架综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Communication 通信框架</a></li>
+      <li class="breadcrumb-item active">8. 调度与传输</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/03_Communication/08_scheduler_transport.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>8. 调度与传输<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本章说明 autolink 的 <strong>Scheduler + CRoutine</strong> 调度子系统，以及 <strong>Transport</strong> 多后端传输机制。</p>
+<section id="id2">
+<h2>8.1 调度系统概览<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Task 创建
+    │
+    ▼
+Scheduler::Dispatch(task)
+    │
+    ├─ classic: 按优先级入 group 队列
+    └─ choreography: 按配置处理器 ID 入队
+    │
+    ▼
+Processor 线程池
+    │
+    ▼
+CRoutine::Resume() → 用户回调 / Component::Proc
+</pre></div>
+</div>
+<p><strong>设计动机</strong>：自动驾驶场景需要可预测的延迟与 CPU 亲和性，通用 OS 线程调度不足以满足硬实时链路需求。</p>
+</section>
+<section id="croutine">
+<h2>8.2 CRoutine（协程）<a class="headerlink" href="#croutine" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>用户态协程，切换开销远小于 pthread</p></li>
+<li><p>每个 Reader 回调、Component <code class="docutils literal notranslate"><span class="pre">Proc</span></code> 可作为独立 Task 调度</p></li>
+<li><p>与 <code class="docutils literal notranslate"><span class="pre">Processor</span></code> 线程绑定，避免跨核迁移（choreography 模式）</p></li>
+</ul>
+</section>
+<section id="classic">
+<h2>8.3 Classic 策略<a class="headerlink" href="#classic" title="Link to this heading"></a></h2>
+<p><strong>适用</strong>：不熟悉全车 DAG 拓扑时的<strong>通用</strong>策略。</p>
+<section id="id3">
+<h3>8.3.1 配置结构<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>scheduler_conf {
+    policy: &quot;classic&quot;
+    process_level_cpuset: &quot;0-7,16-23&quot;
+    classic_conf {
+        groups: [
+            {
+                name: &quot;group1&quot;
+                processor_num: 16
+                affinity: &quot;range&quot;          # 或 &quot;1to1&quot;
+                cpuset: &quot;0-7,16-23&quot;
+                processor_policy: &quot;SCHED_OTHER&quot;
+                processor_prio: 0
+                tasks: [
+                    { name: &quot;task_name&quot;, prio: 2 }
+                ]
+            }
+        ]
+    }
+}
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>8.3.2 关键配置项<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">groups</span></code></p></td>
+<td><p>资源隔离；可按 NUMA 划分</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">process_level_cpuset</span></code></p></td>
+<td><p>mainboard 进程可用 CPU</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">affinity</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">range</span></code>：线程可在 cpuset 内浮动；<code class="docutils literal notranslate"><span class="pre">1to1</span></code>：一线程一核</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">processor_policy</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SCHED_FIFO</span></code> / <code class="docutils literal notranslate"><span class="pre">SCHED_RR</span></code> / <code class="docutils literal notranslate"><span class="pre">SCHED_OTHER</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">processor_prio</span></code></p></td>
+<td><p>实时策略 1–99；OTHER 为 nice -20–19</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tasks[].prio</span></code></p></td>
+<td><p>同 group 内多优先级队列，数值大优先</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>8.3.3 优先级反转<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>拓扑中越靠后的任务应配置<strong>更高</strong> <code class="docutils literal notranslate"><span class="pre">prio</span></code>，避免上游阻塞下游（详见 <code class="docutils literal notranslate"><span class="pre">autolink/docs/source/autolink_scheduler_cn.md</span></code> 图示）。</p>
+</section>
+</section>
+<section id="choreography">
+<h2>8.4 Choreography 策略<a class="headerlink" href="#choreography" title="Link to this heading"></a></h2>
+<p><strong>适用</strong>：对任务依赖、耗时、CPU 占用<strong>充分掌握</strong>后的精细编排。</p>
+<div class="highlight-protobuf notranslate"><div class="highlight"><pre><span></span><span class="n">scheduler_conf</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">policy</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;choreography&quot;</span>
+<span class="w">    </span><span class="n">choreography_conf</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">choreography_processor_num</span><span class="o">:</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">        </span><span class="n">choreography_cpuset</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;0-7&quot;</span>
+<span class="w">        </span><span class="n">choreography_processor_policy</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;SCHED_FIFO&quot;</span>
+<span class="w">        </span><span class="n">choreography_processor_prio</span><span class="o">:</span><span class="w"> </span><span class="mi">10</span>
+
+<span class="w">        </span><span class="n">pool_processor_num</span><span class="o">:</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">        </span><span class="n">pool_cpuset</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;16-23&quot;</span>
+<span class="w">        </span><span class="n">pool_processor_policy</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;SCHED_OTHER&quot;</span>
+
+<span class="w">        </span><span class="n">tasks</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;lidar_proc&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">processor</span><span class="o">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">prio</span><span class="o">:</span><span class="w"> </span><span class="mi">10</span><span class="w"> </span><span class="p">}</span>
+<span class="w">            </span><span class="p">{</span><span class="w"> </span><span class="n">name</span><span class="o">:</span><span class="w"> </span><span class="s">&quot;fusion&quot;</span><span class="p">,</span><span class="w">     </span><span class="n">processor</span><span class="o">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="n">prio</span><span class="o">:</span><span class="w"> </span><span class="mi">8</span><span class="w">  </span><span class="p">}</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>区域</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>choreography</strong> 处理器</p></td>
+<td><p>关键链路任务绑死到指定 CPU</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>pool</strong> 处理器</p></td>
+<td><p>非关键 / 默认可抢占任务</p></td>
+</tr>
+</tbody>
+</table>
+<p>配置文件示例：<code class="docutils literal notranslate"><span class="pre">autolink/autolink/conf/compute_sched_choreography.conf</span></code></p>
+</section>
+<section id="id6">
+<h2>8.5 传输层架构<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Transport (Singleton)
+├── IntraDispatcher    # 同进程
+├── ShmDispatcher      # 共享内存
+│   ├── Segment (POSIX / XSI)
+│   ├── Block / Notifier
+│   └── ProtobufArenaManager
+└── RtpsParticipant    # FastDDS（可选）
+</pre></div>
+</div>
+<section id="id7">
+<h3>8.5.1 创建接口<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">Transport</span><span class="o">::</span><span class="n">Instance</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">CreateTransmitter</span><span class="o">&lt;</span><span class="n">M</span><span class="o">&gt;</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span><span class="w"> </span><span class="n">OptionalMode</span><span class="o">::</span><span class="n">SHM</span><span class="p">);</span>
+<span class="n">Transport</span><span class="o">::</span><span class="n">Instance</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">CreateReceiver</span><span class="o">&lt;</span><span class="n">M</span><span class="o">&gt;</span><span class="p">(</span><span class="n">attr</span><span class="p">,</span><span class="w"> </span><span class="n">listener</span><span class="p">,</span><span class="w"> </span><span class="n">OptionalMode</span><span class="o">::</span><span class="n">SHM</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h3>8.5.2 模式对比<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>模式</p></th>
+<th class="head"><p>延迟</p></th>
+<th class="head"><p>吞吐</p></th>
+<th class="head"><p>跨进程</p></th>
+<th class="head"><p>跨机</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>INTRA</p></td>
+<td><p>最低</p></td>
+<td><p>最高</p></td>
+<td><p>❌</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>SHM</p></td>
+<td><p>低</p></td>
+<td><p>高</p></td>
+<td><p>✅ 同机</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p>RTPS</p></td>
+<td><p>中</p></td>
+<td><p>中</p></td>
+<td><p>✅</p></td>
+<td><p>✅</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id9">
+<h3>8.5.3 共享内存路径<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ShmTransmitter</span></code> 将序列化数据写入 <code class="docutils literal notranslate"><span class="pre">Segment</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ConditionNotifier</span></code> / <code class="docutils literal notranslate"><span class="pre">MulticastNotifier</span></code> 唤醒订阅方</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ShmReceiver</span></code> 读取并反序列化，触发 listener</p></li>
+</ol>
+<p>大块 protobuf 可配合 <code class="docutils literal notranslate"><span class="pre">ProtobufArenaManager</span></code> 减少分配。</p>
+</section>
+</section>
+<section id="qos">
+<h2>8.6 QoS 与传输协同<a class="headerlink" href="#qos" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">qos_profile_conf</span></code> 定义默认 depth、可靠性。高频传感器建议：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">depth</span></code> ≥ 10</p></li>
+<li><p>SHM 模式</p></li>
+<li><p>choreography 绑核避免与规划争抢</p></li>
+</ul>
+<p>控制环路建议：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">depth</span></code> = 1</p></li>
+<li><p>实时调度策略 <code class="docutils literal notranslate"><span class="pre">SCHED_FIFO</span></code></p></li>
+</ul>
+</section>
+<section id="id10">
+<h2>8.7 服务发现与传输<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<p>发现层（UDP）与数据层（SHM/RTPS）分离：</p>
+<ol class="arabic simple">
+<li><p>Writer 注册 → <code class="docutils literal notranslate"><span class="pre">ChannelManager</span></code> 广播</p></li>
+<li><p>Reader 注册 → 匹配 Writer，建立 Transmitter-Receiver 对</p></li>
+<li><p>数据传输不经过发现通道</p></li>
+</ol>
+</section>
+<section id="record">
+<h2>8.8 Record 子系统（简要）<a class="headerlink" href="#record" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>组件</p></th>
+<th class="head"><p>职责</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RecordWriter</span></code></p></td>
+<td><p>按 channel 写 Section 到文件</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RecordReader</span></code></p></td>
+<td><p>顺序读消息</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RecordViewer</span></code></p></td>
+<td><p>按时间索引跳转</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">Player</span></code></p></td>
+<td><p>回放注入 Writer，支持速率控制</p></td>
+</tr>
+</tbody>
+</table>
+<p>文件格式：Header + 多个 Section（channel meta / message chunk）。</p>
+</section>
+<section id="mainboard">
+<h2>8.9 mainboard 与调度<a class="headerlink" href="#mainboard" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mainboard -d foo.dag
+    │
+    ├─ 解析 DAG，ClassLoader 加载 .so
+    ├─ 初始化 Scheduler（读 AUTOLINK_SCHED_CONF 或默认）
+    ├─ 为每个 Component 创建 DataVisitor + Task
+    └─ 阻塞直至信号退出
+</pre></div>
+</div>
+<p>环境变量 <code class="docutils literal notranslate"><span class="pre">AUTOLINK_PATH</span></code> 指向配置与 lib 目录。</p>
+</section>
+<section id="id11">
+<h2>8.10 调优检查清单<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>检查项</p></th>
+<th class="head"><p>建议</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>关键任务是否绑核</p></td>
+<td><p>choreography + 1to1</p></td>
+</tr>
+<tr class="row-odd"><td><p>日志线程是否独立</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">threads</span> <span class="pre">{</span> <span class="pre">name:</span> <span class="pre">&quot;async_log&quot;</span> <span class="pre">}</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>SHM 是否跨 NUMA</p></td>
+<td><p>group 按 NUMA 拆分</p></td>
+</tr>
+<tr class="row-odd"><td><p>队列深度是否合理</p></td>
+<td><p>控制 1，传感 10+</p></td>
+</tr>
+<tr class="row-even"><td><p>回放是否用仿真时钟</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Clock::SetMode(MOCK)</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id12">
+<h2>8.11 参考配置路径<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>文件</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/autolink/conf/example_classic_sched.conf</span></code></p></td>
+<td><p>classic 示例</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/autolink/conf/example_choreography_sched.conf</span></code></p></td>
+<td><p>choreography 示例</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/autolink/conf/compute_sched_choreography.conf</span></code></p></td>
+<td><p>计算图编排</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autolink/autolink/conf/control_sched_choreography.conf</span></code></p></td>
+<td><p>控制链路编排</p></td>
+</tr>
+</tbody>
+</table>
+<p>更完整的调度说明见子模块文档 <code class="docutils literal notranslate"><span class="pre">autolink/docs/source/autolink_scheduler_cn.md</span></code>。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="07_service_action.html" class="btn btn-neutral float-left" title="7. Service 与 Action" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="09_survey.html" class="btn btn-neutral float-right" title="9. 通信框架综述" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

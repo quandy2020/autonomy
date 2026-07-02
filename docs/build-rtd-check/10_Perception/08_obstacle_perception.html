@@ -1,0 +1,435 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>8. 障碍感知与代价地图 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="9. 感知算法综述（Survey）" href="09_survey.html" />
+    <link rel="prev" title="7. 视觉检测与 ONNX 推理" href="07_vision_detection.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">10 Perception</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_sensor_pipeline.html">6 传感器数据管线</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_vision_detection.html">7 视觉检测与 ONNX 推理</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">8 障碍感知与代价地图</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">8.1 架构位置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#obstaclelayer">8.2 ObstacleLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#voxellayer">8.3 VoxelLayer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inflationlayer">8.4 膨胀层（InflationLayer）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">8.5 代价地图代价值</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#observationbuffer">8.6 ObservationBuffer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#planning-control">8.7 与 Planning / Control 的接口</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#perception">8.8 与 Perception 的融合（规划）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">8.9 调试建议</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 感知算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Perception 感知</a></li>
+      <li class="breadcrumb-item active">8. 障碍感知与代价地图</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/10_Perception/08_obstacle_perception.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>8. 障碍感知与代价地图<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p>本文描述 Autonomy 当前<strong>实际承担障碍感知职能</strong>的 <code class="docutils literal notranslate"><span class="pre">map/costmap_2d</span></code> 模块：ObstacleLayer、VoxelLayer 与膨胀层。</p>
+<blockquote>
+<div><p>Perception 模块完整实现后，障碍几何可经 Perception 插件输出并写入同一 costmap 管线。当前导航栈依赖本章所述路径。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id2">
+<h2>8.1 架构位置<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>传感器观测
+    │
+    ▼
+ObservationBuffer（时间缓冲）
+    │
+    ▼
+ObstacleLayer / VoxelLayer（标记/清除）
+    │
+    ▼
+InflationLayer（安全膨胀）
+    │
+    ▼
+Costmap2DWrapper → Planning / Control
+</pre></div>
+</div>
+<p>源码：<code class="docutils literal notranslate"><span class="pre">autonomy/map/costmap_2d/layers/</span></code>。</p>
+</section>
+<hr class="docutils" />
+<section id="obstaclelayer">
+<h2>8.2 ObstacleLayer<a class="headerlink" href="#obstaclelayer" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>8.2.1 职责<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>功能</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Marking</strong></p></td>
+<td><p>将障碍点投影到 costmap 栅格，设为 <code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Clearing</strong></p></td>
+<td><p>沿射线追踪，将自由空间栅格设为 <code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>高度过滤</strong></p></td>
+<td><p>忽略 <code class="docutils literal notranslate"><span class="pre">z</span> <span class="pre">&lt;</span> <span class="pre">min_obstacle_height</span></code> 或 <code class="docutils literal notranslate"><span class="pre">z</span> <span class="pre">&gt;</span> <span class="pre">max_obstacle_height</span></code> 的点</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id4">
+<h3>8.2.2 激光处理流程<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>接收 <code class="docutils literal notranslate"><span class="pre">LaserScan</span></code>，遍历每个有效 range <span class="math notranslate nohighlight">\(r_i\)</span></p></li>
+<li><p>TF 变换：传感器系 → <code class="docutils literal notranslate"><span class="pre">global_frame</span></code></p></li>
+<li><p>计算终点 <span class="math notranslate nohighlight">\(p_{end} = o + r_i \cdot \hat{d}_i\)</span></p></li>
+<li><p><strong>清除</strong>：从 <span class="math notranslate nohighlight">\(o\)</span> 到 <span class="math notranslate nohighlight">\(p_{end}\)</span> 沿射线标记自由</p></li>
+<li><p><strong>标记</strong>：<span class="math notranslate nohighlight">\(p_{end}\)</span> 处标记障碍</p></li>
+</ol>
+</section>
+<section id="id5">
+<h3>8.2.3 配置示例<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">obstacle_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">observation_sources</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;scan&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">scan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nv">topic</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/scan&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">sensor_frame</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;laser_link&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">data_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;LaserScan&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">marking</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">clearing</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">inf_is_valid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">obstacle_range</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.5</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">raytrace_range</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">max_obstacle_height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">2.0</span><span class="p">,</span>
+<span class="w">        </span><span class="nv">min_obstacle_height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="voxellayer">
+<h2>8.3 VoxelLayer<a class="headerlink" href="#voxellayer" title="Link to this heading"></a></h2>
+<p>3D 点云障碍处理，适用于深度相机或 3D 激光：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>步骤</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>体素化</p></td>
+<td><p>将点云划分为 3D 体素网格</p></td>
+</tr>
+<tr class="row-odd"><td><p>高度投影</p></td>
+<td><p>将 3D 障碍投影到 2D costmap</p></td>
+</tr>
+<tr class="row-even"><td><p>清除/标记</p></td>
+<td><p>同 ObstacleLayer 逻辑</p></td>
+</tr>
+</tbody>
+</table>
+<p>源码：<code class="docutils literal notranslate"><span class="pre">voxel_layer.hpp</span></code> / <code class="docutils literal notranslate"><span class="pre">voxel_layer.cpp</span></code>。</p>
+</section>
+<hr class="docutils" />
+<section id="inflationlayer">
+<h2>8.4 膨胀层（InflationLayer）<a class="headerlink" href="#inflationlayer" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>8.4.1 目的<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>在障碍周围生成<strong>代价梯度</strong>，使规划器保持安全距离。</p>
+</section>
+<section id="id7">
+<h3>8.4.2 数学<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p>对障碍栅格 <span class="math notranslate nohighlight">\(p\)</span>，膨胀半径 <span class="math notranslate nohighlight">\(r_{infl}\)</span> 内栅格 <span class="math notranslate nohighlight">\(q\)</span> 的代价：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathrm{cost}(q) = \max_{p \in \mathcal{O}} f(\|q - p\|)
+\]</div>
+<p>常用分段函数：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+f(d) = \begin{cases}
+\mathrm{LETHAL} &amp; d \leq r_{robot} \\
+\mathrm{INSCRIBED} \cdot e^{-\lambda(d - r_{robot})} &amp; r_{robot} &lt; d \leq r_{infl} \\
+0 &amp; d &gt; r_{infl}
+\end{cases}
+\end{split}\]</div>
+<p>详见 <a class="reference internal" href="03_math.html#id9"><span class="std std-ref">03_math.md §3.6</span></a>。</p>
+</section>
+<section id="id8">
+<h3>8.4.3 配置<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">inflation_layer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">inflation_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.55</span><span class="p">,</span><span class="w">       </span><span class="c1">-- 膨胀半径 (m)</span>
+<span class="w">    </span><span class="nv">cost_scaling_factor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span><span class="w">    </span><span class="c1">-- 衰减系数 λ</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>8.5 代价地图代价值<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>值</p></th>
+<th class="head"><p>宏</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">FREE_SPACE</span></code></p></td>
+<td><p>自由</p></td>
+</tr>
+<tr class="row-odd"><td><p>1–252</p></td>
+<td><p>梯度代价</p></td>
+<td><p>距障碍越近代价越高</p></td>
+</tr>
+<tr class="row-even"><td><p>253</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INSCRIBED_INFLATED_OBSTACLE</span></code></p></td>
+<td><p>内切圆膨胀边界</p></td>
+</tr>
+<tr class="row-odd"><td><p>254</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LETHAL_OBSTACLE</span></code></p></td>
+<td><p>致命障碍</p></td>
+</tr>
+<tr class="row-even"><td><p>255</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NO_INFORMATION</span></code></p></td>
+<td><p>未知</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="observationbuffer">
+<h2>8.6 ObservationBuffer<a class="headerlink" href="#observationbuffer" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ObservationBuffer</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">bufferObservation</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">Observation</span><span class="o">&amp;</span><span class="w"> </span><span class="n">obs</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">getObservations</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">Observation</span><span class="o">&gt;&amp;</span><span class="w"> </span><span class="n">observations</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">resetLastUpdated</span><span class="p">();</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>参数</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">observation_keep_time</span></code></p></td>
+<td><p>观测保留时间窗口</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">expected_update_rate</span></code></p></td>
+<td><p>预期传感器更新频率</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="planning-control">
+<h2>8.7 与 Planning / Control 的接口<a class="headerlink" href="#planning-control" title="Link to this heading"></a></h2>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Costmap2DWrapper 提供</span>
+<span class="kt">bool</span><span class="w"> </span><span class="nf">getCost</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">);</span><span class="w">           </span><span class="c1">// 查询单栅格代价</span>
+<span class="kt">bool</span><span class="w"> </span><span class="nf">isCollisionFree</span><span class="p">(</span><span class="n">pose</span><span class="p">);</span><span class="w">   </span><span class="c1">// 碰撞检测</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">updateMap</span><span class="p">();</span><span class="w">             </span><span class="c1">// 触发图层更新</span>
+</pre></div>
+</div>
+<p>Planning 全局规划器与 Control 局部 costmap 均通过 <code class="docutils literal notranslate"><span class="pre">Costmap2DWrapper</span></code> 访问障碍信息。</p>
+</section>
+<hr class="docutils" />
+<section id="perception">
+<h2>8.8 与 Perception 的融合（规划）<a class="headerlink" href="#perception" title="Link to this heading"></a></h2>
+<p>完整 Perception 实现后，障碍融合策略：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>策略</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>叠加</strong></p></td>
+<td><p>Perception 障碍与激光障碍取并集（max cost）</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>优先级</strong></p></td>
+<td><p>视觉检测优先于激光（语义障碍）</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>独立层</strong></p></td>
+<td><p>新增 <code class="docutils literal notranslate"><span class="pre">SemanticLayer</span></code> 插件，与 ObstacleLayer 并列</p></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">-- 规划</span>
+<span class="nv">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="s2">&quot;static_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;obstacle_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;semantic_layer&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;inflation_layer&quot;</span><span class="w"> </span><span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>8.9 调试建议<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>工具</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>RViz costmap 显示</p></td>
+<td><p>可视化障碍/膨胀区域</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">autonomy_planning_test</span></code></p></td>
+<td><p>离线验证路径与障碍关系</p></td>
+</tr>
+<tr class="row-even"><td><p>日志 <code class="docutils literal notranslate"><span class="pre">obstacle_range</span></code></p></td>
+<td><p>确认激光数据是否到达</p></td>
+</tr>
+</tbody>
+</table>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>现象</p></th>
+<th class="head"><p>处理</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>costmap 全未知</p></td>
+<td><p>检查 static_layer 是否加载地图</p></td>
+</tr>
+<tr class="row-odd"><td><p>障碍不更新</p></td>
+<td><p>确认 <code class="docutils literal notranslate"><span class="pre">/scan</span></code> topic 与 <code class="docutils literal notranslate"><span class="pre">sensor_frame</span></code> TF</p></td>
+</tr>
+<tr class="row-even"><td><p>虚假障碍</p></td>
+<td><p>调整 <code class="docutils literal notranslate"><span class="pre">min_obstacle_height</span></code>、过滤地面点</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="07_vision_detection.html" class="btn btn-neutral float-left" title="7. 视觉检测与 ONNX 推理" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="09_survey.html" class="btn btn-neutral float-right" title="9. 感知算法综述（Survey）" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,278 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. 编译构建 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. 环境配置" href="07_environment.html" />
+    <link rel="prev" title="5. Docker 环境" href="05_docker.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">02 Installation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 安装概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_system_requirements.html">3 系统要求</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_dependencies.html">4 依赖安装</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_docker.html">5 Docker 环境</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 编译构建</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">6.1 标准编译流程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cmake">6.2 CMake 选项</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">6.3 获取源码</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">6.4 运行测试</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">6.5 构建文档</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">6.6 增量编译</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">6.7 安装到系统（可选）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">6.8 验证编译</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#colcon">6.9 与旧版 colcon 说明</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">6.10 相关文档</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_environment.html">7 环境配置</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_troubleshooting.html">8 故障排查</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">安装与构建</a></li>
+      <li class="breadcrumb-item active">6. 编译构建</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/02_Installation/06_build.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>6. 编译构建<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>6.1 标准编译流程<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>autonomy
+mkdir<span class="w"> </span>-p<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>build
+cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>..
+ninja
+</pre></div>
+</div>
+<p>产物：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ls<span class="w"> </span>lib/libautonomy.so<span class="w">    </span><span class="c1"># 核心库</span>
+ls<span class="w"> </span>bin/<span class="w">                  </span><span class="c1"># 可执行文件（若启用）</span>
+</pre></div>
+</div>
+</section>
+<section id="cmake">
+<h2>6.2 CMake 选项<a class="headerlink" href="#cmake" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>选项</p></th>
+<th class="head"><p>默认</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BUILD_GRPC</span></code></p></td>
+<td><p>ON</p></td>
+<td><p>gRPC Bridge 支持</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BUILD_TEST</span></code></p></td>
+<td><p>ON</p></td>
+<td><p>单元测试（<code class="docutils literal notranslate"><span class="pre">ninja</span> <span class="pre">test</span></code>）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BUILD_DOCS</span></code></p></td>
+<td><p>ON</p></td>
+<td><p>Sphinx 文档（需 <code class="docutils literal notranslate"><span class="pre">sphinx-build</span></code>）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BUILD_PROMETHEUS</span></code></p></td>
+<td><p>OFF</p></td>
+<td><p>Prometheus 指标</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BUILD_ONNXRUNTIME</span></code></p></td>
+<td><p>ON</p></td>
+<td><p>ONNX 推理（需找到运行时）</p></td>
+</tr>
+</tbody>
+</table>
+<p>示例：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>..<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-DBUILD_GRPC<span class="o">=</span>ON<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-DBUILD_TEST<span class="o">=</span>ON<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-DBUILD_DOCS<span class="o">=</span>OFF
+ninja
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h2>6.3 获取源码<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># GitHub（推荐 --recurse-submodules）</span>
+git<span class="w"> </span>clone<span class="w"> </span>--recurse-submodules<span class="w"> </span>https://github.com/quandy2020/autonomy.git
+
+<span class="c1"># Gitee（国内）</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://gitee.com/quanduyong/autonomy.git
+<span class="nb">cd</span><span class="w"> </span>autonomy<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>submodule<span class="w"> </span>update<span class="w"> </span>--init<span class="w"> </span>--recursive
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h2>6.4 运行测试<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>build
+<span class="nv">CTEST_OUTPUT_ON_FAILURE</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>ninja<span class="w"> </span><span class="nb">test</span>
+<span class="c1"># 或</span>
+ctest<span class="w"> </span>--output-on-failure
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h2>6.5 构建文档<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>docs
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+sphinx-build<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span><span class="nb">source</span><span class="w"> </span>build
+</pre></div>
+</div>
+<p>或在 CMake 中启用 <code class="docutils literal notranslate"><span class="pre">BUILD_DOCS=ON</span></code> 后通过 Ninja 目标构建（若已配置）。</p>
+</section>
+<section id="id6">
+<h2>6.6 增量编译<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>build
+ninja<span class="w"> </span>-j<span class="k">$(</span>nproc<span class="k">)</span><span class="w">    </span><span class="c1"># 并行编译</span>
+ninja<span class="w"> </span>clean<span class="w">         </span><span class="c1"># 清理产物后全量重编</span>
+</pre></div>
+</div>
+<p>修改 <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code> 或新增源文件后建议重新 <code class="docutils literal notranslate"><span class="pre">cmake</span> <span class="pre">..</span></code>。</p>
+</section>
+<section id="id7">
+<h2>6.7 安装到系统（可选）<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>build
+sudo<span class="w"> </span>ninja<span class="w"> </span>install<span class="w">    </span><span class="c1"># 若项目定义了 install 规则</span>
+</pre></div>
+</div>
+<p>默认开发流程直接使用 <code class="docutils literal notranslate"><span class="pre">build/lib</span></code> 与 <code class="docutils literal notranslate"><span class="pre">build/bin</span></code>，无需 install。</p>
+</section>
+<section id="id8">
+<h2>6.8 验证编译<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<p><img alt="运行示例" src="../_images/run.png" /></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 检查核心库</span>
+file<span class="w"> </span>lib/libautonomy.so
+
+<span class="c1"># 导航离线测试（若已编译）</span>
+./bin/nav_test<span class="w"> </span>--help
+</pre></div>
+</div>
+</section>
+<section id="colcon">
+<h2>6.9 与旧版 colcon 说明<a class="headerlink" href="#colcon" title="Link to this heading"></a></h2>
+<p>历史文档中的 <code class="docutils literal notranslate"><span class="pre">colcon</span> <span class="pre">build</span> <span class="pre">--symlink-install</span></code> 针对 <strong>autonomy_ros</strong> 工作空间。当前 <strong><code class="docutils literal notranslate"><span class="pre">libautonomy</span></code> 主路径为 CMake + Ninja</strong>，不依赖 colcon。若需 ROS 2 叠加层，见 <a class="reference internal" href="../04_Running/06_ros2_integration.html"><span class="std std-doc">04 Running</span></a>。</p>
+</section>
+<section id="id9">
+<h2>6.10 相关文档<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="04_dependencies.html"><span class="std std-doc">§4 依赖安装</span></a></p></li>
+<li><p><a class="reference internal" href="07_environment.html"><span class="std std-doc">§7 环境配置</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_docker.html" class="btn btn-neutral float-left" title="5. Docker 环境" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_environment.html" class="btn btn-neutral float-right" title="7. 环境配置" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

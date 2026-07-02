@@ -1,0 +1,1820 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>9. 路径规划算法综述（Survey） &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Control 运动控制" href="../09_Control/index.html" />
+    <link rel="prev" title="8. Theta* 全局规划器" href="08_theta_star.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">08 Planning</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2"><a class="reference internal" href="06_navfn.html">6 NavFn 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_dijkstra.html">7 Dijkstra 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_theta_star.html">8 Theta* 全局规划器</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">9 路径规划算法综述</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">9.1 概述：路径规划在导航栈中的位置</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">9.2 问题形式化</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">9.3 发展时间轴</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">9.4 算法分类全景</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">9.5 图搜索与导航函数（Autonomy 核心）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#based">9.6 采样-based 方法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">9.7 优化-based 方法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id18">9.8 势场与反应式方法</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id19">9.9 动态环境与重规划</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id20">9.10 鱼骨图：路径规划质量影响因素</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">9.11 分层规划架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id25">9.12 Autonomy 内置规划器深度对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id28">9.13 代价地图与规划的耦合</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id31">9.14 场景选型矩阵</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id32">9.15 选型决策树</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id33">9.16 业界生态对比</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id35">9.17 开放问题与未来方向</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id38">9.18 关键术语表</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id39">9.19 参考文献</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id43">9.20 相关文档</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Planning 路径规划</a></li>
+      <li class="breadcrumb-item active">9. 路径规划算法综述（Survey）</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/08_Planning/09_survey.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="survey">
+<h1>9. 路径规划算法综述（Survey）<a class="headerlink" href="#survey" title="Link to this heading"></a></h1>
+<p>本文从<strong>学术发展史、算法体系、工程实践、影响因素</strong>四个维度，系统综述移动机器人路径规划（Path Planning / Motion Planning）领域，并明确 Autonomy <code class="docutils literal notranslate"><span class="pre">planning</span></code> 模块在其中的定位、能力边界与选型依据。</p>
+<blockquote>
+<div><p>公式推导见 <a class="reference internal" href="03_math.html"><span class="std std-doc">Planning 指南 · 数学公式</span></a>；实现细节见 <a class="reference internal" href="05_architecture.html"><span class="std std-doc">架构设计</span></a> 与各算法子文档。</p>
+</div></blockquote>
+<hr class="docutils" />
+<section id="id1">
+<h2>9.1 概述：路径规划在导航栈中的位置<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>移动机器人导航（Navigation）通常分解为四个耦合子问题：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>子问题</p></th>
+<th class="head"><p>英文</p></th>
+<th class="head"><p>典型模块</p></th>
+<th class="head"><p>频率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>定位</p></td>
+<td><p>Localization</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">localization</span></code></p></td>
+<td><p>10–50 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>建图</p></td>
+<td><p>Mapping</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map</span></code></p></td>
+<td><p>1–10 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>路径规划</strong></p></td>
+<td><p><strong>Planning</strong></p></td>
+<td><p><strong><code class="docutils literal notranslate"><span class="pre">planning</span></code></strong></p></td>
+<td><p><strong>1–5 Hz</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>运动控制</p></td>
+<td><p>Control</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">control</span></code></p></td>
+<td><p>10–50 Hz</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>全局路径规划</strong>（Global Planning）在已知或部分已知环境地图上，计算从起点 <span class="math notranslate nohighlight">\(q_s\)</span> 到终点 <span class="math notranslate nohighlight">\(q_g\)</span> 的<strong>无碰撞几何路径</strong>；<strong>局部规划</strong>在此基础上考虑动力学约束、实时避障，输出可执行速度指令。Autonomy <code class="docutils literal notranslate"><span class="pre">planning</span></code> 模块专注前者。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>感知/地图 ──→ Costmap2D ──→ Global Planner ──→ Path ──→ Local Planner ──→ Controller ──→ 底盘
+                ↑                    ↑
+           static/obstacle      NavFn / Dijkstra / Theta*
+           inflation layer
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>9.2 问题形式化<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>9.2.1 配置空间<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>移动机器人在平面环境中可建模为 <span class="math notranslate nohighlight">\(SE(2)\)</span>：位置 <span class="math notranslate nohighlight">\((x,y)\)</span> + 朝向 <span class="math notranslate nohighlight">\(\theta\)</span>。若仅做几何路径规划（全局层常见简化），可退化为 <span class="math notranslate nohighlight">\(\mathbb{R}^2\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathcal{C} = \mathbb{R}^2, \quad
+\mathcal{C}_{\mathrm{obs}} \subset \mathcal{C}, \quad
+\mathcal{C}_{\mathrm{free}} = \mathcal{C} \setminus \mathcal{C}_{\mathrm{obs}}
+\]</div>
+<p>给定 <span class="math notranslate nohighlight">\(q_s, q_g \in \mathcal{C}_{\mathrm{free}}\)</span>，求曲线 <span class="math notranslate nohighlight">\(\tau: [0,1] \to \mathcal{C}_{\mathrm{free}}\)</span>，使 <span class="math notranslate nohighlight">\(\tau(0)=q_s\)</span>，<span class="math notranslate nohighlight">\(\tau(1)=q_g\)</span>。</p>
+</section>
+<section id="id4">
+<h3>9.2.2 多目标优化<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>实际规划 rarely 只优化长度，常见复合目标：</p>
+<div class="math notranslate nohighlight">
+\[
+J(\tau) = \int_0^1 \Big(
+  w_l \|\tau'(s)\|
+  + w_c \, c(\tau(s))
+  + w_k \|\tau''(s)\|^2
+  + w_\theta \|\dot{\theta}(s)\|^2
+\Big) ds
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>项</p></th>
+<th class="head"><p>物理含义</p></th>
+<th class="head"><p>主导算法类型</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(|\tau'|\)</span></p></td>
+<td><p>路径长度</p></td>
+<td><p>图搜索、Theta*</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(c(\tau)\)</span></p></td>
+<td><p>距障碍代价</p></td>
+<td><p>NavFn、代价地图加权 A*</p></td>
+</tr>
+<tr class="row-even"><td><p><span class="math notranslate nohighlight">\(|\tau''|^2\)</span></p></td>
+<td><p>曲率/平滑</p></td>
+<td><p>CHOMP、SimpleSmoother</p></td>
+</tr>
+<tr class="row-odd"><td><p><span class="math notranslate nohighlight">\(\dot{\theta}\)</span></p></td>
+<td><p>朝向变化</p></td>
+<td><p>Hybrid A*、局部规划</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="autonomy">
+<h3>9.2.3 栅格离散化（Autonomy 实现）<a class="headerlink" href="#autonomy" title="Link to this heading"></a></h3>
+<div class="math notranslate nohighlight">
+\[
+m_x = \left\lfloor \frac{x - x_0}{\Delta} \right\rfloor, \quad
+m_y = \left\lfloor \frac{y - y_0}{\Delta} \right\rfloor
+\]</div>
+<p>默认 <span class="math notranslate nohighlight">\(\Delta = 0.05\,\mathrm{m}\)</span>，每个栅格存储 <span class="math notranslate nohighlight">\(c_{ij} \in [0,255]\)</span>。规划在离散图上进行，输出通过 <code class="docutils literal notranslate"><span class="pre">mapToWorld</span></code> 转回连续坐标。</p>
+</section>
+<section id="id5">
+<h3>9.2.4 约束类型一览<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>约束类型</p></th>
+<th class="head"><p>说明</p></th>
+<th class="head"><p>全局规划是否考虑</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>几何约束</p></td>
+<td><p>不碰撞</p></td>
+<td><p>✅ 所有规划器</p></td>
+</tr>
+<tr class="row-odd"><td><p>运动学约束</p></td>
+<td><p>最小转弯半径、非完整</p></td>
+<td><p>❌（Hybrid A* 可扩展）</p></td>
+</tr>
+<tr class="row-even"><td><p>动力学约束</p></td>
+<td><p>速度/加速度限制</p></td>
+<td><p>❌（control 模块）</p></td>
+</tr>
+<tr class="row-odd"><td><p>时间约束</p></td>
+<td><p>动态障碍、截止时间</p></td>
+<td><p>部分（重规划）</p></td>
+</tr>
+<tr class="row-even"><td><p>拓扑约束</p></td>
+<td><p>单行道、电梯</p></td>
+<td><p>❌（拓扑规划扩展）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>9.3 发展时间轴<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<p>按四个历史阶段分块展示，每阶段内用<strong>卡片网格</strong>排列里程碑（年份 / 名称 / 说明分行），避免文字挤在一行。完整对照见 <a class="reference internal" href="#id7">§9.3.5 分阶段特征表</a>。</p>
+<div class="planning-timeline-v2">
+<div class="timeline-era-block era-foundation">
+  <div class="timeline-era-header">奠基期 · 1950s–1970s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1959</div>
+      <div class="timeline-milestone-title">Dijkstra</div>
+      <div class="timeline-milestone-desc">单源最短路径，图搜索理论奠基</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1968</div>
+      <div class="timeline-milestone-title">A*</div>
+      <div class="timeline-milestone-desc">启发式搜索，f = g + h 框架</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1970s</div>
+      <div class="timeline-milestone-title">C-space</div>
+      <div class="timeline-milestone-desc">构型空间概念，运动规划形式化</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1979</div>
+      <div class="timeline-milestone-title">可视图法</div>
+      <div class="timeline-milestone-desc">Visibility Graph，多边形障碍最短路径</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-reactive">
+  <div class="timeline-era-header">势场与反应式 · 1980s–1990s</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1985</div>
+      <div class="timeline-milestone-title">APF</div>
+      <div class="timeline-milestone-desc">人工势场，引力 + 斥力实时避障</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1990</div>
+      <div class="timeline-milestone-title">GURVEY / NavFn</div>
+      <div class="timeline-milestone-desc">导航函数，Eikonal 方程栅格求解</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1995</div>
+      <div class="timeline-milestone-title">DWA</div>
+      <div class="timeline-milestone-desc">动态窗口法，局部速度空间采样</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1998</div>
+      <div class="timeline-milestone-title">FMM</div>
+      <div class="timeline-milestone-desc">Fast Marching Method，快速行进法</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-sampling">
+  <div class="timeline-era-header">采样革命 · 1998–2011</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1998</div>
+      <div class="timeline-milestone-title">PRM</div>
+      <div class="timeline-milestone-desc">概率路线图，高维 C-space 采样</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">1999</div>
+      <div class="timeline-milestone-title">RRT</div>
+      <div class="timeline-milestone-desc">快速扩展随机树，单查询采样</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2000</div>
+      <div class="timeline-milestone-title">RRT-Connect</div>
+      <div class="timeline-milestone-desc">双向 RRT，加速连通</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2005</div>
+      <div class="timeline-milestone-title">Field D*</div>
+      <div class="timeline-milestone-desc">任意角栅格搜索，路径更短</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2007</div>
+      <div class="timeline-milestone-title">Theta*</div>
+      <div class="timeline-milestone-desc">视线检测任意角 A*，Autonomy 已实现</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2011</div>
+      <div class="timeline-milestone-title">RRT*</div>
+      <div class="timeline-milestone-desc">渐近最优采样规划</div>
+    </div>
+  </div>
+</div>
+<div class="timeline-era-block era-engineering">
+  <div class="timeline-era-header">工程化与自动驾驶 · 2008–至今</div>
+  <div class="timeline-era-grid">
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2008</div>
+      <div class="timeline-milestone-title">Hybrid A*</div>
+      <div class="timeline-milestone-desc">考虑朝向与运动学约束的栅格 A*</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2010</div>
+      <div class="timeline-milestone-title">ROS nav stack</div>
+      <div class="timeline-milestone-desc">move_base + navfn 工程化栈</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2014</div>
+      <div class="timeline-milestone-title">CHOMP / STOMP</div>
+      <div class="timeline-milestone-desc">轨迹优化规划器</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2018</div>
+      <div class="timeline-milestone-title">Navigation2</div>
+      <div class="timeline-milestone-desc">nav2 插件化架构，行为树导航</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2020</div>
+      <div class="timeline-milestone-title">nav2_smac</div>
+      <div class="timeline-milestone-desc">Hybrid A* / State Lattice 插件</div>
+    </div>
+    <div class="timeline-milestone">
+      <div class="timeline-milestone-year">2023</div>
+      <div class="timeline-milestone-title">学习规划兴起</div>
+      <div class="timeline-milestone-desc">Neural Planner、Diffusion Policy 等</div>
+    </div>
+    <div class="timeline-milestone timeline-milestone-highlight">
+      <div class="timeline-milestone-year">2025</div>
+      <div class="timeline-milestone-title">Autonomy planning</div>
+      <div class="timeline-milestone-desc">NavFn / Dijkstra / Theta* 三插件成熟</div>
+    </div>
+  </div>
+</div>
+</div>
+<section id="id7">
+<h3>9.3.5 分阶段特征表<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>阶段</p></th>
+<th class="head"><p>年代</p></th>
+<th class="head"><p>代表方法</p></th>
+<th class="head"><p>核心突破</p></th>
+<th class="head"><p>局限</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>图搜索奠基</p></td>
+<td><p>1959–1979</p></td>
+<td><p>Dijkstra, A*, 可视图</p></td>
+<td><p>完备性、最优性理论</p></td>
+<td><p>高维 C-space 维数灾难</p></td>
+</tr>
+<tr class="row-odd"><td><p>势场反应式</p></td>
+<td><p>1980–1999</p></td>
+<td><p>APF, DWA, NavFn</p></td>
+<td><p>实时性好、实现简单</p></td>
+<td><p>局部极小、网格依赖</p></td>
+</tr>
+<tr class="row-even"><td><p>采样规划</p></td>
+<td><p>1998–2011</p></td>
+<td><p>PRM, RRT, RRT*</p></td>
+<td><p>高维、复杂拓扑</p></td>
+<td><p>路径不光滑、概率性</p></td>
+</tr>
+<tr class="row-odd"><td><p>任意角/混合</p></td>
+<td><p>2005–2012</p></td>
+<td><p>Field D*, Theta*, Hybrid A*</p></td>
+<td><p>路径更短、考虑朝向</p></td>
+<td><p>计算量上升</p></td>
+</tr>
+<tr class="row-even"><td><p>工程栈整合</p></td>
+<td><p>2010–至今</p></td>
+<td><p>nav2, OMPL, Smac</p></td>
+<td><p>插件化、产品级</p></td>
+<td><p>调参复杂</p></td>
+</tr>
+<tr class="row-odd"><td><p>学习增强</p></td>
+<td><p>2020–至今</p></td>
+<td><p>Neural Planner, Diffusion</p></td>
+<td><p>大数据泛化</p></td>
+<td><p>安全可解释性不足</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id8">
+<h3>9.3.6 Autonomy 在技术谱系中的位置<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>1959 Dijkstra ──→ 1990 NavFn/GURVEY ──→ 2010 ROS navfn ──→ 2018 nav2_navfn_planner
+                                                                    │
+                                                              2025 Autonomy
+                                                              ├── NavfnPlanner
+                                                              ├── DijkstraPlanner
+                                                              └── ThetaStarPlanner (2007)
+</pre></div>
+</div>
+<p>Autonomy <code class="docutils literal notranslate"><span class="pre">planning</span></code> 定位于 <strong>nav2 兼容的工程化全局栅格规划层</strong>，尚未覆盖采样规划（RRT*）、运动学规划（Hybrid A*）和学习规划。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>9.4 算法分类全景<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>9.4.1 四维分类法<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>路径规划算法
+│
+├── 按搜索空间
+│   ├── 离散：栅格 / 图 / 拓扑图
+│   ├── 连续：样条 / 优化变量
+│   └── 混合：Hybrid A*, State Lattice
+│
+├── 按搜索策略
+│   ├── 完备搜索：Dijkstra, A*
+│   ├── 启发式搜索：Weighted A*, Theta*
+│   ├── 采样搜索：RRT, PRM
+│   └── 优化搜索：CHOMP, TrajOpt
+│
+├── 按时间维度
+│   ├── 静态：一次规划
+│   ├── 动态：D*, EPRM
+│   └── 反应式：DWA, MPC
+│
+└── 按最优性
+    ├── 最优：Dijkstra, A* (可采纳 h)
+    ├── 渐近最优：RRT*, BIT*
+    ├── 有界次优：Weighted A*
+    └── 启发式：Greedy, APF
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>9.4.2 方法—特性矩阵（扩展版）<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法族</p></th>
+<th class="head"><p>代表算法</p></th>
+<th class="head"><p>维度</p></th>
+<th class="head"><p>完备性</p></th>
+<th class="head"><p>最优性</p></th>
+<th class="head"><p>路径质量</p></th>
+<th class="head"><p>实时性</p></th>
+<th class="head"><p>实现难度</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>图搜索</p></td>
+<td><p>Dijkstra, A*</p></td>
+<td><p>2D 栅格</p></td>
+<td><p>完备</p></td>
+<td><p>最优*</p></td>
+<td><p>中（锯齿）</p></td>
+<td><p>高</p></td>
+<td><p>低</p></td>
+</tr>
+<tr class="row-odd"><td><p>导航函数</p></td>
+<td><p>NavFn, FMM</p></td>
+<td><p>2D 栅格</p></td>
+<td><p>完备</p></td>
+<td><p>近似最优</p></td>
+<td><p>中</p></td>
+<td><p>高</p></td>
+<td><p>低</p></td>
+</tr>
+<tr class="row-even"><td><p>任意角</p></td>
+<td><p>Theta*, Field D*</p></td>
+<td><p>2D 栅格</p></td>
+<td><p>完备</p></td>
+<td><p>近似最优</p></td>
+<td><p>高</p></td>
+<td><p>中</p></td>
+<td><p>中</p></td>
+</tr>
+<tr class="row-odd"><td><p>可视图</p></td>
+<td><p>Visibility</p></td>
+<td><p>2D 多边形</p></td>
+<td><p>完备</p></td>
+<td><p>最优</p></td>
+<td><p>高</p></td>
+<td><p>中</p></td>
+<td><p>中</p></td>
+</tr>
+<tr class="row-even"><td><p>采样</p></td>
+<td><p>RRT, RRT*</p></td>
+<td><p>高维</p></td>
+<td><p>概率完备</p></td>
+<td><p>渐近最优†</p></td>
+<td><p>低–中</p></td>
+<td><p>中</p></td>
+<td><p>中</p></td>
+</tr>
+<tr class="row-odd"><td><p>优化</p></td>
+<td><p>CHOMP, GPMP</p></td>
+<td><p>连续</p></td>
+<td><p>不完备</p></td>
+<td><p>局部最优</p></td>
+<td><p>高</p></td>
+<td><p>低–中</p></td>
+<td><p>高</p></td>
+</tr>
+<tr class="row-even"><td><p>混合</p></td>
+<td><p>Hybrid A*</p></td>
+<td><p>SE(2) 栅格</p></td>
+<td><p>完备‡</p></td>
+<td><p>有界次优</p></td>
+<td><p>高</p></td>
+<td><p>中</p></td>
+<td><p>高</p></td>
+</tr>
+<tr class="row-odd"><td><p>学习</p></td>
+<td><p>Neural, Diffusion</p></td>
+<td><p>—</p></td>
+<td><p>不保证</p></td>
+<td><p>不保证</p></td>
+<td><p>变化大</p></td>
+<td><p>推理快</p></td>
+<td><p>很高</p></td>
+</tr>
+</tbody>
+</table>
+<p>* 在离散图上最优；† RRT* 渐近最优；‡ 分辨率完备。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>9.5 图搜索与导航函数（Autonomy 核心）<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="id13">
+<h3>9.5.1 经典图搜索<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<p><strong>Dijkstra</strong>（1959）：非负权图单源最短路径，松弛方程：</p>
+<div class="math notranslate nohighlight">
+\[
+d(v) = \min_{(u,v)\in E} \{ d(u) + w(u,v) \}
+\]</div>
+<p><strong>A*</strong>（1968）：引入启发式 <span class="math notranslate nohighlight">\(f(n)=g(n)+h(n)\)</span>，当 <span class="math notranslate nohighlight">\(h\)</span> 可采纳（不高估）时保证最优。</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>算法</p></th>
+<th class="head"><p>数据结构</p></th>
+<th class="head"><p>时间复杂度</p></th>
+<th class="head"><p>Autonomy 实现</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Dijkstra</p></td>
+<td><p>二叉堆</p></td>
+<td><p><span class="math notranslate nohighlight">\(O((V+E)\log V)\)</span></p></td>
+<td><p>NavFn 桶队列 + <code class="docutils literal notranslate"><span class="pre">DijkstraPlanner</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>A*</p></td>
+<td><p>优先队列</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(b^d)\)</span> 最坏</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NavfnPlanner(use_astar=true)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>D* Lite</p></td>
+<td><p>增量堆</p></td>
+<td><p>与变化量相关</p></td>
+<td><p>❌ 未实现</p></td>
+</tr>
+<tr class="row-odd"><td><p>LPA*</p></td>
+<td><p>类似 D*</p></td>
+<td><p>动态重规划</p></td>
+<td><p>❌ 未实现</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="navfn">
+<h3>9.5.2 NavFn 导航势场<a class="headerlink" href="#navfn" title="Link to this heading"></a></h3>
+<p>NavFn 近似求解 Eikonal 方程 <span class="math notranslate nohighlight">\(\|\nabla\phi\|=F\)</span>，用平面波更新 + 桶队列 Dijkstra 反向传播，再梯度跟踪提取路径。详见 <a class="reference internal" href="06_navfn.html"><span class="std std-doc">NavFn 规划器</span></a>。</p>
+<p><strong>与 Fast Marching Method (FMM) 对比</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度</p></th>
+<th class="head"><p>NavFn</p></th>
+<th class="head"><p>FMM</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>精度</p></td>
+<td><p>平面波近似</p></td>
+<td><p>精确 Eikonal</p></td>
+</tr>
+<tr class="row-odd"><td><p>速度</p></td>
+<td><p>快（桶队列 O(1) 均摊）</p></td>
+<td><p>较慢（堆 O(log N)）</p></td>
+</tr>
+<tr class="row-even"><td><p>工程采用</p></td>
+<td><p>ROS/nav2/Autonomy</p></td>
+<td><p>学术研究较多</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="theta">
+<h3>9.5.3 Theta* 任意角规划<a class="headerlink" href="#theta" title="Link to this heading"></a></h3>
+<p>在 A* 扩展时加入 Line-of-Sight 检测，允许祖父节点直连邻居，路径逼近欧氏直线。详见 <a class="reference internal" href="08_theta_star.html"><span class="std std-doc">Theta* 规划器</span></a>。</p>
+<p><strong>Any-Angle 方法谱系</strong>：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>年份</p></th>
+<th class="head"><p>核心思想</p></th>
+<th class="head"><p>Autonomy</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Theta*</p></td>
+<td><p>2007</p></td>
+<td><p>扩展时即时 LOS</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>Lazy Theta*</p></td>
+<td><p>2010</p></td>
+<td><p>延迟 LOS 验证</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p>Block A*</p></td>
+<td><p>2011</p></td>
+<td><p>分块 LOS</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>Field D*</p></td>
+<td><p>2005</p></td>
+<td><p>插值场 + 任意角</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p>Anya*</p></td>
+<td><p>2013</p></td>
+<td><p>压缩栅格</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>Post-smoothing</p></td>
+<td><p>—</p></td>
+<td><p>栅格路径 + 字符串拉直</p></td>
+<td><p>部分 (<code class="docutils literal notranslate"><span class="pre">PathSimplifier</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="based">
+<h2>9.6 采样-based 方法<a class="headerlink" href="#based" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>9.6.1 主要算法详解<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>算法</p></th>
+<th class="head"><p>提出</p></th>
+<th class="head"><p>核心机制</p></th>
+<th class="head"><p>优点</p></th>
+<th class="head"><p>缺点</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>PRM</strong></p></td>
+<td><p>1996</p></td>
+<td><p>随机采样构型 + 连边</p></td>
+<td><p>多查询效率高</p></td>
+<td><p>窄通道采样困难</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>RRT</strong></p></td>
+<td><p>1998</p></td>
+<td><p>随机扩展树向目标生长</p></td>
+<td><p>高维、实现简单</p></td>
+<td><p>路径质量差</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>RRT-Connect</strong></p></td>
+<td><p>2000</p></td>
+<td><p>双向树对接</p></td>
+<td><p>速度快</p></td>
+<td><p>仍不最优</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>RRT*</strong></p></td>
+<td><p>2011</p></td>
+<td><p>重连 + 代价递减</p></td>
+<td><p>渐近最优</p></td>
+<td><p>收敛慢</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>BIT*</strong></p></td>
+<td><p>2014</p></td>
+<td><p>批量隐式搜索</p></td>
+<td><p>高维渐近最优</p></td>
+<td><p>实现复杂</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>FMT*</strong></p></td>
+<td><p>2014</p></td>
+<td><p>快速行进树</p></td>
+<td><p>低维效率高</p></td>
+<td><p>高维性能下降</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id15">
+<h3>9.6.2 与 Autonomy 的关系<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<p>当前 <strong>未集成</strong> OMPL / RRT*。适用场景：</p>
+<ul class="simple">
+<li><p>机械臂 6+ DOF 规划</p></li>
+<li><p>非凸迷宫、窄缝（采样更鲁棒）</p></li>
+<li><p>高维状态空间</p></li>
+</ul>
+<p>可通过 <code class="docutils literal notranslate"><span class="pre">GlobalPlanner</span></code> 插件接口集成 OMPL 或自定义 RRT 实现。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>9.7 优化-based 方法<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>9.7.1 轨迹优化谱系<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>类型</p></th>
+<th class="head"><p>优化变量</p></th>
+<th class="head"><p>约束处理</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>CHOMP</p></td>
+<td><p>梯度下降</p></td>
+<td><p>离散路点</p></td>
+<td><p>软约束（障碍代价）</p></td>
+</tr>
+<tr class="row-odd"><td><p>STOMP</p></td>
+<td><p>随机采样优化</p></td>
+<td><p>轨迹系数</p></td>
+<td><p>软约束</p></td>
+</tr>
+<tr class="row-even"><td><p>TrajOpt</p></td>
+<td><p>序列凸优化</p></td>
+<td><p>路点</p></td>
+<td><p>硬/软混合</p></td>
+</tr>
+<tr class="row-odd"><td><p>GPMP2</p></td>
+<td><p>高斯过程</p></td>
+<td><p>连续轨迹</p></td>
+<td><p>概率约束</p></td>
+</tr>
+<tr class="row-even"><td><p>MPC</p></td>
+<td><p>模型预测控制</p></td>
+<td><p>控制序列</p></td>
+<td><p>硬约束</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="autonomy-simplesmoother">
+<h3>9.7.2 Autonomy 中的优化：SimpleSmoother<a class="headerlink" href="#autonomy-simplesmoother" title="Link to this heading"></a></h3>
+<p>全局搜索后的<strong>后处理</strong>优化（非全局搜索）：</p>
+<div class="math notranslate nohighlight">
+\[
+E = w_d \sum_i \|p_i - o_i\|^2 + w_s \sum_i \|p_{i-1} - 2p_i + p_{i+1}\|^2
+\]</div>
+<p>Gauss-Seidel 迭代更新，带碰撞回退。详见 <a class="reference internal" href="03_math.html"><span class="std std-doc">数学原理</span></a>。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>9.8 势场与反应式方法<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>机制</p></th>
+<th class="head"><p>优点</p></th>
+<th class="head"><p>致命缺陷</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>APF 人工势场</p></td>
+<td><p>引力 + 斥力叠加</p></td>
+<td><p>极简、实时</p></td>
+<td><p><strong>局部极小</strong>（U 形障碍）</p></td>
+</tr>
+<tr class="row-odd"><td><p>调和势场</p></td>
+<td><p>解 <span class="math notranslate nohighlight">\(\nabla^2\phi=0\)</span></p></td>
+<td><p>无局部极小</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(n^3)\)</span> 求解</p></td>
+</tr>
+<tr class="row-even"><td><p>NavFn</p></td>
+<td><p>平面波 Eikonal 近似</p></td>
+<td><p>快、nav2 验证</p></td>
+<td><p>网格锯齿</p></td>
+</tr>
+<tr class="row-odd"><td><p>DWA</p></td>
+<td><p>速度空间采样</p></td>
+<td><p>局部避障好</p></td>
+<td><p>非全局最优</p></td>
+</tr>
+<tr class="row-even"><td><p>TEB</p></td>
+<td><p>弹性带优化</p></td>
+<td><p>考虑时间</p></td>
+<td><p>参数敏感</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id19">
+<h2>9.9 动态环境与重规划<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>方法</p></th>
+<th class="head"><p>场景</p></th>
+<th class="head"><p>机制</p></th>
+<th class="head"><p>Autonomy</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>周期性重规划</p></td>
+<td><p>障碍缓慢变化</p></td>
+<td><p>定时 <code class="docutils literal notranslate"><span class="pre">GetPlan()</span></code></p></td>
+<td><p>✅ Navigator 层</p></td>
+</tr>
+<tr class="row-odd"><td><p>路径有效性检查</p></td>
+<td><p>路径被挡</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IsPathValid()</span></code></p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>D* / D* Lite</p></td>
+<td><p>地图增量变化</p></td>
+<td><p>修复受影响节点</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>EPRM</p></td>
+<td><p>动态障碍</p></td>
+<td><p>扩展 PRM</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p>MPC</p></td>
+<td><p>快速动态</p></td>
+<td><p>滚动优化</p></td>
+<td><p>control 模块</p></td>
+</tr>
+</tbody>
+</table>
+<p>Autonomy 当前采用 <strong>「全局规划 + 路径校验 + 触发重规划」</strong> 策略，而非增量式 D*。</p>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>9.10 鱼骨图：路径规划质量影响因素<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<p>路径规划效果不佳时，可从以下六个维度排查。采用<strong>鱼骨图（石川图）</strong> 的「上因 → 鱼头 → 下因」结构，以卡片网格呈现，避免 Mermaid 节点文字截断。</p>
+<div class="fishbone-wrap">
+<div class="fishbone-label">上层原因（人 · 机 · 法）</div>
+<div class="fishbone-grid">
+  <div class="fishbone-card">
+    <h4>地图与感知</h4>
+    <ul>
+      <li>分辨率过粗</li>
+      <li>膨胀半径不足</li>
+      <li>静态层未加载</li>
+      <li>障碍层延迟</li>
+      <li>未知区策略误设</li>
+    </ul>
+  </div>
+  <div class="fishbone-card">
+    <h4>算法与参数</h4>
+    <ul>
+      <li>规划器选型不当</li>
+      <li>tolerance 过小</li>
+      <li>allow_unknown 误设</li>
+      <li>Theta* 切角穿墙</li>
+      <li>A* / Dijkstra 选型</li>
+    </ul>
+  </div>
+  <div class="fishbone-card">
+    <h4>机器人模型</h4>
+    <ul>
+      <li>footprint 不准确</li>
+      <li>robot_radius 偏差</li>
+      <li>点机器人假设</li>
+      <li>运动学约束未建模</li>
+    </ul>
+  </div>
+</div>
+<div class="fishbone-head">路径规划质量不佳</div>
+<div class="fishbone-label">下层原因（环 · 系 · 果）</div>
+<div class="fishbone-grid">
+  <div class="fishbone-card fishbone-lower">
+    <h4>环境与任务</h4>
+    <ul>
+      <li>窄通道 / 多障碍</li>
+      <li>动态障碍未更新</li>
+      <li>多目标路点复杂</li>
+      <li>大地图规模过大</li>
+    </ul>
+  </div>
+  <div class="fishbone-card fishbone-lower">
+    <h4>系统集成</h4>
+    <ul>
+      <li>TF 坐标系错误</li>
+      <li>costmap 未及时更新</li>
+      <li>规划频率过低</li>
+      <li>后处理简化失真</li>
+    </ul>
+  </div>
+  <div class="fishbone-card fishbone-lower">
+    <h4>下游执行</h4>
+    <ul>
+      <li>局部规划跟不上</li>
+      <li>控制器跟踪偏差</li>
+      <li>航点过密或过疏</li>
+    </ul>
+  </div>
+</div>
+</div>
+<section id="id21">
+<h3>9.10.1 因素—对策速查表<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>鱼骨分支</p></th>
+<th class="head"><p>典型症状</p></th>
+<th class="head"><p>优先检查项</p></th>
+<th class="head"><p>建议对策</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>地图与感知</p></td>
+<td><p>路径穿墙</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">inflation_radius</span></code>, 障碍层话题</p></td>
+<td><p>增大膨胀，确认 <code class="docutils literal notranslate"><span class="pre">/scan</span></code> 有数据</p></td>
+</tr>
+<tr class="row-odd"><td><p>算法与参数</p></td>
+<td><p>找不到路径</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tolerance</span></code>, goal 是否在膨胀区</p></td>
+<td><p>增大 tolerance，换可达目标</p></td>
+</tr>
+<tr class="row-even"><td><p>机器人模型</p></td>
+<td><p>身体蹭障碍</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">footprint</span></code> vs <code class="docutils literal notranslate"><span class="pre">robot_radius</span></code></p></td>
+<td><p>使用 footprint 模式</p></td>
+</tr>
+<tr class="row-odd"><td><p>环境任务</p></td>
+<td><p>窄缝失败</p></td>
+<td><p>8-连通切角</p></td>
+<td><p>Theta* 改 4-连通或换 NavFn</p></td>
+</tr>
+<tr class="row-even"><td><p>系统与集成</p></td>
+<td><p>路径漂移</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">frame_id</span></code>, TF 树</p></td>
+<td><p>统一到 costmap global frame</p></td>
+</tr>
+<tr class="row-odd"><td><p>下游执行</p></td>
+<td><p>走不到位</p></td>
+<td><p>航点间距、控制频率</p></td>
+<td><p>禁用 DP 简化，检查 controller</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>9.11 分层规划架构<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>9.11.1 经典三层架构<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<p>采用全宽纵向分层示意图，自上而下展示数据流；每层三列排布（层级标识 · 职责 · 输入输出），避免文字重叠。</p>
+<div class="nav-stack-diagram nav-stack-wide">
+<div class="nav-stack-inputs-bar">
+  <div class="nav-input-card">
+    <span class="nav-input-label">感知</span>
+    <span class="nav-input-text">激光 / 点云 / 深度</span>
+    <span class="nav-input-arrow">→</span>
+    <span class="nav-input-target">obstacle_layer</span>
+  </div>
+  <div class="nav-input-card">
+    <span class="nav-input-label">定位</span>
+    <span class="nav-input-text">SLAM / AMCL</span>
+    <span class="nav-input-arrow">→</span>
+    <span class="nav-input-target">TF map→odom</span>
+  </div>
+  <div class="nav-input-card">
+    <span class="nav-input-label">地图</span>
+    <span class="nav-input-text">先验栅格 / SLAM 图</span>
+    <span class="nav-input-arrow">→</span>
+    <span class="nav-input-target">static_layer</span>
+  </div>
+</div>
+<div class="nav-costmap-banner">
+  <span>三路输入经融合与膨胀后，生成</span>
+  <strong>Costmap2D</strong>
+  <span class="nav-costmap-detail">（static_layer + obstacle_layer + inflation_layer）</span>
+  <span class="nav-costmap-arrow">↓ 作为 L2 规划环境模型</span>
+</div>
+<div class="nav-stack-pipeline">
+  <div class="nav-layer-row nav-layer-behavior">
+    <div class="nav-layer-meta">
+      <span class="nav-layer-badge">L1</span>
+      <div class="nav-layer-title">行为层</div>
+      <div class="nav-layer-sub">autonomy / navigator</div>
+      <span class="nav-meta-freq">事件驱动</span>
+    </div>
+    <div class="nav-layer-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">核心职责</div>
+        <ul>
+          <li>解析用户导航意图，维护任务状态机</li>
+          <li>向规划层下发起点 / 终点与恢复策略</li>
+          <li>监测路径失效并触发重规划</li>
+        </ul>
+      </div>
+      <div class="nav-body-block">
+        <div class="nav-body-label">关键组件</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">行为树 BT</span>
+          <span class="nav-chip">compute_path_to_pose</span>
+          <span class="nav-chip">Recovery</span>
+        </div>
+      </div>
+    </div>
+    <div class="nav-layer-io">
+      <div class="nav-io-block nav-io-out">
+        <div class="nav-io-heading">输出 → L2</div>
+        <ul class="nav-io-list">
+          <li>目标位姿 <code>PoseStamped</code></li>
+          <li>重规划 / 取消信号</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="nav-pipe">
+    <span class="nav-pipe-label">导航目标 + 重规划触发</span>
+  </div>
+  <div class="nav-layer-row nav-layer-global">
+    <div class="nav-layer-meta">
+      <span class="nav-layer-badge">L2</span>
+      <div class="nav-layer-title">全局规划层</div>
+      <div class="nav-layer-sub">autonomy / planning</div>
+      <span class="nav-meta-freq">1–5 Hz</span>
+    </div>
+    <div class="nav-layer-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">核心职责</div>
+        <ul>
+          <li>在全局代价地图上搜索无碰撞几何路径</li>
+          <li>周期性或按需校验已有路径是否仍可行</li>
+          <li>将栅格路径转换为可发布的航点序列</li>
+        </ul>
+      </div>
+      <div class="nav-body-block">
+        <div class="nav-body-label">规划器插件</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">navfn_planner</span>
+          <span class="nav-chip">dijkstra_planner</span>
+          <span class="nav-chip">theta_star_planner</span>
+        </div>
+      </div>
+      <div class="nav-body-block">
+        <div class="nav-body-label">服务入口</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">PlannerServer</span>
+          <span class="nav-chip">GetPlan()</span>
+          <span class="nav-chip">IsPathValid()</span>
+        </div>
+      </div>
+    </div>
+    <div class="nav-layer-io">
+      <div class="nav-io-block nav-io-in">
+        <div class="nav-io-heading">输入</div>
+        <ul class="nav-io-list">
+          <li><code>Costmap2D</code> 全局地图</li>
+          <li>起点 / 终点位姿</li>
+          <li>规划器 ID 与参数</li>
+        </ul>
+      </div>
+      <div class="nav-io-block nav-io-out">
+        <div class="nav-io-heading">输出 → L3</div>
+        <ul class="nav-io-list">
+          <li><code>planning_msgs::Path</code></li>
+          <li>含位姿的航点序列</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="nav-pipe">
+    <span class="nav-pipe-label">planning_msgs::Path（全局路径）</span>
+  </div>
+  <div class="nav-layer-row nav-layer-local">
+    <div class="nav-layer-meta">
+      <span class="nav-layer-badge">L3</span>
+      <div class="nav-layer-title">局部规划与控制层</div>
+      <div class="nav-layer-sub">autonomy / control</div>
+      <span class="nav-meta-freq">10–50 Hz</span>
+    </div>
+    <div class="nav-layer-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">核心职责</div>
+        <ul>
+          <li>跟踪全局路径，生成短时可行轨迹</li>
+          <li>结合局部地图做实时动态避障</li>
+          <li>输出满足运动学约束的速度指令</li>
+        </ul>
+      </div>
+      <div class="nav-body-block">
+        <div class="nav-body-label">典型算法</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">DWA / DWB</span>
+          <span class="nav-chip">TEB</span>
+          <span class="nav-chip">Pure Pursuit</span>
+          <span class="nav-chip">MPPI</span>
+        </div>
+      </div>
+    </div>
+    <div class="nav-layer-io">
+      <div class="nav-io-block nav-io-in">
+        <div class="nav-io-heading">输入</div>
+        <ul class="nav-io-list">
+          <li>L2 下发的全局 <code>Path</code></li>
+          <li>局部代价地图 / 障碍物</li>
+          <li>当前里程计与 TF</li>
+        </ul>
+      </div>
+      <div class="nav-io-block nav-io-out">
+        <div class="nav-io-heading">输出 → 底盘</div>
+        <ul class="nav-io-list">
+          <li><code>cmd_vel</code> 线速度 / 角速度</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="nav-pipe">
+    <span class="nav-pipe-label">cmd_vel（速度指令）</span>
+  </div>
+  <div class="nav-robot-bar">
+    <span class="nav-robot-icon">▣</span>
+    机器人底盘执行运动
+  </div>
+</div>
+</div>
+</section>
+<section id="id24">
+<h3>9.11.2 Autonomy 导航栈映射<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>层级</p></th>
+<th class="head"><p>模块</p></th>
+<th class="head"><p>关键接口</p></th>
+<th class="head"><p>典型频率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>行为</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navigator</span></code></p></td>
+<td><p>BT 节点、<code class="docutils literal notranslate"><span class="pre">compute_path_to_pose</span></code></p></td>
+<td><p>事件驱动</p></td>
+</tr>
+<tr class="row-odd"><td><p>全局规划</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">planning</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GetPlan()</span></code>, <code class="docutils literal notranslate"><span class="pre">IsPathValid()</span></code></p></td>
+<td><p>1–5 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>局部规划</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">control</span></code></p></td>
+<td><p>速度指令生成</p></td>
+<td><p>10–50 Hz</p></td>
+</tr>
+<tr class="row-odd"><td><p>地图</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">map/costmap_2d</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/global_costmap</span></code></p></td>
+<td><p>5 Hz</p></td>
+</tr>
+<tr class="row-even"><td><p>定位</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">localization</span></code></p></td>
+<td><p>TF <code class="docutils literal notranslate"><span class="pre">map→odom</span></code></p></td>
+<td><p>10–30 Hz</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>9.12 Autonomy 内置规划器深度对比<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>9.12.1 四维雷达图（文字版）<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>维度 (1–5)</p></th>
+<th class="head"><p>NavFn Dijkstra</p></th>
+<th class="head"><p>NavFn A*</p></th>
+<th class="head"><p>DijkstraPlanner</p></th>
+<th class="head"><p>ThetaStarPlanner</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>计算速度</p></td>
+<td><p>★★★★★</p></td>
+<td><p>★★★★</p></td>
+<td><p>★★★★★</p></td>
+<td><p>★★★</p></td>
+</tr>
+<tr class="row-odd"><td><p>路径长度</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★★★</p></td>
+</tr>
+<tr class="row-even"><td><p>路径平滑</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★★</p></td>
+</tr>
+<tr class="row-odd"><td><p>确定性</p></td>
+<td><p>★★★★★</p></td>
+<td><p>★★★★★</p></td>
+<td><p>★★★★★</p></td>
+<td><p>★★★★★</p></td>
+</tr>
+<tr class="row-even"><td><p>窄通道</p></td>
+<td><p>★★★★</p></td>
+<td><p>★★★★</p></td>
+<td><p>★★★★</p></td>
+<td><p>★★★ (8-连通)</p></td>
+</tr>
+<tr class="row-odd"><td><p>大地图</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★★</p></td>
+<td><p>★★★</p></td>
+<td><p>★★★</p></td>
+</tr>
+<tr class="row-even"><td><p>调参难度</p></td>
+<td><p>★★</p></td>
+<td><p>★★</p></td>
+<td><p>★★</p></td>
+<td><p>★★★</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id27">
+<h3>9.12.2 量化对比（典型 500×500 栅格地图）<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指标</p></th>
+<th class="head"><p>NavFn Dijkstra</p></th>
+<th class="head"><p>NavFn A*</p></th>
+<th class="head"><p>Theta*</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>首次规划延迟</p></td>
+<td><p>20–80 ms</p></td>
+<td><p>10–50 ms</p></td>
+<td><p>50–200 ms</p></td>
+</tr>
+<tr class="row-odd"><td><p>路径航点数</p></td>
+<td><p>多（梯度跟踪）</p></td>
+<td><p>多</p></td>
+<td><p>少（直线段）</p></td>
+</tr>
+<tr class="row-even"><td><p>路径/直线比</p></td>
+<td><p>1.2–1.5×</p></td>
+<td><p>1.2–1.5×</p></td>
+<td><p>1.0–1.1×</p></td>
+</tr>
+<tr class="row-odd"><td><p>内存</p></td>
+<td><p>O(N) 势场</p></td>
+<td><p>O(N) 势场</p></td>
+<td><p>O(N) g+parent</p></td>
+</tr>
+</tbody>
+</table>
+<p>* 实测值因硬件、地图、起终点而异，仅供量级参考。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id28">
+<h2>9.13 代价地图与规划的耦合<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<section id="id29">
+<h3>9.13.1 代价值语义<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>值</p></th>
+<th class="head"><p>常量</p></th>
+<th class="head"><p>NavFn 行为</p></th>
+<th class="head"><p>Theta* 行为</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>FREE_SPACE</p></td>
+<td><p>通行代价 50</p></td>
+<td><p>可通行</p></td>
+</tr>
+<tr class="row-odd"><td><p>1–252</p></td>
+<td><p>梯度代价</p></td>
+<td><p><span class="math notranslate nohighlight">\(50+0.8c\)</span></p></td>
+<td><p>加权 <span class="math notranslate nohighlight">\(\tau(n)\)</span></p></td>
+</tr>
+<tr class="row-even"><td><p>253</p></td>
+<td><p>INSCRIBED</p></td>
+<td><p>高代价</p></td>
+<td><p><strong>阻塞</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>254</p></td>
+<td><p>LETHAL</p></td>
+<td><p>不可通行</p></td>
+<td><p><strong>阻塞</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>255</p></td>
+<td><p>UNKNOWN</p></td>
+<td><p>取决于 <code class="docutils literal notranslate"><span class="pre">allow_unknown</span></code></p></td>
+<td><p>取决于配置</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id30">
+<h3>9.13.2 膨胀层数学<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<p>膨胀代价随距离衰减：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+c(d) = \begin{cases}
+254 &amp; d \leq r_{\text{inscribed}} \\
+253 &amp; d \leq r_{\text{inflation}} \\
+(253 - s_{\mathrm{infl}}) \cdot e^{-\lambda (d - r_{\text{inscribed}})} &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(s_{\mathrm{infl}}\)</span> 对应膨胀层内部使用的缩放系数 <code class="docutils literal notranslate"><span class="pre">scale</span></code>。</p>
+<p><strong>关键约束</strong>：<span class="math notranslate nohighlight">\(r_{\text{inflation}} \geq r_{\text{robot}}\)</span>，否则全局规划假设点机器人时会穿墙。</p>
+</section>
+<section id="planner-lua">
+<h3>9.13.3 层叠顺序（<code class="docutils literal notranslate"><span class="pre">planner.lua</span></code> 默认）<a class="headerlink" href="#planner-lua" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>static_layer → obstacle_layer → inflation_layer
+     ↓               ↓                ↓
+  先验地图        实时激光          安全缓冲
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id31">
+<h2>9.14 场景选型矩阵<a class="headerlink" href="#id31" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>场景</p></th>
+<th class="head"><p>地图</p></th>
+<th class="head"><p>通道</p></th>
+<th class="head"><p>推荐规划器</p></th>
+<th class="head"><p>关键配置</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>室内仓储 AGV</p></td>
+<td><p>静态 SLAM</p></td>
+<td><p>宽</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn_planner</span></code></p></td>
+<td><p>默认</p></td>
+</tr>
+<tr class="row-odd"><td><p>办公室服务机器人</p></td>
+<td><p>静态 + 激光</p></td>
+<td><p>中</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">theta_star_planner</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">how_many_corners=8</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>窄走廊</p></td>
+<td><p>静态</p></td>
+<td><p>窄</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn_planner</span></code> 或 Theta* 4-连通</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">how_many_corners=4</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>医院/商场</p></td>
+<td><p>大范围</p></td>
+<td><p>混合</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">navfn</span></code> + <code class="docutils literal notranslate"><span class="pre">use_astar=true</span></code></p></td>
+<td><p>大地图提前终止</p></td>
+</tr>
+<tr class="row-even"><td><p>调试/回归测试</p></td>
+<td><p>任意</p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dijkstra_planner</span></code></p></td>
+<td><p>确定性输出</p></td>
+</tr>
+<tr class="row-odd"><td><p>探索未知区</p></td>
+<td><p>部分未知</p></td>
+<td><p>—</p></td>
+<td><p>任意</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">allow_unknown=true</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>动态人群</p></td>
+<td><p>实时更新</p></td>
+<td><p>—</p></td>
+<td><p>NavFn + 高频重规划</p></td>
+<td><p>缩短 <code class="docutils literal notranslate"><span class="pre">costmap_update_timeout</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>泊车/倒车</p></td>
+<td><p>SE(2)</p></td>
+<td><p>—</p></td>
+<td><p>❌ 需 Hybrid A*</p></td>
+<td><p>插件扩展</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id32">
+<h2>9.15 选型决策树<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>需要全局几何路径？
+├── 否 → control 模块局部规划 / DWA / TEB
+└── 是
+    ├── 环境地图是否就绪？
+    │   ├── 否 → 先建图 / 定位
+    │   └── 是
+    │       ├── 是否需要任意角短路径？
+    │       │   ├── 是 → theta_star_planner
+    │       │   │       ├── 窄通道 → how_many_corners=4
+    │       │   │       └── 开阔 → how_many_corners=8
+    │       │   └── 否
+    │       │       ├── 需要确定性输出？ → dijkstra_planner
+    │       │       ├── 大地图 ( &gt; 2048² )？ → navfn + use_astar=true
+    │       │       └── 默认 → navfn_planner
+    │       └── 目标在膨胀区边缘？
+    │           └── 增大 tolerance (0.1 → 0.3 m)
+    └── 需要 SE(2) 运动学约束？
+        └── 扩展 Hybrid A* 插件（未内置）
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id33">
+<h2>9.16 业界生态对比<a class="headerlink" href="#id33" title="Link to this heading"></a></h2>
+<section id="ros-nav2">
+<h3>9.16.1 ROS / nav2 规划器生态<a class="headerlink" href="#ros-nav2" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>规划器</p></th>
+<th class="head"><p>包名</p></th>
+<th class="head"><p>算法</p></th>
+<th class="head"><p>Autonomy 状态</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>NavFn</p></td>
+<td><p>nav2_navfn_planner</p></td>
+<td><p>导航势场</p></td>
+<td><p>✅ 移植</p></td>
+</tr>
+<tr class="row-odd"><td><p>Dijkstra</p></td>
+<td><p>nav2_navfn (mode)</p></td>
+<td><p>Dijkstra</p></td>
+<td><p>✅ 独立插件</p></td>
+</tr>
+<tr class="row-even"><td><p>Theta*</p></td>
+<td><p>nav2_theta_star_planner</p></td>
+<td><p>Theta*</p></td>
+<td><p>✅ 移植</p></td>
+</tr>
+<tr class="row-odd"><td><p>Smac 2D</p></td>
+<td><p>nav2_smac_planner</p></td>
+<td><p>A* / 平滑</p></td>
+<td><p>❌ 可插件扩展</p></td>
+</tr>
+<tr class="row-even"><td><p>Smac Hybrid</p></td>
+<td><p>nav2_smac_planner</p></td>
+<td><p>Hybrid A*</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>Smac Lattice</p></td>
+<td><p>nav2_smac_planner</p></td>
+<td><p>状态格栅</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p>OMPL</p></td>
+<td><p>ompl_interface</p></td>
+<td><p>RRT/PRM 等</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>Nav2 Route</p></td>
+<td><p>nav2_route</p></td>
+<td><p>拓扑路由</p></td>
+<td><p>❌</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id34">
+<h3>9.16.2 商业/开源框架<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>框架</p></th>
+<th class="head"><p>全局规划方案</p></th>
+<th class="head"><p>特点</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Navigation2</p></td>
+<td><p>插件式多种</p></td>
+<td><p>ROS 2 事实标准</p></td>
+</tr>
+<tr class="row-odd"><td><p>Autonomy</p></td>
+<td><p>NavFn/Dijkstra/Theta*</p></td>
+<td><p>对齐 nav2，autolink 通信</p></td>
+</tr>
+<tr class="row-even"><td><p>Move Base (ROS 1)</p></td>
+<td><p>navfn/global_planner</p></td>
+<td><p>legacy</p></td>
+</tr>
+<tr class="row-odd"><td><p>Tesla FSD / Waymo</p></td>
+<td><p>专有 + 学习</p></td>
+<td><p>不公开</p></td>
+</tr>
+<tr class="row-even"><td><p>Apollo</p></td>
+<td><p>Open Space + EM</p></td>
+<td><p>自动驾驶</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id35">
+<h2>9.17 开放问题与未来方向<a class="headerlink" href="#id35" title="Link to this heading"></a></h2>
+<section id="id36">
+<h3>9.17.1 技术演进路线图（展望）<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<div class="roadmap-steps">
+  <div class="roadmap-step roadmap-current">
+    <strong>2025</strong>
+    <span>Autonomy<br/>栅格三剑客成熟</span>
+  </div>
+  <div class="roadmap-step">
+    <strong>2026</strong>
+    <span>Hybrid A*<br/>拓扑路由层</span>
+  </div>
+  <div class="roadmap-step">
+    <strong>2027</strong>
+    <span>D* Lite<br/>增量重规划</span>
+  </div>
+  <div class="roadmap-step">
+    <strong>2028</strong>
+    <span>学习辅助<br/>启发式 A*</span>
+  </div>
+  <div class="roadmap-step">
+    <strong>2029+</strong>
+    <span>端到端<br/>Nav Policy</span>
+  </div>
+</div>
+</section>
+<section id="id37">
+<h3>9.17.2 优先级路线图<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>优先级</p></th>
+<th class="head"><p>方向</p></th>
+<th class="head"><p>描述</p></th>
+<th class="head"><p>预期收益</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>P0</p></td>
+<td><p>Hybrid A* 插件</p></td>
+<td><p>SE(2) 泊车、倒车</p></td>
+<td><p>覆盖非完整机器人</p></td>
+</tr>
+<tr class="row-odd"><td><p>P0</p></td>
+<td><p>拓扑路由层</p></td>
+<td><p>大图分层</p></td>
+<td><p>长距离效率</p></td>
+</tr>
+<tr class="row-even"><td><p>P1</p></td>
+<td><p>D* Lite 重规划</p></td>
+<td><p>增量修复</p></td>
+<td><p>动态环境效率</p></td>
+</tr>
+<tr class="row-odd"><td><p>P1</p></td>
+<td><p>OMPL 集成</p></td>
+<td><p>RRT* / PRM</p></td>
+<td><p>高维扩展</p></td>
+</tr>
+<tr class="row-even"><td><p>P2</p></td>
+<td><p>学习启发式</p></td>
+<td><p>神经网络 <span class="math notranslate nohighlight">\(h(n)\)</span></p></td>
+<td><p>搜索加速</p></td>
+</tr>
+<tr class="row-odd"><td><p>P2</p></td>
+<td><p>多机 MAPF</p></td>
+<td><p>CBS / ECBS</p></td>
+<td><p>仓储多车</p></td>
+</tr>
+<tr class="row-even"><td><p>P3</p></td>
+<td><p>3D 规划</p></td>
+<td><p>无人机 / 多层</p></td>
+<td><p>新场景</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id38">
+<h2>9.18 关键术语表<a class="headerlink" href="#id38" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>术语</p></th>
+<th class="head"><p>英文</p></th>
+<th class="head"><p>解释</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>完备性</p></td>
+<td><p>Completeness</p></td>
+<td><p>若解存在则算法必能找到</p></td>
+</tr>
+<tr class="row-odd"><td><p>最优性</p></td>
+<td><p>Optimality</p></td>
+<td><p>找到代价最小的解</p></td>
+</tr>
+<tr class="row-even"><td><p>可采纳启发式</p></td>
+<td><p>Admissible Heuristic</p></td>
+<td><p><span class="math notranslate nohighlight">\(h(n) \leq h^*(n)\)</span>，保证 A* 最优</p></td>
+</tr>
+<tr class="row-odd"><td><p>任意角路径</p></td>
+<td><p>Any-Angle Path</p></td>
+<td><p>不限于栅格方向的直线段组合</p></td>
+</tr>
+<tr class="row-even"><td><p>导航函数</p></td>
+<td><p>Navigation Function</p></td>
+<td><p>全空间单调指向目标的势场</p></td>
+</tr>
+<tr class="row-odd"><td><p>膨胀</p></td>
+<td><p>Inflation</p></td>
+<td><p>障碍周围安全缓冲区</p></td>
+</tr>
+<tr class="row-even"><td><p>重规划</p></td>
+<td><p>Replanning</p></td>
+<td><p>环境变化后重新计算路径</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id39">
+<h2>9.19 参考文献<a class="headerlink" href="#id39" title="Link to this heading"></a></h2>
+<section id="id40">
+<h3>9.19.1 教材<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>LaValle, S.M. <em>Planning Algorithms.</em> Cambridge, 2006.</p></li>
+<li><p>Choset, H. et al. <em>Principles of Robot Motion.</em> MIT Press, 2005.</p></li>
+<li><p>Siegwart, R. et al. <em>Autonomous Mobile Robots.</em> MIT Press, 2011.</p></li>
+</ol>
+</section>
+<section id="id41">
+<h3>9.19.2 里程碑论文<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>年份</p></th>
+<th class="head"><p>论文</p></th>
+<th class="head"><p>贡献</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1959</p></td>
+<td><p>Dijkstra</p></td>
+<td><p>最短路径</p></td>
+</tr>
+<tr class="row-odd"><td><p>1968</p></td>
+<td><p>Hart et al.</p></td>
+<td><p>A*</p></td>
+</tr>
+<tr class="row-even"><td><p>1985</p></td>
+<td><p>Khatib</p></td>
+<td><p>人工势场</p></td>
+</tr>
+<tr class="row-odd"><td><p>1990</p></td>
+<td><p>Eriksson &amp; Borenstein</p></td>
+<td><p>GURVEY/NavFn 前身</p></td>
+</tr>
+<tr class="row-even"><td><p>1998</p></td>
+<td><p>Kavraki et al.</p></td>
+<td><p>PRM</p></td>
+</tr>
+<tr class="row-odd"><td><p>1998</p></td>
+<td><p>LaValle</p></td>
+<td><p>RRT</p></td>
+</tr>
+<tr class="row-even"><td><p>2005</p></td>
+<td><p>Ferguson &amp; Stentz</p></td>
+<td><p>Field D*</p></td>
+</tr>
+<tr class="row-odd"><td><p>2007</p></td>
+<td><p>Nash et al.</p></td>
+<td><p>Theta*</p></td>
+</tr>
+<tr class="row-even"><td><p>2008</p></td>
+<td><p>Dolgov et al.</p></td>
+<td><p>Hybrid A*</p></td>
+</tr>
+<tr class="row-odd"><td><p>2011</p></td>
+<td><p>Karaman &amp; Frazzoli</p></td>
+<td><p>RRT*</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id42">
+<h3>9.19.3 工程文档<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="https://docs.nav2.org/configuration/packages/configuring-planner-server.html">Navigation2 Planner Server</a></p></li>
+<li><p><a class="reference external" href="https://github.com/ros-navigation/navigation2/tree/main/nav2_navfn_planner">nav2_navfn_planner</a></p></li>
+<li><p><a class="reference external" href="https://github.com/ros-navigation/navigation2/tree/main/nav2_theta_star_planner">nav2_theta_star_planner</a></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id43">
+<h2>9.20 相关文档<a class="headerlink" href="#id43" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="00_guide.html"><span class="std std-doc">Planning 路径规划指南</span></a></p></li>
+<li><p><a class="reference internal" href="05_architecture.html"><span class="std std-doc">架构设计</span></a></p></li>
+<li><p><a class="reference internal" href="06_navfn.html"><span class="std std-doc">NavFn 规划器</span></a></p></li>
+<li><p><a class="reference internal" href="07_dijkstra.html"><span class="std std-doc">Dijkstra 规划器</span></a></p></li>
+<li><p><a class="reference internal" href="08_theta_star.html"><span class="std std-doc">Theta* 规划器</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="08_theta_star.html" class="btn btn-neutral float-left" title="8. Theta* 全局规划器" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../09_Control/index.html" class="btn btn-neutral float-right" title="Control 运动控制" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

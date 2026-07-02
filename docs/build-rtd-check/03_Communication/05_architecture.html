@@ -1,0 +1,511 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5. Autolink 模块架构设计 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="6. Node 与 Channel" href="06_node_channel.html" />
+    <link rel="prev" title="4. 使用指南" href="04_usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">03 Communication</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_concepts.html">3 通信概念与模型</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">5 模块架构设计</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">5.1 设计目标</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">5.2 实现状态</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">5.3 分层架构</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">5.4 消息发布数据流</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#component">5.5 Component 执行模型</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">5.6 目录与职责映射</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#autonomy">5.7 与 Autonomy 系统集成</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">5.8 扩展点</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="06_node_channel.html">6 Node 与 Channel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="07_service_action.html">7 Service 与 Action</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_scheduler_transport.html">8 调度与传输</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 通信框架综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../08_Planning/index.html">08 Planning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Communication 通信框架</a></li>
+      <li class="breadcrumb-item active">5. Autolink 模块架构设计</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/03_Communication/05_architecture.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="autolink">
+<h1>5. Autolink 模块架构设计<a class="headerlink" href="#autolink" title="Link to this heading"></a></h1>
+<p>本文描述 <code class="docutils literal notranslate"><span class="pre">autolink</span></code> 的逻辑分层、核心子系统关系与运行时数据流。</p>
+<section id="id1">
+<h2>5.1 设计目标<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>autolink 遵循以下设计原则：</p>
+<ol class="arabic simple">
+<li><p><strong>去中心化发现</strong>：无 master，节点对等，通过 UDP 拓扑同步</p></li>
+<li><p><strong>多传输后端</strong>：INTRA / SHM / RTPS 对用户透明可配</p></li>
+<li><p><strong>组件化部署</strong>：Component + DAG + mainboard，与 Cyber RT 一致</p></li>
+<li><p><strong>协程调度</strong>：CRoutine 降低线程开销，支持 classic / choreography 策略</p></li>
+<li><p><strong>Protobuf 生态</strong>：消息序列化、配置、录制统一 proto 格式</p></li>
+<li><p><strong>ROS 语义对齐</strong>：Node / topic(channel) / service / action 概念对应，降低迁移成本</p></li>
+</ol>
+</section>
+<section id="id2">
+<h2>5.2 实现状态<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>子系统</p></th>
+<th class="head"><p>实现度</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Node / Writer / Reader</p></td>
+<td><p>✅</p></td>
+<td><p>完整 API</p></td>
+</tr>
+<tr class="row-odd"><td><p>Service / Client</p></td>
+<td><p>✅</p></td>
+<td><p>同步 + 异步</p></td>
+</tr>
+<tr class="row-even"><td><p>Action</p></td>
+<td><p>✅</p></td>
+<td><p>Server / Client 状态机</p></td>
+</tr>
+<tr class="row-odd"><td><p>Service Discovery</p></td>
+<td><p>✅</p></td>
+<td><p>Channel / Node / Service 管理器</p></td>
+</tr>
+<tr class="row-even"><td><p>Transport INTRA</p></td>
+<td><p>✅</p></td>
+<td><p>进程内指针传递</p></td>
+</tr>
+<tr class="row-odd"><td><p>Transport SHM</p></td>
+<td><p>✅</p></td>
+<td><p>共享内存段 + notifier</p></td>
+</tr>
+<tr class="row-even"><td><p>Transport RTPS</p></td>
+<td><p>✅</p></td>
+<td><p>FastDDS 集成</p></td>
+</tr>
+<tr class="row-odd"><td><p>Scheduler classic</p></td>
+<td><p>✅</p></td>
+<td><p>多 group 多优先级</p></td>
+</tr>
+<tr class="row-even"><td><p>Scheduler choreography</p></td>
+<td><p>✅</p></td>
+<td><p>绑核编排</p></td>
+</tr>
+<tr class="row-odd"><td><p>Component</p></td>
+<td><p>✅</p></td>
+<td><p>多输入 <code class="docutils literal notranslate"><span class="pre">Proc</span></code> + 注册宏</p></td>
+</tr>
+<tr class="row-even"><td><p>Record / Play</p></td>
+<td><p>✅</p></td>
+<td><p>文件分段存储</p></td>
+</tr>
+<tr class="row-odd"><td><p>Parameter</p></td>
+<td><p>✅</p></td>
+<td><p>全局参数服务</p></td>
+</tr>
+<tr class="row-even"><td><p>Python 绑定</p></td>
+<td><p>✅</p></td>
+<td><p>主要 API 覆盖</p></td>
+</tr>
+<tr class="row-odd"><td><p>PluginManager</p></td>
+<td><p>✅</p></td>
+<td><p>动态库加载</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id3">
+<h2>5.3 分层架构<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<div class="plan-arch-diagram">
+  <div class="plan-arch-layer plan-arch-app">
+    <div class="plan-arch-header">
+      <span class="plan-arch-badge">应用层</span>
+      <span class="plan-arch-title">Autonomy 算法模块 / 用户节点</span>
+      <span class="plan-arch-sub">planning · control · localization · 自定义 Component</span>
+    </div>
+    <div class="plan-arch-body">
+      <div class="nav-body-block">
+        <div class="nav-body-label">对外接口</div>
+        <div class="nav-chip-list">
+          <span class="nav-chip">CreateNode</span>
+          <span class="nav-chip">CreateWriter&lt;T&gt;</span>
+          <span class="nav-chip">CreateReader&lt;T&gt;</span>
+          <span class="nav-chip">CreateService</span>
+          <span class="nav-chip">action::CreateServer</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="plan-arch-pipe"><span>API 调用</span></div>
+  <div class="plan-arch-layer plan-arch-server">
+    <div class="plan-arch-header">
+      <span class="plan-arch-badge">节点层</span>
+      <span class="plan-arch-title">Node</span>
+      <span class="plan-arch-sub">NodeChannelImpl · NodeServiceImpl</span>
+    </div>
+    <div class="plan-arch-body plan-arch-body-cols">
+      <div class="nav-body-block">
+        <div class="nav-body-label">Channel 路径</div>
+        <ul>
+          <li>Writer → Transmitter → Dispatcher</li>
+          <li>Receiver → 回调 / DataVisitor</li>
+        </ul>
+      </div>
+      <div class="nav-body-block">
+        <div class="nav-body-label">Service 路径</div>
+        <ul>
+          <li>Service 注册回调处理请求</li>
+          <li>Client 发送并等待响应</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="plan-arch-pipe"><span>注册 / 匹配</span></div>
+  <div class="plan-arch-split">
+    <div class="plan-arch-layer plan-arch-plugin">
+      <div class="plan-arch-header">
+        <span class="plan-arch-badge">中间件层</span>
+        <span class="plan-arch-title">Service Discovery</span>
+      </div>
+      <div class="plan-arch-body">
+        <div class="nav-body-block">
+          <div class="nav-body-label">管理器</div>
+          <div class="nav-chip-list">
+            <span class="nav-chip">ChannelManager</span>
+            <span class="nav-chip">NodeManager</span>
+            <span class="nav-chip">ServiceManager</span>
+          </div>
+        </div>
+        <div class="nav-body-block">
+          <div class="nav-body-label">存储</div>
+          <div class="nav-chip-list">
+            <span class="nav-chip">MultiValueWarehouse</span>
+            <span class="nav-chip">Graph</span>
+          </div>
+        </div>
+      </div>
+    </div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;div class=&quot;plan-arch-link&quot;&gt;
+  &lt;span class=&quot;plan-arch-link-text&quot;&gt;驱动&lt;/span&gt;
+  &lt;span class=&quot;plan-arch-link-arrow&quot;&gt;↔&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;div class=&quot;plan-arch-layer plan-arch-map&quot;&gt;
+  &lt;div class=&quot;plan-arch-header&quot;&gt;
+    &lt;span class=&quot;plan-arch-badge&quot;&gt;传输层&lt;/span&gt;
+    &lt;span class=&quot;plan-arch-title&quot;&gt;Transport&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;plan-arch-body&quot;&gt;
+    &lt;div class=&quot;nav-body-block&quot;&gt;
+      &lt;div class=&quot;nav-body-label&quot;&gt;后端&lt;/div&gt;
+      &lt;div class=&quot;nav-chip-list&quot;&gt;
+        &lt;span class=&quot;nav-chip&quot;&gt;IntraDispatcher&lt;/span&gt;
+        &lt;span class=&quot;nav-chip&quot;&gt;ShmDispatcher&lt;/span&gt;
+        &lt;span class=&quot;nav-chip&quot;&gt;RtpsParticipant&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre></div>
+</div>
+  </div>
+  <div class="plan-arch-pipe"><span>调度执行</span></div>
+  <div class="plan-arch-split">
+    <div class="plan-arch-layer plan-arch-post">
+      <div class="plan-arch-header">
+        <span class="plan-arch-badge">调度层</span>
+        <span class="plan-arch-title">Scheduler + CRoutine</span>
+      </div>
+      <div class="plan-arch-body">
+        <div class="nav-body-block">
+          <div class="nav-body-label">策略</div>
+          <div class="nav-chip-list">
+            <span class="nav-chip">classic</span>
+            <span class="nav-chip">choreography</span>
+          </div>
+        </div>
+      </div>
+    </div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>&lt;div class=&quot;plan-arch-link&quot;&gt;
+  &lt;span class=&quot;plan-arch-link-text&quot;&gt;支撑&lt;/span&gt;
+  &lt;span class=&quot;plan-arch-link-arrow&quot;&gt;↔&lt;/span&gt;
+&lt;/div&gt;
+
+&lt;div class=&quot;plan-arch-layer plan-arch-post&quot;&gt;
+  &lt;div class=&quot;plan-arch-header&quot;&gt;
+    &lt;span class=&quot;plan-arch-badge&quot;&gt;运行时&lt;/span&gt;
+    &lt;span class=&quot;plan-arch-title&quot;&gt;mainboard / Component&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;plan-arch-body&quot;&gt;
+    &lt;div class=&quot;nav-body-block&quot;&gt;
+      &lt;div class=&quot;nav-body-label&quot;&gt;加载&lt;/div&gt;
+      &lt;div class=&quot;nav-chip-list&quot;&gt;
+        &lt;span class=&quot;nav-chip&quot;&gt;DAG&lt;/span&gt;
+        &lt;span class=&quot;nav-chip&quot;&gt;ClassLoader&lt;/span&gt;
+        &lt;span class=&quot;nav-chip&quot;&gt;PluginManager&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre></div>
+</div>
+  </div>
+</div>
+</section>
+<section id="id4">
+<h2>5.4 消息发布数据流<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>用户 Write(msg)
+    │
+    ▼
+Writer&lt;MessageT&gt;
+    │ 序列化（ProtobufTraits）
+    ▼
+Transmitter&lt;M&gt;  ──mode──▶ INTRA | SHM | RTPS
+    │
+    ▼
+Dispatcher 路由至所有匹配 Receiver
+    │
+    ▼
+Receiver&lt;M&gt; 回调 / 入队 ChannelBuffer
+    │
+    ▼
+Reader 用户回调 或 Component::Proc
+    │
+    ▼
+Scheduler 调度 CRoutine 执行
+</pre></div>
+</div>
+</section>
+<section id="component">
+<h2>5.5 Component 执行模型<a class="headerlink" href="#component" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>DAG 描述 readers ──▶ DataVisitor 聚合多路输入
+                          │
+                          ▼
+                   全部输入就绪？
+                          │ yes
+                          ▼
+              创建 Task → 入队 Scheduler
+                          │
+                          ▼
+                   CRoutine::Resume
+                          │
+                          ▼
+                   Component::Proc(M0, M1, ...)
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Component&lt;M0,M1,...&gt;</span></code> 模板参数指定输入消息类型</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AUTOLINK_REGISTER_COMPONENT</span></code> 导出工厂符号供 mainboard 加载</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TimerComponent</span></code> 定时触发，无输入 channel</p></li>
+</ul>
+</section>
+<section id="id5">
+<h2>5.6 目录与职责映射<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>目录</p></th>
+<th class="head"><p>职责</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">node/</span></code></p></td>
+<td><p>对外 API 门面，Writer/Reader 实现</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">transport/</span></code></p></td>
+<td><p>Transmitter/Receiver/Dispatcher/SHM 段</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">service_discovery/</span></code></p></td>
+<td><p>拓扑注册、变更通知、图查询</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scheduler/</span></code></p></td>
+<td><p>Processor 线程池、任务队列、绑核</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">croutine/</span></code></p></td>
+<td><p>协程上下文切换</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">data/</span></code></p></td>
+<td><p>DataVisitor、ChannelBuffer、通知</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">component/</span></code></p></td>
+<td><p>组件基类、初始化流程</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">action/</span></code></p></td>
+<td><p>Action 状态机封装</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">record/</span></code></p></td>
+<td><p>分段文件格式、读写器</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">mainboard/</span></code></p></td>
+<td><p>进程入口、ModuleController</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">message/</span></code></p></td>
+<td><p>Protobuf 工厂、类型注册</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="autonomy">
+<h2>5.7 与 Autonomy 系统集成<a class="headerlink" href="#autonomy" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>config/autonomy.lua
+        │
+        ▼
+system::Autonomy 构造各 Server
+        │
+        ├─▶ 各 Server 内部 CreateNode(&quot;xxx_server&quot;)
+        ├─▶ CreateReader / CreateWriter 对接 commsgs
+        └─▶ Action Server 供 Navigator 行为树调用
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>算法 Server（如 <code class="docutils literal notranslate"><span class="pre">ControllerServer</span></code>）<strong>持有</strong> autolink Node，不暴露给应用层</p></li>
+<li><p>消息类型来自 <code class="docutils literal notranslate"><span class="pre">autonomy/commsgs</span></code>，边界 <code class="docutils literal notranslate"><span class="pre">ToProto</span></code></p></li>
+<li><p>详见 <a class="reference internal" href="../05_Framework/03_architecture.html"><span class="std std-doc">Framework</span></a></p></li>
+</ul>
+</section>
+<section id="id6">
+<h2>5.8 扩展点<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>扩展点</p></th>
+<th class="head"><p>机制</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>新算法模块</p></td>
+<td><p>继承 <code class="docutils literal notranslate"><span class="pre">Component</span></code> 或独立 <code class="docutils literal notranslate"><span class="pre">main</span></code> + Node</p></td>
+</tr>
+<tr class="row-odd"><td><p>新消息类型</p></td>
+<td><p>commsgs proto + traits，Writer/Reader 实例化</p></td>
+</tr>
+<tr class="row-even"><td><p>新传输</p></td>
+<td><p>实现 <code class="docutils literal notranslate"><span class="pre">Transmitter</span></code>/<code class="docutils literal notranslate"><span class="pre">Receiver</span></code> 并注册 Dispatcher</p></td>
+</tr>
+<tr class="row-odd"><td><p>调度策略</p></td>
+<td><p>新增 <code class="docutils literal notranslate"><span class="pre">Scheduler</span></code> 子类 + factory</p></td>
+</tr>
+<tr class="row-even"><td><p>外部协议</p></td>
+<td><p>通过 <a class="reference internal" href="../15_Bridge/01_overview.html"><span class="std std-doc">Bridge</span></a> 网关转换</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="04_usage.html" class="btn btn-neutral float-left" title="4. 使用指南" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="06_node_channel.html" class="btn btn-neutral float-right" title="6. Node 与 Channel" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

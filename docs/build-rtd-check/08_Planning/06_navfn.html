@@ -1,0 +1,407 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>6. NavFn 全局规划器 &mdash; Autonomy 文档</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d75fae25" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=b49ba63d" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9a2dae69"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=ae60e388"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="7. Dijkstra 全局规划器" href="07_dijkstra.html" />
+    <link rel="prev" title="5. Planning 模块架构设计" href="05_architecture.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #7aa88d" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Autonomy
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../01_Instructions/index.html">01 Instructions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../02_Installation/index.html">02 Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../03_Communication/index.html">03 Communication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../04_Running/index.html">04 Running</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../05_Framework/index.html">05 Framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../06_Localization/index.html">06 Localization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../07_Map/index.html">07 Mapping</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">08 Planning</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="00_guide.html">0 指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="01_overview.html">1 模块概览</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_quickstart.html">2 快速开始</a></li>
+<li class="toctree-l2"><a class="reference internal" href="03_math.html">3 数学原理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_usage.html">4 使用指南</a></li>
+<li class="toctree-l2"><a class="reference internal" href="05_architecture.html">5 模块架构设计</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">6 NavFn 全局规划器</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">6.1 算法概述</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">6.2 数学原理</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">6.3 两种传播模式</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#navfnplanner">6.4 NavfnPlanner 插件流程</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">6.5 配置参数</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">6.6 与其他规划器的关系</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">6.7 调试建议</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">6.8 参考文献</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="07_dijkstra.html">7 Dijkstra 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="08_theta_star.html">8 Theta* 全局规划器</a></li>
+<li class="toctree-l2"><a class="reference internal" href="09_survey.html">9 路径规划算法综述</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../09_Control/index.html">09 Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../10_Perception/index.html">10 Perception</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../11_Prediction/index.html">11 Prediction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../12_Simulation/index.html">12 Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../13_Visualization/index.html">13 Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../14_Commsgs/index.html">14 Commsgs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../15_Bridge/index.html">15 Bridge</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../16_Navigator/index.html">16 Navigator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../17_Tasks/index.html">17 Tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../18_Tools/index.html">18 Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../19_FAQs/index.html">19 FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../20_Other/index.html">20 Others</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #7aa88d" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Autonomy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Planning 路径规划</a></li>
+      <li class="breadcrumb-item active">6. NavFn 全局规划器</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/08_Planning/06_navfn.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="navfn">
+<h1>6. NavFn 全局规划器<a class="headerlink" href="#navfn" title="Link to this heading"></a></h1>
+<p>NavFn（Navigation Function）是 Autonomy 默认的全局路径规划器，源自 ROS 1 <code class="docutils literal notranslate"><span class="pre">navfn</span></code> 包。实现位于 <code class="docutils literal notranslate"><span class="pre">autonomy/planning/planner/navfn/</span></code>。</p>
+<blockquote>
+<div><p>完整数学推导见 <a class="reference internal" href="03_math.html"><span class="std std-doc">Planning 指南 · 数学公式</span></a>。</p>
+</div></blockquote>
+<section id="id1">
+<h2>6.1 算法概述<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>NavFn 求解离散栅格上的<strong>导航势场</strong> <span class="math notranslate nohighlight">\(\phi(i,j)\)</span>：从每个自由格到目标的最小通行代价。路径通过对势场做<strong>梯度下降跟踪</strong>得到。</p>
+<p>核心两步：</p>
+<ol class="arabic simple">
+<li><p><strong>反向传播</strong>：从目标格 <span class="math notranslate nohighlight">\(q_g\)</span> 出发，计算 <span class="math notranslate nohighlight">\(\phi(q)\)</span>，满足近似 Eikonal 方程 <span class="math notranslate nohighlight">\(\|\nabla\phi\| = F\)</span></p></li>
+<li><p><strong>梯度跟踪</strong>：从 <span class="math notranslate nohighlight">\(q_g\)</span> 沿 <span class="math notranslate nohighlight">\(-\nabla\phi\)</span> 走到 <span class="math notranslate nohighlight">\(q_s\)</span></p></li>
+</ol>
+<blockquote>
+<div><p><strong>注意</strong>：代码中 <code class="docutils literal notranslate"><span class="pre">setGoal()</span></code> 传入用户 start、<code class="docutils literal notranslate"><span class="pre">setStart()</span></code> 传入用户 goal，因为传播方向与提取方向相反。详见数学文档 §3.2。</p>
+</div></blockquote>
+<section id="id2">
+<h3>6.1.1 算法分类<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>属性</p></th>
+<th class="head"><p>值</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>搜索空间</p></td>
+<td><p>二维栅格（8-连通隐式）</p></td>
+</tr>
+<tr class="row-odd"><td><p>最优性</p></td>
+<td><p>离散网格上近似最优</p></td>
+</tr>
+<tr class="row-even"><td><p>完备性</p></td>
+<td><p>自由空间连通时完备</p></td>
+</tr>
+<tr class="row-odd"><td><p>路径类型</p></td>
+<td><p>网格 + 子像素梯度插值</p></td>
+</tr>
+<tr class="row-even"><td><p>时间复杂度</p></td>
+<td><p><span class="math notranslate nohighlight">\(O(N)\)</span>（Dijkstra 桶队列）或 <span class="math notranslate nohighlight">\(O(N \log N)\)</span>（A*）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="id3">
+<h2>6.2 数学原理<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="eikonal">
+<h3>6.2.1 Eikonal 方程与平面波近似<a class="headerlink" href="#eikonal" title="Link to this heading"></a></h3>
+<p>连续模型中，势场 <span class="math notranslate nohighlight">\(\phi\)</span> 满足：</p>
+<div class="math notranslate nohighlight">
+\[
+\|\nabla \phi(x,y)\| = F(x,y), \quad \phi(q_g) = 0
+\]</div>
+<p>NavFn 不直接解 Eikonal，而是用<strong>平面波更新</strong>在 4-邻域上近似。对格 <span class="math notranslate nohighlight">\(n\)</span>，令 <span class="math notranslate nohighlight">\(t_a = \min(\phi_u, \phi_d)\)</span>，<span class="math notranslate nohighlight">\(t_c = \min(\phi_l, \phi_r)\)</span>，<span class="math notranslate nohighlight">\(h = F_n\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+\phi_n = \begin{cases}
+t_a + h &amp; \Delta_c \geq h \\[6pt]
+t_a + h \cdot v\!\left(\dfrac{\Delta_c}{h}\right) &amp; \mathrm{otherwise}
+\end{cases}
+\end{split}\]</div>
+<p>其中 <span class="math notranslate nohighlight">\(\Delta_c = |t_c - t_a|\)</span>，插值函数：</p>
+<div class="math notranslate nohighlight">
+\[
+v(r) = -0.2301\,r^2 + 0.5307\,r + 0.7040
+\]</div>
+<p>对应 <code class="docutils literal notranslate"><span class="pre">NavFn::updateCell()</span></code>（<code class="docutils literal notranslate"><span class="pre">navfn.cpp</span></code>）。</p>
+</section>
+<section id="id4">
+<h3>6.2.2 代价映射<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>Costmap 值 <span class="math notranslate nohighlight">\(c \in [0,252]\)</span> 映射为 NavFn 通行代价：</p>
+<div class="math notranslate nohighlight">
+\[
+F_{ij} = 50 + 0.8 \cdot c_{ij}
+\]</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>常量</p></th>
+<th class="head"><p>值</p></th>
+<th class="head"><p>含义</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COST_NEUTRAL</span></code></p></td>
+<td><p>50</p></td>
+<td><p>开放空间基准</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">COST_FACTOR</span></code></p></td>
+<td><p>0.8</p></td>
+<td><p>线性缩放</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COST_OBS</span></code></p></td>
+<td><p>254</p></td>
+<td><p>不可通行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">POT_HIGH</span></code></p></td>
+<td><p><span class="math notranslate nohighlight">\(10^{10}\)</span></p></td>
+<td><p>未访问标记</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>6.2.3 梯度跟踪<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>势场建立后，从 goal 格出发，步长 <span class="math notranslate nohighlight">\(\delta = 0.5\)</span> 格：</p>
+<div class="math notranslate nohighlight">
+\[
+\mathbf{p}_{k+1} = \mathbf{p}_k - \delta \cdot \frac{\nabla\phi(\mathbf{p}_k)}{\|\nabla\phi(\mathbf{p}_k)\|}
+\]</div>
+<p>梯度用中心差分（<code class="docutils literal notranslate"><span class="pre">gradCell</span></code>）：</p>
+<div class="math notranslate nohighlight">
+\[
+\frac{\partial\phi}{\partial x} \approx \frac{\phi_{i-1,j}-\phi_{i+1,j}}{2}, \quad
+\frac{\partial\phi}{\partial y} \approx \frac{\phi_{i,j-1}-\phi_{i,j+1}}{2}
+\]</div>
+<p>终止：<span class="math notranslate nohighlight">\(\phi(\mathbf{p}_k) &lt; 50\)</span> 或超过 <code class="docutils literal notranslate"><span class="pre">max_cycles</span> <span class="pre">=</span> <span class="pre">4</span> <span class="pre">\cdot</span> <span class="pre">\max(M,N)</span></code>。</p>
+</section>
+</section>
+<section id="id6">
+<h2>6.3 两种传播模式<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="dijkstra-use-astar-false">
+<h3>6.3.1 Dijkstra 模式（<code class="docutils literal notranslate"><span class="pre">use_astar</span> <span class="pre">=</span> <span class="pre">false</span></code>）<a class="headerlink" href="#dijkstra-use-astar-false" title="Link to this heading"></a></h3>
+<p>按势场值递增的<strong>桶队列</strong>传播，排序键 <span class="math notranslate nohighlight">\(f = g = \phi_n\)</span>：</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">planner_</span><span class="o">-&gt;</span><span class="n">calcNavFnDijkstra</span><span class="p">(</span><span class="n">cancel_checker</span><span class="p">,</span><span class="w"> </span><span class="nb">true</span><span class="p">);</span>
+<span class="c1">//                                          atStart=true: φ(q_s) 有限即停</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>桶阈值步长 <span class="math notranslate nohighlight">\(\Delta T = 2 \times 50 = 100\)</span></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">atStart=true</span></code> 时不必遍历全图</p></li>
+</ul>
+</section>
+<section id="a-use-astar-true">
+<h3>6.3.2 A* 模式（<code class="docutils literal notranslate"><span class="pre">use_astar</span> <span class="pre">=</span> <span class="pre">true</span></code>）<a class="headerlink" href="#a-use-astar-true" title="Link to this heading"></a></h3>
+<p>加入欧氏距离启发式，排序键 <span class="math notranslate nohighlight">\(f = g + h\)</span>：</p>
+<div class="math notranslate nohighlight">
+\[
+h(n) = \|n - q_s\|_2 \cdot C_n
+\]</div>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">planner_</span><span class="o">-&gt;</span><span class="n">calcNavFnAstar</span><span class="p">(</span><span class="n">cancel_checker</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>启发式可采纳（<span class="math notranslate nohighlight">\(h\)</span> 为欧氏下界），保证离散最优；大地图上通常比 Dijkstra 更快终止。</p>
+</section>
+</section>
+<section id="navfnplanner">
+<h2>6.4 NavfnPlanner 插件流程<a class="headerlink" href="#navfnplanner" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>1. worldToMap(q_s), worldToMap(q_g)
+2. 复制 costmap，令 c(q_s) = 0
+3. setGoal(q_s), setStart(q_g)     ← 反向设置
+4. calcNavFnDijkstra / calcNavFnAstar
+5. 容差搜索: q* = argmin ||q - q_g||, s.t. φ(q) &lt; POT_HIGH
+6. calcPath() 梯度跟踪 → 世界坐标
+7. smoothApproachToGoal() 末端修正
+</pre></div>
+</div>
+<section id="id7">
+<h3>6.4.1 目标容差<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p>当 <span class="math notranslate nohighlight">\(\phi(q_g) \geq \phi_{\mathrm{HIGH}}\)</span> 时，在 <span class="math notranslate nohighlight">\(\|q - q_g\|_\infty \leq \varepsilon\)</span> 内搜索最近可达点：</p>
+<div class="math notranslate nohighlight">
+\[
+q^* = \arg\min_{\|q-q_g\|_\infty \leq \varepsilon} \|q - q_g\|_2
+\quad \text{s.t.} \quad \phi(q) &lt; \phi_{\mathrm{HIGH}}
+\]</div>
+<p>默认 <span class="math notranslate nohighlight">\(\varepsilon = 0.1\,\mathrm{m}\)</span>。<span class="math notranslate nohighlight">\(\phi_{\mathrm{HIGH}}\)</span> 对应常量 <code class="docutils literal notranslate"><span class="pre">POT_HIGH</span></code>。</p>
+</section>
+<section id="id8">
+<h3>6.4.2 末端朝向<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">use_final_approach_orientation=true</span></code> 时，末端朝向：</p>
+<div class="math notranslate nohighlight">
+\[
+\theta_N = \operatorname{atan2}(y_N - y_{N-1},\; x_N - x_{N-1})
+\]</div>
+</section>
+</section>
+<section id="id9">
+<h2>6.5 配置参数<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="nv">navfn_planner</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nv">tolerance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">use_astar</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">allow_unknown</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nv">use_final_approach_orientation</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="p">},</span>
+</pre></div>
+</div>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>字段</p></th>
+<th class="head"><p>说明</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tolerance</span></code></p></td>
+<td><p>目标容差 <span class="math notranslate nohighlight">\(\varepsilon\)</span>（米）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">use_astar</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">true</span></code> → A*， <code class="docutils literal notranslate"><span class="pre">false</span></code> → Dijkstra</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">allow_unknown</span></code></p></td>
+<td><p>是否穿越 UNKNOWN 格</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">use_final_approach_orientation</span></code></p></td>
+<td><p>末端接近朝向</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id10">
+<h2>6.6 与其他规划器的关系<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>NavfnPlanner (use_astar=false)  ≡  Dijkstra 模式
+NavfnPlanner (use_astar=true)   →  A* 模式
+DijkstraPlanner                 →  强制 use_astar=false
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h2>6.7 调试建议<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>现象</p></th>
+<th class="head"><p>可能原因</p></th>
+<th class="head"><p>排查</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>无路径</p></td>
+<td><p><span class="math notranslate nohighlight">\(\phi(q_g) = \infty\)</span></p></td>
+<td><p>增大 <code class="docutils literal notranslate"><span class="pre">tolerance</span></code>，检查膨胀层</p></td>
+</tr>
+<tr class="row-odd"><td><p>路径穿墙</p></td>
+<td><p>costmap 未更新</p></td>
+<td><p>确认 obstacle/inflation 层</p></td>
+</tr>
+<tr class="row-even"><td><p>锯齿严重</p></td>
+<td><p>网格梯度跟踪</p></td>
+<td><p>换 Theta* 或启用平滑</p></td>
+</tr>
+<tr class="row-odd"><td><p>规划慢</p></td>
+<td><p>全图 Dijkstra</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">use_astar</span> <span class="pre">=</span> <span class="pre">true</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id12">
+<h2>6.8 参考文献<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Eriksson &amp; Borenstein, “GURVEY”, IEEE AES Magazine, 1990</p></li>
+<li><p><a class="reference external" href="https://github.com/ros-navigation/navigation2/tree/main/nav2_navfn_planner">nav2_navfn_planner</a></p></li>
+<li><p><a class="reference internal" href="03_math.html"><span class="std std-doc">Planning 指南 · 数学公式</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="05_architecture.html" class="btn btn-neutral float-left" title="5. Planning 模块架构设计" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="07_dijkstra.html" class="btn btn-neutral float-right" title="7. Dijkstra 全局规划器" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026 OpenRobotics Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
