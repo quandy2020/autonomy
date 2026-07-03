@@ -95,5 +95,5 @@ auto options = autonomy::system::CreateOptions("config");
 
 ### 7.7 相关文档
 
-- [16 Navigator · 使用指南](../16_Navigator/04_usage.md)
+- [16 Navigator · 使用指南](../16_Navigator/00_guide.md)
 - [04 Running](../04_Running/06_ros2_integration.md)

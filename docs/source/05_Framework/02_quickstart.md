@@ -73,4 +73,4 @@ AUTONOMY = {
 |------|------|
 | 架构理解 | [§3 框架架构](03_architecture.md) |
 | 修改配置 | [§4 配置管线](04_configuration.md) |
-| Autolink API | [03 Communication](../03_Communication/02_quickstart.md) |
+| Autolink API | [03 Communication](../03_Communication/00_guide.md) |

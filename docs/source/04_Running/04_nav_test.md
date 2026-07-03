@@ -99,4 +99,4 @@ autonomy_nav_test
 ### 4.8 相关文档
 
 - [§8 故障排查](08_troubleshooting.md)
-- [16 Navigator · 单点 BT](../16_Navigator/07_navigate_to_pose.md)
+- [16 Navigator · 单点 BT](../16_Navigator/04_navigate_to_pose.md)

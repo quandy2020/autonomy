@@ -57,4 +57,4 @@ gRPC Bridge 可将外部请求转为 `NavigateToPose` Action 语义，当前 `na
 ### 5.6 相关文档
 
 - [§6 执行模式](06_execution_modes.md)
-- [16 Navigator · 架构](../16_Navigator/05_architecture.md)
+- [16 Navigator · 架构](../16_Navigator/01_architecture.md)

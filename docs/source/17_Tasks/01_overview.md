@@ -7,7 +7,7 @@
 |------|------|
 | 层级 | **导航任务层**（Navigation Task Layer） |
 | 入口 | `system::Autonomy` |
-| 编排 | [Navigator](../16_Navigator/01_overview.md) + 行为树（演进中） |
+| 编排 | [Navigator](../16_Navigator/00_guide.md) + 行为树（演进中） |
 | 对标 | nav2_bt_navigator 的任务语义 |
 | 消息 | `commsgs::nav_msgs::*Action` |
 

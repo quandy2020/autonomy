@@ -10,7 +10,7 @@
 | 维度 | 本文 | 其他文档 |
 |------|------|----------|
 | 问题定义 $J(\tau)$、栅格离散 | 不展开 | [§0.3](00_guide.md#03-问题形式化) |
-| 导航栈分层、GetPlan 时序 | 不展开 | [§1](01_architecture.md)、[Navigator 综述](../16_Navigator/09_survey.md) |
+| 导航栈分层、GetPlan 时序 | 不展开 | [§1](01_architecture.md)、[Navigator 综述](../16_Navigator/06_survey.md) |
 | NavFn / Theta* 公式与伪代码 | 摘要 + 链接 | [§2 总览](02_planner_algorithms.md) · [§3–§5](03_navfn.md) |
 | 算法历史、分类、选型 | **本文** | — |
 | 几何路径 vs 轨迹、局部时空联合 | 摘要 | [Control 轨迹规划综述 §6.2.4](../09_Control/06_survey.md#624-几何路径轨迹与局部轨迹规划) |
@@ -348,7 +348,7 @@ A* 扩展时做 Line-of-Sight，允许祖父节点直连，路径逼近欧氏直
 ### 6.7.1 代价地图与规划
 
 规划质量高度依赖 Costmap2D：代价值语义、膨胀半径、图层顺序直接影响 NavFn / Theta* 行为。  
-**不重复展开** — 见 [§0.4 代价地图](00_guide.md#04-代价地图)、[Map · Costmap2D](../07_Map/06_costmap2d.md)、[架构 §1.2.1](01_architecture.md#121-地图层-costmap2dwrapper)。
+**不重复展开** — 见 [§0.4 代价地图](00_guide.md#04-代价地图)、[Map · Costmap2D](../07_Map/03_costmap2d.md)、[架构 §1.2.1](01_architecture.md#121-地图层-costmap2dwrapper)。
 
 关键约束：$r_{\mathrm{inflation}} \geq r_{\mathrm{robot}}$，否则点机器人假设下路径可能穿墙。
 
@@ -546,4 +546,4 @@ A* 扩展时做 Line-of-Sight，允许祖父节点直连，路径逼近欧氏直
 
 - [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) · [§2 规划器总览](02_planner_algorithms.md)
 - [NavFn](03_navfn.md) · [Dijkstra](04_dijkstra.md) · [Theta*](05_theta_star.md)
-- [Navigator 导航编排](../16_Navigator/09_survey.md) · [Control 轨迹规划综述](../09_Control/06_survey.md)（局部时空联合 · [§6.6.4](../09_Control/06_survey.md#664-时空联合轨迹规划)）
+- [Navigator 导航编排](../16_Navigator/06_survey.md) · [Control 轨迹规划综述](../09_Control/06_survey.md)（局部时空联合 · [§6.6.4](../09_Control/06_survey.md#664-时空联合轨迹规划)）

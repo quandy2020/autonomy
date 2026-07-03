@@ -75,4 +75,4 @@ server->Publish<commsgs::planning_msgs::Path>("/planning/path", std::move(path))
 ### 6.6 相关文档
 
 - [§4 配置](04_configuration.md)
-- [15 Bridge · 综述](../15_Bridge/08_survey.md)（与 foxglove_bridge 对标）
+- [15 Bridge · 综述](../15_Bridge/06_survey.md)（与 foxglove_bridge 对标）

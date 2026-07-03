@@ -55,4 +55,4 @@ config/autonomy.lua
 ### 4.7 相关文档
 
 - 仓库内配置文件：``config/navigator/README.md``（行为树 XML 与 `navigator.lua` 说明）
-- [16 Navigator · 使用指南](../16_Navigator/04_usage.md)
+- [16 Navigator · 使用指南](../16_Navigator/00_guide.md)

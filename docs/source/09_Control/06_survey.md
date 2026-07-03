@@ -1001,5 +1001,5 @@ navigator ──FollowPath──► controller
 
 - [§0 指南](00_guide.md) · [§2 架构](02_architecture.md)
 - [§3 Checkers](03_checkers.md) · [§4 Smoother](04_velocity_smoother.md) · [§5 控制器总览](05_controller_algorithms.md#581-控制器与-checker-配对)
-- [Planning 综述](../08_Planning/06_survey.md)（全局几何 · [§6.5.4](../08_Planning/06_survey.md#654-采样优化与反应式未内置)） · [Navigator 综述](../16_Navigator/09_survey.md)
+- [Planning 综述](../08_Planning/06_survey.md)（全局几何 · [§6.5.4](../08_Planning/06_survey.md#654-采样优化与反应式未内置)） · [Navigator 综述](../16_Navigator/06_survey.md)
 - [Prediction 行为预测](../11_Prediction/08_behavior_prediction.md)（动态障碍 · TEB/MPPI 扩展）

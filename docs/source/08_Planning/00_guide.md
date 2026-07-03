@@ -72,7 +72,7 @@ $$
 | 253 / 254 | INSCRIBED / LETHAL | 阻塞 | LOS 阻塞 |
 | 255 | UNKNOWN | `allow_unknown` | `allow_unknown` |
 
-NavFn 参数推导 [§3 NavFn §3.2](03_navfn.md#32-代价映射)；图层与膨胀 [Map · Costmap2D](../07_Map/06_costmap2d.md)、[§1.2.1](01_architecture.md#121-地图层-costmap2dwrapper)。
+NavFn 参数推导 [§3 NavFn §3.2](03_navfn.md#32-代价映射)；图层与膨胀 [Map · Costmap2D](../07_Map/03_costmap2d.md)、[§1.2.1](01_architecture.md#121-地图层-costmap2dwrapper)。
 
 ---
 

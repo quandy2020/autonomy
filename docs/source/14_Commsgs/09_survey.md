@@ -142,6 +142,6 @@ commsgs 的 **双层设计** 兼顾了 protobuf 序列化优势与 C++ 算法层
 | ROS 2 common_msgs | [ros2/common_interfaces](https://github.com/ros2/common_interfaces) |
 | Nav2 msgs | [ros-navigation/navigation2/nav2_msgs](https://github.com/ros-navigation/navigation2/tree/main/nav2_msgs) |
 | vision_msgs | [ros-perception/vision_msgs](https://github.com/ros-perception/vision_msgs) |
-| Autonomy 通信框架 | [03_Communication 文档](../03_Communication/01_overview.md) |
+| Autonomy 通信框架 | [03_Communication 文档](../03_Communication/00_guide.md) |
 | Autonomy 框架集成 | [05 Framework 文档](../05_Framework/index.rst) |
 | 源码 | [`autonomy/commsgs/`](https://github.com/quandy2020/autonomy/tree/feature/library/autonomy/commsgs) |

@@ -250,5 +250,5 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 | 数学公式 | [03_math.md](03_math.md) |
 | AMCL 配置 | [07_amcl.md](07_amcl.md) |
 | 架构设计 | [05_architecture.md](05_architecture.md) |
-| 地图模块 | [../07_Map/08_survey.md](../07_Map/08_survey.md) |
+| 地图模块 | [../07_Map/05_survey.md](../07_Map/05_survey.md) |
 | 路径规划 | [../08_Planning/06_survey.md](../08_Planning/06_survey.md) |

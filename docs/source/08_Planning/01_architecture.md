@@ -52,7 +52,7 @@ Navigator → PlannerServer → GlobalPlanner ──读快照── Costmap2DWra
 
 - 规划线程只读快照，与地图更新线程解耦（详见 §1.5）
 - 起点格常强制 `FREE_SPACE`，避免脚下被标障
-- 代价值语义见 [§0.4](00_guide.md#04-代价地图)；图层见 [Map · Costmap2D](../07_Map/06_costmap2d.md)
+- 代价值语义见 [§0.4](00_guide.md#04-代价地图)；图层见 [Map · Costmap2D](../07_Map/03_costmap2d.md)
 
 ---
 
