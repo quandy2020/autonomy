@@ -10,7 +10,7 @@
 |------|----------|
 | 应用开发者 | [§1 概览](01_overview.md) → [§2 快速开始](02_quickstart.md) → [§3 任务类型](03_task_types.md) |
 | 配置调参 | [§4 任务配置](04_configuration.md) → [§6 执行模式](06_execution_modes.md) |
-| 架构理解 | [§5 任务架构](05_architecture.md) → [16 Navigator](../16_Navigator/05_architecture.md) |
+| 架构理解 | [§5 任务架构](05_architecture.md) → [16 Navigator](../16_Navigator/01_architecture.md) |
 
 | 编号 | 文件 | 内容 |
 |------|------|------|

@@ -1159,7 +1159,8 @@
 }
 
 /* ----------------------------------------------------------------------------
-   Planning 模块架构图（05_architecture.md §5.2）
+   Planning / Communication 模块架构图（plan-arch-* · nav-chip-*）
+   Communication：01_architecture.md §1.1–§1.3；设计流程 comm-flow-* §1.4–§12.1
    ---------------------------------------------------------------------------- */
 
 .rst-content .plan-arch-diagram {
@@ -1337,6 +1338,34 @@
     background: var(--color-layer-label);
 }
 
+/* Bridge §2：分层图防溢出（长类名 / chip） */
+.rst-content .plan-arch-layer {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.rst-content .plan-arch-title {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.35;
+}
+
+.rst-content .plan-arch-diagram .nav-chip {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+    box-sizing: border-box;
+}
+
+.rst-content .plan-arch-split > .plan-arch-layer {
+    min-width: 0;
+}
+
+.rst-content .plan-arch-body-cols > .nav-body-block {
+    min-width: 0;
+}
+
 @media screen and (max-width: 768px) {
     .rst-content .plan-arch-split {
         grid-template-columns: 1fr;
@@ -1354,6 +1383,704 @@
 
     .rst-content .plan-arch-body-cols {
         grid-template-columns: 1fr;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Communication 设计流程图（comm-flow-* · 各章 §N.1 / §3.7）
+   ---------------------------------------------------------------------------- */
+
+.rst-content .comm-flow-diagram {
+    margin: 1.25rem 0 1.75rem;
+    padding: 1rem 1.25rem 1.1rem;
+    background: #f8f9fb;
+    border: 1px solid #e1e4e8;
+    border-radius: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.rst-content .comm-flow-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 0.65rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid #e1e4e8;
+}
+
+.rst-content .comm-flow-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    color: #fff;
+    background: var(--color-core);
+    flex-shrink: 0;
+}
+
+.rst-content .comm-flow-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #263238;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.rst-content .comm-flow-sub {
+    flex: 1 1 100%;
+    font-size: 0.82rem;
+    color: #607d8b;
+    line-height: 1.45;
+    margin-top: 0.1rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.rst-content .comm-flow-canvas {
+    margin: 0.25rem 0 0.65rem;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    text-align: center;
+}
+
+.rst-content .comm-flow-diagram pre.mermaid {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    display: inline-block;
+    min-width: min(100%, 520px);
+    text-align: center;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.rst-content .comm-flow-diagram pre.mermaid svg {
+    display: block;
+    margin: 0 auto;
+    max-width: none;
+    width: auto !important;
+    height: auto !important;
+}
+
+.rst-content .comm-flow-foot {
+    margin-top: 0;
+    padding-top: 0.65rem;
+    border-top: 1px dashed #cfd8dc;
+    font-size: 0.86rem;
+    color: #546e7a;
+    line-height: 1.5;
+}
+
+.rst-content .comm-flow-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.rst-content .comm-flow-chips .nav-chip {
+    font-size: 0.78rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.rst-content .comm-flow-legend {
+    width: 100%;
+    margin: 0;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+}
+
+.rst-content .comm-flow-legend th,
+.rst-content .comm-flow-legend td {
+    padding: 0.45rem 0.7rem;
+    border: 1px solid #e1e4e8;
+    text-align: left;
+    vertical-align: top;
+}
+
+.rst-content .comm-flow-legend th {
+    background: #eceff1;
+    font-weight: 600;
+    color: #37474f;
+    width: 22%;
+}
+
+.rst-content .comm-flow-legend td {
+    background: #fff;
+}
+
+.rst-content .comm-flow-diagram .comm-flow-legend + .comm-flow-legend {
+    margin-top: 0.55rem;
+}
+
+.rst-content .comm-flow-section-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #78909c;
+    margin: 0.55rem 0 0.35rem;
+    padding-left: 0.1rem;
+}
+
+.rst-content .comm-flow-diagram > .comm-flow-section-label:first-of-type {
+    margin-top: 0;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-link--labeled .comm-flow-link-label {
+    display: inline;
+    font-size: 0.65rem;
+    max-width: 4.5rem;
+}
+
+.rst-content .comm-flow-fork--register .comm-flow-fork-join .comm-flow-step-mid {
+    max-width: min(100%, 18rem);
+}
+
+.rst-content .comm-flow-fork--interrupt {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem 0.75rem;
+    width: 100%;
+    margin: 0.25rem 0 0.65rem;
+    padding: 0.9rem 1rem;
+    background: #fff;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.rst-content .comm-flow-fork--interrupt .comm-flow-fork-col {
+    min-width: 0;
+}
+
+.rst-content .comm-flow-fork--interrupt .comm-flow-fork-row .comm-flow-step {
+    padding: 0.5rem 0.4rem;
+}
+
+.rst-content .comm-flow-fork--interrupt .comm-flow-fork-row .comm-flow-step-title {
+    font-size: 0.76rem;
+    line-height: 1.3;
+}
+
+.rst-content .comm-flow-pipeline--hub .comm-flow-step {
+    min-width: 0;
+}
+
+.rst-content .comm-flow-pipeline .comm-flow-step .comm-flow-step-sub + .comm-flow-step-sub {
+    margin-top: -0.1rem;
+}
+
+.rst-content .comm-flow-pipeline .comm-flow-step .comm-flow-step-sub code {
+    font-size: 0.7rem;
+}
+
+.rst-content .comm-flow-diagram .comm-flow-canvas + .comm-flow-canvas {
+    margin-top: 0.5rem;
+}
+
+/* 卡片流水线：双端（§6.1）与多步链（§1.4 / §9.1 等） */
+.rst-content .comm-flow-pipeline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.5rem 0.65rem;
+    width: 100%;
+    margin: 0.25rem 0 0.65rem;
+    padding: 0.9rem 1rem;
+    background: #fff;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.rst-content .comm-flow-pipeline .comm-flow-link {
+    min-width: 0;
+    max-width: 5.75rem;
+}
+
+.rst-content .comm-flow-pipeline--chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.3rem 0.2rem;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-step {
+    flex: 1 1 5rem;
+    min-width: 0;
+    max-width: 9.5rem;
+    padding: 0.6rem 0.55rem;
+    box-sizing: border-box;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-step-title {
+    font-size: 0.84rem;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-step-sub {
+    font-size: 0.72rem;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-link {
+    flex: 0 0 auto;
+    flex-direction: row;
+    min-width: auto;
+    padding: 0 0.1rem;
+    align-self: center;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-link-label {
+    display: none;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-link--labeled {
+    flex-direction: column;
+    min-width: 3.75rem;
+    gap: 0.2rem;
+}
+
+.rst-content .comm-flow-pipeline--chain .comm-flow-link--labeled .comm-flow-link-label {
+    display: inline;
+    font-size: 0.65rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    padding: 0.15rem 0.35rem;
+}
+
+.rst-content .comm-flow-merge-row .comm-flow-link {
+    flex: 0 0 auto;
+    flex-direction: row;
+    min-width: auto;
+    padding: 0 0.1rem;
+    align-self: center;
+}
+
+.rst-content .comm-flow-merge-row .comm-flow-link-label {
+    display: none;
+}
+
+.rst-content .comm-flow-pipeline--hub {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+
+.rst-content .comm-flow-pipeline--hub .comm-flow-step-hub {
+    grid-column: 1 / -1;
+}
+
+.rst-content .comm-flow-merge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    margin: 0.25rem 0 0.65rem;
+    padding: 0.9rem 1rem;
+    background: #fff;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.rst-content .comm-flow-merge-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem 0.2rem;
+    width: 100%;
+}
+
+.rst-content .comm-flow-merge-row .comm-flow-step {
+    flex: 0 1 auto;
+    min-width: 5.5rem;
+    max-width: 8.5rem;
+    padding: 0.6rem 0.65rem;
+}
+
+.rst-content .comm-flow-merge-join {
+    color: #90a4ae;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0.1rem 0;
+}
+
+.rst-content .comm-flow-merge .comm-flow-step-out {
+    min-width: 8rem;
+    max-width: 11rem;
+}
+
+/* 双路径汇合（Plugin §7.1） */
+.rst-content .comm-flow-fork {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem 0.75rem;
+    width: 100%;
+    margin: 0.25rem 0 0.65rem;
+    padding: 0.9rem 1rem 1rem;
+    background: #fff;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.rst-content .comm-flow-fork-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+    background: #fafbfc;
+    border: 1px solid #eceff1;
+    border-radius: 8px;
+    padding: 0.65rem 0.55rem 0.75rem;
+}
+
+.rst-content .comm-flow-fork-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #546e7a;
+    text-align: center;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid #e8eaed;
+    margin-bottom: 0;
+}
+
+.rst-content .comm-flow-fork-desc {
+    font-size: 0.76rem;
+    color: #607d8b;
+    text-align: center;
+    line-height: 1.45;
+    padding: 0 0.2rem 0.15rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.rst-content .comm-flow-fork-track {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem 0.12rem;
+    flex: 1;
+    min-height: 4.5rem;
+    align-content: center;
+}
+
+.rst-content .comm-flow-fork-track--single {
+    justify-content: center;
+    align-content: center;
+}
+
+.rst-content .comm-flow-fork-track .comm-flow-step {
+    flex: 1 1 4.25rem;
+    min-width: 3.75rem;
+    max-width: 6.5rem;
+    padding: 0.6rem 0.5rem;
+}
+
+.rst-content .comm-flow-fork-track--dense {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+    min-height: auto;
+}
+
+.rst-content .comm-flow-fork-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.15rem 0.25rem;
+    width: 100%;
+}
+
+.rst-content .comm-flow-fork-row .comm-flow-step {
+    flex: none;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.rst-content .comm-flow-fork-row .comm-flow-link-arrow {
+    align-self: center;
+}
+
+.rst-content .comm-flow-fork-track--dense .comm-flow-step {
+    flex: none;
+    min-width: 0;
+    max-width: none;
+    padding: 0.55rem 0.45rem;
+}
+
+.rst-content .comm-flow-fork-track--dense .comm-flow-step-title {
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.rst-content .comm-flow-fork-track--dense .comm-flow-step-sub {
+    font-size: 0.68rem;
+    line-height: 1.3;
+}
+
+.rst-content .comm-flow-fork-track--single .comm-flow-step {
+    flex: 1 1 auto;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    min-height: 4.5rem;
+    justify-content: center;
+}
+
+.rst-content .comm-flow-fork-track .comm-flow-link-arrow {
+    flex: 0 0 auto;
+    font-size: 1rem;
+    color: #90a4ae;
+    line-height: 1;
+    padding: 0 0.05rem;
+}
+
+.rst-content .comm-flow-fork-join {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding-top: 0.6rem;
+    margin-top: 0.2rem;
+    border-top: 1px dashed #cfd8dc;
+}
+
+.rst-content .comm-flow-fork-join-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #78909c;
+    letter-spacing: 0.02em;
+    text-align: center;
+}
+
+.rst-content .comm-flow-fork-join-arrow {
+    color: #90a4ae;
+    font-size: 1.1rem;
+    line-height: 1;
+}
+
+.rst-content .comm-flow-fork-join .comm-flow-step {
+    min-width: 0;
+    max-width: min(100%, 20rem);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.rst-content .comm-flow-fork-join .comm-flow-step-sub code {
+    font-size: 0.68rem;
+}
+
+.rst-content .comm-flow-step {
+    min-width: 0;
+    border-radius: 8px;
+    border: 1px solid;
+    padding: 0.75rem 0.85rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.3rem;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+}
+
+.rst-content .comm-flow-step > * {
+    max-width: 100%;
+}
+
+.rst-content .comm-flow-step-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #263238;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.rst-content .comm-flow-step-sub {
+    font-size: 0.78rem;
+    color: #607d8b;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.rst-content .comm-flow-step-sub code,
+.rst-content .comm-flow-fork-desc code {
+    font-size: 0.72rem;
+    word-break: break-all;
+    white-space: normal;
+    line-height: 1.35;
+}
+
+.rst-content .comm-flow-step-client {
+    border-color: #9dd4d5;
+    background: var(--color-app-bg);
+}
+
+.rst-content .comm-flow-step-mid {
+    border-color: #cfd8dc;
+    background: #f5f7f8;
+}
+
+.rst-content .comm-flow-step-server {
+    border-color: #b8c4d0;
+    background: var(--color-core-bg);
+}
+
+.rst-content .comm-flow-step-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #607d8b;
+    overflow-wrap: anywhere;
+}
+
+.rst-content .comm-flow-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0 0.35rem;
+    min-width: 4.25rem;
+    align-self: center;
+}
+
+.rst-content .comm-flow-link-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #546e7a;
+    white-space: normal;
+    text-align: center;
+    max-width: 5.5rem;
+    overflow-wrap: anywhere;
+    background: #f8f9fb;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid #cfd8dc;
+    line-height: 1.3;
+}
+
+.rst-content .comm-flow-link-arrow {
+    font-size: 1.25rem;
+    color: #90a4ae;
+    line-height: 1;
+}
+
+@media screen and (max-width: 768px) {
+    .rst-content .comm-flow-diagram {
+        padding: 0.85rem 0.9rem 1rem;
+    }
+
+    .rst-content .comm-flow-canvas {
+        padding: 0.65rem 0.5rem;
+    }
+
+    .rst-content .comm-flow-diagram pre.mermaid {
+        min-width: 100%;
+    }
+
+    .rst-content .comm-flow-pipeline:not(.comm-flow-pipeline--chain) {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+        padding: 0.75rem 0.65rem;
+    }
+
+    .rst-content .comm-flow-pipeline--chain {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0.75rem 0.65rem;
+    }
+
+    .rst-content .comm-flow-step {
+        width: 100%;
+    }
+
+    .rst-content .comm-flow-link {
+        flex-direction: row;
+        gap: 0.45rem;
+        padding: 0.2rem 0;
+    }
+
+    .rst-content .comm-flow-pipeline--hub {
+        grid-template-columns: 1fr;
+    }
+
+    .rst-content .comm-flow-pipeline--hub .comm-flow-step-hub {
+        grid-column: auto;
+    }
+
+    .rst-content .comm-flow-pipeline--chain .comm-flow-step {
+        flex: 1 1 100%;
+        max-width: 100%;
+    }
+
+    .rst-content .comm-flow-merge-row {
+        flex-direction: column;
+    }
+
+    .rst-content .comm-flow-merge-row .comm-flow-step {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .rst-content .comm-flow-fork {
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+    }
+
+    .rst-content .comm-flow-fork-track--dense .comm-flow-step,
+    .rst-content .comm-flow-fork-track .comm-flow-step {
+        max-width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .rst-content .comm-flow-fork-row {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .rst-content .comm-flow-fork-track--single .comm-flow-step {
+        min-height: auto;
+    }
+
+    .rst-content .comm-flow-fork--interrupt {
+        grid-template-columns: 1fr;
+    }
+
+    .rst-content .comm-flow-fork--interrupt .comm-flow-fork-row {
+        flex-direction: column;
+    }
+
+    .rst-content .comm-flow-link-arrow {
+        transform: rotate(90deg);
     }
 }
 

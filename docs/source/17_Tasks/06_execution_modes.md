@@ -60,4 +60,4 @@ NavigateToPose
 ### 6.6 相关文档
 
 - [18 Tools · nav_test](../18_Tools/04_nav_test.md)
-- [16 Navigator · BT 引擎](../16_Navigator/06_bt_engine.md)
+- [16 Navigator · BT 引擎](../16_Navigator/03_bt_engine.md)

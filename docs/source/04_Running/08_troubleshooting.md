@@ -59,5 +59,5 @@ ros2 node list
 ### 8.6 相关文档
 
 - [02 Installation · 故障排查](../02_Installation/08_troubleshooting.md)
-- [16 Navigator · 使用指南](../16_Navigator/04_usage.md)
+- [16 Navigator · 使用指南](../16_Navigator/00_guide.md)
 - [19 FAQs](../19_FAQs/index.rst)

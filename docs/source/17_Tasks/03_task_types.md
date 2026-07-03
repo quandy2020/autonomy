@@ -63,4 +63,4 @@ Action 类型定义于 `autonomy/commsgs/proto/nav_msgs.proto`：
 ### 3.7 相关文档
 
 - [§7 API 参考](07_api_reference.md)
-- [16 Navigator · BT 引擎](../16_Navigator/06_bt_engine.md)
+- [16 Navigator · BT 引擎](../16_Navigator/03_bt_engine.md)

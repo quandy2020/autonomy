@@ -67,4 +67,4 @@ export GLOG_minloglevel=0
 ### 3.6 相关文档
 
 - [§4 离线导航测试](04_nav_test.md)
-- [16 Navigator](../16_Navigator/04_usage.md)
+- [16 Navigator](../16_Navigator/00_guide.md)
