@@ -252,8 +252,8 @@ BehaviorTreeFactory 注册 52 个节点类型
 | 9006 | `NAV_TO_POSE_TF_ERROR` | map→base_link 变换不可用 | 检查 localization / TF 发布 |
 | 9007 | `NAV_TO_POSE_INVALID_GOAL` | Goal 帧错误或位姿无效 | 检查 `frame_id` 与坐标 |
 | 9008 | `NAV_TO_POSE_NO_VALID_PATH` | 规划失败 | 检查 costmap、起终点 |
-| 9009 | `NAV_TO_POSE_PLANNER_FAILED` | ComputePathToPose FAILURE | 见 Planning [§4.8](../08_Planning/04_usage.md#48-故障排查) |
-| 9010 | `NAV_TO_POSE_CONTROLLER_FAILED` | FollowPath FAILURE | 见 Control [§4.8](../09_Control/04_usage.md) |
+| 9009 | `NAV_TO_POSE_PLANNER_FAILED` | ComputePathToPose FAILURE | 见 Planning [§0.8](../08_Planning/00_guide.md#08-故障排查) |
+| 9010 | `NAV_TO_POSE_CONTROLLER_FAILED` | FollowPath FAILURE | 见 Control [§0.19](../09_Control/00_guide.md#019-故障排查) |
 | 9011 | `NAV_TO_POSE_SMOOTHER_FAILED` | SmoothPath 超时/碰撞 | 增大 `max_smoothing_duration` |
 | 9012 | `NAV_TO_POSE_PATH_INVALID` | IsPathValid FAILURE | 清图或重规划 |
 | 9013 | `NAV_TO_POSE_GOAL_CHECKER_FAILED` | 航向无法对齐 | 增大 `yaw_goal_tolerance` |

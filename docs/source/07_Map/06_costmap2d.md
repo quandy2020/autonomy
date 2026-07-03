@@ -488,4 +488,4 @@ costmap = {
 - [数学原理 · 膨胀与坐标](03_math.md)
 - [模块架构设计](05_architecture.md)
 - [使用指南](04_usage.md)
-- [Planning · Costmap 消费](../08_Planning/05_architecture.md#523-地图层-costmap2dwrapper)
+- [Planning · Costmap 消费](../08_Planning/01_architecture.md#121-地图层-costmap2dwrapper)

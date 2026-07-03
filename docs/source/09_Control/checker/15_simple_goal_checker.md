@@ -1,10 +1,10 @@
 (simple-goal-checker)=
 # 15. SimpleGoalChecker
 
-> 归属 [§6 检查器 · §6.2](../06_checkers.md#62-simplegoalchecker)
+> 归属 [§3 检查器 · §3.2](../03_checkers.md#32-simplegoalchecker)
 >
 > `autonomy::control::checker::SimpleGoalChecker` 判定机器人是否到达目标：**XY 位置 + 航向**，支持 **stateful** 两阶段停车。  
-> 公式见 [03_math.md §3.9](../03_math.md)。
+> 公式见 [03_checkers.md §3.11](../03_checkers.md#311-goal-checker-判定数学)。
 
 | 维度 | 说明 |
 |------|------|
@@ -118,7 +118,8 @@ checker->Reset();  // 新 FollowPath 前调用
 
 ## 7. 源码索引
 
-```69:88:autonomy/control/checker/simple_goal_checker.cpp
+```cpp
+// autonomy/control/checker/simple_goal_checker.cpp:69-88
 bool SimpleGoalChecker::IsGoalReached(...) {
   if (check_xy_) {
   // XY 检测 + stateful 锁定

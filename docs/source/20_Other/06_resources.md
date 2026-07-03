@@ -29,6 +29,6 @@
 
 | 主题 | 推荐 |
 |------|------|
-| 路径规划 | Dijkstra、A\*、Theta\* 综述见 [08 Planning](../08_Planning/09_survey.md) |
+| 路径规划 | Dijkstra、A\*、Theta\* 综述见 [08 Planning](../08_Planning/06_survey.md) |
 | 定位 | [06 Localization](../06_Localization/index.rst) |
 | 坐标变换 | TF2 / 刚体变换 |

@@ -81,4 +81,4 @@ SensorCollator → feedLaserScan() → ObstacleLayer
 
 - [§6 Foxglove](06_foxglove.md)
 - [07 Map · 架构](../07_Map/05_architecture.md)
-- [08 Planning · 架构](../08_Planning/05_architecture.md)
+- [08 Planning · 架构](../08_Planning/01_architecture.md)

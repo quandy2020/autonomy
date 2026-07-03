@@ -1,10 +1,10 @@
 (velocity-smoother-impl)=
 # 20. VelocitySmoother 实现
 
-> 归属 [§7 速度平滑器](../07_velocity_smoother.md)
+> 归属 [§4 速度平滑器](../04_velocity_smoother.md)
 >
 > `autonomy::control::utils::VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`，对 `cmd_vel` 施加加速度约束与 deadband 过滤。  
-> 公式见 [03_math.md §3.11](../03_math.md)。
+> 公式见 [04_velocity_smoother.md §4.4–§4.6](../04_velocity_smoother.md#44-约束增量计算)。
 
 | 维度 | 说明 |
 |------|------|

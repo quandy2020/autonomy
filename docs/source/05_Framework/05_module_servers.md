@@ -27,7 +27,7 @@
   - `IsPathValid(path)`
   - `GetCostmapWrapper()`
 
-详见 [08 Planning](../08_Planning/05_architecture.md)。
+详见 [08 Planning](../08_Planning/01_architecture.md)。
 
 ### 5.4 ControllerServer
 
@@ -36,7 +36,7 @@
 - 与 Planner 共享 costmap：`SetSharedCostmap()`
 - 关键 API：`Start()`、`GetLatestOdometry()`、`TickFollowPath()`（演进中）
 
-详见 [09 Control](../09_Control/05_architecture.md)。
+详见 [09 Control](../09_Control/02_architecture.md)。
 
 ### 5.5 TransformServer + tf_buffer
 

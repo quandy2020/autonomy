@@ -1,7 +1,7 @@
 (stopped-goal-checker)=
 # 17. StoppedGoalChecker
 
-> 归属 [§6 检查器 · §6.4](../06_checkers.md#64-stoppedgoalchecker)
+> 归属 [§3 检查器 · §3.4](../03_checkers.md#34-stoppedgoalchecker)
 >
 > `autonomy::control::checker::StoppedGoalChecker` 继承 `SimpleGoalChecker`，在 XY + 航向达标后还要求**线速度与角速度接近零**。
 
@@ -97,7 +97,8 @@ Step 1 ∧ Step 2 ∧ Step 3 均满足 → **到达**。
 
 ## 7. 源码索引
 
-```44:57:autonomy/control/checker/stopped_goal_checker.cpp
+```cpp
+// autonomy/control/checker/stopped_goal_checker.cpp:44-57
 bool StoppedGoalChecker::IsGoalReached(...) {
   if (!SimpleGoalChecker::IsGoalReached(...)) return false;
   return fabs(velocity.angular.z) <= rot_stopped_velocity_

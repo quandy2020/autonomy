@@ -1,8 +1,8 @@
-# 7. 速度平滑器（VelocitySmoother）
+# 4. 速度平滑器（VelocitySmoother）
 
-`VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`。源码级说明见 **[§20 VelocitySmoother 实现](smoother/20_velocity_smoother_impl.md)**。
+`VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`。源码级说明见 **[`smoother/20_velocity_smoother_impl.md`](smoother/20_velocity_smoother_impl.md)**。
 
-## 7.1 定位
+## 4.1 定位
 
 | 维度 | 说明 |
 |------|------|
@@ -12,7 +12,7 @@
 | 反馈 | OPEN_LOOP（用上次输出）或 CLOSED_LOOP（用 OdomSmoother） |
 | 状态 | 算法已实现；pub/sub 定时器待接线 |
 
-## 7.2 向量约定
+## 4.2 向量约定
 
 三轴向量索引 $(v_x, v_y, \omega_z)$ 对应 `[0], [1], [2]`：
 
@@ -22,7 +22,7 @@
 | 1 | $v_y$ | 0（非完整约束） |
 | 2 | $\omega_z$ | max 2.5, min -2.5 rad/s |
 
-## 7.3 算法流程
+## 4.3 算法流程
 
 ```
 inputCommandCallback(cmd_vel_raw)
@@ -47,7 +47,7 @@ smootherTimer()  @ smoothing_frequency
     └─ 7. 保存 last_cmd_，发布 v_out
 ```
 
-## 7.4 约束增量计算
+## 4.4 约束增量计算
 
 对单个分量，设当前速度 $v_{curr}$、目标命令 $v_{cmd}$、控制频率 $f$、加速度 $a > 0$、减速度 $d < 0$：
 
@@ -67,7 +67,7 @@ $$
 
 > 减速度 $d$ 必须为**负数**（如 -2.5），加速度 $a$ 必须为**正数**（如 2.5）。构造函数会校验符号。
 
-## 7.5 同步缩放（scale_velocities）
+## 4.5 同步缩放（scale_velocities）
 
 当 `scale_velocities = true` 时，三轴共用同一缩放因子 $\eta$，保证 $(v_x, v_y, \omega_z)$ 同步变化，避免轨迹扭曲。
 
@@ -105,7 +105,7 @@ $$
 
 每周期最多增加 0.125 m/s，从 0 到 1.0 m/s 需约 8 个周期（0.4 s）。
 
-## 7.6 Deadband 过滤
+## 4.6 Deadband 过滤
 
 $$
 v_{out} = \begin{cases}
@@ -116,7 +116,7 @@ $$
 
 默认 deadband 为 $(0, 0, 0)$，即不过滤。可设 $(0.01, 0, 0.01)$ 消除微小抖动。
 
-## 7.7 超时保护
+## 4.7 超时保护
 
 若距上次命令时间超过 `velocity_timeout`（默认 1.0 s）：
 
@@ -125,7 +125,7 @@ $$
 
 防止控制器崩溃后机器人持续执行旧命令。
 
-## 7.8 反馈模式
+## 4.8 反馈模式
 
 | 模式 | `open_loop_` | 当前速度来源 | 适用 |
 |------|-------------|-------------|------|
@@ -138,7 +138,7 @@ $$
 \bar{v}_x = \frac{1}{N}\sum_{i=1}^{N} v_{x,i}
 $$
 
-## 7.9 配置参数
+## 4.9 配置参数
 
 **Proto**（`smoother_options.proto`）：
 
@@ -156,7 +156,7 @@ $$
 | `odom_topic` | `"odom"` | 闭环反馈话题 |
 | `odom_duration` | 0.1 s | 里程计平滑窗口 |
 
-## 7.10 与 ControllerServer 的关系
+## 4.10 与 ControllerServer 的关系
 
 ```
 ControllerServer                    VelocitySmoother
@@ -174,7 +174,7 @@ VelocitySmoother 可部署为：
 
 当前 Autonomy 两种方式的 pub/sub 均未接线。
 
-## 7.11 调参建议
+## 4.11 调参建议
 
 | 场景 | max_accel | scale_velocities | feedback |
 |------|-----------|------------------|----------|

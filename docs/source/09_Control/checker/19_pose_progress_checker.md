@@ -1,7 +1,7 @@
 (pose-progress-checker)=
 # 19. PoseProgressChecker
 
-> 归属 [§6 检查器 · §6.6](../06_checkers.md#66-poseprogresschecker)
+> 归属 [§3 检查器 · §3.6](../03_checkers.md#36-poseprogresschecker)
 >
 > `autonomy::control::checker::PoseProgressChecker` 继承 `SimpleProgressChecker`，将**航向变化**也视为有效进度。
 
@@ -83,7 +83,8 @@ $$
 
 ## 6. 源码索引
 
-```50:54:autonomy/control/checker/pose_progress_checker.cpp
+```cpp
+// autonomy/control/checker/pose_progress_checker.cpp:50-54
 bool PoseProgressChecker::IsRobotMovedEnough(const Pose2D& pose) {
   return PoseDistance(pose, baseline_pose_) > radius_
       || PoseAngleDistance(pose, baseline_pose_) > required_movement_angle_;

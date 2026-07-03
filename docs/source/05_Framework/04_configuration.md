@@ -92,8 +92,8 @@ autonomy->Configure(runtime);
 | 模块 | 配置文件 | 文档 |
 |------|----------|------|
 | Map | `config/map/map.lua` | [07 Map](../07_Map/04_usage.md) |
-| Planning | `config/planner/planner.lua` | [08 Planning](../08_Planning/04_usage.md) |
-| Control | `config/controller/controller.lua` | [09 Control](../09_Control/04_usage.md) |
+| Planning | `config/planner/planner.lua` | [08 Planning](../08_Planning/00_guide.md) |
+| Control | `config/controller/controller.lua` | [09 Control](../09_Control/00_guide.md) |
 | Navigator | `config/navigator/navigator.lua` | [16 Navigator](../16_Navigator/04_usage.md) |
 
 ### 4.7 相关文档

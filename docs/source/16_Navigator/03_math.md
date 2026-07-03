@@ -1,7 +1,7 @@
 (navigator-math)=
 # 3. 数学原理
 
-> 行为树节点语义与架构细节见 [06_bt_engine.md](06_bt_engine.md)；单点导航 BT 逐层解析见 [07_navigate_to_pose.md](07_navigate_to_pose.md)；GoalChecker 完整推导见 [Control §3.9](../09_Control/03_math.md#39-goal-checker-判定)。
+> 行为树节点语义与架构细节见 [06_bt_engine.md](06_bt_engine.md)；单点导航 BT 逐层解析见 [07_navigate_to_pose.md](07_navigate_to_pose.md)；GoalChecker 完整推导见 [Control §3.11](../09_Control/03_checkers.md#311-goal-checker-判定数学)。
 
 ### 3.1 问题形式化（SE(2)）
 
@@ -519,4 +519,4 @@ $$
 - [单点导航 BT · GoalReached](07_navigate_to_pose.md#741-goalreached第一优先级)
 - [BT 插件 · Control 节点](08_bt_plugins.md#84-control-节点3)
 - [使用指南 · common.lua 契约](04_usage.md#412-commonlua-参数契约)
-- [Control 数学 · Goal Checker 判定](../09_Control/03_math.md#39-goal-checker-判定)
+- [Control 数学 · Goal Checker 判定](../09_Control/03_checkers.md#311-goal-checker-判定数学)

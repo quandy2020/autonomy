@@ -1,6 +1,6 @@
 # 14. TEB Controller
 
-> 归属 [§8.6 TEB](../08_controller_algorithms.md#86-tebtimed-elastic-band) · Autonomy ❌ 未实现
+> 归属 [§5.6 TEB](../05_controller_algorithms.md#56-tebtimed-elastic-band) · Autonomy ❌ 未实现
 >
 > **Timed Elastic Band**（TEB）在全局路径初值上在线 deform **轨迹**（位姿序列 + 过渡时间 $\Delta T_k$），将 car-like / 差速平台的 kinodynamic 约束与避障统一为有限维稀疏优化；内层 LM 迭代 + 状态反馈构成滚动预测控制。
 
