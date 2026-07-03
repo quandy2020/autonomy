@@ -1,113 +1,88 @@
 (stopped-goal-checker)=
 # 17. StoppedGoalChecker
 
-> 归属 [§3 检查器 · §3.4](../03_checkers.md#34-stoppedgoalchecker)
+> 归属 [§3.4 StoppedGoalChecker](../03_checkers.md#34-stoppedgoalchecker) · Autonomy ✅ 已实现
 >
-> `autonomy::control::checker::StoppedGoalChecker` 继承 `SimpleGoalChecker`，在 XY + 航向达标后还要求**线速度与角速度接近零**。
-
-| 维度 | 说明 |
-|------|------|
-| 源码 | `autonomy/control/checker/stopped_goal_checker.*` |
-| 基类 | `SimpleGoalChecker` |
-| 状态 | ✅ 已实现 |
+> **StoppedGoalChecker** 继承 SimpleGoalChecker：在 XY + 航向达标后，还要求**线速度与角速度**低于停止阈值，用于充电对接、电梯等须**停稳**才算到达的场景。
 
 ---
 
-## 1. 架构
+## 1. 背景
 
-```
-IsGoalReached(query, goal, velocity)
-    │
-    ├─ SimpleGoalChecker::IsGoalReached()  → false ? 返回 false
-    │
-    ├─ |v_trans| = hypot(vx, vy) ≤ v_trans_stop ?
-    │
-    └─ |ω_z| ≤ ω_rot_stop ?
-          └─ 均满足 → true
-```
+仅位姿进入容差时，机器人仍可能因惯性或控制器输出非零速度而微动。对接类任务要求「几何到位 **且** 静止」。Nav2 **StoppedGoalChecker** 在 Simple 判定之上叠加速度门限，常与 [§20 VelocitySmoother](../smoother/20_velocity_smoother_impl.md) 联用以更快满足停止条件。
 
 ---
 
-## 2. 数学原理（Step-by-Step）
+## 2. 问题
 
-### Step 1：位姿判定（继承 Simple）
+**任务.** 判定位姿到达且底盘速度接近零。
 
-与 [§15 SimpleGoalChecker](15_simple_goal_checker.md) 相同：XY（可 stateful）+ 航向。
+**输入 / 输出.** `IsGoalReached(query, goal, velocity)` → `bool`；**必须使用** `velocity` 中的 $v_x,v_y,\omega_z$。
 
-### Step 2：线速度停止
+**在线形式.** 每周期：先位姿（含 stateful XY 锁定），再速度；全部满足才返回 true。
+
+---
+
+## 3. 位姿与速度模型
+
+**位姿误差.** 与 [§15 SimpleGoalChecker](15_simple_goal_checker.md) 相同：$d_{xy}$、$\Delta\theta=\mathrm{AngleDiff}(\theta,\theta_g)$。
+
+**速度量.**
 
 $$
-v_{trans} = \sqrt{v_x^2 + v_y^2} \leq v_{trans}^{stop}
+v_{trans} = \sqrt{v_x^2 + v_y^2}, \qquad \omega = \omega_z.
 $$
 
-### Step 3：角速度停止
+- **$v_{trans}^{stop}$**：线速度停止阈值（默认 0.25 m/s）
+- **$\omega_{rot}^{stop}$**：角速度停止阈值（默认 0.25 rad/s）
+
+---
+
+## 4. 数学问题定义
+
+**位姿到达** $G_p$. SimpleGoalChecker 语义（XY + yaw，含 stateful）为真。
+
+**速度停止** $G_v$.
 
 $$
-|\omega_z| \leq \omega_{rot}^{stop}
+v_{trans} \leq v_{trans}^{stop}, \qquad |\omega| \leq \omega_{rot}^{stop}.
 $$
 
-### Step 4：综合
+**总到达条件.**
 
-Step 1 ∧ Step 2 ∧ Step 3 均满足 → **到达**。
+$$
+\text{reached} \Leftrightarrow G_p \land G_v.
+$$
 
----
-
-## 3. 默认参数
-
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `trans_stopped_velocity_` | 0.25 m/s | 线速度上限 |
-| `rot_stopped_velocity_` | 0.25 rad/s | 角速度上限 |
-| （继承）`xy_goal_tolerance_` | 0.25 m | |
-| （继承）`yaw_goal_tolerance_` | 0.25 rad | |
+时空联合控制器（TEB/NMPC）规划的速度剖面在终点应趋于零；若仅几何跟踪，须依赖 Smoother 或控制器减速区。
 
 ---
 
-## 4. 适用场景
+## 5. 判定算法
 
-| 场景 | 原因 |
-|------|------|
-| 充电对接 | 必须静止才能插入 |
-| 电梯进出 | 防止惯性滑移 |
-| 精密装配 | 到位后不容许微动 |
-| 乘梯/载人 | 安全规范要求停稳 |
+<div class="algorithm-box-diagram">
 
----
+<div class="algorithm-box algorithm-box-phase-a">
+  <div class="algorithm-box-header">
+    <span class="algorithm-box-badge">算法 1</span>
+    <span class="algorithm-box-title">StoppedGoalChecker::IsGoalReached</span>
+  </div>
+  <div class="algorithm-box-body" markdown="1">
 
-## 5. 调参建议
+1. **若** SimpleGoalChecker::IsGoalReached($q,g,v$) 为 false → 返回 false  
+2. $v_{trans} \leftarrow \mathrm{hypot}(v_x, v_y)$  
+3. **若** $v_{trans} \leq v_{trans}^{stop}$ ∧ $|\omega_z| \leq \omega_{rot}^{stop}$ → 返回 true  
+4. **否则** 返回 false  
 
-| 场景 | v_trans_stop | ω_rot_stop |
-|------|--------------|------------|
-| 通用室内 | 0.25 m/s | 0.25 rad/s |
-| 严格对接 | 0.05 m/s | 0.1 rad/s |
-| 粗糙地面 | 0.35 m/s | 0.35 rad/s（避免振动误判） |
+  </div>
+</div>
 
-配合 `VelocitySmoother` 可更快满足停止条件。
+</div>
 
----
-
-## 6. GetTolerances
-
-在 `SimpleGoalChecker::GetTolerances` 基础上覆盖速度容差：
-
-- `vel_tolerance.linear.x/y` = `trans_stopped_velocity_`
-- `vel_tolerance.angular.z` = `rot_stopped_velocity_`
+`GetTolerances` 在 Simple 基础上写入线/角速度容差。精密对接可收紧至 $0.05$ m/s 量级；见 [§6.14 选型矩阵](../06_survey.md#614-工程选型矩阵) 中 StoppedGoalChecker 行。
 
 ---
 
-## 7. 源码索引
+## 6. 参考文献
 
-```cpp
-// autonomy/control/checker/stopped_goal_checker.cpp:44-57
-bool StoppedGoalChecker::IsGoalReached(...) {
-  if (!SimpleGoalChecker::IsGoalReached(...)) return false;
-  return fabs(velocity.angular.z) <= rot_stopped_velocity_
-      && hypot(velocity.linear.x, velocity.linear.y) <= trans_stopped_velocity_;
-}
-```
-
----
-
-## 8. 参考文献
-
-1. Nav2 StoppedGoalChecker: [controller server plugins](https://navigation.ros.org/configuration/packages/configuring-controller-server.html)
+1. Navigation2 Controller Server — Goal Checker plugins: [configuring-controller-server](https://navigation.ros.org/configuration/packages/configuring-controller-server.html)

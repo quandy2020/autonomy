@@ -1,126 +1,81 @@
 (simple-progress-checker)=
 # 18. SimpleProgressChecker
 
-> 归属 [§3 检查器 · §3.5](../03_checkers.md#35-simpleprogresschecker)
+> 归属 [§3.5 SimpleProgressChecker](../03_checkers.md#35-simpleprogresschecker) · Autonomy ✅ 已实现（`movement_time_allowance` 待接）
 >
-> `autonomy::control::checker::SimpleProgressChecker` 检测机器人是否在**时间窗口内产生足够位移**，用于防止 FollowPath 卡住。  
-> 公式见 [03_checkers.md §3.12](../03_checkers.md#312-progress-checker-判定数学)。
-
-| 维度 | 说明 |
-|------|------|
-| 源码 | `autonomy/control/checker/simple_progress_checker.*` |
-| 接口 | `common::ProgressChecker` |
-| 状态 | ✅ 已实现；`movement_time_allowance` 待实现 |
+> **SimpleProgressChecker** 检测机器人在 FollowPath 中是否产生**足够 XY 位移**；无位移则返回 false，累计后 Navigator 抛出 `FailedToMakeProgress`，触发 Recovery。
 
 ---
 
-## 1. 语义约定
+## 1. 背景
 
-| 返回值 | 含义 |
-|--------|------|
-| **true** | 有进度（移动足够或首次调用） |
-| **false** | 无进度 → 上层累计后抛 `FailedToMakeProgress` |
-
-> 注意：与 GoalChecker 相反，ProgressChecker 的 **true = 正常**。
+局部控制器可能因障碍、错误 lookahead 或定位异常而**原地振荡或卡住**，Goal Checker 长期 false 却难以区分「仍在努力」与「已失效」。Progress Checker 维护**基线位姿**，若位移低于阈值则判为无进度，与 Goal Checker **并行**运行（语义相反：`true` = 有进度）。
 
 ---
 
-## 2. 架构
+## 2. 问题
 
-```
-每个控制周期:
-  Check(current_pose)
-      │
-      ├─ 首次调用 (baseline_pose_set_ == false)
-      │     └─ ResetBaselinePose → return true
-      │
-      ├─ hypot(x-x_b, y-y_b) > radius_ ?
-      │     └─ yes → ResetBaselinePose → return true
-      │
-      └─ return false  （卡住）
-```
+**任务.** 每周期判断自上次基线以来是否移动足够远。
+
+**输入 / 输出.** `Check(current_pose)` → `bool`；`true` = **有进度**，`false` = **无进度**。
+
+**在线形式.** 首次调用或检测到足够位移时更新基线 $(x_b,y_b)$；Autonomy 当前**未实现** Nav2 的 `movement_time_allowance` 时间窗口（proto 已预留）。
 
 ---
 
-## 3. 数学原理（Step-by-Step）
+## 3. 位姿与位移模型
 
-### Step 1：转 Pose2D
+**当前位姿.** $p=(x,y,\theta)^\top$；基线 $p_b=(x_b,y_b,\theta_b)^\top$（仅 XY 参与 Simple 判定）。
+
+**平面位移.**
 
 $$
-p = (x,\; y,\; \theta = \mathrm{yaw}(\mathrm{orientation}))
+d_{xy} = \mathrm{hypot}(x - x_b,\; y - y_b).
 $$
 
-### Step 2：位移量
-
-$$
-d = \mathrm{hypot}(x - x_b,\; y - y_b)
-$$
-
-### Step 3：判定
-
-$$
-d > r \Rightarrow \text{有进度，重置基线}
-$$
-
-默认 $r = 0.5$ m（`required_movement_radius`）。
-
-### Step 4：Nav2 时间窗口（待实现）
-
-Nav2 完整语义还包括：在 `movement_time_allowance` 秒内必须满足 Step 3，否则失败。Autonomy 当前**仅看位移**，未计时。
+- **$r$**：`required_movement_radius`（默认 0.5 m）。
 
 ---
 
-## 4. 配置
+## 4. 数学问题定义
 
-```lua
-progress_checker = {
-    required_movement_radius = 0.5,
-    movement_time_allowance = 10.0,  -- proto 已定义，C++ 待实现
-},
-```
+**有进度条件.**
 
----
+$$
+d_{xy} > r \quad \Longrightarrow \quad \text{更新基线，返回 true}.
+$$
 
-## 5. 调参建议
+**无进度.** $d_{xy} \leq r$ 且非首次调用 → 返回 false。
 
-| 场景 | radius |
-|------|--------|
-| 室内通用 | 0.5 m |
-| 慢速精细 | 0.1–0.2 m |
-| 开阔/高速 | 1.0 m |
-| 原地旋转为主 | 改用 [§19 PoseProgressChecker](19_pose_progress_checker.md) |
-
-**过小**：正常慢速移动也会误判卡住。  
-**过大**：真正卡住时反应迟钝。
+Nav2 完整语义还包括：在 $T_{allow}$（`movement_time_allowance`）内必须至少一次满足 $d_{xy}>r$，否则失败。Autonomy C++ **待实现**该计时逻辑。
 
 ---
 
-## 6. 与 FollowPath 集成
+## 5. 判定算法
 
-```
-progress_checker->Check(pose) == false
-    → 累计无进度时间
-    → 超过 failure_tolerance / movement_time_allowance
-    → throw FailedToMakeProgress
-```
+<div class="algorithm-box-diagram">
+
+<div class="algorithm-box algorithm-box-phase-a">
+  <div class="algorithm-box-header">
+    <span class="algorithm-box-badge">算法 1</span>
+    <span class="algorithm-box-title">SimpleProgressChecker::Check</span>
+  </div>
+  <div class="algorithm-box-body" markdown="1">
+
+1. **若** 首次调用（`baseline_pose_set_` 为 false）→ ResetBaselinePose($p$) → 返回 true  
+2. $d_{xy} \leftarrow \mathrm{hypot}(x-x_b, y-y_b)$  
+3. **若** $d_{xy} > r$ → ResetBaselinePose($p$) → 返回 true  
+4. **否则** 返回 false（无进度）  
+
+  </div>
+</div>
+
+</div>
+
+原地大角度旋转而 XY 几乎不变时，Simple 会误判无进度 → 改用 [§19 PoseProgressChecker](19_pose_progress_checker.md)。FollowPath 集成时序见 [§3.9](../03_checkers.md#39-在-followpath-中的调用时序)。
 
 ---
 
-## 7. 源码索引
+## 6. 参考文献
 
-```cpp
-// autonomy/control/checker/simple_progress_checker.cpp:30-44
-bool SimpleProgressChecker::Check(PoseStamped& current_pose) {
-  if (!baseline_pose_set_ || IsRobotMovedEnough(current_pose2d)) {
-    ResetBaselinePose(current_pose2d);
-    return true;
-  }
-  return false;
-}
-```
-
----
-
-## 8. 参考文献
-
-1. Nav2 SimpleProgressChecker: [controller server plugins](https://navigation.ros.org/configuration/packages/configuring-controller-server.html)
+1. Navigation2 Controller Server — Progress Checker plugins: [configuring-controller-server](https://navigation.ros.org/configuration/packages/configuring-controller-server.html)

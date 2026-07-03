@@ -26,10 +26,10 @@
 |---|------|------|
 | 0 | [00_guide.md](00_guide.md) | 本指南（概览、形式化、上手、排错） |
 | 2 | [02_architecture.md](02_architecture.md) | 模块架构设计 |
-| 3 | [checker/index.rst](checker/index.rst) → [03_checkers.md](03_checkers.md) | 目标与进度检查器 |
+| 3 | [checker/index.rst](checker/index.rst) → [03_checkers.md](03_checkers.md) | 目标与进度检查器（含 [§3.13 Lua 接线](03_checkers.md#313-lua-proto-c-接线状态)） |
 | 4 | [smoother/index.rst](smoother/index.rst) → [04_velocity_smoother.md](04_velocity_smoother.md) | 速度平滑器 |
 | 5 | [controller/index.rst](controller/index.rst) → [05_controller_algorithms.md](05_controller_algorithms.md) | 局部控制器 |
-| 6 | [06_survey.md](06_survey.md) | 运动控制算法综述 |
+| 6 | [06_survey.md](06_survey.md) | 轨迹规划综述 |
 
 (control-controller-topics)=
 ### §10–§15 局部控制器专题（`controller/10_*`–`15_*`，§5 详读）
@@ -145,17 +145,30 @@ autonomy/control/
 | `nav2_teb_local_planner` | 未实现 | — |
 | `nav2_mppi_controller` | 配置预留 | 源码待引入 |
 | `nav2_graceful_controller` | 配置预留 | 源码待引入 |
+| `teb_local_planner`（第三方） | 未实现 | 显式时空联合局部规划 |
+
+**轨迹 vs 几何路径**：Planning 产出无时间的 `Path`；局部 **轨迹** $\tau(t)$ 与 **时空联合**（TEB、MPC、MPPI rollout）均在 `control` 完成。全局 SE(2) 搜索见 [Planning 综述 §6.3](../08_Planning/06_survey.md#631-四维分类法)；局部谱系见 [§6 综述](06_survey.md#624-几何路径轨迹与局部轨迹规划)。
 
 (control-overview)=
 ## 0.7 问题形式化
 
-机器人状态 $x(t)=(x,y,\theta,v_x,v_y,\omega_z)^\top$，控制 $u=(v_x^{cmd},v_y^{cmd},\omega_z^{cmd})$，全局路径 $\mathcal{P}=\{p_i\}\subset SE(2)$ 由 `planning` 提供。局部控制可写为有限时域最优：
+机器人状态 $x(t)=(x,y,\theta,v_x,v_y,\omega_z)^\top$，控制 $u=(v_x^{cmd},v_y^{cmd},\omega_z^{cmd})$，全局路径 $\mathcal{P}=\{p_i\}\subset SE(2)$ 由 `planning` 提供（**不含**速度剖面或 $t$）。局部控制可写为有限时域最优：
 
 $$
 \min_{u(\cdot)} J = \int_0^T \big( e_p^\top Q e_p + w_\theta e_\theta^2 + u^\top R u \big)\, dt
 $$
 
 约束：$(x,y)\in\mathcal{C}_{\mathrm{free}}$，速度/加速度界，终端 $p(T)\approx p_N$。航向误差 $e_\theta=\mathrm{AngleDiff}(\theta,\theta_{ref})$（结果 $\in(-\pi,\pi]$），Goal Checker 与控制器共用。
+
+**局部轨迹三层**（与 [§6.2.4](06_survey.md#624-几何路径轨迹与局部轨迹规划) 一致）：
+
+| 层级 | 表示 | 典型算法 |
+|------|------|----------|
+| 几何跟踪 | 当前 $(v,\omega)$，不显式存 $\tau$ | RPP、Graceful |
+| 滚动 rollout | 离散 $\tau_{0:H}$，执行首步 | DWB、MPPI |
+| 时空联合 | $s_k$ 与 $\Delta t_k$ 或 $\mathbf{U}_{0:H-1}$ 同优化 | TEB、NMPC |
+
+Time-scaling（固定 $\mathcal{P}$、只求 $s(t)$）与 VelocitySmoother（$u$ 层限幅）属于 **后处理/启发式**，不等价于 TEB 式单阶段时空 NLP。
 
 ## 0.8 运动学概要
 
@@ -190,19 +203,34 @@ $$
 
 并行：$\boxed{\mathrm{ProgressChecker}}\xrightarrow{\text{无进度}} \mathrm{FailedToMakeProgress}$。FollowPath 时序见 [§2.3](02_architecture.md#23-followpath-控制循环)。
 
+### 0.9.1 局部轨迹与时空联合选型
+
+FollowPath 除「选哪种控制器」外，还需匹配 **Goal Checker** 与是否依赖 **显式时间**。下表为工程速查；完整决策树见 [§6.15](06_survey.md#615-选型决策树)。
+
+| 场景 | 控制器 | Goal Checker | 要点 |
+|------|--------|--------------|------|
+| 室内差速默认 | RPP / Graceful | SimpleGoalChecker | 几何跟踪 + 启发式减速 |
+| 动态避障 | MPPI | SimpleGoalChecker | rollout 隐式 $\tau_{0:H}$；高 obstacle critic |
+| 人群 / 预测障碍 | MPPI / TEB | SimpleGoalChecker | 时空联合或 critic + [Prediction](../11_Prediction/08_behavior_prediction.md) |
+| 充电 / 精密停靠 | RPP / Graceful | StoppedGoalChecker | 位姿 + **停稳** |
+| 只到位置、不限朝向 | 任意 | PositionGoalChecker | 不检 yaw |
+| 显式 $\Delta t$ / jerk 协调 | TEB / NMPC | StoppedGoalChecker | 见 [§6.6.4–§6.6.5](06_survey.md#664-时空联合轨迹规划) |
+
+**Autonomy 落地顺序**（与 [§6.5.2](06_survey.md#652-autonomy-在技术谱系中的位置) 一致）：Checker + Smoother 已就绪 → **Phase 1** RPP 闭环 → **Phase 2** Graceful → **Phase 3** MPPI；TEB/NMPC 为扩展项。
+
 ## 0.10 算法插件一览
 
-| 算法 | 核心公式 / 机制 | 专题 | 状态 |
-|------|-----------------|------|------|
-| Graceful | Lyapunov 平滑律 + motion target | [§10](controller/10_graceful_controller.md) | ⏳ 配置 |
-| MPPI | $\mathbf{u}^*=\sum_k w_k \mathbf{u}^{(k)}$ | [§11](controller/11_mppi_controller.md) | ⏳ 配置 |
-| RPP | $\kappa=2y_l/L_d^2$ + 线速度调节 | [§12](controller/12_rpp_controller.md) | 工具 ✅ |
-| DWB | $\arg\min C_{total}(v,\omega)\in\mathcal{V}_{legal}$ | [§13](controller/13_dwb_controller.md) | ❌ |
-| TEB | $\arg\min \tilde{V}(B)$（稀疏 WNLS） | [§14](controller/14_teb_controller.md) | ❌ |
-| MPC | $\arg\min J(\mathbf{U})$ s.t. OCP | [§15](controller/15_mpc_controller.md) | ❌ |
-| VelocitySmoother | $v_{out}=v_{curr}+\mathrm{clamp}(\eta\Delta v)$ | [§4](04_velocity_smoother.md) | 算法 ✅ |
+| 算法 | 轨迹层 | 核心机制 | 专题 | 状态 |
+|------|--------|----------|------|------|
+| RPP | 几何 | $\kappa=2y_l/L_d^2$ + 线速度调节 | [§12](controller/12_rpp_controller.md) | 工具 ✅ |
+| Graceful | 几何 + 减速 | Lyapunov 平滑律 + motion target | [§10](controller/10_graceful_controller.md) | ⏳ 配置 |
+| MPPI | rollout | $\mathbf{u}^*=\sum_k w_k \mathbf{u}^{(k)}$ | [§11](controller/11_mppi_controller.md) | ⏳ 配置 |
+| DWB | rollout | $\arg\min C_{total}(v,\omega)\in\mathcal{V}_{legal}$ | [§13](controller/13_dwb_controller.md) | ❌ |
+| TEB | 时空联合 | $\arg\min \tilde{V}(B)$（稀疏 WNLS） | [§14](controller/14_teb_controller.md) | ❌ |
+| MPC | 固定网格 | $\arg\min J(\mathbf{U})$ s.t. OCP | [§15](controller/15_mpc_controller.md) | ❌ |
+| VelocitySmoother | $u$ 后处理 | $v_{out}=v_{curr}+\mathrm{clamp}(\eta\Delta v)$ | [§4](04_velocity_smoother.md) | 算法 ✅ |
 
-综述与选型见 [§6](06_survey.md)。
+综述与选型见 [§6](06_survey.md)；控制器总览 [§5](05_controller_algorithms.md#58-控制器对比)。
 
 ## 0.11 快速开始
 
@@ -340,6 +368,18 @@ autonomy::control::utils::VelocitySmoother smoother(opts);
 | `movement_time_allowance` | 允许无进度的时间 (s) | `10.0`（proto 已定义，C++ 待实现） |
 
 > **注意**：Lua 中 costmap 键名为 `costmap`，而 `LoadOptions()` 读取 `costmap_2d_options`。附加模式下通过 `SetSharedCostmap()` 共享 planner 全局地图。
+
+### 0.12.1 Checker / Smoother 接线状态
+
+| 配置段 | Lua 位置 | Proto | `LoadOptions()` | 运行时 |
+|--------|----------|-------|-----------------|--------|
+| `goal_checker` | `controller.lua` 顶层 | `checker_options.proto` | ❌ 未解析 | `SetTolerances()` 临时 |
+| `progress_checker` | 同上 | 同上 | ❌ 未解析 | 硬编码默认 |
+| `velocity_smoother` | 尚无顶层段 | `smoother_options.proto` | ❌ | 代码内构造 `VelocitySmootherOptions` |
+
+管线图、字段映射与 P1 清单见 [§3.13 Checkers · Lua 接线](03_checkers.md#313-lua-proto-c-接线状态)、[§4.12 Smoother 接线](04_velocity_smoother.md#412-配置接线状态)。
+
+**推荐**：`xy_goal_tolerance` 与 `config/common.lua` 中 `AUTONOMY_COMMON.goal_reached_tolerance` 及 Navigator BT `GoalReached` **保持一致**；`yaw_goal_tolerance` 可严于 XY（当前 0.35 rad）。
 
 ## 0.13 ControllerServer API
 

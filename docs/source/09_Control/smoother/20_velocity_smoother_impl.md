@@ -1,137 +1,114 @@
 (velocity-smoother-impl)=
-# 20. VelocitySmoother 实现
+# 20. VelocitySmoother
 
-> 归属 [§4 速度平滑器](../04_velocity_smoother.md)
+> 归属 [§4 速度平滑器](../04_velocity_smoother.md) · Autonomy ✅ 算法已实现，pub/sub 待接线
 >
-> `autonomy::control::utils::VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`，对 `cmd_vel` 施加加速度约束与 deadband 过滤。  
-> 公式见 [04_velocity_smoother.md §4.4–§4.6](../04_velocity_smoother.md#44-约束增量计算)。
-
-| 维度 | 说明 |
-|------|------|
-| 源码 | `autonomy/control/utils/velocity_smoother.*` |
-| 状态 | ✅ 算法已实现；pub/sub 定时器待接线 |
-| 配置 Proto | `smoother_options.proto`（Lua 接线待完成） |
+> **VelocitySmoother**（Nav2 `nav2_velocity_smoother`）对控制器输出的 `cmd_vel` 施加**逐轴加速度界**与可选**三轴同步缩放**，在 OPEN/CLOSED_LOOP 反馈下输出可执行的平滑速度；属于 **time-scaling 的 $u$ 层实现**，不替代 TEB/NMPC 的轨迹时空优化。
 
 ---
 
-## 1. 架构
+## 1. 背景
 
-```
-Controller / 上层
-    │ cmd_vel_raw
-    ▼
-VelocitySmoother
-├── inputCommandCallback()    # 接收命令
-├── smootherTimer()           # @ smoothing_frequency
-│   ├── 超时检测
-│   ├── 获取 v_curr (OPEN/CLOSED_LOOP)
-│   ├── clamp + η 缩放 + applyConstraints
-│   └── deadband
-└── OdomSmoother (CLOSED_LOOP)
-    │
-    ▼
-cmd_vel → 底盘
-```
+控制器（尤其 DWB/MPPI）可在单周期给出大幅速度跳变，而电机与驱动器有 $a_{max}$、deadband 限制。Nav2 将平滑独立为 VelocitySmoother 节点或 Server 内组件，在 **FollowPath 流水线末端**（见 [§0.9](../00_guide.md#09-控制流水线)）保证 `cmd_vel` 物理可行；与 Graceful 内置 jerk 约束、TEB 优化 $\Delta T_k$ 互补。
 
 ---
 
-## 2. 数学原理（Step-by-Step）
+## 2. 问题
 
-### Step 1：输入 clamp
+**任务.** 将原始速度命令 $v^{cmd}$ 映射为满足加速度界与速度界的输出 $v^{out}$。
+
+**输入 / 输出.** `inputCommandCallback(v^{cmd})` 缓存命令；`smootherTimer()` 按 `smoothing_frequency` 输出 $v^{out}$（三轴 $(v_x,v_y,\omega_z)$）。
+
+**在线形式.** 定时器驱动；超时无新命令则渐近零速（`velocity_timeout`）。
+
+---
+
+## 3. 速度与离散时间模型
+
+**状态.** 当前反馈速度 $v^{curr}$（OPEN_LOOP：上次输出；CLOSED_LOOP：`OdomSmoother` 滑动平均）。
+
+**控制周期.** $f = \texttt{smoothing\_frequency}$（默认 20 Hz），$\Delta t = 1/f$。
+
+**单轴加速度界.** 加速时 $a>0$，减速时减速度 $d<0$：
 
 $$
-v_{cmd} \leftarrow \mathrm{clamp}(v_{cmd},\; v_{min},\; v_{max})
+\Delta v_{max} = \frac{a}{f}, \quad \Delta v_{min} = -\frac{a}{f} \quad \text{（加速模式）},
 $$
 
-三轴 $(v_x, v_y, \omega_z)$ 独立 clamp。
-
-### Step 2：判定加速/减速模式
-
-加速 $\Leftrightarrow |v_{cmd}| \geq |v_{curr}| \land v_{curr}\cdot v_{cmd} \geq 0$
-
-| 模式 | $\Delta v_{max}$ | $\Delta v_{min}$ |
-|------|------------------|------------------|
-| 加速 | $a/f$ | $-a/f$ |
-| 减速 | $-d/f$ | $d/f$（$d<0$） |
-
-### Step 3：同步缩放 η
-
-`scale_velocities=true` 时，三轴取使 $|1-\eta|$ 最小的 $\eta$（`findEtaConstraint`）。
-
-### Step 4：应用约束
-
 $$
-v_{out} = v_{curr} + \mathrm{clamp}(\eta \Delta v,\; \Delta v_{min},\; \Delta v_{max})
+\Delta v_{max} = -\frac{d}{f}, \quad \Delta v_{min} = \frac{d}{f} \quad \text{（减速模式，$d<0$）}.
 $$
 
-### Step 5：Deadband
-
-$|v_{out}| < v_{deadband} \Rightarrow 0$
-
-### Step 6：超时
-
-超过 `velocity_timeout` 无新命令 → 发零速。
+加速/减速模式由 $|v^{cmd}|$ 与 $v^{curr}$ 符号关系判定（见 Nav2 实现）。
 
 ---
 
-## 3. 反馈模式
+## 4. 数学问题定义
 
-| 模式 | `v_curr` 来源 |
-|------|---------------|
-| OPEN_LOOP | 上次输出 `last_cmd_` |
-| CLOSED_LOOP | `OdomSmoother` 滑动平均 |
+**步骤 1 — clamp 命令.**
 
----
+$$
+v^{cmd}_i \leftarrow \mathrm{clamp}(v^{cmd}_i,\; v_{min,i},\; v_{max,i}), \quad i \in \{x,y,\omega\}.
+$$
 
-## 4. 默认参数
+**步骤 2 — 同步缩放（可选）.** `scale_velocities=true` 时求 $\eta \in (0,1]$ 使三轴 $\eta\,(v^{cmd}-v^{curr})$ 均落在各轴 $[\Delta v_{min},\Delta v_{max}]$ 内；取使 $|1-\eta|$ 最小的 $\eta$（`findEtaConstraint`）。
 
-| 参数 | 默认 |
-|------|------|
-| `smoothing_frequency` | 20 Hz |
-| `max_velocity` | [0.50, 0, 2.5] |
-| `max_accel` | [2.5, 0, 3.2] |
-| `max_decel` | [-2.5, 0, -3.2] |
-| `velocity_timeout` | 1.0 s |
-| `deadband_velocity` | [0, 0, 0] |
+**步骤 3 — 应用约束.**
+
+$$
+v^{out} = v^{curr} + \mathrm{clamp}\bigl(\eta\,(v^{cmd}-v^{curr}),\; \Delta v_{min},\; \Delta v_{max}\bigr).
+$$
+
+**步骤 4 — deadband.** $|v^{out}_i| < v^{deadband,i} \Rightarrow v^{out}_i = 0$。
 
 ---
 
-## 5. 源码对照
+## 5. 平滑算法
 
-| 方法 | 文件 | 职责 |
-|------|------|------|
-| `findEtaConstraint()` | `velocity_smoother.cpp` | 单轴 η |
-| `applyConstraints()` | `velocity_smoother.cpp` | 输出速度 |
-| `smootherTimer()` | `velocity_smoother.cpp` | 主循环 |
-| `OdomSmoother::updateState()` | `odometry_utils.cpp` | 滑动平均 |
+<div class="algorithm-box-diagram">
+
+<div class="algorithm-box algorithm-box-phase-a">
+  <div class="algorithm-box-header">
+    <span class="algorithm-box-badge">算法 1</span>
+    <span class="algorithm-box-title">VelocitySmoother::smootherTimer</span>
+  </div>
+  <div class="algorithm-box-io" markdown="1">
+
+**输入**：缓存的 $v^{cmd}$，$v^{curr}$（OPEN/CLOSED_LOOP）  
+**输出**：$v^{out}$ → 底盘
+
+  </div>
+  <div class="algorithm-box-body" markdown="1">
+
+1. **若** 距上次命令 $> T_{timeout}$ → 命令置零，平滑减速  
+2. $v^{cmd} \leftarrow \mathrm{clamp}(v^{cmd}, v_{min}, v_{max})$  
+3. 逐轴计算 $\Delta v_{max/min}$（加速/减速模式）  
+4. **若** `scale_velocities` → $\eta \leftarrow \mathrm{FindEta}(v^{cmd}, v^{curr})$；**否则** $\eta \leftarrow 1$  
+5. $v^{out} \leftarrow \mathrm{ApplyConstraints}(v^{curr}, v^{cmd}, \eta)$  
+6. deadband 过滤；保存 `last_cmd_`  
+
+  </div>
+</div>
+
+<div class="algorithm-box algorithm-box-phase-b algorithm-box-subroutine">
+  <div class="algorithm-box-header">
+    <span class="algorithm-box-badge">算法 2</span>
+    <span class="algorithm-box-title">CLOSED_LOOP 反馈</span>
+  </div>
+  <div class="algorithm-box-body" markdown="1">
+
+$v^{curr}$ 取自 `OdomSmoother`：窗口 $T_{odom}$ 内里程计算术平均  
+$\bar{v}_x = \frac{1}{N}\sum_i v_{x,i}$（$v_y,\omega_z$ 同理）
+
+  </div>
+</div>
+
+</div>
+
+**数值例.** $f=20$ Hz，$a=2.5$ m/s²，$v^{curr}=0$，$v^{cmd}_x=1.0$ → $\Delta v_{max}=0.125$ m/s/周期，约 8 周期（0.4 s）爬升至 1.0 m/s。源码见 `velocity_smoother.cpp`；配置接线 [§4.12](../04_velocity_smoother.md#412-配置接线状态)。
 
 ---
 
-## 6. 数值示例
+## 6. 参考文献
 
-$f=20$ Hz，$a=2.5$，$v_{curr}=0.2$，$v_{cmd}=1.0$：
-
-| 步 | 结果 |
-|----|------|
-| $\Delta v_{max}=0.125$ | 每周期最大增量 |
-| $\eta=0.125/0.8=0.156$ | 缩放因子 |
-| $v_{out}=0.325$ m/s | 第一周期输出 |
-
-约 8 周期（0.4 s）达到 1.0 m/s。
-
----
-
-## 7. 集成待办
-
-```
-□ 在 ControllerServer 或独立节点实例化
-□ 订阅 cmd_vel_raw，发布 cmd_vel
-□ 定时调用 smootherTimer() @ smoothing_frequency
-□ Lua 加载 VelocitySmootherOptions
-```
-
----
-
-## 8. 参考文献
-
-1. Nav2 velocity_smoother: [configuration](https://navigation.ros.org/configuration/packages/configuring-velocity-smoother.html)
+1. Navigation2 velocity_smoother: [configuring-velocity-smoother](https://navigation.ros.org/configuration/packages/configuring-velocity-smoother.html)

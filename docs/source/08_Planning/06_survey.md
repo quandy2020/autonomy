@@ -13,6 +13,7 @@
 | 导航栈分层、GetPlan 时序 | 不展开 | [§1](01_architecture.md)、[Navigator 综述](../16_Navigator/09_survey.md) |
 | NavFn / Theta* 公式与伪代码 | 摘要 + 链接 | [§2 总览](02_planner_algorithms.md) · [§3–§5](03_navfn.md) |
 | 算法历史、分类、选型 | **本文** | — |
+| 几何路径 vs 轨迹、局部时空联合 | 摘要 | [Control 轨迹规划综述 §6.2.4](../09_Control/06_survey.md#624-几何路径轨迹与局部轨迹规划) |
 
 **建议阅读顺序**
 
@@ -260,11 +261,14 @@ A* 扩展时做 Line-of-Sight，允许祖父节点直连，路径逼近欧氏直
 
 ### 6.5.4 采样、优化与反应式（未内置）
 
-| 族 | 代表 | 适用 | Autonomy |
-|----|------|------|----------|
-| 采样 | PRM, RRT, RRT* | 高维、窄缝迷宫 | ❌ 可经 `GlobalPlanner` 插件接 OMPL |
-| 优化 | CHOMP, TrajOpt | 轨迹平滑、约束 | 后处理 `SimpleSmoother`（[§0.6](00_guide.md#06-路径后处理)） |
-| 反应式 | APF, DWA, TEB | 局部避障 | `control` 模块 |
+| 族 | 代表 | 适用 | Autonomy | 深入阅读 |
+|----|------|------|----------|----------|
+| 采样 | PRM, RRT, RRT* | 高维、窄缝迷宫 | ❌ 可经 `GlobalPlanner` 插件接 OMPL | Planning 全局 |
+| 优化 | CHOMP, TrajOpt | 轨迹平滑、约束 | 后处理 `SimpleSmoother`（[§0.6](00_guide.md#06-路径后处理)） | [Control §6.7.10–§6.7.11](../09_Control/06_survey.md#6710-chomp20092013) |
+| 反应式 | APF, DWA, DWB | 局部避障、滚动采样 | `control` 模块 | [Control §6.7.4](../09_Control/06_survey.md#674-dwa-dwb1995-2010) |
+| 时空联合 | TEB, NMPC, MPPI | 动态障碍、显式 $\Delta t$ | `control`（第三方/待集成） | [Control §6.6.4](../09_Control/06_survey.md#664-时空联合轨迹规划) |
+
+**CHOMP / TrajOpt 在栈中的两种角色**：(1) Planning 侧 **Path 几何平滑**（Autonomy `SimpleSmoother` 为轻量替代）；(2) Control 侧 **局部轨迹优化**（含障碍势场、与 TEB/MPPI 选型对照见 Control 综述）。
 
 ### 6.5.5 动态环境与重规划
 
@@ -276,7 +280,7 @@ A* 扩展时做 Line-of-Sight，允许祖父节点直连，路径逼近欧氏直
 
 当前策略：**全局规划 + 路径校验 + 触发重规划**，非增量 D*。
 
----
+**与 Control 的分工**：Planning 输出 **无时间** 的几何 `Path`；局部 **轨迹** $\tau(t)$、**时空联合**（TEB、MPC、MPPI rollout）与 **time-scaling** 均在 `control` 层完成。全局侧 `SimpleSmoother` 仅做几何后处理，不等价于 TEB/NMPC 的时间分配。详见 [Control 综述 §6.2.4–§6.6.4](../09_Control/06_survey.md#624-几何路径轨迹与局部轨迹规划)。
 
 ## 6.6 Autonomy 内置规划器选型
 
@@ -506,6 +510,8 @@ A* 扩展时做 Line-of-Sight，允许祖父节点直连，路径逼近欧氏直
 | 导航函数 | 全空间单调指向目标的势场 |
 | 膨胀 | 障碍周围安全缓冲区 |
 | 重规划 | 环境变化后重新计算路径 |
+| 几何路径 | 无时间参数的 $SE(2)$ 航点序列；Planning 产出 |
+| 局部轨迹 | 含 $t$ 或控制序列的 $\tau(t)$；Control 产出（见 [Control 术语表 §6.17](../09_Control/06_survey.md#617-术语表)） |
 
 ---
 
@@ -540,4 +546,4 @@ A* 扩展时做 Line-of-Sight，允许祖父节点直连，路径逼近欧氏直
 
 - [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) · [§2 规划器总览](02_planner_algorithms.md)
 - [NavFn](03_navfn.md) · [Dijkstra](04_dijkstra.md) · [Theta*](05_theta_star.md)
-- [Navigator 导航编排](../16_Navigator/09_survey.md) · [Control 运动控制](../09_Control/06_survey.md)
+- [Navigator 导航编排](../16_Navigator/09_survey.md) · [Control 轨迹规划综述](../09_Control/06_survey.md)（局部时空联合 · [§6.6.4](../09_Control/06_survey.md#664-时空联合轨迹规划)）

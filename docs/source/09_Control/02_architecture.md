@@ -27,7 +27,7 @@ Planning ──Path──► ControllerServer ──FollowPath──► Controll
 | 下游 | 底盘、`VelocitySmoother`（可选） |
 | 入口 | `Autonomy` 构造 `ControllerServer`（`AUTONOMY_CONTROLLER`） |
 
-设计约束：**nav2 对齐** · **`ControllerInterface` 插件化** · **Checker 与控制器解耦** · **`controller.lua` → ControllerOptions**。
+| 设计约束 | **nav2 对齐** · **`ControllerInterface` 插件化** · **Checker 与控制器解耦** · **`controller.lua` → ControllerOptions** · Planning 出几何 Path、Control 出轨迹/时空联合（[§0.7](00_guide.md#07-问题形式化)） |
 
 ---
 
