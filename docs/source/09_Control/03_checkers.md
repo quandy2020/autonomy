@@ -32,148 +32,25 @@ virtual void Reset() = 0;
 
 ## 3.2 SimpleGoalChecker
 
-实现细节、逐步判定与源码索引见 **[§15 SimpleGoalChecker](checker/15_simple_goal_checker.md)**。
+六段式专题：**[§15 SimpleGoalChecker](checker/15_simple_goal_checker.md)**（背景 → 问题 → 误差模型 → 到达条件 → 算法 1–2）。
 
-**文件**：`checker/simple_goal_checker.*`
-
-**默认参数**：
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `xy_goal_tolerance_` | 0.25 m | XY 位置容差 |
-| `yaw_goal_tolerance_` | 0.25 rad | 航向容差 |
-| `stateful_` | true | XY 达标后锁定 |
-
-**判定流程**：
-
-<div class="plan-arch-diagram">
-
-  <div class="plan-arch-layer plan-arch-app">
-    <div class="plan-arch-header">
-      <span class="plan-arch-badge">阶段 1</span>
-      <span class="plan-arch-title">XY 位置检测</span>
-    </div>
-    <div class="plan-arch-body">
-      <div class="nav-body-block">
-        <div class="nav-body-label">条件</div>
-        <p><code>check_xy_ == true</code> 时检测</p>
-        <p>$(x-x_g)^2 + (y-y_g)^2 \leq \varepsilon_{xy}^2$</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="plan-arch-pipe"><span>XY 通过 + stateful → check_xy_ = false</span></div>
-
-  <div class="plan-arch-layer plan-arch-server">
-    <div class="plan-arch-header">
-      <span class="plan-arch-badge">阶段 2</span>
-      <span class="plan-arch-title">航向检测</span>
-    </div>
-    <div class="plan-arch-body">
-      <div class="nav-body-block">
-        <div class="nav-body-label">条件</div>
-        <p>$|\mathrm{AngleDiff}(\theta, \theta_g)| \leq \varepsilon_\theta$</p>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-**Stateful 行为**：XY 达标后即使后续 XY 漂移超出容差，也不再重检 XY，只检航向。适用于"先到位、再转朝向"的两阶段停车策略。
-
-**运行时调参**：
-
-```cpp
-checker->SetTolerances(0.25, 0.35, true);
-checker->Reset();  // 重置 check_xy_ = true
-```
+**文件**：`checker/simple_goal_checker.*` · 默认 XY 0.25 m、yaw 0.25 rad、`stateful=true`。
 
 ## 3.3 PositionGoalChecker
 
-实现细节见 **[§16 PositionGoalChecker](checker/16_position_goal_checker.md)**。
-
-**文件**：`checker/position_goal_checker.*`
-
-仅检测 XY 位置，**完全忽略航向**。
-
-$$
-(x - x_g)^2 + (y - y_g)^2 \leq \varepsilon_{xy}^2
-$$
-
-| 特性 | 说明 |
-|------|------|
-| `stateful_` | 一旦达标，`position_reached_ = true`，永久返回 true |
-| 适用场景 | 只关心到达位置、不关心最终朝向的任务 |
+**[§16 PositionGoalChecker](checker/16_position_goal_checker.md)** · 仅 XY，忽略航向 · `checker/position_goal_checker.*`
 
 ## 3.4 StoppedGoalChecker
 
-实现细节见 **[§17 StoppedGoalChecker](checker/17_stopped_goal_checker.md)**。
-
-**文件**：`checker/stopped_goal_checker.*`
-
-继承 `SimpleGoalChecker`，在 Simple 判定通过后追加**速度停止**条件：
-
-$$
-\sqrt{v_x^2 + v_y^2} \leq v_{trans}^{stop}, \quad
-|\omega_z| \leq \omega_{rot}^{stop}
-$$
-
-| 参数 | 默认值 |
-|------|--------|
-| `trans_stopped_velocity_` | 0.25 m/s |
-| `rot_stopped_velocity_` | 0.25 rad/s |
-
-**适用场景**：需要机器人完全静止后才算到达（充电对接、精密操作）。
+**[§17 StoppedGoalChecker](checker/17_stopped_goal_checker.md)** · Simple + 速度停稳 · `checker/stopped_goal_checker.*`
 
 ## 3.5 SimpleProgressChecker
 
-实现细节见 **[§18 SimpleProgressChecker](checker/18_simple_progress_checker.md)**。
-
-**文件**：`checker/simple_progress_checker.*`
-
-维护基线位姿 `baseline_pose_`（Pose2D）：
-
-```
-Check(pose):
-  if 首次调用 or IsRobotMovedEnough(pose):
-      ResetBaselinePose(pose)
-      return true    // 有进度
-  else:
-      return false   // 无进度 → 可能卡住
-```
-
-**移动判定**（仅 XY）：
-
-$$
-\operatorname{hypot}(x - x_b, y - y_b) > r
-$$
-
-| 参数 | 默认值 |
-|------|--------|
-| `radius_` | 0.5 m |
-
-**与 Nav2 差异**：Nav2 的 `SimpleProgressChecker` 还包含 `movement_time_allowance`（时间窗口内必须移动）。Autonomy 当前 **未实现时间维度**，proto 中 `movement_time_allowance` 已预留。
+**[§18 SimpleProgressChecker](checker/18_simple_progress_checker.md)** · XY 位移进度 · `movement_time_allowance` C++ 待实现
 
 ## 3.6 PoseProgressChecker
 
-实现细节见 **[§19 PoseProgressChecker](checker/19_pose_progress_checker.md)**。
-
-**文件**：`checker/pose_progress_checker.*`
-
-继承 `SimpleProgressChecker`，扩展判定条件：
-
-$$
-\operatorname{hypot}(x - x_b, y - y_b) > r
-\;\;\lor\;\;
-|\mathrm{NormalizeAngleDiff}(\theta - \theta_b)| > \Delta\theta_{req}
-$$
-
-| 参数 | 默认值 |
-|------|--------|
-| `radius_` | 0.5 m（继承） |
-| `required_movement_angle_` | 0.5 rad |
-
-**适用场景**：原地旋转也算"有进度"（例如先转向再前进的策略）。
+**[§19 PoseProgressChecker](checker/19_pose_progress_checker.md)** · XY 或航向变化算进度 · `checker/pose_progress_checker.*`
 
 ## 3.7 Checker 对比
 
@@ -201,6 +78,15 @@ progress_checker = {
 },
 ```
 
+**与控制器配对**（详见 [§5.8.1](05_controller_algorithms.md#581-控制器与-checker-配对)、[§0.9.1](00_guide.md#091-局部轨迹与时空联合选型)）：
+
+| 控制器族 | 推荐 Goal Checker | 推荐 Progress |
+|----------|-------------------|---------------|
+| RPP / Graceful | Simple | Simple；先转后走 → Pose |
+| MPPI / DWB | Simple | Simple |
+| TEB / NMPC | Stopped（对接）/ Simple | Pose（多原地转） |
+| 只到点任务 | Position | Simple |
+
 **Proto 定义**（`checker_options.proto`）：
 
 ```protobuf
@@ -217,7 +103,7 @@ message ProgressCheckerOptions {
 }
 ```
 
-> **当前限制**：C++ `Initialize()` 内使用硬编码默认值，标注 `TODO: Load parameters from configuration`。临时方案：构造后调用 `SetTolerances()` / `SetXYGoalTolerance()`。
+> **当前限制**：C++ `Initialize()` 内使用硬编码默认值，标注 `TODO: Load parameters from configuration`。临时方案：构造后调用 `SetTolerances()` / `SetXYGoalTolerance()`。完整 Lua→Proto→C++ 接线状态见 [§3.13](#313-lua-proto-c-接线状态)。
 
 ## 3.9 在 FollowPath 中的调用时序
 
@@ -245,28 +131,81 @@ message ProgressCheckerOptions {
 
 **注意**：`xy_goal_tolerance` 应与 Navigator BT 中 `GoalReached` 节点的容差保持一致（`AUTONOMY_COMMON.goal_reached_tolerance`）。
 
-## 3.11 Goal Checker 判定（数学）
+## 3.13 Lua → Proto → C++ 接线状态
 
-### SimpleGoalChecker
+Checker **算法已实现**，但配置管线与 `ControllerServer` 插件加载尚未闭环。下表描述当前仓库真实状态（以 `control_options.cpp`、`checker_options.proto` 为准）。
 
-1. 若 `check_xy`：$d_{xy}^2=(x-x_g)^2+(y-y_g)^2$；若 $d_{xy}^2>\varepsilon_{xy}^2$ → **false**
-2. XY 通过且 `stateful` → `check_xy=false`（锁定 XY）
-3. $\Delta\theta=\mathrm{AngleDiff}(\theta,\theta_g)$；$|\Delta\theta|\leq\varepsilon_\theta$ → **true**
+### 3.13.1 配置管线
 
-### PositionGoalChecker
+```
+config/control/controller.lua
+    │  AUTONOMY_CONTROLLER.goal_checker / progress_checker
+    ▼
+control::LoadOptions()          ← 仅读 controller_frequency、plugins、costmap_2d_options 等
+    │  ❌ 未读 goal_checker / progress_checker
+    ▼
+proto::ControllerOptions        ← 无 CheckerOptions 字段（checker 在独立 checker_options.proto）
+    ▼
+ControllerServer                ← goal_checkers_ / progress_checkers_ 容器已声明；插件实例化 ⏳
+    ▼
+SimpleGoalChecker::Initialize() ← TODO: Load parameters；当前硬编码 + SetTolerances() 临时方案
+```
 
-仅检 $d_{xy}^2\leq\varepsilon_{xy}^2$；`stateful` 时达标后恒 **true**。不检航向。
+**VelocitySmoother** 同理：`VelocitySmootherOptions` 在 `smoother_options.proto`，`controller.lua` **尚无**顶层 `velocity_smoother` 段；见 [§4.12](04_velocity_smoother.md#412-配置接线状态)。
 
-### StoppedGoalChecker
+### 3.13.2 Lua 字段 → Proto 映射（已定义 / 待接线）
 
-先满足 SimpleGoalChecker，再检 $v_{trans}=\sqrt{v_x^2+v_y^2}\leq v_{trans}^{stop}$ 且 $|\omega_z|\leq\omega_{rot}^{stop}$。
+**顶层** `controller.lua`（与 Navigator `AUTONOMY_COMMON.goal_reached_tolerance` 对齐）：
 
-## 3.12 Progress Checker 判定（数学）
+| Lua 键（`goal_checker`） | `GoalCheckerOptions` 字段 | C++ 消费 | 状态 |
+|--------------------------|---------------------------|----------|------|
+| `plugin` | `plugin` | 插件类名 / `FindGoalCheckerId` | Lua 未写；proto 已定义 |
+| `xy_goal_tolerance` | `xy_goal_tolerance` | 各 Checker `Initialize` | Lua ✅ · Load ⏳ |
+| `yaw_goal_tolerance` | `yaw_goal_tolerance` | Simple / Stopped | Lua ✅ · Load ⏳ |
+| `stateful` | `stateful` | Simple / Position | Lua ✅ · Load ⏳ |
+| — | `path_length_tolerance` | Nav2 扩展 | proto 预留 |
 
-### SimpleProgressChecker
+| Lua 键（`progress_checker`） | `ProgressCheckerOptions` 字段 | C++ 消费 | 状态 |
+|------------------------------|--------------------------------|----------|------|
+| `plugin` | `plugin` | 插件类名 | Lua 未写 · proto 已定义 |
+| `required_movement_radius` | `required_movement_radius` | Simple / Pose `radius_` | Lua ✅ · Load ⏳ |
+| `movement_time_allowance` | `movement_time_allowance` | Nav2 时间窗口 | Lua ✅ · **C++ 未实现** |
 
-$d=\mathrm{hypot}(x-x_b,y-y_b)$；若 $d>r$（`radius_`，默认 0.5 m）或首次调用 → 更新基线 $(x_b,y_b)$，返回 **true**；否则 **false**（无进度）。
+**StoppedGoalChecker 扩展**（Nav2 插件参数，Autonomy proto **尚未**定义）：
 
-### PoseProgressChecker
+| Nav2 参数 | C++ 成员 | 默认 |
+|-----------|----------|------|
+| `trans_stopped_velocity` | `trans_stopped_velocity_` | 0.25 m/s |
+| `rot_stopped_velocity` | `rot_stopped_velocity_` | 0.25 rad/s |
 
-额外 $\Delta\theta=|\mathrm{NormalizeAngleDiff}(\theta-\theta_b)|$；若 $d>r$ **或** $\Delta\theta>\Delta\theta_{req}$（默认 0.5 rad）→ 重置基线，**true**。
+**PoseProgressChecker 扩展**：
+
+| 参数 | C++ 成员 | 默认 |
+|------|----------|------|
+| `required_movement_angle` | `required_movement_angle_` | 0.5 rad |
+
+### 3.13.3 与 `mppi_controller` 嵌套块的关系
+
+`controller.lua` 内 `mppi_controller.goal_checker` / `progress_checker` 沿用 **Nav2 字符串插件名**（如 `nav2_controller::SimpleGoalChecker`），供未来 MPPI 插件自读参数；**不等于** Autonomy `ControllerServer` 顶层 Checker 管线。FollowPath 应以 **顶层** `goal_checker` / `progress_checker` 为单一真相源（待 `LoadOptions` 接入）。
+
+### 3.13.4 工程接线清单（P1）
+
+```
+□ ControllerOptions 增加 checker_options 字段（或 LoadOptions 合并读取 CheckerOptions）
+□ control_options.cpp 解析 goal_checker / progress_checker 字典
+□ ControllerServer 构造：按 plugin 字段实例化 Checker + Initialize(options)
+□ SimpleProgressChecker：实现 movement_time_allowance 计时
+□ GoalCheckerOptions 扩展 stopped / pose 专有字段（或插件级子字典）
+□ 单元测试：Lua 容差 → IsGoalReached 边界
+```
+
+**临时集成**（测试 / 单测）：
+
+```cpp
+auto gc = std::make_shared<checker::SimpleGoalChecker>();
+gc->Initialize("goal_checker", nullptr);
+gc->SetTolerances(
+    lua_xy, lua_yaw, lua_stateful);  // 手动对齐 controller.lua
+```
+
+插件选型与控制器配对见 [§5.8.1](05_controller_algorithms.md#581-控制器与-checker-配对)。

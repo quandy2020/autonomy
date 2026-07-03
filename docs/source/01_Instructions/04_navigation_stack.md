@@ -158,3 +158,4 @@ TF 链：`map → odom → base_link`。配置在 `config/common.lua` 的 `globa
 
 - [§3 系统架构](03_system_architecture.md)
 - [08 Planning 综述](../08_Planning/06_survey.md)
+- [09 Control 轨迹规划综述](../09_Control/06_survey.md)（局部跟踪 · 时空联合 · [§6.6.4](../09_Control/06_survey.md#664-时空联合轨迹规划)）

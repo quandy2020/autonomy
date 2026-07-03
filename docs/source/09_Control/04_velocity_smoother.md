@@ -1,6 +1,6 @@
 # 4. 速度平滑器（VelocitySmoother）
 
-`VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`。源码级说明见 **[`smoother/20_velocity_smoother_impl.md`](smoother/20_velocity_smoother_impl.md)**。
+`VelocitySmoother` 移植自 Nav2 `nav2_velocity_smoother`。六段式实现专题见 **[§20 VelocitySmoother](smoother/20_velocity_smoother_impl.md)**（算法 1–2、OPEN/CLOSED_LOOP）。
 
 ## 4.1 定位
 
@@ -184,3 +184,22 @@ VelocitySmoother 可部署为：
 | 消除抖动 | deadband [0.01, 0, 0.02] | — | — |
 
 **原则**：`smoothing_frequency` 应 ≥ `controller_frequency`；加速度限制应匹配机器人硬件规格。
+
+## 4.12 配置接线状态
+
+与 Checker 类似，Smoother **算法已实现**，配置管线未完成：
+
+| 项 | 状态 |
+|----|------|
+| `smoother_options.proto` | ✅ `VelocitySmootherOptions` 已定义 |
+| `controller.lua` 顶层段 | ❌ 尚无 `velocity_smoother = { ... }` |
+| `control::LoadOptions()` | ❌ 未读 Smoother 参数 |
+| `ControllerServer` / 独立节点 | ⏳ pub/sub 与定时器未接线 |
+
+**目标管线**（与 [§3.13 Checkers](03_checkers.md#313-lua-proto-c-接线状态) 同型）：
+
+```
+controller.lua → velocity_smoother.* → LoadOptions → VelocitySmootherOptions → VelocitySmoother(opts)
+```
+
+**临时用法**：在 C++ 中手动填充 `VelocitySmootherOptions`（见 [§0.11.5](00_guide.md#0115-独立使用-velocitysmoother)）或 [§20 算法 1](smoother/20_velocity_smoother_impl.md#5-平滑算法)。六段式实现专题：[§20](smoother/20_velocity_smoother_impl.md)。

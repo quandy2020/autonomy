@@ -1,108 +1,86 @@
 (pose-progress-checker)=
 # 19. PoseProgressChecker
 
-> 归属 [§3 检查器 · §3.6](../03_checkers.md#36-poseprogresschecker)
+> 归属 [§3.6 PoseProgressChecker](../03_checkers.md#36-poseprogresschecker) · Autonomy ✅ 已实现
 >
-> `autonomy::control::checker::PoseProgressChecker` 继承 `SimpleProgressChecker`，将**航向变化**也视为有效进度。
-
-| 维度 | 说明 |
-|------|------|
-| 源码 | `autonomy/control/checker/pose_progress_checker.*` |
-| 基类 | `SimpleProgressChecker` |
-| 状态 | ✅ 已实现 |
+> **PoseProgressChecker** 继承 SimpleProgressChecker：除 XY 位移外，**航向变化** $\Delta\theta$ 超过阈值也视为有效进度，避免「先原地转向再前进」策略被误判为卡住。
 
 ---
 
-## 1. 架构
+## 1. 背景
 
-```
-Check(current_pose)
-    │
-    ├─ 首次 or IsRobotMovedEnough(pose2d) ?
-    │     │
-    │     ├─ hypot(x-x_b, y-y_b) > radius_     （继承）
-    │     └─ |NormalizeAngleDiff(θ-θ_b)| > Δθ   （扩展）
-    │
-    └─ 任一满足 → ResetBaselinePose → true
-```
+Graceful / RPP 等控制器常采用**先对齐航向、再前进**；此阶段 XY 位移很小，SimpleProgressChecker 会持续返回 false。PoseProgressChecker 将转角纳入进度，与 Nav2 `nav2_controller` 中同名插件语义一致。
 
 ---
 
-## 2. 数学原理（Step-by-Step）
+## 2. 问题
 
-### Step 1：XY 位移（同 Simple）
+**任务.** 判定自基线以来是否发生足够 **平移或旋转**。
+
+**输入 / 输出.** `Check(current_pose)` → `bool`；`true` = 有进度。
+
+**在线形式.** 与 Simple 相同基线更新逻辑；扩展 `IsRobotMovedEnough` 为析取条件。
+
+---
+
+## 3. 位姿与位移模型
+
+**XY 位移**（同 §18）.
 
 $$
-d_{xy} = \mathrm{hypot}(x - x_b,\; y - y_b) > r
+d_{xy} = \mathrm{hypot}(x - x_b,\; y - y_b).
 $$
 
-### Step 2：航向变化
+**航向变化.**
 
 $$
-\Delta\theta = \left|\mathrm{NormalizeAngleDiff}(\theta - \theta_b)\right| > \Delta\theta_{req}
+\Delta\theta = \left|\mathrm{NormalizeAngleDiff}(\theta - \theta_b)\right|.
 $$
 
-默认 $\Delta\theta_{req} = 0.5$ rad。
+- **$r$**：位移半径（默认 0.5 m，继承 Simple）
+- **$\Delta\theta_{req}$**：`required_movement_angle`（默认 0.5 rad）
 
-### Step 3：逻辑或
+---
+
+## 4. 数学问题定义
+
+**有进度条件.**
 
 $$
-\text{有进度} \Leftrightarrow d_{xy} > r \;\lor\; \Delta\theta > \Delta\theta_{req}
+d_{xy} > r \;\;\lor\;\; \Delta\theta > \Delta\theta_{req}.
 $$
 
----
-
-## 3. 为何需要 PoseProgressChecker
-
-| 情况 | SimpleProgressChecker | PoseProgressChecker |
-|------|----------------------|---------------------|
-| 原地旋转对齐 | ❌ 判为无进度 | ✅ 转角算进度 |
-| 先转向再前进 | 可能误报卡住 | ✅ |
-| 纯直线行驶 | ✅ | ✅ |
+满足 → 重置基线，返回 **true**；否则 **false**（无进度）。
 
 ---
 
-## 4. 默认参数
+## 5. 判定算法
 
-| 参数 | 默认 |
-|------|------|
-| `radius_` | 0.5 m（继承） |
-| `required_movement_angle_` | 0.5 rad |
+<div class="algorithm-box-diagram">
 
----
+<div class="algorithm-box algorithm-box-phase-a">
+  <div class="algorithm-box-header">
+    <span class="algorithm-box-badge">算法 1</span>
+    <span class="algorithm-box-title">PoseProgressChecker::IsRobotMovedEnough</span>
+  </div>
+  <div class="algorithm-box-body" markdown="1">
 
-## 5. 调参建议
+1. $d_{xy} \leftarrow \mathrm{hypot}(x-x_b, y-y_b)$  
+2. $\Delta\theta \leftarrow |\mathrm{NormalizeAngleDiff}(\theta - \theta_b)|$  
+3. **若** $d_{xy} > r$ **或** $\Delta\theta > \Delta\theta_{req}$ → 返回 true  
+4. **否则** 返回 false  
 
-| 场景 | radius | Δθ_req |
-|------|--------|--------|
-| 初始旋转策略 | 0.5 m | 0.3 rad |
-| 窄通道直线 | 0.3 m | 0.8 rad（减少误触发） |
-| 全向/高旋转 | 0.5 m | 0.2 rad |
+`Check()` 外层逻辑同 [§18 算法 1](18_simple_progress_checker.md#5-判定算法)：首次或 IsRobotMovedEnough 为真时 ResetBaselinePose。
 
----
+  </div>
+</div>
 
-## 6. 源码索引
+</div>
 
-```cpp
-// autonomy/control/checker/pose_progress_checker.cpp:50-54
-bool PoseProgressChecker::IsRobotMovedEnough(const Pose2D& pose) {
-  return PoseDistance(pose, baseline_pose_) > radius_
-      || PoseAngleDistance(pose, baseline_pose_) > required_movement_angle_;
-}
-```
+实现见 `pose_progress_checker.cpp`。与 Simple 选型见 [§3.7](../03_checkers.md#37-checker-对比)。
 
 ---
 
-## 7. 与 SimpleProgressChecker 选型
+## 6. 参考文献
 
-```
-机器人会先原地转较大角度？
-  ├─ 是 → PoseProgressChecker
-  └─ 否 → SimpleProgressChecker（更简单）
-```
-
----
-
-## 8. 参考文献
-
-1. Nav2 PoseProgressChecker: [controller server plugins](https://navigation.ros.org/configuration/packages/configuring-controller-server.html)
+1. Navigation2 Controller Server — Progress Checker plugins: [configuring-controller-server](https://navigation.ros.org/configuration/packages/configuring-controller-server.html)

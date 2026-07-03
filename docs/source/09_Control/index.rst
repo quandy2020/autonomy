@@ -12,4 +12,4 @@ Control 运动控制
    3 目标与进度检查器 <checker/index>
    4 速度平滑器 <smoother/index>
    5 局部控制器 <controller/index>
-   6 运动控制算法综述 <06_survey>
+   6 轨迹规划综述 <06_survey>
