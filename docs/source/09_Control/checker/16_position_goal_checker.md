@@ -1,7 +1,7 @@
 (position-goal-checker)=
 # 16. PositionGoalChecker
 
-> 归属 [§6 检查器 · §6.3](../06_checkers.md#63-positiongoalchecker)
+> 归属 [§3 检查器 · §3.3](../03_checkers.md#33-positiongoalchecker)
 >
 > `autonomy::control::checker::PositionGoalChecker` 仅判定 **XY 位置**是否到达，**完全忽略航向**。  
 > 对比见 [§15 SimpleGoalChecker](15_simple_goal_checker.md)。
@@ -91,7 +91,8 @@ checker->Reset();
 
 ## 6. 源码索引
 
-```46:66:autonomy/control/checker/position_goal_checker.cpp
+```cpp
+// autonomy/control/checker/position_goal_checker.cpp:46-66
 bool PositionGoalChecker::IsGoalReached(...) {
   if (stateful_ && position_reached_) return true;
   bool position_reached = (dx*dx + dy*dy <= xy_goal_tolerance_sq_);

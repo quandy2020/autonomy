@@ -157,4 +157,4 @@ TF 链：`map → odom → base_link`。配置在 `config/common.lua` 的 `globa
 ## 4.7 相关文档
 
 - [§3 系统架构](03_system_architecture.md)
-- [08 Planning 综述](../08_Planning/09_survey.md)
+- [08 Planning 综述](../08_Planning/06_survey.md)

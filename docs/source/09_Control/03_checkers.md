@@ -1,8 +1,10 @@
-# 6. 目标与进度检查器
+# 3. 目标与进度检查器
 
 Checker 是 Control 模块的**判定子系统**，独立于局部控制器运行。Goal Checker 判定是否到达目标；Progress Checker 判定机器人是否在向目标前进（防卡住）。
 
-## 6.1 接口设计
+> 各 Checker 实现专题见 `checker/15_*`–`19_*`（文件名前缀；与 `controller/15_mpc` 不同目录）。文档地图见 [00_guide §0.1](00_guide.md#01-阅读路径与文档地图)。
+
+## 3.1 接口设计
 
 ### GoalChecker
 
@@ -28,7 +30,7 @@ virtual void Reset() = 0;
 - GoalChecker：`true` = 已到达
 - ProgressChecker：`true` = **有进度**（机器人移动足够）；`false` = 无进度 → 触发 `FailedToMakeProgress`
 
-## 6.2 SimpleGoalChecker
+## 3.2 SimpleGoalChecker
 
 实现细节、逐步判定与源码索引见 **[§15 SimpleGoalChecker](checker/15_simple_goal_checker.md)**。
 
@@ -86,7 +88,7 @@ checker->SetTolerances(0.25, 0.35, true);
 checker->Reset();  // 重置 check_xy_ = true
 ```
 
-## 6.3 PositionGoalChecker
+## 3.3 PositionGoalChecker
 
 实现细节见 **[§16 PositionGoalChecker](checker/16_position_goal_checker.md)**。
 
@@ -103,7 +105,7 @@ $$
 | `stateful_` | 一旦达标，`position_reached_ = true`，永久返回 true |
 | 适用场景 | 只关心到达位置、不关心最终朝向的任务 |
 
-## 6.4 StoppedGoalChecker
+## 3.4 StoppedGoalChecker
 
 实现细节见 **[§17 StoppedGoalChecker](checker/17_stopped_goal_checker.md)**。
 
@@ -123,7 +125,7 @@ $$
 
 **适用场景**：需要机器人完全静止后才算到达（充电对接、精密操作）。
 
-## 6.5 SimpleProgressChecker
+## 3.5 SimpleProgressChecker
 
 实现细节见 **[§18 SimpleProgressChecker](checker/18_simple_progress_checker.md)**。
 
@@ -152,7 +154,7 @@ $$
 
 **与 Nav2 差异**：Nav2 的 `SimpleProgressChecker` 还包含 `movement_time_allowance`（时间窗口内必须移动）。Autonomy 当前 **未实现时间维度**，proto 中 `movement_time_allowance` 已预留。
 
-## 6.6 PoseProgressChecker
+## 3.6 PoseProgressChecker
 
 实现细节见 **[§19 PoseProgressChecker](checker/19_pose_progress_checker.md)**。
 
@@ -173,7 +175,7 @@ $$
 
 **适用场景**：原地旋转也算"有进度"（例如先转向再前进的策略）。
 
-## 6.7 Checker 对比
+## 3.7 Checker 对比
 
 | Checker | 检测维度 | Stateful | 速度检测 | 专题 | 典型用途 |
 |---------|----------|----------|----------|------|----------|
@@ -183,7 +185,7 @@ $$
 | SimpleProgressChecker | XY 位移 | — | ❌ | [§18](checker/18_simple_progress_checker.md) | 防卡住 |
 | PoseProgressChecker | XY + Yaw 变化 | — | ❌ | [§19](checker/19_pose_progress_checker.md) | 含旋转进度 |
 
-## 6.8 配置与集成
+## 3.8 配置与集成
 
 **Lua 配置**（`controller.lua`）：
 
@@ -217,7 +219,7 @@ message ProgressCheckerOptions {
 
 > **当前限制**：C++ `Initialize()` 内使用硬编码默认值，标注 `TODO: Load parameters from configuration`。临时方案：构造后调用 `SetTolerances()` / `SetXYGoalTolerance()`。
 
-## 6.9 在 FollowPath 中的调用时序
+## 3.9 在 FollowPath 中的调用时序
 
 ```
 每个控制周期 (@ controller_frequency):
@@ -232,7 +234,7 @@ message ProgressCheckerOptions {
         └─ true → 退出循环
 ```
 
-## 6.10 调参建议
+## 3.10 调参建议
 
 | 场景 | xy_tolerance | yaw_tolerance | progress radius |
 |------|-------------|---------------|-----------------|
@@ -242,3 +244,29 @@ message ProgressCheckerOptions {
 | 原地转向任务 | 0.25 m | 0.35 rad | 0.5 m + PoseProgressChecker |
 
 **注意**：`xy_goal_tolerance` 应与 Navigator BT 中 `GoalReached` 节点的容差保持一致（`AUTONOMY_COMMON.goal_reached_tolerance`）。
+
+## 3.11 Goal Checker 判定（数学）
+
+### SimpleGoalChecker
+
+1. 若 `check_xy`：$d_{xy}^2=(x-x_g)^2+(y-y_g)^2$；若 $d_{xy}^2>\varepsilon_{xy}^2$ → **false**
+2. XY 通过且 `stateful` → `check_xy=false`（锁定 XY）
+3. $\Delta\theta=\mathrm{AngleDiff}(\theta,\theta_g)$；$|\Delta\theta|\leq\varepsilon_\theta$ → **true**
+
+### PositionGoalChecker
+
+仅检 $d_{xy}^2\leq\varepsilon_{xy}^2$；`stateful` 时达标后恒 **true**。不检航向。
+
+### StoppedGoalChecker
+
+先满足 SimpleGoalChecker，再检 $v_{trans}=\sqrt{v_x^2+v_y^2}\leq v_{trans}^{stop}$ 且 $|\omega_z|\leq\omega_{rot}^{stop}$。
+
+## 3.12 Progress Checker 判定（数学）
+
+### SimpleProgressChecker
+
+$d=\mathrm{hypot}(x-x_b,y-y_b)$；若 $d>r$（`radius_`，默认 0.5 m）或首次调用 → 更新基线 $(x_b,y_b)$，返回 **true**；否则 **false**（无进度）。
+
+### PoseProgressChecker
+
+额外 $\Delta\theta=|\mathrm{NormalizeAngleDiff}(\theta-\theta_b)|$；若 $d>r$ **或** $\Delta\theta>\Delta\theta_{req}$（默认 0.5 rad）→ 重置基线，**true**。

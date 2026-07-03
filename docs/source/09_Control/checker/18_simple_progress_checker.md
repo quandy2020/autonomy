@@ -1,10 +1,10 @@
 (simple-progress-checker)=
 # 18. SimpleProgressChecker
 
-> 归属 [§6 检查器 · §6.5](../06_checkers.md#65-simpleprogresschecker)
+> 归属 [§3 检查器 · §3.5](../03_checkers.md#35-simpleprogresschecker)
 >
 > `autonomy::control::checker::SimpleProgressChecker` 检测机器人是否在**时间窗口内产生足够位移**，用于防止 FollowPath 卡住。  
-> 公式见 [03_math.md §3.10](../03_math.md)。
+> 公式见 [03_checkers.md §3.12](../03_checkers.md#312-progress-checker-判定数学)。
 
 | 维度 | 说明 |
 |------|------|
@@ -108,7 +108,8 @@ progress_checker->Check(pose) == false
 
 ## 7. 源码索引
 
-```30:44:autonomy/control/checker/simple_progress_checker.cpp
+```cpp
+// autonomy/control/checker/simple_progress_checker.cpp:30-44
 bool SimpleProgressChecker::Check(PoseStamped& current_pose) {
   if (!baseline_pose_set_ || IsRobotMovedEnough(current_pose2d)) {
     ResetBaselinePose(current_pose2d);

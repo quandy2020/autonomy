@@ -15,8 +15,8 @@
 | 05 框架 | `05_Framework/` | Framework 集成视角 |
 | 06 定位 | `06_Localization/` | Atlas VSLAM、AMCL |
 | 07 地图 | `07_Map/` | Costmap2D、GridMap |
-| 08 规划 | `08_Planning/` | NavFn / Dijkstra / Theta\* |
-| 09 控制 | `09_Control/` | FollowPath、Checker、Smoother；§0–§9 主干 + §10–§20 专题 |
+| 08 规划 | `08_Planning/` | **§0–§6**：指南、架构、规划器总览、NavFn/Dijkstra/Theta*、综述 |
+| 09 控制 | `09_Control/` | FollowPath、Checker、Smoother；§0–§6 主干 + §10–§20 专题 |
 | 10–13 | Perception / Prediction / Simulation / Visualization | 扩展模块 |
 | 14 消息 | `14_Commsgs/` | 消息类型与 Schema |
 | 15 桥接 | `15_Bridge/` | gRPC Bridge |
@@ -30,13 +30,13 @@
 | 编号 | 文件 | 内容 |
 |------|------|------|
 | 00 | `00_guide.md` | 模块总入口与阅读路径 |
-| §1 | `01_overview.md` | 模块概览 |
-| §2 | `02_quickstart.md` | 快速开始 |
-| §3 | `03_math.md` | 数学原理（算法模块） |
-| §4 | `04_usage.md` | 使用指南与排错 |
-| §5 | `05_architecture.md` | 架构设计 |
-| §6–§8 | 子专题 | 算法/组件详解（Control 另含 §10–§20 专题深读） |
-| §9 | `09_survey.md` | 综述与选型 |
+| §1 | 概览 / 架构 | 模块边界与数据流 |
+| §2+ | 组件 / 算法 | 子专题（Planning §2 规划器总览 + §3–§5 算法；Control §3–§5 + §10–§20 深读） |
+| 末章 | `*_survey.md` | 综述与选型（Planning §6、Control §6） |
+
+**Planning**（`08_Planning/`）已合并旧版 overview/quickstart/usage/math 为 **§0 指南**；无独立 `03_math.md`。
+
+**Control**（`09_Control/`）已合并旧版 `01_overview` 为 **§0 指南**（与 Planning 同型）；架构见 `02_architecture.md`。
 
 入口为各目录的 `index.rst` 或 `00_guide.md`。
 
@@ -52,7 +52,7 @@
 ### 算法工程师
 
 ```
-对应模块 09_survey → 03_math → 06–08 算法子文档
+对应模块 survey → 算法总览 → 算法子文档（Planning：`06_survey` → `02_planner_algorithms` → `03–05`）
 ```
 
 ### 通信 / 中间件工程师

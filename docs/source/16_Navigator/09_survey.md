@@ -336,5 +336,5 @@ Autonomy 默认 BT 仅检 XY（快速 SUCCESS），Controller 层检航向（精
 - [数学原理](03_math.md)
 - [模块架构设计](05_architecture.md)
 - [单点导航 BT](07_navigate_to_pose.md)
-- [Planning 路径规划综述](../08_Planning/09_survey.md)
-- [Control 运动控制综述](../09_Control/09_survey.md)
+- [Planning 路径规划综述](../08_Planning/06_survey.md)
+- [Control 运动控制综述](../09_Control/06_survey.md)

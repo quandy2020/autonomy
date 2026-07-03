@@ -116,7 +116,7 @@ $$
 
 ## 8.7 与 Control 的 TEB 调研
 
-`docs/source/09_Control/09_survey.md` 提及 TEB（Timed Elastic Band）可结合 prediction 做动态避障。TEB 在代价函数中加入动态障碍项：
+`docs/source/09_Control/06_survey.md` 提及 TEB（Timed Elastic Band）可结合 prediction 做动态避障。TEB 在代价函数中加入动态障碍项；Planning 侧见 [08 Planning §6](../08_Planning/06_survey.md)。
 
 $$
 J_{dyn} = \sum_k \sum_i w_i \cdot \mathrm{penalty}\big(\mathbf{p}_k, \hat{\mathbf{p}}_i(t_k)\big)

@@ -519,4 +519,4 @@ public:
 - [Costmap2D 代价地图](06_costmap2d.md)
 - [GridMap 2.5D 栅格地图](07_grid_map.md)
 - [数学原理](03_math.md)
-- [Planning 架构设计](../08_Planning/05_architecture.md)
+- [Planning 架构设计](../08_Planning/01_architecture.md)

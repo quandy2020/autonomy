@@ -259,7 +259,7 @@ Costmap2D (char map)
     └── Theta*: c ≥ 253 阻塞，LOS 检测
 ```
 
-规划时复制 costmap 快照，避免与地图更新线程竞争。详见 [Planning 架构](../08_Planning/05_architecture.md)。
+规划时复制 costmap 快照，避免与地图更新线程竞争。详见 [Planning 架构](../08_Planning/01_architecture.md)。
 
 ---
 
@@ -293,4 +293,4 @@ Costmap2D (char map)
 - [Costmap2D 代价地图](06_costmap2d.md)
 - [GridMap 2.5D 栅格地图](07_grid_map.md)
 - [模块架构设计](05_architecture.md)
-- [Planning 路径规划综述](../08_Planning/09_survey.md)
+- [Planning 路径规划综述](../08_Planning/06_survey.md)

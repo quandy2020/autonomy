@@ -444,4 +444,4 @@ system::Autonomy
 - [使用指南](04_usage.md)
 - [行为树引擎](06_bt_engine.md)
 - [单点导航 BT](07_navigate_to_pose.md)
-- [Planning 架构](../08_Planning/05_architecture.md)
+- [Planning 架构](../08_Planning/01_architecture.md)

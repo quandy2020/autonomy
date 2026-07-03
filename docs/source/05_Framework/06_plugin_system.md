@@ -65,8 +65,8 @@ for (const auto& name : options.planner_plugins()) {
 
 详见各模块文档：
 
-- [08 Planning · 插件](../08_Planning/06_navfn.md)
-- [09 Control · 控制器算法](../09_Control/08_controller_algorithms.md)
+- [08 Planning · 插件架构](../08_Planning/01_architecture.md#14-插件与配置)
+- [09 Control · 控制器算法](../09_Control/05_controller_algorithms.md)
 
 ### 6.7 相关文档
 
