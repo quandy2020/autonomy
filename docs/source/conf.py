@@ -149,3 +149,14 @@ copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d+\]: | {2,5}\.\.\.: | {5,8}: 
 copybutton_prompt_is_regexp = True
 copybutton_only_copy_prompt_lines = True
 copybutton_remove_prompts = True
+
+# -- Local extensions / HTML language -----------------------------------------
+html_language = "zh-CN"
+
+
+def setup(app):
+    """Register local Sphinx helpers (heading HTML ids, etc.)."""
+    from sphinx_ext.heading_slugs import register_heading_id_transform
+
+    register_heading_id_transform(app)
+    return {"version": "1", "parallel_read_safe": True, "parallel_write_safe": True}

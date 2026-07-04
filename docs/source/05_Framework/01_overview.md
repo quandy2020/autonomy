@@ -8,7 +8,7 @@
 | 层级 | **应用框架**（Application Framework） |
 | 核心库 | `libautonomy.so` |
 | 职责 | 模块装配、配置加载、Server 生命周期、导航 API |
-| 通信层 | [Autolink](../03_Communication/01_architecture.md)（独立子项目） |
+| 通信层 | [Autolink · 架构 Architecture](../03_Communication/01_architecture.md)（独立子项目） |
 | 消息层 | [commsgs](../14_Commsgs/01_overview.md) |
 | 对标 | Navigation2 栈组合 + Cyber RT 组件思想 |
 

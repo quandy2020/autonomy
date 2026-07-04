@@ -1,10 +1,10 @@
-# 3. Channel（Writer / Reader）
+# 3. 通道 Channel
 
-Channel 是 autolink 的**持续数据流**抽象，对标 ROS 2 topic。Writer 发布、Reader 订阅；匹配条件为 **channel 名一致 + 消息类型一致**。
+Channel 是 autolink 的 **持续数据流** 抽象，对标 ROS 2 topic。Writer 发布、Reader 订阅；匹配条件为 **channel 名一致 + 消息类型一致**。
 
 | 本文 §3 | 相关文档 |
 |---------|----------|
-| 发布订阅 | [§0 指南](00_guide.md) · [§2 Node](02_node.md) · [§10 Component](10_component.md) · [§12 Scheduler](12_scheduler.md) |
+| 发布订阅 | [§0 指南](00_guide.md) · [§2 节点 Node](02_node.md) · [§10 组件 Component](10_component.md) · [§12 调度 Scheduler](12_scheduler.md) |
 
 ---
 
@@ -35,7 +35,7 @@ Autonomy 业务消息为 `autonomy::commsgs::*` struct，跨进程边界 `ToProt
 
 ---
 
-## 3.3 Writer / Reader 基本流程
+## 3.3 发布与订阅
 
 **发布**（`talker.cpp`）：
 
@@ -103,7 +103,7 @@ node->CreateWriter<Imu>(attr);
 
 ---
 
-## 3.5 POD 消息示例
+## 3.5 POD 消息
 
 `pod_talker_listener.cpp` 演示四步：
 
@@ -127,7 +127,7 @@ writer->Write(msg);
 
 ---
 
-## 3.6 稳频发布
+## 3.6 Rate 定频
 
 C++ `Rate`（Hz）：
 
@@ -150,7 +150,7 @@ while not autolink.is_shutdown():
 
 ---
 
-## 3.7 数据路径（设计）
+## 3.7 数据路径
 
 发现匹配完成后，业务数据不经发现通道，按拓扑自动选择传输后端。
 
@@ -195,7 +195,7 @@ while not autolink.is_shutdown():
 
 ---
 
-## 3.8 Python
+## 3.8 Python API
 
 **发布**（`py_talker.py`）：
 
@@ -225,7 +225,7 @@ test_node.spin()
 
 ---
 
-## 3.9 调试工具
+## 3.9 CLI 工具
 
 ```bash
 autolink_channel list          # 列出活跃 channel 与类型
@@ -238,16 +238,4 @@ autolink_recorder play -f x.record        # 回放
 
 ---
 
-## 3.10 排错
-
-| 现象 | 处理 |
-|------|------|
-| Listener 无数据 | 核对 channel 名完全一致；`AUTOLINK_PATH` 一致；无 stale 进程 |
-| 日志无 `SHM receiver enabled` | 见 `examples/cpp/README.md` SHM 排查 |
-| 延迟越来越大 | `pending_queue_size=1`；缩短回调；考虑 choreography 绑核 |
-| 类型不匹配 | 两端须同一 protobuf / POD 定义 |
-| 跨容器不通 | 对齐 `AUTOLINK_DOMAIN_ID` 与网络策略 |
-
----
-
-**导航**：[← §2 Node](02_node.md) · [§0 指南](00_guide.md) · [§4 Service →](04_service.md)
+**导航**：[← §2 节点 Node](02_node.md) · [§0 指南](00_guide.md) · [§4 服务 Service →](04_service.md)

@@ -44,6 +44,13 @@
     --shadow-md: 0 4px 12px rgba(74, 53, 64, 0.08);
 }
 
+/* 中文正文与 § 符号：优先系统中文字体，避免缺字 / 方框 */
+.wy-nav-content,
+.rst-content {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+}
+
 /* ----------------------------------------------------------------------------
    页面宽度
    ---------------------------------------------------------------------------- */

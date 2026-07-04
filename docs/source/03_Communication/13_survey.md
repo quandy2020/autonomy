@@ -1,18 +1,18 @@
-# 13. 通信框架综述
+# 13. 综述 Survey
 
 与 ROS 2 / Cyber RT 对比及通信模式选型。用法与示例见 [§0](00_guide.md)；模块专题见 §2–§12。
 
 | 本文 §13 | 相关文档 |
 |---------|----------|
-| 对比、选型 | [§0 指南](00_guide.md) · [§1 架构](01_architecture.md) |
+| 对比、选型 | [§0 指南](00_guide.md) · [§1 架构 Architecture](01_architecture.md) |
 
 ---
 
-## 13.1 框架定位
+## 13.1 定位
 
 继承 Cyber RT 设计（Component + DAG + SHM），CMake 构建，扩展 Action 与 Plugin，与 `commsgs` 深度集成。非 ROS 发行版，而是 Autonomy 内置通信层。
 
-## 13.2 与 ROS 2 / Cyber RT
+## 13.2 ROS 2 / Cyber RT
 
 | 维度 | ROS 2 | Cyber RT | autolink |
 |------|-------|----------|----------|
@@ -28,7 +28,7 @@
 
 `cyber::` 与 `autolink::` API 大体可互换。跨栈互通走 [Bridge](../15_Bridge/index.rst)。
 
-## 13.3 通信模式选型
+## 13.3 模式选型
 
 | 场景 | 推荐 | 文档 |
 |------|------|------|
@@ -41,10 +41,10 @@
 | 无输入周期任务 | TimerComponent | [§11](11_timer.md) |
 | 生产算法模块 | Component + DAG | [§10](10_component.md) |
 | 多进程编排 | Launch + mainboard | [§9](09_launch.md) |
-| 离线复现 / 联调 | Record / Play | [§3.9](03_channel.md#39-调试工具) |
-| 仿真时钟 | Clock `MODE_MOCK` | [§11.3](11_timer.md#113-clockc) |
+| 离线复现 / 联调 | Record / Play | [§3.9](03_channel.md#39-cli-工具) |
+| 仿真时钟 | Clock `MODE_MOCK` | [§11.3](11_timer.md#113-clock) |
 
-## 13.4 Binary vs Component
+## 13.4 Binary 对比
 
 | | Binary | Component + DAG |
 |---|--------|-----------------|
@@ -58,10 +58,10 @@
 - 同机默认 **SHM**；跨机 **RTPS**
 - 控制环 **`pending_queue_size=1`**，避免队列堆积
 - 延迟敏感链路：**choreography 绑核**（[§12](12_scheduler.md)）
-- `Proc` / Reader 回调内**避免阻塞 I/O**
-- 热路径**少打日志**（[§8](08_log.md)）
+- `Proc` / Reader 回调内 **避免阻塞 I/O**
+- 热路径 **少打日志**（[§8](08_log.md)）
 
-## 13.6 延伸阅读
+## 13.6 外部文档
 
 | 资源 | 路径 |
 |------|------|
@@ -75,4 +75,4 @@
 
 ---
 
-**导航**：[← §12 Scheduler](12_scheduler.md) · [§0 指南](00_guide.md)
+**导航**：[← §12 调度 Scheduler](12_scheduler.md) · [§0 指南](00_guide.md)

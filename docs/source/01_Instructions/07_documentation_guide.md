@@ -10,7 +10,7 @@
 |------|------|------|
 | **01 入门** | `01_Instructions/` | 本指南：概览、架构、导航栈 |
 | 02 安装 | `02_Installation/` | 依赖、Docker、编译环境 |
-| 03 通信 | `03_Communication/` | **§0–§13**：指南、架构、Node/Channel/Service/Action/Parameter/Plugin/Log/Launch/Component/Timer 与 Time/Scheduler、综述 |
+| 03 通信 | `03_Communication/` | **§0–§13**：指南、架构 Architecture、节点 Node/通道 Channel/服务 Service/动作 Action/参数 Parameter/插件 Plugin/日志 Log/启动 Launch/组件 Component/时间 Timer/调度 Scheduler、综述 Survey |
 | 04 运行 | `04_Running/` | 启动、Docker、ROS 2 运行 |
 | 05 框架 | `05_Framework/` | Framework 集成视角 |
 | 06 定位 | `06_Localization/` | Atlas VSLAM、AMCL |
@@ -41,6 +41,8 @@
 **Control**（`09_Control/`）已合并旧版 `01_overview` 为 **§0 指南**（与 Planning 同型）；架构见 `02_architecture.md`。
 
 **Map**（`07_Map/`）已合并旧版 overview/quickstart/usage/math 为 **§0 指南**；架构见 `01_architecture.md`，组件见 `02_map_components.md`。
+
+**Communication**（`03_Communication/`）**§0–§13**：入口 `00_guide.md`；架构见 `01_architecture.md`（架构 Architecture）；核心 API §2–§12（节点 Node … 调度 Scheduler）；选型见 `13_survey.md`（综述 Survey）。
 
 入口为各目录的 `index.rst` 或 `00_guide.md`。
 

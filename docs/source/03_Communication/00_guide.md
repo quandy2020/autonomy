@@ -1,11 +1,11 @@
 (communication-guide)=
 # 0. Communication 通信框架指南
 
-`autolink` 是 Autonomy 的**分布式通信运行时**，对标 Apollo Cyber RT / ROS 2 DDS 层。
+`autolink` 是 Autonomy 的 **分布式通信运行时**，对标 Apollo Cyber RT / ROS 2 DDS 层。
 
 | 本文 §0 | 相关文档 |
 |---------|----------|
-| 上手、环境、工具、排错 | [§1 架构](01_architecture.md) · [§13 综述](13_survey.md) |
+| 上手、环境、工具 | [§1 架构 Architecture](01_architecture.md) · [§13 综述 Survey](13_survey.md) |
 
 <div class="nav-costmap-banner">
   <strong>autolink 在 Autonomy 栈中的位置</strong>
@@ -21,29 +21,29 @@
 
 | 角色 | 阅读顺序 |
 |------|----------|
-| 新手 | §0.2 → [§2 Node](02_node.md) → [§3 Channel](03_channel.md) |
-| 写 Component | [§10](10_component.md) → [§9 Launch](09_launch.md) → [§12 Scheduler](12_scheduler.md) |
-| 写 Action / Plugin | [§5 Action](05_action.md) · [§7 Plugin](07_plugin.md) |
-| 选型 / 对比 | [§13 综述](13_survey.md) |
+| 新手 | §0.2 → [§2 节点 Node](02_node.md) → [§3 通道 Channel](03_channel.md) |
+| 写 Component | [§10 组件 Component](10_component.md) → [§9 启动 Launch](09_launch.md) → [§12 调度 Scheduler](12_scheduler.md) |
+| 写 Action / Plugin | [§5 动作 Action](05_action.md) · [§7 插件 Plugin](07_plugin.md) |
+| 选型 / 对比 | [§13 综述 Survey](13_survey.md) |
 
 ### 章节目录
 
 | § | 文档 | 内容 |
 |---|------|------|
 | 0 | 本指南 | 快速开始、环境变量、CLI、示例索引 |
-| 1 | [架构](01_architecture.md) | 分层、数据流、生命周期、环境变量详表 |
-| 2 | [Node](02_node.md) | 通信句柄、生命周期 |
-| 3 | [Channel](03_channel.md) | Writer/Reader、QoS、POD、录包 |
-| 4 | [Service](04_service.md) | RPC 请求–响应 |
-| 5 | [Action](05_action.md) | 长任务 Goal/Feedback/Result |
-| 6 | [Parameter](06_parameter.md) | 全局键值参数 |
-| 7 | [Plugin](07_plugin.md) | 可插拔算法、描述文件 |
-| 8 | [Log](08_log.md) | glog 宏、环境变量 |
-| 9 | [Launch](09_launch.md) | mainboard、DAG、`.launch` |
-| 10 | [Component](10_component.md) | 多输入 `Proc`、DataVisitor |
-| 11 | [Timer 与 Time](11_timer.md) | Time/Rate/Clock、Timer、TimerComponent |
-| 12 | [Scheduler](12_scheduler.md) | classic / choreography |
-| 13 | [综述](13_survey.md) | ROS2/Cyber 对比、模式选型 |
+| 1 | [架构 Architecture](01_architecture.md) | 分层、数据流、生命周期、环境变量详表 |
+| 2 | [节点 Node](02_node.md) | 通信句柄、生命周期 |
+| 3 | [通道 Channel](03_channel.md) | Writer/Reader、QoS、POD、录包 |
+| 4 | [服务 Service](04_service.md) | RPC 请求–响应 |
+| 5 | [动作 Action](05_action.md) | 长任务 Goal/Feedback/Result |
+| 6 | [参数 Parameter](06_parameter.md) | 全局键值参数 |
+| 7 | [插件 Plugin](07_plugin.md) | 可插拔算法、描述文件 |
+| 8 | [日志 Log](08_log.md) | AsyncLogger、宏、GLOG 配置、使用案例 |
+| 9 | [启动 Launch](09_launch.md) | DAG 配置、多进程编排、部署路径 |
+| 10 | [组件 Component](10_component.md) | 多输入 `Proc`、DataVisitor |
+| 11 | [时间 Time / Rate / Timer](11_timer.md) | Time/Rate/Clock、Timer、TimerComponent |
+| 12 | [调度 Scheduler](12_scheduler.md) | classic / choreography |
+| 13 | [综述 Survey](13_survey.md) | ROS2/Cyber 对比、模式选型 |
 
 ---
 
@@ -106,7 +106,7 @@ cmake --build build/autolink -j8
 | Parameter | Parameter | [§6](06_parameter.md) |
 | PluginManager | pluginlib | [§7](07_plugin.md) |
 | AINFO / glog | rclcpp logging | [§8](08_log.md) |
-| mainboard / Launch | `ros2 launch` | [§9](09_launch.md) |
+| Launch (mainboard) | `ros2 launch` | [§9 启动 Launch](09_launch.md) |
 | Component + DAG | — | [§10](10_component.md) |
 | Time / Rate / Timer | Timer / Clock | [§11](11_timer.md) |
 | Scheduler | Executor | [§12](12_scheduler.md) |
@@ -117,7 +117,7 @@ cmake --build build/autolink -j8
 
 ## 0.5 环境变量（常用）
 
-完整说明见 [§1.6 架构](01_architecture.md#16-环境与路径变量)。
+完整说明见 [§1.6 环境与路径变量](01_architecture.md#16-环境与路径变量)。
 
 | 变量 | 用途 |
 |------|------|
@@ -172,20 +172,6 @@ cmake --build build/autolink -j8
 
 ---
 
-## 0.8 排错
-
-| 现象 | 处理 | 详见 |
-|------|------|------|
-| `CreateNode` 为 null | 未 `Init()` | [§2](02_node.md) |
-| Reader 无数据 | `autolink_channel list` 核对 channel 名与类型 | [§3](03_channel.md) |
-| 跨进程不通 | `AUTOLINK_PATH` / `DOMAIN_ID` 一致；防火墙 | [§1](01_architecture.md) |
-| Service 无响应 | 对端未启；名称不匹配 | [§4](04_service.md) |
-| Action 无反馈 | Server 须 `PublishFeedback`；先启 listener | [§5](05_action.md) |
-| mainboard 找不到 `.so` | `AUTOLINK_LIB_PATH`、DAG 路径 | [§9](09_launch.md) |
-| 延迟大 | choreography 绑核、`pending_queue_size=1` | [§12](12_scheduler.md) |
-
----
-
-**导航**：[§1 架构 →](01_architecture.md) · [§13 综述 →](13_survey.md)
+**导航**：[§1 架构 Architecture →](01_architecture.md) · [§13 综述 Survey →](13_survey.md)
 
 (communication-usage)=

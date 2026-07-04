@@ -132,7 +132,7 @@ NavigateToPose(goal)
 - **Server 内部**：创建 `autolink::Node`，注册 Writer/Reader/Action
 - **应用开发者**：通常调用 `Autonomy` API，而非直接操作 Node
 
-通信细节见 [03 Communication §1.8](../03_Communication/01_architecture.md#18-autonomy-集成)。
+通信细节见 [Communication · §1.8 Autonomy 集成](../03_Communication/01_architecture.md#18-autonomy-集成)。
 
 ## 3.7 相关文档
 

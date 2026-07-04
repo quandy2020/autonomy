@@ -1,14 +1,14 @@
-# 2. Node
+# 2. 节点 Node
 
-Node 是 autolink 的**通信句柄**：进程内创建 Writer/Reader、Service/Client、Action、Parameter 等端点的统一入口。对标 ROS 2 `rclcpp::Node`、Cyber RT `cyber::Node`。
+Node 是 autolink 的 **通信句柄**：进程内创建 Writer/Reader、Service/Client、Action、Parameter 等端点的统一入口。对标 ROS 2 `rclcpp::Node`、Cyber RT `cyber::Node`。
 
 | 本文 §2 | 相关文档 |
 |---------|----------|
-| Node 通信句柄 | [§0 指南](00_guide.md) · [§3 Channel](03_channel.md) · [§1 架构](01_architecture.md) |
+| 通信句柄 | [§0 指南](00_guide.md) · [§3 通道 Channel](03_channel.md) · [§1 架构 Architecture](01_architecture.md) |
 
 ---
 
-## 2.1 设计
+## 2.1 内部结构
 
 Node 将 Channel 与 Service 能力聚合在 `NodeChannelImpl` 与 `NodeServiceImpl` 中；Action / Parameter 经独立 API 挂载到同一 Node。
 
@@ -67,7 +67,7 @@ Node 将 Channel 与 Service 能力聚合在 `NodeChannelImpl` 与 `NodeServiceI
 
 ---
 
-## 2.2 创建 Node
+## 2.2 创建与生命周期
 
 ```cpp
 #include "autolink/autolink.hpp"
@@ -130,7 +130,9 @@ autolink::WaitForShutdown();
 
 ---
 
-## 2.3 Node 提供的端点 API
+## 2.3 Writer / Reader / Service
+
+`Node` 通过 `Create*` 方法挂载各类通信对象；下表为成员 API，Action / Parameter 需独立工厂函数并传入 `node`：
 
 | 方法 | 返回类型 | 专题 |
 |------|----------|------|
@@ -139,9 +141,9 @@ autolink::WaitForShutdown();
 | `CreateReader<MessageT>(ReaderConfig, cb)` | `Reader<MessageT>` | [§3](03_channel.md) |
 | `CreateService<Req,Resp>(name, handler)` | `Service` | [§4](04_service.md) |
 | `CreateClient<Req,Resp>(name)` | `Client` | [§4](04_service.md) |
-| `DeleteReader` / `DeleteWriter` | `bool` | 动态拆除端点 |
+| `DeleteReader` / `DeleteWriter` | `bool` | 动态拆除 |
 
-Action 与 Parameter 不挂在 `Node` 成员函数上，但构造时传入 `std::shared_ptr<Node>`：
+Action / Parameter 示例：
 
 ```cpp
 auto server = autolink::action::CreateServer<Traits>(node, action_name, ...);
@@ -150,7 +152,7 @@ auto param_server = std::make_shared<ParameterServer>(node);
 
 ---
 
-## 2.4 多 Node 同进程
+## 2.4 同进程多实例
 
 `service.cpp` 在同一进程创建 **server Node** 与 **client Node**，避免读写端点名冲突，并演示 RPC 自测：
 
@@ -165,7 +167,7 @@ Action 示例同样用 PID+时间戳生成唯一 node 名（`action_listener.cpp
 
 ---
 
-## 2.5 Component 模式下的 Node
+## 2.5 Component 集成
 
 继承 `Component` 时，框架在 `Initialize()` 前注入 `node_`，**不要**在 `Init()` 里 `CreateNode`：
 
@@ -178,11 +180,11 @@ class TimerComponentSample : public TimerComponent {
 };
 ```
 
-`node_` 由 `mainboard` 根据 DAG 中 `config.name` 创建。见 [§10 Component](10_component.md)。
+`node_` 由 `mainboard` 根据 DAG 中 `config.name` 创建。见 [§10 组件 Component](10_component.md)。
 
 ---
 
-## 2.6 Python
+## 2.6 Python API
 
 ```python
 from autolink_py3 import autolink
@@ -214,14 +216,4 @@ cd build/autolink/bin/examples
 
 ---
 
-## 2.7 排错
-
-| 现象 | 原因与处理 |
-|------|------------|
-| `CreateNode` 为 null | 未调用 `Init` 或 `Init` 失败 |
-| 拓扑冲突 | 重复 `node_name`；换名或杀残留进程 |
-| Python 找不到模块 | 设置 `PYTHONPATH`（见 `examples/python/README.md`） |
-
----
-
-**导航**：[← §1 架构](01_architecture.md) · [§0 指南](00_guide.md) · [§3 Channel →](03_channel.md)
+**导航**：[← §1 架构 Architecture](01_architecture.md) · [§0 指南](00_guide.md) · [§3 通道 Channel →](03_channel.md)
