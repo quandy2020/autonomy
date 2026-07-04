@@ -1,18 +1,16 @@
-# 7. Plugin
+# 7. 插件 Plugin
 
-Plugin 按**类名**从动态库或进程内注册表实例化派生类型。对标 ROS `pluginlib`。
+Plugin 按 **类名** 从动态库或进程内注册表实例化派生类型。对标 ROS `pluginlib`。
 
 | 本文 §7 | 相关文档 |
 |---------|----------|
-| 可插拔算法 | [§0 指南](00_guide.md) · [§9 Launch](09_launch.md) · [§10 Component](10_component.md) |
+| 可插拔算法 | [§0 指南](00_guide.md) · [§9 启动 Launch](09_launch.md) · [§10 组件 Component](10_component.md) |
 
 与 [Component](10_component.md) 的区别：Component 由 DAG 加载；Plugin 由业务 `CreateInstance` 加载算法实现。
 
 ---
 
-## 7.1 设计
-
-Plugin 按**类名**从动态库或进程内注册表实例化派生类型。与 [Component](10_component.md) 的区别：Component 由 DAG 加载；Plugin 由业务 `CreateInstance` 加载算法实现。
+## 7.1 加载流程
 
 <div class="comm-flow-diagram">
 <div class="comm-flow-header">
@@ -93,7 +91,7 @@ Plugin 按**类名**从动态库或进程内注册表实例化派生类型。与
 
 ---
 
-## 7.2 描述文件格式
+## 7.2 plugin.xml
 
 XML 由 `PluginDescription::ParseFromDescriptionFile` 解析（`plugin_description.cpp`）：
 
@@ -114,7 +112,9 @@ XML 由 `PluginDescription::ParseFromDescriptionFile` 解析（`plugin_descripti
 
 ---
 
-## 7.3 PluginManager API
+## 7.3 CreateInstance
+
+`PluginManager` 单例：加载描述文件或进程内注册后，按类名实例化派生类型。
 
 ```cpp
 #include "autolink/plugin_manager/plugin_manager.hpp"
@@ -138,7 +138,7 @@ auto names = pm->GetDerivedClassNameByBaseClass<common::GlobalPlanner>();
 
 ---
 
-## 7.4 Autonomy 集成示例
+## 7.4 Autonomy 集成
 
 `autonomy/planning/planner_server.cpp` 在启动时注册内置规划器并加载外部描述文件：
 
@@ -171,7 +171,7 @@ common::GlobalPlanner::SharedPtr CreatePlannerInstance(const std::string& type, 
 
 ---
 
-## 7.5 与 Component / class_loader
+## 7.5 Component 对比
 
 | | Component | Plugin |
 |---|-----------|--------|
@@ -184,7 +184,7 @@ Component 的 `.so` 同样经 `class_loader` 加载；单元测试见 `autolink/
 
 ---
 
-## 7.6 Launch / mainboard 集成
+## 7.6 mainboard --plugin
 
 ```bash
 mainboard -d foo.dag --plugin=/path/to/plugins.xml
@@ -206,14 +206,4 @@ mainboard -d foo.dag --plugin=/path/to/plugins.xml
 
 ---
 
-## 7.7 排错
-
-| 现象 | 处理 |
-|------|------|
-| `CreateInstance` 返回 null | 类名拼写；`LoadPlugin` 是否成功；`base_class` 是否匹配 |
-| 找不到 `.so` | 检查 `AUTOLINK_PLUGIN_LIB_PATH` |
-| 重复加载 | 同一描述文件勿多次 `LoadPlugin`（有去重警告） |
-
----
-
-**导航**：[← §6 Parameter](06_parameter.md) · [§0 指南](00_guide.md) · [§8 Log →](08_log.md)
+**导航**：[← §6 参数 Parameter](06_parameter.md) · [§0 指南](00_guide.md) · [§8 日志 Log →](08_log.md)

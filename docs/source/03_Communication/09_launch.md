@@ -1,18 +1,18 @@
-# 9. Launch 与 mainboard
+# 9. 启动 Launch
 
-**mainboard** 加载 DAG、拉起 Component；**autolink_launch** 编排多进程。对标 `ros2 launch`。
+**mainboard** 在单进程内加载 DAG、拉起 Component；**autolink_launch** 解析 `.launch`、编排多进程。对标 `ros2 launch` + `mainboard`。
 
 | 本文 §9 | 相关文档 |
 |---------|----------|
-| 进程编排 | [§0 指南](00_guide.md) · [§10 Component](10_component.md) · [§7 Plugin](07_plugin.md) · [§1.6 环境变量](01_architecture.md#16-环境与路径变量) |
+| Component 部署 | [§0 指南](00_guide.md) · [§10 组件 Component](10_component.md) · [§7 插件 Plugin](07_plugin.md) · [§1.6 环境变量](01_architecture.md#16-环境与路径变量) |
 
 Binary 模式（`talker` / `listener`）不经 mainboard；生产部署用 Component + DAG + Launch。
 
 ---
 
-## 9.1 启动流程（设计）
+## 9.1 LoadAll 流程
 
-`autolink_launch` 解析 `.launch` 后 fork/exec 各 module 的 `mainboard`；`ModuleController::LoadAll()` 完成插件、DAG 与 Component 装配。
+`mainboard` 启动后由 `ModuleController::LoadAll()` 依次加载插件、解析 DAG、实例化 Component；多进程场景下 `autolink_launch` 为每个 `<module>` fork/exec 独立 `mainboard`。
 
 <div class="comm-flow-diagram">
 <div class="comm-flow-header">
@@ -74,13 +74,15 @@ Binary 模式（`talker` / `listener`）不经 mainboard；生产部署用 Compo
   <tr><td>入口</td><td>多 module 用 <code>.launch</code>；单 DAG 可直接 <code>mainboard -d</code></td></tr>
   <tr><td>LoadAll</td><td>插件 → DAG → 加载 <code>.so</code> → <code>Initialize</code> → 调度 <code>Proc</code></td></tr>
   <tr><td>环境变量</td><td><code>AUTOLINK_DAG_PATH</code> · <code>AUTOLINK_LIB_PATH</code> · <code>AUTOLINK_PLUGIN_*</code> · <code>AUTOLINK_SCHED_CONF</code></td></tr>
-  <tr><td>与 Binary</td><td><code>talker</code> / <code>listener</code> 用 <code>main()</code>，不经 mainboard（见 §9.6）</td></tr>
+  <tr><td>与 Binary</td><td><code>talker</code> / <code>listener</code> 用 <code>main()</code>，不经 mainboard（见 [§9.6](#96-binary-模式)）</td></tr>
 </table>
 </div>
 
 ---
 
-## 9.2 DAG 文件
+## 9.2 DAG 配置
+
+`.dag` 声明 `module_library`、Component `class_name` 及输入 channel（或 TimerComponent `interval`）。
 
 `common.dag`（`common_component_example`）：
 
@@ -127,7 +129,9 @@ module_config {
 
 ---
 
-## 9.3 Launch 文件
+## 9.3 autolink_launch
+
+`.launch` 为 XML，每个 `<module>` 指定 DAG 与进程名；`autolink_launch` 解析后为各 module 启动 `mainboard`。
 
 `common.launch`：
 
@@ -165,7 +169,7 @@ mainboard -h    # 查看 --plugin、DAG 列表等
 
 ---
 
-## 9.4 路径与环境变量
+## 9.4 部署路径
 
 环境变量总表见 [§1.6](01_architecture.md#16-环境与路径变量)。Launch / DAG 常用：
 
@@ -176,11 +180,11 @@ mainboard -h    # 查看 --plugin、DAG 列表等
 | `AUTOLINK_LAUNCH_PATH` | `.launch` 文件 |
 | `AUTOLINK_SCHED_CONF` | 调度配置（[§12](12_scheduler.md)） |
 
-DAG / Launch 中路径多为**安装后绝对路径**（如 `/autolink/examples/...`）。开发时需 `cmake --install` 或将构建产物路径写入 DAG。
+DAG / Launch 中路径多为 **安装后绝对路径**（如 `/autolink/examples/...`）。开发时需 `cmake --install` 或将构建产物路径写入 DAG。
 
 ---
 
-## 9.5 Component 示例运行
+## 9.5 编译与运行
 
 ```bash
 cmake -S autolink -B build/autolink -DAUTOLINK_BUILD_EXAMPLES=ON
@@ -202,7 +206,7 @@ mainboard -d .../timer.dag
 
 ---
 
-## 9.6 Binary vs Launch
+## 9.6 Binary 模式
 
 | | Binary (`talker`) | mainboard + DAG |
 |---|-------------------|-----------------|
@@ -213,15 +217,4 @@ mainboard -d .../timer.dag
 
 ---
 
-## 9.7 排错
-
-| 现象 | 处理 |
-|------|------|
-| `no dag conf found` | `AUTOLINK_DAG_PATH`；DAG 路径是否存在 |
-| `no module library` | `AUTOLINK_LIB_PATH`；是否编译 examples |
-| `Proc` 不执行 | 输入 channel 是否有发布者（Timer 除外） |
-| 进程秒退 | 查看 `AERROR`；`Init()` 返回 false |
-
----
-
-**导航**：[← §8 Log](08_log.md) · [§0 指南](00_guide.md) · [§10 Component →](10_component.md)
+**导航**：[← §8 日志 Log](08_log.md) · [§0 指南](00_guide.md) · [§10 组件 Component →](10_component.md)

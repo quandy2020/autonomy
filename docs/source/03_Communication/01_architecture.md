@@ -1,11 +1,11 @@
 (communication-architecture)=
-# 1. 模块架构
+# 1. 架构 Architecture
 
 > 上手与环境见 [§0](00_guide.md)；各模块 API 见 §2–§12。本文描述 **栈内位置、内部分层、部署形态、数据流与生命周期**。
 
 | 本文 §1 | 相关文档 |
 |---------|----------|
-| 分层、数据流、环境 | [§0 指南](00_guide.md) · [§13 综述](13_survey.md) |
+| 分层、数据流、环境 | [§0 指南](00_guide.md) · [§13 综述 Survey](13_survey.md) |
 
 <div class="nav-costmap-banner">
   <strong>autolink 在 Autonomy 栈中的位置</strong>
@@ -162,46 +162,51 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
 
 <div class="plan-arch-diagram">
   <div class="plan-arch-split">
-
     <div class="plan-arch-layer plan-arch-app">
       <div class="plan-arch-header">
         <span class="plan-arch-badge">Binary</span>
         <span class="plan-arch-title">talker / listener</span>
       </div>
       <div class="plan-arch-body">
-        <ul>
-          <li><code>Init</code> → <code>CreateNode</code></li>
-          <li><code>CreateWriter</code> / <code>CreateReader</code></li>
-          <li><code>Rate::Sleep</code> 主循环</li>
-          <li><code>WaitForShutdown</code></li>
-        </ul>
+        <div class="nav-body-block">
+          <div class="nav-body-label">流程</div>
+          <div class="nav-chip-list">
+            <span class="nav-chip">Init</span>
+            <span class="nav-chip">CreateNode</span>
+            <span class="nav-chip">Writer / Reader</span>
+            <span class="nav-chip">Rate::Sleep</span>
+            <span class="nav-chip">WaitForShutdown</span>
+          </div>
+        </div>
       </div>
     </div>
-
     <div class="plan-arch-link">
+      <span class="plan-arch-link-arrow">◄</span>
       <span class="plan-arch-link-text">对比</span>
-      <span class="plan-arch-link-arrow">⇄</span>
+      <span class="plan-arch-link-arrow">►</span>
     </div>
-
     <div class="plan-arch-layer plan-arch-server">
       <div class="plan-arch-header">
         <span class="plan-arch-badge">Component</span>
         <span class="plan-arch-title">DAG + mainboard</span>
       </div>
       <div class="plan-arch-body">
-        <ul>
-          <li><code>LoadLibrary</code> → <code>Init</code></li>
-          <li>DataVisitor 对齐多路输入</li>
-          <li>Scheduler 驱动 <code>Proc</code></li>
-          <li>channel 名由 DAG 配置</li>
-        </ul>
+        <div class="nav-body-block">
+          <div class="nav-body-label">流程</div>
+          <div class="nav-chip-list">
+            <span class="nav-chip">LoadLibrary</span>
+            <span class="nav-chip">Init</span>
+            <span class="nav-chip">DataVisitor</span>
+            <span class="nav-chip">Proc</span>
+            <span class="nav-chip">DAG readers[]</span>
+          </div>
+        </div>
       </div>
     </div>
-
   </div>
 </div>
 
-详见 [§2 Node](02_node.md) · [§9 Launch](09_launch.md) · [§10 Component](10_component.md)。
+详见 [§2 节点 Node](02_node.md) · [§9 启动 Launch](09_launch.md) · [§10 组件 Component](10_component.md)。
 
 ---
 
@@ -260,7 +265,7 @@ Autonomy 算法模块不直接操作 DDS/SHM，而是经 **Node + 消息边界**
 
 `TimerComponent` 无输入 channel，由 DAG `interval`（ms）直接触发 `Proc()`，见 [§11](11_timer.md)。
 
-Channel 直驱回调路径见 [§3.7](03_channel.md#37-数据路径设计)。
+Channel 直驱回调路径见 [§3.7](03_channel.md#37-数据路径)。
 
 ---
 
@@ -342,7 +347,7 @@ Python 另需 `PYTHONPATH` 指向 `autolink_py3`（`examples/python/README.md`�
 | `autolink_launch` | 多 module 进程编排 |
 | `autolink_channel` | 诊断 channel 匹配 |
 | `autolink_monitor` | 实时流量 |
-| `autolink_recorder` | 录放（[§3.9](03_channel.md#39-调试工具)） |
+| `autolink_recorder` | 录放（[§3.9](03_channel.md#39-cli-工具)） |
 
 构建：`cmake ... -DAUTOLINK_BUILD_TOOLS=ON`。
 
@@ -362,4 +367,4 @@ Python 另需 `PYTHONPATH` 指向 `autolink_py3`（`examples/python/README.md`�
 
 ---
 
-**导航**：[← §0 指南](00_guide.md) · [§2 Node →](02_node.md)
+**导航**：[← §0 指南](00_guide.md) · [§2 节点 Node →](02_node.md)

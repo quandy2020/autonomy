@@ -1,22 +1,22 @@
-# 12. Scheduler
+# 12. 调度 Scheduler
 
 Scheduler 调度 **CRoutine**（Reader 回调、Component `Proc`、Timer 等）。支持 **classic** 与 **choreography**。
 
 | 本文 §12 | 相关文档 |
 |----------|----------|
-| 任务调度 | [§0 指南](00_guide.md) · [§10 Component](10_component.md) · [§3 Channel](03_channel.md) · [§1.6 环境变量](01_architecture.md#16-环境与路径变量) |
+| 任务调度 | [§0 指南](00_guide.md) · [§10 组件 Component](10_component.md) · [§3 通道 Channel](03_channel.md) · [§1.6 环境变量](01_architecture.md#16-环境与路径变量) |
 
 ---
 
-## 12.1 设计
+## 12.1 调度流程
 
-Scheduler 调度 **CRoutine**（Reader 回调、Component `Proc`、Timer 等）。`Component::Initialize` 末尾向 Scheduler 注册任务；任务名与 choreography 配置中 `tasks[].name` 对应。
+`Component::Initialize` 末尾向 Scheduler 注册任务；任务名与 choreography 配置中 `tasks[].name` 对应。
 
 <div class="comm-flow-diagram">
 <div class="comm-flow-header">
   <span class="comm-flow-badge">调度</span>
   <span class="comm-flow-title">收包 → CRoutine → Dispatch → 工作线程</span>
-  <span class="comm-flow-sub">classic 线程池按 group/prio；choreography 绑核见 §12.3–§12.4</span>
+  <span class="comm-flow-sub">classic 线程池按 group/prio；choreography 绑核见 [§12.3](#123-classic)–[§12.4](#124-choreography)</span>
 </div>
 
 <div class="comm-flow-pipeline comm-flow-pipeline--chain">
@@ -53,7 +53,7 @@ Scheduler 调度 **CRoutine**（Reader 回调、Component `Proc`、Timer 等）�
 
 ---
 
-## 12.2 配置入口
+## 12.2 AUTOLINK_SCHED_CONF
 
 ```bash
 export AUTOLINK_SCHED_CONF=autolink/autolink/conf/compute_sched_choreography.conf
@@ -76,7 +76,7 @@ mainboard -d foo.dag
 
 ---
 
-## 12.3 classic 策略
+## 12.3 classic
 
 线程池按 **group** 划分，任务按名称落入 group，组内按 `prio` 优先级调度：
 
@@ -123,11 +123,11 @@ scheduler_conf {
 | `tasks[].name` | 与内部任务名匹配 |
 | `tasks[].prio` | 组内优先级，数值越大越优先 |
 
-适合通用负载；可为 `async_log`、`shm` 等基础设施线程单独绑核（见 [§8 Log](08_log.md)）。
+适合通用负载；可为 `async_log`、`shm` 等基础设施线程单独绑核（见 [§8 日志 Log](08_log.md)）。
 
 ---
 
-## 12.4 choreography 策略
+## 12.4 choreography
 
 关键任务指定 **processor 编号**（专用线程），其余任务进入 **pool**：
 
@@ -156,11 +156,11 @@ scheduler_conf {
 
 未指定 `processor` 的任务（如 `E`）落入 pool。
 
-感知 / 控制等**延迟敏感链路**应将任务名绑定到专用 `processor`，减少与日志、通用逻辑的核争抢。
+感知 / 控制等 **延迟敏感链路** 应将任务名绑定到专用 `processor`，减少与日志、通用逻辑的核争抢。
 
 ---
 
-## 12.5 与 Component / Channel 联调
+## 12.5 联调要点
 
 1. **控制环**： [Channel](03_channel.md) `pending_queue_size=1`，只处理最新帧。  
 2. **Proc 非阻塞**：I/O、重计算移出 Scheduler 线程。  
@@ -175,15 +175,4 @@ scheduler_conf {
 
 ---
 
-## 12.7 排错
-
-| 现象 | 处理 |
-|------|------|
-| 配置未生效 | `AUTOLINK_SCHED_CONF` 须在 `mainboard` 前 export |
-| CPU 占用 100% | `processor_num` 过大；回调死循环 |
-| 抖动大 | 换 choreography；检查是否有进程与实时线程抢核 |
-| 回调从不执行 | Component 未 Initialize；Scheduler 未启动 |
-
----
-
-**导航**：[← §11 Timer 与 Time](11_timer.md) · [§0 指南](00_guide.md) · [§13 综述 →](13_survey.md)
+**导航**：[← §11 时间 Time / Rate / Timer](11_timer.md) · [§0 指南](00_guide.md) · [§13 综述 Survey →](13_survey.md)

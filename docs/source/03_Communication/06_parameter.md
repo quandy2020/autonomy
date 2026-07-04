@@ -1,16 +1,16 @@
-# 6. Parameter
+# 6. 参数 Parameter
 
-Parameter 提供**跨节点键值配置**。对标 ROS 2 Parameter Server。
+Parameter 提供 **跨节点键值配置**。对标 ROS 2 Parameter Server。
 
 | 本文 §6 | 相关文档 |
 |---------|----------|
-| 全局参数 | [§0 指南](00_guide.md) · [§4 Service](04_service.md) · [Framework §7](../05_Framework/07_commsgs_integration.md) |
+| 全局参数 | [§0 指南](00_guide.md) · [§4 服务 Service](04_service.md) · [Framework §7](../05_Framework/07_commsgs_integration.md) |
 
 ---
 
-## 6.1 设计
+## 6.1 调用流程
 
-Parameter 通过 **Service RPC** 在 Client 与 Server 之间读写键值；每个 Server 绑定一个 Node 名。
+Parameter 通过 **Service RPC** 在 Client 与 Server 之间读写键值；Client 构造时传入**目标 Server 的 node 名**（非自身 node 名）。
 
 <div class="comm-flow-diagram">
 <div class="comm-flow-header">
@@ -84,7 +84,9 @@ int main(int argc, char** argv) {
 
 ---
 
-## 6.3 API
+## 6.3 GetParameter / SetParameter
+
+`Parameter` 包装标量值；`ParameterServer` 本地存储，`ParameterClient` 经 RPC 访问远端 Server。
 
 **Parameter 包装值**：
 
@@ -115,7 +117,7 @@ Parameter("int", 42);
 
 ---
 
-## 6.4 Python
+## 6.4 Python API
 
 `py_parameter.py`：
 
@@ -143,7 +145,7 @@ python3 py_parameter.py
 
 ---
 
-## 6.5 与配置文件分工
+## 6.5 配置分工
 
 | 机制 | 适用 |
 |------|------|
@@ -155,14 +157,4 @@ Autonomy 模块参数管线见 [Framework §7](../05_Framework/07_commsgs_integr
 
 ---
 
-## 6.6 排错
-
-| 现象 | 处理 |
-|------|------|
-| Get 失败 | Server 未启动；Client 目标 node 名与 Server Node 名不一致 |
-| 值未同步 | 确认 Set 在 Server 侧还是 Client 侧；List 核对键名 |
-| 多进程 | Server 进程须先 `Init` 并创建 ParameterServer Node |
-
----
-
-**导航**：[← §5 Action](05_action.md) · [§0 指南](00_guide.md) · [§7 Plugin →](07_plugin.md)
+**导航**：[← §5 动作 Action](05_action.md) · [§0 指南](00_guide.md) · [§7 插件 Plugin →](07_plugin.md)

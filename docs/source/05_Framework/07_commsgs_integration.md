@@ -72,4 +72,4 @@ message PlannerOptions {
 ### 7.7 相关文档
 
 - [14 Commsgs 文档](../14_Commsgs/index.rst)
-- [03 Communication](../03_Communication/01_architecture.md)
+- [03 Communication · §1 架构 Architecture](../03_Communication/01_architecture.md)

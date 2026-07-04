@@ -1,18 +1,16 @@
-# 5. Action
+# 5. 动作 Action
 
-Action 用于**长时任务**：Goal、Feedback、Result，支持取消与抢占。对标 ROS 2 Action。
+Action 用于 **长时任务**：Goal、Feedback、Result，支持取消与抢占。对标 ROS 2 Action。
 
 | 本文 §5 | 相关文档 |
 |---------|----------|
-| 长任务 | [§0 指南](00_guide.md) · [§2 Node](02_node.md) · [commsgs Action](../14_Commsgs/08_nav_planning_msgs.md) |
+| 长任务 | [§0 指南](00_guide.md) · [§2 节点 Node](02_node.md) · [commsgs Action](../14_Commsgs/08_nav_planning_msgs.md) |
 
 Python Action 示例尚未实现（`py_action_server.py` 为占位）；以下以 C++ 与 `examples.proto` 为准。
 
 ---
 
-## 5.1 设计
-
-Action 在 Channel 之上封装 **Goal / Feedback / Result** 多路语义（与 ROS 2 类似），支持取消与抢占。
+## 5.1 调用流程
 
 <div class="comm-flow-diagram">
 <div class="comm-flow-header">
@@ -67,9 +65,9 @@ Autonomy 导航 Action 定义见 [commsgs Action](../14_Commsgs/08_nav_planning_
 
 ---
 
-## 5.2 Server：`SimpleActionServer`
+## 5.2 SimpleActionServer
 
-`action_listener.cpp` 使用 `SimpleActionServer`，在 goal 被接受后于**工作线程**执行：
+`action_listener.cpp` 使用 `SimpleActionServer`，在 goal 被接受后于 **工作线程** 执行：
 
 ```cpp
 constexpr char kActionName[] = "examples/simple_message_action";
@@ -125,9 +123,9 @@ int main(int argc, char* argv[]) {
 
 ---
 
-## 5.3 Client：异步 Goal + Future
+## 5.3 AsyncSendGoal
 
-`action_talker.cpp` 演示完整客户端流程：
+`action_talker.cpp` 演示 Client 侧完整流程：
 
 ```cpp
 auto client = autolink::action::CreateClient<SimpleMessageActionTraits>(
@@ -165,7 +163,7 @@ LogActionOutcome(handle, result_future.get());
 
 ---
 
-## 5.4 运行
+## 5.4 运行示例
 
 ```bash
 export AUTOLINK_PATH=...
@@ -182,7 +180,7 @@ cd build/autolink/bin/examples
 
 ---
 
-## 5.5 实现注意
+## 5.5 集成要点
 
 - **Execute 在工作线程**：`SimpleActionServer` 的 execute 回调内长循环会阻塞新 goal 接受。
 - **Feedback**：Server 调用 `PublishFeedback`；Client 注册 `feedback_callback`。
@@ -190,15 +188,4 @@ cd build/autolink/bin/examples
 
 ---
 
-## 5.6 排错
-
-| 现象 | 处理 |
-|------|------|
-| Client 一直等 Server | 先启 `action_listener`；核对 `kActionName` |
-| Goal rejected | Server execute 回调未正确注册 |
-| 无 feedback | 注册 `feedback_callback`；Server 须 `PublishFeedback` |
-| 超时 | 调大 `kResultTimeout`；检查 Server 是否卡死 |
-
----
-
-**导航**：[← §4 Service](04_service.md) · [§0 指南](00_guide.md) · [§6 Parameter →](06_parameter.md)
+**导航**：[← §4 服务 Service](04_service.md) · [§0 指南](00_guide.md) · [§6 参数 Parameter →](06_parameter.md)

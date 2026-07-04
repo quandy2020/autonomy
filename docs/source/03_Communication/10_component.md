@@ -1,16 +1,16 @@
-# 10. Component
+# 10. 组件 Component
 
-Component 是推荐的**算法模块形态**：`.so` + DAG，支持 **1–4 路**输入（`Component<M0,…,M3>`）。
+Component 是推荐的 **算法模块形态**：`.so` + DAG，支持 **1–4 路** 输入（`Component<M0,…,M3>`）。
 
 | 本文 §10 | 相关文档 |
 |----------|----------|
-| 算法模块 | [§0 指南](00_guide.md) · [§9 Launch](09_launch.md) · [§3 Channel](03_channel.md) · [§12 Scheduler](12_scheduler.md) |
+| 算法模块 | [§0 指南](00_guide.md) · [§9 启动 Launch](09_launch.md) · [§3 通道 Channel](03_channel.md) · [§12 调度 Scheduler](12_scheduler.md) |
 
 ---
 
-## 10.1 设计
+## 10.1 执行流程
 
-Component 将算法封装为 `.so`，由 DAG 声明输入 channel；框架在数据齐备时调度 `Proc()`。完整多路数据流见 [§1.4](01_architecture.md#14-component-数据流)。
+框架在 DataVisitor 多路输入齐备时调度 `Proc()`。完整数据流见 [§1.4](01_architecture.md#14-component-数据流)。
 
 <div class="comm-flow-diagram">
 <div class="comm-flow-header">
@@ -52,7 +52,7 @@ Component 将算法封装为 `.so`，由 DAG 声明输入 channel；框架在数
 
 ---
 
-## 10.2 双输入 Component 示例
+## 10.2 CommonComponentSample
 
 **头文件**（`common_component_example.hpp`）：
 
@@ -103,7 +103,7 @@ components {
 
 ---
 
-## 10.3 单路与多路模板
+## 10.3 模板参数
 
 | 基类 | Proc 签名 |
 |------|-----------|
@@ -115,7 +115,7 @@ components {
 
 ---
 
-## 10.4 输出 Channel
+## 10.4 Writer 输出
 
 在 `Init()` 中通过 `node_` 创建 Writer（`TimerComponent` 示例同理）：
 
@@ -130,7 +130,7 @@ bool TimerComponentSample::Init() {
 
 ---
 
-## 10.5 编译与加载
+## 10.5 ClassLoader
 
 `common_component_example/CMakeLists.txt` 将示例编译为 `libcommon_component_example.so`，安装到 `AUTOLINK_LIB_PATH`。mainboard 流程：
 
@@ -144,7 +144,7 @@ component->Initialize(conf);
 
 ---
 
-## 10.6 启动与联调
+## 10.6 运行示例
 
 ```bash
 export AUTOLINK_PATH=...
@@ -153,11 +153,11 @@ export AUTOLINK_LIB_PATH=.../libcommon_component_example.so 所在目录
 mainboard -d .../common.dag
 ```
 
-`Proc` 需要两路输入：用两个 talker 或改为单路 `Component<Driver>` 测试。TimerComponent 无此依赖，见 [§11 Timer 与 Time](11_timer.md)。
+`Proc` 需要两路输入：用两个 talker 或改为单路 `Component<Driver>` 测试。TimerComponent 无此依赖，见 [§11 时间 Time / Rate / Timer](11_timer.md)。
 
 ---
 
-## 10.7 与 Binary 对比
+## 10.7 Binary 对比
 
 | | Binary | Component |
 |---|--------|-----------|
@@ -168,15 +168,4 @@ mainboard -d .../common.dag
 
 ---
 
-## 10.8 排错
-
-| 现象 | 处理 |
-|------|------|
-| `Proc` 从未调用 | 某路 channel 无数据；检查 DAG `readers` 名 |
-| `Initialize` 失败 | `Init()` 返回 false；Writer 创建失败 |
-| 库加载失败 | `class_name` 与 `AUTOLINK_REGISTER_COMPONENT` 不一致 |
-| 延迟高 | `Proc` 内阻塞；迁移到异步或缩简逻辑 |
-
----
-
-**导航**：[← §9 Launch](09_launch.md) · [§0 指南](00_guide.md) · [§11 Timer 与 Time →](11_timer.md)
+**导航**：[← §9 启动 Launch](09_launch.md) · [§0 指南](00_guide.md) · [§11 时间 Time / Rate / Timer →](11_timer.md)

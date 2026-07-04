@@ -1,10 +1,10 @@
-# 11. Timer 与 Time
+# 11. 时间 Time / Rate / Timer
 
 时间相关能力：`Time` / `Duration` / `Rate` / `Clock` 用于时间戳与稳频；`Timer` / `TimerComponent` 用于周期任务。
 
 | 本文 §11 | 相关文档 |
 |----------|----------|
-| 时间与定时 | [§0 指南](00_guide.md) · [§10 Component](10_component.md) |
+| 时间与定时 | [§0 指南](00_guide.md) · [§10 组件 Component](10_component.md) |
 
 | 模块 | 头文件 | 用途 |
 |------|--------|------|
@@ -16,7 +16,7 @@
 
 ---
 
-## 11.1 Time 与 Duration（C++）
+## 11.1 Time / Duration
 
 ### Time — 时间点
 
@@ -75,7 +75,7 @@ Duration elapsed = t2 - t;       // 两 Time 相减得 Duration
 
 ---
 
-## 11.2 Rate（C++）
+## 11.2 Rate
 
 `Rate` 在循环末尾调用 `Sleep()`，**自动扣除本轮已耗时间**，使平均频率趋近目标值。适合 Binary 模式主循环稳频发布。
 
@@ -125,9 +125,9 @@ while (autolink::OK()) {
 
 ---
 
-## 11.3 Clock（C++）
+## 11.3 Clock
 
-`Clock` 单例统一 `Time::Now()` 的数据源，支持**系统时钟**与 **Mock 时钟**（仿真 / 单测）。
+`Clock` 单例统一 `Time::Now()` 的数据源，支持 **系统时钟** 与 **Mock 时钟**（仿真 / 单测）。
 
 ```cpp
 #include "autolink/time/clock.hpp"
@@ -154,9 +154,9 @@ Clock::SetNowInSeconds(1001.5);
 
 ---
 
-## 11.4 Timer（C++ API）
+## 11.4 Timer
 
-基于**时间轮**（`timing_wheel.hpp`），周期单位 **毫秒**，与 Time/Rate 独立。
+基于 **时间轮**（`timing_wheel.hpp`），周期单位 **毫秒**，与 Time/Rate 独立。
 
 ```cpp
 #include "autolink/timer/timer.hpp"
@@ -251,7 +251,7 @@ Component 体系内周期任务优先 **TimerComponent**；Binary 工具用 **Ra
 
 ---
 
-## 11.7 Python（Time / Rate）
+## 11.7 Python API（Time / Rate）
 
 `autolink_py3.autolink_time`（或 `from autolink_py3 import autolink_time`）提供与 C++ 对等的 Time / Duration / Rate。
 
@@ -306,7 +306,7 @@ python3 autolink/examples/python/py_time.py
 
 ---
 
-## 11.8 Python（Timer）
+## 11.8 Python API（Timer）
 
 `autolink_py3.timer` 对应 C++ `Timer`（`py_timer.py`）：
 
@@ -343,17 +343,4 @@ ct2.start()
 
 ---
 
-## 11.10 排错
-
-| 现象 | 处理 |
-|------|------|
-| 时间戳跳变 | 墙钟受 NTP 影响；测间隔用 `MonoTime` |
-| Rate 频率偏低 | 单轮耗时超过周期；优化回调或降频 |
-| Timer 不触发 | 是否 `Start()`；period 是否在 1~32768 ms |
-| TimerComponent 无输出 | `Init` 是否创建 Writer；DAG `interval` 是否过小 |
-| Python 导入失败 | 设置 `PYTHONPATH`（见 `examples/python/README.md`） |
-| Mock 时间不前进 | 仿真需手动 `Clock::SetNow` 或由仿真器驱动 |
-
----
-
-**导航**：[← §10 Component](10_component.md) · [§0 指南](00_guide.md) · [§12 Scheduler →](12_scheduler.md)
+**导航**：[← §10 组件 Component](10_component.md) · [§0 指南](00_guide.md) · [§12 调度 Scheduler →](12_scheduler.md)
