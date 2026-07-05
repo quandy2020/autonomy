@@ -52,7 +52,7 @@ CreateAutonomy(options)
 
 ### 5.5 与 Bridge 的集成
 
-gRPC Bridge 可将外部请求转为 `NavigateToPose` Action 语义，当前 `navigator_stub` 为桩实现，详见 [15 Bridge](../15_Bridge/01_overview.md)。
+gRPC Bridge 可将外部请求转为 `NavigateToPose` Action 语义，当前 `navigator_stub` 为桩实现，详见 [15 Bridge](../15_Bridge/00_guide.md)。
 
 ### 5.6 相关文档
 

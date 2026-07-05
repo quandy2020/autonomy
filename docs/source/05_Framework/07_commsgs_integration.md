@@ -67,7 +67,7 @@ message PlannerOptions {
 
 通过 **Bridge** 模块将 commsgs 转为 ROS 2 消息，供 `rviz2`、`ros2 topic` 使用。Framework 本体不依赖 rclcpp。
 
-详见 [14 Commsgs](../14_Commsgs/01_overview.md)、[15 Bridge](../15_Bridge/01_overview.md)。
+详见 [14 Commsgs](../14_Commsgs/01_overview.md)、[15 Bridge](../15_Bridge/00_guide.md)。
 
 ### 7.7 相关文档
 

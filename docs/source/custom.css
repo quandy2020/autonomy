@@ -474,6 +474,30 @@
     height: auto !important;
 }
 
+/* rpcs/ 流程图：禁用全局 min-width 拉伸与 JS 注入的 500px 高度 */
+.rst-content .rpc-flow-diagram .mermaid-container,
+.rst-content .nav-state-diagram .mermaid-container {
+    margin: 0 !important;
+    overflow-x: auto;
+    overflow-y: visible !important;
+}
+
+.rst-content .rpc-flow-diagram .mermaid-container svg {
+    min-width: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+}
+
+.rst-content .nav-state-diagram .mermaid-container svg,
+.rst-content .nav-state-diagram pre.mermaid > svg {
+    min-width: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: 480px !important;
+}
+
 /* 时间轴类图表：允许更宽的水平展示 */
 .rst-content .mermaid-container:has(svg .timeline) {
     min-height: 200px;
@@ -491,6 +515,12 @@
 
     .rst-content .mermaid-container svg {
         min-width: 800px;
+    }
+
+    .rst-content .rpc-flow-diagram .mermaid-container svg,
+    .rst-content .nav-state-diagram .mermaid-container svg,
+    .rst-content .nav-state-diagram pre.mermaid > svg {
+        min-width: 0 !important;
     }
 }
 
@@ -1178,6 +1208,105 @@
     border-radius: 12px;
     width: 100%;
     box-sizing: border-box;
+}
+
+/* Bridge §2 分层图 — 紧凑版，层宽随内容、居中 */
+.rst-content .plan-arch-diagram--compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0.65rem auto 0.85rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+}
+
+.rst-content .plan-arch-diagram--compact .plan-arch-layer {
+    width: fit-content;
+    max-width: min(100%, 20rem);
+    min-width: 12rem;
+    padding: 0.4rem 0.75rem;
+    box-sizing: border-box;
+}
+
+.rst-content .plan-arch-diagram--compact .plan-arch-header {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+    gap: 0.35rem 0.45rem;
+    flex-wrap: nowrap;
+}
+
+.rst-content .plan-arch-diagram--compact .plan-arch-title {
+    font-size: 0.88rem;
+    white-space: nowrap;
+}
+
+.rst-content .plan-arch-diagram--compact .plan-arch-sub {
+    flex: 0 1 auto;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.rst-content .plan-arch-diagram--compact .plan-arch-pipe {
+    width: 100%;
+    max-width: 20rem;
+    padding: 0.15rem 0;
+}
+
+.rst-content .plan-arch-diagram--compact .plan-arch-pipe span {
+    padding: 0.08rem 0.45rem;
+    font-size: 0.72rem;
+}
+
+/* Bridge §2 数据流 — 各层等宽（plan-arch 版） */
+.rst-content .plan-arch-diagram--compact.bridge-arch-flow {
+    width: min(100%, 22rem);
+}
+
+.rst-content .plan-arch-diagram--compact.bridge-arch-flow .plan-arch-layer,
+.rst-content .plan-arch-diagram--compact.bridge-arch-flow .plan-arch-pipe {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.rst-content .plan-arch-diagram--compact.bridge-arch-flow .plan-arch-title {
+    white-space: normal;
+    text-align: center;
+    flex: 1 1 100%;
+}
+
+.rst-content .plan-arch-diagram--compact.bridge-arch-flow .plan-arch-header {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+}
+
+/* Bridge §2 数据流 — Mermaid 版居中 */
+.rst-content .nav-state-diagram.bridge-arch-flow {
+    width: 100%;
+    max-width: min(100%, 42rem);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.rst-content .nav-state-diagram.bridge-arch-flow svg .edgePath .path,
+.rst-content .nav-state-diagram.bridge-arch-flow svg .edgePaths path,
+.rst-content .nav-state-diagram.bridge-arch-flow svg .transition {
+    stroke: #e53935 !important;
+    stroke-width: 1.5px;
+}
+
+.rst-content .nav-state-diagram.bridge-arch-flow svg marker path {
+    fill: #e53935 !important;
+    stroke: #e53935 !important;
+}
+
+.rst-content .nav-state-diagram.bridge-arch-flow svg .edgeLabel .label {
+    font-size: 11px;
 }
 
 .rst-content .plan-arch-layer {
@@ -2265,6 +2394,282 @@
 }
 
 /* ----------------------------------------------------------------------------
+   Bridge RPC · Navigation 示例卡片
+   ---------------------------------------------------------------------------- */
+
+.rst-content .nav-card {
+    margin: 1rem 0 1.75rem;
+    padding: 0.85rem 1rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.rst-content .nav-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.55rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.88em;
+    line-height: 1.4;
+}
+
+.rst-content .nav-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    background: #eef2f7;
+    color: #455a64;
+    white-space: nowrap;
+}
+
+.rst-content .nav-chip b {
+    font-weight: 600;
+    color: #263238;
+}
+
+.rst-content .nav-chip-out {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.rst-content .nav-chip-hint {
+    background: transparent;
+    padding-left: 0;
+    color: #607d8b;
+    white-space: normal;
+}
+
+.rst-content .nav-demo-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rst-content .nav-demo-panel {
+    margin: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.rst-content .nav-demo-panel.nav-send {
+    background: #eef5fc;
+    border-color: #c5d9f0;
+    border-left: 4px solid #1565c0;
+}
+
+.rst-content .nav-demo-panel.nav-recv {
+    background: #eef8f0;
+    border-color: #c5e1c8;
+    border-left: 4px solid #2e7d32;
+}
+
+.rst-content .nav-demo-panel summary {
+    cursor: pointer;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.88em;
+    font-weight: 600;
+    user-select: none;
+    list-style: none;
+}
+
+.rst-content .nav-demo-panel summary::-webkit-details-marker {
+    display: none;
+}
+
+.rst-content .nav-demo-panel summary::before {
+    content: "▸ ";
+    display: inline-block;
+    transition: transform 0.15s ease;
+    color: #78909c;
+}
+
+.rst-content .nav-demo-panel[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.rst-content .nav-demo-panel.nav-send summary {
+    background: #dceefb;
+    color: #0d47a1;
+    border-bottom: 1px solid transparent;
+}
+
+.rst-content .nav-demo-panel.nav-send[open] summary {
+    border-bottom-color: #c5d9f0;
+}
+
+.rst-content .nav-demo-panel.nav-recv summary {
+    background: #dcedc8;
+    color: #1b5e20;
+    border-bottom: 1px solid transparent;
+}
+
+.rst-content .nav-demo-panel.nav-recv[open] summary {
+    border-bottom-color: #c5e1c8;
+}
+
+.rst-content .nav-demo-panel .highlight,
+.rst-content .nav-demo-panel pre {
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.rst-content .nav-demo-panel.nav-send .highlight,
+.rst-content .nav-demo-panel.nav-send pre {
+    background: #f5faff !important;
+}
+
+.rst-content .nav-demo-panel.nav-recv .highlight,
+.rst-content .nav-demo-panel.nav-recv pre {
+    background: #f6fbf7 !important;
+}
+
+.rst-content .nav-demo-panel .highlight pre {
+    padding: 0.85rem 1rem !important;
+    font-size: 0.82em !important;
+    max-height: 24rem;
+    overflow: auto;
+}
+
+/* ----------------------------------------------------------------------------
+   Bridge RPC · 流程图（§3.5 时序）
+   ---------------------------------------------------------------------------- */
+
+.rst-content .rpc-flow-diagram {
+    margin: 0.75rem 0 1.15rem;
+}
+
+.rst-content .rpc-flow-diagram .mermaid-container {
+    padding: 0.7rem 0.85rem 0.6rem;
+    background: linear-gradient(165deg, #f7fafc 0%, #fff 55%, #f8fbff 100%);
+    border: 1px solid #d8e2ec;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(21, 101, 192, 0.06);
+}
+
+.rst-content .rpc-flow-diagram .mermaid-container pre.mermaid {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.rst-content .rpc-flow-diagram .mermaid-container svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100% !important;
+}
+
+.rst-content .rpc-flow-diagram--seq {
+    max-width: min(100%, 580px);
+}
+
+/* §7.3 NavigationStatus 状态机 — 覆盖 sphinxcontrib-mermaid 注入的 flex/500px 规则 */
+.rst-content .nav-state-diagram {
+    margin: 0.75rem 0 1rem;
+    width: 100%;
+    max-width: 100%;
+}
+
+.rst-content .nav-state-diagram .mermaid-container {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 !important;
+    padding: 0.85rem 1rem 0.9rem;
+    background: #fafbfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: none;
+    text-align: center;
+    overflow: visible !important;
+}
+
+.rst-content .nav-state-diagram > pre.mermaid {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0.85rem 1rem;
+    background: #fafbfc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    text-align: center;
+    overflow: visible;
+}
+
+.rst-content .nav-state-diagram .mermaid-container pre.mermaid,
+.rst-content .nav-state-diagram > pre.mermaid {
+    width: 100%;
+    max-width: 100%;
+    height: auto !important;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow: visible;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 容器全宽；SVG 限高等比缩放并居中（避免 width:100% 把纵向撑过高） */
+.rst-content .nav-state-diagram pre.mermaid > svg,
+.rst-content .nav-state-diagram .mermaid-container pre.mermaid > svg,
+.rst-content .nav-state-diagram .mermaid-container > pre.mermaid > svg,
+.rst-content .nav-state-diagram .mermaid-container > pre > svg {
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    max-height: 480px !important;
+    margin: 0 auto;
+}
+
+/* 连线与标签：中性蓝灰，与 conf.py 全局 Mermaid 主题一致 */
+.rst-content .nav-state-diagram svg .edgePaths path,
+.rst-content .nav-state-diagram svg .transition {
+    stroke: #5a7289 !important;
+}
+
+.rst-content .nav-state-diagram svg marker path {
+    fill: #5a7289 !important;
+    stroke: #5a7289 !important;
+}
+
+.rst-content .nav-state-diagram svg .edgeLabel .label {
+    fill: #455a64 !important;
+    color: #455a64 !important;
+}
+
+.rst-content .nav-state-diagram .mermaid-fullscreen-btn {
+    position: absolute !important;
+    top: 6px !important;
+    right: 6px !important;
+}
+
+@media screen and (max-width: 768px) {
+    .rst-content .rpc-flow-diagram .mermaid-container,
+    .rst-content .nav-state-diagram .mermaid-container,
+    .rst-content .nav-state-diagram > pre.mermaid {
+        padding: 0.65rem 0.5rem;
+    }
+}
+
+/* ----------------------------------------------------------------------------
    响应式优化
    ---------------------------------------------------------------------------- */
 
@@ -2286,4 +2691,15 @@
     .rst-content table.docutils td {
         padding: 0.75rem;
     }
+}
+
+/* 运行时兜底：sphinxcontrib-mermaid 会在 head 注入 height:500px，此处必须置后 */
+.rst-content .nav-state-diagram .mermaid-container > pre > svg,
+.rst-content .nav-state-diagram pre.mermaid > svg {
+    height: auto !important;
+    width: auto !important;
+    max-width: 100% !important;
+    max-height: 480px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
