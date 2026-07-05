@@ -65,7 +65,7 @@ SensorCollator → feedLaserScan() → ObstacleLayer
 | `foxglove_bridge`（ROS 包） | WebSocket + ROS 2 | Foxglove 可视化 |
 | `VisualizationServer`（规划） | WebSocket + commsgs | 原生可视化 |
 
-三者**互不替代**。详见 [15 Bridge](../15_Bridge/01_overview.md)。
+三者**互不替代**。详见 [15 Bridge](../15_Bridge/00_guide.md)。
 
 ### 5.5 各模块数据出口
 
