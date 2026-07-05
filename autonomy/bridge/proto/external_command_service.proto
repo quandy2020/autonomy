@@ -19,82 +19,407 @@ package autonomy.bridge.proto;
 import "autonomy/commsgs/proto/geometry_msgs.proto";
 import "autonomy/commsgs/proto/vehicle_msgs.proto";
 import "autonomy/commsgs/proto/builtin_interfaces.proto";
+import "autonomy/commsgs/proto/error_code.proto";
 import "google/protobuf/empty.proto";
 
-// 导航指令枚举
+// =============================================================================
+// 公共信封 — 所有 Request 首字段为 header，所有 Command Stream Response 首字段为 ack
+// =============================================================================
+
+// 请求公共头：时间戳、幂等 ID、客户端标识、防重放 nonce
+message RequestHeader {
+  commsgs.proto.builtin_interfaces.Time timestamp = 1;
+  string cmd_id = 2;
+  string client_id = 3;
+  string nonce = 4;
+}
+
+// 任务类型（与 vehicle_msgs.RobotTaskType 数值对齐）
+enum TaskType {
+  TASK_TYPE_NONE = 0;
+  TASK_TYPE_NAVIGATION = 1;
+  TASK_TYPE_FOLLOW = 2;
+  TASK_TYPE_TELEOP = 3;
+  TASK_TYPE_EXPLORATION = 4;
+  TASK_TYPE_DOCK = 5;
+  TASK_TYPE_MAP = 6;
+}
+
+// 通用任务生命周期状态
+enum TaskStatus {
+  TASK_STATUS_UNKNOWN = 0;
+  TASK_STATUS_IDLE = 1;
+  TASK_STATUS_RUNNING = 2;
+  TASK_STATUS_PAUSED = 3;
+  TASK_STATUS_SUCCEEDED = 4;
+  TASK_STATUS_FAILED = 5;
+  TASK_STATUS_CANCELED = 6;
+}
+
+// 命令流统一应答头；final=true 表示本条为 Stream 末帧
+message CommandAck {
+  bool success = 1;
+  string message = 2;
+  commsgs.proto.error_code.ErrorCode error_code = 3;
+  bool final = 4;
+  string cmd_id = 5;
+  TaskType task_type = 6;
+  TaskStatus task_status = 7;
+}
+
+// Navigator 插件选择（对齐 NavigateToPoseAction.Goal）
+message NavigationPluginOptions {
+  string planner_id = 1;
+  string controller_id = 2;
+  string goal_checker_id = 3;
+  string behavior_tree = 4;
+}
+
+// =============================================================================
+// 查询（Unary，可重试，无副作用）
+// =============================================================================
+
+message ActiveTaskInfo {
+  TaskType type = 1;
+  TaskStatus status = 2;
+  string cmd_id = 3;
+  string client_id = 4;
+  commsgs.proto.builtin_interfaces.Time started_at = 5;
+  float progress = 6;  // [0, 1]，可选
+}
+
+message Capabilities {
+  repeated string planner_ids = 1;
+  repeated string controller_ids = 2;
+  repeated string smoother_ids = 3;
+  bool supports_navigation = 4;
+  bool supports_follow = 5;
+  bool supports_teleop = 6;
+  bool supports_exploration = 7;
+  bool supports_docking = 8;
+  bool supports_map_management = 10;
+  string bridge_version = 11;
+  string autonomy_version = 12;
+}
+
+// =============================================================================
+// 系统级命令（Unary）
+// =============================================================================
+
+message EmergencyStopRequest {
+  RequestHeader header = 1;
+  string reason = 2;
+}
+
+message CancelAllTasksRequest {
+  RequestHeader header = 1;
+  repeated TaskType task_types = 2;  // 空 = 取消全部活跃任务
+}
+
+// =============================================================================
+// 导航（单点 / 多点 / 重规划）
+// =============================================================================
+
+enum NavigationMode {
+  NAV_MODE_UNSPECIFIED = 0;
+  NAV_MODE_SINGLE_POSE = 1;      // NavigateToPose
+  NAV_MODE_THROUGH_POSES = 2;    // NavigateThroughPoses，按序巡航
+}
+
 enum NavigationCommand {
   NAV_CMD_UNSPECIFIED = 0;
-  NAV_CMD_START = 1;    // 开始导航
-  NAV_CMD_STOP = 2;     // 停止导航
-  NAV_CMD_CANCEL = 3;   // 取消导航
-  NAV_CMD_RESUME = 4;   // 恢复导航
-  NAV_CMD_PAUSE = 5;    // 暂停导航
+  NAV_CMD_START = 1;
+  NAV_CMD_STOP = 2;
+  NAV_CMD_CANCEL = 3;
+  NAV_CMD_RESUME = 4;
+  NAV_CMD_PAUSE = 5;
+  NAV_CMD_REPLAN = 6;            // 保持目标不变，重新规划路径
 }
 
-// 探索指令枚举
+enum NavigationStatus {
+  NAV_STATUS_UNKNOWN = 0;
+  NAV_STATUS_IDLE = 1;
+  NAV_STATUS_PLANNING = 2;
+  NAV_STATUS_NAVIGATING = 3;
+  NAV_STATUS_PAUSED = 4;
+  NAV_STATUS_SUCCEEDED = 5;
+  NAV_STATUS_FAILED = 6;
+  NAV_STATUS_CANCELED = 7;
+}
+
+message NavigationCommandRequest {
+  RequestHeader header = 1;
+  NavigationCommand command = 2;
+  NavigationMode mode = 3;         // START 时必填
+  repeated commsgs.proto.geometry_msgs.PoseStamped goals = 4;  // START 时必填
+  NavigationPluginOptions plugins = 5;
+  float timeout_sec = 6;           // 0 = 服务端默认
+}
+
+message NavigationCommandResponse {
+  CommandAck ack = 1;
+  NavigationStatus status = 2;
+  int32 current_waypoint_index = 3;
+  int32 total_waypoints = 4;
+  float distance_remaining = 5;
+  commsgs.proto.geometry_msgs.PoseStamped current_pose = 6;
+}
+
+// =============================================================================
+// 跟随
+// =============================================================================
+
+enum FollowMode {
+  FOLLOW_MODE_UNSPECIFIED = 0;
+  FOLLOW_MODE_PERSON = 1;
+  FOLLOW_MODE_TARGET_POSE = 2;
+  FOLLOW_MODE_TARGET_ID = 3;
+}
+
+enum FollowCommand {
+  FOLLOW_CMD_UNSPECIFIED = 0;
+  FOLLOW_CMD_START = 1;
+  FOLLOW_CMD_STOP = 2;
+  FOLLOW_CMD_PAUSE = 3;
+  FOLLOW_CMD_RESUME = 4;
+  FOLLOW_CMD_CANCEL = 5;
+  FOLLOW_CMD_UPDATE_TARGET = 6;
+}
+
+enum FollowStatus {
+  FOLLOW_STATUS_UNKNOWN = 0;
+  FOLLOW_STATUS_IDLE = 1;
+  FOLLOW_STATUS_FOLLOWING = 2;
+  FOLLOW_STATUS_PAUSED = 3;
+  FOLLOW_STATUS_TARGET_LOST = 4;
+  FOLLOW_STATUS_SUCCEEDED = 5;
+  FOLLOW_STATUS_FAILED = 6;
+  FOLLOW_STATUS_CANCELED = 7;
+}
+
+message FollowCommandRequest {
+  RequestHeader header = 1;
+  FollowCommand command = 2;
+  FollowMode mode = 3;
+  float follow_distance = 4;
+  float follow_angle = 5;
+  float session_timeout_sec = 6;
+  bool reacquire_on_lost = 7;
+  oneof target {
+    commsgs.proto.geometry_msgs.PoseStamped target_pose = 8;
+    string target_id = 9;
+  }
+}
+
+message FollowCommandResponse {
+  CommandAck ack = 1;
+  FollowStatus status = 2;
+  float distance_to_target = 3;
+  commsgs.proto.geometry_msgs.PoseStamped target_pose = 4;
+}
+
+// =============================================================================
+// 遥操（Bidi Stream，高频速度指令）
+// =============================================================================
+
+enum TeleopCommand {
+  TELEOP_CMD_UNSPECIFIED = 0;
+  TELEOP_CMD_START = 1;
+  TELEOP_CMD_STOP = 2;
+  TELEOP_CMD_VELOCITY = 3;
+}
+
+enum TeleopStatus {
+  TELEOP_STATUS_UNKNOWN = 0;
+  TELEOP_STATUS_IDLE = 1;
+  TELEOP_STATUS_ACTIVE = 2;
+  TELEOP_STATUS_TIMEOUT = 3;
+  TELEOP_STATUS_REJECTED = 4;
+}
+
+message TeleopCommandRequest {
+  RequestHeader header = 1;
+  TeleopCommand command = 2;
+  commsgs.proto.geometry_msgs.TwistStamped velocity = 3;  // VELOCITY 时必填
+  commsgs.proto.builtin_interfaces.Duration session_timeout = 4;
+  float max_linear_speed = 5;
+  float max_angular_speed = 6;
+  float watchdog_timeout_sec = 7;   // 无速度指令超时自动 STOP，0 = 默认
+  bool disable_collision_checks = 8;
+}
+
+message TeleopCommandResponse {
+  CommandAck ack = 1;
+  TeleopStatus status = 2;
+}
+
+// =============================================================================
+// 探索建图
+// =============================================================================
+
 enum ExplorationCommand {
   EXPLORATION_CMD_UNSPECIFIED = 0;
-  EXPLORATION_CMD_START = 1;      // 开始探索
-  EXPLORATION_CMD_STOP = 2;       // 停止探索
-  EXPLORATION_CMD_PAUSE = 3;      // 暂停探索
-  EXPLORATION_CMD_RESUME = 4;     // 恢复探索
-  EXPLORATION_CMD_CANCEL = 5;     // 取消探索
-  EXPLORATION_CMD_SAVE_MAP = 6;   // 保存地图（探索相关操作）
-  EXPLORATION_CMD_SET_AREA = 7;   // 设置探索区域
+  EXPLORATION_CMD_START = 1;
+  EXPLORATION_CMD_STOP = 2;
+  EXPLORATION_CMD_PAUSE = 3;
+  EXPLORATION_CMD_RESUME = 4;
+  EXPLORATION_CMD_CANCEL = 5;
+  EXPLORATION_CMD_SAVE_MAP = 6;
+  EXPLORATION_CMD_SET_AREA = 7;
 }
 
-// 探索状态枚举
 enum ExplorationStatus {
   EXPLORATION_STATUS_UNKNOWN = 0;
   EXPLORATION_STATUS_IDLE = 1;
   EXPLORATION_STATUS_EXPLORING = 2;
   EXPLORATION_STATUS_PAUSED = 3;
   EXPLORATION_STATUS_COMPLETED = 4;
+  EXPLORATION_STATUS_FAILED = 5;
+  EXPLORATION_STATUS_CANCELED = 6;
 }
 
-// 导航指令请求
-message NavigationCommandRequest {
-  commsgs.proto.builtin_interfaces.Time timestamp = 1;
-  NavigationCommand command = 2;  // 指令类型
-  commsgs.proto.geometry_msgs.PoseArray poses = 3;  // 目标点ID (开始导航时使用)
-}
-
-// 导航指令响应
-message NavigationCommandResponse {
-  bool success = 1;               // 指令是否成功接收
-  string message = 2;             // 可选：响应消息
-}
-
-// 探索指令请求
 message ExplorationCommandRequest {
-  commsgs.proto.builtin_interfaces.Time timestamp = 1;
-  ExplorationCommand command = 2;  // 指令类型
-  
-  // 可选参数，根据不同的指令类型使用
+  RequestHeader header = 1;
+  ExplorationCommand command = 2;
   oneof params {
-    commsgs.proto.geometry_msgs.Polygon area = 3;  // 用于 SET_AREA 指令
-    string map_name = 4;                           // 用于 SAVE_MAP 指令
+    commsgs.proto.geometry_msgs.Polygon area = 3;
+    string map_name = 4;
   }
 }
 
-// 探索指令响应
 message ExplorationCommandResponse {
-  bool success = 1;               // 指令是否成功执行
-  string message = 2;             // 响应消息或错误信息
-  ExplorationStatus status = 3;   // 当前探索状态
+  CommandAck ack = 1;
+  ExplorationStatus status = 2;
+  float explored_area = 3;
+  float exploration_progress = 4;
 }
 
-service AutonomyService 
-{
-  // 获取机器人状态信息
-  rpc ReceiveBotStates(google.protobuf.Empty) returns (stream commsgs.proto.vehicle_msgs.RobotState);
+// =============================================================================
+// 自动回充 / 对接
+// =============================================================================
 
-  // 获取机器人事件信息
-  rpc ReceiveBotEvents(google.protobuf.Empty) returns (stream commsgs.proto.vehicle_msgs.RobotEvent);
+enum DockCommand {
+  DOCK_CMD_UNSPECIFIED = 0;
+  DOCK_CMD_START = 1;
+  DOCK_CMD_STOP = 2;
+  DOCK_CMD_PAUSE = 3;
+  DOCK_CMD_RESUME = 4;
+  DOCK_CMD_CANCEL = 5;
+  DOCK_CMD_UNDOCK = 6;
+}
 
-  // 发送导航指令
-  rpc SendNavigationCommand (NavigationCommandRequest) returns (stream NavigationCommandResponse);
+enum DockStatus {
+  DOCK_STATUS_UNKNOWN = 0;
+  DOCK_STATUS_IDLE = 1;
+  DOCK_STATUS_SEARCHING = 2;
+  DOCK_STATUS_APPROACHING = 3;
+  DOCK_STATUS_DOCKING = 4;
+  DOCK_STATUS_CHARGING = 5;
+  DOCK_STATUS_UNDOCKING = 6;
+  DOCK_STATUS_SUCCEEDED = 7;
+  DOCK_STATUS_FAILED = 8;
+  DOCK_STATUS_CANCELED = 9;
+}
 
-  // 发送探索指令
-  rpc SendExplorationCommand (ExplorationCommandRequest) returns (stream ExplorationCommandResponse);
+message DockCommandRequest {
+  RequestHeader header = 1;
+  DockCommand command = 2;
+  float max_search_radius = 3;
+  int32 max_retry_count = 4;
+  oneof dock_target {
+    string dock_station_id = 5;
+    commsgs.proto.geometry_msgs.PoseStamped dock_pose = 6;
+  }
+}
+
+message DockCommandResponse {
+  CommandAck ack = 1;
+  DockStatus status = 2;
+  float battery_percent = 3;
+  string dock_station_id = 4;
+}
+
+// =============================================================================
+// 地图 / 定位
+// =============================================================================
+
+enum MapCommand {
+  MAP_CMD_UNSPECIFIED = 0;
+  MAP_CMD_LOAD = 1;
+  MAP_CMD_SWITCH = 2;
+  MAP_CMD_SET_INITIAL_POSE = 3;
+  MAP_CMD_CLEAR_COSTMAP = 4;
+  MAP_CMD_ADD_KEEP_OUT_ZONE = 5;
+  MAP_CMD_REMOVE_KEEP_OUT_ZONE = 6;
+}
+
+enum MapStatus {
+  MAP_STATUS_UNKNOWN = 0;
+  MAP_STATUS_IDLE = 1;
+  MAP_STATUS_LOADING = 2;
+  MAP_STATUS_SUCCEEDED = 3;
+  MAP_STATUS_FAILED = 4;
+}
+
+message MapCommandRequest {
+  RequestHeader header = 1;
+  MapCommand command = 2;
+  oneof params {
+    string map_name = 3;
+    commsgs.proto.geometry_msgs.PoseWithCovarianceStamped initial_pose = 4;
+    commsgs.proto.geometry_msgs.Polygon keep_out_zone = 5;
+    string zone_id = 6;
+  }
+}
+
+message MapCommandResponse {
+  CommandAck ack = 1;
+  MapStatus status = 2;
+  string current_map_name = 3;
+}
+
+// =============================================================================
+// AutonomyService
+//
+// 交互约定：
+//   - Command RPC：Unary→Stream 或 Bidi；流中每条 Response 含 CommandAck，末帧 ack.final=true
+//   - Query RPC：Unary→Unary，无副作用，可重试
+//   - Push RPC：Empty→Stream，长连接周期/事件推送
+//   - 任务互斥由 Bridge FSM 保证（对标 NavigatorMuxer）；EmergencyStop 优先级最高
+// =============================================================================
+
+service AutonomyService {
+  // --- 推送（长连接）---
+  rpc ReceiveBotStates(google.protobuf.Empty)
+      returns (stream commsgs.proto.vehicle_msgs.RobotState);
+  rpc ReceiveBotEvents(google.protobuf.Empty)
+      returns (stream commsgs.proto.vehicle_msgs.RobotEvent);
+
+  // --- 查询（Unary）---
+  rpc GetRobotSnapshot(google.protobuf.Empty)
+      returns (commsgs.proto.vehicle_msgs.RobotState);
+  rpc GetActiveTask(google.protobuf.Empty)
+      returns (ActiveTaskInfo);
+  rpc GetCapabilities(google.protobuf.Empty)
+      returns (Capabilities);
+
+  // --- 系统（Unary）---
+  rpc EmergencyStop(EmergencyStopRequest)
+      returns (CommandAck);
+  rpc CancelAllTasks(CancelAllTasksRequest)
+      returns (CommandAck);
+
+  // --- 任务命令（Stream）---
+  rpc SendNavigationCommand(NavigationCommandRequest)
+      returns (stream NavigationCommandResponse);
+  rpc SendFollowCommand(FollowCommandRequest)
+      returns (stream FollowCommandResponse);
+  rpc SendTeleopCommand(stream TeleopCommandRequest)
+      returns (stream TeleopCommandResponse);
+  rpc SendExplorationCommand(ExplorationCommandRequest)
+      returns (stream ExplorationCommandResponse);
+  rpc SendDockCommand(DockCommandRequest)
+      returns (stream DockCommandResponse);
+  rpc SendMapCommand(MapCommandRequest)
+      returns (stream MapCommandResponse);
 }
