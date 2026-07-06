@@ -320,6 +320,47 @@ message LaserScan
                                          // device does not provide intensities, please leave the array empty.
 }
 
+// This message is a submessage of MultiEchoLaserScan and is not intended
+// to be used separately.
+message LaserEcho
+{
+    repeated float echoes = 1;  // Multiple values of ranges or intensities.
+}
+
+// Single scan from a multi-echo planar laser range-finder
+message MultiEchoLaserScan
+{
+    std_msgs.Header header = 1;
+    float angle_min = 2;
+    float angle_max = 3;
+    float angle_increment = 4;
+    float time_increment = 5;
+    float scan_time = 6;
+    float range_min = 7;
+    float range_max = 8;
+    repeated LaserEcho ranges = 9;
+    repeated LaserEcho intensities = 10;
+}
+
+// Navigation Satellite fix status for any Global Navigation Satellite System.
+message NavSatStatus
+{
+    int32 status = 1;
+    uint32 service = 2;
+}
+
+// Navigation Satellite fix for any Global Navigation Satellite System
+message NavSatFix
+{
+    std_msgs.Header header = 1;
+    NavSatStatus status = 2;
+    double latitude = 3;
+    double longitude = 4;
+    double altitude = 5;
+    repeated double position_covariance = 6 [packed=true];
+    uint32 position_covariance_type = 7;
+}
+
 // THIS MESSAGE IS DEPRECATED AS OF FOXY
 // Please use sensor_msgs/PointCloud2
 

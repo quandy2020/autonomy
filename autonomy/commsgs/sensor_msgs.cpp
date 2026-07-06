@@ -150,6 +150,107 @@ LaserScan FromProto(const proto::sensor_msgs::LaserScan& proto) {
     return data;
 }
 
+proto::sensor_msgs::LaserEcho ToProto(const LaserEcho& data) {
+    proto::sensor_msgs::LaserEcho proto;
+    for (float echo : data.echoes) {
+        proto.add_echoes(echo);
+    }
+    return proto;
+}
+
+LaserEcho FromProto(const proto::sensor_msgs::LaserEcho& proto) {
+    LaserEcho data;
+    data.echoes.reserve(proto.echoes_size());
+    for (float echo : proto.echoes()) {
+        data.echoes.push_back(echo);
+    }
+    return data;
+}
+
+proto::sensor_msgs::MultiEchoLaserScan ToProto(
+    const MultiEchoLaserScan& data) {
+    proto::sensor_msgs::MultiEchoLaserScan proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    proto.set_angle_min(data.angle_min);
+    proto.set_angle_max(data.angle_max);
+    proto.set_angle_increment(data.angle_increment);
+    proto.set_time_increment(data.time_increment);
+    proto.set_scan_time(data.scan_time);
+    proto.set_range_min(data.range_min);
+    proto.set_range_max(data.range_max);
+    for (const auto& range : data.ranges) {
+        *proto.add_ranges() = ToProto(range);
+    }
+    for (const auto& intensity : data.intensities) {
+        *proto.add_intensities() = ToProto(intensity);
+    }
+    return proto;
+}
+
+MultiEchoLaserScan FromProto(
+    const proto::sensor_msgs::MultiEchoLaserScan& proto) {
+    MultiEchoLaserScan data;
+    data.header = std_msgs::FromProto(proto.header());
+    data.angle_min = proto.angle_min();
+    data.angle_max = proto.angle_max();
+    data.angle_increment = proto.angle_increment();
+    data.time_increment = proto.time_increment();
+    data.scan_time = proto.scan_time();
+    data.range_min = proto.range_min();
+    data.range_max = proto.range_max();
+    data.ranges.reserve(proto.ranges_size());
+    for (const auto& range : proto.ranges()) {
+        data.ranges.push_back(FromProto(range));
+    }
+    data.intensities.reserve(proto.intensities_size());
+    for (const auto& intensity : proto.intensities()) {
+        data.intensities.push_back(FromProto(intensity));
+    }
+    return data;
+}
+
+proto::sensor_msgs::NavSatStatus ToProto(const NavSatStatus& data) {
+    proto::sensor_msgs::NavSatStatus proto;
+    proto.set_status(data.status);
+    proto.set_service(data.service);
+    return proto;
+}
+
+NavSatStatus FromProto(const proto::sensor_msgs::NavSatStatus& proto) {
+    return {static_cast<int8_t>(proto.status()),
+            static_cast<uint16_t>(proto.service())};
+}
+
+proto::sensor_msgs::NavSatFix ToProto(const NavSatFix& data) {
+    proto::sensor_msgs::NavSatFix proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    *proto.mutable_status() = ToProto(data.status);
+    proto.set_latitude(data.latitude);
+    proto.set_longitude(data.longitude);
+    proto.set_altitude(data.altitude);
+    for (double value : data.position_covariance) {
+        proto.add_position_covariance(value);
+    }
+    proto.set_position_covariance_type(data.position_covariance_type);
+    return proto;
+}
+
+NavSatFix FromProto(const proto::sensor_msgs::NavSatFix& proto) {
+    NavSatFix data;
+    data.header = std_msgs::FromProto(proto.header());
+    data.status = FromProto(proto.status());
+    data.latitude = proto.latitude();
+    data.longitude = proto.longitude();
+    data.altitude = proto.altitude();
+    data.position_covariance.reserve(proto.position_covariance_size());
+    for (double value : proto.position_covariance()) {
+        data.position_covariance.push_back(value);
+    }
+    data.position_covariance_type =
+        static_cast<uint8_t>(proto.position_covariance_type());
+    return data;
+}
+
 proto::sensor_msgs::PointCloud ToProto(const PointCloud& data) {
     proto::sensor_msgs::PointCloud proto;
 

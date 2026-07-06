@@ -364,6 +364,57 @@ struct LaserScan {
                       // please leave the array empty.
 };
 
+struct LaserEcho {
+    std::vector<float> echoes;
+};
+
+struct MultiEchoLaserScan {
+    AUTONOMY_SMART_PTR_DEFINITIONS(MultiEchoLaserScan)
+
+    std_msgs::Header header;
+    float angle_min;
+    float angle_max;
+    float angle_increment;
+    float time_increment;
+    float scan_time;
+    float range_min;
+    float range_max;
+    std::vector<LaserEcho> ranges;
+    std::vector<LaserEcho> intensities;
+};
+
+struct NavSatStatus {
+    static constexpr int8_t STATUS_NO_FIX = -1;
+    static constexpr int8_t STATUS_FIX = 0;
+    static constexpr int8_t STATUS_SBAS_FIX = 1;
+    static constexpr int8_t STATUS_GBAS_FIX = 2;
+
+    static constexpr uint16_t SERVICE_GPS = 1;
+    static constexpr uint16_t SERVICE_GLONASS = 2;
+    static constexpr uint16_t SERVICE_COMPASS = 4;
+    static constexpr uint16_t SERVICE_GALILEO = 8;
+
+    int8_t status = 0;
+    uint16_t service = 0;
+};
+
+struct NavSatFix {
+    AUTONOMY_SMART_PTR_DEFINITIONS(NavSatFix)
+
+    static constexpr uint8_t COVARIANCE_TYPE_UNKNOWN = 0;
+    static constexpr uint8_t COVARIANCE_TYPE_APPROXIMATED = 1;
+    static constexpr uint8_t COVARIANCE_TYPE_DIAGONAL_KNOWN = 2;
+    static constexpr uint8_t COVARIANCE_TYPE_KNOWN = 3;
+
+    std_msgs::Header header;
+    NavSatStatus status;
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double altitude = 0.0;
+    std::vector<double> position_covariance;
+    uint8_t position_covariance_type = COVARIANCE_TYPE_UNKNOWN;
+};
+
 // THIS MESSAGE IS DEPRECATED AS OF FOXY
 // Please use sensor_msgs/PointCloud2
 
@@ -555,6 +606,30 @@ proto::sensor_msgs::LaserScan ToProto(const LaserScan& data);
 
 // Converts 'proto' to LaserScan.
 LaserScan FromProto(const proto::sensor_msgs::LaserScan& proto);
+
+// Converts 'data' to a proto::sensor_msgs::LaserEcho.
+proto::sensor_msgs::LaserEcho ToProto(const LaserEcho& data);
+
+// Converts 'proto' to LaserEcho.
+LaserEcho FromProto(const proto::sensor_msgs::LaserEcho& proto);
+
+// Converts 'data' to a proto::sensor_msgs::MultiEchoLaserScan.
+proto::sensor_msgs::MultiEchoLaserScan ToProto(const MultiEchoLaserScan& data);
+
+// Converts 'proto' to MultiEchoLaserScan.
+MultiEchoLaserScan FromProto(const proto::sensor_msgs::MultiEchoLaserScan& proto);
+
+// Converts 'data' to a proto::sensor_msgs::NavSatStatus.
+proto::sensor_msgs::NavSatStatus ToProto(const NavSatStatus& data);
+
+// Converts 'proto' to NavSatStatus.
+NavSatStatus FromProto(const proto::sensor_msgs::NavSatStatus& proto);
+
+// Converts 'data' to a proto::sensor_msgs::NavSatFix.
+proto::sensor_msgs::NavSatFix ToProto(const NavSatFix& data);
+
+// Converts 'proto' to NavSatFix.
+NavSatFix FromProto(const proto::sensor_msgs::NavSatFix& proto);
 
 // Converts 'data' to a proto::sensor_msgs::PointCloud.
 proto::sensor_msgs::PointCloud ToProto(const PointCloud& data);
