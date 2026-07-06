@@ -1,0 +1,115 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.localization.cartographer.proto;
+
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/commsgs/proto/std_msgs.proto";
+
+enum StatusCode {
+  OK = 0;
+  CANCELLED = 1;
+  UNKNOWN = 2;
+  INVALID_ARGUMENT = 3;
+  NOT_FOUND = 4;
+  ALREADY_EXISTS = 5;
+  RESOURCE_EXHAUSTED = 6;
+  FAILED_PRECONDITION = 7;
+  ABORTED = 8;
+  UNIMPLEMENTED = 9;
+  INTERNAL = 10;
+  UNAVAILABLE = 11;
+  DATA_LOSS = 12;
+}
+
+message StatusResponse {
+  StatusCode code = 1;
+  string message = 2;
+}
+
+message SubmapEntry {
+  int32 trajectory_id = 1;
+  int32 submap_index = 2;
+  int32 submap_version = 3;
+  autonomy.commsgs.proto.geometry_msgs.Pose pose = 4;
+  bool is_frozen = 5;
+}
+
+message SubmapList {
+  autonomy.commsgs.proto.std_msgs.Header header = 1;
+  repeated SubmapEntry submap = 2;
+}
+
+message SubmapTexture {
+  bytes cells = 1;
+  int32 width = 2;
+  int32 height = 3;
+  double resolution = 4;
+  autonomy.commsgs.proto.geometry_msgs.Pose slice_pose = 5;
+}
+
+message SubmapQueryRequest {
+  int32 trajectory_id = 1;
+  int32 submap_index = 2;
+}
+
+message SubmapQueryResponse {
+  StatusResponse status = 1;
+  int32 submap_version = 2;
+  repeated SubmapTexture textures = 3;
+}
+
+message StartTrajectoryRequest {
+  string configuration_directory = 1;
+  string configuration_basename = 2;
+  bool use_initial_pose = 3;
+  autonomy.commsgs.proto.geometry_msgs.Pose initial_pose = 4;
+  int32 relative_to_trajectory_id = 5;
+}
+
+message StartTrajectoryResponse {
+  StatusResponse status = 1;
+  int32 trajectory_id = 2;
+}
+
+message FinishTrajectoryRequest {
+  int32 trajectory_id = 1;
+}
+
+message FinishTrajectoryResponse {
+  StatusResponse status = 1;
+}
+
+message WriteStateRequest {
+  string filename = 1;
+  bool include_unfinished_submaps = 2;
+}
+
+message WriteStateResponse {
+  StatusResponse status = 1;
+}
+
+message LandmarkEntry {
+  string id = 1;
+  autonomy.commsgs.proto.geometry_msgs.Pose tracking_from_landmark_transform = 2;
+  double translation_weight = 3;
+  double rotation_weight = 4;
+}
+
+message LandmarkList {
+  autonomy.commsgs.proto.std_msgs.Header header = 1;
+  repeated LandmarkEntry landmarks = 2;
+}

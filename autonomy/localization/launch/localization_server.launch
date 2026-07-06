@@ -1,0 +1,33 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Cartographer 2D SLAM + standalone occupancy grid (autolink multi-process).
+
+  Processes:
+    localization              — SLAM node (scan/imu/odom/tf, submap_list, services)
+    cartographer_occupancy_grid_node — subscribes submap_list, publishes map
+
+  Prerequisites:
+    - TF on channel "tf" (laser/imu/odom extrinsics + optional odom)
+    - LaserScan on "scan" (see config/localization/cartographer/backpack_2d.lua)
+
+  Dev (repo root, binaries on PATH):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
+    autolink_launch localization_server.launch
+
+  Install (prefix on PATH, cwd = install prefix or set config path):
+    autolink_launch share/autonomy/localization/launch/localization_server.launch
+-->
+<autolink>
+    <module>
+        <name>cartographer_slam</name>
+        <type>binary</type>
+        <process_name>localization --configuration_directory=config --configuration_basename=localization/cartographer/backpack_2d_with_grid.lua</process_name>
+    </module>
+    <module>
+        <name>cartographer_occupancy_grid</name>
+        <type>binary</type>
+        <process_name>cartographer_occupancy_grid_node -resolution=0.05 -publish_period_sec=1.0 -include_frozen_submaps=true -include_unfrozen_submaps=true</process_name>
+    </module>
+</autolink>
