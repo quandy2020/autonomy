@@ -37,13 +37,19 @@ fi
 
 git submodule update --init --recursive
 
+if [[ ! -f cmake/CMakeLists.txt ]]; then
+  echo "ERROR: expected cmake/CMakeLists.txt at protobuf ${PROTOBUF_VERSION}" >&2
+  exit 1
+fi
+
 mkdir -p build && cd build
 cmake \
   -DCMAKE_INSTALL_PREFIX=/usr/local \
   -DCMAKE_CXX_STANDARD=17 \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=ON \
-  ..
+  -Dprotobuf_BUILD_TESTS=OFF \
+  ../cmake
 
 make -j"$(nproc)"
 sudo make install

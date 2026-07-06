@@ -303,6 +303,21 @@ include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
 autonomy_link_behaviortree_cpp(${PROJECT_NAME} PUBLIC)
 autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
+if(${BUILD_GRPC})
+  google_binary(autonomy_bridge
+    SRCS
+      autonomy/bridge/bridge_main.cpp
+  )
+
+  install(
+    DIRECTORY autonomy/bridge/launch/
+    DESTINATION share/autonomy/bridge/launch
+    USE_SOURCE_PERMISSIONS
+    FILES_MATCHING
+    PATTERN "*.launch"
+  )
+endif()
+
 if(BUILD_PROMETHEUS)
   find_package(prometheus-cpp CONFIG REQUIRED)
   target_compile_definitions(${PROJECT_NAME} PRIVATE USE_PROMETHEUS=1)
