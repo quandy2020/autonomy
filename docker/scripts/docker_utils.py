@@ -279,6 +279,31 @@ def normalize_path(path: str, base_dir: Path) -> Path:
     return base_dir / p
 
 
+def ensure_git_submodules(repo_root: Path) -> None:
+    """Initialize git submodules required for the CMake build."""
+    autolink_cmake = repo_root / "autolink" / "CMakeLists.txt"
+    if autolink_cmake.is_file():
+        return
+    if not (repo_root / ".gitmodules").is_file():
+        return
+
+    print_info("autolink submodule missing; running git submodule update --init --recursive autolink")
+    git_env = {**os.environ, "GIT_HTTP_VERSION": "HTTP/1.1"}
+    result = subprocess.run(
+        ["git", "submodule", "update", "--init", "--recursive", "autolink"],
+        cwd=repo_root,
+        env=git_env,
+        check=False,
+    )
+    if result.returncode != 0 or not autolink_cmake.is_file():
+        print_error("Failed to initialize autolink submodule.")
+        print_error(
+            "From the repository root, run:\n"
+            "  git submodule update --init --recursive autolink"
+        )
+        sys.exit(1)
+
+
 def run_command(cmd: list, check: bool = True, **kwargs) -> subprocess.CompletedProcess:
     """Run a command and handle errors."""
     try:

@@ -61,6 +61,9 @@ find_package(Ipopt QUIET)
 find_package(FBow REQUIRED)
 find_package(G2o REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS iostreams)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CAIRO REQUIRED IMPORTED_TARGET cairo)
 
 option(BUILD_ONNXRUNTIME "Build ONNX Runtime support" true)
 find_package(OnnxRuntime QUIET)
@@ -84,6 +87,12 @@ set(AUTOLINK_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(AUTOLINK_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(AUTOLINK_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
 set(AUTOLINK_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/autolink/CMakeLists.txt")
+  message(FATAL_ERROR
+    "autolink submodule is not initialized.\n"
+    "From the repository root, run:\n"
+    "  git submodule update --init --recursive autolink")
+endif()
 add_subdirectory(autolink)
 
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${CMAKE_INSTALL_PREFIX}/share/autonomy/config
@@ -298,6 +307,9 @@ target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${SQLite3_INCLUDE_DIRS}
 
 # autolink (planning plugin_manager)
 target_link_libraries(${PROJECT_NAME} PUBLIC autolink)
+
+# Cartographer (pbstream gzip I/O, submap painting)
+target_link_libraries(${PROJECT_NAME} PUBLIC Boost::iostreams PkgConfig::CAIRO)
 
 include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
 autonomy_link_behaviortree_cpp(${PROJECT_NAME} PUBLIC)
