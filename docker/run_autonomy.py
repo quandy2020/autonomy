@@ -77,7 +77,7 @@ from docker_utils import (
     normalize_path, resolve_autonomy_env_dir, resolve_data_volumes,
     prepare_host_data_volume,
     resolve_container_name, resolve_publish_ports, resolve_network_mode,
-    run_command, 
+    run_command, ensure_git_submodules,
     print_error, print_info, print_warning
 )
 
@@ -464,6 +464,7 @@ class AutonomyRunner:
         self.detect_platform()
         print_info(f"Running {self.base_name}")
         self.check_requirements()
+        ensure_git_submodules(Path(self.autonomy_dev_dir))
         self.build_image_if_needed()
         self.configure_display()
         self.configure_environment()
