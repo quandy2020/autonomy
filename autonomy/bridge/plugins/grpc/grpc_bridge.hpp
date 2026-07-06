@@ -17,6 +17,7 @@
 #pragma once
 
 #include "autonomy/bridge/common/bridge_interface.hpp"
+#include "autolink/node/node.hpp"
 #include "autonomy/bridge/plugins//grpc/grpc_bridge_server_interface.hpp"
 #include "autonomy/bridge/proto/bridge_options.pb.h"
 #include "autonomy/common/async_grpc/execution_context.h"
@@ -62,6 +63,7 @@ private:
     const proto::GrpcOptions options_;
 
     bool shutting_down_{false};
+    std::shared_ptr<autolink::Node> autolink_node_;
     std::unique_ptr<std::thread> task_thread_;
     std::unique_ptr<autonomy::common::async_grpc::Server> grpc_server_{nullptr};
 };

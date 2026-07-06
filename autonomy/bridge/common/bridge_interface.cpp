@@ -38,6 +38,20 @@ proto::BridgeOptions LoadOptions(
     return options;
 }
 
+proto::BridgeOptions CreateOptions(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename) {
+    auto file_resolver =
+        std::make_unique<::autonomy::common::ConfigurationFileResolver>(
+            std::vector<std::string>{configuration_directory});
+    const std::string code =
+        ::autonomy::common::GetLuaScriptWithCommonOrDie(*file_resolver,
+                                                        configuration_basename);
+    ::autonomy::common::LuaParameterDictionary lua_parameter_dictionary(
+        code, std::move(file_resolver));
+    return LoadOptions(&lua_parameter_dictionary);
+}
+
 }  // namespace common
 }  // namespace bridge
 }  // namespace autonomy

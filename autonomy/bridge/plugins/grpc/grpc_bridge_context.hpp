@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <memory>
+
+#include "autolink/node/node.hpp"
+#include "autonomy/bridge/plugins/grpc/clients/navigator_stub.hpp"
 #include "autonomy/common/async_grpc/execution_context.h"
 #include "autonomy/common/macros.hpp"
 
@@ -26,15 +30,23 @@ namespace bridge {
 namespace plugins {
 namespace grpc {
 
-class GrpcBridgeContextInterface : public common::async_grpc::ExecutionContext
+/** Shared gRPC handler state: navigator action forwarding and future FSM. */
+class GrpcBridgeContextInterface
+    : public autonomy::common::async_grpc::ExecutionContext
 {
 public:
-    GrpcBridgeContextInterface() = default;
-    ~GrpcBridgeContextInterface() = default;
+    explicit GrpcBridgeContextInterface(std::shared_ptr<autolink::Node> node);
+    ~GrpcBridgeContextInterface() override = default;
 
     GrpcBridgeContextInterface(const GrpcBridgeContextInterface&) = delete;
     GrpcBridgeContextInterface& operator=(const GrpcBridgeContextInterface&) =
         delete;
+
+    clients::NavigatorStub& navigator() { return *navigator_stub_; }
+    const clients::NavigatorStub& navigator() const { return *navigator_stub_; }
+
+private:
+    clients::NavigatorStub::SharedPtr navigator_stub_;
 };
 
 }  // namespace grpc

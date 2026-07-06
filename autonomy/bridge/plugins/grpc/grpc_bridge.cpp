@@ -16,8 +16,11 @@
 
 #include "autonomy/bridge/plugins/grpc/grpc_bridge.hpp"
 
+#include "autolink/autolink.hpp"
+#include "autonomy/bridge/plugins/grpc/grpc_bridge_context.hpp"
 #include "autonomy/bridge/plugins/grpc/handlers/exploration_handler.hpp"
 #include "autonomy/bridge/plugins/grpc/handlers/navigation_handler.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/time.hpp"
 
 namespace autonomy {
@@ -50,6 +53,10 @@ GrpcBridgeServer::GrpcBridgeServer() {
     server_builder.RegisterHandler<handlers::SendNavigationHandler>();
     server_builder.RegisterHandler<handlers::SendExplorationHandler>();
     grpc_server_ = server_builder.Build();
+
+    autolink_node_ = autolink::CreateNode("bridge_grpc");
+    grpc_server_->SetExecutionContext(
+        std::make_unique<GrpcBridgeContextInterface>(autolink_node_));
 }
 
 void GrpcBridgeServer::Start() {

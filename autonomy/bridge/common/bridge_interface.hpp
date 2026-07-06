@@ -41,6 +41,10 @@ public:
 proto::BridgeOptions LoadOptions(
     autonomy::common::LuaParameterDictionary* const parameter_dictionary);
 
+proto::BridgeOptions CreateOptions(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename);
+
 }  // namespace common
 }  // namespace bridge
 }  // namespace autonomy

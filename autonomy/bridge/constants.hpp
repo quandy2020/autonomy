@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The Openbot Authors (duyongquan)
+ * Copyright 2025 The Openbot Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_CONFIG_HPP_
-#define AUTONOMY_COMMON_CONFIG_HPP_
+#pragma once
 
 namespace autonomy {
-namespace common {
+namespace bridge {
 
-constexpr char kConfigurationFilesDirectory[] = "/usr/local/share/autonomy/config";
-constexpr char kSourceDirectory[] = "/workspace/autonomy";
+/** autolink action server names registered by navigator BtActionServer.
+ *  Values must match navigator/constants.hpp (kNavigatorNavigateToPose, …). */
+constexpr char kNavigateToPoseActionServerName[] = "navigate_to_pose";
+constexpr char kNavigateThroughPosesActionServerName[] =
+    "navigate_through_poses";
 
-// Library install dir
-constexpr char kLibraryInstallDir[] = "/usr/local";
-
-// Library build dir
-constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build";
-
-}  // namespace common
+}  // namespace bridge
 }  // namespace autonomy
-
-#endif  // AUTONOMY_COMMON_CONFIG_HPP_

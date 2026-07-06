@@ -1,0 +1,26 @@
+<!--
+  Copyright 2025 The Openbot Authors (duyongquan)
+
+  Starts autonomy_bridge (built from bridge_main.cpp) as a standalone binary.
+
+  autolink_launch binary module: process_name is the full command line
+  (see autolink/tools/autolink_launch/main.cpp StartProcess).
+
+  Build:  cmake -DBUILD_GRPC=ON && cmake --build build -j
+  Binary: build/bin/autonomy_bridge
+
+  Dev:
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/bridge/launch
+    autolink_launch bridge.launch
+
+  Install (cwd = prefix, PATH includes <prefix>/bin):
+    autolink_launch share/autonomy/bridge/launch/bridge.launch
+-->
+<autolink>
+    <module>
+        <name>bridge</name>
+        <type>binary</type>
+        <process_name>autonomy_bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
+    </module>
+</autolink>
