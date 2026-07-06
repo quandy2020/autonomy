@@ -29,23 +29,40 @@ BridgeServer::BridgeServer() {
 }
 
 BridgeServer::BridgeServer(const proto::BridgeOptions& options)
-    : options_{options} {}
+    : options_{options} {
+    if (options_.use_grpc()) {
+        grpc_bridge_ = std::make_unique<plugins::grpc::GrpcBridgeServer>();
+    }
+}
 
 void BridgeServer::Start() {
-    if (options_.use_grpc()) {
-        LOG(INFO) << "Use mqtt gRPC as communication.";
-        // grpc_bridge_->Start();
-    }
-
     if (options_.use_mqtt()) {
         LOG(INFO) << "Use mqtt bridge as communication.";
     }
 
+    if (!grpc_bridge_) {
+        if (options_.use_grpc()) {
+            LOG(ERROR) << "BridgeServer: gRPC enabled but grpc bridge missing.";
+        }
+        return;
+    }
+
+    if (options_.use_grpc()) {
+        LOG(INFO) << "Use gRPC as bridge communication.";
+    }
     grpc_bridge_->Start();
 }
 
 void BridgeServer::WaitForShutdown() {
-    grpc_bridge_->WaitForShutdown();
+    if (grpc_bridge_) {
+        grpc_bridge_->WaitForShutdown();
+    }
+}
+
+void BridgeServer::Shutdown() {
+    if (grpc_bridge_) {
+        grpc_bridge_->Shutdown();
+    }
 }
 
 }  // namespace bridge

@@ -56,9 +56,12 @@ public:
     void Start();
 
     /**
-     * @brief Shutdown
+     * @brief Blocks until gRPC server stops.
      */
     void WaitForShutdown();
+
+    /** @brief Stop gRPC / background threads (Component Clear / signal path). */
+    void Shutdown();
 
 private:
     const proto::BridgeOptions options_;

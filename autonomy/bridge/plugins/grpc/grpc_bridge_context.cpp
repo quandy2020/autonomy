@@ -19,7 +19,13 @@
 namespace autonomy {
 namespace bridge {
 namespace plugins {
-namespace grpc {}  // namespace grpc
+namespace grpc {
+
+GrpcBridgeContextInterface::GrpcBridgeContextInterface(
+    std::shared_ptr<autolink::Node> node)
+    : navigator_stub_(std::make_shared<clients::NavigatorStub>(std::move(node))) {}
+
+}  // namespace grpc
 }  // namespace plugins
 }  // namespace bridge
 }  // namespace autonomy

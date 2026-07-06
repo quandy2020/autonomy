@@ -17,6 +17,12 @@
 #include <glog/logging.h>
 #include <signal.h>
 
+#include <cstdlib>
+#include <string>
+
+#include "autolink/autolink.hpp"
+#include "autonomy/bridge/bridge_server.hpp"
+#include "autonomy/bridge/common/bridge_interface.hpp"
 #include "autonomy/common/gflags.hpp"
 #include "autonomy/common/version.hpp"
 
@@ -24,18 +30,56 @@ namespace autonomy {
 namespace bridge {
 namespace {
 
-void SigintHandler(int sig) {
-    LOG(INFO) << "Shutdown autonomy system all tasks.";
-    exit(0);
+constexpr char kConfigDirEnv[] = "AUTONOMY_CONFIGURATION_DIRECTORY";
+constexpr char kConfigBasenameEnv[] = "AUTONOMY_CONFIGURATION_BASENAME";
+constexpr char kDefaultConfigBasename[] = "bridge/bridge_options.lua";
+
+std::string ConfigurationDirectory() {
+    if (!autonomy::common::FLAGS_configuration_directory.empty()) {
+        return autonomy::common::FLAGS_configuration_directory;
+    }
+    const char* env = std::getenv(kConfigDirEnv);
+    return env != nullptr ? std::string(env) : std::string();
 }
 
-void Run() {
-    // 'Crtl + C' sign handler
-    signal(SIGINT, SigintHandler);
+std::string ConfigurationBasename() {
+    if (!autonomy::common::FLAGS_configuration_basename.empty()) {
+        return autonomy::common::FLAGS_configuration_basename;
+    }
+    const char* env = std::getenv(kConfigBasenameEnv);
+    return env != nullptr ? std::string(env) : std::string(kDefaultConfigBasename);
+}
 
-    // Show autonomu app version
+void SigintHandler(int /*sig*/) {
+    LOG(INFO) << "Shutdown autonomy bridge.";
+    autolink::AsyncShutdown();
+}
+
+int Run() {
+    if (ConfigurationDirectory().empty()) {
+        LOG(ERROR) << "configuration_directory is required (--configuration_directory "
+                      "or " << kConfigDirEnv << ").";
+        return EXIT_FAILURE;
+    }
+
+    if (ConfigurationBasename().empty()) {
+        LOG(ERROR) << "configuration_basename is required (--configuration_basename "
+                      "or " << kConfigBasenameEnv << ").";
+        return EXIT_FAILURE;
+    }
+
     autonomy::common::ShowVersion();
-    LOG(INFO) << "Autonomy open robot for everyone enjoy !!!";
+    LOG(INFO) << "Starting autonomy bridge (gRPC / MQTT external API).";
+
+    const auto options =
+        common::CreateOptions(ConfigurationDirectory(), ConfigurationBasename());
+
+    BridgeServer server(options);
+    server.Start();
+    LOG(INFO) << "Bridge server running. Press Ctrl+C to exit.";
+    autolink::WaitForShutdown();
+    server.Shutdown();
+    return EXIT_SUCCESS;
 }
 
 }  // namespace
@@ -45,18 +89,31 @@ void Run() {
 int main(int argc, char** argv) {
     google::SetUsageMessage(
         "\n\n"
-        "\033[31m This program offers autonomy framework development for "
-        "robot.\033[0m \n");
+        "\033[31m External bridge process (gRPC AutonomyService).\033[0m \n"
+        "Example:\n"
+        "  autonomy_bridge \\\n"
+        "    --configuration_directory=config \\\n"
+        "    --configuration_basename=bridge/bridge_options.lua\n");
 
     google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     if (autonomy::common::FLAGS_verbose) {
         autonomy::common::ShowVersion();
-        exit(0);
+        return EXIT_SUCCESS;
     }
 
-    autonomy::bridge::Run();
+    if (!autolink::Init(argv[0])) {
+        LOG(ERROR) << "autolink::Init failed.";
+        google::ShutdownGoogleLogging();
+        return EXIT_FAILURE;
+    }
+
+    signal(SIGINT, autonomy::bridge::SigintHandler);
+    signal(SIGTERM, autonomy::bridge::SigintHandler);
+
+    const int exit_code = autonomy::bridge::Run();
+    autolink::Clear();
     google::ShutdownGoogleLogging();
-    return EXIT_SUCCESS;
+    return exit_code;
 }
