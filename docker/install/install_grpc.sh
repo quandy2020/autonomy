@@ -20,24 +20,24 @@
 set -e
 
 cd /thirdparty
-git clone -b v1.48.0 https://github.com/grpc/grpc.git
-cd grpc && git submodule init && git submodule update
-mkdir build && cd build
-cmake  \
+git clone --recurse-submodules -b v1.48.0 https://github.com/grpc/grpc.git
+cd grpc
+mkdir -p build && cd build
+cmake \
   -DCMAKE_INSTALL_PREFIX=/usr/local \
-  -DCMAKE_BUILD_TYPE=Release        \
-  -DCMAKE_CXX_STANDARD=17           \
-  -DgRPC_INSTALL=ON                 \
-  -DBUILD_SHARED_LIBS=ON            \
-  -DgRPC_BUILD_TESTS=OFF            \
-  -DgRPC_PROTOBUF_PROVIDER=package  \
-  -DgRPC_ZLIB_PROVIDER=package      \
-  -DgRPC_CARES_PROVIDER=package     \
-  -DgRPC_SSL_PROVIDER=package       \
-  ..  
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DgRPC_INSTALL=ON \
+  -DBUILD_SHARED_LIBS=ON \
+  -DgRPC_BUILD_TESTS=OFF \
+  -DgRPC_PROTOBUF_PROVIDER=package \
+  -DgRPC_ZLIB_PROVIDER=package \
+  -DgRPC_CARES_PROVIDER=module \
+  -DgRPC_SSL_PROVIDER=package \
+  ..
 
-make -j8
-make install
+make -j"$(nproc)"
+sudo make install
 
 # Clean up.
 cd .. && rm -rf build
