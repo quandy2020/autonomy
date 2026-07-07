@@ -3,15 +3,15 @@
 
   Cartographer 2D SLAM only (single process, embedded occupancy grid on /map).
 
-  Dev:
+  Dev (repo root):
     export PATH=$PWD/build/bin:$PATH
     export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
-    autolink_launch cartographer_2d.launch
+    autolink_launch start cartographer_2d.launch
 -->
 <autolink>
     <module>
         <name>cartographer_slam</name>
         <type>binary</type>
-        <process_name>localization --configuration_directory=config --configuration_basename=localization/cartographer/backpack_2d.lua</process_name>
+        <process_name>localization --configuration_directory=config/localization/cartographer --configuration_basename=backpack_2d.lua</process_name>
     </module>
 </autolink>

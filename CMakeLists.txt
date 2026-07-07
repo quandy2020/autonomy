@@ -84,7 +84,7 @@ endif()
 # autolink (embedded build: skip autolink tests/examples to speed up colcon)
 set(AUTOLINK_BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(AUTOLINK_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(AUTOLINK_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(AUTOLINK_BUILD_TOOLS ON CACHE BOOL "" FORCE)
 set(AUTOLINK_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
 set(AUTOLINK_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/autolink/CMakeLists.txt")
@@ -329,6 +329,29 @@ if(${BUILD_GRPC})
     PATTERN "*.launch"
   )
 endif()
+
+google_binary(localization
+  SRCS
+    autonomy/localization/localization_main.cpp
+)
+
+google_binary(cartographer_occupancy_grid_node
+  SRCS
+    autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp
+)
+
+google_binary(cartographer_pbstream_to_map
+  SRCS
+    autonomy/localization/cartographer/node/pbstream_to_map_main.cpp
+)
+
+install(
+  DIRECTORY autonomy/localization/launch/
+  DESTINATION share/autonomy/localization/launch
+  USE_SOURCE_PERMISSIONS
+  FILES_MATCHING
+  PATTERN "*.launch"
+)
 
 if(BUILD_PROMETHEUS)
   find_package(prometheus-cpp CONFIG REQUIRED)

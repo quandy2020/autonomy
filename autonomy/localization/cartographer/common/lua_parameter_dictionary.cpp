@@ -31,7 +31,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <functional>
+#include <iterator>
 #include <memory>
 
 namespace cartographer {
@@ -412,25 +414,32 @@ int LuaParameterDictionary::LuaInclude(lua_State* L) {
     CHECK_EQ(lua_gettop(L), 1);
     CHECK(lua_isstring(L, -1)) << "include takes a filename.";
 
-    LuaParameterDictionary* parameter_dictionary = GetDictionaryFromRegistry(L);
     const std::string basename = lua_tostring(L, -1);
-    const std::string filename = parameter_dictionary->file_resolver_->GetFullPathOrDie(basename);
-    if (std::find(parameter_dictionary->included_files_.begin(), parameter_dictionary->included_files_.end(),
+    lua_pop(L, 1);
+    CHECK_EQ(lua_gettop(L), 0);
+
+    LuaParameterDictionary* parameter_dictionary = GetDictionaryFromRegistry(L);
+    const std::string filename =
+        parameter_dictionary->file_resolver_->GetFullPathOrDie(basename);
+    if (std::find(parameter_dictionary->included_files_.begin(),
+                  parameter_dictionary->included_files_.end(),
                   filename) != parameter_dictionary->included_files_.end()) {
         std::string error_msg =
             "Tried to include " + filename + " twice. Already included files in order of inclusion: ";
-        for (const std::string& filename : parameter_dictionary->included_files_) {
-            error_msg.append(filename);
+        for (const std::string& included : parameter_dictionary->included_files_) {
+            error_msg.append(included);
             error_msg.append("\n");
         }
         LOG(FATAL) << error_msg;
     }
     parameter_dictionary->included_files_.push_back(filename);
-    lua_pop(L, 1);
-    CHECK_EQ(lua_gettop(L), 0);
 
-    const std::string content = parameter_dictionary->file_resolver_->GetFileContentOrDie(basename);
-    CheckForLuaErrors(L, luaL_loadbuffer(L, content.c_str(), content.size(), filename.c_str()));
+    std::ifstream stream(filename.c_str());
+    CHECK(stream.good()) << "Unable to read '" << filename << "'.";
+    const std::string content((std::istreambuf_iterator<char>(stream)),
+                              std::istreambuf_iterator<char>());
+    CheckForLuaErrors(L, luaL_loadbuffer(L, content.c_str(), content.size(),
+                                        filename.c_str()));
     CheckForLuaErrors(L, lua_pcall(L, 0, LUA_MULTRET, 0));
 
     return lua_gettop(L);

@@ -23,7 +23,7 @@
     <module>
         <name>cartographer_slam</name>
         <type>binary</type>
-        <process_name>localization --configuration_directory=config --configuration_basename=localization/cartographer/backpack_2d_with_grid.lua</process_name>
+        <process_name>localization --configuration_directory=config/localization/cartographer --configuration_basename=backpack_2d_with_grid.lua</process_name>
     </module>
     <module>
         <name>cartographer_occupancy_grid</name>

@@ -16,7 +16,6 @@
 
 #include "autonomy/localization/cartographer/node/cartographer_node_runner.hpp"
 
-#include <csignal>
 #include <cstdlib>
 
 #include <glog/logging.h>
@@ -31,13 +30,6 @@ namespace autonomy {
 namespace localization {
 namespace cartographer {
 namespace node {
-namespace {
-
-constexpr char kCartographerNodeName[] = "cartographer_node";
-
-void SigintHandler(int /*sig*/) { autolink::AsyncShutdown(); }
-
-}  // namespace
 
 int RunCartographerNode(const CartographerNodeFlags& flags) {
     if (flags.configuration_directory.empty()) {
@@ -60,7 +52,7 @@ int RunCartographerNode(const CartographerNodeFlags& flags) {
         ::cartographer::mapping::CreateMapBuilder(node_options.map_builder_options);
     CartographerNode cartographer_node(node_options, std::move(map_builder));
 
-    auto node = autolink::CreateNode(kCartographerNodeName);
+    auto node = autolink::CreateNode("cartographer_node");
     if (!node || !cartographer_node.Init(node)) {
         LOG(ERROR) << "Failed to initialize CartographerNode.";
         return EXIT_FAILURE;

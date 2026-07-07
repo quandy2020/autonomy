@@ -22,10 +22,11 @@
 #include <glog/logging.h>
 
 #include "autonomy/commsgs/proto/geometry_msgs.pb.h"
-#include "autonomy/localization/cartographer/io/image.hpp"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
+#include "autonomy/localization/cartographer/node/node_utils.hpp"
+#include "autonomy/localization/cartographer/node/occupancy_grid_builder.hpp"
 #include "autonomy/localization/cartographer/node/time_conversion.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 
@@ -41,10 +42,6 @@ using TrajectoryState =
     carto::mapping::PoseGraphInterface::TrajectoryState;
 
 namespace {
-
-uint32_t MsFromSeconds(const double seconds) {
-    return static_cast<uint32_t>(std::max(seconds * 1000.0, 1.0));
-}
 
 void SetTransformInBuffer(
     transform::Buffer* buffer,
@@ -145,16 +142,16 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
         });
 
     timers_.emplace_back(std::make_unique<autolink::Timer>(
-        MsFromSeconds(node_options_.submap_publish_period_sec),
+        TimerPeriodMs(node_options_.submap_publish_period_sec),
         [this]() { PublishSubmapList(); }, false));
     if (node_options_.pose_publish_period_sec > 0) {
         timers_.emplace_back(std::make_unique<autolink::Timer>(
-            MsFromSeconds(node_options_.pose_publish_period_sec),
+            TimerPeriodMs(node_options_.pose_publish_period_sec),
             [this]() { PublishLocalTrajectoryData(); }, false));
     }
     if (node_options_.publish_occupancy_grid) {
         timers_.emplace_back(std::make_unique<autolink::Timer>(
-            MsFromSeconds(node_options_.occupancy_grid_publish_period_sec),
+            TimerPeriodMs(node_options_.occupancy_grid_publish_period_sec),
             [this]() { PublishOccupancyGrid(); }, false));
     }
     for (auto& timer : timers_) {
@@ -255,9 +252,6 @@ int CartographerNode::AddTrajectory(const TrajectoryOptions& options) {
     AddExtrapolator(trajectory_id, options);
     AddSensorSamplers(trajectory_id, options);
     LaunchSubscribers(options, trajectory_id);
-    for (const auto& sensor_id : expected_sensor_ids) {
-        subscribed_topics_.insert(sensor_id.id);
-    }
     return trajectory_id;
 }
 
@@ -494,8 +488,8 @@ void CartographerNode::PublishOccupancyGrid() {
     proto::SubmapList submap_list;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        const auto now = commsgs::builtin_interfaces::Time::Now();
-        submap_list = map_builder_bridge_->GetSubmapList(now);
+        submap_list = map_builder_bridge_->GetSubmapList(
+            commsgs::builtin_interfaces::Time::Now());
     }
 
     for (const auto& submap_msg : submap_list.submap()) {
@@ -509,42 +503,18 @@ void CartographerNode::PublishOccupancyGrid() {
             std::lock_guard<std::mutex> lock(mutex_);
             map_builder_bridge_->HandleSubmapQuery(request, &response);
         }
-        if (response.status().code() != proto::OK ||
-            response.textures().empty()) {
-            continue;
-        }
-        const auto& fetched_texture = response.textures(0);
         carto::io::SubmapSlice& submap_slice = submap_slices[id];
-        commsgs::geometry_msgs::Pose pose = FromProtoPose(submap_msg.pose());
-        submap_slice.pose = ToRigid3d(pose);
-        submap_slice.metadata_version = submap_msg.submap_version();
-        submap_slice.version = submap_msg.submap_version();
-        submap_slice.width = fetched_texture.width();
-        submap_slice.height = fetched_texture.height();
-        submap_slice.resolution = fetched_texture.resolution();
-        submap_slice.slice_pose =
-            ToRigid3d(FromProtoPose(fetched_texture.slice_pose()));
-        const std::string compressed_cells = fetched_texture.cells();
-        const auto pixels = carto::io::UnpackTextureData(
-            compressed_cells, fetched_texture.width(),
-            fetched_texture.height());
-        submap_slice.cairo_data.clear();
-        submap_slice.surface = carto::io::DrawTexture(
-            pixels.intensity, pixels.alpha, fetched_texture.width(),
-            fetched_texture.height(), &submap_slice.cairo_data);
+        if (!UpdateSubmapSliceFromQueryResponse(
+                &submap_slice, response, FromProtoPose(submap_msg.pose()),
+                submap_msg.submap_version())) {
+            submap_slices.erase(id);
+        }
     }
 
-    if (submap_slices.empty()) {
-        return;
-    }
-
-    const auto painted_slices = carto::io::PaintSubmapSlices(
-        submap_slices, node_options_.occupancy_grid_resolution);
     const auto now = commsgs::builtin_interfaces::Time::Now();
-    auto grid = CreateOccupancyGridMsg(
-        painted_slices, node_options_.occupancy_grid_resolution,
-        node_options_.map_frame, now);
-    if (grid) {
+    if (auto grid = BuildOccupancyGrid(submap_slices,
+                                       node_options_.occupancy_grid_resolution,
+                                       node_options_.map_frame, now)) {
         occupancy_grid_writer_->Write(*grid);
     }
 }
@@ -552,78 +522,65 @@ void CartographerNode::PublishOccupancyGrid() {
 void CartographerNode::HandleOdometryMessage(
     const int trajectory_id, const std::string& sensor_id,
     const commsgs::planning_msgs::Odometry& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.odometry_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandleOdometryMessage(sensor_id, msg);
+    DispatchSample(sensor_samplers_.at(trajectory_id).odometry_sampler, [&] {
+        map_builder_bridge_->sensor_bridge(trajectory_id)
+            ->HandleOdometryMessage(sensor_id, msg);
+    });
 }
 
 void CartographerNode::HandleImuMessage(
     const int trajectory_id, const std::string& sensor_id,
     const commsgs::sensor_msgs::Imu& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.imu_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandleImuMessage(sensor_id, msg);
+    DispatchSample(sensor_samplers_.at(trajectory_id).imu_sampler, [&] {
+        map_builder_bridge_->sensor_bridge(trajectory_id)
+            ->HandleImuMessage(sensor_id, msg);
+    });
 }
 
 void CartographerNode::HandleLaserScanMessage(
     const int trajectory_id, const std::string& sensor_id,
     const commsgs::sensor_msgs::LaserScan& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.rangefinder_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandleLaserScanMessage(sensor_id, msg);
+    DispatchSample(sensor_samplers_.at(trajectory_id).rangefinder_sampler, [&] {
+        map_builder_bridge_->sensor_bridge(trajectory_id)
+            ->HandleLaserScanMessage(sensor_id, msg);
+    });
 }
 
 void CartographerNode::HandlePointCloud2Message(
     const int trajectory_id, const std::string& sensor_id,
     const commsgs::sensor_msgs::PointCloud2& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.rangefinder_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandlePointCloud2Message(sensor_id, msg);
+    DispatchSample(sensor_samplers_.at(trajectory_id).rangefinder_sampler, [&] {
+        map_builder_bridge_->sensor_bridge(trajectory_id)
+            ->HandlePointCloud2Message(sensor_id, msg);
+    });
 }
 
 void CartographerNode::HandleMultiEchoLaserScanMessage(
     const int trajectory_id, const std::string& sensor_id,
     const commsgs::sensor_msgs::MultiEchoLaserScan& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.rangefinder_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandleMultiEchoLaserScanMessage(sensor_id, msg);
+    DispatchSample(sensor_samplers_.at(trajectory_id).rangefinder_sampler, [&] {
+        map_builder_bridge_->sensor_bridge(trajectory_id)
+            ->HandleMultiEchoLaserScanMessage(sensor_id, msg);
+    });
 }
 
 void CartographerNode::HandleNavSatFixMessage(
     const int trajectory_id, const std::string& sensor_id,
     const commsgs::sensor_msgs::NavSatFix& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.fixed_frame_pose_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandleNavSatFixMessage(sensor_id, msg);
+    DispatchSample(
+        sensor_samplers_.at(trajectory_id).fixed_frame_pose_sampler, [&] {
+            map_builder_bridge_->sensor_bridge(trajectory_id)
+                ->HandleNavSatFixMessage(sensor_id, msg);
+        });
 }
 
 void CartographerNode::HandleLandmarkMessage(
     const int trajectory_id, const std::string& sensor_id,
     const proto::LandmarkList& msg) {
-    auto& sampler = sensor_samplers_.at(trajectory_id);
-    if (!sampler.landmark_sampler.Pulse()) {
-        return;
-    }
-    map_builder_bridge_->sensor_bridge(trajectory_id)
-        ->HandleLandmarkMessage(sensor_id, msg);
+    DispatchSample(sensor_samplers_.at(trajectory_id).landmark_sampler, [&] {
+        map_builder_bridge_->sensor_bridge(trajectory_id)
+            ->HandleLandmarkMessage(sensor_id, msg);
+    });
 }
 
 void CartographerNode::HandleSubmapQuery(
