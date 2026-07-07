@@ -16,8 +16,11 @@ ExecStart={{ autonomy_install_prefix }}/bin/localization \
   --configuration_basename={{ autonomy_localization_configuration_basename }}
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:{{ autonomy_log_dir }}/localization.log
-StandardError=append:{{ autonomy_log_dir }}/localization.log
+TimeoutStopSec={{ autonomy_service_timeout_stop_sec }}
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=autonomy-localization
 
 [Install]
 WantedBy=multi-user.target

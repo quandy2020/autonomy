@@ -9,7 +9,7 @@
   ansible.builtin.fail:
     msg: >-
       {{ autonomy_source_dir }}/scripts/install_dependency.py not found.
-      Run the build role first (--tags build).
+      Run the source role first (--tags source or full deploy).
   when:
     - autonomy_deploy_mode == 'build'
     - not autonomy_dependency_script.stat.exists
@@ -38,7 +38,7 @@
     dest: "{{ autonomy_build_dir }}/scripts/"
     delete: false
     rsync_opts:
-      - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
+      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
   when: autonomy_deploy_mode == 'artifact'
   delegate_to: localhost
   become: false
@@ -49,7 +49,7 @@
     dest: "{{ autonomy_build_dir }}/docker/install/"
     delete: false
     rsync_opts:
-      - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
+      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
   when: autonomy_deploy_mode == 'artifact'
   delegate_to: localhost
   become: false
@@ -69,3 +69,10 @@
   when: autonomy_deploy_mode == 'artifact'
   register: autonomy_deps_artifact
   changed_when: "'[RUN]' in autonomy_deps_artifact.stdout"
+
+- name: Refresh dynamic linker cache for /usr/local
+  ansible.builtin.command:
+    argv:
+      - ldconfig
+  become: true
+  changed_when: false

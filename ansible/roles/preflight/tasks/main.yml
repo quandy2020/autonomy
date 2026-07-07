@@ -1,0 +1,41 @@
+---
+- name: Gather minimal facts for preflight
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - distribution
+      - distribution_version
+      - architecture
+      - mount
+  when: ansible_distribution is not defined
+
+- name: Require Ubuntu 22.04
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == 'Ubuntu'
+      - ansible_distribution_version is version('22.04', '==')
+    fail_msg: >-
+      Target must be Ubuntu 22.04 (found {{ ansible_distribution | default('unknown') }}
+      {{ ansible_distribution_version | default('') }}).
+  when: autonomy_preflight_strict_os | bool
+
+- name: Check supported CPU architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_architecture in autonomy_supported_architectures
+    fail_msg: >-
+      Unsupported architecture {{ ansible_architecture }}.
+      Supported: {{ autonomy_supported_architectures | join(', ') }}.
+
+- name: Check free disk space on root filesystem
+  ansible.builtin.assert:
+    that:
+      - item.size_available > (autonomy_min_free_disk_mb | int * 1024 * 1024)
+    fail_msg: >-
+      Insufficient disk space on {{ item.mount }}: need >
+      {{ autonomy_min_free_disk_mb }} MB free for {{ autonomy_deploy_mode }} mode.
+  loop: "{{ ansible_mounts | default([]) }}"
+  when:
+    - item.mount == '/'
+    - ansible_mounts is defined

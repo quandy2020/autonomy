@@ -1,0 +1,8 @@
+---
+- name: Restart enabled autonomy services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+  loop: "{{ autonomy_enabled_units }}"
+  become: true

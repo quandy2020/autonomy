@@ -2,7 +2,7 @@
 - name: Install systemd units
   ansible.builtin.template:
     src: "{{ item }}.service.j2"
-    dest: "/etc/systemd/system/{{ item }}.service"
+    dest: /etc/systemd/system/{{ item }}.service
     mode: "0644"
   loop:
     - autonomy-localization
@@ -24,11 +24,18 @@
   loop: "{{ autonomy_enabled_units }}"
   become: true
 
+- name: Check systemd units to disable
+  ansible.builtin.stat:
+    path: /etc/systemd/system/{{ item }}.service
+  loop: "{{ autonomy_all_units | difference(autonomy_enabled_units) }}"
+  register: autonomy_units_to_disable
+  become: true
+
 - name: Disable services not in autonomy_services
   ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: "{{ item.item }}"
     enabled: false
     state: stopped
-  loop: "{{ autonomy_all_units | difference(autonomy_enabled_units) }}"
+  loop: "{{ autonomy_units_to_disable.results }}"
+  when: item.stat.exists
   become: true
-  ignore_errors: true

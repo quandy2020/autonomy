@@ -1,0 +1,13 @@
+[defaults]
+inventory = inventory/production/hosts.yml
+roles_path = roles
+host_key_checking = True
+retry_files_enabled = False
+stdout_callback = default
+interpreter_python = auto_silent
+
+[privilege_escalation]
+become = True
+become_method = sudo
+
+# vault_password_file = .vault_pass

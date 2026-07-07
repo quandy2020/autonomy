@@ -1,0 +1,51 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: ubuntu2204
+    image: jrei/systemd-ubuntu:22.04
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    command: /sbin/init
+    pre_build_image: true
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      host_key_checking: false
+  inventory:
+    group_vars:
+      all:
+        autonomy_preflight_strict_os: false
+        autonomy_install_dependencies: false
+        autonomy_run_verify: false
+        autonomy_deploy_mode: artifact
+        autonomy_config_from_artifact: true
+        autonomy_restart_on_config_change: false
+        autonomy_services:
+          - task
+    host_vars:
+      ubuntu2204:
+        ansible_python_interpreter: /usr/bin/python3
+
+scenario:
+  name: default
+  test_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
+
+verifier:
+  name: ansible

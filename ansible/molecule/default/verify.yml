@@ -1,0 +1,34 @@
+---
+- name: Verify autonomy smoke deployment
+  hosts: all
+  become: true
+  tasks:
+    - name: Check install prefix binaries exist
+      ansible.builtin.stat:
+        path: "{{ autonomy_install_prefix }}/bin/task"
+      register: autonomy_task_bin
+
+    - name: Assert task binary exists
+      ansible.builtin.assert:
+        that:
+          - autonomy_task_bin.stat.exists
+
+    - name: Check runtime configuration was installed
+      ansible.builtin.stat:
+        path: "{{ autonomy_config_dir }}/task/task_options.lua"
+      register: autonomy_task_config
+
+    - name: Assert task config exists
+      ansible.builtin.assert:
+        that:
+          - autonomy_task_config.stat.exists
+
+    - name: Check systemd unit is active
+      ansible.builtin.systemd:
+        name: autonomy-task
+      register: autonomy_task_service
+
+    - name: Assert autonomy-task is active
+      ansible.builtin.assert:
+        that:
+          - autonomy_task_service.status.ActiveState == 'active'

@@ -1,0 +1,10 @@
+---
+autonomy_base_packages:
+  - git
+  - python3
+  - rsync
+  - acl
+  - cmake
+  - ninja-build
+  - build-essential
+  - pkg-config

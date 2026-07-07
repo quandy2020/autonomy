@@ -7,17 +7,40 @@
     mode: preserve
   when: autonomy_deploy_mode == 'build'
   become: true
+  register: autonomy_config_build
 
-- name: Sync runtime configuration from control machine (artifact mode)
+- name: Stat config bundled inside install prefix (artifact mode)
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}/share/autonomy/config"
+  register: autonomy_bundled_config
+  when: autonomy_deploy_mode == 'artifact'
+
+- name: Install configuration from artifact bundle
+  ansible.builtin.copy:
+    src: "{{ autonomy_install_prefix }}/share/autonomy/config/"
+    dest: "{{ autonomy_config_dir }}/"
+    remote_src: true
+    mode: preserve
+  when:
+    - autonomy_deploy_mode == 'artifact'
+    - autonomy_config_from_artifact | bool
+    - autonomy_bundled_config.stat.isdir | default(false)
+  become: true
+  register: autonomy_config_from_bundle
+
+- name: Sync runtime configuration from control machine (artifact fallback)
   ansible.builtin.synchronize:
     src: "{{ playbook_dir }}/../../config/"
     dest: "{{ autonomy_config_dir }}/"
     delete: true
     rsync_opts:
-      - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
-  when: autonomy_deploy_mode == 'artifact'
+      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
+  when:
+    - autonomy_deploy_mode == 'artifact'
+    - not (autonomy_config_from_artifact | bool and (autonomy_bundled_config.stat.isdir | default(false)))
   delegate_to: localhost
   become: false
+  register: autonomy_config_artifact
 
 - name: Set config directory permissions
   ansible.builtin.file:
@@ -28,3 +51,14 @@
     mode: "0750"
     recurse: true
   become: true
+
+- name: Restart services after configuration change
+  ansible.builtin.include_role:
+    name: services
+    tasks_from: restart.yml
+  when:
+    - autonomy_restart_on_config_change | bool
+    - >-
+      (autonomy_config_build is defined and autonomy_config_build is changed) or
+      (autonomy_config_from_bundle is defined and autonomy_config_from_bundle is changed) or
+      (autonomy_config_artifact is defined and autonomy_config_artifact is changed)
