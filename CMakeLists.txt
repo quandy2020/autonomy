@@ -247,8 +247,12 @@ configure_file(
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/autonomy-config-version.cmake"
       DESTINATION "share/autonomy")
 
-# Generate source file with version definitions.
+# Generate source file with version definitions (build tree only; not committed).
 include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
+list(REMOVE_ITEM ALL_LIBRARY_SRCS
+  "${PROJECT_SOURCE_DIR}/autonomy/common/version.cpp")
+list(APPEND ALL_LIBRARY_SRCS ${AUTONOMY_VERSION_CPP})
+set_source_files_properties(${AUTONOMY_VERSION_CPP} PROPERTIES GENERATED TRUE)
 
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
