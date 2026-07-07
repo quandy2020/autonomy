@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <csignal>
 #include <cstdlib>
 #include <string>
 
@@ -23,69 +22,103 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/gflags.hpp"
+#include "autonomy/localization/atlas/atlas_node_runner.hpp"
 #include "autonomy/localization/cartographer/node/cartographer_node_runner.hpp"
+#include "autonomy/localization/cartographer/node/node_utils.hpp"
 
-namespace autonomy {
-namespace localization {
+DEFINE_string(localization_mode, "cartographer",
+              "Localization backend: cartographer | atlas.");
+
+// Cartographer
+DEFINE_string(load_state_filename, "",
+              "Cartographer: load SLAM state from this .pbstream file.");
+DEFINE_bool(load_frozen_state, true,
+            "Cartographer: load saved state as frozen trajectories.");
+DEFINE_bool(start_trajectory_with_default_topics, true,
+            "Cartographer: start the first trajectory with default topics.");
+DEFINE_string(save_state_filename, "",
+              "Cartographer: serialize state to this file on shutdown.");
+
+// Atlas
+DEFINE_string(atlas_config,
+              "autonomy/localization/atlas/example/tum_vi/TUM_VI_mono.yaml",
+              "Atlas: camera/system YAML config.");
+DEFINE_string(atlas_vocab, "", "Atlas: ORB vocabulary file (e.g. orb_vocab.fbow).");
+DEFINE_string(atlas_map_load, "", "Atlas: load map database on startup.");
+DEFINE_string(atlas_map_save, "", "Atlas: save map database on shutdown.");
+
+namespace autonomy::localization {
 namespace {
 
-constexpr char kDefaultConfigBasename[] =
-    "localization/cartographer/backpack_2d.lua";
+using cartographer::node::RegisterAutolinkShutdownHandlers;
+using cartographer::node::ResolveWorkspacePath;
 
-void SigintHandler(int /*sig*/) { autolink::AsyncShutdown(); }
+enum class Mode { kCartographer, kAtlas };
 
-std::string ConfigurationDirectory() {
-    if (!common::FLAGS_configuration_directory.empty()) {
-        return common::FLAGS_configuration_directory;
+Mode ParseMode(const std::string& mode) {
+    if (mode == "atlas") {
+        return Mode::kAtlas;
     }
-    return "config";
+    if (mode != "cartographer") {
+        LOG(WARNING) << "Unknown localization_mode '" << mode
+                     << "', defaulting to cartographer.";
+    }
+    return Mode::kCartographer;
 }
 
-std::string ConfigurationBasename() {
-    if (!common::FLAGS_configuration_basename.empty()) {
-        return common::FLAGS_configuration_basename;
-    }
-    return std::string(kDefaultConfigBasename);
-}
-
-}  // namespace
-}  // namespace localization
-}  // namespace autonomy
-
-DEFINE_string(load_state_filename, "",
-              "If non-empty, load SLAM state from this .pbstream file.");
-DEFINE_bool(load_frozen_state, true,
-            "Load saved state as frozen trajectories.");
-DEFINE_bool(start_trajectory_with_default_topics, true,
-            "Start the first trajectory with default sensor topics.");
-DEFINE_string(save_state_filename, "",
-              "If non-empty, serialize state to this file on shutdown.");
-
-int main(int argc, char** argv) {
+int InitRuntime(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, false);
-
     if (!autolink::Init(argv[0])) {
         LOG(ERROR) << "autolink::Init failed.";
         return EXIT_FAILURE;
     }
+    RegisterAutolinkShutdownHandlers();
+    return EXIT_SUCCESS;
+}
 
-    signal(SIGINT, autonomy::localization::SigintHandler);
-    signal(SIGTERM, autonomy::localization::SigintHandler);
+}  // namespace
 
-    autonomy::localization::cartographer::node::CartographerNodeFlags flags;
-    flags.configuration_directory =
-        autonomy::localization::ConfigurationDirectory();
+int RunCartographerModule() {
+    cartographer::node::CartographerNodeFlags flags;
+    flags.configuration_directory = ResolveWorkspacePath(
+        common::FLAGS_configuration_directory.empty()
+            ? "config/localization/cartographer"
+            : common::FLAGS_configuration_directory);
     flags.configuration_basename =
-        autonomy::localization::ConfigurationBasename();
-    flags.load_state_filename = FLAGS_load_state_filename;
+        common::FLAGS_configuration_basename.empty()
+            ? "backpack_2d.lua"
+            : common::FLAGS_configuration_basename;
+    flags.load_state_filename = ResolveWorkspacePath(FLAGS_load_state_filename);
     flags.load_frozen_state = FLAGS_load_frozen_state;
     flags.start_trajectory_with_default_topics =
         FLAGS_start_trajectory_with_default_topics;
-    flags.save_state_filename = FLAGS_save_state_filename;
+    flags.save_state_filename = ResolveWorkspacePath(FLAGS_save_state_filename);
+    return cartographer::node::RunCartographerNode(flags);
+}
 
+int RunAtlasModule() {
+    atlas::AtlasNodeFlags flags;
+    flags.config_path = FLAGS_atlas_config;
+    flags.vocab_path = FLAGS_atlas_vocab;
+    flags.map_load_path = FLAGS_atlas_map_load;
+    flags.map_save_path = FLAGS_atlas_map_save;
+    return atlas::RunAtlasNode(flags);
+}
+
+}  // namespace localization
+
+int main(int argc, char** argv) {
+    if (autonomy::localization::InitRuntime(argc, argv) != EXIT_SUCCESS) {
+        return EXIT_FAILURE;
+    }
+
+    const auto mode =
+        autonomy::localization::ParseMode(FLAGS_localization_mode);
     const int exit_code =
-        autonomy::localization::cartographer::node::RunCartographerNode(flags);
+        (mode == autonomy::localization::Mode::kAtlas)
+            ? autonomy::localization::RunAtlasModule()
+            : autonomy::localization::RunCartographerModule();
 
     autolink::Clear();
     google::ShutdownGoogleLogging();

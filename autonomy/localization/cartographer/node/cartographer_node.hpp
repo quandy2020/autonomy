@@ -22,7 +22,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "autolink/autolink.hpp"
@@ -129,6 +128,15 @@ private:
         const std::shared_ptr<proto::WriteStateRequest>& request,
         std::shared_ptr<proto::WriteStateResponse>& response);
 
+    template <typename Fn>
+    void DispatchSample(::cartographer::common::FixedRatioSampler& sampler,
+                          Fn fn) {
+        if (!sampler.Pulse()) {
+            return;
+        }
+        fn();
+    }
+
     const NodeOptions node_options_;
     transform::Buffer* tf_buffer_;
     std::shared_ptr<transform::TransformBroadcaster> tf_broadcaster_;
@@ -148,8 +156,6 @@ private:
     std::map<int, ::cartographer::mapping::PoseExtrapolator> extrapolators_;
     std::map<int, commsgs::builtin_interfaces::Time> last_published_tf_stamps_;
     std::unordered_map<int, TrajectorySensorSamplers> sensor_samplers_;
-    std::unordered_set<std::string> subscribed_topics_;
-    std::unordered_set<int> trajectories_scheduled_for_finish_;
 };
 
 }  // namespace node

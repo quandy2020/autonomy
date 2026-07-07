@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <csignal>
 #include <cstdlib>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include "autolink/autolink.hpp"
+#include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/cartographer/node/occupancy_grid_node.hpp"
 
 DEFINE_double(resolution, 0.05,
@@ -30,12 +30,6 @@ DEFINE_bool(include_frozen_submaps, true,
             "Include frozen submaps in the occupancy grid.");
 DEFINE_bool(include_unfrozen_submaps, true,
             "Include unfrozen submaps in the occupancy grid.");
-
-namespace {
-
-void SigintHandler(int /*sig*/) { autolink::AsyncShutdown(); }
-
-}  // namespace
 
 int main(int argc, char** argv) {
     google::InitGoogleLogging(argv[0]);
@@ -49,8 +43,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    signal(SIGINT, SigintHandler);
-    signal(SIGTERM, SigintHandler);
+    autonomy::localization::cartographer::node::RegisterAutolinkShutdownHandlers();
 
     auto node = autolink::CreateNode("cartographer_occupancy_grid_node");
     autonomy::localization::cartographer::node::OccupancyGridNode grid_node(

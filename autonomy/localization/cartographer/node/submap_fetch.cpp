@@ -24,6 +24,27 @@ namespace localization {
 namespace cartographer {
 namespace node {
 
+std::unique_ptr<::cartographer::io::SubmapTextures> ParseSubmapTexturesFromResponse(
+    const proto::SubmapQueryResponse& response) {
+    if (response.status().code() != proto::OK || response.textures().empty()) {
+        return nullptr;
+    }
+
+    auto textures = std::make_unique<::cartographer::io::SubmapTextures>();
+    textures->version = response.submap_version();
+    for (const auto& texture : response.textures()) {
+        const std::string compressed_cells(texture.cells().begin(),
+                                           texture.cells().end());
+        textures->textures.emplace_back(::cartographer::io::SubmapTexture{
+            ::cartographer::io::UnpackTextureData(compressed_cells,
+                                                  texture.width(),
+                                                  texture.height()),
+            texture.width(), texture.height(), texture.resolution(),
+            ToRigid3d(FromProtoPose(texture.slice_pose()))});
+    }
+    return textures;
+}
+
 std::unique_ptr<::cartographer::io::SubmapTextures> FetchSubmapTextures(
     const ::cartographer::mapping::SubmapId& submap_id,
     const std::shared_ptr<autolink::Client<proto::SubmapQueryRequest,
@@ -37,24 +58,10 @@ std::unique_ptr<::cartographer::io::SubmapTextures> FetchSubmapTextures(
     const auto timeout_sec =
         std::chrono::duration_cast<std::chrono::seconds>(timeout);
     const auto response = client->SendRequest(request, timeout_sec);
-    if (!response || response->status().code() != proto::OK ||
-        response->textures().empty()) {
+    if (!response) {
         return nullptr;
     }
-
-    auto textures = std::make_unique<::cartographer::io::SubmapTextures>();
-    textures->version = response->submap_version();
-    for (const auto& texture : response->textures()) {
-        const std::string compressed_cells(texture.cells().begin(),
-                                           texture.cells().end());
-        textures->textures.emplace_back(::cartographer::io::SubmapTexture{
-            ::cartographer::io::UnpackTextureData(compressed_cells,
-                                                  texture.width(),
-                                                  texture.height()),
-            texture.width(), texture.height(), texture.resolution(),
-            ToRigid3d(FromProtoPose(texture.slice_pose()))});
-    }
-    return textures;
+    return ParseSubmapTexturesFromResponse(*response);
 }
 
 }  // namespace node

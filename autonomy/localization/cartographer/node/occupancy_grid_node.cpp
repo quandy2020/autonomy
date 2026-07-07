@@ -19,22 +19,17 @@
 
 #include <chrono>
 
+#include "autonomy/localization/cartographer/node/node_utils.hpp"
+#include "autonomy/localization/cartographer/node/occupancy_grid_builder.hpp"
 #include "glog/logging.h"
 
 namespace autonomy {
 namespace localization {
 namespace cartographer {
 namespace node {
-namespace {
 
 using ::cartographer::io::SubmapSlice;
 using ::cartographer::mapping::SubmapId;
-
-int64_t MsFromSeconds(const double seconds) {
-    return static_cast<int64_t>(seconds * 1000.0);
-}
-
-}  // namespace
 
 OccupancyGridNode::OccupancyGridNode(const double resolution,
                                      const double publish_period_sec,
@@ -60,7 +55,7 @@ bool OccupancyGridNode::Init(std::shared_ptr<autolink::Node> node) {
         });
 
     publish_timer_ = std::make_unique<autolink::Timer>(
-        MsFromSeconds(publish_period_sec_), [this]() { DrawAndPublish(); }, false);
+        TimerPeriodMs(publish_period_sec_), [this]() { DrawAndPublish(); }, false);
     publish_timer_->Start();
     return true;
 }
@@ -96,19 +91,12 @@ void OccupancyGridNode::HandleSubmapList(
 
         auto fetched_textures =
             FetchSubmapTextures(id, submap_query_client_, timeout);
-        if (!fetched_textures || fetched_textures->textures.empty()) {
-            continue;
+        if (!fetched_textures ||
+            !UpdateSubmapSliceFromTextures(
+                &submap_slice, *fetched_textures,
+                FromProtoPose(submap_msg.pose()))) {
+            submap_slices_.erase(id);
         }
-        submap_slice.version = fetched_textures->version;
-        const auto& fetched_texture = fetched_textures->textures.front();
-        submap_slice.width = fetched_texture.width;
-        submap_slice.height = fetched_texture.height;
-        submap_slice.slice_pose = fetched_texture.slice_pose;
-        submap_slice.resolution = fetched_texture.resolution;
-        submap_slice.cairo_data.clear();
-        submap_slice.surface = ::cartographer::io::DrawTexture(
-            fetched_texture.pixels.intensity, fetched_texture.pixels.alpha,
-            fetched_texture.width, fetched_texture.height, &submap_slice.cairo_data);
     }
 
     for (const auto& id : submap_ids_to_delete) {
@@ -126,11 +114,8 @@ void OccupancyGridNode::DrawAndPublish() {
     if (submap_slices_.empty() || last_frame_id_.empty()) {
         return;
     }
-    auto painted_slices =
-        ::cartographer::io::PaintSubmapSlices(submap_slices_, resolution_);
-    auto grid = CreateOccupancyGridMsg(painted_slices, resolution_, last_frame_id_,
-                                       last_timestamp_);
-    if (grid) {
+    if (auto grid = BuildOccupancyGrid(submap_slices_, resolution_, last_frame_id_,
+                                       last_timestamp_)) {
         occupancy_grid_writer_->Write(*grid);
     }
 }

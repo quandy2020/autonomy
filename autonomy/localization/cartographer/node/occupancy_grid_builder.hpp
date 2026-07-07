@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Cartographer Authors
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
 
 #pragma once
 
-#include <chrono>
+#include <map>
 #include <memory>
+#include <string>
 
-#include "autolink/node/node.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"
 #include "autonomy/localization/cartographer/proto/cartographer_services.pb.h"
@@ -29,15 +32,22 @@ namespace localization {
 namespace cartographer {
 namespace node {
 
-std::unique_ptr<::cartographer::io::SubmapTextures> ParseSubmapTexturesFromResponse(
-    const proto::SubmapQueryResponse& response);
+bool UpdateSubmapSliceFromTextures(
+    ::cartographer::io::SubmapSlice* slice,
+    const ::cartographer::io::SubmapTextures& textures,
+    const commsgs::geometry_msgs::Pose& submap_pose);
 
-std::unique_ptr<::cartographer::io::SubmapTextures> FetchSubmapTextures(
-    const ::cartographer::mapping::SubmapId& submap_id,
-    const std::shared_ptr<autolink::Client<proto::SubmapQueryRequest,
-                                           proto::SubmapQueryResponse>>&
-        client,
-    std::chrono::milliseconds timeout);
+bool UpdateSubmapSliceFromQueryResponse(
+    ::cartographer::io::SubmapSlice* slice,
+    const proto::SubmapQueryResponse& response,
+    const commsgs::geometry_msgs::Pose& submap_pose,
+    int submap_list_version);
+
+std::unique_ptr<commsgs::map_msgs::OccupancyGrid> BuildOccupancyGrid(
+    const std::map<::cartographer::mapping::SubmapId,
+                   ::cartographer::io::SubmapSlice>& slices,
+    double resolution, const std::string& frame_id,
+    const commsgs::builtin_interfaces::Time& stamp);
 
 }  // namespace node
 }  // namespace cartographer
