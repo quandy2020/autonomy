@@ -11,24 +11,58 @@
   delegate_to: localhost
   become: false
 
+- name: Stat existing install prefix
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}"
+  register: autonomy_install_prefix_stat
+
+- name: Backup existing install prefix before artifact deploy
+  ansible.builtin.command:
+    argv:
+      - cp
+      - -a
+      - "{{ autonomy_install_prefix }}"
+      - "{{ autonomy_install_prefix }}.bak"
+  become: true
+  when:
+    - autonomy_artifact_backup | bool
+    - autonomy_install_prefix_stat.stat.isdir | default(false)
+  changed_when: true
+
 - name: Copy install artifact to target
   ansible.builtin.copy:
     src: "{{ autonomy_artifact_path }}"
-    dest: "/tmp/{{ autonomy_artifact_path | basename }}"
+    dest: /tmp/{{ autonomy_artifact_path | basename }}
     mode: "0644"
   become: true
 
 - name: Extract artifact into install prefix parent
   ansible.builtin.unarchive:
-    src: "/tmp/{{ autonomy_artifact_path | basename }}"
+    src: /tmp/{{ autonomy_artifact_path | basename }}
     dest: "{{ autonomy_install_prefix | dirname }}"
     remote_src: true
     extra_opts:
-      - "--strip-components=0"
+      - --strip-components=0
   become: true
 
 - name: Remove temporary artifact on target
   ansible.builtin.file:
-    path: "/tmp/{{ autonomy_artifact_path | basename }}"
+    path: /tmp/{{ autonomy_artifact_path | basename }}
     state: absent
   become: true
+
+- name: Read packaged manifest when present
+  ansible.builtin.slurp:
+    src: "{{ autonomy_install_prefix }}/share/autonomy/MANIFEST.json"
+  register: autonomy_artifact_manifest
+  failed_when: false
+
+- name: Show deployed artifact version
+  ansible.builtin.debug:
+    msg: >-
+      Deployed artifact:
+      {{ (autonomy_artifact_manifest.content | b64decode | from_json).git_describe
+         | default('unknown') }}
+      ({{ (autonomy_artifact_manifest.content | b64decode | from_json).git_sha
+         | default('') }})
+  when: autonomy_artifact_manifest.content is defined

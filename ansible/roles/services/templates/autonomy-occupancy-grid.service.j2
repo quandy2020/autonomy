@@ -15,8 +15,11 @@ WorkingDirectory={{ autonomy_data_dir }}
 ExecStart={{ autonomy_install_prefix }}/bin/cartographer_occupancy_grid_node {{ autonomy_occupancy_grid_args }}
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:{{ autonomy_log_dir }}/occupancy_grid.log
-StandardError=append:{{ autonomy_log_dir }}/occupancy_grid.log
+TimeoutStopSec={{ autonomy_service_timeout_stop_sec }}
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=autonomy-occupancy-grid
 
 [Install]
 WantedBy=multi-user.target

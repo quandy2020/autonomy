@@ -1,0 +1,10 @@
+---
+- name: Restart autonomy services
+  hosts: autonomy
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/all.yml"
+  roles:
+    - role: services
+      tasks_from: restart.yml
+      tags: [restart, services]

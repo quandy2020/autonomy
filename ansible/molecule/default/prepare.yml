@@ -1,0 +1,43 @@
+---
+- name: Prepare smoke-test container
+  hosts: all
+  become: true
+  vars_files:
+    - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory/group_vars/all.yml"
+  tasks:
+    - name: Install base packages for smoke test
+      ansible.builtin.apt:
+        name:
+          - python3
+          - rsync
+          - acl
+        state: present
+        update_cache: true
+
+    - name: Ensure install prefix bin directory exists
+      ansible.builtin.file:
+        path: "{{ autonomy_install_prefix }}/bin"
+        state: directory
+        mode: "0755"
+
+    - name: Create fake autonomy binaries for systemd smoke test
+      ansible.builtin.copy:
+        dest: "{{ autonomy_install_prefix }}/bin/{{ item }}"
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          trap 'exit 0' TERM INT
+          while true; do sleep 3600; done
+      loop:
+        - task
+        - localization
+        - cartographer_occupancy_grid_node
+        - autonomy_bridge
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Bundle config inside install prefix
+      ansible.builtin.copy:
+        src: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/../config/"
+        dest: "{{ autonomy_install_prefix }}/share/autonomy/config/"
+        mode: preserve

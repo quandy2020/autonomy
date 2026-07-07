@@ -1,0 +1,16 @@
+# Copy to vault.yml and encrypt:
+#   ansible-vault encrypt inventory/group_vars/vault.yml
+#
+# Edit:
+#   ansible-vault edit inventory/group_vars/vault.yml
+#
+# Deploy with:
+#   ./deploy.sh staging --ask-vault-pass
+#   ANSIBLE_VAULT_PASSWORD_FILE=~/.autonomy_vault_pass ./deploy.sh production
+
+# gRPC / bridge TLS (optional)
+vault_bridge_tls_cert: ""
+vault_bridge_tls_key: ""
+
+# Private git deploy key path on control host (optional, build mode)
+vault_deploy_key_path: ""

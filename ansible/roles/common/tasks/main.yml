@@ -1,11 +1,7 @@
 ---
 - name: Install base packages for deployment
   ansible.builtin.apt:
-    name:
-      - git
-      - python3
-      - rsync
-      - acl
+    name: "{{ autonomy_base_packages }}"
     state: present
     update_cache: true
   become: true

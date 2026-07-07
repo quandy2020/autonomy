@@ -1,0 +1,23 @@
+---
+# Ansible Lint — project conventions use autonomy_* vars across roles.
+profile: production
+
+exclude_paths:
+  - .cache/
+  - .ansible/
+
+skip_list:
+  - command-instead-of-shell
+  - no-changed-when
+  - var-naming[no-role-prefix]
+  - no-handler
+  - fqcn[canonical]
+
+parseable: true
+strict: false
+offline: true
+
+mock_modules:
+  - ansible.builtin.git
+  - ansible.builtin.apt
+  - ansible.builtin.systemd

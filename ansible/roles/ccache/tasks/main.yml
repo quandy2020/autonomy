@@ -1,0 +1,17 @@
+---
+- name: Install ccache
+  ansible.builtin.apt:
+    name: ccache
+    state: present
+  become: true
+  when: autonomy_use_ccache | bool
+
+- name: Ensure ccache directory exists
+  ansible.builtin.file:
+    path: "{{ autonomy_ccache_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+  when: autonomy_use_ccache | bool

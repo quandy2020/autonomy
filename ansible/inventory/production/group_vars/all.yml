@@ -1,0 +1,9 @@
+---
+# Production overrides
+autonomy_deploy_mode: artifact
+autonomy_preflight_strict_os: true
+autonomy_artifact_backup: true
+autonomy_config_from_artifact: true
+autonomy_use_ccache: false
+autonomy_run_verify: true
+# autonomy_artifact_path: /path/on/control/host/autonomy.tar.gz

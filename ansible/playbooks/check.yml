@@ -1,0 +1,9 @@
+---
+- name: Preflight check autonomy targets
+  hosts: autonomy
+  become: false
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/all.yml"
+  roles:
+    - role: preflight
+      tags: [preflight, check]

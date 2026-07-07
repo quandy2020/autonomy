@@ -1,0 +1,10 @@
+---
+- name: Converge autonomy smoke roles
+  hosts: all
+  become: true
+  vars_files:
+    - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory/group_vars/all.yml"
+  roles:
+    - role: common
+    - role: config
+    - role: services

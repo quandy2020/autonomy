@@ -17,6 +17,14 @@ autonomy_build_grpc: true
 autonomy_build_test: false
 autonomy_cmake_jobs: "{{ ansible_facts.processor_vcpus | default(4) }}"
 
+# build 模式启用 ccache（缓存目录见 autonomy_ccache_dir）
+autonomy_use_ccache: true
+autonomy_ccache_dir: /var/cache/autonomy/ccache
+
+# artifact 制品内是否捆绑 config/（package_autonomy_artifact.sh 默认开启）
+autonomy_config_bundle_in_artifact: true
+autonomy_config_from_artifact: "{{ autonomy_config_bundle_in_artifact }}"
+
 # 现场编译时安装 APT + docker/install 第三方依赖
 autonomy_install_dependencies: true
 autonomy_dependency_skip_installed: true
@@ -46,3 +54,26 @@ autonomy_occupancy_grid_args: >-
   -publish_period_sec=1.0
   -include_frozen_submaps=true
   -include_unfrozen_submaps=true
+
+# preflight
+autonomy_preflight_strict_os: true
+autonomy_supported_architectures:
+  - x86_64
+  - aarch64
+autonomy_min_free_disk_mb: "{{ 10240 if autonomy_deploy_mode == 'build' else 2048 }}"
+
+# artifact 部署前备份 /opt/autonomy → /opt/autonomy.bak
+autonomy_artifact_backup: true
+
+# systemd
+autonomy_service_timeout_stop_sec: 30
+
+# 部署结束后检查 systemctl active 状态
+autonomy_run_verify: true
+
+# config 变更后自动重启服务（--tags config 单独执行也生效）
+autonomy_restart_on_config_change: true
+
+# Optional secrets from ansible-vault (inventory/group_vars/vault.yml)
+autonomy_bridge_tls_cert: "{{ vault_bridge_tls_cert | default('') }}"
+autonomy_bridge_tls_key: "{{ vault_bridge_tls_key | default('') }}"

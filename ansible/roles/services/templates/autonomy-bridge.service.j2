@@ -1,8 +1,8 @@
 [Unit]
 Description=Autonomy gRPC bridge
 Documentation=https://github.com/quandy2020/autonomy
-After=network-online.target
-Wants=network-online.target
+After=network-online.target autonomy-task.service
+Wants=network-online.target autonomy-task.service
 
 [Service]
 Type=simple
@@ -18,8 +18,11 @@ ExecStart={{ autonomy_install_prefix }}/bin/autonomy_bridge \
   --configuration_basename={{ autonomy_bridge_configuration_basename }}
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:{{ autonomy_log_dir }}/bridge.log
-StandardError=append:{{ autonomy_log_dir }}/bridge.log
+TimeoutStopSec={{ autonomy_service_timeout_stop_sec }}
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=autonomy-bridge
 
 [Install]
 WantedBy=multi-user.target

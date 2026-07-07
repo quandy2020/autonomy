@@ -2,10 +2,26 @@
 - name: Deploy autonomy stack
   hosts: autonomy
   become: true
+  vars_files:
+    - "{{ playbook_dir }}/../inventory/group_vars/all.yml"
   vars:
     autonomy_source_dir: "{{ autonomy_build_dir }}/autonomy"
     autonomy_cmake_build_dir: "{{ autonomy_source_dir }}/build"
+  pre_tasks:
+    - name: Check for shared vault file
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/../inventory/group_vars/vault.yml"
+      register: autonomy_vault_file
+
+    - name: Load shared vault variables
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/group_vars/vault.yml"
+      when: autonomy_vault_file.stat.exists
+      no_log: true
   roles:
+    - role: preflight
+      tags: [always, preflight, check]
+
     - role: common
       tags: [always, common]
 
@@ -16,6 +32,12 @@
     - role: dependencies
       tags: [always, dependencies, deps]
       when: autonomy_install_dependencies | bool
+
+    - role: ccache
+      tags: [build, ccache]
+      when:
+        - autonomy_deploy_mode == 'build'
+        - autonomy_use_ccache | bool
 
     - role: build
       tags: [build]
@@ -30,3 +52,7 @@
 
     - role: services
       tags: [services]
+
+    - role: verify
+      tags: [verify]
+      when: autonomy_run_verify | bool

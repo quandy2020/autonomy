@@ -15,8 +15,11 @@ ExecStart={{ autonomy_install_prefix }}/bin/task \
   --config_directory={{ autonomy_task_config_directory }}
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:{{ autonomy_log_dir }}/task.log
-StandardError=append:{{ autonomy_log_dir }}/task.log
+TimeoutStopSec={{ autonomy_service_timeout_stop_sec }}
+KillMode=mixed
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=autonomy-task
 
 [Install]
 WantedBy=multi-user.target
