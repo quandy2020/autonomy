@@ -56,9 +56,18 @@ void ControllerServer::Start() {
   if (costmap_wrapper_) {
     costmap_wrapper_->Start();
   }
+
+  if (!node_) {
+    node_ = autolink::CreateNode(kControllerServerNodeName);
+  }
+  if (node_) {
+    AttachAutolinkNode(node_);
+  }
 }
 
 void ControllerServer::Shutdown() {
+  DetachAutolinkNode();
+  node_.reset();
   if (costmap_wrapper_) {
     costmap_wrapper_->Stop();
   }

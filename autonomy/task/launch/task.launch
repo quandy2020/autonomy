@@ -1,0 +1,12 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Task server only (expects planning/control action servers elsewhere).
+-->
+<autolink>
+    <module>
+        <name>task</name>
+        <type>binary</type>
+        <process_name>task --config_directory=config</process_name>
+    </module>
+</autolink>

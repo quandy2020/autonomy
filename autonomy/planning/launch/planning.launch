@@ -1,0 +1,12 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Planning process: global costmap + planner plugins.
+-->
+<autolink>
+    <module>
+        <name>planning</name>
+        <type>binary</type>
+        <process_name>planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    </module>
+</autolink>

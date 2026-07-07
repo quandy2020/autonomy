@@ -1,0 +1,50 @@
+---
+- name: Install base packages for deployment
+  ansible.builtin.apt:
+    name:
+      - git
+      - python3
+      - rsync
+      - acl
+    state: present
+    update_cache: true
+  become: true
+
+- name: Create autonomy group
+  ansible.builtin.group:
+    name: "{{ autonomy_user }}"
+    system: true
+  become: true
+
+- name: Create autonomy user
+  ansible.builtin.user:
+    name: "{{ autonomy_user }}"
+    group: "{{ autonomy_user }}"
+    groups: "{{ autonomy_supplementary_groups }}"
+    append: true
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ autonomy_data_dir }}"
+    create_home: false
+  become: true
+
+- name: Ensure runtime directories exist
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(autonomy_user) }}"
+    group: "{{ item.group | default(autonomy_user) }}"
+    mode: "{{ item.mode | default('0755') }}"
+  loop:
+    - path: "{{ autonomy_install_prefix }}"
+    - path: "{{ autonomy_config_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+    - path: "{{ autonomy_data_dir }}"
+    - path: "{{ autonomy_log_dir }}"
+    - path: "{{ autonomy_build_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+  become: true

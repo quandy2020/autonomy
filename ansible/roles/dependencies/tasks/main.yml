@@ -1,0 +1,71 @@
+---
+- name: Stat autonomy source for dependency install
+  ansible.builtin.stat:
+    path: "{{ autonomy_source_dir }}/scripts/install_dependency.py"
+  register: autonomy_dependency_script
+  when: autonomy_deploy_mode == 'build'
+
+- name: Fail when dependency script is missing (build mode)
+  ansible.builtin.fail:
+    msg: >-
+      {{ autonomy_source_dir }}/scripts/install_dependency.py not found.
+      Run the build role first (--tags build).
+  when:
+    - autonomy_deploy_mode == 'build'
+    - not autonomy_dependency_script.stat.exists
+
+- name: Install dependencies from repository (build mode)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd {{ autonomy_source_dir | quote }}
+    if [ "{{ autonomy_dependency_skip_installed | string | lower }}" = "true" ]; then
+      python3 scripts/install_dependency.py --skip-installed
+    else
+      python3 scripts/install_dependency.py
+    fi
+  args:
+    executable: /bin/bash
+  become: true
+  when:
+    - autonomy_deploy_mode == 'build'
+    - autonomy_dependency_script.stat.exists
+  register: autonomy_deps_build
+  changed_when: "'[RUN]' in autonomy_deps_build.stdout"
+
+- name: Sync install scripts for artifact-only hosts
+  ansible.builtin.synchronize:
+    src: "{{ playbook_dir }}/../../scripts/"
+    dest: "{{ autonomy_build_dir }}/scripts/"
+    delete: false
+    rsync_opts:
+      - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
+  when: autonomy_deploy_mode == 'artifact'
+  delegate_to: localhost
+  become: false
+
+- name: Sync docker install scripts for artifact-only hosts
+  ansible.builtin.synchronize:
+    src: "{{ playbook_dir }}/../../docker/install/"
+    dest: "{{ autonomy_build_dir }}/docker/install/"
+    delete: false
+    rsync_opts:
+      - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
+  when: autonomy_deploy_mode == 'artifact'
+  delegate_to: localhost
+  become: false
+
+- name: Install dependencies from synced scripts (artifact mode)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    cd {{ autonomy_build_dir | quote }}
+    if [ "{{ autonomy_dependency_skip_installed | string | lower }}" = "true" ]; then
+      python3 scripts/install_dependency.py --skip-installed
+    else
+      python3 scripts/install_dependency.py
+    fi
+  args:
+    executable: /bin/bash
+  become: true
+  when: autonomy_deploy_mode == 'artifact'
+  register: autonomy_deps_artifact
+  changed_when: "'[RUN]' in autonomy_deps_artifact.stdout"

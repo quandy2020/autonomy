@@ -75,6 +75,10 @@ proto::Costmap2DOptions CreateCostmap2DOptions(
         options.set_rolling_window(
             parameter_dictionary->GetBool("rolling_window"));
     }
+    if (parameter_dictionary->HasKey("publish_frequency")) {
+        // Consumed for Lua key accounting; not yet stored in Costmap2DOptions.
+        parameter_dictionary->GetDouble("publish_frequency");
+    }
 
     auto plugins_dict = parameter_dictionary->GetDictionary("plugins");
     auto plugins = plugins_dict->GetArrayValuesAsStrings();

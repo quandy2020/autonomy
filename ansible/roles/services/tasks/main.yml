@@ -1,0 +1,34 @@
+---
+- name: Install systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+    mode: "0644"
+  loop:
+    - autonomy-localization
+    - autonomy-occupancy-grid
+    - autonomy-task
+    - autonomy-bridge
+  notify: Reload systemd
+  become: true
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start selected autonomy services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ autonomy_enabled_units }}"
+  become: true
+
+- name: Disable services not in autonomy_services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ autonomy_all_units | difference(autonomy_enabled_units) }}"
+  become: true
+  ignore_errors: true

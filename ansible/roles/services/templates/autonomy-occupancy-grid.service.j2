@@ -1,0 +1,22 @@
+[Unit]
+Description=Autonomy Cartographer occupancy grid publisher
+Documentation=https://github.com/quandy2020/autonomy
+After=network-online.target autonomy-localization.service
+Wants=network-online.target
+Requires=autonomy-localization.service
+
+[Service]
+Type=simple
+User={{ autonomy_user }}
+Group={{ autonomy_user }}
+Environment=AUTOLINK_PATH={{ autonomy_install_prefix }}/share/autolink
+Environment=LD_LIBRARY_PATH={{ autonomy_install_prefix }}/lib:/usr/local/lib
+WorkingDirectory={{ autonomy_data_dir }}
+ExecStart={{ autonomy_install_prefix }}/bin/cartographer_occupancy_grid_node {{ autonomy_occupancy_grid_args }}
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:{{ autonomy_log_dir }}/occupancy_grid.log
+StandardError=append:{{ autonomy_log_dir }}/occupancy_grid.log
+
+[Install]
+WantedBy=multi-user.target

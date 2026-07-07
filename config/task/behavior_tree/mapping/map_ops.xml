@@ -1,0 +1,10 @@
+<!-- Mapping: load → set pose → clear costmap -->
+<root BTCPP_format="4" main_tree_to_execute="MapOps">
+  <BehaviorTree ID="MapOps">
+    <Sequence name="MapCommand">
+      <LoadMap map_name="{map_name}"/>
+      <SetInitialPose/>
+      <ClearCostmap/>
+    </Sequence>
+  </BehaviorTree>
+</root>

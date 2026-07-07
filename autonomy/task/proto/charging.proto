@@ -1,0 +1,69 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.task.proto;
+
+import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "autonomy/task/proto/task_common.proto";
+
+// apps/charging — aligned with bridge DockCommand.
+
+enum DockCommand {
+  DOCK_CMD_UNSPECIFIED = 0;
+  DOCK_CMD_START = 1;
+  DOCK_CMD_STOP = 2;
+  DOCK_CMD_PAUSE = 3;
+  DOCK_CMD_RESUME = 4;
+  DOCK_CMD_CANCEL = 5;
+  DOCK_CMD_UNDOCK = 6;
+}
+
+enum DockStatus {
+  DOCK_STATUS_UNKNOWN = 0;
+  DOCK_STATUS_IDLE = 1;
+  DOCK_STATUS_SEARCHING = 2;
+  DOCK_STATUS_APPROACHING = 3;
+  DOCK_STATUS_DOCKING = 4;
+  DOCK_STATUS_CHARGING = 5;
+  DOCK_STATUS_UNDOCKING = 6;
+  DOCK_STATUS_SUCCEEDED = 7;
+  DOCK_STATUS_FAILED = 8;
+  DOCK_STATUS_CANCELED = 9;
+}
+
+message ChargingGoal {
+  TaskHeader header = 1;
+  DockCommand command = 2;
+  float max_search_radius = 3;
+  int32 max_retry_count = 4;
+  oneof dock_target {
+    string dock_station_id = 5;
+    commsgs.proto.geometry_msgs.PoseStamped dock_pose = 6;
+  }
+}
+
+message ChargingFeedback {
+  DockStatus status = 1;
+  TaskProgress progress = 2;
+  float battery_percent = 3;
+  string dock_station_id = 4;
+}
+
+message ChargingResult {
+  TaskResult result = 1;
+  DockStatus final_status = 2;
+  float battery_percent = 3;
+}

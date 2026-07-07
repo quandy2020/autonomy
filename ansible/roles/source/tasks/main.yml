@@ -1,0 +1,9 @@
+---
+- name: Clone or update autonomy repository
+  ansible.builtin.git:
+    repo: "{{ autonomy_repo_url }}"
+    dest: "{{ autonomy_source_dir }}"
+    version: "{{ autonomy_repo_version }}"
+    recursive: true
+    force: false
+  become: true

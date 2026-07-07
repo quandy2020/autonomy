@@ -1,0 +1,6 @@
+<!-- Mapping: load map -->
+<root BTCPP_format="4" main_tree_to_execute="MapLoad">
+  <BehaviorTree ID="MapLoad">
+    <LoadMap map_name="{map_name}"/>
+  </BehaviorTree>
+</root>

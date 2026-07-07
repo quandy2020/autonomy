@@ -21,6 +21,7 @@
 - **Deployment**
   - [x] Docker images (x86_64 / aarch64)
   - [x] Dependency installer: `scripts/install_dependency.py`
+  - [x] Ansible one-click deploy: `ansible/` (bare-metal Ubuntu 22.04 + systemd)
 
 ## Requirements
 
@@ -88,6 +89,15 @@ cmake -G Ninja ..
 ninja
 ```
 
+### 5. Ansible deploy (robot / edge host)
+
+See [`ansible/README.md`](ansible/README.md). Quick start:
+
+```bash
+# Edit ansible/inventory/hosts.yml first
+cd ansible && ./deploy.sh
+```
+
 ## CMake options
 
 | Option | Default | Description |
@@ -106,6 +116,7 @@ autonomy/
 ├── config/            # Lua / YAML configuration
 ├── cmake/             # CMake modules and helpers
 ├── docker/            # Dockerfiles and install scripts
+├── ansible/           # One-click bare-metal deployment (systemd)
 ├── docs/              # Sphinx documentation
 ├── scripts/           # install_dependency.py, utilities
 └── CMakeLists.txt

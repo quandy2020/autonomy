@@ -36,7 +36,9 @@
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
 #include "autonomy/planning/common/planner_exceptions.hpp"
+#include "autonomy/planning/common/smoother_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
+#include "autonomy/planning/utils/simple_smoother.hpp"
 #include "autonomy/planning/planner/dijkstra/dijkstra_planner.hpp"
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 #include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
@@ -229,30 +231,32 @@ PlannerServer::PlannerServer(const proto::PlannerOptions& options)
     node_ = autolink::CreateNode(kPlannerServerNodeName);
     if (!node_) {
         AWARN << "PlannerServer: autolink node creation failed; "
-                 "service endpoints disabled.";
+                 "action/service endpoints disabled.";
         return;
     }
 
-    PlannerServer* self = this;
+    default_smoother_id_ = options_.default_smoother_id().empty()
+                               ? "simple_smoother"
+                               : options_.default_smoother_id();
+    default_smoother_ = std::make_shared<utils::SimpleSmoother>(
+        default_smoother_id_, costmap_wrapper_, options_.simple_smoother());
 
-    path_valid_service_ =
-        node_->CreateService<PathValidRequest, PathValidResponse>(
-            kIsPathValidServiceName,
-            [self](const std::shared_ptr<PathValidRequest>& request,
-                   std::shared_ptr<PathValidResponse>& response) {
-                const auto path =
-                    commsgs::planning_msgs::FromProto(request->path());
-                const uint8_t max_cost = request->max_cost() > 0
-                                             ? static_cast<uint8_t>(request->max_cost())
-                                             : 253;
-                response->set_is_valid(self->IsPathValid(
-                    path, max_cost, request->consider_unknown_as_obstacle()));
-            });
-
-    AINFO << "PlannerServer autolink service endpoint started.";
+    RegisterAutolinkEndpoints();
 }
 
 PlannerServer::~PlannerServer() {
+    if (compute_path_to_pose_server_) {
+        compute_path_to_pose_server_->Deactivate();
+        compute_path_to_pose_server_.reset();
+    }
+    if (compute_path_through_poses_server_) {
+        compute_path_through_poses_server_->Deactivate();
+        compute_path_through_poses_server_.reset();
+    }
+    if (smooth_path_server_) {
+        smooth_path_server_->Deactivate();
+        smooth_path_server_.reset();
+    }
     path_valid_service_.reset();
     node_.reset();
 
@@ -506,6 +510,16 @@ bool PlannerServer::IsPathValid(const commsgs::planning_msgs::Path& path,
     }
 
     return true;
+}
+
+void PlannerServer::ClearEntireCostmap()
+{
+    if (!costmap_wrapper_) {
+        AWARN << "PlannerServer: clear costmap ignored (no costmap)";
+        return;
+    }
+    costmap_wrapper_->resetLayers();
+    AINFO << "PlannerServer: global costmap cleared";
 }
 
 }  // namespace planning

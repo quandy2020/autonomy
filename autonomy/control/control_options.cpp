@@ -55,7 +55,10 @@ proto::ControllerOptions LoadOptions(
         options.set_publish_zero_velocity(
             parameter_dictionary->GetBool("publish_zero_velocity"));
     }
-    if (parameter_dictionary->HasKey("costmap_2d_options")) {
+    if (parameter_dictionary->HasKey("costmap")) {
+        *options.mutable_costmap_2d_options() = map::CreateCostmap2DOptions(
+            parameter_dictionary->GetDictionary("costmap").get());
+    } else if (parameter_dictionary->HasKey("costmap_2d_options")) {
         *options.mutable_costmap_2d_options() = map::CreateCostmap2DOptions(
             parameter_dictionary->GetDictionary("costmap_2d_options").get());
     }
@@ -73,6 +76,16 @@ proto::ControllerOptions LoadOptions(
             [&options](const std::string& v) {
                 options.add_controller_plugin_libraries(v);
             });
+    }
+
+    // Plugin-specific blocks not yet modeled in ControllerOptions proto.
+    constexpr const char* kOptionalBlocks[] = {
+        "goal_checker", "progress_checker", "graceful_controller",
+        "mppi_controller"};
+    for (const char* key : kOptionalBlocks) {
+        if (parameter_dictionary->HasKey(key)) {
+            parameter_dictionary->GetNonReferenceCountedDictionary(key);
+        }
     }
 
     return options;

@@ -1,0 +1,48 @@
+---
+# deploy_mode: build（现场编译）| artifact（分发制品）
+autonomy_deploy_mode: build
+
+autonomy_user: autonomy
+autonomy_install_prefix: /opt/autonomy
+autonomy_config_dir: /etc/autonomy
+autonomy_data_dir: /var/lib/autonomy
+autonomy_log_dir: /var/log/autonomy
+autonomy_build_dir: "{{ autonomy_data_dir }}/src"
+
+autonomy_repo_url: https://github.com/quandy2020/autonomy.git
+autonomy_repo_version: main
+
+autonomy_cmake_build_type: Release
+autonomy_build_grpc: true
+autonomy_build_test: false
+autonomy_cmake_jobs: "{{ ansible_facts.processor_vcpus | default(4) }}"
+
+# 现场编译时安装 APT + docker/install 第三方依赖
+autonomy_install_dependencies: true
+autonomy_dependency_skip_installed: true
+
+# artifact 模式：控制机本地 tar 路径（playbook 运行在控制机时填绝对路径）
+autonomy_artifact_path: ""
+
+autonomy_supplementary_groups:
+  - dialout
+  - plugdev
+
+# 启用的 systemd 单元（见 roles/services）
+autonomy_services:
+  - localization
+  - occupancy_grid
+  - task
+  - bridge
+
+autonomy_localization_configuration_directory: "{{ autonomy_config_dir }}/localization/cartographer"
+autonomy_localization_configuration_basename: backpack_2d_with_grid.lua
+
+autonomy_task_config_directory: "{{ autonomy_config_dir }}"
+autonomy_bridge_configuration_basename: bridge/bridge_options.lua
+
+autonomy_occupancy_grid_args: >-
+  -resolution=0.05
+  -publish_period_sec=1.0
+  -include_frozen_submaps=true
+  -include_unfrozen_submaps=true
