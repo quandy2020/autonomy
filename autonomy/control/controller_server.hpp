@@ -25,7 +25,8 @@
 #include <vector>
 
 
-#include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autolink/autolink.hpp"
+#include "autonomy/control/constants.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
@@ -72,6 +73,9 @@ public:
 
     void Start();
     void Shutdown();
+
+    bool AttachAutolinkNode(std::shared_ptr<autolink::Node> node);
+    void DetachAutolinkNode();
 
     void SetSharedCostmap(
         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
@@ -224,6 +228,10 @@ protected:
 
 private:
     proto::ControllerOptions options_;
+
+    struct AutolinkActionServers;
+    AutolinkActionServers* autolink_actions_{nullptr};
+    std::shared_ptr<autolink::Node> node_;
 };
 
 }  // namespace control

@@ -1,0 +1,34 @@
+---
+- name: Require artifact path in artifact mode
+  ansible.builtin.assert:
+    that:
+      - autonomy_artifact_path | length > 0
+      - autonomy_artifact_path is file
+    fail_msg: >-
+      Set autonomy_artifact_path to a local .tar.gz produced by
+      scripts/package_autonomy_artifact.sh on the control machine.
+  run_once: true
+  delegate_to: localhost
+  become: false
+
+- name: Copy install artifact to target
+  ansible.builtin.copy:
+    src: "{{ autonomy_artifact_path }}"
+    dest: "/tmp/{{ autonomy_artifact_path | basename }}"
+    mode: "0644"
+  become: true
+
+- name: Extract artifact into install prefix parent
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ autonomy_artifact_path | basename }}"
+    dest: "{{ autonomy_install_prefix | dirname }}"
+    remote_src: true
+    extra_opts:
+      - "--strip-components=0"
+  become: true
+
+- name: Remove temporary artifact on target
+  ansible.builtin.file:
+    path: "/tmp/{{ autonomy_artifact_path | basename }}"
+    state: absent
+  become: true

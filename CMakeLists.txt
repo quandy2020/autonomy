@@ -123,6 +123,9 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${ALL_TESTS})
 file(GLOB_RECURSE BEHAVIOR_TREE_PLUGIN_SRCS
   "autonomy/navigator/behavior_tree/plugins/*.cpp")
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${BEHAVIOR_TREE_PLUGIN_SRCS})
+file(GLOB_RECURSE TASK_BEHAVIOR_TREE_PLUGIN_SRCS
+  "autonomy/task/apps/*/plugins/*/*.cpp")
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TASK_BEHAVIOR_TREE_PLUGIN_SRCS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
 list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
@@ -250,6 +253,11 @@ include("${PROJECT_SOURCE_DIR}/cmake/generate_version_definitions.cmake")
 ## Define Eigen addons. 
 include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 
+# Task scheduler uses Taskflow (C++20); built as a separate object library.
+set(AUTONOMY_TASK_SCHEDULER_SRCS
+  "${PROJECT_SOURCE_DIR}/autonomy/task/scheduler/scheduler.cpp")
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${AUTONOMY_TASK_SCHEDULER_SRCS})
+
 # Autonomy library
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 
@@ -315,6 +323,12 @@ include("${PROJECT_SOURCE_DIR}/cmake/plugin/behavior_tree_plugins.cmake")
 autonomy_link_behaviortree_cpp(${PROJECT_NAME} PUBLIC)
 autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
+include("${PROJECT_SOURCE_DIR}/cmake/plugin/task_behavior_tree_plugins.cmake")
+autonomy_add_task_behavior_tree_plugins(${PROJECT_NAME})
+
+include("${PROJECT_SOURCE_DIR}/cmake/taskflow.cmake")
+autonomy_link_taskflow(${PROJECT_NAME} PUBLIC)
+
 if(${BUILD_GRPC})
   google_binary(autonomy_bridge
     SRCS
@@ -333,6 +347,45 @@ endif()
 google_binary(localization
   SRCS
     autonomy/localization/localization_main.cpp
+)
+
+google_binary(planning
+  SRCS
+    autonomy/planning/planning_main.cpp
+)
+
+google_binary(control
+  SRCS
+    autonomy/control/control_main.cpp
+)
+
+google_binary(task
+  SRCS
+    autonomy/task/task_main.cpp
+)
+
+install(
+  DIRECTORY autonomy/planning/launch/
+  DESTINATION share/autonomy/planning/launch
+  USE_SOURCE_PERMISSIONS
+  FILES_MATCHING
+  PATTERN "*.launch"
+)
+
+install(
+  DIRECTORY autonomy/control/launch/
+  DESTINATION share/autonomy/control/launch
+  USE_SOURCE_PERMISSIONS
+  FILES_MATCHING
+  PATTERN "*.launch"
+)
+
+install(
+  DIRECTORY autonomy/task/launch/
+  DESTINATION share/autonomy/task/launch
+  USE_SOURCE_PERMISSIONS
+  FILES_MATCHING
+  PATTERN "*.launch"
 )
 
 google_binary(cartographer_occupancy_grid_node

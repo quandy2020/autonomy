@@ -1,0 +1,19 @@
+---
+autonomy_all_units:
+  - autonomy-localization
+  - autonomy-occupancy-grid
+  - autonomy-task
+  - autonomy-bridge
+
+autonomy_service_name_map:
+  localization: autonomy-localization
+  occupancy_grid: autonomy-occupancy-grid
+  task: autonomy-task
+  bridge: autonomy-bridge
+
+autonomy_enabled_units: >-
+  {{
+    autonomy_services
+    | map('extract', autonomy_service_name_map)
+    | list
+  }}

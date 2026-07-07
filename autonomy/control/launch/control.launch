@@ -1,0 +1,12 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Control process: local costmap + controller plugins.
+-->
+<autolink>
+    <module>
+        <name>control</name>
+        <type>binary</type>
+        <process_name>control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    </module>
+</autolink>

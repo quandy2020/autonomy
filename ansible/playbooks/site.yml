@@ -1,0 +1,32 @@
+---
+- name: Deploy autonomy stack
+  hosts: autonomy
+  become: true
+  vars:
+    autonomy_source_dir: "{{ autonomy_build_dir }}/autonomy"
+    autonomy_cmake_build_dir: "{{ autonomy_source_dir }}/build"
+  roles:
+    - role: common
+      tags: [always, common]
+
+    - role: source
+      tags: [build, source]
+      when: autonomy_deploy_mode == 'build'
+
+    - role: dependencies
+      tags: [always, dependencies, deps]
+      when: autonomy_install_dependencies | bool
+
+    - role: build
+      tags: [build]
+      when: autonomy_deploy_mode == 'build'
+
+    - role: artifact
+      tags: [artifact]
+      when: autonomy_deploy_mode == 'artifact'
+
+    - role: config
+      tags: [config]
+
+    - role: services
+      tags: [services]

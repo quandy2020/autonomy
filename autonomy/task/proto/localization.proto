@@ -1,0 +1,74 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.task.proto;
+
+import "autonomy/task/proto/task_common.proto";
+
+// apps/localization — SLAM / localization backend control.
+
+enum LocalizationAlgorithm {
+  LOCALIZATION_ALGO_UNSPECIFIED = 0;
+  LOCALIZATION_ALGO_AMCL = 1;
+  LOCALIZATION_ALGO_CARTOGRAPHER = 2;
+  LOCALIZATION_ALGO_ATLAS = 3;
+}
+
+enum LocalizationCommand {
+  LOCALIZATION_CMD_UNSPECIFIED = 0;
+  LOCALIZATION_CMD_START = 1;
+  LOCALIZATION_CMD_STOP = 2;
+  LOCALIZATION_CMD_PAUSE = 3;
+  LOCALIZATION_CMD_RESUME = 4;
+  LOCALIZATION_CMD_SWITCH_ALGORITHM = 5;
+}
+
+enum LocalizationStatus {
+  LOCALIZATION_STATUS_UNKNOWN = 0;
+  LOCALIZATION_STATUS_IDLE = 1;
+  LOCALIZATION_STATUS_INITIALIZING = 2;
+  LOCALIZATION_STATUS_RUNNING = 3;
+  LOCALIZATION_STATUS_PAUSED = 4;
+  LOCALIZATION_STATUS_SUCCEEDED = 5;
+  LOCALIZATION_STATUS_FAILED = 6;
+  LOCALIZATION_STATUS_CANCELED = 7;
+}
+
+message LocalizationGoal {
+  TaskHeader header = 1;
+  LocalizationCommand command = 2;
+  LocalizationAlgorithm algorithm = 3;
+  string configuration_directory = 4;
+  string configuration_basename = 5;
+  string load_state_filename = 6;
+  bool load_frozen_state = 7;
+  string save_state_filename = 8;
+  string atlas_vocab_path = 9;
+  string atlas_map_path = 10;
+}
+
+message LocalizationFeedback {
+  LocalizationStatus status = 1;
+  TaskProgress progress = 2;
+  LocalizationAlgorithm active_algorithm = 3;
+  float localization_quality = 4;
+}
+
+message LocalizationResult {
+  TaskResult result = 1;
+  LocalizationStatus final_status = 2;
+  string saved_state_filename = 3;
+}

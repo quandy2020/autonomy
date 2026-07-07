@@ -1,8 +1,7 @@
 -- Copyright 2025 The Openbot Authors(duyongquan)
 --
--- Deprecated: use config/navigator/navigator.lua.
--- Kept for launchers that expect config/task_options.lua.
+-- Task server options. For navigator-only legacy setups see navigator/navigator.lua.
 
-include "navigator/navigator.lua"
+include "task/task_options.lua"
 
-return { navigator = navigator }
+return task

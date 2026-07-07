@@ -1,0 +1,76 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.task.proto;
+
+import "autonomy/commsgs/proto/vehicle_msgs.proto";
+
+// Lua: config/task_options.lua (future) / task_server configuration.
+
+message TaskAppOptions {
+  bool enable_navigation = 1;
+  bool enable_tracking = 2;
+  bool enable_teleop = 3;
+  bool enable_exploration = 4;
+  bool enable_charging = 5;
+  bool enable_mapping = 6;
+  bool enable_localization = 7;
+}
+
+message SchedulerOptions {
+  // Only one navigation-class task at a time (NavigatorMuxer semantics).
+  bool exclusive_navigation_tasks = 1;
+  uint32 feedback_period_ms = 2;
+  float default_task_timeout_sec = 3;
+}
+
+message ActiveTaskSnapshot {
+  commsgs.proto.vehicle_msgs.RobotTaskType task_type = 1;
+  commsgs.proto.vehicle_msgs.RobotTaskStatus task_status = 2;
+  string task_id = 3;
+  string client_id = 4;
+  float progress = 5;
+}
+
+message TaskServerOptions {
+  SchedulerOptions scheduler = 1;
+  TaskAppOptions apps = 2;
+  string config_directory = 3;
+  TaskBehaviorTreeOptions behavior_trees = 4;
+}
+
+// Per-task behavior tree profile (granularity: plugins + default XML + tick rate).
+message TaskBehaviorTreeProfile {
+  // Relative to TaskServerOptions.config_directory, e.g.
+  // "task/behavior_tree/navigation/navigate_to_pose.xml"
+  string default_tree_file = 1;
+  // Optional second tree (navigation: through poses, tracking: target pose, …).
+  string alternate_tree_file = 2;
+  repeated string plugin_lib_names = 3;
+  string plugin_lib_path = 4;
+  uint32 bt_loop_duration_ms = 5;
+  uint32 default_server_timeout_ms = 6;
+}
+
+message TaskBehaviorTreeOptions {
+  TaskBehaviorTreeProfile navigation = 1;
+  TaskBehaviorTreeProfile tracking = 2;
+  TaskBehaviorTreeProfile teleop = 3;
+  TaskBehaviorTreeProfile exploration = 4;
+  TaskBehaviorTreeProfile charging = 5;
+  TaskBehaviorTreeProfile mapping = 6;
+  TaskBehaviorTreeProfile localization = 7;
+}

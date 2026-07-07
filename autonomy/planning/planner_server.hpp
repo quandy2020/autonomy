@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "autolink/action/simple_action_server.hpp"
 #include "autolink/autolink.hpp"
 #include "autolink/service/service.hpp"
 #include "autonomy/common/macros.hpp"
@@ -33,6 +34,7 @@
 #include "autonomy/commsgs/proto/nav_msgs.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
+#include "autonomy/planning/common/smoother_interface.hpp"
 #include "autonomy/planning/proto/planning_options.pb.h"
 
 namespace autonomy {
@@ -48,6 +50,7 @@ namespace autonomy {
 namespace planning {
 
 namespace nav_proto = commsgs::proto::nav_msgs;
+namespace err_proto = commsgs::proto::error_code;
 
 /**
  * Global planner server aligned with nav2_planner.
@@ -68,6 +71,14 @@ public:
 
     using PathValidRequest = nav_proto::IsPathValid_Request;
     using PathValidResponse = nav_proto::IsPathValid_Response;
+    using ClearCostmapRequest = nav_proto::ClearEntireCostmap_Request;
+    using ClearCostmapResponse = nav_proto::ClearEntireCostmap_Response;
+    using ComputePathToPoseServer =
+        autolink::action::SimpleActionServer<nav_proto::ComputePathToPoseAction>;
+    using ComputePathThroughPosesServer =
+        autolink::action::SimpleActionServer<nav_proto::ComputePathThroughPosesAction>;
+    using SmoothPathServer =
+        autolink::action::SimpleActionServer<nav_proto::SmoothPathAction>;
 
     /** Counters updated by planning callbacks. */
     struct PlannerMetrics {
@@ -133,7 +144,15 @@ public:
                      uint8_t max_cost = 253,
                      bool consider_unknown_as_obstacle = false) const;
 
+    /** Clears transient layers on the global costmap (recovery / mapping). */
+    void ClearEntireCostmap();
+
 private:
+    void RegisterAutolinkEndpoints();
+    void ComputePlan();
+    void ComputePlanThroughPoses();
+    void SmoothPathAction();
+
     void LoadPlannerPlugins();
     void WaitForCostmap();
 
@@ -162,8 +181,17 @@ private:
     PlannerMetrics metrics_;
 
     std::shared_ptr<autolink::Node> node_;
+    std::shared_ptr<ComputePathToPoseServer> compute_path_to_pose_server_;
+    std::shared_ptr<ComputePathThroughPosesServer>
+        compute_path_through_poses_server_;
+    std::shared_ptr<SmoothPathServer> smooth_path_server_;
     std::shared_ptr<autolink::Service<PathValidRequest, PathValidResponse>>
         path_valid_service_;
+    std::shared_ptr<autolink::Service<ClearCostmapRequest, ClearCostmapResponse>>
+        clear_costmap_service_;
+
+    std::shared_ptr<common::Smoother> default_smoother_;
+    std::string default_smoother_id_;
 };
 
 }  // namespace planning

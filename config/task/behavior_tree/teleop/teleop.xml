@@ -1,0 +1,12 @@
+<!--
+  Teleop: watchdog-gated velocity publish loop on /cmd_vel.
+-->
+<root BTCPP_format="4" main_tree_to_execute="TeleopWatchdog">
+  <BehaviorTree ID="TeleopWatchdog">
+    <ReactiveSequence name="TeleopLoop">
+      <TeleopWatchdogOk/>
+      <ApplyTeleopVelocity error_code_id="{teleop_error_code}"
+                           error_msg="{teleop_error_msg}"/>
+    </ReactiveSequence>
+  </BehaviorTree>
+</root>

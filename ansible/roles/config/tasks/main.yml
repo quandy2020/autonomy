@@ -1,0 +1,30 @@
+---
+- name: Copy runtime configuration (build mode)
+  ansible.builtin.copy:
+    src: "{{ autonomy_source_dir }}/config/"
+    dest: "{{ autonomy_config_dir }}/"
+    remote_src: true
+    mode: preserve
+  when: autonomy_deploy_mode == 'build'
+  become: true
+
+- name: Sync runtime configuration from control machine (artifact mode)
+  ansible.builtin.synchronize:
+    src: "{{ playbook_dir }}/../../config/"
+    dest: "{{ autonomy_config_dir }}/"
+    delete: true
+    rsync_opts:
+      - "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r"
+  when: autonomy_deploy_mode == 'artifact'
+  delegate_to: localhost
+  become: false
+
+- name: Set config directory permissions
+  ansible.builtin.file:
+    path: "{{ autonomy_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ autonomy_user }}"
+    mode: "0750"
+    recurse: true
+  become: true
