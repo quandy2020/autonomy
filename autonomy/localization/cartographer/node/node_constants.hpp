@@ -24,6 +24,8 @@ namespace localization {
 namespace cartographer {
 namespace node {
 
+struct TrajectoryOptions;
+
 constexpr char kLaserScanTopic[] = "scan";
 constexpr char kMultiEchoLaserScanTopic[] = "echoes";
 constexpr char kPointCloud2Topic[] = "points2";
@@ -41,12 +43,18 @@ constexpr char kWriteStateServiceName[] = "write_state";
 constexpr char kTfTopic[] = "tf";
 constexpr double kDefaultOccupancyGridResolution = 0.05;
 constexpr double kDefaultOccupancyGridPublishPeriodSec = 1.0;
+constexpr double kDefaultMapImageSavePeriodSec = 10.0;
+constexpr char kDefaultMapImageSaveDirectory[] = "data";
+constexpr char kDefaultMapImageFilestem[] = "map";
 
 constexpr int kInfiniteSubscriberQueueSize = 0;
 constexpr int kLatestOnlyPublisherQueueSize = 1;
 
 std::vector<std::string> ComputeRepeatedTopicNames(const std::string& topic,
                                                    int num_topics);
+
+std::vector<std::string> ResolveMultiEchoLaserScanTopics(
+    const TrajectoryOptions& options);
 
 }  // namespace node
 }  // namespace cartographer

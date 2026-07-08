@@ -50,25 +50,49 @@ proto::map_msgs::MapMetaData ToProto(const MapMetaData& data) {
 }
 
 MapMetaData FromProto(const proto::map_msgs::MapMetaData& proto) {
-    // return {
-    //     builtin_interfaces::FromProto(proto.map_load_time()),
-    //     proto.width(),
-    //     proto.height(),
-    //     geometry_msgs::FromProto(proto.origin())
-    // };
-
     MapMetaData data;
+    data.map_load_time = builtin_interfaces::FromProto(proto.map_load_time());
+    data.width = proto.width();
+    data.height = proto.height();
+    data.origin = geometry_msgs::FromProto(proto.origin());
     return data;
 }
 
 proto::map_msgs::OccupancyGrid ToProto(const OccupancyGrid& data) {
     proto::map_msgs::OccupancyGrid proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    *proto.mutable_info() = ToProto(data.info);
+    for (int16 value : data.data) {
+        proto.add_data(value);
+    }
     return proto;
 }
 
 OccupancyGrid FromProto(const proto::map_msgs::OccupancyGrid& proto) {
     OccupancyGrid data;
+    data.header = std_msgs::FromProto(proto.header());
+    data.info = FromProto(proto.info());
+    data.data.reserve(proto.data_size());
+    for (int32 value : proto.data()) {
+        data.data.push_back(static_cast<int16>(value));
+    }
     return data;
+}
+
+bool OccupancyGrid::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool OccupancyGrid::ParseFromString(const std::string& in) {
+    proto::map_msgs::OccupancyGrid proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
 }
 
 proto::map_msgs::Octomap ToProto(const Octomap& data) {

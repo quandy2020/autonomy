@@ -64,6 +64,16 @@ TrajectoryOptions CreateTrajectoryOptions(
     options.num_multi_echo_laser_scans =
         lua_parameter_dictionary->GetNonNegativeInt(
             "num_multi_echo_laser_scans");
+    if (lua_parameter_dictionary->HasKey("multi_echo_laser_scan_topics")) {
+        options.multi_echo_laser_scan_topics =
+            lua_parameter_dictionary
+                ->GetDictionary("multi_echo_laser_scan_topics")
+                ->GetArrayValuesAsStrings();
+        CHECK_EQ(options.multi_echo_laser_scan_topics.size(),
+                 static_cast<size_t>(options.num_multi_echo_laser_scans))
+            << "'multi_echo_laser_scan_topics' size must match "
+               "'num_multi_echo_laser_scans'.";
+    }
     options.num_subdivisions_per_laser_scan =
         lua_parameter_dictionary->GetNonNegativeInt(
             "num_subdivisions_per_laser_scan");
@@ -79,6 +89,10 @@ TrajectoryOptions CreateTrajectoryOptions(
         lua_parameter_dictionary->GetDouble("imu_sampling_ratio");
     options.landmarks_sampling_ratio =
         lua_parameter_dictionary->GetDouble("landmarks_sampling_ratio");
+    if (lua_parameter_dictionary->HasKey("ignore_out_of_order")) {
+        options.ignore_out_of_order_messages =
+            lua_parameter_dictionary->GetBool("ignore_out_of_order");
+    }
     CheckTrajectoryOptions(options);
     return options;
 }

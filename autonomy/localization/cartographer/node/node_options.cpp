@@ -70,6 +70,22 @@ NodeOptions CreateNodeOptions(
         options.occupancy_grid_resolution =
             lua_parameter_dictionary->GetDouble("occupancy_grid_resolution");
     }
+    if (lua_parameter_dictionary->HasKey("save_map_image")) {
+        options.save_map_image =
+            lua_parameter_dictionary->GetBool("save_map_image");
+    }
+    if (lua_parameter_dictionary->HasKey("map_image_save_period_sec")) {
+        options.map_image_save_period_sec =
+            lua_parameter_dictionary->GetDouble("map_image_save_period_sec");
+    }
+    if (lua_parameter_dictionary->HasKey("map_image_save_directory")) {
+        options.map_image_save_directory =
+            lua_parameter_dictionary->GetString("map_image_save_directory");
+    }
+    if (lua_parameter_dictionary->HasKey("map_image_filestem")) {
+        options.map_image_filestem =
+            lua_parameter_dictionary->GetString("map_image_filestem");
+    }
     return options;
 }
 

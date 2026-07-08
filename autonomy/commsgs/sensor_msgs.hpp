@@ -324,6 +324,12 @@ struct Imu {
     std::vector<double> linear_acceleration_covariance;
     ;  // float64[9] linear_acceleration_covariance
        // Row major x, y z
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.sensor_msgs.Imu";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 
 // Single scan from a planar laser range-finder
@@ -381,6 +387,12 @@ struct MultiEchoLaserScan {
     float range_max;
     std::vector<LaserEcho> ranges;
     std::vector<LaserEcho> intensities;
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.sensor_msgs.MultiEchoLaserScan";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 
 struct NavSatStatus {

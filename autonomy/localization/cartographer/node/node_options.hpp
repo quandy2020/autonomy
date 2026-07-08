@@ -40,6 +40,10 @@ struct NodeOptions {
     bool publish_to_tf = true;
     bool publish_tracked_pose = false;
     bool publish_occupancy_grid = true;
+    bool save_map_image = true;
+    double map_image_save_period_sec = 10.0;
+    std::string map_image_save_directory = "data";
+    std::string map_image_filestem = "map";
     bool use_pose_extrapolator = true;
 };
 

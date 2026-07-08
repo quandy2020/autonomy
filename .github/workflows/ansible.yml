@@ -1,0 +1,48 @@
+name: Ansible
+
+on:
+  push:
+    paths:
+      - "ansible/**"
+      - "scripts/package_autonomy_artifact.sh"
+      - ".github/workflows/ansible.yml"
+  pull_request:
+    paths:
+      - "ansible/**"
+      - "scripts/package_autonomy_artifact.sh"
+      - ".github/workflows/ansible.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ansible
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ansible tooling
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install "ansible>=8,<10" "ansible-lint>=24,<26"
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Lint and syntax-check
+        run: ./scripts/ci.sh
+
+  molecule:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ansible
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Molecule tooling
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install "ansible>=8,<10" -r requirements-dev.txt
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Molecule smoke test
+        run: ./scripts/molecule.sh

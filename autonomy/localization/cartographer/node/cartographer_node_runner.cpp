@@ -24,7 +24,9 @@
 #include "autonomy/localization/cartographer/mapping/map_builder.hpp"
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
+#include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/transform/buffer.hpp"
+#include "autonomy/transform/static_transform_publisher.hpp"
 
 namespace autonomy {
 namespace localization {
@@ -43,6 +45,13 @@ int RunCartographerNode(const CartographerNodeFlags& flags) {
 
     transform::Buffer::Instance()->Init();
 
+    const std::string static_tf_yaml = ResolveStaticTransformYamlPath(
+        flags.configuration_directory, flags.configuration_basename);
+    transform::StaticTransformPublisher static_tf_publisher;
+    if (static_tf_publisher.LoadFromFile(static_tf_yaml)) {
+        static_tf_publisher.ApplyToBuffer(transform::Buffer::Instance());
+    }
+
     NodeOptions node_options;
     TrajectoryOptions trajectory_options;
     std::tie(node_options, trajectory_options) =
@@ -58,12 +67,18 @@ int RunCartographerNode(const CartographerNodeFlags& flags) {
         return EXIT_FAILURE;
     }
 
+    if (static_tf_publisher.IsLoaded()) {
+        static_tf_publisher.Publish(node);
+    }
+
     if (!flags.load_state_filename.empty()) {
         cartographer_node.LoadState(flags.load_state_filename,
                                     flags.load_frozen_state);
     }
 
+    // Drop stale sensor messages buffered when subscribers are first created.
     if (flags.start_trajectory_with_default_topics) {
+        node->ClearData();
         cartographer_node.StartTrajectoryWithDefaultTopics(trajectory_options);
     }
 
@@ -72,6 +87,7 @@ int RunCartographerNode(const CartographerNodeFlags& flags) {
 
     cartographer_node.FinishAllTrajectories();
     cartographer_node.RunFinalOptimization();
+    cartographer_node.SaveMapImageIfEnabled();
 
     if (!flags.save_state_filename.empty()) {
         cartographer_node.SerializeState(flags.save_state_filename, true);

@@ -23,6 +23,7 @@
 
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/localization/cartographer/common/time.hpp"
 #include "autonomy/localization/cartographer/mapping/trajectory_builder_interface.hpp"
 #include "autonomy/localization/cartographer/node/tf_bridge.hpp"
 #include "autonomy/localization/cartographer/proto/cartographer_services.pb.h"
@@ -40,6 +41,7 @@ class SensorBridge {
 public:
     explicit SensorBridge(
         int num_subdivisions_per_laser_scan,
+        bool ignore_out_of_order_messages,
         const std::string& tracking_frame,
         double lookup_transform_timeout_sec, transform::Buffer* tf_buffer,
         ::cartographer::mapping::TrajectoryBuilderInterface* trajectory_builder);
@@ -68,6 +70,9 @@ public:
     void HandleLandmarkMessage(const std::string& sensor_id,
                                const proto::LandmarkList& msg);
 
+    bool IgnoreMessage(const std::string& sensor_id,
+                       ::cartographer::common::Time sensor_time);
+
     const TfBridge& tf_bridge() const;
 
 private:
@@ -81,6 +86,8 @@ private:
                            const ::cartographer::sensor::TimedPointCloud& ranges);
 
     const int num_subdivisions_per_laser_scan_;
+    const bool ignore_out_of_order_messages_;
+    std::map<std::string, ::cartographer::common::Time> latest_sensor_time_;
     std::map<std::string, ::cartographer::common::Time>
         sensor_to_previous_subdivision_time_;
     const TfBridge tf_bridge_;

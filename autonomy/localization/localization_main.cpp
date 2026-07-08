@@ -67,7 +67,6 @@ Mode ParseMode(const std::string& mode) {
 }
 
 int InitRuntime(int argc, char** argv) {
-    google::InitGoogleLogging(argv[0]);
     google::ParseCommandLineFlags(&argc, &argv, false);
     if (!autolink::Init(argv[0])) {
         LOG(ERROR) << "autolink::Init failed.";

@@ -1,0 +1,45 @@
+# Cartographer backpack_2d sensor extrinsics (from cartographer_ros/urdf/backpack_2d.urdf).
+# Loaded automatically when running with backpack_2d.lua.
+
+static_transforms:
+  - name: imu_link_joint
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "imu_link"
+    translation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+
+  - name: horizontal_laser_link_joint
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "horizontal_laser_link"
+    translation:
+      x: 0.1007
+      y: 0.0
+      z: 0.0558
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+
+  - name: vertical_laser_link_joint
+    enabled: true
+    frame_id: "base_link"
+    child_frame_id: "vertical_laser_link"
+    translation:
+      x: 0.1007
+      y: 0.0
+      z: 0.1814
+    rotation:
+      x: 0.7071068
+      y: 0.0
+      z: 0.7071068
+      w: 0.0

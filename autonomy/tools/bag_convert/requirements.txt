@@ -1,0 +1,3 @@
+rosbags>=0.9
+protobuf>=4.25,<6
+grpcio-tools>=1.62
