@@ -3,7 +3,7 @@
 ### 2.1 安装依赖
 
 ```bash
-python3 scripts/install_dependency.py
+python3 -m install_deps
 ```
 
 ### 2.2 格式化代码

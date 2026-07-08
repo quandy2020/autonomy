@@ -1,4 +1,7 @@
 ---
+# deploy 前清理 autolink condition_notifier 遗留 SysV SHM（避免 root 调试后 autonomy 用户 Permission denied）
+autonomy_autolink_notifier_shm_key: "0x960f6a27"
+
 # deploy_mode: build（现场编译）| artifact（分发制品）
 autonomy_deploy_mode: build
 
@@ -47,6 +50,7 @@ autonomy_localization_configuration_directory: "{{ autonomy_config_dir }}/locali
 autonomy_localization_configuration_basename: backpack_2d_with_grid.lua
 
 autonomy_task_config_directory: "{{ autonomy_config_dir }}"
+autonomy_bridge_configuration_directory: "{{ autonomy_install_prefix }}/share/autonomy/config"
 autonomy_bridge_configuration_basename: bridge/bridge_options.lua
 
 autonomy_occupancy_grid_args: >-
@@ -56,7 +60,9 @@ autonomy_occupancy_grid_args: >-
   -include_unfrozen_submaps=true
 
 # preflight
-autonomy_preflight_strict_os: true
+autonomy_supported_ubuntu_versions:
+  - "22.04"
+  - "24.04"
 autonomy_supported_architectures:
   - x86_64
   - aarch64
@@ -67,6 +73,12 @@ autonomy_artifact_backup: true
 
 # systemd
 autonomy_service_timeout_stop_sec: 30
+
+# apt（common 角色更新软件源时的锁等待与重试）
+autonomy_apt_cache_valid_time: 3600
+autonomy_apt_lock_timeout: 120
+autonomy_apt_update_retries: 5
+autonomy_apt_update_retry_delay: 15
 
 # 部署结束后检查 systemctl active 状态
 autonomy_run_verify: true

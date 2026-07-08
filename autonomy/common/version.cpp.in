@@ -82,9 +82,9 @@ namespace autonomy {
 namespace common {
 namespace {
 
-const char* AUTONOMY_VERSION = "${AUTONOMY_VERSION}";
-const char* AUTONOMY_COMMIT_ID = "${GIT_COMMIT_ID}";
-const char* AUTONOMY_COMMIT_DATE = "${GIT_COMMIT_DATE}";
+const char* AUTONOMY_VERSION = "@AUTONOMY_VERSION@";
+const char* AUTONOMY_COMMIT_ID = "@GIT_COMMIT_ID@";
+const char* AUTONOMY_COMMIT_DATE = "@GIT_COMMIT_DATE@";
 
 // 项目信息
 const std::string PROJECT_NAME = "@PROJECT_NAME@";

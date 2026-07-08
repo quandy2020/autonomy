@@ -1,74 +1,76 @@
 ---
-- name: Stat autonomy source for dependency install
-  ansible.builtin.stat:
-    path: "{{ autonomy_source_dir }}/scripts/install_dependency.py"
-  register: autonomy_dependency_script
+# build 模式：使用源码树 scripts/install_deps/
+- name: Resolve dependency repo root (build mode)
+  ansible.builtin.set_fact:
+    autonomy_dependency_repo_root: "{{ autonomy_source_dir }}"
   when: autonomy_deploy_mode == 'build'
 
-- name: Fail when dependency script is missing (build mode)
+- name: Stat install_deps package (build mode)
+  ansible.builtin.stat:
+    path: "{{ autonomy_dependency_repo_root }}/{{ autonomy_dependency_package_marker }}"
+  register: autonomy_dependency_package
+  when: autonomy_deploy_mode == 'build'
+
+- name: Fail when install_deps package is missing (build mode)
   ansible.builtin.fail:
     msg: >-
-      {{ autonomy_source_dir }}/scripts/install_dependency.py not found.
+      {{ autonomy_dependency_repo_root }}/{{ autonomy_dependency_package_marker }} not found.
       Run the source role first (--tags source or full deploy).
   when:
     - autonomy_deploy_mode == 'build'
-    - not autonomy_dependency_script.stat.exists
+    - autonomy_dependency_package is defined
+    - not (autonomy_dependency_package.stat.exists | default(false))
 
 - name: Install dependencies from repository (build mode)
-  ansible.builtin.shell: |
-    set -euo pipefail
-    cd {{ autonomy_source_dir | quote }}
-    if [ "{{ autonomy_dependency_skip_installed | string | lower }}" = "true" ]; then
-      python3 scripts/install_dependency.py --skip-installed
-    else
-      python3 scripts/install_dependency.py
-    fi
-  args:
-    executable: /bin/bash
-  become: true
+  ansible.builtin.include_tasks: install.yml
   when:
     - autonomy_deploy_mode == 'build'
-    - autonomy_dependency_script.stat.exists
-  register: autonomy_deps_build
-  changed_when: "'[RUN]' in autonomy_deps_build.stdout"
+    - autonomy_dependency_package.stat.exists | default(false)
 
-- name: Sync install scripts for artifact-only hosts
-  ansible.builtin.synchronize:
-    src: "{{ playbook_dir }}/../../scripts/"
-    dest: "{{ autonomy_build_dir }}/scripts/"
-    delete: false
-    rsync_opts:
-      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
+# artifact 模式：同步 install_deps/ + docker/install/
+- name: Ensure artifact dependency staging directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ autonomy_build_dir }}/scripts/install_deps"
+    - "{{ autonomy_build_dir }}/docker/install"
   when: autonomy_deploy_mode == 'artifact'
-  delegate_to: localhost
-  become: false
-
-- name: Sync docker install scripts for artifact-only hosts
-  ansible.builtin.synchronize:
-    src: "{{ playbook_dir }}/../../docker/install/"
-    dest: "{{ autonomy_build_dir }}/docker/install/"
-    delete: false
-    rsync_opts:
-      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
-  when: autonomy_deploy_mode == 'artifact'
-  delegate_to: localhost
-  become: false
-
-- name: Install dependencies from synced scripts (artifact mode)
-  ansible.builtin.shell: |
-    set -euo pipefail
-    cd {{ autonomy_build_dir | quote }}
-    if [ "{{ autonomy_dependency_skip_installed | string | lower }}" = "true" ]; then
-      python3 scripts/install_dependency.py --skip-installed
-    else
-      python3 scripts/install_dependency.py
-    fi
-  args:
-    executable: /bin/bash
   become: true
+
+- name: Sync install_deps package for artifact-only hosts
+  ansible.builtin.synchronize:
+    src: "{{ playbook_dir }}/../../scripts/install_deps/"
+    dest: "{{ autonomy_build_dir }}/scripts/install_deps/"
+    delete: false
+    rsync_opts:
+      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
   when: autonomy_deploy_mode == 'artifact'
-  register: autonomy_deps_artifact
-  changed_when: "'[RUN]' in autonomy_deps_artifact.stdout"
+  delegate_to: localhost
+  become: false
+
+- name: Sync third-party install scripts for artifact-only hosts
+  ansible.builtin.synchronize:
+    src: "{{ playbook_dir }}/../../{{ autonomy_dependency_docker_install_relpath }}/"
+    dest: "{{ autonomy_build_dir }}/{{ autonomy_dependency_docker_install_relpath }}/"
+    delete: false
+    rsync_opts:
+      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
+  when: autonomy_deploy_mode == 'artifact'
+  delegate_to: localhost
+  become: false
+
+- name: Resolve dependency repo root (artifact mode)
+  ansible.builtin.set_fact:
+    autonomy_dependency_repo_root: "{{ autonomy_build_dir }}"
+  when: autonomy_deploy_mode == 'artifact'
+
+- name: Install dependencies from synced package (artifact mode)
+  ansible.builtin.include_tasks: install.yml
+  when:
+    - autonomy_deploy_mode == 'artifact'
+    - autonomy_install_dependencies | bool
 
 - name: Refresh dynamic linker cache for /usr/local
   ansible.builtin.command:

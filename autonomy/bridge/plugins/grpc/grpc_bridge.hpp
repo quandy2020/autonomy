@@ -37,11 +37,11 @@ public:
      */
     AUTONOMY_SMART_PTR_DEFINITIONS(GrpcBridgeServer)
 
-    GrpcBridgeServer();
+    explicit GrpcBridgeServer(const proto::GrpcOptions& options);
     ~GrpcBridgeServer() = default;
 
-    // Starts the gRPC server
-    void Start() final;
+    // Starts the gRPC server. Returns false when bind or setup fails.
+    bool Start() final;
 
     // Waits for the 'GrpcBridgeServer' to shut down. Note: The server must be
     // either shutting down or some other thread must call 'Shutdown()' for this
@@ -59,8 +59,8 @@ private:
     void ProcessSensorDataQueue();
     void StartThread();
 
-    ///> grpc options
     const proto::GrpcOptions options_;
+    bool configured_{false};
 
     bool shutting_down_{false};
     std::shared_ptr<autolink::Node> autolink_node_;

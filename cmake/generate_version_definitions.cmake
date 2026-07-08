@@ -168,6 +168,8 @@ message(STATUS "System Version: ${SYSTEM_VERSION}")
 message(STATUS "Compiler ID: ${COMPILER_ID}")
 message(STATUS "Compiler Version: ${COMPILER_VERSION}")
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/autonomy/common/version.cpp.in"
-               "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/common/version.cpp"
-               @ONLY)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/autonomy/common/version.cpp.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/autonomy/common/version.cpp"
+    @ONLY)
+set(AUTONOMY_VERSION_CPP "${CMAKE_CURRENT_BINARY_DIR}/autonomy/common/version.cpp")

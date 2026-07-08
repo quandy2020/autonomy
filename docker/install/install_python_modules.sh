@@ -19,11 +19,27 @@
 set -e
 
 CURR_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-. ${CURR_DIR}/installer_base.sh
+. "${CURR_DIR}/installer_base.sh"
 
+if python3 -c 'import myst_parser, numpy; assert numpy.__version__ == "1.26.4"' 2>/dev/null; then
+    ok "Python modules already installed, skipping"
+    exit 0
+fi
 
-pip3_install -r ${CURR_DIR}/py3_requirements.txt
+if ! command -v sphinx-build >/dev/null 2>&1; then
+    apt_get_update_and_install python3-sphinx
+fi
 
-# Clean up cache to reduce layer size.
-apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# Do not let pip uninstall Debian-managed Sphinx when mixing apt + pip on Ubuntu 24.04.
+pip_args=(-r "${CURR_DIR}/py3_requirements.txt")
+if pip_needs_break_system_packages "$(python3_bin)"; then
+    pip_args+=(--ignore-installed sphinx)
+fi
+
+pip3_install "${pip_args[@]}"
+
+if [[ "$(id -u)" -eq 0 ]]; then
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+fi
+
+ok "Successfully installed Python modules from py3_requirements.txt"

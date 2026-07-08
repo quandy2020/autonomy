@@ -15,7 +15,7 @@
 |------|------|------|
 | 1 | [01_overview.md](01_overview.md) | 工具全景 |
 | 2 | [02_quickstart.md](02_quickstart.md) | 常用命令速查 |
-| 3 | [03_dev_scripts.md](03_dev_scripts.md) | format.py、install_dependency.py |
+| 3 | [03_dev_scripts.md](03_dev_scripts.md) | format.py、install_deps |
 | 4 | [04_nav_test.md](04_nav_test.md) | autonomy_nav_test |
 | 5 | [05_monitor.md](05_monitor.md) | 系统监控 API |
 | 6 | [06_autolink_tools.md](06_autolink_tools.md) | autolink_channel 等 |

@@ -58,7 +58,7 @@ cd /workspace/autonomy
 
 ```bash
 cd /workspace/autonomy
-python3 scripts/install_dependency.py   # 若镜像未预装完整依赖
+python3 -m install_deps   # 若镜像未预装完整依赖
 mkdir -p build && cd build
 cmake -G Ninja ..
 ninja

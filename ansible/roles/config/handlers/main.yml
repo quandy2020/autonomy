@@ -1,0 +1,4 @@
+---
+- name: Restart enabled autonomy services
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/../roles/services/tasks/restart.yml"
+  when: autonomy_restart_on_config_change | bool

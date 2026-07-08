@@ -12,7 +12,7 @@
 
 <div class="nav-costmap-banner">
   <strong>推荐路径</strong>
-  <span class="nav-costmap-detail">Ubuntu 22.04 → install_dependency.py → cmake + ninja → libautonomy.so</span>
+  <span class="nav-costmap-detail">Ubuntu 22.04 → install_deps → cmake + ninja → libautonomy.so</span>
   <span class="nav-costmap-arrow">可选 Docker 隔离环境 →</span>
 </div>
 

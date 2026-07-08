@@ -1,0 +1,26 @@
+{
+  "layout": {
+    "docker_install_relative": "docker/install",
+    "scripts_parent_levels_from_package": 1,
+    "user_lib_relative": ".local/lib",
+    "user_cache_relative": ".cache/autonomy/thirdparty"
+  },
+  "thirdparty": {
+    "env_var": "AUTONOMY_THIRDPARTY",
+    "system_dir": "/thirdparty"
+  },
+  "platform": {
+    "os_release_file": "/etc/os-release",
+    "ubuntu_id_token": "ID=ubuntu"
+  },
+  "apt": {
+    "update_command": ["sudo", "apt-get", "update"],
+    "fix_broken_command": ["sudo", "apt-get", "-y", "--fix-broken", "install"],
+    "install_prefix": ["sudo", "apt-get", "install", "-y"]
+  },
+  "shell": {
+    "interpreter": "bash",
+    "log_prefix": "[RUN]",
+    "skip_prefix": "[SKIP]"
+  }
+}

@@ -4,6 +4,8 @@
 
 #include "autonomy/task/apps/behavior_tree/bt_defaults.hpp"
 
+#include "autonomy/common/config.hpp"
+
 namespace autonomy {
 namespace task {
 namespace {
@@ -48,6 +50,8 @@ void SetProfile(proto::TaskBehaviorTreeProfile* profile,
     }
     profile->set_bt_loop_duration_ms(loop_period_ms);
     profile->set_default_server_timeout_ms(20000);
+    profile->set_plugin_lib_path(
+        std::string(autonomy::common::kLibraryInstallDir) + "/lib");
     for (const char* name : plugins) {
         profile->add_plugin_lib_names(name);
     }

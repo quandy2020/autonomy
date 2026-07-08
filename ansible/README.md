@@ -1,91 +1,139 @@
-# Ansible 一键部署
+# Ansible 部署
 
-在 Ubuntu 22.04 目标机上部署 autonomy 全栈，支持**现场编译**与**制品分发**，以及 **staging / production** 多环境 inventory。
+Ubuntu 22.04+ 目标机一键部署 autonomy。单一 playbook（`site.yml`）+ `deploy.sh` 模式切换。
 
-## 前置条件
+## 安装
 
 ```bash
 pip install "ansible>=8,<10" "ansible-lint>=24,<26"
-# 可选：Molecule 冒烟测试
-pip install -r requirements-dev.txt
 ```
 
-## 快速开始
+## 模式
 
-### 选择环境
+所有模式共用 `playbooks/site.yml`，由 `autonomy_play_mode` 控制：
 
-| 命令 | Inventory |
-|------|-----------|
-| `./deploy.sh` | `inventory/hosts.yml`（本机 local） |
-| `./deploy.sh staging` | `inventory/staging/hosts.yml` |
-| `./deploy.sh production` | `inventory/production/hosts.yml` |
+| 命令 | 说明 |
+|------|------|
+| `./deploy.sh` | 全量：编译或制品 + 配置 + 服务 |
+| `./deploy.sh build` | 仅编译安装到 `/opt/autonomy` |
+| `./deploy.sh deploy robots -e autonomy_artifact_path=...` | 制品推到车队 |
+| `./deploy.sh push robots` | 只同步配置并重启 |
+| `./deploy.sh check robots` | 预检 OS/磁盘/架构 |
+| `./deploy.sh restart robots` | 重启服务 |
+
+`autonomy_deploy_mode`：`build`（现场编译）| `artifact`（分发 tar.gz）
+
+## 车队部署
 
 ```bash
 cd ansible
-./deploy.sh staging
-```
 
-### 制品部署（config 已捆绑进 tar）
-
-```bash
+# 1. ARM 编译机 build + 打包
+./deploy.sh build robots -l robot01
 ../scripts/package_autonomy_artifact.sh --output ../dist/autonomy.tar.gz
-# MANIFEST.json 中 config_bundled=true；production 从制品内安装 /etc/autonomy
-./deploy.sh production
+
+# 2. 推到全部机器人
+./deploy.sh deploy robots \
+  -e autonomy_artifact_path=$PWD/../dist/autonomy.tar.gz \
+  -f 4
+
+# 3. 只改 config/
+./deploy.sh push robots
 ```
 
-禁用捆绑：`BUNDLE_CONFIG=OFF ../scripts/package_autonomy_artifact.sh`
+编辑 `inventory/robots/hosts.yml` 填入 IP，配置 SSH 免密后执行。
 
-### 其他命令
+## Inventory
+
+| 参数 | 文件 | 用途 |
+|------|------|------|
+| （默认） | `inventory/hosts.yml` | 本机 |
+| `robots` | `inventory/robots/hosts.yml` | 车队（artifact） |
+| `staging` | `inventory/staging/hosts.yml` | 实验室（build） |
+| `production` | `inventory/production/hosts.yml` | 生产 |
+
+环境变量覆盖：`AUTONOMY_DEPLOY_ENV=robots ./deploy.sh`
+
+## 标签
 
 ```bash
-ansible-playbook -i inventory/staging/hosts.yml playbooks/check.yml
-./deploy.sh staging --tags config
-ansible-playbook -i inventory/staging/hosts.yml playbooks/restart.yml
+./deploy.sh --tags config
+./deploy.sh --tags build,deps
 ```
 
-## 编译加速（ccache）
+| 标签 | 内容 |
+|------|------|
+| `build` | source + build（含 ccache） |
+| `deps` | dependencies |
+| `artifact` | 制品解压 |
+| `config` | `/etc/autonomy` |
+| `services` | systemd |
+| `preflight` | 预检 |
 
-staging / build 模式默认启用 `autonomy_use_ccache: true`，缓存目录 `/var/cache/autonomy/ccache`。
+## 本机开发
+
+`inventory/host_vars/localhost.yml` 已设 `autonomy_use_local_source: true`。
 
 ```bash
-./deploy.sh staging --tags build,ccache
+./deploy.sh build
+./deploy.sh          # 全量
 ```
 
-## 密钥（ansible-vault）
+## 依赖安装
+
+Ansible 不重复安装逻辑，调用 `scripts/install_deps`：
 
 ```bash
-./scripts/vault-init.sh
-ansible-vault edit --vault-password-file .vault_pass inventory/group_vars/vault.yml
-./deploy.sh production
+cd ../scripts && python3 -m install_deps
+./deploy.sh build    # build 模式自动调用 dependencies 角色
 ```
 
-## 测试
-
-```bash
-./scripts/ci.sh          # lint + syntax-check
-./scripts/molecule.sh    # Docker 冒烟（common + config + services）
-```
+机器人 artifact 部署默认 `autonomy_install_dependencies: false`。
 
 ## 常用变量
 
 | 变量 | 说明 |
 |------|------|
-| `autonomy_use_ccache` | build 模式启用 ccache |
-| `autonomy_config_from_artifact` | 从制品内 `share/autonomy/config` 安装配置 |
-| `autonomy_config_bundle_in_artifact` | 打包脚本是否捆绑 config |
+| `autonomy_artifact_path` | 控制机本地 `.tar.gz` 路径 |
+| `autonomy_services` | 启用的服务列表 |
+| `autonomy_install_dependencies` | 是否装系统依赖 |
+| `autonomy_run_verify` | 部署后检查 `systemctl is-active` |
 
 ## 目录结构
 
 ```text
 ansible/
-├── deploy.sh
-├── molecule/default/     # Molecule 冒烟场景
-├── scripts/
-│   ├── ci.sh
-│   ├── molecule.sh
-│   └── vault-init.sh
+├── deploy.sh              # 入口
+├── playbooks/
+│   ├── site.yml           # 唯一 playbook
+│   └── includes/vault.yml
+├── inventory/
+│   ├── hosts.yml          # localhost
+│   ├── robots/            # 车队
+│   ├── staging/
+│   └── production/
 └── roles/
-    ├── ccache/
+    ├── preflight/
+    ├── common/
+    ├── source/
+    ├── dependencies/
+    ├── build/             # 含 ccache
+    ├── artifact/
     ├── config/
-    └── ...
+    └── services/          # 含 verify
+```
+
+## 排错
+
+```bash
+./deploy.sh -vvv
+systemctl status autonomy-localization autonomy-task autonomy-bridge
+journalctl -u autonomy-bridge -n 30 --no-pager
+```
+
+## 测试
+
+```bash
+./scripts/ci.sh
+./scripts/molecule.sh
 ```

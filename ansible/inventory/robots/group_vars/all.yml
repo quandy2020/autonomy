@@ -1,0 +1,11 @@
+---
+# 机器人默认：制品分发，不在车上编译
+autonomy_deploy_mode: artifact
+autonomy_install_dependencies: false
+autonomy_use_ccache: false
+autonomy_run_verify: true
+autonomy_preflight_strict_os: false
+
+# 制品路径由控制机传入，例如:
+# ./deploy.sh deploy robots -e autonomy_artifact_path=$PWD/../dist/autonomy.tar.gz
+autonomy_artifact_path: ""

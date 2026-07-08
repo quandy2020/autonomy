@@ -1,0 +1,12 @@
+---
+# Python package entry: python3 -m install_deps (run from scripts/)
+autonomy_dependency_package_marker: scripts/install_deps/app.py
+autonomy_dependency_docker_install_relpath: docker/install
+
+# skip_installed 时默认只跑第三方（APT 由 common 角色负责）
+autonomy_dependency_install_args: >-
+  {{
+    ['--skip-installed', '--thirdparty-only']
+    if autonomy_dependency_skip_installed | bool
+    else []
+  }}

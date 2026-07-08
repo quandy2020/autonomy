@@ -5,7 +5,7 @@
 
 | 类别 | 位置 | 代表工具 |
 |------|------|----------|
-| 开发脚本 | `scripts/` | `format.py`、`install_dependency.py`、`package_autonomy_artifact.sh` |
+| 开发脚本 | `scripts/` | `format.py`、`install_deps`、`package_autonomy_artifact.sh` |
 | 数据转换 | `autonomy/tools/bag_convert/` | ROS bag → Autolink `.record` |
 | 离线测试 | `autonomy/system/tools/` | `autonomy_nav_test` |
 | 系统监控 | `autonomy/system/monitor/` | `MonitorRegistry` |
