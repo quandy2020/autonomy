@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -34,6 +35,7 @@
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/mapping/map_builder_interface.hpp"
 #include "autonomy/localization/cartographer/mapping/pose_extrapolator.hpp"
+#include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/node/map_builder_bridge.hpp"
 #include "autonomy/localization/cartographer/node/node_constants.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
@@ -63,6 +65,8 @@ public:
     void FinishAllTrajectories();
     bool FinishTrajectory(int trajectory_id);
     void RunFinalOptimization();
+    /** Save map image once if save_map_image is enabled in node options. */
+    void SaveMapImageIfEnabled();
     void StartTrajectoryWithDefaultTopics(const TrajectoryOptions& options);
     void SerializeState(const std::string& filename,
                         bool include_unfinished_submaps);
@@ -98,6 +102,10 @@ private:
     void PublishSubmapList();
     void PublishLocalTrajectoryData();
     void PublishOccupancyGrid();
+    void SaveMapImage();
+
+    std::map<::cartographer::mapping::SubmapId, ::cartographer::io::SubmapSlice>
+    CollectSubmapSlices();
 
     void HandleOdometryMessage(int trajectory_id, const std::string& sensor_id,
                                const commsgs::planning_msgs::Odometry& msg);
@@ -128,14 +136,9 @@ private:
         const std::shared_ptr<proto::WriteStateRequest>& request,
         std::shared_ptr<proto::WriteStateResponse>& response);
 
-    template <typename Fn>
-    void DispatchSample(::cartographer::common::FixedRatioSampler& sampler,
-                          Fn fn) {
-        if (!sampler.Pulse()) {
-            return;
-        }
-        fn();
-    }
+    void DispatchSensorMessage(int trajectory_id,
+                               ::cartographer::common::Time sensor_time,
+                               std::function<void()> handler);
 
     const NodeOptions node_options_;
     transform::Buffer* tf_buffer_;
@@ -156,6 +159,12 @@ private:
     std::map<int, ::cartographer::mapping::PoseExtrapolator> extrapolators_;
     std::map<int, commsgs::builtin_interfaces::Time> last_published_tf_stamps_;
     std::unordered_map<int, TrajectorySensorSamplers> sensor_samplers_;
+    std::map<int, std::multimap<std::pair<::cartographer::common::Time, uint64_t>,
+                                std::function<void()>>>
+        sensor_dispatch_queues_;
+    std::map<int, uint64_t> sensor_dispatch_sequence_;
+
+    std::string map_image_save_directory_;
 };
 
 }  // namespace node

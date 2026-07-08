@@ -276,6 +276,22 @@ PoseStamped FromProto(const proto::geometry_msgs::PoseStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.pose())};
 }
 
+bool PoseStamped::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool PoseStamped::ParseFromString(const std::string& in) {
+    proto::geometry_msgs::PoseStamped proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
+}
+
 proto::geometry_msgs::PoseWithCovariance ToProto(
     const PoseWithCovariance& data) {
     proto::geometry_msgs::PoseWithCovariance proto;
@@ -345,7 +361,9 @@ TransformStamped FromProto(
 proto::geometry_msgs::TransformStampeds ToProto(const TransformStampeds& data) {
     proto::geometry_msgs::TransformStampeds proto;
     *proto.mutable_header() = std_msgs::ToProto(data.header);
-    // std::vector<TransformStamped> transforms;
+    for (const auto& transform : data.transforms) {
+        *proto.add_transforms() = ToProto(transform);
+    }
     return proto;
 }
 
@@ -354,8 +372,27 @@ TransformStampeds FromProto(
     const proto::geometry_msgs::TransformStampeds& proto) {
     TransformStampeds data;
     data.header = std_msgs::FromProto(proto.header());
-    // std::vector<TransformStamped> transforms;
+    data.transforms.reserve(proto.transforms_size());
+    for (const auto& transform : proto.transforms()) {
+        data.transforms.push_back(FromProto(transform));
+    }
     return data;
+}
+
+bool TransformStampeds::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool TransformStampeds::ParseFromString(const std::string& in) {
+    proto::geometry_msgs::TransformStampeds proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
 }
 
 proto::geometry_msgs::Twist ToProto(const Twist& data) {

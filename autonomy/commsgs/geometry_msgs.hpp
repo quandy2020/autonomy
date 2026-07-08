@@ -274,6 +274,12 @@ struct PoseStamped {
 
     std_msgs::Header header;
     Pose pose;
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.geometry_msgs.PoseStamped";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 
 // This represents a pose in free space with uncertainty.
@@ -351,6 +357,12 @@ struct TransformStampeds {
 
     std_msgs::Header header;
     std::vector<TransformStamped> transforms;
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.geometry_msgs.TransformStampeds";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 
 struct Twist2D {

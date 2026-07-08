@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 
 #include <algorithm>
@@ -21,7 +22,10 @@
 #include <csignal>
 #include <filesystem>
 
+#include <glog/logging.h>
+
 #include "autolink/autolink.hpp"
+#include "autonomy/transform/buffer_utils.hpp"
 
 namespace autonomy {
 namespace localization {
@@ -32,6 +36,17 @@ namespace {
 namespace fs = std::filesystem;
 
 void SigintHandler(int /*sig*/) { autolink::AsyncShutdown(); }
+
+std::string StaticTransformYamlPath(const std::string& configuration_directory,
+                                    const std::string& configuration_basename) {
+    std::string stem = configuration_basename;
+    constexpr const char* kLuaSuffix = ".lua";
+    if (stem.size() > 4 &&
+        stem.compare(stem.size() - 4, 4, kLuaSuffix) == 0) {
+        stem.erase(stem.size() - 4);
+    }
+    return configuration_directory + "/" + stem + "_static_transform.yaml";
+}
 
 }  // namespace
 
@@ -74,6 +89,28 @@ std::string ResolveWorkspacePath(const std::string& path) {
 void RegisterAutolinkShutdownHandlers() {
     signal(SIGINT, SigintHandler);
     signal(SIGTERM, SigintHandler);
+}
+
+std::string ResolveStaticTransformYamlPath(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename) {
+    return ResolveWorkspacePath(
+        StaticTransformYamlPath(configuration_directory, configuration_basename));
+}
+
+void LoadStaticTransformsForConfig(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename) {
+    const std::string yaml_path =
+        ResolveStaticTransformYamlPath(configuration_directory,
+                                       configuration_basename);
+    if (!fs::exists(yaml_path)) {
+        LOG(WARNING) << "Static transform file not found, skip: " << yaml_path;
+        return;
+    }
+
+    transform::LoadStaticTransformsFromFile(transform::Buffer::Instance(),
+                                            yaml_path, "static_transform");
 }
 
 }  // namespace node

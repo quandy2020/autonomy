@@ -45,13 +45,26 @@ const std::string& CheckNoLeadingSlash(const std::string& frame_id) {
 
 SensorBridge::SensorBridge(
     const int num_subdivisions_per_laser_scan,
-    const std::string& tracking_frame,
+    const bool ignore_out_of_order_messages, const std::string& tracking_frame,
     const double lookup_transform_timeout_sec,
     transform::Buffer* const tf_buffer,
     carto::mapping::TrajectoryBuilderInterface* const trajectory_builder)
     : num_subdivisions_per_laser_scan_(num_subdivisions_per_laser_scan),
+      ignore_out_of_order_messages_(ignore_out_of_order_messages),
       tf_bridge_(tracking_frame, lookup_transform_timeout_sec, tf_buffer),
       trajectory_builder_(trajectory_builder) {}
+
+bool SensorBridge::IgnoreMessage(const std::string& sensor_id,
+                                 const carto::common::Time sensor_time) {
+    if (!ignore_out_of_order_messages_) {
+        return false;
+    }
+    const auto it = latest_sensor_time_.find(sensor_id);
+    if (it == latest_sensor_time_.end()) {
+        return false;
+    }
+    return sensor_time <= it->second;
+}
 
 std::unique_ptr<carto::sensor::OdometryData> SensorBridge::ToOdometryData(
     const commsgs::planning_msgs::Odometry& msg) {
@@ -71,12 +84,16 @@ void SensorBridge::HandleOdometryMessage(
     const commsgs::planning_msgs::Odometry& msg) {
     std::unique_ptr<carto::sensor::OdometryData> odometry_data =
         ToOdometryData(msg);
-    if (odometry_data != nullptr) {
-        trajectory_builder_->AddSensorData(
-            sensor_id,
-            carto::sensor::OdometryData{odometry_data->time,
-                                        odometry_data->pose});
+    if (odometry_data == nullptr) {
+        return;
     }
+    if (IgnoreMessage(sensor_id, odometry_data->time)) {
+        return;
+    }
+    latest_sensor_time_[sensor_id] = odometry_data->time;
+    trajectory_builder_->AddSensorData(
+        sensor_id,
+        carto::sensor::OdometryData{odometry_data->time, odometry_data->pose});
 }
 
 std::unique_ptr<carto::sensor::ImuData> SensorBridge::ToImuData(
@@ -109,13 +126,17 @@ std::unique_ptr<carto::sensor::ImuData> SensorBridge::ToImuData(
 void SensorBridge::HandleImuMessage(const std::string& sensor_id,
                                     const commsgs::sensor_msgs::Imu& msg) {
     std::unique_ptr<carto::sensor::ImuData> imu_data = ToImuData(msg);
-    if (imu_data != nullptr) {
-        trajectory_builder_->AddSensorData(
-            sensor_id,
-            carto::sensor::ImuData{imu_data->time,
-                                   imu_data->linear_acceleration,
-                                   imu_data->angular_velocity});
+    if (imu_data == nullptr) {
+        return;
     }
+    if (IgnoreMessage(sensor_id, imu_data->time)) {
+        return;
+    }
+    latest_sensor_time_[sensor_id] = imu_data->time;
+    trajectory_builder_->AddSensorData(
+        sensor_id,
+        carto::sensor::ImuData{imu_data->time, imu_data->linear_acceleration,
+                               imu_data->angular_velocity});
 }
 
 void SensorBridge::HandleLaserScanMessage(
@@ -218,9 +239,6 @@ void SensorBridge::HandleLaserScan(
         auto it = sensor_to_previous_subdivision_time_.find(sensor_id);
         if (it != sensor_to_previous_subdivision_time_.end() &&
             it->second >= subdivision_time) {
-            LOG(WARNING) << "Ignored subdivision of a LaserScan message from "
-                            "sensor "
-                         << sensor_id;
             continue;
         }
         sensor_to_previous_subdivision_time_[sensor_id] = subdivision_time;
@@ -243,15 +261,20 @@ void SensorBridge::HandleRangefinder(
     std::vector<float> intensities;
     const auto sensor_to_tracking =
         tf_bridge_.LookupToTracking(time, CheckNoLeadingSlash(frame_id));
-    if (sensor_to_tracking != nullptr) {
-        trajectory_builder_->AddSensorData(
-            sensor_id,
-            carto::sensor::TimedPointCloudData{
-                time, sensor_to_tracking->translation().cast<float>(),
-                carto::sensor::TransformTimedPointCloud(
-                    ranges, sensor_to_tracking->cast<float>()),
-                intensities});
+    if (sensor_to_tracking == nullptr) {
+        return;
     }
+    if (IgnoreMessage(sensor_id, time)) {
+        return;
+    }
+    latest_sensor_time_[sensor_id] = time;
+    trajectory_builder_->AddSensorData(
+        sensor_id,
+        carto::sensor::TimedPointCloudData{
+            time, sensor_to_tracking->translation().cast<float>(),
+            carto::sensor::TransformTimedPointCloud(
+                ranges, sensor_to_tracking->cast<float>()),
+            intensities});
 }
 
 }  // namespace node

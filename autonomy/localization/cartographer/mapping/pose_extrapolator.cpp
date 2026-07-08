@@ -83,7 +83,8 @@ void PoseExtrapolator::AddImuData(const sensor::ImuData& imu_data) {
 }
 
 void PoseExtrapolator::AddOdometryData(const sensor::OdometryData& odometry_data) {
-    CHECK(timed_pose_queue_.empty() || odometry_data.time >= timed_pose_queue_.back().time);
+    CHECK(timed_pose_queue_.empty() ||
+          odometry_data.time >= timed_pose_queue_.back().time);
     odometry_data_.push_back(odometry_data);
     TrimOdometryData();
     if (odometry_data_.size() < 2) {

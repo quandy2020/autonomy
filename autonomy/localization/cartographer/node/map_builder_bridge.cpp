@@ -90,6 +90,7 @@ int MapBuilderBridge::AddTrajectory(
     CHECK_EQ(sensor_bridges_.count(trajectory_id), 0);
     sensor_bridges_[trajectory_id] = std::make_unique<SensorBridge>(
         trajectory_options.num_subdivisions_per_laser_scan,
+        trajectory_options.ignore_out_of_order_messages,
         trajectory_options.tracking_frame,
         node_options_.lookup_transform_timeout_sec, tf_buffer_,
         map_builder_->GetTrajectoryBuilder(trajectory_id));
@@ -212,6 +213,11 @@ MapBuilderBridge::GetLocalTrajectoryData() {
 
 SensorBridge* MapBuilderBridge::sensor_bridge(const int trajectory_id) {
     return sensor_bridges_.at(trajectory_id).get();
+}
+
+const TrajectoryOptions& MapBuilderBridge::GetTrajectoryOptions(
+    const int trajectory_id) const {
+    return trajectory_options_.at(trajectory_id);
 }
 
 void MapBuilderBridge::OnLocalSlamResult(

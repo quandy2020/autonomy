@@ -128,14 +128,68 @@ Image FromProto(const proto::sensor_msgs::Image& proto) {
 
 proto::sensor_msgs::Imu ToProto(const Imu& data) {
     proto::sensor_msgs::Imu proto;
-
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    *proto.mutable_orientation() = geometry_msgs::ToProto(data.orientation);
+    proto.mutable_orientation_covariance()->Reserve(
+        data.orientation_covariance.size());
+    for (double value : data.orientation_covariance) {
+        proto.add_orientation_covariance(value);
+    }
+    *proto.mutable_angular_velocity() =
+        geometry_msgs::ToProto(data.angular_velocity);
+    proto.mutable_angular_velocity_covariance()->Reserve(
+        data.angular_velocity_covariance.size());
+    for (double value : data.angular_velocity_covariance) {
+        proto.add_angular_velocity_covariance(value);
+    }
+    *proto.mutable_linear_acceleration() =
+        geometry_msgs::ToProto(data.linear_acceleration);
+    proto.mutable_linear_acceleration_covariance()->Reserve(
+        data.linear_acceleration_covariance.size());
+    for (double value : data.linear_acceleration_covariance) {
+        proto.add_linear_acceleration_covariance(value);
+    }
     return proto;
 }
 
 Imu FromProto(const proto::sensor_msgs::Imu& proto) {
     Imu data;
-
+    data.header = std_msgs::FromProto(proto.header());
+    data.orientation = geometry_msgs::FromProto(proto.orientation());
+    data.orientation_covariance.reserve(proto.orientation_covariance_size());
+    for (double value : proto.orientation_covariance()) {
+        data.orientation_covariance.push_back(value);
+    }
+    data.angular_velocity = geometry_msgs::FromProto(proto.angular_velocity());
+    data.angular_velocity_covariance.reserve(
+        proto.angular_velocity_covariance_size());
+    for (double value : proto.angular_velocity_covariance()) {
+        data.angular_velocity_covariance.push_back(value);
+    }
+    data.linear_acceleration =
+        geometry_msgs::FromProto(proto.linear_acceleration());
+    data.linear_acceleration_covariance.reserve(
+        proto.linear_acceleration_covariance_size());
+    for (double value : proto.linear_acceleration_covariance()) {
+        data.linear_acceleration_covariance.push_back(value);
+    }
     return data;
+}
+
+bool Imu::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool Imu::ParseFromString(const std::string& in) {
+    proto::sensor_msgs::Imu proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
 }
 
 proto::sensor_msgs::LaserScan ToProto(const LaserScan& data) {
@@ -185,6 +239,22 @@ proto::sensor_msgs::MultiEchoLaserScan ToProto(
         *proto.add_intensities() = ToProto(intensity);
     }
     return proto;
+}
+
+bool MultiEchoLaserScan::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool MultiEchoLaserScan::ParseFromString(const std::string& in) {
+    proto::sensor_msgs::MultiEchoLaserScan proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
 }
 
 MultiEchoLaserScan FromProto(

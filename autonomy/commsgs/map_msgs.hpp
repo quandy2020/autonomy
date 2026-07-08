@@ -80,6 +80,12 @@ struct OccupancyGrid {
     // represents unoccupied, 1 represents definitely occupied, and -1
     // represents unknown.
     std::vector<int16> data;
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.map_msgs.OccupancyGrid";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 struct OccupancyGridUpdate {
     // Define OccupancyGrid::SharedPtr type

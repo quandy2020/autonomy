@@ -1,7 +1,8 @@
 .vscode
 *.DS_Store
 .gitee
-*.__pycache__
+__pycache__/
+*.py[cod]
 *.pyc
 *.logs
 
@@ -54,3 +55,14 @@ qtcreator-*
 
 # Catkin custom files
 CATKIN_IGNORE
+
+3rdparty/
+
+# Ansible
+ansible/.vault_pass
+ansible/*.retry
+dist/
+
+# bag_convert runtime protobuf generation
+autonomy/tools/bag_convert/.proto_gen/
+scripts/.proto_gen/

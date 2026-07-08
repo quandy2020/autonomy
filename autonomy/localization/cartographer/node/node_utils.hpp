@@ -30,6 +30,14 @@ std::string ResolveWorkspacePath(const std::string& path);
 
 void RegisterAutolinkShutdownHandlers();
 
+std::string ResolveStaticTransformYamlPath(
+    const std::string& configuration_directory,
+    const std::string& configuration_basename);
+
+// Load <config_stem>_static_transform.yaml next to the Lua config, if present.
+void LoadStaticTransformsForConfig(const std::string& configuration_directory,
+                                   const std::string& configuration_basename);
+
 }  // namespace node
 }  // namespace cartographer
 }  // namespace localization

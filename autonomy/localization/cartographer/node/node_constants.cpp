@@ -15,6 +15,7 @@
  */
 
 #include "autonomy/localization/cartographer/node/node_constants.hpp"
+#include "autonomy/localization/cartographer/node/trajectory_options.hpp"
 
 #include <glog/logging.h>
 
@@ -35,6 +36,15 @@ std::vector<std::string> ComputeRepeatedTopicNames(const std::string& topic,
         topics.emplace_back(topic + "_" + std::to_string(i + 1));
     }
     return topics;
+}
+
+std::vector<std::string> ResolveMultiEchoLaserScanTopics(
+    const TrajectoryOptions& options) {
+    if (!options.multi_echo_laser_scan_topics.empty()) {
+        return options.multi_echo_laser_scan_topics;
+    }
+    return ComputeRepeatedTopicNames(kMultiEchoLaserScanTopic,
+                                     options.num_multi_echo_laser_scans);
 }
 
 }  // namespace node

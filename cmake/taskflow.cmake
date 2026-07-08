@@ -1,17 +1,39 @@
-# Taskflow: prefer vendored 3rdparty/taskflow, fall back to system install.
+# Taskflow: vendored 3rdparty/taskflow -> system install -> FetchContent.
 set(AUTONOMY_TASKFLOW_ROOT "${PROJECT_SOURCE_DIR}/3rdparty/taskflow")
+set(AUTONOMY_TASKFLOW_VERSION "4.1.0")
 
-if(EXISTS "${AUTONOMY_TASKFLOW_ROOT}/CMakeLists.txt")
-  message(STATUS "Using vendored Taskflow from ${AUTONOMY_TASKFLOW_ROOT}")
+macro(autonomy_configure_taskflow_build_options)
   set(TF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   set(TF_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(TF_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
   set(TF_BUILD_PROFILER OFF CACHE BOOL "" FORCE)
   set(TF_BUILD_CUDA OFF CACHE BOOL "" FORCE)
+endmacro()
+
+if(EXISTS "${AUTONOMY_TASKFLOW_ROOT}/CMakeLists.txt")
+  message(STATUS "Using vendored Taskflow from ${AUTONOMY_TASKFLOW_ROOT}")
+  autonomy_configure_taskflow_build_options()
   add_subdirectory("${AUTONOMY_TASKFLOW_ROOT}" "${CMAKE_BINARY_DIR}/3rdparty/taskflow"
     EXCLUDE_FROM_ALL)
 elseif(NOT TARGET Taskflow::Taskflow)
-  find_package(Taskflow CONFIG REQUIRED)
+  find_package(Taskflow CONFIG QUIET
+    HINTS
+      "${CMAKE_INSTALL_PREFIX}"
+      "/usr/local"
+      "$ENV{HOME}/.local")
+
+  if(NOT Taskflow_FOUND)
+    include(FetchContent)
+    message(STATUS "Taskflow not found locally; fetching v${AUTONOMY_TASKFLOW_VERSION} via FetchContent")
+    autonomy_configure_taskflow_build_options()
+    FetchContent_Declare(
+      taskflow
+      GIT_REPOSITORY https://github.com/taskflow/taskflow.git
+      GIT_TAG "v${AUTONOMY_TASKFLOW_VERSION}"
+      GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(taskflow)
+  endif()
 endif()
 
 if(NOT TARGET Taskflow::Taskflow)

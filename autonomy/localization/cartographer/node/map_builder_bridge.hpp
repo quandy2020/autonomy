@@ -87,6 +87,8 @@ public:
 
     SensorBridge* sensor_bridge(int trajectory_id);
 
+    const TrajectoryOptions& GetTrajectoryOptions(int trajectory_id) const;
+
     ::cartographer::mapping::MapBuilderInterface* map_builder() {
         return map_builder_.get();
     }

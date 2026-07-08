@@ -17,8 +17,8 @@
 #include "autonomy/transform/static_transform.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/common/param_handler.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/transform/buffer_utils.hpp"
 
 namespace autonomy {
 namespace transform {
@@ -45,95 +45,18 @@ void StaticTransform::SendTransforms() {
 bool StaticTransform::ParseFromYaml(
     const std::string& file_path,
     std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
-    common::ParamHandler param_handler(file_path);
-    if (!param_handler.FileOpenedSuccessfully()) {
-        AERROR << "Extrinsic yaml file does not exist: " << file_path;
+    if (!ParseStaticTransformsFromYaml(file_path, transforms)) {
         return false;
     }
 
-    try {
-        YAML::Node config = param_handler.GetConfig();
-
-        if (!config["static_transforms"]) {
-            AWARN << "No 'static_transforms' section in: " << file_path;
-            return false;
-        }
-
-        const YAML::Node& transforms_node = config["static_transforms"];
-        if (!transforms_node.IsSequence()) {
-            AERROR << "'static_transforms' should be a sequence in: "
-                   << file_path;
-            return false;
-        }
-
-        for (const auto& tf_node : transforms_node) {
-            // Check enabled
-            bool enabled = true;
-            if (tf_node["enabled"]) {
-                enabled = tf_node["enabled"].as<bool>();
-            }
-            if (!enabled) {
-                continue;
-            }
-
-            commsgs::geometry_msgs::TransformStamped transform;
-
-            // frame_id
-            if (tf_node["frame_id"]) {
-                transform.header.frame_id =
-                    tf_node["frame_id"].as<std::string>();
-            }
-
-            // child_frame_id
-            if (tf_node["child_frame_id"]) {
-                transform.child_frame_id =
-                    tf_node["child_frame_id"].as<std::string>();
-            }
-
-            // translation
-            if (tf_node["translation"]) {
-                const auto& trans = tf_node["translation"];
-                if (trans["x"])
-                    transform.transform.translation.x = trans["x"].as<double>();
-                if (trans["y"])
-                    transform.transform.translation.y = trans["y"].as<double>();
-                if (trans["z"])
-                    transform.transform.translation.z = trans["z"].as<double>();
-            }
-
-            // rotation
-            if (tf_node["rotation"]) {
-                const auto& rot = tf_node["rotation"];
-                if (rot["x"])
-                    transform.transform.rotation.x = rot["x"].as<double>();
-                if (rot["y"])
-                    transform.transform.rotation.y = rot["y"].as<double>();
-                if (rot["z"])
-                    transform.transform.rotation.z = rot["z"].as<double>();
-                if (rot["w"])
-                    transform.transform.rotation.w = rot["w"].as<double>();
-            } else {
-                transform.transform.rotation.w = 1.0;
-            }
-
-            transforms.push_back(transform);
-
-            std::string name =
-                tf_node["name"] ? tf_node["name"].as<std::string>() : "unnamed";
-            AINFO << "Broadcast static transform '" << name << "': ["
-                  << transform.header.frame_id << " -> "
-                  << transform.child_frame_id << "]";
-        }
-
-    } catch (const std::exception& e) {
-        AERROR << "Extrinsic yaml file parse failed: " << file_path
-               << ", error: " << e.what();
-        return false;
+    for (const auto& transform : transforms) {
+        AINFO << "Broadcast static transform: [" << transform.header.frame_id
+              << " -> " << transform.child_frame_id << "]";
     }
 
     AINFO << "Loaded " << transforms.size()
           << " static transforms from: " << file_path;
-    return !transforms.empty();
+    return true;
 }
 
 void StaticTransform::SendTransform(

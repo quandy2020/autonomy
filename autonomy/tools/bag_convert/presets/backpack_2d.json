@@ -1,0 +1,6 @@
+{
+  "topics": ["imu", "horizontal_laser_2d"],
+  "topic_remap": {
+    "horizontal_laser_2d": "echoes_1"
+  }
+}
