@@ -1,8 +1,16 @@
 ---
+- name: Check enabled service units exist
+  ansible.builtin.stat:
+    path: /etc/systemd/system/{{ item }}.service
+  loop: "{{ autonomy_enabled_units }}"
+  register: autonomy_restart_units
+  become: true
+
 - name: Restart enabled autonomy services
   ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: "{{ item.item }}"
     state: restarted
     daemon_reload: true
-  loop: "{{ autonomy_enabled_units }}"
+  loop: "{{ autonomy_restart_units.results }}"
+  when: item.stat.exists
   become: true

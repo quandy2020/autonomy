@@ -28,8 +28,8 @@ class GrpcBridgeServerInterface
 public:
     virtual ~GrpcBridgeServerInterface() {}
 
-    // Starts the gRPC server.
-    virtual void Start() = 0;
+    // Starts the gRPC server. Returns false when bind or setup fails.
+    virtual bool Start() = 0;
 
     // Waits for the 'GrpcBridgeServerI' to shut down. Note: The server must be
     // either shutting down or some other thread must call 'Shutdown()' for

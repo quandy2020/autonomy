@@ -4,7 +4,7 @@
 
 ```bash
 sudo apt-get -y --fix-broken install
-python3 scripts/install_dependency.py --apt-only
+python3 -m install_deps --apt-only
 ```
 
 详见 [02 Installation · 依赖](../02_Installation/04_dependencies.md)。
@@ -14,7 +14,7 @@ python3 scripts/install_dependency.py --apt-only
 使用 `--resume-from` 从中断处继续：
 
 ```bash
-python3 scripts/install_dependency.py --resume-from install_opencv.sh
+python3 -m install_deps --resume-from install_opencv.sh
 ```
 
 ### Q: `libceres.so not found`？
@@ -22,14 +22,14 @@ python3 scripts/install_dependency.py --resume-from install_opencv.sh
 第三方库未装全：
 
 ```bash
-python3 scripts/install_dependency.py --thirdparty-only
+python3 -m install_deps --thirdparty-only
 ```
 
 ### Q: `behaviortree_cpp` 找不到？
 
 确认 `docker/install/install_behaviortree_cpp.sh` 执行成功。
 
-### Q: 非 Ubuntu 系统能用 install_dependency.py 吗？
+### Q: 非 Ubuntu 系统能用 install_deps 吗？
 
 脚本面向 Ubuntu 22.04。其他发行版需手动对照 `APT_PACKAGES` 与 `docker/install/` 脚本安装等效包。
 

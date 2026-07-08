@@ -20,14 +20,14 @@
   - [x] ROS/ROS2 message types via `commsgs` (ecosystem compatibility)
 - **Deployment**
   - [x] Docker images (x86_64 / aarch64)
-  - [x] Dependency installer: `scripts/install_dependency.py`
+  - [x] Dependency installer: `scripts/install_deps` (`python3 -m install_deps`)
   - [x] Ansible one-click deploy: `ansible/` (bare-metal Ubuntu 22.04 + systemd)
 
 ## Requirements
 
 - Ubuntu 22.04 (recommended; matches Docker images)
 - Compiler: GCC 11+ or Clang with C++17
-- Dependencies: see `scripts/install_dependency.py` and `docker/dockerfile/autonomy.x86_64.dockerfile`
+- Dependencies: see `scripts/install_deps` and `docker/dockerfile/autonomy.x86_64.dockerfile`
 
 Main third-party libraries (often installed under `/usr/local` via `docker/install/*.sh`):
 
@@ -46,17 +46,21 @@ cd autonomy
 
 ### 2. Install dependencies
 
+依赖分层：`scripts/install_deps` → `docker/install/*.sh` → `ansible/roles/dependencies/`。详见 [`scripts/README.md`](scripts/README.md)。
+
 On Ubuntu (host or inside a dev container):
 
 ```bash
+cd src/autonomy/scripts   # 或仓库内 scripts/ 目录
+
 # APT packages + third-party scripts (glog, Ceres, OpenCV, BT.CPP, …)
-python3 scripts/install_dependency.py
+python3 -m install_deps
 
 # APT only
-python3 scripts/install_dependency.py --apt-only
+python3 -m install_deps --apt-only
 
 # List APT package names
-python3 scripts/install_dependency.py --list-apt
+python3 -m install_deps --list-apt
 ```
 
 ### 3. Configure and build
@@ -91,11 +95,11 @@ ninja
 
 ### 5. Ansible deploy (robot / edge host)
 
-See [`ansible/README.md`](ansible/README.md). Quick start:
+See [`ansible/README.md`](ansible/README.md). 模块化：`./deploy.sh build`（编译）、`./deploy.sh deploy robots`（制品分发）、`./deploy.sh push robots`（只推配置）。
 
 ```bash
-# Edit ansible/inventory/hosts.yml first
-cd ansible && ./deploy.sh
+cd ansible && ./deploy.sh build    # 开发机编译
+./deploy.sh deploy robots -e autonomy_artifact_path=../dist/autonomy.tar.gz
 ```
 
 ## CMake options
@@ -118,7 +122,7 @@ autonomy/
 ├── docker/            # Dockerfiles and install scripts
 ├── ansible/           # One-click bare-metal deployment (systemd)
 ├── docs/              # Sphinx documentation
-├── scripts/           # install_dependency.py, utilities
+├── scripts/           # install_deps package (see scripts/README.md)
 └── CMakeLists.txt
 ```
 

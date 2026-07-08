@@ -7,18 +7,21 @@ if(AUTONOMY_PROTOBUF319_CONFIGURED)
 endif()
 set(AUTONOMY_PROTOBUF319_CONFIGURED TRUE)
 
-list(PREPEND CMAKE_PREFIX_PATH "/usr/local")
-set(Protobuf_ROOT "/usr/local" CACHE PATH "Protobuf 3.19 install prefix")
+set(_AUTONOMY_PROTOBUF_PREFIX "/usr/local")
+list(PREPEND CMAKE_PREFIX_PATH "${_AUTONOMY_PROTOBUF_PREFIX}")
+set(Protobuf_ROOT "${_AUTONOMY_PROTOBUF_PREFIX}" CACHE PATH "Protobuf 3.19 install prefix" FORCE)
+unset(_AUTONOMY_PROTOC CACHE)
+unset(Protobuf_PROTOC_EXECUTABLE CACHE)
 
-find_program(_AUTONOMY_PROTOC NAMES protoc
-  HINTS /usr/local/bin
+find_program(_AUTONOMY_PROTOC NAMES protoc protoc-3.19.4.0
+  PATHS "${_AUTONOMY_PROTOBUF_PREFIX}/bin"
   NO_DEFAULT_PATH
+  NO_CMAKE_PATH
+  NO_CMAKE_ENVIRONMENT_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH
 )
-if(NOT _AUTONOMY_PROTOC)
-  find_program(_AUTONOMY_PROTOC NAMES protoc)
-endif()
 
-find_package(Protobuf REQUIRED)
+find_package(Protobuf REQUIRED PATHS "${_AUTONOMY_PROTOBUF_PREFIX}" NO_DEFAULT_PATH)
 
 if(Protobuf_VERSION VERSION_LESS "3.19.0"
     OR Protobuf_VERSION VERSION_GREATER_EQUAL "3.20.0")
@@ -27,15 +30,13 @@ if(Protobuf_VERSION VERSION_LESS "3.19.0"
     "Run: bash src/autonomy/docker/install/install_protobuf.sh")
 endif()
 
-if(_AUTONOMY_PROTOC)
-  set(Protobuf_PROTOC_EXECUTABLE "${_AUTONOMY_PROTOC}"
-    CACHE FILEPATH "protoc executable" FORCE)
+if(NOT _AUTONOMY_PROTOC)
+  message(FATAL_ERROR
+    "protoc not found under ${_AUTONOMY_PROTOBUF_PREFIX}/bin. "
+    "Run: bash src/autonomy/docker/install/install_protobuf.sh")
 endif()
 
-if(NOT Protobuf_PROTOC_EXECUTABLE)
-  message(FATAL_ERROR
-    "protoc not found. Run: bash src/autonomy/docker/install/install_protobuf.sh")
-endif()
+set(Protobuf_PROTOC_EXECUTABLE "${_AUTONOMY_PROTOC}" CACHE FILEPATH "protoc executable" FORCE)
 
 execute_process(
   COMMAND "${Protobuf_PROTOC_EXECUTABLE}" --version
@@ -47,9 +48,38 @@ execute_process(
 set(_protoc_version "${_protoc_version_out}${_protoc_version_err}")
 if(NOT _protoc_version MATCHES "3\\.19\\.")
   message(FATAL_ERROR
-    "protoc 3.19.x is required (got '${_protoc_version}'). "
+    "protoc 3.19.x is required (got '${_protoc_version}' from "
+    "${Protobuf_PROTOC_EXECUTABLE}). "
     "Run: bash src/autonomy/docker/install/install_protobuf.sh")
 endif()
 
 message(STATUS "Using Protobuf ${Protobuf_VERSION} includes: ${Protobuf_INCLUDE_DIRS}")
 message(STATUS "Using protoc: ${Protobuf_PROTOC_EXECUTABLE} (${_protoc_version})")
+
+# Config-mode Protobuf does not always populate legacy variables used by
+# autonomy/autolink CMakeLists (Protobuf_LIBRARIES / PROTOBUF_LIBRARY).
+if(TARGET protobuf::libprotobuf)
+  set(Protobuf_LIBRARIES protobuf::libprotobuf)
+  set(PROTOBUF_LIBRARY protobuf::libprotobuf)
+  if(NOT Protobuf_INCLUDE_DIRS)
+    get_target_property(_protobuf_include_dirs protobuf::libprotobuf
+      INTERFACE_INCLUDE_DIRECTORIES)
+    if(_protobuf_include_dirs)
+      set(Protobuf_INCLUDE_DIRS "${_protobuf_include_dirs}")
+    endif()
+  endif()
+elseif(NOT Protobuf_LIBRARIES AND PROTOBUF_LIBRARY)
+  set(Protobuf_LIBRARIES "${PROTOBUF_LIBRARY}")
+elseif(Protobuf_LIBRARIES AND NOT PROTOBUF_LIBRARY)
+  set(PROTOBUF_LIBRARY "${Protobuf_LIBRARIES}")
+endif()
+
+if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
+  message(FATAL_ERROR
+    "Protobuf library target not found after find_package. "
+    "Run: bash src/autonomy/docker/install/install_protobuf.sh")
+endif()
+
+if(Protobuf_INCLUDE_DIRS AND NOT PROTOBUF_INCLUDE_DIR)
+  set(PROTOBUF_INCLUDE_DIR "${Protobuf_INCLUDE_DIRS}")
+endif()

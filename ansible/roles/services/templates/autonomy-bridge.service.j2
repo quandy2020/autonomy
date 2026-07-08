@@ -2,19 +2,20 @@
 Description=Autonomy gRPC bridge
 Documentation=https://github.com/quandy2020/autonomy
 After=network-online.target autonomy-task.service
-Wants=network-online.target autonomy-task.service
+Wants=network-online.target
+Requires=autonomy-task.service
 
 [Service]
 Type=simple
 User={{ autonomy_user }}
 Group={{ autonomy_user }}
 Environment=AUTOLINK_PATH={{ autonomy_install_prefix }}/share/autolink
-Environment=AUTONOMY_CONFIGURATION_DIRECTORY={{ autonomy_config_dir }}
+Environment=AUTONOMY_CONFIGURATION_DIRECTORY={{ autonomy_bridge_configuration_directory }}
 Environment=AUTONOMY_CONFIGURATION_BASENAME={{ autonomy_bridge_configuration_basename }}
 Environment=LD_LIBRARY_PATH={{ autonomy_install_prefix }}/lib:/usr/local/lib
 WorkingDirectory={{ autonomy_data_dir }}
 ExecStart={{ autonomy_install_prefix }}/bin/autonomy_bridge \
-  --configuration_directory={{ autonomy_config_dir }} \
+  --configuration_directory={{ autonomy_bridge_configuration_directory }} \
   --configuration_basename={{ autonomy_bridge_configuration_basename }}
 Restart=on-failure
 RestartSec=5

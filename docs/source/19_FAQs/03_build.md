@@ -11,7 +11,7 @@ sudo apt install libprotobuf-dev protobuf-compiler
 
 ```bash
 # 运行第三方安装
-python3 scripts/install_dependency.py --thirdparty-only
+python3 -m install_deps --thirdparty-only
 # 确认 /usr/local/lib 在链接路径
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```

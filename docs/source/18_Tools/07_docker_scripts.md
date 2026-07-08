@@ -28,7 +28,7 @@ docker exec -it SpaceHero /bin/bash
 
 ### 7.4 install 脚本
 
-`docker/install/` 含 50+ shell 脚本，由 `scripts/install_dependency.py` 调用，安装 glog、Protobuf、Ceres、OpenCV、BehaviorTree.CPP、ROS 2 等。
+`docker/install/` 含 50+ shell 脚本，由 `scripts/install_deps` (`python3 -m install_deps`) 调用，安装 glog、Protobuf、Ceres、OpenCV、BehaviorTree.CPP、ROS 2 等。
 
 ### 7.5 相关文档
 

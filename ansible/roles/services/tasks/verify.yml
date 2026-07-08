@@ -1,0 +1,54 @@
+---
+- name: Wait for enabled autonomy services to become active
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - is-active
+      - "{{ item }}"
+  register: autonomy_service_wait
+  until: autonomy_service_wait.rc == 0
+  retries: 20
+  delay: 5
+  loop: "{{ autonomy_enabled_units }}"
+  become: true
+  changed_when: false
+
+- name: Collect journal for services that failed to become active
+  ansible.builtin.command:
+    argv:
+      - journalctl
+      - -u
+      - "{{ item.item }}"
+      - -n
+      - "30"
+      - --no-pager
+  loop: "{{ autonomy_service_wait.results | selectattr('rc', 'ne', 0) | list }}"
+  register: autonomy_failed_journals
+  become: true
+  changed_when: false
+  failed_when: false
+
+- name: Display service failure logs
+  ansible.builtin.debug:
+    msg: "{{ item.item }}:\n{{ item.stdout }}"
+  loop: "{{ autonomy_failed_journals.results | default([]) }}"
+  when:
+    - item.stdout is defined
+    - item.stdout | length > 0
+
+- name: Summarize service verification
+  ansible.builtin.debug:
+    msg: "All services active: {{ autonomy_enabled_units | join(', ') }}"
+  when: autonomy_service_wait.results | selectattr('rc', 'ne', 0) | list | length == 0
+
+- name: Fail verify when any service is not active
+  ansible.builtin.fail:
+    msg: >-
+      Services not active: {{
+        autonomy_service_wait.results
+        | selectattr('rc', 'ne', 0)
+        | map(attribute='item')
+        | list
+        | join(', ')
+      }}. See journal output above.
+  when: autonomy_service_wait.results | selectattr('rc', 'ne', 0) | list | length > 0

@@ -10,7 +10,7 @@ git clone --recurse-submodules https://github.com/quandy2020/autonomy.git
 cd autonomy
 
 # 2. 安装依赖（Ubuntu 22.04 推荐）
-python3 scripts/install_dependency.py
+python3 -m install_deps
 
 # 3. 编译
 mkdir -p build && cd build

@@ -15,6 +15,16 @@
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
+- name: Remove stale autolink SysV SHM before starting services
+  ansible.builtin.command:
+    argv:
+      - ipcrm
+      - -M
+      - "{{ autonomy_autolink_notifier_shm_key }}"
+  become: true
+  changed_when: false
+  failed_when: false
+
 - name: Enable and start selected autonomy services
   ansible.builtin.systemd:
     name: "{{ item }}"
@@ -39,3 +49,7 @@
   loop: "{{ autonomy_units_to_disable.results }}"
   when: item.stat.exists
   become: true
+
+- name: Verify enabled services are active
+  ansible.builtin.include_tasks: verify.yml
+  when: autonomy_run_verify | bool

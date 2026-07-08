@@ -41,6 +41,9 @@ devel_isolated/
 # qcreator stuff
 CMakeLists.txt.user
 
+# Generated at configure/build time (see cmake/generate_version_definitions.cmake)
+autonomy/common/version.cpp
+
 srv/_*.py
 *.pcd
 *.pyc
