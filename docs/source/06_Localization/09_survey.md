@@ -12,7 +12,7 @@
 |--------|----------|---------------|------|
 | 全局定位（已知地图） | AMCL / ICP | AMCL（配置就绪） | 5–20 Hz |
 | 视觉 SLAM | ORB-SLAM / VINS | **Atlas** | 15–30 Hz |
-| 激光 SLAM | Cartographer / Gmapping | Cartographer（配置就绪） | 5–10 Hz |
+| 激光 SLAM | Cartographer / Gmapping | **Cartographer** | 5–10 Hz |
 | 融合定位 | EKF / UKF / 因子图 | 规划中 | — |
 
 <div class="nav-costmap-banner">
@@ -25,7 +25,7 @@
 相机 ──→ Atlas (VSLAM) ──→ T_cw / 稀疏地图 ──┐
                                            ├──→ TF ──→ Planning / Control
 激光 + 地图 ──→ AMCL (待集成) ──→ map→odom ─┘
-激光 ──→ Cartographer (待集成) ──→ 子图 + 位姿图
+激光 ──→ Cartographer ──→ 子图 + 位姿图 + /map
 ```
 
 ---
@@ -145,8 +145,8 @@ $$
 | 双目相机 | 特征 SLAM / VI | Atlas ✓ |
 | RGB-D | 特征 SLAM / ICP | Atlas ✓ |
 | 2D 激光 + 地图 | AMCL | 配置 ✓ |
-| 2D 激光 SLAM | Cartographer / Gmapping | 配置 ✓ |
-| 3D 激光 | Cartographer 3D / LOAM | 配置 ✓ |
+| 2D 激光 SLAM | Cartographer | **已实现** |
+| 3D 激光 | Cartographer 3D | 配置 ✓，3D 前端可选 |
 | 相机 + IMU | VI-SLAM | 待扩展 |
 | GPS + 激光 | 融合因子图 | 待扩展 |
 
@@ -208,12 +208,12 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 
 | 能力 | Atlas | AMCL | Cartographer |
 |------|-------|------|--------------|
-| 代码实现 | ✓ | 配置 | 配置 |
-| 实时跟踪 | ✓ | 预期 ✓ | 预期 ✓ |
-| 建图 | ✓ 稀疏 3D | ✗ | 预期 ✓ 2D/3D |
-| 回环 | ✓ BoW | ✗ | 预期 ✓ |
-| 纯定位 | ✓ load map | 预期 ✓ | 预期 ✓ |
-| TF 输出 | 需桥接 | 预期原生 | 预期原生 |
+| 代码实现 | ✓ | 配置 | **✓** |
+| 实时跟踪 | ✓ | 预期 ✓ | ✓ |
+| 建图 | ✓ 稀疏 3D | ✗ | ✓ 2D 子图 + OccupancyGrid |
+| 回环 | ✓ BoW | ✗ | ✓ 位姿图 |
+| 纯定位 | ✓ load map | 预期 ✓ | ✓ load .pbstream |
+| TF 输出 | 需桥接 | 预期原生 | ✓ map→odom |
 | 与 Map 集成 | 导出地图 | 消费 /map | 发布 /map |
 
 ---
@@ -246,8 +246,9 @@ Autonomy 选择 Atlas  lineage 的原因：Apache 2.0 许可、成熟 ORB 管线
 
 | 主题 | Autonomy 文档 |
 |------|---------------|
-| Atlas 实现 | [06_atlas.md](06_atlas.md) |
+| Atlas 实现 | [atlas/guide.md](atlas/guide.md) |
 | 数学公式 | [03_math.md](03_math.md) |
+| Cartographer 实现 | [cartographer/guide.md](cartographer/guide.md) |
 | AMCL 配置 | [07_amcl.md](07_amcl.md) |
 | 架构设计 | [05_architecture.md](05_architecture.md) |
 | 地图模块 | [../07_Map/05_survey.md](../07_Map/05_survey.md) |

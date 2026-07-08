@@ -419,3 +419,49 @@ $$
 | 跟踪 | PnP + 位姿优化 | `tracking_module` |
 | 建图 | 三角化 + LBA | `mapping_module` |
 | 回环 | BoW + Sim3 + GBA | `global_optimization_module` |
+
+---
+
+### 3.12 Cartographer 子图与位姿图
+
+> 使用指南见 [cartographer/guide.md](cartographer/guide.md)。
+
+#### 3.12.1 局部 SLAM（子图）
+
+每个子图 $S_i$ 维护局部占据栅格 $M_i$，激光扫描 $\mathcal{Z}_t$ 经扫描匹配估计位姿增量：
+
+$$
+\xi_t^* = \arg\min_{\xi} \sum_{\mathbf{p} \in \mathcal{Z}_t} \big( 1 - M_i(T_\xi \mathbf{p}) \big)^2 + \lambda_{\mathrm{trans}} \|\Delta t\|^2 + \lambda_{\mathrm{rot}} \Delta\theta^2
+$$
+
+其中 $T_\xi \in SE(2)$ 为候选位姿，$M_i(\cdot)$ 为占据概率查询（Ceres 扫描匹配器实现）。
+
+子图完成条件：累积 `num_range_data` 帧扫描后冻结，开启新子图。
+
+#### 3.12.2 占据概率更新
+
+对数几率（log-odds）更新，命中/空闲概率 $p_{\mathrm{hit}}, p_{\mathrm{miss}}$（默认 0.55 / 0.49）：
+
+$$
+\mathrm{logit}(p') = \mathrm{logit}(p) + \mathrm{logit}(p_{\mathrm{obs}}) - \mathrm{logit}(p_{\mathrm{prior}})
+$$
+
+#### 3.12.3 位姿图优化
+
+节点为子图位姿 $\{\xi_i\}$，边为：
+
+- **局部约束**：相邻子图间扫描匹配 $\mathbf{z}_{ij}$
+- **回环约束**：Fast Correlative Scan Matcher 检测到的远距离匹配
+
+全局目标：
+
+$$
+\min_{\{\xi_i\}} \sum_{(i,j) \in \mathcal{C}} \rho\Big( \| \mathbf{r}_{ij}(\xi_i, \xi_j) \|_{\mathbf{\Omega}_{ij}}^2 \Big)
+$$
+
+$\rho$ 为 Huber 鲁棒核（`huber_scale`），每 `optimize_every_n_nodes` 个节点触发一次优化。
+
+#### 3.12.4 纯定位
+
+加载冻结子图 $\{S_k^{\mathrm{frozen}}\}$，仅优化当前轨迹位姿；`pure_localization_trimmer` 限制活跃子图数为 `max_submaps_to_keep`，丢弃旧子图以节省内存。
+

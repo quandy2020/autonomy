@@ -1,12 +1,47 @@
 # 2. 快速开始
 
-### 2.1 三步启用 Atlas 视觉 SLAM
+### 2.1 Cartographer 2D SLAM（默认，推荐）
+
+完整说明见 [Cartographer 使用指南](cartographer/guide.md)。
+
+**三步流程：**
+
+1. 转换 bag（Backpack 2D 数据集）：
+
+```bash
+python -m autonomy.tools.bag_convert \
+  ~/Downloads/b2-2016-04-27-12-31-41.bag \
+  -o ./data/records --backpack-2d
+```
+
+2. 启动 SLAM：
+
+```bash
+export PATH=$PWD/build/bin:$PATH
+export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
+autolink_launch start cartographer_2d.launch
+```
+
+3. 回放 record，观察 `map` 话题与 `data/map.pgm` 输出。
+
+保存地图状态：
+
+```bash
+localization \
+  --configuration_directory=config/localization/cartographer \
+  --configuration_basename=backpack_2d.lua \
+  --save_state_filename=data/map.pbstream
+```
+
+---
+
+### 2.2 Atlas 视觉 SLAM
 
 1. 准备 **ORB 词袋文件**（`orb_vocab.fbow` 或项目指定格式）与 **相机 YAML 配置**
 2. 构造 `atlas::system`，调用 `startup()` 启动三线程 SLAM
 3. 按传感器类型循环调用 `feed_monocular_frame` / `feed_stereo_frame` / `feed_RGBD_frame`
 
-### 2.2 最小 C++ 示例（单目）
+### 2.3 最小 C++ 示例（单目）
 
 ```cpp
 #include "autonomy/localization/atlas/system.hpp"
@@ -37,7 +72,7 @@ slam.save_map_database("map.msgpack");
 slam.shutdown();
 ```
 
-### 2.3 双目示例（EuRoC）
+### 2.4 双目示例（EuRoC）
 
 配置文件：`autonomy/localization/atlas/example/euroc/EuRoC_stereo.yaml`
 
@@ -64,7 +99,7 @@ Camera:
   depth_threshold: 40
 ```
 
-### 2.4 RGB-D 示例
+### 2.5 RGB-D 示例
 
 ```cpp
 // rgb_img 与 depthmap 必须像素对齐
@@ -73,7 +108,7 @@ slam.depthmap_factor_ = 5000.0;  // TUM RGB-D 典型值
 auto pose = slam.feed_RGBD_frame(rgb, depth, timestamp);
 ```
 
-### 2.5 纯定位模式（加载已有地图）
+### 2.6 纯定位模式（Atlas，加载已有地图）
 
 ```cpp
 slam.startup(false);  // need_initialize = false
@@ -85,7 +120,7 @@ Mat44_t prior_pose = ...;
 slam.relocalize_by_pose(prior_pose);
 ```
 
-### 2.6 运行时开关
+### 2.7 运行时开关
 
 | API | 作用 |
 |-----|------|
@@ -95,7 +130,7 @@ slam.relocalize_by_pose(prior_pose);
 | `pause_tracker()` / `resume_tracker()` | 暂停/恢复跟踪 |
 | `request_reset()` | 重置地图与状态 |
 
-### 2.7 验证定位是否正常
+### 2.8 验证定位是否正常
 
 | 检查项 | 方法 |
 |--------|------|
@@ -105,7 +140,7 @@ slam.relocalize_by_pose(prior_pose);
 | 回环生效 | `loop_detector_is_enabled()` 且地图无明显重影 |
 | 地图可持久化 | `save_map_database` / `load_map_database` 往返一致 |
 
-### 2.8 AMCL 配置预览（待集成）
+### 2.9 AMCL 配置预览（待集成）
 
 ```lua
 -- config/localization/localization.lua
@@ -118,4 +153,4 @@ AUTONOMY_LOCALIZATION = {
 
 AMCL 集成后典型启动顺序：`MapServer` 发布 `/map` → 里程计 + `/scan` → AMCL 发布 `map→odom` TF。详见 [§7 AMCL](07_amcl.md)。
 
-更多配置与排错见 [§4 使用指南](04_usage.md)。
+完整说明见 [Atlas 使用指南](atlas/guide.md)。
