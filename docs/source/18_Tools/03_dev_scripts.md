@@ -53,8 +53,3 @@ python3 scripts/install_dependency.py --resume-from install_opencv.sh
 1. 格式化前建议先提交或备份代码
 2. 全量格式化 1700+ 文件可能耗时较长
 3. `install_dependency.py` 面向 Ubuntu；其他发行版需手动对照安装
-
-### 3.4 相关文档
-
-- [20 Other · 代码风格](../20_Other/02_code_style.md)
-- [02 Installation · 依赖安装](../02_Installation/04_dependencies.md)

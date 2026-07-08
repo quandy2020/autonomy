@@ -363,21 +363,56 @@ global_optimization_module
 
 ---
 
-## 5.10 未来扩展：AMCL / Cartographer 接入点
+## 5.10 Cartographer 架构
+
+Cartographer 已集成于 `localization` 二进制，入口 `RunCartographerNode()`。
+
+```
+localization_main (--localization_mode=cartographer)
+        │
+        ▼
+CartographerNode (autolink node)
+├── MapBuilderBridge          ← cartographer::mapping::MapBuilder
+│   ├── LocalTrajectoryBuilder2D/3D   ← 扫描匹配 + 子图
+│   └── PoseGraph2D/3D                ← 回环 + 全局优化
+├── SensorBridge              ← commsgs → Cartographer 传感器
+├── TfBridge                  ← transform::Buffer 查询外参
+├── 定时器
+│   ├── PublishSubmapList
+│   ├── PublishLocalTrajectoryData  → tracked_pose + TF
+│   ├── PublishOccupancyGrid        → /map
+│   └── SaveMapImage                → data/map.pgm
+└── 服务: submap_query / start_trajectory / finish_trajectory / write_state
+```
+
+| 组件 | 文件 | 职责 |
+|------|------|------|
+| `CartographerNode` | `node/cartographer_node.*` | autolink 订阅/发布/服务 |
+| `MapBuilderBridge` | `node/map_builder_bridge.*` | 封装 MapBuilder API |
+| `SensorBridge` | `node/sensor_bridge.*` | LaserScan/Imu/Odom 转换 |
+| `OccupancyGridNode` | `node/occupancy_grid_node.*` | 独立栅格发布 |
+
+配置加载：`LoadOptions(dir, basename)` → Lua 解析 → Protobuf `MapBuilderOptions`。
+
+静态 TF：自动加载 `<basename>_static_transform.yaml`（如 `backpack_2d_static_transform.yaml`）。
+
+---
+
+## 5.11 未来扩展：AMCL 接入点
 
 ```
 config/localization/localization.lua
         │
-        ├── default_algorithm = "amcl"     → [待实现] AmclServer
-        ├── default_algorithm = "cartographer" → [待实现] CartographerServer
-        └── default_algorithm = "atlas"      → atlas::system (已实现)
+        ├── default_algorithm = "amcl"         → [待实现] AmclServer
+        ├── localization --localization_mode=cartographer  → 已实现
+        └── localization --localization_mode=atlas         → 已实现
 ```
 
 建议统一 `LocalizationInterface`（`Start` / `Stop` / `GetPose` / `FeedScan` / `FeedImage`），与 `MapInterface` 风格对齐。
 
 ---
 
-## 5.11 线程安全与中断
+## 5.12 线程安全与中断
 
 | 操作 | 机制 |
 |------|------|

@@ -7,124 +7,49 @@
 
 ## 4.1 Atlas 使用
 
+> 完整文档：[atlas/guide.md](atlas/guide.md)
+
 ### 4.1.1 配置入口
 
 | 项 | 值 |
 |----|-----|
-| 配置文件 | YAML（见 `atlas/example/` 各数据集模板） |
+| 配置文件 | YAML（`atlas/example/` 各数据集模板） |
 | 加载 API | `atlas::config(config_file_path)` |
-| 词袋文件 | ORB BoW vocabulary（`.fbow`） |
+| 词袋文件 | ORB BoW vocabulary（`.fbow`，回环需要） |
 | 系统入口 | `atlas::system` |
+| 节点模式 | `localization --localization_mode=atlas` |
 
-### 4.1.2 YAML 配置结构
+### 4.1.2 集成方式
 
-```yaml
-Camera:           # 相机内参、畸变、setup/model 类型
-Preprocessing:    # 图像预处理（min_size 等）
-Feature:          # ORB 金字塔参数
-Mapping:          # 局部建图 / LBA 后端
-Tracking:         # 跟踪 / 位姿优化后端
-KeyframeInserter: # 关键帧插入策略
-Relocalizer:      # 重定位参数
-LoopDetector:     # 回环检测
-Initializer:      # 初始化阈值
-System:           # map_format, 匹配网格尺寸
+| 路径 | 适用 | 说明 |
+|------|------|------|
+| **A. C++ API** | 数据集评测 / 自定义应用 | `feed_*_frame()` 完整可用 |
+| **B. localization 节点** | 地图加载/保存 | 启动线程；**相机话题 feed 待 bridge** |
+| **C. 纯定位** | 已有地图 | `--atlas_map_load` + `disable_mapping_module()` |
+
+### 4.1.3 命令行示例
+
+```bash
+localization --localization_mode=atlas \
+  --atlas_config=autonomy/localization/atlas/example/euroc/EuRoC_stereo.yaml \
+  --atlas_vocab=/path/to/orb_vocab.fbow \
+  --atlas_map_save=data/atlas_map.msgpack
 ```
 
-### 4.1.3 推荐使用路径
+### 4.1.4 YAML 配置块
 
-| 路径 | 适用 | 你需要做的 |
-|------|------|------------|
-| **A. SLAM 建图** | 离线/在线建图 | `startup()` + 持续 `feed_*` + `save_map_database` |
-| **B. 纯定位** | 已有地图 | `load_map_database` + `disable_mapping_module` |
-| **C. 数据集评测** | EuRoC/KITTI/TUM | 使用 `example/` 下对应 YAML |
-
-### 4.1.4 端到端集成（路径 A）
-
-```
-启动顺序:
-  1. 加载 YAML + 词袋
-  2. system::startup()
-  3. 相机驱动回调 → feed_monocular/stereo/RGBD_frame
-  4. 获取 pose (T_cw) → 转换到 base_link → 发布 TF
-  5. 可选: map_publisher 可视化稀疏地图
-  6. shutdown() 前 save_map_database / save_keyframe_trajectory
-```
+`Camera` / `Preprocessing` / `Feature` / `Mapping` / `Tracking` / `KeyframeInserter` / `Relocalizer` / `LoopDetector` / `Initializer` / `System` — 详见 [Atlas §5](atlas/guide.md#5-yaml-配置结构)。
 
 ### 4.1.5 API 与调用时机
 
-| API | 谁调用 | 何时 |
-|-----|--------|------|
-| `startup()` | 系统启动 | 配置与词袋加载完成后 |
-| `feed_*_frame()` | 相机回调 | 每帧图像到达 |
-| `load_map_database()` | 纯定位模式 | `startup(false)` 之后 |
-| `relocalize_by_pose()` | 外部先验 | 跟踪丢失或 GPS/IMU 辅助 |
-| `enable_loop_detector()` | 建图模式 | 大场景需回环时 |
-| `save_map_database()` | 退出前 | 持久化地图 |
-| `shutdown()` | 系统关闭 | 停止所有线程 |
-
-### 4.1.6 相机模型选型
-
-| `model` | 适用镜头 | 畸变参数 |
-|---------|----------|----------|
-| `perspective` | 普通针孔 | k1, k2, p1, p2, k3 |
-| `fisheye` | 广角鱼眼 | k1–k4 |
-| `equirectangular` | 360° 全景 | 无 |
-| `RadialDivision` | 轻畸变 | k1, k2 |
-
-| `setup` | 输入 | 注意 |
-|---------|------|------|
-| `monocular` | 单目图像 | 尺度不可观，需运动 |
-| `stereo` | 左右校正图 | 必须 stereo-rectify |
-| `rgbd` | RGB + 深度 | 必须对齐，`depthmap_factor_` 正确 |
-
-### 4.1.7 关键参数调优
-
-**Feature**
-
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `scale_factor` | 1.2 | 金字塔尺度比 |
-| `num_levels` | 8 | 金字塔层数 |
-| `ini_fast_threshold` | 20 | 初始化 FAST 阈值 |
-| `min_fast_threshold` | 7 | 跟踪 FAST 阈值 |
-
-**Tracking**
-
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `max_num_local_keyfrms` | 60 | 局部地图关键帧上限 |
-| `enable_auto_relocalization` | true | 丢失自动重定位 |
-| `reloc_distance_threshold` | 0.2 m | 按位姿重定位距离阈值 |
-| `margin_local_map_projection` | 5.0 px | 投影匹配搜索半径 |
-
-**Mapping**
-
-| 参数 | 默认 | 说明 |
-|------|------|------|
-| `baseline_dist_thr_ratio` | 0.02 | 三角化基线/深度比 |
-| `num_temporal_keyframes` | 15 | 时序关键帧数量 |
-| `backend` | g2o | 优化后端 |
-
-**LoopDetector**
-
-| 参数 | 说明 |
-|------|------|
-| `backend` | g2o |
-| `fix_scale_in_Sim3_estimation` | 单目 true，双目/RGB-D false |
-
-### 4.1.8 地图持久化
-
-| 格式 | API | 说明 |
-|------|-----|------|
-| msgpack | `map_format: "msgpack"` | 默认，紧凑二进制 |
-| sqlite3 | `map_format: "sqlite3"` | 关系型，便于查询 |
-
-```cpp
-slam.save_map_database("output/map.msgpack");
-slam.load_map_database("output/map.msgpack");
-slam.save_keyframe_trajectory("traj.txt", "TUM");  // 或 "KITTI", "EUROC"
-```
+| API | 何时 |
+|-----|------|
+| `startup()` | 配置与词袋加载后 |
+| `feed_*_frame()` | 每帧图像到达（C++ API） |
+| `load_map_database()` | 纯定位，`startup(false)` 后 |
+| `save_map_database()` | 退出前持久化 |
+| `enable_loop_detector()` | 大场景需回环 |
+| `shutdown()` | 停止所有线程 |
 
 ---
 
@@ -160,16 +85,51 @@ AUTONOMY = {
 
 ---
 
-## 4.3 Cartographer 配置（待集成）
+## 4.3 Cartographer 使用
 
-配置模板位于 `config/localization/cartographer/`：
+> 完整文档：[cartographer/guide.md](cartographer/guide.md)
 
-| 文件 | 内容 |
-|------|------|
-| `map_builder.lua` | 2D/3D map builder |
-| `trajectory_builder_2d.lua` | 2D 前端 |
-| `trajectory_builder_3d.lua` | 3D 前端 |
-| `pose_graph.lua` | 位姿图优化 |
+### 4.3.1 配置入口
+
+| 项 | 值 |
+|----|-----|
+| 配置目录 | `config/localization/cartographer/` |
+| 默认配置 | `backpack_2d.lua` |
+| 二进制 | `localization`（`--localization_mode=cartographer`） |
+| Launch | `autonomy/localization/launch/cartographer_2d.launch` |
+
+### 4.3.2 三种运行模式
+
+| 模式 | 配置 | Launch |
+|------|------|--------|
+| 2D SLAM（内嵌 /map） | `backpack_2d.lua` | `cartographer_2d.launch` |
+| 2D SLAM + 独立 grid | `backpack_2d_with_grid.lua` | `localization_server.launch` |
+| 纯定位 | `backpack_2d_localization.lua` + `.pbstream` | `cartographer_2d_localization.launch` |
+
+### 4.3.3 数据准备（Backpack bag）
+
+```bash
+python -m autonomy.tools.bag_convert INPUT.bag -o ./data/records --backpack-2d
+```
+
+### 4.3.4 关键话题
+
+| 方向 | 话题 | 说明 |
+|------|------|------|
+| 订阅 | `echoes_1` | MultiEchoLaserScan（backpack 默认） |
+| 订阅 | `imu` | `use_imu_data=true` 时必需 |
+| 订阅 | `tf` / `tf_static` | 传感器外参 |
+| 发布 | `map` | OccupancyGrid |
+| 发布 | `tracked_pose` | 当前位姿 |
+| 发布 | TF | `map→odom` |
+
+### 4.3.5 地图导出
+
+| 方式 | 命令/配置 |
+|------|-----------|
+| 运行时 PGM | `save_map_image=true` → `data/map.pgm` |
+| pbstream | `--save_state_filename=map.pbstream` |
+| 离线 YAML+PGM | `cartographer_pbstream_to_map -pbstream_filename=...` |
 
 ---
 
@@ -199,11 +159,11 @@ AUTONOMY = {
 
 | 场景 | 推荐 | 理由 |
 |------|------|------|
-| 视觉机器人 / 无激光 | Atlas | 已实现，支持单目/双目/RGB-D |
+| 激光 2D 建图/定位 | **Cartographer** | 默认后端，backpack 配置完备 |
+| 视觉机器人 / 无激光 | Atlas | 单目/双目/RGB-D |
 | 已知 2D 地图 + 激光 | AMCL | 成熟、低算力（待集成） |
-| 未知环境激光 SLAM | Cartographer | 2D/3D 激光（待集成） |
 | 大场景视觉 + 回环 | Atlas + loop | BoW 回环 + GBA |
-| 短走廊 / 纹理弱 | 双目/RGB-D Atlas | 深度可观，鲁棒性更好 |
+| 短走廊 / 纹理弱 | 双目/RGB-D Atlas 或 Cartographer | 深度/激光更鲁棒 |
 
 ---
 
@@ -222,7 +182,8 @@ AUTONOMY = {
 
 | 现象 | 可能原因 | 排查 |
 |------|----------|------|
-| 长期 Initializing | 纹理不足 / 运动不够 | 增加纹理、做充分平移 |
+| Cartographer 无地图 | 话题名错误 | backpack 需 `echoes_1`，见 [Cartographer §11](cartographer/guide.md#11-故障排查) |
+| 长期 Initializing（Atlas） | 纹理不足 / 运动不够 | 增加纹理、做充分平移 |
 | 频繁 Lost | 快速运动 / 曝光变化 | 降低速度、提高 `min_fast_threshold` |
 | 尺度漂移（单目） | 无回环 | `enable_loop_detector()` |
 | 双目不三角化 | 未校正 / baseline 错 | 检查 `focal_x_baseline` |

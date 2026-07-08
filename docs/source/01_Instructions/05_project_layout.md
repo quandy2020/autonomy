@@ -31,7 +31,7 @@ autonomy/
 ├── cmake/                 # CMake 模块
 ├── docker/                # Docker 镜像与脚本
 ├── docs/                  # Sphinx 文档（本手册）
-├── scripts/               # install_dependency.py 等
+├── scripts/               # format.py、install_dependency.py、package_autonomy_artifact.sh
 ├── images/                # README 用图
 ├── CMakeLists.txt
 └── version.json           # 版本号（当前 0.1.1）

@@ -1,7 +1,7 @@
 Localization 定位模块
 ======================
 
-``autonomy/localization`` 是 Autonomy 的**定位与 SLAM** 子系统，当前以视觉 SLAM 引擎 **Atlas** 为核心实现。文档按 **§1–§8** 编号排列。
+``autonomy/localization`` 是 Autonomy 的**定位与 SLAM** 子系统。当前已实现 **Cartographer** 激光 SLAM（默认）与 **Atlas** 视觉 SLAM；**AMCL** 配置已预留。文档按 **§1–§9** 编号排列。
 
 .. toctree::
    :maxdepth: 2
@@ -12,6 +12,7 @@ Localization 定位模块
    3 数学原理 <03_math>
    4 使用指南 <04_usage>
    5 模块架构设计 <05_architecture>
-   6 Atlas 视觉 SLAM <06_atlas>
+   6 Atlas 视觉 SLAM <atlas/index>
    7 AMCL 粒子滤波定位 <07_amcl>
-   8 定位算法综述 <09_survey>
+   8 Cartographer 激光 SLAM <cartographer/index>
+   9 定位算法综述 <09_survey>
