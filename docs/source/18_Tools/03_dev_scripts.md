@@ -25,25 +25,25 @@ python3 scripts/format.py autonomy autolink
 
 CMake 可选钩子：`google_format_code`（`cmake/functions.cmake`）在构建前调用此脚本。
 
-### 3.2 install_dependency.py — 依赖安装
+### 3.2 install_deps — 依赖安装
 
 与 `docker/dockerfile/autonomy.x86_64.dockerfile` 保持同步，安装 APT 包与 `docker/install/*.sh` 第三方库。
 
 ```bash
 # 完整安装
-python3 scripts/install_dependency.py
+python3 -m install_deps
 
 # 仅 APT
-python3 scripts/install_dependency.py --apt-only
+python3 -m install_deps --apt-only
 
 # 仅第三方（/usr/local）
-python3 scripts/install_dependency.py --thirdparty-only
+python3 -m install_deps --thirdparty-only
 
 # 列出 APT 包
-python3 scripts/install_dependency.py --list-apt
+python3 -m install_deps --list-apt
 
 # 从中断处恢复
-python3 scripts/install_dependency.py --resume-from install_opencv.sh
+python3 -m install_deps --resume-from install_opencv.sh
 ```
 
 主要第三方脚本包括：`install_glog.sh`、`install_protobuf.sh`、`install_ceres_solver.sh`、`install_opencv.sh`、`install_behaviortree_cpp.sh` 等。
@@ -52,7 +52,7 @@ python3 scripts/install_dependency.py --resume-from install_opencv.sh
 
 1. 格式化前建议先提交或备份代码
 2. 全量格式化 1700+ 文件可能耗时较长
-3. `install_dependency.py` 面向 Ubuntu；其他发行版需手动对照安装
+3. `install_deps` 面向 Ubuntu；其他发行版需手动对照安装
 
 ### 3.4 相关文档
 

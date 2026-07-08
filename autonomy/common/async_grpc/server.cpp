@@ -171,7 +171,7 @@ void Server::RunEventQueue(EventQueue* event_queue) {
     }
 }
 
-void Server::Start() {
+bool Server::Start() {
 #if BUILD_TRACING
     if (options_.enable_tracing) {
         opencensus::exporters::trace::StackdriverExporter::Register(
@@ -186,6 +186,11 @@ void Server::Start() {
 
     // Start the gRPC server process.
     server_ = server_builder_.BuildAndStart();
+    if (!server_) {
+        LOG(ERROR) << "Failed to start gRPC server at "
+                   << options_.server_address;
+        return false;
+    }
 
     // Start serving all services on all completion queues.
     for (auto& service : services_) {
@@ -206,6 +211,7 @@ void Server::Start() {
                 RunCompletionQueue(completion_queue);
             });
     }
+    return true;
 }
 
 void Server::WaitForShutdown() {
@@ -219,6 +225,11 @@ void Server::WaitForShutdown() {
 void Server::Shutdown() {
     LOG(INFO) << "Shutting down server.";
     shutting_down_ = true;
+
+    if (!server_) {
+        LOG(WARNING) << "gRPC server was not started; skipping shutdown.";
+        return;
+    }
 
     // Tell the services to stop serving RPCs.
     for (auto& service : services_) {

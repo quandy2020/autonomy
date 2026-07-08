@@ -46,6 +46,20 @@ cd "${FBOW_SRC}"
 git fetch --depth 1 origin "${FBOW_COMMIT}" 2>/dev/null || true
 git checkout "${FBOW_COMMIT}"
 
+_apply_fbow_gcc13_patch() {
+    local bow_vector_h="${FBOW_SRC}/include/fbow/bow_vector.h"
+    if [[ ! -f "${bow_vector_h}" ]]; then
+        error "FBoW bow_vector.h not found at ${bow_vector_h}"
+        return 1
+    fi
+    if grep -q '#include <cstdint>' "${bow_vector_h}"; then
+        return 0
+    fi
+    info "Patching FBoW for GCC 13 (add missing <cstdint> include)"
+    sed -i '/#include <map>/a #include <cstdint>' "${bow_vector_h}"
+}
+_apply_fbow_gcc13_patch
+
 rm -rf build
 mkdir build && cd build
 cmake \

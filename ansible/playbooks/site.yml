@@ -1,58 +1,89 @@
 ---
+# 统一部署入口。模式由 deploy.sh 设置 autonomy_play_mode：
+#   full    编译或制品 + 配置 + 服务（默认）
+#   build   仅编译安装
+#   push    仅同步配置并重启
+#   check   预检
+#   restart 重启服务
 - name: Deploy autonomy stack
   hosts: autonomy
-  become: true
+  become: >-
+    {{
+      false if autonomy_play_mode == 'check'
+      else (autonomy_play_become | default(true) | bool)
+    }}
   vars_files:
     - "{{ playbook_dir }}/../inventory/group_vars/all.yml"
   vars:
-    autonomy_source_dir: "{{ autonomy_build_dir }}/autonomy"
-    autonomy_cmake_build_dir: "{{ autonomy_source_dir }}/build"
+    autonomy_play_mode: full
+    autonomy_source_dir: >-
+      {{ autonomy_local_source_dir
+         if (autonomy_use_local_source | default(false) | bool)
+         else (autonomy_build_dir ~ '/autonomy') }}
+    autonomy_cmake_build_dir: >-
+      {{ (autonomy_local_source_dir ~ '/build')
+         if (autonomy_use_local_source | default(false) | bool)
+         else (autonomy_build_dir ~ '/autonomy/build') }}
   pre_tasks:
-    - name: Check for shared vault file
-      ansible.builtin.stat:
-        path: "{{ playbook_dir }}/../inventory/group_vars/vault.yml"
-      register: autonomy_vault_file
+    - name: Load vault variables
+      ansible.builtin.import_tasks: includes/vault.yml
+      tags: [always]
 
-    - name: Load shared vault variables
-      ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/../inventory/group_vars/vault.yml"
-      when: autonomy_vault_file.stat.exists
-      no_log: true
   roles:
     - role: preflight
-      tags: [always, preflight, check]
+      tags: [preflight, check]
+      when: autonomy_play_mode in ['full', 'build', 'check']
 
     - role: common
-      tags: [always, common]
+      tags: [common]
+      when: autonomy_play_mode in ['full', 'build']
 
     - role: source
       tags: [build, source]
-      when: autonomy_deploy_mode == 'build'
+      when:
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_deploy_mode == 'build'
 
     - role: dependencies
-      tags: [always, dependencies, deps]
-      when: autonomy_install_dependencies | bool
-
-    - role: ccache
-      tags: [build, ccache]
+      tags: [dependencies, deps]
       when:
-        - autonomy_deploy_mode == 'build'
-        - autonomy_use_ccache | bool
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_install_dependencies | bool
 
     - role: build
-      tags: [build]
-      when: autonomy_deploy_mode == 'build'
+      tags: [build, ccache]
+      when:
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_deploy_mode == 'build'
 
     - role: artifact
       tags: [artifact]
-      when: autonomy_deploy_mode == 'artifact'
+      when:
+        - autonomy_play_mode == 'full'
+        - autonomy_deploy_mode == 'artifact'
 
     - role: config
       tags: [config]
+      when: autonomy_play_mode in ['full', 'push']
 
     - role: services
       tags: [services]
+      when: autonomy_play_mode == 'full'
 
-    - role: verify
-      tags: [verify]
-      when: autonomy_run_verify | bool
+    - role: services
+      tasks_from: restart.yml
+      tags: [restart, services]
+      when: autonomy_play_mode == 'restart'
+
+  post_tasks:
+    - name: Apply config change handlers
+      ansible.builtin.meta: flush_handlers
+      when: autonomy_play_mode == 'push'
+
+    - name: Verify services after config push
+      ansible.builtin.include_role:
+        name: services
+        tasks_from: verify.yml
+      when:
+        - autonomy_play_mode == 'push'
+        - autonomy_run_verify | bool

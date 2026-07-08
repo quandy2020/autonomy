@@ -53,7 +53,7 @@ public:
     /**
      * @brief Starts server
      */
-    void Start();
+    bool Start();
 
     /**
      * @brief Blocks until gRPC server stops.

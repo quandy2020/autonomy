@@ -19,40 +19,70 @@
 # Fail on first error.
 set -e
 
+cd "$(dirname "${BASH_SOURCE[0]}")"
+. ./installer_base.sh
+
 PROTOBUF_VERSION="v3.19.4"
 PROTOBUF_REPO="https://github.com/protocolbuffers/protobuf.git"
+THIRDPARTY="$(autonomy_thirdparty_dir)"
+INSTALL_PREFIX="/usr/local"
+THREAD_NUM=$(nproc)
 
-mkdir -p /thirdparty
-cd /thirdparty
+if [[ ! -w "${INSTALL_PREFIX}" ]]; then
+    if [[ "$(id -u)" -eq 0 ]]; then
+        mkdir -p "${INSTALL_PREFIX}"
+    elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        exec sudo -E bash "$0" "$@"
+    else
+        error "protobuf 3.19.x must be installed under ${INSTALL_PREFIX} (not writable)"
+        exit 1
+    fi
+fi
 
+protobuf319_present() {
+    local protoc="${INSTALL_PREFIX}/bin/protoc"
+    [[ -x "${protoc}" ]] || return 1
+    "${protoc}" --version 2>&1 | grep -q '3\.19\.'
+}
+
+if protobuf319_present; then
+    ok "protobuf 3.19.x already installed at ${INSTALL_PREFIX}, skipping source build"
+    exit 0
+fi
+
+cd "${THIRDPARTY}"
 if [[ -d protobuf/.git ]]; then
-  cd protobuf
-  git fetch --tags origin
-  git checkout "${PROTOBUF_VERSION}"
+    cd protobuf
+    git fetch --tags origin
+    git checkout "${PROTOBUF_VERSION}"
 else
-  rm -rf protobuf
-  git clone --single-branch --branch "${PROTOBUF_VERSION}" "${PROTOBUF_REPO}" protobuf
-  cd protobuf
+    rm -rf protobuf
+    git_clone_with_retry "${PROTOBUF_REPO}" "${PROTOBUF_VERSION}" protobuf
+    cd protobuf
 fi
 
 git submodule update --init --recursive
 
 if [[ ! -f cmake/CMakeLists.txt ]]; then
-  echo "ERROR: expected cmake/CMakeLists.txt at protobuf ${PROTOBUF_VERSION}" >&2
-  exit 1
+    error "expected cmake/CMakeLists.txt at protobuf ${PROTOBUF_VERSION}"
+    exit 1
 fi
 
+rm -rf build
 mkdir -p build && cd build
 cmake \
-  -DCMAKE_INSTALL_PREFIX=/usr/local \
-  -DCMAKE_CXX_STANDARD=17 \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DBUILD_SHARED_LIBS=ON \
-  -Dprotobuf_BUILD_TESTS=OFF \
-  ../cmake
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}" \
+    -DCMAKE_CXX_STANDARD=17 \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_SHARED_LIBS=ON \
+    -Dprotobuf_BUILD_TESTS=OFF \
+    ../cmake
 
-make -j"$(nproc)"
-sudo make install
+make -j"${THREAD_NUM}"
+make install
 
-# Clean up build dir only; keep source for potential rebuilds.
-cd .. && rm -rf build
+ldconfig 2>/dev/null || true
+
+cd ../.. && rm -rf protobuf/build
+
+ok "Successfully installed protobuf ${PROTOBUF_VERSION} to ${INSTALL_PREFIX}"

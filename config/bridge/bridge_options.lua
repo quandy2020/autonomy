@@ -3,6 +3,6 @@
 -- Entry Lua for autonomy_bridge (see autonomy/bridge/launch/bridge.launch).
 
 include "common.lua"
-include "bridge.lua"
+include "bridge/bridge.lua"
 
 return AUTONOMY_BRIDGE

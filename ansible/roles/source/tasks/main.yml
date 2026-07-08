@@ -1,4 +1,24 @@
 ---
+- name: Use local source tree (skip git clone)
+  when: autonomy_use_local_source | default(false) | bool
+  block:
+    - name: Stat local autonomy source directory
+      ansible.builtin.stat:
+        path: "{{ autonomy_local_source_dir }}/CMakeLists.txt"
+      register: autonomy_local_source_stat
+
+    - name: Fail when local source is missing
+      ansible.builtin.fail:
+        msg: >-
+          autonomy_local_source_dir={{ autonomy_local_source_dir }} does not contain
+          CMakeLists.txt. Set autonomy_local_source_dir or disable autonomy_use_local_source.
+      when: not autonomy_local_source_stat.stat.exists
+
+    - name: Point autonomy_source_dir at local tree
+      ansible.builtin.set_fact:
+        autonomy_source_dir: "{{ autonomy_local_source_dir }}"
+        autonomy_cmake_build_dir: "{{ autonomy_local_source_dir }}/build"
+
 - name: Clone or update autonomy repository
   ansible.builtin.git:
     repo: "{{ autonomy_repo_url }}"
@@ -7,3 +27,4 @@
     recursive: true
     force: false
   become: true
+  when: not (autonomy_use_local_source | default(false) | bool)

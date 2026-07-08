@@ -31,7 +31,7 @@ autonomy/
 ├── cmake/                 # CMake 模块
 ├── docker/                # Docker 镜像与脚本
 ├── docs/                  # Sphinx 文档（本手册）
-├── scripts/               # install_dependency.py 等
+├── scripts/               # install_deps 等
 ├── images/                # README 用图
 ├── CMakeLists.txt
 └── version.json           # 版本号（当前 0.1.1）
@@ -89,13 +89,13 @@ XxxServer(options)
 
 ```bash
 # 完整安装（APT + 第三方脚本）
-python3 scripts/install_dependency.py
+python3 -m install_deps
 
 # 仅 APT
-python3 scripts/install_dependency.py --apt-only
+python3 -m install_deps --apt-only
 
 # 列出 APT 包名
-python3 scripts/install_dependency.py --list-apt
+python3 -m install_deps --list-apt
 ```
 
 主要第三方库：Eigen3、Ceres、glog、OpenCV、OSQP、yaml-cpp、Lua 5.3、Protobuf、BehaviorTree.CPP 4.x。

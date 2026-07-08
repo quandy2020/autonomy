@@ -32,6 +32,13 @@ function(autonomy_link_taskflow target_name visibility)
       ${PROJECT_SOURCE_DIR}
       ${PROJECT_BINARY_DIR})
 
+  # Scheduler headers include generated *.pb.h; without this, Ninja may compile
+  # scheduler.cpp before protoc finishes (parallel build race).
+  if(AUTONOMY_PROTO_GENERATED_HDRS)
+    target_sources(autonomy_task_scheduler PRIVATE ${AUTONOMY_PROTO_GENERATED_HDRS})
+    set_source_files_properties(${AUTONOMY_PROTO_GENERATED_HDRS} PROPERTIES GENERATED TRUE)
+  endif()
+
   target_link_libraries(${target_name} ${visibility} Taskflow::Taskflow)
   target_sources(${target_name} PRIVATE $<TARGET_OBJECTS:autonomy_task_scheduler>)
 endfunction()

@@ -16,7 +16,7 @@
 
 | 路径 | 适用 | 步骤概要 |
 |------|------|----------|
-| **宿主机原生** | 日常开发、CI | `install_dependency.py` → `cmake` + `ninja` |
+| **宿主机原生** | 日常开发、CI | `install_deps` → `cmake` + `ninja` |
 | **Docker 容器** | 环境隔离、多架构 | `run_autonomy.py` → 容器内同上 |
 
 两种方式均使用 **CMake + Ninja**，**不强制依赖 ROS 2**。

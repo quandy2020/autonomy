@@ -10,7 +10,7 @@ git clone --recurse-submodules https://github.com/quandy2020/autonomy.git
 cd autonomy
 
 # 2. 安装依赖（APT + 第三方库，需 sudo）
-python3 scripts/install_dependency.py
+python3 -m install_deps
 
 # 3. 编译
 mkdir -p build && cd build
@@ -26,7 +26,7 @@ ls -la lib/libautonomy.so
 适合已手动安装 `/usr/local` 第三方库的环境：
 
 ```bash
-python3 scripts/install_dependency.py --apt-only
+python3 -m install_deps --apt-only
 ```
 
 ### 2.3 Docker 快速路径

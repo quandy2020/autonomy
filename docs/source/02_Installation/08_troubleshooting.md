@@ -7,7 +7,7 @@
 |------|----------|------|
 | `apt-get install` 失败 | 包冲突 / 源不可用 | `sudo apt-get -y --fix-broken install` 后重试 |
 | `install_opencv.sh` 中断 | 网络 / 内存不足 | `--resume-from install_opencv.sh` |
-| `libceres.so not found` | 第三方未装全 | `python3 scripts/install_dependency.py --thirdparty-only` |
+| `libceres.so not found` | 第三方未装全 | `python3 -m install_deps --thirdparty-only` |
 | `behaviortree_cpp` 找不到 | BT 库未安装 | 确认 `install_behaviortree_cpp.sh` 成功 |
 | 非 Ubuntu 警告 | 脚本面向 Ubuntu | 手动对照 `APT_PACKAGES` 安装等效包 |
 

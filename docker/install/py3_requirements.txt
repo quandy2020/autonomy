@@ -2,22 +2,13 @@
 ## Ref:
 ## 1) https://www.python.org/dev/peps/pep-0508/#environment-markers
 
-# 安装Sphinx
+# Sphinx core + contrib: install via apt (python3-sphinx) in install_deps.
+# myst-parser 3.x is compatible with Ubuntu 24.04's Sphinx 7.2.x.
 numpy==1.26.4
 mathjax
-myst-parser
+myst-parser>=3.0.0,<4.0.0
 recommonmark
 breathe
-myst_parser
-sphinx
 sphinx_markdown_tables
-sphinx-rtd-theme    
-sphinxcontrib-applehelp 
-sphinxcontrib-devhelp 
-sphinxcontrib-htmlhelp 
-sphinxcontrib-jsmath 
-sphinxcontrib-qthelp
-sphinxcontrib-serializinghtml
-sphinx-copybutton 
-
-
+sphinx-rtd-theme
+sphinx-copybutton

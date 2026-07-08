@@ -9,6 +9,7 @@ Type=simple
 User={{ autonomy_user }}
 Group={{ autonomy_user }}
 Environment=AUTOLINK_PATH={{ autonomy_install_prefix }}/share/autolink
+Environment=AUTONOMY_BT_PLUGIN_PATH={{ autonomy_install_prefix }}/lib
 Environment=LD_LIBRARY_PATH={{ autonomy_install_prefix }}/lib:/usr/local/lib
 WorkingDirectory={{ autonomy_data_dir }}
 ExecStart={{ autonomy_install_prefix }}/bin/task \

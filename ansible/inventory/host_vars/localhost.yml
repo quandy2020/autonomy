@@ -1,0 +1,6 @@
+---
+# 本机 localhost 覆盖项（优先级高于 group_vars/all.yml 与 play vars_files）
+autonomy_use_local_source: true
+autonomy_local_source_dir: "{{ playbook_dir }}/../.."
+autonomy_play_become: false
+autonomy_preflight_strict_os: false

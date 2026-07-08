@@ -63,7 +63,7 @@ export AUTONOMY_CONTAINER_NAME=SpaceHero
 
 ```bash
 cd /workspace/autonomy
-python3 scripts/install_dependency.py    # 若依赖不全
+python3 -m install_deps    # 若依赖不全
 cmake -G Ninja -S . -B build -DBUILD_TOOLS=ON
 cmake --build build -j$(nproc)
 

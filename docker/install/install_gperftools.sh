@@ -22,6 +22,18 @@ set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 . ./installer_base.sh
 
+gperftools_lib_present() {
+    [[ -f /usr/lib/libtcmalloc.so ]] \
+        || [[ -f /usr/lib/x86_64-linux-gnu/libtcmalloc.so ]] \
+        || [[ -f /usr/lib/aarch64-linux-gnu/libtcmalloc.so ]] \
+        || [[ -f /usr/local/lib/libtcmalloc.so ]]
+}
+
+if gperftools_lib_present; then
+    ok "gperftools already installed, skipping source build"
+    exit 0
+fi
+
 apt_get_update_and_install \
     libunwind8 \
     libunwind-dev \
@@ -48,8 +60,5 @@ ldconfig
 
 ok "Successfully installed gperftools-${VERSION}."
 
-# Clean up
-apt_get_remove \
-    libunwind-dev
-
+# Keep libunwind-dev installed: purging it can autoremove glog and other deps.
 rm -rf ${PKG_NAME} "gperftools-gperftools-${VERSION}"
