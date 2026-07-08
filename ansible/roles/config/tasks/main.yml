@@ -1,4 +1,13 @@
 ---
+- name: Ensure config directory exists
+  ansible.builtin.file:
+    path: "{{ autonomy_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ autonomy_user }}"
+    mode: "0750"
+  become: true
+
 - name: Copy runtime configuration (build mode)
   ansible.builtin.copy:
     src: "{{ autonomy_source_dir }}/config/"
@@ -8,6 +17,7 @@
   when: autonomy_deploy_mode == 'build'
   become: true
   register: autonomy_config_build
+  notify: Restart enabled autonomy services
 
 - name: Stat config bundled inside install prefix (artifact mode)
   ansible.builtin.stat:
@@ -27,6 +37,7 @@
     - autonomy_bundled_config.stat.isdir | default(false)
   become: true
   register: autonomy_config_from_bundle
+  notify: Restart enabled autonomy services
 
 - name: Sync runtime configuration from control machine (artifact fallback)
   ansible.builtin.synchronize:
@@ -41,8 +52,9 @@
   delegate_to: localhost
   become: false
   register: autonomy_config_artifact
+  notify: Restart enabled autonomy services
 
-- name: Set config directory permissions
+- name: Set config directory ownership
   ansible.builtin.file:
     path: "{{ autonomy_config_dir }}"
     state: directory
@@ -52,13 +64,11 @@
     recurse: true
   become: true
 
-- name: Restart services after configuration change
-  ansible.builtin.include_role:
-    name: services
-    tasks_from: restart.yml
-  when:
-    - autonomy_restart_on_config_change | bool
-    - >-
-      (autonomy_config_build is defined and autonomy_config_build is changed) or
-      (autonomy_config_from_bundle is defined and autonomy_config_from_bundle is changed) or
-      (autonomy_config_artifact is defined and autonomy_config_artifact is changed)
+- name: Set config file and directory modes
+  ansible.builtin.shell: |
+    set -euo pipefail
+    find {{ autonomy_config_dir | quote }} -type d -exec chmod 750 {} +
+    find {{ autonomy_config_dir | quote }} -type f -exec chmod 640 {} +
+  args:
+    executable: /bin/bash
+  become: true

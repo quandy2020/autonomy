@@ -75,7 +75,10 @@ int Run() {
         common::CreateOptions(ConfigurationDirectory(), ConfigurationBasename());
 
     BridgeServer server(options);
-    server.Start();
+    if (!server.Start()) {
+        LOG(ERROR) << "Failed to start bridge server.";
+        return EXIT_FAILURE;
+    }
     LOG(INFO) << "Bridge server running. Press Ctrl+C to exit.";
     autolink::WaitForShutdown();
     server.Shutdown();

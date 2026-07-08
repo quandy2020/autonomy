@@ -266,8 +266,8 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${AUTONOMY_TASK_SCHEDULER_SRCS})
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 
 # protobuf
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${PROTOBUF_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROTOBUF_LIBRARY})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${Protobuf_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC protobuf::libprotobuf)
 
 # Eigen3
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "${EIGEN3_INCLUDE_DIR}")
@@ -329,6 +329,11 @@ autonomy_add_behavior_tree_plugins(${PROJECT_NAME})
 
 include("${PROJECT_SOURCE_DIR}/cmake/plugin/task_behavior_tree_plugins.cmake")
 autonomy_add_task_behavior_tree_plugins(${PROJECT_NAME})
+
+set(AUTONOMY_PROTO_GENERATED_HDRS ${ALL_PROTO_HDRS})
+if(BUILD_GRPC)
+  list(APPEND AUTONOMY_PROTO_GENERATED_HDRS ${ALL_GRPC_SERVICE_HDRS})
+endif()
 
 include("${PROJECT_SOURCE_DIR}/cmake/taskflow.cmake")
 autonomy_link_taskflow(${PROJECT_NAME} PUBLIC)
@@ -510,6 +515,13 @@ file(GLOB_RECURSE INTERNAL_HDRS "autonomy/*/internal/*.h" "autonomy/*/internal/*
 file(GLOB_RECURSE INSTALL_LEGACY_HDRS "autonomy/*.h")
 
 set(INSTALL_SOURCE_HDRS ${ALL_LIBRARY_HDRS} ${TEST_LIBRARY_HDRS} ${INSTALL_LEGACY_HDRS})
+# Generated .pb.h / .grpc.pb.h live under ${PROJECT_BINARY_DIR}/autonomy/...; if
+# installed via PROJECT_SOURCE_DIR-relative paths they end up as
+# include/build/autonomy/... (duplicate of the INSTALL_GENERATED_HDRS loop below).
+list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${ALL_PROTO_HDRS})
+if(BUILD_GRPC)
+  list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${ALL_GRPC_SERVICE_HDRS})
+endif()
 list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${INTERNAL_HDRS})
 if(ALL_DOTFILES)
   list(REMOVE_ITEM INSTALL_SOURCE_HDRS ${ALL_DOTFILES})

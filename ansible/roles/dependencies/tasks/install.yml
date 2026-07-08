@@ -1,0 +1,13 @@
+---
+- name: Install autonomy dependencies via shared installer
+  ansible.builtin.command:
+    argv: >-
+      {{
+        ['bash', role_path ~ '/files/install_dependencies.sh', autonomy_dependency_repo_root]
+        + (autonomy_dependency_install_args | default([]))
+      }}
+  environment:
+    AUTONOMY_THIRDPARTY: /thirdparty
+  become: true
+  register: autonomy_deps_install
+  changed_when: "'[RUN]' in autonomy_deps_install.stdout"

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -29,15 +30,26 @@ std::vector<std::filesystem::path> PluginSearchPaths(
     const std::string& plugin_lib_path)
 {
     std::vector<std::filesystem::path> dirs;
-    if (!plugin_lib_path.empty()) {
-        dirs.emplace_back(plugin_lib_path);
-    }
-    dirs.emplace_back(std::string(autonomy::common::kLibraryBuildDir) + "/lib");
     if (const char* env = std::getenv("AUTONOMY_BT_PLUGIN_PATH");
         env != nullptr && env[0] != '\0') {
         dirs.emplace_back(env);
     }
+    if (!plugin_lib_path.empty()) {
+        dirs.emplace_back(plugin_lib_path);
+    }
+    dirs.emplace_back(std::string(autonomy::common::kLibraryInstallDir) + "/lib");
+    dirs.emplace_back(std::string(autonomy::common::kLibraryBuildDir) + "/lib");
     return dirs;
+}
+
+bool IsLoadablePlugin(const std::filesystem::path& path)
+{
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec) || ec) {
+        return false;
+    }
+    std::ifstream in(path, std::ios::binary);
+    return in.good();
 }
 
 std::string ResolvePluginPath(const std::string& plugin_name,
@@ -46,7 +58,7 @@ std::string ResolvePluginPath(const std::string& plugin_name,
     const std::string filename = PluginFilename(plugin_name);
     for (const auto& dir : PluginSearchPaths(plugin_lib_path)) {
         const auto candidate = dir / filename;
-        if (std::filesystem::exists(candidate)) {
+        if (IsLoadablePlugin(candidate)) {
             return candidate.string();
         }
     }

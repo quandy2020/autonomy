@@ -8,7 +8,7 @@
 | Ubuntu | 20.04 LTS | ⚠️ 可尝试，未作为主 CI 目标 |
 | 其他 Linux | — | 需自行解决依赖，不保证 |
 
-`scripts/install_dependency.py` 会检测 `/etc/os-release`，非 Ubuntu 时打印警告并继续。
+`scripts/install_deps` (`python3 -m install_deps`) 会检测 `/etc/os-release`，非 Ubuntu 时打印警告并继续。
 
 ### 3.2 硬件
 
@@ -26,7 +26,7 @@
 | CMake | ≥ 3.20 |
 | C++ 编译器 | GCC 11+ 或 Clang，**C++17** |
 | Ninja | 推荐（`-G Ninja`） |
-| Python | 3.8+（运行 `install_dependency.py`） |
+| Python | 3.8+（运行 `install_deps`） |
 | Git | 支持 submodule |
 
 验证：

@@ -1,30 +1,30 @@
 # 4. 依赖安装
 
-Autonomy 依赖通过 **`scripts/install_dependency.py`** 统一安装，与 `docker/dockerfile/autonomy.x86_64.dockerfile` 保持同步。
+Autonomy 依赖通过 **`scripts/install_deps` (`python3 -m install_deps`)** 统一安装，与 `docker/dockerfile/autonomy.x86_64.dockerfile` 保持同步。
 
 ### 4.1 脚本用法
 
 ```bash
 # 完整安装（APT + 第三方）
-python3 scripts/install_dependency.py
+python3 -m install_deps
 
 # 仅 APT
-python3 scripts/install_dependency.py --apt-only
+python3 -m install_deps --apt-only
 
 # 仅第三方（需已装 APT）
-python3 scripts/install_dependency.py --thirdparty-only
+python3 -m install_deps --thirdparty-only
 
 # 列出 APT 包名
-python3 scripts/install_dependency.py --list-apt
+python3 -m install_deps --list-apt
 
 # 从某脚本续装（中断后恢复）
-python3 scripts/install_dependency.py --resume-from install_opencv.sh
+python3 -m install_deps --resume-from install_opencv.sh
 
 # 跳过已检测到的库
-python3 scripts/install_dependency.py --skip-installed
+python3 -m install_deps --skip-installed
 
 # 预览命令不执行
-python3 scripts/install_dependency.py --dry-run
+python3 -m install_deps --dry-run
 ```
 
 ### 4.2 APT 包分类

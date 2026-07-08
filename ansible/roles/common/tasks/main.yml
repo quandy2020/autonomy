@@ -1,9 +1,19 @@
 ---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ autonomy_apt_cache_valid_time }}"
+    lock_timeout: "{{ autonomy_apt_lock_timeout }}"
+  become: true
+  register: autonomy_apt_cache
+  retries: "{{ autonomy_apt_update_retries }}"
+  delay: "{{ autonomy_apt_update_retry_delay }}"
+  until: autonomy_apt_cache is succeeded
+
 - name: Install base packages for deployment
   ansible.builtin.apt:
     name: "{{ autonomy_base_packages }}"
     state: present
-    update_cache: true
   become: true
 
 - name: Create autonomy group
@@ -33,10 +43,6 @@
     mode: "{{ item.mode | default('0755') }}"
   loop:
     - path: "{{ autonomy_install_prefix }}"
-    - path: "{{ autonomy_config_dir }}"
-      owner: root
-      group: root
-      mode: "0755"
     - path: "{{ autonomy_data_dir }}"
     - path: "{{ autonomy_log_dir }}"
     - path: "{{ autonomy_build_dir }}"

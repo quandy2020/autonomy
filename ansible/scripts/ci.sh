@@ -22,16 +22,27 @@ fi
 echo "[ansible-ci] ansible-lint"
 ansible-lint
 
-echo "[ansible-ci] syntax-check playbooks"
-for playbook in playbooks/*.yml; do
-  ansible-playbook "${playbook}" --syntax-check
+PLAYBOOK="playbooks/site.yml"
+MODES=(full build push check restart)
+INVENTORIES=(
+  inventory/hosts.yml
+  inventory/robots/hosts.yml
+  inventory/staging/hosts.yml
+  inventory/production/hosts.yml
+)
+
+echo "[ansible-ci] syntax-check ${PLAYBOOK}"
+ansible-playbook "${PLAYBOOK}" --syntax-check
+
+for mode in "${MODES[@]}"; do
+  echo "[ansible-ci] syntax-check ${PLAYBOOK} mode=${mode}"
+  ansible-playbook "${PLAYBOOK}" -e "autonomy_play_mode=${mode}" --syntax-check
 done
 
-INVENTORIES=(inventory/hosts.yml inventory/staging/hosts.yml inventory/production/hosts.yml)
 for inv in "${INVENTORIES[@]}"; do
   if [[ -f "${inv}" ]]; then
-    echo "[ansible-ci] syntax-check site.yml with ${inv}"
-    ansible-playbook -i "${inv}" playbooks/site.yml --syntax-check
+    echo "[ansible-ci] syntax-check ${PLAYBOOK} with ${inv}"
+    ansible-playbook -i "${inv}" "${PLAYBOOK}" --syntax-check
   fi
 done
 

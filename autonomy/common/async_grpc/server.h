@@ -169,7 +169,7 @@ public:
     virtual ~Server() = default;
 
     // Starts a server starts serving the registered services.
-    void Start();
+    bool Start();
 
     // Waits for the server to shut down. Note: The server must be either
     // shutting down or some other thread must call 'Shutdown()' for this

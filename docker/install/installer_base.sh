@@ -62,9 +62,29 @@ function py3_version()
     echo "${version%.*}"
 }
 
+function pip_needs_break_system_packages()
+{
+    local py_bin="$1"
+    # Inside a venv we must not pass --break-system-packages.
+    if "$py_bin" -c 'import sys; raise SystemExit(0 if sys.prefix != sys.base_prefix else 1)' 2>/dev/null; then
+        return 1
+    fi
+    local majmin
+    majmin="$("$py_bin" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    [[ -f "/usr/lib/python${majmin}/EXTERNALLY-MANAGED" ]]
+}
+
 function pip3_install() 
 {
-    "$(python3_bin)" -m pip install --timeout 30 --no-cache-dir "$@"
+    local pip_args=(--timeout 30 --no-cache-dir)
+    local py_bin
+    py_bin="$(python3_bin)"
+    if [[ "${PIP_BREAK_SYSTEM_PACKAGES:-auto}" == "1" ]] \
+        || { [[ "${PIP_BREAK_SYSTEM_PACKAGES:-auto}" == "auto" ]] \
+             && pip_needs_break_system_packages "${py_bin}"; }; then
+        pip_args+=(--break-system-packages)
+    fi
+    "${py_bin}" -m pip install "${pip_args[@]}" "$@"
 }
 
 function apt_get_update() 
@@ -203,6 +223,29 @@ function autonomy_maybe_reexec_as_root()
         exec sudo -E bash "$@"
     fi
     return 0
+}
+
+# Clone a git repo with retries (useful when GitHub is flaky).
+git_clone_with_retry()
+{
+    local url="$1"
+    local branch="$2"
+    local dest="$3"
+    local max_attempts="${GIT_CLONE_RETRIES:-5}"
+    local attempt=1
+
+    while [[ "${attempt}" -le "${max_attempts}" ]]; do
+        if git clone --depth 1 -b "${branch}" "${url}" "${dest}"; then
+            return 0
+        fi
+        warning "git clone ${url} failed (attempt ${attempt}/${max_attempts}), retrying..."
+        rm -rf "${dest}"
+        attempt=$((attempt + 1))
+        sleep "${GIT_CLONE_RETRY_SLEEP_SEC:-10}"
+    done
+
+    error "git clone ${url} failed after ${max_attempts} attempts"
+    return 1
 }
 
 function _local_http_cached() 
