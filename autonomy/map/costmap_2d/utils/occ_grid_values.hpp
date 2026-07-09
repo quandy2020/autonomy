@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <cmath>
+#include <cstdint>
+
 #include "autonomy/common/port.hpp"
 
 namespace autonomy {
@@ -29,6 +32,32 @@ namespace utils {
 static constexpr int8 OCC_GRID_UNKNOWN = -1;
 static constexpr int8 OCC_GRID_FREE = 0;
 static constexpr int8 OCC_GRID_OCCUPIED = 100;
+
+struct Rgba8 {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+
+/** Matches map_io Scale mode and Cartographer CreateOccupancyGridMsg coloring. */
+inline Rgba8 OccupancyCellToRgba(int8_t cell) {
+    static constexpr uint8_t kUnknownGray = 205;
+    static constexpr uint8_t kFreeGray = 254;
+
+    if (cell < 0 || cell > OCC_GRID_OCCUPIED) {
+        return {kUnknownGray, kUnknownGray, kUnknownGray, 255};
+    }
+    if (cell == OCC_GRID_FREE) {
+        return {kFreeGray, kFreeGray, kFreeGray, 255};
+    }
+    if (cell >= OCC_GRID_OCCUPIED) {
+        return {0, 0, 0, 255};
+    }
+    const uint8_t shade = static_cast<uint8_t>(
+        std::lround((100.0 - static_cast<double>(cell)) * 255.0 / 100.0));
+    return {shade, shade, shade, 255};
+}
 
 }  // namespace utils
 }  // namespace costmap_2d

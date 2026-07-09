@@ -37,6 +37,12 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+
+#include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
+
 /** Provides a mapping for often used cost values */
 namespace autonomy {
 namespace map {
@@ -47,6 +53,40 @@ static constexpr unsigned char LETHAL_OBSTACLE = 254;
 static constexpr unsigned char INSCRIBED_INFLATED_OBSTACLE = 253;
 static constexpr unsigned char MAX_NON_OBSTACLE = 252;
 static constexpr unsigned char FREE_SPACE = 0;
+
+struct CostRgba8 {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+};
+
+/** Inverse of StaticLayer occupancy→cost scaling (lethal_threshold default 100). */
+inline int8_t CostCellToOccupancyEquivalent(
+    unsigned char cost,
+    int8_t lethal_threshold = utils::OCC_GRID_OCCUPIED) {
+    if (cost == NO_INFORMATION) {
+        return utils::OCC_GRID_UNKNOWN;
+    }
+    if (cost == FREE_SPACE) {
+        return utils::OCC_GRID_FREE;
+    }
+    if (cost >= LETHAL_OBSTACLE) {
+        return utils::OCC_GRID_OCCUPIED;
+    }
+    const int occ = static_cast<int>(std::lround(
+        static_cast<double>(cost) * static_cast<double>(lethal_threshold) /
+        static_cast<double>(LETHAL_OBSTACLE)));
+    return static_cast<int8_t>(
+        std::clamp(occ, 1, static_cast<int>(utils::OCC_GRID_OCCUPIED) - 1));
+}
+
+/** Same grayscale palette as ROS OccupancyGrid / map.pgm. */
+inline CostRgba8 CostCellToRgba(unsigned char cost) {
+    const utils::Rgba8 rgba =
+        utils::OccupancyCellToRgba(CostCellToOccupancyEquivalent(cost));
+    return {rgba.r, rgba.g, rgba.b, rgba.a};
+}
 
 }  // namespace costmap_2d
 }  // namespace map

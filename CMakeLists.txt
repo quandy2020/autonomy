@@ -126,6 +126,9 @@ list(REMOVE_ITEM ALL_LIBRARY_SRCS ${BEHAVIOR_TREE_PLUGIN_SRCS})
 file(GLOB_RECURSE TASK_BEHAVIOR_TREE_PLUGIN_SRCS
   "autonomy/task/apps/*/plugins/*/*.cpp")
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TASK_BEHAVIOR_TREE_PLUGIN_SRCS})
+file(GLOB_RECURSE VISUALIZATION_SRCS
+  "autonomy/visualization/*.cpp")
+list(REMOVE_ITEM ALL_LIBRARY_SRCS ${VISUALIZATION_SRCS})
 list(REMOVE_ITEM ALL_LIBRARY_HDRS ${TEST_LIBRARY_HDRS})
 list(REMOVE_ITEM ALL_LIBRARY_SRCS ${TEST_LIBRARY_SRCS})
 list(REMOVE_ITEM TEST_LIBRARY_SRCS ${ALL_TESTS})
@@ -406,6 +409,42 @@ google_binary(cartographer_pbstream_to_map
   SRCS
     autonomy/localization/cartographer/node/pbstream_to_map_main.cpp
 )
+
+find_package(foxglove-sdk CONFIG QUIET)
+
+google_binary(autonomy_foxglove_fakedata
+  SRCS
+    autonomy/visualization/fakedata_test.cpp
+)
+
+if(foxglove-sdk_FOUND)
+  find_package(ZLIB REQUIRED)
+  google_binary(autonomy_foxglove_bridge
+    SRCS
+      autonomy/visualization/foxglove_main.cpp
+      autonomy/visualization/transport/autolink_discovery.cpp
+      autonomy/visualization/visualization_server.cpp
+      autonomy/visualization/transport/channel_forwarder.cpp
+      autonomy/visualization/adapters/message_adapter.cpp
+      autonomy/visualization/adapters/foxglove_converters.cpp
+      autonomy/visualization/schema/schema_compatibility.cpp
+      autonomy/visualization/common/visualization_schema_registry.cpp
+      autonomy/visualization/transport/foxglove_bridge_server.cpp
+  )
+  target_link_libraries(autonomy_foxglove_bridge
+    PRIVATE
+      foxglove-sdk::foxglove_cpp_shared
+      ZLIB::ZLIB
+  )
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(autonomy_foxglove_bridge PRIVATE
+      -Wno-error=maybe-uninitialized)
+  endif()
+else()
+  message(WARNING
+    "foxglove-sdk not found, skipping autonomy_foxglove_bridge. "
+    "Set CMAKE_PREFIX_PATH or install foxglove-sdk first.")
+endif()
 
 install(
   DIRECTORY autonomy/localization/launch/

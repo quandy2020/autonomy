@@ -68,4 +68,3 @@ dist/
 
 # bag_convert runtime protobuf generation
 autonomy/tools/bag_convert/.proto_gen/
-scripts/.proto_gen/
