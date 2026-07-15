@@ -20,6 +20,8 @@
 
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
 set_and_check(AUTONOMY_CMAKE_DIR "@PACKAGE_AUTONOMY_CMAKE_DIR@")
 
 set(CERES_DIR_HINTS @Ceres_DIR@)
@@ -34,6 +36,22 @@ else ()
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${AUTONOMY_CMAKE_DIR}/modules)
+
+# Protobuf is part of the exported link interface (protobuf::libprotobuf).
+# Reuse the same 3.19.x pinning logic as the main project before importing
+# AutonomyTargets.cmake so imported targets resolve correctly.
+include(EnsureProtobuf319)
+
+if(AUTONOMY_HAS_GRPC)
+  find_dependency(gRPC ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
+find_dependency(Boost ${QUIET_OR_REQUIRED_OPTION} COMPONENTS iostreams)
+find_dependency(PkgConfig ${QUIET_OR_REQUIRED_OPTION})
+if(NOT TARGET PkgConfig::CAIRO)
+  pkg_check_modules(CAIRO ${QUIET_OR_REQUIRED_OPTION} IMPORTED_TARGET cairo)
+endif()
+find_dependency(Taskflow ${QUIET_OR_REQUIRED_OPTION} CONFIG)
 
 find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
 
