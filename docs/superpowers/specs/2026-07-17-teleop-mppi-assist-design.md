@@ -22,7 +22,8 @@
 | 控制关系 | 手柄给期望方向/速度；MPPI 尽量跟随并避障 |
 | 感知链路 | RGBD depth → 点云 → 局部 costmap → MPPI |
 | 代码位置 | `task/apps/teleop` 内闭环（不依赖完整 ControllerServer） |
-| 意图→路径 | 预存路径簇 + costmap/方向打分（对标 CMU localPlanner） |
+| 意图→路径 | 路径簇 + costmap/方向打分（对标 CMU localPlanner）；MVP 程序生成扇形弧，不强制 PLY |
+| 地图表示 | 局部 `costmap_2d`（**不用** grid_map） |
 
 ## 3. 架构
 
