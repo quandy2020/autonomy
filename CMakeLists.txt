@@ -133,6 +133,14 @@ add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_deps.cmake")
 autonomy_link_dependencies(${PROJECT_NAME})
 
+# Echo tool needs generated commsgs protos for DebugString when topology omits type.
+if(TARGET autolink_channel)
+  target_link_libraries(autolink_channel PRIVATE ${PROJECT_NAME})
+  target_include_directories(autolink_channel PRIVATE
+    ${PROJECT_BINARY_DIR}
+    ${PROJECT_SOURCE_DIR})
+endif()
+
 # -----------------------------------------------------------------------------
 # 6. Binaries
 # -----------------------------------------------------------------------------
@@ -140,14 +148,26 @@ if(BUILD_GRPC)
   google_binary(autonomy_bridge
     SRCS autonomy/bridge/bridge_main.cpp)
 endif()
-google_binary(localization SRCS autonomy/localization/localization_main.cpp)
-google_binary(planning SRCS autonomy/planning/planning_main.cpp)
-google_binary(control SRCS autonomy/control/control_main.cpp)
-google_binary(task SRCS autonomy/task/task_main.cpp)
-google_binary(cartographer_occupancy_grid_node SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
-google_binary(cartographer_pbstream_to_map SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
-google_binary(autonomy_foxglove_fakedata SRCS autonomy/visualization/fakedata_test.cpp)
-google_binary(autonomy_foxglove_bridge SRCS autonomy/visualization/foxglove_main.cpp)
+google_binary(localization
+  SRCS autonomy/localization/localization_main.cpp)
+google_binary(planning
+  SRCS autonomy/planning/planning_main.cpp)
+google_binary(control
+  SRCS autonomy/control/control_main.cpp)
+google_binary(task
+  SRCS autonomy/task/task_main.cpp)
+google_binary(monitor
+  SRCS autonomy/system/monitor/monitor_main.cpp)
+google_binary(task_teleop_smoke
+  SRCS autonomy/task/tools/teleop_smoke_main.cpp)
+google_binary(cartographer_occupancy
+  SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
+google_binary(cartographer_pbstream_to_map
+  SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
+google_binary(autonomy_foxglove_fakedata
+  SRCS autonomy/visualization/fakedata_test.cpp)
+google_binary(autonomy_foxglove_bridge
+  SRCS autonomy/visualization/foxglove_main.cpp)
 
 # -----------------------------------------------------------------------------
 # 7. Tests

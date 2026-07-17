@@ -16,13 +16,23 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "autonomy/system/monitor/monitor_base.hpp"
 
 namespace autonomy {
 namespace system {
 namespace monitor {
+
+struct MountDiskUsage {
+    std::string mount_point;
+    uint64_t total_bytes{0};
+    uint64_t available_bytes{0};
+    double usage_percent{0.0};
+};
 
 class HddMonitor : public MonitorBase
 {
@@ -32,9 +42,24 @@ public:
     }
     void Collect() override;
     void RegisterWithPrometheus(void* registry) override;
+
+    const std::vector<MountDiskUsage>& mounts() const {
+        return mounts_;
+    }
+
     static std::unique_ptr<HddMonitor> Create() {
         return std::make_unique<HddMonitor>();
     }
+
+private:
+    void RefreshMountList();
+    std::vector<MountDiskUsage> mounts_;
+    bool mounts_discovered_{false};
+
+#if defined(USE_PROMETHEUS) && USE_PROMETHEUS
+    struct PrometheusGauges;
+    std::unique_ptr<PrometheusGauges> gauges_;
+#endif
 };
 
 inline std::unique_ptr<HddMonitor> CreateHddMonitor() {

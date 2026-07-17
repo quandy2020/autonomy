@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include <cmath>
 #include <memory>
+#include <string>
 
 #include "autonomy/system/monitor/monitor_base.hpp"
 
@@ -32,9 +34,26 @@ public:
     }
     void Collect() override;
     void RegisterWithPrometheus(void* registry) override;
+
+    bool chronyc_available() const {
+        return chronyc_available_;
+    }
+    /// 相对 NTP 的时钟偏移（秒）；chronyc 不可用时为 NaN
+    double offset_seconds() const {
+        return offset_seconds_;
+    }
+
     static std::unique_ptr<NtpMonitor> Create() {
         return std::make_unique<NtpMonitor>();
     }
+
+private:
+    bool chronyc_available_{false};
+    double offset_seconds_{std::nan("")};
+
+#if defined(USE_PROMETHEUS) && USE_PROMETHEUS
+    void* offset_gauge_{nullptr};
+#endif
 };
 
 inline std::unique_ptr<NtpMonitor> CreateNtpMonitor() {

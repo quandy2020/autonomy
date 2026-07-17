@@ -1,6 +1,6 @@
 # System Monitor
 
-基于 **gperftools (gperf)** 与 **prometheus-cpp** 的系统监控模块，支持**可视化**与**参数选定**。
+基于 **gperftools (gperf)** 与 **prometheus-cpp** 的系统监控模块，支持**可视化**与**参数选定**。CPU/内存等核心项通过 Linux `/proc` 与 `sysfs` 采集，**同一套实现**适用于 x86_64 与 aarch64（不再按平台拆分空壳 monitor 类）。
 
 ## 功能概览
 
@@ -17,21 +17,23 @@
 
 ### 1. 配置选项（参数选定）
 
+**Lua**（推荐）：编辑 `config/system/monitor.lua`，由 `LoadMonitorOptions(dir, basename)` 加载。
+
+**独立进程**：
+
+```bash
+monitor --configuration_directory=config --configuration_basename=system/monitor.lua
+```
+
+**代码**：
+
 ```cpp
 #include "autonomy/system/monitor/monitor_options.hpp"
 #include "autonomy/system/monitor/monitor_registry.hpp"
 
 using namespace autonomy::system::monitor;
 
-MonitorOptions opts = MonitorOptions::Default();
-opts.enable_cpu_monitor = true;
-opts.enable_mem_monitor = true;
-opts.enable_prometheus = true;
-opts.prometheus_bind_address = "0.0.0.0:9090";
-opts.enable_cpu_profile = false;
-opts.enable_heap_profile = false;
-opts.collect_interval_sec = 1.0;
-
+MonitorOptions opts = LoadMonitorOptions("config", "system/monitor.lua");
 MonitorRegistry registry(opts);
 registry.Start();
 ```
@@ -58,12 +60,24 @@ opts.heap_profile_filename = "/tmp/my_heap.prof";
 | 指标名 | 含义 |
 |--------|------|
 | `autonomy_system_cpu_usage_percent{cpu="total\|cpu0\|cpu1\|..."}` | CPU 使用率（整体或每核） |
+| `autonomy_system_cpu_temperature_celsius{sensor="..."}` | CPU 温度（coretemp 或 thermal_zone，有则暴露） |
+| `autonomy_system_load_average{period="1m\|5m\|15m"}` | 系统负载 |
 | `autonomy_system_mem_usage_percent` | 内存使用率 |
 | `autonomy_system_mem_total_kb` | 总内存 (KB) |
 | `autonomy_system_mem_available_kb` | 可用内存 (KB) |
-| `autonomy_system_gpu_usage_percent` | GPU 使用率（当前为 stub） |
+| `autonomy_system_mem_swap_used_kb` | 已用 Swap (KB) |
+| `autonomy_system_disk_usage_percent{mount="..."}` | 各挂载点磁盘使用率 |
+| `autonomy_system_net_rx_bytes_per_second{device="..."}` | 网卡接收速率 |
+| `autonomy_system_net_tx_bytes_per_second{device="..."}` | 网卡发送速率 |
+| `autonomy_system_process_count` | 进程数 |
+| `autonomy_system_process_rss_total_kb` | 进程 VmRSS 合计 (KB) |
+| `autonomy_system_ntp_offset_seconds` | chronyc 时钟偏移 (秒) |
+| `autonomy_system_hazard_level` | 0/1/2（OK/WARN/ERROR） |
+| `autonomy_system_mrm_active` | MRM 急停是否在发零 `cmd_vel` |
+| `autonomy_system_channel_ok{channel}` | 通道是否在超时内收到数据 |
+| `autonomy_system_pipeline_latency_seconds{channel}` | 消息 header 年龄 |
 
-其他 monitor（hdd/net/ntp/process/voltage）已预留接口，可按需扩展实现与指标。
+其他 monitor（voltage）仍预留接口；无 NVML / SMART 专用守护进程时不重复实现 Autoware 侧车方案。
 
 ## 构建
 

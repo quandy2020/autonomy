@@ -399,6 +399,14 @@ struct TwistStamped {
 
     std_msgs::Header header;
     Twist twist;
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.geometry_msgs.TwistStamped";
+    }
+    static void GetDescriptorString(const std::string& type,
+                                      std::string* desc_str);
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 
 // This expresses velocity in free space with uncertainty.

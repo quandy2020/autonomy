@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,14 @@
 
 #pragma once
 
-#include <atomic>
-#include <climits>
-#include <map>
-#include <mutex>
-#include <string>
-#include <vector>
-
 namespace autonomy {
-namespace system {
-namespace monitor {
-namespace cpu_monitor {}  // namespace cpu_monitor
-}  // namespace monitor
-}  // namespace system
+namespace task {
+
+/** Autolink channel: bridge TeleopStub → TaskServer teleop ingress. */
+constexpr char kTeleopGoalChannel[] = "/autonomy/task/teleop/goal";
+
+/** Autolink channel: TaskServer → bridge TeleopStub status updates. */
+constexpr char kTeleopFeedbackChannel[] = "/autonomy/task/teleop/feedback";
+
+}  // namespace task
 }  // namespace autonomy

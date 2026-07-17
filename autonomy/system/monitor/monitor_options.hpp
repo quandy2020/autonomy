@@ -17,17 +17,25 @@
 #pragma once
 
 #include <string>
+#include <vector>
+
+#include "autonomy/system/monitor/ops_types.hpp"
 
 namespace autonomy {
 namespace system {
 namespace monitor {
+
+struct MrmHandlerOptions {
+    std::string cmd_vel_channel{"/cmd_vel"};
+    bool emergency_stop_on_error{true};
+};
 
 /**
  * 可选的监控项与 Prometheus/gperf 参数选定。
  * 用于控制启用哪些 monitor 以及可视化/分析相关配置。
  */
 struct MonitorOptions {
-    // ---------- 监控模块开关（参数选定） ----------
+    // ---------- 主机监控 ----------
     bool enable_cpu_monitor{true};
     bool enable_gpu_monitor{false};
     bool enable_mem_monitor{true};
@@ -36,6 +44,15 @@ struct MonitorOptions {
     bool enable_ntp_monitor{false};
     bool enable_process_monitor{false};
     bool enable_voltage_monitor{false};
+
+    // ---------- Autolink 运维（参考 Autoware topic/pipeline/MRM） ----------
+    bool enable_channel_monitor{true};
+    bool enable_latency_monitor{true};
+    bool enable_hazard_monitor{true};
+    bool enable_mrm_handler{false};
+    std::vector<ChannelWatchOptions> channel_watches;
+    std::vector<LatencyWatchOptions> latency_watches;
+    MrmHandlerOptions mrm;
 
     // ---------- Prometheus 可视化 ----------
     bool enable_prometheus{true};
@@ -53,6 +70,10 @@ struct MonitorOptions {
 
     static MonitorOptions Default();
 };
+
+/// 从 Lua 配置加载；文件缺失或解析失败时返回 Default() 并写日志。
+MonitorOptions LoadMonitorOptions(const std::string& configuration_directory,
+                                  const std::string& configuration_basename);
 
 }  // namespace monitor
 }  // namespace system

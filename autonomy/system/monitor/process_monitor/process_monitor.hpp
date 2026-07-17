@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <string>
 
 #include "autonomy/system/monitor/monitor_base.hpp"
 
@@ -32,9 +34,30 @@ public:
     }
     void Collect() override;
     void RegisterWithPrometheus(void* registry) override;
+
+    uint32_t process_count() const {
+        return process_count_;
+    }
+    uint64_t total_rss_kb() const {
+        return total_rss_kb_;
+    }
+    const std::string& top_rss_comm() const {
+        return top_rss_comm_;
+    }
+
     static std::unique_ptr<ProcessMonitor> Create() {
         return std::make_unique<ProcessMonitor>();
     }
+
+private:
+    uint32_t process_count_{0};
+    uint64_t total_rss_kb_{0};
+    std::string top_rss_comm_;
+
+#if defined(USE_PROMETHEUS) && USE_PROMETHEUS
+    void* count_gauge_{nullptr};
+    void* rss_gauge_{nullptr};
+#endif
 };
 
 inline std::unique_ptr<ProcessMonitor> CreateProcessMonitor() {

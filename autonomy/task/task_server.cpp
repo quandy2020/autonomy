@@ -82,7 +82,50 @@ bool TaskServer::Configure(
     }
     navigation::NavigationClient::SetShared(navigation_client_);
 
+    autolink_tf_listener_ = std::make_shared<AutolinkTfListener>();
+    if (!autolink_tf_listener_->Start(task_node_)) {
+        AWARN << "TaskServer: Autolink TF listener failed (costmap/assist need "
+                 "/tf or tf)";
+        autolink_tf_listener_.reset();
+    }
+
     RegisterEnabledPlugins(options.apps());
+    if (options.apps().enable_teleop() && teleop_) {
+        const auto feedback_period = std::chrono::milliseconds(
+            options.scheduler().feedback_period_ms() > 0
+                ? options.scheduler().feedback_period_ms()
+                : 100);
+
+        teleop_feedback_publisher_ =
+            std::make_shared<TeleopFeedbackPublisher>();
+        if (!teleop_feedback_publisher_->Start(task_node_, teleop_,
+                                               feedback_period)) {
+            AWARN << "TaskServer: teleop feedback publisher failed";
+            teleop_feedback_publisher_.reset();
+        }
+
+        const auto feedback_publisher = teleop_feedback_publisher_;
+        teleop_goal_ingress_ = std::make_shared<TeleopGoalIngress>();
+        if (!teleop_goal_ingress_->Start(
+                task_node_,
+                [this](const ::autonomy::task::proto::TeleopGoal& g) {
+                    return SubmitTeleopGoal(g);
+                },
+                [feedback_publisher](
+                    const ::autonomy::task::proto::TeleopGoal& /*goal*/) {
+                    if (!feedback_publisher) {
+                        return;
+                    }
+                    ::autonomy::task::proto::TeleopFeedback feedback;
+                    feedback.set_status(
+                        ::autonomy::task::proto::TELEOP_STATUS_REJECTED);
+                    feedback_publisher->Publish(feedback);
+                })) {
+            AWARN << "TaskServer: teleop goal ingress failed; "
+                     "SubmitTeleopGoal in-process only";
+            teleop_goal_ingress_.reset();
+        }
+    }
     configured_ = true;
     AINFO << "TaskServer configured";
     return true;
@@ -142,6 +185,22 @@ void TaskServer::Shutdown()
 {
     if (scheduler_) {
         scheduler_->Stop();
+    }
+
+    const auto shutdown_plugin = [](auto& task) {
+        if (task) {
+            task->Shutdown();
+        }
+    };
+    shutdown_plugin(navigation_);
+    shutdown_plugin(tracking_);
+    shutdown_plugin(teleop_);
+    shutdown_plugin(exploration_);
+    shutdown_plugin(charging_);
+    shutdown_plugin(mapping_);
+    shutdown_plugin(localization_);
+
+    if (scheduler_) {
         scheduler_->Shutdown();
         scheduler_.reset();
     }
@@ -153,6 +212,18 @@ void TaskServer::Shutdown()
     mapping_.reset();
     localization_.reset();
     navigation_client_.reset();
+    if (teleop_goal_ingress_) {
+        teleop_goal_ingress_->Stop();
+        teleop_goal_ingress_.reset();
+    }
+    if (teleop_feedback_publisher_) {
+        teleop_feedback_publisher_->Stop();
+        teleop_feedback_publisher_.reset();
+    }
+    if (autolink_tf_listener_) {
+        autolink_tf_listener_->Stop();
+        autolink_tf_listener_.reset();
+    }
     task_node_.reset();
     configured_ = false;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,45 @@
 
 #pragma once
 
-#include <atomic>
-#include <climits>
-#include <map>
-#include <mutex>
+#include <cstdint>
 #include <string>
-#include <vector>
 
 namespace autonomy {
 namespace system {
 namespace monitor {
-namespace cpu_monitor {}  // namespace cpu_monitor
+
+enum class HazardLevel : int {
+    kOk = 0,
+    kWarn = 1,
+    kError = 2,
+};
+
+struct ChannelWatchOptions {
+    std::string channel;
+    double timeout_sec{1.0};
+    double min_rate_hz{0.0};
+};
+
+struct LatencyWatchOptions {
+    std::string channel;
+    double max_age_sec{0.5};
+};
+
+struct ChannelHealth {
+    std::string channel;
+    bool ever_received{false};
+    bool healthy{false};
+    double age_sec{0.0};
+    double rate_hz{0.0};
+};
+
+struct LatencyHealth {
+    std::string channel;
+    bool ever_received{false};
+    bool healthy{false};
+    double message_age_sec{0.0};
+};
+
 }  // namespace monitor
 }  // namespace system
 }  // namespace autonomy

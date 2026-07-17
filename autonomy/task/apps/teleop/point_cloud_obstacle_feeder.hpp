@@ -27,22 +27,12 @@
 
 namespace autonomy::task::teleop {
 
-/** Depth image → PointCloud2 → local costmap obstacle layer. */
-class RgbdObstacleFeeder
+/** PointCloud2 → local costmap obstacle layer (RGB-D, stereo, lidar, …). */
+class PointCloudObstacleFeeder
 {
 public:
     struct Options {
-        std::string depth_topic{"/camera/depth/image_raw"};
-        std::string camera_frame{"camera_depth_optical_frame"};
-        double fx{525.0};
-        double fy{525.0};
-        double cx{320.0};
-        double cy{240.0};
-        double min_depth{0.2};
-        double max_depth{4.0};
-        double min_height{-0.3};
-        double max_height{0.5};
-        int stride{4};
+        std::string cloud_topic{"/camera/depth/points"};
         double stale_timeout_sec{0.5};
     };
 
@@ -51,21 +41,21 @@ public:
                    const Options& options);
 
     void Start();
+    void Stop();
 
     bool IsCloudFresh() const;
 
     const Options& options() const { return options_; }
 
 private:
-    void OnDepthImage(const std::shared_ptr<commsgs::sensor_msgs::Image>& msg);
-
-    commsgs::sensor_msgs::PointCloud2 ProjectDepth(
-        const commsgs::sensor_msgs::Image& image) const;
+    void OnPointCloud(
+        const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg);
 
     Options options_;
     std::shared_ptr<autolink::Node> node_;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_;
-    std::shared_ptr<autolink::Reader<commsgs::sensor_msgs::Image>> reader_;
+    std::shared_ptr<autolink::Reader<commsgs::sensor_msgs::PointCloud2>>
+        reader_;
     std::chrono::steady_clock::time_point last_cloud_time_{};
     bool started_{false};
 };

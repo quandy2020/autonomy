@@ -24,6 +24,7 @@ task = {
       default_tree_file = "task/behavior_tree/teleop/teleop.xml",
       bt_loop_duration_ms = 50,
       default_server_timeout_ms = 20000,
+      -- MPPI assist: config/task/teleop_assist.lua (see teleop_assist_options)
     },
     exploration = {
       default_tree_file = "task/behavior_tree/exploration/explore.xml",

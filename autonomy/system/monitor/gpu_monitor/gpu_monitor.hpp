@@ -17,12 +17,19 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "autonomy/system/monitor/monitor_base.hpp"
 
 namespace autonomy {
 namespace system {
 namespace monitor {
+
+struct GpuBusyReading {
+    std::string card;
+    double busy_percent{0.0};
+};
 
 class GpuMonitor : public MonitorBase
 {
@@ -33,9 +40,21 @@ public:
     void Collect() override;
     void RegisterWithPrometheus(void* registry) override;
 
+    const std::vector<GpuBusyReading>& gpus() const {
+        return gpus_;
+    }
+
     static std::unique_ptr<GpuMonitor> Create() {
         return std::make_unique<GpuMonitor>();
     }
+
+private:
+    std::vector<GpuBusyReading> gpus_;
+
+#if defined(USE_PROMETHEUS) && USE_PROMETHEUS
+    struct PrometheusGauges;
+    std::unique_ptr<PrometheusGauges> gauges_;
+#endif
 };
 
 inline std::unique_ptr<GpuMonitor> CreateGpuMonitor() {

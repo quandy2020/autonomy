@@ -348,14 +348,56 @@ PointField FromProto(const proto::sensor_msgs::PointField& proto) {
 
 proto::sensor_msgs::PointCloud2 ToProto(const PointCloud2& data) {
     proto::sensor_msgs::PointCloud2 proto;
-
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    proto.set_height(data.height);
+    proto.set_width(data.width);
+    for (const auto& field : data.fields) {
+        *proto.add_fields() = ToProto(field);
+    }
+    proto.set_is_bigendian(data.is_bigendian);
+    proto.set_point_step(data.point_step);
+    proto.set_row_step(data.row_step);
+    for (uint8_t byte : data.data) {
+        proto.add_data(static_cast<uint32_t>(byte));
+    }
+    proto.set_is_dense(data.is_dense);
     return proto;
 }
 
 PointCloud2 FromProto(const proto::sensor_msgs::PointCloud2& proto) {
     PointCloud2 data;
-
+    data.header = std_msgs::FromProto(proto.header());
+    data.height = proto.height();
+    data.width = proto.width();
+    data.fields.reserve(proto.fields_size());
+    for (const auto& field : proto.fields()) {
+        data.fields.push_back(FromProto(field));
+    }
+    data.is_bigendian = proto.is_bigendian();
+    data.point_step = proto.point_step();
+    data.row_step = proto.row_step();
+    data.data.reserve(proto.data_size());
+    for (uint32_t byte : proto.data()) {
+        data.data.push_back(static_cast<uint8>(byte));
+    }
+    data.is_dense = proto.is_dense();
     return data;
+}
+
+bool PointCloud2::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool PointCloud2::ParseFromString(const std::string& in) {
+    proto::sensor_msgs::PointCloud2 proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
 }
 
 proto::sensor_msgs::Range ToProto(const Range& data) {

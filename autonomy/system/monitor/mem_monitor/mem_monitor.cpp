@@ -31,11 +31,13 @@ namespace monitor {
 
 namespace {
 
-bool ParseMemInfo(uint64_t* total_kb, uint64_t* available_kb) {
+bool ParseMemInfo(uint64_t* total_kb, uint64_t* available_kb,
+                  uint64_t* swap_total_kb, uint64_t* swap_free_kb) {
     std::ifstream f("/proc/meminfo");
     if (!f.is_open())
         return false;
     uint64_t mem_total = 0, mem_available = 0;
+    uint64_t swap_total = 0, swap_free = 0;
     std::string line;
     while (std::getline(f, line)) {
         if (line.find("MemTotal:") == 0) {
@@ -44,22 +46,34 @@ bool ParseMemInfo(uint64_t* total_kb, uint64_t* available_kb) {
         } else if (line.find("MemAvailable:") == 0) {
             std::istringstream iss(line.substr(13));
             iss >> mem_available;
+        } else if (line.find("SwapTotal:") == 0) {
+            std::istringstream iss(line.substr(10));
+            iss >> swap_total;
+        } else if (line.find("SwapFree:") == 0) {
+            std::istringstream iss(line.substr(9));
+            iss >> swap_free;
         }
     }
     if (total_kb)
         *total_kb = mem_total;
     if (available_kb)
         *available_kb = mem_available;
+    if (swap_total_kb)
+        *swap_total_kb = swap_total;
+    if (swap_free_kb)
+        *swap_free_kb = swap_free;
     return mem_total > 0;
 }
 
 }  // namespace
 
 void MemMonitor::Collect() {
-    uint64_t total = 0, avail = 0;
-    if (ParseMemInfo(&total, &avail)) {
+    uint64_t total = 0, avail = 0, swap_total = 0, swap_free = 0;
+    if (ParseMemInfo(&total, &avail, &swap_total, &swap_free)) {
         total_kb_ = total;
         available_kb_ = avail;
+        swap_total_kb_ = swap_total;
+        swap_free_kb_ = swap_free;
         usage_percent_ =
             (total > 0 && total >= avail)
                 ? (100.0 * (total - avail) / static_cast<double>(total))
@@ -74,6 +88,9 @@ void MemMonitor::Collect() {
     if (available_kb_gauge_)
         static_cast<prometheus::Gauge*>(available_kb_gauge_)
             ->Set(static_cast<double>(available_kb_));
+    if (swap_used_kb_gauge_ && swap_total_kb_ >= swap_free_kb_)
+        static_cast<prometheus::Gauge*>(swap_used_kb_gauge_)
+            ->Set(static_cast<double>(swap_total_kb_ - swap_free_kb_));
 #endif
 }
 
@@ -97,6 +114,11 @@ void MemMonitor::RegisterWithPrometheus(void* registry) {
                              .Help("Available memory in KB")
                              .Register(*reg);
     available_kb_gauge_ = &avail_family.Add({});
+    auto& swap_family = prometheus::BuildGauge()
+                            .Name("autonomy_system_mem_swap_used_kb")
+                            .Help("Swap used in KB")
+                            .Register(*reg);
+    swap_used_kb_gauge_ = &swap_family.Add({});
 #else
     (void)registry;
 #endif

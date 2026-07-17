@@ -14,6 +14,10 @@
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/task/apps/teleop/constants.hpp"
 
+namespace autonomy::task::teleop {
+class TeleopMppiAssist;
+}  // namespace autonomy::task::teleop
+
 namespace BT {
 class Blackboard;
 class TreeNode;
@@ -36,6 +40,9 @@ public:
 
     void Configure(double max_linear_speed, double max_angular_speed,
                    double watchdog_timeout_sec);
+
+    void SetAssist(const std::shared_ptr<TeleopMppiAssist>& assist);
+    void SetAssistBypass(bool bypass) { assist_bypass_ = bypass; }
 
     void SetVelocity(double linear_x, double angular_z);
     void SetVelocity(const commsgs::geometry_msgs::TwistStamped& velocity);
@@ -73,6 +80,9 @@ private:
     std::chrono::steady_clock::time_point last_command_time_{
         std::chrono::steady_clock::now()};
     commsgs::geometry_msgs::TwistStamped applied_velocity_;
+
+    std::shared_ptr<TeleopMppiAssist> assist_;
+    bool assist_bypass_{false};
 };
 
 }  // namespace teleop

@@ -23,7 +23,8 @@ namespace grpc {
 
 GrpcBridgeContextInterface::GrpcBridgeContextInterface(
     std::shared_ptr<autolink::Node> node)
-    : navigator_stub_(std::make_shared<clients::NavigatorStub>(std::move(node))) {}
+    : navigator_stub_(std::make_shared<clients::NavigatorStub>(node)),
+      teleop_stub_(std::make_shared<clients::TeleopStub>(node)) {}
 
 }  // namespace grpc
 }  // namespace plugins

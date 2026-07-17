@@ -25,11 +25,22 @@ namespace system {
 namespace monitor {
 namespace cpu_monitor {
 
+struct CpuTemperatureReading {
+    std::string label;
+    double celsius{0.0};
+};
+
+struct LoadAverage {
+    double load_1{0.0};
+    double load_5{0.0};
+    double load_15{0.0};
+};
+
 struct CpuInformation {
     std::string model_name;
     uint32_t num_cores{0};
     uint64_t freq_hz{0};
-    std::string vendor;  // "intel", "raspi", "tegra", "arm", "unknown"
+    std::string vendor;  // "intel", "arm", "unknown" 等，来自 /proc/cpuinfo
 };
 
 }  // namespace cpu_monitor

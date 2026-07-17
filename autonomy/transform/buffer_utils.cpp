@@ -47,6 +47,21 @@ geometry_msgs::TransformStamped ToTf2Message(
 
 }  // namespace
 
+void ApplyTransformStampedToBuffer(
+    Buffer* buffer, const commsgs::geometry_msgs::TransformStamped& trans,
+    const std::string& authority, const bool is_static) {
+    if (buffer == nullptr) {
+        LOG(ERROR) << "ApplyTransformStampedToBuffer: buffer is null.";
+        return;
+    }
+    try {
+        buffer->setTransform(ToTf2Message(trans), authority, is_static);
+    } catch (const std::exception& ex) {
+        LOG(WARNING) << "Failed to apply transform [" << trans.header.frame_id
+                     << " -> " << trans.child_frame_id << "]: " << ex.what();
+    }
+}
+
 void ApplyStaticTransformsToBuffer(
     Buffer* buffer,
     const commsgs::geometry_msgs::TransformStampeds& transforms,
@@ -57,13 +72,21 @@ void ApplyStaticTransformsToBuffer(
     }
 
     for (const auto& trans : transforms.transforms) {
-        try {
-            buffer->setTransform(ToTf2Message(trans), authority, true);
-        } catch (const std::exception& ex) {
-            LOG(WARNING) << "Failed to apply static transform ["
-                         << trans.header.frame_id << " -> "
-                         << trans.child_frame_id << "]: " << ex.what();
-        }
+        ApplyTransformStampedToBuffer(buffer, trans, authority, true);
+    }
+}
+
+void ApplyTfMessageToBuffer(
+    Buffer* buffer,
+    const ::autonomy::commsgs::proto::tf2_msgs::TFMessage& message,
+    const std::string& authority, const bool is_static) {
+    if (buffer == nullptr) {
+        return;
+    }
+    for (const auto& proto_tf : message.transforms()) {
+        ApplyTransformStampedToBuffer(
+            buffer, commsgs::geometry_msgs::FromProto(proto_tf), authority,
+            is_static);
     }
 }
 
@@ -174,6 +197,25 @@ int LoadStaticTransformsFromFile(Buffer* buffer, const std::string& yaml_path,
     LOG(INFO) << "Loaded " << transforms.transforms.size()
               << " static transforms from: " << yaml_path;
     return static_cast<int>(transforms.transforms.size());
+}
+
+void SeedBenchmarkTfTree(Buffer* buffer, const std::string& authority) {
+    if (buffer == nullptr) {
+        return;
+    }
+    const auto stamp = commsgs::builtin_interfaces::Time::Now();
+    auto make = [&stamp](const std::string& parent,
+                         const std::string& child) {
+        commsgs::geometry_msgs::TransformStamped t;
+        t.header.stamp = stamp;
+        t.header.frame_id = parent;
+        t.child_frame_id = child;
+        t.transform.rotation.w = 1.0;
+        return t;
+    };
+    ApplyTransformStampedToBuffer(buffer, make("map", "odom"), authority, true);
+    ApplyTransformStampedToBuffer(buffer, make("odom", "base_link"), authority,
+                                  true);
 }
 
 }  // namespace transform

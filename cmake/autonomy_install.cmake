@@ -60,7 +60,7 @@ install(
   DESTINATION share/autonomy/
 )
 
-set(_autonomy_launch_mods localization planning control task)
+set(_autonomy_launch_mods localization planning control task system)
 if(BUILD_GRPC)
   list(APPEND _autonomy_launch_mods bridge)
 endif()
