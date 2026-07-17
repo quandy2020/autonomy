@@ -1,9 +1,9 @@
 {
-  "version": "0.1.1",
+  "version": "0.2.0",
   "major": 0,
-  "minor": 1,
-  "patch": 1,
+  "minor": 2,
+  "patch": 0,
   "name": "Autonomy",
   "description": "Autonomous Robot Development Framework",
-  "build_date": "2026-01-16"
+  "build_date": "2026-07-17"
 }
