@@ -35,6 +35,8 @@
  #include "autonomy/control/controller/mppi_controller/models/control_sequence.hpp"
  #include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
  #include "autonomy/control/controller/mppi_controller/models/path.hpp"
+ #include "autonomy/map/costmap_2d/cost_values.hpp"
+ #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
  #include "autonomy/transform/tf2/utils.h"
  
  #define M_PIF 3.141592653589793238462643383279502884e+00F

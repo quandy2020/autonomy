@@ -33,19 +33,17 @@
 namespace autonomy {
 namespace task {
 
-/** 流水线单步回调，由 Taskflow DAG 顺序执行。 */
+/** 流水线单步回调，按顺序执行。 */
 using TaskPipelineStep = std::function<void()>;
 
 /**
- * @brief 基于 Taskflow 的任务调度器
+ * @brief 任务调度器
  *
  * 职责：
  * - 注册 / 查找 TaskInterface 插件
  * - TaskMux 互斥导航类任务（navigation / tracking / teleop / exploration / dock）
- * - tf::Executor 线程池驱动反馈轮询与流水线编排
+ * - 后台线程驱动反馈轮询与流水线编排
  * - 回收进入终态的活跃会话
- *
- * Taskflow 实现细节封装在 pimpl 中，本头文件保持 C++17 兼容。
  */
 class TaskScheduler
 {
@@ -81,7 +79,7 @@ public:
     bool ResumeActive(
         ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType type);
 
-    /** 启动 Taskflow 反馈轮询循环（幂等）。 */
+    /** 启动反馈轮询循环（幂等）。 */
     bool Start();
     void Stop();
 
@@ -93,7 +91,7 @@ public:
     const TaskMux& GetMux() const { return mux_; }
 
     /**
-     * @brief 以 Taskflow 顺序 DAG 执行多步流水线（阻塞至完成）
+     * @brief 顺序执行多步流水线（阻塞至完成）
      *
      * 典型用法：localization → mapping.load → navigation.start
      */
@@ -114,8 +112,8 @@ private:
     std::unordered_map<int, TaskInterface::SharedPtr> registry_;
     std::vector<TaskInterface::SharedPtr> active_sessions_;
 
-    struct TaskflowRuntime;
-    std::unique_ptr<TaskflowRuntime> runtime_;
+    struct Runtime;
+    std::unique_ptr<Runtime> runtime_;
     std::atomic<bool> running_{false};
     std::atomic<bool> initialized_{false};
 };

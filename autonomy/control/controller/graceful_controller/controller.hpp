@@ -62,22 +62,22 @@
      void Configure(const proto::ControllerOptions& options, std::string name,
                     std::shared_ptr<transform::Buffer> tf,
                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                        costmap_wrapper) override;
+                        costmap_wrapper);
  
      /**
       * @brief Cleanup controller state machine.
       */
-     void Cleanup() override;
+     void Cleanup();
  
      /**
       * @brief Activate controller state machine.
       */
-     void Activate() override;
+     void Activate();
  
      /**
       * @brief Deactivate controller state machine.
       */
-     void Deactivate() override;
+     void Deactivate();
  
      /**
       * @brief Compute the best command given the current pose and velocity.

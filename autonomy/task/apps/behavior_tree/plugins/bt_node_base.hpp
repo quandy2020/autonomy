@@ -10,6 +10,25 @@
 
 #include <functional>
 
+#include "autonomy/task/apps/behavior_tree/bt_node_registry.hpp"
+
+// Nodes are linked into libautonomy.so; register via static initializers
+// instead of exporting BT_RegisterNodesFromPlugin from separate plugin .so
+// files.
+#undef BT_REGISTER_NODES
+#define BT_REGISTER_NODES(factory)                                             \
+    static void AutonomyRegisterBtNodes(BT::BehaviorTreeFactory& factory);     \
+    namespace {                                                                \
+    struct AutonomyBtNodeRegistrar {                                           \
+        AutonomyBtNodeRegistrar()                                              \
+        {                                                                      \
+            ::autonomy::task::AddBtNodeRegistrar(&AutonomyRegisterBtNodes);    \
+        }                                                                      \
+    };                                                                         \
+    static const AutonomyBtNodeRegistrar autonomy_bt_node_registrar;           \
+    }                                                                          \
+    static void AutonomyRegisterBtNodes(BT::BehaviorTreeFactory& factory)
+
 namespace autonomy {
 namespace task {
 namespace plugins {

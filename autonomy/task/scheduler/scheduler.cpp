@@ -20,8 +20,6 @@
 #include <thread>
 #include <utility>
 
-#include <taskflow/taskflow.hpp>
-
 #include "autonomy/common/logging.hpp"
 
 namespace autonomy {
@@ -40,13 +38,38 @@ std::chrono::milliseconds FeedbackPeriod(
     return std::chrono::milliseconds(ms);
 }
 
+void RunSteps(const std::vector<TaskPipelineStep>& steps)
+{
+    for (const auto& step : steps) {
+        if (step) {
+            step();
+        }
+    }
+}
+
 }  // namespace
 
-struct TaskScheduler::TaskflowRuntime {
-    tf::Executor executor;
-    tf::Future<void> feedback_future;
+struct TaskScheduler::Runtime {
+    std::size_t worker_count{0};
+    std::thread feedback_thread;
+    std::mutex async_mutex;
+    std::vector<std::thread> async_threads;
 
-    explicit TaskflowRuntime(std::size_t workers) : executor(workers) {}
+    explicit Runtime(std::size_t workers) : worker_count(workers) {}
+
+    void JoinAsyncThreads()
+    {
+        std::vector<std::thread> pending;
+        {
+            std::lock_guard<std::mutex> lock(async_mutex);
+            pending.swap(async_threads);
+        }
+        for (auto& thread : pending) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+    }
 };
 
 TaskScheduler::TaskScheduler(::autonomy::task::proto::SchedulerOptions options)
@@ -67,7 +90,7 @@ bool TaskScheduler::Initialize(
 
     const auto workers = std::max<std::size_t>(
         2U, std::thread::hardware_concurrency());
-    runtime_ = std::make_unique<TaskflowRuntime>(workers);
+    runtime_ = std::make_unique<Runtime>(workers);
     initialized_.store(true);
     AINFO << "TaskScheduler initialized with " << workers << " workers, "
           << "feedback_period_ms=" << options_.feedback_period_ms();
@@ -96,6 +119,9 @@ void TaskScheduler::Shutdown()
     }
 
     mux_.Reset(options_.exclusive_navigation_tasks());
+    if (runtime_) {
+        runtime_->JoinAsyncThreads();
+    }
     runtime_.reset();
     initialized_.store(false);
 }
@@ -219,7 +245,7 @@ bool TaskScheduler::Start()
     }
 
     const auto period = FeedbackPeriod(options_);
-    runtime_->feedback_future = runtime_->executor.async([this, period]() {
+    runtime_->feedback_thread = std::thread([this, period]() {
         while (running_.load()) {
             PollActiveTasks();
             std::this_thread::sleep_for(period);
@@ -233,10 +259,16 @@ bool TaskScheduler::Start()
 void TaskScheduler::Stop()
 {
     if (!running_.exchange(false)) {
+        if (runtime_) {
+            runtime_->JoinAsyncThreads();
+        }
         return;
     }
-    if (runtime_ && runtime_->feedback_future.valid()) {
-        runtime_->feedback_future.get();
+    if (runtime_ && runtime_->feedback_thread.joinable()) {
+        runtime_->feedback_thread.join();
+    }
+    if (runtime_) {
+        runtime_->JoinAsyncThreads();
     }
     AINFO << "TaskScheduler feedback loop stopped";
 }
@@ -267,26 +299,7 @@ void TaskScheduler::RunPipeline(const std::vector<TaskPipelineStep>& steps)
         AERROR << "TaskScheduler::RunPipeline called before Initialize";
         return;
     }
-    if (steps.empty()) {
-        return;
-    }
-
-    tf::Taskflow pipeline;
-    std::vector<tf::Task> tasks;
-    tasks.reserve(steps.size());
-
-    for (const auto& step : steps) {
-        tasks.push_back(pipeline.emplace([step]() {
-            if (step) {
-                step();
-            }
-        }));
-    }
-    for (std::size_t i = 1; i < tasks.size(); ++i) {
-        tasks[i - 1].precede(tasks[i]);
-    }
-
-    runtime_->executor.run(pipeline).wait();
+    RunSteps(steps);
 }
 
 void TaskScheduler::RunPipelineAsync(
@@ -300,22 +313,8 @@ void TaskScheduler::RunPipelineAsync(
         return;
     }
 
-    tf::Taskflow pipeline;
-    std::vector<tf::Task> tasks;
-    tasks.reserve(steps.size());
-
-    for (const auto& step : steps) {
-        tasks.push_back(pipeline.emplace([step]() {
-            if (step) {
-                step();
-            }
-        }));
-    }
-    for (std::size_t i = 1; i < tasks.size(); ++i) {
-        tasks[i - 1].precede(tasks[i]);
-    }
-
-    runtime_->executor.run(std::move(pipeline));
+    std::lock_guard<std::mutex> lock(runtime_->async_mutex);
+    runtime_->async_threads.emplace_back([steps]() { RunSteps(steps); });
 }
 
 std::size_t TaskScheduler::WorkerCount() const
@@ -323,7 +322,7 @@ std::size_t TaskScheduler::WorkerCount() const
     if (!runtime_) {
         return 0;
     }
-    return runtime_->executor.num_workers();
+    return runtime_->worker_count;
 }
 
 void TaskScheduler::PollActiveTasks()

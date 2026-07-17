@@ -14,54 +14,96 @@
  * limitations under the License.
  */
 
- #pragma once
+#include "autonomy/control/controller/mppi_controller/critics/path_follow_critic.hpp"
 
- #include "autonomy/control/controller/mppi_controller/critic_function.hpp"
- #include "autonomy/control/controller/mppi_controller/models/state.hpp"
- #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
- 
- namespace autonomy {
- namespace control {
- namespace controller {
- namespace mppi_controller {
- namespace critics {
- 
- /**
-  * @class mppi::critics::ConstraintCritic
-  * @brief Critic objective function for following the path approximately
-  * To allow for deviation from path in case of dynamic obstacles. Path Align
-  * is what aligns the trajectories to the path more or less precisely, if
-  * desirable. A higher weight here with an offset > 1 will accelerate the
-  * samples to full speed faster and push the follow point further ahead,
-  * creating some shortcutting.
-  */
- class PathFollowCritic : public CriticFunction
- {
- public:
-     /**
-      * @brief Initialize critic
-      */
-     void initialize() override;
- 
-     /**
-      * @brief Evaluate cost related to robot orientation at goal pose
-      * (considered only if robot near last goal in current plan)
-      *
-      * @param costs [out] add goal angle cost values to this tensor
-      */
-     void score(CriticData& data) override;
- 
- protected:
-     float threshold_to_consider_{0};
-     size_t offset_from_furthest_{0};
- 
-     unsigned int power_{0};
-     float weight_{0};
-     bool enforce_path_inversion_{false};
- };
- 
- }  // namespace critics
- }  // namespace mppi_controller
- }  // namespace controller
- }  // namespace control
- }  // namespace autonomy
+#include "autolink/common/log.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
+
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace mppi_controller {
+namespace critics {
+
+void PathFollowCritic::initialize() {
+  if (!options_) {
+    AWARN << "Options not set, using defaults";
+    power_ = 1;
+    weight_ = 5.0f;
+    threshold_to_consider_ = 1.4f;
+    offset_from_furthest_ = 5;
+    return;
+  }
+
+  // Load from proto options
+  if (options_->has_path_follow_critic()) {
+    const auto& critic = options_->path_follow_critic();
+    enabled_ = critic.enabled();
+    power_ = critic.cost_power();
+    weight_ = static_cast<float>(critic.cost_weight());
+    threshold_to_consider_ = static_cast<float>(critic.threshold_to_consider());
+    offset_from_furthest_ = static_cast<size_t>(critic.offset_from_furthest());
+  } else {
+    enabled_ = true;
+    power_ = 1;
+    weight_ = 5.0f;                 // Default
+    threshold_to_consider_ = 1.4f;  // Default
+    offset_from_furthest_ = 5;      // Default
+  }
+
+  AINFO << "PathFollowCritic instantiated with " << power_ << " power and " << weight_ << " weight";
+}
+
+void PathFollowCritic::score(CriticData& data) {
+  if (!enabled_) {
+    return;
+  }
+
+  commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
+
+  if (data.path.x.size() < 2 ||
+      tools::withinPositionGoalTolerance(threshold_to_consider_, data.state.pose.pose, goal)) {
+    return;
+  }
+
+  tools::setPathFurthestPointIfNotSet(data);
+  tools::setPathCostsIfNotSet(data, costmap_ros_);
+  const size_t path_size = data.path.x.size() - 1;
+
+  auto offsetted_idx = std::min(*data.furthest_reached_path_point + offset_from_furthest_, path_size);
+
+  // Drive to the first valid path point, in case of dynamic obstacles on path
+  // we want to drive past it, not through it
+  bool valid = false;
+  while (!valid && offsetted_idx < path_size - 1) {
+    valid = (*data.path_pts_valid)[offsetted_idx];
+    if (!valid) {
+      offsetted_idx++;
+    }
+  }
+
+  const auto path_x = data.path.x(offsetted_idx);
+  const auto path_y = data.path.y(offsetted_idx);
+
+  const int&& rightmost_idx = data.trajectories.x.cols() - 1;
+  const auto last_x = data.trajectories.x.col(rightmost_idx);
+  const auto last_y = data.trajectories.y.col(rightmost_idx);
+
+  const auto delta_x = last_x - path_x;
+  const auto delta_y = last_y - path_y;
+  if (power_ > 1u) {
+    data.costs += (((delta_x.square() + delta_y.square()).sqrt()) * weight_).pow(power_);
+  } else {
+    data.costs += ((delta_x.square() + delta_y.square()).sqrt()) * weight_;
+  }
+}
+
+}  // namespace critics
+}  // namespace mppi_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
+
+// Plugins
+CLASS_LOADER_REGISTER_CLASS(autonomy::control::controller::mppi_controller::critics::PathFollowCritic,
+                            autonomy::control::controller::mppi_controller::CriticFunction)

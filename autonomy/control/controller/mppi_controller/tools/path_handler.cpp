@@ -14,163 +14,191 @@
  * limitations under the License.
  */
 
- #pragma once
+#include "autonomy/control/controller/mppi_controller/tools/path_handler.hpp"
 
- #include <memory>
- #include <string>
- #include <utility>
- #include <vector>
- 
- #include "autolink/autolink.hpp"
- #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/builtin_interfaces.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
- #include "autonomy/control/common/controller_exceptions.hpp"
- #include "autonomy/control/proto/mppi_controller.pb.h"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/buffer.hpp"
- 
- namespace autonomy {
- namespace control {
- namespace controller {
- namespace mppi_controller {
- namespace tools {
- 
- using PathIterator = std::vector<commsgs::geometry_msgs::PoseStamped>::iterator;
- using PathRange = std::pair<PathIterator, PathIterator>;
- 
- /**
-  * @class mppi::PathHandler
-  * @brief Manager of incoming reference paths for transformation and processing
-  */
- 
- class PathHandler
- {
- public:
-     /**
-      * @brief Constructor for mppi::PathHandler
-      */
-     PathHandler() = default;
- 
-     /**
-      * @brief Destructor for mppi::PathHandler
-      */
-     ~PathHandler() = default;
- 
-     /**
-      * @brief Initialize path handler on bringup
-      * @param parent WeakPtr to node
-      * @param name Name of plugin
-      * @param costmap_ros Costmap2DROS object of environment
-      * @param tf TF buffer for transformations
-      * @param dynamic_parameter_handler Parameter handler object
-      */
-     void initialize(std::shared_ptr<autolink::Node> parent,
-                     const std::string& name,
-                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper>,
-                     std::shared_ptr<autonomy::transform::Buffer>,
-                     const proto::MPPIControllerOptions*);
- 
-     /**
-      * @brief Set new reference path
-      * @param Plan Path to use
-      */
-     void setPath(const commsgs::planning_msgs::Path& plan);
- 
-     /**
-      * @brief Get reference path
-      * @return Path
-      */
-     commsgs::planning_msgs::Path& getPath();
- 
-     /**
-      * @brief transform global plan to local applying constraints,
-      * then prune global plan
-      * @param robot_pose Pose of robot
-      * @return global plan in local frame
-      */
-     commsgs::planning_msgs::Path transformPath(
-         const commsgs::geometry_msgs::PoseStamped& robot_pose);
- 
-     /**
-      * @brief Get the global goal pose transformed to the local frame
-      * @param stamp Time to get the goal pose at
-      * @return Transformed goal pose
-      */
-     commsgs::geometry_msgs::PoseStamped getTransformedGoal(
-         const commsgs::builtin_interfaces::Time& stamp);
- 
- protected:
-     /**
-      * @brief Transform a pose to another frame
-      * @param frame Frame to transform to
-      * @param in_pose Input pose
-      * @param out_pose Output pose
-      * @return Bool if successful
-      */
-     bool transformPose(const std::string& frame,
-                        const commsgs::geometry_msgs::PoseStamped& in_pose,
-                        commsgs::geometry_msgs::PoseStamped& out_pose) const;
- 
-     /**
-      * @brief Get largest dimension of costmap (radially)
-      * @return Max distance from center of costmap to edge
-      */
-     double getMaxCostmapDist();
- 
-     /**
-      * @brief Transform a pose to the global reference frame
-      * @param pose Current pose
-      * @return output poose in global reference frame
-      */
-     commsgs::geometry_msgs::PoseStamped transformToGlobalPlanFrame(
-         const commsgs::geometry_msgs::PoseStamped& pose);
- 
-     /**
-      * @brief Get global plan within window of the local costmap size
-      * @param global_pose Robot pose
-      * @return plan transformed in the costmap frame and iterator to the first
-      * pose of the global plan (for pruning)
-      */
-     std::pair<commsgs::planning_msgs::Path, PathIterator>
-     getGlobalPlanConsideringBoundsInCostmapFrame(
-         const commsgs::geometry_msgs::PoseStamped& global_pose);
- 
-     /**
-      * @brief Prune a path to only interesting portions
-      * @param plan Plan to prune
-      * @param end Final path iterator
-      */
-     void prunePlan(commsgs::planning_msgs::Path& plan, const PathIterator end);
- 
-     /**
-      * @brief Check if the robot pose is within the set inversion tolerances
-      * @param robot_pose Robot's current pose to check
-      * @return bool If the robot pose is within the set inversion tolerances
-      */
-     bool isWithinInversionTolerances(
-         const commsgs::geometry_msgs::PoseStamped& robot_pose);
- 
-     std::string name_;
-     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_;
-     std::shared_ptr<autonomy::transform::Buffer> tf_buffer_;
-     const proto::MPPIControllerOptions* options_;
- 
-     commsgs::planning_msgs::Path global_plan_;
-     commsgs::planning_msgs::Path global_plan_up_to_inversion_;
- 
-     double max_robot_pose_search_dist_{0};
-     double prune_distance_{0};
-     double transform_tolerance_{0};
-     float inversion_xy_tolerance_{0.2};
-     float inversion_yaw_tolerance{0.4};
-     bool enforce_path_inversion_{false};
-     unsigned int inversion_locale_{0u};
- };
- 
- }  // namespace tools
- }  // namespace mppi_controller
- }  // namespace controller
- }  // namespace control
- }  // namespace autonomy
+#include "autolink/common/log.hpp"
+#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include "autonomy/control/common/controller_exceptions.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
+#include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
+
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace mppi_controller {
+namespace tools {
+
+void PathHandler::initialize(std::shared_ptr<autolink::Node> parent, const std::string& name,
+                             std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap,
+                             std::shared_ptr<autonomy::transform::Buffer> buffer,
+                             const proto::MPPIControllerOptions* options) {
+  name_ = name;
+  costmap_ = costmap;
+  tf_buffer_ = buffer;
+  options_ = options;
+
+  // Load parameters from proto options if needed
+  // Most path handler parameters are not in proto yet, use defaults
+  // getParam(max_robot_pose_search_dist_, "max_robot_pose_search_dist",
+  // getMaxCostmapDist()); getParam(prune_distance_, "prune_distance", 1.5);
+  // getParam(transform_tolerance_, "transform_tolerance", 0.1);
+  // getParam(enforce_path_inversion_, "enforce_path_inversion", false);
+  // if (enforce_path_inversion_) {
+  //     getParam(inversion_xy_tolerance_, "inversion_xy_tolerance", 0.2);
+  //     getParam(inversion_yaw_tolerance, "inversion_yaw_tolerance", 0.4);
+  //     inversion_locale_ = 0u;
+  // }
+}
+
+std::pair<commsgs::planning_msgs::Path, PathIterator> PathHandler::getGlobalPlanConsideringBoundsInCostmapFrame(
+    const commsgs::geometry_msgs::PoseStamped& global_pose) {
+  using map::costmap_2d::utils::euclidean_distance;
+
+  auto begin = global_plan_up_to_inversion_.poses.begin();
+
+  // Limit the search for the closest pose up to max_robot_pose_search_dist on
+  // the path
+  auto closest_pose_upper_bound = map::costmap_2d::utils::first_after_integrated_distance(
+      global_plan_up_to_inversion_.poses.begin(), global_plan_up_to_inversion_.poses.end(),
+      max_robot_pose_search_dist_);
+
+  // Find closest point to the robot
+  auto closest_point = map::costmap_2d::utils::min_by(
+      begin, closest_pose_upper_bound,
+      [&global_pose](const commsgs::geometry_msgs::PoseStamped& ps) { return euclidean_distance(global_pose, ps); });
+
+  commsgs::planning_msgs::Path transformed_plan;
+  transformed_plan.header.frame_id = costmap_->getGlobalFrameID();
+  transformed_plan.header.stamp = global_pose.header.stamp;
+
+  auto pruned_plan_end = map::costmap_2d::utils::first_after_integrated_distance(
+      closest_point, global_plan_up_to_inversion_.poses.end(), prune_distance_);
+
+  unsigned int mx, my;
+  // Find the furthest relevant pose on the path to consider within costmap
+  // bounds
+  // Transforming it to the costmap frame in the same loop
+  for (auto global_plan_pose = closest_point; global_plan_pose != pruned_plan_end; ++global_plan_pose) {
+    // Transform from global plan frame to costmap frame
+    commsgs::geometry_msgs::PoseStamped costmap_plan_pose;
+    global_plan_pose->header.stamp = global_pose.header.stamp;
+    global_plan_pose->header.frame_id = global_plan_.header.frame_id;
+    transformPose(costmap_->getGlobalFrameID(), *global_plan_pose, costmap_plan_pose);
+
+    // Check if pose is inside the costmap
+    if (!costmap_->getCostmap()->worldToMap(costmap_plan_pose.pose.position.x, costmap_plan_pose.pose.position.y, mx,
+                                            my)) {
+      return std::make_pair(transformed_plan, closest_point);
+    }
+
+    // Filling the transformed plan to return with the transformed pose
+    transformed_plan.poses.push_back(costmap_plan_pose);
+  }
+
+  return {transformed_plan, closest_point};
+}
+
+commsgs::geometry_msgs::PoseStamped PathHandler::transformToGlobalPlanFrame(
+    const commsgs::geometry_msgs::PoseStamped& pose) {
+  if (global_plan_up_to_inversion_.poses.empty()) {
+    throw common::InvalidPath("Received plan with zero length");
+  }
+
+  commsgs::geometry_msgs::PoseStamped robot_pose;
+  if (!transformPose(global_plan_up_to_inversion_.header.frame_id, pose, robot_pose)) {
+    throw common::ControllerTFError("Unable to transform robot pose into global plan's frame");
+  }
+
+  return robot_pose;
+}
+
+commsgs::planning_msgs::Path PathHandler::transformPath(const commsgs::geometry_msgs::PoseStamped& robot_pose) {
+  // Find relevant bounds of path to use
+  commsgs::geometry_msgs::PoseStamped global_pose = transformToGlobalPlanFrame(robot_pose);
+  auto [transformed_plan, lower_bound] = getGlobalPlanConsideringBoundsInCostmapFrame(global_pose);
+
+  prunePlan(global_plan_up_to_inversion_, lower_bound);
+
+  if (enforce_path_inversion_ && inversion_locale_ != 0u) {
+    if (isWithinInversionTolerances(global_pose)) {
+      prunePlan(global_plan_, global_plan_.poses.begin() + inversion_locale_);
+      global_plan_up_to_inversion_ = global_plan_;
+      inversion_locale_ = tools::removePosesAfterFirstInversion(global_plan_up_to_inversion_);
+    }
+  }
+
+  if (transformed_plan.poses.empty()) {
+    throw common::InvalidPath("Resulting plan has 0 poses in it.");
+  }
+
+  return transformed_plan;
+}
+
+bool PathHandler::transformPose(const std::string& frame, const commsgs::geometry_msgs::PoseStamped& in_pose,
+                                commsgs::geometry_msgs::PoseStamped& out_pose) const {
+  if (in_pose.header.frame_id == frame) {
+    out_pose = in_pose;
+    return true;
+  }
+
+  try {
+    tf_buffer_->transform(in_pose, out_pose, frame, static_cast<float>(transform_tolerance_));
+    out_pose.header.frame_id = frame;
+    return true;
+  } catch (autonomy::transform::tf2::TransformException& ex) {
+    AERROR << "Exception in transformPose: " << ex.what();
+  }
+  return false;
+}
+
+double PathHandler::getMaxCostmapDist() {
+  const auto& costmap = costmap_->getCostmap();
+  return static_cast<double>(std::max(costmap->getSizeInCellsX(), costmap->getSizeInCellsY())) *
+         costmap->getResolution() * 0.50;
+}
+
+void PathHandler::setPath(const commsgs::planning_msgs::Path& plan) {
+  global_plan_ = plan;
+  global_plan_up_to_inversion_ = global_plan_;
+  if (enforce_path_inversion_) {
+    inversion_locale_ = tools::removePosesAfterFirstInversion(global_plan_up_to_inversion_);
+  }
+}
+
+commsgs::planning_msgs::Path& PathHandler::getPath() { return global_plan_; }
+
+void PathHandler::prunePlan(commsgs::planning_msgs::Path& plan, const PathIterator end) {
+  plan.poses.erase(plan.poses.begin(), end);
+}
+
+commsgs::geometry_msgs::PoseStamped PathHandler::getTransformedGoal(const commsgs::builtin_interfaces::Time& stamp) {
+  auto goal = global_plan_.poses.back();
+  goal.header.frame_id = global_plan_.header.frame_id;
+  goal.header.stamp = stamp;
+  if (goal.header.frame_id.empty()) {
+    throw common::ControllerTFError("Goal pose has an empty frame_id");
+  }
+  commsgs::geometry_msgs::PoseStamped transformed_goal;
+  if (!transformPose(costmap_->getGlobalFrameID(), goal, transformed_goal)) {
+    throw common::ControllerTFError("Unable to transform goal pose into costmap frame");
+  }
+  return transformed_goal;
+}
+
+bool PathHandler::isWithinInversionTolerances(const commsgs::geometry_msgs::PoseStamped& robot_pose) {
+  // Keep full path if we are within tolerance of the inversion pose
+  const auto last_pose = global_plan_up_to_inversion_.poses.back();
+  float distance = hypotf(robot_pose.pose.position.x - last_pose.pose.position.x,
+                          robot_pose.pose.position.y - last_pose.pose.position.y);
+
+  float angle_distance = tools::shortest_angular_distance(autonomy::transform::tf2::getYaw(robot_pose.pose.orientation),
+                                                          autonomy::transform::tf2::getYaw(last_pose.pose.orientation));
+
+  return distance <= inversion_xy_tolerance_ && fabs(angle_distance) <= inversion_yaw_tolerance;
+}
+
+}  // namespace tools
+}  // namespace mppi_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy

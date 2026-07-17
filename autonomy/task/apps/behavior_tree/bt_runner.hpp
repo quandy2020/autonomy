@@ -1,7 +1,7 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * Loads BT plugins, builds trees, and runs tick loops on a worker thread.
+ * Builds trees and runs tick loops on a worker thread.
  */
 
 #pragma once
@@ -29,7 +29,7 @@ enum class BtRunState {
     kCanceled,
 };
 
-/** Loads plugins and drives a behavior tree on a background thread. */
+/** Builds trees and runs tick loops on a worker thread. */
 class BtRunner
 {
 public:
