@@ -1087,6 +1087,10 @@ int main(int argc, char** argv) {
     PublishDynamicFrame(publishers, stamp_ns, seq, motion);
 
     if (seq % static_cast<uint64_t>(FLAGS_rate_hz) == 0) {
+      Publish(publishers.tf, MakeTfTree(stamp_ns));
+    }
+
+    if (seq % static_cast<uint64_t>(FLAGS_rate_hz) == 0) {
       LOG(INFO) << "Published dynamic frame #" << seq;
     }
     ++seq;

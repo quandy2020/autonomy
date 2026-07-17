@@ -26,7 +26,7 @@
 #include "autonomy/map/proto/map_2d_option.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/task/apps/teleop/intent_path_selector.hpp"
-#include "autonomy/task/apps/teleop/rgbd_obstacle_feeder.hpp"
+#include "autonomy/task/apps/teleop/point_cloud_obstacle_feeder.hpp"
 #include "autonomy/transform/buffer.hpp"
 
 namespace autonomy::task::teleop {
@@ -49,13 +49,17 @@ public:
         double stopped_linear_epsilon{0.02};
         double in_place_angular_scale{0.5};
         PathLibraryOptions path_library;
-        RgbdObstacleFeeder::Options rgbd;
+        PointCloudObstacleFeeder::Options point_cloud;
         map::proto::Costmap2DOptions costmap;
         control::proto::MPPIControllerOptions mppi;
     };
 
     bool Configure(std::shared_ptr<autolink::Node> node,
                    std::shared_ptr<transform::Buffer> tf, const Options& options);
+
+    ~TeleopMppiAssist();
+
+    void Shutdown();
 
     bool Tick(double joy_linear_x, double joy_angular_z,
               const commsgs::geometry_msgs::PoseStamped& robot_pose,
@@ -64,11 +68,12 @@ public:
 
     bool enabled() const { return options_.enabled; }
     bool IsPerceptionOk() const;
+    bool TryGetRobotPose(commsgs::geometry_msgs::PoseStamped* pose) const;
 
 private:
     static map::proto::Costmap2DOptions DefaultCostmapOptions(
         const std::string& global_frame,
-        const RgbdObstacleFeeder::Options& rgbd);
+        const PointCloudObstacleFeeder::Options& point_cloud);
     static control::proto::MPPIControllerOptions DefaultMppiOptions();
 
     double AngularToJoyDirDeg(double angular_z, double linear_x) const;
@@ -79,7 +84,7 @@ private:
     std::shared_ptr<autolink::Node> node_;
     std::shared_ptr<transform::Buffer> tf_buffer_;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_;
-    RgbdObstacleFeeder feeder_;
+    PointCloudObstacleFeeder feeder_;
     IntentPathSelector selector_;
     std::unique_ptr<control::controller::mppi_controller::MPPIController> mppi_;
     control::checker::SimpleGoalChecker goal_checker_;

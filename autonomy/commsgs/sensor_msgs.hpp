@@ -509,6 +509,12 @@ struct PointCloud2 {
     std::vector<uint8> data;  // Actual point data, size is (row_step*height)
 
     bool is_dense;  // True if there are no invalid points
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.sensor_msgs.PointCloud2";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
 };
 
 // Single range reading from an active ranger that emits energy and reports

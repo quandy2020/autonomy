@@ -11,6 +11,7 @@
 
 #include "autonomy/task/apps/behavior_tree/bt_task_app.hpp"
 #include "autonomy/task/apps/teleop/teleop_client.hpp"
+#include "autonomy/task/apps/teleop/teleop_mppi_assist.hpp"
 #include "autonomy/task/proto/teleop.pb.h"
 #include "behaviortree_cpp/blackboard.h"
 
@@ -28,6 +29,8 @@ public:
         const override;
 
     void SetTeleopClient(teleop::TeleopClient::Ptr client);
+
+    void Shutdown() override;
 
 protected:
     bool OnTreeInitialize(
@@ -49,6 +52,7 @@ private:
     void StopTeleop();
 
     teleop::TeleopClient::Ptr teleop_client_;
+    std::shared_ptr<teleop::TeleopMppiAssist> teleop_assist_;
     std::optional<::autonomy::task::proto::TeleopGoal> active_goal_;
     bool watchdog_timed_out_{false};
 };

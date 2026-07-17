@@ -16,9 +16,27 @@
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
 
+#include <google/protobuf/descriptor.pb.h>
+
+#include "autolink/proto/proto_desc.pb.h"
+
 namespace autonomy {
 namespace commsgs {
 namespace geometry_msgs {
+
+namespace {
+
+void FillProtoDesc(const google::protobuf::FileDescriptor* file,
+                   autolink::proto::ProtoDesc* out) {
+    google::protobuf::FileDescriptorProto fdp;
+    file->CopyTo(&fdp);
+    fdp.SerializeToString(out->mutable_desc());
+    for (int i = 0; i < file->dependency_count(); ++i) {
+        FillProtoDesc(file->dependency(i), out->add_dependencies());
+    }
+}
+
+}  // namespace
 
 proto::geometry_msgs::Vector3 ToProto(const Vector3& data) {
     proto::geometry_msgs::Vector3 proto;
@@ -415,6 +433,33 @@ proto::geometry_msgs::TwistStamped ToProto(const TwistStamped& data) {
 
 TwistStamped FromProto(const proto::geometry_msgs::TwistStamped& proto) {
     return {std_msgs::FromProto(proto.header()), FromProto(proto.twist())};
+}
+
+void TwistStamped::GetDescriptorString(const std::string& type,
+                                       std::string* desc_str) {
+    if (desc_str == nullptr || type != TypeName()) {
+        return;
+    }
+    autolink::proto::ProtoDesc proto_desc;
+    FillProtoDesc(proto::geometry_msgs::TwistStamped::descriptor()->file(),
+                  &proto_desc);
+    proto_desc.SerializeToString(desc_str);
+}
+
+bool TwistStamped::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool TwistStamped::ParseFromString(const std::string& in) {
+    proto::geometry_msgs::TwistStamped proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
 }
 
 proto::geometry_msgs::TwistWithCovariance ToProto(

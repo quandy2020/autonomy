@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,18 @@
 
 #pragma once
 
-#include <atomic>
-#include <climits>
-#include <map>
-#include <mutex>
-#include <string>
-#include <vector>
+#include "autonomy/bridge/proto/external_command_service.pb.h"
+#include "autonomy/task/proto/teleop.pb.h"
 
 namespace autonomy {
-namespace system {
-namespace monitor {
-namespace cpu_monitor {}  // namespace cpu_monitor
-}  // namespace monitor
-}  // namespace system
+namespace bridge {
+namespace plugins {
+namespace grpc {
+
+::autonomy::task::proto::TeleopGoal ToTaskTeleopGoal(
+    const proto::TeleopCommandRequest& request);
+
+}  // namespace grpc
+}  // namespace plugins
+}  // namespace bridge
 }  // namespace autonomy

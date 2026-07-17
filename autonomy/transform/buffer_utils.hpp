@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/proto/tf2_msgs.pb.h"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/proto/transform_options.pb.h"
 
@@ -31,6 +32,17 @@ void ApplyStaticTransformsToBuffer(
     Buffer* buffer,
     const commsgs::geometry_msgs::TransformStampeds& transforms,
     const std::string& authority);
+
+/** Apply a single dynamic or static transform. */
+void ApplyTransformStampedToBuffer(
+    Buffer* buffer, const commsgs::geometry_msgs::TransformStamped& transform,
+    const std::string& authority, bool is_static);
+
+/** Apply all transforms from a tf2_msgs.TFMessage (Autolink /tf). */
+void ApplyTfMessageToBuffer(
+    Buffer* buffer,
+    const ::autonomy::commsgs::proto::tf2_msgs::TFMessage& message,
+    const std::string& authority, bool is_static = false);
 
 /** Parse static_transforms section from extrinsic YAML. */
 bool ParseStaticTransformsFromYaml(
@@ -46,6 +58,9 @@ int LoadStaticTransformsFromFile(Buffer* buffer, const std::string& yaml_path,
 
 /** Build TransformOptions pointing at the given extrinsic YAML file. */
 proto::TransformOptions MakeTransformOptions(const std::string& yaml_path);
+
+/** Identity map→odom→base_link (matches fakedata static tree). */
+void SeedBenchmarkTfTree(Buffer* buffer, const std::string& authority = "task_tf_seed");
 
 }  // namespace transform
 }  // namespace autonomy

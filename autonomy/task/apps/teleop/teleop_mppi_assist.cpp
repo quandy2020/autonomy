@@ -22,6 +22,7 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/task/apps/teleop/constants.hpp"
+#include "autonomy/transform/buffer_utils.hpp"
 
 namespace autonomy::task::teleop {
 namespace {
@@ -31,7 +32,7 @@ constexpr double kRadToDeg = 180.0 / kPi;
 
 map::proto::Costmap2DOptions DefaultCostmapOptions(
     const std::string& global_frame,
-    const RgbdObstacleFeeder::Options& rgbd) {
+    const PointCloudObstacleFeeder::Options& point_cloud) {
     map::proto::Costmap2DOptions options;
     options.set_enabled(true);
     options.set_frame_id(global_frame);
@@ -50,8 +51,8 @@ map::proto::Costmap2DOptions DefaultCostmapOptions(
     obstacle->set_enabled(true);
     obstacle->set_footprint_clearing_enabled(true);
     auto& sources = *obstacle->mutable_sensor_sources();
-    auto& src = sources["rgbd_depth"];
-    src.set_topic(rgbd.depth_topic);
+    auto& src = sources["teleop_cloud"];
+    src.set_topic(point_cloud.cloud_topic);
     src.set_data_type("PointCloud2");
     src.set_marking(true);
     src.set_clearing(false);
@@ -80,6 +81,7 @@ control::proto::MPPIControllerOptions DefaultMppiOptions() {
     options.set_vx_min(-0.35);
     options.set_vy_max(0.5);
     options.set_wz_max(1.9);
+    options.mutable_cost_critic()->set_consider_footprint(false);
     return options;
 }
 
@@ -96,8 +98,9 @@ commsgs::geometry_msgs::PoseStamped IdentityRobotPose(
 
 map::proto::Costmap2DOptions TeleopMppiAssist::DefaultCostmapOptions(
     const std::string& global_frame,
-    const RgbdObstacleFeeder::Options& rgbd) {
-    return ::autonomy::task::teleop::DefaultCostmapOptions(global_frame, rgbd);
+    const PointCloudObstacleFeeder::Options& point_cloud) {
+    return ::autonomy::task::teleop::DefaultCostmapOptions(global_frame,
+                                                          point_cloud);
 }
 
 control::proto::MPPIControllerOptions TeleopMppiAssist::DefaultMppiOptions() {
@@ -121,10 +124,14 @@ bool TeleopMppiAssist::Configure(std::shared_ptr<autolink::Node> node,
         return false;
     }
 
+    if (tf_buffer_) {
+        transform::SeedBenchmarkTfTree(tf_buffer_.get(), "teleop_mppi_assist");
+    }
+
     map::proto::Costmap2DOptions costmap_opts = options_.costmap;
     if (costmap_opts.plugins_size() == 0 && !costmap_opts.has_obstacle_layer()) {
         costmap_opts = DefaultCostmapOptions(options_.global_frame,
-                                             options_.rgbd);
+                                             options_.point_cloud);
     }
     if (costmap_opts.frame_id().empty()) {
         costmap_opts.set_frame_id(options_.global_frame);
@@ -136,7 +143,7 @@ bool TeleopMppiAssist::Configure(std::shared_ptr<autolink::Node> node,
         costmap_->Start();
     }
 
-    feeder_.Configure(node_, costmap_, options_.rgbd);
+    feeder_.Configure(node_, costmap_, options_.point_cloud);
     feeder_.Start();
 
     const auto& lib = options_.path_library;
@@ -165,8 +172,33 @@ bool TeleopMppiAssist::Configure(std::shared_ptr<autolink::Node> node,
     return true;
 }
 
+TeleopMppiAssist::~TeleopMppiAssist() {
+    Shutdown();
+}
+
+void TeleopMppiAssist::Shutdown() {
+    feeder_.Stop();
+    if (mppi_) {
+        mppi_->Deactivate();
+        mppi_.reset();
+    }
+    if (costmap_) {
+        costmap_->Stop();
+        costmap_.reset();
+    }
+    configured_ = false;
+}
+
 bool TeleopMppiAssist::IsPerceptionOk() const {
     return feeder_.IsCloudFresh();
+}
+
+bool TeleopMppiAssist::TryGetRobotPose(
+    commsgs::geometry_msgs::PoseStamped* pose) const {
+    if (!pose || !costmap_) {
+        return false;
+    }
+    return costmap_->getRobotPose(*pose);
 }
 
 void TeleopMppiAssist::FillPassthroughCmd(
@@ -225,15 +257,18 @@ bool TeleopMppiAssist::Tick(double joy_linear_x, double joy_angular_z,
         AngularToJoyDirDeg(joy_angular_z, joy_linear_x);
     const auto& costmap = *costmap_->getCostmap();
     auto path = selector_.Select(costmap, joy_dir_deg, joy_linear_x);
+    if (path.has_value()) {
+        path->header.frame_id = options_.global_frame;
+        for (auto& pose_stamped : path->poses) {
+            pose_stamped.header.frame_id = options_.global_frame;
+        }
+    }
+
     if (!path.has_value()) {
         FillPassthroughCmd(0.0,
                            joy_angular_z * options_.in_place_angular_scale,
                            cmd_out);
         return true;
-    }
-
-    for (auto& pose_stamped : path->poses) {
-        pose_stamped.header.frame_id = options_.global_frame;
     }
 
     mppi_->SetPlan(*path);

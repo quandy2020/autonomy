@@ -6,7 +6,10 @@
 #include "autonomy/task/apps/teleop/teleop.hpp"
 
 #include "autolink/autolink.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/task/apps/teleop/constants.hpp"
+#include "autonomy/task/apps/teleop/teleop_assist_options.hpp"
+#include "autonomy/transform/buffer.hpp"
 
 namespace autonomy {
 namespace task {
@@ -32,6 +35,22 @@ void TeleopTask::SetTeleopClient(teleop::TeleopClient::Ptr client)
 {
     teleop_client_ = std::move(client);
     teleop::TeleopClient::SetShared(teleop_client_);
+    if (teleop_client_ && teleop_assist_) {
+        teleop_client_->SetAssist(teleop_assist_);
+    }
+}
+
+void TeleopTask::Shutdown()
+{
+    if (teleop_client_) {
+        teleop_client_->SetAssist(nullptr);
+        teleop_client_->PublishZeroVelocity();
+    }
+    if (teleop_assist_) {
+        teleop_assist_->Shutdown();
+        teleop_assist_.reset();
+    }
+    BtTaskApp::Shutdown();
 }
 
 bool TeleopTask::EnsureTeleopClient()
@@ -49,7 +68,28 @@ bool TeleopTask::EnsureTeleopClient()
 
 bool TeleopTask::OnTreeInitialize(const tp::TaskServerOptions& /*options*/)
 {
-    return EnsureTeleopClient();
+    if (!EnsureTeleopClient()) {
+        return false;
+    }
+
+    const auto assist_options =
+        teleop::LoadTeleopAssistOptions(config_directory());
+    if (!assist_options.enabled) {
+        return true;
+    }
+
+    teleop_assist_ = std::make_shared<teleop::TeleopMppiAssist>();
+    auto tf_buffer = std::shared_ptr<transform::Buffer>(
+        transform::Buffer::Instance(), [](transform::Buffer*) {});
+    if (!teleop_assist_->Configure(autolink_node(), tf_buffer, assist_options)) {
+        AWARN << "TeleopTask: MPPI assist configure failed, running passthrough";
+        teleop_assist_.reset();
+        return true;
+    }
+
+    teleop_client_->SetAssist(teleop_assist_);
+    AINFO << "TeleopTask: MPPI assist enabled";
+    return true;
 }
 
 void TeleopTask::ApplyGoalParams(const tp::TeleopGoal& goal)
@@ -68,6 +108,7 @@ void TeleopTask::ApplyGoalParams(const tp::TeleopGoal& goal)
                                 ? goal.watchdog_timeout_sec()
                                 : teleop::kDefaultWatchdogTimeoutSec;
     teleop_client_->Configure(max_linear, max_angular, watchdog);
+    teleop_client_->SetAssistBypass(goal.disable_collision_checks());
 
     if (goal.has_velocity()) {
         teleop_client_->SetVelocity(ToTwistStamped(goal.velocity()));

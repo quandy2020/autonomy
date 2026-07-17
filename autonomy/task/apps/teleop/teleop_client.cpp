@@ -10,6 +10,7 @@
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/apps/teleop/constants.hpp"
+#include "autonomy/task/apps/teleop/teleop_mppi_assist.hpp"
 #include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/tree_node.h"
 
@@ -71,6 +72,11 @@ TeleopClient::Ptr TeleopClient::FromNode(const BT::TreeNode& node)
     return FromBlackboard(node.config().blackboard);
 }
 
+void TeleopClient::SetAssist(const std::shared_ptr<TeleopMppiAssist>& assist)
+{
+    assist_ = assist;
+}
+
 void TeleopClient::Configure(double max_linear_speed, double max_angular_speed,
                              double watchdog_timeout_sec)
 {
@@ -120,7 +126,31 @@ bool TeleopClient::PublishVelocity()
         return false;
     }
 
-    applied_velocity_ = MakeTwistMessage();
+    if (assist_ && assist_->enabled() && !assist_bypass_) {
+        commsgs::geometry_msgs::PoseStamped pose;
+        if (!assist_->TryGetRobotPose(&pose)) {
+            pose.pose.orientation.w = 1.0;
+        }
+
+        commsgs::geometry_msgs::Twist speed;
+        speed.linear.x = linear_x_;
+        speed.angular.z = angular_z_;
+
+        commsgs::geometry_msgs::TwistStamped cmd;
+        assist_->Tick(linear_x_, angular_z_, pose, speed, &cmd);
+        applied_velocity_ = cmd;
+        if (applied_velocity_.header.frame_id.empty()) {
+            applied_velocity_.header.frame_id = kDefaultBaseFrame;
+        }
+        if (applied_velocity_.header.stamp.sec == 0 &&
+            applied_velocity_.header.stamp.nanosec == 0) {
+            applied_velocity_.header.stamp =
+                commsgs::builtin_interfaces::Time::Now();
+        }
+    } else {
+        applied_velocity_ = MakeTwistMessage();
+    }
+
     if (!cmd_vel_writer_->Write(applied_velocity_)) {
         AWARN << "TeleopClient: failed to publish cmd_vel";
         return false;

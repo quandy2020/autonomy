@@ -20,6 +20,7 @@
 
 #include "autolink/node/node.hpp"
 #include "autonomy/bridge/plugins/grpc/clients/navigator_stub.hpp"
+#include "autonomy/bridge/plugins/grpc/clients/teleop_stub.hpp"
 #include "autonomy/common/async_grpc/execution_context.h"
 #include "autonomy/common/macros.hpp"
 
@@ -45,8 +46,12 @@ public:
     clients::NavigatorStub& navigator() { return *navigator_stub_; }
     const clients::NavigatorStub& navigator() const { return *navigator_stub_; }
 
+    clients::TeleopStub& teleop() { return *teleop_stub_; }
+    const clients::TeleopStub& teleop() const { return *teleop_stub_; }
+
 private:
     clients::NavigatorStub::SharedPtr navigator_stub_;
+    clients::TeleopStub::SharedPtr teleop_stub_;
 };
 
 }  // namespace grpc

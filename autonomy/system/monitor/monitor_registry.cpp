@@ -16,10 +16,15 @@
 
 #include "autonomy/system/monitor/monitor_registry.hpp"
 
+#include "autolink/autolink.hpp"
+#include "autonomy/system/monitor/channel_monitor/channel_monitor.hpp"
 #include "autonomy/system/monitor/cpu_monitor/cpu_monitor_base.hpp"
 #include "autonomy/system/monitor/gpu_monitor/gpu_monitor.hpp"
+#include "autonomy/system/monitor/hazard_monitor/hazard_monitor.hpp"
 #include "autonomy/system/monitor/hdd_monitor/hdd_monitor.hpp"
+#include "autonomy/system/monitor/latency_monitor/latency_monitor.hpp"
 #include "autonomy/system/monitor/mem_monitor/mem_monitor.hpp"
+#include "autonomy/system/monitor/mrm_handler/mrm_handler.hpp"
 #include "autonomy/system/monitor/net_monitor/net_monitor.hpp"
 #include "autonomy/system/monitor/ntp_monitor/ntp_monitor.hpp"
 #include "autonomy/system/monitor/process_monitor/process_monitor.hpp"
@@ -48,10 +53,16 @@ MonitorRegistry::~MonitorRegistry() {
     Stop();
 }
 
+void MonitorRegistry::AttachAutolinkNode(
+    const std::shared_ptr<autolink::Node>& node) {
+    autolink_node_ = node;
+}
+
 void MonitorRegistry::Start() {
     if (started_)
         return;
     BuildMonitorsFromOptions();
+    WireAutolinkMonitors();
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
     if (options_.enable_prometheus &&
@@ -96,6 +107,27 @@ void MonitorRegistry::AddMonitor(std::unique_ptr<MonitorBase> monitor) {
 #endif
 }
 
+void MonitorRegistry::WireAutolinkMonitors() {
+    ChannelMonitor* channel = nullptr;
+    LatencyMonitor* latency = nullptr;
+    HazardMonitor* hazard = nullptr;
+    MrmHandler* mrm = nullptr;
+    for (auto& m : monitors_) {
+        if (auto* c = dynamic_cast<ChannelMonitor*>(m.get()))
+            channel = c;
+        else if (auto* l = dynamic_cast<LatencyMonitor*>(m.get()))
+            latency = l;
+        else if (auto* h = dynamic_cast<HazardMonitor*>(m.get()))
+            hazard = h;
+        else if (auto* r = dynamic_cast<MrmHandler*>(m.get()))
+            mrm = r;
+    }
+    if (hazard)
+        hazard->SetSources(channel, latency);
+    if (mrm)
+        mrm->SetHazardSource(hazard);
+}
+
 void MonitorRegistry::BuildMonitorsFromOptions() {
     using namespace cpu_monitor;
     if (options_.enable_cpu_monitor) {
@@ -137,6 +169,43 @@ void MonitorRegistry::BuildMonitorsFromOptions() {
         auto volt = CreateVoltageMonitor();
         volt->set_enabled(true);
         monitors_.push_back(std::move(volt));
+    }
+
+    if (autolink_node_) {
+        if (options_.enable_channel_monitor &&
+            !options_.channel_watches.empty()) {
+            auto ch = CreateChannelMonitor(options_.channel_watches);
+            if (ch->AttachNode(autolink_node_)) {
+                ch->set_enabled(true);
+                monitors_.push_back(std::move(ch));
+            }
+        }
+        if (options_.enable_latency_monitor &&
+            !options_.latency_watches.empty()) {
+            auto lat = CreateLatencyMonitor(options_.latency_watches);
+            if (lat->AttachNode(autolink_node_)) {
+                lat->set_enabled(true);
+                monitors_.push_back(std::move(lat));
+            }
+        }
+    }
+
+    if (options_.enable_hazard_monitor) {
+        auto haz = CreateHazardMonitor();
+        haz->set_enabled(true);
+        monitors_.push_back(std::move(haz));
+    }
+
+    if (options_.enable_mrm_handler && autolink_node_) {
+        MrmHandler::Options mrm_opts;
+        mrm_opts.cmd_vel_channel = options_.mrm.cmd_vel_channel;
+        mrm_opts.emergency_stop_on_error =
+            options_.mrm.emergency_stop_on_error;
+        auto mrm = CreateMrmHandler(std::move(mrm_opts));
+        if (mrm->AttachNode(autolink_node_)) {
+            mrm->set_enabled(true);
+            monitors_.push_back(std::move(mrm));
+        }
     }
 }
 

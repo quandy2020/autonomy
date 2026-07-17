@@ -1,0 +1,60 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Full Autonomy multi-process stack (all shipped *_main binaries except tools).
+
+  Processes:
+    monitor, planning, control, task,
+    localization + cartographer_occupancy_grid_node,
+    autonomy_bridge (BUILD_GRPC=ON),
+    autonomy_foxglove_bridge
+
+  Not started here (tools / one-off):
+    task_teleop_smoke, cartographer_pbstream_to_map, autonomy_foxglove_fakedata
+
+  Monolithic in-process runtime (system/main.cpp) is an alternative to
+  planning+control+task; do not run both.
+
+  Prerequisites:
+    - config/autonomy.lua, config/task/*, config/system/monitor.lua
+    - config/localization/cartographer/backpack_2d_with_grid.lua (+ sensor TF/topics)
+    - config/bridge/bridge_options.lua when using bridge
+    - PATH: build/bin; optional AUTONOMY_BT_PLUGIN_PATH=build/lib
+
+  Dev (repo root):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+    autolink_launch autonomy.launch
+-->
+<autolink>
+  <module>
+    <name>monitor</name>
+    <type>binary</type>
+    <process_name>monitor --configuration_directory=config --configuration_basename=system/monitor.lua</process_name>
+  </module>
+  <module>
+    <name>planning</name>
+    <type>binary</type>
+    <process_name>planning --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+  </module>
+  <module>
+    <name>control</name>
+    <type>binary</type>
+    <process_name>control --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <process_name>task --config_directory=config</process_name>
+  </module>
+  <module>
+    <name>bridge</name>
+    <type>binary</type>
+    <process_name>autonomy_bridge --configuration_directory=config --configuration_basename=bridge/bridge_options.lua</process_name>
+  </module>
+  <module>
+    <name>foxglove</name>
+    <type>binary</type>
+    <process_name>autonomy_foxglove_bridge --foxglove_host=0.0.0.0 --foxglove_port=8765</process_name>
+  </module>
+</autolink>

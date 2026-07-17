@@ -23,9 +23,18 @@
 #include "autonomy/system/monitor/monitor_base.hpp"
 #include "autonomy/system/monitor/monitor_options.hpp"
 
+namespace autolink {
+class Node;
+}
+
 namespace autonomy {
 namespace system {
 namespace monitor {
+
+class ChannelMonitor;
+class LatencyMonitor;
+class HazardMonitor;
+class MrmHandler;
 
 /**
  * 统一管理各监控器、Prometheus 暴露与 gperf 分析启停。
@@ -54,6 +63,9 @@ public:
     /// 手动添加外部 monitor（可选）
     void AddMonitor(std::unique_ptr<MonitorBase> monitor);
 
+    /// 在 Start() 之前注入 autolink Node（channel/latency/MRM 需要）
+    void AttachAutolinkNode(const std::shared_ptr<autolink::Node>& node);
+
     const MonitorOptions& options() const {
         return options_;
     }
@@ -63,12 +75,14 @@ public:
 
 private:
     void BuildMonitorsFromOptions();
+    void WireAutolinkMonitors();
     void StartGperfIfRequested();
     void StopGperfIfActive();
 
     MonitorOptions options_;
     GperfProfiler gperf_profiler_;
     std::vector<std::unique_ptr<MonitorBase>> monitors_;
+    std::shared_ptr<autolink::Node> autolink_node_;
     bool started_{false};
     bool gperf_cpu_active_{false};
     bool gperf_heap_active_{false};

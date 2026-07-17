@@ -1,0 +1,18 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  System monitor: periodic /proc+sysfs collection, optional Prometheus on :9090
+  (cmake -DBUILD_PROMETHEUS=ON).
+
+  Dev (repo root):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+    autolink_launch monitor.launch
+-->
+<autolink>
+    <module>
+        <name>monitor</name>
+        <type>binary</type>
+        <process_name>monitor --configuration_directory=config --configuration_basename=system/monitor.lua</process_name>
+    </module>
+</autolink>

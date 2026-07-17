@@ -44,6 +44,12 @@ public:
     double usage_percent() const {
         return usage_percent_;
     }
+    uint64_t swap_total_kb() const {
+        return swap_total_kb_;
+    }
+    uint64_t swap_free_kb() const {
+        return swap_free_kb_;
+    }
 
     static std::unique_ptr<MemMonitor> Create() {
         return std::make_unique<MemMonitor>();
@@ -53,11 +59,14 @@ private:
     uint64_t total_kb_{0};
     uint64_t available_kb_{0};
     double usage_percent_{0.0};
+    uint64_t swap_total_kb_{0};
+    uint64_t swap_free_kb_{0};
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
     void* usage_gauge_{nullptr};
     void* total_kb_gauge_{nullptr};
     void* available_kb_gauge_{nullptr};
+    void* swap_used_kb_gauge_{nullptr};
 #endif
 };
 

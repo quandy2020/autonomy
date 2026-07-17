@@ -16,17 +16,33 @@
 
 #pragma once
 
-#include <atomic>
-#include <climits>
-#include <map>
-#include <mutex>
 #include <string>
 #include <vector>
 
 namespace autonomy {
 namespace system {
 namespace monitor {
-namespace cpu_monitor {}  // namespace cpu_monitor
+
+struct ThermalZone {
+    std::string type;
+    std::string label;
+    std::string temperature_path;
+};
+
+/// Linux sysfs 热区发现（x86 / ARM 通用，按 type 前缀匹配）
+class SystemMonitorUtility
+{
+public:
+    static void ToLowercase(std::string* s);
+
+    /// @param type_prefix 如 "cpu-therm"，与 thermal zone type 做小写前缀比较
+    static void GetThermalZonesByTypePrefix(
+        const std::string& type_prefix, std::vector<ThermalZone>* out);
+
+    /// Intel coretemp hwmon temp*_input（x86 常见）
+    static void GetIntelCoretempInputs(std::vector<ThermalZone>* out);
+};
+
 }  // namespace monitor
 }  // namespace system
 }  // namespace autonomy

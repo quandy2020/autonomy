@@ -49,17 +49,30 @@ public:
     const CpuUsageStatistics& usage() const {
         return usage_;
     }
+    const std::vector<CpuTemperatureReading>& temperatures() const {
+        return temperatures_;
+    }
+    const LoadAverage& load_average() const {
+        return load_average_;
+    }
 
 protected:
-    /// 子类可重写以提供平台特定信息
+    void EnsureCpuInformation();
+    void EnsureTemperatureSensorPaths();
+    void ReadTemperatures();
+    void ReadLoadAverage();
     virtual void FillCpuInformation(CpuInformation* info);
-    /// 从系统读取当前 tick，返回各 cpu 行（cpu, cpu0, cpu1, ...）
     virtual bool ReadProcStat(std::vector<CpuTickCounts>* out);
 
     CpuInformation info_;
     CpuUsageStatistics usage_;
+    std::vector<CpuTemperatureReading> temperatures_;
+    LoadAverage load_average_;
     std::vector<CpuTickCounts> prev_ticks_;
+    std::vector<std::pair<std::string, std::string>> temperature_sensor_paths_;
     bool first_collect_{true};
+    bool cpu_info_loaded_{false};
+    bool temperature_paths_initialized_{false};
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
     struct PrometheusGauges;

@@ -12,7 +12,7 @@
 | `SendNavigationCommand` | `SendNavigationHandler` | Unary→Stream | ⏳ 已注册，`OnRequest` 空 |
 | `SendExplorationCommand` | `SendExplorationHandler` | Unary→Stream | ⏳ 已注册，业务空 |
 | `SendFollowCommand` | `SendFollowHandler` | Unary→Stream | ❌ |
-| `SendTeleopCommand` | `SendTeleopHandler` | **Bidi** | ❌ |
+| `SendTeleopCommand` | `SendTeleopHandler` | **Bidi** | ⏳ goal + feedback Autolink；终态 REJECTED/TIMEOUT 回写流 |
 | `SendDockCommand` | `SendDockHandler` | Unary→Stream | ❌ |
 | `SendMapCommand` | `SendMapHandler` | Unary→Stream | ❌ |
 | `ReceiveBotStates` | `ReceiveBotStatesHandler` | Empty→Stream | ❌ |

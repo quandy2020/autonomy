@@ -30,6 +30,9 @@
 #include "autonomy/task/apps/teleop/teleop.hpp"
 #include "autonomy/task/apps/tracking/tracker.hpp"
 #include "autonomy/task/scheduler/scheduler.hpp"
+#include "autonomy/task/autolink_tf_listener.hpp"
+#include "autonomy/task/teleop_goal_ingress.hpp"
+#include "autonomy/task/teleop_feedback_publisher.hpp"
 
 namespace autonomy {
 namespace task {
@@ -74,15 +77,12 @@ public:
     bool SubmitNavigationGoal(const ::autonomy::task::proto::NavigationGoal& goal);
     bool SubmitTrackerGoal(const ::autonomy::task::proto::TrackerGoal& goal);
     bool SubmitTeleopGoal(const ::autonomy::task::proto::TeleopGoal& goal);
-    bool SubmitExplorationGoal(
-        const ::autonomy::task::proto::ExplorationGoal& goal);
+    bool SubmitExplorationGoal(const ::autonomy::task::proto::ExplorationGoal& goal);
     bool SubmitChargingGoal(const ::autonomy::task::proto::ChargingGoal& goal);
     bool SubmitMappingGoal(const ::autonomy::task::proto::MappingGoal& goal);
-    bool SubmitLocalizationGoal(
-        const ::autonomy::task::proto::LocalizationGoal& goal);
+    bool SubmitLocalizationGoal(const ::autonomy::task::proto::LocalizationGoal& goal);
 
-    std::vector<::autonomy::task::proto::ActiveTaskSnapshot> GetActiveSnapshots()
-        const;
+    std::vector<::autonomy::task::proto::ActiveTaskSnapshot> GetActiveSnapshots() const;
 
     static ::autonomy::task::proto::TaskServerOptions DefaultOptions();
 
@@ -125,6 +125,9 @@ private:
     std::shared_ptr<autolink::Node> task_node_;
     navigation::NavigationClient::Ptr navigation_client_;
     ::autonomy::task::proto::TaskServerOptions options_;
+    TeleopGoalIngress::SharedPtr teleop_goal_ingress_;
+    TeleopFeedbackPublisher::SharedPtr teleop_feedback_publisher_;
+    AutolinkTfListener::SharedPtr autolink_tf_listener_;
     bool configured_{false};
 };
 
