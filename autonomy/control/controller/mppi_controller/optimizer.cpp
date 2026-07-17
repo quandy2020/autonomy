@@ -14,272 +14,512 @@
  * limitations under the License.
  */
 
- #pragma once
+#include "autonomy/control/controller/mppi_controller/optimizer.hpp"
 
- #include <Eigen/Dense>
- #include <memory>
- #include <string>
- 
- #include "autolink/autolink.hpp"
- #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
- #include "autonomy/control/common/controller_exceptions.hpp"
- #include "autonomy/control/common/goal_checker_interface.hpp"
- #include "autonomy/control/controller/mppi_controller/critic_manager.hpp"
- #include "autonomy/control/controller/mppi_controller/models/optimizer_settings.hpp"
- #include "autonomy/control/controller/mppi_controller/models/state.hpp"
- #include "autonomy/control/controller/mppi_controller/motion_models.hpp"
- #include "autonomy/control/controller/mppi_controller/tools/noise_generator.hpp"
- #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
- #include "autonomy/control/proto/mppi_controller.pb.h"
- #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
- #include "autonomy/transform/tf2/utils.h"
- 
- namespace autonomy {
- namespace control {
- namespace controller {
- namespace mppi_controller {
- 
- /**
-  * @class mppi::Optimizer
-  * @brief Main algorithm optimizer of the MPPI Controller
-  */
- class Optimizer
- {
- public:
-     /**
-      * @brief Constructor for mppi::Optimizer
-      */
-     Optimizer() = default;
- 
-     /**
-      * @brief Destructor for mppi::Optimizer
-      */
-     ~Optimizer() {
-         shutdown();
-     }
- 
-     /**
-      * @brief Initializes optimizer on startup
-      * @param parent WeakPtr to node
-      * @param name Name of plugin
-      * @param costmap_ros Costmap2DROS object of environment
-      * @param dynamic_parameter_handler Parameter handler object
-      */
-     void initialize(
-         std::shared_ptr<autolink::Node> parent, const std::string& name,
-         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-         const proto::MPPIControllerOptions* options);
- 
-     /**
-      * @brief Shutdown for optimizer at process end
-      */
-     void shutdown();
- 
-     /**
-      * @brief Compute control using MPPI algorithm
-      * @param robot_pose Pose of the robot at given time
-      * @param robot_speed Speed of the robot at given time
-      * @param plan Path plan to track
-      * @param goal Given Goal pose to reach.
-      * @param goal_checker Object to check if goal is completed
-      * @return TwistStamped of the MPPI control
-      */
-     commsgs::geometry_msgs::TwistStamped evalControl(
-         const commsgs::geometry_msgs::PoseStamped& robot_pose,
-         const commsgs::geometry_msgs::Twist& robot_speed,
-         const commsgs::planning_msgs::Path& plan,
-         const commsgs::geometry_msgs::Pose& goal,
-         common::GoalChecker* goal_checker);
- 
-     /**
-      * @brief Get the trajectories generated in a cycle for visualization
-      * @return Set of trajectories evaluated in cycle
-      */
-     models::Trajectories& getGeneratedTrajectories();
- 
-     /**
-      * @brief Get the optimal trajectory for a cycle for visualization
-      * @return Optimal trajectory
-      */
-     Eigen::ArrayXXf getOptimizedTrajectory();
- 
-     /**
-      * @brief Get the optimal control sequence for a cycle for visualization
-      * @return Optimal control sequence
-      */
-     const models::ControlSequence& getOptimalControlSequence();
- 
-     /**
-      * @brief Set the maximum speed based on the speed limits callback
-      * @param speed_limit Limit of the speed for use
-      * @param percentage Whether the speed limit is absolute or relative
-      */
-     void setSpeedLimit(double speed_limit, bool percentage);
- 
-     /**
-      * @brief Reset the optimization problem to initial conditions
-      * @param Whether to reset the constraints to its base values
-      */
-     void reset(bool reset_dynamic_speed_limits = true);
- 
-     /**
-      * @brief Get the motion model time step
-      * @return Time step of the model
-      */
-     const models::OptimizerSettings& getSettings() const {
-         return settings_;
-     }
- 
- protected:
-     /**
-      * @brief Main function to generate, score, and return trajectories
-      */
-     void optimize();
- 
-     /**
-      * @brief Prepare state information on new request for trajectory rollouts
-      * @param robot_pose Pose of the robot at given time
-      * @param robot_speed Speed of the robot at given time
-      * @param plan Path plan to track
-      * @param goal_checker Object to check if goal is completed
-      */
-     void prepare(const commsgs::geometry_msgs::PoseStamped& robot_pose,
-                  const commsgs::geometry_msgs::Twist& robot_speed,
-                  const commsgs::planning_msgs::Path& plan,
-                  const commsgs::geometry_msgs::Pose& goal,
-                  common::GoalChecker* goal_checker);
- 
-     /**
-      * @brief Obtain the main controller's parameters
-      */
-     void getParams();
- 
-     /**
-      * @brief Set the motion model of the vehicle platform
-      * @param model Model string to use
-      */
-     void setMotionModel(const std::string& model);
- 
-     /**
-      * @brief Shift the optimal control sequence after processing for
-      * next iterations initial conditions after execution
-      */
-     void shiftControlSequence();
- 
-     /**
-      * @brief updates generated trajectories with noised trajectories
-      * from the last cycle's optimal control
-      */
-     void generateNoisedTrajectories();
- 
-     /**
-      * @brief Apply hard vehicle constraints on control sequence
-      */
-     void applyControlSequenceConstraints();
- 
-     /**
-      * @brief  Update velocities in state
-      * @param state fill state with velocities on each step
-      */
-     void updateStateVelocities(models::State& state) const;
- 
-     /**
-      * @brief  Update initial velocity in state
-      * @param state fill state
-      */
-     void updateInitialStateVelocities(models::State& state) const;
- 
-     /**
-      * @brief predict velocities in state using model
-      * for time horizon equal to timesteps
-      * @param state fill state
-      */
-     void propagateStateVelocitiesFromInitials(models::State& state) const;
- 
-     /**
-      * @brief Rollout velocities in state to poses
-      * @param trajectories to rollout
-      * @param state fill state
-      */
-     void integrateStateVelocities(models::Trajectories& trajectories,
-                                   const models::State& state) const;
- 
-     /**
-      * @brief Rollout velocities in state to poses
-      * @param trajectories to rollout
-      * @param state fill state
-      */
-     void integrateStateVelocities(
-         Eigen::Array<float, Eigen::Dynamic, 3>& trajectories,
-         const Eigen::ArrayXXf& state) const;
- 
-     /**
-      * @brief Update control sequence with state controls weighted by costs
-      * using softmax function
-      */
-     void updateControlSequence();
- 
-     /**
-      * @brief Convert control sequence to a twist command
-      * @param stamp Timestamp to use
-      * @return TwistStamped of command to send to robot base
-      */
-     commsgs::geometry_msgs::TwistStamped getControlFromSequenceAsTwist(
-         const commsgs::builtin_interfaces::Time& stamp);
- 
-     /**
-      * @brief Whether the motion model is holonomic
-      * @return Bool if holonomic to populate `y` axis of state
-      */
-     bool isHolonomic() const;
- 
-     /**
-      * @brief Using control frequencies and time step size, determine if
-      * trajectory offset should be used to populate initial state of the next
-      * cycle
-      */
-     void setOffset(double controller_frequency);
- 
-     /**
-      * @brief Perform fallback behavior to try to recover from a set of
-      * trajectories in collision
-      * @param fail Whether the system failed to recover from
-      */
-     bool fallback(bool fail);
- 
- protected:
-     std::shared_ptr<autolink::Node> parent_;
-     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros_;
-     map::costmap_2d::Costmap2D* costmap_;
-     std::string name_;
- 
-     std::shared_ptr<MotionModel> motion_model_;
- 
-     const proto::MPPIControllerOptions* options_;
-     CriticManager critic_manager_;
-     tools::NoiseGenerator noise_generator_;
- 
-     models::OptimizerSettings settings_;
- 
-     models::State state_;
-     models::ControlSequence control_sequence_;
-     std::array<models::Control, 4> control_history_;
-     models::Trajectories generated_trajectories_;
-     models::Path path_;
-     commsgs::geometry_msgs::Pose goal_;
-     Eigen::ArrayXf costs_;
- 
-     CriticData critics_data_ = {state_,      generated_trajectories_,
-                                 path_,       goal_,
-                                 costs_,      settings_.model_dt,
-                                 false,       nullptr,
-                                 nullptr,     std::nullopt,
-                                 std::nullopt};  /// Caution, keep references
- };
- 
- }  // namespace mppi_controller
- }  // namespace controller
- }  // namespace control
- }  // namespace autonomy
+#include "autonomy/map/costmap_2d/filters/filter_values.hpp"
+
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace mppi_controller {
+
+void Optimizer::initialize(std::shared_ptr<autolink::Node> parent, const std::string& name,
+                           std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
+                           const proto::MPPIControllerOptions* options) {
+  parent_ = parent;
+  costmap_ros_ = costmap_ros;
+  name_ = name;
+  costmap_ = costmap_ros_->getCostmap();
+  options_ = options;
+
+  getParams();
+
+  critic_manager_.configure(parent_, name_, costmap_ros_, options_);
+  noise_generator_.initialize(settings_, isHolonomic(), name_, options_);
+
+  reset();
+}
+
+void Optimizer::shutdown() { noise_generator_.shutdown(); }
+
+void Optimizer::getParams() {
+  if (!options_) {
+    AWARN << "Options not set, using defaults";
+    // 为避免后续使用未初始化参数导致崩溃，这里设置一组安全的默认值
+    auto& s = settings_;
+    s.model_dt = 0.05;
+    s.time_steps = 56;
+    s.batch_size = 2000;
+    s.iteration_count = 1;
+    s.temperature = 0.3;
+    s.gamma = 0.015;
+    s.base_constraints.vx_max = 0.5f;
+    s.base_constraints.vx_min = -0.35f;
+    s.base_constraints.vy = 0.5f;
+    s.base_constraints.wz = 1.9f;
+    s.sampling_std.vx = 0.2f;
+    s.sampling_std.vy = 0.2f;
+    s.sampling_std.wz = 0.4f;
+    s.base_constraints.ax_max = 3.0f;
+    s.base_constraints.ax_min = -3.0f;
+    s.base_constraints.ay_max = 3.0f;
+    s.base_constraints.ay_min = -3.0f;
+    s.base_constraints.az_max = 3.5f;
+    s.retry_attempt_limit = 1;
+    setMotionModel("DiffDrive");
+    double controller_frequency = 20.0;  // Default
+    setOffset(controller_frequency);
+    return;
+  }
+
+  auto& s = settings_;
+
+  // Load from proto options
+  // 如果 proto 中未设置（为 0），则回退到一组与 nav2_mppi_controller 类似的默认值，
+  // 以保证示例应用即使未加载 Lua 配置也能安全运行。
+  s.model_dt = options_->model_dt() > 0.0 ? options_->model_dt() : 0.05;
+  s.time_steps = options_->time_steps() > 0 ? options_->time_steps() : 56;
+  s.batch_size = options_->batch_size() > 0 ? options_->batch_size() : 2000;
+  s.iteration_count = options_->iteration_count() > 0 ? options_->iteration_count() : 1;
+  s.temperature = options_->temperature() > 0.0 ? options_->temperature() : 0.3;
+  s.gamma = options_->gamma() > 0.0 ? options_->gamma() : 0.015;
+  s.base_constraints.vx_max = options_->vx_max() != 0.0 ? options_->vx_max() : 0.5f;
+  s.base_constraints.vx_min = options_->vx_min() != 0.0 ? options_->vx_min() : -0.35f;
+  s.base_constraints.vy = options_->vy_max() != 0.0 ? options_->vy_max() : 0.5f;
+  s.base_constraints.wz = options_->wz_max() != 0.0 ? options_->wz_max() : 1.9f;
+  s.sampling_std.vx = options_->vx_std() != 0.0 ? options_->vx_std() : 0.2f;
+  s.sampling_std.vy = options_->vy_std() != 0.0 ? options_->vy_std() : 0.2f;
+  s.sampling_std.wz = options_->wz_std() != 0.0 ? options_->wz_std() : 0.4f;
+
+  // Default values for acceleration constraints (not in proto yet)
+  if (s.base_constraints.ax_max == 0.0f) {
+    s.base_constraints.ax_max = 3.0f;
+  }
+  if (s.base_constraints.ax_min == 0.0f) {
+    s.base_constraints.ax_min = -3.0f;
+  }
+  if (s.base_constraints.ay_max == 0.0f) {
+    s.base_constraints.ay_max = 3.0f;
+  }
+  if (s.base_constraints.ay_min == 0.0f) {
+    s.base_constraints.ay_min = -3.0f;
+  }
+  if (s.base_constraints.az_max == 0.0f) {
+    s.base_constraints.az_max = 3.5f;
+  }
+  if (s.retry_attempt_limit == 0) {
+    s.retry_attempt_limit = 1;
+  }
+
+  s.base_constraints.ax_max = fabs(s.base_constraints.ax_max);
+  if (s.base_constraints.ax_min > 0.0) {
+    s.base_constraints.ax_min = -1.0 * s.base_constraints.ax_min;
+    AWARN << "Sign of the parameter ax_min is incorrect, consider "
+          << "setting it negative.";
+  }
+
+  if (s.base_constraints.ay_min > 0.0) {
+    s.base_constraints.ay_min = -1.0 * s.base_constraints.ay_min;
+    AWARN << "Sign of the parameter ay_min is incorrect, consider "
+          << "setting it negative.";
+  }
+
+  std::string motion_model_name = options_->motion_model();
+  if (motion_model_name.empty()) {
+    motion_model_name = "DiffDrive";
+  }
+
+  s.constraints = s.base_constraints;
+
+  setMotionModel(motion_model_name);
+
+  // TODO: Get controller_frequency from somewhere else (not in proto)
+  double controller_frequency = 20.0;  // Default
+  setOffset(controller_frequency);
+}
+
+void Optimizer::setOffset(double controller_frequency) {
+  const double controller_period = 1.0 / controller_frequency;
+  constexpr double eps = 1e-6;
+
+  if ((controller_period + eps) < settings_.model_dt) {
+    AWARN << "Controller period is less then model dt, consider setting "
+          << "it equal";
+  } else if (abs(controller_period - settings_.model_dt) < eps) {
+    AINFO << "Controller period is equal to model dt. Control sequence "
+          << "shifting is ON";
+    settings_.shift_control_sequence = true;
+  } else {
+    throw common::ControllerException("Controller period more then model dt, set it equal to model dt");
+  }
+}
+
+void Optimizer::reset(bool reset_dynamic_speed_limits) {
+  state_.reset(settings_.batch_size, settings_.time_steps);
+  control_sequence_.reset(settings_.time_steps);
+  control_history_[0] = {0.0f, 0.0f, 0.0f};
+  control_history_[1] = {0.0f, 0.0f, 0.0f};
+  control_history_[2] = {0.0f, 0.0f, 0.0f};
+  control_history_[3] = {0.0f, 0.0f, 0.0f};
+
+  if (reset_dynamic_speed_limits) {
+    settings_.constraints = settings_.base_constraints;
+  }
+
+  costs_.setZero(settings_.batch_size);
+  generated_trajectories_.reset(settings_.batch_size, settings_.time_steps);
+
+  noise_generator_.reset(settings_, isHolonomic());
+  motion_model_->initialize(settings_.constraints, settings_.model_dt);
+
+  AINFO << "Optimizer reset";
+}
+
+bool Optimizer::isHolonomic() const { return motion_model_->isHolonomic(); }
+
+commsgs::geometry_msgs::TwistStamped Optimizer::evalControl(const commsgs::geometry_msgs::PoseStamped& robot_pose,
+                                                            const commsgs::geometry_msgs::Twist& robot_speed,
+                                                            const commsgs::planning_msgs::Path& plan,
+                                                            const commsgs::geometry_msgs::Pose& goal,
+                                                            common::GoalChecker* goal_checker) {
+  prepare(robot_pose, robot_speed, plan, goal, goal_checker);
+
+  do {
+    optimize();
+  } while (fallback(critics_data_.fail_flag));
+
+  tools::savitskyGolayFilter(control_sequence_, control_history_, settings_);
+  auto control = getControlFromSequenceAsTwist(plan.header.stamp);
+
+  if (settings_.shift_control_sequence) {
+    shiftControlSequence();
+  }
+
+  return control;
+}
+
+void Optimizer::optimize() {
+  for (size_t i = 0; i < settings_.iteration_count; ++i) {
+    generateNoisedTrajectories();
+    critic_manager_.evalTrajectoriesScores(critics_data_);
+    updateControlSequence();
+  }
+}
+
+bool Optimizer::fallback(bool fail) {
+  static size_t counter = 0;
+
+  if (!fail) {
+    counter = 0;
+    return false;
+  }
+
+  reset();
+
+  if (++counter > settings_.retry_attempt_limit) {
+    counter = 0;
+    throw common::NoValidControl("Optimizer fail to compute path");
+  }
+
+  return true;
+}
+
+void Optimizer::prepare(const commsgs::geometry_msgs::PoseStamped& robot_pose,
+                        const commsgs::geometry_msgs::Twist& robot_speed, const commsgs::planning_msgs::Path& plan,
+                        const commsgs::geometry_msgs::Pose& goal, common::GoalChecker* goal_checker) {
+  state_.pose = robot_pose;
+  state_.speed = robot_speed;
+  path_ = tools::toTensor(plan);
+  costs_.setZero();
+  goal_ = goal;
+
+  critics_data_.fail_flag = false;
+  critics_data_.goal_checker = goal_checker;
+  critics_data_.motion_model = motion_model_;
+  critics_data_.furthest_reached_path_point.reset();
+  critics_data_.path_pts_valid.reset();
+}
+
+void Optimizer::shiftControlSequence() {
+  auto size = control_sequence_.vx.size();
+  tools::shiftColumnsByOnePlace(control_sequence_.vx, -1);
+  tools::shiftColumnsByOnePlace(control_sequence_.wz, -1);
+  control_sequence_.vx(size - 1) = control_sequence_.vx(size - 2);
+  control_sequence_.wz(size - 1) = control_sequence_.wz(size - 2);
+
+  if (isHolonomic()) {
+    tools::shiftColumnsByOnePlace(control_sequence_.vy, -1);
+    control_sequence_.vy(size - 1) = control_sequence_.vy(size - 2);
+  }
+}
+
+void Optimizer::generateNoisedTrajectories() {
+  noise_generator_.setNoisedControls(state_, control_sequence_);
+  noise_generator_.generateNextNoises();
+  updateStateVelocities(state_);
+  integrateStateVelocities(generated_trajectories_, state_);
+}
+
+void Optimizer::applyControlSequenceConstraints() {
+  auto& s = settings_;
+
+  float max_delta_vx = s.model_dt * s.constraints.ax_max;
+  float min_delta_vx = s.model_dt * s.constraints.ax_min;
+  float max_delta_vy = s.model_dt * s.constraints.ay_max;
+  float min_delta_vy = s.model_dt * s.constraints.ay_min;
+  float max_delta_wz = s.model_dt * s.constraints.az_max;
+  float vx_last = tools::clamp(s.constraints.vx_min, s.constraints.vx_max, control_sequence_.vx(0));
+  float wz_last = tools::clamp(-s.constraints.wz, s.constraints.wz, control_sequence_.wz(0));
+  control_sequence_.vx(0) = vx_last;
+  control_sequence_.wz(0) = wz_last;
+  float vy_last = 0;
+  if (isHolonomic()) {
+    vy_last = tools::clamp(-s.constraints.vy, s.constraints.vy, control_sequence_.vy(0));
+    control_sequence_.vy(0) = vy_last;
+  }
+
+  for (unsigned int i = 1; i != control_sequence_.vx.size(); i++) {
+    float& vx_curr = control_sequence_.vx(i);
+    vx_curr = tools::clamp(s.constraints.vx_min, s.constraints.vx_max, vx_curr);
+    if (vx_last > 0) {
+      vx_curr = tools::clamp(vx_last + min_delta_vx, vx_last + max_delta_vx, vx_curr);
+    } else {
+      vx_curr = tools::clamp(vx_last - max_delta_vx, vx_last - min_delta_vx, vx_curr);
+    }
+    vx_last = vx_curr;
+
+    float& wz_curr = control_sequence_.wz(i);
+    wz_curr = tools::clamp(-s.constraints.wz, s.constraints.wz, wz_curr);
+    wz_curr = tools::clamp(wz_last - max_delta_wz, wz_last + max_delta_wz, wz_curr);
+    wz_last = wz_curr;
+
+    if (isHolonomic()) {
+      float& vy_curr = control_sequence_.vy(i);
+      vy_curr = tools::clamp(-s.constraints.vy, s.constraints.vy, vy_curr);
+      if (vy_last > 0) {
+        vy_curr = tools::clamp(vy_last + min_delta_vy, vy_last + max_delta_vy, vy_curr);
+      } else {
+        vy_curr = tools::clamp(vy_last - max_delta_vy, vy_last - min_delta_vy, vy_curr);
+      }
+      vy_last = vy_curr;
+    }
+  }
+
+  motion_model_->applyConstraints(control_sequence_);
+}
+
+void Optimizer::updateStateVelocities(models::State& state) const {
+  updateInitialStateVelocities(state);
+  propagateStateVelocitiesFromInitials(state);
+}
+
+void Optimizer::updateInitialStateVelocities(models::State& state) const {
+  state.vx.col(0) = static_cast<float>(state.speed.linear.x);
+  state.wz.col(0) = static_cast<float>(state.speed.angular.z);
+
+  if (isHolonomic()) {
+    state.vy.col(0) = static_cast<float>(state.speed.linear.y);
+  }
+}
+
+void Optimizer::propagateStateVelocitiesFromInitials(models::State& state) const { motion_model_->predict(state); }
+
+void Optimizer::integrateStateVelocities(Eigen::Array<float, Eigen::Dynamic, 3>& trajectory,
+                                         const Eigen::ArrayXXf& sequence) const {
+  float initial_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(state_.pose.pose.orientation));
+
+  const auto vx = sequence.col(0);
+  const auto wz = sequence.col(1);
+
+  auto traj_x = trajectory.col(0);
+  auto traj_y = trajectory.col(1);
+  auto traj_yaws = trajectory.col(2);
+
+  const size_t n_size = traj_yaws.size();
+
+  float last_yaw = initial_yaw;
+  for (size_t i = 0; i != n_size; i++) {
+    last_yaw += wz(i) * settings_.model_dt;
+    traj_yaws(i) = last_yaw;
+  }
+
+  Eigen::ArrayXf yaw_cos = traj_yaws.cos();
+  Eigen::ArrayXf yaw_sin = traj_yaws.sin();
+  tools::shiftColumnsByOnePlace(yaw_cos, 1);
+  tools::shiftColumnsByOnePlace(yaw_sin, 1);
+  yaw_cos(0) = cosf(initial_yaw);
+  yaw_sin(0) = sinf(initial_yaw);
+
+  auto dx = (vx * yaw_cos).eval();
+  auto dy = (vx * yaw_sin).eval();
+
+  if (isHolonomic()) {
+    auto vy = sequence.col(2);
+    dx = (dx - vy * yaw_sin).eval();
+    dy = (dy + vy * yaw_cos).eval();
+  }
+
+  float last_x = state_.pose.pose.position.x;
+  float last_y = state_.pose.pose.position.y;
+  for (size_t i = 0; i != n_size; i++) {
+    last_x += dx(i) * settings_.model_dt;
+    last_y += dy(i) * settings_.model_dt;
+    traj_x(i) = last_x;
+    traj_y(i) = last_y;
+  }
+}
+
+void Optimizer::integrateStateVelocities(models::Trajectories& trajectories, const models::State& state) const {
+  auto initial_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(state.pose.pose.orientation));
+  const size_t n_cols = trajectories.yaws.cols();
+
+  Eigen::ArrayXf last_yaws = Eigen::ArrayXf::Constant(trajectories.yaws.rows(), initial_yaw);
+  for (size_t i = 0; i != n_cols; i++) {
+    last_yaws += state.wz.col(i) * settings_.model_dt;
+    trajectories.yaws.col(i) = last_yaws;
+  }
+
+  Eigen::ArrayXXf yaw_cos = trajectories.yaws.cos();
+  Eigen::ArrayXXf yaw_sin = trajectories.yaws.sin();
+  tools::shiftColumnsByOnePlace(yaw_cos, 1);
+  tools::shiftColumnsByOnePlace(yaw_sin, 1);
+  yaw_cos.col(0) = cosf(initial_yaw);
+  yaw_sin.col(0) = sinf(initial_yaw);
+
+  auto dx = (state.vx * yaw_cos).eval();
+  auto dy = (state.vx * yaw_sin).eval();
+
+  if (isHolonomic()) {
+    dx -= state.vy * yaw_sin;
+    dy += state.vy * yaw_cos;
+  }
+
+  Eigen::ArrayXf last_x = Eigen::ArrayXf::Constant(trajectories.x.rows(), state.pose.pose.position.x);
+  Eigen::ArrayXf last_y = Eigen::ArrayXf::Constant(trajectories.y.rows(), state.pose.pose.position.y);
+
+  for (size_t i = 0; i != n_cols; i++) {
+    last_x += dx.col(i) * settings_.model_dt;
+    last_y += dy.col(i) * settings_.model_dt;
+    trajectories.x.col(i) = last_x;
+    trajectories.y.col(i) = last_y;
+  }
+}
+
+Eigen::ArrayXXf Optimizer::getOptimizedTrajectory() {
+  const bool is_holo = isHolonomic();
+  Eigen::ArrayXXf sequence = Eigen::ArrayXXf(settings_.time_steps, is_holo ? 3 : 2);
+  Eigen::Array<float, Eigen::Dynamic, 3> trajectories = Eigen::Array<float, Eigen::Dynamic, 3>(settings_.time_steps, 3);
+
+  sequence.col(0) = control_sequence_.vx;
+  sequence.col(1) = control_sequence_.wz;
+
+  if (is_holo) {
+    sequence.col(2) = control_sequence_.vy;
+  }
+
+  integrateStateVelocities(trajectories, sequence);
+  return trajectories;
+}
+
+const models::ControlSequence& Optimizer::getOptimalControlSequence() { return control_sequence_; }
+
+void Optimizer::updateControlSequence() {
+  const bool is_holo = isHolonomic();
+  auto& s = settings_;
+
+  auto vx_T = control_sequence_.vx.transpose();
+  auto bounded_noises_vx = state_.cvx.rowwise() - vx_T;
+  const float gamma_vx = s.gamma / (s.sampling_std.vx * s.sampling_std.vx);
+  costs_ += (gamma_vx * (bounded_noises_vx.rowwise() * vx_T).rowwise().sum()).eval();
+
+  if (s.sampling_std.wz > 0.0f) {
+    auto wz_T = control_sequence_.wz.transpose();
+    auto bounded_noises_wz = state_.cwz.rowwise() - wz_T;
+    const float gamma_wz = s.gamma / (s.sampling_std.wz * s.sampling_std.wz);
+    costs_ += (gamma_wz * (bounded_noises_wz.rowwise() * wz_T).rowwise().sum()).eval();
+  }
+
+  if (is_holo) {
+    auto vy_T = control_sequence_.vy.transpose();
+    auto bounded_noises_vy = state_.cvy.rowwise() - vy_T;
+    const float gamma_vy = s.gamma / (s.sampling_std.vy * s.sampling_std.vy);
+    costs_ += (gamma_vy * (bounded_noises_vy.rowwise() * vy_T).rowwise().sum()).eval();
+  }
+
+  auto costs_normalized = costs_ - costs_.minCoeff();
+  const float inv_temp = 1.0f / s.temperature;
+  auto softmaxes = (-inv_temp * costs_normalized).exp().eval();
+  softmaxes /= softmaxes.sum();
+
+  auto softmax_mat = softmaxes.matrix();
+  control_sequence_.vx = state_.cvx.transpose().matrix() * softmax_mat;
+  control_sequence_.wz = state_.cwz.transpose().matrix() * softmax_mat;
+
+  if (is_holo) {
+    control_sequence_.vy = state_.cvy.transpose().matrix() * softmax_mat;
+  }
+
+  applyControlSequenceConstraints();
+}
+
+commsgs::geometry_msgs::TwistStamped Optimizer::getControlFromSequenceAsTwist(
+    const commsgs::builtin_interfaces::Time& stamp) {
+  unsigned int offset = settings_.shift_control_sequence ? 1 : 0;
+
+  auto vx = control_sequence_.vx(offset);
+  auto wz = control_sequence_.wz(offset);
+
+  if (isHolonomic()) {
+    auto vy = control_sequence_.vy(offset);
+    return tools::toTwistStamped(vx, vy, wz, stamp, costmap_ros_->getBaseFrameID());
+  }
+
+  return tools::toTwistStamped(vx, wz, stamp, costmap_ros_->getBaseFrameID());
+}
+
+void Optimizer::setMotionModel(const std::string& model) {
+  if (model == "DiffDrive") {
+    motion_model_ = std::make_shared<DiffDriveMotionModel>();
+  } else if (model == "Omni") {
+    motion_model_ = std::make_shared<OmniMotionModel>();
+  } else if (model == "Ackermann") {
+    motion_model_ = std::make_shared<AckermannMotionModel>(options_, name_);
+  } else {
+    throw common::ControllerException(std::string("Model " + model +
+                                                  " is not valid! Valid options are DiffDrive, Omni, "
+                                                  "or Ackermann"));
+  }
+  motion_model_->initialize(settings_.constraints, settings_.model_dt);
+}
+
+void Optimizer::setSpeedLimit(double speed_limit, bool percentage) {
+  auto& s = settings_;
+  if (speed_limit == map::costmap_2d::NO_SPEED_LIMIT) {
+    s.constraints.vx_max = s.base_constraints.vx_max;
+    s.constraints.vx_min = s.base_constraints.vx_min;
+    s.constraints.vy = s.base_constraints.vy;
+    s.constraints.wz = s.base_constraints.wz;
+  } else {
+    if (percentage) {
+      // Speed limit is expressed in % from maximum speed of robot
+      double ratio = speed_limit / 100.0;
+      s.constraints.vx_max = s.base_constraints.vx_max * ratio;
+      s.constraints.vx_min = s.base_constraints.vx_min * ratio;
+      s.constraints.vy = s.base_constraints.vy * ratio;
+      s.constraints.wz = s.base_constraints.wz * ratio;
+    } else {
+      // Speed limit is expressed in absolute value
+      double ratio = speed_limit / s.base_constraints.vx_max;
+      s.constraints.vx_max = s.base_constraints.vx_max * ratio;
+      s.constraints.vx_min = s.base_constraints.vx_min * ratio;
+      s.constraints.vy = s.base_constraints.vy * ratio;
+      s.constraints.wz = s.base_constraints.wz * ratio;
+    }
+  }
+}
+
+models::Trajectories& Optimizer::getGeneratedTrajectories() { return generated_trajectories_; }
+}  // namespace mppi_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy

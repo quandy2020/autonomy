@@ -1,0 +1,81 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.control.proto;
+
+// Regulated Pure Pursuit (RPP) configuration parameters
+// These are largely aligned with Navigation2's nav2_regulated_pure_pursuit_controller parameters.
+message PurePursuitControllerOptions
+{
+    // Desired maximum linear velocity (m/s). This is the base speed before applying regulation.
+    double desired_linear_vel = 1;
+
+    // Static lookahead distance (m) when velocity-scaled lookahead is disabled.
+    double lookahead_dist = 2;
+
+    // Min/max lookahead distance bounds (m) when using velocity-scaled lookahead.
+    double min_lookahead_dist = 3;
+    double max_lookahead_dist = 4;
+
+    // Lookahead time (s) used to compute velocity-scaled lookahead: |v| * lookahead_time.
+    double lookahead_time = 5;
+    bool use_velocity_scaled_lookahead_dist = 6;
+
+    // Rotate-to-heading parameters.
+    double rotate_to_heading_angular_vel = 7;     // rad/s
+    double rotate_to_heading_min_angle = 8;       // rad
+    double max_angular_accel = 9;                 // rad/s^2
+    bool use_rotate_to_heading = 10;
+
+    // Cancel deceleration behavior.
+    bool use_cancel_deceleration = 11;
+    double cancel_deceleration = 12;              // m/s^2
+
+    // Whether to allow reversing along the path (note: incompatible with rotate-to-heading in nav2).
+    bool allow_reversing = 13;
+
+    // Search distance (integrated distance along path) for nearest pose lookup (m).
+    double max_robot_pose_search_dist = 14;
+
+    // Fixed curvature lookahead for regulation curvature computation.
+    bool use_fixed_curvature_lookahead = 15;
+    double curvature_lookahead_dist = 16;         // m
+    bool interpolate_curvature_after_goal = 17;   // requires fixed curvature lookahead
+
+    // Regulation heuristics.
+    bool use_regulated_linear_velocity_scaling = 18;
+    double regulated_linear_scaling_min_radius = 19;  // m
+    double regulated_linear_scaling_min_speed = 20;   // m/s
+
+    bool use_cost_regulated_linear_velocity_scaling = 21;
+    double cost_scaling_dist = 22;               // m
+    double cost_scaling_gain = 23;
+    double inflation_cost_scaling_factor = 24;   // must be > 0
+
+    // Slow down on approach to goal.
+    double min_approach_linear_velocity = 25;     // m/s
+    double approach_velocity_scaling_dist = 26;   // m
+
+    // Collision checking.
+    bool use_collision_detection = 27;
+    double max_allowed_time_to_collision_up_to_carrot = 28;  // s
+
+    // TF transform tolerance (s).
+    double transform_tolerance = 29;
+
+    // Stateful rotate-to-goal-heading behavior (matching nav2).
+    bool stateful = 30;
+}

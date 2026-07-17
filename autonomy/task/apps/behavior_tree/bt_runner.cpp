@@ -5,67 +5,14 @@
 #include "autonomy/task/apps/behavior_tree/bt_runner.hpp"
 
 #include <chrono>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
 #include <string>
 #include <thread>
-#include <vector>
 
-#include "autonomy/common/config.hpp"
 #include "autonomy/common/logging.hpp"
-#include "behaviortree_cpp/utils/shared_library.h"
+#include "autonomy/task/apps/behavior_tree/bt_node_registry.hpp"
 
 namespace autonomy {
 namespace task {
-namespace {
-
-std::string PluginFilename(const std::string& plugin_name)
-{
-    BT::SharedLibrary loader;
-    return loader.getOSName(plugin_name);
-}
-
-std::vector<std::filesystem::path> PluginSearchPaths(
-    const std::string& plugin_lib_path)
-{
-    std::vector<std::filesystem::path> dirs;
-    if (const char* env = std::getenv("AUTONOMY_BT_PLUGIN_PATH");
-        env != nullptr && env[0] != '\0') {
-        dirs.emplace_back(env);
-    }
-    if (!plugin_lib_path.empty()) {
-        dirs.emplace_back(plugin_lib_path);
-    }
-    dirs.emplace_back(std::string(autonomy::common::kLibraryInstallDir) + "/lib");
-    dirs.emplace_back(std::string(autonomy::common::kLibraryBuildDir) + "/lib");
-    return dirs;
-}
-
-bool IsLoadablePlugin(const std::filesystem::path& path)
-{
-    std::error_code ec;
-    if (!std::filesystem::is_regular_file(path, ec) || ec) {
-        return false;
-    }
-    std::ifstream in(path, std::ios::binary);
-    return in.good();
-}
-
-std::string ResolvePluginPath(const std::string& plugin_name,
-                              const std::string& plugin_lib_path)
-{
-    const std::string filename = PluginFilename(plugin_name);
-    for (const auto& dir : PluginSearchPaths(plugin_lib_path)) {
-        const auto candidate = dir / filename;
-        if (IsLoadablePlugin(candidate)) {
-            return candidate.string();
-        }
-    }
-    return filename;
-}
-
-}  // namespace
 
 BtRunner::~BtRunner() { StopWorker(); }
 
@@ -74,18 +21,8 @@ bool BtRunner::Configure(const BtProfile& profile)
     profile_ = profile;
     factory_ = std::make_unique<BT::BehaviorTreeFactory>();
 
-    for (const auto& plugin_name : profile_.plugin_libraries) {
-        const std::string lib_path =
-            ResolvePluginPath(plugin_name, profile_.plugin_lib_path);
-        try {
-            factory_->registerFromPlugin(lib_path);
-        } catch (const std::exception& ex) {
-            AERROR << "BtRunner: failed to load plugin '" << plugin_name
-                   << "' from '" << lib_path << "': " << ex.what();
-            factory_.reset();
-            return false;
-        }
-    }
+    // BT nodes are compiled into libautonomy.so and registered statically.
+    RegisterBuiltinBtNodes(*factory_);
 
     BT::ReactiveSequence::EnableException(false);
     BT::ReactiveFallback::EnableException(false);

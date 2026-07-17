@@ -59,22 +59,22 @@
      void Configure(const proto::ControllerOptions& options, std::string name,
                     std::shared_ptr<autonomy::transform::Buffer> tf,
                     std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                        costmap_wrapper) override;
+                        costmap_wrapper);
  
      /**
       * @brief Cleanup resources
       */
-     void Cleanup() override;
+     void Cleanup();
  
      /**
       * @brief Activate controller
       */
-     void Activate() override;
+     void Activate();
  
      /**
       * @brief Deactivate controller
       */
-     void Deactivate() override;
+     void Deactivate();
  
      /**
       * @brief Reset the controller state between tasks

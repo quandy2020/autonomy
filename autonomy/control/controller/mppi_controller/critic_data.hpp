@@ -18,6 +18,7 @@
 
  #include <Eigen/Dense>
  #include <memory>
+ #include <optional>
  #include <vector>
  
  #include "autonomy/common/macros.hpp"
