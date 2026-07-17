@@ -2,6 +2,25 @@
 Changelog for package autonomy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.2.0 (2026-07-17)
+------------------
+* **Architecture**
+
+  * Embed ``autolink`` as a git submodule and link it into ``libautonomy`` (process entrypoints: ``localization`` / ``planning`` / ``control`` / ``task``).
+  * Merge BehaviorTree plugins into ``libautonomy`` (static ``BT_REGISTER_NODES`` registry); remove separate ``libautonomy_task_*`` / ``cmake/plugin/`` shared plugins.
+  * Replace Taskflow in ``TaskScheduler`` with ``std::thread``-based pipelines; drop ``cmake/taskflow.cmake``.
+* **Control**
+
+  * Restore controller protos and implementations: MPPI, Graceful, Pure Pursuit (wired via ``controller_options.proto``).
+* **Build / CMake**
+
+  * Split helpers: ``autonomy_sources`` / ``protobuf`` / ``autonomy_deps`` / ``autonomy_tests`` / ``autonomy_install`` / ``autolink_embed``.
+  * Add ``BUILD_TOOLS``; link ``Threads`` and ``nlohmann_json``; drop unused ADOL-C ``find_package``.
+  * Optional foxglove-sdk for visualization sources; always build ``autonomy_foxglove_bridge`` binary when configured.
+* **Docs**
+
+  * Refresh root ``README.md`` for current modules, binaries, and submodule clone flow.
+
 0.1.1 (2026-05-19)
 ------------------
 * Replace Boost with C++17 standard library in ``autonomy/`` (``std::optional``, ``std::mutex``, ``std::unordered_map``, ``std::function``, custom ``VoidSignal`` for tf2).
