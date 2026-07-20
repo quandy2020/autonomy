@@ -115,10 +115,21 @@ def prepare_host_data_volume(host: str, container: str) -> None:
     uid, gid = os.getuid(), os.getgid()
     user = os.environ.get("USER", str(uid))
 
+    created: list[Path] = []
     for directory in dirs:
-        directory.mkdir(parents=True, exist_ok=True)
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            created.append(directory)
+        except PermissionError:
+            print_warning(
+                f"无法创建 {directory}（父目录可能为 root/nobody 所有）。请在宿主机执行：\n"
+                f"  sudo chown -R {user}:{user} {directory.parent}\n"
+                f"  sudo chmod -R u+rwX {directory.parent}\n"
+                f"  mkdir -p {directory}"
+            )
+            break
 
-    targets = sorted({d for d in dirs if d.is_dir()}, key=lambda p: len(p.parts))
+    targets = sorted({d for d in created if d.is_dir()}, key=lambda p: len(p.parts))
     for target in targets:
         try:
             _chown_path(target, uid, gid)
