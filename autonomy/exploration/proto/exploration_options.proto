@@ -1,0 +1,89 @@
+// Copyright 2026 The Openbot Authors
+syntax = "proto3";
+
+package autonomy.exploration.proto;
+
+enum ExplorerResultCode {
+  EXPLORER_RESULT_SUCCESS = 0;
+  EXPLORER_RESULT_FAILURE = 100;
+  EXPLORER_RESULT_CANCELED = 101;
+  EXPLORER_RESULT_NO_TARGET = 102;
+  EXPLORER_RESULT_NOT_INITIALIZED = 103;
+  EXPLORER_RESULT_FINISHED = 104;
+}
+
+message CameraFoVOptions {
+  double hfov_deg = 1;
+  double vfov_deg = 2;
+  double z_near = 3;
+  double z_far = 4;
+  double fx = 5;
+  double fy = 6;
+  double cx = 7;
+  double cy = 8;
+}
+
+message OccupancyGridOptions {
+  double resolution = 1;
+  int32 size_x = 2;
+  int32 size_y = 3;
+  int32 size_z = 4;
+  // Height band relative to robot_z for depth fusion [m].
+  double fuse_z_min = 5;
+  double fuse_z_max = 6;
+  // Log-odds Bayesian update (clamped to +/- log_odds_clamp).
+  double log_odds_hit = 7;
+  double log_odds_miss = 8;
+  double log_odds_clamp = 9;
+  double log_odds_occupy_threshold = 10;
+  double log_odds_free_threshold = 11;
+}
+
+message ViewpointOptions {
+  int32 number_x = 1;
+  int32 number_y = 2;
+  double resolution = 3;
+  int32 yaw_samples = 4;
+  double robot_height = 5;
+  double min_gain = 6;
+}
+
+message GridWorldOptions {
+  double cell_size = 1;
+  int32 nearby_cell_radius = 2;
+  double covered_gain_threshold = 3;
+  double exploration_area_half_extent = 4;
+}
+
+message ExplorationOptions {
+  CameraFoVOptions camera = 1;
+  OccupancyGridOptions occupancy = 2;
+  ViewpointOptions viewpoint = 3;
+  GridWorldOptions grid_world = 4;
+
+  double lookahead_distance = 5;
+  double keypose_min_dist = 6;
+  double collision_radius = 7;
+  bool use_frontier = 8;
+  int32 depth_subsample = 9;
+  double planner_frequency = 10;
+
+  // Plugin id, e.g. "rgbd_hierarchical"
+  repeated string explorer_plugins = 11;
+  string default_explorer = 12;
+
+  // TSP: Held–Karp when n <= tsp_max_exact_n, else PATH_CHEAPEST_ARC + 2-opt.
+  int32 tsp_max_exact_n = 13;
+  // Max candidate viewpoints in the local TSP (plus depot / dummy).
+  int32 local_tsp_max_nodes = 14;
+  // If true, unknown costmap cells block line-of-sight.
+  bool los_stop_at_unknown = 15;
+  // If true, FoV gain / coverage require 2D LOS to the target.
+  bool occlusion_enabled = 16;
+  // Frontier clustering distance [m] for gain targets (0 = no cluster).
+  double frontier_cluster_dist = 17;
+  // Minimum seconds between planning cycles (odom/depth throttle).
+  double replan_min_period_sec = 18;
+  // Max A* path / Euclidean ratio when connecting keypose edges without LOS.
+  double keypose_astar_detour_ratio = 19;
+}

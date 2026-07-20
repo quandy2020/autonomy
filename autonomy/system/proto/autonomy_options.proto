@@ -24,6 +24,7 @@ import "autonomy/control/proto/controller_options.proto";
 import "autonomy/planning/proto/planning_options.proto"; 
 import "autonomy/navigator/proto/navigator_options.proto";
 import "autonomy/transform/proto/transform_options.proto"; 
+import "autonomy/exploration/proto/exploration_options.proto";
 
 message AutonomyOptions
 {
@@ -35,5 +36,6 @@ message AutonomyOptions
     perception.proto.PerceptionOptions perception_options = 7;
     navigator.proto.NavigatorOptions navigator_options = 8;
     transform.proto.TransformOptions transform_options = 9;
+    exploration.proto.ExplorationOptions exploration_options = 10;
 }
 

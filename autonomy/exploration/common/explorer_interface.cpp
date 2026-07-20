@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_CONFIG_HPP_
-#define AUTONOMY_COMMON_CONFIG_HPP_
+#include "autonomy/exploration/common/explorer_interface.hpp"
 
 namespace autonomy {
+namespace exploration {
 namespace common {
 
-constexpr char kConfigurationFilesDirectory[] = "/workspace/autonomy/install/autonomy/share/autonomy/config";
-constexpr char kSourceDirectory[] = "/workspace/autonomy/src/autonomy";
+ExplorerInterface::ExplorerInterface(const proto::ExplorationOptions& options,
+                                     std::string name)
+    : options_(options), name_(std::move(name))
+{
+}
 
-// Library install dir
-constexpr char kLibraryInstallDir[] = "/workspace/autonomy/install/autonomy";
-
-// Library build dir
-constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build/autonomy";
+void ExplorerInterface::Configure(const proto::ExplorationOptions& options,
+                                  const std::string& name)
+{
+    options_ = options;
+    name_ = name;
+}
 
 }  // namespace common
+}  // namespace exploration
 }  // namespace autonomy
-
-#endif  // AUTONOMY_COMMON_CONFIG_HPP_

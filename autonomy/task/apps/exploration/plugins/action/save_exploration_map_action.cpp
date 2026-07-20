@@ -43,7 +43,11 @@ protected:
         }
 
         client->MarkFrontierVisited();
-        AINFO << "SaveExplorationMap: checkpoint map '" << map_name
+        if (!client->SaveExplorationMap(map_name)) {
+            SetErrorPorts(*this, 3, "SaveExplorationMap: export failed");
+            return BT::NodeStatus::FAILURE;
+        }
+        AINFO << "SaveExplorationMap: checkpoint '" << map_name
               << "' (progress=" << client->exploration_progress() << ")";
         ClearErrorPorts(*this);
         return BT::NodeStatus::SUCCESS;
