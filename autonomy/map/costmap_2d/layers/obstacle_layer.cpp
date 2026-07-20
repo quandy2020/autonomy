@@ -238,11 +238,14 @@ void ObstacleLayer::onInitialize() {
             if (!marking && !clearing) {
                 marking = true;
             }
+            // Prefer explicit raytrace_max_range as obstacle mark range.
+            // Do NOT reuse obstacle_max_height (meters of height ≠ range).
             const double obstacle_max_range =
-                src.obstacle_max_height() > 0.0 ? src.obstacle_max_height() : 2.5;
+                src.raytrace_max_range() > 0.0 ? src.raytrace_max_range()
+                                               : 25.0;
             const double obstacle_min_range = 0.0;
             const double raytrace_max_range =
-                src.raytrace_max_range() > 0.0 ? src.raytrace_max_range() : 3.0;
+                src.raytrace_max_range() > 0.0 ? src.raytrace_max_range() : 25.0;
             const double raytrace_min_range = src.raytrace_min_range();
 
             auto buffer = std::make_shared<ObservationBuffer>(

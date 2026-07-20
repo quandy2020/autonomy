@@ -21,9 +21,17 @@
 #include <utility>
 
 #include "autolink/common/log.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/constraint_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/cost_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/goal_angle_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/goal_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/obstacles_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/path_align_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/path_angle_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/path_follow_critic.hpp"
 #include "autonomy/control/controller/mppi_controller/critics/prefer_forward_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/twirling_critic.hpp"
+#include "autonomy/control/controller/mppi_controller/critics/velocity_deadband_critic.hpp"
 
 namespace autonomy {
 namespace control {
@@ -42,14 +50,39 @@ std::string NormalizeCriticName(std::string name) {
 std::unique_ptr<CriticFunction> CreateCriticByName(const std::string& raw_name) {
     const std::string name = NormalizeCriticName(raw_name);
 
+    if (name == "ConstraintCritic" || name == "constraint_critic") {
+        return std::make_unique<critics::ConstraintCritic>();
+    }
     if (name == "CostCritic" || name == "cost_critic") {
         return std::make_unique<critics::CostCritic>();
+    }
+    if (name == "GoalCritic" || name == "goal_critic") {
+        return std::make_unique<critics::GoalCritic>();
+    }
+    if (name == "GoalAngleCritic" || name == "goal_angle_critic") {
+        return std::make_unique<critics::GoalAngleCritic>();
+    }
+    if (name == "PathAlignCritic" || name == "path_align_critic") {
+        return std::make_unique<critics::PathAlignCritic>();
     }
     if (name == "PathFollowCritic" || name == "path_follow_critic") {
         return std::make_unique<critics::PathFollowCritic>();
     }
+    if (name == "PathAngleCritic" || name == "path_angle_critic") {
+        return std::make_unique<critics::PathAngleCritic>();
+    }
     if (name == "PreferForwardCritic" || name == "prefer_forward_critic") {
         return std::make_unique<critics::PreferForwardCritic>();
+    }
+    if (name == "ObstaclesCritic" || name == "obstacles_critic") {
+        return std::make_unique<critics::ObstaclesCritic>();
+    }
+    if (name == "VelocityDeadbandCritic" ||
+        name == "velocity_deadband_critic") {
+        return std::make_unique<critics::VelocityDeadbandCritic>();
+    }
+    if (name == "TwirlingCritic" || name == "twirling_critic") {
+        return std::make_unique<critics::TwirlingCritic>();
     }
     return nullptr;
 }

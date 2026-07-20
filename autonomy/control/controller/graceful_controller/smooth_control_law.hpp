@@ -50,8 +50,9 @@
       * @param v_angular_max Maximum angular velocity.
       */
      SmoothControlLaw(double k_phi, double k_delta, double beta, double lambda,
-                      double slowdown_radius, double v_linear_min,
-                      double v_linear_max, double v_angular_max);
+                      double slowdown_radius, double deceleration_max,
+                      double v_linear_min, double v_linear_max,
+                      double v_angular_max);
  
      /**
       * @brief Destructor for nav2_graceful_controller::SmoothControlLaw
@@ -78,7 +79,12 @@
       * @param slowdown_radius Radial threshold applied to the slowdown rule.
       */
      void SetSlowdownRadius(const double slowdown_radius);
- 
+
+     /**
+      * @brief Set the maximum deceleration for velocity limiting near target.
+      */
+     void SetMaxDeceleration(const double deceleration_max);
+
      /**
       * @brief Update the velocity limits.
       *
@@ -188,7 +194,12 @@
       * @brief Radial threshold applied to the slowdown rule.
       */
      double slowdown_radius_;
- 
+
+     /**
+      * @brief Maximum deceleration for sqrt(2*r*a) velocity cap near target.
+      */
+     double deceleration_max_;
+
      /**
       * @brief Minimum linear velocity.
       */

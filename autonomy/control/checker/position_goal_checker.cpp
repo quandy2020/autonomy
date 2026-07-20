@@ -16,6 +16,13 @@
 
 #include "autonomy/control/checker/position_goal_checker.hpp"
 
+#include <limits>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
+
 namespace autonomy {
 namespace control {
 namespace checker {
@@ -23,6 +30,7 @@ namespace checker {
 PositionGoalChecker::PositionGoalChecker()
     : xy_goal_tolerance_(0.25),
       xy_goal_tolerance_sq_(0.0625),
+      path_length_tolerance_(1.0),
       stateful_(true),
       position_reached_(false) {}
 
@@ -43,27 +51,34 @@ void PositionGoalChecker::Reset() {
     position_reached_ = false;
 }
 
+bool PositionGoalChecker::IsGoalXYReached(
+    const commsgs::geometry_msgs::Pose& query_pose,
+    const commsgs::geometry_msgs::Pose& goal_pose,
+    const commsgs::geometry_msgs::Twist& velocity,
+    const commsgs::planning_msgs::Path& transformed_global_plan) {
+    (void)velocity;
+    if (map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
+        path_length_tolerance_) {
+        return false;
+    }
+    if (stateful_ && position_reached_) {
+        return true;
+    }
+    const double dx = query_pose.position.x - goal_pose.position.x;
+    const double dy = query_pose.position.y - goal_pose.position.y;
+    const bool position_reached = dx * dx + dy * dy <= xy_goal_tolerance_sq_;
+    if (stateful_ && position_reached) {
+        position_reached_ = true;
+    }
+    return position_reached;
+}
+
 bool PositionGoalChecker::IsGoalReached(
     const commsgs::geometry_msgs::Pose& query_pose,
     const commsgs::geometry_msgs::Pose& goal_pose,
     const commsgs::geometry_msgs::Twist& velocity) {
-    // If stateful and position was already reached, maintain state
-    if (stateful_ && position_reached_) {
-        return true;
-    }
-
-    // Check if position is within tolerance
-    double dx = query_pose.position.x - goal_pose.position.x;
-    double dy = query_pose.position.y - goal_pose.position.y;
-
-    bool position_reached = (dx * dx + dy * dy <= xy_goal_tolerance_sq_);
-
-    // If stateful, remember that we reached the position
-    if (stateful_ && position_reached) {
-        position_reached_ = true;
-    }
-
-    return position_reached;
+    return IsGoalXYReached(query_pose, goal_pose, velocity,
+                           commsgs::planning_msgs::Path{});
 }
 
 bool PositionGoalChecker::GetTolerances(

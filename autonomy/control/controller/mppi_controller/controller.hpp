@@ -116,6 +116,24 @@
       */
      bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
  
+     /**
+      * @brief Candidate rollouts from the last ComputeVelocityCommands call.
+      */
+     const models::Trajectories& GetGeneratedTrajectories() {
+         return optimizer_.getGeneratedTrajectories();
+     }
+ 
+     /**
+      * @brief Optimized state trajectory (x, y, yaw) from the last control step.
+      */
+     Eigen::ArrayXXf GetOptimizedTrajectory() {
+         return optimizer_.getOptimizedTrajectory();
+     }
+ 
+     const proto::MPPIControllerOptions& GetMppiOptions() const {
+         return options_;
+     }
+ 
  protected:
      /**
       * @brief Visualize trajectories
@@ -139,9 +157,15 @@
      tools::PathHandler path_handler_;
      std::unique_ptr<tools::TrajectoryVisualizer> trajectory_visualizer_;
  
-     bool visualize_;
-     bool publish_optimal_trajectory_;
- };
+    bool visualize_;
+    bool publish_optimal_trajectory_;
+
+    commsgs::geometry_msgs::PoseStamped last_robot_pose_;
+    commsgs::geometry_msgs::Twist last_robot_velocity_;
+    commsgs::geometry_msgs::Pose last_goal_pose_;
+    common::GoalChecker* last_goal_checker_{nullptr};
+    bool has_control_state_{false};
+};
  
  }  // namespace mppi_controller
  }  // namespace controller

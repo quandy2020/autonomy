@@ -69,6 +69,40 @@ message MPPIControllerOptions {
     // Checker Configuration
     GoalCheckerOptions goal_checker = 30;
     ProgressCheckerOptions progress_checker = 31;
+
+    // Acceleration constraints (nav2_mppi_controller defaults)
+    double ax_max = 32;  // Default: 3.0
+    double ax_min = 33;  // Default: -3.0
+    double ay_max = 34;  // Default: 3.0
+    double ay_min = 35;  // Default: -3.0
+    double az_max = 36;  // Default: 3.5
+
+    // Optimizer behavior (nav2_mppi_controller)
+    int32 retry_attempt_limit = 37;  // Default: 1
+    bool regenerate_noises = 38;  // Default: false
+    bool open_loop = 39;  // Default: false
+    bool clamp_raw_controls = 40;  // Default: false
+
+    PathHandlerOptions path_handler = 41;
+
+    // Actuator delay (seconds); rollout shifts by round(delay / model_dt)
+    double model_delay_vx = 42;  // Default: 0.0
+    double model_delay_vy = 43;  // Default: 0.0
+    double model_delay_wz = 44;  // Default: 0.0
+
+    // Savitzky-Golay filter order: 1 (linear MA) or 2 (quadratic)
+    int32 sgf_order = 45;  // Default: 2
+}
+
+// Path handler configuration (nav2_mppi_controller PathHandler)
+message PathHandlerOptions {
+    // 0 = auto (half costmap diagonal)
+    double max_robot_pose_search_dist = 1;
+    double prune_distance = 2;  // Default: 1.5
+    double transform_tolerance = 3;  // Default: 0.1
+    bool enforce_path_inversion = 4;  // Default: false
+    double inversion_xy_tolerance = 5;  // Default: 0.2
+    double inversion_yaw_tolerance = 6;  // Default: 0.4
 }
 
 // Trajectory visualizer configuration

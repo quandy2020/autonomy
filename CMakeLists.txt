@@ -166,10 +166,12 @@ google_binary(cartographer_occupancy
   SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
 google_binary(cartographer_pbstream_to_map
   SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
-google_binary(autonomy_foxglove_fakedata
-  SRCS autonomy/visualization/fakedata_test.cpp)
-google_binary(autonomy_foxglove_bridge
-  SRCS autonomy/visualization/foxglove_main.cpp)
+if(foxglove-sdk_FOUND)
+  google_binary(autonomy_foxglove_fakedata
+    SRCS autonomy/visualization/fakedata_test.cpp)
+  google_binary(autonomy_foxglove_bridge
+    SRCS autonomy/visualization/foxglove_main.cpp)
+endif()
 
 # -----------------------------------------------------------------------------
 # 7. Tests

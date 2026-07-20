@@ -109,11 +109,99 @@
      if (parameter_dictionary->HasKey("vy_max")) {
          options.set_vy_max(parameter_dictionary->GetDouble("vy_max"));
      }
-     if (parameter_dictionary->HasKey("wz_max")) {
-         options.set_wz_max(parameter_dictionary->GetDouble("wz_max"));
-     }
- 
-     // Optimization Algorithm Parameters
+    if (parameter_dictionary->HasKey("wz_max")) {
+        options.set_wz_max(parameter_dictionary->GetDouble("wz_max"));
+    }
+
+    // Acceleration constraints
+    if (parameter_dictionary->HasKey("ax_max")) {
+        options.set_ax_max(parameter_dictionary->GetDouble("ax_max"));
+    }
+    if (parameter_dictionary->HasKey("ax_min")) {
+        options.set_ax_min(parameter_dictionary->GetDouble("ax_min"));
+    }
+    if (parameter_dictionary->HasKey("ay_max")) {
+        options.set_ay_max(parameter_dictionary->GetDouble("ay_max"));
+    }
+    if (parameter_dictionary->HasKey("ay_min")) {
+        options.set_ay_min(parameter_dictionary->GetDouble("ay_min"));
+    }
+    if (parameter_dictionary->HasKey("az_max")) {
+        options.set_az_max(parameter_dictionary->GetDouble("az_max"));
+    }
+
+    // Optimizer behavior
+    if (parameter_dictionary->HasKey("retry_attempt_limit")) {
+        options.set_retry_attempt_limit(
+            parameter_dictionary->GetInt("retry_attempt_limit"));
+    }
+    if (parameter_dictionary->HasKey("regenerate_noises")) {
+        options.set_regenerate_noises(
+            parameter_dictionary->GetBool("regenerate_noises"));
+    }
+    if (parameter_dictionary->HasKey("open_loop")) {
+        options.set_open_loop(parameter_dictionary->GetBool("open_loop"));
+    }
+    if (parameter_dictionary->HasKey("clamp_raw_controls")) {
+        options.set_clamp_raw_controls(
+            parameter_dictionary->GetBool("clamp_raw_controls"));
+    }
+    if (parameter_dictionary->HasKey("model_delay_vx")) {
+        options.set_model_delay_vx(
+            parameter_dictionary->GetDouble("model_delay_vx"));
+    }
+    if (parameter_dictionary->HasKey("model_delay_vy")) {
+        options.set_model_delay_vy(
+            parameter_dictionary->GetDouble("model_delay_vy"));
+    }
+    if (parameter_dictionary->HasKey("model_delay_wz")) {
+        options.set_model_delay_wz(
+            parameter_dictionary->GetDouble("model_delay_wz"));
+    }
+    if (parameter_dictionary->HasKey("sgf_order")) {
+        options.set_sgf_order(parameter_dictionary->GetInt("sgf_order"));
+    }
+
+    // PathHandler (Nav2 key: path_handler; Lua alias: PathHandler)
+    auto load_path_handler = [&options](
+                                 ::autonomy::common::LuaParameterDictionary* dict) {
+        if (!dict) {
+            return;
+        }
+        auto* ph = options.mutable_path_handler();
+        if (dict->HasKey("max_robot_pose_search_dist")) {
+            ph->set_max_robot_pose_search_dist(
+                dict->GetDouble("max_robot_pose_search_dist"));
+        }
+        if (dict->HasKey("prune_distance")) {
+            ph->set_prune_distance(dict->GetDouble("prune_distance"));
+        }
+        if (dict->HasKey("transform_tolerance")) {
+            ph->set_transform_tolerance(
+                dict->GetDouble("transform_tolerance"));
+        }
+        if (dict->HasKey("enforce_path_inversion")) {
+            ph->set_enforce_path_inversion(
+                dict->GetBool("enforce_path_inversion"));
+        }
+        if (dict->HasKey("inversion_xy_tolerance")) {
+            ph->set_inversion_xy_tolerance(
+                dict->GetDouble("inversion_xy_tolerance"));
+        }
+        if (dict->HasKey("inversion_yaw_tolerance")) {
+            ph->set_inversion_yaw_tolerance(
+                dict->GetDouble("inversion_yaw_tolerance"));
+        }
+    };
+    if (parameter_dictionary->HasKey("PathHandler")) {
+        load_path_handler(
+            parameter_dictionary->GetDictionary("PathHandler").get());
+    } else if (parameter_dictionary->HasKey("path_handler")) {
+        load_path_handler(
+            parameter_dictionary->GetDictionary("path_handler").get());
+    }
+
+    // Optimization Algorithm Parameters
      if (parameter_dictionary->HasKey("iteration_count")) {
          options.set_iteration_count(
              parameter_dictionary->GetInt("iteration_count"));
@@ -163,9 +251,11 @@
          }
      }
  
-     // Critics list
+     // Critics list (array table under key "critics")
      if (parameter_dictionary->HasKey("critics")) {
-         auto critics = parameter_dictionary->GetArrayValuesAsStrings();
+         auto critics =
+             parameter_dictionary->GetDictionary("critics")
+                 ->GetArrayValuesAsStrings();
          for (const auto& critic : critics) {
              options.add_critics(critic);
          }
@@ -258,6 +348,8 @@
              auto* critic = options.mutable_cost_critic();
              if (dict->HasKey("enabled")) {
                  critic->set_enabled(dict->GetBool("enabled"));
+             } else {
+                 critic->set_enabled(true);
              }
              if (dict->HasKey("cost_power")) {
                  critic->set_cost_power(dict->GetInt("cost_power"));
@@ -285,7 +377,7 @@
              }
          }
      }
- 
+
      // PathAlignCritic
      if (parameter_dictionary->HasKey("PathAlignCritic")) {
          auto dict = parameter_dictionary->GetDictionary("PathAlignCritic");
@@ -433,7 +525,9 @@
                  critic->set_cost_weight(dict->GetDouble("cost_weight"));
              }
              if (dict->HasKey("deadband_velocities")) {
-                 auto velocities = dict->GetArrayValuesAsDoubles();
+                 auto velocities =
+                     dict->GetDictionary("deadband_velocities")
+                         ->GetArrayValuesAsDoubles();
                  for (const auto& vel : velocities) {
                      critic->add_deadband_velocities(vel);
                  }

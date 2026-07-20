@@ -110,8 +110,12 @@ build_and_install() {
         -DFOXGLOVE_BUILD_EXAMPLES="${FOXGLOVE_SDK_BUILD_EXAMPLES}" \
         -DUSE_PACKAGE_MANAGER_DEPENDENCIES=ON
 
-    info "Building foxglove-sdk..."
-    cmake --build "${FOXGLOVE_SDK_BUILD_DIR}" --parallel "${BUILD_JOBS}"
+    # Only build C++ installable libraries; skip Catch2 unit tests (and examples).
+    # Default `all` also builds `tests`, which can fail at link/discovery and is
+    # unnecessary for installing the foxglove-sdk C++ package.
+    info "Building foxglove-sdk C++ libraries..."
+    cmake --build "${FOXGLOVE_SDK_BUILD_DIR}" --parallel "${BUILD_JOBS}" \
+        --target foxglove_cpp_static foxglove_cpp_shared
 
     info "Installing foxglove-sdk..."
     cmake --install "${FOXGLOVE_SDK_BUILD_DIR}"

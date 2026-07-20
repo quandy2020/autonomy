@@ -12,12 +12,14 @@
 #include <thread>
 
 #include "autolink/action/simple_action_server.hpp"
+#include "autolink/node/writer.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
 #include "autonomy/commsgs/planning_msgs.hpp"
 #include "autonomy/commsgs/proto/error_code.pb.h"
 #include "autonomy/commsgs/proto/nav_msgs.pb.h"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/constants.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
@@ -35,11 +37,8 @@ using BackUpServer =
     autolink::action::SimpleActionServer<nav_proto::BackUpAction>;
 using WaitServer = autolink::action::SimpleActionServer<nav_proto::WaitAction>;
 
-constexpr auto kControlPeriod = std::chrono::milliseconds(100);
-
 commsgs::planning_msgs::Path PathFromGoal(
-    const nav_proto::FollowPathAction::Goal& goal)
-{
+    const nav_proto::FollowPathAction::Goal& goal) {
     if (goal.has_path()) {
         return commsgs::planning_msgs::FromProto(goal.path());
     }
@@ -47,14 +46,19 @@ commsgs::planning_msgs::Path PathFromGoal(
 }
 
 double DistanceToPathGoal(const commsgs::planning_msgs::Path& path,
-                          const commsgs::geometry_msgs::PoseStamped& pose)
-{
+                          const commsgs::geometry_msgs::PoseStamped& pose) {
     if (path.poses.empty()) {
         return 0.0;
     }
     const auto& goal = path.poses.back().pose.position;
     const auto& current = pose.pose.position;
     return map::costmap_2d::utils::euclidean_distance(goal, current);
+}
+
+std::chrono::nanoseconds ControlPeriod(double controller_frequency) {
+    const double hz = controller_frequency > 0.0 ? controller_frequency : 20.0;
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>(1.0 / hz));
 }
 
 }  // namespace
@@ -66,11 +70,18 @@ struct ControllerServer::AutolinkActionServers {
     std::shared_ptr<WaitServer> wait;
 };
 
-bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
-{
+bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) {
     if (!node) {
         return false;
     }
+    node_ = node;
+
+    if (!cmd_vel_writer_) {
+        cmd_vel_writer_ =
+            node_->CreateWriter<commsgs::geometry_msgs::TwistStamped>(
+                kCmdVelChannel);
+    }
+
     if (autolink_actions_) {
         return true;
     }
@@ -96,23 +107,44 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
             }
 
             self->current_path_ = path;
-            self->follow_path_active_ = true;
+            self->follow_controller_id_ = goal->controller_id();
+            self->follow_goal_checker_id_ = goal->goal_checker_id();
+            self->follow_progress_checker_id_ = goal->progress_checker_id();
 
+            try {
+                self->ComputeControl();
+            } catch (const common::ControllerException& ex) {
+                AWARN << "FollowPath setup failed: " << ex.what();
+                auto result =
+                    std::make_shared<nav_proto::FollowPathAction::Result>();
+                result->set_error_code(err_proto::FOLLOW_PATH_INVALID_PATH);
+                result->set_error_msg(ex.what());
+                self->OnGoalExit();
+                server->TerminateCurrent(result);
+                return;
+            }
+
+            const auto period = ControlPeriod(self->controller_frequency_);
             auto cancel = [&]() { return server->IsCancelRequested(); };
-            while (autolink::OK() && !cancel()) {
+
+            while (autolink::OK() && !cancel() && self->follow_path_active_) {
                 commsgs::geometry_msgs::PoseStamped pose;
-                if (!self->GetRobotPose(pose)) {
-                    std::this_thread::sleep_for(kControlPeriod);
-                    continue;
+                if (self->GetRobotPose(pose)) {
+                    const double distance =
+                        DistanceToPathGoal(self->current_path_, pose);
+                    auto feedback =
+                        std::make_shared<nav_proto::FollowPathAction::Feedback>();
+                    feedback->set_distance_to_goal(static_cast<float>(distance));
+                    commsgs::planning_msgs::Odometry odom;
+                    if (self->GetLatestOdometry(odom)) {
+                        feedback->set_speed(static_cast<float>(std::hypot(
+                            odom.twist.twist.linear.x,
+                            odom.twist.twist.linear.y)));
+                    }
+                    server->PublishFeedback(feedback);
                 }
 
-                const double distance = DistanceToPathGoal(path, pose);
-                auto feedback =
-                    std::make_shared<nav_proto::FollowPathAction::Feedback>();
-                feedback->set_distance_to_goal(static_cast<float>(distance));
-                server->PublishFeedback(feedback);
-
-                if (distance <= self->goal_reached_tolerance_) {
+                if (self->IsGoalReached()) {
                     auto result =
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::FOLLOW_PATH_NONE);
@@ -121,8 +153,38 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
                     return;
                 }
 
-                self->ComputeAndPublishVelocity();
-                std::this_thread::sleep_for(kControlPeriod);
+                try {
+                    self->ComputeAndPublishVelocity();
+                } catch (const common::FailedToMakeProgress& ex) {
+                    AWARN << "FollowPath progress failure: " << ex.what();
+                    auto result =
+                        std::make_shared<nav_proto::FollowPathAction::Result>();
+                    result->set_error_code(err_proto::FOLLOW_PATH_FAILED_TO_MAKE_PROGRESS);
+                    result->set_error_msg(ex.what());
+                    self->OnGoalExit();
+                    server->TerminateCurrent(result);
+                    return;
+                } catch (const common::PatienceExceeded& ex) {
+                    AWARN << "FollowPath patience exceeded: " << ex.what();
+                    auto result =
+                        std::make_shared<nav_proto::FollowPathAction::Result>();
+                    result->set_error_code(err_proto::FOLLOW_PATH_PATIENCE_EXCEEDED);
+                    result->set_error_msg(ex.what());
+                    self->OnGoalExit();
+                    server->TerminateCurrent(result);
+                    return;
+                } catch (const common::ControllerException& ex) {
+                    AWARN << "FollowPath controller error: " << ex.what();
+                    auto result =
+                        std::make_shared<nav_proto::FollowPathAction::Result>();
+                    result->set_error_code(err_proto::FOLLOW_PATH_UNKNOWN);
+                    result->set_error_msg(ex.what());
+                    self->OnGoalExit();
+                    server->TerminateCurrent(result);
+                    return;
+                }
+
+                std::this_thread::sleep_for(period);
             }
 
             if (server->IsCancelRequested()) {
@@ -163,7 +225,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
                     server->SucceededCurrent(result);
                     return;
                 }
-                std::this_thread::sleep_for(kControlPeriod);
+                std::this_thread::sleep_for(
+                    ControlPeriod(self->controller_frequency_));
             }
         });
 
@@ -203,7 +266,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
                     server->SucceededCurrent(result);
                     return;
                 }
-                std::this_thread::sleep_for(kControlPeriod);
+                std::this_thread::sleep_for(
+                    ControlPeriod(self->controller_frequency_));
             }
         });
 
@@ -236,7 +300,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
                     server->SucceededCurrent(result);
                     return;
                 }
-                std::this_thread::sleep_for(kControlPeriod);
+                std::this_thread::sleep_for(
+                    ControlPeriod(self->controller_frequency_));
             }
         });
 
@@ -244,8 +309,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node)
     return true;
 }
 
-void ControllerServer::DetachAutolinkNode()
-{
+void ControllerServer::DetachAutolinkNode() {
     if (!autolink_actions_) {
         return;
     }

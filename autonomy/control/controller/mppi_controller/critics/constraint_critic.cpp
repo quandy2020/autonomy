@@ -32,15 +32,17 @@
          return;
      }
  
-     // Load from proto options
-     if (options_->has_constraint_critic()) {
-         const auto& critic = options_->constraint_critic();
-         power_ = critic.cost_power();
-         weight_ = critic.cost_weight();
-     } else {
-         power_ = 1;
-         weight_ = 4.0f;  // Default
-     }
+    // Load from proto options
+    if (options_->has_constraint_critic()) {
+        const auto& critic = options_->constraint_critic();
+        enabled_ = critic.enabled();
+        power_ = critic.cost_power();
+        weight_ = critic.cost_weight();
+    } else {
+        enabled_ = true;
+        power_ = 1;
+        weight_ = 4.0f;  // Default
+    }
  
      AINFO << "ConstraintCritic instantiated with " << power_ << " power and "
            << weight_ << " weight.";

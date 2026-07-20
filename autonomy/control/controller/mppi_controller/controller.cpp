@@ -33,17 +33,21 @@
      tf_buffer_ = tf_buffer;
      costmap_wrapper_ = costmap_wrapper;
      options_ = options.mppi_controller_options();
+     visualize_ = options_.visualize();
+     publish_optimal_trajectory_ = false;
  
      // 在独立应用（如 examples/apps/mppi_controller_app.cpp）中，没有 ROS2
      // 节点， 这里使用空 Node 指针初始化 Optimizer 与 PathHandler，使其仍能依赖
      // proto 参数和 costmap 运行。
      auto parent_node = std::shared_ptr<autolink::Node>();  // nullptr
  
-     optimizer_.initialize(parent_node, name_, costmap_wrapper_, &options_);
+     optimizer_.initialize(parent_node, name_, costmap_wrapper_, &options_,
+                           options.controller_frequency());
      path_handler_.initialize(parent_node, name_, costmap_wrapper_, tf_buffer_,
                               &options_);
  
-     AINFO << "Configured MPPI Controller: " << name_;
+     AINFO << "Configured MPPI Controller: " << name_
+           << " (visualize=" << (visualize_ ? "true" : "false") << ")";
  }
  
  void MPPIController::Cleanup() {
@@ -74,22 +78,29 @@
      auto start = std::chrono::system_clock::now();
  #endif
  
-     // No mutex needed for proto options (read-only after Configure)
-     commsgs::geometry_msgs::Pose goal =
-         path_handler_.getTransformedGoal(pose.header.stamp).pose;
- 
-     commsgs::planning_msgs::Path transformed_plan =
-         path_handler_.transformPath(pose);
+    // Transform path first so closed-loop rolling goal uses the latest closest pose.
+    commsgs::planning_msgs::Path transformed_plan =
+        path_handler_.transformPath(pose);
+
+    commsgs::geometry_msgs::Pose goal =
+        path_handler_.getTransformedGoal(pose.header.stamp).pose;
  
      map::costmap_2d::Costmap2D* costmap = costmap_wrapper_->getCostmap();
      std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock(
          *(costmap->getMutex()));
  
-     commsgs::geometry_msgs::Twist robot_speed;
-     robot_speed.linear = velocity.twist.linear;
-     robot_speed.angular = velocity.twist.angular;
-     cmd_vel = optimizer_.evalControl(pose, robot_speed, transformed_plan, goal,
-                                      goal_checker);
+    commsgs::geometry_msgs::Twist robot_speed;
+    robot_speed.linear = velocity.twist.linear;
+    robot_speed.angular = velocity.twist.angular;
+
+    last_robot_pose_ = pose;
+    last_robot_velocity_ = robot_speed;
+    last_goal_pose_ = goal;
+    last_goal_checker_ = goal_checker;
+    has_control_state_ = true;
+
+    cmd_vel = optimizer_.evalControl(pose, robot_speed, transformed_plan, goal,
+                                     goal_checker);
  
  #ifdef BENCHMARK_TESTING
      auto end = std::chrono::system_clock::now();
@@ -138,22 +149,27 @@
      }
  }
  
- void MPPIController::SetPlan(const commsgs::planning_msgs::Path& path) {
-     path_handler_.setPath(path);
- }
+void MPPIController::SetPlan(const commsgs::planning_msgs::Path& path) {
+    path_handler_.setPath(path);
+    has_control_state_ = false;
+}
  
  void MPPIController::SetSpeedLimit(const double& speed_limit,
                                     const bool& percentage) {
      optimizer_.setSpeedLimit(speed_limit, percentage);
  }
  
- bool MPPIController::IsGoalReached(double dist_tolerance,
-                                    double angle_tolerance) {
-     // Use the goal checker if available, otherwise use default behavior
-     // This is a placeholder implementation - should use goal_checker if
-     // provided
-     return false;  // Default: goal not reached
- }
+bool MPPIController::IsGoalReached(double dist_tolerance,
+                                   double angle_tolerance) {
+    (void)dist_tolerance;
+    (void)angle_tolerance;
+    if (!has_control_state_ || last_goal_checker_ == nullptr) {
+        return false;
+    }
+    return last_goal_checker_->IsGoalReached(last_robot_pose_.pose,
+                                             last_goal_pose_,
+                                             last_robot_velocity_);
+}
  
  }  // namespace mppi_controller
  }  // namespace controller

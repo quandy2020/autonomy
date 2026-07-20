@@ -14,206 +14,158 @@
  * limitations under the License.
  */
 
- #pragma once
+#pragma once
 
- #include <algorithm>
- #include <limits>
- #include <memory>
- #include <mutex>
- #include <string>
- #include <vector>
- 
- #include "autolink/node/writer.hpp"
- #include "autonomy/common/macros.hpp"
- #include "autonomy/control/common/controller_interface.hpp"
- #include "autonomy/control/controller/graceful_controller/path_handler.hpp"
- #include "autonomy/control/controller/graceful_controller/smooth_control_law.hpp"
- #include "autonomy/control/controller/graceful_controller/utils.hpp"
- #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
- 
- namespace autonomy {
- namespace control {
- namespace controller {
- 
- /**
-  * @class nav2_graceful_controller::GracefulController
-  * @brief Graceful controller plugin
-  */
- class GracefulController : public common::ControllerInterface
- {
- public:
-     /**
-      * @brief Constructor for nav2_graceful_controller::GracefulController
-      */
-     GracefulController() = default;
- 
-     /**
-      * @brief Destructor for nav2_graceful_controller::GracefulController
-      */
-     ~GracefulController() override = default;
- 
-     /**
-      * @brief Configure controller state machine
-      * @param parent WeakPtr to node
-      * @param name Name of plugin
-      * @param tf TF buffer
-      * @param costmap_ros Costmap2DROS object of environment
-      */
-     void Configure(const proto::ControllerOptions& options, std::string name,
-                    std::shared_ptr<transform::Buffer> tf,
-                    std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                        costmap_wrapper);
- 
-     /**
-      * @brief Cleanup controller state machine.
-      */
-     void Cleanup();
- 
-     /**
-      * @brief Activate controller state machine.
-      */
-     void Activate();
- 
-     /**
-      * @brief Deactivate controller state machine.
-      */
-     void Deactivate();
- 
-     /**
-      * @brief Compute the best command given the current pose and velocity.
-      * @param pose      Current robot pose
-      * @param velocity  Current robot velocity
-      * @param goal_checker Ptr to the goal checker for this task in case useful
-      * in computing commands
-      * @return          Best command
-      */
-     uint32 ComputeVelocityCommands(
-         const commsgs::geometry_msgs::PoseStamped& pose,
-         const commsgs::geometry_msgs::TwistStamped& velocity,
-         commsgs::geometry_msgs::TwistStamped& cmd_vel,
-         common::GoalChecker* goal_checker, std::string& message) override;
- 
-     /**
-      * @brief Check if the goal pose has been achieved by the local planner
-      * @param dist_tolerance The distance tolerance in which the current pose
-      * will be partly accepted as reached goal
-      * @param angle_tolerance The angle tolerance in which the current pose will
-      * be partly accepted as reached goal
-      * @return True if achieved, false otherwise
-      */
-     bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
- 
-     /**
-      * @brief Set the global plan.
-      * @param path The global plan
-      */
-     void SetPlan(const commsgs::planning_msgs::Path& path) override;
- 
-     /**
-      * @brief Limits the maximum linear speed of the robot.
-      * @param speed_limit expressed in absolute value (in m/s)
-      * or in percentage from maximum robot speed
-      * @param percentage setting speed limit in percentage if true
-      * or in absolute values in false case
-      */
-     void SetSpeedLimit(const double& speed_limit,
-                        const bool& percentage) override;
- 
- protected:
-     /**
-      * @brief Validate a given target pose for calculating command velocity
-      * @param target_pose Target pose to validate
-      * @param dist_to_target Distance to target pose
-      * @param dist_to_goal Distance to navigation goal
-      * @param trajectory Trajectory to validate in simulation
-      * @param costmap_transform Transform between global and local costmap
-      * @param cmd_vel Initial command velocity to validate in simulation
-      * @return true if target pose is valid, false otherwise
-      */
-     bool ValidateTargetPose(
-         commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-         double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
-         commsgs::geometry_msgs::TransformStamped& costmap_transform,
-         commsgs::geometry_msgs::TwistStamped& cmd_vel);
- 
-     /**
-      * @brief Simulate trajectory calculating in every step the new velocity
-      * command based on a new curvature value and checking for collisions.
-      *
-      * @param motion_target Motion target point (in costmap local frame?)
-      * @param costmap_transform Transform between global and local costmap
-      * @param trajectory Simulated trajectory
-      * @param cmd_vel Initial command velocity during simulation
-      * @param backward Flag to indicate if the robot is moving backward
-      * @return true if the trajectory is collision free, false otherwise
-      */
-     bool SimulateTrajectory(
-         const commsgs::geometry_msgs::PoseStamped& motion_target,
-         const commsgs::geometry_msgs::TransformStamped& costmap_transform,
-         commsgs::planning_msgs::Path& trajectory,
-         commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward);
- 
-     /**
-      * @brief Rotate the robot to face the motion target with maximum angular
-      * velocity.
-      *
-      * @param angle_to_target Angle to the motion target
-      * @return geometry_msgs::msg::Twist Velocity command
-      */
-     commsgs::geometry_msgs::Twist RotateToTarget(double angle_to_target);
- 
-     /**
-      * @brief Checks if the robot is in collision
-      * @param x The x coordinate of the robot in global frame
-      * @param y The y coordinate of the robot in global frame
-      * @param theta The orientation of the robot in global frame
-      * @return Whether in collision
-      */
-     bool InCollision(const double& x, const double& y, const double& theta);
- 
-     /**
-      * @brief Compute the distance to each pose in a path
-      * @param poses Poses to compute distances with
-      * @param distances Computed distances
-      */
-     void ComputeDistanceAlongPath(
-         const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
-         std::vector<double>& distances);
- 
-     /**
-      * @brief Control law requires proper orientations, not all planners provide
-      * them
-      * @param path Path to add orientations into, if required
-      */
-     void ValidateOrientations(
-         std::vector<commsgs::geometry_msgs::PoseStamped>& path);
- 
-     std::shared_ptr<transform::Buffer> tf_buffer_;
-     std::string plugin_name_;
-     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-     std::unique_ptr<
-         map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
-         collision_checker_;
- 
-     double goal_dist_tolerance_;
-     bool goal_reached_;
- 
-     // True from the time a new path arrives until we have completed an initial
-     // rotation
-     bool do_initial_rotation_;
- 
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-         transformed_plan_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
-         local_plan_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>>
-         motion_target_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::Marker>>
-         slowdown_pub_;
-     std::unique_ptr<PathHandler> path_handler_;
-     std::unique_ptr<SmoothControlLaw> control_law_;
- };
- 
- }  // namespace controller
- }  // namespace control
- }  // namespace autonomy
+#include <algorithm>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "autolink/node/writer.hpp"
+#include "autonomy/common/macros.hpp"
+#include "autonomy/control/common/controller_interface.hpp"
+#include "autonomy/control/controller/graceful_controller/path_handler.hpp"
+#include "autonomy/control/controller/graceful_controller/smooth_control_law.hpp"
+#include "autonomy/control/controller/graceful_controller/utils.hpp"
+#include "autonomy/control/proto/graceful_controller.pb.h"
+#include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
+
+namespace autonomy {
+namespace control {
+namespace controller {
+
+struct GracefulRuntimeParams {
+    double transform_tolerance{0.1};
+    double max_lookahead{0.9};
+    double min_lookahead{0.25};
+    double max_robot_pose_search_dist{3.0};
+    double k_phi{3.0};
+    double k_delta{2.0};
+    double beta{0.4};
+    double lambda{2.0};
+    double v_linear_min{0.05};
+    double v_linear_max{0.5};
+    double v_angular_max{1.0};
+    double v_angular_min_in_place{0.1};
+    double slowdown_radius{0.5};
+    double deceleration_max{2.5};
+    double initial_rotation_tolerance{0.1};
+    double rotation_scaling_factor{1.0};
+    double in_place_collision_resolution{0.1};
+    double footprint_scaling_linear_vel{0.5};
+    double footprint_scaling_factor{0.25};
+    double footprint_scaling_step{0.1};
+    double final_rotation_search_step{0.1};
+    int32_t obstacle_cost_margin{10};
+    bool initial_rotation{true};
+    bool prefer_final_rotation{false};
+    bool allow_backward{false};
+    bool use_collision_detection{true};
+};
+
+/**
+ * @class nav2_graceful_controller::GracefulController
+ * @brief Graceful controller plugin
+ */
+class GracefulController : public common::ControllerInterface
+{
+public:
+    GracefulController() = default;
+    ~GracefulController() override = default;
+
+    void Configure(const proto::ControllerOptions& options, std::string name,
+                   std::shared_ptr<transform::Buffer> tf,
+                   std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
+                       costmap_wrapper);
+
+    void Cleanup();
+    void Activate();
+    void Deactivate();
+
+    uint32 ComputeVelocityCommands(
+        const commsgs::geometry_msgs::PoseStamped& pose,
+        const commsgs::geometry_msgs::TwistStamped& velocity,
+        commsgs::geometry_msgs::TwistStamped& cmd_vel,
+        common::GoalChecker* goal_checker, std::string& message) override;
+
+    bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
+    void SetPlan(const commsgs::planning_msgs::Path& path) override;
+    void Reset() override;
+    void SetSpeedLimit(const double& speed_limit,
+                       const bool& percentage) override;
+
+protected:
+    bool ValidateTargetPose(
+        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+        commsgs::planning_msgs::Path& trajectory,
+        commsgs::geometry_msgs::TransformStamped& costmap_transform,
+        commsgs::geometry_msgs::TwistStamped& cmd_vel);
+
+    bool ValidateTargetPoseOnApproach(
+        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+        double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
+        commsgs::geometry_msgs::TransformStamped& costmap_transform,
+        commsgs::geometry_msgs::TwistStamped& cmd_vel);
+
+    bool FindBestApproachTrajectory(
+        commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+        commsgs::geometry_msgs::TransformStamped& costmap_transform,
+        double safety_cost, commsgs::planning_msgs::Path& best_trajectory,
+        commsgs::geometry_msgs::TwistStamped& best_cmd_vel);
+
+    bool SimulateTrajectory(
+        const commsgs::geometry_msgs::PoseStamped& motion_target,
+        const commsgs::geometry_msgs::TransformStamped& costmap_transform,
+        commsgs::planning_msgs::Path& trajectory,
+        commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward);
+
+    commsgs::geometry_msgs::Twist RotateToTarget(double angle_to_target);
+
+    bool InCollision(const double& x, const double& y, const double& theta,
+                     double inflation_scale = 1.0);
+
+    double GetMaxCost(const commsgs::planning_msgs::Path& path,
+                      commsgs::geometry_msgs::TransformStamped&
+                          costmap_transform);
+
+    void ComputeDistanceAlongPath(
+        const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
+        std::vector<double>& distances);
+
+    void ValidateOrientations(
+        std::vector<commsgs::geometry_msgs::PoseStamped>& path);
+
+    std::shared_ptr<transform::Buffer> tf_buffer_;
+    std::string plugin_name_;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+    std::unique_ptr<
+        map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>>
+        collision_checker_;
+
+    bool do_initial_rotation_{true};
+    std::optional<double> safe_approach_angle_;
+
+    proto::GracefulControllerOptions options_;
+    double initial_v_linear_min_{0.05};
+    double initial_v_linear_max_{0.5};
+    double initial_v_angular_max_{1.0};
+    GracefulRuntimeParams params_;
+
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+        transformed_plan_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+        local_plan_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>>
+        motion_target_pub_;
+    std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::Marker>>
+        slowdown_pub_;
+    std::unique_ptr<PathHandler> path_handler_;
+    std::unique_ptr<SmoothControlLaw> control_law_;
+};
+
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy

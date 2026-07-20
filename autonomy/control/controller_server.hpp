@@ -26,6 +26,7 @@
 
 
 #include "autolink/autolink.hpp"
+#include "autolink/node/writer.hpp"
 #include "autonomy/control/constants.hpp"
 #include "autonomy/common/macros.hpp"
 #include "autonomy/commsgs/builtin_interfaces.hpp"
@@ -82,6 +83,9 @@ public:
 
     void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
     bool GetLatestOdometry(commsgs::planning_msgs::Odometry& odom) const;
+
+    /** Load controller / checker plugins from options (idempotent). */
+    void LoadPlugins();
 
 protected:
 
@@ -156,6 +160,13 @@ protected:
      */
     bool GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose);
 
+    void PublishVelocity(const commsgs::geometry_msgs::TwistStamped& cmd_vel);
+    void PublishZeroVelocity();
+
+    common::ControllerInterface* GetActiveController();
+    common::GoalChecker* GetActiveGoalChecker();
+    common::ProgressChecker* GetActiveProgressChecker();
+
     // The controller needs a costmap node
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
     std::shared_ptr<transform::Buffer> tf_buffer_;
@@ -211,6 +222,13 @@ protected:
     // Current path container
     commsgs::planning_msgs::Path current_path_;
     commsgs::geometry_msgs::TwistStamped last_cmd_vel_{};
+
+    std::string follow_controller_id_;
+    std::string follow_goal_checker_id_;
+    std::string follow_progress_checker_id_;
+
+    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::TwistStamped>>
+        cmd_vel_writer_;
 
     bool follow_path_active_{false};
     bool follow_path_is_closed_{false};

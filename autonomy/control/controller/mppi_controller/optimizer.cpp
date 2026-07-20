@@ -16,6 +16,8 @@
 
 #include "autonomy/control/controller/mppi_controller/optimizer.hpp"
 
+#include <algorithm>
+
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 
 namespace autonomy {
@@ -25,7 +27,8 @@ namespace mppi_controller {
 
 void Optimizer::initialize(std::shared_ptr<autolink::Node> parent, const std::string& name,
                            std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-                           const proto::MPPIControllerOptions* options) {
+                           const proto::MPPIControllerOptions* options,
+                           double controller_frequency) {
   parent_ = parent;
   costmap_ros_ = costmap_ros;
   name_ = name;
@@ -36,6 +39,9 @@ void Optimizer::initialize(std::shared_ptr<autolink::Node> parent, const std::st
 
   critic_manager_.configure(parent_, name_, costmap_ros_, options_);
   noise_generator_.initialize(settings_, isHolonomic(), name_, options_);
+
+  const double freq = controller_frequency > 0.0 ? controller_frequency : 20.0;
+  setOffset(freq);
 
   reset();
 }
@@ -66,9 +72,14 @@ void Optimizer::getParams() {
     s.base_constraints.ay_min = -3.0f;
     s.base_constraints.az_max = 3.5f;
     s.retry_attempt_limit = 1;
+    s.open_loop = false;
+    s.clamp_raw_controls = false;
+    s.model_delay_vx = 0.0f;
+    s.model_delay_vy = 0.0f;
+    s.model_delay_wz = 0.0f;
+    s.sgf_order = 2;
     setMotionModel("DiffDrive");
-    double controller_frequency = 20.0;  // Default
-    setOffset(controller_frequency);
+    setOffset(20.0);
     return;
   }
 
@@ -91,24 +102,35 @@ void Optimizer::getParams() {
   s.sampling_std.vy = options_->vy_std() != 0.0 ? options_->vy_std() : 0.2f;
   s.sampling_std.wz = options_->wz_std() != 0.0 ? options_->wz_std() : 0.4f;
 
-  // Default values for acceleration constraints (not in proto yet)
-  if (s.base_constraints.ax_max == 0.0f) {
-    s.base_constraints.ax_max = 3.0f;
-  }
-  if (s.base_constraints.ax_min == 0.0f) {
-    s.base_constraints.ax_min = -3.0f;
-  }
-  if (s.base_constraints.ay_max == 0.0f) {
-    s.base_constraints.ay_max = 3.0f;
-  }
-  if (s.base_constraints.ay_min == 0.0f) {
-    s.base_constraints.ay_min = -3.0f;
-  }
-  if (s.base_constraints.az_max == 0.0f) {
-    s.base_constraints.az_max = 3.5f;
-  }
-  if (s.retry_attempt_limit == 0) {
+  s.base_constraints.ax_max =
+      options_->ax_max() != 0.0 ? options_->ax_max() : 3.0f;
+  s.base_constraints.ax_min =
+      options_->ax_min() != 0.0 ? options_->ax_min() : -3.0f;
+  s.base_constraints.ay_max =
+      options_->ay_max() != 0.0 ? options_->ay_max() : 3.0f;
+  s.base_constraints.ay_min =
+      options_->ay_min() != 0.0 ? options_->ay_min() : -3.0f;
+  s.base_constraints.az_max =
+      options_->az_max() != 0.0 ? options_->az_max() : 3.5f;
+
+  if (options_->retry_attempt_limit() > 0) {
+    s.retry_attempt_limit = static_cast<size_t>(options_->retry_attempt_limit());
+  } else {
     s.retry_attempt_limit = 1;
+  }
+  s.open_loop = options_->open_loop();
+  s.clamp_raw_controls = options_->clamp_raw_controls();
+  s.model_delay_vx = static_cast<float>(options_->model_delay_vx());
+  s.model_delay_vy = static_cast<float>(options_->model_delay_vy());
+  s.model_delay_wz = static_cast<float>(options_->model_delay_wz());
+
+  if (options_->sgf_order() >= 1 && options_->sgf_order() <= 2) {
+    s.sgf_order = options_->sgf_order();
+  } else if (options_->sgf_order() != 0) {
+    AWARN << "sgf_order must be 1 or 2, defaulting to 2";
+    s.sgf_order = 2;
+  } else {
+    s.sgf_order = 2;
   }
 
   s.base_constraints.ax_max = fabs(s.base_constraints.ax_max);
@@ -132,14 +154,20 @@ void Optimizer::getParams() {
   s.constraints = s.base_constraints;
 
   setMotionModel(motion_model_name);
+}
 
-  // TODO: Get controller_frequency from somewhere else (not in proto)
-  double controller_frequency = 20.0;  // Default
-  setOffset(controller_frequency);
+void Optimizer::configureMotionModel() {
+  if (!motion_model_) {
+    return;
+  }
+  motion_model_->setConstraints(settings_.constraints, settings_.model_dt,
+                               settings_.model_delay_vx, settings_.model_delay_vy,
+                               settings_.model_delay_wz, settings_.clamp_raw_controls);
 }
 
 void Optimizer::setOffset(double controller_frequency) {
   const double controller_period = 1.0 / controller_frequency;
+  settings_.controller_period = static_cast<float>(controller_period);
   constexpr double eps = 1e-6;
 
   if ((controller_period + eps) < settings_.model_dt) {
@@ -161,6 +189,7 @@ void Optimizer::reset(bool reset_dynamic_speed_limits) {
   control_history_[1] = {0.0f, 0.0f, 0.0f};
   control_history_[2] = {0.0f, 0.0f, 0.0f};
   control_history_[3] = {0.0f, 0.0f, 0.0f};
+  last_command_vel_ = commsgs::geometry_msgs::Twist();
 
   if (reset_dynamic_speed_limits) {
     settings_.constraints = settings_.base_constraints;
@@ -170,7 +199,8 @@ void Optimizer::reset(bool reset_dynamic_speed_limits) {
   generated_trajectories_.reset(settings_.batch_size, settings_.time_steps);
 
   noise_generator_.reset(settings_, isHolonomic());
-  motion_model_->initialize(settings_.constraints, settings_.model_dt);
+  motion_model_->clearCommandHistory();
+  configureMotionModel();
 
   AINFO << "Optimizer reset";
 }
@@ -227,8 +257,29 @@ bool Optimizer::fallback(bool fail) {
 void Optimizer::prepare(const commsgs::geometry_msgs::PoseStamped& robot_pose,
                         const commsgs::geometry_msgs::Twist& robot_speed, const commsgs::planning_msgs::Path& plan,
                         const commsgs::geometry_msgs::Pose& goal, common::GoalChecker* goal_checker) {
+  if (settings_.open_loop) {
+    state_.speed = last_command_vel_;
+  } else {
+    const auto& c = settings_.constraints;
+    const double dt = settings_.controller_period;
+    state_.speed = robot_speed;
+    state_.speed.linear.x = std::clamp(
+        static_cast<double>(last_command_vel_.linear.x),
+        robot_speed.linear.x + dt * static_cast<double>(c.ax_min),
+        robot_speed.linear.x + dt * static_cast<double>(c.ax_max));
+    state_.speed.angular.z = std::clamp(
+        static_cast<double>(last_command_vel_.angular.z),
+        robot_speed.angular.z - dt * static_cast<double>(c.az_max),
+        robot_speed.angular.z + dt * static_cast<double>(c.az_max));
+    if (isHolonomic()) {
+      state_.speed.linear.y = std::clamp(
+          static_cast<double>(last_command_vel_.linear.y),
+          robot_speed.linear.y + dt * static_cast<double>(c.ay_min),
+          robot_speed.linear.y + dt * static_cast<double>(c.ay_max));
+    }
+  }
+
   state_.pose = robot_pose;
-  state_.speed = robot_speed;
   path_ = tools::toTensor(plan);
   costs_.setZero();
   goal_ = goal;
@@ -254,53 +305,92 @@ void Optimizer::shiftControlSequence() {
 }
 
 void Optimizer::generateNoisedTrajectories() {
+  applyControlSequenceInterIterationConstraints();
   noise_generator_.setNoisedControls(state_, control_sequence_);
   noise_generator_.generateNextNoises();
   updateStateVelocities(state_);
   integrateStateVelocities(generated_trajectories_, state_);
 }
 
+void Optimizer::applyControlSequenceInterIterationConstraints() {
+  auto& s = settings_;
+  const float first_dt = s.controller_period;
+  const float max_delta_vx = first_dt * s.constraints.ax_max;
+  const float min_delta_vx = first_dt * s.constraints.ax_min;
+  const float max_delta_vy = first_dt * s.constraints.ay_max;
+  const float min_delta_vy = first_dt * s.constraints.ay_min;
+  const float max_delta_wz = first_dt * s.constraints.az_max;
+
+  const float speed_vx = static_cast<float>(state_.speed.linear.x);
+  const float speed_wz = static_cast<float>(state_.speed.angular.z);
+  if (s.shift_control_sequence) {
+    control_sequence_.vx(0) = speed_vx;
+    control_sequence_.wz(0) = speed_wz;
+    if (isHolonomic()) {
+      control_sequence_.vy(0) = static_cast<float>(state_.speed.linear.y);
+    }
+  } else {
+    control_sequence_.vx(0) = tools::clampVelocityByAccel(
+        speed_vx, control_sequence_.vx(0), min_delta_vx, max_delta_vx);
+    control_sequence_.wz(0) = tools::clampVelocityByAccel(
+        speed_wz, control_sequence_.wz(0), -max_delta_wz, max_delta_wz);
+    if (isHolonomic()) {
+      const float speed_vy = static_cast<float>(state_.speed.linear.y);
+      control_sequence_.vy(0) = tools::clampVelocityByAccel(
+          speed_vy, control_sequence_.vy(0), min_delta_vy, max_delta_vy);
+    }
+  }
+}
+
 void Optimizer::applyControlSequenceConstraints() {
   auto& s = settings_;
 
-  float max_delta_vx = s.model_dt * s.constraints.ax_max;
-  float min_delta_vx = s.model_dt * s.constraints.ax_min;
-  float max_delta_vy = s.model_dt * s.constraints.ay_max;
-  float min_delta_vy = s.model_dt * s.constraints.ay_min;
-  float max_delta_wz = s.model_dt * s.constraints.az_max;
-  float vx_last = tools::clamp(s.constraints.vx_min, s.constraints.vx_max, control_sequence_.vx(0));
-  float wz_last = tools::clamp(-s.constraints.wz, s.constraints.wz, control_sequence_.wz(0));
-  control_sequence_.vx(0) = vx_last;
-  control_sequence_.wz(0) = wz_last;
-  float vy_last = 0;
-  if (isHolonomic()) {
-    vy_last = tools::clamp(-s.constraints.vy, s.constraints.vy, control_sequence_.vy(0));
-    control_sequence_.vy(0) = vy_last;
+  motion_model_->applyConstraints(control_sequence_);
+
+  float max_delta_vx = s.controller_period * s.constraints.ax_max;
+  float min_delta_vx = s.controller_period * s.constraints.ax_min;
+  float max_delta_vy = s.controller_period * s.constraints.ay_max;
+  float min_delta_vy = s.controller_period * s.constraints.ay_min;
+  float max_delta_wz = s.controller_period * s.constraints.az_max;
+
+  float vx_last = static_cast<float>(state_.speed.linear.x);
+  float wz_last = static_cast<float>(state_.speed.angular.z);
+  float vy_last = isHolonomic() ? static_cast<float>(state_.speed.linear.y) : 0.0f;
+
+  if (s.shift_control_sequence) {
+    control_sequence_.vx(0) = vx_last;
+    control_sequence_.wz(0) = wz_last;
+    if (isHolonomic()) {
+      control_sequence_.vy(0) = vy_last;
+    }
   }
 
-  for (unsigned int i = 1; i != control_sequence_.vx.size(); i++) {
+  for (unsigned int i = 0; i != control_sequence_.vx.size(); i++) {
+    if (i == 1) {
+      max_delta_vx = s.model_dt * s.constraints.ax_max;
+      min_delta_vx = s.model_dt * s.constraints.ax_min;
+      max_delta_vy = s.model_dt * s.constraints.ay_max;
+      min_delta_vy = s.model_dt * s.constraints.ay_min;
+      max_delta_wz = s.model_dt * s.constraints.az_max;
+    }
+
     float& vx_curr = control_sequence_.vx(i);
     vx_curr = tools::clamp(s.constraints.vx_min, s.constraints.vx_max, vx_curr);
-    if (vx_last > 0) {
-      vx_curr = tools::clamp(vx_last + min_delta_vx, vx_last + max_delta_vx, vx_curr);
-    } else {
-      vx_curr = tools::clamp(vx_last - max_delta_vx, vx_last - min_delta_vx, vx_curr);
-    }
+    vx_curr = tools::clampVelocityByAccel(
+        vx_last, vx_curr, min_delta_vx, max_delta_vx);
     vx_last = vx_curr;
 
     float& wz_curr = control_sequence_.wz(i);
     wz_curr = tools::clamp(-s.constraints.wz, s.constraints.wz, wz_curr);
-    wz_curr = tools::clamp(wz_last - max_delta_wz, wz_last + max_delta_wz, wz_curr);
+    wz_curr = tools::clampVelocityByAccel(
+        wz_last, wz_curr, -max_delta_wz, max_delta_wz);
     wz_last = wz_curr;
 
     if (isHolonomic()) {
       float& vy_curr = control_sequence_.vy(i);
       vy_curr = tools::clamp(-s.constraints.vy, s.constraints.vy, vy_curr);
-      if (vy_last > 0) {
-        vy_curr = tools::clamp(vy_last + min_delta_vy, vy_last + max_delta_vy, vy_curr);
-      } else {
-        vy_curr = tools::clamp(vy_last - max_delta_vy, vy_last - min_delta_vy, vy_curr);
-      }
+      vy_curr = tools::clampVelocityByAccel(
+          vy_last, vy_curr, min_delta_vy, max_delta_vy);
       vy_last = vy_curr;
     }
   }
@@ -469,8 +559,20 @@ commsgs::geometry_msgs::TwistStamped Optimizer::getControlFromSequenceAsTwist(
   auto vx = control_sequence_.vx(offset);
   auto wz = control_sequence_.wz(offset);
 
+  last_command_vel_.linear.x = vx;
+  last_command_vel_.angular.z = wz;
+
+  float vy = 0.0f;
   if (isHolonomic()) {
-    auto vy = control_sequence_.vy(offset);
+    vy = control_sequence_.vy(offset);
+    last_command_vel_.linear.y = vy;
+  } else {
+    last_command_vel_.linear.y = 0.0;
+  }
+
+  motion_model_->pushCommandHistory(vx, vy, wz);
+
+  if (isHolonomic()) {
     return tools::toTwistStamped(vx, vy, wz, stamp, costmap_ros_->getBaseFrameID());
   }
 
@@ -489,7 +591,7 @@ void Optimizer::setMotionModel(const std::string& model) {
                                                   " is not valid! Valid options are DiffDrive, Omni, "
                                                   "or Ackermann"));
   }
-  motion_model_->initialize(settings_.constraints, settings_.model_dt);
+  configureMotionModel();
 }
 
 void Optimizer::setSpeedLimit(double speed_limit, bool percentage) {
@@ -516,6 +618,7 @@ void Optimizer::setSpeedLimit(double speed_limit, bool percentage) {
       s.constraints.wz = s.base_constraints.wz * ratio;
     }
   }
+  configureMotionModel();
 }
 
 models::Trajectories& Optimizer::getGeneratedTrajectories() { return generated_trajectories_; }
