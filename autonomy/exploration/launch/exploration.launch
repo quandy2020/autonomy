@@ -1,0 +1,12 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Exploration process: RGBD hierarchical explorer server.
+-->
+<autolink>
+    <module>
+        <name>exploration</name>
+        <type>binary</type>
+        <process_name>exploration --configuration_directory=config --configuration_basename=autonomy.lua</process_name>
+    </module>
+</autolink>

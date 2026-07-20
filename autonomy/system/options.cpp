@@ -19,6 +19,7 @@
 #include "autonomy/common/configuration_file_resolver.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/control_options.hpp"
+#include "autonomy/exploration/exploration_options.hpp"
 #include "autonomy/map/map_options.hpp"
 #include "autonomy/planning/planner_options.hpp"
 #include "autonomy/navigator/options.hpp"
@@ -43,6 +44,10 @@ proto::AutonomyOptions LoadOptions(
     if (parameter_dictionary->HasKey("planning")) {
         *options.mutable_planner_options() = planning::LoadOptions(
             parameter_dictionary->GetDictionary("planning").get());
+    }
+    if (parameter_dictionary->HasKey("exploration")) {
+        *options.mutable_exploration_options() = exploration::LoadOptions(
+            parameter_dictionary->GetDictionary("exploration").get());
     }
     if (parameter_dictionary->HasKey("navigator")) {
         *options.mutable_navigator_options() =

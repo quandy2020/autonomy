@@ -134,7 +134,8 @@ bool ExplorationTask::OnGoal(const exp_proto::ExplorationGoal& goal)
             goal.params_case() != exp_proto::ExplorationGoal::kArea) {
             exploration_client_->UseDefaultExplorationArea();
         }
-        if (!exploration_client_->HasFrontier()) {
+        if (!exploration_client_->HasFrontier() &&
+            exploration_client_->IsExplorationFinished()) {
             return false;
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 The Openbot Authors (duyongquan)
+ * Copyright 2026 The Openbot Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef AUTONOMY_COMMON_CONFIG_HPP_
-#define AUTONOMY_COMMON_CONFIG_HPP_
+#pragma once
 
 namespace autonomy {
-namespace common {
+namespace exploration {
 
-constexpr char kConfigurationFilesDirectory[] = "/workspace/autonomy/install/autonomy/share/autonomy/config";
-constexpr char kSourceDirectory[] = "/workspace/autonomy/src/autonomy";
+/**
+ * @file constants.hpp
+ * @brief Named constants for the exploration subsystem.
+ */
 
-// Library install dir
-constexpr char kLibraryInstallDir[] = "/workspace/autonomy/install/autonomy";
+constexpr char kExplorationServerNodeName[] =
+    "exploration_server";  //!< @brief default Autolink node name
 
-// Library build dir
-constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build/autonomy";
-
-}  // namespace common
+}  // namespace exploration
 }  // namespace autonomy
-
-#endif  // AUTONOMY_COMMON_CONFIG_HPP_

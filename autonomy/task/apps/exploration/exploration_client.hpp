@@ -1,17 +1,22 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * Exploration BT facade: frontier queue + navigation RPC delegation.
+ * Exploration BT facade: ExplorerInterface + navigation RPC.
  */
 
 #pragma once
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "autolink/node/node.hpp"
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/commsgs/map_msgs.hpp"
+#include "autonomy/commsgs/planning_msgs.hpp"
+#include "autonomy/commsgs/sensor_msgs.hpp"
+#include "autonomy/exploration/common/explorer_interface.hpp"
+#include "autonomy/exploration/exploration_options.hpp"
+#include "autonomy/exploration/proto/exploration_options.pb.h"
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 
 namespace BT {
@@ -25,7 +30,7 @@ namespace exploration {
 
 constexpr char kExplorationClientBlackboardKey[] = "exploration_client";
 
-/** Frontier queue and map metadata; motion uses NavigationClient RPC. */
+/** Task-layer facade over RGBD ExplorerInterface; motion via NavigationClient. */
 class ExplorationClient
 {
 public:
@@ -44,12 +49,18 @@ public:
 
     navigation::NavigationClient& navigation() { return *navigation_; }
 
+    void SetOptions(
+        const ::autonomy::exploration::proto::ExplorationOptions& options);
     void SetMapName(const std::string& map_name);
     const std::string& map_name() const { return map_name_; }
 
-    void SetExplorationArea(const commsgs::geometry_msgs::Polygon& area,
-                            double grid_spacing_m = 1.0);
-    void UseDefaultExplorationArea(double grid_spacing_m = 1.5);
+    void SetExplorationArea(const commsgs::geometry_msgs::Polygon& area);
+    void UseDefaultExplorationArea();
+
+    void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
+    void UpdateDepth(const commsgs::sensor_msgs::Image& depth,
+                     const commsgs::sensor_msgs::CameraInfo& info,
+                     const commsgs::geometry_msgs::Transform& map_t_camera);
 
     bool HasFrontier() const;
     bool SelectNextFrontier(commsgs::geometry_msgs::PoseStamped& goal);
@@ -57,18 +68,23 @@ public:
 
     float exploration_progress() const;
     float explored_area_m2() const;
+    bool IsExplorationFinished() const;
+
+    commsgs::map_msgs::OccupancyGrid GetOccupancyGrid(
+        const std::string& frame_id = "map") const;
+    bool SaveExplorationMap(const std::string& map_name) const;
 
     void CancelActiveMotion();
 
     explicit ExplorationClient(navigation::NavigationClient::Ptr navigation);
 
 private:
+    void EnsureExplorer();
+
     navigation::NavigationClient::Ptr navigation_;
-    std::vector<commsgs::geometry_msgs::PoseStamped> frontiers_;
-    size_t next_frontier_index_{0};
-    size_t visited_frontiers_{0};
-    double grid_spacing_m_{1.5};
+    ::autonomy::exploration::common::ExplorerInterface::SharedPtr explorer_;
     std::string map_name_{"exploration_map"};
+    std::string map_frame_{"map"};
 };
 
 }  // namespace exploration
