@@ -32,9 +32,12 @@ namespace checker {
 SimpleGoalChecker::SimpleGoalChecker()
     : xy_goal_tolerance_(0.25),
       yaw_goal_tolerance_(0.25),
+      xy_goal_tolerance_buffer_(0.0),
+      path_length_tolerance_(1.0),
       stateful_(true),
       check_xy_(true),
-      xy_goal_tolerance_sq_(0.0625) {}
+      xy_goal_tolerance_sq_(0.0625),
+      xy_goal_tolerance_reset_sq_(0.0625) {}
 
 void SimpleGoalChecker::Initialize(
     const std::string& plugin_name,
@@ -48,6 +51,9 @@ void SimpleGoalChecker::Initialize(
     stateful_ = true;
 
     xy_goal_tolerance_sq_ = xy_goal_tolerance_ * xy_goal_tolerance_;
+    xy_goal_tolerance_reset_sq_ =
+        (xy_goal_tolerance_ + xy_goal_tolerance_buffer_) *
+        (xy_goal_tolerance_ + xy_goal_tolerance_buffer_);
 }
 
 void SimpleGoalChecker::Reset() {
@@ -55,7 +61,9 @@ void SimpleGoalChecker::Reset() {
 }
 
 void SimpleGoalChecker::SetTolerances(double xy_tolerance, double yaw_tolerance,
-                                      bool stateful) {
+                                      bool stateful,
+                                      double path_length_tolerance,
+                                      double xy_goal_tolerance_buffer) {
     if (xy_tolerance > 0.0) {
         xy_goal_tolerance_ = xy_tolerance;
         xy_goal_tolerance_sq_ = xy_goal_tolerance_ * xy_goal_tolerance_;
@@ -63,26 +71,55 @@ void SimpleGoalChecker::SetTolerances(double xy_tolerance, double yaw_tolerance,
     if (yaw_tolerance > 0.0) {
         yaw_goal_tolerance_ = yaw_tolerance;
     }
+    if (path_length_tolerance > 0.0) {
+        path_length_tolerance_ = path_length_tolerance;
+    }
+    xy_goal_tolerance_buffer_ = xy_goal_tolerance_buffer;
+    xy_goal_tolerance_reset_sq_ =
+        (xy_goal_tolerance_ + xy_goal_tolerance_buffer_) *
+        (xy_goal_tolerance_ + xy_goal_tolerance_buffer_);
     stateful_ = stateful;
+}
+
+bool SimpleGoalChecker::IsGoalXYReached(
+    const commsgs::geometry_msgs::Pose& query_pose,
+    const commsgs::geometry_msgs::Pose& goal_pose,
+    const commsgs::geometry_msgs::Twist& velocity,
+    const commsgs::planning_msgs::Path& transformed_global_plan) {
+    (void)velocity;
+    if (map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
+        path_length_tolerance_) {
+        return false;
+    }
+    if (check_xy_) {
+        const double dx = query_pose.position.x - goal_pose.position.x;
+        const double dy = query_pose.position.y - goal_pose.position.y;
+        if (dx * dx + dy * dy > xy_goal_tolerance_sq_) {
+            return false;
+        }
+        if (stateful_) {
+            check_xy_ = false;
+        }
+    } else if (stateful_ && xy_goal_tolerance_buffer_ > 0.0) {
+        const double dx = query_pose.position.x - goal_pose.position.x;
+        const double dy = query_pose.position.y - goal_pose.position.y;
+        if (dx * dx + dy * dy > xy_goal_tolerance_reset_sq_) {
+            check_xy_ = true;
+            return false;
+        }
+    }
+    return true;
 }
 
 bool SimpleGoalChecker::IsGoalReached(
     const commsgs::geometry_msgs::Pose& query_pose,
     const commsgs::geometry_msgs::Pose& goal_pose,
     const commsgs::geometry_msgs::Twist& velocity) {
-    if (check_xy_) {
-        double dx = query_pose.position.x - goal_pose.position.x;
-        double dy = query_pose.position.y - goal_pose.position.y;
-        if (dx * dx + dy * dy > xy_goal_tolerance_sq_) {
-            return false;
-        }
-        // We are within the window
-        // If we are stateful, change the state.
-        if (stateful_) {
-            check_xy_ = false;
-        }
+    if (!IsGoalXYReached(query_pose, goal_pose, velocity,
+                         commsgs::planning_msgs::Path{})) {
+        return false;
     }
-    double dyaw = autonomy::common::math::AngleDiff(
+    const double dyaw = autonomy::common::math::AngleDiff(
         transform::tf2::getYaw(query_pose.orientation),
         transform::tf2::getYaw(goal_pose.orientation));
     return std::abs(dyaw) <= yaw_goal_tolerance_;

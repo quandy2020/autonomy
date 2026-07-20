@@ -71,5 +71,12 @@ find_package(FBow ${QUIET_OR_REQUIRED_OPTION})
 find_package(G2o ${QUIET_OR_REQUIRED_OPTION})
 find_package(SQLite3 ${QUIET_OR_REQUIRED_OPTION})
 
+# PUBLIC link interface extras
+find_dependency(nlohmann_json ${QUIET_OR_REQUIRED_OPTION})
+find_package(foxglove-sdk CONFIG QUIET)
+if(foxglove-sdk_FOUND)
+  find_dependency(ZLIB ${QUIET_OR_REQUIRED_OPTION})
+endif()
+
 # Include the exported targets
 include("${AUTONOMY_CMAKE_DIR}/AutonomyTargets.cmake")

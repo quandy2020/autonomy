@@ -98,4 +98,22 @@ message GracefulControllerOptions
 
     // Resolution for collision checking during in-place rotation. Units: radians.
     double in_place_collision_resolution = 20;
+
+    // Cost margin below max_valid_cost; higher values tolerate more inflation.
+    int32 obstacle_cost_margin = 21;
+
+    // Maximum deceleration for velocity constraint near goal. Units: m/s^2.
+    double deceleration_max = 22;
+
+    // Linear velocity above which footprint scaling applies. Units: m/s.
+    double footprint_scaling_linear_vel = 23;
+
+    // Additional footprint inflation factor at max linear velocity.
+    double footprint_scaling_factor = 24;
+
+    // Linear velocity decrement when collision retry is needed. Units: m/s.
+    double footprint_scaling_step = 25;
+
+    // Angular step when searching for safer final approach heading. Units: rad.
+    double final_rotation_search_step = 26;
 }

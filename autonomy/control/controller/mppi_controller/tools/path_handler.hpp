@@ -167,6 +167,13 @@
      float inversion_yaw_tolerance{0.4};
      bool enforce_path_inversion_{false};
      unsigned int inversion_locale_{0u};
+
+     /** Start/end poses are spatially close (e.g. closed rectangle/circle lap). */
+     bool closed_loop_path_{false};
+     /** Virtual goal distance ahead of closest pose on closed loops (m). */
+     double closed_loop_goal_lookahead_{3.0};
+     /** Closest path iterator from the last transformPath (valid for closed loops). */
+     PathIterator last_closest_point_{};
  };
  
  }  // namespace tools

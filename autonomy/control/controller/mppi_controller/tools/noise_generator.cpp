@@ -39,13 +39,13 @@
          std::normal_distribution(0.0f, settings_.sampling_std.vx);
      ndistribution_vy_ =
          std::normal_distribution(0.0f, settings_.sampling_std.vy);
-     ndistribution_wz_ =
-         std::normal_distribution(0.0f, settings_.sampling_std.wz);
- 
-     // regenerate_noises_ is not in proto yet, use default
-     regenerate_noises_ = false;
- 
-     if (regenerate_noises_) {
+    ndistribution_wz_ =
+        std::normal_distribution(0.0f, settings_.sampling_std.wz);
+
+    regenerate_noises_ =
+        options != nullptr && options->regenerate_noises();
+
+    if (regenerate_noises_) {
          noise_thread_ =
              std::thread(std::bind(&NoiseGenerator::noiseThread, this));
      } else {
@@ -62,15 +62,15 @@
      }
  }
  
- void NoiseGenerator::generateNextNoises() {
-     // Trigger the thread to run in parallel to this iteration
-     // to generate the next iteration's noises (if applicable).
-     {
-         std::unique_lock<std::mutex> guard(noise_lock_);
-         ready_ = true;
-     }
-     noise_cond_.notify_all();
- }
+void NoiseGenerator::generateNextNoises() {
+    if (!regenerate_noises_) {
+        // Fixed noise pattern; dynamics come from control_sequence + motion_model.
+        return;
+    }
+    std::unique_lock<std::mutex> guard(noise_lock_);
+    ready_ = true;
+    noise_cond_.notify_all();
+}
  
  void NoiseGenerator::setNoisedControls(
      models::State& state, const models::ControlSequence& control_sequence) {

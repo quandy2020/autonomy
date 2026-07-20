@@ -70,7 +70,8 @@
      void initialize(
          std::shared_ptr<autolink::Node> parent, const std::string& name,
          std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros,
-         const proto::MPPIControllerOptions* options);
+         const proto::MPPIControllerOptions* options,
+         double controller_frequency = 20.0);
  
      /**
       * @brief Shutdown for optimizer at process end
@@ -178,6 +179,11 @@
       * @brief Apply hard vehicle constraints on control sequence
       */
      void applyControlSequenceConstraints();
+
+     /**
+      * @brief Pin control sequence t=0 to current speed before sampling noise.
+      */
+     void applyControlSequenceInterIterationConstraints();
  
      /**
       * @brief  Update velocities in state
@@ -248,7 +254,9 @@
       * @param fail Whether the system failed to recover from
       */
      bool fallback(bool fail);
- 
+
+     void configureMotionModel();
+
  protected:
      std::shared_ptr<autolink::Node> parent_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_ros_;
@@ -270,7 +278,8 @@
      models::Path path_;
      commsgs::geometry_msgs::Pose goal_;
      Eigen::ArrayXf costs_;
- 
+     commsgs::geometry_msgs::Twist last_command_vel_;
+
      CriticData critics_data_ = {state_,      generated_trajectories_,
                                  path_,       goal_,
                                  costs_,      settings_.model_dt,

@@ -126,21 +126,28 @@ void ObservationBuffer::bufferCloud(
 
     try {
         if (origin_frame == global_frame_) {
+            // Cloud already in the global frame (e.g. synthetic sim obstacles).
+            // Sensor origin is unknown; disable range gating so marks are not
+            // incorrectly filtered relative to the world origin (0,0).
             observation.origin_.x = 0.0;
             observation.origin_.y = 0.0;
             observation.origin_.z = 0.0;
+            observation.raytrace_max_range_ = raytrace_max_range_;
+            observation.raytrace_min_range_ = raytrace_min_range_;
+            observation.obstacle_max_range_ =
+                std::max(obstacle_max_range_, 1.0e6);
+            observation.obstacle_min_range_ = 0.0;
         } else {
             const auto origin_transform = tf_buffer_.lookupTransform(
                 global_frame_, origin_frame, cloud.header.stamp, timeout);
             TransformPoint(origin_transform.transform, 0.0, 0.0, 0.0,
                            observation.origin_.x, observation.origin_.y,
                            observation.origin_.z);
+            observation.raytrace_max_range_ = raytrace_max_range_;
+            observation.raytrace_min_range_ = raytrace_min_range_;
+            observation.obstacle_max_range_ = obstacle_max_range_;
+            observation.obstacle_min_range_ = obstacle_min_range_;
         }
-
-        observation.raytrace_max_range_ = raytrace_max_range_;
-        observation.raytrace_min_range_ = raytrace_min_range_;
-        observation.obstacle_max_range_ = obstacle_max_range_;
-        observation.obstacle_min_range_ = obstacle_min_range_;
 
         const XYZFieldOffsets offsets = FindXYZOffsets(cloud);
         if (!offsets.valid()) {

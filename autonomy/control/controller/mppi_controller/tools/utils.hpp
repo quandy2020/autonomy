@@ -524,10 +524,16 @@
  inline void savitskyGolayFilter(models::ControlSequence& control_sequence,
                                  std::array<models::Control, 4>& control_history,
                                  const models::OptimizerSettings& settings) {
-     // Savitzky-Golay Quadratic, 9-point Coefficients
-     Eigen::Array<float, 9, 1> filter = {-21.0f, 14.0f, 39.0f, 54.0f, 59.0f,
-                                         54.0f,  39.0f, 14.0f, -21.0f};
-     filter /= 231.0f;
+     Eigen::Array<float, 9, 1> filter;
+     if (settings.sgf_order == 1) {
+         filter = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                   1.0f, 1.0f, 1.0f, 1.0f};
+         filter /= 9.0f;
+     } else {
+         filter = {-21.0f, 14.0f, 39.0f, 54.0f, 59.0f,
+                   54.0f,  39.0f, 14.0f, -21.0f};
+         filter /= 231.0f;
+     }
  
      // Too short to smooth meaningfully
      const unsigned int num_sequences = control_sequence.vx.size() - 1;
@@ -781,6 +787,18 @@
  inline float clamp(const float lower_bound, const float upper_bound,
                     const float input) {
      return std::min(upper_bound, std::max(input, lower_bound));
+ }
+
+ /**
+  * @brief Clamp a desired velocity to respect acceleration limits from last_vel.
+  */
+ inline float clampVelocityByAccel(const float last_vel, const float curr_vel,
+                                 const float min_delta,
+                                 const float max_delta) {
+     if (last_vel >= 0.0f) {
+         return clamp(last_vel + min_delta, last_vel + max_delta, curr_vel);
+     }
+     return clamp(last_vel - max_delta, last_vel - min_delta, curr_vel);
  }
  
  }  // namespace tools

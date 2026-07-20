@@ -19,6 +19,9 @@
 #include <functional>
 
 #include "autonomy/common/lua_parameter_dictionary.hpp"
+#include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
+#include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
+#include "autonomy/control/controller/pure_pursuit_controller/parameter_options.hpp"
 #include "autonomy/map/map_options.hpp"
 
 namespace autonomy {
@@ -78,14 +81,70 @@ proto::ControllerOptions LoadOptions(
             });
     }
 
-    // Plugin-specific blocks not yet modeled in ControllerOptions proto.
-    constexpr const char* kOptionalBlocks[] = {
-        "goal_checker", "progress_checker", "graceful_controller",
-        "mppi_controller"};
-    for (const char* key : kOptionalBlocks) {
-        if (parameter_dictionary->HasKey(key)) {
-            parameter_dictionary->GetNonReferenceCountedDictionary(key);
+    auto* checker_opts = options.mutable_checker_options();
+    if (parameter_dictionary->HasKey("goal_checker")) {
+        auto dict = parameter_dictionary->GetDictionary("goal_checker");
+        if (dict) {
+            auto* gc = checker_opts->mutable_goal_checker();
+            if (dict->HasKey("plugin")) {
+                gc->set_plugin(dict->GetString("plugin"));
+            }
+            if (dict->HasKey("stateful")) {
+                gc->set_stateful(dict->GetBool("stateful"));
+            }
+            if (dict->HasKey("xy_goal_tolerance")) {
+                gc->set_xy_goal_tolerance(
+                    dict->GetDouble("xy_goal_tolerance"));
+            }
+            if (dict->HasKey("yaw_goal_tolerance")) {
+                gc->set_yaw_goal_tolerance(
+                    dict->GetDouble("yaw_goal_tolerance"));
+            }
+            if (dict->HasKey("path_length_tolerance")) {
+                gc->set_path_length_tolerance(
+                    dict->GetDouble("path_length_tolerance"));
+            }
         }
+    }
+    if (parameter_dictionary->HasKey("progress_checker")) {
+        auto dict = parameter_dictionary->GetDictionary("progress_checker");
+        if (dict) {
+            auto* pc = checker_opts->mutable_progress_checker();
+            if (dict->HasKey("plugin")) {
+                pc->set_plugin(dict->GetString("plugin"));
+            }
+            if (dict->HasKey("required_movement_radius")) {
+                pc->set_required_movement_radius(
+                    dict->GetDouble("required_movement_radius"));
+            }
+            if (dict->HasKey("movement_time_allowance")) {
+                pc->set_movement_time_allowance(
+                    dict->GetDouble("movement_time_allowance"));
+            }
+        }
+    }
+
+    if (parameter_dictionary->HasKey("mppi_controller")) {
+        *options.mutable_mppi_controller_options() =
+            controller::mppi_controller::tools::LoadOptions(
+                parameter_dictionary
+                    ->GetNonReferenceCountedDictionary("mppi_controller")
+                    .get());
+    }
+    if (parameter_dictionary->HasKey("graceful_controller")) {
+        *options.mutable_graceful_controller_options() =
+            controller::graceful_controller::LoadOptions(
+                parameter_dictionary
+                    ->GetNonReferenceCountedDictionary("graceful_controller")
+                    .get());
+    }
+    if (parameter_dictionary->HasKey("pure_pursuit_controller")) {
+        *options.mutable_pure_pursuit_controller_options() =
+            controller::pure_pursuit_controller::LoadOptions(
+                parameter_dictionary
+                    ->GetNonReferenceCountedDictionary(
+                        "pure_pursuit_controller")
+                    .get());
     }
 
     return options;

@@ -82,6 +82,17 @@ public:
         const commsgs::geometry_msgs::Twist& velocity) = 0;
 
     /**
+     * @brief Check whether XY position goal has been reached (yaw ignored).
+     * @param transformed_global_plan Remaining global plan in global frame; used
+     * to gate early trigger on closed loops when path length exceeds tolerance.
+     */
+    virtual bool IsGoalXYReached(
+        const commsgs::geometry_msgs::Pose& query_pose,
+        const commsgs::geometry_msgs::Pose& goal_pose,
+        const commsgs::geometry_msgs::Twist& velocity,
+        const commsgs::planning_msgs::Path& transformed_global_plan);
+
+    /**
      * @brief Get the maximum possible tolerances used for goal checking in the
      * major types. Any field without a valid entry is replaced with
      * std::numeric_limits<double>::lowest() to indicate that it is not
@@ -97,6 +108,24 @@ public:
         commsgs::geometry_msgs::Pose& pose_tolerance,
         commsgs::geometry_msgs::Twist& vel_tolerance) = 0;
 };
+
+inline bool GoalChecker::IsGoalXYReached(
+    const commsgs::geometry_msgs::Pose& query_pose,
+    const commsgs::geometry_msgs::Pose& goal_pose,
+    const commsgs::geometry_msgs::Twist& velocity,
+    const commsgs::planning_msgs::Path& transformed_global_plan) {
+    (void)velocity;
+    (void)transformed_global_plan;
+    commsgs::geometry_msgs::Pose pose_tolerance;
+    commsgs::geometry_msgs::Twist vel_tolerance;
+    if (!GetTolerances(pose_tolerance, vel_tolerance)) {
+        return false;
+    }
+    const double dx = query_pose.position.x - goal_pose.position.x;
+    const double dy = query_pose.position.y - goal_pose.position.y;
+    const double tol = pose_tolerance.position.x;
+    return dx * dx + dy * dy <= tol * tol;
+}
 
 }  // namespace common
 }  // namespace control

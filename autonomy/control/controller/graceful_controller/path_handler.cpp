@@ -84,18 +84,45 @@
          [&robot_pose](const commsgs::geometry_msgs::PoseStamped& ps) {
              return map::costmap_2d::utils::euclidean_distance(robot_pose, ps);
          });
+
+     // Closed loops duplicate the start pose at the end; when the robot sits on
+     // that point at lap start, min_by may pick the terminal pose and leave no
+     // forward segment. Prefer the first pose when both ends are equally close.
+     if (global_plan_.poses.size() > 3) {
+         const double closure_eps = 0.2;
+         const double d_start = map::costmap_2d::utils::euclidean_distance(
+             robot_pose, global_plan_.poses.front());
+         const double d_end = map::costmap_2d::utils::euclidean_distance(
+             robot_pose, global_plan_.poses.back());
+         if (d_start < closure_eps && d_end < closure_eps) {
+             const auto dist_from_begin = static_cast<size_t>(std::distance(
+                 global_plan_.poses.begin(), transformation_begin));
+             const auto dist_from_end = static_cast<size_t>(std::distance(
+                 transformation_begin, global_plan_.poses.end()));
+             if (dist_from_end <= dist_from_begin) {
+                 transformation_begin = global_plan_.poses.begin();
+             }
+         }
+     }
  
      // We'll discard points on the plan that are outside the local costmap
      auto* costmap = costmap_wrapper_->getCostmap();
-     double dist_threshold =
+     const double max_costmap_extent =
          std::max(costmap->getSizeInMetersX(), costmap->getSizeInMetersY()) /
          2.0;
      auto transformation_end = std::find_if(
          transformation_begin, global_plan_.poses.end(),
          [&](const auto& global_plan_pose) {
              return map::costmap_2d::utils::euclidean_distance(
-                        global_plan_pose, robot_pose) > dist_threshold;
+                        global_plan_pose, robot_pose) > max_costmap_extent;
          });
+
+     // Keep at least two poses for heading interpolation near path ends.
+     if (global_plan_.poses.begin() != closest_pose_upper_bound &&
+         global_plan_.poses.size() > 1 &&
+         transformation_begin == std::prev(closest_pose_upper_bound)) {
+         transformation_begin = std::prev(std::prev(closest_pose_upper_bound));
+     }
  
      // Lambda to transform a PoseStamped from global frame to local
      auto TransformGlobalPoseToLocal = [&](const auto& global_plan_pose) {
@@ -105,8 +132,8 @@
          stamped_pose.pose = global_plan_pose.pose;
          try {
              // Use Buffer's transform method directly
-             transformed_pose = tf_buffer_->transform(
-                 stamped_pose, costmap_wrapper_->getGlobalFrameID(),
+     transformed_pose = tf_buffer_->transform(
+                 stamped_pose, costmap_wrapper_->getBaseFrameID(),
                  static_cast<float>(transform_tolerance_));
          } catch (const std::exception& e) {
              // Return empty pose to skip this pose (will be filtered out)
@@ -120,8 +147,7 @@
      // Transform the near part of the global plan into the robot's frame of
      // reference.
      commsgs::planning_msgs::Path transformed_plan;
-     transformed_plan.header.frame_id =
-         costmap_wrapper_->getGlobalFrameID();  // Use global frame as base frame
+     transformed_plan.header.frame_id = costmap_wrapper_->getBaseFrameID();
      transformed_plan.header.stamp = robot_pose.header.stamp;
      for (auto it = transformation_begin; it != transformation_end; ++it) {
          auto transformed = TransformGlobalPoseToLocal(*it);

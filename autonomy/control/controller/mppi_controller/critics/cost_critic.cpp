@@ -46,14 +46,25 @@
      if (options_->has_cost_critic()) {
          const auto& critic = options_->cost_critic();
          enabled_ = critic.enabled();
-         power_ = critic.cost_power();
-         weight_ =
-             static_cast<float>(critic.cost_weight()) / 254.0f;  // Normalized
-         critical_cost_ = static_cast<float>(critic.critical_cost());
-         collision_cost_ = static_cast<float>(critic.collision_cost());
-         near_goal_distance_ = static_cast<float>(critic.near_goal_distance());
-         trajectory_point_step_ = critic.trajectory_point_step();
+         power_ = critic.cost_power() > 0 ? critic.cost_power() : 1;
+         const double raw_weight =
+             critic.cost_weight() > 0.0 ? critic.cost_weight() : 3.81;
+         weight_ = static_cast<float>(raw_weight) / 254.0f;  // Normalized
+         critical_cost_ = critic.critical_cost() > 0.0
+                              ? static_cast<float>(critic.critical_cost())
+                              : 300.0f;
+         collision_cost_ = critic.collision_cost() > 0.0
+                               ? static_cast<float>(critic.collision_cost())
+                               : 1000000.0f;
+         near_goal_distance_ =
+             critic.near_goal_distance() > 0.0
+                 ? static_cast<float>(critic.near_goal_distance())
+                 : 1.0f;
+         trajectory_point_step_ = critic.trajectory_point_step() > 0
+                                      ? critic.trajectory_point_step()
+                                      : 2;
          consider_footprint_ = critic.consider_footprint();
+         near_collision_cost_ = 253;
      } else {
          enabled_ = true;
          power_ = 1;
@@ -66,6 +77,7 @@
          consider_footprint_ = true;  // Default
      }
  
+     costmap_ = costmap_ros_->getCostmap();
      collision_checker_.setCostmap(costmap_);
      possible_collision_cost_ = findCircumscribedCost(costmap_ros_);
  
@@ -149,6 +161,11 @@
      if (!enabled_) {
          return;
      }
+ 
+     // Rolling / rebuilt costmaps may replace the underlying Costmap2D*; always
+     // refresh before scoring so collision checks see the latest obstacles.
+     costmap_ = costmap_ros_->getCostmap();
+     collision_checker_.setCostmap(costmap_);
  
      commsgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);

@@ -108,7 +108,31 @@
          options.set_in_place_collision_resolution(
              parameter_dictionary->GetDouble("in_place_collision_resolution"));
      }
- 
+     if (parameter_dictionary->HasKey("obstacle_cost_margin")) {
+         options.set_obstacle_cost_margin(
+             parameter_dictionary->GetInt("obstacle_cost_margin"));
+     }
+     if (parameter_dictionary->HasKey("deceleration_max")) {
+         options.set_deceleration_max(
+             parameter_dictionary->GetDouble("deceleration_max"));
+     }
+     if (parameter_dictionary->HasKey("footprint_scaling_linear_vel")) {
+         options.set_footprint_scaling_linear_vel(
+             parameter_dictionary->GetDouble("footprint_scaling_linear_vel"));
+     }
+     if (parameter_dictionary->HasKey("footprint_scaling_factor")) {
+         options.set_footprint_scaling_factor(
+             parameter_dictionary->GetDouble("footprint_scaling_factor"));
+     }
+     if (parameter_dictionary->HasKey("footprint_scaling_step")) {
+         options.set_footprint_scaling_step(
+             parameter_dictionary->GetDouble("footprint_scaling_step"));
+     }
+     if (parameter_dictionary->HasKey("final_rotation_search_step")) {
+         options.set_final_rotation_search_step(
+             parameter_dictionary->GetDouble("final_rotation_search_step"));
+     }
+
      return options;
  }
  

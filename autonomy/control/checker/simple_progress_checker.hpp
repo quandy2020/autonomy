@@ -41,6 +41,8 @@ public:
     bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
     void Reset() override;
 
+    void SetRequiredMovementRadius(double radius);
+
 protected:
     /**
      * @brief Calculates robots movement from baseline pose

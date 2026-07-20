@@ -48,6 +48,12 @@ void SimpleProgressChecker::Reset() {
     baseline_pose_set_ = false;
 }
 
+void SimpleProgressChecker::SetRequiredMovementRadius(double radius) {
+    if (radius > 0.0) {
+        radius_ = radius;
+    }
+}
+
 void SimpleProgressChecker::ResetBaselinePose(
     const commsgs::geometry_msgs::Pose2D& pose) {
     baseline_pose_ = pose;

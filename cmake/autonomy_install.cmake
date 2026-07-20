@@ -23,8 +23,10 @@ if(NOT BUILD_GRPC)
     PATTERN "plugins/grpc" EXCLUDE
     PATTERN "bridge_server.*" EXCLUDE)
 endif()
+# Exclude only top-level autonomy/tools (path relative to autonomy/).
+# Do not use PATTERN "tools" — that also drops mppi_controller/tools headers.
 if(NOT BUILD_TOOLS)
-  list(APPEND _autonomy_hdr_excludes PATTERN "tools" EXCLUDE)
+  list(APPEND _autonomy_hdr_excludes REGEX "^tools/" EXCLUDE)
 endif()
 if(NOT foxglove-sdk_FOUND)
   list(APPEND _autonomy_hdr_excludes PATTERN "visualization" EXCLUDE)

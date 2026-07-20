@@ -37,6 +37,7 @@
                                     0.0f, 0.0f, 0.0f, 0.0f};
      SamplingStd sampling_std{0.0f, 0.0f, 0.0f};
      float model_dt{0.0f};
+     float controller_period{0.05f};
      float temperature{0.0f};
      float gamma{0.0f};
      unsigned int batch_size{0u};
@@ -44,6 +45,12 @@
      unsigned int iteration_count{0u};
      bool shift_control_sequence{false};
      size_t retry_attempt_limit{0};
+     bool open_loop{false};
+     bool clamp_raw_controls{false};
+     float model_delay_vx{0.0f};
+     float model_delay_vy{0.0f};
+     float model_delay_wz{0.0f};
+     int sgf_order{2};
  };
  
  }  // namespace models

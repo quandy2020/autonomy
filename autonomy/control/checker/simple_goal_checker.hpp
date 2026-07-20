@@ -48,20 +48,31 @@ public:
     void Reset() override;
 
     void SetTolerances(double xy_tolerance, double yaw_tolerance,
-                       bool stateful = true);
+                       bool stateful = true,
+                       double path_length_tolerance = 1.0,
+                       double xy_goal_tolerance_buffer = 0.0);
 
     bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
                        const commsgs::geometry_msgs::Pose& goal_pose,
                        const commsgs::geometry_msgs::Twist& velocity) override;
+
+    bool IsGoalXYReached(
+        const commsgs::geometry_msgs::Pose& query_pose,
+        const commsgs::geometry_msgs::Pose& goal_pose,
+        const commsgs::geometry_msgs::Twist& velocity,
+        const commsgs::planning_msgs::Path& transformed_global_plan) override;
 
     bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
                        commsgs::geometry_msgs::Twist& vel_tolerance) override;
 
 protected:
     double xy_goal_tolerance_, yaw_goal_tolerance_;
+    double xy_goal_tolerance_buffer_;
+    double path_length_tolerance_;
     bool stateful_, check_xy_;
     // Cached squared xy_goal_tolerance_
     double xy_goal_tolerance_sq_;
+    double xy_goal_tolerance_reset_sq_;
     std::string plugin_name_;
 };
 
