@@ -154,6 +154,8 @@ google_binary(planning
   SRCS autonomy/planning/planning_main.cpp)
 google_binary(control
   SRCS autonomy/control/control_main.cpp)
+google_binary(exploration
+  SRCS autonomy/exploration/exploration_main.cpp)
 google_binary(task
   SRCS autonomy/task/task_main.cpp)
 google_binary(monitor
