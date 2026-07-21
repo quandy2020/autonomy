@@ -257,7 +257,7 @@ bool NavFn::calcNavFnDijkstra(std::function<bool()> cancelChecker,
     setupNavFn(true);
 
     // calculate the nav fn and path
-    return propNavFnDijkstra(std::max(nx * ny / 20, nx + ny), cancelChecker,
+    return propNavFnDijkstra(std::max(nx * ny, nx + ny), cancelChecker,
                              atStart);
 }
 
@@ -269,7 +269,7 @@ bool NavFn::calcNavFnAstar(std::function<bool()> cancelChecker) {
     setupNavFn(true);
 
     // calculate the nav fn and path
-    return propNavFnAstar(std::max(nx * ny / 20, nx + ny), cancelChecker);
+    return propNavFnAstar(std::max(nx * ny, nx + ny), cancelChecker);
 }
 
 //

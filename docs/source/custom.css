@@ -357,6 +357,53 @@
     text-align: center;
 }
 
+/* 08_Planning §2.1：插件一览表内路径预览缩略图 */
+.rst-content table td:has(> img.planner-preview-thumb) {
+    vertical-align: middle;
+    text-align: center;
+    padding: 0.15rem 0.25rem;
+    width: 22%;
+}
+
+.rst-content table img.planner-preview-thumb,
+.rst-content table img[src*="navfn_planner"],
+.rst-content table img[src*="dijkstra_planner"],
+.rst-content table img[src*="theta_planner"] {
+    display: block;
+    width: 240px !important;
+    height: auto !important;
+    max-width: 240px !important;
+    max-height: 160px !important;
+    margin: 0 !important;
+    object-fit: contain;
+}
+
+/* 09_Control MPPI：仿真 GIF 演示 */
+.rst-content img.mppi-demo-gif,
+.rst-content img[src*="mppi_controller"] {
+    display: block;
+    width: 720px !important;
+    height: auto !important;
+    max-width: min(72%, 720px) !important;
+    max-height: 420px !important;
+    margin: 1rem auto 0.5rem !important;
+    object-fit: contain;
+}
+
+.rst-content img.mppi-demo-gif + p em,
+.rst-content img[src*="mppi_controller"] + p em,
+.rst-content p:has(> img.mppi-demo-gif) + p em,
+.rst-content p:has(> img[src*="mppi_controller"]) + p em {
+    display: block;
+    max-width: 88%;
+    margin: 0 auto 1.5rem;
+    padding: 0 0.5rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
 .rst-content blockquote {
     margin: 1.25rem 0;
     padding: 0.75rem 1.25rem;
