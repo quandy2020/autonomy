@@ -40,8 +40,7 @@
 | 11 | [controller/11_mppi_controller.md](controller/11_mppi_controller.md) | §5.3 | MPPI Controller |
 | 12 | [controller/12_rpp_controller.md](controller/12_rpp_controller.md) | §5.4 | Regulated Pure Pursuit |
 | 13 | [controller/13_dwb_controller.md](controller/13_dwb_controller.md) | §5.5 | DWB Controller |
-| 14 | [controller/14_teb_controller.md](controller/14_teb_controller.md) | §5.6 | TEB Controller |
-| 15 | [controller/15_mpc_controller.md](controller/15_mpc_controller.md) | §5.7 | MPC Controller |
+| 15 | [controller/15_mpc_controller.md](controller/15_mpc_controller.md) | §5.6 | MPC Controller |
 
 ### Checker 专题（`checker/15_*`–`19_*`，§3 详读）
 
@@ -142,12 +141,10 @@ autonomy/control/
 | `nav2_velocity_smoother` | `VelocitySmoother` | 算法已移植 |
 | `nav2_regulated_pure_pursuit_controller` | 工具函数就绪 | 插件待实现 |
 | `nav2_dwb_controller` | 未实现 | — |
-| `nav2_teb_local_planner` | 未实现 | — |
 | `nav2_mppi_controller` | 配置预留 | 源码待引入 |
 | `nav2_graceful_controller` | 配置预留 | 源码待引入 |
-| `teb_local_planner`（第三方） | 未实现 | 显式时空联合局部规划 |
 
-**轨迹 vs 几何路径**：Planning 产出无时间的 `Path`；局部 **轨迹** $\tau(t)$ 与 **时空联合**（TEB、MPC、MPPI rollout）均在 `control` 完成。全局 SE(2) 搜索见 [Planning 综述 §6.3](../08_Planning/06_survey.md#631-四维分类法)；局部谱系见 [§6 综述](06_survey.md#624-几何路径轨迹与局部轨迹规划)。
+**轨迹 vs 几何路径**：Planning 产出无时间的 `Path`；局部 **轨迹** $\tau(t)$ 与 **时空联合**（MPC、MPPI rollout）均在 `control` 完成。全局 SE(2) 搜索见 [Planning 综述 §6.3](../08_Planning/06_survey.md#631-四维分类法)；局部谱系见 [§6 综述](06_survey.md#624-几何路径轨迹与局部轨迹规划)。
 
 (control-overview)=
 ## 0.7 问题形式化
@@ -166,9 +163,9 @@ $$
 |------|------|----------|
 | 几何跟踪 | 当前 $(v,\omega)$，不显式存 $\tau$ | RPP、Graceful |
 | 滚动 rollout | 离散 $\tau_{0:H}$，执行首步 | DWB、MPPI |
-| 时空联合 | $s_k$ 与 $\Delta t_k$ 或 $\mathbf{U}_{0:H-1}$ 同优化 | TEB、NMPC |
+| 时空联合 | $s_k$ 与 $\Delta t_k$ 或 $\mathbf{U}_{0:H-1}$ 同优化 | NMPC |
 
-Time-scaling（固定 $\mathcal{P}$、只求 $s(t)$）与 VelocitySmoother（$u$ 层限幅）属于 **后处理/启发式**，不等价于 TEB 式单阶段时空 NLP。
+Time-scaling（固定 $\mathcal{P}$、只求 $s(t)$）与 VelocitySmoother（$u$ 层限幅）属于 **后处理/启发式**，不等价于单阶段时空 NLP。
 
 ## 0.8 运动学概要
 
@@ -211,12 +208,12 @@ FollowPath 除「选哪种控制器」外，还需匹配 **Goal Checker** 与是
 |------|--------|--------------|------|
 | 室内差速默认 | RPP / Graceful | SimpleGoalChecker | 几何跟踪 + 启发式减速 |
 | 动态避障 | MPPI | SimpleGoalChecker | rollout 隐式 $\tau_{0:H}$；高 obstacle critic |
-| 人群 / 预测障碍 | MPPI / TEB | SimpleGoalChecker | 时空联合或 critic + [Prediction](../11_Prediction/08_behavior_prediction.md) |
+| 人群 / 预测障碍 | MPPI | SimpleGoalChecker | critic + [Prediction](../11_Prediction/08_behavior_prediction.md) |
 | 充电 / 精密停靠 | RPP / Graceful | StoppedGoalChecker | 位姿 + **停稳** |
 | 只到位置、不限朝向 | 任意 | PositionGoalChecker | 不检 yaw |
-| 显式 $\Delta t$ / jerk 协调 | TEB / NMPC | StoppedGoalChecker | 见 [§6.6.4–§6.6.5](06_survey.md#664-时空联合轨迹规划) |
+| 显式 $\Delta t$ / jerk 协调 | NMPC | StoppedGoalChecker | 见 [§6.6.4–§6.6.5](06_survey.md#664-时空联合轨迹规划) |
 
-**Autonomy 落地顺序**（与 [§6.5.2](06_survey.md#652-autonomy-在技术谱系中的位置) 一致）：Checker + Smoother 已就绪 → **Phase 1** RPP 闭环 → **Phase 2** Graceful → **Phase 3** MPPI；TEB/NMPC 为扩展项。
+**Autonomy 落地顺序**（与 [§6.5.2](06_survey.md#652-autonomy-在技术谱系中的位置) 一致）：Checker + Smoother 已就绪 → **Phase 1** RPP 闭环 → **Phase 2** Graceful → **Phase 3** MPPI；NMPC 为扩展项。
 
 ## 0.10 算法插件一览
 
@@ -226,7 +223,6 @@ FollowPath 除「选哪种控制器」外，还需匹配 **Goal Checker** 与是
 | Graceful | 几何 + 减速 | Lyapunov 平滑律 + motion target | [§10](controller/10_graceful_controller.md) | ⏳ 配置 |
 | MPPI | rollout | $\mathbf{u}^*=\sum_k w_k \mathbf{u}^{(k)}$ | [§11](controller/11_mppi_controller.md) | ⏳ 配置 |
 | DWB | rollout | $\arg\min C_{total}(v,\omega)\in\mathcal{V}_{legal}$ | [§13](controller/13_dwb_controller.md) | ❌ |
-| TEB | 时空联合 | $\arg\min \tilde{V}(B)$（稀疏 WNLS） | [§14](controller/14_teb_controller.md) | ❌ |
 | MPC | 固定网格 | $\arg\min J(\mathbf{U})$ s.t. OCP | [§15](controller/15_mpc_controller.md) | ❌ |
 | VelocitySmoother | $u$ 后处理 | $v_{out}=v_{curr}+\mathrm{clamp}(\eta\Delta v)$ | [§4](04_velocity_smoother.md) | 算法 ✅ |
 

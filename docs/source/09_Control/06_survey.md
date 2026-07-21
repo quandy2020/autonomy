@@ -166,7 +166,7 @@ x_{k+1}=f(x_k,u_k),\;
 $$
 
 - **$\ell$**：跟踪 $\mathcal{P}$、避障、控制 effort、**时间**（$\Delta t_k$ 或 $\|u\|$）。
-- **$\mathcal{F}$**：非完整、$v,a,\omega$ 界、碰撞约束（硬约束或罚函数，见 [TEB §4](controller/14_teb_controller.md)）。
+- **$\mathcal{F}$**：非完整、$v,a,\omega$ 界、碰撞约束（硬约束或罚函数）。
 - **与 MPPI**：同一 OCP 结构；MPPI 用路径积分采样近似 $\arg\min$，NMPC/TEB 用 NLP/SQP/LM 显式求解（[§15 MPC](controller/15_mpc_controller.md)）。
 
 **Time-scaling**（仅对几何路径补时间，不做空间 deform）：$s(t)$ 单调，$\dot{s}$ 受 $v_{max}(s)$、$\kappa(s)$ 限制（Bang-coast-bang、S 曲线）。RPP/Graceful 的减速区属于**启发式 time-scaling**，非全局时间最优。
@@ -396,7 +396,7 @@ Planning.Path ──────┼─ 空间 + 显式 Δt ─ TEB
                     └─ 控制序列 u_k ─── MPC, MPPI, DWB
 ```
 
-- **TEB** 是 Nav2 生态中最典型的**显式时空联合**局部规划器：$B=\{s_1,\Delta T_1,\ldots,s_n\}$（[§14 TEB](controller/14_teb_controller.md)）。
+- **TEB** 是 Nav2 生态中最典型的**显式时空联合**局部规划器：$B=\{s_1,\Delta T_1,\ldots,s_n\}$（第三方 `teb_local_planner`，Autonomy 未集成）。
 - **MPC/MPPI** 不显式优化 $\Delta t_k$，但 $H$ 与 $\Delta t$ 固定时，$\{x_k\}_{0:H}$ 仍是一条**离散时空轨迹**。
 - **Planning** 输出的 Path **不含** $t$；时空联合发生在 **Control**（或 move_base 的 *local planner* 角色）。
 
@@ -511,7 +511,7 @@ Autonomy：`controller.lua` 已含完整 MPPI 配置；插件待实现。
 
 ### 6.7.6 TEB（2009–2017）
 
-**动机**：经典 Elastic Band 只 deform **位姿**，时间靠事后 scaling；DWB/MPPI 的 rollout **步长固定**但无显式 $\Delta t_k$ 优化。TEB 在 **Timed Elastic Band** 中联合优化 $s_k$ 与 $\Delta T_k$，将 kinodynamic 与避障写入同一稀疏 NLP（[§14 专题](controller/14_teb_controller.md)）。
+**动机**：经典 Elastic Band 只 deform **位姿**，时间靠事后 scaling；DWB/MPPI 的 rollout **步长固定**但无显式 $\Delta t_k$ 优化。TEB 在 **Timed Elastic Band** 中联合优化 $s_k$ 与 $\Delta T_k$，将 kinodynamic 与避障写入同一稀疏 NLP（Rösmann et al., IROS 2017）。
 
 $$
 B = \{ s_1,\, \Delta T_1,\, s_2,\, \ldots,\, \Delta T_{n-1},\, s_n \}, \quad
@@ -526,7 +526,7 @@ $$
 
 适合人群、叉车等动态场景；可接 [Prediction](../11_Prediction/08_behavior_prediction.md) 模块。
 
-详见 [§14 TEB](controller/14_teb_controller.md)。
+详见 Rösmann et al. (IROS 2017; IEEE RAM 2017)。
 
 ### 6.7.7 Graceful Controller（2023）
 

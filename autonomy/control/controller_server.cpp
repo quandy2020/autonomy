@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "autonomy/control/controller/teb_controller/controller.hpp"
 #include "autonomy/control/controller_server.hpp"
 
 #include <algorithm>
@@ -58,7 +57,6 @@ const std::unordered_map<std::string, std::string>& ControllerClassAliases() {
         {"regulated_pure_pursuit", "RegulatedPurePursuitController"},
         {"pure_pursuit", "RegulatedPurePursuitController"},
         {"rpp", "RegulatedPurePursuitController"},
-        {"teb_controller", "TEBController"},
     };
     return kAliases;
 }
@@ -190,12 +188,6 @@ void ControllerServer::LoadPlugins() {
         } else if (resolved == "RegulatedPurePursuitController") {
             auto ctrl = std::make_shared<
                 controller::pure_pursuit_controller::RegulatedPurePursuitController>();
-            ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
-            ctrl->Activate();
-            instance = std::move(ctrl);
-        } else if (resolved == "TEBController") {
-            auto ctrl =
-                std::make_shared<controller::teb_controller::TEBController>();
             ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
             ctrl->Activate();
             instance = std::move(ctrl);
