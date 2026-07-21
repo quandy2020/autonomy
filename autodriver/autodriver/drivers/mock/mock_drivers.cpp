@@ -245,5 +245,36 @@ std::shared_ptr<SensorDriver> CreateMockCameraDriver(
     std::move(sensor_id), SensorType::kCamera, period, MakeMockCamera);
 }
 
+std::shared_ptr<SensorDriver> CreateByName(
+  const std::string & factory_name,
+  const SensorId & sensor_id)
+{
+  if (factory_name == "mock_imu") {
+    return CreateMockImuDriver(
+      sensor_id.empty() ? SensorId{"imu/mock"} : sensor_id);
+  }
+  if (factory_name == "mock_gps") {
+    return CreateMockGpsDriver(
+      sensor_id.empty() ? SensorId{"gps/mock"} : sensor_id);
+  }
+  if (factory_name == "mock_wheel_odom") {
+    return CreateMockWheelOdometryDriver(
+      sensor_id.empty() ? SensorId{"wheel_odom/mock"} : sensor_id);
+  }
+  if (factory_name == "mock_lidar") {
+    return CreateMockLidarDriver(
+      sensor_id.empty() ? SensorId{"lidar/mock"} : sensor_id);
+  }
+  if (factory_name == "mock_range") {
+    return CreateMockRangeFinderDriver(
+      sensor_id.empty() ? SensorId{"range/mock"} : sensor_id);
+  }
+  if (factory_name == "mock_camera") {
+    return CreateMockCameraDriver(
+      sensor_id.empty() ? SensorId{"camera/mock"} : sensor_id);
+  }
+  return SensorFactory::Instance().Create(factory_name);
+}
+
 }  // namespace mock
 }  // namespace autodriver

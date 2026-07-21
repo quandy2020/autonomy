@@ -10,6 +10,20 @@ install(
   RUNTIME DESTINATION bin
 )
 
+if(BUILD_AUTODRIVER AND TARGET autodriver)
+  install(
+    DIRECTORY autodriver/autodriver/
+    DESTINATION include/autodriver
+    FILES_MATCHING PATTERN "*.hpp"
+  )
+  install(
+    TARGETS autodriver autodriver_autonomy_bridge
+    EXPORT AutonomyExport
+    ARCHIVE DESTINATION lib
+    LIBRARY DESTINATION lib
+  )
+endif()
+
 install(DIRECTORY config DESTINATION share/autonomy)
 install(DIRECTORY cmake DESTINATION share/autonomy/)
 install(FILES

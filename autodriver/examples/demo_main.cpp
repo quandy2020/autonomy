@@ -16,7 +16,7 @@
 
 /**
  * @file
- * @brief Minimal demo: mock sensors through SensorHub.
+ * @brief Demo using SensorManager and the default simulation hub config.
  */
 
 #include <atomic>
@@ -24,9 +24,7 @@
 #include <iostream>
 #include <thread>
 
-#include "autodriver/drivers/mock/mock_drivers.hpp"
-#include "autodriver/hal/sensor_factory.hpp"
-#include "autodriver/sync/sensor_hub.hpp"
+#include "autodriver/app/sensor_manager.hpp"
 #include "autodriver/types/imu_sample.hpp"
 #include "autodriver/types/lidar_scan.hpp"
 #include "autodriver/types/sensor_type.hpp"
@@ -34,15 +32,10 @@
 
 int main()
 {
-  autodriver::mock::RegisterMockDrivers();
-
-  autodriver::SensorHub hub;
-  hub.RegisterDriver(autodriver::mock::CreateMockImuDriver());
-  hub.RegisterDriver(autodriver::mock::CreateMockWheelOdometryDriver());
-  hub.RegisterDriver(autodriver::mock::CreateMockLidarDriver());
+  autodriver::SensorManager manager;
 
   std::atomic<int> frames{0};
-  hub.SetAlignedCallback([&](const autodriver::AlignedSnapshot & snapshot) {
+  manager.SetAlignedCallback([&](const autodriver::AlignedSnapshot & snapshot) {
     const int n = ++frames;
     const auto * imu = snapshot.Get<autodriver::ImuSample>(autodriver::SensorType::kImu);
     const auto * odom = snapshot.Get<autodriver::WheelOdometrySample>(
@@ -58,13 +51,21 @@ int main()
               << std::endl;
   });
 
-  if (!hub.Start()) {
-    std::cerr << "SensorHub failed to start\n";
+  if (!manager.Initialize()) {
+    std::cerr << "SensorManager init failed\n";
+    for (const auto & err : manager.init_errors()) {
+      std::cerr << "  driver: " << err << "\n";
+    }
+    return 1;
+  }
+
+  if (!manager.Start()) {
+    std::cerr << "SensorManager failed to start\n";
     return 1;
   }
 
   std::this_thread::sleep_for(std::chrono::seconds(2));
-  hub.Stop();
+  manager.Stop();
   std::cout << "Published " << frames.load() << " aligned frames\n";
   return 0;
 }

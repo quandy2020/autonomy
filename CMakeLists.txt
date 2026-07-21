@@ -35,7 +35,7 @@ option(BUILD_PROMETHEUS "Build prometheus monitoring support" OFF)
 option(BUILD_DOCS "Build autonomy docs support" ON)
 option(BUILD_TEST "Build autonomy unit test" ON)
 option(BUILD_TOOLS "Build autonomy tools sources" ON)
-option(BUILD_ONNXRUNTIME "Build ONNX Runtime support" ON)
+option(BUILD_AUTODRIVER "Build autodriver sensor HAL subproject" OFF)
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -96,6 +96,10 @@ endif()
 
 include("${PROJECT_SOURCE_DIR}/cmake/autolink_embed.cmake")
 
+if(BUILD_AUTODRIVER)
+  include("${PROJECT_SOURCE_DIR}/autodriver/cmake/autodriver_embed.cmake")
+endif()
+
 set(_autonomy_config_dir ${CMAKE_INSTALL_PREFIX}/share/autonomy/config)
 set(AUTONOMY_CONFIGURATION_FILES_DIRECTORY ${_autonomy_config_dir}
   CACHE PATH ".lua configuration files directory")
@@ -132,6 +136,17 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_deps.cmake")
 autonomy_link_dependencies(${PROJECT_NAME})
+
+if(BUILD_AUTODRIVER AND TARGET autodriver)
+  add_subdirectory(autodriver/bridge/autonomy)
+
+  google_binary(autodriver_hub
+    SRCS autodriver/examples/hub_main.cpp)
+  target_link_libraries(autodriver_hub
+    PRIVATE autodriver autodriver_autonomy_bridge)
+  target_include_directories(autodriver_hub PRIVATE
+    ${PROJECT_SOURCE_DIR}/autodriver/autodriver)
+endif()
 
 # Echo tool needs generated commsgs protos for DebugString when topology omits type.
 if(TARGET autolink_channel)

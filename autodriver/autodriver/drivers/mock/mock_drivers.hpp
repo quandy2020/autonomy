@@ -67,6 +67,11 @@ std::shared_ptr<SensorDriver> CreateMockCameraDriver(
   SensorId sensor_id = "camera/mock",
   std::chrono::milliseconds period = std::chrono::milliseconds(33));
 
+/** @brief Creates a driver by factory name and sensor instance id. */
+std::shared_ptr<SensorDriver> CreateByName(
+  const std::string & factory_name,
+  const SensorId & sensor_id = {});
+
 }  // namespace mock
 }  // namespace autodriver
 

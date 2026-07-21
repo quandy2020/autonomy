@@ -22,6 +22,7 @@
 #include "autonomy/control/controller/graceful_controller/parameter_options.hpp"
 #include "autonomy/control/controller/mppi_controller/tools/mppi_options.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/parameter_options.hpp"
+#include "autonomy/control/controller/teb_controller/tools/teb_options.hpp"
 #include "autonomy/map/map_options.hpp"
 
 namespace autonomy {
@@ -144,6 +145,13 @@ proto::ControllerOptions LoadOptions(
                 parameter_dictionary
                     ->GetNonReferenceCountedDictionary(
                         "pure_pursuit_controller")
+                    .get());
+    }
+    if (parameter_dictionary->HasKey("teb_controller")) {
+        *options.mutable_teb_controller_options() =
+            controller::teb_controller::tools::LoadOptions(
+                parameter_dictionary
+                    ->GetNonReferenceCountedDictionary("teb_controller")
                     .get());
     }
 
