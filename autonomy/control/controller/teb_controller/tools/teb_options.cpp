@@ -162,6 +162,30 @@ proto::TEBControllerOptions LoadOptions(
   SetBoolIfPresent(parameter_dictionary, "free_goal_vel",
                    [&](bool v) { options.set_free_goal_vel(v); });
 
+  // ROS2-aligned defaults; Lua keys override when present.
+  options.set_enable_homotopy_class_planning(true);
+  options.set_enable_multithreading(true);
+  options.set_oscillation_recovery(true);
+  options.set_obstacle_conversion_mode("points_lines_polygons");
+  SetBoolIfPresent(parameter_dictionary, "enable_homotopy_class_planning",
+                   [&](bool v) {
+                     options.set_enable_homotopy_class_planning(v);
+                   });
+  SetBoolIfPresent(parameter_dictionary, "enable_multithreading",
+                   [&](bool v) { options.set_enable_multithreading(v); });
+  SetIntIfPresent(parameter_dictionary, "max_number_classes",
+                  [&](int v) { options.set_max_number_classes(v); });
+  SetBoolIfPresent(parameter_dictionary, "oscillation_recovery",
+                   [&](bool v) { options.set_oscillation_recovery(v); });
+  SetDoubleIfPresent(parameter_dictionary, "oscillation_filter_duration",
+                     [&](double v) {
+                       options.set_oscillation_filter_duration(v);
+                     });
+  SetStringIfPresent(parameter_dictionary, "obstacle_conversion_mode",
+                     [&](const std::string& v) {
+                       options.set_obstacle_conversion_mode(v);
+                     });
+
   return options;
 }
 

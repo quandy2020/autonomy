@@ -16,12 +16,17 @@
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/control/controller/teb_controller/core/homotopy_class_planner.hpp"
+#include "autonomy/control/controller/teb_controller/core/misc.hpp"
 #include "autonomy/control/controller/teb_controller/core/optimal_planner.hpp"
+#include "autonomy/control/controller/teb_controller/core/planner_interface.hpp"
+#include "autonomy/control/controller/teb_controller/core/recovery_behaviors.hpp"
 #include "autonomy/control/controller/teb_controller/core/teb_config.hpp"
 #include "autonomy/control/controller/teb_controller/tools/costmap_obstacle_converter.hpp"
 #include "autonomy/control/proto/teb_controller.pb.h"
@@ -49,19 +54,21 @@ class Optimizer {
 
  private:
   void applyOptionsToConfig();
-  static teb_local_planner::PoseSE2 ToPoseSE2(
-      const commsgs::geometry_msgs::Pose& pose);
-  static teb_local_planner::Twist ToTebTwist(
-      const commsgs::geometry_msgs::Twist& twist);
+  static PoseSE2 ToPoseSE2(const commsgs::geometry_msgs::Pose& pose);
+  static Twist ToTebTwist(const commsgs::geometry_msgs::Twist& twist);
 
   std::string name_;
   std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
   const proto::TEBControllerOptions* options_{nullptr};
-  teb_local_planner::TebConfig teb_config_;
-  teb_local_planner::ObstContainer obstacles_;
-  teb_local_planner::ViaPointContainer via_points_;
-  std::unique_ptr<teb_local_planner::TebOptimalPlanner> planner_;
+  TebConfig teb_config_;
+  ObstContainer obstacles_;
+  ViaPointContainer via_points_;
+  std::unique_ptr<PlannerInterface> planner_;
   std::unique_ptr<tools::CostmapObstacleConverter> obstacle_converter_;
+  FailureDetector failure_detector_;
+  RotType last_preferred_rotdir_{RotType::none};
+  double controller_frequency_{5.0};
+  std::chrono::steady_clock::time_point time_last_oscillation_{};
   bool has_plan_{false};
 };
 

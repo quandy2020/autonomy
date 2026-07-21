@@ -64,4 +64,13 @@ message TEBControllerOptions {
   double transform_tolerance = 36;
   double max_robot_pose_search_dist = 37;
   bool free_goal_vel = 38;
+
+  // Homotopy / recovery / obstacle conversion (ROS2 TebConfig defaults)
+  bool enable_homotopy_class_planning = 39;
+  bool enable_multithreading = 40;
+  int32 max_number_classes = 41;
+  bool oscillation_recovery = 42;
+  double oscillation_filter_duration = 43;
+  // "points_only" | "points_lines_polygons"
+  string obstacle_conversion_mode = 44;
 }

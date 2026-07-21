@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <boost/make_shared.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
+#include <vector>
 
 #include "autonomy/control/controller/teb_controller/core/obstacles.hpp"
 
@@ -44,15 +44,20 @@ class CostmapObstacleConverter {
   void update(const map::costmap_2d::Costmap2D& costmap,
               const commsgs::geometry_msgs::Pose& robot_pose);
 
-  teb_local_planner::ObstContainer& obstacles() { return obstacles_; }
-  const teb_local_planner::ObstContainer& obstacles() const {
+  ObstContainer& obstacles() { return obstacles_; }
+  const ObstContainer& obstacles() const {
     return obstacles_;
   }
 
  private:
+  void UpdateAsPoints(const map::costmap_2d::Costmap2D& costmap,
+                      const commsgs::geometry_msgs::Pose& robot_pose);
+  void UpdateAsClusters(const map::costmap_2d::Costmap2D& costmap,
+                        const commsgs::geometry_msgs::Pose& robot_pose);
+
   proto::TEBControllerOptions options_;
-  teb_local_planner::ObstContainer obstacles_;
-  std::vector<boost::shared_ptr<teb_local_planner::Obstacle>> storage_;
+  ObstContainer obstacles_;
+  std::vector<ObstaclePtr> storage_;
 };
 
 }  // namespace tools
