@@ -16,6 +16,9 @@
 
 #include "autonomy/control/controller/teb_controller/optimizer.hpp"
 
+#include <chrono>
+#include <cmath>
+
 #include "autolink/common/log.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 
@@ -25,11 +28,6 @@ namespace controller {
 namespace teb_controller {
 
 namespace {
-
-double getYaw(const commsgs::geometry_msgs::Quaternion& q) {
-  return std::atan2(2.0 * (q.w * q.z + q.x * q.y),
-                    1.0 - 2.0 * (q.y * q.y + q.z * q.z));
-}
 
 constexpr double kDefaultMaxVelX = 0.5;
 constexpr double kDefaultMaxVelTheta = 1.0;
@@ -45,7 +43,7 @@ void Optimizer::initialize(
   name_ = name;
   costmap_wrapper_ = std::move(costmap);
   options_ = options;
-  teb_config_ = teb_local_planner::TebConfig();
+  teb_config_ = TebConfig();
   applyOptionsToConfig();
 
   if (controller_frequency > 0.0 && teb_config_.trajectory.dt_ref <= 0.0) {
@@ -54,9 +52,22 @@ void Optimizer::initialize(
 
   obstacle_converter_ =
       std::make_unique<tools::CostmapObstacleConverter>(*options_);
-  planner_ = std::make_unique<teb_local_planner::TebOptimalPlanner>(
-      teb_config_, &obstacles_, teb_local_planner::TebVisualizationPtr(),
-      &via_points_);
+
+  controller_frequency_ =
+      controller_frequency > 0.0 ? controller_frequency : 5.0;
+  failure_detector_.setBufferLength(static_cast<std::size_t>(std::round(
+      teb_config_.recovery.oscillation_filter_duration *
+      controller_frequency_)));
+
+  if (teb_config_.hcp.enable_homotopy_class_planning) {
+    planner_ = std::make_unique<HomotopyClassPlanner>(
+        teb_config_, &obstacles_, TebVisualizationPtr(), &via_points_);
+    AINFO << "TEB parallel planning in distinctive topologies enabled.";
+  } else {
+    planner_ = std::make_unique<TebOptimalPlanner>(
+        teb_config_, &obstacles_, TebVisualizationPtr(), &via_points_);
+    AINFO << "TEB parallel planning in distinctive topologies disabled.";
+  }
   has_plan_ = false;
 }
 
@@ -173,6 +184,20 @@ void Optimizer::applyOptionsToConfig() {
 
   teb_config_.goal_tolerance.free_goal_vel = options_->free_goal_vel();
 
+  auto& hcp = teb_config_.hcp;
+  hcp.enable_homotopy_class_planning =
+      options_->enable_homotopy_class_planning();
+  hcp.enable_multithreading = options_->enable_multithreading();
+  if (options_->max_number_classes() > 0) {
+    hcp.max_number_classes = options_->max_number_classes();
+  }
+  teb_config_.recovery.oscillation_recovery =
+      options_->oscillation_recovery();
+  if (options_->oscillation_filter_duration() > 0.0) {
+    teb_config_.recovery.oscillation_filter_duration =
+        options_->oscillation_filter_duration();
+  }
+
   const std::string& model = options_->robot_model();
   if (model == "carlike" || model == "ackermann") {
     teb_config_.robot.min_turning_radius =
@@ -180,15 +205,15 @@ void Optimizer::applyOptionsToConfig() {
   }
 }
 
-teb_local_planner::PoseSE2 Optimizer::ToPoseSE2(
+PoseSE2 Optimizer::ToPoseSE2(
     const commsgs::geometry_msgs::Pose& pose) {
-  return teb_local_planner::PoseSE2(
+  return PoseSE2(
       pose.position.x, pose.position.y, getYaw(pose.orientation));
 }
 
-teb_local_planner::Twist Optimizer::ToTebTwist(
+Twist Optimizer::ToTebTwist(
     const commsgs::geometry_msgs::Twist& twist) {
-  teb_local_planner::Twist out;
+  Twist out;
   out.linear.x = twist.linear.x;
   out.linear.y = twist.linear.y;
   out.angular.z = twist.angular.z;
@@ -218,7 +243,7 @@ commsgs::geometry_msgs::TwistStamped Optimizer::evalControl(
 
   const auto start = ToPoseSE2(pose.pose);
   const auto local_goal = ToPoseSE2(goal.pose);
-  const teb_local_planner::Twist start_vel = ToTebTwist(velocity);
+  const Twist start_vel = ToTebTwist(velocity);
 
   bool success = false;
   if (!has_plan_) {
@@ -248,10 +273,47 @@ commsgs::geometry_msgs::TwistStamped Optimizer::evalControl(
   cmd.twist.linear.x = vx;
   cmd.twist.linear.y = vy;
   cmd.twist.angular.z = omega;
+
+  if (teb_config_.recovery.oscillation_recovery) {
+    const Twist last_cmd = ToTebTwist(cmd.twist);
+    failure_detector_.update(
+        last_cmd, teb_config_.robot.max_vel_x,
+        teb_config_.robot.max_vel_x_backwards, teb_config_.robot.max_vel_theta,
+        teb_config_.recovery.oscillation_v_eps,
+        teb_config_.recovery.oscillation_omega_eps);
+
+    const auto now = std::chrono::steady_clock::now();
+    const bool recently_oscillated =
+        std::chrono::duration<double>(now - time_last_oscillation_).count() <
+        teb_config_.recovery.oscillation_recovery_min_duration;
+
+    if (failure_detector_.isOscillating()) {
+      time_last_oscillation_ = now;
+      if (last_preferred_rotdir_ == RotType::none) {
+        last_preferred_rotdir_ =
+            (last_cmd.angular.z >= 0.0) ? RotType::left : RotType::right;
+      }
+      planner_->setPreferredTurningDir(last_preferred_rotdir_);
+    } else if (recently_oscillated &&
+               last_preferred_rotdir_ != RotType::none) {
+      planner_->setPreferredTurningDir(last_preferred_rotdir_);
+    } else {
+      last_preferred_rotdir_ = RotType::none;
+      planner_->setPreferredTurningDir(RotType::none);
+    }
+  }
+
   return cmd;
 }
 
-void Optimizer::reset() { has_plan_ = false; }
+void Optimizer::reset() {
+  has_plan_ = false;
+  failure_detector_.clear();
+  last_preferred_rotdir_ = RotType::none;
+  if (planner_) {
+    planner_->clearPlanner();
+  }
+}
 
 }  // namespace teb_controller
 }  // namespace controller

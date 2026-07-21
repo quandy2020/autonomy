@@ -40,12 +40,16 @@
 #define MISC_H
 
 #include <Eigen/Core>
-#include <boost/utility.hpp>
-#include <boost/type_traits.hpp>
+#include <cassert>
+#include <cmath>
+#include <type_traits>
+#include <vector>
 
-
-namespace teb_local_planner
-{
+#include "autolink/common/log.hpp"
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
 
 #define SMALL_NUM 0.00000001
 
@@ -140,13 +144,26 @@ inline const T& get_const_reference(const T* ptr) {return *ptr;}
  * Return a constant reference for boths input variants (pointer or reference).
  * @remarks Makes only sense in combination with the overload getConstReference(const T* val).
  * @param val
- * @param dummy SFINAE helper variable
  * @tparam T arbitrary type 
  * @return  If \c T is a pointer, return const *T (leading to const T&), otherwise const T& with out pointer-to-ref conversion
  */
 template<typename T>
-inline const T& get_const_reference(const T& val, typename boost::disable_if<boost::is_pointer<T> >::type* dummy = 0) {return val;}
+inline std::enable_if_t<!std::is_pointer_v<T>, const T&>
+get_const_reference(const T& val) {return val;}
 
-} // namespace teb_local_planner
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
+
+#ifndef TEB_ASSERT_MSG
+#define TEB_ASSERT_MSG(expression, ...) \
+  do {                                  \
+    if (!(expression)) {                \
+      AERROR << __VA_ARGS__;            \
+      assert(expression);               \
+    }                                   \
+  } while (0)
+#endif
 
 #endif /* MISC_H */

@@ -13,7 +13,10 @@
 #include "autonomy/control/controller/teb_controller/core/obstacles.hpp"
 #include "autonomy/control/controller/teb_controller/core/robot_footprint_model.hpp"
 
-namespace teb_local_planner {
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
 
 class TebOptimalPlanner;
 
@@ -33,10 +36,21 @@ class TebVisualization {
                                   const BaseRobotFootprintModel&) const {}
   void publishFeedbackMessage(const TebOptimalPlanner&,
                               const ObstContainer&) const {}
+  template <typename T>
+  void publishFeedbackMessage(const T&, unsigned int, const ObstContainer&) const {}
+  template <typename T>
+  void publishTebContainer(const T&) const {}
+  template <typename T>
+  void publishGraph(const T&) const {}
+  template <typename T>
+  void publishHomotopyClasses(const T&) const {}
 };
 
 typedef std::shared_ptr<TebVisualization> TebVisualizationPtr;
 
-}  // namespace teb_local_planner
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
 
 #endif
