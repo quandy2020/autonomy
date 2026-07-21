@@ -46,43 +46,64 @@
 
 #include <float.h>
 
-
 #include "autonomy/control/controller/teb_controller/core/g2o_types/base_teb_edges.hpp"
 #include "autonomy/control/controller/teb_controller/core/g2o_types/vertex_pose.hpp"
 
 #include <Eigen/Core>
 
-namespace teb_local_planner {
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
 
 /**
  * @class EdgeShortestPath
- * @brief Edge defining the cost function for minimizing the Euclidean distance between two consectuive poses.
+ * @brief Edge defining the cost function for minimizing the Euclidean distance
+ * between two consectuive poses.
  *
  * @see TebOptimalPlanner::AddEdgesShortestPath
  */
-class EdgeShortestPath : public BaseTebBinaryEdge<1, double, VertexPose, VertexPose> {
+class EdgeShortestPath
+    : public BaseTebBinaryEdge<1, double, VertexPose, VertexPose>
+{
 public:
-  /**
-   * @brief Construct edge.
-   */
-  EdgeShortestPath() { this->setMeasurement(0.); }
+    /**
+     * @brief Construct edge.
+     */
+    EdgeShortestPath() {
+        this->setMeasurement(0.);
+    }
 
-  /**
-   * @brief Actual cost function
-   */
-  void computeError() {
-    ROS_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgeShortestPath()");
-    const VertexPose *pose1 = static_cast<const VertexPose*>(_vertices[0]);
-    const VertexPose *pose2 = static_cast<const VertexPose*>(_vertices[1]);
-    _error[0] = (pose2->position() - pose1->position()).norm();
+    /**
+     * @brief Actual cost function
+     */
+    void computeError() {
+        do {
+            if (!(cfg_)) {
+                AERROR << "You must call setTebConfig on EdgeShortestPath()";
+                assert(cfg_);
+            }
+        } while (0);
+        const VertexPose* pose1 = static_cast<const VertexPose*>(_vertices[0]);
+        const VertexPose* pose2 = static_cast<const VertexPose*>(_vertices[1]);
+        _error[0] = (pose2->position() - pose1->position()).norm();
 
-    ROS_ASSERT_MSG(std::isfinite(_error[0]), "EdgeShortestPath::computeError() _error[0]=%f\n", _error[0]);
-  }
+        do {
+            if (!(std::isfinite(_error[0]))) {
+                AERROR << "EdgeShortestPath::computeError() _error[0]="
+                       << (_error[0]);
+                assert(std::isfinite(_error[0]));
+            }
+        } while (0);
+    }
 
 public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-} // end namespace
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
 
 #endif /* EDGE_SHORTEST_PATH_H_ */

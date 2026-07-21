@@ -20,16 +20,22 @@
 
 #include "autonomy/control/controller/teb_controller/core/teb_core.hpp"
 
-namespace teb_local_planner {
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
 
 struct TrajectoryPointMsg {
-  Pose pose;
-  Twist velocity;
-  Duration time_from_start;
+    Pose pose;
+    Twist velocity;
+    Duration time_from_start;
 };
 
 struct TrajectoryMsg {
-  std::vector<TrajectoryPointMsg> trajectory;
+    std::vector<TrajectoryPointMsg> trajectory;
 };
 
-}  // namespace teb_local_planner
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy

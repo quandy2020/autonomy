@@ -32,7 +32,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * Notes:
  * The following class is derived from a class defined by the
  * g2o-framework. g2o is licensed under the terms of the BSD License.
@@ -44,96 +44,111 @@
 #ifndef EDGE_DYNAMICOBSTACLE_H
 #define EDGE_DYNAMICOBSTACLE_H
 
+#include "autonomy/control/controller/teb_controller/core/g2o_types/base_teb_edges.hpp"
+#include "autonomy/control/controller/teb_controller/core/g2o_types/penalties.hpp"
 #include "autonomy/control/controller/teb_controller/core/g2o_types/vertex_pose.hpp"
 #include "autonomy/control/controller/teb_controller/core/g2o_types/vertex_timediff.hpp"
-#include "autonomy/control/controller/teb_controller/core/g2o_types/penalties.hpp"
-#include "autonomy/control/controller/teb_controller/core/g2o_types/base_teb_edges.hpp"
 #include "autonomy/control/controller/teb_controller/core/obstacles.hpp"
-#include "autonomy/control/controller/teb_controller/core/teb_config.hpp"
 #include "autonomy/control/controller/teb_controller/core/robot_footprint_model.hpp"
+#include "autonomy/control/controller/teb_controller/core/teb_config.hpp"
 
-namespace teb_local_planner
-{
-  
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
+
 /**
  * @class EdgeDynamicObstacle
- * @brief Edge defining the cost function for keeping a distance from dynamic (moving) obstacles.
- * 
- * The edge depends on two vertices \f$ \mathbf{s}_i, \Delta T_i \f$ and minimizes: \n
+ * @brief Edge defining the cost function for keeping a distance from dynamic
+ * (moving) obstacles.
+ *
+ * The edge depends on two vertices \f$ \mathbf{s}_i, \Delta T_i \f$ and
+ * minimizes: \n
  * \f$ \min \textrm{penaltyBelow}( dist2obstacle) \cdot weight \f$. \n
- * \e dist2obstacle denotes the minimum distance to the obstacle trajectory (spatial and temporal). \n
+ * \e dist2obstacle denotes the minimum distance to the obstacle trajectory
+ * (spatial and temporal). \n
  * \e weight can be set using setInformation(). \n
  * \e penaltyBelow denotes the penalty function, see penaltyBoundFromBelow(). \n
  * @see TebOptimalPlanner::AddEdgesDynamicObstacles
- * @remarks Do not forget to call setTebConfig(), setVertexIdx() and 
+ * @remarks Do not forget to call setTebConfig(), setVertexIdx() and
  * @warning Experimental
- */  
-class EdgeDynamicObstacle : public BaseTebUnaryEdge<2, const Obstacle*, VertexPose>
+ */
+class EdgeDynamicObstacle
+    : public BaseTebUnaryEdge<2, const Obstacle*, VertexPose>
 {
 public:
-  
-  /**
-   * @brief Construct edge.
-   */    
-  EdgeDynamicObstacle() : t_(0)
-  {
-  }
-  
-  /**
-   * @brief Construct edge and specify the time for its associated pose (necessary for computeError).
-   * @param t_ Estimated time until current pose is reached
-   */      
-  EdgeDynamicObstacle(double t) : t_(t)
-  {
-  }
-  
-  /**
-   * @brief Actual cost function
-   */   
-  void computeError()
-  {
-    ROS_ASSERT_MSG(cfg_ && _measurement, "You must call setTebConfig() and setObstacle() on EdgeDynamicObstacle()");
-    const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
-    
-    double dist = cfg_->robot_model->estimateSpatioTemporalDistance(bandpt->pose(), _measurement, t_);
+    /**
+     * @brief Construct edge.
+     */
+    EdgeDynamicObstacle() : t_(0) {}
 
-    _error[0] = penaltyBoundFromBelow(dist, cfg_->obstacles.min_obstacle_dist, cfg_->optim.penalty_epsilon);
-    _error[1] = penaltyBoundFromBelow(dist, cfg_->obstacles.dynamic_obstacle_inflation_dist, 0.0);
+    /**
+     * @brief Construct edge and specify the time for its associated pose
+     * (necessary for computeError).
+     * @param t_ Estimated time until current pose is reached
+     */
+    EdgeDynamicObstacle(double t) : t_(t) {}
 
-    ROS_ASSERT_MSG(std::isfinite(_error[0]), "EdgeDynamicObstacle::computeError() _error[0]=%f\n",_error[0]);
-  }
-  
-  
-  /**
-   * @brief Set Obstacle for the underlying cost function
-   * @param obstacle Const pointer to an Obstacle or derived Obstacle
-   */     
-  void setObstacle(const Obstacle* obstacle)
-  {
-    _measurement = obstacle;
-  }
-  
-  /**
-   * @brief Set all parameters at once
-   * @param cfg TebConfig class
-   * @param obstacle 2D position vector containing the position of the obstacle
-   */
-  void setParameters(const TebConfig& cfg, const Obstacle* obstacle)
-  {
-    cfg_ = &cfg;
-    _measurement = obstacle;
-  }
+    /**
+     * @brief Actual cost function
+     */
+    void computeError() {
+        do {
+            if (!(cfg_ && _measurement)) {
+                AERROR << "You must call setTebConfig() and setObstacle() on "
+                          "EdgeDynamicObstacle()";
+                assert(cfg_ && _measurement);
+            }
+        } while (0);
+        const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
+
+        double dist = cfg_->robot_model->estimateSpatioTemporalDistance(
+            bandpt->pose(), _measurement, t_);
+
+        _error[0] =
+            penaltyBoundFromBelow(dist, cfg_->obstacles.min_obstacle_dist,
+                                  cfg_->optim.penalty_epsilon);
+        _error[1] = penaltyBoundFromBelow(
+            dist, cfg_->obstacles.dynamic_obstacle_inflation_dist, 0.0);
+
+        do {
+            if (!(std::isfinite(_error[0]))) {
+                AERROR << "EdgeDynamicObstacle::computeError() _error[0]="
+                       << (_error[0]);
+                assert(std::isfinite(_error[0]));
+            }
+        } while (0);
+    }
+
+    /**
+     * @brief Set Obstacle for the underlying cost function
+     * @param obstacle Const pointer to an Obstacle or derived Obstacle
+     */
+    void setObstacle(const Obstacle* obstacle) {
+        _measurement = obstacle;
+    }
+
+    /**
+     * @brief Set all parameters at once
+     * @param cfg TebConfig class
+     * @param obstacle 2D position vector containing the position of the
+     * obstacle
+     */
+    void setParameters(const TebConfig& cfg, const Obstacle* obstacle) {
+        cfg_ = &cfg;
+        _measurement = obstacle;
+    }
 
 protected:
-  
-  double t_; //!< Estimated time until current pose is reached
-  
-public: 
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    double t_;  //!< Estimated time until current pose is reached
 
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-
-} // end namespace
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
 
 #endif

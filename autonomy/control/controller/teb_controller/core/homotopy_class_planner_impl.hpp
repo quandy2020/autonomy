@@ -36,66 +36,70 @@
  * Author: Christoph Rösmann
  *********************************************************************/
 
-#include "autonomy/control/controller/teb_controller/core/homotopy_class_planner.hpp"
 #include "autonomy/control/controller/teb_controller/core/h_signature.hpp"
+#include "autonomy/control/controller/teb_controller/core/homotopy_class_planner.hpp"
 
 namespace autonomy {
 namespace control {
 namespace controller {
 namespace teb_controller {
 
-  
-  
-template<typename BidirIter, typename Fun>
-EquivalenceClassPtr HomotopyClassPlanner::calculateEquivalenceClass(BidirIter path_start, BidirIter path_end, Fun fun_cplx_point, const ObstContainer* obstacles,
-                                                                    std::optional<TimeDiffSequence::iterator> timediff_start, std::optional<TimeDiffSequence::iterator> timediff_end)
-{
-  if(cfg_->obstacles.include_dynamic_obstacles)
-  {
-    HSignature3d* H = new HSignature3d(*cfg_);
-    H->calculateHSignature(path_start, path_end, fun_cplx_point, obstacles, timediff_start, timediff_end);
-    return EquivalenceClassPtr(H);
-  }
-  else
-  {
-    HSignature* H = new HSignature(*cfg_);
-    H->calculateHSignature(path_start, path_end, fun_cplx_point, obstacles);
-    return EquivalenceClassPtr(H);
-  }
+template <typename BidirIter, typename Fun>
+EquivalenceClass::SharedPtr HomotopyClassPlanner::calculateEquivalenceClass(
+    BidirIter path_start, BidirIter path_end, Fun fun_cplx_point,
+    const ObstContainer* obstacles,
+    std::optional<TimeDiffSequence::iterator> timediff_start,
+    std::optional<TimeDiffSequence::iterator> timediff_end) {
+    if (cfg_->obstacles.include_dynamic_obstacles) {
+        HSignature3d* H = new HSignature3d(*cfg_);
+        H->calculateHSignature(path_start, path_end, fun_cplx_point, obstacles,
+                               timediff_start, timediff_end);
+        return EquivalenceClass::SharedPtr(H);
+    } else {
+        HSignature* H = new HSignature(*cfg_);
+        H->calculateHSignature(path_start, path_end, fun_cplx_point, obstacles);
+        return EquivalenceClass::SharedPtr(H);
+    }
 }
 
+template <typename BidirIter, typename Fun>
+TebOptimalPlanner::SharedPtr HomotopyClassPlanner::addAndInitNewTeb(
+    BidirIter path_start, BidirIter path_end, Fun fun_position,
+    double start_orientation, double goal_orientation,
+    const Twist* start_velocity, bool free_goal_vel) {
+    TebOptimalPlanner::SharedPtr candidate =
+        std::make_shared<TebOptimalPlanner>(*cfg_, obstacles_);
 
-template<typename BidirIter, typename Fun>
-TebOptimalPlannerPtr HomotopyClassPlanner::addAndInitNewTeb(BidirIter path_start, BidirIter path_end, Fun fun_position, double start_orientation, double goal_orientation, const Twist* start_velocity, bool free_goal_vel)
-{
-  TebOptimalPlannerPtr candidate = TebOptimalPlannerPtr( new TebOptimalPlanner(*cfg_, obstacles_));
+    candidate->teb().initTrajectoryToGoal(
+        path_start, path_end, fun_position, cfg_->robot.max_vel_x,
+        cfg_->robot.max_vel_theta, cfg_->robot.acc_lim_x,
+        cfg_->robot.acc_lim_theta, start_orientation, goal_orientation,
+        cfg_->trajectory.min_samples,
+        cfg_->trajectory.allow_init_with_backwards_motion);
 
-  candidate->teb().initTrajectoryToGoal(path_start, path_end, fun_position, cfg_->robot.max_vel_x, cfg_->robot.max_vel_theta,
-                                 cfg_->robot.acc_lim_x, cfg_->robot.acc_lim_theta, start_orientation, goal_orientation, cfg_->trajectory.min_samples,
-                                 cfg_->trajectory.allow_init_with_backwards_motion);
+    if (start_velocity)
+        candidate->setVelocityStart(*start_velocity);
 
-  if (start_velocity)
-    candidate->setVelocityStart(*start_velocity);
+    EquivalenceClass::SharedPtr H = calculateEquivalenceClass(
+        candidate->teb().poses().begin(), candidate->teb().poses().end(),
+        getCplxFromVertexPosePtr, obstacles_,
+        candidate->teb().timediffs().begin(),
+        candidate->teb().timediffs().end());
 
-  EquivalenceClassPtr H = calculateEquivalenceClass(candidate->teb().poses().begin(), candidate->teb().poses().end(), getCplxFromVertexPosePtr, obstacles_,
-                                                    candidate->teb().timediffs().begin(), candidate->teb().timediffs().end());
+    if (free_goal_vel)
+        candidate->setVelocityGoalFree();
 
-  
-  if (free_goal_vel)
-    candidate->setVelocityGoalFree();
+    if (addEquivalenceClassIfNew(H)) {
+        tebs_.push_back(candidate);
+        return tebs_.back();
+    }
 
-  if(addEquivalenceClassIfNew(H))
-  {
-    tebs_.push_back(candidate);
-    return tebs_.back();
-  }
-
-  // If the candidate constitutes no new equivalence class, return a null pointer
-  return TebOptimalPlannerPtr();
+    // If the candidate constitutes no new equivalence class, return a null
+    // pointer
+    return TebOptimalPlanner::SharedPtr();
 }
-  
+
 }  // namespace teb_controller
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy
-
