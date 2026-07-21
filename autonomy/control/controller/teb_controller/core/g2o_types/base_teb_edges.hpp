@@ -32,7 +32,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * Notes:
  * The following class is derived from a class defined by the
  * g2o-framework. g2o is licensed under the terms of the BSD License.
@@ -47,232 +47,223 @@
 #include "autonomy/control/controller/teb_controller/core/teb_config.hpp"
 
 #include <g2o/core/base_binary_edge.h>
-#include <g2o/core/base_unary_edge.h>
 #include <g2o/core/base_multi_edge.h>
+#include <g2o/core/base_unary_edge.h>
 
-namespace teb_local_planner
-{
-    
-    
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
+
 /**
  * @class BaseTebUnaryEdge
  * @brief Base edge connecting a single vertex in the TEB optimization problem
- * 
+ *
  * This edge defines a base edge type for the TEB optimization problem.
- * It is derived from the corresponding g2o base classes augmented with additional information for the dedicated TEB problem (e.g. config).
- * The destructor erases the edge in all attached vertices in order to allow keeping the vertices valid in subsequent g2o optimization calls.
- * Memory of edges should be freed by calling the clearEdge method of the g2o optimizer class.
- * @see BaseTebMultiEdge, BaseTebBinaryEdge, g2o::BaseBinaryEdge, g2o::BaseUnaryEdge, g2o::BaseMultiEdge
- */   
+ * It is derived from the corresponding g2o base classes augmented with
+ * additional information for the dedicated TEB problem (e.g. config). The
+ * destructor erases the edge in all attached vertices in order to allow keeping
+ * the vertices valid in subsequent g2o optimization calls. Memory of edges
+ * should be freed by calling the clearEdge method of the g2o optimizer class.
+ * @see BaseTebMultiEdge, BaseTebBinaryEdge, g2o::BaseBinaryEdge,
+ * g2o::BaseUnaryEdge, g2o::BaseMultiEdge
+ */
 template <int D, typename E, typename VertexXi>
 class BaseTebUnaryEdge : public g2o::BaseUnaryEdge<D, E, VertexXi>
 {
 public:
-            
-  using typename g2o::BaseUnaryEdge<D, E, VertexXi>::ErrorVector;
-  using g2o::BaseUnaryEdge<D, E, VertexXi>::computeError;
-    
-  /**
-  * @brief Compute and return error / cost value.
-  * 
-  * This method is called by TebOptimalPlanner::computeCurrentCost to obtain the current cost.
-  * @return 2D Cost / error vector [nh cost, backward drive dir cost]^T
-  */     
-  ErrorVector& getError()
-  {
-    computeError();
-    return _error;
-  }
-  
-  /**
-   * @brief Read values from input stream
-   */  	
-  virtual bool read(std::istream& is)
-  {
-    // TODO generic read
-    return true;
-  }
+    using typename g2o::BaseUnaryEdge<D, E, VertexXi>::ErrorVector;
+    using g2o::BaseUnaryEdge<D, E, VertexXi>::computeError;
 
-  /**
-   * @brief Write values to an output stream
-   */    
-  virtual bool write(std::ostream& os) const
-  {
-    // TODO generic write
-    return os.good();
-  }
+    /**
+     * @brief Compute and return error / cost value.
+     *
+     * This method is called by TebOptimalPlanner::computeCurrentCost to obtain
+     * the current cost.
+     * @return 2D Cost / error vector [nh cost, backward drive dir cost]^T
+     */
+    ErrorVector& getError() {
+        computeError();
+        return _error;
+    }
 
-  /**
-   * @brief Assign the TebConfig class for parameters.
-   * @param cfg TebConfig class
-   */ 
-  void setTebConfig(const TebConfig& cfg)
-  {
-    cfg_ = &cfg;
-  }
-    
+    /**
+     * @brief Read values from input stream
+     */
+    virtual bool read(std::istream& is) {
+        // TODO generic read
+        return true;
+    }
+
+    /**
+     * @brief Write values to an output stream
+     */
+    virtual bool write(std::ostream& os) const {
+        // TODO generic write
+        return os.good();
+    }
+
+    /**
+     * @brief Assign the TebConfig class for parameters.
+     * @param cfg TebConfig class
+     */
+    void setTebConfig(const TebConfig& cfg) {
+        cfg_ = &cfg;
+    }
+
 protected:
-    
-  using g2o::BaseUnaryEdge<D, E, VertexXi>::_error;
-  using g2o::BaseUnaryEdge<D, E, VertexXi>::_vertices;
-  
-  const TebConfig* cfg_; //!< Store TebConfig class for parameters
-  
+    using g2o::BaseUnaryEdge<D, E, VertexXi>::_error;
+    using g2o::BaseUnaryEdge<D, E, VertexXi>::_vertices;
+
+    const TebConfig* cfg_;  //!< Store TebConfig class for parameters
+
 public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 /**
  * @class BaseTebBinaryEdge
  * @brief Base edge connecting two vertices in the TEB optimization problem
- * 
+ *
  * This edge defines a base edge type for the TEB optimization problem.
- * It is derived from the corresponding g2o base classes augmented with additional information for the dedicated TEB problem (e.g. config).
- * The destructor erases the edge in all attached vertices in order to allow keeping the vertices valid in subsequent g2o optimization calls.
- * Memory of edges should be freed by calling the clearEdge method of the g2o optimizer class.
- * @see BaseTebMultiEdge, BaseTebUnaryEdge, g2o::BaseBinaryEdge, g2o::BaseUnaryEdge, g2o::BaseMultiEdge
- */    
+ * It is derived from the corresponding g2o base classes augmented with
+ * additional information for the dedicated TEB problem (e.g. config). The
+ * destructor erases the edge in all attached vertices in order to allow keeping
+ * the vertices valid in subsequent g2o optimization calls. Memory of edges
+ * should be freed by calling the clearEdge method of the g2o optimizer class.
+ * @see BaseTebMultiEdge, BaseTebUnaryEdge, g2o::BaseBinaryEdge,
+ * g2o::BaseUnaryEdge, g2o::BaseMultiEdge
+ */
 template <int D, typename E, typename VertexXi, typename VertexXj>
 class BaseTebBinaryEdge : public g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>
 {
 public:
-    
-  using typename g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::ErrorVector;
-  using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::computeError;
+    using typename g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::ErrorVector;
+    using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::computeError;
 
-  /**
-  * @brief Compute and return error / cost value.
-  * 
-  * This method is called by TebOptimalPlanner::computeCurrentCost to obtain the current cost.
-  * @return 2D Cost / error vector [nh cost, backward drive dir cost]^T
-  */     
-  ErrorVector& getError()
-  {
-    computeError();
-    return _error;
-  }
-  
-  /**
-   * @brief Read values from input stream
-   */  	
-  virtual bool read(std::istream& is)
-  {
-    // TODO generic read
-    return true;
-  }
+    /**
+     * @brief Compute and return error / cost value.
+     *
+     * This method is called by TebOptimalPlanner::computeCurrentCost to obtain
+     * the current cost.
+     * @return 2D Cost / error vector [nh cost, backward drive dir cost]^T
+     */
+    ErrorVector& getError() {
+        computeError();
+        return _error;
+    }
 
-  /**
-   * @brief Write values to an output stream
-   */    
-  virtual bool write(std::ostream& os) const
-  {
-    // TODO generic write
-    return os.good();
-  }
+    /**
+     * @brief Read values from input stream
+     */
+    virtual bool read(std::istream& is) {
+        // TODO generic read
+        return true;
+    }
 
-  /**
-   * @brief Assign the TebConfig class for parameters.
-   * @param cfg TebConfig class
-   */ 
-  void setTebConfig(const TebConfig& cfg)
-  {
-    cfg_ = &cfg;
-  }
-  
+    /**
+     * @brief Write values to an output stream
+     */
+    virtual bool write(std::ostream& os) const {
+        // TODO generic write
+        return os.good();
+    }
+
+    /**
+     * @brief Assign the TebConfig class for parameters.
+     * @param cfg TebConfig class
+     */
+    void setTebConfig(const TebConfig& cfg) {
+        cfg_ = &cfg;
+    }
+
 protected:
-  
-  using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::_error;
-  using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::_vertices;
-    
-  const TebConfig* cfg_; //!< Store TebConfig class for parameters
-  
-public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
-};
+    using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::_error;
+    using g2o::BaseBinaryEdge<D, E, VertexXi, VertexXj>::_vertices;
 
+    const TebConfig* cfg_;  //!< Store TebConfig class for parameters
+
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
 
 /**
  * @class BaseTebMultiEdge
  * @brief Base edge connecting multiple vertices in the TEB optimization problem
- * 
+ *
  * This edge defines a base edge type for the TEB optimization problem.
- * It is derived from the corresponding g2o base classes augmented with additional information for the dedicated TEB problem (e.g. config).
- * The destructor erases the edge in all attached vertices in order to allow keeping the vertices valid in subsequent g2o optimization calls.
- * Memory of edges should be freed by calling the clearEdge method of the g2o optimizer class.
- * @see BaseTebBinaryEdge, BaseTebUnaryEdge, g2o::BaseBinaryEdge, g2o::BaseUnaryEdge, g2o::BaseMultiEdge
- */    
+ * It is derived from the corresponding g2o base classes augmented with
+ * additional information for the dedicated TEB problem (e.g. config). The
+ * destructor erases the edge in all attached vertices in order to allow keeping
+ * the vertices valid in subsequent g2o optimization calls. Memory of edges
+ * should be freed by calling the clearEdge method of the g2o optimizer class.
+ * @see BaseTebBinaryEdge, BaseTebUnaryEdge, g2o::BaseBinaryEdge,
+ * g2o::BaseUnaryEdge, g2o::BaseMultiEdge
+ */
 template <int D, typename E>
 class BaseTebMultiEdge : public g2o::BaseMultiEdge<D, E>
 {
 public:
-  
-  using typename g2o::BaseMultiEdge<D, E>::ErrorVector;
-  using g2o::BaseMultiEdge<D, E>::computeError;
-    
-  // Overwrites resize() from the parent class
-  virtual void resize(size_t size)
-  {
-      g2o::BaseMultiEdge<D, E>::resize(size);
-      
-      for(std::size_t i=0; i<_vertices.size(); ++i)
-        _vertices[i] = NULL;
-  }
+    using typename g2o::BaseMultiEdge<D, E>::ErrorVector;
+    using g2o::BaseMultiEdge<D, E>::computeError;
 
-  /**
-  * @brief Compute and return error / cost value.
-  * 
-  * This method is called by TebOptimalPlanner::computeCurrentCost to obtain the current cost.
-  * @return 2D Cost / error vector [nh cost, backward drive dir cost]^T
-  */     
-  ErrorVector& getError()
-  {
-    computeError();
-    return _error;
-  }
-  
-  /**
-   * @brief Read values from input stream
-   */  	
-  virtual bool read(std::istream& is)
-  {
-    // TODO generic read
-    return true;
-  }
+    // Overwrites resize() from the parent class
+    virtual void resize(size_t size) {
+        g2o::BaseMultiEdge<D, E>::resize(size);
 
-  /**
-   * @brief Write values to an output stream
-   */    
-  virtual bool write(std::ostream& os) const
-  {
-    // TODO generic write
-    return os.good();
-  }
+        for (std::size_t i = 0; i < _vertices.size(); ++i)
+            _vertices[i] = nullptr;
+    }
 
-  /**
-   * @brief Assign the TebConfig class for parameters.
-   * @param cfg TebConfig class
-   */ 
-  void setTebConfig(const TebConfig& cfg)
-  {
-    cfg_ = &cfg;
-  }
-  
+    /**
+     * @brief Compute and return error / cost value.
+     *
+     * This method is called by TebOptimalPlanner::computeCurrentCost to obtain
+     * the current cost.
+     * @return 2D Cost / error vector [nh cost, backward drive dir cost]^T
+     */
+    ErrorVector& getError() {
+        computeError();
+        return _error;
+    }
+
+    /**
+     * @brief Read values from input stream
+     */
+    virtual bool read(std::istream& is) {
+        // TODO generic read
+        return true;
+    }
+
+    /**
+     * @brief Write values to an output stream
+     */
+    virtual bool write(std::ostream& os) const {
+        // TODO generic write
+        return os.good();
+    }
+
+    /**
+     * @brief Assign the TebConfig class for parameters.
+     * @param cfg TebConfig class
+     */
+    void setTebConfig(const TebConfig& cfg) {
+        cfg_ = &cfg;
+    }
+
 protected:
-    
-  using g2o::BaseMultiEdge<D, E>::_error;
-  using g2o::BaseMultiEdge<D, E>::_vertices;
-  
-  const TebConfig* cfg_; //!< Store TebConfig class for parameters
-  
+    using g2o::BaseMultiEdge<D, E>::_error;
+    using g2o::BaseMultiEdge<D, E>::_vertices;
+
+    const TebConfig* cfg_;  //!< Store TebConfig class for parameters
+
 public:
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW   
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-
-
-
-
-
-} // end namespace
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
 
 #endif

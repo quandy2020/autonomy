@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "autonomy/commsgs/geometry_msgs.hpp"
+#include "autonomy/control/controller/teb_controller/core/feasibility_checker.hpp"
 #include "autonomy/control/controller/teb_controller/core/homotopy_class_planner.hpp"
 #include "autonomy/control/controller/teb_controller/core/misc.hpp"
 #include "autonomy/control/controller/teb_controller/core/optimal_planner.hpp"
@@ -37,39 +38,60 @@ namespace control {
 namespace controller {
 namespace teb_controller {
 
-class Optimizer {
- public:
-  void initialize(const std::string& name,
-                  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap,
-                  const proto::TEBControllerOptions* options,
-                  double controller_frequency);
+class Optimizer
+{
+public:
+    void initialize(const std::string& name,
+                    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap,
+                    const proto::TEBControllerOptions* options,
+                    double controller_frequency);
 
-  commsgs::geometry_msgs::TwistStamped evalControl(
-      const commsgs::geometry_msgs::PoseStamped& pose,
-      const commsgs::geometry_msgs::Twist& velocity,
-      const std::vector<commsgs::geometry_msgs::PoseStamped>& plan,
-      const commsgs::geometry_msgs::PoseStamped& goal);
+    commsgs::geometry_msgs::TwistStamped evalControl(
+        const commsgs::geometry_msgs::PoseStamped& pose,
+        const commsgs::geometry_msgs::Twist& velocity,
+        const std::vector<commsgs::geometry_msgs::PoseStamped>& plan,
+        const commsgs::geometry_msgs::PoseStamped& goal);
 
-  void reset();
+    void setSpeedLimit(double speed_limit, bool percentage);
+    void reset();
 
- private:
-  void applyOptionsToConfig();
-  static PoseSE2 ToPoseSE2(const commsgs::geometry_msgs::Pose& pose);
-  static Twist ToTebTwist(const commsgs::geometry_msgs::Twist& twist);
+private:
+    void applyOptionsToConfig();
+    void updateFootprintFromCostmap();
+    void configureRobotModel();
+    void validateFootprints() const;
+    void applyShrinkHorizon(
+        std::vector<commsgs::geometry_msgs::PoseStamped>& plan) const;
+    void saturateVelocity(double& vx, double& vy, double& omega) const;
+    void markInfeasible();
+    void clearInfeasible();
 
-  std::string name_;
-  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-  const proto::TEBControllerOptions* options_{nullptr};
-  TebConfig teb_config_;
-  ObstContainer obstacles_;
-  ViaPointContainer via_points_;
-  std::unique_ptr<PlannerInterface> planner_;
-  std::unique_ptr<tools::CostmapObstacleConverter> obstacle_converter_;
-  FailureDetector failure_detector_;
-  RotType last_preferred_rotdir_{RotType::none};
-  double controller_frequency_{5.0};
-  std::chrono::steady_clock::time_point time_last_oscillation_{};
-  bool has_plan_{false};
+    static PoseSE2 ToPoseSE2(const commsgs::geometry_msgs::Pose& pose);
+    static Twist ToTebTwist(const commsgs::geometry_msgs::Twist& twist);
+
+    std::string name_;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+    const proto::TEBControllerOptions* options_{nullptr};
+    TebConfig teb_config_;
+    double base_max_vel_x_{0.5};
+    double base_max_vel_x_backwards_{0.2};
+    double base_max_vel_y_{0.0};
+    double base_max_vel_theta_{1.0};
+    ObstContainer obstacles_;
+    ViaPointContainer via_points_;
+    std::unique_ptr<PlannerInterface> planner_;
+    std::unique_ptr<tools::CostmapObstacleConverter> obstacle_converter_;
+    CostmapFeasibilityModel costmap_model_;
+    std::vector<Point> footprint_spec_;
+    double robot_inscribed_radius_{0.0};
+    double robot_circumscribed_radius_{0.0};
+    FailureDetector failure_detector_;
+    RotType last_preferred_rotdir_{RotType::none};
+    double controller_frequency_{5.0};
+    std::chrono::steady_clock::time_point time_last_oscillation_{};
+    std::chrono::steady_clock::time_point time_last_infeasible_plan_{};
+    int no_infeasible_plans_{0};
+    bool has_plan_{false};
 };
 
 }  // namespace teb_controller

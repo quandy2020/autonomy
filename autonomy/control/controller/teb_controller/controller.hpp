@@ -30,44 +30,45 @@ namespace control {
 namespace controller {
 namespace teb_controller {
 
-class TEBController : public common::ControllerInterface {
- public:
-  TEBController() = default;
+class TEBController : public common::ControllerInterface
+{
+public:
+    TEBController() = default;
 
-  void Configure(const proto::ControllerOptions& options, std::string name,
-                 std::shared_ptr<transform::Buffer> tf,
-                 std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
-                     costmap_wrapper);
+    void Configure(
+        const proto::ControllerOptions& options, std::string name,
+        std::shared_ptr<transform::Buffer> tf,
+        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper);
 
-  void Cleanup();
-  void Activate();
-  void Deactivate();
-  void Reset() override;
+    void Cleanup();
+    void Activate();
+    void Deactivate();
+    void Reset() override;
 
-  uint32 ComputeVelocityCommands(
-      const commsgs::geometry_msgs::PoseStamped& pose,
-      const commsgs::geometry_msgs::TwistStamped& velocity,
-      commsgs::geometry_msgs::TwistStamped& cmd_vel,
-      common::GoalChecker* goal_checker, std::string& message) override;
+    uint32 ComputeVelocityCommands(
+        const commsgs::geometry_msgs::PoseStamped& pose,
+        const commsgs::geometry_msgs::TwistStamped& velocity,
+        commsgs::geometry_msgs::TwistStamped& cmd_vel,
+        common::GoalChecker* goal_checker, std::string& message) override;
 
-  void SetPlan(const commsgs::planning_msgs::Path& path) override;
-  void SetSpeedLimit(const double& speed_limit,
-                     const bool& percentage) override;
-  bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
+    void SetPlan(const commsgs::planning_msgs::Path& path) override;
+    void SetSpeedLimit(const double& speed_limit,
+                       const bool& percentage) override;
+    bool IsGoalReached(double dist_tolerance, double angle_tolerance) override;
 
- private:
-  std::string name_;
-  proto::TEBControllerOptions options_;
-  std::shared_ptr<transform::Buffer> tf_buffer_;
-  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-  Optimizer optimizer_;
-  tools::PathHandler path_handler_;
+private:
+    std::string name_;
+    proto::TEBControllerOptions options_;
+    std::shared_ptr<transform::Buffer> tf_buffer_;
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+    Optimizer optimizer_;
+    tools::PathHandler path_handler_;
 
-  commsgs::geometry_msgs::PoseStamped last_robot_pose_;
-  commsgs::geometry_msgs::Twist last_robot_velocity_;
-  commsgs::geometry_msgs::Pose last_goal_pose_;
-  common::GoalChecker* last_goal_checker_{nullptr};
-  bool has_control_state_{false};
+    commsgs::geometry_msgs::PoseStamped last_robot_pose_;
+    commsgs::geometry_msgs::Twist last_robot_velocity_;
+    commsgs::geometry_msgs::Pose last_goal_pose_;
+    common::GoalChecker* last_goal_checker_{nullptr};
+    bool has_control_state_{false};
 };
 
 }  // namespace teb_controller

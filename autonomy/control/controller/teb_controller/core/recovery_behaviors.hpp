@@ -31,36 +31,39 @@ namespace teb_controller {
 /**
  * @brief Detect oscillation / stuck patterns from recent velocity commands.
  */
-class FailureDetector {
- public:
-  FailureDetector() = default;
+class FailureDetector
+{
+public:
+    FailureDetector() = default;
 
-  void setBufferLength(std::size_t length) {
-    buffer_length_ = length;
-    while (buffer_.size() > buffer_length_) {
-      buffer_.pop_front();
+    void setBufferLength(std::size_t length) {
+        buffer_length_ = length;
+        while (buffer_.size() > buffer_length_) {
+            buffer_.pop_front();
+        }
     }
-  }
 
-  void update(const Twist& twist, double v_max, double v_backwards_max,
-              double omega_max, double v_eps, double omega_eps);
+    void update(const Twist& twist, double v_max, double v_backwards_max,
+                double omega_max, double v_eps, double omega_eps);
 
-  bool isOscillating() const { return oscillating_; }
+    bool isOscillating() const {
+        return oscillating_;
+    }
 
-  void clear();
+    void clear();
 
- protected:
-  struct VelMeasurement {
-    double v = 0;
-    double omega = 0;
-  };
+protected:
+    struct VelMeasurement {
+        double v = 0;
+        double omega = 0;
+    };
 
-  bool detect(double v_eps, double omega_eps);
+    bool detect(double v_eps, double omega_eps);
 
- private:
-  std::deque<VelMeasurement> buffer_;
-  std::size_t buffer_length_{0};
-  bool oscillating_{false};
+private:
+    std::deque<VelMeasurement> buffer_;
+    std::size_t buffer_length_{0};
+    bool oscillating_{false};
 };
 
 }  // namespace teb_controller

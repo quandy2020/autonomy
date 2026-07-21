@@ -32,25 +32,26 @@ namespace controller {
 namespace teb_controller {
 namespace tools {
 
-class PathHandler {
- public:
-  void initialize(std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap,
-                  std::shared_ptr<transform::Buffer> tf,
-                  const proto::TEBControllerOptions* options);
+class PathHandler
+{
+public:
+    void initialize(std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap,
+                    std::shared_ptr<transform::Buffer> tf,
+                    const proto::TEBControllerOptions* options);
 
-  void setPath(const commsgs::planning_msgs::Path& path);
+    void setPath(const commsgs::planning_msgs::Path& path);
 
-  std::vector<commsgs::geometry_msgs::PoseStamped> transformGlobalPlan(
-      const commsgs::geometry_msgs::PoseStamped& robot_pose) const;
+    std::vector<commsgs::geometry_msgs::PoseStamped> transformGlobalPlan(
+        const commsgs::geometry_msgs::PoseStamped& robot_pose) const;
 
-  commsgs::geometry_msgs::PoseStamped getLocalGoal(
-      const commsgs::geometry_msgs::PoseStamped& robot_pose) const;
+    commsgs::geometry_msgs::PoseStamped getLocalGoal(
+        const commsgs::geometry_msgs::PoseStamped& robot_pose) const;
 
- private:
-  std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-  std::shared_ptr<transform::Buffer> tf_buffer_;
-  const proto::TEBControllerOptions* options_{nullptr};
-  commsgs::planning_msgs::Path global_plan_;
+private:
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
+    std::shared_ptr<transform::Buffer> tf_buffer_;
+    const proto::TEBControllerOptions* options_{nullptr};
+    commsgs::planning_msgs::Path global_plan_;
 };
 
 }  // namespace tools

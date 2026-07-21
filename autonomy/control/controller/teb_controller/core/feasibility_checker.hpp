@@ -19,24 +19,60 @@
 #include <vector>
 
 #include "autonomy/control/controller/teb_controller/core/teb_core.hpp"
+#include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d.hpp"
+#include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
 
-namespace teb_local_planner {
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
 
-class CostmapFeasibilityModel {
- public:
-  virtual ~CostmapFeasibilityModel() = default;
-  virtual double footprintCost(double x, double y, double theta,
-                               const std::vector<Point>& footprint,
-                               double inscribed_radius,
-                               double circumscribed_radius) const {
-    (void)x;
-    (void)y;
-    (void)theta;
-    (void)footprint;
-    (void)inscribed_radius;
-    (void)circumscribed_radius;
-    return 0.0;
-  }
+/**
+ * @brief Costmap footprint model for TEB trajectory feasibility checks.
+ *
+ * Wraps FootprintCollisionChecker. Returns -1 on lethal / out-of-map to match
+ * TebOptimalPlanner::isTrajectoryFeasible (ROS1 CostmapModel convention).
+ */
+class CostmapFeasibilityModel
+{
+public:
+    CostmapFeasibilityModel() = default;
+
+    explicit CostmapFeasibilityModel(map::costmap_2d::Costmap2D* costmap)
+        : checker_(costmap) {}
+
+    virtual ~CostmapFeasibilityModel() = default;
+
+    void setCostmap(map::costmap_2d::Costmap2D* costmap) {
+        checker_.setCostmap(costmap);
+    }
+
+    /**
+     * @return cost in [0, 253], or -1 if lethal / outside map / empty footprint
+     */
+    virtual double footprintCost(double x, double y, double theta,
+                                 const std::vector<Point>& footprint,
+                                 double /*inscribed_radius*/,
+                                 double /*circumscribed_radius*/) const {
+        if (footprint.empty() || checker_.getCostmap() == nullptr) {
+            return -1.0;
+        }
+        const double cost =
+            checker_.footprintCostAtPose(x, y, theta, footprint);
+        if (cost < 0.0 ||
+            cost >= static_cast<double>(map::costmap_2d::LETHAL_OBSTACLE)) {
+            return -1.0;
+        }
+        return cost;
+    }
+
+private:
+    mutable map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>
+        checker_{nullptr};
 };
 
-}  // namespace teb_local_planner
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy

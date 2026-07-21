@@ -22,8 +22,8 @@
 #include "autonomy/control/controller/teb_controller/core/obstacles.hpp"
 
 #include "autonomy/control/proto/teb_controller.pb.h"
-#include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
 namespace autonomy {
 namespace control {
@@ -37,27 +37,31 @@ namespace tools {
  * Inspired by costmap_converter point sampling; clusters are not required for
  * the first integration — grid downsampling keeps the optimization tractable.
  */
-class CostmapObstacleConverter {
- public:
-  explicit CostmapObstacleConverter(const proto::TEBControllerOptions& options);
+class CostmapObstacleConverter
+{
+public:
+    explicit CostmapObstacleConverter(
+        const proto::TEBControllerOptions& options);
 
-  void update(const map::costmap_2d::Costmap2D& costmap,
-              const commsgs::geometry_msgs::Pose& robot_pose);
+    void update(const map::costmap_2d::Costmap2D& costmap,
+                const commsgs::geometry_msgs::Pose& robot_pose);
 
-  ObstContainer& obstacles() { return obstacles_; }
-  const ObstContainer& obstacles() const {
-    return obstacles_;
-  }
+    ObstContainer& obstacles() {
+        return obstacles_;
+    }
+    const ObstContainer& obstacles() const {
+        return obstacles_;
+    }
 
- private:
-  void UpdateAsPoints(const map::costmap_2d::Costmap2D& costmap,
-                      const commsgs::geometry_msgs::Pose& robot_pose);
-  void UpdateAsClusters(const map::costmap_2d::Costmap2D& costmap,
+private:
+    void UpdateAsPoints(const map::costmap_2d::Costmap2D& costmap,
                         const commsgs::geometry_msgs::Pose& robot_pose);
+    void UpdateAsClusters(const map::costmap_2d::Costmap2D& costmap,
+                          const commsgs::geometry_msgs::Pose& robot_pose);
 
-  proto::TEBControllerOptions options_;
-  ObstContainer obstacles_;
-  std::vector<ObstaclePtr> storage_;
+    proto::TEBControllerOptions options_;
+    ObstContainer obstacles_;
+    std::vector<Obstacle::SharedPtr> storage_;
 };
 
 }  // namespace tools

@@ -30,64 +30,64 @@ namespace teb_controller {
 void FailureDetector::update(const Twist& twist, double v_max,
                              double v_backwards_max, double omega_max,
                              double v_eps, double omega_eps) {
-  if (buffer_length_ == 0) {
-    return;
-  }
+    if (buffer_length_ == 0) {
+        return;
+    }
 
-  VelMeasurement measurement;
-  measurement.v = twist.linear.x;
-  measurement.omega = twist.angular.z;
+    VelMeasurement measurement;
+    measurement.v = twist.linear.x;
+    measurement.omega = twist.angular.z;
 
-  if (measurement.v > 0 && v_max > 0) {
-    measurement.v /= v_max;
-  } else if (measurement.v < 0 && v_backwards_max > 0) {
-    measurement.v /= v_backwards_max;
-  }
+    if (measurement.v > 0 && v_max > 0) {
+        measurement.v /= v_max;
+    } else if (measurement.v < 0 && v_backwards_max > 0) {
+        measurement.v /= v_backwards_max;
+    }
 
-  if (omega_max > 0) {
-    measurement.omega /= omega_max;
-  }
+    if (omega_max > 0) {
+        measurement.omega /= omega_max;
+    }
 
-  buffer_.push_back(measurement);
-  while (buffer_.size() > buffer_length_) {
-    buffer_.pop_front();
-  }
+    buffer_.push_back(measurement);
+    while (buffer_.size() > buffer_length_) {
+        buffer_.pop_front();
+    }
 
-  detect(v_eps, omega_eps);
+    detect(v_eps, omega_eps);
 }
 
 void FailureDetector::clear() {
-  buffer_.clear();
-  oscillating_ = false;
+    buffer_.clear();
+    oscillating_ = false;
 }
 
 bool FailureDetector::detect(double v_eps, double omega_eps) {
-  oscillating_ = false;
+    oscillating_ = false;
 
-  if (buffer_length_ == 0 || buffer_.size() < buffer_length_ / 2) {
-    return false;
-  }
-
-  const double n = static_cast<double>(buffer_.size());
-  double v_mean = 0;
-  double omega_mean = 0;
-  int omega_zero_crossings = 0;
-  for (std::size_t i = 0; i < buffer_.size(); ++i) {
-    v_mean += buffer_[i].v;
-    omega_mean += buffer_[i].omega;
-    if (i > 0 &&
-        g2o::sign(buffer_[i].omega) != g2o::sign(buffer_[i - 1].omega)) {
-      ++omega_zero_crossings;
+    if (buffer_length_ == 0 || buffer_.size() < buffer_length_ / 2) {
+        return false;
     }
-  }
-  v_mean /= n;
-  omega_mean /= n;
 
-  if (std::abs(v_mean) < v_eps && std::abs(omega_mean) < omega_eps &&
-      omega_zero_crossings > 1) {
-    oscillating_ = true;
-  }
-  return oscillating_;
+    const double n = static_cast<double>(buffer_.size());
+    double v_mean = 0;
+    double omega_mean = 0;
+    int omega_zero_crossings = 0;
+    for (std::size_t i = 0; i < buffer_.size(); ++i) {
+        v_mean += buffer_[i].v;
+        omega_mean += buffer_[i].omega;
+        if (i > 0 &&
+            g2o::sign(buffer_[i].omega) != g2o::sign(buffer_[i - 1].omega)) {
+            ++omega_zero_crossings;
+        }
+    }
+    v_mean /= n;
+    omega_mean /= n;
+
+    if (std::abs(v_mean) < v_eps && std::abs(omega_mean) < omega_eps &&
+        omega_zero_crossings > 1) {
+        oscillating_ = true;
+    }
+    return oscillating_;
 }
 
 }  // namespace teb_controller

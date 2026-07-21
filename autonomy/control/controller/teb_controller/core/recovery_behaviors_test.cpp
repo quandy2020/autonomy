@@ -25,34 +25,34 @@ namespace teb_controller {
 namespace {
 
 Twist MakeTwist(double vx, double omega) {
-  Twist t;
-  t.linear.x = vx;
-  t.angular.z = omega;
-  return t;
+    Twist t;
+    t.linear.x = vx;
+    t.angular.z = omega;
+    return t;
 }
 
 TEST(FailureDetectorTest, DetectsOscillationOnAlternatingOmega) {
-  FailureDetector detector;
-  detector.setBufferLength(10);
-  for (int i = 0; i < 10; ++i) {
-    const double omega = (i % 2 == 0) ? 0.05 : -0.05;
-    detector.update(MakeTwist(0.02, omega), /*v_max=*/1.0,
-                    /*v_backwards_max=*/1.0, /*omega_max=*/1.0,
-                    /*v_eps=*/0.1, /*omega_eps=*/0.1);
-  }
-  EXPECT_TRUE(detector.isOscillating());
+    FailureDetector detector;
+    detector.setBufferLength(10);
+    for (int i = 0; i < 10; ++i) {
+        const double omega = (i % 2 == 0) ? 0.05 : -0.05;
+        detector.update(MakeTwist(0.02, omega), /*v_max=*/1.0,
+                        /*v_backwards_max=*/1.0, /*omega_max=*/1.0,
+                        /*v_eps=*/0.1, /*omega_eps=*/0.1);
+    }
+    EXPECT_TRUE(detector.isOscillating());
 }
 
 TEST(FailureDetectorTest, ClearResetsState) {
-  FailureDetector detector;
-  detector.setBufferLength(8);
-  for (int i = 0; i < 8; ++i) {
-    detector.update(MakeTwist(0.01, (i % 2) ? 0.05 : -0.05), 1, 1, 1, 0.1,
-                    0.1);
-  }
-  ASSERT_TRUE(detector.isOscillating());
-  detector.clear();
-  EXPECT_FALSE(detector.isOscillating());
+    FailureDetector detector;
+    detector.setBufferLength(8);
+    for (int i = 0; i < 8; ++i) {
+        detector.update(MakeTwist(0.01, (i % 2) ? 0.05 : -0.05), 1, 1, 1, 0.1,
+                        0.1);
+    }
+    ASSERT_TRUE(detector.isOscillating());
+    detector.clear();
+    EXPECT_FALSE(detector.isOscillating());
 }
 
 }  // namespace

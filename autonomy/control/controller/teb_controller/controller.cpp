@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "autonomy/common/macros.hpp"
 #include "autonomy/control/controller/teb_controller/controller.hpp"
+#include "autonomy/common/macros.hpp"
 
 #include "autolink/common/log.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
@@ -29,80 +29,86 @@ void TEBController::Configure(
     const proto::ControllerOptions& options, std::string name,
     std::shared_ptr<transform::Buffer> tf_buffer,
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {
-  name_ = std::move(name);
-  tf_buffer_ = std::move(tf_buffer);
-  costmap_wrapper_ = std::move(costmap_wrapper);
-  options_ = options.teb_controller_options();
+    name_ = std::move(name);
+    tf_buffer_ = std::move(tf_buffer);
+    costmap_wrapper_ = std::move(costmap_wrapper);
+    options_ = options.teb_controller_options();
 
-  path_handler_.initialize(costmap_wrapper_, tf_buffer_, &options_);
-  optimizer_.initialize(name_, costmap_wrapper_, &options_,
-                        options.controller_frequency());
-  AINFO << "Configured TEB Controller: " << name_;
+    path_handler_.initialize(costmap_wrapper_, tf_buffer_, &options_);
+    optimizer_.initialize(name_, costmap_wrapper_, &options_,
+                          options.controller_frequency());
+    AINFO << "Configured TEB Controller: " << name_;
 }
 
-void TEBController::Cleanup() { AINFO << "Cleaned up TEB Controller: " << name_; }
+void TEBController::Cleanup() {
+    AINFO << "Cleaned up TEB Controller: " << name_;
+}
 
-void TEBController::Activate() { AINFO << "Activated TEB Controller: " << name_; }
+void TEBController::Activate() {
+    AINFO << "Activated TEB Controller: " << name_;
+}
 
 void TEBController::Deactivate() {
-  AINFO << "Deactivated TEB Controller: " << name_;
+    AINFO << "Deactivated TEB Controller: " << name_;
 }
 
-void TEBController::Reset() { optimizer_.reset(); }
+void TEBController::Reset() {
+    optimizer_.reset();
+}
 
 uint32 TEBController::ComputeVelocityCommands(
     const commsgs::geometry_msgs::PoseStamped& pose,
     const commsgs::geometry_msgs::TwistStamped& velocity,
     commsgs::geometry_msgs::TwistStamped& cmd_vel,
     common::GoalChecker* goal_checker, std::string& message) {
-  const auto transformed_plan = path_handler_.transformGlobalPlan(pose);
-  const auto goal = path_handler_.getLocalGoal(pose);
+    const auto transformed_plan = path_handler_.transformGlobalPlan(pose);
+    const auto goal = path_handler_.getLocalGoal(pose);
 
-  map::costmap_2d::Costmap2D* costmap = costmap_wrapper_->getCostmap();
-  std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock(
-      *(costmap->getMutex()));
+    map::costmap_2d::Costmap2D* costmap = costmap_wrapper_->getCostmap();
+    std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock(
+        *(costmap->getMutex()));
 
-  commsgs::geometry_msgs::Twist robot_speed;
-  robot_speed.linear = velocity.twist.linear;
-  robot_speed.angular = velocity.twist.angular;
+    commsgs::geometry_msgs::Twist robot_speed;
+    robot_speed.linear = velocity.twist.linear;
+    robot_speed.angular = velocity.twist.angular;
 
-  last_robot_pose_ = pose;
-  last_robot_velocity_ = robot_speed;
-  last_goal_pose_ = goal.pose;
-  last_goal_checker_ = goal_checker;
-  has_control_state_ = true;
+    last_robot_pose_ = pose;
+    last_robot_velocity_ = robot_speed;
+    last_goal_pose_ = goal.pose;
+    last_goal_checker_ = goal_checker;
+    has_control_state_ = true;
 
-  try {
-    cmd_vel = optimizer_.evalControl(pose, robot_speed, transformed_plan, goal);
-  } catch (const common::NoValidControl& ex) {
-    message = ex.what();
-    return proto::CONTROLLER_RESULT_NO_VALID_CMD;
-  }
+    try {
+        cmd_vel =
+            optimizer_.evalControl(pose, robot_speed, transformed_plan, goal);
+    } catch (const common::NoValidControl& ex) {
+        message = ex.what();
+        return proto::CONTROLLER_RESULT_NO_VALID_CMD;
+    }
 
-  return proto::CONTROLLER_RESULT_SUCCESS;
+    return proto::CONTROLLER_RESULT_SUCCESS;
 }
 
 void TEBController::SetPlan(const commsgs::planning_msgs::Path& path) {
-  path_handler_.setPath(path);
-  optimizer_.reset();
-  has_control_state_ = false;
+    path_handler_.setPath(path);
+    optimizer_.reset();
+    has_control_state_ = false;
 }
 
 void TEBController::SetSpeedLimit(const double& speed_limit,
-                                 const bool& percentage) {
-  (void)speed_limit;
-  (void)percentage;
+                                  const bool& percentage) {
+    optimizer_.setSpeedLimit(speed_limit, percentage);
 }
 
-bool TEBController::IsGoalReached(double dist_tolerance, double angle_tolerance) {
-  (void)dist_tolerance;
-  (void)angle_tolerance;
-  if (!has_control_state_ || last_goal_checker_ == nullptr) {
-    return false;
-  }
-  return last_goal_checker_->IsGoalReached(last_robot_pose_.pose,
-                                           last_goal_pose_,
-                                           last_robot_velocity_);
+bool TEBController::IsGoalReached(double dist_tolerance,
+                                  double angle_tolerance) {
+    (void)dist_tolerance;
+    (void)angle_tolerance;
+    if (!has_control_state_ || last_goal_checker_ == nullptr) {
+        return false;
+    }
+    return last_goal_checker_->IsGoalReached(
+        last_robot_pose_.pose, last_goal_pose_, last_robot_velocity_);
 }
 
 }  // namespace teb_controller

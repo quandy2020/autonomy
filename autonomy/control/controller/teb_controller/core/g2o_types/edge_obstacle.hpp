@@ -32,7 +32,7 @@
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * Notes:
  * The following class is derived from a class defined by the
  * g2o-framework. g2o is licensed under the terms of the BSD License.
@@ -43,67 +43,83 @@
 #ifndef EDGE_OBSTACLE_H_
 #define EDGE_OBSTACLE_H_
 
-#include "autonomy/control/controller/teb_controller/core/obstacles.hpp"
-#include "autonomy/control/controller/teb_controller/core/robot_footprint_model.hpp"
-#include "autonomy/control/controller/teb_controller/core/g2o_types/vertex_pose.hpp"
 #include "autonomy/control/controller/teb_controller/core/g2o_types/base_teb_edges.hpp"
 #include "autonomy/control/controller/teb_controller/core/g2o_types/penalties.hpp"
+#include "autonomy/control/controller/teb_controller/core/g2o_types/vertex_pose.hpp"
+#include "autonomy/control/controller/teb_controller/core/obstacles.hpp"
+#include "autonomy/control/controller/teb_controller/core/robot_footprint_model.hpp"
 #include "autonomy/control/controller/teb_controller/core/teb_config.hpp"
 
-
-
-namespace teb_local_planner
-{
+namespace autonomy {
+namespace control {
+namespace controller {
+namespace teb_controller {
 
 /**
  * @class EdgeObstacle
- * @brief Edge defining the cost function for keeping a minimum distance from obstacles.
- * 
+ * @brief Edge defining the cost function for keeping a minimum distance from
+ * obstacles.
+ *
  * The edge depends on a single vertex \f$ \mathbf{s}_i \f$ and minimizes: \n
  * \f$ \min \textrm{penaltyBelow}( dist2point ) \cdot weight \f$. \n
  * \e dist2point denotes the minimum distance to the point obstacle. \n
  * \e weight can be set using setInformation(). \n
  * \e penaltyBelow denotes the penalty function, see penaltyBoundFromBelow() \n
- * @see TebOptimalPlanner::AddEdgesObstacles, TebOptimalPlanner::EdgeInflatedObstacle
+ * @see TebOptimalPlanner::AddEdgesObstacles,
+ * TebOptimalPlanner::EdgeInflatedObstacle
  * @remarks Do not forget to call setTebConfig() and setObstacle()
- */     
+ */
 class EdgeObstacle : public BaseTebUnaryEdge<1, const Obstacle*, VertexPose>
 {
 public:
-    
-  /**
-   * @brief Construct edge.
-   */    
-  EdgeObstacle() 
-  {
-    _measurement = NULL;
-  }
- 
-  /**
-   * @brief Actual cost function
-   */    
-  void computeError()
-  {
-    ROS_ASSERT_MSG(cfg_ && _measurement, "You must call setTebConfig() and setObstacle() on EdgeObstacle()");
-    const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
-
-    double dist = cfg_->robot_model->calculateDistance(bandpt->pose(), _measurement);
-
-    // Original obstacle cost.
-    _error[0] = penaltyBoundFromBelow(dist, cfg_->obstacles.min_obstacle_dist, cfg_->optim.penalty_epsilon);
-
-    if (cfg_->optim.obstacle_cost_exponent != 1.0 && cfg_->obstacles.min_obstacle_dist > 0.0)
-    {
-      // Optional non-linear cost. Note the max cost (before weighting) is
-      // the same as the straight line version and that all other costs are
-      // below the straight line (for positive exponent), so it may be
-      // necessary to increase weight_obstacle and/or the inflation_weight
-      // when using larger exponents.
-      _error[0] = cfg_->obstacles.min_obstacle_dist * std::pow(_error[0] / cfg_->obstacles.min_obstacle_dist, cfg_->optim.obstacle_cost_exponent);
+    /**
+     * @brief Construct edge.
+     */
+    EdgeObstacle() {
+        _measurement = nullptr;
     }
 
-    ROS_ASSERT_MSG(std::isfinite(_error[0]), "EdgeObstacle::computeError() _error[0]=%f\n",_error[0]);
-  }
+    /**
+     * @brief Actual cost function
+     */
+    void computeError() {
+        do {
+            if (!(cfg_ && _measurement)) {
+                AERROR << "You must call setTebConfig() and setObstacle() on "
+                          "EdgeObstacle()";
+                assert(cfg_ && _measurement);
+            }
+        } while (0);
+        const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
+
+        double dist =
+            cfg_->robot_model->calculateDistance(bandpt->pose(), _measurement);
+
+        // Original obstacle cost.
+        _error[0] =
+            penaltyBoundFromBelow(dist, cfg_->obstacles.min_obstacle_dist,
+                                  cfg_->optim.penalty_epsilon);
+
+        if (cfg_->optim.obstacle_cost_exponent != 1.0 &&
+            cfg_->obstacles.min_obstacle_dist > 0.0) {
+            // Optional non-linear cost. Note the max cost (before weighting) is
+            // the same as the straight line version and that all other costs
+            // are below the straight line (for positive exponent), so it may be
+            // necessary to increase weight_obstacle and/or the inflation_weight
+            // when using larger exponents.
+            _error[0] = cfg_->obstacles.min_obstacle_dist *
+                        std::pow(_error[0] / cfg_->obstacles.min_obstacle_dist,
+                                 cfg_->optim.obstacle_cost_exponent);
+        }
+
+        do {
+            if (!(std::isfinite(_error[0]))) {
+                AERROR << "EdgeObstacle::computeError() _error[0]="
+                       << (_error[0]);
+                assert(std::isfinite(_error[0]));
+            }
+        } while (0);
+    }
 
 #ifdef USE_ANALYTIC_JACOBI
 #if 0
@@ -113,7 +129,7 @@ public:
    */
   void linearizeOplus()
   {
-    ROS_ASSERT_MSG(cfg_, "You must call setTebConfig on EdgePointObstacle()");
+    do { if (!(cfg_)) { AERROR << "You must call setTebConfig on EdgePointObstacle()"; assert(cfg_); } } while (0);
     const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
     
     Eigen::Vector2d deltaS = *_measurement - bandpt->position(); 
@@ -149,113 +165,132 @@ public:
   }
 #endif
 #endif
-  
-  /**
-   * @brief Set pointer to associated obstacle for the underlying cost function 
-   * @param obstacle 2D position vector containing the position of the obstacle
-   */ 
-  void setObstacle(const Obstacle* obstacle)
-  {
-    _measurement = obstacle;
-  }
-    
-  /**
-   * @brief Set all parameters at once
-   * @param cfg TebConfig class
-   * @param obstacle 2D position vector containing the position of the obstacle
-   */ 
-  void setParameters(const TebConfig& cfg, const Obstacle* obstacle)
-  {
-    cfg_ = &cfg;
-    _measurement = obstacle;
-  }
-  
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-};
-  
 
+    /**
+     * @brief Set pointer to associated obstacle for the underlying cost
+     * function
+     * @param obstacle 2D position vector containing the position of the
+     * obstacle
+     */
+    void setObstacle(const Obstacle* obstacle) {
+        _measurement = obstacle;
+    }
+
+    /**
+     * @brief Set all parameters at once
+     * @param cfg TebConfig class
+     * @param obstacle 2D position vector containing the position of the
+     * obstacle
+     */
+    void setParameters(const TebConfig& cfg, const Obstacle* obstacle) {
+        cfg_ = &cfg;
+        _measurement = obstacle;
+    }
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
 
 /**
  * @class EdgeInflatedObstacle
- * @brief Edge defining the cost function for keeping a minimum distance from inflated obstacles.
- * 
+ * @brief Edge defining the cost function for keeping a minimum distance from
+ * inflated obstacles.
+ *
  * The edge depends on a single vertex \f$ \mathbf{s}_i \f$ and minimizes: \n
- * \f$ \min \textrm{penaltyBelow}( dist2point, min_obstacle_dist ) \cdot weight_inflation \f$. \n
- * Additional, a second penalty is provided with \n
- * \f$ \min \textrm{penaltyBelow}( dist2point, inflation_dist ) \cdot weight_inflation \f$.
- * It is assumed that inflation_dist > min_obstacle_dist and weight_inflation << weight_inflation.
+ * \f$ \min \textrm{penaltyBelow}( dist2point, min_obstacle_dist ) \cdot
+ * weight_inflation \f$. \n Additional, a second penalty is provided with \n
+ * \f$ \min \textrm{penaltyBelow}( dist2point, inflation_dist ) \cdot
+ * weight_inflation \f$. It is assumed that inflation_dist > min_obstacle_dist
+ * and weight_inflation << weight_inflation.
  * \e dist2point denotes the minimum distance to the point obstacle. \n
  * \e penaltyBelow denotes the penalty function, see penaltyBoundFromBelow() \n
  * @see TebOptimalPlanner::AddEdgesObstacles, TebOptimalPlanner::EdgeObstacle
  * @remarks Do not forget to call setTebConfig() and setObstacle()
- */     
-class EdgeInflatedObstacle : public BaseTebUnaryEdge<2, const Obstacle*, VertexPose>
+ */
+class EdgeInflatedObstacle
+    : public BaseTebUnaryEdge<2, const Obstacle*, VertexPose>
 {
 public:
-    
-  /**
-   * @brief Construct edge.
-   */    
-  EdgeInflatedObstacle() 
-  {
-    _measurement = NULL;
-  }
- 
-  /**
-   * @brief Actual cost function
-   */    
-  void computeError()
-  {
-    ROS_ASSERT_MSG(cfg_ && _measurement, "You must call setTebConfig() and setObstacle() on EdgeInflatedObstacle()");
-    const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
-
-    double dist = cfg_->robot_model->calculateDistance(bandpt->pose(), _measurement);
-
-    // Original "straight line" obstacle cost. The max possible value
-    // before weighting is min_obstacle_dist
-    _error[0] = penaltyBoundFromBelow(dist, cfg_->obstacles.min_obstacle_dist, cfg_->optim.penalty_epsilon);
-
-    if (cfg_->optim.obstacle_cost_exponent != 1.0 && cfg_->obstacles.min_obstacle_dist > 0.0)
-    {
-      // Optional non-linear cost. Note the max cost (before weighting) is
-      // the same as the straight line version and that all other costs are
-      // below the straight line (for positive exponent), so it may be
-      // necessary to increase weight_obstacle and/or the inflation_weight
-      // when using larger exponents.
-      _error[0] = cfg_->obstacles.min_obstacle_dist * std::pow(_error[0] / cfg_->obstacles.min_obstacle_dist, cfg_->optim.obstacle_cost_exponent);
+    /**
+     * @brief Construct edge.
+     */
+    EdgeInflatedObstacle() {
+        _measurement = nullptr;
     }
 
-    // Additional linear inflation cost
-    _error[1] = penaltyBoundFromBelow(dist, cfg_->obstacles.inflation_dist, 0.0);
+    /**
+     * @brief Actual cost function
+     */
+    void computeError() {
+        do {
+            if (!(cfg_ && _measurement)) {
+                AERROR << "You must call setTebConfig() and setObstacle() on "
+                          "EdgeInflatedObstacle()";
+                assert(cfg_ && _measurement);
+            }
+        } while (0);
+        const VertexPose* bandpt = static_cast<const VertexPose*>(_vertices[0]);
 
+        double dist =
+            cfg_->robot_model->calculateDistance(bandpt->pose(), _measurement);
 
-    ROS_ASSERT_MSG(std::isfinite(_error[0]) && std::isfinite(_error[1]), "EdgeInflatedObstacle::computeError() _error[0]=%f, _error[1]=%f\n",_error[0], _error[1]);
-  }
+        // Original "straight line" obstacle cost. The max possible value
+        // before weighting is min_obstacle_dist
+        _error[0] =
+            penaltyBoundFromBelow(dist, cfg_->obstacles.min_obstacle_dist,
+                                  cfg_->optim.penalty_epsilon);
 
-  /**
-   * @brief Set pointer to associated obstacle for the underlying cost function 
-   * @param obstacle 2D position vector containing the position of the obstacle
-   */ 
-  void setObstacle(const Obstacle* obstacle)
-  {
-    _measurement = obstacle;
-  }
+        if (cfg_->optim.obstacle_cost_exponent != 1.0 &&
+            cfg_->obstacles.min_obstacle_dist > 0.0) {
+            // Optional non-linear cost. Note the max cost (before weighting) is
+            // the same as the straight line version and that all other costs
+            // are below the straight line (for positive exponent), so it may be
+            // necessary to increase weight_obstacle and/or the inflation_weight
+            // when using larger exponents.
+            _error[0] = cfg_->obstacles.min_obstacle_dist *
+                        std::pow(_error[0] / cfg_->obstacles.min_obstacle_dist,
+                                 cfg_->optim.obstacle_cost_exponent);
+        }
 
-  /**
-   * @brief Set all parameters at once
-   * @param cfg TebConfig class
-   * @param obstacle 2D position vector containing the position of the obstacle
-   */ 
-  void setParameters(const TebConfig& cfg, const Obstacle* obstacle)
-  {
-    cfg_ = &cfg;
-    _measurement = obstacle;
-  }
-  
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+        // Additional linear inflation cost
+        _error[1] =
+            penaltyBoundFromBelow(dist, cfg_->obstacles.inflation_dist, 0.0);
+
+        do {
+            if (!(std::isfinite(_error[0]) && std::isfinite(_error[1]))) {
+                AERROR << "EdgeInflatedObstacle::computeError() _error[0]="
+                       << (_error[0]) << ", _error[1]=" << (_error[1]);
+                assert(std::isfinite(_error[0]) && std::isfinite(_error[1]));
+            }
+        } while (0);
+    }
+
+    /**
+     * @brief Set pointer to associated obstacle for the underlying cost
+     * function
+     * @param obstacle 2D position vector containing the position of the
+     * obstacle
+     */
+    void setObstacle(const Obstacle* obstacle) {
+        _measurement = obstacle;
+    }
+
+    /**
+     * @brief Set all parameters at once
+     * @param cfg TebConfig class
+     * @param obstacle 2D position vector containing the position of the
+     * obstacle
+     */
+    void setParameters(const TebConfig& cfg, const Obstacle* obstacle) {
+        cfg_ = &cfg;
+        _measurement = obstacle;
+    }
+
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
-    
 
-} // end namespace
+}  // namespace teb_controller
+}  // namespace controller
+}  // namespace control
+}  // namespace autonomy
 
 #endif
