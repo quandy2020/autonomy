@@ -11,5 +11,4 @@
    MPPI Controller <11_mppi_controller>
    RPP Controller <12_rpp_controller>
    DWB Controller <13_dwb_controller>
-   TEB Controller <14_teb_controller>
    MPC Controller <15_mpc_controller>

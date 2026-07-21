@@ -52,7 +52,7 @@ $$
 紧凑记法 $\mathbf{x}_{k+1}=f(\mathbf{x}_k,\mathbf{u}_k)$，$\mathbf{u}_k=[v_k,\,\omega_k]^\top$。
 
 - **$\mathbf{x}_0$**：当前测量位姿；**$H$**：预测步数；**$N=H$** 步 rollout 供 §4.1 代价累加。
-- **Car-like**：可换为 bicycle 离散模型（见 [TEB §3](14_teb_controller.md)）；NMPC 文献常用 SQP / 多重 shooting 处理非线性 $f$。
+- **Car-like**：可换为 bicycle 离散模型；NMPC 文献常用 SQP / 多重 shooting 处理非线性 $f$。
 
 ---
 
@@ -94,7 +94,7 @@ g(\mathbf{x}_k) \ge 0 \quad \text{（障碍 / 道路边界）}.
 $$
 
 - **输入界**：速度、角速度（及 car-like 的 $\phi$）上下界。
-- **障碍**：$g$ 可为 signed distance 或 costmap 罚的**硬形式**；实践亦常用**软约束**（罚函数）以保 QP 可行性（对比 [TEB §4.2 软约束](14_teb_controller.md)）。
+- **障碍**：$g$ 可为 signed distance 或 costmap 罚的**硬形式**；实践亦常用**软约束**（罚函数）以保 QP 可行性。
 - **与 MPPI**：MPPI 将约束并入轨迹代价 $S(\mathbf{U})$ 采样评估；MPC 显式写入 `s.t.` 或由 SQP 罚函数处理。
 
 ---
