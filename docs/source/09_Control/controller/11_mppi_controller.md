@@ -5,6 +5,10 @@
 >
 > **Model Predictive Path Integral**（MPPI，Nav2 `nav2_mppi_controller`）在预测时域 $H$ 上对 $K$ 条扰动控制序列 batch 前向仿真，以 Critic 链累加轨迹代价 $S^{(k)}$，再经 **softmax 加权**得 $\mathbf{u}^*$ 并执行首步 $\mathbf{u}_0^*$；与 §15 **NMPC**（显式 OCP 求解）同属滚动预测控制，但无 NLP/QP 求解器。
 
+<img class="mppi-demo-gif" src="../images/mppi/mppi_controller.gif" alt="MPPI batch 采样轨迹仿真" width="720">
+
+*MPPI 在 RViz 中 batch 采样候选轨迹（彩色扇形）与当前最优路径（蓝线）的仿真演示。*
+
 ---
 
 ## 1. 背景

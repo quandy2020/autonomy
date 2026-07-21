@@ -6,11 +6,13 @@ Autonomy `planning` 内置三种 `GlobalPlanner` 插件，均在全局 Costmap2D
 
 ## 2.1 插件一览
 
-| 插件 ID | 文档 | 策略 | 路径几何 | 状态 |
-|---------|------|------|----------|------|
-| `navfn_planner` | [§3 NavFn](03_navfn.md) | 导航势场 $\phi$；可选 A* | 网格 + 梯度 | ✅ |
-| `dijkstra_planner` | [§4 Dijkstra](04_dijkstra.md) | 同上，$h\equiv 0$ | 网格 + 梯度 | ✅ |
-| `theta_star_planner` | [§5 Theta*](05_theta_star.md) | A* + LOS | 任意角折线 | ✅ |
+| 插件 ID | 文档 | 策略 | 路径几何 | 路径预览 | 状态 |
+|---------|------|------|----------|----------|------|
+| `navfn_planner` | [§3 NavFn](03_navfn.md) | 导航势场 $\phi$；可选 A* | 网格 + 梯度 | <img class="planner-preview-thumb" src="images/navfn_planner.png" alt="NavFn 规划路径" width="240" height="160"> | ✅ |
+| `dijkstra_planner` | [§4 Dijkstra](04_dijkstra.md) | 同上，$h\equiv 0$ | 网格 + 梯度 | <img class="planner-preview-thumb" src="images/dijkstra_planner.png" alt="Dijkstra 规划路径" width="240" height="160"> | ✅ |
+| `theta_star_planner` | [§5 Theta*](05_theta_star.md) | A* + LOS | 任意角折线 | <img class="planner-preview-thumb" src="images/theta_planner.png" alt="Theta* 规划路径" width="240" height="160"> | ✅ |
+
+*路径预览：同一仿真地图与起终点。*
 
 **继承关系**
 
