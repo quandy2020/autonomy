@@ -1,7 +1,7 @@
 # TEB 对齐 ROS2 全功能设计
 
 日期：2026-07-21  
-状态：待审阅  
+状态：已批准  
 范围：`autonomy/control/controller/teb_controller`  
 对照：`ros2/ros-planning/teb_local_planner/teb_local_planner`
 
