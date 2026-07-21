@@ -26,14 +26,25 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(AUTODRIVER_BUILD_TEST "Build unit tests" ON)
 option(AUTODRIVER_BUILD_EXAMPLES "Build example binaries" ON)
+option(AUTODRIVER_BUILD_AUTONOMY_BRIDGE "Build autonomy integration bridge" OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" ON)
+
 set(AUTODRIVER_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(autodriver)
+
+if(AUTODRIVER_BUILD_AUTONOMY_BRIDGE)
+  if(TARGET autonomy)
+    add_subdirectory(bridge/autonomy)
+  else()
+    message(WARNING "autodriver autonomy bridge skipped: autonomy target not found")
+  endif()
+endif()
 
 if(AUTODRIVER_BUILD_EXAMPLES)
   add_executable(autodriver_demo examples/demo_main.cpp)
@@ -56,6 +67,10 @@ if(AUTODRIVER_BUILD_TEST)
 
   autodriver_add_test(test_time_sync test/test_time_sync.cpp)
   autodriver_add_test(test_sensor_hub test/test_sensor_hub.cpp)
+  autodriver_add_test(test_sensor_manager test/test_sensor_manager.cpp)
+  autodriver_add_test(test_nmea0183 test/test_nmea0183.cpp)
+  autodriver_add_test(test_wit_motion test/test_wit_motion.cpp)
+  autodriver_add_test(test_realsense_types test/test_realsense_types.cpp)
 endif()
 
 include(GNUInstallDirs)

@@ -51,7 +51,6 @@ find_dependency(PkgConfig ${QUIET_OR_REQUIRED_OPTION})
 if(NOT TARGET PkgConfig::CAIRO)
   pkg_check_modules(CAIRO ${QUIET_OR_REQUIRED_OPTION} IMPORTED_TARGET cairo)
 endif()
-find_dependency(Taskflow ${QUIET_OR_REQUIRED_OPTION} CONFIG)
 
 find_package(Ceres ${QUIET_OR_REQUIRED_OPTION} HINTS ${CERES_DIR_HINTS})
 
