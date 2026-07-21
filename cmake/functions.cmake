@@ -121,7 +121,7 @@ macro(google_initialize_autonomy_project)
     endif()
 
     if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-      set(CMAKE_BUILD_TYPE Release)
+      set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
     endif()
 
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
