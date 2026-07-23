@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package automsgs.msgs.sensor_msgs;
+
+// Haptic/LED feedback command for a joystick.
+message JoyFeedback {
+  // Type of feedback.
+  enum Type {
+    TYPE_LED = 0;
+    TYPE_RUMBLE = 1;
+    TYPE_BUZZER = 2;
+  }
+
+  Type type = 1;
+
+  // Id number for each feedback of a given type.
+  uint32 id = 2;
+
+  // Intensity of the feedback, from 0.0 to 1.0.
+  float intensity = 3;
+}

@@ -1,0 +1,193 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.world;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/nav_msgs/occupancy_grid.proto";
+import "automsgs/msgs/nav_msgs/map_meta_data.proto";
+import "automsgs/rpcs/status.proto";
+
+// =============================================================================
+// WorldService: world model (map + localization)
+// =============================================================================
+//
+// Provides two groups of RPCs:
+// 1. Map management: list, get, metadata, save, delete, set current map.
+// 2. Localization: get pose in map frame, get localization status, set initial pose (re-localization).
+//
+service WorldService {
+  // -------- Map management --------
+  // List all stored maps (id, name, resolution, size, whether current).
+  rpc ListMaps(ListMapsRequest) returns (ListMapsResponse);
+
+  // Get full occupancy grid by map_id or map_name.
+  rpc GetMap(GetMapRequest) returns (GetMapResponse);
+
+  // Get map metadata only (resolution, width, height, origin); no grid data.
+  rpc GetMapMetadata(GetMapMetadataRequest) returns (GetMapMetadataResponse);
+
+  // Save or upload a map; if map_id is set, update existing, else create new.
+  rpc SaveMap(SaveMapRequest) returns (SaveMapResponse);
+
+  // Delete a stored map by map_id.
+  rpc DeleteMap(DeleteMapRequest) returns (DeleteMapResponse);
+
+  // Set which map is current for navigation/localization (switch active map).
+  rpc SetCurrentMap(SetCurrentMapRequest) returns (SetCurrentMapResponse);
+
+  // -------- Localization --------
+  // Get current pose in map frame (e.g. map -> base_link).
+  rpc GetLocPose(GetLocPoseRequest) returns (GetLocPoseResponse);
+
+  // Get localization state: localized, lost, initializing, etc.
+  rpc GetLocStatus(GetLocStatusRequest) returns (GetLocStatusResponse);
+  
+  // Set initial pose for re-localization or AMCL-style algorithms.
+  rpc SetInitialPose(SetInitialPoseRequest) returns (SetInitialPoseResponse);
+}
+
+// =============================================================================
+// Map management messages
+// =============================================================================
+
+// Request: list all maps (optional header; no other required fields).
+message ListMapsRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+}
+
+// Single map summary entry for ListMaps response.
+message MapSummary {
+  string map_id = 1;      // Unique map identifier.
+  string name = 2;       // Display name.
+  float resolution = 3;  // Resolution [m/cell].
+  uint32 width = 4;      // Width [cells].
+  uint32 height = 5;     // Height [cells].
+  bool is_current = 6;   // True if this map is the active one for navigation/localization.
+}
+
+// Response: list of maps.
+message ListMapsResponse {
+  automsgs.rpcs.common.Status status = 1;
+  repeated MapSummary maps = 2;  // List of map summaries.
+}
+
+// Request: get map by id or name.
+message GetMapRequest {
+  string map_id = 1;    // Preferred; matches map_id from ListMaps.
+  string map_name = 2;  // Optional; used when map_id is empty.
+}
+
+// Response: full occupancy grid map.
+message GetMapResponse {
+  automsgs.rpcs.common.Status status = 1;
+  automsgs.msgs.nav_msgs.OccupancyGrid map = 2;  // Grid (header, info, data).
+}
+
+// Request: get map metadata (no grid data).
+message GetMapMetadataRequest {
+  string map_id = 1;
+  string map_name = 2;
+}
+
+// Response: map metadata and map_id.
+message GetMapMetadataResponse {
+  automsgs.rpcs.common.Status status = 1;
+  automsgs.msgs.nav_msgs.MapMetaData metadata = 2;  // Resolution, size, origin, etc.
+  string map_id = 3;
+}
+
+// Request: save or upload a map.
+message SaveMapRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string map_id = 2;    // If set, update this map; else create new.
+  string map_name = 3;
+  automsgs.msgs.nav_msgs.OccupancyGrid map = 4;  // Full grid to save.
+}
+
+// Response: save result and (assigned or updated) map_id.
+message SaveMapResponse {
+  automsgs.rpcs.common.Status status = 1;
+  string map_id = 2;    // New or updated map id.
+}
+
+// Request: delete a map.
+message DeleteMapRequest {
+  string map_id = 1;  // Map id to delete.
+}
+
+// Response: delete result.
+message DeleteMapResponse {
+  automsgs.rpcs.common.Status status = 1;
+}
+
+// Request: set current map.
+message SetCurrentMapRequest {
+  string map_id = 1;  // Map id to use as the active map.
+}
+
+// Response: set result.
+message SetCurrentMapResponse {
+  automsgs.rpcs.common.Status status = 1;
+}
+
+// =============================================================================
+// Localization messages
+// =============================================================================
+
+// Request: get current pose in map frame.
+message GetLocPoseRequest {
+  string map_frame_id = 1;  // Optional; empty = default map frame.
+}
+
+// Response: pose in map frame (with timestamp and frame_id).
+message GetLocPoseResponse {
+  automsgs.rpcs.common.Status status = 1;
+  automsgs.msgs.std_msgs.Header header = 2;  // Timestamp, frame_id.
+  automsgs.msgs.geometry_msgs.Pose pose = 3;  // Pose in map frame.
+}
+
+// Localization state: whether pose is valid, lost, or initializing.
+enum LocState {
+  LOC_STATE_UNSPECIFIED = 0;   // Unknown / not specified.
+  LOC_STATE_LOCALIZED = 1;     // Localized; pose is valid.
+  LOC_STATE_LOST = 2;          // Localization lost; re-localization needed.
+  LOC_STATE_INITIALIZING = 3;  // Initializing (e.g. waiting for convergence).
+}
+
+// Request: get localization status (no required fields).
+message GetLocStatusRequest {}
+
+// Response: localization state and current map info.
+message GetLocStatusResponse {
+  automsgs.rpcs.common.Status status = 1;
+  LocState state = 2;   // Current localization state.
+  string map_id = 3;   // Current map id in use, if any.
+  string detail = 4;   // Optional human-readable detail.
+}
+
+// Request: set initial pose for re-localization or AMCL.
+message SetInitialPoseRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  automsgs.msgs.geometry_msgs.Pose pose = 2;  // Initial pose in map frame.
+  string map_id = 3;   // Optional; which map to set pose in.
+}
+
+// Response: set result.
+message SetInitialPoseResponse {
+  automsgs.rpcs.common.Status status = 1;
+}
