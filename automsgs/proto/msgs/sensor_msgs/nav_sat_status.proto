@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package automsgs.msgs.sensor_msgs;
+
+// Navigation Satellite fix status for any Global Navigation Satellite System.
+message NavSatStatus {
+  // Fix status.
+  enum Status {
+    STATUS_NO_FIX = 0;   // unable to fix position
+    STATUS_FIX = 1;      // unaugmented fix
+    STATUS_SBAS_FIX = 2; // with satellite-based augmentation
+    STATUS_GBAS_FIX = 3; // with ground-based augmentation
+  }
+
+  Status status = 1;
+
+  // Bitmask of GNSS services used by the receiver.
+  enum Service {
+    SERVICE_UNKNOWN = 0;
+    SERVICE_GPS = 1;
+    SERVICE_GLONASS = 2;
+    SERVICE_COMPASS = 4;  // includes BeiDou
+    SERVICE_GALILEO = 8;
+  }
+
+  uint32 service = 2;
+}
+

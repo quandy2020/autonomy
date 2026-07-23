@@ -1,0 +1,52 @@
+// Copyright 2025 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.visualization_msgs;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/std_msgs/color_rgba.proto";
+import "automsgs/msgs/builtin_interfaces/duration.proto";
+
+// 2D overlay marker for images.
+message ImageMarker {
+  enum Type {
+    CIRCLE = 0;
+    LINE_STRIP = 1;
+    LINE_LIST = 2;
+    POLYGON = 3;
+    POINTS = 4;
+  }
+
+  enum Action {
+    ADD = 0;
+    REMOVE = 1;
+  }
+
+  automsgs.msgs.std_msgs.Header header = 1;
+  string ns = 2;
+  int32 id = 3;
+  Type type = 4;
+  Action action = 5;
+  automsgs.msgs.geometry_msgs.Point position = 6;
+  float scale = 7;
+  automsgs.msgs.std_msgs.ColorRGBA outline_color = 8;
+  uint32 filled = 9;
+  automsgs.msgs.std_msgs.ColorRGBA fill_color = 10;
+  automsgs.msgs.builtin_interfaces.Duration lifetime = 11;
+  repeated automsgs.msgs.geometry_msgs.Point points = 12;
+  repeated automsgs.msgs.std_msgs.ColorRGBA outline_colors = 13;
+}

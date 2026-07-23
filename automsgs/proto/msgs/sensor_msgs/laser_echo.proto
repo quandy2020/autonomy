@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package automsgs.msgs.sensor_msgs;
+
+// Submessage of MultiEchoLaserScan; not intended for standalone use.
+message LaserEcho {
+  // Multiple values of ranges or intensities for one angle increment.
+  repeated float echoes = 1;
+}
