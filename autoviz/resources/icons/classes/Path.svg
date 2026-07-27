@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <path d="M10 46 C18 38, 22 28, 30 30 S42 18, 54 14" fill="none"
+        stroke="#2ecc71" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="10" cy="46" r="3" fill="#27ae60"/>
+  <circle cx="54" cy="14" r="3" fill="#27ae60"/>
+
+</svg>

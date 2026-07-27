@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <g fill="#5dade2">
+    <circle cx="16" cy="42" r="2"/><circle cx="24" cy="36" r="2"/><circle cx="32" cy="40" r="2"/>
+    <circle cx="40" cy="30" r="2"/><circle cx="48" cy="34" r="2"/><circle cx="20" cy="28" r="1.8"/>
+    <circle cx="28" cy="22" r="1.8"/><circle cx="36" cy="18" r="1.8"/><circle cx="44" cy="24" r="1.8"/>
+    <circle cx="52" cy="20" r="1.8"/><circle cx="18" cy="18" r="1.5"/><circle cx="30" cy="14" r="1.5"/>
+  </g>
+
+</svg>

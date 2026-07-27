@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <path d="M32 50 L12 18 L52 18 Z" fill="#3498db" fill-opacity="0.2" stroke="#5dade2" stroke-width="2"/>
+  <circle cx="32" cy="50" r="5" fill="#e67e22" stroke="#d35400"/>
+
+</svg>

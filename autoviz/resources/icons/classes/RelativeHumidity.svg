@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <path d="M32 10 C22 26 18 30 18 36 a14 14 0 0 0 28 0 c0-6-4-10-14-26z"
+        fill="#3498db" stroke="#21618c" stroke-width="1.5"/>
+  <text x="26" y="42" font-family="sans-serif" font-size="14" font-weight="700" fill="#fff">%</text>
+
+</svg>
