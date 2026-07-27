@@ -621,3 +621,15 @@ message BatteryState
     string location = 15;  // The location into which the battery is inserted. (slot number or plug)
     string serial_number = 16;  // The best approximation of the battery serial number
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                     Joint state (robot model)                          //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+message JointState
+{
+    std_msgs.Header header = 1;
+    repeated string name = 2;
+    repeated double position = 3;
+    repeated double velocity = 4;
+    repeated double effort = 5;
+}

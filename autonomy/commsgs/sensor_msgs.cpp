@@ -424,6 +424,62 @@ Joy FromProto(const proto::sensor_msgs::Joy& proto) {
     return data;
 }
 
+proto::sensor_msgs::JointState ToProto(const JointState& data) {
+    proto::sensor_msgs::JointState proto;
+    *proto.mutable_header() = std_msgs::ToProto(data.header);
+    for (const auto& name : data.name) {
+        proto.add_name(name);
+    }
+    for (const auto value : data.position) {
+        proto.add_position(value);
+    }
+    for (const auto value : data.velocity) {
+        proto.add_velocity(value);
+    }
+    for (const auto value : data.effort) {
+        proto.add_effort(value);
+    }
+    return proto;
+}
+
+JointState FromProto(const proto::sensor_msgs::JointState& proto) {
+    JointState data;
+    data.header = std_msgs::FromProto(proto.header());
+    data.name.reserve(static_cast<size_t>(proto.name_size()));
+    for (const auto& name : proto.name()) {
+        data.name.push_back(name);
+    }
+    data.position.reserve(static_cast<size_t>(proto.position_size()));
+    for (const auto value : proto.position()) {
+        data.position.push_back(value);
+    }
+    data.velocity.reserve(static_cast<size_t>(proto.velocity_size()));
+    for (const auto value : proto.velocity()) {
+        data.velocity.push_back(value);
+    }
+    data.effort.reserve(static_cast<size_t>(proto.effort_size()));
+    for (const auto value : proto.effort()) {
+        data.effort.push_back(value);
+    }
+    return data;
+}
+
+bool JointState::SerializeToString(std::string* out) const {
+    if (out == nullptr) {
+        return false;
+    }
+    return ToProto(*this).SerializeToString(out);
+}
+
+bool JointState::ParseFromString(const std::string& in) {
+    proto::sensor_msgs::JointState proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
+}
+
 }  // namespace sensor_msgs
 }  // namespace commsgs
 }  // namespace autonomy

@@ -561,6 +561,23 @@ struct Range {
                   // (Object out of range)
 };
 
+// Reports the state of a robot's joints.
+struct JointState {
+    AUTONOMY_SMART_PTR_DEFINITIONS(JointState)
+
+    std_msgs::Header header;
+    std::vector<std::string> name;
+    std::vector<double> position;
+    std::vector<double> velocity;
+    std::vector<double> effort;
+
+    static std::string TypeName() {
+        return "autonomy.commsgs.proto.sensor_msgs.JointState";
+    }
+    bool SerializeToString(std::string* out) const;
+    bool ParseFromString(const std::string& in);
+};
+
 // Reports the state of a joystick's axes and buttons.
 struct Joy {
     // The timestamp is the time at which data is received from the joystick.
@@ -678,6 +695,12 @@ proto::sensor_msgs::Joy ToProto(const Joy& data);
 
 // Converts 'proto' to Joy.
 Joy FromProto(const proto::sensor_msgs::Joy& proto);
+
+// Converts 'data' to a proto::sensor_msgs::JointState.
+proto::sensor_msgs::JointState ToProto(const JointState& data);
+
+// Converts 'proto' to JointState.
+JointState FromProto(const proto::sensor_msgs::JointState& proto);
 
 }  // namespace sensor_msgs
 }  // namespace commsgs

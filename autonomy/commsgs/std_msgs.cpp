@@ -120,6 +120,15 @@ String FromProto(const proto::std_msgs::String& proto) {
     return {proto.data()};
 }
 
+bool String::ParseFromString(const std::string& in) {
+    proto::std_msgs::String proto;
+    if (!proto.ParseFromString(in)) {
+        return false;
+    }
+    *this = FromProto(proto);
+    return true;
+}
+
 }  // namespace std_msgs
 }  // namespace commsgs
 }  // namespace autonomy

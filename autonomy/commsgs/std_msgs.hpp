@@ -109,6 +109,8 @@ struct Float32MultiArray {
 // example_msgs.
 struct String {
     std::string data;
+
+    bool ParseFromString(const std::string& in);
 };
 
 // Converts 'data' to a proto::std_msgs::Header.
