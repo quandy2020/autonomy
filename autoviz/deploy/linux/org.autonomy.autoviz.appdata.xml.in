@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.autonomy.autoviz</id>
+  <name>Aviz</name>
+  <launchable type="desktop-id">org.autonomy.autoviz.desktop</launchable>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <content_rating type="oars-1.1"/>
+
+  <developer id="org.autonomy">
+    <name translate="no">Autonomy</name>
+  </developer>
+
+  <summary>Autolink native 3D robot visualization</summary>
+  <description>
+    <p>
+      Autoviz is a desktop 3D visualization tool for the Autonomy / Autolink stack.
+      It displays sensor data, TF transforms, and robot models without requiring ROS
+      at runtime. Sessions use native <code>.autoviz</code> configuration; legacy
+      <code>.rviz</code> files can be imported offline.
+    </p>
+  </description>
+  <icon type="stock">aviz</icon>
+
+  <provides>
+    <binary>autoviz</binary>
+  </provides>
+
+  <releases>
+    <release version="@AUTOVIZ_VERSION@" date="@AUTOVIZ_BUILD_DATE@">
+      <description>
+        <p>Autolink-native visualization with optional Qt Quick 3D vehicle preview.</p>
+      </description>
+    </release>
+  </releases>
+
+  <url type="homepage">https://github.com/autonomy/autonomy</url>
+
+  <requires>
+    <display_length>480</display_length>
+  </requires>
+
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+
+  <categories>
+    <category>Development</category>
+    <category>Science</category>
+    <category>Viewer</category>
+  </categories>
+
+  <keywords>
+    <keyword>robot</keyword>
+    <keyword>visualization</keyword>
+    <keyword translate="no">autolink</keyword>
+    <keyword>3d</keyword>
+  </keywords>
+</component>

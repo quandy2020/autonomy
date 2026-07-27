@@ -40,6 +40,7 @@ option(BUILD_DOCS "Build autonomy docs support" ON)
 option(BUILD_TEST "Build autonomy unit test" ON)
 option(BUILD_TOOLS "Build autonomy tools sources" ON)
 option(BUILD_AUTODRIVER "Build autodriver sensor HAL subproject" OFF)
+option(BUILD_AUTOVIZ "Build native 3D visualization tool (autoviz)" OFF)
 set(AUTONOMY_HAS_GRPC ${BUILD_GRPC})
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -185,11 +186,20 @@ google_binary(cartographer_occupancy
   SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
 google_binary(cartographer_pbstream_to_map
   SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
+google_binary(strata_bridge
+  SRCS autonomy/map/strata/bridge/strata_bridge_main.cpp)
 if(foxglove-sdk_FOUND)
   google_binary(autonomy_foxglove_fakedata
     SRCS autonomy/visualization/fakedata_test.cpp)
   google_binary(autonomy_foxglove_bridge
     SRCS autonomy/visualization/foxglove_main.cpp)
+endif()
+
+if(BUILD_AUTOVIZ)
+  add_subdirectory(automsgs)
+  set(_AUTOVIZ_BUILDING_AS_SUBDIRECTORY ON)
+  add_subdirectory(autoviz)
+  unset(_AUTOVIZ_BUILDING_AS_SUBDIRECTORY)
 endif()
 
 # -----------------------------------------------------------------------------

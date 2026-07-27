@@ -1,0 +1,39 @@
+#!/bin/bash
+# AppRun for Autoviz Linux bundles (AppImage / relocatable prefix).
+set -euo pipefail
+
+if [ -z "${APPDIR:-}" ]; then
+    if command -v readlink >/dev/null 2>&1 && readlink -f / >/dev/null 2>&1; then
+        APPDIR="$(dirname "$(readlink -f "$0")")"
+    else
+        APPDIR="$(cd "$(dirname "$0")" && pwd -P)"
+    fi
+fi
+
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  MULTIARCH="x86_64-linux-gnu" ;;
+    aarch64) MULTIARCH="aarch64-linux-gnu" ;;
+    *)       MULTIARCH="" ;;
+esac
+
+if [ -n "$MULTIARCH" ]; then
+    export LD_LIBRARY_PATH="${APPDIR}/lib:${APPDIR}/lib/${MULTIARCH}:/usr/lib/${MULTIARCH}:/lib/${MULTIARCH}:${LD_LIBRARY_PATH:-}"
+else
+    export LD_LIBRARY_PATH="${APPDIR}/lib:/usr/lib64:/usr/lib:${LD_LIBRARY_PATH:-}"
+fi
+
+export AUTOVIZ_RESOURCE_PATH="${AUTOVIZ_RESOURCE_PATH:-${APPDIR}/share/autonomy:${APPDIR}/share}"
+export AUTOVIZ_PLUGIN_PATH="${AUTOVIZ_PLUGIN_PATH:-${APPDIR}/lib/autoviz_plugins}"
+
+AUTOVIZ_BIN="${APPDIR}/bin/autoviz"
+if [ ! -x "$AUTOVIZ_BIN" ]; then
+    echo "Error: aviz binary not found at ${AUTOVIZ_BIN}" >&2
+    exit 1
+fi
+
+if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+    export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
+fi
+
+exec "$AUTOVIZ_BIN" "$@"

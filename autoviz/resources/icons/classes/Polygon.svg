@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <polygon points="32,12 52,48 12,48" fill="#abebc6" fill-opacity="0.7"
+           stroke="#27ae60" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="32" cy="30" r="2" fill="#1e8449"/>
+  <circle cx="20" cy="42" r="2" fill="#1e8449"/><circle cx="44" cy="42" r="2" fill="#1e8449"/>
+
+</svg>

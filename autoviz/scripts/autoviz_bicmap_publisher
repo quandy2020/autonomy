@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Dev wrapper: forwards to autoviz_bicmap_publisher in the workspace build tree.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+AUTOVIZ_PKG="$(cd "${SCRIPT_DIR}/.." && pwd)"
+AUTONOMY_ROOT="$(cd "${AUTOVIZ_PKG}/.." && pwd)"
+WORKSPACE_ROOT="$(cd "${AUTONOMY_ROOT}/../.." && pwd)"
+
+if [[ -n "${BUILD_DIR:-}" ]]; then
+  BUILD="${BUILD_DIR}"
+else
+  BUILD="${WORKSPACE_ROOT}/build"
+fi
+
+BIN="${BUILD}/bin/autoviz_bicmap_publisher"
+
+if [[ ! -x "${BIN}" ]]; then
+  echo "autoviz_bicmap_publisher not found at ${BIN}" >&2
+  echo "Build it with:" >&2
+  echo "  cmake --build ${BUILD} --target autoviz_bicmap_publisher" >&2
+  echo "Or add to PATH:" >&2
+  echo "  export PATH=${BUILD}/bin:\$PATH" >&2
+  exit 1
+fi
+
+exec "${BIN}" "$@"

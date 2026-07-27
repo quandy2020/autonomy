@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Aviz
+GenericName=3D Visualizer
+Comment=@AUTOVIZ_APP_DESCRIPTION@
+Icon=aviz
+Exec=autoviz %F
+Terminal=false
+Categories=Development;Science;Viewer;
+Keywords=robot;visualization;autolink;rviz;3d;slam;
+StartupWMClass=autoviz
+MimeType=application/x-autoviz;

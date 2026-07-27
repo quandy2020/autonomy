@@ -1,0 +1,41 @@
+# Autoviz Docker Compose — mirrors deploy/docker/run-docker.sh
+#
+#   cd autoviz && QGC_UID=$(id -u) QGC_GID=$(id -g) \
+#     docker compose -f deploy/docker/docker-compose.yml run --rm --build ubuntu
+#
+# Build context is the Autonomy CMake root (three levels above this file).
+
+services:
+  ubuntu:
+    build:
+      context: ../../..
+      dockerfile: autoviz/deploy/docker/Dockerfile
+      target: dev
+      args:
+        BASE_REF: "ubuntu:22.04"
+    image: autoviz-ubuntu-docker
+    user: "${AUTOVIZ_UID:-1000}:${AUTOVIZ_GID:-1000}"
+    environment:
+      HOME: /tmp
+      CLEAN_BUILD: "${CLEAN_BUILD:-0}"
+      JOBS: "${JOBS:-}"
+      AUTOVIZ_EXTRA_CONFIGURE: "${AUTOVIZ_EXTRA_CONFIGURE:-}"
+      AUTOVIZ_INSTALL: "${AUTOVIZ_INSTALL:-0}"
+    volumes:
+      - ../../..:/project/source
+  ubuntu-2404:
+    build:
+      context: ../../..
+      dockerfile: autoviz/deploy/docker/Dockerfile
+      target: dev
+      args:
+        BASE_REF: "ubuntu:24.04"
+    image: autoviz-ubuntu-2404-docker
+    user: "${AUTOVIZ_UID:-1000}:${AUTOVIZ_GID:-1000}"
+    environment:
+      HOME: /tmp
+      CLEAN_BUILD: "${CLEAN_BUILD:-0}"
+      JOBS: "${JOBS:-}"
+      AUTOVIZ_EXTRA_CONFIGURE: "${AUTOVIZ_EXTRA_CONFIGURE:-}"
+    volumes:
+      - ../../..:/project/source

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <ellipse cx="32" cy="40" rx="18" ry="8" fill="none" stroke="#3498db"
+           stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="32" y1="40" x2="48" y2="20" stroke="#e74c3c" stroke-width="3"/>
+  <polygon points="48,20 42,24 46,18" fill="#e74c3c"/>
+
+</svg>

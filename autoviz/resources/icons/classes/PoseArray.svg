@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <line x1="14" y1="48" x2="24" y2="38" stroke="#e74c3c" stroke-width="2.5"/>
+  <line x1="28" y1="44" x2="38" y2="34" stroke="#e74c3c" stroke-width="2.5"/>
+  <line x1="42" y1="40" x2="52" y2="30" stroke="#e74c3c" stroke-width="2.5"/>
+  <polygon points="24,38 22,42 20,36" fill="#e74c3c"/>
+  <polygon points="38,34 36,38 34,32" fill="#e74c3c"/>
+  <polygon points="52,30 50,34 48,28" fill="#e74c3c"/>
+
+</svg>

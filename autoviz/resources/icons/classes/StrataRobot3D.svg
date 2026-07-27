@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <polygon points="12,44 32,28 52,44" fill="#3498db" fill-opacity="0.45" stroke="#5dade2"/>
+  <polygon points="16,38 32,24 48,38" fill="#2ecc71" fill-opacity="0.5" stroke="#58d68d"/>
+  <polygon points="20,32 32,20 44,32" fill="#e67e22" fill-opacity="0.55" stroke="#f5b041"/>
+
+</svg>

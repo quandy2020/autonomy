@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"
+     shape-rendering="geometricPrecision" text-rendering="geometricPrecision">
+
+  <path d="M32 10 L32 22 M32 42 L32 54 M10 32 L22 32 M42 32 L54 32"
+        stroke="#333" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="14" fill="none" stroke="#333" stroke-width="2.5"/>
+  <circle cx="32" cy="32" r="4" fill="#333"/>
+
+</svg>
