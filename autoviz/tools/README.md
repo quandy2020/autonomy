@@ -17,7 +17,7 @@ python3 tools/translations/autoviz_lupdate.py
 
 ```text
 tools/
-├── configure.py              # CMake configure wrapper (Autonomy super-project)
+├── configure.py              # cmake -S autoviz -B autoviz/build
 ├── build.py                  # Build autoviz target
 ├── clean.py                  # Remove build/ and Python caches
 ├── common/                   # Shared Python helpers (paths, logging, proc)

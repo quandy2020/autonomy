@@ -1,6 +1,6 @@
 # Autoviz 部署
 
-参照 [QGroundControl `deploy/`](https://github.com/mavlink/qgroundcontrol/tree/master/deploy) 布局，提供 Autoviz 专用打包与开发容器脚本。Autoviz 通过 Autonomy **超项目**构建（`-DBUILD_AUTOVIZ=ON`），Docker 构建上下文为 `src/autonomy/`（`autoviz` 的上级目录）。
+参照 [QGroundControl `deploy/`](https://github.com/mavlink/qgroundcontrol/tree/master/deploy) 布局，提供 Autoviz 专用打包与开发容器脚本。Autoviz 为**独立 CMake 工程**（`cmake -S autoviz -B build`），仅依赖同级的 `autolink` / `automsgs`，不构建 `libautonomy`。
 
 ## 目录
 
@@ -32,7 +32,7 @@ python3 tools/configure.py --release --qml
 python3 tools/build.py
 ```
 
-产物：`autoviz/build/bin/autoviz`（或 Autonomy 统一 `lib/` 布局，取决于超项目输出目录）。
+产物：`autoviz/build/bin/autoviz`。
 
 ### 使用已有 Autonomy 镜像
 
@@ -55,10 +55,9 @@ GUI 运行需挂载 X11/Wayland 与 GPU（`-e DISPLAY -v /tmp/.X11-unix` 等）�
 安装后（`cmake --install autoviz/build --prefix /opt/autonomy`）可手动安装桌面文件：
 
 ```bash
-cmake -S . -B autoviz/build -DBUILD_AUTOVIZ=ON
-cmake --build autoviz/build --target autoviz
-cmake --install autoviz/build --prefix /opt/autonomy
-# desktop / appdata 由 autoviz/CMakeLists.txt install 规则安装（若已 configure）
+cmake -S . -B build
+cmake --build build --target autoviz
+cmake --install build --prefix /opt/autoviz
 ```
 
 或从模板生成：
