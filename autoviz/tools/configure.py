@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Configure Autoviz via the Autonomy CMake super-project.
+"""Configure Autoviz as a standalone CMake project.
 
 Usage:
     ./tools/configure.py
@@ -19,7 +19,7 @@ from _bootstrap import ensure_tools_dir
 
 ensure_tools_dir(__file__)
 
-from common import autoviz_build_dir, find_autonomy_root, find_autoviz_root, log_ok, log_step
+from common import autoviz_build_dir, find_autoviz_root, log_ok, log_step
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,18 +41,16 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     autoviz_root = find_autoviz_root()
-    autonomy_root = find_autonomy_root(autoviz_root)
     build_dir = autoviz_build_dir(autoviz_root)
 
     cmake_args = [
         "cmake",
         "-S",
-        str(autonomy_root),
+        str(autoviz_root),
         "-B",
         str(build_dir),
         "-G",
         args.generator,
-        "-DBUILD_AUTOVIZ=ON",
         f"-DCMAKE_BUILD_TYPE={'Release' if args.release else 'Debug'}",
     ]
     if args.ogre:

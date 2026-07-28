@@ -27,7 +27,7 @@ constexpr char kSourceDirectory[] = "/workspace/autonomy/src/autonomy";
 constexpr char kLibraryInstallDir[] = "/usr/local";
 
 // Library build dir
-constexpr char kLibraryBuildDir[] = "/workspace/autonomy/src/autonomy/autoviz/build/_autonomy";
+constexpr char kLibraryBuildDir[] = "/workspace/autonomy/build_avoviz_smoke";
 
 }  // namespace common
 }  // namespace autonomy

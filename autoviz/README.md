@@ -14,21 +14,23 @@ Autonomy 原生 3D 机器人可视化工具，**零 ROS 依赖**，直接接入 
 
 ## 目录结构
 
-与 `autonomy/autonomy/` 相同：**单一工程**，源码按域分子目录。
+独立 CMake 工程，参考 QGC 的分层思路，保持 **7 个 cmake 模块 + 1 个根 CMakeLists**：
 
 ```text
 autoviz/
-├── CMakeLists.txt          # 单一 target：autoviz 可执行文件
-├── README.md
-├── docs/
-└── autoviz/                   # 源码根（对标 autonomy/autonomy/）
-    ├── autoviz_main.cpp
-    ├── rendering/          # 视口、网格、场景叠加
-    ├── integration/        # Autolink 生命周期、Channel 发现
-    ├── common/             # VisualizationManager
-    ├── display/            # Display 插件（TF / LaserScan / Marker）
-    ├── transform/          # 内置 TF Buffer（tf2）
-    └── ui/                   # 主窗口
+├── CMakeLists.txt       # 引导：模式检测 → include 模块 → 摘要
+├── CMakePresets.json    # debug / release 预设
+├── cmake/
+│   ├── Config.cmake     # 选项、工具链、Qt AUTOMOC
+│   ├── Dependencies.cmake
+│   ├── Sources.cmake
+│   ├── App.cmake        # autoviz + bicmap 示例工具
+│   ├── OgreBackend.cmake
+│   ├── Tests.cmake      # 可选，-DBUILD_AUTOVIZ_TESTS=ON
+│   └── Install.cmake
+├── autoviz/             # C++ 源码
+├── qml/                 # Qt Quick 3D 车辆预览
+└── resources/
 ```
 
 ## 构建
@@ -36,10 +38,20 @@ autoviz/
 依赖：`qt6-base-dev`、`libqt6svg6-dev`、OpenGL 3.3+、**automsgs**、**autolink**。**不链接** ROS / rviz / `libautonomy`。
 
 ```bash
-cmake -B build -DBUILD_AUTOVIZ=ON
+cd src/autonomy/autoviz
+cmake -B build
 cmake --build build --target autoviz
 ./build/bin/autoviz
 ```
+
+或使用预设 / 工具脚本：
+
+```bash
+cmake --preset release && cmake --build build --target autoviz
+python3 tools/configure.py && python3 tools/build.py
+```
+
+仍可作为 Autonomy 超项目子目录构建：`cmake -B build -DBUILD_AUTOVIZ=ON`（自 `src/autonomy` 目录）。
 
 ## 验证（配合 fakedata）
 
@@ -50,13 +62,6 @@ cmake --build build --target autoviz
 # 终端 2（可选加载 config/default.autoviz）
 ./build/bin/autoviz --config config/default.autoviz
 ```
-
-默认 Display：TF、Scan、Marker、Path、Map、Odometry、PointCloud2。
-
-**Displays 面板**：
-- Fixed Frame / Show Grid 开关
-- Channel 列双击下拉选择（从 Autolink 拓扑填充，可手动输入）
-- File → Save Config 保存 `.autoviz`
 
 ## 相关文档
 
