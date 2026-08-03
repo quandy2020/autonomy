@@ -32,8 +32,17 @@
 #include <opencv2/imgproc.hpp>
 
 #include "autonomy/common/logging.hpp"
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/map/costmap_2d/map_mode.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
@@ -262,8 +271,8 @@ LoadParameters loadMapYaml(const std::string& yaml_filename) {
 }
 
 void loadMapFromFile(const LoadParameters& load_parameters,
-                     commsgs::map_msgs::OccupancyGrid& map) {
-    commsgs::map_msgs::OccupancyGrid msg;
+                     automsgs::msgs::map_msgs::OccupancyGrid& map) {
+    automsgs::msgs::map_msgs::OccupancyGrid msg;
 
     AINFO << "Loading image_file: " << load_parameters.image_file_name;
 
@@ -318,8 +327,8 @@ void loadMapFromFile(const LoadParameters& load_parameters,
 
     cv::Mat img;
     if (used_pgm_parser) {
-        msg.info.width = static_cast<uint32_t>(pgm_width);
-        msg.info.height = static_cast<uint32_t>(pgm_height);
+        msg.mutable_info()->set_width(static_cast<uint32_t>(pgm_width));
+        msg.mutable_info()->set_height(static_cast<uint32_t>(pgm_height));
     } else {
         img = cv::imread(load_parameters.image_file_name, cv::IMREAD_UNCHANGED);
         if (img.empty()) {
@@ -331,24 +340,24 @@ void loadMapFromFile(const LoadParameters& load_parameters,
             cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
             img = gray;
         }
-        msg.info.width = static_cast<uint32_t>(img.cols);
-        msg.info.height = static_cast<uint32_t>(img.rows);
+        msg.mutable_info()->set_width(static_cast<uint32_t>(img.cols));
+        msg.mutable_info()->set_height(static_cast<uint32_t>(img.rows));
     }
 
-    msg.info.resolution = load_parameters.resolution;
-    msg.info.origin.position.x = load_parameters.origin[0];
-    msg.info.origin.position.y = load_parameters.origin[1];
-    msg.info.origin.position.z = 0.0;
-    msg.info.origin.orientation =
+    msg.mutable_info()->set_resolution(load_parameters.resolution);
+    msg.mutable_info()->mutable_origin()->mutable_position()->set_x(load_parameters.origin[0]);
+    msg.mutable_info()->mutable_origin()->mutable_position()->set_y(load_parameters.origin[1]);
+    msg.mutable_info()->mutable_origin()->mutable_position()->set_z(0.0);
+    *msg.mutable_info()->mutable_origin()->mutable_orientation() =
         utils::OrientationAroundZAxis(load_parameters.origin[2]);
 
-    msg.data.resize(msg.info.width * msg.info.height);
+    msg.mutable_data()->Resize(msg.info().width() * msg.info().height(), 0);
 
     double shade_min = 1.0;
     double shade_max = 0.0;
-    for (size_t y = 0; y < msg.info.height; y++) {
+    for (size_t y = 0; y < msg.info().height(); y++) {
         const int src_y = static_cast<int>(y);
-        for (size_t x = 0; x < msg.info.width; x++) {
+        for (size_t x = 0; x < msg.info().width(); x++) {
             const int src_x = static_cast<int>(x);
             bool has_transparency = false;
             double shade = 0.0;
@@ -365,19 +374,21 @@ void loadMapFromFile(const LoadParameters& load_parameters,
             shade_min = std::min(shade_min, shade);
             shade_max = std::max(shade_max, shade);
 
-            msg.data[msg.info.width * (msg.info.height - y - 1) + x] =
-                static_cast<int16_t>(
-                    assignMapCell(shade, has_transparency));
+            msg.mutable_data()->Set(msg.info().width() * (msg.info().height() - y - 1) + x, static_cast<int16_t>(
+                    assignMapCell(shade, has_transparency)));
         }
     }
 
-    msg.info.map_load_time = Time::Now();
-    msg.header.frame_id = "map";
-    msg.header.stamp = Time::Now();
+    *msg.mutable_info()->mutable_map_load_time() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
+    msg.mutable_header()->set_frame_id("map");
+    *msg.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
 
     size_t occupied = 0;
     size_t unknown = 0;
-    for (int16_t cell : msg.data) {
+    for (int i = 0; i < msg.data_size(); ++i) {
+        const int32_t cell = msg.data(i);
         if (cell == utils::OCC_GRID_OCCUPIED) {
             ++occupied;
         } else if (cell < 0) {
@@ -386,14 +397,14 @@ void loadMapFromFile(const LoadParameters& load_parameters,
     }
 
     AINFO << "Read map " << load_parameters.image_file_name << ": "
-          << msg.info.width << " X " << msg.info.height << " map @ "
-          << msg.info.resolution << " m/cell.";
+          << msg.info().width() << " X " << msg.info().height() << " map @ "
+          << msg.info().resolution() << " m/cell.";
 
     map = msg;
 }
 
 LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file,
-                                commsgs::map_msgs::OccupancyGrid& map) {
+                                automsgs::msgs::map_msgs::OccupancyGrid& map) {
     if (yaml_file.empty()) {
         AERROR << "YAML file name is empty, can't load!";
         return MAP_DOES_NOT_EXIST;
@@ -531,16 +542,16 @@ void checkSaveParameters(SaveParameters& save_parameters) {
  * @param save_parameters Map saving parameters
  * @throw std::expection in case of problem
  */
-void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
+void tryWriteMapToFile(const automsgs::msgs::map_msgs::OccupancyGrid& map,
                        const SaveParameters& save_parameters) {
-    AINFO << "Received a " << map.info.width << " X "
-          << map.info.height << " map @ " << map.info.resolution << " m/pix";
+    AINFO << "Received a " << map.info().width() << " X "
+          << map.info().height() << " map @ " << map.info().resolution() << " m/pix";
 
     std::string mapdatafile =
         save_parameters.map_file_name + "." + save_parameters.image_format;
     {
-        const int width = static_cast<int>(map.info.width);
-        const int height = static_cast<int>(map.info.height);
+        const int width = static_cast<int>(map.info().width());
+        const int height = static_cast<int>(map.info().height());
         const int free_thresh_int =
             static_cast<int>(std::rint(save_parameters.free_thresh * 100.0));
         const int occupied_thresh_int =
@@ -555,9 +566,9 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                const int8_t map_cell = map.data[map.info.width *
-                                                     (map.info.height - y - 1) +
-                                                 x];
+                const int8_t map_cell = map.data(map.info().width() *
+                                                     (map.info().height() - y - 1) +
+                                                 x);
 
                 switch (save_parameters.mode) {
                     case MapMode::Trinary: {
@@ -610,10 +621,10 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
     {
         std::ofstream yaml(mapmetadatafile);
 
-        commsgs::geometry_msgs::Quaternion orientation =
-            map.info.origin.orientation;
+        automsgs::msgs::geometry_msgs::Quaternion orientation =
+            map.info().origin().orientation();
         transform::tf2::Matrix3x3 mat(transform::tf2::Quaternion(
-            orientation.x, orientation.y, orientation.z, orientation.w));
+            orientation.x(), orientation.y(), orientation.z(), orientation.w()));
         double yaw, pitch, roll;
         mat.getEulerYPR(yaw, pitch, roll);
 
@@ -626,9 +637,9 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
         e << YAML::Key << "image" << YAML::Value << image_name;
         e << YAML::Key << "mode" << YAML::Value
           << map_mode_to_string(save_parameters.mode);
-        e << YAML::Key << "resolution" << YAML::Value << map.info.resolution;
+        e << YAML::Key << "resolution" << YAML::Value << map.info().resolution();
         e << YAML::Key << "origin" << YAML::Flow << YAML::BeginSeq
-          << map.info.origin.position.x << map.info.origin.position.y << yaw
+          << map.info().origin().position().x() << map.info().origin().position().y() << yaw
           << YAML::EndSeq;
         e << YAML::Key << "negate" << YAML::Value << 0;
         e << YAML::Key << "occupied_thresh" << YAML::Value
@@ -647,7 +658,7 @@ void tryWriteMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
     AINFO << "Map saved";
 }
 
-bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
+bool saveMapToFile(const automsgs::msgs::map_msgs::OccupancyGrid& map,
                    const SaveParameters& save_parameters) {
     // Local copy of SaveParameters that might be modified by
     // checkSaveParameters()

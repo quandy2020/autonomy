@@ -70,28 +70,28 @@
  }
  
  uint32 MPPIController::ComputeVelocityCommands(
-     const commsgs::geometry_msgs::PoseStamped& pose,
-     const commsgs::geometry_msgs::TwistStamped& velocity,
-     commsgs::geometry_msgs::TwistStamped& cmd_vel,
+     const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+     const automsgs::msgs::geometry_msgs::TwistStamped& velocity,
+     automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
      common::GoalChecker* goal_checker, std::string& message) {
  #ifdef BENCHMARK_TESTING
      auto start = std::chrono::system_clock::now();
  #endif
  
     // Transform path first so closed-loop rolling goal uses the latest closest pose.
-    commsgs::planning_msgs::Path transformed_plan =
+    automsgs::msgs::planning_msgs::Path transformed_plan =
         path_handler_.transformPath(pose);
 
-    commsgs::geometry_msgs::Pose goal =
-        path_handler_.getTransformedGoal(pose.header.stamp).pose;
+    automsgs::msgs::geometry_msgs::Pose goal =
+        path_handler_.getTransformedGoal(pose.header().stamp()).pose();
  
      map::costmap_2d::Costmap2D* costmap = costmap_wrapper_->getCostmap();
      std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock(
          *(costmap->getMutex()));
  
-    commsgs::geometry_msgs::Twist robot_speed;
-    robot_speed.linear = velocity.twist.linear;
-    robot_speed.angular = velocity.twist.angular;
+    automsgs::msgs::geometry_msgs::Twist robot_speed;
+    *robot_speed.mutable_linear() = velocity.twist().linear();
+    *robot_speed.mutable_angular() = velocity.twist().angular();
 
     last_robot_pose_ = pose;
     last_robot_velocity_ = robot_speed;
@@ -117,13 +117,13 @@
      //     optimal_trajectory = optimizer_.getOptimizedTrajectory();
      //     auto trajectory_msg = utils::toTrajectoryMsg(
      //         optimal_trajectory, optimizer_.getOptimalControlSequence(),
-     //         optimizer_.getSettings().model_dt, cmd.header);
+     //         optimizer_.getSettings().model_dt, cmd.header());
      //     opt_traj_pub_->publish(std::move(trajectory_msg));
      // }
  
      if (visualize_ && trajectory_visualizer_.get()) {
          Eigen::ArrayXXf optimal_trajectory;
-         Visualize(std::move(transformed_plan), cmd_vel.header.stamp,
+         Visualize(std::move(transformed_plan), cmd_vel.header().stamp(),
                    optimal_trajectory);
      }
  
@@ -132,8 +132,8 @@
  }
  
  void MPPIController::Visualize(
-     commsgs::planning_msgs::Path transformed_plan,
-     const commsgs::builtin_interfaces::Time& cmd_stamp,
+     automsgs::msgs::planning_msgs::Path transformed_plan,
+     const automsgs::msgs::builtin_interfaces::Time& cmd_stamp,
      const Eigen::ArrayXXf& optimal_trajectory) {
      if (trajectory_visualizer_) {
          trajectory_visualizer_->add(optimizer_.getGeneratedTrajectories(),
@@ -149,7 +149,7 @@
      }
  }
  
-void MPPIController::SetPlan(const commsgs::planning_msgs::Path& path) {
+void MPPIController::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
     path_handler_.setPath(path);
     has_control_state_ = false;
 }
@@ -166,7 +166,7 @@ bool MPPIController::IsGoalReached(double dist_tolerance,
     if (!has_control_state_ || last_goal_checker_ == nullptr) {
         return false;
     }
-    return last_goal_checker_->IsGoalReached(last_robot_pose_.pose,
+    return last_goal_checker_->IsGoalReached(last_robot_pose_.pose(),
                                              last_goal_pose_,
                                              last_robot_velocity_);
 }

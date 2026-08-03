@@ -1,3 +1,5 @@
+#include <automsgs/msgs/geometry_msgs/polygon.pb.h>
+#include <automsgs/msgs/geometry_msgs/polygon_stamped.pb.h>
 /*
  * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
@@ -20,7 +22,15 @@
 #include <utility>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -34,29 +44,29 @@ namespace costmap_2d {
  * @param max_dist Output parameter of the maximum distance
  */
 std::pair<double, double> calculateMinAndMaxDistances(
-    const std::vector<commsgs::geometry_msgs::Point>& footprint);
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& footprint);
 
 /**
  * @brief Convert Point32 to Point
  */
-commsgs::geometry_msgs::Point toPoint(commsgs::geometry_msgs::Point32 pt);
+automsgs::msgs::geometry_msgs::Point toPoint(automsgs::msgs::geometry_msgs::Point32 pt);
 
 /**
  * @brief Convert Point to Point32
  */
-commsgs::geometry_msgs::Point32 toPoint32(commsgs::geometry_msgs::Point pt);
+automsgs::msgs::geometry_msgs::Point32 toPoint32(automsgs::msgs::geometry_msgs::Point pt);
 
 /**
  * @brief Convert vector of Points to Polygon msg
  */
-commsgs::geometry_msgs::Polygon toPolygon(
-    std::vector<commsgs::geometry_msgs::Point> pts);
+automsgs::msgs::geometry_msgs::Polygon toPolygon(
+    std::vector<automsgs::msgs::geometry_msgs::Point> pts);
 
 /**
  * @brief Convert Polygon msg to vector of Points.
  */
-std::vector<commsgs::geometry_msgs::Point> toPointVector(
-    std::shared_ptr<commsgs::geometry_msgs::Polygon> polygon);
+std::vector<automsgs::msgs::geometry_msgs::Point> toPointVector(
+    std::shared_ptr<automsgs::msgs::geometry_msgs::Polygon> polygon);
 
 /**
  * @brief  Given a pose and base footprint, build the oriented footprint of the
@@ -70,8 +80,8 @@ std::vector<commsgs::geometry_msgs::Point> toPointVector(
  */
 void transformFootprint(
     double x, double y, double theta,
-    const std::vector<commsgs::geometry_msgs::Point>& footprint_spec,
-    std::vector<commsgs::geometry_msgs::Point>& oriented_footprint);
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& footprint_spec,
+    std::vector<automsgs::msgs::geometry_msgs::Point>& oriented_footprint);
 
 /**
  * @brief  Given a pose and base footprint, build the oriented footprint of the
@@ -85,19 +95,19 @@ void transformFootprint(
  */
 void transformFootprint(
     double x, double y, double theta,
-    const std::vector<commsgs::geometry_msgs::Point>& footprint_spec,
-    commsgs::geometry_msgs::PolygonStamped& oriented_footprint);
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& footprint_spec,
+    automsgs::msgs::geometry_msgs::PolygonStamped& oriented_footprint);
 
 /**
  * @brief Adds the specified amount of padding to the footprint (in place)
  */
-void padFootprint(std::vector<commsgs::geometry_msgs::Point>& footprint,
+void padFootprint(std::vector<automsgs::msgs::geometry_msgs::Point>& footprint,
                   double padding);
 
 /**
  * @brief Create a circular footprint from a given radius
  */
-std::vector<commsgs::geometry_msgs::Point> makeFootprintFromRadius(
+std::vector<automsgs::msgs::geometry_msgs::Point> makeFootprintFromRadius(
     double radius);
 
 /**
@@ -109,7 +119,7 @@ std::vector<commsgs::geometry_msgs::Point> makeFootprintFromRadius(
  */
 bool makeFootprintFromString(
     const std::string& footprint_string,
-    std::vector<commsgs::geometry_msgs::Point>& footprint);
+    std::vector<automsgs::msgs::geometry_msgs::Point>& footprint);
 
 }  // namespace costmap_2d
 }  // namespace map

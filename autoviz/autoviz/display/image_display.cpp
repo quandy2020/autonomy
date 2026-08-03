@@ -12,7 +12,7 @@ namespace display {
 ImageDisplay::ImageDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::sensor_msgs::Image>(
           "Image", std::move(channel),
-          "autonomy.commsgs.proto.sensor_msgs.Image") {}
+          "automsgs.msgs.sensor_msgs.Image") {}
 
 void ImageDisplay::processMessage(
     const automsgs::msgs::sensor_msgs::Image& message) {

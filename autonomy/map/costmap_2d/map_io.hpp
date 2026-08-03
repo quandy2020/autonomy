@@ -19,7 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/map_msgs.hpp"
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
 #include "autonomy/map/costmap_2d/map_mode.hpp"
 
 /* Map input part */
@@ -59,7 +60,7 @@ LoadParameters loadMapYaml(const std::string& yaml_filename);
  * @throw std::exception
  */
 void loadMapFromFile(const LoadParameters& load_parameters,
-                     commsgs::map_msgs::OccupancyGrid& map);
+                     automsgs::msgs::map_msgs::OccupancyGrid& map);
 
 /**
  * @brief Load the map YAML, image from map file and
@@ -69,7 +70,7 @@ void loadMapFromFile(const LoadParameters& load_parameters,
  * @return status of map loaded
  */
 LOAD_MAP_STATUS loadMapFromYaml(const std::string& yaml_file,
-                                commsgs::map_msgs::OccupancyGrid& map);
+                                automsgs::msgs::map_msgs::OccupancyGrid& map);
 
 /* Map output part */
 
@@ -87,7 +88,7 @@ struct SaveParameters {
  * @param save_parameters Map saving parameters.
  * @return true or false
  */
-bool saveMapToFile(const commsgs::map_msgs::OccupancyGrid& map,
+bool saveMapToFile(const automsgs::msgs::map_msgs::OccupancyGrid& map,
                    const SaveParameters& save_parameters);
 
 /**

@@ -26,9 +26,20 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/system/proto/autonomy_options.pb.h"
 #include "autonomy/navigator/constants.hpp"
@@ -75,9 +86,9 @@ public:
     AUTONOMY_SMART_PTR_DEFINITIONS(Autonomy)
 
     using MapPublishListener = std::function<void(
-        const commsgs::map_msgs::OccupancyGrid::SharedPtr& map)>;
+        const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map)>;
     using PathListener =
-        std::function<void(const commsgs::planning_msgs::Path& path)>;
+        std::function<void(const automsgs::msgs::planning_msgs::Path& path)>;
 
     explicit Autonomy(proto::AutonomyOptions options);
     ~Autonomy();
@@ -101,30 +112,30 @@ public:
     void AddPathListener(PathListener listener);
 
     bool NavigateToPose(
-        const commsgs::geometry_msgs::PoseStamped& goal,
+        const automsgs::msgs::geometry_msgs::PoseStamped& goal,
         std::function<bool()> cancel_checker,
         std::function<bool()> keep_alive,
         double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
 
     bool NavigateThroughPoses(
-        const std::vector<commsgs::geometry_msgs::PoseStamped>& goals,
+        const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
         std::function<bool()> cancel_checker,
         std::function<bool()> keep_alive,
         double timeout_sec = navigator::kDirectNavDefaultTimeoutSec);
 
-    void ReplanToGoal(const commsgs::geometry_msgs::PoseStamped& goal);
-    std::optional<commsgs::planning_msgs::Path> GetLastPath();
+    void ReplanToGoal(const automsgs::msgs::geometry_msgs::PoseStamped& goal);
+    std::optional<automsgs::msgs::planning_msgs::Path> GetLastPath();
 
     void RequestCancelNavigation();
     void SetControllerEnabled(bool enabled);
 
-    commsgs::geometry_msgs::TwistStamped TickControl();
+    automsgs::msgs::geometry_msgs::TwistStamped TickControl();
 
     /** Latest velocity from direct follow or BT (for in-process simulators). */
-    commsgs::geometry_msgs::TwistStamped GetLastControlCommand() const;
+    automsgs::msgs::geometry_msgs::TwistStamped GetLastControlCommand() const;
 
     bool TransformPoseToGlobalFrame(
-        commsgs::geometry_msgs::PoseStamped& pose);
+        automsgs::msgs::geometry_msgs::PoseStamped& pose);
 
 private:
     struct PluginIds {
@@ -136,13 +147,13 @@ private:
     bool EnsureStarted() const;
     PluginIds ResolvePluginIds() const;
     bool NavigateDirectToPose(
-        const commsgs::geometry_msgs::PoseStamped& goal,
+        const automsgs::msgs::geometry_msgs::PoseStamped& goal,
         std::function<bool()> cancel_checker, std::function<bool()> keep_alive,
         double timeout_sec);
-    bool GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose) const;
+    bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose) const;
     void ApplyMapToCostmap(
-        const commsgs::map_msgs::OccupancyGrid::SharedPtr& map);
-    void NotifyPath(const commsgs::planning_msgs::Path& path);
+        const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& map);
+    void NotifyPath(const automsgs::msgs::planning_msgs::Path& path);
     void ApplyRuntimeToNavigatorOptions(const RuntimeOptions& runtime);
     void SyncNavigationFrames(const std::string& global_frame,
                               const std::string& robot_base_frame);
@@ -160,14 +171,14 @@ private:
 
     std::vector<MapPublishListener> map_listeners_;
     std::vector<PathListener> path_listeners_;
-    std::optional<commsgs::planning_msgs::Path> last_path_;
+    std::optional<automsgs::msgs::planning_msgs::Path> last_path_;
 
     mutable std::mutex mutex_;
     std::atomic<bool> started_{false};
     std::atomic<bool> configured_{false};
     std::atomic<bool> controller_enabled_{true};
     std::atomic<bool> use_bt_navigation_{false};
-    commsgs::geometry_msgs::TwistStamped last_control_cmd_;
+    automsgs::msgs::geometry_msgs::TwistStamped last_control_cmd_;
 };
 
 Autonomy::UniquePtr CreateAutonomy(

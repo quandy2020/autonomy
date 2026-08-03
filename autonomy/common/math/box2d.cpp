@@ -369,13 +369,11 @@ bool Box2d::HasOverlap(const Box2d& box) const {
                std::abs(dx3 * sin_heading_ - dy3 * cos_heading_) +
                    std::abs(dx4 * sin_heading_ - dy4 * cos_heading_) +
                    half_width_ &&
-           std::abs(shift_x * box.cos_heading() +
-                    shift_y * box.sin_heading()) <=
+           std::abs(shift_x * box.cos_heading() + shift_y * box.sin_heading()) <=
                std::abs(dx1 * box.cos_heading() + dy1 * box.sin_heading()) +
                    std::abs(dx2 * box.cos_heading() + dy2 * box.sin_heading()) +
                    box.half_length() &&
-           std::abs(shift_x * box.sin_heading() -
-                    shift_y * box.cos_heading()) <=
+           std::abs(shift_x * box.sin_heading() - shift_y * box.cos_heading()) <=
                std::abs(dx1 * box.sin_heading() - dy1 * box.cos_heading()) +
                    std::abs(dx2 * box.sin_heading() - dy2 * box.cos_heading()) +
                    box.half_width();

@@ -7,8 +7,18 @@
 #include <mutex>
 
 #include "autolink/autolink.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 
 #if defined(USE_PROMETHEUS) && USE_PROMETHEUS
 #include <prometheus/family.h>
@@ -22,13 +32,15 @@ namespace monitor {
 
 namespace {
 
-double StampAgeSeconds(const commsgs::std_msgs::Header& header) {
-    using commsgs::builtin_interfaces::Time;
-    const Time now = Time::Now();
-    if (header.stamp > now)
+double StampAgeSeconds(const automsgs::msgs::std_msgs::Header& header) {
+    using automsgs::msgs::builtin_interfaces::Time;
+    using automsgs::msgs::builtin_interfaces::TimeToNanoseconds;
+    using automsgs::msgs::builtin_interfaces::DurationToSeconds;
+    const Time now = automsgs::msgs::builtin_interfaces::TimeNow();
+    if (TimeToNanoseconds(header.stamp()) > TimeToNanoseconds(now))
         return 0.0;
-    const commsgs::builtin_interfaces::Duration delta = now - header.stamp;
-    return static_cast<double>(delta.Nanoseconds()) * 1e-9;
+    const auto delta = now - header.stamp();
+    return DurationToSeconds(delta);
 }
 
 }  // namespace
@@ -38,7 +50,7 @@ struct LatencyMonitor::LatencyRuntime {
     mutable std::mutex mutex;
     bool ever_received{false};
     double last_age_sec{0.0};
-    std::shared_ptr<autolink::Reader<commsgs::geometry_msgs::TwistStamped>>
+    std::shared_ptr<autolink::Reader<automsgs::msgs::geometry_msgs::TwistStamped>>
         reader;
 };
 
@@ -78,17 +90,17 @@ bool LatencyMonitor::AttachNode(const std::shared_ptr<autolink::Node>& node) {
         runtime->options = watch;
         LatencyRuntime* raw = runtime.get();
         auto callback =
-            [raw](const std::shared_ptr<commsgs::geometry_msgs::TwistStamped>&
+            [raw](const std::shared_ptr<automsgs::msgs::geometry_msgs::TwistStamped>&
                       msg) {
                 if (!msg)
                     return;
-                const double age = StampAgeSeconds(msg->header);
+                const double age = StampAgeSeconds(msg->header());
                 std::lock_guard<std::mutex> lock(raw->mutex);
                 raw->ever_received = true;
                 raw->last_age_sec = age;
             };
         raw->reader =
-            node_->CreateReader<commsgs::geometry_msgs::TwistStamped>(
+            node_->CreateReader<automsgs::msgs::geometry_msgs::TwistStamped>(
                 watch.channel, callback);
         if (!raw->reader)
             continue;

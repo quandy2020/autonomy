@@ -21,8 +21,15 @@
 #include <optional>
 #include <string>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
 #include "autonomy/localization/cartographer/common/time.hpp"
 #include "autonomy/localization/cartographer/mapping/trajectory_builder_interface.hpp"
 #include "autonomy/localization/cartographer/node/tf_bridge.hpp"
@@ -50,23 +57,23 @@ public:
     SensorBridge& operator=(const SensorBridge&) = delete;
 
     std::unique_ptr<::cartographer::sensor::OdometryData> ToOdometryData(
-        const commsgs::planning_msgs::Odometry& msg);
+        const automsgs::msgs::planning_msgs::Odometry& msg);
     void HandleOdometryMessage(const std::string& sensor_id,
-                               const commsgs::planning_msgs::Odometry& msg);
+                               const automsgs::msgs::planning_msgs::Odometry& msg);
 
     std::unique_ptr<::cartographer::sensor::ImuData> ToImuData(
-        const commsgs::sensor_msgs::Imu& msg);
+        const automsgs::msgs::sensor_msgs::Imu& msg);
     void HandleImuMessage(const std::string& sensor_id,
-                          const commsgs::sensor_msgs::Imu& msg);
+                          const automsgs::msgs::sensor_msgs::Imu& msg);
     void HandleLaserScanMessage(const std::string& sensor_id,
-                                const commsgs::sensor_msgs::LaserScan& msg);
+                                const automsgs::msgs::sensor_msgs::LaserScan& msg);
     void HandleMultiEchoLaserScanMessage(
         const std::string& sensor_id,
-        const commsgs::sensor_msgs::MultiEchoLaserScan& msg);
+        const automsgs::msgs::sensor_msgs::MultiEchoLaserScan& msg);
     void HandlePointCloud2Message(const std::string& sensor_id,
-                                  const commsgs::sensor_msgs::PointCloud2& msg);
+                                  const automsgs::msgs::sensor_msgs::PointCloud2& msg);
     void HandleNavSatFixMessage(const std::string& sensor_id,
-                                const commsgs::sensor_msgs::NavSatFix& msg);
+                                const automsgs::msgs::sensor_msgs::NavSatFix& msg);
     void HandleLandmarkMessage(const std::string& sensor_id,
                                const proto::LandmarkList& msg);
 

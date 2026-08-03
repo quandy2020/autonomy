@@ -9,7 +9,7 @@
 namespace autoviz {
 namespace commsgs {
 
-/** Map legacy autonomy.commsgs.proto.* descriptors to automsgs.msgs.*. */
+/** Map legacy automsgs.msgs.* descriptors to automsgs.msgs.*. */
 std::string NormalizeMessageType(const std::string& message_type);
 
 /** True if both descriptors refer to the same logical message. */

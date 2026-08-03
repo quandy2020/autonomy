@@ -45,11 +45,11 @@
  
      // TODO: Create autolink writer for visualization
      // carrot_arc_pub_ =
-     // node->CreateWriter<commsgs::planning_msgs::Path>("lookahead_collision_arc");
+     // node->CreateWriter<automsgs::msgs::planning_msgs::Path>("lookahead_collision_arc");
  }
  
  bool CollisionChecker::isCollisionImminent(
-     const commsgs::geometry_msgs::PoseStamped& robot_pose,
+     const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
      const double& linear_vel, const double& angular_vel,
      const double& carrot_dist) {
      // Note(stevemacenski): This may be a bit unusual, but the robot_pose is in
@@ -57,18 +57,18 @@
      // comes to us
  
      // check current point is OK
-     if (inCollision(robot_pose.pose.position.x, robot_pose.pose.position.y,
-                     transform::tf2::getYaw(robot_pose.pose.orientation))) {
+     if (inCollision(robot_pose.pose().position().x(), robot_pose.pose().position().y(),
+                     transform::tf2::getYaw(robot_pose.pose().orientation()))) {
          return true;
      }
  
      // visualization messages
-     commsgs::planning_msgs::Path arc_pts_msg;
-     arc_pts_msg.header.frame_id = costmap_wrapper_->getGlobalFrameID();
-     arc_pts_msg.header.stamp = robot_pose.header.stamp;
-     commsgs::geometry_msgs::PoseStamped pose_msg;
-     pose_msg.header.frame_id = arc_pts_msg.header.frame_id;
-     pose_msg.header.stamp = arc_pts_msg.header.stamp;
+     automsgs::msgs::planning_msgs::Path arc_pts_msg;
+     arc_pts_msg.mutable_header()->set_frame_id(costmap_wrapper_->getGlobalFrameID());
+     *arc_pts_msg.mutable_header()->mutable_stamp() = robot_pose.header().stamp();
+     automsgs::msgs::geometry_msgs::PoseStamped pose_msg;
+     pose_msg.mutable_header()->set_frame_id(arc_pts_msg.header().frame_id());
+     *pose_msg.mutable_header()->mutable_stamp() = arc_pts_msg.header().stamp();
  
      double projection_time = 0.0;
      if (fabs(linear_vel) < 0.01 && fabs(angular_vel) > 0.01) {
@@ -95,11 +95,11 @@
          projection_time = costmap_->getResolution() / fabs(linear_vel);
      }
  
-     const commsgs::geometry_msgs::Point& robot_xy = robot_pose.pose.position;
-     commsgs::geometry_msgs::Pose2D curr_pose;
-     curr_pose.x = robot_pose.pose.position.x;
-     curr_pose.y = robot_pose.pose.position.y;
-     curr_pose.theta = transform::tf2::getYaw(robot_pose.pose.orientation);
+     const automsgs::msgs::geometry_msgs::Point& robot_xy = robot_pose.pose().position();
+     automsgs::msgs::geometry_msgs::Pose2D curr_pose;
+     curr_pose.set_x(robot_pose.pose().position().x());
+     curr_pose.set_y(robot_pose.pose().position().y());
+     curr_pose.set_theta(transform::tf2::getYaw(robot_pose.pose().orientation()));
  
      // only forward simulate within time requested
      int i = 1;
@@ -114,25 +114,25 @@
          i++;
  
          // apply velocity at curr_pose over distance
-         curr_pose.x += projection_time * (linear_vel * cos(curr_pose.theta));
-         curr_pose.y += projection_time * (linear_vel * sin(curr_pose.theta));
-         curr_pose.theta += projection_time * angular_vel;
+         curr_pose.set_x(curr_pose.x() + projection_time * (linear_vel * cos(curr_pose.theta())));
+         curr_pose.set_y(curr_pose.y() + projection_time * (linear_vel * sin(curr_pose.theta())));
+         curr_pose.set_theta(curr_pose.theta() + projection_time * angular_vel);
  
          // check if past carrot pose, where no longer a thoughtfully valid
          // command
-         if (std::hypot(curr_pose.x - robot_xy.x, curr_pose.y - robot_xy.y) >
+         if (std::hypot(curr_pose.x() - robot_xy.x(), curr_pose.y() - robot_xy.y()) >
              carrot_dist) {
              break;
          }
  
          // store it for visualization
-         pose_msg.pose.position.x = curr_pose.x;
-         pose_msg.pose.position.y = curr_pose.y;
-         pose_msg.pose.position.z = 0.01;
-         arc_pts_msg.poses.push_back(pose_msg);
+         pose_msg.mutable_pose()->mutable_position()->set_x(curr_pose.x());
+         pose_msg.mutable_pose()->mutable_position()->set_y(curr_pose.y());
+         pose_msg.mutable_pose()->mutable_position()->set_z(0.01);
+         *arc_pts_msg.mutable_poses()->Add() = pose_msg;
  
          // check for collision at the projected pose
-         if (inCollision(curr_pose.x, curr_pose.y, curr_pose.theta)) {
+         if (inCollision(curr_pose.x(), curr_pose.y(), curr_pose.theta())) {
              if (carrot_arc_pub_) {
                  carrot_arc_pub_->Write(arc_pts_msg);
              }
@@ -161,7 +161,7 @@
      }
  
      // Get robot footprint from costmap wrapper
-     std::vector<commsgs::geometry_msgs::Point> footprint =
+     std::vector<automsgs::msgs::geometry_msgs::Point> footprint =
          costmap_wrapper_->getRobotFootprint();
      double footprint_cost = footprint_collision_checker_->footprintCostAtPose(
          x, y, theta, footprint);

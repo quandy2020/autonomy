@@ -21,7 +21,9 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/smoother_interface.hpp"
@@ -50,18 +52,18 @@ public:
 
     void ApplyOptions(const proto::SimpleSmootherOptions& options);
 
-    bool Smooth(commsgs::planning_msgs::Path& path,
+    bool Smooth(automsgs::msgs::planning_msgs::Path& path,
                 const std::chrono::milliseconds& max_time) override;
 
 protected:
-    void SmoothImpl(commsgs::planning_msgs::Path& path, bool& reversing_segment,
+    void SmoothImpl(automsgs::msgs::planning_msgs::Path& path, bool& reversing_segment,
                     const map::costmap_2d::Costmap2D* costmap,
                     const double& max_time);
 
-    inline double GetFieldByDim(const commsgs::geometry_msgs::PoseStamped& msg,
+    inline double GetFieldByDim(const automsgs::msgs::geometry_msgs::PoseStamped& msg,
                                 const unsigned int& dim);
 
-    inline void SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg,
+    inline void SetFieldByDim(automsgs::msgs::geometry_msgs::PoseStamped& msg,
                               const unsigned int dim, const double& value);
 
     void ApplyDefaultTuning();

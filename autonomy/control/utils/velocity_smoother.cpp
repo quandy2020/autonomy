@@ -17,17 +17,19 @@
 #include "autonomy/control/utils/velocity_smoother.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/time_utils.hpp>
+
 
 namespace autonomy {
 namespace control {
 namespace utils {
 
-using Time = commsgs::builtin_interfaces::Time;
-using Duration = commsgs::builtin_interfaces::Duration;
+using Time = automsgs::msgs::builtin_interfaces::Time;
+using Duration = automsgs::msgs::builtin_interfaces::Duration;
+using automsgs::msgs::builtin_interfaces::operator-;
 
 VelocitySmoother::VelocitySmoother(const proto::VelocitySmootherOptions& options)
-    : last_command_time_(Time::Now()) {
+    : last_command_time_(automsgs::msgs::builtin_interfaces::TimeNow()) {
     AINFO << "Configuring velocity smoother";
 
     smoothing_frequency_ = options.smoothing_frequency() > 0.0
@@ -89,7 +91,7 @@ VelocitySmoother::VelocitySmoother(const proto::VelocitySmootherOptions& options
             : std::vector<double>{0.0, 0.0, 0.0};
     double velocity_timeout_dbl =
         options.velocity_timeout() > 0.0 ? options.velocity_timeout() : 1.0;
-    velocity_timeout_ = Duration::FromSeconds(velocity_timeout_dbl);
+    velocity_timeout_ = automsgs::msgs::builtin_interfaces::DurationFromSeconds(velocity_timeout_dbl);
 
     if (max_velocities_.size() != 3 || min_velocities_.size() != 3 ||
         max_accels_.size() != 3 || max_decels_.size() != 3 ||
@@ -117,29 +119,29 @@ VelocitySmoother::VelocitySmoother(const proto::VelocitySmootherOptions& options
 VelocitySmoother::~VelocitySmoother() {}
 
 void VelocitySmoother::inputCommandStampedCallback(
-    const std::shared_ptr<commsgs::geometry_msgs::TwistStamped>& msg) {
+    const std::shared_ptr<automsgs::msgs::geometry_msgs::TwistStamped>& msg) {
     auto isFinite = [](float val) { return std::isfinite(val); };
-    if (!isFinite(msg->twist.linear.x) || !isFinite(msg->twist.linear.y) ||
-        !isFinite(msg->twist.linear.z) || !isFinite(msg->twist.angular.x) ||
-        !isFinite(msg->twist.angular.y) || !isFinite(msg->twist.angular.z)) {
+    if (!isFinite(msg->twist().linear().x()) || !isFinite(msg->twist().linear().y()) ||
+        !isFinite(msg->twist().linear().z()) || !isFinite(msg->twist().angular().x()) ||
+        !isFinite(msg->twist().angular().y()) || !isFinite(msg->twist().angular().z())) {
         AERROR
             << "Velocity message contains NaNs or Infs! Ignoring as invalid!";
         return;
     }
 
     command_ = msg;
-    if (msg->header.stamp.sec == 0 && msg->header.stamp.nanosec == 0) {
-        last_command_time_ = Time::Now();
+    if (msg->header().stamp().sec() == 0 && msg->header().stamp().nanosec() == 0) {
+        last_command_time_ = automsgs::msgs::builtin_interfaces::TimeNow();
     } else {
-        last_command_time_ = msg->header.stamp;
+        last_command_time_ = msg->header().stamp();
     }
 }
 
 void VelocitySmoother::inputCommandCallback(
-    const std::shared_ptr<commsgs::geometry_msgs::Twist>& msg) {
+    const std::shared_ptr<automsgs::msgs::geometry_msgs::Twist>& msg) {
     auto twist_stamped =
-        std::make_shared<commsgs::geometry_msgs::TwistStamped>();
-    twist_stamped->twist = *msg;
+        std::make_shared<automsgs::msgs::geometry_msgs::TwistStamped>();
+    *twist_stamped->mutable_twist() = *msg;
     inputCommandStampedCallback(twist_stamped);
 }
 
@@ -197,49 +199,46 @@ void VelocitySmoother::smootherTimer() {
         return;
     }
 
-    auto cmd_vel = std::make_unique<commsgs::geometry_msgs::TwistStamped>();
-    cmd_vel->header = command_->header;
+    auto cmd_vel = std::make_unique<automsgs::msgs::geometry_msgs::TwistStamped>();
+    *cmd_vel->mutable_header() = command_->header();
 
-    Time current_time = Time::Now();
+    Time current_time = automsgs::msgs::builtin_interfaces::TimeNow();
     Duration elapsed = current_time - last_command_time_;
-    if (elapsed.Seconds() > velocity_timeout_.Seconds()) {
+    if (automsgs::msgs::builtin_interfaces::DurationToSeconds(elapsed) > automsgs::msgs::builtin_interfaces::DurationToSeconds(velocity_timeout_)) {
         if (!last_cmd_ || stopped_) {
             stopped_ = true;
             return;
         }
-        command_ = std::make_shared<commsgs::geometry_msgs::TwistStamped>();
-        command_->header.stamp = current_time;
+        command_ = std::make_shared<automsgs::msgs::geometry_msgs::TwistStamped>();
+        *command_->mutable_header()->mutable_stamp() = current_time;
     }
 
     stopped_ = false;
 
-    commsgs::geometry_msgs::TwistStamped current_;
+    automsgs::msgs::geometry_msgs::TwistStamped current_;
     if (open_loop_) {
         if (last_cmd_) {
             current_ = *last_cmd_;
         } else {
-            current_ = commsgs::geometry_msgs::TwistStamped();
+            current_ = automsgs::msgs::geometry_msgs::TwistStamped();
         }
     } else {
         current_ = odom_smoother_->getTwistStamped();
     }
 
-    command_->twist.linear.x =
-        std::clamp(static_cast<double>(command_->twist.linear.x),
-                   min_velocities_[0], max_velocities_[0]);
-    command_->twist.linear.y =
-        std::clamp(static_cast<double>(command_->twist.linear.y),
-                   min_velocities_[1], max_velocities_[1]);
-    command_->twist.angular.z =
-        std::clamp(static_cast<double>(command_->twist.angular.z),
-                   min_velocities_[2], max_velocities_[2]);
+    command_->mutable_twist()->mutable_linear()->set_x(std::clamp(static_cast<double>(command_->twist().linear().x()),
+                   min_velocities_[0], max_velocities_[0]));
+    command_->mutable_twist()->mutable_linear()->set_y(std::clamp(static_cast<double>(command_->twist().linear().y()),
+                   min_velocities_[1], max_velocities_[1]));
+    command_->mutable_twist()->mutable_angular()->set_z(std::clamp(static_cast<double>(command_->twist().angular().z()),
+                   min_velocities_[2], max_velocities_[2]));
 
     double eta = 1.0;
     if (scale_velocities_) {
         double curr_eta = -1.0;
 
         curr_eta =
-            findEtaConstraint(current_.twist.linear.x, command_->twist.linear.x,
+            findEtaConstraint(current_.twist().linear().x(), command_->twist().linear().x(),
                               max_accels_[0], max_decels_[0]);
         if (curr_eta > 0.0 &&
             std::fabs(1.0 - curr_eta) > std::fabs(1.0 - eta)) {
@@ -247,15 +246,15 @@ void VelocitySmoother::smootherTimer() {
         }
 
         curr_eta =
-            findEtaConstraint(current_.twist.linear.y, command_->twist.linear.y,
+            findEtaConstraint(current_.twist().linear().y(), command_->twist().linear().y(),
                               max_accels_[1], max_decels_[1]);
         if (curr_eta > 0.0 &&
             std::fabs(1.0 - curr_eta) > std::fabs(1.0 - eta)) {
             eta = curr_eta;
         }
 
-        curr_eta = findEtaConstraint(current_.twist.angular.z,
-                                     command_->twist.angular.z, max_accels_[2],
+        curr_eta = findEtaConstraint(current_.twist().angular().z(),
+                                     command_->twist().angular().z(), max_accels_[2],
                                      max_decels_[2]);
         if (curr_eta > 0.0 &&
             std::fabs(1.0 - curr_eta) > std::fabs(1.0 - eta)) {
@@ -263,30 +262,24 @@ void VelocitySmoother::smootherTimer() {
         }
     }
 
-    cmd_vel->twist.linear.x =
-        applyConstraints(current_.twist.linear.x, command_->twist.linear.x,
-                         max_accels_[0], max_decels_[0], eta);
-    cmd_vel->twist.linear.y =
-        applyConstraints(current_.twist.linear.y, command_->twist.linear.y,
-                         max_accels_[1], max_decels_[1], eta);
-    cmd_vel->twist.angular.z =
-        applyConstraints(current_.twist.angular.z, command_->twist.angular.z,
-                         max_accels_[2], max_decels_[2], eta);
+    cmd_vel->mutable_twist()->mutable_linear()->set_x(applyConstraints(current_.twist().linear().x(), command_->twist().linear().x(),
+                         max_accels_[0], max_decels_[0], eta));
+    cmd_vel->mutable_twist()->mutable_linear()->set_y(applyConstraints(current_.twist().linear().y(), command_->twist().linear().y(),
+                         max_accels_[1], max_decels_[1], eta));
+    cmd_vel->mutable_twist()->mutable_angular()->set_z(applyConstraints(current_.twist().angular().z(), command_->twist().angular().z(),
+                         max_accels_[2], max_decels_[2], eta));
     last_cmd_ =
-        std::make_shared<commsgs::geometry_msgs::TwistStamped>(*cmd_vel);
+        std::make_shared<automsgs::msgs::geometry_msgs::TwistStamped>(*cmd_vel);
 
-    cmd_vel->twist.linear.x =
-        fabs(cmd_vel->twist.linear.x) < deadband_velocities_[0]
+    cmd_vel->mutable_twist()->mutable_linear()->set_x(fabs(cmd_vel->twist().linear().x()) < deadband_velocities_[0]
             ? 0.0
-            : cmd_vel->twist.linear.x;
-    cmd_vel->twist.linear.y =
-        fabs(cmd_vel->twist.linear.y) < deadband_velocities_[1]
+            : cmd_vel->twist().linear().x());
+    cmd_vel->mutable_twist()->mutable_linear()->set_y(fabs(cmd_vel->twist().linear().y()) < deadband_velocities_[1]
             ? 0.0
-            : cmd_vel->twist.linear.y;
-    cmd_vel->twist.angular.z =
-        fabs(cmd_vel->twist.angular.z) < deadband_velocities_[2]
+            : cmd_vel->twist().linear().y());
+    cmd_vel->mutable_twist()->mutable_angular()->set_z(fabs(cmd_vel->twist().angular().z()) < deadband_velocities_[2]
             ? 0.0
-            : cmd_vel->twist.angular.z;
+            : cmd_vel->twist().angular().z());
 }
 
 }  // namespace utils

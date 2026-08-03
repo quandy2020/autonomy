@@ -21,8 +21,18 @@
  
  #include "autolink/autolink.hpp"
  #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/builtin_interfaces.hpp"
- #include "autonomy/commsgs/geometry_msgs.hpp"
+ #include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
  #include "autonomy/control/common/controller_interface.hpp"
  #include "autonomy/control/controller/mppi_controller/models/constraints.hpp"
  #include "autonomy/control/controller/mppi_controller/optimizer.hpp"
@@ -89,16 +99,16 @@
       * completed task
       */
      uint32 ComputeVelocityCommands(
-         const commsgs::geometry_msgs::PoseStamped& pose,
-         const commsgs::geometry_msgs::TwistStamped& velocity,
-         commsgs::geometry_msgs::TwistStamped& cmd_vel,
+         const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+         const automsgs::msgs::geometry_msgs::TwistStamped& velocity,
+         automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
          common::GoalChecker* goal_checker, std::string& message) override;
  
      /**
       * @brief Set new reference path to track
       * @param path Path to track
       */
-     void SetPlan(const commsgs::planning_msgs::Path& path) override;
+     void SetPlan(const automsgs::msgs::planning_msgs::Path& path) override;
  
      /**
       * @brief Set new speed limit from callback
@@ -141,15 +151,15 @@
       * @param cmd_stamp Command stamp
       * @param optimal_trajectory Optimal trajectory, if already computed
       */
-     void Visualize(commsgs::planning_msgs::Path transformed_plan,
-                    const commsgs::builtin_interfaces::Time& cmd_stamp,
+     void Visualize(automsgs::msgs::planning_msgs::Path transformed_plan,
+                    const automsgs::msgs::builtin_interfaces::Time& cmd_stamp,
                     const Eigen::ArrayXXf& optimal_trajectory);
  
      std::string name_;
      std::shared_ptr<autolink::Node> parent_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
      std::shared_ptr<autonomy::transform::Buffer> tf_buffer_;
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
          opt_traj_pub_;
  
      proto::MPPIControllerOptions options_;
@@ -160,9 +170,9 @@
     bool visualize_;
     bool publish_optimal_trajectory_;
 
-    commsgs::geometry_msgs::PoseStamped last_robot_pose_;
-    commsgs::geometry_msgs::Twist last_robot_velocity_;
-    commsgs::geometry_msgs::Pose last_goal_pose_;
+    automsgs::msgs::geometry_msgs::PoseStamped last_robot_pose_;
+    automsgs::msgs::geometry_msgs::Twist last_robot_velocity_;
+    automsgs::msgs::geometry_msgs::Pose last_goal_pose_;
     common::GoalChecker* last_goal_checker_{nullptr};
     bool has_control_state_{false};
 };

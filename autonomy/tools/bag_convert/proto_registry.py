@@ -107,7 +107,7 @@ class ProtoRegistry:
             for pb2_path in sorted(
                 (self._config.proto_gen_dir / "autonomy/commsgs/proto").glob("*_pb2.py")
             ):
-                module = importlib.import_module(f"autonomy.commsgs.proto.{pb2_path.stem}")
+                module = importlib.import_module(f"automsgs.msgs.{pb2_path.stem}")
                 package = pb2_path.stem.removesuffix("_pb2")
                 for desc in module.DESCRIPTOR.message_types_by_name.values():
                     cls = getattr(module, desc.name)

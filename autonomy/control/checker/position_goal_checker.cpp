@@ -52,10 +52,10 @@ void PositionGoalChecker::Reset() {
 }
 
 bool PositionGoalChecker::IsGoalXYReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity,
-    const commsgs::planning_msgs::Path& transformed_global_plan) {
+    const automsgs::msgs::geometry_msgs::Pose& query_pose,
+    const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+    const automsgs::msgs::geometry_msgs::Twist& velocity,
+    const automsgs::msgs::planning_msgs::Path& transformed_global_plan) {
     (void)velocity;
     if (map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
         path_length_tolerance_) {
@@ -64,8 +64,8 @@ bool PositionGoalChecker::IsGoalXYReached(
     if (stateful_ && position_reached_) {
         return true;
     }
-    const double dx = query_pose.position.x - goal_pose.position.x;
-    const double dy = query_pose.position.y - goal_pose.position.y;
+    const double dx = query_pose.position().x() - goal_pose.position().x();
+    const double dy = query_pose.position().y() - goal_pose.position().y();
     const bool position_reached = dx * dx + dy * dy <= xy_goal_tolerance_sq_;
     if (stateful_ && position_reached) {
         position_reached_ = true;
@@ -74,35 +74,35 @@ bool PositionGoalChecker::IsGoalXYReached(
 }
 
 bool PositionGoalChecker::IsGoalReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity) {
+    const automsgs::msgs::geometry_msgs::Pose& query_pose,
+    const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+    const automsgs::msgs::geometry_msgs::Twist& velocity) {
     return IsGoalXYReached(query_pose, goal_pose, velocity,
-                           commsgs::planning_msgs::Path{});
+                           automsgs::msgs::planning_msgs::Path{});
 }
 
 bool PositionGoalChecker::GetTolerances(
-    commsgs::geometry_msgs::Pose& pose_tolerance,
-    commsgs::geometry_msgs::Twist& vel_tolerance) {
+    automsgs::msgs::geometry_msgs::Pose& pose_tolerance,
+    automsgs::msgs::geometry_msgs::Twist& vel_tolerance) {
     double invalid_field = std::numeric_limits<double>::lowest();
 
-    pose_tolerance.position.x = xy_goal_tolerance_;
-    pose_tolerance.position.y = xy_goal_tolerance_;
-    pose_tolerance.position.z = invalid_field;
+    pose_tolerance.mutable_position()->set_x(xy_goal_tolerance_);
+    pose_tolerance.mutable_position()->set_y(xy_goal_tolerance_);
+    pose_tolerance.mutable_position()->set_z(invalid_field);
 
     // Return zero orientation tolerance as we don't check it
-    pose_tolerance.orientation.x = 0.0;
-    pose_tolerance.orientation.y = 0.0;
-    pose_tolerance.orientation.z = 0.0;
-    pose_tolerance.orientation.w = 1.0;
+    pose_tolerance.mutable_orientation()->set_x(0.0);
+    pose_tolerance.mutable_orientation()->set_y(0.0);
+    pose_tolerance.mutable_orientation()->set_z(0.0);
+    pose_tolerance.mutable_orientation()->set_w(1.0);
 
-    vel_tolerance.linear.x = invalid_field;
-    vel_tolerance.linear.y = invalid_field;
-    vel_tolerance.linear.z = invalid_field;
+    vel_tolerance.mutable_linear()->set_x(invalid_field);
+    vel_tolerance.mutable_linear()->set_y(invalid_field);
+    vel_tolerance.mutable_linear()->set_z(invalid_field);
 
-    vel_tolerance.angular.x = invalid_field;
-    vel_tolerance.angular.y = invalid_field;
-    vel_tolerance.angular.z = invalid_field;
+    vel_tolerance.mutable_angular()->set_x(invalid_field);
+    vel_tolerance.mutable_angular()->set_y(invalid_field);
+    vel_tolerance.mutable_angular()->set_z(invalid_field);
 
     return true;
 }

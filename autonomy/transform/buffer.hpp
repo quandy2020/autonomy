@@ -21,8 +21,13 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autonomy/transform/buffer_interface.hpp"
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/tf2/buffer_core.h"
@@ -59,9 +64,9 @@ public:
      * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
      * tf2::ExtrapolationException, tf2::InvalidArgumentException
      */
-    virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
+    virtual automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
         const std::string& target_frame, const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& time,
+        const automsgs::msgs::builtin_interfaces::Time& time,
         const float timeout_second = 0.01f) const;
 
     /**
@@ -81,11 +86,11 @@ public:
      * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
      * tf2::ExtrapolationException, tf2::InvalidArgumentException
      */
-    virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
+    virtual automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
         const std::string& target_frame,
-        const commsgs::builtin_interfaces::Time& target_time,
+        const automsgs::msgs::builtin_interfaces::Time& target_time,
         const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& source_time,
+        const automsgs::msgs::builtin_interfaces::Time& source_time,
         const std::string& fixed_frame,
         const float timeout_second = 0.01f) const;
 
@@ -100,7 +105,7 @@ public:
      */
     virtual bool canTransform(const std::string& target_frame,
                               const std::string& source_frame,
-                              const commsgs::builtin_interfaces::Time& time,
+                              const automsgs::msgs::builtin_interfaces::Time& time,
                               const float timeout_second = 0.01f,
                               std::string* errstr = nullptr) const;
 
@@ -118,36 +123,36 @@ public:
      */
     virtual bool canTransform(
         const std::string& target_frame,
-        const commsgs::builtin_interfaces::Time& target_time,
+        const automsgs::msgs::builtin_interfaces::Time& target_time,
         const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& source_time,
+        const automsgs::msgs::builtin_interfaces::Time& source_time,
         const std::string& fixed_frame, const float timeout_second = 0.01f,
         std::string* errstr = nullptr) const;
 
     bool GetLatestStaticTF(const std::string& frame_id,
                            const std::string& child_frame_id,
-                           commsgs::geometry_msgs::TransformStamped* tf);
+                           automsgs::msgs::geometry_msgs::TransformStamped* tf);
 
 private:
     void SubscriptionCallback(
-        const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+        const std::shared_ptr<const automsgs::msgs::geometry_msgs::TransformStampeds>&
             transform);
 
     void StaticSubscriptionCallback(
-        const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+        const std::shared_ptr<const automsgs::msgs::geometry_msgs::TransformStampeds>&
             transform);
 
     void SubscriptionCallbackImpl(
-        const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+        const std::shared_ptr<const automsgs::msgs::geometry_msgs::TransformStampeds>&
             transform,
         bool is_static);
 
     void TF2MsgToConvert(
         const geometry_msgs::TransformStamped& tf2_trans_stamped,
-        commsgs::geometry_msgs::TransformStamped& trans_stamped)
+        automsgs::msgs::geometry_msgs::TransformStamped& trans_stamped)
         const;  // NOLINT
 
-    commsgs::builtin_interfaces::Time last_update_;
+    automsgs::msgs::builtin_interfaces::Time last_update_;
     std::vector<geometry_msgs::TransformStamped> static_msgs_;
 
     DECLARE_SINGLETON(Buffer)

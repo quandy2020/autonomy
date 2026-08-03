@@ -29,12 +29,12 @@ constexpr double kPi = 3.14159265358979323846;
 constexpr double kDirectionLimitDeg = 120.0;
 constexpr double kStoppedSpeedEpsilon = 1e-6;
 
-commsgs::geometry_msgs::PoseStamped MakePose(double x, double y, double yaw) {
-    commsgs::geometry_msgs::PoseStamped pose{};
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
-    pose.pose.orientation.z = std::sin(yaw * 0.5);
-    pose.pose.orientation.w = std::cos(yaw * 0.5);
+automsgs::msgs::geometry_msgs::PoseStamped MakePose(double x, double y, double yaw) {
+    automsgs::msgs::geometry_msgs::PoseStamped pose{};
+    pose.mutable_pose()->mutable_position()->set_x(x);
+    pose.mutable_pose()->mutable_position()->set_y(y);
+    pose.mutable_pose()->mutable_orientation()->set_z(std::sin(yaw * 0.5));
+    pose.mutable_pose()->mutable_orientation()->set_w(std::cos(yaw * 0.5));
     return pose;
 }
 
@@ -64,20 +64,20 @@ void IntentPathSelector::GenerateDefaultLibrary(int num_dirs, int num_lengths,
             PathCandidate candidate;
             candidate.end_dir_deg = end_dir_deg;
             const int num_steps = static_cast<int>(std::ceil(length / ds));
-            candidate.path.poses.reserve(static_cast<std::size_t>(num_steps) +
-                                         1);
-            candidate.path.poses.push_back(MakePose(0.0, 0.0, 0.0));
+            candidate.path.mutable_poses()->Reserve(
+                static_cast<int>(num_steps) + 1);
+            *candidate.path.add_poses() = MakePose(0.0, 0.0, 0.0);
 
             for (int step = 1; step <= num_steps; ++step) {
                 const double arc_length = std::min(step * ds, length);
                 const double yaw = curvature * arc_length;
                 if (std::abs(curvature) < 1e-12) {
-                    candidate.path.poses.push_back(
-                        MakePose(arc_length, 0.0, yaw));
+                    *candidate.path.add_poses() =
+                        MakePose(arc_length, 0.0, yaw);
                 } else {
-                    candidate.path.poses.push_back(
+                    *candidate.path.add_poses() =
                         MakePose(std::sin(yaw) / curvature,
-                                 (1.0 - std::cos(yaw)) / curvature, yaw));
+                                 (1.0 - std::cos(yaw)) / curvature, yaw);
                 }
             }
             candidates_.push_back(std::move(candidate));
@@ -85,7 +85,7 @@ void IntentPathSelector::GenerateDefaultLibrary(int num_dirs, int num_lengths,
     }
 }
 
-std::optional<commsgs::planning_msgs::Path> IntentPathSelector::Select(
+std::optional<automsgs::msgs::planning_msgs::Path> IntentPathSelector::Select(
     const map::costmap_2d::Costmap2D& costmap, double joy_dir_deg,
     double joy_speed) const {
     if (std::abs(joy_speed) <= kStoppedSpeedEpsilon || candidates_.empty()) {
@@ -126,12 +126,12 @@ std::optional<commsgs::planning_msgs::Path> IntentPathSelector::Select(
 
 int IntentPathSelector::CountLethalHits(
     const map::costmap_2d::Costmap2D& map,
-    const commsgs::planning_msgs::Path& path) {
+    const automsgs::msgs::planning_msgs::Path& path) {
     int hits = 0;
-    for (const auto& pose : path.poses) {
+    for (const auto& pose : path.poses()) {
         unsigned int map_x = 0;
         unsigned int map_y = 0;
-        if (map.worldToMap(pose.pose.position.x, pose.pose.position.y, map_x,
+        if (map.worldToMap(pose.pose().position().x(), pose.pose().position().y(), map_x,
                            map_y) &&
             map.getCost(map_x, map_y) >= map::costmap_2d::LETHAL_OBSTACLE) {
             ++hits;

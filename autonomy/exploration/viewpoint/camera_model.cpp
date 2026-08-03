@@ -32,28 +32,28 @@ namespace autonomy {
 namespace exploration {
 namespace {
 
-commsgs::geometry_msgs::Transform ToCommsgsTransform(
+automsgs::msgs::geometry_msgs::Transform ToCommsgsTransform(
     const ::autonomy::common::transform::Rigid3d& rigid)
 {
-    commsgs::geometry_msgs::Transform out;
-    out.translation.x = rigid.translation().x();
-    out.translation.y = rigid.translation().y();
-    out.translation.z = rigid.translation().z();
-    out.rotation.w = rigid.rotation().w();
-    out.rotation.x = rigid.rotation().x();
-    out.rotation.y = rigid.rotation().y();
-    out.rotation.z = rigid.rotation().z();
+    automsgs::msgs::geometry_msgs::Transform out;
+    out.mutable_translation()->set_x(rigid.translation().x());
+    out.mutable_translation()->set_y(rigid.translation().y());
+    out.mutable_translation()->set_z(rigid.translation().z());
+    out.mutable_rotation()->set_w(rigid.rotation().w());
+    out.mutable_rotation()->set_x(rigid.rotation().x());
+    out.mutable_rotation()->set_y(rigid.rotation().y());
+    out.mutable_rotation()->set_z(rigid.rotation().z());
     return out;
 }
 
 ::autonomy::common::transform::Rigid3d ToRigid3d(
-    const commsgs::geometry_msgs::Transform& transform)
+    const automsgs::msgs::geometry_msgs::Transform& transform)
 {
     return ::autonomy::common::transform::Rigid3d(
-        Eigen::Vector3d(transform.translation.x, transform.translation.y,
-                        transform.translation.z),
-        Eigen::Quaterniond(transform.rotation.w, transform.rotation.x,
-                           transform.rotation.y, transform.rotation.z));
+        Eigen::Vector3d(transform.translation().x(), transform.translation().y(),
+                        transform.translation().z()),
+        Eigen::Quaterniond(transform.rotation().w(), transform.rotation().x(),
+                           transform.rotation().y(), transform.rotation().z()));
 }
 
 }  // namespace
@@ -100,60 +100,60 @@ void CameraModel::SetFrames(const std::string& map_frame,
 }
 
 void CameraModel::SetFromCameraInfo(
-    const commsgs::sensor_msgs::CameraInfo& info)
+    const automsgs::msgs::sensor_msgs::CameraInfo& info)
 {
-    if (info.k.size() >= 9) {
-        fx_ = info.k[0];
-        fy_ = info.k[4];
-        cx_ = info.k[2];
-        cy_ = info.k[5];
+    if (info.k_size() >= 9) {
+        fx_ = info.k(0);
+        fy_ = info.k(4);
+        cx_ = info.k(2);
+        cy_ = info.k(5);
         use_intrinsics_fov_ = true;
     }
-    if (info.width > 0 && info.height > 0 && fx_ > 0.0) {
-        hfov_rad_ = 2.0 * std::atan(info.width / (2.0 * fx_));
-        vfov_rad_ = 2.0 * std::atan(info.height / (2.0 * fy_));
+    if (info.width() > 0 && info.height() > 0 && fx_ > 0.0) {
+        hfov_rad_ = 2.0 * std::atan(info.width() / (2.0 * fx_));
+        vfov_rad_ = 2.0 * std::atan(info.height() / (2.0 * fy_));
     }
-    if (!info.header.frame_id.empty()) {
-        camera_frame_ = info.header.frame_id;
+    if (!info.header().frame_id().empty()) {
+        camera_frame_ = info.header().frame_id();
     }
 }
 
 void CameraModel::TransformPoint(
-    const commsgs::geometry_msgs::Transform& transform, double x, double y,
+    const automsgs::msgs::geometry_msgs::Transform& transform, double x, double y,
     double z, double* out_x, double* out_y, double* out_z)
 {
-    const auto& q = transform.rotation;
-    const auto& t = transform.translation;
-    const double qx = q.x;
-    const double qy = q.y;
-    const double qz = q.z;
-    const double qw = q.w;
+    const auto& q = transform.rotation();
+    const auto& t = transform.translation();
+    const double qx = q.x();
+    const double qy = q.y();
+    const double qz = q.z();
+    const double qw = q.w();
     const double ix = qw * x + qy * z - qz * y;
     const double iy = qw * y + qz * x - qx * z;
     const double iz = qw * z + qx * y - qy * x;
     const double iw = -qx * x - qy * y - qz * z;
-    *out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x;
-    *out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y;
-    *out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z;
+    *out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x();
+    *out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y();
+    *out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z();
 }
 
-commsgs::geometry_msgs::Transform CameraModel::InvertTransform(
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+automsgs::msgs::geometry_msgs::Transform CameraModel::InvertTransform(
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     return ToCommsgsTransform(ToRigid3d(map_t_camera).inverse());
 }
 
 bool CameraModel::LookupCameraFromMap(
-    commsgs::geometry_msgs::Transform* camera_t_map) const
+    automsgs::msgs::geometry_msgs::Transform* camera_t_map) const
 {
     if (tf_buffer_ == nullptr || camera_t_map == nullptr) {
         return false;
     }
     try {
         const auto stamped = tf_buffer_->lookupTransform(
-            camera_frame_, map_frame_, commsgs::builtin_interfaces::Time(),
+            camera_frame_, map_frame_, automsgs::msgs::builtin_interfaces::Time(),
             tf_timeout_sec_);
-        *camera_t_map = stamped.transform;
+        *camera_t_map = stamped.transform();
         return true;
     } catch (const transform::tf2::TransformException&) {
         return false;
@@ -192,7 +192,7 @@ bool CameraModel::PassesOcclusion(double ox, double oy, double wx, double wy,
 bool CameraModel::IsVisible(double wx, double wy, double wz,
                             const PlanningEnv* env) const
 {
-    commsgs::geometry_msgs::Transform camera_t_map;
+    automsgs::msgs::geometry_msgs::Transform camera_t_map;
     if (!LookupCameraFromMap(&camera_t_map)) {
         return false;
     }
@@ -205,12 +205,12 @@ bool CameraModel::IsVisible(double wx, double wy, double wz,
         return false;
     }
     const auto map_t_camera = InvertTransform(camera_t_map);
-    return PassesOcclusion(map_t_camera.translation.x, map_t_camera.translation.y,
+    return PassesOcclusion(map_t_camera.translation().x(), map_t_camera.translation().y(),
                            wx, wy, env);
 }
 
 bool CameraModel::IsVisible(
-    const commsgs::geometry_msgs::Transform& map_t_camera, double wx, double wy,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera, double wx, double wy,
     double wz, const PlanningEnv* env) const
 {
     const auto camera_t_map = InvertTransform(map_t_camera);
@@ -222,33 +222,33 @@ bool CameraModel::IsVisible(
     if (!ProjectVisible(cx, cy, cz, dist)) {
         return false;
     }
-    return PassesOcclusion(map_t_camera.translation.x, map_t_camera.translation.y,
+    return PassesOcclusion(map_t_camera.translation().x(), map_t_camera.translation().y(),
                            wx, wy, env);
 }
 
 double CameraModel::ComputeGain(
-    const commsgs::geometry_msgs::Transform& map_t_camera,
-    const std::vector<commsgs::geometry_msgs::Point>& targets,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera,
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& targets,
     const std::vector<bool>& uncovered, const PlanningEnv* env) const
 {
     if (targets.size() != uncovered.size()) {
         return 0.0;
     }
-    const double ox = map_t_camera.translation.x;
-    const double oy = map_t_camera.translation.y;
-    const double oz = map_t_camera.translation.z;
+    const double ox = map_t_camera.translation().x();
+    const double oy = map_t_camera.translation().y();
+    const double oz = map_t_camera.translation().z();
     double gain = 0.0;
     for (size_t i = 0; i < targets.size(); ++i) {
         if (!uncovered[i]) {
             continue;
         }
         const auto& p = targets[i];
-        if (!IsVisible(map_t_camera, p.x, p.y, p.z, env)) {
+        if (!IsVisible(map_t_camera, p.x(), p.y(), p.z(), env)) {
             continue;
         }
         const double dist =
-            std::sqrt((ox - p.x) * (ox - p.x) + (oy - p.y) * (oy - p.y) +
-                      (oz - p.z) * (oz - p.z));
+            std::sqrt((ox - p.x()) * (ox - p.x()) + (oy - p.y()) * (oy - p.y()) +
+                      (oz - p.z()) * (oz - p.z()));
         gain += 1.0 / std::max(dist, 0.5);
     }
     return gain;

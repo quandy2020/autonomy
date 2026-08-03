@@ -19,7 +19,10 @@
 #include <autonomy/transform/tf2/LinearMath/Quaternion.h>
 #include <autonomy/transform/tf2/transform_datatypes.h>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion_stamped.pb.h>
 #include "autonomy/transform/geometry_msgs/pose_stamped.h"
 #include "autonomy/transform/tf2/convert.h"
 
@@ -40,7 +43,7 @@ inline tf2::Quaternion toQuaternion(const tf2::Quaternion& q) {
  * \return a copy of the same quaternion as a tf2::Quaternion
  */
 inline tf2::Quaternion toQuaternion(
-    const commsgs::geometry_msgs::Quaternion& q) {
+    const automsgs::msgs::geometry_msgs::Quaternion& q) {
     tf2::Quaternion res;
     fromMsg(q, res);
     return res;
@@ -51,9 +54,9 @@ inline tf2::Quaternion toQuaternion(
  * \return a copy of the same quaternion as a tf2::Quaternion
  */
 inline tf2::Quaternion toQuaternion(
-    const commsgs::geometry_msgs::QuaternionStamped& q) {
+    const automsgs::msgs::geometry_msgs::QuaternionStamped& q) {
     tf2::Quaternion res;
-    fromMsg(q.quaternion, res);
+    fromMsg(q.quaternion(), res);
     return res;
 }
 
@@ -63,7 +66,7 @@ inline tf2::Quaternion toQuaternion(
  */
 template <typename T>
 tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t) {
-    commsgs::geometry_msgs::QuaternionStamped q = toMsg(t);
+    automsgs::msgs::geometry_msgs::QuaternionStamped q = toMsg(t);
     return toQuaternion(q);
 }
 
@@ -74,7 +77,7 @@ tf2::Quaternion toQuaternion(const tf2::Stamped<T>& t) {
  */
 template <typename T>
 tf2::Quaternion toQuaternion(const T& t) {
-    commsgs::geometry_msgs::Quaternion q = toMsg(t);
+    automsgs::msgs::geometry_msgs::Quaternion q = toMsg(t);
     return toQuaternion(q);
 }
 
@@ -153,8 +156,8 @@ inline double getYaw(const tf2::Quaternion& q) {
     return yaw;
 }
 
-inline double getYaw(const commsgs::geometry_msgs::Quaternion& q) {
-    tf2::Quaternion quat(q.x, q.y, q.z, q.w);
+inline double getYaw(const automsgs::msgs::geometry_msgs::Quaternion& q) {
+    tf2::Quaternion quat(q.x(), q.y(), q.z(), q.w());
     return getYaw(quat);
 }
 

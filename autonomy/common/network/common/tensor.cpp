@@ -263,8 +263,7 @@ bool ResolveShapeForElementCount(const ModelTensorInfo& meta,
         if (out[i] <= 0) {
             if (dyn_index >= 0) {
                 if (error != nullptr) {
-                    *error = "Model tensor \"" + meta.name +
-                             "\" has multiple dynamic dimensions.";
+                    *error = "Model tensor \"" + meta.name() + "\" has multiple dynamic dimensions.";
                 }
                 return false;
             }
@@ -276,8 +275,7 @@ bool ResolveShapeForElementCount(const ModelTensorInfo& meta,
     if (dyn_index >= 0) {
         if (known <= 0 || element_count % static_cast<size_t>(known) != 0) {
             if (error != nullptr) {
-                *error = "Input \"" + meta.name +
-                         "\": element count does not match model shape.";
+                *error = "Input \"" + meta.name() + "\": element count does not match model shape.";
             }
             return false;
         }
@@ -286,7 +284,7 @@ bool ResolveShapeForElementCount(const ModelTensorInfo& meta,
     } else {
         if (known <= 0 || static_cast<size_t>(known) != element_count) {
             if (error != nullptr) {
-                *error = "Input \"" + meta.name + "\": expected " +
+                *error = "Input \"" + meta.name() + "\": expected " +
                          std::to_string(known) + " elements, got " +
                          std::to_string(element_count);
             }
@@ -370,16 +368,16 @@ bool ValidateInputsForModel(const TensorMap& inputs,
                             const std::vector<ModelTensorInfo>& infos,
                             std::string* error) {
     for (const ModelTensorInfo& info : infos) {
-        const auto it = inputs.find(info.name);
+        const auto it = inputs.find(info.name());
         if (it == inputs.end()) {
             if (error != nullptr) {
-                *error = "Missing input tensor: " + info.name;
+                *error = "Missing input tensor: " + info.name();
             }
             return false;
         }
         if (it->second.element_type() != info.element_type) {
             if (error != nullptr) {
-                *error = "Input \"" + info.name + "\" element type mismatch.";
+                *error = "Input \"" + info.name() + "\" element type mismatch.";
             }
             return false;
         }

@@ -21,7 +21,9 @@
 #include <unordered_set>
 #include <vector>
 
-#include "autonomy//commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 
@@ -139,7 +141,7 @@ public:
     /**
      * @brief  Convenience function for layered_costmap_->getFootprint().
      */
-    const std::vector<commsgs::geometry_msgs::Point>& getFootprint() const;
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& getFootprint() const;
 
     /** @brief Convenience functions for declaring ROS parameters */
     std::string getFullName(const std::string& param_name);
@@ -176,7 +178,7 @@ protected:
     const proto::Costmap2DOptions* options_{nullptr};
 
 private:
-    std::vector<commsgs::geometry_msgs::Point> footprint_spec_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> footprint_spec_;
 };
 
 }  // namespace costmap_2d

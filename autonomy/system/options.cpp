@@ -17,9 +17,9 @@
 #include "autonomy/system/options.hpp"
 
 #include "autonomy/common/configuration_file_resolver.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/common/lua_parameter_dictionary.hpp"
 #include "autonomy/control/control_options.hpp"
-#include "autonomy/exploration/exploration_options.hpp"
 #include "autonomy/map/map_options.hpp"
 #include "autonomy/planning/planner_options.hpp"
 #include "autonomy/navigator/options.hpp"
@@ -46,8 +46,10 @@ proto::AutonomyOptions LoadOptions(
             parameter_dictionary->GetDictionary("planning").get());
     }
     if (parameter_dictionary->HasKey("exploration")) {
-        *options.mutable_exploration_options() = exploration::LoadOptions(
-            parameter_dictionary->GetDictionary("exploration").get());
+        // Exploration module is temporarily excluded from the library build
+        // during the automsgs field-access migration.
+        AWARN << "system::LoadOptions: skipping exploration options "
+                 "(module temporarily disabled)";
     }
     if (parameter_dictionary->HasKey("navigator")) {
         *options.mutable_navigator_options() =

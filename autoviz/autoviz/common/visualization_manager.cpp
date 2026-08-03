@@ -390,7 +390,7 @@ void VisualizationManager::syncReferenceGridFromDisplays() {
           display->propertyValue("cell_count", "20"), 20.f));
       settings.cell_length = common::ParseFloatProperty(
           display->propertyValue("cell_size", "1.0"), 1.f);
-      settings.color = common::ParseColorProperty(
+      *settings.mutable_color() = common::ParseColorProperty(
           display->propertyValue("color", "80;80;80"), QColor(80, 80, 80));
       settings.alpha = common::ParseFloatProperty(
           display->propertyValue("alpha", "1.0"), 1.f);
@@ -751,7 +751,7 @@ double VisualizationManager::simTimeSec() const {
       (playback_.isPlaying() || playback_.isPaused())) {
     return playback_.currentTimeSec();
   }
-  return autolink::Time::Now().ToSecond();
+  return autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToSecond();
 }
 
 double VisualizationManager::simTimeElapsedSec() const {
@@ -764,7 +764,7 @@ void VisualizationManager::setTimePaused(bool paused) {
         (playback_.isPlaying() || playback_.isPaused())) {
       paused_sim_sec_ = playback_.currentTimeSec();
     } else {
-      paused_sim_sec_ = autolink::Time::Now().ToSecond();
+      paused_sim_sec_ = autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToSecond();
     }
   }
   time_paused_ = paused;
@@ -780,7 +780,7 @@ void VisualizationManager::setTimeSyncSource(const std::string& source) {
 
 void VisualizationManager::resetTime() {
   wall_start_ = std::chrono::steady_clock::now();
-  sim_origin_sec_ = autolink::Time::Now().ToSecond();
+  sim_origin_sec_ = autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToSecond();
   time_paused_ = false;
   paused_sim_sec_ = 0.0;
 }

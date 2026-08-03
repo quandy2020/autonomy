@@ -59,10 +59,10 @@ void PathFollowCritic::score(CriticData& data) {
     return;
   }
 
-  commsgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
+  automsgs::msgs::geometry_msgs::Pose goal = tools::getCriticGoal(data, enforce_path_inversion_);
 
   if (data.path.x.size() < 2 ||
-      tools::withinPositionGoalTolerance(threshold_to_consider_, data.state.pose.pose, goal)) {
+      tools::withinPositionGoalTolerance(threshold_to_consider_, data.state.pose.pose(), goal)) {
     return;
   }
 

@@ -17,8 +17,18 @@
 #pragma once
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 
 namespace autonomy {
 namespace control {
@@ -33,9 +43,9 @@ namespace utils {
  * @param r radius of circle
  * @return point of intersection
  */
-commsgs::geometry_msgs::Point CircleSegmentIntersection(
-    const commsgs::geometry_msgs::Point& p1,
-    const commsgs::geometry_msgs::Point& p2, double r);
+automsgs::msgs::geometry_msgs::Point CircleSegmentIntersection(
+    const automsgs::msgs::geometry_msgs::Point& p1,
+    const automsgs::msgs::geometry_msgs::Point& p2, double r);
 
 /**
  * @brief Find the linear interpolation between two points
@@ -45,9 +55,9 @@ commsgs::geometry_msgs::Point CircleSegmentIntersection(
  * @param target_dist interpolation distance from first endpoint of line segment
  * @return point of intersection
  */
-commsgs::geometry_msgs::Point LinearInterpolation(
-    const commsgs::geometry_msgs::Point& p1,
-    const commsgs::geometry_msgs::Point& p2, const double target_dist);
+automsgs::msgs::geometry_msgs::Point LinearInterpolation(
+    const automsgs::msgs::geometry_msgs::Point& p1,
+    const automsgs::msgs::geometry_msgs::Point& p2, const double target_dist);
 
 /**
  * @brief Get lookahead point
@@ -58,8 +68,8 @@ commsgs::geometry_msgs::Point LinearInterpolation(
  * of the path
  * @return Lookahead point
  */
-commsgs::geometry_msgs::PoseStamped GetLookAheadPoint(
-    double&, const commsgs::planning_msgs::Path&,
+automsgs::msgs::geometry_msgs::PoseStamped GetLookAheadPoint(
+    double&, const automsgs::msgs::planning_msgs::Path&,
     const bool interpolate_after_goal = false);
 
 }  // namespace utils

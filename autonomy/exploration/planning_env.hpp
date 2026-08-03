@@ -21,10 +21,28 @@
 #include <vector>
 
 #include "autonomy/common/math/polygon2d.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/polygon.pb.h>
+#include <automsgs/msgs/geometry_msgs/point32.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 #include "autonomy/exploration/viewpoint/camera_model.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -60,13 +78,13 @@ public:
      * @brief Set the exploration boundary polygon.
      * @param area Boundary in the map frame
      */
-    void SetExplorationArea(const commsgs::geometry_msgs::Polygon& area);
+    void SetExplorationArea(const automsgs::msgs::geometry_msgs::Polygon& area);
 
     /**
      * @brief Update robot pose from odometry and refresh coverage.
      * @param odom Robot odometry
      */
-    void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
+    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
 
     /**
      * @brief Fuse a depth frame and refresh coverage targets.
@@ -74,9 +92,9 @@ public:
      * @param info Camera intrinsics
      * @param map_t_camera Extrinsic transform from camera to map
      */
-    void UpdateDepth(const commsgs::sensor_msgs::Image& depth,
-                     const commsgs::sensor_msgs::CameraInfo& info,
-                     const commsgs::geometry_msgs::Transform& map_t_camera);
+    void UpdateDepth(const automsgs::msgs::sensor_msgs::Image& depth,
+                     const automsgs::msgs::sensor_msgs::CameraInfo& info,
+                     const automsgs::msgs::geometry_msgs::Transform& map_t_camera);
 
     /**
      * @brief Mark cells covered by the TF camera FoV (coverage layer only).
@@ -87,7 +105,7 @@ public:
      * @brief Get current coverage targets (frontier clusters / unknowns).
      * @return Target points in the map frame
      */
-    const std::vector<commsgs::geometry_msgs::Point>& targets() const
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& targets() const
     {
         return targets_;
     }
@@ -102,7 +120,7 @@ public:
      * @brief Get extracted frontier points (pre-cluster).
      * @return Frontier points
      */
-    const std::vector<commsgs::geometry_msgs::Point>& frontiers() const
+    const std::vector<automsgs::msgs::geometry_msgs::Point>& frontiers() const
     {
         return frontiers_;
     }
@@ -167,7 +185,7 @@ public:
      * @return Path length [m], or inf if fail
      */
     double PlanPathAStar(double from_x, double from_y, double to_x, double to_y,
-                         std::vector<commsgs::geometry_msgs::Point>* path) const;
+                         std::vector<automsgs::msgs::geometry_msgs::Point>* path) const;
 
     /**
      * @brief Get robot x.
@@ -206,7 +224,7 @@ public:
      * @param frame_id Header frame id
      * @return Occupancy grid message
      */
-    commsgs::map_msgs::OccupancyGrid GetOccupancyGrid(
+    automsgs::msgs::map_msgs::OccupancyGrid GetOccupancyGrid(
         const std::string& frame_id) const;
 
 private:
@@ -263,7 +281,7 @@ private:
      * @param frontiers Output frontier points
      */
     void ExtractFrontiers(
-        std::vector<commsgs::geometry_msgs::Point>* frontiers) const;
+        std::vector<automsgs::msgs::geometry_msgs::Point>* frontiers) const;
 
     /**
      * @brief Cluster frontiers into gain targets.
@@ -272,8 +290,8 @@ private:
      * @param uncovered Output uncovered flags
      */
     void ClusterFrontiers(
-        const std::vector<commsgs::geometry_msgs::Point>& frontiers,
-        std::vector<commsgs::geometry_msgs::Point>* targets,
+        const std::vector<automsgs::msgs::geometry_msgs::Point>& frontiers,
+        std::vector<automsgs::msgs::geometry_msgs::Point>* targets,
         std::vector<bool>* uncovered) const;
 
     /**
@@ -282,7 +300,7 @@ private:
      * @param uncovered Output uncovered flags
      */
     void ExtractUnknownTargets(
-        std::vector<commsgs::geometry_msgs::Point>* targets,
+        std::vector<automsgs::msgs::geometry_msgs::Point>* targets,
         std::vector<bool>* uncovered) const;
 
     /**
@@ -290,7 +308,7 @@ private:
      * @param map_t_camera Extrinsic of camera in map
      */
     void MarkCoveredFromExtrinsic(
-        const commsgs::geometry_msgs::Transform& map_t_camera);
+        const automsgs::msgs::geometry_msgs::Transform& map_t_camera);
 
     /**
      * @brief Mark FoV-visible cells using cached / TF camera pose (single lookup).
@@ -303,9 +321,9 @@ private:
      * @param info Camera intrinsics
      * @param map_t_camera Extrinsic transform from camera to map
      */
-    void FuseDepthFrame(const commsgs::sensor_msgs::Image& depth,
-                        const commsgs::sensor_msgs::CameraInfo& info,
-                        const commsgs::geometry_msgs::Transform& map_t_camera);
+    void FuseDepthFrame(const automsgs::msgs::sensor_msgs::Image& depth,
+                        const automsgs::msgs::sensor_msgs::CameraInfo& info,
+                        const automsgs::msgs::geometry_msgs::Transform& map_t_camera);
 
     /**
      * @brief Rebuild targets_ / frontiers_ from the costmap.
@@ -346,23 +364,23 @@ private:
     map::costmap_2d::Costmap2D costmap_;  //!< @brief rolling occupancy
     map::costmap_2d::Costmap2D inflated_; //!< @brief inflated for collision
     ::autonomy::common::math::Polygon2d exploration_polygon_;
-    commsgs::geometry_msgs::Polygon exploration_area_;
+    automsgs::msgs::geometry_msgs::Polygon exploration_area_;
 
     std::vector<float> log_odds_;   //!< @brief Bayesian log-odds (0=unknown)
     std::vector<uint8_t> covered_;  //!< @brief FoV coverage flags
     std::unordered_map<int64_t, float> global_log_odds_;  //!< @brief archive
     std::unordered_map<int64_t, uint8_t> global_covered_;  //!< @brief archive
 
-    std::vector<commsgs::geometry_msgs::Point> targets_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> targets_;
     std::vector<bool> uncovered_;
-    std::vector<commsgs::geometry_msgs::Point> frontiers_;
+    std::vector<automsgs::msgs::geometry_msgs::Point> frontiers_;
 
     double robot_x_{0.0};
     double robot_y_{0.0};
     double robot_z_{0.0};
     double robot_yaw_{0.0};
     bool has_odom_{false};
-    commsgs::geometry_msgs::Transform
+    automsgs::msgs::geometry_msgs::Transform
         last_map_t_camera_{};             //!< @brief last camera extrinsic
     bool has_map_t_camera_{false};        //!< @brief whether extrinsic is valid
 };

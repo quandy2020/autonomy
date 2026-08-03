@@ -16,10 +16,16 @@ syntax = "proto3";
 
 package autonomy.bridge.proto;
 
-import "autonomy/commsgs/proto/geometry_msgs.proto";
-import "autonomy/commsgs/proto/vehicle_msgs.proto";
-import "autonomy/commsgs/proto/builtin_interfaces.proto";
-import "autonomy/commsgs/proto/error_code.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/polygon.proto";
+import "automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
+import "automsgs/msgs/vehicle_msgs/vehicle_msgs.proto";
+import "automsgs/msgs/builtin_interfaces/time.proto";
+import "automsgs/msgs/builtin_interfaces/duration.proto";
+import "automsgs/msgs/status_msgs/status_msgs.proto";
 import "google/protobuf/empty.proto";
 
 // =============================================================================
@@ -28,7 +34,7 @@ import "google/protobuf/empty.proto";
 
 // 请求公共头：时间戳、幂等 ID、客户端标识、防重放 nonce
 message RequestHeader {
-  commsgs.proto.builtin_interfaces.Time timestamp = 1;
+  automsgs.msgs.builtin_interfaces.Time timestamp = 1;
   string cmd_id = 2;
   string client_id = 3;
   string nonce = 4;
@@ -60,7 +66,7 @@ enum TaskStatus {
 message CommandAck {
   bool success = 1;
   string message = 2;
-  commsgs.proto.error_code.ErrorCode error_code = 3;
+  automsgs.msgs.status_msgs.StatusCode error_code = 3;
   bool final = 4;
   string cmd_id = 5;
   TaskType task_type = 6;
@@ -84,7 +90,7 @@ message ActiveTaskInfo {
   TaskStatus status = 2;
   string cmd_id = 3;
   string client_id = 4;
-  commsgs.proto.builtin_interfaces.Time started_at = 5;
+  automsgs.msgs.builtin_interfaces.Time started_at = 5;
   float progress = 6;  // [0, 1]，可选
 }
 
@@ -151,7 +157,7 @@ message NavigationCommandRequest {
   RequestHeader header = 1;
   NavigationCommand command = 2;
   NavigationMode mode = 3;         // START 时必填
-  repeated commsgs.proto.geometry_msgs.PoseStamped goals = 4;  // START 时必填
+  repeated automsgs.msgs.geometry_msgs.PoseStamped goals = 4;  // START 时必填
   NavigationPluginOptions plugins = 5;
   float timeout_sec = 6;           // 0 = 服务端默认
 }
@@ -162,7 +168,7 @@ message NavigationCommandResponse {
   int32 current_waypoint_index = 3;
   int32 total_waypoints = 4;
   float distance_remaining = 5;
-  commsgs.proto.geometry_msgs.PoseStamped current_pose = 6;
+  automsgs.msgs.geometry_msgs.PoseStamped current_pose = 6;
 }
 
 // =============================================================================
@@ -206,7 +212,7 @@ message FollowCommandRequest {
   float session_timeout_sec = 6;
   bool reacquire_on_lost = 7;
   oneof target {
-    commsgs.proto.geometry_msgs.PoseStamped target_pose = 8;
+    automsgs.msgs.geometry_msgs.PoseStamped target_pose = 8;
     string target_id = 9;
   }
 }
@@ -215,7 +221,7 @@ message FollowCommandResponse {
   CommandAck ack = 1;
   FollowStatus status = 2;
   float distance_to_target = 3;
-  commsgs.proto.geometry_msgs.PoseStamped target_pose = 4;
+  automsgs.msgs.geometry_msgs.PoseStamped target_pose = 4;
 }
 
 // =============================================================================
@@ -240,8 +246,8 @@ enum TeleopStatus {
 message TeleopCommandRequest {
   RequestHeader header = 1;
   TeleopCommand command = 2;
-  commsgs.proto.geometry_msgs.TwistStamped velocity = 3;  // VELOCITY 时必填
-  commsgs.proto.builtin_interfaces.Duration session_timeout = 4;
+  automsgs.msgs.geometry_msgs.TwistStamped velocity = 3;  // VELOCITY 时必填
+  automsgs.msgs.builtin_interfaces.Duration session_timeout = 4;
   float max_linear_speed = 5;
   float max_angular_speed = 6;
   float watchdog_timeout_sec = 7;   // 无速度指令超时自动 STOP，0 = 默认
@@ -282,7 +288,7 @@ message ExplorationCommandRequest {
   RequestHeader header = 1;
   ExplorationCommand command = 2;
   oneof params {
-    commsgs.proto.geometry_msgs.Polygon area = 3;
+    automsgs.msgs.geometry_msgs.Polygon area = 3;
     string map_name = 4;
   }
 }
@@ -328,7 +334,7 @@ message DockCommandRequest {
   int32 max_retry_count = 4;
   oneof dock_target {
     string dock_station_id = 5;
-    commsgs.proto.geometry_msgs.PoseStamped dock_pose = 6;
+    automsgs.msgs.geometry_msgs.PoseStamped dock_pose = 6;
   }
 }
 
@@ -366,8 +372,8 @@ message MapCommandRequest {
   MapCommand command = 2;
   oneof params {
     string map_name = 3;
-    commsgs.proto.geometry_msgs.PoseWithCovarianceStamped initial_pose = 4;
-    commsgs.proto.geometry_msgs.Polygon keep_out_zone = 5;
+    automsgs.msgs.geometry_msgs.PoseWithCovarianceStamped initial_pose = 4;
+    automsgs.msgs.geometry_msgs.Polygon keep_out_zone = 5;
     string zone_id = 6;
   }
 }
@@ -391,13 +397,13 @@ message MapCommandResponse {
 service AutonomyService {
   // --- 推送（长连接）---
   rpc ReceiveBotStates(google.protobuf.Empty)
-      returns (stream commsgs.proto.vehicle_msgs.RobotState);
+      returns (stream automsgs.msgs.vehicle_msgs.RobotState);
   rpc ReceiveBotEvents(google.protobuf.Empty)
-      returns (stream commsgs.proto.vehicle_msgs.RobotEvent);
+      returns (stream automsgs.msgs.vehicle_msgs.RobotEvent);
 
   // --- 查询（Unary）---
   rpc GetRobotSnapshot(google.protobuf.Empty)
-      returns (commsgs.proto.vehicle_msgs.RobotState);
+      returns (automsgs.msgs.vehicle_msgs.RobotState);
   rpc GetActiveTask(google.protobuf.Empty)
       returns (ActiveTaskInfo);
   rpc GetCapabilities(google.protobuf.Empty)

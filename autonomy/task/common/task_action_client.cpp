@@ -4,13 +4,13 @@
 
 #include "autonomy/task/common/task_action_client.hpp"
 
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/actions/nav_actions.pb.h>
 
 namespace autonomy {
 namespace task {
 namespace common {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
+namespace nav_proto = automsgs::actions;
 
 template class TaskActionClient<nav_proto::ComputePathToPoseAction>;
 template class TaskActionClient<nav_proto::ComputePathThroughPosesAction>;

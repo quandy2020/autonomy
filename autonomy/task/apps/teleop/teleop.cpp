@@ -2,7 +2,15 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/apps/teleop/teleop.hpp"
 
 #include "autolink/autolink.hpp"
@@ -15,15 +23,15 @@ namespace autonomy {
 namespace task {
 namespace {
 
-commsgs::geometry_msgs::TwistStamped ToTwistStamped(
-    const ::autonomy::commsgs::proto::geometry_msgs::TwistStamped& proto)
+automsgs::msgs::geometry_msgs::TwistStamped ToTwistStamped(
+    const ::automsgs::msgs::geometry_msgs::TwistStamped& proto)
 {
-    return commsgs::geometry_msgs::FromProto(proto);
+    return proto;
 }
 
 }  // namespace
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace tp = ::autonomy::task::proto;
 
 RobotTaskType TeleopTask::GetTaskType() const
@@ -255,7 +263,7 @@ void TeleopTask::FillFeedback(tp::TeleopFeedback* feedback) const
     feedback->set_status(MapStatus());
     if (teleop_client_) {
         *feedback->mutable_applied_velocity() =
-            commsgs::geometry_msgs::ToProto(teleop_client_->applied_velocity());
+            teleop_client_->applied_velocity();
     }
 }
 

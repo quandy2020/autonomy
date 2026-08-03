@@ -22,7 +22,7 @@ class ChargingTask : public BtTaskApp<::autonomy::task::proto::ChargingGoal,
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(ChargingTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetChargingClient(charging::ChargingClient::Ptr client);

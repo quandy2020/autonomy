@@ -2,13 +2,13 @@
  * Copyright 2026 The Openbot Authors
  */
 
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/actions/nav_actions.pb.h>
 #include "autonomy/task/apps/navigation/plugins/plugin_utils.hpp"
 #include "autonomy/task/apps/navigation/plugins/rpc_action_node.hpp"
 
 namespace autonomy::task::plugins::navigation {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
+namespace nav_proto = automsgs::actions;
 
 class SpinAction : public RpcAsyncActionNode<nav_proto::SpinAction>
 {

@@ -81,8 +81,7 @@ int main(int argc, char** argv) {
               << " s (watch /cmd_vel with autolink_channel echo)";
 
     autolink::Rate rate(FLAGS_rate_hz);
-    const auto deadline = std::chrono::steady_clock::now() +
-                          std::chrono::duration<double>(FLAGS_duration_sec);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::duration<double>(FLAGS_duration_sec);
     size_t velocity_ok = 0;
     while (std::chrono::steady_clock::now() < deadline) {
         auto vel = MakeTeleopGoal(

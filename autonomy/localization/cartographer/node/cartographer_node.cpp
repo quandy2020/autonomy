@@ -1,3 +1,11 @@
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
 /*
  * Copyright 2016 The Cartographer Authors
  *
@@ -22,7 +30,6 @@
 
 #include <glog/logging.h>
 
-#include "autonomy/commsgs/proto/geometry_msgs.pb.h"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/mapping/id.hpp"
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
@@ -48,21 +55,20 @@ namespace {
 
 void SetTransformInBuffer(
     transform::Buffer* buffer,
-    const commsgs::geometry_msgs::TransformStamped& trans,
+    const automsgs::msgs::geometry_msgs::TransformStamped& trans,
     const std::string& authority, bool is_static) {
     geometry_msgs::TransformStamped geo_msg;
-    geo_msg.header.stamp =
-        static_cast<uint64_t>(trans.header.stamp.sec) * 1000000000ULL +
-        static_cast<uint64_t>(trans.header.stamp.nanosec);
-    geo_msg.header.frame_id = trans.header.frame_id;
-    geo_msg.child_frame_id = trans.child_frame_id;
-    geo_msg.transform.translation.x = trans.transform.translation.x;
-    geo_msg.transform.translation.y = trans.transform.translation.y;
-    geo_msg.transform.translation.z = trans.transform.translation.z;
-    geo_msg.transform.rotation.x = trans.transform.rotation.x;
-    geo_msg.transform.rotation.y = trans.transform.rotation.y;
-    geo_msg.transform.rotation.z = trans.transform.rotation.z;
-    geo_msg.transform.rotation.w = trans.transform.rotation.w;
+    *geo_msg.mutable_header()->mutable_stamp() = static_cast<uint64_t>(trans.header().stamp().sec()) * 1000000000ULL +
+        static_cast<uint64_t>(trans.header().stamp().nanosec());
+    geo_msg.mutable_header()->set_frame_id(trans.header().frame_id());
+    geo_msg.child_frame_id() = trans.child_frame_id();
+    geo_msg.transform().translation().x() = trans.transform().translation().x();
+    geo_msg.transform().translation().y() = trans.transform().translation().y();
+    geo_msg.transform().translation().z() = trans.transform().translation().z();
+    geo_msg.transform().rotation().x() = trans.transform().rotation().x();
+    geo_msg.transform().rotation().y() = trans.transform().rotation().y();
+    geo_msg.transform().rotation().z() = trans.transform().rotation().z();
+    geo_msg.transform().rotation().w() = trans.transform().rotation().w();
     buffer->setTransform(geo_msg, authority, is_static);
 }
 
@@ -93,12 +99,12 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
         node_->CreateWriter<proto::SubmapList>(kSubmapListTopic);
     if (node_options_.publish_tracked_pose) {
         tracked_pose_writer_ =
-            node_->CreateWriter<commsgs::geometry_msgs::PoseStamped>(
+            node_->CreateWriter<automsgs::msgs::geometry_msgs::PoseStamped>(
                 kTrackedPoseTopic);
     }
     if (node_options_.publish_occupancy_grid) {
         occupancy_grid_writer_ =
-            node_->CreateWriter<commsgs::map_msgs::OccupancyGrid>(
+            node_->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(
                 kOccupancyGridTopic);
     }
 
@@ -129,9 +135,9 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
             HandleWriteState(request, response);
         });
 
-    node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
+    node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
         transform::kTfTopic,
-        [this](const std::shared_ptr<commsgs::geometry_msgs::TransformStampeds>&
+        [this](const std::shared_ptr<automsgs::msgs::geometry_msgs::TransformStampeds>&
                    msg) {
             if (!msg || !tf_buffer_) {
                 return;
@@ -146,9 +152,9 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
             }
         });
 
-    node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
+    node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
         transform::kTfStaticTopic,
-        [this](const std::shared_ptr<commsgs::geometry_msgs::TransformStampeds>&
+        [this](const std::shared_ptr<automsgs::msgs::geometry_msgs::TransformStampeds>&
                    msg) {
             if (!msg || !tf_buffer_) {
                 return;
@@ -289,10 +295,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
     CartographerNode* self = this;
     for (const std::string& topic :
          ComputeRepeatedTopicNames(kLaserScanTopic, options.num_laser_scans)) {
-        node_->CreateReader<commsgs::sensor_msgs::LaserScan>(
+        node_->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
             topic,
             [self, trajectory_id, topic](
-                const std::shared_ptr<commsgs::sensor_msgs::LaserScan>& msg) {
+                const std::shared_ptr<automsgs::msgs::sensor_msgs::LaserScan>& msg) {
                 if (msg) {
                     self->HandleLaserScanMessage(trajectory_id, topic, *msg);
                 }
@@ -300,10 +306,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
     }
 
     for (const std::string& topic : ResolveMultiEchoLaserScanTopics(options)) {
-        node_->CreateReader<commsgs::sensor_msgs::MultiEchoLaserScan>(
+        node_->CreateReader<automsgs::msgs::sensor_msgs::MultiEchoLaserScan>(
             topic,
             [self, trajectory_id, topic](
-                const std::shared_ptr<commsgs::sensor_msgs::MultiEchoLaserScan>&
+                const std::shared_ptr<automsgs::msgs::sensor_msgs::MultiEchoLaserScan>&
                     msg) {
                 if (msg) {
                     self->HandleMultiEchoLaserScanMessage(trajectory_id, topic,
@@ -314,10 +320,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
 
     for (const std::string& topic : ComputeRepeatedTopicNames(
              kPointCloud2Topic, options.num_point_clouds)) {
-        node_->CreateReader<commsgs::sensor_msgs::PointCloud2>(
+        node_->CreateReader<automsgs::msgs::sensor_msgs::PointCloud2>(
             topic,
             [self, trajectory_id, topic](
-                const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg) {
+                const std::shared_ptr<automsgs::msgs::sensor_msgs::PointCloud2>& msg) {
                 if (msg) {
                     self->HandlePointCloud2Message(trajectory_id, topic, *msg);
                 }
@@ -328,10 +334,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
         (node_options_.map_builder_options.use_trajectory_builder_2d() &&
          options.trajectory_builder_options.trajectory_builder_2d_options()
              .use_imu_data())) {
-        node_->CreateReader<commsgs::sensor_msgs::Imu>(
+        node_->CreateReader<automsgs::msgs::sensor_msgs::Imu>(
             kImuTopic,
             [self, trajectory_id](
-                const std::shared_ptr<commsgs::sensor_msgs::Imu>& msg) {
+                const std::shared_ptr<automsgs::msgs::sensor_msgs::Imu>& msg) {
                 if (msg) {
                     self->HandleImuMessage(trajectory_id, kImuTopic, *msg);
                 }
@@ -339,10 +345,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
     }
 
     if (options.use_odometry) {
-        node_->CreateReader<commsgs::planning_msgs::Odometry>(
+        node_->CreateReader<automsgs::msgs::planning_msgs::Odometry>(
             kOdometryTopic,
             [self, trajectory_id](
-                const std::shared_ptr<commsgs::planning_msgs::Odometry>& msg) {
+                const std::shared_ptr<automsgs::msgs::planning_msgs::Odometry>& msg) {
                 if (msg) {
                     self->HandleOdometryMessage(trajectory_id, kOdometryTopic,
                                                 *msg);
@@ -351,10 +357,10 @@ void CartographerNode::LaunchSubscribers(const TrajectoryOptions& options,
     }
 
     if (options.use_nav_sat) {
-        node_->CreateReader<commsgs::sensor_msgs::NavSatFix>(
+        node_->CreateReader<automsgs::msgs::sensor_msgs::NavSatFix>(
             kNavSatFixTopic,
             [self, trajectory_id](
-                const std::shared_ptr<commsgs::sensor_msgs::NavSatFix>& msg) {
+                const std::shared_ptr<automsgs::msgs::sensor_msgs::NavSatFix>& msg) {
                 if (msg) {
                     self->HandleNavSatFixMessage(trajectory_id, kNavSatFixTopic,
                                                  *msg);
@@ -410,7 +416,7 @@ void CartographerNode::PublishSubmapList() {
         return;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    const auto now = commsgs::builtin_interfaces::Time::Now();
+    const auto now = automsgs::msgs::builtin_interfaces::Time::Now();
     submap_list_writer_->Write(
         map_builder_bridge_->GetSubmapList(now));
 }
@@ -427,21 +433,20 @@ void CartographerNode::PublishLocalTrajectoryData() {
                                  trajectory_data.local_slam_data->local_pose);
         }
 
-        commsgs::geometry_msgs::TransformStamped stamped_transform;
+        automsgs::msgs::geometry_msgs::TransformStamped stamped_transform;
         const carto::common::Time now = std::max(
-            FromCommsgs(commsgs::builtin_interfaces::Time::Now()),
+            FromCommsgs(automsgs::msgs::builtin_interfaces::Time::Now()),
             extrapolator.GetLastExtrapolatedTime());
-        stamped_transform.header.stamp =
-            node_options_.use_pose_extrapolator
+        *stamped_transform.mutable_header()->mutable_stamp() = node_options_.use_pose_extrapolator
                 ? ToCommsgs(now)
                 : ToCommsgs(trajectory_data.local_slam_data->time);
 
         if (last_published_tf_stamps_.count(entry.first) &&
             last_published_tf_stamps_[entry.first] ==
-                stamped_transform.header.stamp) {
+                stamped_transform.header().stamp()) {
             continue;
         }
-        last_published_tf_stamps_[entry.first] = stamped_transform.header.stamp;
+        last_published_tf_stamps_[entry.first] = stamped_transform.header().stamp();
 
         const Rigid3d tracking_to_local_3d =
             node_options_.use_pose_extrapolator
@@ -461,29 +466,27 @@ void CartographerNode::PublishLocalTrajectoryData() {
 
         if (trajectory_data.published_to_tracking != nullptr) {
             if (node_options_.publish_to_tf && tf_broadcaster_) {
-                std::vector<commsgs::geometry_msgs::TransformStamped>
+                std::vector<automsgs::msgs::geometry_msgs::TransformStamped>
                     stamped_transforms;
                 if (trajectory_data.trajectory_options.provide_odom_frame) {
-                    stamped_transform.header.frame_id = node_options_.map_frame;
-                    stamped_transform.child_frame_id =
+                    stamped_transform.mutable_header()->set_frame_id(node_options_.map_frame);
+                    stamped_transform.child_frame_id() =
                         trajectory_data.trajectory_options.odom_frame;
-                    stamped_transform.transform =
-                        ToGeometryMsgTransform(trajectory_data.local_to_map);
+                    *stamped_transform.mutable_transform() = ToGeometryMsgTransform(trajectory_data.local_to_map);
                     stamped_transforms.push_back(stamped_transform);
 
-                    stamped_transform.header.frame_id =
-                        trajectory_data.trajectory_options.odom_frame;
-                    stamped_transform.child_frame_id =
+                    stamped_transform.mutable_header()->set_frame_id(trajectory_data.trajectory_options.odom_frame);
+                    stamped_transform.child_frame_id() =
                         trajectory_data.trajectory_options.published_frame;
-                    stamped_transform.transform = ToGeometryMsgTransform(
+                    *stamped_transform.mutable_transform() = ToGeometryMsgTransform(
                         tracking_to_local *
                         (*trajectory_data.published_to_tracking));
                     stamped_transforms.push_back(stamped_transform);
                 } else {
-                    stamped_transform.header.frame_id = node_options_.map_frame;
-                    stamped_transform.child_frame_id =
+                    stamped_transform.mutable_header()->set_frame_id(node_options_.map_frame);
+                    stamped_transform.child_frame_id() =
                         trajectory_data.trajectory_options.published_frame;
-                    stamped_transform.transform = ToGeometryMsgTransform(
+                    *stamped_transform.mutable_transform() = ToGeometryMsgTransform(
                         tracking_to_map *
                         (*trajectory_data.published_to_tracking));
                     stamped_transforms.push_back(stamped_transform);
@@ -491,10 +494,10 @@ void CartographerNode::PublishLocalTrajectoryData() {
                 tf_broadcaster_->SendTransform(stamped_transforms);
             }
             if (node_options_.publish_tracked_pose && tracked_pose_writer_) {
-                commsgs::geometry_msgs::PoseStamped pose_msg;
-                pose_msg.header.frame_id = node_options_.map_frame;
-                pose_msg.header.stamp = stamped_transform.header.stamp;
-                pose_msg.pose = ToGeometryMsgPose(tracking_to_map);
+                automsgs::msgs::geometry_msgs::PoseStamped pose_msg;
+                pose_msg.mutable_header()->set_frame_id(node_options_.map_frame);
+                *pose_msg.mutable_header()->mutable_stamp() = stamped_transform.header().stamp();
+                *pose_msg.mutable_pose() = ToGeometryMsgPose(tracking_to_map);
                 tracked_pose_writer_->Write(pose_msg);
             }
         }
@@ -507,7 +510,7 @@ void CartographerNode::PublishOccupancyGrid() {
     }
 
     const auto submap_slices = CollectSubmapSlices();
-    const auto now = commsgs::builtin_interfaces::Time::Now();
+    const auto now = automsgs::msgs::builtin_interfaces::Time::Now();
     if (auto grid = BuildOccupancyGrid(submap_slices,
                                        node_options_.occupancy_grid_resolution,
                                        node_options_.map_frame, now)) {
@@ -522,7 +525,7 @@ CartographerNode::CollectSubmapSlices() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         submap_list = map_builder_bridge_->GetSubmapList(
-            commsgs::builtin_interfaces::Time::Now());
+            automsgs::msgs::builtin_interfaces::Time::Now());
     }
 
     for (const auto& submap_msg : submap_list.submap()) {
@@ -580,9 +583,9 @@ void CartographerNode::DispatchSensorMessage(
 
 void CartographerNode::HandleOdometryMessage(
     const int trajectory_id, const std::string& sensor_id,
-    const commsgs::planning_msgs::Odometry& msg) {
-    const auto sensor_time = FromCommsgs(msg.header.stamp);
-    auto msg_ptr = std::make_shared<commsgs::planning_msgs::Odometry>(msg);
+    const automsgs::msgs::planning_msgs::Odometry& msg) {
+    const auto sensor_time = FromCommsgs(msg.header().stamp());
+    auto msg_ptr = std::make_shared<automsgs::msgs::planning_msgs::Odometry>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,
@@ -606,9 +609,9 @@ void CartographerNode::HandleOdometryMessage(
 
 void CartographerNode::HandleImuMessage(
     const int trajectory_id, const std::string& sensor_id,
-    const commsgs::sensor_msgs::Imu& msg) {
-    const auto sensor_time = FromCommsgs(msg.header.stamp);
-    auto msg_ptr = std::make_shared<commsgs::sensor_msgs::Imu>(msg);
+    const automsgs::msgs::sensor_msgs::Imu& msg) {
+    const auto sensor_time = FromCommsgs(msg.header().stamp());
+    auto msg_ptr = std::make_shared<automsgs::msgs::sensor_msgs::Imu>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,
@@ -636,9 +639,9 @@ void CartographerNode::HandleImuMessage(
 
 void CartographerNode::HandleLaserScanMessage(
     const int trajectory_id, const std::string& sensor_id,
-    const commsgs::sensor_msgs::LaserScan& msg) {
-    const auto sensor_time = FromCommsgs(msg.header.stamp);
-    auto msg_ptr = std::make_shared<commsgs::sensor_msgs::LaserScan>(msg);
+    const automsgs::msgs::sensor_msgs::LaserScan& msg) {
+    const auto sensor_time = FromCommsgs(msg.header().stamp());
+    auto msg_ptr = std::make_shared<automsgs::msgs::sensor_msgs::LaserScan>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,
@@ -654,9 +657,9 @@ void CartographerNode::HandleLaserScanMessage(
 
 void CartographerNode::HandlePointCloud2Message(
     const int trajectory_id, const std::string& sensor_id,
-    const commsgs::sensor_msgs::PointCloud2& msg) {
-    const auto sensor_time = FromCommsgs(msg.header.stamp);
-    auto msg_ptr = std::make_shared<commsgs::sensor_msgs::PointCloud2>(msg);
+    const automsgs::msgs::sensor_msgs::PointCloud2& msg) {
+    const auto sensor_time = FromCommsgs(msg.header().stamp());
+    auto msg_ptr = std::make_shared<automsgs::msgs::sensor_msgs::PointCloud2>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,
@@ -672,10 +675,10 @@ void CartographerNode::HandlePointCloud2Message(
 
 void CartographerNode::HandleMultiEchoLaserScanMessage(
     const int trajectory_id, const std::string& sensor_id,
-    const commsgs::sensor_msgs::MultiEchoLaserScan& msg) {
-    const auto sensor_time = FromCommsgs(msg.header.stamp);
+    const automsgs::msgs::sensor_msgs::MultiEchoLaserScan& msg) {
+    const auto sensor_time = FromCommsgs(msg.header().stamp());
     auto msg_ptr =
-        std::make_shared<commsgs::sensor_msgs::MultiEchoLaserScan>(msg);
+        std::make_shared<automsgs::msgs::sensor_msgs::MultiEchoLaserScan>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,
@@ -691,9 +694,9 @@ void CartographerNode::HandleMultiEchoLaserScanMessage(
 
 void CartographerNode::HandleNavSatFixMessage(
     const int trajectory_id, const std::string& sensor_id,
-    const commsgs::sensor_msgs::NavSatFix& msg) {
-    const auto sensor_time = FromCommsgs(msg.header.stamp);
-    auto msg_ptr = std::make_shared<commsgs::sensor_msgs::NavSatFix>(msg);
+    const automsgs::msgs::sensor_msgs::NavSatFix& msg) {
+    const auto sensor_time = FromCommsgs(msg.header().stamp());
+    auto msg_ptr = std::make_shared<automsgs::msgs::sensor_msgs::NavSatFix>(msg);
     std::lock_guard<std::mutex> lock(mutex_);
     DispatchSensorMessage(
         trajectory_id, sensor_time,
@@ -712,8 +715,8 @@ void CartographerNode::HandleLandmarkMessage(
     const proto::LandmarkList& msg) {
     const auto sensor_time =
         msg.has_header()
-            ? FromCommsgs(commsgs::builtin_interfaces::FromProto(
-                  msg.header().stamp()))
+            ? FromCommsgs(
+                  msg.header(.stamp()))
             : carto::common::Time::min();
     auto msg_ptr = std::make_shared<proto::LandmarkList>(msg);
     std::lock_guard<std::mutex> lock(mutex_);

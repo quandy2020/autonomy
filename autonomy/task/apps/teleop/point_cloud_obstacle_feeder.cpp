@@ -40,9 +40,9 @@ void PointCloudObstacleFeeder::Start() {
         return;
     }
     PointCloudObstacleFeeder* self = this;
-    reader_ = node_->CreateReader<commsgs::sensor_msgs::PointCloud2>(
+    reader_ = node_->CreateReader<automsgs::msgs::sensor_msgs::PointCloud2>(
         options_.cloud_topic, [self](const std::shared_ptr<
-                                     commsgs::sensor_msgs::PointCloud2>& msg) {
+                                     automsgs::msgs::sensor_msgs::PointCloud2>& msg) {
             self->OnPointCloud(msg);
         });
     if (!reader_) {
@@ -74,11 +74,11 @@ bool PointCloudObstacleFeeder::IsCloudFresh() const {
 }
 
 void PointCloudObstacleFeeder::OnPointCloud(
-    const std::shared_ptr<commsgs::sensor_msgs::PointCloud2>& msg) {
+    const std::shared_ptr<automsgs::msgs::sensor_msgs::PointCloud2>& msg) {
     if (!msg || !costmap_) {
         return;
     }
-    if (msg->width == 0 && msg->height == 0) {
+    if (msg->width() == 0 && msg->height() == 0) {
         return;
     }
     costmap_->feedPointCloud2(*msg);

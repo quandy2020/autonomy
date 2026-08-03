@@ -24,9 +24,26 @@
 
 #include "autolink/autolink.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/polygon.pb.h>
+#include <automsgs/msgs/geometry_msgs/point32.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/exploration/common/explorer_interface.hpp"
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 
@@ -90,7 +107,7 @@ public:
      * @brief Forward odometry to the active explorer.
      * @param odom Robot odometry
      */
-    void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
+    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
 
     /**
      * @brief Forward depth to the active explorer and replan.
@@ -98,22 +115,22 @@ public:
      * @param info Camera intrinsics
      * @param map_t_camera Extrinsic transform from camera to map
      */
-    void UpdateDepth(const commsgs::sensor_msgs::Image& depth,
-                     const commsgs::sensor_msgs::CameraInfo& info,
-                     const commsgs::geometry_msgs::Transform& map_t_camera);
+    void UpdateDepth(const automsgs::msgs::sensor_msgs::Image& depth,
+                     const automsgs::msgs::sensor_msgs::CameraInfo& info,
+                     const automsgs::msgs::geometry_msgs::Transform& map_t_camera);
 
     /**
      * @brief Set exploration area on the active explorer.
      * @param area Boundary polygon
      */
-    void SetExplorationArea(const commsgs::geometry_msgs::Polygon& area);
+    void SetExplorationArea(const automsgs::msgs::geometry_msgs::Polygon& area);
 
     /**
      * @brief Get the next exploration waypoint.
      * @param out Output pose
      * @return true if a waypoint is available
      */
-    bool GetNextWaypoint(commsgs::geometry_msgs::PoseStamped& out);
+    bool GetNextWaypoint(automsgs::msgs::geometry_msgs::PoseStamped& out);
 
     /**
      * @brief Mark the current waypoint as reached.

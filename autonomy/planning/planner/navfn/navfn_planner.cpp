@@ -83,9 +83,9 @@ void NavfnPlanner::InitFromOptions() {
 }
 
 uint32 NavfnPlanner::CreatePlan(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    commsgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
+    const automsgs::msgs::geometry_msgs::PoseStamped& start,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+    automsgs::msgs::planning_msgs::Path& plan, std::function<bool()> cancel_checker) {
     if (!costmap_) {
         AERROR << "Costmap is not set for planner " << name_;
         return static_cast<uint32>(
@@ -93,8 +93,8 @@ uint32 NavfnPlanner::CreatePlan(
     }
 
     // Set global_frame_ from start pose if not already set
-    if (global_frame_.empty() && !start.header.frame_id.empty()) {
-        global_frame_ = start.header.frame_id;
+    if (global_frame_.empty() && !start.header().frame_id().empty()) {
+        global_frame_ = start.header().frame_id();
     }
 
     auto* costmap_ptr = costmap_->getCostmap();
@@ -118,7 +118,7 @@ uint32 NavfnPlanner::CreatePlan(
             static_cast<int>(costmap_ptr->getSizeInCellsY()));
     }
 
-    if (makePlan(start.pose, goal.pose, tolerance_, cancel_checker, plan)) {
+    if (makePlan(start.pose(), goal.pose(), tolerance_, cancel_checker, plan)) {
         return static_cast<uint32>(proto::PlannerResultCode::PLANNER_SUCCESS);
     }
     if (planner_ && planner_->wasPropagationCancelled()) {
@@ -141,20 +141,20 @@ bool NavfnPlanner::isPlannerOutOfDate() {
     return false;
 }
 
-bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
-                            const commsgs::geometry_msgs::Pose& goal,
+bool NavfnPlanner::makePlan(const automsgs::msgs::geometry_msgs::Pose& start,
+                            const automsgs::msgs::geometry_msgs::Pose& goal,
                             double tolerance,
                             std::function<bool()> cancel_checker,
-                            commsgs::planning_msgs::Path& plan) {
+                            automsgs::msgs::planning_msgs::Path& plan) {
     // clear the plan, just in case
-    plan.poses.clear();
+    plan.clear_poses();
 
-    // plan.header.stamp = clock_->now();
+    // *plan.mutable_header()->mutable_stamp() = clock_->now();
     // Use default frame_id "map" if not set, or get from start/goal pose
-    plan.header.frame_id = global_frame_.empty() ? "map" : global_frame_;
+    plan.mutable_header()->set_frame_id(global_frame_.empty() ? "map" : global_frame_);
 
-    double wx = start.position.x;
-    double wy = start.position.y;
+    double wx = start.position().x();
+    double wy = start.position().y();
 
     unsigned int mx, my;
     if (!worldToMap(wx, wy, mx, my)) {
@@ -190,8 +190,8 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
     map_start[0] = mx;
     map_start[1] = my;
 
-    wx = goal.position.x;
-    wy = goal.position.y;
+    wx = goal.position().x();
+    wy = goal.position().y();
 
     if (!worldToMap(wx, wy, mx, my)) {
         AERROR << "Goal position (" << wx << ", " << wy
@@ -215,39 +215,39 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
         return false;
     }
     double resolution = costmap->getResolution();
-    commsgs::geometry_msgs::Pose p, best_pose;
+    automsgs::msgs::geometry_msgs::Pose p, best_pose;
 
     bool found_legal = false;
 
     p = goal;
-    double potential = getPointPotential(p.position);
+    double potential = getPointPotential(p.position());
     if (potential < POT_HIGH) {
         // Goal is reachable by itself
         best_pose = p;
         found_legal = true;
     } else if (potential == std::numeric_limits<double>::max()) {
         // Point is outside map bounds
-        AERROR << "Goal position (" << goal.position.x << ", "
-               << goal.position.y << ") is outside map bounds";
+        AERROR << "Goal position (" << goal.position().x() << ", "
+               << goal.position().y() << ") is outside map bounds";
     } else {
         // Goal is not reachable. Trying to find nearest to the goal
         // reachable point within its tolerance region
         double best_sdist = std::numeric_limits<double>::max();
 
-        p.position.y = goal.position.y - tolerance;
-        while (p.position.y <= goal.position.y + tolerance) {
-            p.position.x = goal.position.x - tolerance;
-            while (p.position.x <= goal.position.x + tolerance) {
-                potential = getPointPotential(p.position);
+        p.mutable_position()->set_y(goal.position().y() - tolerance);
+        while (p.position().y() <= goal.position().y() + tolerance) {
+            p.mutable_position()->set_x(goal.position().x() - tolerance);
+            while (p.position().x() <= goal.position().x() + tolerance) {
+                potential = getPointPotential(p.position());
                 double sdist = squared_distance(p, goal);
                 if (potential < POT_HIGH && sdist < best_sdist) {
                     best_sdist = sdist;
                     best_pose = p;
                     found_legal = true;
                 }
-                p.position.x += resolution;
+                p.mutable_position()->set_x(p.position().x() + resolution);
             }
-            p.position.y += resolution;
+            p.mutable_position()->set_y(p.position().y() + resolution);
         }
     }
 
@@ -261,25 +261,27 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
             // 'final approach' orientation of the robot so it does not rotate.
             // And deal with corner case of plan of length 1
             if (use_final_approach_orientation_) {
-                size_t plan_size = plan.poses.size();
+                size_t plan_size = plan.poses_size();
                 if (plan_size == 1) {
-                    plan.poses.back().pose.orientation = start.orientation;
+                    *plan.mutable_poses()->Mutable(plan.poses_size() - 1)
+                         ->mutable_pose()->mutable_orientation() = start.orientation();
                 } else if (plan_size > 1) {
                     double dx, dy, theta;
-                    auto last_pose = plan.poses.back().pose.position;
+                    auto last_pose = plan.poses(plan.poses_size() - 1).pose().position();
                     auto approach_pose =
-                        plan.poses[plan_size - 2].pose.position;
+                        plan.poses(plan_size - 2).pose().position();
                     // Deal with the case of NavFn producing a path with two
                     // equal last poses
-                    if (std::abs(last_pose.x - approach_pose.x) < 0.0001 &&
-                        std::abs(last_pose.y - approach_pose.y) < 0.0001 &&
+                    if (std::abs(last_pose.x() - approach_pose.x()) < 0.0001 &&
+                        std::abs(last_pose.y() - approach_pose.y()) < 0.0001 &&
                         plan_size > 2) {
-                        approach_pose = plan.poses[plan_size - 3].pose.position;
+                        approach_pose = plan.poses(plan_size - 3).pose().position();
                     }
-                    dx = last_pose.x - approach_pose.x;
-                    dy = last_pose.y - approach_pose.y;
+                    dx = last_pose.x() - approach_pose.x();
+                    dy = last_pose.y() - approach_pose.y();
                     theta = atan2(dy, dx);
-                    plan.poses.back().pose.orientation =
+                    *plan.mutable_poses()->Mutable(plan.poses_size() - 1)
+                         ->mutable_pose()->mutable_orientation() =
                         map::costmap_2d::utils::OrientationAroundZAxis(theta);
                 }
             }
@@ -289,38 +291,38 @@ bool NavfnPlanner::makePlan(const commsgs::geometry_msgs::Pose& start,
         }
     }
 
-    return !plan.poses.empty();
+    return !plan.poses().empty();
 }
 
 void NavfnPlanner::smoothApproachToGoal(
-    const commsgs::geometry_msgs::Pose& goal,
-    commsgs::planning_msgs::Path& plan) {
+    const automsgs::msgs::geometry_msgs::Pose& goal,
+    automsgs::msgs::planning_msgs::Path& plan) {
     // Replace the last pose of the computed path if it's actually further away
     // to the second to last pose than the goal pose.
-    if (plan.poses.size() >= 2) {
-        auto second_to_last_pose = plan.poses.end()[-2];
-        auto last_pose = plan.poses.back();
-        if (squared_distance(last_pose.pose, second_to_last_pose.pose) >
-            squared_distance(goal, second_to_last_pose.pose)) {
-            plan.poses.back().pose = goal;
+    if (plan.poses_size() >= 2) {
+        auto second_to_last_pose = plan.poses().end()[-2];
+        auto last_pose = plan.poses(plan.poses_size() - 1);
+        if (squared_distance(last_pose.pose(), second_to_last_pose.pose()) >
+            squared_distance(goal, second_to_last_pose.pose())) {
+            *plan.mutable_poses()->Mutable(plan.poses_size() - 1)->mutable_pose() = goal;
             return;
         }
     }
-    commsgs::geometry_msgs::PoseStamped goal_copy;
-    goal_copy.header.frame_id = plan.header.frame_id;
-    goal_copy.pose = goal;
-    plan.poses.push_back(goal_copy);
+    automsgs::msgs::geometry_msgs::PoseStamped goal_copy;
+    goal_copy.mutable_header()->set_frame_id(plan.header().frame_id());
+    *goal_copy.mutable_pose() = goal;
+    *plan.mutable_poses()->Add() = goal_copy;
 }
 
 bool NavfnPlanner::getPlanFromPotential(
-    const commsgs::geometry_msgs::Pose& goal,
-    commsgs::planning_msgs::Path& plan) {
+    const automsgs::msgs::geometry_msgs::Pose& goal,
+    automsgs::msgs::planning_msgs::Path& plan) {
     // clear the plan, just in case
-    plan.poses.clear();
+    plan.clear_poses();
 
     // Goal should be in global frame
-    double wx = goal.position.x;
-    double wy = goal.position.y;
+    double wx = goal.position().x();
+    double wy = goal.position().y();
 
     // the potential has already been computed, so we won't update our copy of
     // the costmap
@@ -365,25 +367,25 @@ bool NavfnPlanner::getPlanFromPotential(
         double world_x, world_y;
         mapToWorld(x[i], y[i], world_x, world_y);
 
-        commsgs::geometry_msgs::PoseStamped pose;
-        pose.header.frame_id = plan.header.frame_id;
-        pose.pose.position.x = world_x;
-        pose.pose.position.y = world_y;
-        pose.pose.position.z = 0.0;
-        pose.pose.orientation.x = 0.0;
-        pose.pose.orientation.y = 0.0;
-        pose.pose.orientation.z = 0.0;
-        pose.pose.orientation.w = 1.0;
-        plan.poses.push_back(pose);
+        automsgs::msgs::geometry_msgs::PoseStamped pose;
+        pose.mutable_header()->set_frame_id(plan.header().frame_id());
+        pose.mutable_pose()->mutable_position()->set_x(world_x);
+        pose.mutable_pose()->mutable_position()->set_y(world_y);
+        pose.mutable_pose()->mutable_position()->set_z(0.0);
+        pose.mutable_pose()->mutable_orientation()->set_x(0.0);
+        pose.mutable_pose()->mutable_orientation()->set_y(0.0);
+        pose.mutable_pose()->mutable_orientation()->set_z(0.0);
+        pose.mutable_pose()->mutable_orientation()->set_w(1.0);
+        *plan.mutable_poses()->Add() = pose;
     }
 
-    return !plan.poses.empty();
+    return !plan.poses().empty();
 }
 
 double NavfnPlanner::getPointPotential(
-    const commsgs::geometry_msgs::Point& world_point) {
+    const automsgs::msgs::geometry_msgs::Point& world_point) {
     unsigned int mx, my;
-    if (!worldToMap(world_point.x, world_point.y, mx, my)) {
+    if (!worldToMap(world_point.x(), world_point.y(), mx, my)) {
         return std::numeric_limits<double>::max();
     }
 

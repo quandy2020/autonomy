@@ -16,8 +16,8 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<commsgs::geometry_msgs::PoseStamped>("goal"),
-            BT::OutputPort<commsgs::planning_msgs::Path>("path"),
+            BT::InputPort<automsgs::msgs::geometry_msgs::PoseStamped>("goal"),
+            BT::OutputPort<automsgs::msgs::planning_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -28,7 +28,7 @@ protected:
     BT::NodeStatus OnExecute() override
     {
         auto client = ResolveClient(*this);
-        commsgs::geometry_msgs::PoseStamped goal;
+        automsgs::msgs::geometry_msgs::PoseStamped goal;
         std::string planner_id;
         if (!getInput("goal", goal)) {
             SetErrorPorts(*this, 1, "ComputePath: missing goal");
@@ -36,7 +36,7 @@ protected:
         }
         getInput("planner_id", planner_id);
 
-        commsgs::planning_msgs::Path path;
+        automsgs::msgs::planning_msgs::Path path;
         int error_code = 0;
         std::string error_msg;
         if (!client->ComputePathToPose(goal, planner_id, path, &error_code,
@@ -61,9 +61,9 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<std::vector<commsgs::geometry_msgs::PoseStamped>>(
+            BT::InputPort<std::vector<automsgs::msgs::geometry_msgs::PoseStamped>>(
                 "goals"),
-            BT::OutputPort<commsgs::planning_msgs::Path>("path"),
+            BT::OutputPort<automsgs::msgs::planning_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -74,7 +74,7 @@ protected:
     BT::NodeStatus OnExecute() override
     {
         auto client = ResolveClient(*this);
-        std::vector<commsgs::geometry_msgs::PoseStamped> goals;
+        std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
         std::string planner_id;
         if (!getInput("goals", goals) || goals.empty()) {
             SetErrorPorts(*this, 1, "ComputePathThroughPoses: missing goals");
@@ -82,7 +82,7 @@ protected:
         }
         getInput("planner_id", planner_id);
 
-        commsgs::planning_msgs::Path path;
+        automsgs::msgs::planning_msgs::Path path;
         int error_code = 0;
         std::string error_msg;
         if (!client->ComputePathThroughPoses(goals, planner_id, path, &error_code,

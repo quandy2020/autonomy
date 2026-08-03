@@ -80,7 +80,7 @@ public:
     GetTrajectoryStates();
 
     proto::SubmapList GetSubmapList(
-        const commsgs::builtin_interfaces::Time& node_time);
+        const automsgs::msgs::builtin_interfaces::Time& node_time);
 
     std::unordered_map<int, LocalTrajectoryData> GetLocalTrajectoryData()
         LOCKS_EXCLUDED(mutex_);

@@ -39,13 +39,13 @@ std::unique_ptr<::cartographer::transform::Rigid3d> TfBridge::LookupToTracking(
     const std::string& frame_id) const {
     float timeout = static_cast<float>(lookup_transform_timeout_sec_);
     try {
-        const commsgs::builtin_interfaces::Time latest_tf_time =
+        const automsgs::msgs::builtin_interfaces::Time latest_tf_time =
             buffer_
                 ->lookupTransform(tracking_frame_, frame_id,
-                                  commsgs::builtin_interfaces::Time(),
+                                  automsgs::msgs::builtin_interfaces::Time(),
                                   timeout)
-                .header.stamp;
-        const commsgs::builtin_interfaces::Time requested_time = ToCommsgs(time);
+                .header().stamp();
+        const automsgs::msgs::builtin_interfaces::Time requested_time = ToCommsgs(time);
 
         if (latest_tf_time >= requested_time) {
             timeout = 0.f;

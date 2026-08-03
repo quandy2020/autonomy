@@ -21,7 +21,15 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/control/common/goal_checker_interface.hpp"
 
 namespace autonomy {
@@ -44,18 +52,18 @@ public:
 
     void Reset() override;
 
-    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
-                       const commsgs::geometry_msgs::Pose& goal_pose,
-                       const commsgs::geometry_msgs::Twist& velocity) override;
+    bool IsGoalReached(const automsgs::msgs::geometry_msgs::Pose& query_pose,
+                       const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+                       const automsgs::msgs::geometry_msgs::Twist& velocity) override;
 
     bool IsGoalXYReached(
-        const commsgs::geometry_msgs::Pose& query_pose,
-        const commsgs::geometry_msgs::Pose& goal_pose,
-        const commsgs::geometry_msgs::Twist& velocity,
-        const commsgs::planning_msgs::Path& transformed_global_plan) override;
+        const automsgs::msgs::geometry_msgs::Pose& query_pose,
+        const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+        const automsgs::msgs::geometry_msgs::Twist& velocity,
+        const automsgs::msgs::planning_msgs::Path& transformed_global_plan) override;
 
-    bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                       commsgs::geometry_msgs::Twist& vel_tolerance) override;
+    bool GetTolerances(automsgs::msgs::geometry_msgs::Pose& pose_tolerance,
+                       automsgs::msgs::geometry_msgs::Twist& vel_tolerance) override;
 
     /**
      * @brief Set the XY goal tolerance

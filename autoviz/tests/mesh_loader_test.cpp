@@ -23,9 +23,9 @@ void registerTestPackages() {
 
 void assertVector3Near(const Ogre::Vector3& actual, const Ogre::Vector3& expected,
                        float tol = 1e-4f) {
-  ASSERT_NEAR(actual.x, expected.x, tol);
-  ASSERT_NEAR(actual.y, expected.y, tol);
-  ASSERT_NEAR(actual.z, expected.z, tol);
+  ASSERT_NEAR(actual.x(), expected.x(), tol);
+  ASSERT_NEAR(actual.y(), expected.y(), tol);
+  ASSERT_NEAR(actual.z(), expected.z(), tol);
 }
 
 void assertBoundingBoxNear(const Ogre::AxisAlignedBox& actual,

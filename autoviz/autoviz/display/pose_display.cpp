@@ -31,7 +31,7 @@ float yawFromQuaternion(
 PoseDisplay::PoseDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::geometry_msgs::PoseStamped>(
           "Pose", std::move(channel),
-          "autonomy.commsgs.proto.geometry_msgs.PoseStamped") {
+          "automsgs.msgs.geometry_msgs.PoseStamped") {
   setProperties({});
 }
 

@@ -16,10 +16,28 @@
 
 #pragma once
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/polygon.pb.h>
+#include <automsgs/msgs/geometry_msgs/point32.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/exploration/planner/grid_world.hpp"
 #include "autonomy/exploration/planner/keypose_graph.hpp"
 #include "autonomy/exploration/planner/local_coverage_planner.hpp"
@@ -58,13 +76,13 @@ public:
      * @brief Set the exploration boundary polygon.
      * @param area Boundary in the map frame
      */
-    void SetExplorationArea(const commsgs::geometry_msgs::Polygon& area);
+    void SetExplorationArea(const automsgs::msgs::geometry_msgs::Polygon& area);
 
     /**
      * @brief Update robot pose and keypose graph from odometry.
      * @param odom Robot odometry
      */
-    void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
+    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
 
     /**
      * @brief Fuse depth into PlanningEnv.
@@ -72,9 +90,9 @@ public:
      * @param info Camera intrinsics
      * @param map_t_camera Extrinsic transform from camera to map
      */
-    void UpdateDepth(const commsgs::sensor_msgs::Image& depth,
-                     const commsgs::sensor_msgs::CameraInfo& info,
-                     const commsgs::geometry_msgs::Transform& map_t_camera);
+    void UpdateDepth(const automsgs::msgs::sensor_msgs::Image& depth,
+                     const automsgs::msgs::sensor_msgs::CameraInfo& info,
+                     const automsgs::msgs::geometry_msgs::Transform& map_t_camera);
 
     /**
      * @brief Run one hierarchical planning cycle.
@@ -110,7 +128,7 @@ public:
      * @brief Get the latest exploration path.
      * @return Path reference
      */
-    const commsgs::planning_msgs::Path& GetExplorationPath() const
+    const automsgs::msgs::planning_msgs::Path& GetExplorationPath() const
     {
         return path_;
     }
@@ -119,7 +137,7 @@ public:
      * @brief Get the current lookahead pose.
      * @return Lookahead PoseStamped
      */
-    commsgs::geometry_msgs::PoseStamped GetLookahead() const
+    automsgs::msgs::geometry_msgs::PoseStamped GetLookahead() const
     {
         return lookahead_;
     }
@@ -129,7 +147,7 @@ public:
      * @param frame_id Header frame id
      * @return Occupancy grid
      */
-    commsgs::map_msgs::OccupancyGrid GetOccupancyGrid(
+    automsgs::msgs::map_msgs::OccupancyGrid GetOccupancyGrid(
         const std::string& frame_id) const;
 
     /**
@@ -162,8 +180,8 @@ private:
      * @param path Planned path
      * @return Lookahead pose
      */
-    commsgs::geometry_msgs::PoseStamped ComputeLookahead(
-        const commsgs::planning_msgs::Path& path) const;
+    automsgs::msgs::geometry_msgs::PoseStamped ComputeLookahead(
+        const automsgs::msgs::planning_msgs::Path& path) const;
 
     /**
      * @brief Build a PoseStamped from position and yaw.
@@ -173,7 +191,7 @@ private:
      * @param yaw Yaw [rad]
      * @return Pose stamped in frame_id_
      */
-    commsgs::geometry_msgs::PoseStamped MakePose(double x, double y, double z,
+    automsgs::msgs::geometry_msgs::PoseStamped MakePose(double x, double y, double z,
                                                  double yaw) const;
 
     proto::ExplorationOptions options_;       //!< @brief exploration options
@@ -183,8 +201,8 @@ private:
     KeyposeGraph keypose_graph_;              //!< @brief keypose connectivity
     LocalCoveragePlanner local_planner_;      //!< @brief local coverage solver
 
-    commsgs::planning_msgs::Path path_;       //!< @brief current path
-    commsgs::geometry_msgs::PoseStamped
+    automsgs::msgs::planning_msgs::Path path_;       //!< @brief current path
+    automsgs::msgs::geometry_msgs::PoseStamped
         lookahead_;                           //!< @brief current lookahead
     std::vector<int> global_cell_order_;      //!< @brief global cell order
     size_t waypoint_index_{0};                //!< @brief index into path

@@ -91,7 +91,6 @@ namespace tf2 {
 #define ATTRIBUTE_ALIGNED64(a) a __attribute__((aligned(64)))
 #define ATTRIBUTE_ALIGNED128(a) a __attribute__((aligned(128)))
 #ifndef assert
-#include <assert.h>
 #endif
 #ifdef TF2_DEBUG
 #define tf2Assert assert
@@ -113,7 +112,6 @@ namespace tf2 {
 #define ATTRIBUTE_ALIGNED64(a) a __attribute__((aligned(64)))
 #define ATTRIBUTE_ALIGNED128(a) a __attribute__((aligned(128)))
 #ifndef assert
-#include <assert.h>
 #endif
 #ifdef TF2_DEBUG
 #define tf2Assert assert
@@ -138,7 +136,6 @@ namespace tf2 {
 #define ATTRIBUTE_ALIGNED64(a) a
 #define ATTRIBUTE_ALIGNED128(a) a
 #ifndef assert
-#include <assert.h>
 #endif
 
 #if defined(DEBUG) || defined(_DEBUG)

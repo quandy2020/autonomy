@@ -9,7 +9,16 @@
 #include <string>
 
 #include "autolink/node/node.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_with_covariance_stamped.pb.h>
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 #include "autonomy/task/proto/mapping.pb.h"
 
@@ -43,7 +52,7 @@ public:
 
     ::autonomy::task::proto::MapCommand command() const { return command_; }
     const std::string& map_name() const { return map_name_; }
-    const std::optional<commsgs::geometry_msgs::PoseWithCovarianceStamped>&
+    const std::optional<automsgs::msgs::geometry_msgs::PoseWithCovarianceStamped>&
     initial_pose() const
     {
         return initial_pose_;
@@ -61,7 +70,7 @@ private:
     ::autonomy::task::proto::MapCommand command_{
         ::autonomy::task::proto::MAP_CMD_UNSPECIFIED};
     std::string map_name_;
-    std::optional<commsgs::geometry_msgs::PoseWithCovarianceStamped>
+    std::optional<automsgs::msgs::geometry_msgs::PoseWithCovarianceStamped>
         initial_pose_;
 };
 

@@ -18,7 +18,7 @@ bool IsBuildingMarker(const automsgs::msgs::visualization_msgs::Marker& marker) 
 StrataBuildingDisplay::StrataBuildingDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::visualization_msgs::MarkerArray>(
           "StrataBuilding", std::move(channel),
-          "autonomy.commsgs.proto.visualization_msgs.MarkerArray") {
+          "automsgs.msgs.visualization_msgs.MarkerArray") {
   setProperties({});
 }
 

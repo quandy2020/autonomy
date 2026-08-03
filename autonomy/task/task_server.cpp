@@ -155,8 +155,8 @@ void TaskServer::RegisterEnabledPlugins(
         wire(teleop_);
     }
     if (apps.enable_exploration()) {
-        exploration_ = std::make_shared<ExplorationTask>();
-        wire(exploration_);
+        AWARN << "TaskServer: exploration app temporarily disabled "
+                 "(automsgs migration)";
     }
     if (apps.enable_charging()) {
         charging_ = std::make_shared<ChargingTask>();
@@ -195,7 +195,6 @@ void TaskServer::Shutdown()
     shutdown_plugin(navigation_);
     shutdown_plugin(tracking_);
     shutdown_plugin(teleop_);
-    shutdown_plugin(exploration_);
     shutdown_plugin(charging_);
     shutdown_plugin(mapping_);
     shutdown_plugin(localization_);
@@ -207,7 +206,6 @@ void TaskServer::Shutdown()
     navigation_.reset();
     tracking_.reset();
     teleop_.reset();
-    exploration_.reset();
     charging_.reset();
     mapping_.reset();
     localization_.reset();
@@ -254,7 +252,9 @@ bool TaskServer::SubmitTeleopGoal(
 bool TaskServer::SubmitExplorationGoal(
     const ::autonomy::task::proto::ExplorationGoal& goal)
 {
-    return SubmitGoal(exploration_, goal);
+    (void)goal;
+    AWARN << "TaskServer::SubmitExplorationGoal: exploration temporarily disabled";
+    return false;
 }
 
 bool TaskServer::SubmitChargingGoal(

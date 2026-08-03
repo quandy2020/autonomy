@@ -16,7 +16,10 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 import "autonomy/task/proto/task_common.proto";
 
 // apps/tracking — enum values match bridge Follow* for adapter mapping.
@@ -58,7 +61,7 @@ message TrackerGoal {
   float session_timeout_sec = 6;
   bool reacquire_on_lost = 7;
   oneof target {
-    commsgs.proto.geometry_msgs.PoseStamped target_pose = 8;
+    automsgs.msgs.geometry_msgs.PoseStamped target_pose = 8;
     string target_id = 9;
   }
 }
@@ -67,7 +70,7 @@ message TrackerFeedback {
   TrackerStatus status = 1;
   TaskProgress progress = 2;
   float distance_to_target = 3;
-  commsgs.proto.geometry_msgs.PoseStamped target_pose = 4;
+  automsgs.msgs.geometry_msgs.PoseStamped target_pose = 4;
 }
 
 message TrackerResult {

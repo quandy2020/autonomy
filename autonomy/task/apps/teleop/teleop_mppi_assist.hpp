@@ -62,13 +62,13 @@ public:
     void Shutdown();
 
     bool Tick(double joy_linear_x, double joy_angular_z,
-              const commsgs::geometry_msgs::PoseStamped& robot_pose,
-              const commsgs::geometry_msgs::Twist& robot_speed,
-              commsgs::geometry_msgs::TwistStamped* cmd_out);
+              const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
+              const automsgs::msgs::geometry_msgs::Twist& robot_speed,
+              automsgs::msgs::geometry_msgs::TwistStamped* cmd_out);
 
     bool enabled() const { return options_.enabled; }
     bool IsPerceptionOk() const;
-    bool TryGetRobotPose(commsgs::geometry_msgs::PoseStamped* pose) const;
+    bool TryGetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped* pose) const;
 
 private:
     static map::proto::Costmap2DOptions DefaultCostmapOptions(
@@ -78,7 +78,7 @@ private:
 
     double AngularToJoyDirDeg(double angular_z, double linear_x) const;
     void FillPassthroughCmd(double linear_x, double angular_z,
-                            commsgs::geometry_msgs::TwistStamped* cmd_out) const;
+                            automsgs::msgs::geometry_msgs::TwistStamped* cmd_out) const;
 
     Options options_;
     std::shared_ptr<autolink::Node> node_;

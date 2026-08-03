@@ -41,7 +41,7 @@ void UploadLines(Ogre::ManualObject* object,
   object->begin("Autoviz/OverlayLine", Ogre::RenderOperation::OT_LINE_LIST,
                 "AvizOgre");
   for (const auto& line_vertex : lines) {
-    object->position(ToOgre(line_vertex.position));
+    object->position(ToOgre(line_vertex.position()));
     object->colour(line_vertex.color.x(), line_vertex.color.y(),
                    line_vertex.color.z(), line_vertex.color.w());
   }
@@ -55,7 +55,7 @@ void UploadFlatTriangles(Ogre::ManualObject* object,
   }
   object->begin("Autoviz/FlatNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
   for (const OgreLineVertex& vertex : mesh) {
-    object->position(ToOgre(vertex.position));
+    object->position(ToOgre(vertex.position()));
     object->colour(vertex.color.x(), vertex.color.y(), vertex.color.z(),
                    vertex.color.w());
   }
@@ -69,7 +69,7 @@ void UploadPbrTriangles(Ogre::ManualObject* object,
   }
   object->begin("AvizPBR", Ogre::RenderOperation::OT_TRIANGLE_LIST);
   for (const OgrePbrVertex& vertex : mesh) {
-    object->position(ToOgre(vertex.position));
+    object->position(ToOgre(vertex.position()));
     object->normal(vertex.normal.x(), vertex.normal.y(), vertex.normal.z());
     object->colour(vertex.albedo.x(), vertex.albedo.y(), vertex.albedo.z(),
                    vertex.albedo.w());
@@ -99,7 +99,7 @@ void UploadPointBillboards(Ogre::SceneManager* scene,
   (*billboards)->setDefaultDimensions(world_size, world_size);
   for (const OgreLineVertex& point : points) {
     Ogre::Billboard* billboard =
-        (*billboards)->createBillboard(ToOgre(point.position));
+        (*billboards)->createBillboard(ToOgre(point.position()));
     billboard->setColour(Ogre::ColourValue(
         point.color.x(), point.color.y(), point.color.z(), point.color.w()));
   }
@@ -496,7 +496,7 @@ bool OgreRenderBackend::pickDepthAt(int pixel_x, int pixel_y, int viewport_width
   if (!pick.hit) {
     return false;
   }
-  *world_out = pick.position;
+  *world_out = pick.position();
   return true;
 }
 

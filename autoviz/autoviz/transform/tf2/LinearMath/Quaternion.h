@@ -160,15 +160,13 @@ public:
                      m_floats[2] * q.x() - m_floats[0] * q.z(),
                  m_floats[3] * q.z() + m_floats[2] * q.m_floats[3] +
                      m_floats[0] * q.y() - m_floats[1] * q.x(),
-                 m_floats[3] * q.m_floats[3] - m_floats[0] * q.x() -
-                     m_floats[1] * q.y() - m_floats[2] * q.z());
+                 m_floats[3] * q.m_floats[3] - m_floats[0] * q.x() - m_floats[1] * q.y() - m_floats[2] * q.z());
         return *this;
     }
     /**@brief Return the dot product between this quaternion and another
      * @param q The other quaternion */
     tf2Scalar dot(const Quaternion& q) const {
-        return m_floats[0] * q.x() + m_floats[1] * q.y() + m_floats[2] * q.z() +
-               m_floats[3] * q.m_floats[3];
+        return m_floats[0] * q.x() + m_floats[1] * q.y() + m_floats[2] * q.z() + m_floats[3] * q.m_floats[3];
     }
 
     /**@brief Return the length squared of the quaternion */

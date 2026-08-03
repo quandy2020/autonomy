@@ -16,7 +16,10 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 import "autonomy/task/proto/task_common.proto";
 
 // apps/navigation — aligned with bridge NavigationCommand / nav_msgs actions.
@@ -52,7 +55,7 @@ message NavigationGoal {
   TaskHeader header = 1;
   NavigationCommand command = 2;
   NavigationMode mode = 3;
-  repeated commsgs.proto.geometry_msgs.PoseStamped goals = 4;
+  repeated automsgs.msgs.geometry_msgs.PoseStamped goals = 4;
   NavigationPluginOptions plugins = 5;
   float timeout_sec = 6;
 }
@@ -63,7 +66,7 @@ message NavigationFeedback {
   int32 current_waypoint_index = 3;
   int32 total_waypoints = 4;
   float distance_remaining = 5;
-  commsgs.proto.geometry_msgs.PoseStamped current_pose = 6;
+  automsgs.msgs.geometry_msgs.PoseStamped current_pose = 6;
 }
 
 message NavigationResult {

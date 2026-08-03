@@ -12,7 +12,7 @@ namespace {
 
 std::string StripPrefix(std::string value) {
   static const char* kPrefixes[] = {
-      "autonomy.commsgs.proto.",
+      "automsgs.msgs.",
       "automsgs.msgs.",
   };
   for (const char* prefix : kPrefixes) {

@@ -21,14 +21,22 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
 
-typedef std::vector<commsgs::geometry_msgs::Point> Footprint;
+typedef std::vector<automsgs::msgs::geometry_msgs::Point> Footprint;
 
 /**
  * @class FootprintCollisionChecker

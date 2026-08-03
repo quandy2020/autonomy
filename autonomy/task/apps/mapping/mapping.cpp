@@ -16,7 +16,7 @@ constexpr char kClearCostmapTree[] =
 
 }  // namespace
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace tp = ::autonomy::task::proto;
 
 RobotTaskType MappingTask::GetTaskType() const

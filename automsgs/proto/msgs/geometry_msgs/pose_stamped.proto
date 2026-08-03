@@ -24,3 +24,8 @@ message PoseStamped {
   automsgs.msgs.std_msgs.Header header = 1;
   Pose pose = 2;
 }
+
+message PoseStampedArray {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated Pose poses = 2;
+}

@@ -29,9 +29,21 @@
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
@@ -48,7 +60,7 @@
 namespace autonomy {
 namespace planning {
 
-using Time = commsgs::builtin_interfaces::Time;
+using Time = automsgs::msgs::builtin_interfaces::Time;
 
 namespace {
 
@@ -155,12 +167,12 @@ common::GlobalPlanner::SharedPtr CreatePlannerInstance(
     return common::GlobalPlanner::SharedPtr(std::move(instance));
 }
 
-void NormalizePoseFrame(commsgs::geometry_msgs::PoseStamped& pose,
+void NormalizePoseFrame(automsgs::msgs::geometry_msgs::PoseStamped& pose,
                           const std::string& global_frame) {
-    if (pose.header.frame_id.empty()) {
+    if (pose.header().frame_id().empty()) {
         AWARN << "Pose has empty frame_id; assuming costmap global frame '"
               << global_frame << "'";
-        pose.header.frame_id = global_frame;
+        pose.mutable_header()->set_frame_id(global_frame);
     }
 }
 
@@ -339,21 +351,21 @@ void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
     path_update_callback_ = std::move(callback);
 }
 
-void PlannerServer::PublishPlan(const commsgs::planning_msgs::Path& path) {
+void PlannerServer::PublishPlan(const automsgs::msgs::planning_msgs::Path& path) {
     if (path_update_callback_) {
         path_update_callback_(path);
     }
 }
 
-commsgs::planning_msgs::Path PlannerServer::GetPlan(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
+automsgs::msgs::planning_msgs::Path PlannerServer::GetPlan(
+    const automsgs::msgs::geometry_msgs::PoseStamped& start,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     const std::string& planner_id, std::function<bool()> cancel_checker) {
-    commsgs::planning_msgs::Path path;
+    automsgs::msgs::planning_msgs::Path path;
     AINFO << "Planning algorithm " << planner_id
-          << " is trying to find a path from (" << start.pose.position.x << ", "
-          << start.pose.position.y << ")"
-          << " to (" << goal.pose.position.x << "," << goal.pose.position.y
+          << " is trying to find a path from (" << start.pose().position().x() << ", "
+          << start.pose().position().y() << ")"
+          << " to (" << goal.pose().position().x() << "," << goal.pose().position().y()
           << ")";
 
     uint32_t return_code = 0;
@@ -383,8 +395,7 @@ void PlannerServer::WaitForCostmap() {
     while (costmap_wrapper_ && !costmap_wrapper_->isCurrent()) {
         if (timeout_sec > 0.0) {
             const auto elapsed =
-                std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                              waiting_start)
+                std::chrono::duration<double>(std::chrono::steady_clock::now() - waiting_start)
                     .count();
             if (elapsed > timeout_sec) {
                 throw common::PlannerTimedOut(
@@ -396,8 +407,8 @@ void PlannerServer::WaitForCostmap() {
 }
 
 bool PlannerServer::TransformPosesToGlobalFrame(
-    commsgs::geometry_msgs::PoseStamped& curr_start,
-    commsgs::geometry_msgs::PoseStamped& curr_goal) {
+    automsgs::msgs::geometry_msgs::PoseStamped& curr_start,
+    automsgs::msgs::geometry_msgs::PoseStamped& curr_goal) {
     if (!costmap_wrapper_) {
         return false;
     }
@@ -405,8 +416,8 @@ bool PlannerServer::TransformPosesToGlobalFrame(
     NormalizePoseFrame(curr_start, costmap_wrapper_->getGlobalFrameID());
     NormalizePoseFrame(curr_goal, costmap_wrapper_->getGlobalFrameID());
 
-    commsgs::geometry_msgs::PoseStamped transformed_start;
-    commsgs::geometry_msgs::PoseStamped transformed_goal;
+    automsgs::msgs::geometry_msgs::PoseStamped transformed_start;
+    automsgs::msgs::geometry_msgs::PoseStamped transformed_goal;
     if (!costmap_wrapper_->transformPoseToGlobalFrame(curr_start,
                                                       transformed_start) ||
         !costmap_wrapper_->transformPoseToGlobalFrame(curr_goal,
@@ -420,43 +431,43 @@ bool PlannerServer::TransformPosesToGlobalFrame(
 }
 
 bool PlannerServer::ValidatePath(
-    const commsgs::geometry_msgs::PoseStamped& curr_goal,
-    const commsgs::planning_msgs::Path& path, const std::string& planner_id) {
-    if (path.poses.empty()) {
+    const automsgs::msgs::geometry_msgs::PoseStamped& curr_goal,
+    const automsgs::msgs::planning_msgs::Path& path, const std::string& planner_id) {
+    if (path.poses().empty()) {
         AWARN << "Planning algorithm " << planner_id
               << " failed to generate a valid path to ("
-              << curr_goal.pose.position.x << ", " << curr_goal.pose.position.y
+              << curr_goal.pose().position().x() << ", " << curr_goal.pose().position().y()
               << ")";
         return false;
     }
 
-    AINFO << "Found valid path of size " << path.poses.size() << " to ("
-          << curr_goal.pose.position.x << ", " << curr_goal.pose.position.y
+    AINFO << "Found valid path of size " << path.poses_size() << " to ("
+          << curr_goal.pose().position().x() << ", " << curr_goal.pose().position().y()
           << ")";
     return true;
 }
 
-bool PlannerServer::IsPathValid(const commsgs::planning_msgs::Path& path,
+bool PlannerServer::IsPathValid(const automsgs::msgs::planning_msgs::Path& path,
                                 uint8_t max_cost,
                                 bool consider_unknown_as_obstacle) const {
-    if (path.poses.empty()) {
+    if (path.poses().empty()) {
         return false;
     }
     if (!costmap_wrapper_ || !costmap_) {
         return false;
     }
 
-    commsgs::geometry_msgs::PoseStamped current_pose;
+    automsgs::msgs::geometry_msgs::PoseStamped current_pose;
     unsigned int closest_point_index = 0;
     if (!costmap_wrapper_->getRobotPose(current_pose)) {
         return true;
     }
 
     float closest_distance = std::numeric_limits<float>::max();
-    const auto& current_point = current_pose.pose.position;
-    for (size_t i = 0; i < path.poses.size(); ++i) {
+    const auto& current_point = current_pose.pose().position();
+    for (size_t i = 0; i < path.poses_size(); ++i) {
         const float distance = static_cast<float>(utils::EuclideanDistance(
-            current_point, path.poses[i].pose.position));
+            current_point, path.poses(i).pose().position()));
         if (distance < closest_distance) {
             closest_point_index = static_cast<unsigned int>(i);
             closest_distance = distance;
@@ -475,19 +486,19 @@ bool PlannerServer::IsPathValid(const commsgs::planning_msgs::Path& path,
     unsigned int my = 0;
     unsigned int cost = map::costmap_2d::FREE_SPACE;
 
-    for (size_t i = closest_point_index; i < path.poses.size(); ++i) {
-        const auto& position = path.poses[i].pose.position;
+    for (size_t i = closest_point_index; i < path.poses_size(); ++i) {
+        const auto& position = path.poses(i).pose().position();
         if (use_radius) {
-            if (costmap_->worldToMap(position.x, position.y, mx, my)) {
+            if (costmap_->worldToMap(position.x(), position.y(), mx, my)) {
                 cost = costmap_->getCost(mx, my);
             } else {
                 cost = map::costmap_2d::LETHAL_OBSTACLE;
             }
         } else {
             const double theta =
-                transform::tf2::getYaw(path.poses[i].pose.orientation);
+                transform::tf2::getYaw(path.poses(i).pose().orientation());
             cost = static_cast<unsigned int>(collision_checker.footprintCostAtPose(
-                position.x, position.y, theta, footprint));
+                position.x(), position.y(), theta, footprint));
         }
 
         if (cost == map::costmap_2d::NO_INFORMATION &&

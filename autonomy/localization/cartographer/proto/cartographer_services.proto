@@ -16,8 +16,8 @@ syntax = "proto3";
 
 package autonomy.localization.cartographer.proto;
 
-import "autonomy/commsgs/proto/geometry_msgs.proto";
-import "autonomy/commsgs/proto/std_msgs.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/std_msgs/header.proto";
 
 enum StatusCode {
   OK = 0;
@@ -44,12 +44,12 @@ message SubmapEntry {
   int32 trajectory_id = 1;
   int32 submap_index = 2;
   int32 submap_version = 3;
-  autonomy.commsgs.proto.geometry_msgs.Pose pose = 4;
+  automsgs.msgs.geometry_msgs.Pose pose = 4;
   bool is_frozen = 5;
 }
 
 message SubmapList {
-  autonomy.commsgs.proto.std_msgs.Header header = 1;
+  automsgs.msgs.std_msgs.Header header = 1;
   repeated SubmapEntry submap = 2;
 }
 
@@ -58,7 +58,7 @@ message SubmapTexture {
   int32 width = 2;
   int32 height = 3;
   double resolution = 4;
-  autonomy.commsgs.proto.geometry_msgs.Pose slice_pose = 5;
+  automsgs.msgs.geometry_msgs.Pose slice_pose = 5;
 }
 
 message SubmapQueryRequest {
@@ -76,7 +76,7 @@ message StartTrajectoryRequest {
   string configuration_directory = 1;
   string configuration_basename = 2;
   bool use_initial_pose = 3;
-  autonomy.commsgs.proto.geometry_msgs.Pose initial_pose = 4;
+  automsgs.msgs.geometry_msgs.Pose initial_pose = 4;
   int32 relative_to_trajectory_id = 5;
 }
 
@@ -104,12 +104,12 @@ message WriteStateResponse {
 
 message LandmarkEntry {
   string id = 1;
-  autonomy.commsgs.proto.geometry_msgs.Pose tracking_from_landmark_transform = 2;
+  automsgs.msgs.geometry_msgs.Pose tracking_from_landmark_transform = 2;
   double translation_weight = 3;
   double rotation_weight = 4;
 }
 
 message LandmarkList {
-  autonomy.commsgs.proto.std_msgs.Header header = 1;
+  automsgs.msgs.std_msgs.Header header = 1;
   repeated LandmarkEntry landmarks = 2;
 }

@@ -6,7 +6,9 @@
 
 #include <string>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 #include "behaviortree_cpp/tree_node.h"
 
@@ -30,10 +32,10 @@ inline void ClearErrorPorts(BT::TreeNode& node)
     node.setOutput("error_msg", std::string{});
 }
 
-inline commsgs::proto::builtin_interfaces::Duration ToProtoDuration(double seconds)
+inline automsgs::msgs::builtin_interfaces::Duration ToProtoDuration(double seconds)
 {
-    return commsgs::builtin_interfaces::ToProto(
-        commsgs::builtin_interfaces::Duration::FromSeconds(seconds));
+    return 
+        automsgs::msgs::builtin_interfaces::DurationFromSeconds(seconds);
 }
 
 }  // namespace autonomy::task::plugins::navigation

@@ -14,7 +14,7 @@
 
 # Lite protoc plugin: injects #include <memory> and ptr typedefs into
 # protoc-generated .pb.h via OpenForInsert (no separate wrapper file).
-find_package(Protobuf REQUIRED)
+autonomy_require_protobuf()
 
 set(AUTOMSGS_PROTOC_PLUGIN_LITE automsgs_protoc_plugin_lite)
 add_executable(${AUTOMSGS_PROTOC_PLUGIN_LITE}

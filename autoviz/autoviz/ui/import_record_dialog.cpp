@@ -35,14 +35,12 @@ QString FindBagConverterExecutable() {
 
 QString McapConverterScriptPath() {
   const QString installed =
-      QCoreApplication::applicationDirPath() +
-      QStringLiteral("/../share/autonomy/autoviz/scripts/mcap_to_record.py");
+      QCoreApplication::applicationDirPath() + QStringLiteral("/../share/autonomy/autoviz/scripts/mcap_to_record.py");
   if (QFileInfo::exists(installed)) {
     return QFileInfo(installed).absoluteFilePath();
   }
   const QString dev =
-      QCoreApplication::applicationDirPath() +
-      QStringLiteral("/../../autoviz/scripts/mcap_to_record.py");
+      QCoreApplication::applicationDirPath() + QStringLiteral("/../../autoviz/scripts/mcap_to_record.py");
   if (QFileInfo::exists(dev)) {
     return QFileInfo(dev).absoluteFilePath();
   }
@@ -55,8 +53,7 @@ QString DefaultOutputPath(const QString& source_path,
   if (mode == ImportRecordDialog::Mode::kOpenRecord) {
     return source_path;
   }
-  return info.absolutePath() + QLatin1Char('/') + info.completeBaseName() +
-         QStringLiteral(".record");
+  return info.absolutePath() + QLatin1Char('/') + info.completeBaseName() + QStringLiteral(".record");
 }
 
 }  // namespace

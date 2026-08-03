@@ -189,7 +189,7 @@ void Optimizer::reset(bool reset_dynamic_speed_limits) {
   control_history_[1] = {0.0f, 0.0f, 0.0f};
   control_history_[2] = {0.0f, 0.0f, 0.0f};
   control_history_[3] = {0.0f, 0.0f, 0.0f};
-  last_command_vel_ = commsgs::geometry_msgs::Twist();
+  last_command_vel_ = automsgs::msgs::geometry_msgs::Twist();
 
   if (reset_dynamic_speed_limits) {
     settings_.constraints = settings_.base_constraints;
@@ -207,10 +207,10 @@ void Optimizer::reset(bool reset_dynamic_speed_limits) {
 
 bool Optimizer::isHolonomic() const { return motion_model_->isHolonomic(); }
 
-commsgs::geometry_msgs::TwistStamped Optimizer::evalControl(const commsgs::geometry_msgs::PoseStamped& robot_pose,
-                                                            const commsgs::geometry_msgs::Twist& robot_speed,
-                                                            const commsgs::planning_msgs::Path& plan,
-                                                            const commsgs::geometry_msgs::Pose& goal,
+automsgs::msgs::geometry_msgs::TwistStamped Optimizer::evalControl(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
+                                                            const automsgs::msgs::geometry_msgs::Twist& robot_speed,
+                                                            const automsgs::msgs::planning_msgs::Path& plan,
+                                                            const automsgs::msgs::geometry_msgs::Pose& goal,
                                                             common::GoalChecker* goal_checker) {
   prepare(robot_pose, robot_speed, plan, goal, goal_checker);
 
@@ -219,7 +219,7 @@ commsgs::geometry_msgs::TwistStamped Optimizer::evalControl(const commsgs::geome
   } while (fallback(critics_data_.fail_flag));
 
   tools::savitskyGolayFilter(control_sequence_, control_history_, settings_);
-  auto control = getControlFromSequenceAsTwist(plan.header.stamp);
+  auto control = getControlFromSequenceAsTwist(plan.header().stamp());
 
   if (settings_.shift_control_sequence) {
     shiftControlSequence();
@@ -254,28 +254,28 @@ bool Optimizer::fallback(bool fail) {
   return true;
 }
 
-void Optimizer::prepare(const commsgs::geometry_msgs::PoseStamped& robot_pose,
-                        const commsgs::geometry_msgs::Twist& robot_speed, const commsgs::planning_msgs::Path& plan,
-                        const commsgs::geometry_msgs::Pose& goal, common::GoalChecker* goal_checker) {
+void Optimizer::prepare(const automsgs::msgs::geometry_msgs::PoseStamped& robot_pose,
+                        const automsgs::msgs::geometry_msgs::Twist& robot_speed, const automsgs::msgs::planning_msgs::Path& plan,
+                        const automsgs::msgs::geometry_msgs::Pose& goal, common::GoalChecker* goal_checker) {
   if (settings_.open_loop) {
     state_.speed = last_command_vel_;
   } else {
     const auto& c = settings_.constraints;
     const double dt = settings_.controller_period;
     state_.speed = robot_speed;
-    state_.speed.linear.x = std::clamp(
-        static_cast<double>(last_command_vel_.linear.x),
-        robot_speed.linear.x + dt * static_cast<double>(c.ax_min),
-        robot_speed.linear.x + dt * static_cast<double>(c.ax_max));
-    state_.speed.angular.z = std::clamp(
-        static_cast<double>(last_command_vel_.angular.z),
-        robot_speed.angular.z - dt * static_cast<double>(c.az_max),
-        robot_speed.angular.z + dt * static_cast<double>(c.az_max));
+    state_.speed.mutable_linear()->set_x(std::clamp(
+        static_cast<double>(last_command_vel_.linear().x()),
+        robot_speed.linear().x() + dt * static_cast<double>(c.ax_min),
+        robot_speed.linear().x() + dt * static_cast<double>(c.ax_max)));
+    state_.speed.mutable_angular()->set_z(std::clamp(
+        static_cast<double>(last_command_vel_.angular().z()),
+        robot_speed.angular().z() - dt * static_cast<double>(c.az_max),
+        robot_speed.angular().z() + dt * static_cast<double>(c.az_max)));
     if (isHolonomic()) {
-      state_.speed.linear.y = std::clamp(
-          static_cast<double>(last_command_vel_.linear.y),
-          robot_speed.linear.y + dt * static_cast<double>(c.ay_min),
-          robot_speed.linear.y + dt * static_cast<double>(c.ay_max));
+      state_.speed.mutable_linear()->set_y(std::clamp(
+          static_cast<double>(last_command_vel_.linear().y()),
+          robot_speed.linear().y() + dt * static_cast<double>(c.ay_min),
+          robot_speed.linear().y() + dt * static_cast<double>(c.ay_max)));
     }
   }
 
@@ -321,13 +321,13 @@ void Optimizer::applyControlSequenceInterIterationConstraints() {
   const float min_delta_vy = first_dt * s.constraints.ay_min;
   const float max_delta_wz = first_dt * s.constraints.az_max;
 
-  const float speed_vx = static_cast<float>(state_.speed.linear.x);
-  const float speed_wz = static_cast<float>(state_.speed.angular.z);
+  const float speed_vx = static_cast<float>(state_.speed.linear().x());
+  const float speed_wz = static_cast<float>(state_.speed.angular().z());
   if (s.shift_control_sequence) {
     control_sequence_.vx(0) = speed_vx;
     control_sequence_.wz(0) = speed_wz;
     if (isHolonomic()) {
-      control_sequence_.vy(0) = static_cast<float>(state_.speed.linear.y);
+      control_sequence_.vy(0) = static_cast<float>(state_.speed.linear().y());
     }
   } else {
     control_sequence_.vx(0) = tools::clampVelocityByAccel(
@@ -335,7 +335,7 @@ void Optimizer::applyControlSequenceInterIterationConstraints() {
     control_sequence_.wz(0) = tools::clampVelocityByAccel(
         speed_wz, control_sequence_.wz(0), -max_delta_wz, max_delta_wz);
     if (isHolonomic()) {
-      const float speed_vy = static_cast<float>(state_.speed.linear.y);
+      const float speed_vy = static_cast<float>(state_.speed.linear().y());
       control_sequence_.vy(0) = tools::clampVelocityByAccel(
           speed_vy, control_sequence_.vy(0), min_delta_vy, max_delta_vy);
     }
@@ -353,9 +353,9 @@ void Optimizer::applyControlSequenceConstraints() {
   float min_delta_vy = s.controller_period * s.constraints.ay_min;
   float max_delta_wz = s.controller_period * s.constraints.az_max;
 
-  float vx_last = static_cast<float>(state_.speed.linear.x);
-  float wz_last = static_cast<float>(state_.speed.angular.z);
-  float vy_last = isHolonomic() ? static_cast<float>(state_.speed.linear.y) : 0.0f;
+  float vx_last = static_cast<float>(state_.speed.linear().x());
+  float wz_last = static_cast<float>(state_.speed.angular().z());
+  float vy_last = isHolonomic() ? static_cast<float>(state_.speed.linear().y()) : 0.0f;
 
   if (s.shift_control_sequence) {
     control_sequence_.vx(0) = vx_last;
@@ -404,11 +404,11 @@ void Optimizer::updateStateVelocities(models::State& state) const {
 }
 
 void Optimizer::updateInitialStateVelocities(models::State& state) const {
-  state.vx.col(0) = static_cast<float>(state.speed.linear.x);
-  state.wz.col(0) = static_cast<float>(state.speed.angular.z);
+  state.vx.col(0) = static_cast<float>(state.speed.linear().x());
+  state.wz.col(0) = static_cast<float>(state.speed.angular().z());
 
   if (isHolonomic()) {
-    state.vy.col(0) = static_cast<float>(state.speed.linear.y);
+    state.vy.col(0) = static_cast<float>(state.speed.linear().y());
   }
 }
 
@@ -416,7 +416,7 @@ void Optimizer::propagateStateVelocitiesFromInitials(models::State& state) const
 
 void Optimizer::integrateStateVelocities(Eigen::Array<float, Eigen::Dynamic, 3>& trajectory,
                                          const Eigen::ArrayXXf& sequence) const {
-  float initial_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(state_.pose.pose.orientation));
+  float initial_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(state_.pose.pose().orientation()));
 
   const auto vx = sequence.col(0);
   const auto wz = sequence.col(1);
@@ -449,8 +449,8 @@ void Optimizer::integrateStateVelocities(Eigen::Array<float, Eigen::Dynamic, 3>&
     dy = (dy + vy * yaw_cos).eval();
   }
 
-  float last_x = state_.pose.pose.position.x;
-  float last_y = state_.pose.pose.position.y;
+  float last_x = state_.pose.pose().position().x();
+  float last_y = state_.pose.pose().position().y();
   for (size_t i = 0; i != n_size; i++) {
     last_x += dx(i) * settings_.model_dt;
     last_y += dy(i) * settings_.model_dt;
@@ -460,7 +460,7 @@ void Optimizer::integrateStateVelocities(Eigen::Array<float, Eigen::Dynamic, 3>&
 }
 
 void Optimizer::integrateStateVelocities(models::Trajectories& trajectories, const models::State& state) const {
-  auto initial_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(state.pose.pose.orientation));
+  auto initial_yaw = static_cast<float>(autonomy::transform::tf2::getYaw(state.pose.pose().orientation()));
   const size_t n_cols = trajectories.yaws.cols();
 
   Eigen::ArrayXf last_yaws = Eigen::ArrayXf::Constant(trajectories.yaws.rows(), initial_yaw);
@@ -484,8 +484,8 @@ void Optimizer::integrateStateVelocities(models::Trajectories& trajectories, con
     dy += state.vy * yaw_cos;
   }
 
-  Eigen::ArrayXf last_x = Eigen::ArrayXf::Constant(trajectories.x.rows(), state.pose.pose.position.x);
-  Eigen::ArrayXf last_y = Eigen::ArrayXf::Constant(trajectories.y.rows(), state.pose.pose.position.y);
+  Eigen::ArrayXf last_x = Eigen::ArrayXf::Constant(trajectories.x.rows(), state.pose.pose().position().x());
+  Eigen::ArrayXf last_y = Eigen::ArrayXf::Constant(trajectories.y.rows(), state.pose.pose().position().y());
 
   for (size_t i = 0; i != n_cols; i++) {
     last_x += dx.col(i) * settings_.model_dt;
@@ -552,22 +552,22 @@ void Optimizer::updateControlSequence() {
   applyControlSequenceConstraints();
 }
 
-commsgs::geometry_msgs::TwistStamped Optimizer::getControlFromSequenceAsTwist(
-    const commsgs::builtin_interfaces::Time& stamp) {
+automsgs::msgs::geometry_msgs::TwistStamped Optimizer::getControlFromSequenceAsTwist(
+    const automsgs::msgs::builtin_interfaces::Time& stamp) {
   unsigned int offset = settings_.shift_control_sequence ? 1 : 0;
 
   auto vx = control_sequence_.vx(offset);
   auto wz = control_sequence_.wz(offset);
 
-  last_command_vel_.linear.x = vx;
-  last_command_vel_.angular.z = wz;
+  last_command_vel_.mutable_linear()->set_x(vx);
+  last_command_vel_.mutable_angular()->set_z(wz);
 
   float vy = 0.0f;
   if (isHolonomic()) {
     vy = control_sequence_.vy(offset);
-    last_command_vel_.linear.y = vy;
+    last_command_vel_.mutable_linear()->set_y(vy);
   } else {
-    last_command_vel_.linear.y = 0.0;
+    last_command_vel_.mutable_linear()->set_y(0.0);
   }
 
   motion_model_->pushCommandHistory(vx, vy, wz);

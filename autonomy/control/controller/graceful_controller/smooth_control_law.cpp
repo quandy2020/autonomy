@@ -62,9 +62,9 @@
      v_angular_max_ = v_angular_max;
  }
  
- commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
-     const commsgs::geometry_msgs::Pose& target,
-     const commsgs::geometry_msgs::Pose& current, const bool& backward) {
+ automsgs::msgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
+     const automsgs::msgs::geometry_msgs::Pose& target,
+     const automsgs::msgs::geometry_msgs::Pose& current, const bool& backward) {
      // Convert the target to polar coordinates
      auto ego_coords = EgocentricPolarCoordinates(target, current, backward);
      // Calculate the curvature
@@ -101,29 +101,29 @@
      v = (curvature != 0.0) ? (w_bound / curvature) : v;
  
      // Return the velocity command
-     commsgs::geometry_msgs::Twist cmd_vel;
-     cmd_vel.linear.x = v;
-     cmd_vel.angular.z = w_bound;
+     automsgs::msgs::geometry_msgs::Twist cmd_vel;
+     cmd_vel.mutable_linear()->set_x(v);
+     cmd_vel.mutable_angular()->set_z(w_bound);
      return cmd_vel;
  }
  
- commsgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
-     const commsgs::geometry_msgs::Pose& target, const bool& backward) {
-     return CalculateRegularVelocity(target, commsgs::geometry_msgs::Pose(),
+ automsgs::msgs::geometry_msgs::Twist SmoothControlLaw::CalculateRegularVelocity(
+     const automsgs::msgs::geometry_msgs::Pose& target, const bool& backward) {
+     return CalculateRegularVelocity(target, automsgs::msgs::geometry_msgs::Pose(),
                                      backward);
  }
  
- commsgs::geometry_msgs::Pose SmoothControlLaw::CalculateNextPose(
-     const double dt, const commsgs::geometry_msgs::Pose& target,
-     const commsgs::geometry_msgs::Pose& current, const bool& backward) {
-     commsgs::geometry_msgs::Twist vel =
+ automsgs::msgs::geometry_msgs::Pose SmoothControlLaw::CalculateNextPose(
+     const double dt, const automsgs::msgs::geometry_msgs::Pose& target,
+     const automsgs::msgs::geometry_msgs::Pose& current, const bool& backward) {
+     automsgs::msgs::geometry_msgs::Twist vel =
          CalculateRegularVelocity(target, current, backward);
-     commsgs::geometry_msgs::Pose next;
-     double yaw = transform::tf2::getYaw(current.orientation);
-     next.position.x = current.position.x + vel.linear.x * dt * cos(yaw);
-     next.position.y = current.position.y + vel.linear.x * dt * sin(yaw);
-     yaw += vel.angular.z * dt;
-     next.orientation = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+     automsgs::msgs::geometry_msgs::Pose next;
+     double yaw = transform::tf2::getYaw(current.orientation());
+     next.mutable_position()->set_x(current.position().x() + vel.linear().x() * dt * cos(yaw));
+     next.mutable_position()->set_y(current.position().y() + vel.linear().x() * dt * sin(yaw));
+     yaw += vel.angular().z() * dt;
+     *next.mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
      return next;
  }
  

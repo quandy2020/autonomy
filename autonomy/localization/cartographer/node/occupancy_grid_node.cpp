@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/localization/cartographer/node/occupancy_grid_node.hpp"
 
 #include <chrono>
@@ -46,7 +48,7 @@ bool OccupancyGridNode::Init(std::shared_ptr<autolink::Node> node) {
         node_->CreateClient<proto::SubmapQueryRequest, proto::SubmapQueryResponse>(
             kSubmapQueryServiceName);
     occupancy_grid_writer_ =
-        node_->CreateWriter<commsgs::map_msgs::OccupancyGrid>(kOccupancyGridTopic);
+        node_->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(kOccupancyGridTopic);
 
     node_->CreateReader<proto::SubmapList>(
         kSubmapListTopic,
@@ -82,7 +84,7 @@ void OccupancyGridNode::HandleSubmapList(
             continue;
         }
         SubmapSlice& submap_slice = submap_slices_[id];
-        submap_slice.pose = ToRigid3d(FromProtoPose(submap_msg.pose()));
+        *submap_slice.mutable_pose() = ToRigid3d(FromProtoPose(submap_msg.pose()));
         submap_slice.metadata_version = submap_msg.submap_version();
         if (submap_slice.surface != nullptr &&
             submap_slice.version == submap_msg.submap_version()) {
@@ -104,7 +106,7 @@ void OccupancyGridNode::HandleSubmapList(
     }
 
     if (msg->has_header()) {
-        last_timestamp_ = commsgs::builtin_interfaces::FromProto(msg->header().stamp());
+        last_timestamp_ = msg->header(.stamp());
         last_frame_id_ = msg->header().frame_id();
     }
 }

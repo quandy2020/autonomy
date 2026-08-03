@@ -219,7 +219,7 @@ public:
     void wait() const {
         std::unique_lock<Mutex> queueListLock(queueListMutex);
         queueListConditionVariable.wait(
-            queueListLock, [this]() -> bool { return doCanProcess(); });
+            queueListLock, [this]()-> bool { return doCanProcess(); });
     }
 
     template <class Rep, class Period>
@@ -227,7 +227,7 @@ public:
         std::unique_lock<Mutex> queueListLock(queueListMutex);
         return queueListConditionVariable.wait_for(
             queueListLock, duration,
-            [this]() -> bool { return doCanProcess(); });
+            [this]()-> bool { return doCanProcess(); });
     }
 
     using super::dispatch;

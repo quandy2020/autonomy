@@ -17,7 +17,10 @@
 #pragma once
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autonomy/transform/proto/transform_options.pb.h"
 
 namespace autonomy {
@@ -49,7 +52,7 @@ public:
      * @brief Get the transform stampeds
      * @return The transform stampeds
      */
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
+    const automsgs::msgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
         const {
         return transform_stampeds_;
     }
@@ -65,7 +68,7 @@ private:
      * @param msgtf The transform to send
      */
     void SendTransform(
-        const std::vector<commsgs::geometry_msgs::TransformStamped>& msgtf);
+        const std::vector<automsgs::msgs::geometry_msgs::TransformStamped>& msgtf);
 
     /**
      * @brief Parse static transforms from the yaml file
@@ -75,10 +78,10 @@ private:
      */
     bool ParseFromYaml(
         const std::string& file_path,
-        std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
+        std::vector<automsgs::msgs::geometry_msgs::TransformStamped>& transforms);
 
     // transform_stampeds
-    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
+    automsgs::msgs::geometry_msgs::TransformStampeds transform_stampeds_;
 
     // static_transform_options
     autonomy::transform::proto::TransformOptions static_transform_options_;

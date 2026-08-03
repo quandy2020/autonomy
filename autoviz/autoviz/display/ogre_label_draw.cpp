@@ -36,7 +36,7 @@ void drawLabelsGlFallback(rendering::SceneOverlay& scene,
   for (const TextLabelInstance& label : labels) {
     const QString text = QString::fromStdString(label.text).trimmed();
     if (text.isEmpty()) {
-      scene.addViewFacingQuad(label.position, std::max(0.04f, label.char_height * 0.5f),
+      scene.addViewFacingQuad(label.position(), std::max(0.04f, label.char_height * 0.5f),
                               label.color);
       continue;
     }
@@ -52,7 +52,7 @@ void drawLabelsGlFallback(rendering::SceneOverlay& scene,
         static_cast<float>(std::max(1, label_image.height()));
     const float half_height = label.char_height * 0.5f;
     const float half_width = half_height * aspect;
-    scene.addViewFacingTexturedQuad(label.position, half_width, half_height,
+    scene.addViewFacingTexturedQuad(label.position(), half_width, half_height,
                                     label_image);
   }
 }
@@ -68,7 +68,7 @@ bool drawLabelsOgreOrGl(common::DisplayContext* context,
     std::vector<rendering::OgreTextLabel> ogre_labels;
     ogre_labels.reserve(labels.size());
     for (const TextLabelInstance& label : labels) {
-      ogre_labels.push_back({label.text, label.position, label.color,
+      ogre_labels.push_back({label.text, label.position(), label.color,
                              label.char_height, label.space_width});
     }
     syncOgreDisplayVisibility(context, display_name);

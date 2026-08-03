@@ -17,14 +17,17 @@
 #pragma once
 
 #include "autonomy/common/time.hpp"
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
 
 namespace autonomy {
 namespace sensor {
 
-using RangeData = commsgs::sensor_msgs::Range;
-using RangeProto = commsgs::proto::sensor_msgs::Range;
+using RangeData = automsgs::msgs::sensor_msgs::Range;
+using RangeProto = automsgs::msgs::sensor_msgs::Range;
 
 // Converts 'data' to a proto::sensor_msgs::Range.
 RangeProto ToProto(const RangeData& data);

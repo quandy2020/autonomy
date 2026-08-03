@@ -142,13 +142,13 @@ GridMap GridMapCvProcessing::getTransformedMap(
 
             // Calculate the new center of the gridMap.
             Position3 newCenter =
-                transform * Position3{(gridMapSource.getPosition().x()),
-                                      (gridMapSource.getPosition().y()), 0.0};
+                transform * Position3(gridMapSource.getPosition().x(),
+                                      gridMapSource.getPosition().y(), 0.0);
 
             // Set the size of the rotated gridMap.
             transformedMap.setGeometry(
-                {boundingBox.height * gridMapSource.getResolution(),
-                 boundingBox.width * gridMapSource.getResolution()},
+                Length(boundingBox.height * gridMapSource.getResolution(),
+                       boundingBox.width * gridMapSource.getResolution()),
                 gridMapSource.getResolution(),
                 Position(newCenter.x(), newCenter.y()));
             firstLayer = false;

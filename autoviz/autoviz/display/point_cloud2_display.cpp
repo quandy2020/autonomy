@@ -39,7 +39,7 @@ PointCloudColorMode parseColorMode(const std::string& value) {
 PointCloud2Display::PointCloud2Display(std::string channel)
     : ChannelDisplay<automsgs::msgs::sensor_msgs::PointCloud2>(
           "PointCloud2", std::move(channel),
-          "autonomy.commsgs.proto.sensor_msgs.PointCloud2") {
+          "automsgs.msgs.sensor_msgs.PointCloud2") {
   setProperties({});
 }
 
@@ -141,7 +141,7 @@ void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
   std::vector<ColoredPoint3D> colored;
   colored.reserve(points_.size());
   for (const auto& pt : points_) {
-    colored.push_back({pt.position, pt.color});
+    colored.push_back({pt.position(), pt.color});
   }
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
                           colored, true);

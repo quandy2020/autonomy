@@ -28,7 +28,7 @@ QVector3D ProtoVector3(
 WrenchDisplay::WrenchDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::geometry_msgs::WrenchStamped>(
           "Wrench", std::move(channel),
-          "autonomy.commsgs.proto.geometry_msgs.WrenchStamped") {
+          "automsgs.msgs.geometry_msgs.WrenchStamped") {
   setProperties({});
 }
 

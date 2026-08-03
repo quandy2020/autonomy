@@ -248,8 +248,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     const auto dt{std::chrono::duration<float32_t>{time_difference}.count()};
     CatrMotionModel32::State expected_state{initial_state};
     expected_state.at<X>() +=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<XY_VELOCITY>() +=
         dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
@@ -259,8 +258,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<XY_ACCELERATION>() = -1.0F;
     expected_state = initial_state;
     expected_state.at<X>() +=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<XY_VELOCITY>() +=
         dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
@@ -272,8 +270,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<YAW>() = 0.5F * M_PIf32;
     expected_state = initial_state;
     expected_state.at<Y>() +=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<XY_VELOCITY>() +=
         dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
@@ -284,8 +281,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<YAW>() = -0.5F * M_PIf32;
     expected_state = initial_state;
     expected_state.at<Y>() -=
-        dt * initial_state.at<XY_VELOCITY>() +
-        0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+        dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<XY_VELOCITY>() +=
         dt * initial_state.at<XY_ACCELERATION>();
     EXPECT_EQ(expected_state, model.predict(initial_state, time_difference));
@@ -296,8 +292,7 @@ TEST(CatrMotionModelTest, PredictLinearMovementWithZeroTurnRate) {
     initial_state.at<XY_ACCELERATION>() = 1.0F;
     initial_state.at<YAW>() = 0.25F * M_PIf32;
     expected_state = initial_state;
-    const auto distance = dt * initial_state.at<XY_VELOCITY>() +
-                          0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
+    const auto distance = dt * initial_state.at<XY_VELOCITY>() + 0.5F * dt * dt * initial_state.at<XY_ACCELERATION>();
     expected_state.at<X>() += sqrt(0.5F * distance * distance);
     expected_state.at<Y>() += sqrt(0.5F * distance * distance);
     expected_state.at<XY_VELOCITY>() +=

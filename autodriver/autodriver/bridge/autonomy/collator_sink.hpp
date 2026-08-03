@@ -26,7 +26,10 @@
 
 #include "autodriver/sync/aligned_snapshot.hpp"
 #include "autodriver/types/sensor_sample.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/sensor/collator_interface.hpp"
 
 namespace autodriver {
@@ -42,11 +45,11 @@ namespace bridge {
 class CollatorSink
 {
 public:
-  using ImuCallback = std::function<void(const autonomy::commsgs::sensor_msgs::Imu &)>;
+  using ImuCallback = std::function<void(const automsgs::msgs::sensor_msgs::Imu &)>;
   using NavSatCallback =
-    std::function<void(const autonomy::commsgs::sensor_msgs::NavSatFix &)>;
+    std::function<void(const automsgs::msgs::sensor_msgs::NavSatFix &)>;
   using ImageCallback =
-    std::function<void(const autonomy::commsgs::sensor_msgs::Image &)>;
+    std::function<void(const automsgs::msgs::sensor_msgs::Image &)>;
 
   explicit CollatorSink(autonomy::sensor::CollatorInterface & collator);
 

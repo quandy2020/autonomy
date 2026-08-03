@@ -9,7 +9,15 @@
 #include <string>
 
 #include "autolink/node/node.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 #include "autonomy/task/proto/charging.pb.h"
 
@@ -42,7 +50,7 @@ public:
     bool MarkConnected();
 
     const std::string& dock_station_id() const { return dock_station_id_; }
-    const commsgs::geometry_msgs::PoseStamped& dock_pose() const
+    const automsgs::msgs::geometry_msgs::PoseStamped& dock_pose() const
     {
         return dock_pose_;
     }
@@ -60,7 +68,7 @@ public:
 private:
     navigation::NavigationClient::Ptr navigation_;
     std::string dock_station_id_;
-    commsgs::geometry_msgs::PoseStamped dock_pose_;
+    automsgs::msgs::geometry_msgs::PoseStamped dock_pose_;
     double max_search_radius_{3.0};
     float battery_target_percent_{100.f};
     bool search_complete_{false};

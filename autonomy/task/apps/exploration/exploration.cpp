@@ -6,7 +6,15 @@
 #include <string>
 
 #include "autolink/autolink.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/task/apps/exploration/exploration.hpp"
 #include "autonomy/task/apps/navigation/navigation_client.hpp"
 
@@ -22,15 +30,15 @@ constexpr char kDefaultSmootherId[] = "simple_smoother";
 constexpr double kDefaultGoalReachedTol = 0.25;
 constexpr char kDefaultMapName[] = "exploration_map";
 
-commsgs::geometry_msgs::Polygon ToPolygon(
-    const ::autonomy::commsgs::proto::geometry_msgs::Polygon& proto)
+automsgs::msgs::geometry_msgs::Polygon ToPolygon(
+    const ::automsgs::msgs::geometry_msgs::Polygon& proto)
 {
-    return commsgs::geometry_msgs::FromProto(proto);
+    return proto;
 }
 
 }  // namespace
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace exp_proto = ::autonomy::task::proto;
 
 RobotTaskType ExplorationTask::GetTaskType() const

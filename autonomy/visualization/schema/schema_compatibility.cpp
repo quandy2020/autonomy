@@ -30,20 +30,20 @@ namespace {
 
 using Mapping = std::pair<const char*, const char*>;
 constexpr std::array<Mapping, 14> kPackageMappings = {{
-    {"autonomy.commsgs.proto.sensor_msgs", "sensor_msgs"},
-    {"autonomy.commsgs.proto.sensor_msgs_foxglove", "sensor_msgs"},
-    {"autonomy.commsgs.proto.std_msgs", "std_msgs"},
-    {"autonomy.commsgs.proto.geometry_msgs", "geometry_msgs"},
-    {"autonomy.commsgs.proto.visualization_msgs", "visualization_msgs"},
-    {"autonomy.commsgs.proto.builtin_interfaces", "builtin_interfaces"},
-    {"autonomy.commsgs.proto.planning_msgs", "nav_msgs"},
-    {"autonomy.commsgs.proto.nav_msgs", "nav_msgs"},
-    {"autonomy.commsgs.proto.map_msgs", "map_msgs"},
-    {"autonomy.commsgs.proto.vision_msgs", "vision_msgs"},
-    {"autonomy.commsgs.proto.diagnostic_msgs", "diagnostic_msgs"},
-    {"autonomy.commsgs.proto.tf2_msgs", "tf2_msgs"},
-    {"autonomy.commsgs.proto.vehicle_msgs", "vehicle_msgs"},
-    {"autonomy.commsgs.proto.error_code", "error_code"},
+    {"automsgs.msgs.sensor_msgs", "sensor_msgs"},
+    {"automsgs.msgs.sensor_msgs_foxglove", "sensor_msgs"},
+    {"automsgs.msgs.std_msgs", "std_msgs"},
+    {"automsgs.msgs.geometry_msgs", "geometry_msgs"},
+    {"automsgs.msgs.visualization_msgs", "visualization_msgs"},
+    {"automsgs.msgs.builtin_interfaces", "builtin_interfaces"},
+    {"automsgs.msgs.planning_msgs", "nav_msgs"},
+    {"automsgs.msgs.nav_msgs", "nav_msgs"},
+    {"automsgs.msgs.map_msgs", "map_msgs"},
+    {"automsgs.msgs.vision_msgs", "vision_msgs"},
+    {"automsgs.msgs.diagnostic_msgs", "diagnostic_msgs"},
+    {"automsgs.msgs.tf2_msgs", "tf2_msgs"},
+    {"automsgs.msgs.vehicle_msgs", "vehicle_msgs"},
+    {"automsgs.msgs.status_msgs", "status_msgs"},
 }};
 
 std::string ReplacePrefix(const std::string& value, const Mapping& mapping) {
@@ -193,7 +193,7 @@ std::string SchemaCompatibility::NormalizeFileName(const std::string& file_name)
       {"autonomy/commsgs/proto/diagnostic_msgs.proto", "diagnostic_msgs.proto"},
       {"autonomy/commsgs/proto/tf2_msgs.proto", "tf2_msgs.proto"},
       {"autonomy/commsgs/proto/vehicle_msgs.proto", "vehicle_msgs.proto"},
-      {"autonomy/commsgs/proto/error_code.proto", "error_code.proto"},
+      {"autonomy/commsgs/proto/error_code.proto", "status_msgs.proto"},
   }};
   for (const auto& mapping : kFileMappings) {
     if (normalized == mapping.first) {

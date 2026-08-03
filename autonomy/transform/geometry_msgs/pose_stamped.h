@@ -16,7 +16,10 @@
 
 #pragma once
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include "autonomy/transform/tf2/LinearMath/Quaternion.h"
 #include "autonomy/transform/tf2/convert.h"
 
@@ -27,12 +30,12 @@ namespace tf2 {
 // Template specialization for fromMsg (Quaternion)
 // This needs to be defined before it's used in impl/utils.h
 template <>
-inline void fromMsg<commsgs::geometry_msgs::Quaternion, Quaternion>(
-    const commsgs::geometry_msgs::Quaternion& msg, Quaternion& out) {
-    out.setX(msg.x);
-    out.setY(msg.y);
-    out.setZ(msg.z);
-    out.setW(msg.w);
+inline void fromMsg<automsgs::msgs::geometry_msgs::Quaternion, Quaternion>(
+    const automsgs::msgs::geometry_msgs::Quaternion& msg, Quaternion& out) {
+    out.setX(msg.x());
+    out.setY(msg.y());
+    out.setZ(msg.z());
+    out.setW(msg.w());
 }
 
 }  // namespace tf2

@@ -39,8 +39,7 @@ QStringList resourceSearchPaths(const std::string& base_directory) {
   }
 
   const QString install_share =
-      QCoreApplication::applicationDirPath() +
-      QStringLiteral("/../share/autonomy");
+      QCoreApplication::applicationDirPath() + QStringLiteral("/../share/autonomy");
   if (QFileInfo(install_share).isDir() && !prefixes.contains(install_share)) {
     prefixes.push_back(QFileInfo(install_share).absoluteFilePath());
   }

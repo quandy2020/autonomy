@@ -16,7 +16,11 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/polygon.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 import "autonomy/task/proto/task_common.proto";
 
 // apps/exploration — aligned with bridge ExplorationCommand.
@@ -46,7 +50,7 @@ message ExplorationGoal {
   TaskHeader header = 1;
   ExplorationCommand command = 2;
   oneof params {
-    commsgs.proto.geometry_msgs.Polygon area = 3;
+    automsgs.msgs.geometry_msgs.Polygon area = 3;
     string map_name = 4;
   }
 }

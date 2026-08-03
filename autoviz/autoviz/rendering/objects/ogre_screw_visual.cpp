@@ -62,7 +62,7 @@ void OgreScrewVisual::setScrew(const Ogre::Vector3& linear, const Ogre::Vector3&
     arrow_angular_->setDirection(angular);
     const Ogre::Vector3 axis_z(0, 0, 1);
     Ogre::Quaternion orientation = axis_z.getRotationTo(angular);
-    if (std::isnan(orientation.x) || std::isnan(orientation.y) || std::isnan(orientation.z)) {
+    if (std::isnan(orientation.x()) || std::isnan(orientation.y()) || std::isnan(orientation.z())) {
       orientation = Ogre::Quaternion::IDENTITY;
     }
     circle_arrow_angular_->set(0, width_ * 0.1f, width_ * 0.1f * 1.0f, width_ * 0.1f * 2.0f);

@@ -85,9 +85,9 @@ void ThetaStarPlanner::InitFromOptions() {
 }
 
 uint32 ThetaStarPlanner::CreatePlan(
-    const commsgs::geometry_msgs::PoseStamped& start,
-    const commsgs::geometry_msgs::PoseStamped& goal,
-    commsgs::planning_msgs::Path& plan,
+    const automsgs::msgs::geometry_msgs::PoseStamped& start,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+    automsgs::msgs::planning_msgs::Path& plan,
     std::function<bool()> cancel_checker) {
     if (!costmap_) {
         AERROR << "Costmap is not set for planner " << name_;
@@ -95,12 +95,12 @@ uint32 ThetaStarPlanner::CreatePlan(
             proto::PlannerResultCode::PLANNER_NOT_INITIALIZED);
     }
 
-    if (global_frame_.empty() && !start.header.frame_id.empty()) {
-        global_frame_ = start.header.frame_id;
+    if (global_frame_.empty() && !start.header().frame_id().empty()) {
+        global_frame_ = start.header().frame_id();
     }
 
-    plan.poses.clear();
-    if (makePlan(start.pose, goal.pose, cancel_checker, plan)) {
+    plan.clear_poses();
+    if (makePlan(start.pose(), goal.pose(), cancel_checker, plan)) {
         return static_cast<uint32>(proto::PlannerResultCode::PLANNER_SUCCESS);
     }
     return static_cast<uint32>(proto::PlannerResultCode::PLANNER_NO_PATH_FOUND);
@@ -206,11 +206,11 @@ double ThetaStarPlanner::heuristic(unsigned int x, unsigned int y,
 }
 
 bool ThetaStarPlanner::makePlan(
-    const commsgs::geometry_msgs::Pose& start,
-    const commsgs::geometry_msgs::Pose& goal,
-    std::function<bool()> cancel_checker, commsgs::planning_msgs::Path& plan) {
-    plan.poses.clear();
-    plan.header.frame_id = global_frame_.empty() ? "map" : global_frame_;
+    const automsgs::msgs::geometry_msgs::Pose& start,
+    const automsgs::msgs::geometry_msgs::Pose& goal,
+    std::function<bool()> cancel_checker, automsgs::msgs::planning_msgs::Path& plan) {
+    plan.clear_poses();
+    plan.mutable_header()->set_frame_id(global_frame_.empty() ? "map" : global_frame_);
 
     auto* grid = costmap_->getCostmap();
     if (!grid) {
@@ -221,8 +221,8 @@ bool ThetaStarPlanner::makePlan(
     unsigned int start_y = 0;
     unsigned int goal_x = 0;
     unsigned int goal_y = 0;
-    if (!worldToMap(start.position.x, start.position.y, start_x, start_y) ||
-        !worldToMap(goal.position.x, goal.position.y, goal_x, goal_y)) {
+    if (!worldToMap(start.position().x(), start.position().y(), start_x, start_y) ||
+        !worldToMap(goal.position().x(), goal.position().y(), goal_x, goal_y)) {
         AERROR << "Start or goal is outside map bounds";
         return false;
     }
@@ -368,33 +368,33 @@ bool ThetaStarPlanner::makePlan(
         double wy = 0.0;
         mapToWorld(cells[i].first, cells[i].second, wx, wy);
 
-        commsgs::geometry_msgs::PoseStamped pose;
-        pose.header.frame_id = plan.header.frame_id;
-        pose.pose.position.x = wx;
-        pose.pose.position.y = wy;
-        pose.pose.position.z = 0.0;
-        pose.pose.orientation.w = 1.0;
+        automsgs::msgs::geometry_msgs::PoseStamped pose;
+        pose.mutable_header()->set_frame_id(plan.header().frame_id());
+        pose.mutable_pose()->mutable_position()->set_x(wx);
+        pose.mutable_pose()->mutable_position()->set_y(wy);
+        pose.mutable_pose()->mutable_position()->set_z(0.0);
+        pose.mutable_pose()->mutable_orientation()->set_w(1.0);
 
         if (i + 1 < cells.size()) {
             double nx = 0.0;
             double ny = 0.0;
             mapToWorld(cells[i + 1].first, cells[i + 1].second, nx, ny);
             const double theta = std::atan2(ny - wy, nx - wx);
-            pose.pose.orientation =
-                map::costmap_2d::utils::OrientationAroundZAxis(theta);
+            *pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(theta);
         } else if (!cells.empty() && i > 0) {
-            pose.pose.orientation = plan.poses.back().pose.orientation;
+            *pose.mutable_pose()->mutable_orientation() = plan.poses(plan.poses_size() - 1).pose().orientation();
         }
 
-        plan.poses.push_back(pose);
+        *plan.mutable_poses()->Add() = pose;
     }
 
-    if (!plan.poses.empty()) {
-        plan.poses.back().pose.position = goal.position;
-        plan.poses.back().pose.orientation = goal.orientation;
+    if (!plan.poses().empty()) {
+        auto* last = plan.mutable_poses(plan.poses_size() - 1);
+        *last->mutable_pose()->mutable_position() = goal.position();
+        *last->mutable_pose()->mutable_orientation() = goal.orientation();
     }
 
-    return !plan.poses.empty();
+    return !plan.poses().empty();
 }
 
 }  // namespace theta_star

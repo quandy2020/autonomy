@@ -39,7 +39,7 @@ void OgreIndexedPalette::ensureRainbowPalette() {
   Ogre::HardwarePixelBufferSharedPtr buffer = texture->getBuffer();
   const Ogre::PixelBox& box =
       buffer->lock(Ogre::Box(0, 0, 256, 1, 1, 1), Ogre::HardwareBuffer::HBL_DISCARD);
-  auto* pixels = static_cast<Ogre::uint8*>(box.data);
+  auto* pixels = static_cast<Ogre::uint8*>(box.data());
   for (int i = 0; i < 256; ++i) {
     const QColor color = rainbowTable()[static_cast<std::size_t>(i)];
     pixels[i * 4 + 0] = static_cast<Ogre::uint8>(color.red());

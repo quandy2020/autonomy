@@ -316,7 +316,7 @@ std::string LuaParameterDictionary::DoToString(
     bool dictionary_is_empty = true;
 
     const auto top_of_stack_to_string =
-        [this, indent, &dictionary_is_empty]() -> std::string {
+        [this, indent, &dictionary_is_empty]()-> std::string {
         dictionary_is_empty = false;
 
         const int value_type = lua_type(L_, -1);

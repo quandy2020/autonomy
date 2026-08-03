@@ -1,3 +1,4 @@
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
 /*
  * Copyright 2024 The OpenRobotic Beginner Authors (duyongquan)
  *
@@ -37,29 +38,29 @@ namespace map {
 namespace costmap_2d {
 namespace {
 
-void TransformPoint(const commsgs::geometry_msgs::Transform& transform,
+void TransformPoint(const automsgs::msgs::geometry_msgs::Transform& transform,
                     double x, double y, double z, double& out_x, double& out_y,
                     double& out_z) {
-    const auto& q = transform.rotation;
-    const auto& t = transform.translation;
-    const double qx = q.x;
-    const double qy = q.y;
-    const double qz = q.z;
-    const double qw = q.w;
+    const auto& q = transform.rotation();
+    const auto& t = transform.translation();
+    const double qx = q.x();
+    const double qy = q.y();
+    const double qz = q.z();
+    const double qw = q.w();
     const double ix = qw * x + qy * z - qz * y;
     const double iy = qw * y + qz * x - qx * z;
     const double iz = qw * z + qx * y - qy * x;
     const double iw = -qx * x - qy * y - qz * z;
-    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x;
-    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y;
-    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z;
+    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x();
+    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y();
+    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z();
 }
 
 }  // namespace
 
 RangeSensorLayer::RangeSensorLayer() {
     processRangeMessageFunc_ =
-        [this](commsgs::sensor_msgs::Range& msg) { processRangeMsg(msg); };
+        [this](automsgs::msgs::sensor_msgs::Range& msg) { processRangeMsg(msg); };
 }
 
 void RangeSensorLayer::onInitialize() {
@@ -105,15 +106,15 @@ void RangeSensorLayer::onInitialize() {
                        });
 
         if (sensor_type_name == "VARIABLE") {
-            processRangeMessageFunc_ = [this](commsgs::sensor_msgs::Range& msg) {
+            processRangeMessageFunc_ = [this](automsgs::msgs::sensor_msgs::Range& msg) {
                 processVariableRangeMsg(msg);
             };
         } else if (sensor_type_name == "FIXED") {
-            processRangeMessageFunc_ = [this](commsgs::sensor_msgs::Range& msg) {
+            processRangeMessageFunc_ = [this](automsgs::msgs::sensor_msgs::Range& msg) {
                 processFixedRangeMsg(msg);
             };
         } else {
-            processRangeMessageFunc_ = [this](commsgs::sensor_msgs::Range& msg) {
+            processRangeMessageFunc_ = [this](automsgs::msgs::sensor_msgs::Range& msg) {
                 processRangeMsg(msg);
             };
             if (!sensor_type_name.empty() && sensor_type_name != "ALL") {
@@ -191,23 +192,23 @@ double RangeSensorLayer::sensor_model(double r, double phi, double theta) {
 }
 
 void RangeSensorLayer::bufferIncomingRangeMsg(
-    const commsgs::sensor_msgs::Range::SharedPtr range_message) {
+    const std::shared_ptr<automsgs::msgs::sensor_msgs::Range> range_message) {
     range_message_mutex_.lock();
     range_msgs_buffer_.push_back(*range_message);
     last_reading_steady_ = std::chrono::steady_clock::now();
     range_message_mutex_.unlock();
 }
 
-void RangeSensorLayer::feedRange(const commsgs::sensor_msgs::Range& range) {
-    bufferIncomingRangeMsg(std::make_shared<commsgs::sensor_msgs::Range>(range));
+void RangeSensorLayer::feedRange(const automsgs::msgs::sensor_msgs::Range& range) {
+    bufferIncomingRangeMsg(std::make_shared<automsgs::msgs::sensor_msgs::Range>(range));
 }
 
 void RangeSensorLayer::updateCostmap() {
-    std::list<commsgs::sensor_msgs::Range> range_msgs_buffer_copy;
+    std::list<automsgs::msgs::sensor_msgs::Range> range_msgs_buffer_copy;
 
     range_message_mutex_.lock();
     range_msgs_buffer_copy =
-        std::list<commsgs::sensor_msgs::Range>(range_msgs_buffer_);
+        std::list<automsgs::msgs::sensor_msgs::Range>(range_msgs_buffer_);
     range_msgs_buffer_.clear();
     range_message_mutex_.unlock();
 
@@ -217,8 +218,8 @@ void RangeSensorLayer::updateCostmap() {
 }
 
 void RangeSensorLayer::processRangeMsg(
-    commsgs::sensor_msgs::Range& range_message) {
-    if (range_message.min_range == range_message.max_range) {
+    automsgs::msgs::sensor_msgs::Range& range_message) {
+    if (range_message.min_range() == range_message.max_range()) {
         processFixedRangeMsg(range_message);
     } else {
         processVariableRangeMsg(range_message);
@@ -226,40 +227,40 @@ void RangeSensorLayer::processRangeMsg(
 }
 
 void RangeSensorLayer::processFixedRangeMsg(
-    commsgs::sensor_msgs::Range& range_message) {
-    if (!std::isinf(range_message.range)) {
+    automsgs::msgs::sensor_msgs::Range& range_message) {
+    if (!std::isinf(range_message.range())) {
         // RCLCPP_ERROR(
         //     logger_,
         //     "Fixed distance ranger (min_range == max_range) in frame %s sent
         //     invalid value. " "Only -Inf (== object detected) and Inf (== no
         //     object detected) are valid.",
-        //     range_message.header.frame_id.c_str());
+        //     range_message.header().frame_id().c_str());
         return;
     }
 
     bool clear_sensor_cone = false;
-    if (range_message.range > 0) {  // +inf
+    if (range_message.range() > 0) {  // +inf
         if (!clear_on_max_reading_) {
             return;  // no clearing at all
         }
         clear_sensor_cone = true;
     }
 
-    range_message.range = range_message.min_range;
+    range_message.set_range(range_message.min_range());
 
     updateCostmap(range_message, clear_sensor_cone);
 }
 
 void RangeSensorLayer::processVariableRangeMsg(
-    commsgs::sensor_msgs::Range& range_message) {
-    if (range_message.range < range_message.min_range ||
-        range_message.range > range_message.max_range) {
+    automsgs::msgs::sensor_msgs::Range& range_message) {
+    if (range_message.range() < range_message.min_range() ||
+        range_message.range() > range_message.max_range()) {
         return;
     }
 
     bool clear_sensor_cone = false;
 
-    if (range_message.range >= range_message.max_range &&
+    if (range_message.range() >= range_message.max_range() &&
         clear_on_max_reading_) {
         clear_sensor_cone = true;
     }
@@ -267,9 +268,9 @@ void RangeSensorLayer::processVariableRangeMsg(
     updateCostmap(range_message, clear_sensor_cone);
 }
 
-void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
+void RangeSensorLayer::updateCostmap(automsgs::msgs::sensor_msgs::Range& range_message,
                                      bool clear_sensor_cone) {
-    max_angle_ = range_message.field_of_view / 2;
+    max_angle_ = range_message.field_of_view() / 2;
 
     auto* tf_buffer = autonomy::transform::Buffer::Instance();
     if (!tf_buffer) {
@@ -286,17 +287,17 @@ void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
 
     try {
         const auto origin_transform = tf_buffer->lookupTransform(
-            global_frame_, range_message.header.frame_id,
-            range_message.header.stamp, timeout);
+            global_frame_, range_message.header().frame_id(),
+            range_message.header().stamp(), timeout);
         double oz = 0.0;
         double tz = 0.0;
-        TransformPoint(origin_transform.transform, 0.0, 0.0, 0.0, ox, oy, oz);
-        TransformPoint(origin_transform.transform, range_message.range, 0.0, 0.0,
+        TransformPoint(origin_transform.transform(), 0.0, 0.0, 0.0, ox, oy, oz);
+        TransformPoint(origin_transform.transform(), range_message.range(), 0.0, 0.0,
                        tx, ty, tz);
         (void)oz;
         (void)tz;
     } catch (const transform::tf2::TransformException& ex) {
-        AWARN << "RangeSensorLayer TF error (" << range_message.header.frame_id
+        AWARN << "RangeSensorLayer TF error (" << range_message.header().frame_id()
               << " -> " << global_frame_ << "): " << ex.what();
         return;
     }
@@ -381,7 +382,7 @@ void RangeSensorLayer::updateCostmap(commsgs::sensor_msgs::Range& range_message,
             if (update_xy_cell) {
                 double wx, wy;
                 mapToWorld(x, y, wx, wy);
-                update_cell(ox, oy, theta, range_message.range, wx, wy,
+                update_cell(ox, oy, theta, range_message.range(), wx, wy,
                             clear_sensor_cone);
             }
         }

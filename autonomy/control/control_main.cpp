@@ -40,20 +40,20 @@ void InitTransformStack(const AutonomyOptions& options)
         options.transform_options());
     const auto& static_transforms =
         transform_server->GetTransformStampedsData();
-    for (const auto& trans : static_transforms.transforms) {
+    for (const auto& trans : static_transforms.transforms()) {
         geometry_msgs::TransformStamped geo_msg;
-        geo_msg.header.stamp = static_cast<uint64_t>(trans.header.stamp.sec) *
+        geo_msg.header.stamp = static_cast<uint64_t>(trans.header().stamp().sec()) *
                                    1000000000ULL +
-                               static_cast<uint64_t>(trans.header.stamp.nanosec);
-        geo_msg.header.frame_id = trans.header.frame_id;
-        geo_msg.child_frame_id = trans.child_frame_id;
-        geo_msg.transform.translation.x = trans.transform.translation.x;
-        geo_msg.transform.translation.y = trans.transform.translation.y;
-        geo_msg.transform.translation.z = trans.transform.translation.z;
-        geo_msg.transform.rotation.x = trans.transform.rotation.x;
-        geo_msg.transform.rotation.y = trans.transform.rotation.y;
-        geo_msg.transform.rotation.z = trans.transform.rotation.z;
-        geo_msg.transform.rotation.w = trans.transform.rotation.w;
+                               static_cast<uint64_t>(trans.header().stamp().nanosec());
+        geo_msg.header.frame_id = trans.header().frame_id();
+        geo_msg.child_frame_id = trans.child_frame_id();
+        geo_msg.transform.translation.x = trans.transform().translation().x();
+        geo_msg.transform.translation.y = trans.transform().translation().y();
+        geo_msg.transform.translation.z = trans.transform().translation().z();
+        geo_msg.transform.rotation.x = trans.transform().rotation().x();
+        geo_msg.transform.rotation.y = trans.transform().rotation().y();
+        geo_msg.transform.rotation.z = trans.transform().rotation().z();
+        geo_msg.transform.rotation.w = trans.transform().rotation().w();
         tf_buffer->setTransform(geo_msg, "control_main", true);
     }
 }

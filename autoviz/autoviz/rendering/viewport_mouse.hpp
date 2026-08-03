@@ -19,8 +19,8 @@ inline ViewportMouseEvent MakeViewportPressEvent(const QMouseEvent& event,
   viewport_event.action = ViewportMouseEvent::Action::kPress;
   viewport_event.buttons = event.buttons();
   viewport_event.modifiers = event.modifiers();
-  viewport_event.x = event.pos().x();
-  viewport_event.y = event.pos().y();
+  viewport_event.set_x(event.pos().x());
+  viewport_event.set_y(event.pos().y());
   viewport_event.viewport_width = viewport_width;
   viewport_event.viewport_height = viewport_height;
   return viewport_event;
@@ -33,8 +33,8 @@ inline ViewportMouseEvent MakeViewportMoveEvent(const QMouseEvent& event,
   viewport_event.action = ViewportMouseEvent::Action::kMove;
   viewport_event.buttons = event.buttons();
   viewport_event.modifiers = event.modifiers();
-  viewport_event.x = event.pos().x();
-  viewport_event.y = event.pos().y();
+  viewport_event.set_x(event.pos().x());
+  viewport_event.set_y(event.pos().y());
   viewport_event.viewport_width = viewport_width;
   viewport_event.viewport_height = viewport_height;
   return viewport_event;
@@ -47,8 +47,8 @@ inline ViewportMouseEvent MakeViewportReleaseEvent(const QMouseEvent& event,
   viewport_event.action = ViewportMouseEvent::Action::kRelease;
   viewport_event.buttons = event.buttons();
   viewport_event.modifiers = event.modifiers();
-  viewport_event.x = event.pos().x();
-  viewport_event.y = event.pos().y();
+  viewport_event.set_x(event.pos().x());
+  viewport_event.set_y(event.pos().y());
   viewport_event.viewport_width = viewport_width;
   viewport_event.viewport_height = viewport_height;
   return viewport_event;

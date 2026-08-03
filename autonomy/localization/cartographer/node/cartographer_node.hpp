@@ -27,10 +27,26 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/timer/timer.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
 #include "autonomy/localization/cartographer/common/fixed_ratio_sampler.hpp"
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/mapping/map_builder_interface.hpp"
@@ -108,18 +124,18 @@ private:
     CollectSubmapSlices();
 
     void HandleOdometryMessage(int trajectory_id, const std::string& sensor_id,
-                               const commsgs::planning_msgs::Odometry& msg);
+                               const automsgs::msgs::planning_msgs::Odometry& msg);
     void HandleImuMessage(int trajectory_id, const std::string& sensor_id,
-                          const commsgs::sensor_msgs::Imu& msg);
+                          const automsgs::msgs::sensor_msgs::Imu& msg);
     void HandleLaserScanMessage(int trajectory_id, const std::string& sensor_id,
-                                const commsgs::sensor_msgs::LaserScan& msg);
+                                const automsgs::msgs::sensor_msgs::LaserScan& msg);
     void HandleMultiEchoLaserScanMessage(
         int trajectory_id, const std::string& sensor_id,
-        const commsgs::sensor_msgs::MultiEchoLaserScan& msg);
+        const automsgs::msgs::sensor_msgs::MultiEchoLaserScan& msg);
     void HandlePointCloud2Message(int trajectory_id, const std::string& sensor_id,
-                                  const commsgs::sensor_msgs::PointCloud2& msg);
+                                  const automsgs::msgs::sensor_msgs::PointCloud2& msg);
     void HandleNavSatFixMessage(int trajectory_id, const std::string& sensor_id,
-                                const commsgs::sensor_msgs::NavSatFix& msg);
+                                const automsgs::msgs::sensor_msgs::NavSatFix& msg);
     void HandleLandmarkMessage(int trajectory_id, const std::string& sensor_id,
                                const proto::LandmarkList& msg);
 
@@ -149,15 +165,15 @@ private:
     std::unique_ptr<MapBuilderBridge> map_builder_bridge_ GUARDED_BY(mutex_);
 
     std::shared_ptr<autolink::Writer<proto::SubmapList>> submap_list_writer_;
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::PoseStamped>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PoseStamped>>
         tracked_pose_writer_;
-    std::shared_ptr<autolink::Writer<commsgs::map_msgs::OccupancyGrid>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occupancy_grid_writer_;
 
     std::vector<std::unique_ptr<autolink::Timer>> timers_;
 
     std::map<int, ::cartographer::mapping::PoseExtrapolator> extrapolators_;
-    std::map<int, commsgs::builtin_interfaces::Time> last_published_tf_stamps_;
+    std::map<int, automsgs::msgs::builtin_interfaces::Time> last_published_tf_stamps_;
     std::unordered_map<int, TrajectorySensorSamplers> sensor_samplers_;
     std::map<int, std::multimap<std::pair<::cartographer::common::Time, uint64_t>,
                                 std::function<void()>>>

@@ -57,21 +57,21 @@ static double QUATERNION_NORMALIZATION_TOLERANCE = 10e-3;
 void transformMsgToTF2(const geometry_msgs::Transform& msg,
                        tf2::Transform& tf2) {
     tf2 = tf2::Transform(
-        tf2::Quaternion(msg.rotation.x, msg.rotation.y, msg.rotation.z,
-                        msg.rotation.w),
-        tf2::Vector3(msg.translation.x, msg.translation.y, msg.translation.z));
+        tf2::Quaternion(msg.rotation().x(), msg.rotation().y(), msg.rotation().z(),
+                        msg.rotation().w()),
+        tf2::Vector3(msg.translation().x(), msg.translation().y(), msg.translation().z()));
 }
 
 /** \brief convert Transform to Transform msg*/
 void transformTF2ToMsg(const tf2::Transform& tf2,
                        geometry_msgs::Transform& msg) {
-    msg.translation.x = tf2.getOrigin().x();
-    msg.translation.y = tf2.getOrigin().y();
-    msg.translation.z = tf2.getOrigin().z();
-    msg.rotation.x = tf2.getRotation().x();
-    msg.rotation.y = tf2.getRotation().y();
-    msg.rotation.z = tf2.getRotation().z();
-    msg.rotation.w = tf2.getRotation().w();
+    msg.translation.set_x(tf2.getOrigin().x());
+    msg.translation.set_y(tf2.getOrigin().y());
+    msg.translation.set_z(tf2.getOrigin().z());
+    msg.rotation.set_x(tf2.getRotation().x());
+    msg.rotation.set_y(tf2.getRotation().y());
+    msg.rotation.set_z(tf2.getRotation().z());
+    msg.rotation.set_w(tf2.getRotation().w());
 }
 
 /** \brief convert Transform to Transform msg*/
@@ -79,41 +79,41 @@ void transformTF2ToMsg(const tf2::Transform& tf2,
                        geometry_msgs::TransformStamped& msg, Time stamp,
                        const std::string& frame_id,
                        const std::string& child_frame_id) {
-    transformTF2ToMsg(tf2, msg.transform);
-    msg.header.stamp = stamp;
-    msg.header.frame_id = frame_id;
-    msg.child_frame_id = child_frame_id;
+    transformTF2ToMsg(tf2, msg.transform());
+    *msg.mutable_header()->mutable_stamp() = stamp;
+    msg.mutable_header()->set_frame_id(frame_id);
+    msg.set_child_frame_id(child_frame_id);
 }
 
 void transformTF2ToMsg(const tf2::Quaternion& orient, const tf2::Vector3& pos,
                        geometry_msgs::Transform& msg) {
-    msg.translation.x = pos.x();
-    msg.translation.y = pos.y();
-    msg.translation.z = pos.z();
-    msg.rotation.x = orient.x();
-    msg.rotation.y = orient.y();
-    msg.rotation.z = orient.z();
-    msg.rotation.w = orient.w();
+    msg.translation.set_x(pos.x());
+    msg.translation.set_y(pos.y());
+    msg.translation.set_z(pos.z());
+    msg.rotation.set_x(orient.x());
+    msg.rotation.set_y(orient.y());
+    msg.rotation.set_z(orient.z());
+    msg.rotation.set_w(orient.w());
 }
 
 void transformTF2ToMsg(const tf2::Quaternion& orient, const tf2::Vector3& pos,
                        geometry_msgs::TransformStamped& msg, Time stamp,
                        const std::string& frame_id,
                        const std::string& child_frame_id) {
-    transformTF2ToMsg(orient, pos, msg.transform);
-    msg.header.stamp = stamp;
-    msg.header.frame_id = frame_id;
-    msg.child_frame_id = child_frame_id;
+    transformTF2ToMsg(orient, pos, msg.transform());
+    *msg.mutable_header()->mutable_stamp() = stamp;
+    msg.mutable_header()->set_frame_id(frame_id);
+    msg.set_child_frame_id(child_frame_id);
 }
 
 void setIdentity(geometry_msgs::Transform& tx) {
-    tx.translation.x = 0;
-    tx.translation.y = 0;
-    tx.translation.z = 0;
-    tx.rotation.x = 0;
-    tx.rotation.y = 0;
-    tx.rotation.z = 0;
-    tx.rotation.w = 1;
+    tx.translation.set_x(0);
+    tx.translation.set_y(0);
+    tx.translation.set_z(0);
+    tx.rotation.set_x(0);
+    tx.rotation.set_y(0);
+    tx.rotation.set_z(0);
+    tx.rotation.set_w(1);
 }
 
 bool startsWithSlash(const std::string& frame_id) {
@@ -219,62 +219,59 @@ bool BufferCore::setTransform(
 
     /////// New implementation
     geometry_msgs::TransformStamped stripped = transform_in;
-    stripped.header.frame_id = stripSlash(stripped.header.frame_id);
-    stripped.child_frame_id = stripSlash(stripped.child_frame_id);
+    stripped.mutable_header()->set_frame_id(stripSlash(stripped.header().frame_id()));
+    stripped.set_child_frame_id(stripSlash(stripped.child_frame_id()));
 
     bool error_exists = false;
-    if (stripped.child_frame_id == stripped.header.frame_id) {
+    if (stripped.set_child_frame_id(= stripped.header().frame_id()) {
         // logError(
         //     "TF_SELF_TRANSFORM: Ignoring transform from authority \"%s\" with
         //     " "frame_id and child_frame_id  \"%s\" because they are the
-        //     same", authority.c_str(), stripped.child_frame_id.c_str());
+        //     same", authority.c_str(), stripped.child_frame_id().c_str()));
         error_exists = true;
     }
 
-    if (stripped.child_frame_id == "") {
+    if (stripped.set_child_frame_id(= "") {
         // logError(
         //     "TF_NO_CHILD_FRAME_ID: Ignoring transform from authority \"%s\" "
         //     "because child_frame_id not set ",
-        //     authority.c_str());
+        //     authority.c_str()));
         error_exists = true;
     }
 
-    if (stripped.header.frame_id == "") {
+    if (stripped.mutable_header()->set_frame_id(= "") {
         // logError(
         //     "TF_NO_FRAME_ID: Ignoring transform with child_frame_id \"%s\"
         //     from " "authority \"%s\" because frame_id not set",
-        //     stripped.child_frame_id.c_str(), authority.c_str());
+        //     stripped.child_frame_id().c_str(), authority.c_str()));
         error_exists = true;
     }
 
-    if (std::isnan(stripped.transform.translation.x) ||
-        std::isnan(stripped.transform.translation.y) ||
-        std::isnan(stripped.transform.translation.z) ||
-        std::isnan(stripped.transform.rotation.x) ||
-        std::isnan(stripped.transform.rotation.y) ||
-        std::isnan(stripped.transform.rotation.z) ||
-        std::isnan(stripped.transform.rotation.w)) {
+    if (std::isnan(stripped.transform().translation().x()) ||
+        std::isnan(stripped.transform().translation().y()) ||
+        std::isnan(stripped.transform().translation().z()) ||
+        std::isnan(stripped.transform().rotation().x()) ||
+        std::isnan(stripped.transform().rotation().y()) ||
+        std::isnan(stripped.transform().rotation().z()) ||
+        std::isnan(stripped.transform().rotation().w())) {
         // logError(
         //     "TF_NAN_INPUT: Ignoring transform for child_frame_id \"%s\" from
         //     " "authority \"%s\" because of a nan value in the transform (%f
         //     %f %f)
         //     "
         //     "(%f %f %f %f)",
-        //     stripped.child_frame_id.c_str(), authority.c_str(),
-        //     stripped.transform.translation.x,
-        //     stripped.transform.translation.y,
-        //     stripped.transform.translation.z, stripped.transform.rotation.x,
-        //     stripped.transform.rotation.y, stripped.transform.rotation.z,
-        //     stripped.transform.rotation.w);
+        //     stripped.child_frame_id().c_str(), authority.c_str(),
+        //     stripped.transform().translation().x(),
+        //     stripped.transform().translation().y(),
+        //     stripped.transform().translation().z(), stripped.transform().rotation().x(),
+        //     stripped.transform().rotation().y(), stripped.transform().rotation().z(),
+        //     stripped.transform().rotation().w());
         error_exists = true;
     }
 
     bool valid =
         std::abs(
-            (stripped.transform.rotation.w * stripped.transform.rotation.w +
-             stripped.transform.rotation.x * stripped.transform.rotation.x +
-             stripped.transform.rotation.y * stripped.transform.rotation.y +
-             stripped.transform.rotation.z * stripped.transform.rotation.z) -
+            (stripped.transform().rotation().w() * stripped.transform().rotation().w() + stripped.transform().rotation().x() * stripped.transform().rotation().x() + stripped.transform().rotation().y() * stripped.transform().rotation().y() + stripped.transform().rotation().z() * stripped.transform().rotation().z()) -
             1.0f) < QUATERNION_NORMALIZATION_TOLERANCE;
 
     if (!valid) {
@@ -282,10 +279,10 @@ bool BufferCore::setTransform(
         //     "TF_DENORMALIZED_QUATERNION: Ignoring transform for
         //     child_frame_id "
         //     "\"%s\" from authority \"%s\" because of an invalid quaternion in
-        //     the " "transform (%f %f %f %f)", stripped.child_frame_id.c_str(),
-        //     authority.c_str(), stripped.transform.rotation.x,
-        //     stripped.transform.rotation.y, stripped.transform.rotation.z,
-        //     stripped.transform.rotation.w);
+        //     the " "transform (%f %f %f %f)", stripped.child_frame_id().c_str(),
+        //     authority.c_str(), stripped.transform().rotation().x(),
+        //     stripped.transform().rotation().y(), stripped.transform().rotation().z(),
+        //     stripped.transform().rotation().w());
         error_exists = true;
     }
 
@@ -295,13 +292,13 @@ bool BufferCore::setTransform(
     {
         std::lock_guard<std::mutex> lock(frame_mutex_);
         CompactFrameID frame_number =
-            lookupOrInsertFrameNumber(stripped.child_frame_id);
+            lookupOrInsertFrameNumber(stripped.child_frame_id());
         TimeCacheInterfacePtr frame = getFrame(frame_number);
         if (frame == NULL)
             frame = allocateFrame(frame_number, is_static);
 
         if (frame->insertData(TransformStorage(
-                stripped, lookupOrInsertFrameNumber(stripped.header.frame_id),
+                stripped, lookupOrInsertFrameNumber(stripped.header().frame_id()),
                 frame_number))) {
             frame_authority_[frame_number] = authority;
         } else {
@@ -309,8 +306,8 @@ bool BufferCore::setTransform(
             //     "TF_OLD_DATA ignoring data from the past for frame %s at time
             //     %g " "according to authority %s\nPossible reasons are listed
             //     at " "http://wiki.ros.org/tf/Errors%%20explained",
-            //     stripped.child_frame_id.c_str(),
-            //     time_to_sec(stripped.header.stamp), authority.c_str());
+            //     stripped.child_frame_id().c_str(),
+            //     time_to_sec(stripped.header().stamp()), authority.c_str());
             return false;
         }
     }
@@ -601,19 +598,19 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
 
     if (target_frame == source_frame) {
         geometry_msgs::TransformStamped identity;
-        identity.header.frame_id = target_frame;
-        identity.child_frame_id = source_frame;
-        identity.transform.rotation.w = 1;
+        identity.mutable_header()->set_frame_id(target_frame);
+        identity.set_child_frame_id(source_frame);
+        identity.mutable_transform()->mutable_rotation()->set_w(1);
 
         if (time == 0) {
             CompactFrameID target_id = lookupFrameNumber(target_frame);
             TimeCacheInterfacePtr cache = getFrame(target_id);
             if (cache)
-                identity.header.stamp = cache->getLatestTimestamp();
+                *identity.mutable_header()->mutable_stamp() = cache->getLatestTimestamp();
             else
-                identity.header.stamp = time;
+                *identity.mutable_header()->mutable_stamp() = time;
         } else
-            identity.header.stamp = time;
+            *identity.mutable_header()->mutable_stamp() = time;
 
         return identity;
     }
@@ -666,12 +663,12 @@ geometry_msgs::TransformStamped BufferCore::lookupTransform(
         lookupTransform(target_frame, fixed_frame, target_time);
 
     tf2::Transform tf1, tf2;
-    transformMsgToTF2(temp1.transform, tf1);
-    transformMsgToTF2(temp2.transform, tf2);
-    transformTF2ToMsg(tf2 * tf1, output.transform);
-    output.header.stamp = temp2.header.stamp;
-    output.header.frame_id = target_frame;
-    output.child_frame_id = source_frame;
+    transformMsgToTF2(temp1.transform(), tf1);
+    transformMsgToTF2(temp2.transform(), tf2);
+    transformTF2ToMsg(tf2 * tf1, output.transform());
+    *output.mutable_header()->mutable_stamp() = temp2.header().stamp();
+    output.mutable_header()->set_frame_id(target_frame);
+    output.set_child_frame_id(source_frame);
     return output;
 }
 
@@ -1181,8 +1178,7 @@ std::string BufferCore::allFramesAsYAML(double current_time) const {
         }
 
         double rate = cache->getListLength() /
-                      std::max(time_to_sec(cache->getLatestTimestamp() -
-                                           cache->getOldestTimestamp()),
+                      std::max(time_to_sec(cache->getLatestTimestamp() - cache->getOldestTimestamp()),
                                0.0001);
 
         mstream << std::fixed;  // fixed point notation
@@ -1202,8 +1198,7 @@ std::string BufferCore::allFramesAsYAML(double current_time) const {
                     << std::endl;
         }
         mstream << "  buffer_length: "
-                << time_to_sec(cache->getLatestTimestamp() -
-                               cache->getOldestTimestamp())
+                << time_to_sec(cache->getLatestTimestamp() - cache->getOldestTimestamp())
                 << std::endl;
     }
 
@@ -1484,8 +1479,7 @@ std::string BufferCore::_allFramesAsDot(double current_time) const {
             authority = it->second;
 
         double rate = counter_frame->getListLength() /
-                      std::max(time_to_sec(counter_frame->getLatestTimestamp() -
-                                           counter_frame->getOldestTimestamp()),
+                      std::max(time_to_sec(counter_frame->getLatestTimestamp() - counter_frame->getOldestTimestamp()),
                                0.0001);
 
         mstream << std::fixed;  // fixed point notation
@@ -1515,8 +1509,7 @@ std::string BufferCore::_allFramesAsDot(double current_time) const {
                 //    (getFrame(counter)->getOldestTimestamp()).toSec()
                 //    << ")\\n"
                 << "Buffer length: "
-                << time_to_sec(counter_frame->getLatestTimestamp() -
-                               counter_frame->getOldestTimestamp())
+                << time_to_sec(counter_frame->getLatestTimestamp() - counter_frame->getOldestTimestamp())
                 << " sec\\n"
                 << "\"];" << std::endl;
     }

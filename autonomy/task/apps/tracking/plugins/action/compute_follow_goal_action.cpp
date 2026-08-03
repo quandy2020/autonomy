@@ -15,7 +15,7 @@ public:
 
     static BT::PortsList providedPorts()
     {
-        return {BT::OutputPort<commsgs::geometry_msgs::PoseStamped>("goal")};
+        return {BT::OutputPort<automsgs::msgs::geometry_msgs::PoseStamped>("goal")};
     }
 
 protected:
@@ -26,7 +26,7 @@ protected:
             return BT::NodeStatus::FAILURE;
         }
 
-        commsgs::geometry_msgs::PoseStamped goal;
+        automsgs::msgs::geometry_msgs::PoseStamped goal;
         if (!client->ComputeFollowGoal(goal)) {
             return BT::NodeStatus::FAILURE;
         }

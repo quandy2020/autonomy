@@ -25,7 +25,7 @@ class TeleopTask : public BtTaskApp<::autonomy::task::proto::TeleopGoal,
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(TeleopTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetTeleopClient(teleop::TeleopClient::Ptr client);

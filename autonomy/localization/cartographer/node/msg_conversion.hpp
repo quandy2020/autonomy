@@ -19,11 +19,25 @@
 #include <memory>
 #include <tuple>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/proto/geometry_msgs.pb.h"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
 #include "autonomy/localization/cartographer/common/time.hpp"
 #include "autonomy/localization/cartographer/io/submap_painter.hpp"
 #include "autonomy/localization/cartographer/proto/cartographer_services.pb.h"
@@ -36,27 +50,27 @@ namespace localization {
 namespace cartographer {
 namespace node {
 
-commsgs::geometry_msgs::Transform ToGeometryMsgTransform(
+automsgs::msgs::geometry_msgs::Transform ToGeometryMsgTransform(
     const ::cartographer::transform::Rigid3d& rigid3d);
 
-commsgs::geometry_msgs::Pose ToGeometryMsgPose(
+automsgs::msgs::geometry_msgs::Pose ToGeometryMsgPose(
     const ::cartographer::transform::Rigid3d& rigid3d);
 
-commsgs::geometry_msgs::Point ToGeometryMsgPoint(
+automsgs::msgs::geometry_msgs::Point ToGeometryMsgPoint(
     const Eigen::Vector3d& vector3d);
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const commsgs::sensor_msgs::LaserScan& msg);
+ToPointCloudWithIntensities(const automsgs::msgs::sensor_msgs::LaserScan& msg);
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
 ToPointCloudWithIntensities(
-    const commsgs::sensor_msgs::MultiEchoLaserScan& msg);
+    const automsgs::msgs::sensor_msgs::MultiEchoLaserScan& msg);
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const commsgs::sensor_msgs::PointCloud2& msg);
+ToPointCloudWithIntensities(const automsgs::msgs::sensor_msgs::PointCloud2& msg);
 
 ::cartographer::sensor::LandmarkData ToLandmarkData(
     const proto::LandmarkList& landmark_list);
@@ -68,23 +82,23 @@ Eigen::Vector3d LatLongAltToEcef(double latitude, double longitude,
     double latitude, double longitude);
 
 ::cartographer::transform::Rigid3d ToRigid3d(
-    const commsgs::geometry_msgs::TransformStamped& transform);
+    const automsgs::msgs::geometry_msgs::TransformStamped& transform);
 
 ::cartographer::transform::Rigid3d ToRigid3d(
-    const commsgs::geometry_msgs::Pose& pose);
+    const automsgs::msgs::geometry_msgs::Pose& pose);
 
-commsgs::geometry_msgs::Pose FromProtoPose(
-    const commsgs::proto::geometry_msgs::Pose& pose);
+automsgs::msgs::geometry_msgs::Pose FromProtoPose(
+    const automsgs::msgs::geometry_msgs::Pose& pose);
 
-Eigen::Vector3d ToEigen(const commsgs::geometry_msgs::Vector3& vector3);
+Eigen::Vector3d ToEigen(const automsgs::msgs::geometry_msgs::Vector3& vector3);
 
 Eigen::Quaterniond ToEigen(
-    const commsgs::geometry_msgs::Quaternion& quaternion);
+    const automsgs::msgs::geometry_msgs::Quaternion& quaternion);
 
-std::unique_ptr<commsgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
+std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
     const ::cartographer::io::PaintSubmapSlicesResult& painted_slices,
     double resolution, const std::string& frame_id,
-    const commsgs::builtin_interfaces::Time& time);
+    const automsgs::msgs::builtin_interfaces::Time& time);
 
 }  // namespace node
 }  // namespace cartographer

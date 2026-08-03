@@ -19,8 +19,11 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/proto/tf2_msgs.pb.h"
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/proto/transform_options.pb.h"
 
@@ -30,24 +33,24 @@ namespace transform {
 /** Apply static transforms into the process-local TF buffer. */
 void ApplyStaticTransformsToBuffer(
     Buffer* buffer,
-    const commsgs::geometry_msgs::TransformStampeds& transforms,
+    const automsgs::msgs::geometry_msgs::TransformStampeds& transforms,
     const std::string& authority);
 
 /** Apply a single dynamic or static transform. */
 void ApplyTransformStampedToBuffer(
-    Buffer* buffer, const commsgs::geometry_msgs::TransformStamped& transform,
+    Buffer* buffer, const automsgs::msgs::geometry_msgs::TransformStamped& transform,
     const std::string& authority, bool is_static);
 
 /** Apply all transforms from a tf2_msgs.TFMessage (Autolink /tf). */
 void ApplyTfMessageToBuffer(
     Buffer* buffer,
-    const ::autonomy::commsgs::proto::tf2_msgs::TFMessage& message,
+    const automsgs::msgs::tf2_msgs::TFMessage& message,
     const std::string& authority, bool is_static = false);
 
 /** Parse static_transforms section from extrinsic YAML. */
 bool ParseStaticTransformsFromYaml(
     const std::string& yaml_path,
-    std::vector<commsgs::geometry_msgs::TransformStamped>& transforms);
+    std::vector<automsgs::msgs::geometry_msgs::TransformStamped>& transforms);
 
 /**
  * Load static transforms from YAML and apply to buffer.

@@ -1,3 +1,5 @@
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 /*
  * Copyright 2016 The Cartographer Authors
  *
@@ -14,7 +16,9 @@
  * limitations under the License.
  */
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
 
 #include <cmath>
@@ -23,7 +27,8 @@
 #include <cairo/cairo.h>
 #include <glog/logging.h>
 
-#include "autonomy/commsgs/point_cloud2_iterator.hpp"
+#include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
 #include "autonomy/localization/cartographer/common/math.hpp"
 #include "autonomy/localization/cartographer/common/port.hpp"
 #include "autonomy/localization/cartographer/common/time.hpp"
@@ -42,11 +47,11 @@ bool HasEcho(float) { return true; }
 
 float GetFirstEcho(float range) { return range; }
 
-bool HasEcho(const commsgs::sensor_msgs::LaserEcho& echo) {
+bool HasEcho(const automsgs::msgs::sensor_msgs::LaserEcho& echo) {
     return !echo.echoes.empty();
 }
 
-float GetFirstEcho(const commsgs::sensor_msgs::LaserEcho& echo) {
+float GetFirstEcho(const automsgs::msgs::sensor_msgs::LaserEcho& echo) {
     return echo.echoes.front();
 }
 
@@ -71,7 +76,7 @@ LaserScanToPointCloudWithIntensities(const LaserMessageType& msg) {
                 const ::cartographer::sensor::TimedRangefinderPoint point{
                     rotation * (first_echo * Eigen::Vector3f::UnitX()),
                     static_cast<float>(i * msg.time_increment)};
-                point_cloud.points.push_back(point);
+                *point_cloud.mutable_points()->Add() = point;
                 if (!msg.intensities.empty()) {
                     CHECK_EQ(msg.intensities.size(), msg.ranges.size());
                     const auto& echo_intensities = msg.intensities[i];
@@ -85,8 +90,8 @@ LaserScanToPointCloudWithIntensities(const LaserMessageType& msg) {
         }
         angle += msg.angle_increment;
     }
-    ::cartographer::common::Time timestamp = FromCommsgs(msg.header.stamp);
-    if (!point_cloud.points.empty()) {
+    ::cartographer::common::Time timestamp = FromCommsgs(msg.header().stamp());
+    if (!point_cloud.points().empty()) {
         const double duration = point_cloud.points.back().time;
         timestamp += ::cartographer::common::FromSeconds(duration);
         for (auto& point : point_cloud.points) {
@@ -96,7 +101,7 @@ LaserScanToPointCloudWithIntensities(const LaserMessageType& msg) {
     return std::make_tuple(point_cloud, timestamp);
 }
 
-bool PointCloud2HasField(const commsgs::sensor_msgs::PointCloud2& pc2,
+bool PointCloud2HasField(const automsgs::msgs::sensor_msgs::PointCloud2& pc2,
                          const std::string& field_name) {
     for (const auto& field : pc2.fields) {
         if (field.name == field_name) {
@@ -110,21 +115,21 @@ bool PointCloud2HasField(const commsgs::sensor_msgs::PointCloud2& pc2,
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const commsgs::sensor_msgs::LaserScan& msg) {
+ToPointCloudWithIntensities(const automsgs::msgs::sensor_msgs::LaserScan& msg) {
     return LaserScanToPointCloudWithIntensities(msg);
 }
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
 ToPointCloudWithIntensities(
-    const commsgs::sensor_msgs::MultiEchoLaserScan& msg) {
+    const automsgs::msgs::sensor_msgs::MultiEchoLaserScan& msg) {
     return LaserScanToPointCloudWithIntensities(msg);
 }
 
 std::tuple<::cartographer::sensor::PointCloudWithIntensities,
            ::cartographer::common::Time>
-ToPointCloudWithIntensities(const commsgs::sensor_msgs::PointCloud2& msg) {
-    using commsgs::sensor_msgs::PointCloud2ConstIterator;
+ToPointCloudWithIntensities(const automsgs::msgs::sensor_msgs::PointCloud2& msg) {
+    using automsgs::msgs::sensor_msgs::PointCloud2ConstIterator;
     PointCloudWithIntensities point_cloud;
     const size_t num_points =
         static_cast<size_t>(msg.width) * static_cast<size_t>(msg.height);
@@ -135,7 +140,7 @@ ToPointCloudWithIntensities(const commsgs::sensor_msgs::PointCloud2& msg) {
     const bool has_time = PointCloud2HasField(msg, "time");
 
     if (num_points == 0) {
-        return std::make_tuple(point_cloud, FromCommsgs(msg.header.stamp));
+        return std::make_tuple(point_cloud, FromCommsgs(msg.header().stamp()));
     }
 
     PointCloud2ConstIterator<float> iter_x(msg, "x");
@@ -146,38 +151,38 @@ ToPointCloudWithIntensities(const commsgs::sensor_msgs::PointCloud2& msg) {
         PointCloud2ConstIterator<float> iter_time(msg, "time");
         for (size_t i = 0; i < num_points;
              ++i, ++iter_x, ++iter_y, ++iter_z, ++iter_intensity, ++iter_time) {
-            point_cloud.points.push_back(
+            *point_cloud.mutable_points()->Add() = 
                 {Eigen::Vector3f{*iter_x, *iter_y, *iter_z},
-                 static_cast<float>(*iter_time)});
+                 static_cast<float>(*iter_time)};
             point_cloud.intensities.push_back(*iter_intensity);
         }
     } else if (has_intensity) {
         PointCloud2ConstIterator<float> iter_intensity(msg, "intensity");
         for (size_t i = 0; i < num_points;
              ++i, ++iter_x, ++iter_y, ++iter_z, ++iter_intensity) {
-            point_cloud.points.push_back(
-                {Eigen::Vector3f{*iter_x, *iter_y, *iter_z}, 0.f});
+            *point_cloud.mutable_points()->Add() = 
+                {Eigen::Vector3f{*iter_x, *iter_y, *iter_z}, 0.f};
             point_cloud.intensities.push_back(*iter_intensity);
         }
     } else if (has_time) {
         PointCloud2ConstIterator<float> iter_time(msg, "time");
         for (size_t i = 0; i < num_points;
              ++i, ++iter_x, ++iter_y, ++iter_z, ++iter_time) {
-            point_cloud.points.push_back(
+            *point_cloud.mutable_points()->Add() = 
                 {Eigen::Vector3f{*iter_x, *iter_y, *iter_z},
-                 static_cast<float>(*iter_time)});
+                 static_cast<float>(*iter_time)};
             point_cloud.intensities.push_back(1.f);
         }
     } else {
         for (size_t i = 0; i < num_points; ++i, ++iter_x, ++iter_y, ++iter_z) {
-            point_cloud.points.push_back(
-                {Eigen::Vector3f{*iter_x, *iter_y, *iter_z}, 0.f});
+            *point_cloud.mutable_points()->Add() = 
+                {Eigen::Vector3f{*iter_x, *iter_y, *iter_z}, 0.f};
             point_cloud.intensities.push_back(1.f);
         }
     }
 
-    ::cartographer::common::Time timestamp = FromCommsgs(msg.header.stamp);
-    if (!point_cloud.points.empty()) {
+    ::cartographer::common::Time timestamp = FromCommsgs(msg.header().stamp());
+    if (!point_cloud.points().empty()) {
         const double duration = point_cloud.points.back().time;
         timestamp += ::cartographer::common::FromSeconds(duration);
         for (auto& point : point_cloud.points) {
@@ -195,8 +200,8 @@ ToPointCloudWithIntensities(const commsgs::sensor_msgs::PointCloud2& msg) {
     ::cartographer::sensor::LandmarkData landmark_data;
     if (landmark_list.has_header()) {
         landmark_data.time =
-            FromCommsgs(commsgs::builtin_interfaces::FromProto(
-                landmark_list.header().stamp()));
+            FromCommsgs(
+                landmark_list.header(.stamp()));
     }
     for (const auto& entry : landmark_list.landmarks()) {
         landmark_data.landmark_observations.push_back(
@@ -242,19 +247,19 @@ Rigid3d ComputeLocalFrameFromLatLong(const double latitude,
 }
 
 Rigid3d ToRigid3d(
-    const commsgs::geometry_msgs::TransformStamped& transform) {
-    return Rigid3d(ToEigen(transform.transform.translation),
-                   ToEigen(transform.transform.rotation));
+    const automsgs::msgs::geometry_msgs::TransformStamped& transform) {
+    return Rigid3d(ToEigen(transform.transform().translation()),
+                   ToEigen(transform.transform().rotation()));
 }
 
-Rigid3d ToRigid3d(const commsgs::geometry_msgs::Pose& pose) {
+Rigid3d ToRigid3d(const automsgs::msgs::geometry_msgs::Pose& pose) {
     return Rigid3d({pose.position.x, pose.position.y, pose.position.z},
                    ToEigen(pose.orientation));
 }
 
-commsgs::geometry_msgs::Pose FromProtoPose(
-    const commsgs::proto::geometry_msgs::Pose& pose) {
-    commsgs::geometry_msgs::Pose result;
+automsgs::msgs::geometry_msgs::Pose FromProtoPose(
+    const automsgs::msgs::geometry_msgs::Pose& pose) {
+    automsgs::msgs::geometry_msgs::Pose result;
     result.position.x = static_cast<float>(pose.position().x());
     result.position.y = static_cast<float>(pose.position().y());
     result.position.z = static_cast<float>(pose.position().z());
@@ -265,19 +270,19 @@ commsgs::geometry_msgs::Pose FromProtoPose(
     return result;
 }
 
-Eigen::Vector3d ToEigen(const commsgs::geometry_msgs::Vector3& vector3) {
-    return Eigen::Vector3d(vector3.x, vector3.y, vector3.z);
+Eigen::Vector3d ToEigen(const automsgs::msgs::geometry_msgs::Vector3& vector3) {
+    return Eigen::Vector3d(vector3.x(), vector3.y(), vector3.z());
 }
 
 Eigen::Quaterniond ToEigen(
-    const commsgs::geometry_msgs::Quaternion& quaternion) {
-    return Eigen::Quaterniond(quaternion.w, quaternion.x, quaternion.y,
-                              quaternion.z);
+    const automsgs::msgs::geometry_msgs::Quaternion& quaternion) {
+    return Eigen::Quaterniond(quaternion.w(), quaternion.x(), quaternion.y(),
+                              quaternion.z());
 }
 
-commsgs::geometry_msgs::Transform ToGeometryMsgTransform(
+automsgs::msgs::geometry_msgs::Transform ToGeometryMsgTransform(
     const Rigid3d& rigid3d) {
-    commsgs::geometry_msgs::Transform transform;
+    automsgs::msgs::geometry_msgs::Transform transform;
     transform.translation.x =
         static_cast<float>(rigid3d.translation().x());
     transform.translation.y =
@@ -291,8 +296,8 @@ commsgs::geometry_msgs::Transform ToGeometryMsgTransform(
     return transform;
 }
 
-commsgs::geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d) {
-    commsgs::geometry_msgs::Pose pose;
+automsgs::msgs::geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d) {
+    automsgs::msgs::geometry_msgs::Pose pose;
     pose.position = ToGeometryMsgPoint(rigid3d.translation());
     pose.orientation.w = static_cast<float>(rigid3d.rotation().w());
     pose.orientation.x = static_cast<float>(rigid3d.rotation().x());
@@ -301,20 +306,20 @@ commsgs::geometry_msgs::Pose ToGeometryMsgPose(const Rigid3d& rigid3d) {
     return pose;
 }
 
-commsgs::geometry_msgs::Point ToGeometryMsgPoint(
+automsgs::msgs::geometry_msgs::Point ToGeometryMsgPoint(
     const Eigen::Vector3d& vector3d) {
-    commsgs::geometry_msgs::Point point;
-    point.x = static_cast<float>(vector3d.x());
-    point.y = static_cast<float>(vector3d.y());
-    point.z = static_cast<float>(vector3d.z());
+    automsgs::msgs::geometry_msgs::Point point;
+    point.set_x(static_cast<float>(vector3d.x()));
+    point.set_y(static_cast<float>(vector3d.y()));
+    point.set_z(static_cast<float>(vector3d.z()));
     return point;
 }
 
-std::unique_ptr<commsgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
+std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
     const ::cartographer::io::PaintSubmapSlicesResult& painted_slices,
     const double resolution, const std::string& frame_id,
-    const commsgs::builtin_interfaces::Time& time) {
-    auto occupancy_grid = std::make_unique<commsgs::map_msgs::OccupancyGrid>();
+    const automsgs::msgs::builtin_interfaces::Time& time) {
+    auto occupancy_grid = std::make_unique<automsgs::msgs::map_msgs::OccupancyGrid>();
 
     const int width = cairo_image_surface_get_width(painted_slices.surface.get());
     const int height =
@@ -322,19 +327,19 @@ std::unique_ptr<commsgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
 
     occupancy_grid->header.stamp = time;
     occupancy_grid->header.frame_id = frame_id;
-    occupancy_grid->info.map_load_time = time;
-    occupancy_grid->info.resolution = static_cast<float>(resolution);
-    occupancy_grid->info.width = static_cast<uint32_t>(width);
-    occupancy_grid->info.height = static_cast<uint32_t>(height);
-    occupancy_grid->info.origin.position.x =
-        static_cast<float>(-painted_slices.origin.x() * resolution);
-    occupancy_grid->info.origin.position.y = static_cast<float>(
-        (-height + painted_slices.origin.y()) * resolution);
-    occupancy_grid->info.origin.position.z = 0.f;
-    occupancy_grid->info.origin.orientation.w = 1.f;
-    occupancy_grid->info.origin.orientation.x = 0.f;
-    occupancy_grid->info.origin.orientation.y = 0.f;
-    occupancy_grid->info.origin.orientation.z = 0.f;
+    occupancy_grid->info().map_load_time() = time;
+    occupancy_grid->info().resolution() = static_cast<float>(resolution);
+    occupancy_grid->info().width() = static_cast<uint32_t>(width);
+    occupancy_grid->info().height() = static_cast<uint32_t>(height);
+    occupancy_grid->info().origin().position.x =
+        static_cast<float>(-painted_slices.origin().x() * resolution);
+    occupancy_grid->info().origin().position.y = static_cast<float>(
+        (-height + painted_slices.origin().y()) * resolution);
+    occupancy_grid->info().origin().position.z = 0.f;
+    occupancy_grid->info().origin().orientation.w = 1.f;
+    occupancy_grid->info().origin().orientation.x = 0.f;
+    occupancy_grid->info().origin().orientation.y = 0.f;
+    occupancy_grid->info().origin().orientation.z = 0.f;
 
     const uint32_t* pixel_data = reinterpret_cast<uint32_t*>(
         cairo_image_surface_get_data(painted_slices.surface.get()));

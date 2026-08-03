@@ -23,9 +23,14 @@
  #include "autolink/autolink.hpp"
  #include "autolink/node/writer.hpp"
  #include "autonomy/common/macros.hpp"
- #include "autonomy/commsgs/builtin_interfaces.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
- #include "autonomy/commsgs/visualization_msgs.hpp"
+ #include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+ #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+ #include <automsgs/msgs/visualization_msgs/marker.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
  #include "autonomy/control/controller/mppi_controller/models/trajectories.hpp"
  #include "autonomy/control/controller/mppi_controller/tools/utils.hpp"
  #include "autonomy/control/proto/mppi_controller.pb.h"
@@ -65,7 +70,7 @@
       */
      void add(const Eigen::ArrayXXf& trajectory,
               const std::string& marker_namespace,
-              const commsgs::builtin_interfaces::Time& cmd_stamp);
+              const automsgs::msgs::builtin_interfaces::Time& cmd_stamp);
  
      /**
       * @brief Add candidate trajectories to visualize
@@ -78,7 +83,7 @@
       * @brief Visualize the plan
       * @param plan Plan to visualize
       */
-     void visualize(const commsgs::planning_msgs::Path& plan);
+     void visualize(const automsgs::msgs::planning_msgs::Path& plan);
  
      /**
       * @brief Reset object
@@ -87,15 +92,15 @@
  
  protected:
      std::string frame_id_;
-     std::shared_ptr<autolink::Writer<commsgs::visualization_msgs::MarkerArray>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>>
          trajectories_publisher_;
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
          transformed_path_pub_;
-     std::shared_ptr<autolink::Writer<commsgs::planning_msgs::Path>>
+     std::shared_ptr<autolink::Writer<automsgs::msgs::planning_msgs::Path>>
          optimal_path_pub_;
  
-     std::unique_ptr<commsgs::planning_msgs::Path> optimal_path_;
-     std::unique_ptr<commsgs::visualization_msgs::MarkerArray> points_;
+     std::unique_ptr<automsgs::msgs::planning_msgs::Path> optimal_path_;
+     std::unique_ptr<automsgs::msgs::visualization_msgs::MarkerArray> points_;
      int marker_id_ = 0;
  
      const proto::MPPIControllerOptions* options_;

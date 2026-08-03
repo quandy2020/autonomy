@@ -19,8 +19,13 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 
 namespace autonomy {
 namespace transform {
@@ -44,7 +49,7 @@ public:
      * @param transform The transform to send
      */
     void SendTransform(
-        const commsgs::geometry_msgs::TransformStamped& transform);
+        const automsgs::msgs::geometry_msgs::TransformStamped& transform);
 
     /**
      * @brief Send a vector of TransformStamped messages
@@ -53,16 +58,16 @@ public:
      * @param transforms The transforms to send
      */
     void SendTransform(
-        const std::vector<commsgs::geometry_msgs::TransformStamped>&
+        const std::vector<automsgs::msgs::geometry_msgs::TransformStamped>&
             transforms);
 
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
+    const automsgs::msgs::geometry_msgs::TransformStampeds& GetTransformStampeds()
         const {
         return transform_stampeds_;
     }
 
 private:
-    commsgs::geometry_msgs::TransformStampeds transform_stampeds_;
+    automsgs::msgs::geometry_msgs::TransformStampeds transform_stampeds_;
 };
 
 }  // namespace transform

@@ -26,7 +26,7 @@ QColor ProtoColor(const automsgs::msgs::std_msgs::ColorRGBA& color) {
 StrataCanvasLabelDisplay::StrataCanvasLabelDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::strata_msgs::CanvasLabelArray>(
           "StrataCanvasLabel", std::move(channel),
-          "autonomy.commsgs.proto.strata_msgs.CanvasLabelArray") {
+          "automsgs.msgs.strata_msgs.CanvasLabelArray") {
   setProperties({});
 }
 
@@ -80,8 +80,8 @@ void StrataCanvasLabelDisplay::processMessage(
       }
     }
     StoredLabel stored;
-    stored.position = local;
-    stored.color = default_color;
+    *stored.mutable_position() = local;
+    *stored.mutable_color() = default_color;
     stored.halo_color = halo_color_;
     stored.halo_blur = halo_blur_;
     stored.text = QString::fromStdString(label.label());
@@ -110,15 +110,15 @@ void StrataCanvasLabelDisplay::onDraw(rendering::SceneOverlay& scene) {
     if (label.halo_blur > 0.f) {
       TextLabelInstance halo;
       halo.text = label.text.toStdString();
-      halo.position = label.position + QVector3D(0.f, 0.f, 0.04f);
-      halo.color = halo_color;
+      *halo.mutable_position() = label.position + QVector3D(0.f, 0.f, 0.04f);
+      *halo.mutable_color() = halo_color;
       halo.char_height = label_height * 1.05f;
       text_labels.push_back(std::move(halo));
     }
     TextLabelInstance instance;
     instance.text = label.text.toStdString();
-    instance.position = label.position + QVector3D(0.f, 0.f, 0.05f);
-    instance.color = text_color;
+    *instance.mutable_position() = label.position + QVector3D(0.f, 0.f, 0.05f);
+    *instance.mutable_color() = text_color;
     instance.char_height = label_height;
     text_labels.push_back(std::move(instance));
   }

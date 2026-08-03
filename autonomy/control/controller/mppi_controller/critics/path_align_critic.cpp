@@ -72,12 +72,12 @@
          return;
      }
  
-     commsgs::geometry_msgs::Pose goal =
+     automsgs::msgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      // Don't apply close to goal, let the goal critics take over
      if (tools::withinPositionGoalTolerance(threshold_to_consider_,
-                                            data.state.pose.pose, goal)) {
+                                            data.state.pose.pose(), goal)) {
          return;
      }
  
@@ -115,21 +115,21 @@
      float dx = 0.0f, dy = 0.0f;
      for (unsigned int i = 1; i != path_segments_count; i++) {
          auto& pose = path[i - 1];
-         pose.x = data.path.x(i - 1);
-         pose.y = data.path.y(i - 1);
-         pose.theta = data.path.yaws(i - 1);
- 
-         dx = data.path.x(i) - pose.x;
-         dy = data.path.y(i) - pose.y;
-         path_integrated_distances[i] =
-             path_integrated_distances[i - 1] + sqrtf(dx * dx + dy * dy);
-     }
- 
-     // Finish populating the path vector
-     auto& final_pose = path[path_segments_count - 1];
-     final_pose.x = data.path.x(path_segments_count - 1);
-     final_pose.y = data.path.y(path_segments_count - 1);
-     final_pose.theta = data.path.yaws(path_segments_count - 1);
+        pose.x = data.path.x(i - 1);
+        pose.y = data.path.y(i - 1);
+        pose.theta = data.path.yaws(i - 1);
+
+        dx = data.path.x(i) - pose.x;
+        dy = data.path.y(i) - pose.y;
+        path_integrated_distances[i] =
+            path_integrated_distances[i - 1] + sqrtf(dx * dx + dy * dy);
+    }
+
+    // Finish populating the path vector
+    auto& final_pose = path[path_segments_count - 1];
+    final_pose.x = data.path.x(path_segments_count - 1);
+    final_pose.y = data.path.y(path_segments_count - 1);
+    final_pose.theta = data.path.yaws(path_segments_count - 1);
  
      float summed_path_dist = 0.0f, dyaw = 0.0f;
      unsigned int num_samples = 0u;

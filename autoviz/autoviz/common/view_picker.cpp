@@ -19,7 +19,7 @@ bool ViewPicker::get3DPoint(int pixel_x, int pixel_y, QVector3D* point) const {
   if (!pick.hit) {
     return false;
   }
-  *point = pick.position;
+  *point = pick.position();
   return true;
 }
 

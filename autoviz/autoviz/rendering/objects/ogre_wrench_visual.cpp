@@ -80,7 +80,7 @@ void OgreWrenchVisual::updateTorque() const {
 Ogre::Quaternion OgreWrenchVisual::getDirectionOfRotationRelativeToTorque(
     const Ogre::Vector3& torque, const Ogre::Vector3& axis_z) const {
   Ogre::Quaternion orientation = axis_z.getRotationTo(torque);
-  if (std::isnan(orientation.x) || std::isnan(orientation.y) || std::isnan(orientation.z)) {
+  if (std::isnan(orientation.x()) || std::isnan(orientation.y()) || std::isnan(orientation.z())) {
     orientation = Ogre::Quaternion::IDENTITY;
   }
   return orientation;

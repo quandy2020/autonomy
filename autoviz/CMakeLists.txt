@@ -52,6 +52,8 @@ if(BUILD_AUTOVIZ_TESTS)
   include(Tests)
 endif()
 
+add_subdirectory(examples)
+
 include(Install)
 
 # Configure summary

@@ -17,7 +17,9 @@
 #include "autonomy/transform/transform_broadcaster.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 
 namespace autonomy {
 namespace transform {
@@ -25,17 +27,20 @@ namespace transform {
 TransformBroadcaster::TransformBroadcaster() = default;
 
 void TransformBroadcaster::SendTransform(
-    const commsgs::geometry_msgs::TransformStamped& transform) {
-    std::vector<commsgs::geometry_msgs::TransformStamped> transforms;
+    const automsgs::msgs::geometry_msgs::TransformStamped& transform) {
+    std::vector<automsgs::msgs::geometry_msgs::TransformStamped> transforms;
     transforms.emplace_back(transform);
     SendTransform(transforms);
 }
 
 void TransformBroadcaster::SendTransform(
-    const std::vector<commsgs::geometry_msgs::TransformStamped>& transforms) {
-    transform_stampeds_.transforms = transforms;
-    transform_stampeds_.header.stamp =
-        commsgs::builtin_interfaces::Time::Now();
+    const std::vector<automsgs::msgs::geometry_msgs::TransformStamped>& transforms) {
+    transform_stampeds_.clear_transforms();
+    for (const auto& tf : transforms) {
+        *transform_stampeds_.add_transforms() = tf;
+    }
+    *transform_stampeds_.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
 }
 
 }  // namespace transform

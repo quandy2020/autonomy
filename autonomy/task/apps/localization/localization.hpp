@@ -23,7 +23,7 @@ class LocalizationTask
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(LocalizationTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetLocalizationClient(localization::LocalizationClient::Ptr client);

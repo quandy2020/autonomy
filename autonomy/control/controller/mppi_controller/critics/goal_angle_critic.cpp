@@ -60,15 +60,15 @@
          return;
      }
  
-     commsgs::geometry_msgs::Pose goal =
+     automsgs::msgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      if (!tools::withinPositionGoalTolerance(threshold_to_consider_,
-                                             data.state.pose.pose, goal)) {
+                                             data.state.pose.pose(), goal)) {
          return;
      }
  
-     double goal_yaw = autonomy::transform::tf2::getYaw(goal.orientation);
+     double goal_yaw = autonomy::transform::tf2::getYaw(goal.orientation());
  
      if (power_ > 1u) {
          data.costs += (((tools::shortest_angular_distance(

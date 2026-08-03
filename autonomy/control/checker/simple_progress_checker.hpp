@@ -21,7 +21,16 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 #include "autonomy/control/common/progress_checker_interface.hpp"
 
 namespace autonomy {
@@ -38,7 +47,7 @@ class SimpleProgressChecker : public common::ProgressChecker
 {
 public:
     void Initialize(const std::string& plugin_name) override;
-    bool Check(commsgs::geometry_msgs::PoseStamped& current_pose) override;
+    bool Check(automsgs::msgs::geometry_msgs::PoseStamped& current_pose) override;
     void Reset() override;
 
     void SetRequiredMovementRadius(double radius);
@@ -49,19 +58,19 @@ protected:
      * @param pose Current pose of the robot
      * @return true, if movement is greater than radius_, or false
      */
-    bool IsRobotMovedEnough(const commsgs::geometry_msgs::Pose2D& pose);
+    bool IsRobotMovedEnough(const automsgs::msgs::geometry_msgs::Pose2D& pose);
     /**
      * @brief Resets baseline pose with the current pose of the robot
      * @param pose Current pose of the robot
      */
-    void ResetBaselinePose(const commsgs::geometry_msgs::Pose2D& pose);
+    void ResetBaselinePose(const automsgs::msgs::geometry_msgs::Pose2D& pose);
 
-    static double PoseDistance(const commsgs::geometry_msgs::Pose2D&,
-                               const commsgs::geometry_msgs::Pose2D&);
+    static double PoseDistance(const automsgs::msgs::geometry_msgs::Pose2D&,
+                               const automsgs::msgs::geometry_msgs::Pose2D&);
 
     double radius_;
-    commsgs::geometry_msgs::Pose2D baseline_pose_;
-    // commsgs::time::Time baseline_time_;
+    automsgs::msgs::geometry_msgs::Pose2D baseline_pose_;
+    // automsgs::msgs::time::Time baseline_time_;
 
     bool baseline_pose_set_{false};
     std::string plugin_name_;

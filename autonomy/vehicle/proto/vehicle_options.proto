@@ -16,8 +16,13 @@ syntax = "proto3";
 
 package autonomy.vehicle.proto;
 
-import "autonomy/commsgs/proto/std_msgs.proto";
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
+import "automsgs/msgs/geometry_msgs/vector3.proto";
 
 enum VehicleType
 {
@@ -84,32 +89,32 @@ enum Gear
 message KinematicsControlCommand
 {
     // Standard header: timestamp + frame_id
-    autonomy.commsgs.proto.std_msgs.Header header = 1;
+    automsgs.msgs.std_msgs.Header header = 1;
 
     // Linear / angular velocity command (m/s, rad/s)
-    autonomy.commsgs.proto.geometry_msgs.Twist velocity = 2;
+    automsgs.msgs.geometry_msgs.Twist velocity = 2;
 
     // Linear / angular acceleration command (m/s^2, rad/s^2)
-    autonomy.commsgs.proto.geometry_msgs.Twist acceleration = 3;
+    automsgs.msgs.geometry_msgs.Twist acceleration = 3;
 
     // Higher‑order derivatives of motion, encoded as generic Twist
     // Units and semantics depend on the specific vehicle model
-    autonomy.commsgs.proto.geometry_msgs.Twist jerk = 4;
-    autonomy.commsgs.proto.geometry_msgs.Twist snap = 5;
-    autonomy.commsgs.proto.geometry_msgs.Twist crackle = 6;
-    autonomy.commsgs.proto.geometry_msgs.Twist pop = 7;
+    automsgs.msgs.geometry_msgs.Twist jerk = 4;
+    automsgs.msgs.geometry_msgs.Twist snap = 5;
+    automsgs.msgs.geometry_msgs.Twist crackle = 6;
+    automsgs.msgs.geometry_msgs.Twist pop = 7;
 
     // Position displacement command in 3D space (m)
-    autonomy.commsgs.proto.geometry_msgs.Vector3 position_delta = 8;
+    automsgs.msgs.geometry_msgs.Vector3 position_delta = 8;
 
     // Orientation change command (roll, pitch, yaw in radians)
-    autonomy.commsgs.proto.geometry_msgs.Vector3 orientation_delta = 9;
+    automsgs.msgs.geometry_msgs.Vector3 orientation_delta = 9;
 }
 
 message VehicleInfo
 {
     // Standard header: timestamp + frame_id
-    autonomy.commsgs.proto.std_msgs.Header header = 1;
+    automsgs.msgs.std_msgs.Header header = 1;
     VehicleType vehicle_type = 2;   // vehicle / robot type (car, truck, differential robot, etc.)
     string vehicle_id = 3;          // unique vehicle / robot id
     string vehicle_name = 4;        // human‑readable name
@@ -119,13 +124,13 @@ message VehicleInfo
     VehicleMode vehicle_mode = 6;   // control mode (manual / auto / remote / emergency, etc.)
 
     // Current estimated pose of the vehicle in some world or map frame
-    autonomy.commsgs.proto.geometry_msgs.Pose pose = 7;
+    automsgs.msgs.geometry_msgs.Pose pose = 7;
 
     // Current measured linear & angular velocity (m/s, rad/s)
-    autonomy.commsgs.proto.geometry_msgs.Twist velocity = 8;
+    automsgs.msgs.geometry_msgs.Twist velocity = 8;
 
     // Current measured linear & angular acceleration (m/s^2, rad/s^2)
-    autonomy.commsgs.proto.geometry_msgs.Twist acceleration = 9;
+    automsgs.msgs.geometry_msgs.Twist acceleration = 9;
 
     // Current gear (P / R / N / D)，对差速 / 全向底盘可以忽略或映射为前进 / 后退状态
     Gear gear = 10;
@@ -186,7 +191,7 @@ message VehicleModel
 message Vehicle
 {
     // Standard header: timestamp + frame_id
-    autonomy.commsgs.proto.std_msgs.Header header = 1;
+    automsgs.msgs.std_msgs.Header header = 1;
 
     // Model configuration (static / semi-static parameters)
     VehicleModel model = 2;

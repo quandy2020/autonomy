@@ -43,7 +43,7 @@ public:
 TEST(FactoryTest, Register) {
     Factory<std::string, Base> factory;
     EXPECT_TRUE(factory.Register("derived_class",
-                                 []() -> Base* { return new Derived(); }));
+                                 []()-> Base* { return new Derived(); }));
     auto derived_ptr = factory.CreateObject("derived_class");
     EXPECT_NE(nullptr, derived_ptr);
     EXPECT_EQ("derived", derived_ptr->Name());
@@ -54,7 +54,7 @@ TEST(FactoryTest, Register) {
 TEST(FactoryTest, Unregister) {
     Factory<std::string, Base> factory;
     EXPECT_TRUE(factory.Register("derived_class",
-                                 []() -> Base* { return new Derived(); }));
+                                 []()-> Base* { return new Derived(); }));
     EXPECT_FALSE(factory.Unregister("fake_class"));
     auto derived_ptr = factory.CreateObject("derived_class");
     EXPECT_NE(nullptr, derived_ptr);

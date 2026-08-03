@@ -26,7 +26,7 @@ class ExplorationTask : public BtTaskApp<
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(ExplorationTask);
 
-    ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
     void SetExplorationClient(exploration::ExplorationClient::Ptr client);

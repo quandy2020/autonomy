@@ -533,24 +533,15 @@ TF2SIMD_FORCE_INLINE Matrix3x3 Matrix3x3::inverse() const {
 
 TF2SIMD_FORCE_INLINE Matrix3x3
 Matrix3x3::transposeTimes(const Matrix3x3& m) const {
-    return Matrix3x3(m_el[0].x() * m[0].x() + m_el[1].x() * m[1].x() +
-                         m_el[2].x() * m[2].x(),
-                     m_el[0].x() * m[0].y() + m_el[1].x() * m[1].y() +
-                         m_el[2].x() * m[2].y(),
-                     m_el[0].x() * m[0].z() + m_el[1].x() * m[1].z() +
-                         m_el[2].x() * m[2].z(),
-                     m_el[0].y() * m[0].x() + m_el[1].y() * m[1].x() +
-                         m_el[2].y() * m[2].x(),
-                     m_el[0].y() * m[0].y() + m_el[1].y() * m[1].y() +
-                         m_el[2].y() * m[2].y(),
-                     m_el[0].y() * m[0].z() + m_el[1].y() * m[1].z() +
-                         m_el[2].y() * m[2].z(),
-                     m_el[0].z() * m[0].x() + m_el[1].z() * m[1].x() +
-                         m_el[2].z() * m[2].x(),
-                     m_el[0].z() * m[0].y() + m_el[1].z() * m[1].y() +
-                         m_el[2].z() * m[2].y(),
-                     m_el[0].z() * m[0].z() + m_el[1].z() * m[1].z() +
-                         m_el[2].z() * m[2].z());
+    return Matrix3x3(m_el[0].x() * m[0].x() + m_el[1].x() * m[1].x() + m_el[2].x() * m[2].x(),
+                     m_el[0].x() * m[0].y() + m_el[1].x() * m[1].y() + m_el[2].x() * m[2].y(),
+                     m_el[0].x() * m[0].z() + m_el[1].x() * m[1].z() + m_el[2].x() * m[2].z(),
+                     m_el[0].y() * m[0].x() + m_el[1].y() * m[1].x() + m_el[2].y() * m[2].x(),
+                     m_el[0].y() * m[0].y() + m_el[1].y() * m[1].y() + m_el[2].y() * m[2].y(),
+                     m_el[0].y() * m[0].z() + m_el[1].y() * m[1].z() + m_el[2].y() * m[2].z(),
+                     m_el[0].z() * m[0].x() + m_el[1].z() * m[1].x() + m_el[2].z() * m[2].x(),
+                     m_el[0].z() * m[0].y() + m_el[1].z() * m[1].y() + m_el[2].z() * m[2].y(),
+                     m_el[0].z() * m[0].z() + m_el[1].z() * m[1].z() + m_el[2].z() * m[2].z());
 }
 
 TF2SIMD_FORCE_INLINE Matrix3x3

@@ -19,7 +19,7 @@ namespace display {
 TfDisplay::TfDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::tf2_msgs::TFMessage>(
           "TF", std::move(channel),
-          "autonomy.commsgs.proto.tf2_msgs.TFMessage") {
+          "automsgs.msgs.tf2_msgs.TFMessage") {
   setProperties({});
 }
 

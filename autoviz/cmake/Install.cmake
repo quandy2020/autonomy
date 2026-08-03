@@ -14,6 +14,8 @@ install(PROGRAMS
   scripts/publish_test_sensors.py
   scripts/publish_bicmap_example.py
   scripts/run_bicmap_example.sh
+  scripts/run_autoviz.sh
+  scripts/check_gui_env.sh
   scripts/autoviz_bicmap_publisher
   scripts/install_linux_desktop.sh
   DESTINATION share/autonomy/autoviz/scripts)

@@ -28,8 +28,8 @@ namespace {
 constexpr float kSecondToNanoFactor = 1e9f;
 constexpr uint64_t kMilliToNanoFactor = 1e6;
 
-uint64_t ToTf2TimeNs(const commsgs::builtin_interfaces::Time& time) {
-    return time.ToUnixTimeNanos();
+uint64_t ToTf2TimeNs(const automsgs::msgs::builtin_interfaces::Time& time) {
+    return automsgs::msgs::builtin_interfaces::TimeToNanoseconds(time);
 }
 
 bool IsFutureExtrapolation(const std::string& err) {
@@ -50,23 +50,23 @@ void Buffer::clear() {
     tf2::BufferCore::clear();
 }
 
-commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
+automsgs::msgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
     const std::string& target_frame, const std::string& source_frame,
-    const commsgs::builtin_interfaces::Time& time,
+    const automsgs::msgs::builtin_interfaces::Time& time,
     const float timeout_second) const {
     // Fast path: identity transform
     if (target_frame == source_frame) {
-        commsgs::geometry_msgs::TransformStamped out;
-        out.header.stamp = time;
-        out.header.frame_id = target_frame;
-        out.child_frame_id = source_frame;
-        out.transform.translation.x = 0.0;
-        out.transform.translation.y = 0.0;
-        out.transform.translation.z = 0.0;
-        out.transform.rotation.x = 0.0;
-        out.transform.rotation.y = 0.0;
-        out.transform.rotation.z = 0.0;
-        out.transform.rotation.w = 1.0;
+        automsgs::msgs::geometry_msgs::TransformStamped out;
+        *out.mutable_header()->mutable_stamp() = time;
+        out.mutable_header()->set_frame_id(target_frame);
+        out.set_child_frame_id(source_frame);
+        out.mutable_transform()->mutable_translation()->set_x(0.0);
+        out.mutable_transform()->mutable_translation()->set_y(0.0);
+        out.mutable_transform()->mutable_translation()->set_z(0.0);
+        out.mutable_transform()->mutable_rotation()->set_x(0.0);
+        out.mutable_transform()->mutable_rotation()->set_y(0.0);
+        out.mutable_transform()->mutable_rotation()->set_z(0.0);
+        out.mutable_transform()->mutable_rotation()->set_w(1.0);
         return out;
     }
 
@@ -82,30 +82,30 @@ commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
     }
     const auto tf2_transform =
         tf2::BufferCore::lookupTransform(target_frame, source_frame, tf2_time_ns);
-    commsgs::geometry_msgs::TransformStamped out;
+    automsgs::msgs::geometry_msgs::TransformStamped out;
     TF2MsgToConvert(tf2_transform, out);
     return out;
 }
 
-commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
+automsgs::msgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
     const std::string& target_frame,
-    const commsgs::builtin_interfaces::Time& target_time,
+    const automsgs::msgs::builtin_interfaces::Time& target_time,
     const std::string& source_frame,
-    const commsgs::builtin_interfaces::Time& source_time,
+    const automsgs::msgs::builtin_interfaces::Time& source_time,
     const std::string& fixed_frame, const float timeout_second) const {
     // Fast path: identity transform
     if (target_frame == source_frame) {
-        commsgs::geometry_msgs::TransformStamped out;
-        out.header.stamp = target_time;
-        out.header.frame_id = target_frame;
-        out.child_frame_id = source_frame;
-        out.transform.translation.x = 0.0;
-        out.transform.translation.y = 0.0;
-        out.transform.translation.z = 0.0;
-        out.transform.rotation.x = 0.0;
-        out.transform.rotation.y = 0.0;
-        out.transform.rotation.z = 0.0;
-        out.transform.rotation.w = 1.0;
+        automsgs::msgs::geometry_msgs::TransformStamped out;
+        *out.mutable_header()->mutable_stamp() = target_time;
+        out.mutable_header()->set_frame_id(target_frame);
+        out.set_child_frame_id(source_frame);
+        out.mutable_transform()->mutable_translation()->set_x(0.0);
+        out.mutable_transform()->mutable_translation()->set_y(0.0);
+        out.mutable_transform()->mutable_translation()->set_z(0.0);
+        out.mutable_transform()->mutable_rotation()->set_x(0.0);
+        out.mutable_transform()->mutable_rotation()->set_y(0.0);
+        out.mutable_transform()->mutable_rotation()->set_z(0.0);
+        out.mutable_transform()->mutable_rotation()->set_w(1.0);
         return out;
     }
 
@@ -124,21 +124,21 @@ commsgs::geometry_msgs::TransformStamped Buffer::lookupTransform(
     }
     const auto tf2_transform = tf2::BufferCore::lookupTransform(
         target_frame, target_ns, source_frame, source_ns, fixed_frame);
-    commsgs::geometry_msgs::TransformStamped out;
+    automsgs::msgs::geometry_msgs::TransformStamped out;
     TF2MsgToConvert(tf2_transform, out);
     return out;
 }
 
 bool Buffer::canTransform(const std::string& target_frame,
                           const std::string& source_frame,
-                          const commsgs::builtin_interfaces::Time& time,
+                          const automsgs::msgs::builtin_interfaces::Time& time,
                           const float timeout_second,
                           std::string* errstr) const {
     const uint64_t requested_ns = ToTf2TimeNs(time);
     uint64_t timeout_ns =
         static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-    const uint64_t start_time = ToTf2TimeNs(Time::Now());
-    while (ToTf2TimeNs(Time::Now()) < start_time + timeout_ns) {
+    const uint64_t start_time = ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
+    while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) < start_time + timeout_ns) {
         errstr->clear();
         bool retval = tf2::BufferCore::canTransform(
             target_frame, source_frame, requested_ns, errstr);
@@ -167,9 +167,9 @@ bool Buffer::canTransform(const std::string& target_frame,
 }
 
 bool Buffer::canTransform(const std::string& target_frame,
-                          const commsgs::builtin_interfaces::Time& target_time,
+                          const automsgs::msgs::builtin_interfaces::Time& target_time,
                           const std::string& source_frame,
-                          const commsgs::builtin_interfaces::Time& source_time,
+                          const automsgs::msgs::builtin_interfaces::Time& source_time,
                           const std::string& fixed_frame,
                           const float timeout_second,
                           std::string* errstr) const {
@@ -178,8 +178,8 @@ bool Buffer::canTransform(const std::string& target_frame,
     // poll for transform if timeout is set
     uint64_t timeout_ns =
         static_cast<uint64_t>(timeout_second * kSecondToNanoFactor);
-    const uint64_t start_time = ToTf2TimeNs(Time::Now());
-    while (ToTf2TimeNs(Time::Now()) < start_time + timeout_ns) {
+    const uint64_t start_time = ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow());
+    while (ToTf2TimeNs(automsgs::msgs::builtin_interfaces::TimeNow()) < start_time + timeout_ns) {
         // Make sure we haven't been stopped
         errstr->clear();
 
@@ -211,7 +211,7 @@ bool Buffer::canTransform(const std::string& target_frame,
 
 bool Buffer::GetLatestStaticTF(const std::string& frame_id,
                                const std::string& child_frame_id,
-                               commsgs::geometry_msgs::TransformStamped* tf) {
+                               automsgs::msgs::geometry_msgs::TransformStamped* tf) {
     for (auto reverse_iter = static_msgs_.rbegin();
          reverse_iter != static_msgs_.rend(); ++reverse_iter) {
         if ((*reverse_iter).header.frame_id == frame_id &&
@@ -224,25 +224,25 @@ bool Buffer::GetLatestStaticTF(const std::string& frame_id,
 }
 
 void Buffer::SubscriptionCallback(
-    const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+    const std::shared_ptr<const automsgs::msgs::geometry_msgs::TransformStampeds>&
         msg_evt) {
     SubscriptionCallbackImpl(msg_evt, false);
 }
 
 void Buffer::StaticSubscriptionCallback(
-    const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+    const std::shared_ptr<const automsgs::msgs::geometry_msgs::TransformStampeds>&
         msg_evt) {
     SubscriptionCallbackImpl(msg_evt, true);
 }
 
 void Buffer::SubscriptionCallbackImpl(
-    const std::shared_ptr<const commsgs::geometry_msgs::TransformStampeds>&
+    const std::shared_ptr<const automsgs::msgs::geometry_msgs::TransformStampeds>&
         msg_evt,
     bool is_static) {
-    commsgs::builtin_interfaces::Time now = Time::Now();
+    automsgs::msgs::builtin_interfaces::Time now = automsgs::msgs::builtin_interfaces::TimeNow();
     std::string authority =
         "autolink_tf";  // msg_evt.getPublisherName(); // lookup the authority
-    if (now.ToUnixTimeNanos() < last_update_.ToUnixTimeNanos()) {
+    if (automsgs::msgs::builtin_interfaces::TimeToNanoseconds(now) < automsgs::msgs::builtin_interfaces::TimeToNanoseconds(last_update_)) {
         AINFO << "Detected jump back in time. Clearing TF buffer.";
         clear();
         // cache static transform stamped again.
@@ -252,25 +252,25 @@ void Buffer::SubscriptionCallbackImpl(
     }
     last_update_ = now;
 
-    for (size_t i = 0; i < msg_evt->transforms.size(); i++) {
+    for (size_t i = 0; i < msg_evt->transforms_size(); i++) {
         try {
-            const auto& trans = msg_evt->transforms[i];
+            const auto& trans = msg_evt->transforms(i);
 
             // Convert to geometry_msgs::TransformStamped for tf2
             geometry_msgs::TransformStamped geo_msg;
             // Convert timestamp: sec * 1e9 + nanosec
             geo_msg.header.stamp =
-                static_cast<uint64_t>(trans.header.stamp.sec) * 1000000000ULL +
-                static_cast<uint64_t>(trans.header.stamp.nanosec);
-            geo_msg.header.frame_id = trans.header.frame_id;
-            geo_msg.child_frame_id = trans.child_frame_id;
-            geo_msg.transform.translation.x = trans.transform.translation.x;
-            geo_msg.transform.translation.y = trans.transform.translation.y;
-            geo_msg.transform.translation.z = trans.transform.translation.z;
-            geo_msg.transform.rotation.x = trans.transform.rotation.x;
-            geo_msg.transform.rotation.y = trans.transform.rotation.y;
-            geo_msg.transform.rotation.z = trans.transform.rotation.z;
-            geo_msg.transform.rotation.w = trans.transform.rotation.w;
+                static_cast<uint64_t>(trans.header().stamp().sec()) * 1000000000ULL +
+                static_cast<uint64_t>(trans.header().stamp().nanosec());
+            geo_msg.header.frame_id = trans.header().frame_id();
+            geo_msg.child_frame_id = trans.child_frame_id();
+            geo_msg.transform.translation.x = trans.transform().translation().x();
+            geo_msg.transform.translation.y = trans.transform().translation().y();
+            geo_msg.transform.translation.z = trans.transform().translation().z();
+            geo_msg.transform.rotation.x = trans.transform().rotation().x();
+            geo_msg.transform.rotation.y = trans.transform().rotation().y();
+            geo_msg.transform.rotation.z = trans.transform().rotation().z();
+            geo_msg.transform.rotation.w = trans.transform().rotation().w();
 
             if (is_static) {
                 static_msgs_.push_back(geo_msg);
@@ -285,31 +285,35 @@ void Buffer::SubscriptionCallbackImpl(
 
 void Buffer::TF2MsgToConvert(
     const geometry_msgs::TransformStamped& tf2_trans_stamped,
-    commsgs::geometry_msgs::TransformStamped& trans_stamped) const {
-    // Convert from geometry_msgs (tf2 internal) to commsgs::geometry_msgs
+    automsgs::msgs::geometry_msgs::TransformStamped& trans_stamped) const {
+    // Convert from geometry_msgs (tf2 internal) to automsgs::msgs::geometry_msgs
     // (autolink) header
-    trans_stamped.header.stamp.sec =
-        static_cast<int32_t>(tf2_trans_stamped.header.stamp / 1000000000ULL);
-    trans_stamped.header.stamp.nanosec =
-        static_cast<uint32_t>(tf2_trans_stamped.header.stamp % 1000000000ULL);
-    trans_stamped.header.frame_id = tf2_trans_stamped.header.frame_id;
+    trans_stamped.mutable_header()->mutable_stamp()->set_sec(
+        static_cast<int32_t>(tf2_trans_stamped.header.stamp / 1000000000ULL));
+    trans_stamped.mutable_header()->mutable_stamp()->set_nanosec(
+        static_cast<uint32_t>(tf2_trans_stamped.header.stamp % 1000000000ULL));
+    trans_stamped.mutable_header()->set_frame_id(tf2_trans_stamped.header.frame_id);
 
     // child_frame_id
-    trans_stamped.child_frame_id = tf2_trans_stamped.child_frame_id;
+    trans_stamped.set_child_frame_id(tf2_trans_stamped.child_frame_id);
 
     // translation
-    trans_stamped.transform.translation.x =
-        tf2_trans_stamped.transform.translation.x;
-    trans_stamped.transform.translation.y =
-        tf2_trans_stamped.transform.translation.y;
-    trans_stamped.transform.translation.z =
-        tf2_trans_stamped.transform.translation.z;
+    trans_stamped.mutable_transform()->mutable_translation()->set_x(
+        tf2_trans_stamped.transform.translation.x);
+    trans_stamped.mutable_transform()->mutable_translation()->set_y(
+        tf2_trans_stamped.transform.translation.y);
+    trans_stamped.mutable_transform()->mutable_translation()->set_z(
+        tf2_trans_stamped.transform.translation.z);
 
     // rotation
-    trans_stamped.transform.rotation.x = tf2_trans_stamped.transform.rotation.x;
-    trans_stamped.transform.rotation.y = tf2_trans_stamped.transform.rotation.y;
-    trans_stamped.transform.rotation.z = tf2_trans_stamped.transform.rotation.z;
-    trans_stamped.transform.rotation.w = tf2_trans_stamped.transform.rotation.w;
+    trans_stamped.mutable_transform()->mutable_rotation()->set_x(
+        tf2_trans_stamped.transform.rotation.x);
+    trans_stamped.mutable_transform()->mutable_rotation()->set_y(
+        tf2_trans_stamped.transform.rotation.y);
+    trans_stamped.mutable_transform()->mutable_rotation()->set_z(
+        tf2_trans_stamped.transform.rotation.z);
+    trans_stamped.mutable_transform()->mutable_rotation()->set_w(
+        tf2_trans_stamped.transform.rotation.w);
 }
 
 }  // namespace transform

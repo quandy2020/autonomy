@@ -98,8 +98,7 @@ Position Polygon::getCentroid() const {
     vertices.push_back(vertices.at(0));
     double area = 0.0;
     for (size_t i = 0; i < vertices.size() - 1; i++) {
-        const double a = vertices[i].x() * vertices[i + 1].y() -
-                         vertices[i + 1].x() * vertices[i].y();
+        const double a = vertices[i].x() * vertices[i + 1].y() - vertices[i + 1].x() * vertices[i].y();
         area += a;
         centroid.x() += a * (vertices[i].x() + vertices[i + 1].x());
         centroid.y() += a * (vertices[i].y() + vertices[i + 1].y());

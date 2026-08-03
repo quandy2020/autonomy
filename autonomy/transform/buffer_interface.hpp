@@ -19,8 +19,13 @@
 #include <algorithm>
 #include <string>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autonomy/transform/geometry_msgs/transform_stamped.h"
 #include "autonomy/transform/tf2/convert.h"
 #include "autonomy/transform/tf2/time.h"
@@ -43,9 +48,9 @@ public:
      * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
      * tf2::ExtrapolationException, tf2::InvalidArgumentException
      */
-    virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
+    virtual automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
         const std::string& target_frame, const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& time,
+        const automsgs::msgs::builtin_interfaces::Time& time,
         const float timeout_second = 0.01f) const = 0;
 
     /** \brief Get the transform between two frames by frame ID assuming fixed
@@ -64,11 +69,11 @@ public:
      * Possible exceptions tf2::LookupException, tf2::ConnectivityException,
      * tf2::ExtrapolationException, tf2::InvalidArgumentException
      */
-    virtual commsgs::geometry_msgs::TransformStamped lookupTransform(
+    virtual automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
         const std::string& target_frame,
-        const commsgs::builtin_interfaces::Time& target_time,
+        const automsgs::msgs::builtin_interfaces::Time& target_time,
         const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& source_time,
+        const automsgs::msgs::builtin_interfaces::Time& source_time,
         const std::string& fixed_frame,
         const float timeout_second = 0.01f) const = 0;
 
@@ -83,7 +88,7 @@ public:
      */
     virtual bool canTransform(const std::string& target_frame,
                               const std::string& source_frame,
-                              const commsgs::builtin_interfaces::Time& time,
+                              const automsgs::msgs::builtin_interfaces::Time& time,
                               const float timeout_second = 0.01f,
                               std::string* errstr = nullptr) const = 0;
 
@@ -101,9 +106,9 @@ public:
      */
     virtual bool canTransform(
         const std::string& target_frame,
-        const commsgs::builtin_interfaces::Time& target_time,
+        const automsgs::msgs::builtin_interfaces::Time& target_time,
         const std::string& source_frame,
-        const commsgs::builtin_interfaces::Time& source_time,
+        const automsgs::msgs::builtin_interfaces::Time& source_time,
         const std::string& fixed_frame, const float timeout_second = 0.01f,
         std::string* errstr = nullptr) const = 0;
 
@@ -113,39 +118,39 @@ public:
                  const std::string& target_frame,  // NOLINT
                  float timeout = 0.0f) const {
         // Convert tf2::Time (uint64_t nanoseconds) to
-        // commsgs::builtin_interfaces::Time
+        // automsgs::msgs::builtin_interfaces::Time
         // Copy timestamp by value: PoseStamped getTimestamp uses thread-local
         // storage; holding a reference across lookupTransform is unsafe.
         const tf2::Time tf2_time = tf2::getTimestamp(in);
-        commsgs::builtin_interfaces::Time stamp;
-        stamp.sec = static_cast<int32_t>(tf2_time / 1'000'000'000);
-        stamp.nanosec = static_cast<uint32_t>(tf2_time % 1'000'000'000);
+        automsgs::msgs::builtin_interfaces::Time stamp;
+        stamp.set_sec(static_cast<int32_t>(tf2_time / 1'000'000'000));
+        stamp.set_nanosec(static_cast<uint32_t>(tf2_time % 1'000'000'000));
         // Get transform in commsgs format
         const auto& commsgs_transform =
             lookupTransform(target_frame, tf2::getFrameId(in), stamp, timeout);
-        // Convert commsgs::geometry_msgs::TransformStamped to
+        // Convert automsgs::msgs::geometry_msgs::TransformStamped to
         // geometry_msgs::TransformStamped
         geometry_msgs::TransformStamped tf2_transform;
         tf2_transform.header.stamp =
-            static_cast<uint64_t>(commsgs_transform.header.stamp.sec) *
+            static_cast<uint64_t>(commsgs_transform.header().stamp().sec()) *
                 1000000000ULL +
-            static_cast<uint64_t>(commsgs_transform.header.stamp.nanosec);
-        tf2_transform.header.frame_id = commsgs_transform.header.frame_id;
-        tf2_transform.child_frame_id = commsgs_transform.child_frame_id;
+            static_cast<uint64_t>(commsgs_transform.header().stamp().nanosec());
+        tf2_transform.header.frame_id = commsgs_transform.header().frame_id();
+        tf2_transform.child_frame_id = commsgs_transform.child_frame_id();
         tf2_transform.transform.translation.x =
-            commsgs_transform.transform.translation.x;
+            commsgs_transform.transform().translation().x();
         tf2_transform.transform.translation.y =
-            commsgs_transform.transform.translation.y;
+            commsgs_transform.transform().translation().y();
         tf2_transform.transform.translation.z =
-            commsgs_transform.transform.translation.z;
+            commsgs_transform.transform().translation().z();
         tf2_transform.transform.rotation.x =
-            commsgs_transform.transform.rotation.x;
+            commsgs_transform.transform().rotation().x();
         tf2_transform.transform.rotation.y =
-            commsgs_transform.transform.rotation.y;
+            commsgs_transform.transform().rotation().y();
         tf2_transform.transform.rotation.z =
-            commsgs_transform.transform.rotation.z;
+            commsgs_transform.transform().rotation().z();
         tf2_transform.transform.rotation.w =
-            commsgs_transform.transform.rotation.w;
+            commsgs_transform.transform().rotation().w();
         // do the transform
         tf2::doTransform(in, out, tf2_transform);
         return out;
@@ -173,41 +178,41 @@ public:
     template <typename T>
     T& transform(const T& in, T& out,
                  const std::string& target_frame,  // NOLINT
-                 const commsgs::builtin_interfaces::Time& target_time,
+                 const automsgs::msgs::builtin_interfaces::Time& target_time,
                  const std::string& fixed_frame, float timeout = 0.0f) const {
         // Convert tf2::Time (uint64_t nanoseconds) to
-        // commsgs::builtin_interfaces::Time
+        // automsgs::msgs::builtin_interfaces::Time
         const tf2::Time tf2_time = tf2::getTimestamp(in);
-        commsgs::builtin_interfaces::Time source_time;
-        source_time.sec = static_cast<int32_t>(tf2_time / 1'000'000'000);
-        source_time.nanosec = static_cast<uint32_t>(tf2_time % 1'000'000'000);
+        automsgs::msgs::builtin_interfaces::Time source_time;
+        source_time.set_sec(static_cast<int32_t>(tf2_time / 1'000'000'000));
+        source_time.set_nanosec(static_cast<uint32_t>(tf2_time % 1'000'000'000));
         // Get transform in commsgs format
         const auto& commsgs_transform =
             lookupTransform(target_frame, target_time, tf2::getFrameId(in),
                             source_time, fixed_frame, timeout);
-        // Convert commsgs::geometry_msgs::TransformStamped to
+        // Convert automsgs::msgs::geometry_msgs::TransformStamped to
         // geometry_msgs::TransformStamped
         geometry_msgs::TransformStamped tf2_transform;
         tf2_transform.header.stamp =
-            static_cast<uint64_t>(commsgs_transform.header.stamp.sec) *
+            static_cast<uint64_t>(commsgs_transform.header().stamp().sec()) *
                 1000000000ULL +
-            static_cast<uint64_t>(commsgs_transform.header.stamp.nanosec);
-        tf2_transform.header.frame_id = commsgs_transform.header.frame_id;
-        tf2_transform.child_frame_id = commsgs_transform.child_frame_id;
+            static_cast<uint64_t>(commsgs_transform.header().stamp().nanosec());
+        tf2_transform.header.frame_id = commsgs_transform.header().frame_id();
+        tf2_transform.child_frame_id = commsgs_transform.child_frame_id();
         tf2_transform.transform.translation.x =
-            commsgs_transform.transform.translation.x;
+            commsgs_transform.transform().translation().x();
         tf2_transform.transform.translation.y =
-            commsgs_transform.transform.translation.y;
+            commsgs_transform.transform().translation().y();
         tf2_transform.transform.translation.z =
-            commsgs_transform.transform.translation.z;
+            commsgs_transform.transform().translation().z();
         tf2_transform.transform.rotation.x =
-            commsgs_transform.transform.rotation.x;
+            commsgs_transform.transform().rotation().x();
         tf2_transform.transform.rotation.y =
-            commsgs_transform.transform.rotation.y;
+            commsgs_transform.transform().rotation().y();
         tf2_transform.transform.rotation.z =
-            commsgs_transform.transform.rotation.z;
+            commsgs_transform.transform().rotation().z();
         tf2_transform.transform.rotation.w =
-            commsgs_transform.transform.rotation.w;
+            commsgs_transform.transform().rotation().w();
         // do the transform
         tf2::doTransform(in, out, tf2_transform);
         return out;
@@ -216,7 +221,7 @@ public:
     // transform, advanced api, no pre-allocation
     template <typename T>
     T transform(const T& in, const std::string& target_frame,
-                const commsgs::builtin_interfaces::Time& target_time,
+                const automsgs::msgs::builtin_interfaces::Time& target_time,
                 const std::string& fixed_frame, float timeout = 0.0f) const {
         T out;
         return transform(in, out, target_frame, target_time, fixed_frame,
@@ -227,7 +232,7 @@ public:
     template <typename A, typename B>
     B& transform(const A& in, B& out,
                  const std::string& target_frame,  // NOLINT
-                 const commsgs::builtin_interfaces::Time& target_time,
+                 const automsgs::msgs::builtin_interfaces::Time& target_time,
                  const std::string& fixed_frame, float timeout = 0.0f) const {
         // do the transform
         A copy = transform(in, target_frame, target_time, fixed_frame, timeout);

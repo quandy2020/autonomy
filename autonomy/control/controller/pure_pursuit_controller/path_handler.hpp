@@ -22,8 +22,18 @@
  #include <string>
  #include <vector>
  
- #include "autonomy/commsgs/geometry_msgs.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
+ #include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+ #include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
  #include "autonomy/control/common/controller_exceptions.hpp"
  #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
  #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
@@ -67,8 +77,8 @@
       * @param reject_unit_path If true, fail if path has only one pose
       * @return Path in new frame
       */
-     commsgs::planning_msgs::Path transformGlobalPlan(
-         const commsgs::geometry_msgs::PoseStamped& pose,
+     automsgs::msgs::planning_msgs::Path transformGlobalPlan(
+         const automsgs::msgs::geometry_msgs::PoseStamped& pose,
          double max_robot_pose_search_dist, bool reject_unit_path = false);
  
      /**
@@ -79,14 +89,14 @@
       * @return bool if successful
       */
      bool transformPose(const std::string frame,
-                        const commsgs::geometry_msgs::PoseStamped& in_pose,
-                        commsgs::geometry_msgs::PoseStamped& out_pose) const;
+                        const automsgs::msgs::geometry_msgs::PoseStamped& in_pose,
+                        automsgs::msgs::geometry_msgs::PoseStamped& out_pose) const;
  
-     void setPlan(const commsgs::planning_msgs::Path& path) {
+     void setPlan(const automsgs::msgs::planning_msgs::Path& path) {
          global_plan_ = path;
      }
  
-     commsgs::planning_msgs::Path getPlan() {
+     automsgs::msgs::planning_msgs::Path getPlan() {
          return global_plan_;
      }
  
@@ -100,7 +110,7 @@
      double transform_tolerance_;
      std::shared_ptr<transform::Buffer> tf_buffer_;
      std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper_;
-     commsgs::planning_msgs::Path global_plan_;
+     automsgs::msgs::planning_msgs::Path global_plan_;
  };
  
  }  // namespace pure_pursuit_controller

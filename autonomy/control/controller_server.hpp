@@ -29,11 +29,25 @@
 #include "autolink/node/writer.hpp"
 #include "autonomy/control/constants.hpp"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/control/common/controller_interface.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/common/progress_checker_interface.hpp"
@@ -81,8 +95,8 @@ public:
     void SetSharedCostmap(
         std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap);
 
-    void UpdateOdometry(const commsgs::planning_msgs::Odometry& odom);
-    bool GetLatestOdometry(commsgs::planning_msgs::Odometry& odom) const;
+    void UpdateOdometry(const automsgs::msgs::planning_msgs::Odometry& odom);
+    bool GetLatestOdometry(automsgs::msgs::planning_msgs::Odometry& odom) const;
 
     /** Load controller / checker plugins from options (idempotent). */
     void LoadPlugins();
@@ -158,9 +172,9 @@ protected:
      * @param pose To store current pose of the robot
      * @return true if able to obtain current pose of the robot, else false
      */
-    bool GetRobotPose(commsgs::geometry_msgs::PoseStamped& pose);
+    bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose);
 
-    void PublishVelocity(const commsgs::geometry_msgs::TwistStamped& cmd_vel);
+    void PublishVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
     void PublishZeroVelocity();
 
     common::ControllerInterface* GetActiveController();
@@ -211,23 +225,23 @@ protected:
     double failure_tolerance_;
     bool use_realtime_priority_;
     bool publish_zero_velocity_;
-    commsgs::builtin_interfaces::Duration costmap_update_timeout_;
+    automsgs::msgs::builtin_interfaces::Duration costmap_update_timeout_;
 
     // Whether we've published the single controller warning yet
-    commsgs::geometry_msgs::PoseStamped end_pose_;
+    automsgs::msgs::geometry_msgs::PoseStamped end_pose_;
 
     // Last time the controller generated a valid command
-    commsgs::builtin_interfaces::Time last_valid_cmd_time_;
+    automsgs::msgs::builtin_interfaces::Time last_valid_cmd_time_;
 
     // Current path container
-    commsgs::planning_msgs::Path current_path_;
-    commsgs::geometry_msgs::TwistStamped last_cmd_vel_{};
+    automsgs::msgs::planning_msgs::Path current_path_;
+    automsgs::msgs::geometry_msgs::TwistStamped last_cmd_vel_{};
 
     std::string follow_controller_id_;
     std::string follow_goal_checker_id_;
     std::string follow_progress_checker_id_;
 
-    std::shared_ptr<autolink::Writer<commsgs::geometry_msgs::TwistStamped>>
+    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
         cmd_vel_writer_;
 
     bool follow_path_active_{false};
@@ -236,7 +250,7 @@ protected:
     double follow_path_length_{0.0};
     double follow_distance_traveled_{0.0};
     double follow_min_distance_before_goal_{0.0};
-    commsgs::geometry_msgs::PoseStamped follow_last_travel_pose_;
+    automsgs::msgs::geometry_msgs::PoseStamped follow_last_travel_pose_;
     bool plugins_loaded_{false};
     bool controllers_active_{false};
     float transform_tolerance_{0.1f};

@@ -108,41 +108,41 @@ void StaticLayer::getParameters() {
     map_received_in_update_bounds_ = false;
 }
 
-void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
+void StaticLayer::processMap(const automsgs::msgs::map_msgs::OccupancyGrid& new_map) {
     ADEBUG << "StaticLayer: Process map";
 
-    unsigned int size_x = new_map.info.width;
-    unsigned int size_y = new_map.info.height;
+    unsigned int size_x = new_map.info().width();
+    unsigned int size_y = new_map.info().height();
 
     ADEBUG << "StaticLayer: Received a " << size_x << " X " << size_y
-           << " map at " << new_map.info.resolution << " m/pix";
+           << " map at " << new_map.info().resolution() << " m/pix";
 
     // resize costmap if size, resolution or origin do not match
     Costmap2D* master = layered_costmap_->getCostmap();
     if (!layered_costmap_->isRolling() &&
         (master->getSizeInCellsX() != size_x ||
          master->getSizeInCellsY() != size_y ||
-         master->getResolution() != new_map.info.resolution ||
-         master->getOriginX() != new_map.info.origin.position.x ||
-         master->getOriginY() != new_map.info.origin.position.y ||
+         master->getResolution() != new_map.info().resolution() ||
+         master->getOriginX() != new_map.info().origin().position().x() ||
+         master->getOriginY() != new_map.info().origin().position().y() ||
          !layered_costmap_->isSizeLocked())) {
         // Update the size of the layered costmap (and all layers, including
         // this one)
         ADEBUG << "StaticLayer: Resizing costmap to " << size_x << " X "
-               << size_y << " at " << new_map.info.resolution << " m/pix";
-        layered_costmap_->resizeMap(size_x, size_y, new_map.info.resolution,
-                                    new_map.info.origin.position.x,
-                                    new_map.info.origin.position.y, true);
+               << size_y << " at " << new_map.info().resolution() << " m/pix";
+        layered_costmap_->resizeMap(size_x, size_y, new_map.info().resolution(),
+                                    new_map.info().origin().position().x(),
+                                    new_map.info().origin().position().y(), true);
     } else if (size_x_ != size_x || size_y_ != size_y ||  // NOLINT
-               resolution_ != new_map.info.resolution ||
-               origin_x_ != new_map.info.origin.position.x ||
-               origin_y_ != new_map.info.origin.position.y) {
+               resolution_ != new_map.info().resolution() ||
+               origin_x_ != new_map.info().origin().position().x() ||
+               origin_y_ != new_map.info().origin().position().y()) {
         // only update the size of the costmap stored locally in this layer
         ADEBUG << "StaticLayer: Resizing static layer to " << size_x << " X "
-               << size_y << " at " << new_map.info.resolution << " m/pix";
-        resizeMap(size_x, size_y, new_map.info.resolution,
-                  new_map.info.origin.position.x,
-                  new_map.info.origin.position.y);
+               << size_y << " at " << new_map.info().resolution() << " m/pix";
+        resizeMap(size_x, size_y, new_map.info().resolution(),
+                  new_map.info().origin().position().x(),
+                  new_map.info().origin().position().y());
     }
 
     unsigned int index = 0;
@@ -155,7 +155,7 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
     int count_free = 0, count_occupied = 0, count_unknown = 0, count_other = 0;
     for (unsigned int i = 0; i < size_y; ++i) {
         for (unsigned int j = 0; j < size_x; ++j) {
-            const int16_t raw_value = new_map.data[index];
+            const int16_t raw_value = new_map.data(index);
             unsigned char cost;
             if (raw_value < 0) {
                 cost = track_unknown_space_ ? NO_INFORMATION : FREE_SPACE;
@@ -190,7 +190,7 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
            << ", unknown: " << count_unknown << ", other: " << count_other
            << " (total: " << (size_x * size_y) << ")";
 
-    map_frame_ = new_map.header.frame_id;
+    map_frame_ = new_map.header().frame_id();
 
     x_ = y_ = 0;
     width_ = size_x_;
@@ -201,9 +201,9 @@ void StaticLayer::processMap(const commsgs::map_msgs::OccupancyGrid& new_map) {
 }
 
 void StaticLayer::loadOccupancyGrid(
-    const commsgs::map_msgs::OccupancyGrid& new_map) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& new_map) {
     auto map_msg =
-        std::make_shared<commsgs::map_msgs::OccupancyGrid>(new_map);
+        std::make_shared<automsgs::msgs::map_msgs::OccupancyGrid>(new_map);
     incomingMap(map_msg);
 }
 
@@ -235,17 +235,13 @@ unsigned char StaticLayer::interpretValue(unsigned char value) {
 }
 
 void StaticLayer::incomingMap(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr new_map) {
-    ADEBUG << "StaticLayer: Received map (" << new_map->info.width << "x"
-           << new_map->info.height << " @ " << new_map->info.resolution
-           << " m/cell, data size: " << new_map->data.size() << ")";
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> new_map) {
+    ADEBUG << "StaticLayer: Received map (" << new_map->info().width()<< "x"
+           << new_map->info().height()<< " @ " << new_map->info().resolution()<< " m/cell, data size: " << new_map->data().size() << ")";
 
     if (!utils::validateMsg(*new_map)) {
         AWARN << "Received map message is malformed. Rejecting. "
-              << "width=" << new_map->info.width
-              << ", height=" << new_map->info.height
-              << ", resolution=" << new_map->info.resolution
-              << ", data.size=" << new_map->data.size();
+              << "width=" << new_map->info().width()<< ", height=" << new_map->info().height()<< ", resolution=" << new_map->info().resolution()<< ", data.size=" << new_map->data().size();
         return;
     }
 
@@ -260,33 +256,33 @@ void StaticLayer::incomingMap(
 }
 
 void StaticLayer::incomingUpdate(
-    commsgs::map_msgs::OccupancyGridUpdate::ConstSharedPtr update) {
+    std::shared_ptr<const automsgs::msgs::map_msgs::OccupancyGridUpdate> update) {
     std::lock_guard<Costmap2D::mutex_t> guard(*getMutex());
-    if (update->y < static_cast<int32_t>(y_) ||
-        y_ + height_ < update->y + update->height ||
-        update->x < static_cast<int32_t>(x_) ||
-        x_ + width_ < update->x + update->width) {
+    if (update->y() < static_cast<int32_t>(y_) ||
+        y_ + height_ < update->y() + update->height() ||
+        update->x() < static_cast<int32_t>(x_) ||
+        x_ + width_ < update->x() + update->width()) {
         AWARN << "StaticLayer: Map update ignored. Exceeds bounds of static "
                  "layer.\n"
               << "Static layer origin: " << x_ << ", " << y_ << "   bounds: "
-              << "Update origin: " << update->x << ", " << update->y
-              << "   bounds: " << update->width << " X " << update->height;
+              << "Update origin: " << update->x() << ", " << update->y()
+              << "   bounds: " << update->width() << " X " << update->height();
         return;
     }
 
-    if (update->header.frame_id != map_frame_) {
+    if (update->header().frame_id() != map_frame_) {
         AWARN << "StaticLayer: Map update ignored. Current map is in frame "
               << map_frame_ << " but update was in frame "
-              << update->header.frame_id;
+              << update->header().frame_id();
         return;
     }
 
     unsigned int di = 0;
-    for (unsigned int y = 0; y < update->height; y++) {
-        unsigned int index_base = (update->y + y) * size_x_;
-        for (unsigned int x = 0; x < update->width; x++) {
-            unsigned int index = index_base + x + update->x;
-            costmap_[index] = interpretValue(update->data[di++]);
+    for (unsigned int y = 0; y < update->height(); y++) {
+        unsigned int index_base = (update->y() + y) * size_x_;
+        for (unsigned int x = 0; x < update->width(); x++) {
+            unsigned int index = index_base + x + update->x();
+            costmap_[index] = interpretValue(update->data(di++));
         }
     }
 
@@ -344,7 +340,7 @@ void StaticLayer::updateFootprint(double robot_x, double robot_y,
                        transformed_footprint_);
 
     for (unsigned int i = 0; i < transformed_footprint_.size(); i++) {
-        touch(transformed_footprint_[i].x, transformed_footprint_[i].y, min_x,
+        touch(transformed_footprint_[i].x(), transformed_footprint_[i].y(), min_x,
               min_y, max_x, max_y);
     }
 }

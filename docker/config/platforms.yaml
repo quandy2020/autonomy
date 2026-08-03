@@ -1,0 +1,39 @@
+# Autonomy Docker 平台与场景配置（唯一配置文件）
+#
+# 用法:
+#   python3 run_autonomy.py --list-configs
+#   python3 run_autonomy.py --platform nvidia --profile webrtc
+#   python3 run_autonomy.py -p x86_64 -n yes --profile navrl
+#
+# platforms: 选镜像（x86_64 | nvidia | aarch64）
+# profiles:  选场景，只写与默认不同的项
+
+platforms:
+  x86_64:
+    image: autonomy.platform.x86_64
+
+  nvidia:
+    image: autonomy.platform.x86_64.nvidia
+    gpu: true
+    isaac: true
+
+  aarch64:
+    image: autonomy.platform.aarch64
+    arch: arm64
+
+profiles:
+  webrtc:
+    ports:
+      - 49100:49100/udp
+      - 49100:49100/tcp
+    env:
+      LIVESTREAM: "2"
+      LIVESTREAM_PORT: "49100"
+      OMNI_KIT_ACCEPT_EULA: "YES"
+
+  navrl:
+    use: webrtc
+    name: SpaceHero-navrl
+
+  isaac-kit:
+    keep_entrypoint: true

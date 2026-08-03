@@ -21,8 +21,18 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/common/port.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/planning_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 
@@ -113,9 +123,9 @@ public:
      *         - 121..149: Reserved for plugin specific errors
      */
     virtual uint32 ComputeVelocityCommands(
-        const commsgs::geometry_msgs::PoseStamped& pose,
-        const commsgs::geometry_msgs::TwistStamped& velocity,
-        commsgs::geometry_msgs::TwistStamped& cmd_vel,
+        const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+        const automsgs::msgs::geometry_msgs::TwistStamped& velocity,
+        automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
         common::GoalChecker* goal_checker, std::string& message) = 0;
 
     /**
@@ -133,7 +143,7 @@ public:
      * @brief Set the plan that the local planner is following
      * @param plan The plan to pass to the local planner
      */
-    virtual void SetPlan(const commsgs::planning_msgs::Path& plan) = 0;
+    virtual void SetPlan(const automsgs::msgs::planning_msgs::Path& plan) = 0;
 
     /**
      * @brief Limits the maximum linear speed of the robot.

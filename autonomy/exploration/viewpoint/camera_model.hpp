@@ -19,8 +19,21 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 #include "autonomy/transform/buffer.hpp"
 
@@ -71,7 +84,7 @@ public:
      * @brief Update intrinsics from CameraInfo.
      * @param info Camera intrinsic / distortion message
      */
-    void SetFromCameraInfo(const commsgs::sensor_msgs::CameraInfo& info);
+    void SetFromCameraInfo(const automsgs::msgs::sensor_msgs::CameraInfo& info);
 
     /**
      * @brief Check whether a map-frame point is visible in the TF camera FoV.
@@ -95,7 +108,7 @@ public:
      * @param env Optional planning env for 2D LOS occlusion
      * @return true if the point lies inside FoV (+ LOS)
      */
-    bool IsVisible(const commsgs::geometry_msgs::Transform& map_t_camera,
+    bool IsVisible(const automsgs::msgs::geometry_msgs::Transform& map_t_camera,
                    double wx, double wy, double wz,
                    const PlanningEnv* env = nullptr) const;
 
@@ -108,8 +121,8 @@ public:
      * @return Scalar coverage gain score
      */
     double ComputeGain(
-        const commsgs::geometry_msgs::Transform& map_t_camera,
-        const std::vector<commsgs::geometry_msgs::Point>& targets,
+        const automsgs::msgs::geometry_msgs::Transform& map_t_camera,
+        const std::vector<automsgs::msgs::geometry_msgs::Point>& targets,
         const std::vector<bool>& uncovered,
         const PlanningEnv* env = nullptr) const;
 
@@ -156,7 +169,7 @@ private:
      * @return true on successful lookup
      */
     bool LookupCameraFromMap(
-        commsgs::geometry_msgs::Transform* camera_t_map) const;
+        automsgs::msgs::geometry_msgs::Transform* camera_t_map) const;
 
     /**
      * @brief Apply a rigid transform to a 3D point.
@@ -168,7 +181,7 @@ private:
      * @param out_y Output y
      * @param out_z Output z
      */
-    static void TransformPoint(const commsgs::geometry_msgs::Transform& transform,
+    static void TransformPoint(const automsgs::msgs::geometry_msgs::Transform& transform,
                                double x, double y, double z, double* out_x,
                                double* out_y, double* out_z);
 
@@ -177,8 +190,8 @@ private:
      * @param map_t_camera Extrinsic of camera in map
      * @return camera_T_map
      */
-    static commsgs::geometry_msgs::Transform InvertTransform(
-        const commsgs::geometry_msgs::Transform& map_t_camera);
+    static automsgs::msgs::geometry_msgs::Transform InvertTransform(
+        const automsgs::msgs::geometry_msgs::Transform& map_t_camera);
 
     /**
      * @brief Project a camera-frame point and test FoV membership.

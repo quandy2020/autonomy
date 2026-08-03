@@ -19,8 +19,16 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/std_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/std_msgs/header.pb.h>
 #include "autonomy/map/costmap_2d/footprint.hpp"
 
 namespace autonomy {
@@ -56,8 +64,8 @@ public:
      * footprint
      * @return False if no footprint has been received
      */
-    bool getFootprintRaw(std::vector<commsgs::geometry_msgs::Point>& footprint,
-                         commsgs::std_msgs::Header& footprint_header);
+    bool getFootprintRaw(std::vector<automsgs::msgs::geometry_msgs::Point>& footprint,
+                         automsgs::msgs::std_msgs::Header& footprint_header);
 
     /**
      * @brief Returns the latest robot footprint, transformed into robot base
@@ -70,21 +78,21 @@ public:
      * failed
      */
     bool getFootprintInRobotFrame(
-        std::vector<commsgs::geometry_msgs::Point>& footprint,
-        commsgs::std_msgs::Header& footprint_header);
+        std::vector<automsgs::msgs::geometry_msgs::Point>& footprint,
+        automsgs::msgs::std_msgs::Header& footprint_header);
 
 protected:
     /**
      * @brief Callback to process new footprint updates.
      */
     void footprint_callback(
-        const commsgs::geometry_msgs::PolygonStamped::SharedPtr msg);
+        const std::shared_ptr<automsgs::msgs::geometry_msgs::PolygonStamped> msg);
 
     std::string robot_base_frame_;
     double transform_tolerance_;
     bool footprint_received_{false};
-    commsgs::geometry_msgs::PolygonStamped::SharedPtr footprint_;
-    //    rclcpp::Subscription<commsgs::geometry_msgs::PolygonStamped>::SharedPtr
+    std::shared_ptr<automsgs::msgs::geometry_msgs::PolygonStamped> footprint_;
+    //    rclcpp::Subscription<automsgs::msgs::geometry_msgs::PolygonStamped>::SharedPtr
     //    footprint_sub_;
 };
 

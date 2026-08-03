@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/point_field_conversion.hpp"
+#include <automsgs/msgs/sensor_msgs/point_field_conversion.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_math.hpp"
@@ -34,8 +34,8 @@ namespace map {
 namespace costmap_2d {
 namespace {
 
-using commsgs::sensor_msgs::PointCloud2;
-using commsgs::sensor_msgs::PointField;
+using automsgs::msgs::sensor_msgs::PointCloud2;
+using automsgs::msgs::sensor_msgs::PointField;
 
 struct XYZFieldOffsets {
     int x{-1};
@@ -50,17 +50,17 @@ struct XYZFieldOffsets {
 
 XYZFieldOffsets FindXYZOffsets(const PointCloud2& cloud) {
     XYZFieldOffsets offsets;
-    offsets.point_step = static_cast<int>(cloud.point_step);
-    for (const auto& field : cloud.fields) {
-        if (field.name == "x") {
-            offsets.x = static_cast<int>(field.offset);
-            offsets.x_datatype = field.datatype;
-        } else if (field.name == "y") {
-            offsets.y = static_cast<int>(field.offset);
-            offsets.y_datatype = field.datatype;
-        } else if (field.name == "z") {
-            offsets.z = static_cast<int>(field.offset);
-            offsets.z_datatype = field.datatype;
+    offsets.point_step = static_cast<int>(cloud.point_step());
+    for (const auto& field : cloud.fields()) {
+        if (field.name() == "x") {
+            offsets.x = static_cast<int>(field.offset());
+            offsets.x_datatype = static_cast<uint8_t>(field.datatype());
+        } else if (field.name() == "y") {
+            offsets.y = static_cast<int>(field.offset());
+            offsets.y_datatype = static_cast<uint8_t>(field.datatype());
+        } else if (field.name() == "z") {
+            offsets.z = static_cast<int>(field.offset());
+            offsets.z_datatype = static_cast<uint8_t>(field.datatype());
         }
     }
     return offsets;
@@ -261,20 +261,20 @@ void VoxelLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
             obs.obstacle_max_range_ * obs.obstacle_max_range_;
         const double sq_obstacle_min_range =
             obs.obstacle_min_range_ * obs.obstacle_min_range_;
-        const size_t point_count = static_cast<size_t>(cloud.width) *
-                                 static_cast<size_t>(cloud.height);
+        const size_t point_count = static_cast<size_t>(cloud.width()) *
+                                 static_cast<size_t>(cloud.height());
 
         for (size_t point_index = 0; point_index < point_count; ++point_index) {
-            const size_t point_offset = point_index * cloud.point_step;
-            const unsigned char* point_data = cloud.data.data() + point_offset;
+            const size_t point_offset = point_index * cloud.point_step();
+            const unsigned char* point_data = reinterpret_cast<const unsigned char*>(cloud.data().data()) + point_offset;
             const double px =
-                commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+                automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                     point_data + offsets.x, offsets.x_datatype);
             const double py =
-                commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+                automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                     point_data + offsets.y, offsets.y_datatype);
             const double pz =
-                commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+                automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                     point_data + offsets.z, offsets.z_datatype);
 
             if (!std::isfinite(px) || !std::isfinite(py) || !std::isfinite(pz)) {
@@ -285,9 +285,9 @@ void VoxelLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
             }
 
             const double sq_dist =
-                (px - obs.origin_.x) * (px - obs.origin_.x) +
-                (py - obs.origin_.y) * (py - obs.origin_.y) +
-                (pz - obs.origin_.z) * (pz - obs.origin_.z);
+                (px - obs.origin_.x()) * (px - obs.origin_.x()) +
+                (py - obs.origin_.y()) * (py - obs.origin_.y()) +
+                (pz - obs.origin_.z()) * (pz - obs.origin_.z());
             if (sq_dist >= sq_obstacle_max_range ||
                 sq_dist < sq_obstacle_min_range) {
                 continue;
@@ -321,12 +321,12 @@ void VoxelLayer::raytraceFreespace(const Observation& clearing_observation,
                                    double* min_x, double* min_y, double* max_x,
                                    double* max_y) {
     const PointCloud2& cloud = *(clearing_observation.cloud_);
-    if (cloud.width == 0 || cloud.height == 0) {
+    if (cloud.width() == 0 || cloud.height() == 0) {
         return;
     }
 
-    const double ox = clearing_observation.origin_.x;
-    const double oy = clearing_observation.origin_.y;
+    const double ox = clearing_observation.origin_.x();
+    const double oy = clearing_observation.origin_.y();
 
     unsigned int x0 = 0;
     unsigned int y0 = 0;
@@ -350,13 +350,13 @@ void VoxelLayer::raytraceFreespace(const Observation& clearing_observation,
         cellDistance(clearing_observation.raytrace_min_range_);
 
     const size_t point_count =
-        static_cast<size_t>(cloud.width) * static_cast<size_t>(cloud.height);
+        static_cast<size_t>(cloud.width()) * static_cast<size_t>(cloud.height());
     for (size_t point_index = 0; point_index < point_count; ++point_index) {
-        const size_t point_offset = point_index * cloud.point_step;
-        const unsigned char* point_data = cloud.data.data() + point_offset;
-        double wx = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+        const size_t point_offset = point_index * cloud.point_step();
+        const unsigned char* point_data = reinterpret_cast<const unsigned char*>(cloud.data().data()) + point_offset;
+        double wx = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
             point_data + offsets.x, offsets.x_datatype);
-        double wy = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+        double wy = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
             point_data + offsets.y, offsets.y_datatype);
 
         if (!std::isfinite(wx) || !std::isfinite(wy)) {

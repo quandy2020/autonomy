@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/point_field_conversion.hpp"
+#include <automsgs/msgs/sensor_msgs/point_field_conversion.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/transform/tf2/convert.h"
 
@@ -34,8 +34,8 @@ namespace map {
 namespace costmap_2d {
 namespace {
 
-using commsgs::sensor_msgs::PointCloud2;
-using commsgs::sensor_msgs::PointField;
+using automsgs::msgs::sensor_msgs::PointCloud2;
+using automsgs::msgs::sensor_msgs::PointField;
 
 struct XYZFieldOffsets {
     int x{-1};
@@ -50,38 +50,38 @@ struct XYZFieldOffsets {
 
 XYZFieldOffsets FindXYZOffsets(const PointCloud2& cloud) {
     XYZFieldOffsets offsets;
-    offsets.point_step = static_cast<int>(cloud.point_step);
-    for (const auto& field : cloud.fields) {
-        if (field.name == "x") {
-            offsets.x = static_cast<int>(field.offset);
-            offsets.x_datatype = field.datatype;
-        } else if (field.name == "y") {
-            offsets.y = static_cast<int>(field.offset);
-            offsets.y_datatype = field.datatype;
-        } else if (field.name == "z") {
-            offsets.z = static_cast<int>(field.offset);
-            offsets.z_datatype = field.datatype;
+    offsets.point_step = static_cast<int>(cloud.point_step());
+    for (const auto& field : cloud.fields()) {
+        if (field.name() == "x") {
+            offsets.x = static_cast<int>(field.offset());
+            offsets.x_datatype = static_cast<uint8_t>(field.datatype());
+        } else if (field.name() == "y") {
+            offsets.y = static_cast<int>(field.offset());
+            offsets.y_datatype = static_cast<uint8_t>(field.datatype());
+        } else if (field.name() == "z") {
+            offsets.z = static_cast<int>(field.offset());
+            offsets.z_datatype = static_cast<uint8_t>(field.datatype());
         }
     }
     return offsets;
 }
 
-void TransformPoint(const commsgs::geometry_msgs::Transform& transform,
+void TransformPoint(const automsgs::msgs::geometry_msgs::Transform& transform,
                     double x, double y, double z, double& out_x, double& out_y,
                     double& out_z) {
-    const auto& q = transform.rotation;
-    const auto& t = transform.translation;
-    const double qx = q.x;
-    const double qy = q.y;
-    const double qz = q.z;
-    const double qw = q.w;
+    const auto& q = transform.rotation();
+    const auto& t = transform.translation();
+    const double qx = q.x();
+    const double qy = q.y();
+    const double qz = q.z();
+    const double qw = q.w();
     const double ix = qw * x + qy * z - qz * y;
     const double iy = qw * y + qz * x - qx * z;
     const double iz = qw * z + qx * y - qy * x;
     const double iw = -qx * x - qy * y - qz * z;
-    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x;
-    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y;
-    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z;
+    out_x = ix * qw + iw * -qx + iy * -qz - iz * -qy + t.x();
+    out_y = iy * qw + iw * -qy + iz * -qx - ix * -qz + t.y();
+    out_z = iz * qw + iw * -qz + ix * -qy - iy * -qx + t.z();
 }
 
 float TimeoutSeconds(transform::tf2::Duration tolerance) {
@@ -116,12 +116,12 @@ ObservationBuffer::ObservationBuffer(
 ObservationBuffer::~ObservationBuffer() {}
 
 void ObservationBuffer::bufferCloud(
-    const commsgs::sensor_msgs::PointCloud2& cloud) {
+    const automsgs::msgs::sensor_msgs::PointCloud2& cloud) {
     observation_list_.push_front(Observation());
     Observation& observation = observation_list_.front();
 
     const std::string origin_frame =
-        sensor_frame_.empty() ? cloud.header.frame_id : sensor_frame_;
+        sensor_frame_.empty() ? cloud.header().frame_id() : sensor_frame_;
     const float timeout = TimeoutSeconds(tf_tolerance_);
 
     try {
@@ -129,9 +129,9 @@ void ObservationBuffer::bufferCloud(
             // Cloud already in the global frame (e.g. synthetic sim obstacles).
             // Sensor origin is unknown; disable range gating so marks are not
             // incorrectly filtered relative to the world origin (0,0).
-            observation.origin_.x = 0.0;
-            observation.origin_.y = 0.0;
-            observation.origin_.z = 0.0;
+            observation.origin_.set_x(0.0);
+            observation.origin_.set_y(0.0);
+            observation.origin_.set_z(0.0);
             observation.raytrace_max_range_ = raytrace_max_range_;
             observation.raytrace_min_range_ = raytrace_min_range_;
             observation.obstacle_max_range_ =
@@ -139,10 +139,13 @@ void ObservationBuffer::bufferCloud(
             observation.obstacle_min_range_ = 0.0;
         } else {
             const auto origin_transform = tf_buffer_.lookupTransform(
-                global_frame_, origin_frame, cloud.header.stamp, timeout);
-            TransformPoint(origin_transform.transform, 0.0, 0.0, 0.0,
-                           observation.origin_.x, observation.origin_.y,
-                           observation.origin_.z);
+                global_frame_, origin_frame, cloud.header().stamp(), timeout);
+            double ox = 0.0, oy = 0.0, oz = 0.0;
+            TransformPoint(origin_transform.transform(), 0.0, 0.0, 0.0, ox, oy,
+                           oz);
+            observation.origin_.set_x(ox);
+            observation.origin_.set_y(oy);
+            observation.origin_.set_z(oz);
             observation.raytrace_max_range_ = raytrace_max_range_;
             observation.raytrace_min_range_ = raytrace_min_range_;
             observation.obstacle_max_range_ = obstacle_max_range_;
@@ -157,32 +160,36 @@ void ObservationBuffer::bufferCloud(
             return;
         }
 
-        commsgs::geometry_msgs::Transform cloud_transform;
-        bool need_transform = cloud.header.frame_id != global_frame_;
+        automsgs::msgs::geometry_msgs::Transform cloud_transform;
+        bool need_transform = cloud.header().frame_id() != global_frame_;
         if (need_transform) {
             const auto stamped_transform = tf_buffer_.lookupTransform(
-                global_frame_, cloud.header.frame_id, cloud.header.stamp,
+                global_frame_, cloud.header().frame_id(), cloud.header().stamp(),
                 timeout);
-            cloud_transform = stamped_transform.transform;
+            cloud_transform = stamped_transform.transform();
         }
 
         PointCloud2& observation_cloud = *(observation.cloud_);
         observation_cloud = cloud;
-        observation_cloud.header.frame_id = global_frame_;
-        observation_cloud.data.clear();
+        observation_cloud.mutable_header()->set_frame_id(global_frame_);
+        observation_cloud.mutable_data()->clear();
 
-        const size_t point_count =
-            static_cast<size_t>(cloud.width) * static_cast<size_t>(cloud.height);
-        observation_cloud.data.reserve(point_count * cloud.point_step);
+        const size_t point_count = static_cast<size_t>(cloud.width()) *
+                                   static_cast<size_t>(cloud.height());
+        observation_cloud.mutable_data()->reserve(point_count *
+                                                   cloud.point_step());
 
+        const auto& cloud_bytes = cloud.data();
         for (size_t point_index = 0; point_index < point_count; ++point_index) {
-            const size_t point_offset = point_index * cloud.point_step;
-            const unsigned char* point_data = cloud.data.data() + point_offset;
-            double px = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+            const size_t point_offset = point_index * cloud.point_step();
+            const unsigned char* point_data =
+                reinterpret_cast<const unsigned char*>(cloud_bytes.data()) +
+                point_offset;
+            double px = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                 point_data + offsets.x, offsets.x_datatype);
-            double py = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+            double py = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                 point_data + offsets.y, offsets.y_datatype);
-            double pz = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+            double pz = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                 point_data + offsets.z, offsets.z_datatype);
 
             if (need_transform) {
@@ -199,20 +206,19 @@ void ObservationBuffer::bufferCloud(
                 continue;
             }
 
-            observation_cloud.data.insert(
-                observation_cloud.data.end(), point_data,
-                point_data + cloud.point_step);
+            observation_cloud.mutable_data()->append(
+                reinterpret_cast<const char*>(point_data), cloud.point_step());
         }
 
-        observation_cloud.width =
-            observation_cloud.point_step > 0
-                ? static_cast<uint32_t>(observation_cloud.data.size() /
-                                        observation_cloud.point_step)
-                : 0;
-        observation_cloud.height = 1;
-        observation_cloud.row_step =
-            observation_cloud.width * observation_cloud.point_step;
-        observation_cloud.is_dense = false;
+        observation_cloud.set_width(
+            observation_cloud.point_step() > 0
+                ? static_cast<uint32_t>(observation_cloud.data().size() /
+                                        observation_cloud.point_step())
+                : 0);
+        observation_cloud.set_height(1);
+        observation_cloud.set_row_step(observation_cloud.width() *
+                                       observation_cloud.point_step());
+        observation_cloud.set_is_dense(false);
     } catch (const transform::tf2::TransformException& ex) {
         observation_list_.pop_front();
         AWARN << "ObservationBuffer " << topic_name_

@@ -21,12 +21,12 @@ namespace sensor {
 
 // OdometryProto ToProto(const OdometryData& data)
 // {
-//     return commsgs::planning_msgs::ToProto(data);
+//     return data;
 // }
 
 // OdometryData FromProto(const OdometryProto& proto)
 // {
-//     return commsgs::planning_msgs::FromProto(proto);
+//     return proto;
 // }
 
 }  // namespace sensor

@@ -73,7 +73,7 @@ void SimpleSmoother::ApplyOptions(const proto::SimpleSmootherOptions& options) {
     enforce_path_inversion_ = options.enforce_path_inversion();
 }
 
-bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
+bool SimpleSmoother::Smooth(automsgs::msgs::planning_msgs::Path& path,
                             const std::chrono::milliseconds& max_time) {
     map::costmap_2d::Costmap2D* costmap = nullptr;
     if (costmap_wrapper_) {
@@ -85,8 +85,8 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
     double time_remaining = max_time_seconds;
 
     bool reversing_segment;
-    commsgs::planning_msgs::Path curr_path_segment;
-    curr_path_segment.header = path.header;
+    automsgs::msgs::planning_msgs::Path curr_path_segment;
+    *curr_path_segment.mutable_header() = path.header();
 
     const auto directional_segments =
         findDirectionalPathSegments(path, false);
@@ -100,17 +100,18 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
         path_segments.push_back(
             PathSegment{segment.start, segment.end});
     }
-    if (path_segments.empty() && path.poses.size() >= 2) {
+    if (path_segments.empty() && path.poses_size() >= 2) {
         path_segments.push_back(PathSegment{
-            0u, static_cast<unsigned int>(path.poses.size() - 1)});
+            0u, static_cast<unsigned int>(path.poses_size() - 1)});
     }
 
     for (unsigned int i = 0; i != path_segments.size(); i++) {
         if (path_segments[i].end - path_segments[i].start > 3) {
-            curr_path_segment.poses.clear();
-            std::copy(path.poses.begin() + path_segments[i].start,
-                      path.poses.begin() + path_segments[i].end + 1,
-                      std::back_inserter(curr_path_segment.poses));
+            curr_path_segment.clear_poses();
+            for (unsigned int pi = path_segments[i].start;
+                 pi <= path_segments[i].end; ++pi) {
+                *curr_path_segment.add_poses() = path.poses(pi);
+            }
 
             steady_clock::time_point now = steady_clock::now();
             time_remaining =
@@ -126,16 +127,17 @@ bool SimpleSmoother::Smooth(commsgs::planning_msgs::Path& path,
             SmoothImpl(curr_path_segment, reversing_segment, costmap,
                        time_remaining);
 
-            std::copy(curr_path_segment.poses.begin(),
-                      curr_path_segment.poses.end(),
-                      path.poses.begin() + path_segments[i].start);
+            for (unsigned int pi = path_segments[i].start, local = 0;
+                 pi <= path_segments[i].end; ++pi, ++local) {
+                *path.mutable_poses(pi) = curr_path_segment.poses(local);
+            }
         }
     }
 
     return true;
 }
 
-void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
+void SimpleSmoother::SmoothImpl(automsgs::msgs::planning_msgs::Path& path,
                                 bool& reversing_segment,
                                 const map::costmap_2d::Costmap2D* costmap,
                                 const double& max_time_seconds) {
@@ -143,12 +145,12 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
 
     int its = 0;
     double change = tolerance_;
-    const unsigned int& path_size = path.poses.size();
+    const unsigned int& path_size = path.poses_size();
     double x_i, y_i, y_m1, y_ip1, y_i_org;
     unsigned int mx, my;
 
-    commsgs::planning_msgs::Path new_path = path;
-    commsgs::planning_msgs::Path last_path = path;
+    automsgs::msgs::planning_msgs::Path new_path = path;
+    automsgs::msgs::planning_msgs::Path last_path = path;
 
     while (change >= tolerance_) {
         its += 1;
@@ -176,22 +178,22 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
 
         for (unsigned int i = 1; i != path_size - 1; i++) {
             for (unsigned int j = 0; j != 2; j++) {
-                x_i = GetFieldByDim(path.poses[i], j);
-                y_i = GetFieldByDim(new_path.poses[i], j);
-                y_m1 = GetFieldByDim(new_path.poses[i - 1], j);
-                y_ip1 = GetFieldByDim(new_path.poses[i + 1], j);
+                x_i = GetFieldByDim(path.poses(i), j);
+                y_i = GetFieldByDim(new_path.poses(i), j);
+                y_m1 = GetFieldByDim(new_path.poses(i - 1), j);
+                y_ip1 = GetFieldByDim(new_path.poses(i + 1), j);
                 y_i_org = y_i;
 
                 y_i += data_w_ * (x_i - y_i) +
                        smooth_w_ * (y_ip1 + y_m1 - (2.0 * y_i));
-                SetFieldByDim(new_path.poses[i], j, y_i);
+                SetFieldByDim(*new_path.mutable_poses(i), j, y_i);
                 change += abs(y_i - y_i_org);
             }
 
             float cost = 0.0;
             if (costmap) {
-                costmap->worldToMap(GetFieldByDim(new_path.poses[i], 0),
-                                    GetFieldByDim(new_path.poses[i], 1), mx,
+                costmap->worldToMap(GetFieldByDim(new_path.poses(i), 0),
+                                    GetFieldByDim(new_path.poses(i), 1), mx,
                                     my);
                 cost = static_cast<float>(costmap->getCost(mx, my));
             }
@@ -226,25 +228,25 @@ void SimpleSmoother::SmoothImpl(commsgs::planning_msgs::Path& path,
 }
 
 double SimpleSmoother::GetFieldByDim(
-    const commsgs::geometry_msgs::PoseStamped& msg, const unsigned int& dim) {
+    const automsgs::msgs::geometry_msgs::PoseStamped& msg, const unsigned int& dim) {
     if (dim == 0) {
-        return msg.pose.position.x;
+        return msg.pose().position().x();
     } else if (dim == 1) {
-        return msg.pose.position.y;
+        return msg.pose().position().y();
     } else {
-        return msg.pose.position.z;
+        return msg.pose().position().z();
     }
 }
 
-void SimpleSmoother::SetFieldByDim(commsgs::geometry_msgs::PoseStamped& msg,
+void SimpleSmoother::SetFieldByDim(automsgs::msgs::geometry_msgs::PoseStamped& msg,
                                    const unsigned int dim,
                                    const double& value) {
     if (dim == 0) {
-        msg.pose.position.x = value;
+        msg.mutable_pose()->mutable_position()->set_x(value);
     } else if (dim == 1) {
-        msg.pose.position.y = value;
+        msg.mutable_pose()->mutable_position()->set_y(value);
     } else {
-        msg.pose.position.z = value;
+        msg.mutable_pose()->mutable_position()->set_z(value);
     }
 }
 

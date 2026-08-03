@@ -22,10 +22,10 @@ namespace autonomy {
 namespace planning {
 namespace utils {
 
-double EuclideanDistance(const commsgs::geometry_msgs::Point& a,
-                         const commsgs::geometry_msgs::Point& b) {
-    const double dx = a.x - b.x;
-    const double dy = a.y - b.y;
+double EuclideanDistance(const automsgs::msgs::geometry_msgs::Point& a,
+                         const automsgs::msgs::geometry_msgs::Point& b) {
+    const double dx = a.x() - b.x();
+    const double dy = a.y() - b.y();
     return std::hypot(dx, dy);
 }
 

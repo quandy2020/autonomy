@@ -465,10 +465,10 @@ InteractiveMarkerPick InteractiveMarkerRegistry::pickMarker(
       candidate.marker_name = name;
       candidate.control_name = control.name();
       candidate.feedback_channel = state.feedback_channel;
-      candidate.frame_id = marker.header().frame_id().empty()
+      candidate.set_frame_id(marker.header().frame_id().empty()
                                ? context->fixed_frame
-                               : marker.header().frame_id();
-      candidate.position = best_sample;
+                               : marker.header().frame_id());
+      *candidate.mutable_position() = best_sample;
       candidate.control_transform = control_transform;
       candidate.interaction_mode = control.interaction_mode();
       candidate.control_index = i;
@@ -491,10 +491,10 @@ InteractiveMarkerPick InteractiveMarkerRegistry::pickMarker(
           marker_best.hit = true;
           marker_best.marker_name = name;
           marker_best.feedback_channel = state.feedback_channel;
-          marker_best.frame_id = marker.header().frame_id().empty()
+          marker_best.set_frame_id(marker.header().frame_id().empty()
                                      ? context->fixed_frame
-                                     : marker.header().frame_id();
-          marker_best.position = marker_center;
+                                     : marker.header().frame_id());
+          *marker_best.mutable_position() = marker_center;
           marker_best.control_transform = MarkerPoseMatrix(marker, context);
           marker_best.interaction_mode =
               marker.menu_entries().empty() ? kMove3d : kInteractionMenu;

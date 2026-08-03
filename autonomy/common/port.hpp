@@ -31,7 +31,6 @@ typedef unsigned __int32 uint32_t;
 typedef unsigned __int64 uint64_t;
 #endif
 #elif __GNUC__ >= 3
-#include <cstdint>
 #endif
 
 // Define non-copyable or non-movable classes.

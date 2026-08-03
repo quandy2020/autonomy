@@ -35,7 +35,7 @@ common::PickHandle handleFromPixelBox(const Ogre::PixelBox& box) {
   if (box.data == nullptr || box.getWidth() == 0 || box.getHeight() == 0) {
     return common::kInvalidPickHandle;
   }
-  const auto* bytes = static_cast<const uint8_t*>(box.data);
+  const auto* bytes = static_cast<const uint8_t*>(box.data());
   if (box.format == Ogre::PF_R8G8B8A8) {
     return common::pickColorToHandle(bytes[0], bytes[1], bytes[2]);
   }
@@ -198,7 +198,7 @@ common::PickHandle OgrePickRenderer::renderSchemeAndRead(
   pixel_buffer->blitToMemory(dst_box);
 
   const common::PickHandle handle = handleFromPixelBox(dst_box);
-  delete[] static_cast<uint8_t*>(dst_box.data);
+  delete[] static_cast<uint8_t*>(dst_box.data());
   return handle;
 }
 

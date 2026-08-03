@@ -23,7 +23,7 @@ namespace localization {
 namespace cartographer {
 namespace node {
 
-commsgs::builtin_interfaces::Time ToCommsgs(
+automsgs::msgs::builtin_interfaces::Time ToCommsgs(
     const ::cartographer::common::Time time) {
     const int64_t uts_timestamp = ::cartographer::common::ToUniversal(time);
     const int64_t ns_since_unix_epoch =
@@ -31,18 +31,17 @@ commsgs::builtin_interfaces::Time ToCommsgs(
          ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds *
              10000000ll) *
         100ll;
-    commsgs::builtin_interfaces::Time result;
-    result.sec = static_cast<int32_t>(ns_since_unix_epoch / 1000000000ll);
-    result.nanosec =
-        static_cast<uint32_t>(ns_since_unix_epoch % 1000000000ll);
+    automsgs::msgs::builtin_interfaces::Time result;
+    result.set_sec(static_cast<int32_t>(ns_since_unix_epoch / 1000000000ll));
+    result.set_nanosec(static_cast<uint32_t>(ns_since_unix_epoch % 1000000000ll));
     return result;
 }
 
 ::cartographer::common::Time FromCommsgs(
-    const commsgs::builtin_interfaces::Time& time) {
+    const automsgs::msgs::builtin_interfaces::Time& time) {
     const int64_t ns_since_unix_epoch =
-        static_cast<int64_t>(time.sec) * 1000000000ll +
-        static_cast<int64_t>(time.nanosec);
+        static_cast<int64_t>(time.sec()) * 1000000000ll +
+        static_cast<int64_t>(time.nanosec());
     return ::cartographer::common::FromUniversal(
         ::cartographer::common::kUtsEpochOffsetFromUnixEpochInSeconds *
             10000000ll +

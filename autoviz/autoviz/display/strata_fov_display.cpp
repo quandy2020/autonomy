@@ -63,7 +63,7 @@ QVector3D PolygonCentroid(const std::vector<QVector3D>& polygon) {
 StrataFovDisplay::StrataFovDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::visualization_msgs::MarkerArray>(
           "StrataFov", std::move(channel),
-          "autonomy.commsgs.proto.visualization_msgs.MarkerArray") {
+          "automsgs.msgs.visualization_msgs.MarkerArray") {
   setProperties({});
 }
 

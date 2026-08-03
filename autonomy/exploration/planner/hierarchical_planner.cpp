@@ -51,17 +51,17 @@ void HierarchicalPlanner::SetOptions(const proto::ExplorationOptions& options)
 }
 
 void HierarchicalPlanner::SetExplorationArea(
-    const commsgs::geometry_msgs::Polygon& area)
+    const automsgs::msgs::geometry_msgs::Polygon& area)
 {
     env_.SetExplorationArea(area);
 }
 
 void HierarchicalPlanner::UpdateOdometry(
-    const commsgs::planning_msgs::Odometry& odom)
+    const automsgs::msgs::planning_msgs::Odometry& odom)
 {
     env_.UpdateOdometry(odom);
     has_odom_ = true;
-    // Keep planning outputs in map; do not inherit odom.header.frame_id.
+    // Keep planning outputs in map; do not inherit odom.header().frame_id().
     frame_id_ = "map";
     if (!has_initial_) {
         initial_x_ = env_.robot_x();
@@ -75,27 +75,27 @@ void HierarchicalPlanner::UpdateOdometry(
 }
 
 void HierarchicalPlanner::UpdateDepth(
-    const commsgs::sensor_msgs::Image& depth,
-    const commsgs::sensor_msgs::CameraInfo& info,
-    const commsgs::geometry_msgs::Transform& map_t_camera)
+    const automsgs::msgs::sensor_msgs::Image& depth,
+    const automsgs::msgs::sensor_msgs::CameraInfo& info,
+    const automsgs::msgs::geometry_msgs::Transform& map_t_camera)
 {
     env_.UpdateDepth(depth, info, map_t_camera);
 }
 
-commsgs::geometry_msgs::PoseStamped HierarchicalPlanner::MakePose(
+automsgs::msgs::geometry_msgs::PoseStamped HierarchicalPlanner::MakePose(
     double x, double y, double z, double yaw) const
 {
     const Eigen::Quaterniond q =
         ::autonomy::common::transform::RollPitchYaw(0.0, 0.0, yaw);
-    commsgs::geometry_msgs::PoseStamped pose;
-    pose.header.frame_id = frame_id_;
-    pose.pose.position.x = x;
-    pose.pose.position.y = y;
-    pose.pose.position.z = z;
-    pose.pose.orientation.w = q.w();
-    pose.pose.orientation.x = q.x();
-    pose.pose.orientation.y = q.y();
-    pose.pose.orientation.z = q.z();
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    pose.mutable_header()->set_frame_id(frame_id_);
+    pose.mutable_pose()->mutable_position()->set_x(x);
+    pose.mutable_pose()->mutable_position()->set_y(y);
+    pose.mutable_pose()->mutable_position()->set_z(z);
+    pose.mutable_pose()->mutable_orientation()->set_w(q.w());
+    pose.mutable_pose()->mutable_orientation()->set_x(q.x());
+    pose.mutable_pose()->mutable_orientation()->set_y(q.y());
+    pose.mutable_pose()->mutable_orientation()->set_z(q.z());
     return pose;
 }
 
@@ -115,7 +115,7 @@ std::vector<int> HierarchicalPlanner::SolveGlobalCellOrder() const
         const auto c = grid_world_.CellCenter(cells[i]);
         const double d =
             ::autonomy::common::math::Vec2d(env_.robot_x(), env_.robot_y())
-                .DistanceTo(::autonomy::common::math::Vec2d(c.x, c.y));
+                .DistanceTo(::autonomy::common::math::Vec2d(c.x(), c.y()));
         if (d < best_d) {
             best_d = d;
             depot_local = static_cast<int>(i);
@@ -135,15 +135,15 @@ std::vector<int> HierarchicalPlanner::SolveGlobalCellOrder() const
             }
             const auto b = grid_world_.CellCenter(cells[static_cast<size_t>(j)]);
             const auto geom = keypose_graph_.ShortestPathPoints(
-                a.x, a.y, a.z, b.x, b.y, b.z);
+                a.x(), a.y(), a.z(), b.x(), b.y(), b.z());
             double len = PathLengthXy(geom);
             if (len < 1e-6) {
-                len = ::autonomy::common::math::Vec2d(a.x, a.y)
-                          .DistanceTo(::autonomy::common::math::Vec2d(b.x, b.y));
+                len = ::autonomy::common::math::Vec2d(a.x(), a.y())
+                          .DistanceTo(::autonomy::common::math::Vec2d(b.x(), b.y()));
             }
             // Bias with graph cost from robot toward j when leaving depot.
             const double via =
-                keypose_graph_.ShortestPathCostToPoint(b.x, b.y, b.z);
+                keypose_graph_.ShortestPathCostToPoint(b.x(), b.y(), b.z());
             data.distance_matrix[static_cast<size_t>(i)]
                                 [static_cast<size_t>(j)] =
                 TspSolver::MetersToCost(len + 0.1 * via);
@@ -166,10 +166,10 @@ std::vector<int> HierarchicalPlanner::SolveGlobalCellOrder() const
     return order;
 }
 
-commsgs::geometry_msgs::PoseStamped HierarchicalPlanner::ComputeLookahead(
-    const commsgs::planning_msgs::Path& path) const
+automsgs::msgs::geometry_msgs::PoseStamped HierarchicalPlanner::ComputeLookahead(
+    const automsgs::msgs::planning_msgs::Path& path) const
 {
-    if (path.poses.size() < 2) {
+    if (path.poses_size() < 2) {
         return MakePose(env_.robot_x(), env_.robot_y(), env_.robot_z(),
                         env_.robot_yaw());
     }
@@ -184,11 +184,11 @@ commsgs::geometry_msgs::PoseStamped HierarchicalPlanner::ComputeLookahead(
     // through old keyposes near the origin).
     size_t start_i = 0;
     double nearest = 1e9;
-    for (size_t i = 0; i < path.poses.size(); ++i) {
-        const auto& p = path.poses[i].pose.position;
+    for (size_t i = 0; i < path.poses_size(); ++i) {
+        const auto& p = path.poses(i).pose().position();
         const double d =
             ::autonomy::common::math::Vec2d(robot_x, robot_y)
-                .DistanceTo(::autonomy::common::math::Vec2d(p.x, p.y));
+                .DistanceTo(::autonomy::common::math::Vec2d(p.x(), p.y()));
         if (d < nearest) {
             nearest = d;
             start_i = i;
@@ -197,23 +197,23 @@ commsgs::geometry_msgs::PoseStamped HierarchicalPlanner::ComputeLookahead(
 
     size_t best_i = start_i;
     double accum = 0.0;
-    for (size_t i = start_i + 1; i < path.poses.size(); ++i) {
-        const auto& a = path.poses[i - 1].pose.position;
-        const auto& b = path.poses[i].pose.position;
-        accum += ::autonomy::common::math::Vec2d(a.x, a.y)
-                     .DistanceTo(::autonomy::common::math::Vec2d(b.x, b.y));
+    for (size_t i = start_i + 1; i < path.poses_size(); ++i) {
+        const auto& a = path.poses(i - 1).pose().position();
+        const auto& b = path.poses(i).pose().position();
+        accum += ::autonomy::common::math::Vec2d(a.x(), a.y())
+                     .DistanceTo(::autonomy::common::math::Vec2d(b.x(), b.y()));
 
-        if (env_.IsOccupied(b.x, b.y)) {
+        if (env_.IsOccupied(b.x(), b.y())) {
             break;
         }
-        if (!HasLineOfSight(env_, robot_x, robot_y, b.x, b.y,
+        if (!HasLineOfSight(env_, robot_x, robot_y, b.x(), b.y(),
                             stop_at_unknown)) {
             break;
         }
         const double dist_robot =
             ::autonomy::common::math::Vec2d(robot_x, robot_y)
-                .DistanceTo(::autonomy::common::math::Vec2d(b.x, b.y));
-        if (dist_robot < min_ahead && i + 1 < path.poses.size()) {
+                .DistanceTo(::autonomy::common::math::Vec2d(b.x(), b.y()));
+        if (dist_robot < min_ahead && i + 1 < path.poses_size()) {
             continue;
         }
         best_i = i;
@@ -223,29 +223,29 @@ commsgs::geometry_msgs::PoseStamped HierarchicalPlanner::ComputeLookahead(
     }
 
     if (best_i == start_i) {
-        for (size_t i = start_i + 1; i < path.poses.size(); ++i) {
-            const auto& p = path.poses[i].pose.position;
-            if (env_.IsOccupied(p.x, p.y)) {
+        for (size_t i = start_i + 1; i < path.poses_size(); ++i) {
+            const auto& p = path.poses(i).pose().position();
+            if (env_.IsOccupied(p.x(), p.y())) {
                 continue;
             }
             const double dist_robot =
                 ::autonomy::common::math::Vec2d(robot_x, robot_y)
-                    .DistanceTo(::autonomy::common::math::Vec2d(p.x, p.y));
-            if (dist_robot < min_ahead && i + 1 < path.poses.size()) {
+                    .DistanceTo(::autonomy::common::math::Vec2d(p.x(), p.y()));
+            if (dist_robot < min_ahead && i + 1 < path.poses_size()) {
                 continue;
             }
-            auto out = path.poses[i];
-            out.header.frame_id = frame_id_;
+            auto out = path.poses(i);
+            out.mutable_header()->set_frame_id(frame_id_);
             return out;
         }
         // Last resort: final pose even if close.
-        auto out = path.poses.back();
-        out.header.frame_id = frame_id_;
+        auto out = path.poses(path.poses_size() - 1);
+        out.mutable_header()->set_frame_id(frame_id_);
         return out;
     }
 
-    auto out = path.poses[best_i];
-    out.header.frame_id = frame_id_;
+    auto out = path.poses(best_i);
+    out.mutable_header()->set_frame_id(frame_id_);
     return out;
 }
 
@@ -263,18 +263,18 @@ bool HierarchicalPlanner::ExecutePlanningCycle()
     global_cell_order_ = SolveGlobalCellOrder();
     path_ = local_planner_.Solve(env_, viewpoints_, keypose_graph_,
                                  global_cell_order_, grid_world_);
-    path_.header.frame_id = frame_id_;
+    path_.mutable_header()->set_frame_id(frame_id_);
     lookahead_ = ComputeLookahead(path_);
     waypoint_index_ = 0;
-    for (size_t i = 0; i < path_.poses.size(); ++i) {
-        const auto& p = path_.poses[i].pose.position;
-        const auto& q = lookahead_.pose.position;
-        if (std::hypot(p.x - q.x, p.y - q.y) < 1e-3) {
+    for (size_t i = 0; i < path_.poses_size(); ++i) {
+        const auto& p = path_.poses(i).pose().position();
+        const auto& q = lookahead_.pose().position();
+        if (std::hypot(p.x() - q.x(), p.y() - q.y()) < 1e-3) {
             waypoint_index_ = i;
             break;
         }
     }
-    has_target_ = path_.poses.size() > 1;
+    has_target_ = path_.poses_size() > 1;
 
     if (!has_target_ && global_cell_order_.empty() &&
         local_planner_.IsLocalCoverageComplete()) {
@@ -304,7 +304,7 @@ float HierarchicalPlanner::ExploredAreaM2() const
     return static_cast<float>(covered * cell_area);
 }
 
-commsgs::map_msgs::OccupancyGrid HierarchicalPlanner::GetOccupancyGrid(
+automsgs::msgs::map_msgs::OccupancyGrid HierarchicalPlanner::GetOccupancyGrid(
     const std::string& frame_id) const
 {
     return env_.GetOccupancyGrid(frame_id);
@@ -312,40 +312,40 @@ commsgs::map_msgs::OccupancyGrid HierarchicalPlanner::GetOccupancyGrid(
 
 void HierarchicalPlanner::AdvanceWaypointIndex()
 {
-    if (path_.poses.size() < 2 ||
-        waypoint_index_ + 1 >= path_.poses.size()) {
+    if (path_.poses_size() < 2 ||
+        waypoint_index_ + 1 >= path_.poses_size()) {
         has_target_ = false;
         return;
     }
 
     // Drop poses up to the reached lookahead, then re-pick min-ahead.
     if (waypoint_index_ > 0) {
-        path_.poses.erase(path_.poses.begin(),
-                          path_.poses.begin() +
+        path_.mutable_poses()->erase(path_.poses().begin(),
+                          path_.poses().begin() +
                               static_cast<std::ptrdiff_t>(waypoint_index_));
-    } else if (!path_.poses.empty()) {
-        path_.poses.erase(path_.poses.begin());
+    } else if (!path_.poses().empty()) {
+        path_.mutable_poses()->erase(path_.poses().begin());
     }
-    if (path_.poses.size() < 2) {
+    if (path_.poses_size() < 2) {
         has_target_ = false;
         return;
     }
 
     lookahead_ = ComputeLookahead(path_);
     waypoint_index_ = 0;
-    for (size_t i = 0; i < path_.poses.size(); ++i) {
-        const auto& p = path_.poses[i].pose.position;
-        const auto& q = lookahead_.pose.position;
-        if (std::hypot(p.x - q.x, p.y - q.y) < 1e-3) {
+    for (size_t i = 0; i < path_.poses_size(); ++i) {
+        const auto& p = path_.poses(i).pose().position();
+        const auto& q = lookahead_.pose().position();
+        if (std::hypot(p.x() - q.x(), p.y() - q.y()) < 1e-3) {
             waypoint_index_ = i;
             break;
         }
     }
-    if (waypoint_index_ == 0 && path_.poses.size() > 1) {
+    if (waypoint_index_ == 0 && path_.poses_size() > 1) {
         // Still underfoot: force next discrete pose.
         waypoint_index_ = 1;
-        lookahead_ = path_.poses[1];
-        lookahead_.header.frame_id = frame_id_;
+        lookahead_ = path_.poses(1);
+        lookahead_.mutable_header()->set_frame_id(frame_id_);
     }
 }
 

@@ -46,26 +46,26 @@
      return max_costmap_dim_meters / 2.0;
  }
  
- commsgs::planning_msgs::Path PathHandler::transformGlobalPlan(
-     const commsgs::geometry_msgs::PoseStamped& pose,
+ automsgs::msgs::planning_msgs::Path PathHandler::transformGlobalPlan(
+     const automsgs::msgs::geometry_msgs::PoseStamped& pose,
      double max_robot_pose_search_dist, bool reject_unit_path) {
      // Check first if the plan is empty
-     if (global_plan_.poses.empty()) {
+     if (global_plan_.poses().empty()) {
          throw autonomy::control::common::InvalidPath(
              "Received plan with zero length");
      }
  
-     if (reject_unit_path && global_plan_.poses.size() == 1) {
+     if (reject_unit_path && global_plan_.poses_size() == 1) {
          throw autonomy::control::common::InvalidPath(
              "Received plan with length of one");
      }
  
      // Let's get the pose of the robot in the frame of the plan
-     commsgs::geometry_msgs::PoseStamped robot_pose;
+     automsgs::msgs::geometry_msgs::PoseStamped robot_pose;
      try {
          // Use Buffer's transform method directly
          robot_pose =
-             tf_buffer_->transform(pose, global_plan_.header.frame_id,
+             tf_buffer_->transform(pose, global_plan_.header().frame_id(),
                                    static_cast<float>(transform_tolerance_));
      } catch (const std::exception& e) {
          throw autonomy::control::common::ControllerTFError(
@@ -75,10 +75,10 @@
  
      // Find the first pose in the global plan that's further than
      // max_robot_pose_search_dist from the robot using integrated distance
-     auto closest_pose_upper_bound = global_plan_.poses.end();
+     auto closest_pose_upper_bound = global_plan_.poses().end();
      double accumulated_dist = 0.0;
-     for (auto it = global_plan_.poses.begin();
-          it != global_plan_.poses.end() - 1; ++it) {
+     for (auto it = global_plan_.poses().begin();
+          it != global_plan_.poses().end() - 1; ++it) {
          accumulated_dist +=
              map::costmap_2d::utils::euclidean_distance(*it, *(it + 1));
          if (accumulated_dist > max_robot_pose_search_dist) {
@@ -91,16 +91,16 @@
      // bounded by when the path turns around (if it does) so we don't get a pose
      // from a later portion of the path
      auto transformation_begin = map::costmap_2d::utils::min_by(
-         global_plan_.poses.begin(), closest_pose_upper_bound,
-         [&robot_pose](const commsgs::geometry_msgs::PoseStamped& ps) {
+         global_plan_.poses().begin(), closest_pose_upper_bound,
+         [&robot_pose](const automsgs::msgs::geometry_msgs::PoseStamped& ps) {
              return map::costmap_2d::utils::euclidean_distance(robot_pose, ps);
          });
  
      // Make sure we always have at least 2 points on the transformed plan and
      // that we don't prune the global plan below 2 points in order to have
      // always enough point to interpolate the end of path direction
-     if (global_plan_.poses.begin() != closest_pose_upper_bound &&
-         global_plan_.poses.size() > 1 &&
+     if (global_plan_.poses().begin() != closest_pose_upper_bound &&
+         global_plan_.poses_size() > 1 &&
          transformation_begin == std::prev(closest_pose_upper_bound)) {
          transformation_begin = std::prev(std::prev(closest_pose_upper_bound));
      }
@@ -108,7 +108,7 @@
      // We'll discard points on the plan that are outside the local costmap
      const double max_costmap_extent = getCostmapMaxExtent();
      auto transformation_end = std::find_if(
-         transformation_begin, global_plan_.poses.end(),
+         transformation_begin, global_plan_.poses().end(),
          [&](const auto& global_plan_pose) {
              return map::costmap_2d::utils::euclidean_distance(
                         global_plan_pose, robot_pose) > max_costmap_extent;
@@ -116,10 +116,10 @@
  
      // Lambda to transform a PoseStamped from global frame to local
      auto transformGlobalPoseToLocal = [&](const auto& global_plan_pose) {
-         commsgs::geometry_msgs::PoseStamped stamped_pose, transformed_pose;
-         stamped_pose.header.frame_id = global_plan_.header.frame_id;
-         stamped_pose.header.stamp = robot_pose.header.stamp;
-         stamped_pose.pose = global_plan_pose.pose;
+         automsgs::msgs::geometry_msgs::PoseStamped stamped_pose, transformed_pose;
+         stamped_pose.mutable_header()->set_frame_id( global_plan_.header().frame_id());
+         *stamped_pose.mutable_header()->mutable_stamp() = robot_pose.header().stamp();
+         *stamped_pose.mutable_pose() = global_plan_pose.pose();
          try {
              // Use Buffer's transform method directly
              transformed_pose = tf_buffer_->transform(
@@ -127,31 +127,38 @@
                  static_cast<float>(transform_tolerance_));
          } catch (const std::exception& e) {
              // Return empty pose to skip this pose (will be filtered out)
-             transformed_pose.header.frame_id = "";  // Mark as invalid
+             transformed_pose.mutable_header()->set_frame_id( "");  // Mark as invalid
              return transformed_pose;
          }
-         transformed_pose.pose.position.z = 0.0;
+         transformed_pose.mutable_pose()->mutable_position()->set_z(0.0);
          return transformed_pose;
      };
  
      // Transform the near part of the global plan into the robot's frame of
      // reference.
-     commsgs::planning_msgs::Path transformed_plan;
-     transformed_plan.header.frame_id = costmap_wrapper_->getBaseFrameID();
-     transformed_plan.header.stamp = robot_pose.header.stamp;
+     automsgs::msgs::planning_msgs::Path transformed_plan;
+     transformed_plan.mutable_header()->set_frame_id( costmap_wrapper_->getBaseFrameID());
+     *transformed_plan.mutable_header()->mutable_stamp() = robot_pose.header().stamp();
      for (auto it = transformation_begin; it != transformation_end; ++it) {
          auto transformed = transformGlobalPoseToLocal(*it);
-         if (!transformed.header.frame_id.empty()) {
-             transformed_plan.poses.push_back(transformed);
+         if (!transformed.header().frame_id().empty()) {
+             *transformed_plan.mutable_poses()->Add() = transformed;
          }
          // Skip poses that couldn't be transformed (empty frame_id)
      }
  
      // Remove the portion of the global plan that we've already passed so we
      // don't process it on the next iteration (this is called path pruning)
-     global_plan_.poses.erase(begin(global_plan_.poses), transformation_begin);
+     {
+         auto* poses = global_plan_.mutable_poses();
+         const int count = static_cast<int>(
+             std::distance(global_plan_.poses().begin(), transformation_begin));
+         if (count > 0) {
+             poses->DeleteSubrange(0, count);
+         }
+     }
  
-     if (transformed_plan.poses.empty()) {
+     if (transformed_plan.poses().empty()) {
          throw autonomy::control::common::InvalidPath(
              "Resulting plan has 0 poses in it.");
      }
@@ -160,9 +167,9 @@
  }
  
  bool PathHandler::transformPose(
-     const std::string frame, const commsgs::geometry_msgs::PoseStamped& in_pose,
-     commsgs::geometry_msgs::PoseStamped& out_pose) const {
-     if (in_pose.header.frame_id == frame) {
+     const std::string frame, const automsgs::msgs::geometry_msgs::PoseStamped& in_pose,
+     automsgs::msgs::geometry_msgs::PoseStamped& out_pose) const {
+     if (in_pose.header().frame_id() == frame ) {
          out_pose = in_pose;
          return true;
      }
@@ -170,7 +177,7 @@
      try {
          out_pose = tf_buffer_->transform(
              in_pose, frame, static_cast<float>(transform_tolerance_));
-         out_pose.header.frame_id = frame;
+         out_pose.mutable_header()->set_frame_id( frame);
          return true;
      } catch (const std::exception& ex) {
          // Log error if needed - for now just return false

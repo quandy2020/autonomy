@@ -35,7 +35,7 @@ namespace autodriver {
  * @class SensorManager
  * @brief Loads HubConfig, instantiates drivers, and owns SensorHub.
  *
- * Typical flow: Initialize() -> Set*Callback() -> Start() -> Stop().
+ * Typical flow: Initialize()-> Set*Callback()-> Start()-> Stop().
  */
 class SensorManager
 {

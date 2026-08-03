@@ -19,7 +19,15 @@
 #include <cstdint>
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/exploration/planning_env.hpp"
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 #include "autonomy/exploration/viewpoint/viewpoint_manager.hpp"
@@ -117,7 +125,7 @@ public:
      * @param cell_index Cell index
      * @return Cell center point
      */
-    commsgs::geometry_msgs::Point CellCenter(int cell_index) const;
+    automsgs::msgs::geometry_msgs::Point CellCenter(int cell_index) const;
 
     /**
      * @brief Check whether a cell is within nearby_radius of the robot cell.

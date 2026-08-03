@@ -58,16 +58,16 @@
          return;
      }
  
-     commsgs::geometry_msgs::Pose goal =
+     automsgs::msgs::geometry_msgs::Pose goal =
          tools::getCriticGoal(data, enforce_path_inversion_);
  
      if (!tools::withinPositionGoalTolerance(threshold_to_consider_,
-                                             data.state.pose.pose, goal)) {
+                                             data.state.pose.pose(), goal)) {
          return;
      }
  
-     auto goal_x = goal.position.x;
-     auto goal_y = goal.position.y;
+     auto goal_x = goal.position().x();
+     auto goal_y = goal.position().y();
  
      const auto delta_x = data.trajectories.x - goal_x;
      const auto delta_y = data.trajectories.y - goal_y;

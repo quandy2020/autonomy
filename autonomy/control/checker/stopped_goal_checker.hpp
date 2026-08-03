@@ -21,7 +21,15 @@
 #include <vector>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/control/checker/simple_goal_checker.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
 
@@ -43,12 +51,12 @@ public:
                     const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>
                         costmap_wrapper) override;
 
-    bool IsGoalReached(const commsgs::geometry_msgs::Pose& query_pose,
-                       const commsgs::geometry_msgs::Pose& goal_pose,
-                       const commsgs::geometry_msgs::Twist& velocity) override;
+    bool IsGoalReached(const automsgs::msgs::geometry_msgs::Pose& query_pose,
+                       const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+                       const automsgs::msgs::geometry_msgs::Twist& velocity) override;
 
-    bool GetTolerances(commsgs::geometry_msgs::Pose& pose_tolerance,
-                       commsgs::geometry_msgs::Twist& vel_tolerance) override;
+    bool GetTolerances(automsgs::msgs::geometry_msgs::Pose& pose_tolerance,
+                       automsgs::msgs::geometry_msgs::Twist& vel_tolerance) override;
 
 protected:
     double rot_stopped_velocity_, trans_stopped_velocity_;

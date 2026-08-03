@@ -58,8 +58,8 @@ bool GetSpatialSize(const ModelTensorInfo& info, int fallback, int* height,
         *width = fallback;
         return false;
     }
-    *height = shape.height;
-    *width = shape.width;
+    *height = shape.height();
+    *width = shape.width();
     return true;
 }
 

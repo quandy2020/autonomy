@@ -12,6 +12,8 @@ Message definitions live under the [proto](https://github.com/your-org/automsgs/
 
 - `proto/msgs/` – message definitions (e.g. `geometry_msgs`, `std_msgs`, `sensor_msgs`)
 - `proto/srvs/` – service definitions
+- `proto/actions/` – action definitions (e.g. `nav_actions.proto`)
+- `proto/rpcs/` – RPC service definitions
 
 Package names follow the path: e.g. `automsgs.msgs.geometry_msgs` maps to the C++ namespace `automsgs::msgs::geometry_msgs` and to Python `automsgs.msgs.geometry_msgs`.
 

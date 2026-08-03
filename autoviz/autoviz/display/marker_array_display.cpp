@@ -11,7 +11,7 @@ MarkerArrayDisplay::MarkerArrayDisplay(std::string channel)
     : ChannelDisplay<
           automsgs::msgs::visualization_msgs::MarkerArray>(
           "MarkerArray", std::move(channel),
-          "autonomy.commsgs.proto.visualization_msgs.MarkerArray") {
+          "automsgs.msgs.visualization_msgs.MarkerArray") {
   setProperties({});
 }
 

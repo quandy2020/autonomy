@@ -39,7 +39,7 @@ QColor StatusColor(const std::string& status) {
 StrataRobot3DDisplay::StrataRobot3DDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::strata_msgs::Robot3DLayerArray>(
           "StrataRobot3D", std::move(channel),
-          "autonomy.commsgs.proto.strata_msgs.Robot3DLayerArray") {
+          "automsgs.msgs.strata_msgs.Robot3DLayerArray") {
   setProperties({});
 }
 
@@ -91,7 +91,7 @@ void StrataRobot3DDisplay::processMessage(
       }
     }
     StoredLayer stored;
-    stored.position = local;
+    *stored.mutable_position() = local;
     stored.yaw = static_cast<float>((layer.heading_deg() + layer.rotation_deg()) * M_PI / 180.0);
     stored.status = layer.status();
     stored.model_url = QString::fromStdString(layer.model_url());
@@ -131,27 +131,27 @@ void StrataRobot3DDisplay::onDraw(rendering::SceneOverlay& scene) {
     const float len = axis_len * layer.scale;
     const QVector3D heading(len * qCos(layer.yaw), len * qSin(layer.yaw), 0.f);
     const std::string suffix = "/robot3d/" + std::to_string(i);
-    drawArrowOgreOrGl(context_, scene, name() + suffix + "/heading", layer.position,
+    drawArrowOgreOrGl(context_, scene, name() + suffix + "/heading", layer.position(),
                       layer.position + heading, layer_color);
     drawColoredPointsOgreOrGl(context_, scene, name() + suffix + "/body", typeId(), 6.f,
                               rendering::PointCloudStyle::kSquares,
-                              {{layer.position, layer_color}}, false);
+                              {{layer.position(), layer_color}}, false);
 
     if (!show_labels) {
       continue;
     }
     TextLabelInstance name_label;
     name_label.text = layer.label.toStdString();
-    name_label.position = layer.position + QVector3D(0.f, 0.f, 0.1f);
-    name_label.color = layer_color;
+    *name_label.mutable_position() = layer.position + QVector3D(0.f, 0.f, 0.1f);
+    *name_label.mutable_color() = layer_color;
     name_label.char_height = label_height;
     labels.push_back(std::move(name_label));
 
     if (!layer.model_url.isEmpty()) {
       TextLabelInstance model_label;
       model_label.text = layer.model_url.toStdString();
-      model_label.position = layer.position + QVector3D(0.f, 0.f, -label_height * 1.2f);
-      model_label.color = QColor(148, 163, 184);
+      *model_label.mutable_position() = layer.position + QVector3D(0.f, 0.f, -label_height * 1.2f);
+      *model_label.mutable_color() = QColor(148, 163, 184);
       model_label.char_height = label_height * 0.75f;
       labels.push_back(std::move(model_label));
     }

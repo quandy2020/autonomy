@@ -118,6 +118,8 @@ unset(_autonomy_config_dir)
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_sources.cmake")
 autonomy_filter_library_sources()
 
+add_subdirectory(automsgs)
+
 include("${PROJECT_SOURCE_DIR}/cmake/protobuf.cmake")
 
 configure_file(
@@ -139,6 +141,9 @@ include(${PROJECT_SOURCE_DIR}/cmake/grid_map_core-extras.cmake)
 # 5. libautonomy + link
 # -----------------------------------------------------------------------------
 add_library(${PROJECT_NAME} SHARED ${ALL_LIBRARY_HDRS} ${ALL_LIBRARY_SRCS})
+if(TARGET automsgs_proto_copy)
+  add_dependencies(${PROJECT_NAME} automsgs_proto_copy)
+endif()
 include("${PROJECT_SOURCE_DIR}/cmake/autonomy_deps.cmake")
 autonomy_link_dependencies(${PROJECT_NAME})
 
@@ -153,7 +158,7 @@ if(BUILD_AUTODRIVER AND TARGET autodriver)
     ${PROJECT_SOURCE_DIR}/autodriver/autodriver)
 endif()
 
-# Echo tool needs generated commsgs protos for DebugString when topology omits type.
+# Echo tool needs automsgs protos for DebugString when topology omits type.
 if(TARGET autolink_channel)
   target_link_libraries(autolink_channel PRIVATE ${PROJECT_NAME})
   target_include_directories(autolink_channel PRIVATE
@@ -168,35 +173,36 @@ if(BUILD_GRPC)
   google_binary(autonomy_bridge
     SRCS autonomy/bridge/bridge_main.cpp)
 endif()
-google_binary(localization
-  SRCS autonomy/localization/localization_main.cpp)
+# Temporarily disabled: incomplete cartographer node migration.
+# google_binary(localization
+#   SRCS autonomy/localization/localization_main.cpp)
 google_binary(planning
   SRCS autonomy/planning/planning_main.cpp)
 google_binary(control
   SRCS autonomy/control/control_main.cpp)
-google_binary(exploration
-  SRCS autonomy/exploration/exploration_main.cpp)
+# Temporarily disabled: incomplete automsgs migration in these modules.
+# google_binary(exploration
+#   SRCS autonomy/exploration/exploration_main.cpp)
 google_binary(task
   SRCS autonomy/task/task_main.cpp)
 google_binary(monitor
   SRCS autonomy/system/monitor/monitor_main.cpp)
 google_binary(task_teleop_smoke
   SRCS autonomy/task/tools/teleop_smoke_main.cpp)
-google_binary(cartographer_occupancy
-  SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
-google_binary(cartographer_pbstream_to_map
-  SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
-google_binary(strata_bridge
-  SRCS autonomy/map/strata/bridge/strata_bridge_main.cpp)
+# google_binary(cartographer_occupancy
+#   SRCS autonomy/localization/cartographer/node/occupancy_grid_node_main.cpp)
+# google_binary(cartographer_pbstream_to_map
+#   SRCS autonomy/localization/cartographer/node/pbstream_to_map_main.cpp)
+# google_binary(strata_bridge
+#   SRCS autonomy/map/strata/bridge/strata_bridge_main.cpp)
 if(foxglove-sdk_FOUND)
-  google_binary(autonomy_foxglove_fakedata
-    SRCS autonomy/visualization/fakedata_test.cpp)
+  # google_binary(autonomy_foxglove_fakedata
+  #   SRCS autonomy/visualization/fakedata_test.cpp)
   google_binary(autonomy_foxglove_bridge
     SRCS autonomy/visualization/foxglove_main.cpp)
 endif()
 
 if(BUILD_AUTOVIZ)
-  add_subdirectory(automsgs)
   set(_AUTOVIZ_BUILDING_AS_SUBDIRECTORY ON)
   add_subdirectory(autoviz)
   unset(_AUTOVIZ_BUILDING_AS_SUBDIRECTORY)

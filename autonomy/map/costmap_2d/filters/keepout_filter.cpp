@@ -27,25 +27,26 @@
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/tf2/LinearMath/Transform.h"
 #include "autonomy/transform/tf2/exceptions.h"
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 
 namespace autonomy {
 namespace map {
 namespace costmap_2d {
 namespace {
 
-commsgs::builtin_interfaces::Time LatestTfTime() {
-    commsgs::builtin_interfaces::Time stamp;
-    stamp.sec = 0;
-    stamp.nanosec = 0;
+automsgs::msgs::builtin_interfaces::Time LatestTfTime() {
+    automsgs::msgs::builtin_interfaces::Time stamp;
+    stamp.set_sec(0);
+    stamp.set_nanosec(0);
     return stamp;
 }
 
-void CommsgsTransformToTf2(const commsgs::geometry_msgs::Transform& in,
+void CommsgsTransformToTf2(const automsgs::msgs::geometry_msgs::Transform& in,
                            transform::tf2::Transform& out) {
-    out.setOrigin(transform::tf2::Vector3(in.translation.x, in.translation.y,
-                                          in.translation.z));
-    transform::tf2::Quaternion rotation(in.rotation.x, in.rotation.y,
-                                          in.rotation.z, in.rotation.w);
+    out.setOrigin(transform::tf2::Vector3(in.translation().x(), in.translation().y(),
+                                          in.translation().z()));
+    transform::tf2::Quaternion rotation(in.rotation().x(), in.rotation().y(),
+                                          in.rotation().z(), in.rotation().w());
     out.setRotation(rotation);
 }
 
@@ -67,19 +68,19 @@ void KeepoutFilter::initializeFilter(const std::string& filter_info_topic) {
           << " occupancy_threshold=" << static_cast<int>(occupancy_threshold_);
 }
 
-commsgs::map_msgs::CostmapFilterInfo::SharedPtr
+std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
 KeepoutFilter::makeDefaultFilterInfo(const std::string& mask_topic) {
-    auto info = std::make_shared<commsgs::map_msgs::CostmapFilterInfo>();
-    info->type = KEEPOUT_FILTER;
-    info->filter_mask_topic = mask_topic;
-    info->base = static_cast<float>(BASE_DEFAULT);
-    info->multiplier = static_cast<float>(MULTIPLIER_DEFAULT);
+    auto info = std::make_shared<automsgs::msgs::map_msgs::CostmapFilterInfo>();
+    info->set_type(KEEPOUT_FILTER);
+    info->set_filter_mask_topic(mask_topic);
+    info->set_base(static_cast<float>(BASE_DEFAULT));
+    info->set_multiplier(static_cast<float>(MULTIPLIER_DEFAULT));
     return info;
 }
 
 void KeepoutFilter::applyConfiguration(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask) {
     if (info) {
         handleFilterInfo(info);
     }
@@ -94,19 +95,19 @@ bool KeepoutFilter::hasFilterMask() {
 }
 
 bool KeepoutFilter::validateFilterMask(
-    const commsgs::map_msgs::OccupancyGrid& msg) {
-    if (msg.info.width == 0 || msg.info.height == 0) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& msg) {
+    if (msg.info().width() == 0 || msg.info().height() == 0) {
         AERROR << "KeepoutFilter: mask has zero width/height";
         return false;
     }
-    if (msg.info.resolution <= 0.0) {
+    if (msg.info().resolution() <= 0.0) {
         AERROR << "KeepoutFilter: mask resolution must be positive";
         return false;
     }
     const size_t expected =
-        static_cast<size_t>(msg.info.width) * static_cast<size_t>(msg.info.height);
-    if (msg.data.size() < expected) {
-        AERROR << "KeepoutFilter: mask data size " << msg.data.size()
+        static_cast<size_t>(msg.info().width()) * static_cast<size_t>(msg.info().height());
+    if (msg.data().size() < expected) {
+        AERROR << "KeepoutFilter: mask data size " << msg.data().size()
                << " < expected " << expected;
         return false;
     }
@@ -117,7 +118,7 @@ std::string KeepoutFilter::resolveMaskFrame() const {
     if (!filter_mask_) {
         return global_frame_;
     }
-    const std::string& frame = filter_mask_->header.frame_id;
+    const std::string& frame = filter_mask_->header().frame_id();
     if (frame.empty()) {
         return global_frame_;
     }
@@ -125,17 +126,17 @@ std::string KeepoutFilter::resolveMaskFrame() const {
 }
 
 void KeepoutFilter::handleFilterInfo(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg) {
     filterInfoCallback(msg);
 }
 
 void KeepoutFilter::setFilterMask(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& msg) {
     maskCallback(msg);
 }
 
 void KeepoutFilter::filterInfoCallback(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -143,34 +144,34 @@ void KeepoutFilter::filterInfoCallback(
         return;
     }
 
-    if (msg->type != KEEPOUT_FILTER) {
-        AERROR << "KeepoutFilter: unsupported filter type " << msg->type
+    if (msg->type() != KEEPOUT_FILTER) {
+        AERROR << "KeepoutFilter: unsupported filter type " << msg->type()
                << " (expected KEEPOUT_FILTER=" << static_cast<int>(KEEPOUT_FILTER)
                << ")";
         return;
     }
 
-    if (msg->base != static_cast<float>(BASE_DEFAULT) ||
-        msg->multiplier != static_cast<float>(MULTIPLIER_DEFAULT)) {
+    if (msg->base() != static_cast<float>(BASE_DEFAULT) ||
+        msg->multiplier() != static_cast<float>(MULTIPLIER_DEFAULT)) {
         AWARN << "KeepoutFilter: base/multiplier should be "
               << BASE_DEFAULT << " and " << MULTIPLIER_DEFAULT
               << " for keepout filters";
     }
 
-    if (!mask_topic_.empty() && mask_topic_ != msg->filter_mask_topic) {
+    if (!mask_topic_.empty() && mask_topic_ != msg->filter_mask_topic()) {
         AWARN << "KeepoutFilter: mask topic changed from " << mask_topic_
-              << " to " << msg->filter_mask_topic << ", clearing old mask";
+              << " to " << msg->filter_mask_topic() << ", clearing old mask";
         filter_mask_.reset();
     }
 
-    mask_topic_ = msg->filter_mask_topic;
+    mask_topic_ = msg->filter_mask_topic();
     setMaskTopic(mask_topic_);
 
     AINFO << "KeepoutFilter: received filter info, mask_topic=" << mask_topic_;
 }
 
 void KeepoutFilter::maskCallback(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -184,11 +185,11 @@ void KeepoutFilter::maskCallback(
 
     if (!filter_mask_) {
         AINFO << "KeepoutFilter: received filter mask ("
-              << msg->info.width << "x" << msg->info.height << ", frame="
-              << msg->header.frame_id << ")";
+              << msg->info().width()<< "x" << msg->info().height()<< ", frame="
+              << msg->header().frame_id()<< ")";
     } else {
         AWARN << "KeepoutFilter: updating filter mask (frame="
-              << msg->header.frame_id << ")";
+              << msg->header().frame_id()<< ")";
     }
 
     filter_mask_ = msg;
@@ -202,16 +203,16 @@ void KeepoutFilter::maskCallback(
 
 unsigned char KeepoutFilter::keepoutCostFromMaskCell(unsigned int mx,
                                                      unsigned int my) const {
-    if (!filter_mask_ || filter_mask_->data.empty()) {
+    if (!filter_mask_ || filter_mask_->data().empty()) {
         return NO_INFORMATION;
     }
 
-    const unsigned int index = my * filter_mask_->info.width + mx;
-    if (index >= filter_mask_->data.size()) {
+    const unsigned int index = my * filter_mask_->info().width() + mx;
+    if (index >= filter_mask_->data().size()) {
         return NO_INFORMATION;
     }
 
-    const int8_t occ = filter_mask_->data[index];
+    const int8_t occ = filter_mask_->data(index);
     if (occ == utils::OCC_GRID_UNKNOWN) {
         return NO_INFORMATION;
     }
@@ -234,7 +235,7 @@ bool KeepoutFilter::lookupGlobalToMaskTransform(
             SecondsFromDuration(transform_tolerance_));
         const auto stamped_transform = tf_buffer->lookupTransform(
             mask_frame, global_frame_, LatestTfTime(), timeout);
-        CommsgsTransformToTf2(stamped_transform.transform, out);
+        CommsgsTransformToTf2(stamped_transform.transform(), out);
         return true;
     } catch (const transform::tf2::TransformException& ex) {
         AWARN << "KeepoutFilter: TF " << global_frame_ << " -> " << mask_frame
@@ -264,9 +265,9 @@ void KeepoutFilter::computeIterationBounds(Costmap2D& master_grid, int min_i,
         return;
     }
 
-    const double half_cell_size = 0.5 * filter_mask_->info.resolution;
-    double wx = filter_mask_->info.origin.position.x + half_cell_size;
-    double wy = filter_mask_->info.origin.position.y + half_cell_size;
+    const double half_cell_size = 0.5 * filter_mask_->info().resolution();
+    double wx = filter_mask_->info().origin().position().x() + half_cell_size;
+    double wy = filter_mask_->info().origin().position().y() + half_cell_size;
     master_grid.worldToMapNoBounds(wx, wy, mg_min_x, mg_min_y);
     if (mg_min_x >= max_i || mg_min_y >= max_j) {
         mg_min_x = min_i;
@@ -278,12 +279,8 @@ void KeepoutFilter::computeIterationBounds(Costmap2D& master_grid, int min_i,
     mg_min_x = std::max(min_i, mg_min_x);
     mg_min_y = std::max(min_j, mg_min_y);
 
-    wx = filter_mask_->info.origin.position.x +
-         filter_mask_->info.width * filter_mask_->info.resolution +
-         half_cell_size;
-    wy = filter_mask_->info.origin.position.y +
-         filter_mask_->info.height * filter_mask_->info.resolution +
-         half_cell_size;
+    wx = filter_mask_->info().origin().position().x() + filter_mask_->info().width()* filter_mask_->info().resolution() + half_cell_size;
+    wy = filter_mask_->info().origin().position().y() + filter_mask_->info().height()* filter_mask_->info().resolution() + half_cell_size;
     master_grid.worldToMapNoBounds(wx, wy, mg_max_x, mg_max_y);
     if (mg_max_x <= min_i || mg_max_y <= min_j) {
         mg_min_x = min_i;
@@ -298,7 +295,7 @@ void KeepoutFilter::computeIterationBounds(Costmap2D& master_grid, int min_i,
 
 void KeepoutFilter::process(Costmap2D& master_grid, int min_i, int min_j,
                             int max_i, int max_j,
-                            const commsgs::geometry_msgs::Pose2D& /*pose*/) {
+                            const automsgs::msgs::geometry_msgs::Pose2D& /*pose*/) {
     if (!filter_mask_) {
         if (!mask_missing_warned_) {
             AWARN << "KeepoutFilter: filter mask was not received";

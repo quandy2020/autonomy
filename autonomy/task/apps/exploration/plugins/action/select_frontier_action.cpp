@@ -16,7 +16,7 @@ public:
     static BT::PortsList providedPorts()
     {
         return {
-            BT::OutputPort<commsgs::geometry_msgs::PoseStamped>(
+            BT::OutputPort<automsgs::msgs::geometry_msgs::PoseStamped>(
                 "goal", "next frontier pose"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
@@ -32,7 +32,7 @@ protected:
             return BT::NodeStatus::FAILURE;
         }
 
-        commsgs::geometry_msgs::PoseStamped goal;
+        automsgs::msgs::geometry_msgs::PoseStamped goal;
         if (!client->SelectNextFrontier(goal)) {
             SetErrorPorts(*this, 2, "SelectFrontier: no frontier available");
             return BT::NodeStatus::FAILURE;

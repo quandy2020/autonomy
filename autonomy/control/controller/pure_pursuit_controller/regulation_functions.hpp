@@ -23,7 +23,7 @@
  #include <vector>
  
  #include "autolink/autolink.hpp"
- #include "autonomy/commsgs/planning_msgs.hpp"
+ 
  #include "autonomy/control/proto/pure_pursuit_controller.pb.h"
  #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
  #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
@@ -96,21 +96,21 @@
   * distance
   */
  inline double approachVelocityScalingFactor(
-     const commsgs::planning_msgs::Path& transformed_path,
+     const automsgs::msgs::planning_msgs::Path& transformed_path,
      const double approach_velocity_scaling_dist) {
      // Waiting to apply the threshold based on integrated distance ensures we
      // don't erroneously apply approach scaling on curvy paths that are
      // contained in a large local costmap.
      double remaining_distance = 0.0;
-     for (size_t i = 1; i < transformed_path.poses.size(); ++i) {
+     for (size_t i = 1; i < transformed_path.poses_size(); ++i) {
          remaining_distance += map::costmap_2d::utils::euclidean_distance(
-             transformed_path.poses[i - 1], transformed_path.poses[i]);
+             transformed_path.poses(i - 1), transformed_path.poses(i));
      }
      if (remaining_distance < approach_velocity_scaling_dist) {
-         auto& last = transformed_path.poses.back();
+         auto& last = transformed_path.poses(transformed_path.poses_size() - 1);
          // Here we will use a regular euclidean distance from the robot frame
          // (origin) to get smooth scaling, regardless of path density.
-         return std::hypot(last.pose.position.x, last.pose.position.y) /
+         return std::hypot(last.pose().position().x(), last.pose().position().y()) /
                 approach_velocity_scaling_dist;
      } else {
          return 1.0;
@@ -129,7 +129,7 @@
   */
  inline double approachVelocityConstraint(
      const double constrained_linear_vel,
-     const commsgs::planning_msgs::Path& path,
+     const automsgs::msgs::planning_msgs::Path& path,
      const double min_approach_velocity,
      const double approach_velocity_scaling_dist) {
      double velocity_scaling =

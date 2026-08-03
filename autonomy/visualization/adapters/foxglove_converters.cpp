@@ -27,13 +27,41 @@
 
 #include <zlib.h>
 
-#include "autonomy/commsgs/proto/geometry_msgs.pb.h"
-#include "autonomy/commsgs/proto/map_msgs.pb.h"
-#include "autonomy/commsgs/proto/planning_msgs.pb.h"
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
-#include "autonomy/commsgs/proto/tf2_msgs.pb.h"
-#include "autonomy/commsgs/proto/vision_msgs.pb.h"
-#include "autonomy/commsgs/proto/visualization_msgs.pb.h"
+#include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/polygon_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_array.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
+#include <automsgs/msgs/sensor_msgs/compressed_image.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/channel_float32.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_field.pb.h>
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
+#include <automsgs/msgs/std_msgs/color_rgba.pb.h>
+#include <automsgs/msgs/std_msgs/header.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
+#include <automsgs/msgs/vision_msgs/bounding_box2d.pb.h>
+#include <automsgs/msgs/vision_msgs/bounding_box2d_array.pb.h>
+#include <automsgs/msgs/vision_msgs/bounding_box3d.pb.h>
+#include <automsgs/msgs/vision_msgs/bounding_box3d_array.pb.h>
+#include <automsgs/msgs/vision_msgs/detection2d.pb.h>
+#include <automsgs/msgs/vision_msgs/detection2d_array.pb.h>
+#include <automsgs/msgs/vision_msgs/detection3d.pb.h>
+#include <automsgs/msgs/vision_msgs/detection3d_array.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 
@@ -41,44 +69,46 @@ namespace autonomy {
 namespace visualization {
 namespace {
 
-using autonomy::commsgs::proto::geometry_msgs::PointStamped;
-using autonomy::commsgs::proto::geometry_msgs::PolygonStamped;
-using autonomy::commsgs::proto::geometry_msgs::Pose;
-using autonomy::commsgs::proto::geometry_msgs::PoseArray;
-using autonomy::commsgs::proto::geometry_msgs::PoseStamped;
-using autonomy::commsgs::proto::geometry_msgs::TransformStamped;
-using autonomy::commsgs::proto::geometry_msgs::TransformStampeds;
-using autonomy::commsgs::proto::map_msgs::Costmap;
-using autonomy::commsgs::proto::map_msgs::CostmapUpdate;
-using autonomy::commsgs::proto::map_msgs::GridCells;
-using autonomy::commsgs::proto::map_msgs::GridMap;
-using autonomy::commsgs::proto::map_msgs::OccupancyGrid;
-using autonomy::commsgs::proto::map_msgs::OccupancyGridUpdate;
-using autonomy::commsgs::proto::map_msgs::VoxelGrid;
-using autonomy::commsgs::proto::planning_msgs::Odometry;
-using autonomy::commsgs::proto::planning_msgs::Path;
-using autonomy::commsgs::proto::sensor_msgs::CameraInfo;
-using autonomy::commsgs::proto::sensor_msgs::CompressedImage;
-using autonomy::commsgs::proto::sensor_msgs::Image;
-using autonomy::commsgs::proto::sensor_msgs::LaserScan;
-using autonomy::commsgs::proto::sensor_msgs::MultiEchoLaserScan;
-using autonomy::commsgs::proto::sensor_msgs::NavSatFix;
-using autonomy::commsgs::proto::sensor_msgs::PointCloud;
-using autonomy::commsgs::proto::sensor_msgs::PointCloud2;
-using autonomy::commsgs::proto::sensor_msgs::Range;
-using autonomy::commsgs::proto::std_msgs::ColorRGBA;
-using autonomy::commsgs::proto::std_msgs::Header;
-using autonomy::commsgs::proto::tf2_msgs::TFMessage;
-using autonomy::commsgs::proto::vision_msgs::BoundingBox2D;
-using autonomy::commsgs::proto::vision_msgs::BoundingBox2DArray;
-using autonomy::commsgs::proto::vision_msgs::BoundingBox3D;
-using autonomy::commsgs::proto::vision_msgs::BoundingBox3DArray;
-using autonomy::commsgs::proto::vision_msgs::Detection2D;
-using autonomy::commsgs::proto::vision_msgs::Detection2DArray;
-using autonomy::commsgs::proto::vision_msgs::Detection3D;
-using autonomy::commsgs::proto::vision_msgs::Detection3DArray;
-using autonomy::commsgs::proto::visualization_msgs::Marker;
-using autonomy::commsgs::proto::visualization_msgs::MarkerArray;
+using automsgs::msgs::geometry_msgs::PointStamped;
+using automsgs::msgs::geometry_msgs::PolygonStamped;
+using automsgs::msgs::geometry_msgs::Pose;
+using automsgs::msgs::geometry_msgs::PoseArray;
+using automsgs::msgs::geometry_msgs::PoseStamped;
+using automsgs::msgs::geometry_msgs::TransformStamped;
+using automsgs::msgs::geometry_msgs::TransformStampeds;
+using automsgs::msgs::map_msgs::Costmap;
+using automsgs::msgs::map_msgs::CostmapUpdate;
+using automsgs::msgs::map_msgs::GridCells;
+using automsgs::msgs::map_msgs::GridMap;
+using automsgs::msgs::map_msgs::OccupancyGrid;
+using automsgs::msgs::map_msgs::OccupancyGridUpdate;
+using automsgs::msgs::map_msgs::VoxelGrid;
+using automsgs::msgs::planning_msgs::Odometry;
+using automsgs::msgs::planning_msgs::Path;
+using automsgs::msgs::sensor_msgs::CameraInfo;
+using automsgs::msgs::sensor_msgs::CompressedImage;
+using automsgs::msgs::sensor_msgs::Image;
+using automsgs::msgs::sensor_msgs::LaserScan;
+using automsgs::msgs::sensor_msgs::MultiEchoLaserScan;
+using automsgs::msgs::sensor_msgs::NavSatFix;
+using automsgs::msgs::sensor_msgs::PointCloud;
+using automsgs::msgs::sensor_msgs::PointCloud2;
+using automsgs::msgs::sensor_msgs::PointField;
+using automsgs::msgs::sensor_msgs::ChannelFloat32;
+using automsgs::msgs::sensor_msgs::Range;
+using automsgs::msgs::std_msgs::ColorRGBA;
+using automsgs::msgs::std_msgs::Header;
+using automsgs::msgs::tf2_msgs::TFMessage;
+using automsgs::msgs::vision_msgs::BoundingBox2D;
+using automsgs::msgs::vision_msgs::BoundingBox2DArray;
+using automsgs::msgs::vision_msgs::BoundingBox3D;
+using automsgs::msgs::vision_msgs::BoundingBox3DArray;
+using automsgs::msgs::vision_msgs::Detection2D;
+using automsgs::msgs::vision_msgs::Detection2DArray;
+using automsgs::msgs::vision_msgs::Detection3D;
+using automsgs::msgs::vision_msgs::Detection3DArray;
+using automsgs::msgs::visualization_msgs::Marker;
+using automsgs::msgs::visualization_msgs::MarkerArray;
 
 using FoxgloveArrowPrimitive = foxglove::messages::ArrowPrimitive;
 using FoxgloveCameraCalibration = foxglove::messages::CameraCalibration;
@@ -114,67 +144,67 @@ using FoxgloveVector3 = foxglove::messages::Vector3;
 using FoxgloveVoxelGrid = foxglove::messages::VoxelGrid;
 
 constexpr char kLaserScanType[] =
-    "autonomy.commsgs.proto.sensor_msgs.LaserScan";
+    "automsgs.msgs.sensor_msgs.LaserScan";
 constexpr char kMultiEchoLaserScanType[] =
-    "autonomy.commsgs.proto.sensor_msgs.MultiEchoLaserScan";
+    "automsgs.msgs.sensor_msgs.MultiEchoLaserScan";
 constexpr char kMarkerType[] =
-    "autonomy.commsgs.proto.visualization_msgs.Marker";
+    "automsgs.msgs.visualization_msgs.Marker";
 constexpr char kMarkerArrayType[] =
-    "autonomy.commsgs.proto.visualization_msgs.MarkerArray";
+    "automsgs.msgs.visualization_msgs.MarkerArray";
 constexpr char kTransformStampedsType[] =
-    "autonomy.commsgs.proto.geometry_msgs.TransformStampeds";
+    "automsgs.msgs.geometry_msgs.TransformStampeds";
 constexpr char kTransformStampedType[] =
-    "autonomy.commsgs.proto.geometry_msgs.TransformStamped";
+    "automsgs.msgs.geometry_msgs.TransformStamped";
 constexpr char kPointCloud2Type[] =
-    "autonomy.commsgs.proto.sensor_msgs.PointCloud2";
+    "automsgs.msgs.sensor_msgs.PointCloud2";
 constexpr char kPointCloudType[] =
-    "autonomy.commsgs.proto.sensor_msgs.PointCloud";
-constexpr char kImageType[] = "autonomy.commsgs.proto.sensor_msgs.Image";
-constexpr char kTfMessageType[] = "autonomy.commsgs.proto.tf2_msgs.TFMessage";
+    "automsgs.msgs.sensor_msgs.PointCloud";
+constexpr char kImageType[] = "automsgs.msgs.sensor_msgs.Image";
+constexpr char kTfMessageType[] = "automsgs.msgs.tf2_msgs.TFMessage";
 constexpr char kPoseStampedType[] =
-    "autonomy.commsgs.proto.geometry_msgs.PoseStamped";
+    "automsgs.msgs.geometry_msgs.PoseStamped";
 constexpr char kPoseArrayType[] =
-    "autonomy.commsgs.proto.geometry_msgs.PoseArray";
+    "automsgs.msgs.geometry_msgs.PoseArray";
 constexpr char kPointStampedType[] =
-    "autonomy.commsgs.proto.geometry_msgs.PointStamped";
+    "automsgs.msgs.geometry_msgs.PointStamped";
 constexpr char kPolygonStampedType[] =
-    "autonomy.commsgs.proto.geometry_msgs.PolygonStamped";
-constexpr char kPathType[] = "autonomy.commsgs.proto.planning_msgs.Path";
+    "automsgs.msgs.geometry_msgs.PolygonStamped";
+constexpr char kPathType[] = "automsgs.msgs.planning_msgs.Path";
 constexpr char kOdometryType[] =
-    "autonomy.commsgs.proto.planning_msgs.Odometry";
+    "automsgs.msgs.planning_msgs.Odometry";
 constexpr char kCompressedImageType[] =
-    "autonomy.commsgs.proto.sensor_msgs.CompressedImage";
+    "automsgs.msgs.sensor_msgs.CompressedImage";
 constexpr char kCameraInfoType[] =
-    "autonomy.commsgs.proto.sensor_msgs.CameraInfo";
+    "automsgs.msgs.sensor_msgs.CameraInfo";
 constexpr char kNavSatFixType[] =
-    "autonomy.commsgs.proto.sensor_msgs.NavSatFix";
+    "automsgs.msgs.sensor_msgs.NavSatFix";
 constexpr char kOccupancyGridType[] =
-    "autonomy.commsgs.proto.map_msgs.OccupancyGrid";
-constexpr char kVoxelGridType[] = "autonomy.commsgs.proto.map_msgs.VoxelGrid";
-constexpr char kCostmapType[] = "autonomy.commsgs.proto.map_msgs.Costmap";
+    "automsgs.msgs.map_msgs.OccupancyGrid";
+constexpr char kVoxelGridType[] = "automsgs.msgs.map_msgs.VoxelGrid";
+constexpr char kCostmapType[] = "automsgs.msgs.map_msgs.Costmap";
 constexpr char kCostmapUpdateType[] =
-    "autonomy.commsgs.proto.map_msgs.CostmapUpdate";
-constexpr char kGridMapType[] = "autonomy.commsgs.proto.map_msgs.GridMap";
-constexpr char kGridCellsType[] = "autonomy.commsgs.proto.map_msgs.GridCells";
+    "automsgs.msgs.map_msgs.CostmapUpdate";
+constexpr char kGridMapType[] = "automsgs.msgs.map_msgs.GridMap";
+constexpr char kGridCellsType[] = "automsgs.msgs.map_msgs.GridCells";
 constexpr char kOccupancyGridUpdateType[] =
-    "autonomy.commsgs.proto.map_msgs.OccupancyGridUpdate";
-constexpr char kRangeType[] = "autonomy.commsgs.proto.sensor_msgs.Range";
+    "automsgs.msgs.map_msgs.OccupancyGridUpdate";
+constexpr char kRangeType[] = "automsgs.msgs.sensor_msgs.Range";
 constexpr char kBoundingBox2DType[] =
-    "autonomy.commsgs.proto.vision_msgs.BoundingBox2D";
+    "automsgs.msgs.vision_msgs.BoundingBox2D";
 constexpr char kBoundingBox2DArrayType[] =
-    "autonomy.commsgs.proto.vision_msgs.BoundingBox2DArray";
+    "automsgs.msgs.vision_msgs.BoundingBox2DArray";
 constexpr char kDetection2DType[] =
-    "autonomy.commsgs.proto.vision_msgs.Detection2D";
+    "automsgs.msgs.vision_msgs.Detection2D";
 constexpr char kDetection2DArrayType[] =
-    "autonomy.commsgs.proto.vision_msgs.Detection2DArray";
+    "automsgs.msgs.vision_msgs.Detection2DArray";
 constexpr char kBoundingBox3DType[] =
-    "autonomy.commsgs.proto.vision_msgs.BoundingBox3D";
+    "automsgs.msgs.vision_msgs.BoundingBox3D";
 constexpr char kBoundingBox3DArrayType[] =
-    "autonomy.commsgs.proto.vision_msgs.BoundingBox3DArray";
+    "automsgs.msgs.vision_msgs.BoundingBox3DArray";
 constexpr char kDetection3DType[] =
-    "autonomy.commsgs.proto.vision_msgs.Detection3D";
+    "automsgs.msgs.vision_msgs.Detection3D";
 constexpr char kDetection3DArrayType[] =
-    "autonomy.commsgs.proto.vision_msgs.Detection3DArray";
+    "automsgs.msgs.vision_msgs.Detection3DArray";
 
 constexpr char kFoxgloveLaserScanSchema[] = "foxglove.LaserScan";
 constexpr char kFoxgloveSceneUpdateSchema[] = "foxglove.SceneUpdate";
@@ -217,7 +247,7 @@ void CopyRepeatedToArray(const google::protobuf::RepeatedField<double>& source,
 }
 
 float FirstEchoOrNan(
-    const ::autonomy::commsgs::proto::sensor_msgs::LaserEcho& echo) {
+    const ::automsgs::msgs::sensor_msgs::LaserEcho& echo) {
   if (echo.echoes_size() == 0) {
     return std::numeric_limits<float>::quiet_NaN();
   }
@@ -241,6 +271,15 @@ void AppendFloat(google::protobuf::RepeatedField<uint32_t>* data, float value) {
   uint32_t bits = 0;
   std::memcpy(&bits, &value, sizeof(float));
   data->Add(bits);
+}
+
+void AppendFloatToBytes(std::string* data, float value) {
+  uint32_t bits = 0;
+  std::memcpy(&bits, &value, sizeof(float));
+  data->push_back(static_cast<char>(bits & 0xFF));
+  data->push_back(static_cast<char>((bits >> 8) & 0xFF));
+  data->push_back(static_cast<char>((bits >> 16) & 0xFF));
+  data->push_back(static_cast<char>((bits >> 24) & 0xFF));
 }
 
 std::string NormalizeImageFormat(std::string format) {
@@ -615,10 +654,10 @@ FoxglovePointCloud ToFoxglovePointCloud(const PointCloud2& source) {
     target.fields.push_back(std::move(target_field));
   }
 
-  const std::string packed = PackRepeatedUint32AsBytes(source.data());
-  target.data.assign(reinterpret_cast<const std::byte*>(packed.data()),
-                     reinterpret_cast<const std::byte*>(packed.data() +
-                                                          packed.size()));
+  target.data.assign(
+      reinterpret_cast<const std::byte*>(source.data().data()),
+      reinterpret_cast<const std::byte*>(source.data().data() +
+                                         source.data().size()));
   return target;
 }
 
@@ -1419,7 +1458,8 @@ bool ConvertToFoxglovePayload(const std::string& source_message_type,
       auto* field = intermediate.add_fields();
       field->set_name(name);
       field->set_offset(offset);
-      field->set_datatype(7);
+      field->set_datatype(
+          ::automsgs::msgs::sensor_msgs::PointField::FLOAT32);
       field->set_count(1);
     };
     add_field("x", 0);
@@ -1429,13 +1469,27 @@ bool ConvertToFoxglovePayload(const std::string& source_message_type,
     intermediate.set_point_step(16);
     intermediate.set_row_step(intermediate.point_step() * intermediate.width());
 
+    const ChannelFloat32* intensity_channel = nullptr;
+    for (const auto& channel : source.channels()) {
+      if (channel.name() == "intensity") {
+        intensity_channel = &channel;
+        break;
+      }
+    }
+
     for (int i = 0; i < source.points_size(); ++i) {
       const auto& point = source.points(i);
-      AppendFloat(intermediate.mutable_data(), static_cast<float>(point.x()));
-      AppendFloat(intermediate.mutable_data(), static_cast<float>(point.y()));
-      AppendFloat(intermediate.mutable_data(), static_cast<float>(point.z()));
-      AppendFloat(intermediate.mutable_data(),
-                  static_cast<float>(point.intensity()));
+      AppendFloatToBytes(intermediate.mutable_data(),
+                         static_cast<float>(point.x()));
+      AppendFloatToBytes(intermediate.mutable_data(),
+                         static_cast<float>(point.y()));
+      AppendFloatToBytes(intermediate.mutable_data(),
+                         static_cast<float>(point.z()));
+      float intensity = 0.0f;
+      if (intensity_channel != nullptr && i < intensity_channel->values_size()) {
+        intensity = intensity_channel->values(i);
+      }
+      AppendFloatToBytes(intermediate.mutable_data(), intensity);
     }
 
     FoxglovePointCloud target = ToFoxglovePointCloud(intermediate);
@@ -1527,7 +1581,7 @@ bool ConvertToFoxglovePayload(const std::string& source_message_type,
     target.timestamp = ToFoxgloveTimestamp(source.header());
     target.frame_id = source.header().frame_id();
     target.body_frame_id = source.child_frame_id();
-    target.pose = ToFoxglovePose(source.pose().pose());
+    target.pose = ToFoxglovePose(source.pose().pose().pose());
     target.linear_velocity = ToFoxgloveVector3(source.twist().twist().linear().x(),
                                                source.twist().twist().linear().y(),
                                                source.twist().twist().linear().z());

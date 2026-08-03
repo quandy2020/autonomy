@@ -15,12 +15,12 @@
 #-----------------------------------------------------------------------------
 # Dependencies
 #-----------------------------------------------------------------------------
-find_package(Protobuf REQUIRED)
+autonomy_require_protobuf()
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 #-----------------------------------------------------------------------------
-# Proto include layout: copy msgs/ and srvs/ to proto_include/automsgs/ so that
-# import "automsgs/msgs/..." works with -I proto_include.
+# Proto include layout: copy msgs/, srvs/, rpcs/, actions/ to proto_include/automsgs/
+# so that import "automsgs/msgs/..." works with -I proto_include.
 #-----------------------------------------------------------------------------
 set(AM_PROTO_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto_include)
 set(AM_PROTO_STAMP ${AM_PROTO_INCLUDE_DIR}/.stamp)
@@ -28,7 +28,8 @@ set(AM_PROTO_STAMP ${AM_PROTO_INCLUDE_DIR}/.stamp)
 file(GLOB_RECURSE AM_ALL_PROTO_SOURCES
   "${CMAKE_CURRENT_SOURCE_DIR}/msgs/*.proto"
   "${CMAKE_CURRENT_SOURCE_DIR}/srvs/*.proto"
-  "${CMAKE_CURRENT_SOURCE_DIR}/rpcs/*.proto")
+  "${CMAKE_CURRENT_SOURCE_DIR}/rpcs/*.proto"
+  "${CMAKE_CURRENT_SOURCE_DIR}/actions/*.proto")
 
 add_custom_command(
   OUTPUT ${AM_PROTO_STAMP}
@@ -36,6 +37,7 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/msgs ${AM_PROTO_INCLUDE_DIR}/automsgs/msgs
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/srvs ${AM_PROTO_INCLUDE_DIR}/automsgs/srvs
   COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/rpcs ${AM_PROTO_INCLUDE_DIR}/automsgs/rpcs
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/actions ${AM_PROTO_INCLUDE_DIR}/automsgs/actions
   COMMAND ${CMAKE_COMMAND} -E touch ${AM_PROTO_STAMP}
   DEPENDS ${AM_ALL_PROTO_SOURCES}
   COMMENT "Copy proto tree to ${AM_PROTO_INCLUDE_DIR}/automsgs for protoc -I"
@@ -120,6 +122,7 @@ add_library(automsgs_proto_obj OBJECT ${AM_ALL_SOURCES})
 target_include_directories(automsgs_proto_obj PUBLIC
   "$<BUILD_INTERFACE:${AM_GEN_OUTPUT_DIR}>"
   "$<INSTALL_INTERFACE:include>")
+target_link_libraries(automsgs_proto_obj PUBLIC protobuf::libprotobuf)
 set_target_properties(automsgs_proto_obj PROPERTIES
   POSITION_INDEPENDENT_CODE ON)
 
@@ -147,6 +150,11 @@ install(
 )
 install(
   DIRECTORY rpcs
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/automsgs/proto
+  FILES_MATCHING PATTERN "*.proto"
+)
+install(
+  DIRECTORY actions
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/automsgs/proto
   FILES_MATCHING PATTERN "*.proto"
 )

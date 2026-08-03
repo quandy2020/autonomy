@@ -19,6 +19,7 @@ Q_IMPORT_PLUGIN(Autoviz_Vehicle3DPlugin)
 #endif
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/platform/opengl_setup.hpp"
 #include "autoviz/ui/icon_loader.hpp"
 #include "autoviz/ui/splash_screen.hpp"
 #include "autoviz/ui/visualization_frame.hpp"
@@ -59,8 +60,7 @@ void installTranslations(QApplication& app) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  google::InitGoogleLogging(argv[0]);
-
+  autoviz::platform::configureOpenGLDefaults();
   QApplication app(argc, argv);
   app.setApplicationName(QStringLiteral("Autoviz"));
   app.setApplicationDisplayName(QStringLiteral("Aviz"));

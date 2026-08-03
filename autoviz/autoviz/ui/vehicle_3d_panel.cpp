@@ -17,7 +17,7 @@
 #include <QUrl>
 
 #include "autoviz/display/display.hpp"
-#include "autoviz/qml/mission_plan_model.hpp"
+#include "autoviz/platform/opengl_setup.hpp"
 #include "autoviz/qml/mission_plan_model.hpp"
 #include "autoviz/qml/vehicle_state.hpp"
 #include "autoviz/ui/vehicle_state_bridge.hpp"
@@ -41,6 +41,7 @@ void Vehicle3DPanel::setupUi() {
   layout->setContentsMargins(0, 0, 0, 0);
 
   quick_widget_ = new QQuickWidget(this);
+  quick_widget_->setFormat(platform::defaultSurfaceFormat());
   quick_widget_->setResizeMode(QQuickWidget::SizeRootObjectToView);
   quick_widget_->setClearColor(QColor(0x14, 0x18, 0x24));
   if (QQmlEngine* engine = quick_widget_->engine()) {

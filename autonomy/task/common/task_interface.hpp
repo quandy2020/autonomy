@@ -20,7 +20,7 @@
 #include <string>
 
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/proto/vehicle_msgs.pb.h"
+#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
 #include "autonomy/task/proto/charging.pb.h"
 #include "autonomy/task/proto/exploration.pb.h"
 #include "autonomy/task/proto/localization.pb.h"
@@ -46,10 +46,10 @@ enum class TaskLifecycle {
     kCanceled,
 };
 
-inline ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskStatus
+inline ::automsgs::msgs::vehicle_msgs::RobotTaskStatus
 ToRobotTaskStatus(TaskLifecycle lifecycle)
 {
-    using ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskStatus;
+    using ::automsgs::msgs::vehicle_msgs::RobotTaskStatus;
     switch (lifecycle) {
     case TaskLifecycle::kIdle:
         return RobotTaskStatus::ROBOT_TASK_STATUS_IDLE;
@@ -89,7 +89,7 @@ public:
     virtual ~TaskInterface() = default;
 
     /** @return 本插件对应的 RobotTaskType（localization 等内部任务可返回 NONE） */
-    virtual ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType GetTaskType()
+    virtual ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const = 0;
 
     /** @return 当前生命周期状态 */

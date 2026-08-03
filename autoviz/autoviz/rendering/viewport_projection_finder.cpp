@@ -19,7 +19,7 @@ namespace rendering {
 namespace {
 
 QVector3D toQVector3(const Ogre::Vector3& v) {
-  return QVector3D(v.x, v.y, v.z);
+  return QVector3D(v.x(), v.y(), v.z());
 }
 
 bool intersectPlane(const QVector3D& origin, const QVector3D& direction,

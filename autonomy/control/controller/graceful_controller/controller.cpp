@@ -42,27 +42,28 @@ double PositiveOr(double value, double fallback) {
 }
 
 geometry_msgs::TransformStamped ToTf2Transform(
-    const commsgs::geometry_msgs::TransformStamped& costmap_transform) {
+    const automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform) {
     geometry_msgs::TransformStamped tf2_transform;
     tf2_transform.header.stamp =
-        static_cast<uint64_t>(costmap_transform.header.stamp.sec) * 1000000000ULL +
-        static_cast<uint64_t>(costmap_transform.header.stamp.nanosec);
-    tf2_transform.header.frame_id = costmap_transform.header.frame_id;
-    tf2_transform.child_frame_id = costmap_transform.child_frame_id;
+        static_cast<uint64_t>(costmap_transform.header().stamp().sec()) *
+            1000000000ULL +
+        static_cast<uint64_t>(costmap_transform.header().stamp().nanosec());
+    tf2_transform.header.frame_id = costmap_transform.header().frame_id();
+    tf2_transform.child_frame_id = costmap_transform.child_frame_id();
     tf2_transform.transform.translation.x =
-        costmap_transform.transform.translation.x;
+        costmap_transform.transform().translation().x();
     tf2_transform.transform.translation.y =
-        costmap_transform.transform.translation.y;
+        costmap_transform.transform().translation().y();
     tf2_transform.transform.translation.z =
-        costmap_transform.transform.translation.z;
+        costmap_transform.transform().translation().z();
     tf2_transform.transform.rotation.x =
-        costmap_transform.transform.rotation.x;
+        costmap_transform.transform().rotation().x();
     tf2_transform.transform.rotation.y =
-        costmap_transform.transform.rotation.y;
+        costmap_transform.transform().rotation().y();
     tf2_transform.transform.rotation.z =
-        costmap_transform.transform.rotation.z;
+        costmap_transform.transform().rotation().z();
     tf2_transform.transform.rotation.w =
-        costmap_transform.transform.rotation.w;
+        costmap_transform.transform().rotation().w();
     return tf2_transform;
 }
 
@@ -188,9 +189,9 @@ void GracefulController::Deactivate() {
 }
 
 uint32 GracefulController::ComputeVelocityCommands(
-    const commsgs::geometry_msgs::PoseStamped& pose,
-    const commsgs::geometry_msgs::TwistStamped& velocity,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel,
+    const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+    const automsgs::msgs::geometry_msgs::TwistStamped& velocity,
+    automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel,
     common::GoalChecker* goal_checker, std::string& message) {
     control_law_->SetCurvatureConstants(
         params_.k_phi, params_.k_delta, params_.beta, params_.lambda);
@@ -207,13 +208,21 @@ uint32 GracefulController::ComputeVelocityCommands(
         pose, params_.max_robot_pose_search_dist);
     const auto transformed_global_plan = path_handler_->GetPlan();
 
-    ValidateOrientations(transformed_plan.poses);
+    {
+        std::vector<automsgs::msgs::geometry_msgs::PoseStamped> poses_vec(
+            transformed_plan.poses().begin(), transformed_plan.poses().end());
+        ValidateOrientations(poses_vec);
+        transformed_plan.mutable_poses()->Clear();
+        for (const auto& ps : poses_vec) {
+            *transformed_plan.mutable_poses()->Add() = ps;
+        }
+    }
 
-    commsgs::geometry_msgs::TransformStamped costmap_transform;
+    automsgs::msgs::geometry_msgs::TransformStamped costmap_transform;
     try {
-        commsgs::builtin_interfaces::Time zero_time;
-        zero_time.sec = 0;
-        zero_time.nanosec = 0;
+        automsgs::msgs::builtin_interfaces::Time zero_time;
+        zero_time.set_sec(0);
+        zero_time.set_nanosec(0);
         costmap_transform = tf_buffer_->lookupTransform(
             costmap_wrapper_->getGlobalFrameID(),
             costmap_wrapper_->getBaseFrameID(), zero_time, 0.1f);
@@ -226,18 +235,18 @@ uint32 GracefulController::ComputeVelocityCommands(
     }
 
     double dist_to_goal = 0.0;
-    for (size_t i = 1; i < transformed_plan.poses.size(); ++i) {
+    for (size_t i = 1; i < transformed_plan.poses_size(); ++i) {
         dist_to_goal += map::costmap_2d::utils::euclidean_distance(
-            transformed_plan.poses[i - 1], transformed_plan.poses[i]);
+            transformed_plan.poses(i - 1), transformed_plan.poses(i));
     }
 
-    if (goal_checker && !transformed_global_plan.poses.empty()) {
-        const auto& global_goal = transformed_global_plan.poses.back().pose;
+    if (goal_checker && !transformed_global_plan.poses().empty()) {
+        const auto& global_goal = transformed_global_plan.poses(transformed_global_plan.poses_size() - 1).pose();
         if (goal_checker->IsGoalXYReached(
-                pose.pose, global_goal, velocity.twist,
+                pose.pose(), global_goal, velocity.twist(),
                 transformed_global_plan)) {
             double angle_to_goal = transform::tf2::getYaw(
-                transformed_plan.poses.back().pose.orientation);
+                transformed_plan.poses(transformed_plan.poses_size() - 1).pose().orientation());
             size_t num_steps = static_cast<size_t>(
                 fabs(angle_to_goal) / params_.in_place_collision_resolution);
             num_steps = std::max(static_cast<size_t>(1), num_steps);
@@ -247,39 +256,41 @@ uint32 GracefulController::ComputeVelocityCommands(
                 const double step =
                     static_cast<double>(i) / static_cast<double>(num_steps);
                 const double yaw = step * angle_to_goal;
-                commsgs::geometry_msgs::PoseStamped next_pose;
-                next_pose.header.frame_id = costmap_wrapper_->getBaseFrameID();
-                next_pose.pose.orientation =
-                    map::costmap_2d::utils::OrientationAroundZAxis(yaw);
-                commsgs::geometry_msgs::PoseStamped costmap_pose;
+                automsgs::msgs::geometry_msgs::PoseStamped next_pose;
+                next_pose.mutable_header()->set_frame_id( costmap_wrapper_->getBaseFrameID());
+                *next_pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+                automsgs::msgs::geometry_msgs::PoseStamped costmap_pose;
                 transform::tf2::doTransform(next_pose, costmap_pose,
                                               tf2_transform);
                 if (params_.use_collision_detection &&
-                    InCollision(costmap_pose.pose.position.x,
-                                costmap_pose.pose.position.y,
+                    InCollision(costmap_pose.pose().position().x(),
+                                costmap_pose.pose().position().y(),
                                 transform::tf2::getYaw(
-                                    costmap_pose.pose.orientation))) {
+                                    costmap_pose.pose().orientation()))) {
                     collision_free = false;
                     break;
                 }
             }
             if (collision_free) {
-                cmd_vel.twist = RotateToTarget(angle_to_goal);
+                *cmd_vel.mutable_twist() = RotateToTarget(angle_to_goal);
                 message = "";
                 return 0;
             }
         }
     }
 
-    commsgs::planning_msgs::Path local_plan;
-    commsgs::geometry_msgs::PoseStamped target_pose;
+    automsgs::msgs::planning_msgs::Path local_plan;
+    automsgs::msgs::geometry_msgs::PoseStamped target_pose;
 
     double dist_to_target;
     std::vector<double> target_distances;
-    ComputeDistanceAlongPath(transformed_plan.poses, target_distances);
+    ComputeDistanceAlongPath(
+        std::vector<automsgs::msgs::geometry_msgs::PoseStamped>(
+            transformed_plan.poses().begin(), transformed_plan.poses().end()),
+        target_distances);
 
     bool is_first_iteration = true;
-    for (int i = static_cast<int>(transformed_plan.poses.size()) - 1; i >= 0;
+    for (int i = static_cast<int>(transformed_plan.poses_size()) - 1; i >= 0;
          --i) {
         if (is_first_iteration) {
             dist_to_target = params_.max_lookahead;
@@ -288,7 +299,7 @@ uint32 GracefulController::ComputeVelocityCommands(
             is_first_iteration = false;
         } else {
             dist_to_target = target_distances[static_cast<size_t>(i)];
-            target_pose = transformed_plan.poses[static_cast<size_t>(i)];
+            target_pose = transformed_plan.poses(static_cast<size_t>(i));
         }
 
         if (ValidateTargetPoseOnApproach(
@@ -304,7 +315,7 @@ uint32 GracefulController::ComputeVelocityCommands(
             if (slowdown_pub_) {
                 slowdown_pub_->Write(slowdown_marker);
             }
-            local_plan.header = transformed_plan.header;
+            *local_plan.mutable_header() = transformed_plan.header();
             if (local_plan_pub_) {
                 local_plan_pub_->Write(local_plan);
             }
@@ -324,7 +335,7 @@ bool GracefulController::IsGoalReached(double dist_tolerance,
     return false;
 }
 
-void GracefulController::SetPlan(const commsgs::planning_msgs::Path& path) {
+void GracefulController::SetPlan(const automsgs::msgs::planning_msgs::Path& path) {
     path_handler_->SetPlan(path);
     do_initial_rotation_ = true;
     safe_approach_angle_.reset();
@@ -360,20 +371,19 @@ void GracefulController::SetSpeedLimit(const double& speed_limit,
 }
 
 bool GracefulController::ValidateTargetPose(
-    commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-    commsgs::planning_msgs::Path& trajectory,
-    commsgs::geometry_msgs::TransformStamped& costmap_transform,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel) {
+    automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+    automsgs::msgs::planning_msgs::Path& trajectory,
+    automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+    automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {
     if (dist_to_target > params_.max_lookahead) {
         return false;
     }
 
     bool reversing = false;
-    if (params_.allow_backward && target_pose.pose.position.x < 0.0) {
+    if (params_.allow_backward && target_pose.pose().position().x() < 0.0) {
         reversing = true;
-        target_pose.pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(
-                transform::tf2::getYaw(target_pose.pose.orientation) + M_PI);
+        *target_pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(
+                transform::tf2::getYaw(target_pose.pose().orientation()) + M_PI);
     }
 
     double sim_linear_velocity = params_.v_linear_max;
@@ -391,18 +401,17 @@ bool GracefulController::ValidateTargetPose(
 }
 
 bool GracefulController::ValidateTargetPoseOnApproach(
-    commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-    double dist_to_goal, commsgs::planning_msgs::Path& trajectory,
-    commsgs::geometry_msgs::TransformStamped& costmap_transform,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel) {
+    automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+    double dist_to_goal, automsgs::msgs::planning_msgs::Path& trajectory,
+    automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+    automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {
     if (dist_to_goal >= params_.max_lookahead || !params_.prefer_final_rotation) {
         return false;
     }
 
     const double yaw =
-        std::atan2(target_pose.pose.position.y, target_pose.pose.position.x);
-    target_pose.pose.orientation =
-        map::costmap_2d::utils::OrientationAroundZAxis(yaw);
+        std::atan2(target_pose.pose().position().y(), target_pose.pose().position().x());
+    *target_pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(yaw);
 
     if (!ValidateTargetPose(target_pose, dist_to_target, trajectory,
                             costmap_transform, cmd_vel)) {
@@ -424,19 +433,19 @@ bool GracefulController::ValidateTargetPoseOnApproach(
 }
 
 bool GracefulController::SimulateTrajectory(
-    const commsgs::geometry_msgs::PoseStamped& motion_target,
-    const commsgs::geometry_msgs::TransformStamped& costmap_transform,
-    commsgs::planning_msgs::Path& trajectory,
-    commsgs::geometry_msgs::TwistStamped& cmd_vel, bool backward) {
-    trajectory.poses.clear();
+    const automsgs::msgs::geometry_msgs::PoseStamped& motion_target,
+    const automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+    automsgs::msgs::planning_msgs::Path& trajectory,
+    automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel, bool backward) {
+    trajectory.clear_poses();
 
-    commsgs::geometry_msgs::PoseStamped next_pose;
-    next_pose.header.frame_id = costmap_wrapper_->getBaseFrameID();
-    next_pose.pose.orientation.w = 1.0;
+    automsgs::msgs::geometry_msgs::PoseStamped next_pose;
+    next_pose.mutable_header()->set_frame_id( costmap_wrapper_->getBaseFrameID());
+    next_pose.mutable_pose()->mutable_orientation()->set_w(1.0);
 
     bool sim_initial_rotation = do_initial_rotation_ && params_.initial_rotation;
-    const double angle_to_target = std::atan2(motion_target.pose.position.y,
-                                              motion_target.pose.position.x);
+    const double angle_to_target = std::atan2(motion_target.pose().position().y(),
+                                              motion_target.pose().position().x());
     if (fabs(angle_to_target) < params_.initial_rotation_tolerance) {
         sim_initial_rotation = false;
         do_initial_rotation_ = false;
@@ -448,45 +457,44 @@ bool GracefulController::SimulateTrajectory(
                           ? resolution / params_.v_linear_max
                           : 0.0;
     const unsigned int max_iter = 3 * static_cast<unsigned int>(
-                                        std::hypot(motion_target.pose.position.x,
-                                                   motion_target.pose.position.y) /
+                                        std::hypot(motion_target.pose().position().x(),
+                                                   motion_target.pose().position().y()) /
                                         resolution);
     const auto tf2_transform = ToTf2Transform(costmap_transform);
 
     do {
         if (sim_initial_rotation) {
             double next_pose_yaw =
-                transform::tf2::getYaw(next_pose.pose.orientation);
+                transform::tf2::getYaw(next_pose.pose().orientation());
             const auto cmd = RotateToTarget(angle_to_target - next_pose_yaw);
-            if (trajectory.poses.empty()) {
-                cmd_vel.twist = cmd;
+            if (trajectory.poses().empty()) {
+                *cmd_vel.mutable_twist() = cmd;
             }
             if (fabs(angle_to_target - next_pose_yaw) <
                 params_.initial_rotation_tolerance) {
                 sim_initial_rotation = false;
             }
-            next_pose_yaw += cmd_vel.twist.angular.z * dt;
-            next_pose.pose.orientation =
-                map::costmap_2d::utils::OrientationAroundZAxis(next_pose_yaw);
+            next_pose_yaw += cmd_vel.twist().angular().z() * dt;
+            *next_pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(next_pose_yaw);
         } else {
-            if (trajectory.poses.empty() && control_law_) {
-                cmd_vel.twist = control_law_->CalculateRegularVelocity(
-                    motion_target.pose, next_pose.pose, backward);
+            if (trajectory.poses().empty() && control_law_) {
+                *cmd_vel.mutable_twist() = control_law_->CalculateRegularVelocity(
+                    motion_target.pose(), next_pose.pose(), backward);
             }
             if (control_law_) {
-                next_pose.pose = control_law_->CalculateNextPose(
-                    dt, motion_target.pose, next_pose.pose, backward);
+                *next_pose.mutable_pose() = control_law_->CalculateNextPose(
+                    dt, motion_target.pose(), next_pose.pose(), backward);
             }
         }
 
-        trajectory.poses.push_back(next_pose);
+        *trajectory.mutable_poses()->Add() = next_pose;
 
         double footprint_scaling = 1.0;
-        if (cmd_vel.twist.linear.x > params_.footprint_scaling_linear_vel) {
+        if (cmd_vel.twist().linear().x() > params_.footprint_scaling_linear_vel) {
             double ratio =
                 params_.v_linear_max - params_.footprint_scaling_linear_vel;
             if (ratio > 0.0) {
-                ratio = (cmd_vel.twist.linear.x -
+                ratio = (cmd_vel.twist().linear().x() -
                          params_.footprint_scaling_linear_vel) /
                         ratio;
                 footprint_scaling +=
@@ -494,48 +502,47 @@ bool GracefulController::SimulateTrajectory(
             }
         }
 
-        commsgs::geometry_msgs::PoseStamped global_pose;
+        automsgs::msgs::geometry_msgs::PoseStamped global_pose;
         transform::tf2::doTransform(next_pose, global_pose, tf2_transform);
         if (params_.use_collision_detection &&
-            InCollision(global_pose.pose.position.x,
-                       global_pose.pose.position.y,
-                       transform::tf2::getYaw(global_pose.pose.orientation),
+            InCollision(global_pose.pose().position().x(),
+                       global_pose.pose().position().y(),
+                       transform::tf2::getYaw(global_pose.pose().orientation()),
                        footprint_scaling)) {
             return false;
         }
 
         distance = map::costmap_2d::utils::euclidean_distance(
-            motion_target.pose, next_pose.pose);
-    } while (distance > resolution && trajectory.poses.size() < max_iter);
+            motion_target.pose(), next_pose.pose());
+    } while (distance > resolution && trajectory.poses_size() < max_iter);
 
     return true;
 }
 
-commsgs::geometry_msgs::Twist GracefulController::RotateToTarget(
+automsgs::msgs::geometry_msgs::Twist GracefulController::RotateToTarget(
     double angle_to_target) {
-    commsgs::geometry_msgs::Twist vel;
-    vel.linear.x = 0.0;
-    vel.angular.z =
-        params_.rotation_scaling_factor * angle_to_target * params_.v_angular_max;
-    vel.angular.z = std::copysign(1.0, vel.angular.z) *
-                    std::max(static_cast<double>(std::abs(vel.angular.z)),
-                             params_.v_angular_min_in_place);
+    automsgs::msgs::geometry_msgs::Twist vel;
+    vel.mutable_linear()->set_x(0.0);
+    vel.mutable_angular()->set_z(params_.rotation_scaling_factor * angle_to_target * params_.v_angular_max);
+    vel.mutable_angular()->set_z(std::copysign(1.0, vel.angular().z()) *
+                    std::max(static_cast<double>(std::abs(vel.angular().z())),
+                             params_.v_angular_min_in_place));
     return vel;
 }
 
 double GracefulController::GetMaxCost(
-    const commsgs::planning_msgs::Path& path,
-    commsgs::geometry_msgs::TransformStamped& costmap_transform) {
+    const automsgs::msgs::planning_msgs::Path& path,
+    automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform) {
     double max_cost = 0.0;
     const auto tf2_transform = ToTf2Transform(costmap_transform);
     auto* costmap = costmap_wrapper_->getCostmap();
 
-    for (const auto& pose : path.poses) {
-        commsgs::geometry_msgs::PoseStamped costmap_pose;
+    for (const auto& pose : path.poses()) {
+        automsgs::msgs::geometry_msgs::PoseStamped costmap_pose;
         transform::tf2::doTransform(pose, costmap_pose, tf2_transform);
         unsigned int mx, my;
-        if (costmap->worldToMap(costmap_pose.pose.position.x,
-                                costmap_pose.pose.position.y, mx, my)) {
+        if (costmap->worldToMap(costmap_pose.pose().position().x(),
+                                costmap_pose.pose().position().y(), mx, my)) {
             max_cost = std::max(max_cost,
                                 static_cast<double>(
                                     collision_checker_->pointCost(mx, my)));
@@ -570,8 +577,8 @@ bool GracefulController::InCollision(const double& x, const double& y,
         auto spec = costmap_wrapper_->getRobotFootprint();
         if (spec.size() > 3) {
             for (auto& point : spec) {
-                point.x *= inflation_scale;
-                point.y *= inflation_scale;
+                point.set_x(point.x() * inflation_scale);
+                point.set_y(point.y() * inflation_scale);
             }
         }
         footprint_cost =
@@ -593,10 +600,10 @@ bool GracefulController::InCollision(const double& x, const double& y,
 }
 
 bool GracefulController::FindBestApproachTrajectory(
-    commsgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
-    commsgs::geometry_msgs::TransformStamped& costmap_transform,
-    double safety_cost, commsgs::planning_msgs::Path& best_trajectory,
-    commsgs::geometry_msgs::TwistStamped& best_cmd_vel) {
+    automsgs::msgs::geometry_msgs::PoseStamped& target_pose, double dist_to_target,
+    automsgs::msgs::geometry_msgs::TransformStamped& costmap_transform,
+    double safety_cost, automsgs::msgs::planning_msgs::Path& best_trajectory,
+    automsgs::msgs::geometry_msgs::TwistStamped& best_cmd_vel) {
     bool found_valid = false;
     double best_eta = std::numeric_limits<double>::max();
     const int num_steps = static_cast<int>(
@@ -610,11 +617,10 @@ bool GracefulController::FindBestApproachTrajectory(
         }
 
         auto candidate_pose = target_pose;
-        candidate_pose.pose.orientation =
-            map::costmap_2d::utils::OrientationAroundZAxis(angle);
+        *candidate_pose.mutable_pose()->mutable_orientation() = map::costmap_2d::utils::OrientationAroundZAxis(angle);
 
-        commsgs::planning_msgs::Path candidate_path = best_trajectory;
-        commsgs::geometry_msgs::TwistStamped candidate_cmd_vel = best_cmd_vel;
+        automsgs::msgs::planning_msgs::Path candidate_path = best_trajectory;
+        automsgs::msgs::geometry_msgs::TwistStamped candidate_cmd_vel = best_cmd_vel;
 
         if (!ValidateTargetPose(candidate_pose, dist_to_target, candidate_path,
                                 costmap_transform, candidate_cmd_vel)) {
@@ -625,21 +631,21 @@ bool GracefulController::FindBestApproachTrajectory(
             GetMaxCost(candidate_path, costmap_transform);
 
         bool reversing = false;
-        if (params_.allow_backward && target_pose.pose.position.x < 0.0) {
+        if (params_.allow_backward && target_pose.pose().position().x() < 0.0) {
             reversing = true;
         }
 
         double eta = 0.0;
-        for (size_t j = 1; j < candidate_path.poses.size(); ++j) {
-            const auto& current_pose = candidate_path.poses[j - 1];
-            const auto& next_pose = candidate_path.poses[j];
+        for (size_t j = 1; j < candidate_path.poses_size(); ++j) {
+            const auto& current_pose = candidate_path.poses(j - 1);
+            const auto& next_pose = candidate_path.poses(j);
             const auto cmd = control_law_->CalculateRegularVelocity(
-                candidate_pose.pose, current_pose.pose, reversing);
-            double speed = std::abs(cmd.linear.x);
+                candidate_pose.pose(), current_pose.pose(), reversing);
+            double speed = std::abs(cmd.linear().x());
             speed = std::max(speed, 1e-3);
             const double step_dist =
-                map::costmap_2d::utils::euclidean_distance(current_pose.pose,
-                                                           next_pose.pose);
+                map::costmap_2d::utils::euclidean_distance(current_pose.pose(),
+                                                           next_pose.pose());
             eta += step_dist / speed;
         }
 
@@ -662,10 +668,10 @@ bool GracefulController::FindBestApproachTrajectory(
 }
 
 void GracefulController::ComputeDistanceAlongPath(
-    const std::vector<commsgs::geometry_msgs::PoseStamped>& poses,
+    const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& poses,
     std::vector<double>& distances) {
     distances.resize(poses.size());
-    double d = std::hypot(poses[0].pose.position.x, poses[0].pose.position.y);
+    double d = std::hypot(poses[0].pose().position().x(), poses[0].pose().position().y());
     distances[0] = d;
     for (size_t i = 1; i < poses.size(); ++i) {
         d += map::costmap_2d::utils::euclidean_distance(poses[i - 1], poses[i]);
@@ -674,14 +680,14 @@ void GracefulController::ComputeDistanceAlongPath(
 }
 
 void GracefulController::ValidateOrientations(
-    std::vector<commsgs::geometry_msgs::PoseStamped>& path) {
+    std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& path) {
     if (path.size() < 3) {
         return;
     }
 
-    const double initial_yaw = transform::tf2::getYaw(path[1].pose.orientation);
+    const double initial_yaw = transform::tf2::getYaw(path[1].pose().orientation());
     for (size_t i = 2; i < path.size() - 1; ++i) {
-        const double this_yaw = transform::tf2::getYaw(path[i].pose.orientation);
+        const double this_yaw = transform::tf2::getYaw(path[i].pose().orientation());
         if (std::abs(autonomy::common::math::AngleDiff(this_yaw, initial_yaw)) >
             1e-6) {
             return;
@@ -690,11 +696,11 @@ void GracefulController::ValidateOrientations(
 
     for (size_t i = 0; i < path.size() - 1; ++i) {
         const double dx =
-            path[i + 1].pose.position.x - path[i].pose.position.x;
+            path[i + 1].pose().position().x() - path[i].pose().position().x();
         const double dy =
-            path[i + 1].pose.position.y - path[i].pose.position.y;
+            path[i + 1].pose().position().y() - path[i].pose().position().y();
         const double yaw = std::atan2(dy, dx);
-        path[i].pose.orientation =
+        *path[i].mutable_pose()->mutable_orientation() =
             map::costmap_2d::utils::OrientationAroundZAxis(yaw);
     }
 }

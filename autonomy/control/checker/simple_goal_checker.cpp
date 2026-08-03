@@ -82,18 +82,18 @@ void SimpleGoalChecker::SetTolerances(double xy_tolerance, double yaw_tolerance,
 }
 
 bool SimpleGoalChecker::IsGoalXYReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity,
-    const commsgs::planning_msgs::Path& transformed_global_plan) {
+    const automsgs::msgs::geometry_msgs::Pose& query_pose,
+    const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+    const automsgs::msgs::geometry_msgs::Twist& velocity,
+    const automsgs::msgs::planning_msgs::Path& transformed_global_plan) {
     (void)velocity;
     if (map::costmap_2d::utils::calculate_path_length(transformed_global_plan) >
         path_length_tolerance_) {
         return false;
     }
     if (check_xy_) {
-        const double dx = query_pose.position.x - goal_pose.position.x;
-        const double dy = query_pose.position.y - goal_pose.position.y;
+        const double dx = query_pose.position().x() - goal_pose.position().x();
+        const double dy = query_pose.position().y() - goal_pose.position().y();
         if (dx * dx + dy * dy > xy_goal_tolerance_sq_) {
             return false;
         }
@@ -101,8 +101,8 @@ bool SimpleGoalChecker::IsGoalXYReached(
             check_xy_ = false;
         }
     } else if (stateful_ && xy_goal_tolerance_buffer_ > 0.0) {
-        const double dx = query_pose.position.x - goal_pose.position.x;
-        const double dy = query_pose.position.y - goal_pose.position.y;
+        const double dx = query_pose.position().x() - goal_pose.position().x();
+        const double dy = query_pose.position().y() - goal_pose.position().y();
         if (dx * dx + dy * dy > xy_goal_tolerance_reset_sq_) {
             check_xy_ = true;
             return false;
@@ -112,37 +112,37 @@ bool SimpleGoalChecker::IsGoalXYReached(
 }
 
 bool SimpleGoalChecker::IsGoalReached(
-    const commsgs::geometry_msgs::Pose& query_pose,
-    const commsgs::geometry_msgs::Pose& goal_pose,
-    const commsgs::geometry_msgs::Twist& velocity) {
+    const automsgs::msgs::geometry_msgs::Pose& query_pose,
+    const automsgs::msgs::geometry_msgs::Pose& goal_pose,
+    const automsgs::msgs::geometry_msgs::Twist& velocity) {
     if (!IsGoalXYReached(query_pose, goal_pose, velocity,
-                         commsgs::planning_msgs::Path{})) {
+                         automsgs::msgs::planning_msgs::Path{})) {
         return false;
     }
     const double dyaw = autonomy::common::math::AngleDiff(
-        transform::tf2::getYaw(query_pose.orientation),
-        transform::tf2::getYaw(goal_pose.orientation));
+        transform::tf2::getYaw(query_pose.orientation()),
+        transform::tf2::getYaw(goal_pose.orientation()));
     return std::abs(dyaw) <= yaw_goal_tolerance_;
 }
 
 bool SimpleGoalChecker::GetTolerances(
-    commsgs::geometry_msgs::Pose& pose_tolerance,
-    commsgs::geometry_msgs::Twist& vel_tolerance) {
+    automsgs::msgs::geometry_msgs::Pose& pose_tolerance,
+    automsgs::msgs::geometry_msgs::Twist& vel_tolerance) {
     double invalid_field = std::numeric_limits<double>::lowest();
 
-    pose_tolerance.position.x = xy_goal_tolerance_;
-    pose_tolerance.position.y = xy_goal_tolerance_;
-    pose_tolerance.position.z = invalid_field;
-    pose_tolerance.orientation =
+    pose_tolerance.mutable_position()->set_x(xy_goal_tolerance_);
+    pose_tolerance.mutable_position()->set_y(xy_goal_tolerance_);
+    pose_tolerance.mutable_position()->set_z(invalid_field);
+    *pose_tolerance.mutable_orientation() =
         map::costmap_2d::utils::OrientationAroundZAxis(yaw_goal_tolerance_);
 
-    vel_tolerance.linear.x = invalid_field;
-    vel_tolerance.linear.y = invalid_field;
-    vel_tolerance.linear.z = invalid_field;
+    vel_tolerance.mutable_linear()->set_x(invalid_field);
+    vel_tolerance.mutable_linear()->set_y(invalid_field);
+    vel_tolerance.mutable_linear()->set_z(invalid_field);
 
-    vel_tolerance.angular.x = invalid_field;
-    vel_tolerance.angular.y = invalid_field;
-    vel_tolerance.angular.z = invalid_field;
+    vel_tolerance.mutable_angular()->set_x(invalid_field);
+    vel_tolerance.mutable_angular()->set_y(invalid_field);
+    vel_tolerance.mutable_angular()->set_z(invalid_field);
 
     return true;
 }

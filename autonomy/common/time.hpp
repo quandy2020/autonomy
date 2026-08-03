@@ -22,7 +22,9 @@
 #include <ratio>
 
 #include "autonomy/common/port.hpp"
-#include "autonomy/commsgs/builtin_interfaces.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 namespace autonomy {
 namespace common {
 

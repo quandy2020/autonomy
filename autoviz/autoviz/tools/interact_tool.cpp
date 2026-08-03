@@ -200,7 +200,7 @@ bool InteractTool::mousePressEvent(QMouseEvent* event) {
   if (!context()->view_controller->pickGroundPoint(
           event->pos().x(), event->pos().y(), context()->viewport_width,
           context()->viewport_height, &ground)) {
-    ground = pick.position;
+    ground = pick.position();
   }
 
   active_pick_ = pick;

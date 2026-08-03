@@ -27,7 +27,7 @@ namespace grpc {
 namespace clients {
 namespace {
 
-namespace nav_proto = commsgs::proto::nav_msgs;
+namespace nav_proto = automsgs::actions;
 
 proto::NavigationStatus ToNavigationStatus(autolink::action::ResultCode code) {
     switch (code) {

@@ -16,21 +16,22 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/builtin_interfaces.proto";
-import "autonomy/commsgs/proto/error_code.proto";
-import "autonomy/commsgs/proto/vehicle_msgs.proto";
+import "automsgs/msgs/builtin_interfaces/time.proto";
+import "automsgs/msgs/builtin_interfaces/duration.proto";
+import "automsgs/msgs/status_msgs/status_msgs.proto";
+import "automsgs/msgs/vehicle_msgs/vehicle_msgs.proto";
 
 // Internal task envelope (lighter than bridge RequestHeader).
 message TaskHeader {
-  commsgs.proto.builtin_interfaces.Time stamp = 1;
+  automsgs.msgs.builtin_interfaces.Time stamp = 1;
   string task_id = 2;
   string client_id = 3;
-  commsgs.proto.vehicle_msgs.RobotTaskType task_type = 4;
+  automsgs.msgs.vehicle_msgs.RobotTaskType task_type = 4;
 }
 
 message TaskResult {
-  commsgs.proto.vehicle_msgs.RobotTaskStatus status = 1;
-  commsgs.proto.error_code.ErrorCode error_code = 2;
+  automsgs.msgs.vehicle_msgs.RobotTaskStatus status = 1;
+  automsgs.msgs.status_msgs.StatusCode error_code = 2;
   string message = 3;
 }
 

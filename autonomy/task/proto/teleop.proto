@@ -16,8 +16,12 @@ syntax = "proto3";
 
 package autonomy.task.proto;
 
-import "autonomy/commsgs/proto/builtin_interfaces.proto";
-import "autonomy/commsgs/proto/geometry_msgs.proto";
+import "automsgs/msgs/builtin_interfaces/time.proto";
+import "automsgs/msgs/builtin_interfaces/duration.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
 import "autonomy/task/proto/task_common.proto";
 
 // apps/teleop — aligned with bridge TeleopCommand (Bidi stream).
@@ -40,8 +44,8 @@ enum TeleopStatus {
 message TeleopGoal {
   TaskHeader header = 1;
   TeleopCommand command = 2;
-  commsgs.proto.geometry_msgs.TwistStamped velocity = 3;
-  commsgs.proto.builtin_interfaces.Duration session_timeout = 4;
+  automsgs.msgs.geometry_msgs.TwistStamped velocity = 3;
+  automsgs.msgs.builtin_interfaces.Duration session_timeout = 4;
   float max_linear_speed = 5;
   float max_angular_speed = 6;
   float watchdog_timeout_sec = 7;
@@ -50,7 +54,7 @@ message TeleopGoal {
 
 message TeleopFeedback {
   TeleopStatus status = 1;
-  commsgs.proto.geometry_msgs.TwistStamped applied_velocity = 2;
+  automsgs.msgs.geometry_msgs.TwistStamped applied_velocity = 2;
 }
 
 message TeleopResult {

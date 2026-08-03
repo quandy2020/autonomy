@@ -48,7 +48,7 @@ public:
     bool IsRunning() const { return running_; }
 
     /** @return Static transforms loaded at construction. */
-    const commsgs::geometry_msgs::TransformStampeds& GetTransformStampedsData()
+    const automsgs::msgs::geometry_msgs::TransformStampeds& GetTransformStampedsData()
         const {
         return static_transform_->GetTransformStampeds();
     }

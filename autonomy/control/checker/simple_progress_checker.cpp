@@ -17,6 +17,7 @@
 #include "autonomy/control/checker/simple_progress_checker.hpp"
 
 #include "autonomy/transform/tf2/utils.h"
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 
 namespace autonomy {
 namespace control {
@@ -28,13 +29,12 @@ void SimpleProgressChecker::Initialize(const std::string& plugin_name) {
 }
 
 bool SimpleProgressChecker::Check(
-    commsgs::geometry_msgs::PoseStamped& current_pose) {
+    automsgs::msgs::geometry_msgs::PoseStamped& current_pose) {
     // Convert Pose to Pose2D
-    commsgs::geometry_msgs::Pose2D current_pose2d;
-    current_pose2d.x = current_pose.pose.position.x;
-    current_pose2d.y = current_pose.pose.position.y;
-    current_pose2d.theta =
-        transform::tf2::getYaw(current_pose.pose.orientation);
+    automsgs::msgs::geometry_msgs::Pose2D current_pose2d;
+    current_pose2d.set_x(current_pose.pose().position().x());
+    current_pose2d.set_y(current_pose.pose().position().y());
+    current_pose2d.set_theta(transform::tf2::getYaw(current_pose.pose().orientation()));
 
     if ((!baseline_pose_set_) || (IsRobotMovedEnough(current_pose2d))) {
         ResetBaselinePose(current_pose2d);
@@ -55,22 +55,22 @@ void SimpleProgressChecker::SetRequiredMovementRadius(double radius) {
 }
 
 void SimpleProgressChecker::ResetBaselinePose(
-    const commsgs::geometry_msgs::Pose2D& pose) {
+    const automsgs::msgs::geometry_msgs::Pose2D& pose) {
     baseline_pose_ = pose;
     // baseline_time_ = clock_->now();
     baseline_pose_set_ = true;
 }
 
 bool SimpleProgressChecker::IsRobotMovedEnough(
-    const commsgs::geometry_msgs::Pose2D& pose) {
+    const automsgs::msgs::geometry_msgs::Pose2D& pose) {
     return PoseDistance(pose, baseline_pose_) > radius_;
 }
 
 double SimpleProgressChecker::PoseDistance(
-    const commsgs::geometry_msgs::Pose2D& pose1,
-    const commsgs::geometry_msgs::Pose2D& pose2) {
-    double dx = pose1.x - pose2.x;
-    double dy = pose1.y - pose2.y;
+    const automsgs::msgs::geometry_msgs::Pose2D& pose1,
+    const automsgs::msgs::geometry_msgs::Pose2D& pose2) {
+    double dx = pose1.x() - pose2.x();
+    double dy = pose1.y() - pose2.y();
 
     return std::hypot(dx, dy);
 }

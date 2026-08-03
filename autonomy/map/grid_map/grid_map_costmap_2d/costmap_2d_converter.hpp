@@ -334,7 +334,7 @@
 //       errorMessage_ = "Could not get robot pose, is it actually published?";
 //       return false;
 //     }
-//     Position robotPosition(tfPose.pose.position.x, tfPose.pose.position.y);
+//     Position robotPosition(tfPose.pose().position().x(), tfPose.pose().position().y());
 // #else
 //     tf::Stamped<tf::Pose> tfPose;
 //     if (!costmap2d.getRobotPose(tfPose)) {
@@ -434,11 +434,9 @@
 //     // TODO
 //     isValidWindow =
 //     costmapSubwindow.copyCostmapWindow(*(costmap2d.getCostmap()),
-//                                                        position.x() -
-//                                                        geometry.x() / 2.0, //
+//                                                        position.x() - //                                                        geometry.x() / 2.0, //
 //                                                        subwindow_bottom_left_x
-//                                                        position.y() -
-//                                                        geometry.y() / 2.0, //
+//                                                        position.y() - //                                                        geometry.y() / 2.0, //
 //                                                        subwindow_bottom_left_y
 //                                                        geometry.x(),
 //                                                        geometry.y());

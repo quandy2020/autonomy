@@ -22,10 +22,25 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/builtin_interfaces.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
-#include "autonomy/commsgs/map_msgs.hpp"
-#include "autonomy/commsgs/sensor_msgs.hpp"
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/builtin_interfaces/duration.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/nav_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/imu.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
 #include "autonomy/map/costmap_2d/costmap_layer.hpp"
 #include "autonomy/map/costmap_2d/layered_costmap.hpp"
 #include "autonomy/transform/buffer.hpp"
@@ -107,10 +122,10 @@ public:
      * @brief Handle an incoming Range message to populate into costmap
      */
     void bufferIncomingRangeMsg(
-        const commsgs::sensor_msgs::Range::SharedPtr range_message);
+        const std::shared_ptr<automsgs::msgs::sensor_msgs::Range> range_message);
 
     /** @brief Inject range measurement from an external bridge (e.g. ROS). */
-    void feedRange(const commsgs::sensor_msgs::Range& range);
+    void feedRange(const automsgs::msgs::sensor_msgs::Range& range);
 
 protected:
     /**
@@ -120,24 +135,24 @@ protected:
     /**
      * @brief Update the actual costmap with the values processed
      */
-    void updateCostmap(commsgs::sensor_msgs::Range& range_message,
+    void updateCostmap(automsgs::msgs::sensor_msgs::Range& range_message,
                        bool clear_sensor_cone);
 
     /**
      * @brief Process general incoming range sensor data. If min=max ranges,
      * fixed processor callback is used, else uses variable callback
      */
-    void processRangeMsg(commsgs::sensor_msgs::Range& range_message);
+    void processRangeMsg(automsgs::msgs::sensor_msgs::Range& range_message);
 
     /**
      * @brief Process fixed range incoming range sensor data
      */
-    void processFixedRangeMsg(commsgs::sensor_msgs::Range& range_message);
+    void processFixedRangeMsg(automsgs::msgs::sensor_msgs::Range& range_message);
 
     /**
      * @brief Process variable range incoming range sensor data
      */
-    void processVariableRangeMsg(commsgs::sensor_msgs::Range& range_message);
+    void processVariableRangeMsg(automsgs::msgs::sensor_msgs::Range& range_message);
 
     /**
      * @brief Reset the angle min/max x, and min/max y values
@@ -184,10 +199,10 @@ protected:
         return static_cast<unsigned char>(p * LETHAL_OBSTACLE);
     }
 
-    std::function<void(commsgs::sensor_msgs::Range& range_message)>
+    std::function<void(automsgs::msgs::sensor_msgs::Range& range_message)>
         processRangeMessageFunc_;
     std::mutex range_message_mutex_;
-    std::list<commsgs::sensor_msgs::Range> range_msgs_buffer_;
+    std::list<automsgs::msgs::sensor_msgs::Range> range_msgs_buffer_;
 
     double max_angle_, phi_v_;
     double inflate_cone_;

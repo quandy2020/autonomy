@@ -945,11 +945,9 @@ bool GridMap::atPositionLinearInterpolated(const std::string& layer,
     const Position positionRed = (position - point) / resolution_;
     const Position positionRedFlip = Position(1., 1.) - positionRed;
 
-    value = f[0] * positionRedFlip.x() * positionRedFlip.y() +
-            f[1] * positionRed.x() *
-                positionRedFlip.y() +  // NOLINT (implicit-float-conversion)
-            f[2] * positionRedFlip.x() * positionRed.y() +
-            f[3] * positionRed.x() *
+    value = f[0] * positionRedFlip.x() * positionRedFlip.y() + f[1] * positionRed.x() *
+                positionRedFlip.y() + // NOLINT (implicit-float-conversion)
+            f[2] * positionRedFlip.x() * positionRed.y() + f[3] * positionRed.x() *
                 positionRed.y();  // NOLINT (implicit-float-conversion)
     return true;
 }

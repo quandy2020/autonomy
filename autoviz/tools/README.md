@@ -30,6 +30,8 @@ tools/
 Runtime helpers installed with the package live under [`../scripts/`](../scripts/)
 (`mcap_to_record.py`, `publish_test_sensors.py`, BICMap examples, desktop install).
 
+Example catalog, verification, and headless tests: [`../examples/`](../examples/).
+
 ## Common tasks
 
 | Task | Command |
@@ -40,6 +42,8 @@ Runtime helpers installed with the package live under [`../scripts/`](../scripts
 | Copy QGC F450 meshes | `tools/setup/copy_qgc_drone_meshes.sh [QGC_ROOT]` |
 | Publish test sensor data | `python3 ../scripts/publish_test_sensors.py` |
 | Clean build tree | `python3 tools/clean.py` |
+| Verify BICMap example catalog | `python3 examples/verify_catalog.py` |
+| Run example headless tests | `examples/run_all_tests.sh` (needs `--tests` configure) |
 
 ## Translations
 

@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-#include "autonomy/commsgs/point_field_conversion.hpp"
+#include <automsgs/msgs/sensor_msgs/point_field_conversion.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_math.hpp"
@@ -36,9 +36,9 @@ namespace map {
 namespace costmap_2d {
 namespace {
 
-using commsgs::sensor_msgs::LaserScan;
-using commsgs::sensor_msgs::PointCloud2;
-using commsgs::sensor_msgs::PointField;
+using automsgs::msgs::sensor_msgs::LaserScan;
+using automsgs::msgs::sensor_msgs::PointCloud2;
+using automsgs::msgs::sensor_msgs::PointField;
 
 struct XYZFieldOffsets {
     int x{-1};
@@ -53,52 +53,50 @@ struct XYZFieldOffsets {
 
 XYZFieldOffsets FindXYZOffsets(const PointCloud2& cloud) {
     XYZFieldOffsets offsets;
-    offsets.point_step = static_cast<int>(cloud.point_step);
-    for (const auto& field : cloud.fields) {
-        if (field.name == "x") {
-            offsets.x = static_cast<int>(field.offset);
-            offsets.x_datatype = field.datatype;
-        } else if (field.name == "y") {
-            offsets.y = static_cast<int>(field.offset);
-            offsets.y_datatype = field.datatype;
-        } else if (field.name == "z") {
-            offsets.z = static_cast<int>(field.offset);
-            offsets.z_datatype = field.datatype;
+    offsets.point_step = static_cast<int>(cloud.point_step());
+    for (const auto& field : cloud.fields()) {
+        if (field.name() == "x") {
+            offsets.x = static_cast<int>(field.offset());
+            offsets.x_datatype = static_cast<uint8_t>(field.datatype());
+        } else if (field.name() == "y") {
+            offsets.y = static_cast<int>(field.offset());
+            offsets.y_datatype = static_cast<uint8_t>(field.datatype());
+        } else if (field.name() == "z") {
+            offsets.z = static_cast<int>(field.offset());
+            offsets.z_datatype = static_cast<uint8_t>(field.datatype());
         }
     }
     return offsets;
 }
 
 void ProjectLaserScanToPointCloud2(const LaserScan& scan, PointCloud2& cloud) {
-    cloud.header = scan.header;
-    cloud.height = 1;
-    cloud.width = static_cast<uint32_t>(scan.ranges.size());
-    cloud.is_bigendian = false;
-    cloud.is_dense = false;
-    cloud.fields.resize(3);
-    cloud.fields[0].name = "x";
-    cloud.fields[0].offset = 0;
-    cloud.fields[0].datatype = PointField::FLOAT32;
-    cloud.fields[0].count = 1;
-    cloud.fields[1].name = "y";
-    cloud.fields[1].offset = 4;
-    cloud.fields[1].datatype = PointField::FLOAT32;
-    cloud.fields[1].count = 1;
-    cloud.fields[2].name = "z";
-    cloud.fields[2].offset = 8;
-    cloud.fields[2].datatype = PointField::FLOAT32;
-    cloud.fields[2].count = 1;
-    cloud.point_step = 12;
-    cloud.row_step = cloud.point_step * cloud.width;
-    cloud.data.resize(cloud.row_step);
+    *cloud.mutable_header() = scan.header();
+    cloud.set_height(1);
+    cloud.set_width(static_cast<uint32_t>(scan.ranges_size()));
+    cloud.set_is_bigendian(false);
+    cloud.set_is_dense(false);
+    cloud.clear_fields();
+    auto add_field = [&cloud](const std::string& name, uint32_t offset) {
+        auto* field = cloud.add_fields();
+        field->set_name(name);
+        field->set_offset(offset);
+        field->set_datatype(PointField::FLOAT32);
+        field->set_count(1);
+    };
+    add_field("x", 0);
+    add_field("y", 4);
+    add_field("z", 8);
+    cloud.set_point_step(12);
+    cloud.set_row_step(cloud.point_step() * cloud.width());
+    cloud.mutable_data()->resize(cloud.row_step());
 
-    float angle = scan.angle_min;
-    for (size_t i = 0; i < scan.ranges.size(); ++i) {
-        const float range = scan.ranges[i];
-        float* point =
-            reinterpret_cast<float*>(&cloud.data[i * cloud.point_step]);
-        if (!std::isfinite(range) || range < scan.range_min ||
-            range > scan.range_max) {
+    float angle = scan.angle_min();
+    for (int i = 0; i < scan.ranges_size(); ++i) {
+        const float range = scan.ranges(i);
+        float* point = reinterpret_cast<float*>(
+            &(*cloud.mutable_data())[i * cloud.point_step()]);
+        if (!std::isfinite(range) || range < scan.range_min() ||
+            range > scan.range_max()) {
             point[0] = std::numeric_limits<float>::quiet_NaN();
             point[1] = std::numeric_limits<float>::quiet_NaN();
             point[2] = std::numeric_limits<float>::quiet_NaN();
@@ -107,7 +105,7 @@ void ProjectLaserScanToPointCloud2(const LaserScan& scan, PointCloud2& cloud) {
             point[1] = range * std::sin(angle);
             point[2] = 0.0f;
         }
-        angle += scan.angle_increment;
+        angle += scan.angle_increment();
     }
 }
 
@@ -132,19 +130,19 @@ void MarkObstaclePoints(const PointCloud2& cloud, const Observation& obs,
     const double sq_obstacle_min_range =
         obs.obstacle_min_range_ * obs.obstacle_min_range_;
     const size_t point_count =
-        static_cast<size_t>(cloud.width) * static_cast<size_t>(cloud.height);
+        static_cast<size_t>(cloud.width()) * static_cast<size_t>(cloud.height());
 
     for (size_t point_index = 0; point_index < point_count; ++point_index) {
-        const size_t point_offset = point_index * cloud.point_step;
-        const unsigned char* point_data = cloud.data.data() + point_offset;
+        const size_t point_offset = point_index * cloud.point_step();
+        const unsigned char* point_data = reinterpret_cast<const unsigned char*>(cloud.data().data()) + point_offset;
         const double px =
-            commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+            automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                 point_data + offsets.x, offsets.x_datatype);
         const double py =
-            commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+            automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                 point_data + offsets.y, offsets.y_datatype);
         const double pz =
-            commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+            automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
                 point_data + offsets.z, offsets.z_datatype);
 
         if (!std::isfinite(px) || !std::isfinite(py) || !std::isfinite(pz)) {
@@ -155,9 +153,9 @@ void MarkObstaclePoints(const PointCloud2& cloud, const Observation& obs,
         }
 
         const double sq_dist =
-            (px - obs.origin_.x) * (px - obs.origin_.x) +
-            (py - obs.origin_.y) * (py - obs.origin_.y) +
-            (pz - obs.origin_.z) * (pz - obs.origin_.z);
+            (px - obs.origin_.x()) * (px - obs.origin_.x()) +
+            (py - obs.origin_.y()) * (py - obs.origin_.y()) +
+            (pz - obs.origin_.z()) * (pz - obs.origin_.z());
         if (sq_dist >= sq_obstacle_max_range || sq_dist < sq_obstacle_min_range) {
             continue;
         }
@@ -272,7 +270,7 @@ void ObstacleLayer::onInitialize() {
     matchSize();
 }
 
-void ObstacleLayer::feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan) {
+void ObstacleLayer::feedLaserScan(const automsgs::msgs::sensor_msgs::LaserScan& scan) {
     if (!enabled_ || marking_buffers_.empty()) {
         return;
     }
@@ -285,7 +283,7 @@ void ObstacleLayer::feedLaserScan(const commsgs::sensor_msgs::LaserScan& scan) {
 }
 
 void ObstacleLayer::feedPointCloud2(
-    const commsgs::sensor_msgs::PointCloud2& cloud) {
+    const automsgs::msgs::sensor_msgs::PointCloud2& cloud) {
     if (!enabled_ || marking_buffers_.empty()) {
         return;
     }
@@ -298,7 +296,7 @@ void ObstacleLayer::feedPointCloud2(
 }
 
 void ObstacleLayer::laserScanCallback(
-    commsgs::sensor_msgs::LaserScan::ConstSharedPtr message,
+    std::shared_ptr<const automsgs::msgs::sensor_msgs::LaserScan> message,
     const std::shared_ptr<ObservationBuffer>& buffer) {
     PointCloud2 cloud;
     ProjectLaserScanToPointCloud2(*message, cloud);
@@ -308,13 +306,14 @@ void ObstacleLayer::laserScanCallback(
 }
 
 void ObstacleLayer::laserScanValidInfCallback(
-    commsgs::sensor_msgs::LaserScan::ConstSharedPtr raw_message,
+    std::shared_ptr<const automsgs::msgs::sensor_msgs::LaserScan> raw_message,
     const std::shared_ptr<ObservationBuffer>& buffer) {
     constexpr float kEpsilon = 0.0001f;
     LaserScan message = *raw_message;
-    for (float& range : message.ranges) {
+    for (int i = 0; i < message.ranges_size(); ++i) {
+        float range = message.ranges(i);
         if (!std::isfinite(range) && range > 0.0f) {
-            range = message.range_max - kEpsilon;
+            message.set_ranges(i, message.range_max() - kEpsilon);
         }
     }
     PointCloud2 cloud;
@@ -325,7 +324,7 @@ void ObstacleLayer::laserScanValidInfCallback(
 }
 
 void ObstacleLayer::pointCloud2Callback(
-    commsgs::sensor_msgs::PointCloud2::ConstSharedPtr message,
+    std::shared_ptr<const automsgs::msgs::sensor_msgs::PointCloud2> message,
     const std::shared_ptr<ObservationBuffer>& buffer) {
     buffer->lock();
     buffer->bufferCloud(*message);
@@ -392,7 +391,7 @@ void ObstacleLayer::updateFootprint(double robot_x, double robot_y,
                        transformed_footprint_);
 
     for (unsigned int i = 0; i < transformed_footprint_.size(); i++) {
-        touch(transformed_footprint_[i].x, transformed_footprint_[i].y, min_x,
+        touch(transformed_footprint_[i].x(), transformed_footprint_[i].y(), min_x,
               min_y, max_x, max_y);
     }
 }
@@ -481,8 +480,8 @@ bool ObstacleLayer::getClearingObservations(
 void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation,
                                       double* min_x, double* min_y,
                                       double* max_x, double* max_y) {
-    const double ox = clearing_observation.origin_.x;
-    const double oy = clearing_observation.origin_.y;
+    const double ox = clearing_observation.origin_.x();
+    const double oy = clearing_observation.origin_.y();
     const PointCloud2& cloud = *(clearing_observation.cloud_);
 
     unsigned int x0 = 0;
@@ -503,7 +502,7 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation,
     }
 
     const size_t point_count =
-        static_cast<size_t>(cloud.width) * static_cast<size_t>(cloud.height);
+        static_cast<size_t>(cloud.width()) * static_cast<size_t>(cloud.height());
     MarkCell marker(costmap_, FREE_SPACE);
     const unsigned int cell_raytrace_max_range = cellDistance(
         clearing_observation.raytrace_max_range_);
@@ -511,11 +510,11 @@ void ObstacleLayer::raytraceFreespace(const Observation& clearing_observation,
         clearing_observation.raytrace_min_range_);
 
     for (size_t point_index = 0; point_index < point_count; ++point_index) {
-        const size_t point_offset = point_index * cloud.point_step;
-        const unsigned char* point_data = cloud.data.data() + point_offset;
-        double wx = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+        const size_t point_offset = point_index * cloud.point_step();
+        const unsigned char* point_data = reinterpret_cast<const unsigned char*>(cloud.data().data()) + point_offset;
+        double wx = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
             point_data + offsets.x, offsets.x_datatype);
-        double wy = commsgs::sensor_msgs::readPointCloud2BufferValue<double>(
+        double wy = automsgs::msgs::sensor_msgs::readPointCloud2BufferValue<double>(
             point_data + offsets.y, offsets.y_datatype);
 
         if (!std::isfinite(wx) || !std::isfinite(wy)) {

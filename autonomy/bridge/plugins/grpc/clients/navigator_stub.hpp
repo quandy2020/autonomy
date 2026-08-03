@@ -26,7 +26,7 @@
 #include "autonomy/bridge/node_client.hpp"
 #include "autonomy/bridge/proto/external_command_service.pb.h"
 #include "autonomy/common/macros.hpp"
-#include "autonomy/commsgs/proto/nav_msgs.pb.h"
+#include <automsgs/actions/nav_actions.pb.h>
 
 namespace autonomy {
 namespace bridge {
@@ -69,9 +69,9 @@ private:
     enum class ActiveMode { NONE, TO_POSE, THROUGH_POSES };
 
     using NavigateToPoseClient =
-        NodeClient<commsgs::proto::nav_msgs::NavigateToPoseAction>;
+        NodeClient<automsgs::actions::NavigateToPoseAction>;
     using NavigateThroughPosesClient =
-        NodeClient<commsgs::proto::nav_msgs::NavigateThroughPosesAction>;
+        NodeClient<automsgs::actions::NavigateThroughPosesAction>;
     using ToPoseGoalHandle = NavigateToPoseClient::GoalHandle;
     using ThroughPosesGoalHandle = NavigateThroughPosesClient::GoalHandle;
 

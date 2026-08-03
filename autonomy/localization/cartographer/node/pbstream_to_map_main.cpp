@@ -60,8 +60,8 @@ void Run(const std::string& pbstream_filename, const std::string& map_filestem,
     WritePgm(image, resolution, &pgm_writer);
 
     const Eigen::Vector2d origin(
-        -result.origin.x() * resolution,
-        (result.origin.y() - image.height()) * resolution);
+        -result.origin().x() * resolution,
+        (result.origin().y() - image.height()) * resolution);
 
     ::cartographer::io::StreamFileWriter yaml_writer(map_filestem + ".yaml");
     WriteYaml(resolution, origin, pgm_writer.GetFilename(), &yaml_writer);

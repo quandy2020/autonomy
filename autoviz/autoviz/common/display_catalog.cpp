@@ -30,34 +30,34 @@ const std::vector<DisplayTypeInfo>& StrataCatalog() {
   static const std::vector<DisplayTypeInfo> kCatalog = {
       MakeInfo("StrataPoi", "autoviz", "Strata POI markers.",
                {"automsgs.msgs.strata_msgs.PoiMarkerArray",
-                "autonomy.commsgs.proto.strata_msgs.PoiMarkerArray"}),
+                "automsgs.msgs.strata_msgs.PoiMarkerArray"}),
       MakeInfo("StrataRobot", "autoviz", "Strata robot markers.",
                {"automsgs.msgs.strata_msgs.RobotMarkerArray",
-                "autonomy.commsgs.proto.strata_msgs.RobotMarkerArray"}),
+                "automsgs.msgs.strata_msgs.RobotMarkerArray"}),
       MakeInfo("StrataSemanticZone", "autoviz", "Strata semantic zones.",
                {"automsgs.msgs.strata_msgs.SemanticZoneArray",
-                "autonomy.commsgs.proto.strata_msgs.SemanticZoneArray"}),
+                "automsgs.msgs.strata_msgs.SemanticZoneArray"}),
       MakeInfo("StrataRoadGraph", "autoviz", "Strata road graph.",
                {"automsgs.msgs.strata_msgs.RoadGraph",
-                "autonomy.commsgs.proto.strata_msgs.RoadGraph"}),
+                "automsgs.msgs.strata_msgs.RoadGraph"}),
       MakeInfo("StrataCanvasLabel", "autoviz", "Strata canvas labels.",
                {"automsgs.msgs.strata_msgs.CanvasLabelArray",
-                "autonomy.commsgs.proto.strata_msgs.CanvasLabelArray"}),
+                "automsgs.msgs.strata_msgs.CanvasLabelArray"}),
       MakeInfo("StrataLabelBubble", "autoviz", "Strata label bubbles.",
                {"automsgs.msgs.strata_msgs.LabelBubbleArray",
-                "autonomy.commsgs.proto.strata_msgs.LabelBubbleArray"}),
+                "automsgs.msgs.strata_msgs.LabelBubbleArray"}),
       MakeInfo("StrataIotBubble", "autoviz", "Strata IoT bubbles.",
                {"automsgs.msgs.strata_msgs.IotBubbleArray",
-                "autonomy.commsgs.proto.strata_msgs.IotBubbleArray"}),
+                "automsgs.msgs.strata_msgs.IotBubbleArray"}),
       MakeInfo("StrataRobot3D", "autoviz", "Strata robot 3D layers.",
                {"automsgs.msgs.strata_msgs.Robot3DLayerArray",
-                "autonomy.commsgs.proto.strata_msgs.Robot3DLayerArray"}),
+                "automsgs.msgs.strata_msgs.Robot3DLayerArray"}),
       MakeInfo("StrataFov", "autoviz", "Strata robot field-of-view.",
                {"automsgs.msgs.visualization_msgs.MarkerArray",
-                "autonomy.commsgs.proto.visualization_msgs.MarkerArray"}),
+                "automsgs.msgs.visualization_msgs.MarkerArray"}),
       MakeInfo("StrataBuilding", "autoviz", "Strata building extrusions.",
                {"automsgs.msgs.visualization_msgs.MarkerArray",
-                "autonomy.commsgs.proto.visualization_msgs.MarkerArray"}),
+                "automsgs.msgs.visualization_msgs.MarkerArray"}),
   };
   return kCatalog;
 }
@@ -159,7 +159,7 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
 bool MessageTypeMatches(const std::string& channel_type,
                         const std::vector<std::string>& display_types) {
   for (const auto& candidate : display_types) {
-    if (commsgs::MessageTypesCompatible(channel_type, candidate)) {
+    if (automsgs::msgs::MessageTypesCompatible(channel_type, candidate)) {
       return true;
     }
   }
@@ -219,7 +219,7 @@ std::vector<std::string> DisplayCatalog::typesForMessageType(
       continue;
     }
     for (const auto& candidate : info.message_types) {
-      if (commsgs::MessageTypesCompatible(message_type, candidate)) {
+      if (automsgs::msgs::MessageTypesCompatible(message_type, candidate)) {
         matches.push_back(info.type);
         break;
       }

@@ -27,15 +27,19 @@
 
 #include "autolink/autolink.hpp"
 #include "autolink/time/rate.hpp"
-#include "autonomy/commsgs/proto/diagnostic_msgs.pb.h"
-#include "autonomy/commsgs/proto/geometry_msgs.pb.h"
-#include "autonomy/commsgs/proto/map_msgs.pb.h"
-#include "autonomy/commsgs/proto/planning_msgs.pb.h"
-#include "autonomy/commsgs/proto/sensor_msgs.pb.h"
-#include "autonomy/commsgs/proto/tf2_msgs.pb.h"
-#include "autonomy/commsgs/proto/vehicle_msgs.pb.h"
-#include "autonomy/commsgs/proto/vision_msgs.pb.h"
-#include "autonomy/commsgs/proto/visualization_msgs.pb.h"
+#include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
+#include <automsgs/msgs/map_msgs/map_msgs.pb.h>
+#include <automsgs/msgs/planning_msgs/planning_msgs.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
+#include <automsgs/msgs/vehicle_msgs/vehicle_msgs.pb.h>
+#include <automsgs/msgs/vision_msgs/detection2d_array.pb.h>
+#include <automsgs/msgs/visualization_msgs/marker.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
+#include <automsgs/msgs/sensor_msgs/range.pb.h>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 
@@ -56,17 +60,17 @@ namespace {
 namespace map_utils = autonomy::map::costmap_2d::utils;
 namespace costmap = autonomy::map::costmap_2d;
 
-namespace builtin_interfaces = autonomy::commsgs::proto::builtin_interfaces;
-namespace diagnostic_msgs = autonomy::commsgs::proto::diagnostic_msgs;
-namespace geometry_msgs = autonomy::commsgs::proto::geometry_msgs;
-namespace map_msgs = autonomy::commsgs::proto::map_msgs;
-namespace planning_msgs = autonomy::commsgs::proto::planning_msgs;
-namespace sensor_msgs = autonomy::commsgs::proto::sensor_msgs;
-namespace std_msgs = autonomy::commsgs::proto::std_msgs;
-namespace tf2_msgs = autonomy::commsgs::proto::tf2_msgs;
-namespace vehicle_msgs = autonomy::commsgs::proto::vehicle_msgs;
-namespace vision_msgs = autonomy::commsgs::proto::vision_msgs;
-namespace visualization_msgs = autonomy::commsgs::proto::visualization_msgs;
+namespace builtin_interfaces = automsgs::msgs::builtin_interfaces;
+namespace diagnostic_msgs = automsgs::msgs::diagnostic_msgs;
+namespace geometry_msgs = automsgs::msgs::geometry_msgs;
+namespace map_msgs = automsgs::msgs::map_msgs;
+namespace planning_msgs = automsgs::msgs::planning_msgs;
+namespace sensor_msgs = automsgs::msgs::sensor_msgs;
+namespace std_msgs = automsgs::msgs::std_msgs;
+namespace tf2_msgs = automsgs::msgs::tf2_msgs;
+namespace vehicle_msgs = automsgs::msgs::vehicle_msgs;
+namespace vision_msgs = automsgs::msgs::vision_msgs;
+namespace visualization_msgs = automsgs::msgs::visualization_msgs;
 
 constexpr int32_t kMarkerAdd = 0;
 constexpr int32_t kMarkerSphere = 2;
@@ -147,7 +151,7 @@ visualization_msgs::Marker MakeRobotMarker(uint64_t stamp_ns, double x,
                                            double y) {
   visualization_msgs::Marker marker;
   FillHeader(marker.mutable_header(), "map", stamp_ns);
-  marker.set_ns("fake");
+  marker.set_ns("fake"));
   marker.set_id(0);
   marker.set_type(kMarkerSphere);
   marker.set_action(kMarkerAdd);
@@ -168,7 +172,7 @@ visualization_msgs::Marker MakeRobotMarker(uint64_t stamp_ns, double x,
 visualization_msgs::Marker MakePathMarker(uint64_t stamp_ns) {
   visualization_msgs::Marker marker;
   FillHeader(marker.mutable_header(), "map", stamp_ns);
-  marker.set_ns("fake");
+  marker.set_ns("fake"));
   marker.set_id(1);
   marker.set_type(kMarkerLineStrip);
   marker.set_action(kMarkerAdd);
@@ -1065,7 +1069,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const uint64_t static_stamp_ns = autolink::Time::Now().ToNanosecond();
+  const uint64_t static_stamp_ns = autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToNanosecond();
   PublishStaticAssets(publishers, static_stamp_ns);
   PublishPointCloud2Synced(publishers.point_cloud2, static_stamp_ns);
   LOG(INFO) << "Published static TF/maps/scene once; point_cloud2 resyncs at "
@@ -1082,7 +1086,7 @@ int main(int argc, char** argv) {
   autolink::Rate rate(FLAGS_rate_hz);
   uint64_t seq = 0;
   while (autolink::OK()) {
-    const uint64_t stamp_ns = autolink::Time::Now().ToNanosecond();
+    const uint64_t stamp_ns = autolink::automsgs::msgs::builtin_interfaces::TimeNow().ToNanosecond();
     const MotionState motion = ComputeMotion(seq);
     PublishDynamicFrame(publishers, stamp_ns, seq, motion);
 

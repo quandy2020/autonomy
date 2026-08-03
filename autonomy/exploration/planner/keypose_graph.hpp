@@ -18,7 +18,15 @@
 
 #include <vector>
 
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/exploration/planning_env.hpp"
 #include "autonomy/exploration/proto/exploration_options.pb.h"
 
@@ -120,7 +128,7 @@ public:
      * @param to_z Goal z [m]
      * @return Path points including start / goal
      */
-    std::vector<commsgs::geometry_msgs::Point> ShortestPathPoints(
+    std::vector<automsgs::msgs::geometry_msgs::Point> ShortestPathPoints(
         double from_x, double from_y, double from_z, double to_x, double to_y,
         double to_z) const;
 
@@ -162,7 +170,7 @@ private:
      * @param node Graph node
      * @return Point message
      */
-    static commsgs::geometry_msgs::Point ToPoint(const KeyposeNode& node);
+    static automsgs::msgs::geometry_msgs::Point ToPoint(const KeyposeNode& node);
 
     proto::ExplorationOptions options_;  //!< @brief exploration options
     std::vector<KeyposeNode> nodes_;     //!< @brief graph nodes

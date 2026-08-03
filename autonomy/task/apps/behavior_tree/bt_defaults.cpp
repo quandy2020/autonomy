@@ -8,7 +8,7 @@ namespace autonomy {
 namespace task {
 namespace {
 
-using RobotTaskType = ::autonomy::commsgs::proto::vehicle_msgs::RobotTaskType;
+using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
 namespace proto = ::autonomy::task::proto;
 
 const proto::TaskBehaviorTreeProfile* ProtoProfile(

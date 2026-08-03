@@ -19,6 +19,7 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
+#include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 
 namespace autonomy {
 namespace map {
@@ -57,20 +58,20 @@ void BinaryFilter::initializeFilter(const std::string& filter_info_topic) {
     changeState(default_state_);
 }
 
-commsgs::map_msgs::CostmapFilterInfo::SharedPtr
+std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>
 BinaryFilter::makeDefaultFilterInfo(const std::string& mask_topic, float base,
                                     float multiplier) {
-    auto info = std::make_shared<commsgs::map_msgs::CostmapFilterInfo>();
-    info->type = BINARY_FILTER;
-    info->filter_mask_topic = mask_topic;
-    info->base = base;
-    info->multiplier = multiplier;
+    auto info = std::make_shared<automsgs::msgs::map_msgs::CostmapFilterInfo>();
+    info->set_type(BINARY_FILTER);
+    info->set_filter_mask_topic(mask_topic);
+    info->set_base(base);
+    info->set_multiplier(multiplier);
     return info;
 }
 
 void BinaryFilter::applyConfiguration(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& info,
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& mask) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& info,
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& mask) {
     if (info) {
         handleFilterInfo(info);
     }
@@ -80,12 +81,12 @@ void BinaryFilter::applyConfiguration(
 }
 
 void BinaryFilter::handleFilterInfo(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr& msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo>& msg) {
     filterInfoCallback(msg);
 }
 
 void BinaryFilter::setFilterMask(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr& msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid>& msg) {
     maskCallback(msg);
 }
 
@@ -130,19 +131,19 @@ bool BinaryFilter::hasFilterMask() {
 }
 
 bool BinaryFilter::validateFilterMask(
-    const commsgs::map_msgs::OccupancyGrid& msg) {
-    if (msg.info.width == 0 || msg.info.height == 0) {
+    const automsgs::msgs::map_msgs::OccupancyGrid& msg) {
+    if (msg.info().width() == 0 || msg.info().height() == 0) {
         AERROR << "BinaryFilter: mask has zero width/height";
         return false;
     }
-    if (msg.info.resolution <= 0.0) {
+    if (msg.info().resolution() <= 0.0) {
         AERROR << "BinaryFilter: mask resolution must be positive";
         return false;
     }
     const size_t expected =
-        static_cast<size_t>(msg.info.width) * static_cast<size_t>(msg.info.height);
-    if (msg.data.size() < expected) {
-        AERROR << "BinaryFilter: mask data size " << msg.data.size()
+        static_cast<size_t>(msg.info().width()) * static_cast<size_t>(msg.info().height());
+    if (msg.data().size() < expected) {
+        AERROR << "BinaryFilter: mask data size " << msg.data().size()
                << " < expected " << expected;
         return false;
     }
@@ -150,7 +151,7 @@ bool BinaryFilter::validateFilterMask(
 }
 
 void BinaryFilter::filterInfoCallback(
-    const commsgs::map_msgs::CostmapFilterInfo::SharedPtr msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::CostmapFilterInfo> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -158,8 +159,8 @@ void BinaryFilter::filterInfoCallback(
         return;
     }
 
-    if (msg->type != BINARY_FILTER) {
-        AERROR << "BinaryFilter: unsupported filter type " << msg->type
+    if (msg->type() != BINARY_FILTER) {
+        AERROR << "BinaryFilter: unsupported filter type " << msg->type()
                << " (expected BINARY_FILTER="
                << static_cast<int>(BINARY_FILTER) << ")";
         return;
@@ -171,17 +172,17 @@ void BinaryFilter::filterInfoCallback(
         AWARN << "BinaryFilter: updating filter info from " << filter_info_topic_;
     }
 
-    base_ = static_cast<double>(msg->base);
-    multiplier_ = static_cast<double>(msg->multiplier);
+    base_ = static_cast<double>(msg->base());
+    multiplier_ = static_cast<double>(msg->multiplier());
 
-    if (!mask_topic_.empty() && mask_topic_ != msg->filter_mask_topic) {
+    if (!mask_topic_.empty() && mask_topic_ != msg->filter_mask_topic()) {
         AWARN << "BinaryFilter: mask topic changed from " << mask_topic_ << " to "
-              << msg->filter_mask_topic << ", clearing old mask";
+              << msg->filter_mask_topic() << ", clearing old mask";
         filter_mask_.reset();
         mask_frame_.clear();
     }
 
-    mask_topic_ = msg->filter_mask_topic;
+    mask_topic_ = msg->filter_mask_topic();
     setMaskTopic(mask_topic_);
     filter_info_received_ = true;
 
@@ -190,7 +191,7 @@ void BinaryFilter::filterInfoCallback(
 }
 
 void BinaryFilter::maskCallback(
-    const commsgs::map_msgs::OccupancyGrid::SharedPtr msg) {
+    const std::shared_ptr<automsgs::msgs::map_msgs::OccupancyGrid> msg) {
     std::lock_guard<CostmapFilter::mutex_t> guard(*getMutex());
 
     if (!msg) {
@@ -203,15 +204,14 @@ void BinaryFilter::maskCallback(
     }
 
     if (!filter_mask_) {
-        AINFO << "BinaryFilter: received filter mask (" << msg->info.width << "x"
-              << msg->info.height << ", frame=" << msg->header.frame_id << ")";
+        AINFO << "BinaryFilter: received filter mask (" << msg->info().width()<< "x"
+              << msg->info().height()<< ", frame=" << msg->header().frame_id()<< ")";
     } else {
-        AWARN << "BinaryFilter: updating filter mask (frame=" << msg->header.frame_id
-              << ")";
+        AWARN << "BinaryFilter: updating filter mask (frame=" << msg->header().frame_id()<< ")";
     }
 
     filter_mask_ = msg;
-    mask_frame_ = msg->header.frame_id;
+    mask_frame_ = msg->header().frame_id();
     mask_missing_warned_ = false;
     outside_mask_warned_ = false;
     unknown_cell_warned_ = false;
@@ -226,8 +226,8 @@ std::string BinaryFilter::resolveMaskFrame() const {
     if (!mask_frame_.empty()) {
         return mask_frame_;
     }
-    if (filter_mask_ && !filter_mask_->header.frame_id.empty()) {
-        return filter_mask_->header.frame_id;
+    if (filter_mask_ && !filter_mask_->header().frame_id().empty()) {
+        return filter_mask_->header().frame_id();
     }
     return global_frame_;
 }
@@ -257,7 +257,7 @@ void BinaryFilter::changeState(const bool state) {
 
 void BinaryFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
                            int /*min_j*/, int /*max_i*/, int /*max_j*/,
-                           const commsgs::geometry_msgs::Pose2D& pose) {
+                           const automsgs::msgs::geometry_msgs::Pose2D& pose) {
     if (!filter_mask_) {
         if (!mask_missing_warned_) {
             AWARN << "BinaryFilter: filter mask was not received";
@@ -278,7 +278,7 @@ void BinaryFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
         global_frame_ = layered_costmap_->getGlobalFrameID();
     }
 
-    commsgs::geometry_msgs::Pose2D mask_pose;
+    automsgs::msgs::geometry_msgs::Pose2D mask_pose;
     const std::string mask_frame = resolveMaskFrame();
     if (!transformPose(global_frame_, pose, mask_frame, mask_pose)) {
         return;
@@ -286,7 +286,7 @@ void BinaryFilter::process(Costmap2D& /*master_grid*/, int /*min_i*/,
 
     unsigned int mask_robot_i = 0;
     unsigned int mask_robot_j = 0;
-    if (!worldToMask(filter_mask_, mask_pose.x, mask_pose.y, mask_robot_i,
+    if (!worldToMask(filter_mask_, mask_pose.x(), mask_pose.y(), mask_robot_i,
                      mask_robot_j)) {
         if (!outside_mask_warned_) {
             AWARN << "BinaryFilter: robot is outside filter mask, resetting to "

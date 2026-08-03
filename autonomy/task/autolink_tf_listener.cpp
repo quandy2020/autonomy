@@ -17,7 +17,16 @@
 #include "autonomy/task/autolink_tf_listener.hpp"
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/commsgs/geometry_msgs.hpp"
+#include <automsgs/msgs/geometry_msgs/point.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose.pb.h>
+#include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
 #include "autonomy/transform/transform_topics.hpp"
@@ -25,7 +34,7 @@
 namespace autonomy {
 namespace task {
 
-namespace tf2_pb = ::autonomy::commsgs::proto::tf2_msgs;
+namespace tf2_pb = ::automsgs::msgs::tf2_msgs;
 
 AutolinkTfListener::~AutolinkTfListener() { Stop(); }
 
@@ -66,14 +75,14 @@ bool AutolinkTfListener::Start(const std::shared_ptr<autolink::Node>& node,
 
     if (!transform_stampeds_topic.empty()) {
         stampeds_reader_ =
-            node_->CreateReader<commsgs::geometry_msgs::TransformStampeds>(
+            node_->CreateReader<automsgs::msgs::geometry_msgs::TransformStampeds>(
                 transform_stampeds_topic,
                 [buffer](const std::shared_ptr<
-                         commsgs::geometry_msgs::TransformStampeds>& msg) {
+                         automsgs::msgs::geometry_msgs::TransformStampeds>& msg) {
                     if (!msg) {
                         return;
                     }
-                    for (const auto& trans : msg->transforms) {
+                    for (const auto& trans : msg->transforms()) {
                         transform::ApplyTransformStampedToBuffer(
                             buffer, trans, "autolink_tf", false);
                     }
